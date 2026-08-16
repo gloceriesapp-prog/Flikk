@@ -13,4 +13,5 @@ export type AppStackParamList = {
   LocationSearch: undefined;
   MapConfirm: { latitude: number; longitude: number; addressLabel: string };
   Home: undefined;
+  Categories: undefined;
 };

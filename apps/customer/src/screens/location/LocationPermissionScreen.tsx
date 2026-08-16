@@ -7,11 +7,14 @@
 //           confirms the exact pin before it's saved)
 // Deny   -> LocationSearchScreen (manual search, per the reference flow)
 
+import { Location01Icon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { getCurrentCoordinates, requestLocationPermission, reverseGeocode } from '../../location/geocoding';
+import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'LocationPermission'>;
@@ -43,7 +46,7 @@ export function LocationPermissionScreen({ navigation }: Props) {
     <View className="flex-1 justify-between bg-mist px-6 pb-safe pt-safe">
       <View className="flex-1 items-center justify-center gap-4">
         <View className="h-20 w-20 items-center justify-center rounded-full bg-lime-soft">
-          <Text className="text-4xl">📍</Text>
+          <AppIcon icon={Location01Icon} size={36} color={colors.limeDeep} />
         </View>
         <Text className="text-center text-2xl font-extrabold text-ink">Enable your location</Text>
         <Text className="text-center text-[15px] leading-5 text-ink/65">

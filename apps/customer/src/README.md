@@ -4,10 +4,17 @@
 src/
   api/          fetch wrapper + one file per backend resource (auth.ts, later: stores.ts, orders.ts...)
   components/   shared UI primitives used by more than one screen (buttons, inputs)
+    BottomNavBar/ floating pill nav (Home/Order Again/Categories/Store) — Home and Categories are wired to real screens
   location/     geocoding helpers (expo-location wrapper) — used only by screens/location/
   navigation/   route param types + one Navigator per app section (Auth, App) + RootNavigator
   screens/      one file per screen, named after what it shows, not its PRD code
     location/   the permission → search → map-confirm flow, see its own README
+    categories/ grouped category grid, reached from the bottom nav — see its own README
+    home/       Home screen + its header components, see its own README
+      products/ shared product-card UI (ProductCard, ProductSection) — used by fish/ and sections/, see its own README
+      fish/     Fresh Fish product grid, shown when that category tab is selected — see its own README
+      deals/    ads/deals promo card — see its own README
+      sections/ "All" tab content (deals + Today's Deal + Bestsellers), only shown when 'all' is selected — see its own README
   store/        Zustand stores — one file per slice of client state
   theme/        design tokens (colors, spacing, type) — see specs/00-foundation/design-system.md
 ```
@@ -30,6 +37,7 @@ src/
 | Location permission | `screens/location/LocationPermissionScreen.tsx` | See `screens/location/README.md` |
 | Location search | `screens/location/LocationSearchScreen.tsx` | See `screens/location/README.md` |
 | Map pin confirm | `screens/location/MapConfirmScreen.tsx` | See `screens/location/README.md` |
-| Home (stub) | `screens/HomeScreen.tsx` | Placeholder for PRD C3 — full build in `specs/01-customer-app/` |
+| Home | `screens/home/HomeScreen.tsx` | PRD C3 — header is real, body is a placeholder. See `screens/home/README.md` |
+| Categories | `screens/categories/CategoriesScreen.tsx` | See `screens/categories/README.md` |
 
 Everything past Home (C4–C11: browse, cart, checkout, tracking, profile) is still to be built — see `specs/01-customer-app/screens.md`.

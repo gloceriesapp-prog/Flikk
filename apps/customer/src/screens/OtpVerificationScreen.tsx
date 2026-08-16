@@ -1,14 +1,17 @@
 // Verifies the code sent by LoginScreen, then persists the session and hands
 // off to the app shell. See specs/00-foundation/auth-and-roles.md for the flow.
 
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp, verifyOtp } from '../api/auth';
 import { ApiError } from '../api/client';
+import { AppIcon } from '../components/AppIcon';
 import { OtpBoxInput } from '../components/OtpBoxInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useAuthStore } from '../store/useAuthStore';
+import { colors } from '../theme/tokens';
 import type { AuthStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
@@ -73,7 +76,7 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
   return (
     <View className="flex-1 bg-white px-6 pb-safe pt-safe">
       <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 justify-center">
-        <Text className="text-[22px] text-ink">←</Text>
+        <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
       </Pressable>
 
       <View className="mt-4 gap-5">
