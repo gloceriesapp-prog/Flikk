@@ -11,13 +11,17 @@ import type { Product } from './types';
 
 interface Props {
   product: Product;
+  // Grid rows (ProductSection) need a %-based width to divide the row evenly;
+  // horizontal scroll rows (e.g. groceries/FarmSection) need a fixed width
+  // instead. Defaults to the 3-column grid width.
+  widthClassName?: string;
 }
 
-export function ProductCard({ product }: Props) {
+export function ProductCard({ product, widthClassName = 'w-[32%]' }: Props) {
   const { name, localName, weight, price, originalPrice, rating, ratingCount, imageSeed } = product;
 
   return (
-    <View className="w-[32%] gap-2">
+    <View className={`${widthClassName} gap-2`}>
       <View className="aspect-square overflow-hidden rounded-2xl border border-mist bg-mist shadow-md shadow-black/20">
         <Image
           source={{ uri: `https://picsum.photos/seed/${imageSeed}/400/400` }}

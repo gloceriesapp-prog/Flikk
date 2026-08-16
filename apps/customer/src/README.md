@@ -15,6 +15,10 @@ src/
       fish/     Fresh Fish product grid, shown when that category tab is selected — see its own README
       deals/    ads/deals promo card — see its own README
       sections/ "All" tab content (deals + Today's Deal + Bestsellers), only shown when 'all' is selected — see its own README
+      category-tab/ shared sub-category-grid + promo-banner + teaser-row components — used by groceries/, bakery/, essentials/, see its own README
+      groceries/ "Groceries" tab content — see its own README
+      bakery/    "Bakery" tab content — see its own README
+      essentials/ "Essentials" tab content — see its own README
   store/        Zustand stores — one file per slice of client state
   theme/        design tokens (colors, spacing, type) — see specs/00-foundation/design-system.md
 ```
