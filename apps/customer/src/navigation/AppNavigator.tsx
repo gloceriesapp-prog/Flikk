@@ -9,6 +9,7 @@
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
+import { CategoryDetailScreen } from '../screens/category-detail/CategoryDetailScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
@@ -37,6 +38,7 @@ export function AppNavigator() {
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Store" component={StoreListScreen} />
       <Stack.Screen name="Purchase" component={PurchaseScreen} />
+      <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
     </Stack.Navigator>
   );
 }

@@ -1,3 +1,50 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Global default font — NativeWind's CSS engine applies this to every RN
+   Text element app-wide. This is what actually takes effect; setting
+   Text.defaultProps in App.tsx does not, because NativeWind's babel plugin
+   swaps every screen's `Text` import for its own cssInterop-wrapped
+   component, which doesn't inherit defaultProps set on the raw RN Text. */
+@layer base {
+  * {
+    font-family: 'Gilroy-Regular';
+  }
+}
+
+/* Tailwind's font-weight utilities (font-bold, font-semibold, etc.) only
+   set numeric fontWeight, which RN can't use to pick a different Gilroy
+   file — each weight is its own separate .ttf, not one variable font. These
+   pair every weight utility already used across the app with its matching
+   Gilroy face, so `font-bold` renders Gilroy-Bold instead of a synthesized
+   bold Gilroy-Regular. */
+@layer utilities {
+  .font-thin {
+    font-family: 'Gilroy-Thin';
+  }
+  .font-extralight {
+    font-family: 'Gilroy-UltraLight';
+  }
+  .font-light {
+    font-family: 'Gilroy-Light';
+  }
+  .font-normal {
+    font-family: 'Gilroy-Regular';
+  }
+  .font-medium {
+    font-family: 'Gilroy-Medium';
+  }
+  .font-semibold {
+    font-family: 'Gilroy-SemiBold';
+  }
+  .font-bold {
+    font-family: 'Gilroy-Bold';
+  }
+  .font-extrabold {
+    font-family: 'Gilroy-ExtraBold';
+  }
+  .font-black {
+    font-family: 'Gilroy-Black';
+  }
+}
