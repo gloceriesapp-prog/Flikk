@@ -7,7 +7,7 @@ import { Image, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 
-const BANNER_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/img11.png';
+const BANNER_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/image3.png';
 
 interface Props {
   onBack: () => void;
@@ -16,8 +16,8 @@ interface Props {
 
 export function StoreHeader({ onBack, onSearch }: Props) {
   return (
-    <View className="h-64 w-full overflow-hidden rounded-b-[32px] bg-ink">
-      <Image source={{ uri: BANNER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+    <View className="h-60 w-full overflow-hidden rounded-b-[32px] bg-[#f7f8f6]">
+      <Image source={{ uri: BANNER_IMAGE_URI }} className="h-full w-full opacity-90" resizeMode="cover" />
 
       <View className="absolute inset-x-5 top-0 flex-row items-center justify-between pt-safe-offset-3">
         <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">

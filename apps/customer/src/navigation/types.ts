@@ -18,4 +18,5 @@ export type AppStackParamList = {
   Store: undefined;
   Purchase: undefined;
   CategoryDetail: { categoryId: string; label: string };
+  StoreDetail: { storeId: string; storeName: string };
 };
