@@ -5,9 +5,7 @@ full-width deal image, nothing else.
 
 ```
 deals/
-  DealsSection.tsx     padding wrapper around the image below
-  DealsImageCard.tsx     one rounded, full-width image — no text/badge/CTA
-  data.ts                the single image URL
+  DealsSection.tsx     the whole section — image URL, layout, everything
 ```
 
 Earlier versions of this section had a heading, CTA button, a live countdown
@@ -18,5 +16,6 @@ deliberate ask, not something to silently restore.
 
 ## Placeholder, not real
 
-Image is a placeholder URL (hotlinked reference image) — there's no
-promotions/campaigns backend yet.
+Image is a hardcoded Supabase-hosted URL — there's no promotions/campaigns
+backend yet, so this is a stand-in for whatever a real deals feed would
+serve.

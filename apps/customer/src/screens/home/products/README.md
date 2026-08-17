@@ -1,8 +1,8 @@
 # Shared product card
 
 Used by every "grid of products" section on Home — Fresh Fish (`../fish/`),
-Today's Deal and Bestsellers (`../sections/`). One implementation, not one
-per section.
+Today's Steal Deals (`../sections/`), Everyday essentials and Coastal
+Kitchen picks (horizontal rows). One implementation, not one per section.
 
 ```
 products/

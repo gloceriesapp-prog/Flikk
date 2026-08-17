@@ -33,8 +33,8 @@ export function StoreCard({ store }: Props) {
       {/* LinearGradient isn't one of NativeWind's auto-patched components —
           className is silently ignored, so positioning goes through style. */}
       <LinearGradient
-        colors={['transparent', CARD_SURFACE, CARD_SURFACE]}
-        locations={[0.3, 0.72, 1]}
+        colors={['transparent', 'transparent', CARD_SURFACE]}
+        locations={[0, 0.42, 0.62]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={StyleSheet.absoluteFill}

@@ -17,7 +17,7 @@ export function CategoryTabs({ selectedId, onSelect }: Props) {
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerClassName="gap-2 px-4"
-      className="mt-5"
+      className="mt-2"
     >
       {HOME_CATEGORIES.map((category) => (
         <CategoryTabItem

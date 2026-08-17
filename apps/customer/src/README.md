@@ -16,7 +16,10 @@ src/
       products/ shared product-card UI (ProductCard, ProductSection) — used by fish/ and sections/, see its own README
       fish/     Fresh Fish product grid, shown when that category tab is selected — see its own README
       deals/    ads/deals promo card — see its own README
-      sections/ "All" tab content (deals + Today's Deal + Bestsellers), only shown when 'all' is selected — see its own README
+      sections/ "All" tab content (deals + Today's Steal Deals), only shown when 'all' is selected — see its own README
+      nearby-stores/ "Shops near you" static row on the All tab — see its own file
+      everyday-essentials/ horizontal "Everyday essentials" row on the All tab
+      coastal-kitchen-picks/ horizontal "Coastal Kitchen picks" row on the All tab
       category-tab/ shared sub-category-grid + promo-banner + teaser-row components — used by groceries/, bakery/, essentials/, see its own README
       groceries/ "Groceries" tab content — see its own README
       bakery/    "Bakery" tab content — see its own README

@@ -10,8 +10,8 @@ fish/
 ```
 
 The card UI itself (`ProductCard`) and the title+grid layout (`ProductSection`)
-live in `../products/` — shared with `../sections/` (Today's Deal, Bestsellers)
-so there's one card implementation, not three copies.
+live in `../products/` — shared with `../sections/` (Today's Steal Deals)
+so there's one card implementation, not separate copies per section.
 
 ## Placeholder, not real
 

@@ -1,5 +1,6 @@
-// Shared shape for every product card on Home — Fresh Fish, Today's Deal,
-// Bestsellers all use this, not their own copy. See ProductCard.tsx.
+// Shared shape for every product card on Home — Fresh Fish, Today's Steal
+// Deals, Everyday essentials, Coastal Kitchen picks all use this, not their
+// own copy. See ProductCard.tsx.
 
 export interface Product {
   id: string;

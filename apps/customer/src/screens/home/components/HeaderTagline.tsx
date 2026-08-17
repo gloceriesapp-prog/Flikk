@@ -9,9 +9,12 @@ import { Text, View } from 'react-native';
 export function HeaderTagline() {
   return (
     <View className="mt-2">
-      <Text className="text-2xl font-bold leading-7 text-ink">Same-day delivery from your,</Text>
-      <Text className="text-2xl font-bold leading-7">
-       trusted local shops.
+      {/* Same-day delivery from your, trusted local shops. */}
+      {/* Your town, now with its own grocery app. */}
+      <Text className="text-2xl font-semibold leading-7 text-ink">The shops you already trust.
+        Now </Text>
+      <Text className="text-2xl font-semibold leading-7">
+        open, right in your pocket.
       </Text>
     </View>
   );

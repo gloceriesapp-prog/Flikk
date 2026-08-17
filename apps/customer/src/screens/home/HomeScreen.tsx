@@ -1,6 +1,6 @@
 // PRD screen C3 (Home). The header (ETA, location, search, categories) is
 // real UI. The body reacts to the selected category:
-//   'all'         -> deals promo + Today's Deal + Bestsellers (sections/)
+//   'all'         -> nearby stores + essentials + deals promo + coastal picks + Today's Steal Deals (sections/)
 //   'fresh-fish'  -> the Fresh Fish grid (fish/)
 //   'groceries'   -> sub-category grid + promo banner + farm teaser (groceries/)
 //   'bakery'      -> same pattern, bakery data (bakery/)

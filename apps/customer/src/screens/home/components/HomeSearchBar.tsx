@@ -6,7 +6,7 @@
 // screens that don't exist yet, kept visible so the layout matches the
 // reference without implying functionality that isn't there.
 
-import { HeartIcon, Note01Icon, Search01Icon } from '@hugeicons/core-free-icons';
+import { HeartIcon, Note01Icon, Search01Icon, ShoppingCartAdd01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -33,7 +33,7 @@ export function HomeSearchBar({ onPress }: Props) {
 
       <View className="h-[52px] flex-row items-center gap-3 rounded-full bg-white px-4 shadow-sm shadow-black/5">
         <Pressable hitSlop={8}>
-          <AppIcon icon={Note01Icon} size={18} color={colors.ink} />
+          <AppIcon icon={ShoppingCartAdd01Icon} size={18} color={colors.ink} />
         </Pressable>
         <View className="h-5 w-px bg-slate-200" />
         <Pressable hitSlop={8}>

@@ -21,7 +21,7 @@ export function CategoryTabItem({ category, isSelected, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      className={`w-[76px] items-center gap-1.5 border border-mist py-3 ${
+      className={`w-[76px] items-center gap-1.5 py-3 rounded-t-2xl ${
         isSelected ? 'bg-white' : 'bg-white/40'
       }`}
     >

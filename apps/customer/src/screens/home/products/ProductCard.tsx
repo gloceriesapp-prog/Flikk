@@ -20,9 +20,17 @@ interface Props {
   // every existing card's look silently. Only renders when the product
   // actually has an originalPrice to compute a percentage off from.
   showDiscountBadge?: boolean;
+  // On by default — screens/home/everyday-essentials/ opts out per an
+  // explicit ask to drop the star/rating line there, other cards keep it.
+  showRating?: boolean;
 }
 
-export function ProductCard({ product, widthClassName = 'w-[32%]', showDiscountBadge = false }: Props) {
+export function ProductCard({
+  product,
+  widthClassName = 'w-[32%]',
+  showDiscountBadge = false,
+  showRating = true,
+}: Props) {
   // imageSeed is kept on Product (data.ts files) for when real per-item images
   // return — not read here while every card shares one placeholder image.
   const { name, localName, weight, price, originalPrice, rating, ratingCount } = product;
@@ -69,12 +77,14 @@ export function ProductCard({ product, widthClassName = 'w-[32%]', showDiscountB
         <Text className="text-[13px] font-semibold leading-4 text-ink" numberOfLines={2}>
           {name} ({localName})
         </Text>
-        <View className="flex-row items-center gap-1">
-          <AppIcon icon={StarIcon} size={11} color={colors.gold} />
-          <Text className="text-[11px] text-ink/60">
-            {rating.toFixed(1)} · {ratingCount}
-          </Text>
-        </View>
+        {showRating && (
+          <View className="flex-row items-center gap-1">
+            <AppIcon icon={StarIcon} size={11} color={colors.gold} />
+            <Text className="text-[11px] text-ink/60">
+              {rating.toFixed(1)} · {ratingCount}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );

@@ -15,7 +15,7 @@ const PLACEHOLDER_ETA_MINUTES = 9; // real value should come from the nearest st
 // Exported so CollapsibleAvatar.tsx collapses on the same timing — both
 // should finish hiding together, not at different scroll offsets.
 export const COLLAPSE_DISTANCE = 50; // px of scroll over which the block fully collapses
-const MAX_HEIGHT = 150; // measured-by-eye: ETA + the taller icon-badge location row + tagline
+const MAX_HEIGHT = 96; // measured-by-eye: location row + tagline, tight — was 150, leaving a dead gap above the search bar
 
 interface Props {
   scrollY: SharedValue<number>;
@@ -33,7 +33,7 @@ export function CollapsibleHeaderTop({ scrollY, onChangeLocation }: Props) {
 
   return (
     <Animated.View style={animatedStyle} className="gap-1 overflow-hidden">
-      <EtaBadge minutes={PLACEHOLDER_ETA_MINUTES} />
+      {/* <EtaBadge minutes={PLACEHOLDER_ETA_MINUTES} /> */}
       <LocationSelector onPress={onChangeLocation} />
       <HeaderTagline />
     </Animated.View>

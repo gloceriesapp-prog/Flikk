@@ -9,5 +9,5 @@ interface Props {
 }
 
 export function EtaBadge({ minutes }: Props) {
-  return <Text className="text-lg font-semibold text-ink">Delivers in ~{minutes} min</Text>;
+  // return <Text className="text-lg font-semibold text-ink">Delivers in ~{minutes} min</Text>;
 }
