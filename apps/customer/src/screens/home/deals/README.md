@@ -1,24 +1,22 @@
 # Deals / ads section
 
-Always visible on Home, regardless of which category tab is selected —
-sits between the header and the category-specific body content.
+Shown on Home's "All" tab (see `../sections/AllTabSections.tsx`) — one
+full-width deal image, nothing else.
 
 ```
 deals/
-  DealsSection.tsx        the actual card (border, rounded, no shadow) — composes the two below
-  DealsBannerCard.tsx      heading, subtext, CTA, image, pagination dots — content only, no outer card styling
-  DealsCountdownRow.tsx     "Deals end in HH:MM:SS" + "Shop early" blurb — content only
-  useCountdown.ts           ticks a target Date down to HH:MM:SS, used by DealsCountdownRow
+  DealsSection.tsx     padding wrapper around the image below
+  DealsImageCard.tsx     one rounded, full-width image — no text/badge/CTA
+  data.ts                the single image URL
 ```
 
-`DealsBannerCard` and `DealsCountdownRow` deliberately don't style their own
-container (bg/border/rounding) — `DealsSection` owns that, with a single `h-px`
-divider between them, so the two read as one continuous card rather than two
-stacked boxes. No shadow anywhere in this section, by design — matches the
-flat reference UI.
+Earlier versions of this section had a heading, CTA button, a live countdown
+timer, and later a horizontal scroll of multiple images — all removed
+deliberately across a few revisions that wanted progressively simpler: one
+image, no scroll, no chrome. If any of that is wanted again, that's a new
+deliberate ask, not something to silently restore.
 
 ## Placeholder, not real
 
-Copy ("Thousands of deals", "Low Prices. Every day") and the image
-(`picsum.photos`) are placeholders — there's no promotions/campaigns backend
-yet. The countdown is real (ticks to end of today), everything else is static.
+Image is a placeholder URL (hotlinked reference image) — there's no
+promotions/campaigns backend yet.

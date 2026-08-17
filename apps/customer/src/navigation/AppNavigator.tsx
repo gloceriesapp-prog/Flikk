@@ -13,6 +13,7 @@ import { HomeScreen } from '../screens/home/HomeScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
 import { MapConfirmScreen } from '../screens/location/MapConfirmScreen';
+import { SearchScreen } from '../screens/search/SearchScreen';
 import { useLocationStore } from '../store/useLocationStore';
 import type { AppStackParamList } from './types';
 
@@ -31,6 +32,7 @@ export function AppNavigator() {
       <Stack.Screen name="MapConfirm" component={MapConfirmScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Categories" component={CategoriesScreen} />
+      <Stack.Screen name="Search" component={SearchScreen} />
     </Stack.Navigator>
   );
 }

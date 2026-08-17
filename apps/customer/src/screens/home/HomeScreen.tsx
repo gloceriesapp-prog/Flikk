@@ -10,7 +10,8 @@
 // specs/01-customer-app/screens.md.
 
 import { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { HomeHeader } from './components/HomeHeader';
@@ -29,16 +30,31 @@ const CATEGORIES_WITH_REAL_CONTENT = ['all', 'fresh-fish', 'groceries', 'bakery'
 export function HomeScreen({ navigation }: Props) {
   const [selectedCategoryId, setSelectedCategoryId] = useState(HOME_CATEGORIES[0]?.id ?? 'all');
 
+  // Drives the collapsing ETA/location block in HomeHeader — see
+  // components/CollapsibleHeaderTop.tsx for the actual interpolation.
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+
   return (
     // BottomNavBar is a sibling of the ScrollView, not inside its scrollable
     // content — that's what keeps it floating fixed in place while the page
     // scrolls underneath it.
     <View className="flex-1 bg-white">
-      <ScrollView className="flex-1" contentContainerClassName="pb-28" stickyHeaderIndices={[0]}>
+      <Animated.ScrollView
+        className="flex-1"
+        contentContainerClassName="pb-28"
+        stickyHeaderIndices={[0]}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+      >
         <HomeHeader
           onChangeLocation={() => navigation.navigate('LocationSearch')}
+          onOpenSearch={() => navigation.navigate('Search')}
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
+          scrollY={scrollY}
         />
 
         {selectedCategoryId === 'all' && <AllTabSections />}
@@ -59,7 +75,7 @@ export function HomeScreen({ navigation }: Props) {
             </Text>
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       <BottomNavBar />
     </View>

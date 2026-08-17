@@ -10,15 +10,16 @@ import type { Product } from './types';
 interface Props {
   title: string;
   products: Product[];
+  showDiscountBadge?: boolean;
 }
 
-export function ProductSection({ title, products }: Props) {
+export function ProductSection({ title, products, showDiscountBadge = false }: Props) {
   return (
     <View className="px-5 pt-6">
       <Text className="mb-4 text-lg font-extrabold text-ink">{title}</Text>
       <View className="flex-row flex-wrap justify-between gap-y-5">
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard key={product.id} product={product} showDiscountBadge={showDiscountBadge} />
         ))}
       </View>
     </View>

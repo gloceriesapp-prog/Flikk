@@ -15,10 +15,16 @@ interface Props {
   // horizontal scroll rows (e.g. groceries/FarmSection) need a fixed width
   // instead. Defaults to the 3-column grid width.
   widthClassName?: string;
+  // Off by default — opt-in per screen (e.g. search/) rather than changing
+  // every existing card's look silently. Only renders when the product
+  // actually has an originalPrice to compute a percentage off from.
+  showDiscountBadge?: boolean;
 }
 
-export function ProductCard({ product, widthClassName = 'w-[32%]' }: Props) {
+export function ProductCard({ product, widthClassName = 'w-[32%]', showDiscountBadge = false }: Props) {
   const { name, localName, weight, price, originalPrice, rating, ratingCount, imageSeed } = product;
+  const discountPercent =
+    showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
 
   return (
     <View className={`${widthClassName} gap-2`}>
@@ -39,6 +45,12 @@ export function ProductCard({ product, widthClassName = 'w-[32%]' }: Props) {
         <View className="absolute right-1.5 top-1.5 rounded-full bg-white p-0.5">
           <AppIcon icon={CheckmarkCircle02Icon} size={14} color={colors.limeDeep} />
         </View>
+
+        {discountPercent !== null && discountPercent > 0 && (
+          <View className="absolute left-0 top-2 rounded-r-full bg-lime-deep py-1 pl-2 pr-2.5">
+            <Text className="text-[10px] font-bold text-white">{discountPercent}% OFF</Text>
+          </View>
+        )}
       </View>
 
       <View className="-mt-4 z-10 flex-row items-center justify-between px-1">

@@ -5,28 +5,35 @@
 // not a flat fill — strong lime at the very top, fading out by the time it
 // reaches the search bar, so the search bar's white pill and the page below
 // both read as "the same surface," not a hard color seam.
+//
+// ETA/location and the avatar both collapse away on scroll
+// (CollapsibleHeaderTop / CollapsibleAvatar) — search and category tabs
+// stay fixed.
 
-import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import type { SharedValue } from 'react-native-reanimated';
 import { colors } from '../../../theme/tokens';
-import { EtaBadge } from './EtaBadge';
-import { LocationSelector } from './LocationSelector';
-import { ProfileAvatarButton } from './ProfileAvatarButton';
+import { CollapsibleAvatar } from './CollapsibleAvatar';
+import { CollapsibleHeaderTop } from './CollapsibleHeaderTop';
 import { HomeSearchBar } from './HomeSearchBar';
 import { CategoryTabs } from './CategoryTabs';
 
-const PLACEHOLDER_ETA_MINUTES = 9; // real value should come from the nearest store's avg_prep_minutes
-
 interface Props {
   onChangeLocation: () => void;
+  onOpenSearch: () => void;
   selectedCategoryId: string;
   onSelectCategory: (id: string) => void;
+  scrollY: SharedValue<number>;
 }
 
-export function HomeHeader({ onChangeLocation, selectedCategoryId, onSelectCategory }: Props) {
-  const [searchQuery, setSearchQuery] = useState('');
-
+export function HomeHeader({
+  onChangeLocation,
+  onOpenSearch,
+  selectedCategoryId,
+  onSelectCategory,
+  scrollY,
+}: Props) {
   return (
     <View className="overflow-hidden rounded-b-[28px] bg-white">
       {/* LinearGradient isn't one of NativeWind's auto-patched components — a
@@ -40,15 +47,14 @@ export function HomeHeader({ onChangeLocation, selectedCategoryId, onSelectCateg
 
       <View className="pb-4 pt-safe">
         <View className="flex-row items-start justify-between px-6 pt-2">
-          <View className="gap-1">
-            <EtaBadge minutes={PLACEHOLDER_ETA_MINUTES} />
-            <LocationSelector onPress={onChangeLocation} />
+          <View className="flex-1">
+            <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} />
           </View>
-          <ProfileAvatarButton />
+          <CollapsibleAvatar scrollY={scrollY} />
         </View>
 
         <View className="px-6">
-          <HomeSearchBar value={searchQuery} onChangeText={setSearchQuery} />
+          <HomeSearchBar onPress={onOpenSearch} />
         </View>
 
         <CategoryTabs selectedId={selectedCategoryId} onSelect={onSelectCategory} />

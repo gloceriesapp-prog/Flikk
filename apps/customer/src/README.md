@@ -10,6 +10,7 @@ src/
   screens/      one file per screen, named after what it shows, not its PRD code
     location/   the permission → search → map-confirm flow, see its own README
     categories/ grouped category grid, reached from the bottom nav — see its own README
+    search/     search screen (quick categories + most-searched grid), reached by tapping the Home search bar — see its own README
     home/       Home screen + its header components, see its own README
       products/ shared product-card UI (ProductCard, ProductSection) — used by fish/ and sections/, see its own README
       fish/     Fresh Fish product grid, shown when that category tab is selected — see its own README
@@ -29,6 +30,7 @@ src/
 - **`store/useAuthStore.ts`** is the single source of truth for "is the user logged in." `navigation/RootNavigator.tsx` reads it to decide whether to render `AuthNavigator` or `AppNavigator` — no screen should independently decide navigation based on auth state.
 - **`store/useLocationStore.ts`** is the single source of truth for "has a delivery location been picked." `navigation/AppNavigator.tsx` reads it to decide whether to open on the location flow or straight to Home. Local/on-device only for now — see `screens/location/README.md` for the backend gap.
 - **`navigation/types.ts`** lists every route and its params in one place — check here first when adding a screen, not by grepping `navigate()` calls.
+- **`screens/home/components/CollapsibleHeaderTop.tsx`** collapses the ETA/location text on scroll (height + opacity, driven by a `scrollY` shared value from `HomeScreen.tsx`'s `Animated.ScrollView`) — everything else in the header (avatar, search, category tabs) stays fixed via `stickyHeaderIndices`.
 - **`theme/tokens.ts`** is copied (not npm-linked) into `apps/partner` and `apps/rider` too. If you change it here, copy the same change there — see `specs/00-foundation/repo-structure.md` for why there's no shared package yet.
 
 ## Current screens
@@ -43,5 +45,6 @@ src/
 | Map pin confirm | `screens/location/MapConfirmScreen.tsx` | See `screens/location/README.md` |
 | Home | `screens/home/HomeScreen.tsx` | PRD C3 — header is real, body is a placeholder. See `screens/home/README.md` |
 | Categories | `screens/categories/CategoriesScreen.tsx` | See `screens/categories/README.md` |
+| Search | `screens/search/SearchScreen.tsx` | See `screens/search/README.md` |
 
 Everything past Home (C4–C11: browse, cart, checkout, tracking, profile) is still to be built — see `specs/01-customer-app/screens.md`.
