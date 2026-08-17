@@ -4,13 +4,14 @@
 src/
   api/          fetch wrapper + one file per backend resource (auth.ts, later: stores.ts, orders.ts...)
   components/   shared UI primitives used by more than one screen (buttons, inputs)
-    BottomNavBar/ floating pill nav (Home/Order Again/Categories/Store) — Home and Categories are wired to real screens
+    BottomNavBar/ floating pill nav (Home/Order Again/Categories/Store) — Home, Categories, and Store are wired to real screens
   location/     geocoding helpers (expo-location wrapper) — used only by screens/location/
   navigation/   route param types + one Navigator per app section (Auth, App) + RootNavigator
   screens/      one file per screen, named after what it shows, not its PRD code
     location/   the permission → search → map-confirm flow, see its own README
     categories/ grouped category grid, reached from the bottom nav — see its own README
-    search/     search screen (quick categories + most-searched grid), reached by tapping the Home search bar — see its own README
+    search/     search screen (top stores + most-searched grid), reached by tapping the Home search bar — see its own README
+    store-list/ vertical store list, reached from the bottom nav's Store tab, reuses Home's header — see its own README
     home/       Home screen + its header components, see its own README
       products/ shared product-card UI (ProductCard, ProductSection) — used by fish/ and sections/, see its own README
       fish/     Fresh Fish product grid, shown when that category tab is selected — see its own README
@@ -46,5 +47,6 @@ src/
 | Home | `screens/home/HomeScreen.tsx` | PRD C3 — header is real, body is a placeholder. See `screens/home/README.md` |
 | Categories | `screens/categories/CategoriesScreen.tsx` | See `screens/categories/README.md` |
 | Search | `screens/search/SearchScreen.tsx` | See `screens/search/README.md` |
+| Store list | `screens/store-list/StoreListScreen.tsx` | See `screens/store-list/README.md` |
 
 Everything past Home (C4–C11: browse, cart, checkout, tracking, profile) is still to be built — see `specs/01-customer-app/screens.md`.

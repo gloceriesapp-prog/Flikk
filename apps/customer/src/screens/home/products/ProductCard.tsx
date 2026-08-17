@@ -6,6 +6,7 @@
 import { CheckmarkCircle02Icon, StarIcon } from '@hugeicons/core-free-icons';
 import { Image, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
+import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { colors } from '../../../theme/tokens';
 import type { Product } from './types';
 
@@ -22,18 +23,16 @@ interface Props {
 }
 
 export function ProductCard({ product, widthClassName = 'w-[32%]', showDiscountBadge = false }: Props) {
-  const { name, localName, weight, price, originalPrice, rating, ratingCount, imageSeed } = product;
+  // imageSeed is kept on Product (data.ts files) for when real per-item images
+  // return — not read here while every card shares one placeholder image.
+  const { name, localName, weight, price, originalPrice, rating, ratingCount } = product;
   const discountPercent =
     showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
 
   return (
     <View className={`${widthClassName} gap-2`}>
-      <View className="aspect-square overflow-hidden rounded-2xl border border-mist bg-mist shadow-md shadow-black/20">
-        <Image
-          source={{ uri: `https://picsum.photos/seed/${imageSeed}/400/400` }}
-          className="h-full w-full"
-          resizeMode="cover"
-        />
+      <View className="aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-md shadow-black/20">
+        <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
 
         {/* decorative image-carousel dots — single static placeholder image for now */}
         <View className="absolute bottom-2 left-0 right-0 flex-row justify-center gap-1">

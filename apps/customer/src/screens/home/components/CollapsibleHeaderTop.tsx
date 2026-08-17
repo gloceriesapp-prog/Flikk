@@ -15,7 +15,7 @@ const PLACEHOLDER_ETA_MINUTES = 9; // real value should come from the nearest st
 // Exported so CollapsibleAvatar.tsx collapses on the same timing — both
 // should finish hiding together, not at different scroll offsets.
 export const COLLAPSE_DISTANCE = 50; // px of scroll over which the block fully collapses
-const MAX_HEIGHT = 128; // measured-by-eye: ETA + location + the two-line headline tagline
+const MAX_HEIGHT = 150; // measured-by-eye: ETA + the taller icon-badge location row + tagline
 
 interface Props {
   scrollY: SharedValue<number>;

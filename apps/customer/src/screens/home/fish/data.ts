@@ -1,9 +1,10 @@
 // Placeholder catalog for the Fresh Fish category tab. Names pair the English
 // name with the local coastal-Karnataka name, matching the convention already
-// used in the reference UI (e.g. "Onion (Eerulli)"). Images are random
-// (picsum.photos, seeded per item for a stable placeholder) until real store
-// catalog data exists — see specs/01-customer-app/screens.md for the real
+// used in the reference UI (e.g. "Onion (Eerulli)"). All items share one
+// placeholder image (theme/placeholderImage.ts) until real store catalog
+// data exists — see specs/01-customer-app/screens.md for the real
 // catalog-browse build (PRD C4/C5), which is what eventually replaces this.
+// imageSeed is kept per item for when real per-product images return.
 
 import type { Product } from '../products/types';
 

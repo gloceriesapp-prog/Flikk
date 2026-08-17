@@ -5,11 +5,7 @@
 // underneath — without it, colorful content behind the pill (like the lime
 // header) tints the glass a dirty green instead of neutral white.
 //
-// 'home' and 'categories' have real screens. 'order-again' and 'store'
-// still don't, so tapping them only switches which tab is highlighted — it
-// deliberately does not call navigation.navigate() for a route that isn't
-// registered, which would crash. Wire real navigation here once those
-// screens are built.
+// All four tabs have real screens now.
 
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -30,6 +26,8 @@ export function BottomNavBar() {
     setActiveId(tabId);
     if (tabId === 'categories') navigation.navigate('Categories');
     if (tabId === 'home') navigation.navigate('Home');
+    if (tabId === 'store') navigation.navigate('Store');
+    if (tabId === 'order-again') navigation.navigate('Purchase');
   }
 
   return (

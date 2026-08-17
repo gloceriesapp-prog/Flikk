@@ -16,7 +16,6 @@ export function BakeryTab() {
         badgeLabel="Baked Fresh"
         heading={'Warm from\nthe oven.'}
         subheading="Baked every morning, delivered while it's still warm."
-        imageSeed="flikk-bakery-promo"
       />
       <ProductTeaserRow title="Straight from the bakery" products={BAKERY_PRODUCTS} />
     </View>

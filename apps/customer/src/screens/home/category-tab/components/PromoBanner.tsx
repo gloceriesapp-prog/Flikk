@@ -1,29 +1,25 @@
 // Photo banner with a dark gradient wash at the bottom so white text stays
 // legible over whatever's in the photo — same LinearGradient-needs-style-not-
-// className gotcha as HomeHeader.tsx. Copy/badge/image are per-tab (passed in
-// by the caller), not hardcoded — this is what makes it reusable across
-// groceries/, bakery/, essentials/.
+// className gotcha as HomeHeader.tsx. Copy/badge are per-tab (passed in by
+// the caller), image is the shared app-wide placeholder — this is what
+// makes it reusable across groceries/, bakery/, essentials/.
 
 import { StyleSheet, Image, Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PLACEHOLDER_IMAGE_URI } from '../../../../theme/placeholderImage';
 
 interface Props {
   badgeLabel: string;
   heading: string;
   subheading: string;
-  imageSeed: string;
   buttonLabel?: string;
 }
 
-export function PromoBanner({ badgeLabel, heading, subheading, imageSeed, buttonLabel = 'Shop now' }: Props) {
+export function PromoBanner({ badgeLabel, heading, subheading, buttonLabel = 'Shop now' }: Props) {
   return (
     <View className="mx-5 mt-6 gap-3">
-      <View className="h-48 overflow-hidden rounded-3xl bg-mist">
-        <Image
-          source={{ uri: `https://picsum.photos/seed/${imageSeed}/600/400` }}
-          className="h-full w-full"
-          resizeMode="cover"
-        />
+      <View className="h-48 overflow-hidden rounded-3xl border border-gray-100 bg-white">
+        <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
 
         <LinearGradient
           colors={['transparent', 'rgba(16,28,16,0.85)']}

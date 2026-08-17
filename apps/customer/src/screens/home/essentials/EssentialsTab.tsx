@@ -16,7 +16,6 @@ export function EssentialsTab() {
         badgeLabel="Top Rated"
         heading={'Everyday\nmust-haves.'}
         subheading="Everything you need, one tap away."
-        imageSeed="flikk-essentials-promo"
       />
       <ProductTeaserRow title="Everyday must-haves" products={ESSENTIALS_PRODUCTS} />
     </View>

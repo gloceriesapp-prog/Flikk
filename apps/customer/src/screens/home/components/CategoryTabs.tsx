@@ -16,7 +16,7 @@ export function CategoryTabs({ selectedId, onSelect }: Props) {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerClassName="gap-2 px-6"
+      contentContainerClassName="gap-2 px-4"
       className="mt-5"
     >
       {HOME_CATEGORIES.map((category) => (

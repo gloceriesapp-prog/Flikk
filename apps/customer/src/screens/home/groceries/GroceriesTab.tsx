@@ -17,7 +17,6 @@ export function GroceriesTab() {
         badgeLabel="Fresh Picks"
         heading={'Cook the way\nyou love.'}
         subheading="Stir, simmer, soup & serve — same day."
-        imageSeed="flikk-fresh-promo"
       />
       <ProductTeaserRow title="Straight from farms" products={FARM_PRODUCTS} />
     </View>

@@ -3,6 +3,7 @@
 // are shadowed, this one is flat — different references, different look.
 
 import { Image, Pressable, Text, View } from 'react-native';
+import { PLACEHOLDER_IMAGE_URI } from '../../../../theme/placeholderImage';
 import type { SubCategory } from '../types';
 
 interface Props {
@@ -12,12 +13,8 @@ interface Props {
 export function SubCategoryTile({ category }: Props) {
   return (
     <Pressable className="w-[23%] items-center gap-2 rounded-2xl bg-lime-soft p-2.5">
-      <View className="h-16 w-16 items-center justify-center overflow-hidden rounded-xl">
-        <Image
-          source={{ uri: `https://picsum.photos/seed/${category.imageSeed}/160/160` }}
-          className="h-full w-full"
-          resizeMode="cover"
-        />
+      <View className="h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-white">
+        <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
       </View>
       <Text className="text-center text-xs font-bold leading-4 text-ink" numberOfLines={2}>
         {category.label}
