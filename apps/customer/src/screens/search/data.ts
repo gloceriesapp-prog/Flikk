@@ -2,30 +2,26 @@
 // placeholder dataset in this codebase — no real catalog/search backend
 // behind this yet, see specs/01-customer-app/screens.md.
 
-import {
-  BlenderIcon,
-  BroccoliIcon,
-  CleaningBucketIcon,
-  ShampooIcon,
-  SprayCanIcon,
-  WashingMachineIcon,
-} from '@hugeicons/core-free-icons';
-import type { IconSvgElement } from '@hugeicons/react-native';
 import type { Product } from '../home/products/types';
 
-export interface QuickCategory {
+export interface Store {
   id: string;
-  label: string;
-  icon: IconSvgElement;
+  name: string;
+  imageSeed: string;
 }
 
-export const QUICK_CATEGORIES: QuickCategory[] = [
-  { id: 'vegetables', label: 'Vegetables', icon: BroccoliIcon },
-  { id: 'home-appliance', label: 'Home Appliance', icon: BlenderIcon },
-  { id: 'body-hair-care', label: 'Body & Hair Care', icon: ShampooIcon },
-  { id: 'freshener-repellent', label: 'Freshener & Repellent', icon: SprayCanIcon },
-  { id: 'detergent-fabric', label: 'Detergent & Fabric', icon: WashingMachineIcon },
-  { id: 'cleaners-disinfectants', label: 'Cleaners & Disinfectants', icon: CleaningBucketIcon },
+// Fictional local store names — not the real chains from the reference UI
+// (Walmart, Carrefour, etc.), those are that app's actual partners, not
+// Flikk's. Random images for now, per the ask — real store logos come once
+// there's a real store-onboarding backend (specs/00-foundation/data-model.md
+// has a `stores` table already; nothing wires it to this screen yet).
+export const TOP_STORES: Store[] = [
+  { id: 'shetty-stores', name: 'Shetty Stores', imageSeed: 'store-shetty' },
+  { id: 'krishna-mart', name: 'Krishna Mart', imageSeed: 'store-krishna' },
+  { id: 'coastal-fresh', name: 'Coastal Fresh', imageSeed: 'store-coastal' },
+  { id: 'udupi-grocers', name: 'Udupi Grocers', imageSeed: 'store-udupi' },
+  { id: 'bunts-bazaar', name: 'Bunts Bazaar', imageSeed: 'store-bunts' },
+  { id: 'durga-stores', name: 'Sri Durga Stores', imageSeed: 'store-durga' },
 ];
 
 export const MOST_SEARCHED_PRODUCTS: Product[] = [

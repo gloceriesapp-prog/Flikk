@@ -1,14 +1,14 @@
 // Reached by tapping the Home search bar (HomeSearchBar.tsx navigates here
 // instead of allowing inline typing — see that file's comment). Real typing
-// happens in SearchHeader; the quick-category chips and "Most searched
+// happens in SearchHeader; the Top Grocery Stores row and "Most searched
 // Product" grid below are placeholder content, no live search wired yet.
 
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ProductSection } from '../home/products/ProductSection';
-import { QuickCategoryGrid } from './components/QuickCategoryGrid';
 import { SearchHeader } from './components/SearchHeader';
+import { TopStoresRow } from './components/TopStoresRow';
 import { MOST_SEARCHED_PRODUCTS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -22,7 +22,7 @@ export function SearchScreen({ navigation }: Props) {
       <SearchHeader value={query} onChangeText={setQuery} onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerClassName="pb-10">
-        <QuickCategoryGrid />
+        <TopStoresRow />
         <ProductSection title="Most searched Product" products={MOST_SEARCHED_PRODUCTS} showDiscountBadge />
       </ScrollView>
     </View>
