@@ -26,16 +26,23 @@ export function PurchaseScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 bg-white pt-safe">
-      <View className="flex-row items-center gap-3 px-5 pb-1 pt-2">
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
+      <View className="relative flex-row items-center px-5 pb-1 pt-2">
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+          className="h-11 w-11 items-center justify-center"
+        >
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
-        <Text className="text-xl font-extrabold text-ink">Purchase</Text>
+
+        <Text className="absolute left-0 right-0 text-center text-xl font-semibold text-ink">
+          Purchase
+        </Text>
       </View>
 
       {hasLiveOrder ? (
         <ScrollView className="flex-1" contentContainerClassName="gap-3 px-6 pb-10 pt-3" showsVerticalScrollIndicator={false}>
-          <Text className="text-base font-extrabold text-ink">Live Order</Text>
+          <Text className="text-lg font-semibold text-ink">Live Order</Text>
           <LiveOrderCard
             order={LIVE_ORDER}
             onTrackOrder={() =>
@@ -45,7 +52,7 @@ export function PurchaseScreen({ navigation }: Props) {
 
           {PAST_ORDERS.length > 0 && (
             <View className="mt-3 gap-3">
-              <Text className="text-base font-extrabold text-ink">Past Orders</Text>
+              <Text className="text-lg font-semibold text-ink">Past Orders</Text>
               {PAST_ORDERS.map((order) => (
                 <PastOrderCard key={order.id} order={order} />
               ))}
@@ -67,7 +74,8 @@ export function PurchaseScreen({ navigation }: Props) {
           </View>
 
           <Text className="px-6 text-left text-[25px] font-semibold leading-8 text-gray-500">
-            You&apos;re not just ordering. You&apos;re keeping local shops open. 🌾
+            You&apos;re not just ordering. You&apos;re keeping
+            local shops open. 🌾
           </Text>
         </ScrollView>
       )}

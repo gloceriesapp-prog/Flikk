@@ -15,20 +15,20 @@ export function PastOrderCard({ order }: Props) {
   const itemsLabel = order.items.map((item) => item.name).join(', ');
 
   return (
-    <View className="flex-row items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+    <View className="flex-row items-center gap-3 rounded-2xl border border-gray-100 bg-gray-100 p-4">
       <ItemAvatarStack items={order.items} />
 
       <View className="flex-1">
         <View className="flex-row items-center justify-between">
-          <Text className="text-sm font-bold text-ink" numberOfLines={1}>
+          <Text className="text-base font-semibold text-ink" numberOfLines={1}>
             {order.storeName}
           </Text>
-          <Text className="text-sm font-extrabold text-ink">₹{order.total}</Text>
+          <Text className="text-base font-bold text-ink">₹{order.total}</Text>
         </View>
-        <Text className="mt-0.5 text-xs font-medium text-ink/50" numberOfLines={1} ellipsizeMode="tail">
+        <Text className="text-sm font-medium text-ink/50" numberOfLines={1} ellipsizeMode="tail">
           {itemsLabel}
         </Text>
-        <Text className="mt-1 text-[11px] font-semibold text-success">{order.statusLabel} · {order.placedAtLabel}</Text>
+        <Text className="mt-1 text-[13px] font-semibold text-success">{order.statusLabel} · {order.placedAtLabel}</Text>
       </View>
     </View>
   );

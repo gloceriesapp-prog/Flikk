@@ -25,7 +25,7 @@ export function LiveOrderCard({ order, onTrackOrder }: Props) {
   const itemsLabel = order.items.map((item) => item.name).join(', ');
 
   return (
-    <View className="overflow-hidden rounded-3xl border border-lime-deep/15 shadow-md shadow-black/10">
+    <View className="overflow-hidden rounded-3xl shadow-md shadow-black/10">
       {/* LinearGradient isn't one of NativeWind's auto-patched components —
           className is silently ignored, so positioning goes through style,
           same gotcha as elsewhere in this app. */}
@@ -40,10 +40,10 @@ export function LiveOrderCard({ order, onTrackOrder }: Props) {
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-1.5 rounded-full bg-lime-deep px-3 py-1">
             <View className="h-1.5 w-1.5 rounded-full bg-white" />
-            <Text className="text-xs font-bold text-white">{order.statusLabel}</Text>
+            <Text className="text-xs font-semibold text-white">{order.statusLabel}</Text>
           </View>
-          <View className="h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm shadow-black/10">
-            <AppIcon icon={DeliveryTruck01Icon} size={15} color={colors.limeDeep} />
+          <View className="h-8 w-8 items-center justify-center rounded-full bg-white">
+            <AppIcon icon={DeliveryTruck01Icon} size={18} color={colors.limeDeep} />
           </View>
         </View>
 
@@ -51,10 +51,10 @@ export function LiveOrderCard({ order, onTrackOrder }: Props) {
           <ItemAvatarStack items={order.items} />
 
           <View className="flex-1">
-            <Text className="text-base font-extrabold text-ink" numberOfLines={1}>
+            <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
               Your order is out for delivery
             </Text>
-            <Text className="mt-0.5 text-xs font-medium text-ink/55" numberOfLines={1} ellipsizeMode="tail">
+            <Text className="text-sm font-medium text-ink/55" numberOfLines={1} ellipsizeMode="tail">
               {itemsLabel}
             </Text>
           </View>
@@ -64,7 +64,7 @@ export function LiveOrderCard({ order, onTrackOrder }: Props) {
           onPress={onTrackOrder}
           className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-ink py-3.5"
         >
-          <Text className="text-sm font-bold text-white">Track Order</Text>
+          <Text className="text-base font-semibold text-white">Track Order</Text>
           <AppIcon icon={ArrowRight01Icon} size={15} color="#FFFFFF" />
         </Pressable>
       </View>

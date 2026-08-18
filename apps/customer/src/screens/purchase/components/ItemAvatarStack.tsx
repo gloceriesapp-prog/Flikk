@@ -20,7 +20,7 @@ export function ItemAvatarStack({ items }: Props) {
         <View
           key={item.name}
           style={{ marginLeft: i === 0 ? 0 : -14, zIndex: visibleItems.length - i }}
-          className="h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-mist shadow-sm shadow-black/10"
+          className="h-12 w-12 overflow-hidden rounded-full border-[1px] border-white bg-mist shadow-sm shadow-black/10"
         >
           <Image source={{ uri: item.imageUri }} className="h-full w-full" resizeMode="cover" />
         </View>
