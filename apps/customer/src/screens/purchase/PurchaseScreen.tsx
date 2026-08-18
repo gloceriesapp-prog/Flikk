@@ -26,16 +26,20 @@ export function PurchaseScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 bg-white pt-safe">
-      <View className="relative flex-row items-center px-5 pb-1 pt-2">
+      <View className="relative flex-row items-center px-5 pb-2 pt-2">
         <Pressable
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Home')}
           hitSlop={12}
           className="h-11 w-11 items-center justify-center"
         >
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
 
-        <Text className="absolute left-0 right-0 text-center text-xl font-semibold text-ink">
+        {/* pointerEvents="none" — this label overlaps the back button (both
+            occupy the same row via absolute positioning); without it RN
+            intercepts the tap on this Text first and the button underneath
+            never receives the press. */}
+        <Text pointerEvents="none" className="absolute left-0 right-0 text-center text-xl font-semibold text-ink">
           Purchase
         </Text>
       </View>
@@ -59,8 +63,9 @@ export function PurchaseScreen({ navigation }: Props) {
             </View>
           )}
 
-          <Text className="mt-4 px-2 text-center text-sm font-semibold leading-6 text-gray-500">
-            You&apos;re not just ordering. You&apos;re keeping local shops open. 🌾
+          <Text className="mt-4 px-2 text-center text-base font-semibold leading-6 text-gray-500">
+            You&apos;re not just ordering. You&apos;re keeping{"\n"}
+            local shops open. 🌾
           </Text>
         </ScrollView>
       ) : (
