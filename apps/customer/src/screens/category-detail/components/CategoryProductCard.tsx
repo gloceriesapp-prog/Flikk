@@ -3,9 +3,17 @@
 // unlike screens/home/products/ProductCard.tsx's overlap-via-negative-margin
 // style, which is a different reference and broke down at this card's
 // narrower 2-column width).
+//
+// ADD becomes a quantity stepper once in the cart — same useCartStore as
+// ProductCard, so a product added here shows correctly in the cart bar/
+// CartScreen and vice versa.
 
+import { AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Image, Pressable, Text, View } from 'react-native';
+import { AppIcon } from '../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
+import { colors } from '../../../theme/tokens';
+import { useCartStore } from '../../../store/useCartStore';
 import type { Product } from '../../home/products/types';
 
 interface Props {
@@ -17,8 +25,13 @@ interface Props {
 }
 
 export function CategoryProductCard({ product, bgClassName }: Props) {
-  const { name, weight, price, originalPrice } = product;
+  const { id, name, weight, price, originalPrice } = product;
   const discountPercent = originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
+
+  const quantity = useCartStore((state) => state.items.find((item) => item.id === id)?.quantity ?? 0);
+  const addItem = useCartStore((state) => state.addItem);
+  const incrementItem = useCartStore((state) => state.incrementItem);
+  const decrementItem = useCartStore((state) => state.decrementItem);
 
   return (
     <View className="w-[47%]">
@@ -31,9 +44,24 @@ export function CategoryProductCard({ product, bgClassName }: Props) {
           </View>
         )}
 
-        <Pressable className="absolute bottom-3 right-3 rounded-full bg-white px-4 py-1.5 shadow-sm shadow-black/20">
-          <Text className="text-xs font-extrabold text-ink">ADD</Text>
-        </Pressable>
+        {quantity === 0 ? (
+          <Pressable
+            onPress={() => addItem({ id, name, weight, price })}
+            className="absolute bottom-3 right-3 rounded-full bg-white px-4 py-1.5 shadow-sm shadow-black/20"
+          >
+            <Text className="text-xs font-extrabold text-ink">ADD</Text>
+          </Pressable>
+        ) : (
+          <View className="absolute bottom-3 right-3 flex-row items-center gap-2 rounded-full bg-white px-2 py-1.5 shadow-sm shadow-black/20">
+            <Pressable onPress={() => decrementItem(id)} hitSlop={6}>
+              <AppIcon icon={MinusSignIcon} size={14} color={colors.ink} />
+            </Pressable>
+            <Text className="min-w-[14px] text-center text-xs font-extrabold text-ink">{quantity}</Text>
+            <Pressable onPress={() => incrementItem(id)} hitSlop={6}>
+              <AppIcon icon={AddSquareIcon} size={14} color={colors.ink} />
+            </Pressable>
+          </View>
+        )}
       </View>
 
       <Text className="mt-3 text-sm font-bold leading-5 text-ink" numberOfLines={2}>

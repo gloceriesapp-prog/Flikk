@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CartBar } from '../CartBar/CartBar';
 import { BottomNavBarItem } from './BottomNavBarItem';
 import { BOTTOM_NAV_TABS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
@@ -78,6 +79,11 @@ export function BottomNavBar() {
         </View>
       </BlurView>
       </View>
+
+      {/* Sits right above the pill — insets.bottom + 4 (pill's own offset) +
+          ~73 (pill height) + 10 (gap). Only visible once something's in the
+          cart, see CartBar.tsx. */}
+      <CartBar bottomOffset={insets.bottom + 87} />
     </>
   );
 }

@@ -22,7 +22,7 @@ export interface Category {
 export const HOME_CATEGORIES: Category[] = [
   { id: 'all', label: 'All', icon: ShoppingBasket01Icon },
   { id: 'groceries', label: 'Groceries', icon: ShoppingCart01Icon },
-  { id: 'fresh-fish', label: 'Fresh Fish', icon: FishIcon },
+  { id: 'fresh-fish', label: 'Meat & Fish', icon: FishIcon },
   { id: 'bakery', label: 'Bakery', icon: Bread01Icon },
   { id: 'essentials', label: 'Essentials', icon: Package01Icon },
   { id: 'coastal', label: 'Coastal', icon: SailboatCoastalIcon },

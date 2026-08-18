@@ -1,13 +1,19 @@
-// Only the image is an elevated "card" (border + shadow) — price/name/rating
-// sit flat on the page background, per the reference. Weight tag + ADD button
+// Only the image is an elevated "card" (border + shadow) — price/name sit
+// flat on the page background, per the reference. Weight tag + ADD button
 // overlap the image's bottom edge via negative margin. Name is never
-// truncated — it wraps to 2 lines if it needs to.
+// truncated — it wraps to 2 lines if it needs to. No rating line — removed
+// from every card app-wide per an explicit ask.
+//
+// ADD becomes a quantity stepper once the product is in the cart — reads
+// live from useCartStore, not local state, so it stays in sync if the same
+// product is also in the cart bar/CartScreen.
 
-import { CheckmarkCircle02Icon, StarIcon } from '@hugeicons/core-free-icons';
+import { AddSquareIcon, CheckmarkCircle02Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Image, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { colors } from '../../../theme/tokens';
+import { useCartStore } from '../../../store/useCartStore';
 import type { Product } from './types';
 
 interface Props {
@@ -20,22 +26,19 @@ interface Props {
   // every existing card's look silently. Only renders when the product
   // actually has an originalPrice to compute a percentage off from.
   showDiscountBadge?: boolean;
-  // On by default — screens/home/everyday-essentials/ opts out per an
-  // explicit ask to drop the star/rating line there, other cards keep it.
-  showRating?: boolean;
 }
 
-export function ProductCard({
-  product,
-  widthClassName = 'w-[32%]',
-  showDiscountBadge = false,
-  showRating = true,
-}: Props) {
+export function ProductCard({ product, widthClassName = 'w-[32%]', showDiscountBadge = false }: Props) {
   // imageSeed is kept on Product (data.ts files) for when real per-item images
   // return — not read here while every card shares one placeholder image.
-  const { name, localName, weight, price, originalPrice, rating, ratingCount } = product;
+  const { id, name, localName, weight, price, originalPrice } = product;
   const discountPercent =
     showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
+
+  const quantity = useCartStore((state) => state.items.find((item) => item.id === id)?.quantity ?? 0);
+  const addItem = useCartStore((state) => state.addItem);
+  const incrementItem = useCartStore((state) => state.incrementItem);
+  const decrementItem = useCartStore((state) => state.decrementItem);
 
   return (
     <View className={`${widthClassName} gap-2`}>
@@ -64,9 +67,25 @@ export function ProductCard({
         <View className="rounded-full border border-mist bg-white px-2 py-1">
           <Text className="text-[11px] font-semibold text-ink">{weight}</Text>
         </View>
-        <Pressable className="rounded-full border border-lime-deep bg-white px-3 py-1">
-          <Text className="text-xs font-bold text-lime-deep">ADD</Text>
-        </Pressable>
+
+        {quantity === 0 ? (
+          <Pressable
+            onPress={() => addItem({ id, name, weight, price })}
+            className="rounded-full border border-lime-deep bg-white px-3 py-1"
+          >
+            <Text className="text-xs font-bold text-lime-deep">ADD</Text>
+          </Pressable>
+        ) : (
+          <View className="flex-row items-center gap-2 rounded-full bg-lime-deep px-1.5 py-1">
+            <Pressable onPress={() => decrementItem(id)} hitSlop={6}>
+              <AppIcon icon={MinusSignIcon} size={13} color={colors.ink} />
+            </Pressable>
+            <Text className="min-w-[14px] text-center text-xs font-extrabold text-ink">{quantity}</Text>
+            <Pressable onPress={() => incrementItem(id)} hitSlop={6}>
+              <AppIcon icon={AddSquareIcon} size={13} color={colors.ink} />
+            </Pressable>
+          </View>
+        )}
       </View>
 
       <View className="gap-0.5 px-1">
@@ -77,14 +96,6 @@ export function ProductCard({
         <Text className="text-[13px] font-semibold leading-4 text-ink" numberOfLines={2}>
           {name} ({localName})
         </Text>
-        {showRating && (
-          <View className="flex-row items-center gap-1">
-            <AppIcon icon={StarIcon} size={11} color={colors.gold} />
-            <Text className="text-[11px] text-ink/60">
-              {rating.toFixed(1)} · {ratingCount}
-            </Text>
-          </View>
-        )}
       </View>
     </View>
   );

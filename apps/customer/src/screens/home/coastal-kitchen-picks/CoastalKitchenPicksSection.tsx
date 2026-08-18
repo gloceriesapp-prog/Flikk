@@ -15,7 +15,7 @@ export function CoastalKitchenPicksSection() {
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-5">
         {COASTAL_KITCHEN_PICKS_PRODUCTS.map((product) => (
-          <ProductCard key={product.id} product={product} widthClassName="w-36" showDiscountBadge showRating={false} />
+          <ProductCard key={product.id} product={product} widthClassName="w-36" showDiscountBadge />
         ))}
       </ScrollView>
     </View>

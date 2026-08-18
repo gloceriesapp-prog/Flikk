@@ -16,7 +16,7 @@ interface Props {
 export function ProductSection({ title, products, showDiscountBadge = false }: Props) {
   return (
     <View className="px-5 pt-6">
-      <Text className="mb-4 text-lg font-extrabold text-ink">{title}</Text>
+      <Text className="mb-4 text-xl font-semibold text-ink">{title}</Text>
       <View className="flex-row flex-wrap justify-between gap-y-5">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} showDiscountBadge={showDiscountBadge} />

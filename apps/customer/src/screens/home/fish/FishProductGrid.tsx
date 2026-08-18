@@ -5,5 +5,5 @@ import { ProductSection } from '../products/ProductSection';
 import { FISH_PRODUCTS } from './data';
 
 export function FishProductGrid() {
-  return <ProductSection title="Fresh Fish, Straight off the Boat" products={FISH_PRODUCTS} />;
+  return <ProductSection title="Fresh meat and fish, every day." products={FISH_PRODUCTS} />;
 }

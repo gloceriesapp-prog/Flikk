@@ -1,18 +1,20 @@
 # Shared category-tab building blocks
 
 Used by every "category tab with a sub-category grid + promo banner +
-product teaser row" pattern on Home — currently `../groceries/`, `../bakery/`,
-`../essentials/`. Extracted once the pattern repeated a third time (see
-`claude.md`'s own guidance: leave similar-but-separate until a fourth
-near-identical use shows up — three simultaneous new consumers here crossed
-that line).
+product teaser row" pattern on Home — `../bakery/` and `../essentials/` use
+all three pieces; `../groceries/` swapped its `PromoBanner` for its own
+`GroceriesDealImage.tsx` (a single deal image, no badge/heading/CTA) but
+still uses `SubCategoryGrid` and `ProductTeaserRow` from here. Extracted
+once the pattern repeated a third time (see `claude.md`'s own guidance:
+leave similar-but-separate until a fourth near-identical use shows up —
+three simultaneous new consumers here crossed that line).
 
 ```
 category-tab/
   types.ts                    the SubCategory shape every tab's data.ts conforms to
   components/
-    SubCategoryTile.tsx         one flat mist tile — image + 2-line bold label
-    SubCategoryGrid.tsx          section title + 4-column wrapped grid of tiles
+    SubCategoryTile.tsx         top-rounded tile with a light-yellow gradient fading to nothing by the bottom (no border/rounding there) + 2-line bold label below
+    SubCategoryGrid.tsx          optional section title + 4-column wrapped grid of tiles — Groceries passes no title
     PromoBanner.tsx               photo banner, gradient wash, badge/heading/CTA all passed in
     ProductTeaserRow.tsx          title + horizontal scroll, reuses ../../products/ProductCard
 ```
