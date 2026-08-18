@@ -23,6 +23,7 @@ import { CategoryTabs } from './CategoryTabs';
 interface Props {
   onChangeLocation: () => void;
   onOpenSearch: () => void;
+  onTrackOrder: () => void;
   selectedCategoryId: string;
   onSelectCategory: (id: string) => void;
   scrollY: SharedValue<number>;
@@ -35,6 +36,7 @@ interface Props {
 export function HomeHeader({
   onChangeLocation,
   onOpenSearch,
+  onTrackOrder,
   selectedCategoryId,
   onSelectCategory,
   scrollY,
@@ -62,7 +64,7 @@ export function HomeHeader({
         </View>
 
         <View className="px-6">
-          <HomeSearchBar onPress={onOpenSearch} />
+          <HomeSearchBar onPress={onOpenSearch} onTrackOrder={onTrackOrder} />
         </View>
 
         {showCategoryTabs && <CategoryTabs selectedId={selectedCategoryId} onSelect={onSelectCategory} />}

@@ -29,4 +29,5 @@ export type AppStackParamList = {
   // somewhere to land.
   PaymentStatus: { amount: number };
   Receipt: { amount: number; items: CartItem[]; paymentMethodLabel: string };
+  TrackOrder: { orderId: string; paymentMethodLabel: string };
 };

@@ -2,11 +2,12 @@
 // screen (screens/search/SearchScreen.tsx), which owns the actual typing.
 // This bar just looks like an input and shows the rolling search-term hint.
 //
-// Trailing "notes" (order list) and "heart" (wishlist) icons are stubs for
-// screens that don't exist yet, kept visible so the layout matches the
-// reference without implying functionality that isn't there.
+// Truck icon jumps straight to TrackOrder — see onTrackOrder. Mic icon is
+// still a stub for a screen that doesn't exist yet, kept visible so the
+// layout matches the reference without implying functionality that isn't
+// there.
 
-import { HeartIcon, Mic01Icon, Note01Icon, Search01Icon, ShoppingCartAdd01Icon } from '@hugeicons/core-free-icons';
+import { Mic01Icon, Search01Icon, TruckIcon } from '@hugeicons/core-free-icons';
 import { Pressable, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -14,9 +15,10 @@ import { RotatingSearchHint } from './RotatingSearchHint';
 
 interface Props {
   onPress: () => void;
+  onTrackOrder: () => void;
 }
 
-export function HomeSearchBar({ onPress }: Props) {
+export function HomeSearchBar({ onPress, onTrackOrder }: Props) {
   return (
     <View className="mt-4 flex-row items-center gap-2.5">
       <Pressable
@@ -32,8 +34,8 @@ export function HomeSearchBar({ onPress }: Props) {
       </Pressable>
 
       <View className="h-[52px] flex-row items-center gap-3 rounded-full bg-white px-4 shadow-sm shadow-black/5">
-        <Pressable hitSlop={8}>
-          <AppIcon icon={ShoppingCartAdd01Icon} size={18} color={colors.ink} />
+        <Pressable onPress={onTrackOrder} hitSlop={8}>
+          <AppIcon icon={TruckIcon} size={18} color={colors.ink} />
         </Pressable>
         <View className="h-5 w-px bg-slate-200" />
         <Pressable hitSlop={8}>

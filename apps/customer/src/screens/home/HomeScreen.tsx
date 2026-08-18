@@ -21,6 +21,7 @@ import { FishProductGrid } from './fish/FishProductGrid';
 import { GroceriesTab } from './groceries/GroceriesTab';
 import { AllTabSections } from './sections/AllTabSections';
 import { HOME_CATEGORIES } from './data/categories';
+import { generateOrderId } from '../../utils/generateOrderId';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
@@ -52,6 +53,7 @@ export function HomeScreen({ navigation }: Props) {
         <HomeHeader
           onChangeLocation={() => navigation.navigate('LocationSearch')}
           onOpenSearch={() => navigation.navigate('Search')}
+          onTrackOrder={() => navigation.navigate('TrackOrder', { orderId: generateOrderId(), paymentMethodLabel: 'UPI' })}
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
           scrollY={scrollY}

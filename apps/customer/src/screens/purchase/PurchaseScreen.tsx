@@ -6,6 +6,8 @@ import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
+import { generateOrderId } from '../../utils/generateOrderId';
+import { OnTheWayCard } from './components/OnTheWayCard';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Purchase'>;
@@ -20,6 +22,14 @@ export function PurchaseScreen({ navigation }: Props) {
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
         <Text className="text-xl font-extrabold text-ink">Purchase</Text>
+      </View>
+
+      <View className="mt-3">
+        <OnTheWayCard
+          onTrackOrder={() =>
+            navigation.navigate('TrackOrder', { orderId: generateOrderId(), paymentMethodLabel: 'UPI' })
+          }
+        />
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="flex-grow justify-between pb-16" showsVerticalScrollIndicator={false}>

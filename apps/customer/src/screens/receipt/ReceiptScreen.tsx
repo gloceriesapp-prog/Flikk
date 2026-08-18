@@ -3,10 +3,8 @@
 // cleared by then, so `items`/`amount`/`paymentMethodLabel` arrive as a
 // route-param snapshot, not read live from useCartStore.
 //
-// "Track Order" is a placeholder — no live order-tracking screen exists yet
-// (this app's v1 scope is status-only 4-stage tracking per CLAUDE.md, and
-// even that isn't wired to a real backend order yet). Wired to an
-// obviously-inert handler rather than silently doing nothing.
+// "Track Order" opens screens/track-order/TrackOrderScreen.tsx — status-only
+// 4-stage tracking (no live map/GPS, see that screen's own header for why).
 
 import { useState } from 'react';
 import { Cancel01Icon, Download03Icon } from '@hugeicons/core-free-icons';
@@ -18,6 +16,7 @@ import { AppIcon } from '../../components/AppIcon';
 import { SuccessSeal } from '../../components/SuccessSeal';
 import { colors } from '../../theme/tokens';
 import { useLocationStore } from '../../store/useLocationStore';
+import { generateOrderId } from '../../utils/generateOrderId';
 import { ReceiptCard } from './components/ReceiptCard';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -27,10 +26,6 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Receipt'>;
 // back to BlurView's light glass instead (see the button below). Checked
 // once, not per-render — it can't change while the app is running.
 const LIQUID_GLASS_AVAILABLE = isLiquidGlassAvailable();
-
-function generateOrderId() {
-  return `#${Date.now().toString().slice(-9)}`;
-}
 
 export function ReceiptScreen({ navigation, route }: Props) {
   const { amount, items, paymentMethodLabel } = route.params;
@@ -74,7 +69,10 @@ export function ReceiptScreen({ navigation, route }: Props) {
           (GlassView), falling back to BlurView's light glass everywhere
           else — glass only applies to this one button, not Track Order. */}
       <View className="flex-row gap-3 px-5 pb-safe-offset-4 pt-4">
-        <Pressable className="flex-1 items-center rounded-2xl bg-black py-4">
+        <Pressable
+          onPress={() => navigation.navigate('TrackOrder', { orderId, paymentMethodLabel })}
+          className="flex-1 items-center rounded-2xl bg-black py-4"
+        >
           <Text className="text-lg font-semibold text-white">Track Order</Text>
         </Pressable>
 
