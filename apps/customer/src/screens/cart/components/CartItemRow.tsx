@@ -20,19 +20,31 @@ export function CartItemRow({ item }: Props) {
       </View>
 
       <View className="flex-1 gap-0">
-        <Text className="text-lg font-semibold text-ink" numberOfLines={2}>
+        <Text className="text-base font-semibold text-ink" numberOfLines={2}>
           {item.name}
         </Text>
-        <Text className="text-lg font-medium text-ink/50">{item.weight}</Text>
-        <Text className="text-lg font-semibold text-ink">Price ₹{item.price * item.quantity}</Text>
+        <Text className="text-base font-medium text-ink/50">{item.weight}</Text>
+        <Text className="text-base font-semibold text-ink">Price ₹{item.price * item.quantity}</Text>
       </View>
 
-      <View className="flex-row items-center gap-3 rounded-full bg-lime-deep px-2.5 py-1.5">
-        <Pressable onPress={() => decrementItem(item.id)} hitSlop={8}>
+      <View className="flex-row items-center gap-2">
+        <Pressable
+          onPress={() => decrementItem(item.id)}
+          hitSlop={8}
+          className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
+        >
           <AppIcon icon={MinusSignIcon} size={15} color={colors.ink} />
         </Pressable>
-        <Text className="min-w-[16px] text-center text-sm font-bold text-ink">{item.quantity}</Text>
-        <Pressable onPress={() => incrementItem(item.id)} hitSlop={8}>
+
+        <Text className="min-w-[16px] text-center text-base font-bold text-ink">
+          {item.quantity}
+        </Text>
+
+        <Pressable
+          onPress={() => incrementItem(item.id)}
+          hitSlop={8}
+          className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
+        >
           <AppIcon icon={PlusSignIcon} size={15} color={colors.ink} />
         </Pressable>
       </View>

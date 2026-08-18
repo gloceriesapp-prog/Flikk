@@ -67,3 +67,13 @@ export function selectCartTotalQuantity(state: CartState): number {
 export function selectCartTotalPrice(state: CartState): number {
   return state.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 }
+
+// Flat placeholder fees — no pricing-rules backend exists yet to compute
+// real ones. Shared here (not duplicated per-screen) so CartScreen and
+// CheckoutScreen can't quote two different totals for the same cart.
+export const CART_DELIVERY_FEE = 25;
+export const CART_HANDLING_FEE = 5;
+
+export function selectCartGrandTotal(state: CartState): number {
+  return selectCartTotalPrice(state) + CART_DELIVERY_FEE + CART_HANDLING_FEE;
+}

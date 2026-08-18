@@ -21,7 +21,7 @@ export function CategoryDetailHeader({ title, onBack, onSearch }: Props) {
       </Pressable>
 
       <View className="flex-1">
-        <Text className="text-lg font-extrabold text-ink" numberOfLines={1}>
+        <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
           {title}
         </Text>
         <View className="flex-row items-center gap-0.5">

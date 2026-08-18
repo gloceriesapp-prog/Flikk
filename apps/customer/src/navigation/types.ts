@@ -1,5 +1,7 @@
 // Central param-list definitions — one place to see every screen and what it needs.
 
+import type { CartItem } from '../store/useCartStore';
+
 export type AuthStackParamList = {
   Onboarding: undefined;
   Login: undefined;
@@ -20,4 +22,11 @@ export type AppStackParamList = {
   CategoryDetail: { categoryId: string; label: string };
   StoreDetail: { storeId: string; storeName: string };
   Cart: undefined;
+  Checkout: undefined;
+  // Failure only — a successful payment goes straight to Receipt instead
+  // (see PaymentProcessingSheet.tsx / CheckoutScreen.tsx). Nothing
+  // navigates here yet; kept ready for when a real Razorpay failure needs
+  // somewhere to land.
+  PaymentStatus: { amount: number };
+  Receipt: { amount: number; items: CartItem[]; paymentMethodLabel: string };
 };

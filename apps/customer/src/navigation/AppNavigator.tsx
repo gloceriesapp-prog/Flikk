@@ -11,11 +11,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { CartScreen } from '../screens/cart/CartScreen';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
 import { CategoryDetailScreen } from '../screens/category-detail/CategoryDetailScreen';
+import { CheckoutScreen } from '../screens/checkout/CheckoutScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
 import { MapConfirmScreen } from '../screens/location/MapConfirmScreen';
+import { PaymentStatusScreen } from '../screens/payment-status/PaymentStatusScreen';
 import { PurchaseScreen } from '../screens/purchase/PurchaseScreen';
+import { ReceiptScreen } from '../screens/receipt/ReceiptScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
 import { StoreDetailScreen } from '../screens/store-detail/StoreDetailScreen';
 import { StoreListScreen } from '../screens/store-list/StoreListScreen';
@@ -43,6 +46,9 @@ export function AppNavigator() {
       <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
       <Stack.Screen name="StoreDetail" component={StoreDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} />
+      <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} />
+      <Stack.Screen name="Receipt" component={ReceiptScreen} />
     </Stack.Navigator>
   );
 }
