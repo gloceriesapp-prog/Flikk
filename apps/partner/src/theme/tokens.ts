@@ -2,8 +2,6 @@
 // Copied (not npm-linked) into each of the 3 RN apps — see specs/00-foundation/repo-structure.md
 // on why /packages/shared doesn't exist yet.
 
-import { Platform } from 'react-native';
-
 export const colors = {
   lime: '#A8D93A',
   limeDeep: '#7CB518',
@@ -23,17 +21,13 @@ export const radius = {
   button: 13,
 } as const;
 
-// System font stack only — no custom webfont/font file bundled in any app.
-// Deliberate load-time call for 3G, per design-system.md. RN already defaults
-// to the platform system font with no fontFamily set; this makes the choice
-// explicit and named rather than relying on an unstated default.
-//   iOS      -> San Francisco ("System")
-//   Android  -> Roboto ("Roboto", RN/Android's actual system default)
-export const fontFamily = Platform.select({
-  ios: 'System',
-  android: 'Roboto',
-  default: 'System',
-});
+// Söhne (base weight, "Buch") app-wide — see ./fonts.ts for the full weight
+// map and global.css for how it's actually applied (NativeWind's CSS
+// engine, not this constant — nothing in this app reads `fontFamily`
+// directly, same as apps/customer's own Gilroy setup). Deliberate
+// departure from design-system.md's system-font-stack default, per an
+// explicit ask that this app "strictly use that font only."
+export const fontFamily = 'Sohne-Buch';
 
 export const fontWeight = {
   regular: '400' as const,
