@@ -44,7 +44,7 @@ export function OrderCard({ order, onMarkPacked, onViewOrder }: Props) {
   const badge = STATUS_BADGE[order.status];
 
   return (
-    <View className="gap-3 rounded-3xl bg-gray-100 p-4 shadow-sm shadow-black/5">
+    <View className="gap-3 rounded-3xl bg-[#F9FAFB] p-4 shadow-sm shadow-black/5">
       <View className="flex-row items-center gap-3">
         <ItemAvatarStack items={order.items} />
 

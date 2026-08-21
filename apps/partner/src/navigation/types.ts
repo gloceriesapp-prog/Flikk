@@ -11,4 +11,8 @@ export type AppStackParamList = {
   // is passed, not the whole order object; the screen reads the live
   // order from ../store/useOrdersStore.ts (see that file's own note on why).
   OrderDetail: { orderId: string };
+  // Product detail (part of P4) — reached from ProductRow's "View". Same
+  // id-only pattern as OrderDetail; the screen reads the live product from
+  // ../store/useCatalogStore.ts.
+  ProductDetail: { productId: string };
 };

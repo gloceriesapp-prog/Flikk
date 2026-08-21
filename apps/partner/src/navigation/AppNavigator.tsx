@@ -13,6 +13,7 @@ import { CatalogScreen } from '../screens/catalog/CatalogScreen';
 import { OrderDetailScreen } from '../screens/order-detail/OrderDetailScreen';
 import { OrdersScreen } from '../screens/orders/OrdersScreen';
 import { PayoutsScreen } from '../screens/payouts/PayoutsScreen';
+import { ProductDetailScreen } from '../screens/product-detail/ProductDetailScreen';
 import type { AppStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -31,6 +32,7 @@ export function AppNavigator() {
         component={OrderDetailScreen}
         options={{ presentation: 'card', gestureEnabled: false }}
       />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ presentation: 'card' }} />
     </Stack.Navigator>
   );
 }
