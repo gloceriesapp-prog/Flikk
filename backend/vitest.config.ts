@@ -11,6 +11,7 @@ export default defineConfig({
       RAZORPAY_KEY_ID: 'test-key-id',
       RAZORPAY_KEY_SECRET: 'test-key-secret',
       RAZORPAY_WEBHOOK_SECRET: 'test-webhook-secret',
+      MAPPLS_ACCESS_TOKEN: 'test-mappls-token',
     },
   },
 });

@@ -11,4 +11,5 @@ export const env = {
   razorpayKeyId: required('RAZORPAY_KEY_ID'),
   razorpayKeySecret: required('RAZORPAY_KEY_SECRET'),
   razorpayWebhookSecret: required('RAZORPAY_WEBHOOK_SECRET'),
+  mapplsAccessToken: required('MAPPLS_ACCESS_TOKEN'),
 };

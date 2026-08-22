@@ -1,0 +1,8 @@
+{
+  "name": "flikk",
+  "private": true,
+  "workspaces": [
+    "apps/partner",
+    "packages/*"
+  ]
+}
