@@ -46,7 +46,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const [sizePickerOpen, setSizePickerOpen] = useState(false);
 
   if (!product) {
-    navigation.goBack();
+    navigation.navigate('Catalog');
     return null;
   }
 
@@ -93,14 +93,18 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   function handleSave() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     updateProduct(currentProduct.id, name.trim() || currentProduct.name, draft);
-    navigation.goBack();
+    navigation.navigate('Catalog');
   }
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View className="relative flex-row items-center px-5 py-3">
+        {/* navigate, not goBack — this screen is only ever reached from
+            Catalog, but goBack pops whatever the stack happens to hold at
+            the time, which isn't guaranteed to be Catalog. navigate makes
+            "back arrow → Inventory" true regardless of navigation history. */}
         <Pressable
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Catalog')}
           className="h-10 w-10 items-center justify-center rounded-full bg-gray-100"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >

@@ -21,11 +21,11 @@ export function AddSizeButton({ availableSizes, isOpen, onToggleOpen, onPickSize
     <View className="gap-2.5">
       <Pressable
         onPress={onToggleOpen}
-        className="flex-row items-center justify-center gap-1.5 rounded-2xl border border-dashed border-black/15 py-3.5"
+        className="flex-row items-center justify-center gap-1.5 rounded-2xl border border-dashed border-black/20 py-3.5"
         style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
       >
         <AppIcon icon={Add01Icon} size={15} color={colors.ink} />
-        <Text className="text-sm font-semibold text-ink">Add a size</Text>
+        <Text className="text-base font-medium tracking-tight text-ink">Add a size</Text>
       </Pressable>
 
       {isOpen && (
@@ -37,7 +37,7 @@ export function AddSizeButton({ availableSizes, isOpen, onToggleOpen, onPickSize
               className="rounded-full border border-black/10 bg-white px-4 py-2"
               style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             >
-              <Text className="text-sm font-semibold text-ink">{label}</Text>
+              <Text className="text-base font-medium tracking-tight text-ink">{label}</Text>
             </Pressable>
           ))}
         </View>

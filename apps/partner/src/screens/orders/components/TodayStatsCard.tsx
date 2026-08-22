@@ -22,11 +22,11 @@ interface StatBoxProps {
 
 function StatBox({ label, value }: StatBoxProps) {
   return (
-    <View className="flex-1 gap-1 rounded-2xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm shadow-black/5">
-      <Text className="text-xs font-semibold text-ink/50" numberOfLines={1}>
+    <View className="flex-1 gap-0.5 rounded-2xl bg-[#F7F8FA] px-4 py-3.5 shadow-sm shadow-black/5">
+      <Text className="text-sm font-medium tracking-tight text-ink/60" numberOfLines={1}>
         {label}
       </Text>
-      <Text className="text-2xl font-extrabold text-ink" numberOfLines={1}>
+      <Text className="text-2xl font-semibold text-ink" numberOfLines={1}>
         {value}
       </Text>
     </View>

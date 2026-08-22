@@ -12,9 +12,11 @@ import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
+import { useLiveDistrict } from '../../location/useLiveDistrict';
 import { useOrdersStore } from '../../store/useOrdersStore';
-import { STORE_PROFILE, type PartnerOrderStatus } from './data';
-import { HomeGradientBackdrop } from './components/HomeGradientBackdrop';
+import { useStoreProfileStore } from '../../store/useStoreProfileStore';
+import type { PartnerOrderStatus } from './data';
+import { LocationPermissionBanner } from './components/LocationPermissionBanner';
 import { OrderCard } from './components/OrderCard';
 import { OrderStatusFilter, type OrderStatusFilterValue } from './components/OrderStatusFilter';
 import { StoreProfileHeader } from './components/StoreProfileHeader';
@@ -34,8 +36,16 @@ const STATUS_GROUPS: { status: PartnerOrderStatus; filterValue: OrderStatusFilte
 
 export function OrdersScreen({ navigation }: Props) {
   const orders = useOrdersStore((state) => state.orders);
+  const acknowledgeOrder = useOrdersStore((state) => state.acknowledgeOrder);
+  const rejectOrder = useOrdersStore((state) => state.rejectOrder);
   const markPacked = useOrdersStore((state) => state.markPacked);
-  const [statusFilter, setStatusFilter] = useState<OrderStatusFilterValue>('all');
+  // Defaults to New Orders, not All — the screen a shop owner opens
+  // should lead with what needs their action, not a mixed list they have
+  // to scan through to find it.
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilterValue>('placed');
+  const profile = useStoreProfileStore((state) => state.profile);
+  const toggleOpen = useStoreProfileStore((state) => state.toggleOpen);
+  const { status: locationStatus, district: liveDistrict, requestLiveDistrict } = useLiveDistrict();
 
   const newOrderCount = orders.filter((order) => order.status === 'placed').length;
   const earningTotal = orders.reduce((sum, order) => sum + order.total, 0);
@@ -46,35 +56,37 @@ export function OrdersScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 bg-white">
-      {/* Gradient wash spans header + stat boxes as one surface — pt-safe
-          on StoreProfileHeader (inside the backdrop) is what lets the
-          gradient itself bleed up behind the status bar, not stop below
-          it with a white gap above. pb-6 after the stat card is the
-          gradient extending past the boxes' bottom edge, not stopping
-          flush at their border — the "bg till the 4 box too" ask. */}
-      <HomeGradientBackdrop>
-        <StoreProfileHeader
-          profile={STORE_PROFILE}
-          // No notifications screen/backend yet (specs/05-platform/notifications.md)
-          // — stubbed rather than silently doing nothing, same convention as
-          // apps/customer's HomeSearchBar mic icon.
-          onPressNotifications={() => {}}
-        />
+      {/* Flat white — no gradient wash behind the header anymore. Stat
+          boxes still read as cards on their own (border + shadow), same
+          layout/spacing as before, just no colored backdrop under it. */}
+      <StoreProfileHeader
+        profile={{ ...profile, district: liveDistrict ?? profile.district }}
+        onToggleOpen={toggleOpen}
+        onPressSettings={() => navigation.navigate('StoreSettings')}
+        // No notifications backend yet (specs/05-platform/notifications.md)
+        // — stubbed rather than silently doing nothing, same convention as
+        // apps/customer's HomeSearchBar mic icon.
+        onPressNotifications={() => {}}
+      />
 
-        <View className="pb-6">
-          <TodayStatsCard orderCount={orders.length} pendingCount={newOrderCount} earningTotal={earningTotal} />
-        </View>
-      </HomeGradientBackdrop>
+      <LocationPermissionBanner status={locationStatus} onRequest={requestLiveDistrict} />
+
+      <View className="pb-1">
+        <TodayStatsCard orderCount={orders.length} pendingCount={newOrderCount} earningTotal={earningTotal} />
+      </View>
 
       <View className="py-3">
         <OrderStatusFilter
+          // New Orders → Packed → Out for Delivery → All, in that order —
+          // pending-action states lead, the catch-all trails. Same
+          // priority as the default selection above.
           options={[
-            { value: 'all', label: 'All Orders', count: orders.length },
             ...STATUS_GROUPS.map((group) => ({
               value: group.filterValue,
               label: group.sectionTitle,
               count: orders.filter((order) => order.status === group.status).length,
             })),
+            { value: 'all', label: 'All Orders', count: orders.length },
           ]}
           selected={statusFilter}
           onSelect={setStatusFilter}
@@ -83,7 +95,7 @@ export function OrdersScreen({ navigation }: Props) {
 
       {orders.length === 0 ? (
         <View className="flex-1 items-center justify-center gap-2 px-10">
-          <Text className="text-base font-semibold text-ink">No orders yet</Text>
+          <Text className="text-base font-medium text-ink">No orders yet</Text>
           <Text className="text-center text-sm text-ink/50">New orders will show up here the moment they come in.</Text>
         </View>
       ) : (
@@ -99,6 +111,8 @@ export function OrdersScreen({ navigation }: Props) {
                     <OrderCard
                       key={order.id}
                       order={order}
+                      onAcknowledge={acknowledgeOrder}
+                      onReject={rejectOrder}
                       onMarkPacked={markPacked}
                       onViewOrder={() => navigation.navigate('OrderDetail', { orderId: order.id })}
                     />

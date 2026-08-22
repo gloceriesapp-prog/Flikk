@@ -3,7 +3,7 @@
 // toggle and dashed optional-quantity field as before.
 
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { Delete02Icon, PackageIcon } from '@hugeicons/core-free-icons';
+import { Delete02Icon, PackageIcon, RupeeIcon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import type { ProductVariant } from '../../catalog/data';
@@ -41,7 +41,7 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
             onPress={() => onToggleStock(true)}
             className={`rounded-full px-3 py-1.5 ${variant.isInStock ? 'bg-[#04AA6D]' : ''}`}
           >
-            <Text className={`text-xs font-semibold ${variant.isInStock ? 'text-white' : 'text-ink/40'}`}>
+            <Text className={`text-sm font-medium ${variant.isInStock ? 'text-white' : 'text-ink/40'}`}>
               Available
             </Text>
           </Pressable>
@@ -49,22 +49,35 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
             onPress={() => onToggleStock(false)}
             className={`rounded-full px-3 py-1.5 ${!variant.isInStock ? 'bg-danger' : ''}`}
           >
-            <Text className={`text-xs font-semibold ${!variant.isInStock ? 'text-white' : 'text-ink/40'}`}>
+            <Text className={`text-sm font-medium ${!variant.isInStock ? 'text-white' : 'text-ink/40'}`}>
               Out of stock
             </Text>
           </Pressable>
         </View>
       </View>
 
-      <View className="flex-row items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-3">
-        <Text className="text-base font-semibold text-ink/40">₹</Text>
+      <View className="flex-row items-center rounded-2xl border border-black/10 bg-white px-4 py-3">
+        <AppIcon
+          icon={RupeeIcon}
+          size={15}
+          color={colors.ink}
+        />
         <TextInput
           value={String(variant.price)}
           onChangeText={onChangePrice}
           keyboardType="number-pad"
-          className="flex-1 text-base font-semibold text-ink"
+          className="ml-2 flex-1 p-0 text-base font-semibold text-ink"
+          style={{
+            height: 24,
+            paddingVertical: 0,
+            marginTop: -2,
+            textAlignVertical: 'center',
+          }}
         />
-        <Text className="text-xs font-medium text-ink/40">per {variant.label}</Text>
+
+        <Text className="ml-2 text-sm font-medium text-ink/40">
+          per {variant.label}
+        </Text>
       </View>
 
       {/* Stock count — optional: an empty field means "not tracked", not
@@ -72,14 +85,14 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
           to fake a number. Dashed border reads as the optional field next
           to the solid-bordered required price above it. */}
       <View className="flex-row items-center gap-2 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-3">
-        <AppIcon icon={PackageIcon} size={15} color={`${colors.ink}40`} />
+        <AppIcon icon={PackageIcon} size={15} color={`${colors.ink}60`} />
         <TextInput
           value={variant.stockQuantity === undefined ? '' : String(variant.stockQuantity)}
           onChangeText={onChangeQuantity}
           keyboardType="number-pad"
           placeholder="Stock count (optional)"
-          placeholderTextColor={`${colors.ink}40`}
-          className="flex-1 text-base font-semibold text-ink"
+          placeholderTextColor={`${colors.ink}60`}
+          className="flex-1 text-base font-medium text-ink"
         />
         {variant.stockQuantity !== undefined && <Text className="text-xs font-medium text-ink/40">units left</Text>}
       </View>

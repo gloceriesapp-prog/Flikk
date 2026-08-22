@@ -48,25 +48,68 @@ export interface PartnerOrder {
   // OrderDetailScreen since it changes what the store owner does when the
   // order goes out, unlike the relative placedAtLabel it replaced there.
   paymentMode: 'prepaid' | 'cod';
+  // Two-line drop-off — shown on the incoming-order alert's "Deliver to"
+  // section (features/incoming-order-alert/). Not the full addresses
+  // table shape from specs/00-foundation/data-model.md (label, landmark,
+  // zone_id) — just the two lines a store owner actually needs to read at
+  // a glance before accepting.
+  deliveryAddress: [string, string];
+  // Real tel: number — the alert's call button actually dials this via
+  // Linking.openURL, not a stub. A store owner deciding whether to accept
+  // an order sometimes needs to reach the customer before committing to
+  // it (address unclear, item substitution question), not only after.
+  customerPhone: string;
+  // Epoch ms — the anchor for the total accept window
+  // (features/order-expiry/orderExpiry.ts's ORDER_ACCEPT_WINDOW_MS), not
+  // derivable from placedAtLabel ("2 min ago" isn't a timestamp) or
+  // placedAtTime ("12:40 pm" has no date and drifts stale by the next
+  // day). A real fetch populates this from orders.placed_at.
+  placedAtTimestamp: number;
 }
 
-export interface StoreProfile {
-  storeName: string;
-  location: string;
-  avatarSeed: string;
-  hasUnreadNotifications: boolean;
-}
+// StoreProfile's canonical shape/data now lives in
+// ../store-settings/data.ts (P6 owns it — it's a fuller store-settings
+// object now: category, hours, avg prep time, phone, none of which
+// belongs in an order-queue data file). Re-exported here since
+// OrdersScreen/StoreProfileHeader already import it from './data' — this
+// keeps that import path working without every caller needing to know the
+// type moved. Live mutations (the Open/Closed toggle, settings edits) go
+// through ../../store/useStoreProfileStore.ts, not this constant directly.
+export type { StoreProfile } from '../store-settings/data';
+export { STORE_PROFILE } from '../store-settings/data';
 
-// Same no-auth caveat — real profile comes from the session once P1/P6
-// exist. Kaup/outer Udupi per CLAUDE.md's single launch zone.
-export const STORE_PROFILE: StoreProfile = {
-  storeName: 'Ganesh Kirana Store',
-  location: 'Kaup Main Road, Udupi',
-  avatarSeed: 'partner-owner-ganesh',
-  hasUnreadNotifications: true,
-};
+// Anchors every placeholder order's placedAtTimestamp to app-load time,
+// offset to match its own placedAtLabel — so the order-expiry grace
+// window (5 min total) reflects what the label already says instead of
+// contradicting it. Kept under 5 min for every 'placed' order on purpose:
+// a demo order that's already past the window would get silently
+// auto-rejected by useOrderExpiryWatcher the instant the app opens, which
+// reads as a bug, not a feature, to whoever's looking at this data.
+const NOW = Date.now();
+const MINUTES = 60 * 1000;
 
 export const PLACEHOLDER_ORDERS: PartnerOrder[] = [
+  // Newest first, matching the "new order" reference this app's own alert
+  // (src/features/incoming-order-alert/) is built to match — see that
+  // folder's own note on why it's mounted unconditionally for now.
+  {
+    id: '#OD48221',
+    customerName: 'Nishal P.',
+    items: [
+      { name: 'Toor Dal', quantity: 1, unit: '500 g', price: 156 },
+      { name: 'Kori Rotti Masala', quantity: 1, unit: '100 g', price: 68 },
+      { name: 'Milk', quantity: 1, unit: '500 ml', price: 80 },
+    ],
+    total: 304,
+    status: 'placed',
+    placedAtLabel: 'Just now',
+    placedAtTime: '12:44 pm',
+    orderCount: 3,
+    paymentMode: 'prepaid',
+    deliveryAddress: ['Koramangala 4th Block', 'Kaup Main Road, Udupi'],
+    customerPhone: '+919845012345',
+    placedAtTimestamp: NOW,
+  },
   {
     id: '#OD48213',
     customerName: 'Ramesh K.',
@@ -81,6 +124,9 @@ export const PLACEHOLDER_ORDERS: PartnerOrder[] = [
     placedAtTime: '12:40 pm',
     orderCount: 7,
     paymentMode: 'prepaid',
+    deliveryAddress: ['Vidya Nagar 2nd Cross', 'Near Kaup Beach Road, Udupi'],
+    customerPhone: '+919845098765',
+    placedAtTimestamp: NOW - 2 * MINUTES,
   },
   {
     id: '#OD48209',
@@ -88,10 +134,15 @@ export const PLACEHOLDER_ORDERS: PartnerOrder[] = [
     items: [{ name: 'Basmati Rice 1kg', quantity: 1, unit: '1 kg', price: 95 }],
     total: 95,
     status: 'placed',
-    placedAtLabel: '6 min ago',
+    // Was '6 min ago' — moved inside the 5-minute window (see NOW/MINUTES
+    // note above) so this order doesn't vanish on app load.
+    placedAtLabel: '3 min ago',
     placedAtTime: '12:36 pm',
     orderCount: 2,
     paymentMode: 'cod',
+    deliveryAddress: ['Santhekatte Junction', 'Kaup, Udupi'],
+    customerPhone: '+919845011223',
+    placedAtTimestamp: NOW - 3 * MINUTES,
   },
   {
     id: '#OD48198',
@@ -106,6 +157,9 @@ export const PLACEHOLDER_ORDERS: PartnerOrder[] = [
     placedAtTime: '12:20 pm',
     orderCount: 4,
     paymentMode: 'prepaid',
+    deliveryAddress: ['Church Road', 'Kaup Main Road, Udupi'],
+    customerPhone: '+919845033445',
+    placedAtTimestamp: NOW - 22 * MINUTES,
   },
   {
     id: '#OD48187',
@@ -120,5 +174,8 @@ export const PLACEHOLDER_ORDERS: PartnerOrder[] = [
     placedAtTime: '12:04 pm',
     orderCount: 1,
     paymentMode: 'cod',
+    deliveryAddress: ['Mangalpady Road', 'Kaup, Udupi'],
+    customerPhone: '+919845066778',
+    placedAtTimestamp: NOW - 38 * MINUTES,
   },
 ];

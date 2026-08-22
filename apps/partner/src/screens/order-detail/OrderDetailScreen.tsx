@@ -144,7 +144,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           />
         ) : (
           <View className="h-[68px] w-full items-center justify-center rounded-full bg-gray-100">
-            <Text className="text-sm font-bold text-ink/60">{STATUS_BADGE_LABEL[order.status]}</Text>
+            <Text className="text-sm font-medium text-ink/60">{STATUS_BADGE_LABEL[order.status]}</Text>
           </View>
         )}
       </View>
