@@ -1,9 +1,9 @@
 import { Image, Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
-import type { AppStackParamList } from '../../../navigation/types';
-import type { CategoryTile as CategoryTileData } from '../data';
+import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
+import type { AppStackParamList } from '../../navigation/types';
+import type { CategoryTile as CategoryTileData } from './data';
 
 interface Props {
   category: CategoryTileData;

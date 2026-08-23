@@ -346,6 +346,13 @@ export const PLACEHOLDER_ORDER_STATS = [
 // deliberately reuse each store's own category so "All" vs. category
 // filtering lines up with how founders already think about the roster on
 // /stores.
+// Admin-defined preset list for Product.freshnessTag — a store owner
+// picks one of these, they don't type free text, so the customer app's
+// ProductCard ribbon (apps/customer/src/screens/home/products/ProductCard.tsx)
+// never ends up with a dozen near-duplicate strings across stores. "None"
+// isn't a real option here — omit freshnessTag entirely for that.
+export const FRESHNESS_TAG_PRESETS = ["Today's Fresh", 'Fresh Catch', 'Farm Fresh', 'Fresh Baked'];
+
 export const PLACEHOLDER_PRODUCTS: Product[] = [
   { id: 'pr1', name: 'Toor Dal', category: 'Kirana & Grocery', storeName: 'Ganesh Kirana Store', storeId: 's1', price: 168, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🌾' },
   { id: 'pr2', name: 'Sunflower Oil', category: 'Kirana & Grocery', storeName: 'Ganesh Kirana Store', storeId: 's1', price: 145, unit: '1 L', stockStatus: 'low_stock', imageEmoji: '🫗' },

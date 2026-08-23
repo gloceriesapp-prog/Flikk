@@ -35,7 +35,12 @@ export function LoginScreen({ navigation }: Props) {
       await requestOtp(fullPhone);
       navigation.navigate('OtpVerification', { phone: fullPhone });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send OTP. Please try again.');
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        console.error('[LoginScreen] unexpected error requesting OTP:', err);
+        setError('Could not send OTP. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

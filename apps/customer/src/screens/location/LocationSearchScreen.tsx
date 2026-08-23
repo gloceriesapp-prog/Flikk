@@ -33,7 +33,11 @@ export function LocationSearchScreen({ navigation }: Props) {
         setError("Couldn't find that location. Try a different search.");
         return;
       }
-      navigation.replace('MapConfirm', { ...coords, addressLabel: query.trim() });
+      // Typed text stays the address label (that's what the user actually
+      // searched for), but city still needs to come from the geocoder —
+      // free text alone doesn't reliably carry a clean city name.
+      const { city } = await reverseGeocode(coords);
+      navigation.replace('MapConfirm', { ...coords, addressLabel: query.trim(), city });
     } catch {
       setError('Search failed. Please try again.');
     } finally {
@@ -51,8 +55,8 @@ export function LocationSearchScreen({ navigation }: Props) {
         return;
       }
       const coords = await getCurrentCoordinates();
-      const addressLabel = await reverseGeocode(coords);
-      navigation.replace('MapConfirm', { ...coords, addressLabel });
+      const { addressLabel, city } = await reverseGeocode(coords);
+      navigation.replace('MapConfirm', { ...coords, addressLabel, city });
     } catch {
       setError('Could not get your location. Please try searching instead.');
     } finally {

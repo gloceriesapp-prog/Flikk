@@ -237,4 +237,13 @@ export interface Product {
   // Emoji stand-in for a real product photo — no asset upload pipeline
   // exists yet, this is the "image" a founder can eyeball and edit today.
   imageEmoji: string;
+  // Same fields the customer app's own ProductCard reads (apps/customer/
+  // src/screens/home/products/types.ts) — a store owner sets these when
+  // listing a product, they're not admin-computed. localName/isVeg apply
+  // to any product; freshnessTag is picked from FRESHNESS_TAG_PRESETS
+  // (mock-data.ts) rather than free text, so the customer app doesn't end
+  // up with a dozen near-duplicate ribbon strings across stores.
+  localName?: string;
+  isVeg?: boolean;
+  freshnessTag?: string;
 }

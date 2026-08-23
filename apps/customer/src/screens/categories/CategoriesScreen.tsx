@@ -6,9 +6,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
+import { CategorySections } from '../../components/CategorySections/CategorySections';
 import { colors } from '../../theme/tokens';
-import { CategorySectionGroup } from './components/CategorySectionGroup';
-import { CATEGORY_SECTIONS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Categories'>;
@@ -27,9 +26,7 @@ export function CategoriesScreen({ navigation }: Props) {
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="pb-28">
-        {CATEGORY_SECTIONS.map((section) => (
-          <CategorySectionGroup key={section.title} section={section} />
-        ))}
+        <CategorySections />
       </ScrollView>
 
       <BottomNavBar />

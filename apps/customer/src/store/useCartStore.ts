@@ -12,6 +12,10 @@ export interface CartItem {
   weight: string;
   price: number;
   quantity: number;
+  // Display-only (CartItemRow's strikethrough) — never derive a charged
+  // total from this, only ever from `price`, same rule as
+  // order_items.unit_price_at_order per CLAUDE.md.
+  originalPrice?: number;
 }
 
 // What a card passes in — quantity starts at 1 and is tracked by the store,
@@ -73,6 +77,11 @@ export function selectCartTotalPrice(state: CartState): number {
 // CheckoutScreen can't quote two different totals for the same cart.
 export const CART_DELIVERY_FEE = 25;
 export const CART_HANDLING_FEE = 5;
+
+// FreeDeliveryBar-only threshold — display/incentive only, doesn't waive
+// CART_DELIVERY_FEE at checkout (no pricing-rules backend exists to compute
+// a real discounted total yet, see selectCartGrandTotal's own note).
+export const FREE_DELIVERY_THRESHOLD = 129;
 
 export function selectCartGrandTotal(state: CartState): number {
   return selectCartTotalPrice(state) + CART_DELIVERY_FEE + CART_HANDLING_FEE;

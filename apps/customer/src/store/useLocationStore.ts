@@ -17,6 +17,7 @@ export interface DeliveryLocation {
   latitude: number;
   longitude: number;
   addressLabel: string; // human-readable line, e.g. reverse-geocoded or typed
+  city: string; // header/list display — city only, not the full address
 }
 
 interface LocationState {

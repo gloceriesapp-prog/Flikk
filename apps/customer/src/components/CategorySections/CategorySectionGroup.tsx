@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 import { CategoryTile } from './CategoryTile';
-import type { CategorySectionData } from '../data';
+import type { CategorySectionData } from './data';
 
 interface Props {
   section: CategorySectionData;

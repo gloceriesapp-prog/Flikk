@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { Product, StockStatus } from '@/lib/types';
-import { PLACEHOLDER_STORES } from '@/lib/mock-data';
+import { FRESHNESS_TAG_PRESETS, PLACEHOLDER_STORES } from '@/lib/mock-data';
 
 const STOCK_OPTIONS: { value: StockStatus; label: string }[] = [
   { value: 'in_stock', label: 'In stock' },
@@ -23,12 +23,15 @@ const FIELD_CLASS =
 
 const EMPTY_DRAFT = {
   name: '',
+  localName: '',
   category: '',
   storeId: PLACEHOLDER_STORES[0]?.id ?? '',
   price: 0,
   unit: '',
   stockStatus: 'in_stock' as StockStatus,
   imageEmoji: '📦',
+  isVeg: true,
+  freshnessTag: '',
 };
 
 export function AddProductModal({
@@ -59,6 +62,7 @@ export function AddProductModal({
     onAdd({
       id: `pr-${Date.now()}`,
       name,
+      localName: draft.localName.trim() || undefined,
       category: draft.category.trim() || 'Uncategorized',
       storeName: store.name,
       storeId: store.id,
@@ -66,6 +70,8 @@ export function AddProductModal({
       unit: draft.unit.trim() || 'unit',
       stockStatus: draft.stockStatus,
       imageEmoji: draft.imageEmoji,
+      isVeg: draft.isVeg,
+      freshnessTag: draft.freshnessTag || undefined,
     });
   }
 
@@ -116,6 +122,14 @@ export function AddProductModal({
           </div>
 
           <input
+            value={draft.localName}
+            onChange={(e) => setDraft({ ...draft, localName: e.target.value })}
+            className={FIELD_CLASS}
+            placeholder="Local name (e.g. Eerulli) — optional"
+            aria-label="Local name"
+          />
+
+          <input
             value={draft.category}
             onChange={(e) => setDraft({ ...draft, category: e.target.value })}
             className={FIELD_CLASS}
@@ -140,6 +154,39 @@ export function AddProductModal({
               aria-label="Unit"
             />
           </div>
+
+          {/* Same fields the customer app's ProductCard reads — see
+              Product's own note in lib/types.ts. */}
+          <div className="flex items-center gap-2 rounded-xl border border-border p-1">
+            <button
+              type="button"
+              onClick={() => setDraft({ ...draft, isVeg: true })}
+              className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${draft.isVeg ? 'bg-success/10 text-success' : 'text-muted'}`}
+            >
+              Veg
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraft({ ...draft, isVeg: false })}
+              className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${!draft.isVeg ? 'bg-danger/10 text-danger' : 'text-muted'}`}
+            >
+              Non-veg
+            </button>
+          </div>
+
+          <select
+            value={draft.freshnessTag}
+            onChange={(e) => setDraft({ ...draft, freshnessTag: e.target.value })}
+            className={FIELD_CLASS}
+            aria-label="Freshness tag"
+          >
+            <option value="">No freshness tag</option>
+            {FRESHNESS_TAG_PRESETS.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
 
           <select
             value={draft.stockStatus}

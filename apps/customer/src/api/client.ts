@@ -31,11 +31,22 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    // fetch() throws a raw, unlogged TypeError on network failure (host
+    // unreachable, DNS, timeout) — wrap it so callers get one consistent
+    // ApiError type instead of every screen needing its own fallback for
+    // "not actually a server error", and log it so a misconfigured
+    // EXPO_PUBLIC_API_URL is diagnosable instead of silently swallowed.
+    console.error(`[apiRequest] network error calling ${path}:`, err);
+    throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your internet connection and try again.');
+  }
 
   const json = await res.json().catch(() => null);
 

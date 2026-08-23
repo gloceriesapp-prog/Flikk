@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
@@ -21,7 +22,6 @@ import { FishProductGrid } from './fish/FishProductGrid';
 import { GroceriesTab } from './groceries/GroceriesTab';
 import { AllTabSections } from './sections/AllTabSections';
 import { HOME_CATEGORIES } from './data/categories';
-import { generateOrderId } from '../../utils/generateOrderId';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
@@ -43,6 +43,11 @@ export function HomeScreen({ navigation }: Props) {
     // content — that's what keeps it floating fixed in place while the page
     // scrolls underneath it.
     <View className="flex-1 bg-white">
+      {/* Local override — App.tsx's global StatusBar is "dark" (dark
+          icons), correct everywhere else, but invisible against Home's
+          own dark radial-gradient header (HomeHeader.tsx). Unmounting
+          this screen reverts to the global one automatically. */}
+      <StatusBar style="light" />
       <Animated.ScrollView
         className="flex-1"
         contentContainerClassName="pb-28"
@@ -53,7 +58,6 @@ export function HomeScreen({ navigation }: Props) {
         <HomeHeader
           onChangeLocation={() => navigation.navigate('LocationSearch')}
           onOpenSearch={() => navigation.navigate('Search')}
-          onTrackOrder={() => navigation.navigate('TrackOrder', { orderId: generateOrderId(), paymentMethodLabel: 'UPI' })}
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
           scrollY={scrollY}

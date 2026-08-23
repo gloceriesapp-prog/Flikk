@@ -26,11 +26,12 @@ const DELTA = 0.006; // ~500m span — close enough to place a pin on a specific
 const DEFAULT_SHEET_HEIGHT = 230; // fallback until onLayout reports the real height
 
 export function MapConfirmScreen({ route, navigation }: Props) {
-  const { latitude, longitude, addressLabel: initialLabel } = route.params;
+  const { latitude, longitude, addressLabel: initialLabel, city: initialCity } = route.params;
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const [center, setCenter] = useState({ latitude, longitude });
   const [addressLabel, setAddressLabel] = useState(initialLabel);
+  const [city, setCity] = useState(initialCity);
   const [resolving, setResolving] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [sheetHeight, setSheetHeight] = useState(DEFAULT_SHEET_HEIGHT);
@@ -45,7 +46,9 @@ export function MapConfirmScreen({ route, navigation }: Props) {
     setCenter(next);
     setResolving(true);
     try {
-      setAddressLabel(await reverseGeocode(next));
+      const resolved = await reverseGeocode(next);
+      setAddressLabel(resolved.addressLabel);
+      setCity(resolved.city);
     } catch {
       // keep the previous label — a failed reverse-geocode shouldn't block confirming
     } finally {
@@ -65,7 +68,7 @@ export function MapConfirmScreen({ route, navigation }: Props) {
   async function handleConfirm() {
     setConfirming(true);
     try {
-      await setLocation({ ...center, addressLabel });
+      await setLocation({ ...center, addressLabel, city });
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } finally {
       setConfirming(false);

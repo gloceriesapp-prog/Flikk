@@ -13,7 +13,7 @@ export type AppStackParamList = {
   // and Home — see src/screens/location/README.md for the full sequence.
   LocationPermission: undefined;
   LocationSearch: undefined;
-  MapConfirm: { latitude: number; longitude: number; addressLabel: string };
+  MapConfirm: { latitude: number; longitude: number; addressLabel: string; city: string };
   Home: undefined;
   Categories: undefined;
   Search: undefined;

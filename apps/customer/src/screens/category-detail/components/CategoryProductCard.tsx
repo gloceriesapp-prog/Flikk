@@ -46,7 +46,7 @@ export function CategoryProductCard({ product, bgClassName }: Props) {
 
         {quantity === 0 ? (
           <Pressable
-            onPress={() => addItem({ id, name, weight, price })}
+            onPress={() => addItem({ id, name, weight, price, originalPrice })}
             className="absolute bottom-3 right-3 rounded-full bg-white px-4 py-1.5 shadow-sm shadow-black/20"
           >
             <Text className="text-xs font-extrabold text-ink">ADD</Text>

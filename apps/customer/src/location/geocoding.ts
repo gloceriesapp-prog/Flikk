@@ -29,15 +29,26 @@ export async function getCurrentCoordinates(): Promise<Coordinates> {
   return { latitude: position.coords.latitude, longitude: position.coords.longitude };
 }
 
+export interface ReverseGeocodeResult {
+  addressLabel: string;
+  // Header/list display only ever wants the city, not the full street
+  // address — kept separate from addressLabel rather than parsed back out
+  // of it later, since expo-location already hands back city as its own
+  // field.
+  city: string;
+}
+
 // Coordinates -> human-readable label, used to prefill the confirm screen and
 // the final saved address line.
-export async function reverseGeocode(coords: Coordinates): Promise<string> {
+export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocodeResult> {
   const results = await Location.reverseGeocodeAsync(coords);
   const first = results[0];
-  if (!first) return 'Selected location';
+  if (!first) return { addressLabel: 'Selected location', city: '' };
 
   const parts = [first.name, first.street, first.district, first.city].filter(Boolean);
-  return parts.length > 0 ? parts.join(', ') : 'Selected location';
+  const addressLabel = parts.length > 0 ? parts.join(', ') : 'Selected location';
+  const city = first.city ?? first.district ?? first.subregion ?? '';
+  return { addressLabel, city };
 }
 
 // Free-text address -> coordinates, for the manual-search fallback.

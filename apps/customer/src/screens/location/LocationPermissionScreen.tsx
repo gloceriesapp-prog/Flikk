@@ -33,8 +33,8 @@ export function LocationPermissionScreen({ navigation }: Props) {
         return;
       }
       const coords = await getCurrentCoordinates();
-      const addressLabel = await reverseGeocode(coords);
-      navigation.replace('MapConfirm', { ...coords, addressLabel });
+      const { addressLabel, city } = await reverseGeocode(coords);
+      navigation.replace('MapConfirm', { ...coords, addressLabel, city });
     } catch {
       setError('Could not get your location. You can search for it instead.');
     } finally {

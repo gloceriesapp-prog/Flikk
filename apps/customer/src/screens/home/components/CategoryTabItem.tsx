@@ -5,6 +5,11 @@
 // Fixed width (not padding-driven) so every tab is the same width regardless
 // of label length — "Essentials" and "All" must render as equal-width boxes,
 // not one stretched wider than the other.
+//
+// Unselected icon/label are white, not ink — the bg-white/40 box
+// composites to a mid-gray over HomeHeader's dark background, and dark
+// ink text on that gray reads poorly. Selected stays ink-on-white since
+// that box is fully opaque white regardless of what's behind it.
 
 import { Pressable, Text } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
@@ -25,9 +30,9 @@ export function CategoryTabItem({ category, isSelected, onPress }: Props) {
         isSelected ? 'bg-white' : 'bg-white/40'
       }`}
     >
-      <AppIcon icon={category.icon} size={22} color={isSelected ? colors.ink : `${colors.ink}80`} />
+      <AppIcon icon={category.icon} size={22} color={isSelected ? colors.ink : '#FFFFFFCC'} />
       <Text
-        className={`text-center text-xs ${isSelected ? 'font-bold text-ink' : 'text-ink/55'}`}
+        className={`text-center text-xs ${isSelected ? 'font-bold text-ink' : 'font-medium text-white/80'}`}
         numberOfLines={1}
         adjustsFontSizeToFit
       >

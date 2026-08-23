@@ -1,54 +1,38 @@
-// Single source of truth for Gilroy — every font-family name used anywhere
+// Single source of truth for Söhne — every font-family name used anywhere
 // in the app, and the exact file map expo-font needs to load them, live
-// here. Screens that need a specific weight face (e.g. an ExtraBold price)
-// import GILROY and set style={{ fontFamily: GILROY.extraBold }} directly;
-// everything else gets Gilroy for free via the global Text/TextInput
-// default set in App.tsx, so existing font-bold/font-semibold (etc.)
-// NativeWind classes don't need to change — RN synthesizes the weight
-// on top of the Gilroy-Regular default.
+// here. Same convention as apps/admin and apps/partner's own Söhne setup —
+// this is genuinely the same font, "copied not shared" per this repo's
+// own convention (specs/00-foundation/repo-structure.md), not cross-
+// imported. Italic (Kursiv) intentionally excluded, per standing
+// instruction applied identically across every app that's adopted Söhne
+// this way.
+//
+// Söhne only ships 8 real weights (German naming, lightest to heaviest);
+// Tailwind's 9 numeric font-weight utilities collapse onto them —
+// font-thin and font-extralight both resolve to Extraleicht, see
+// global.css's own mapping. Screens that need a specific weight face
+// directly can import SOHNE and set style={{ fontFamily: SOHNE.kraftig }};
+// everything else gets Söhne for free via the global Text/TextInput
+// default set in global.css.
 
-export const GILROY = {
-  thin: 'Gilroy-Thin',
-  thinItalic: 'Gilroy-ThinItalic',
-  ultraLight: 'Gilroy-UltraLight',
-  ultraLightItalic: 'Gilroy-UltraLightItalic',
-  light: 'Gilroy-Light',
-  lightItalic: 'Gilroy-LightItalic',
-  regular: 'Gilroy-Regular',
-  italic: 'Gilroy-Italic',
-  medium: 'Gilroy-Medium',
-  mediumItalic: 'Gilroy-MediumItalic',
-  semiBold: 'Gilroy-SemiBold',
-  semiBoldItalic: 'Gilroy-SemiBoldItalic',
-  bold: 'Gilroy-Bold',
-  boldItalic: 'Gilroy-BoldItalic',
-  extraBold: 'Gilroy-ExtraBold',
-  extraBoldItalic: 'Gilroy-ExtraBoldItalic',
-  black: 'Gilroy-Black',
-  blackItalic: 'Gilroy-BlackItalic',
-  heavy: 'Gilroy-Heavy',
-  heavyItalic: 'Gilroy-HeavyItalic',
+export const SOHNE = {
+  extraleicht: 'Sohne-Extraleicht', // 200
+  leicht: 'Sohne-Leicht', // 300
+  buch: 'Sohne-Buch', // 400 — regular/body weight
+  kraftig: 'Sohne-Kraftig', // 500
+  halbfett: 'Sohne-Halbfett', // 600
+  dreiviertelfett: 'Sohne-Dreiviertelfett', // 700
+  fett: 'Sohne-Fett', // 800
+  extrafett: 'Sohne-Extrafett', // 900
 } as const;
 
-export const GILROY_FONT_FILES = {
-  [GILROY.thin]: require('../../assets/fonts/Gilroy-Thin.ttf'),
-  [GILROY.thinItalic]: require('../../assets/fonts/Gilroy-ThinItalic.ttf'),
-  [GILROY.ultraLight]: require('../../assets/fonts/Gilroy-UltraLight.ttf'),
-  [GILROY.ultraLightItalic]: require('../../assets/fonts/Gilroy-UltraLightItalic.ttf'),
-  [GILROY.light]: require('../../assets/fonts/Gilroy-Light.ttf'),
-  [GILROY.lightItalic]: require('../../assets/fonts/Gilroy-LightItalic.ttf'),
-  [GILROY.regular]: require('../../assets/fonts/Gilroy-Regular.ttf'),
-  [GILROY.italic]: require('../../assets/fonts/Gilroy-Italic.ttf'),
-  [GILROY.medium]: require('../../assets/fonts/Gilroy-Medium.ttf'),
-  [GILROY.mediumItalic]: require('../../assets/fonts/Gilroy-MediumItalic.ttf'),
-  [GILROY.semiBold]: require('../../assets/fonts/Gilroy-SemiBold.ttf'),
-  [GILROY.semiBoldItalic]: require('../../assets/fonts/Gilroy-SemiBoldItalic.ttf'),
-  [GILROY.bold]: require('../../assets/fonts/Gilroy-Bold.ttf'),
-  [GILROY.boldItalic]: require('../../assets/fonts/Gilroy-BoldItalic.ttf'),
-  [GILROY.extraBold]: require('../../assets/fonts/Gilroy-ExtraBold.ttf'),
-  [GILROY.extraBoldItalic]: require('../../assets/fonts/Gilroy-ExtraBoldItalic.ttf'),
-  [GILROY.black]: require('../../assets/fonts/Gilroy-Black.ttf'),
-  [GILROY.blackItalic]: require('../../assets/fonts/Gilroy-BlackItalic.ttf'),
-  [GILROY.heavy]: require('../../assets/fonts/Gilroy-Heavy.ttf'),
-  [GILROY.heavyItalic]: require('../../assets/fonts/Gilroy-HeavyItalic.ttf'),
+export const SOHNE_FONT_FILES = {
+  [SOHNE.extraleicht]: require('../../assets/fonts/Sohne-Extraleicht.otf'),
+  [SOHNE.leicht]: require('../../assets/fonts/Sohne-Leicht.otf'),
+  [SOHNE.buch]: require('../../assets/fonts/Sohne-Buch.otf'),
+  [SOHNE.kraftig]: require('../../assets/fonts/Sohne-Kraftig.otf'),
+  [SOHNE.halbfett]: require('../../assets/fonts/Sohne-Halbfett.otf'),
+  [SOHNE.dreiviertelfett]: require('../../assets/fonts/Sohne-Dreiviertelfett.otf'),
+  [SOHNE.fett]: require('../../assets/fonts/Sohne-Fett.otf'),
+  [SOHNE.extrafett]: require('../../assets/fonts/Sohne-Extrafett.otf'),
 } as const;

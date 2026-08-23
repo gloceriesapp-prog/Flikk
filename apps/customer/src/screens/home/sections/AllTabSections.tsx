@@ -1,11 +1,13 @@
 // Everything shown on the "All" category tab, below the header: nearby
-// shops, everyday essentials, the deals promo card, Coastal Kitchen picks,
-// then Today's Steal Deals. Bestsellers was dropped — Steal Deals absorbed
-// it (9 products, 3-column grid) rather than keeping two overlapping
-// "cheap stuff" rows. Only rendered when "all" is selected — see
-// HomeScreen.tsx.
+// shops, everyday essentials, the deals promo card, the full category grid
+// (CategorySections — shared with screens/categories/CategoriesScreen.tsx,
+// see that component's own note), Coastal Kitchen picks, then Today's
+// Steal Deals. Bestsellers was dropped — Steal Deals absorbed it (9
+// products, 3-column grid) rather than keeping two overlapping "cheap
+// stuff" rows. Only rendered when "all" is selected — see HomeScreen.tsx.
 
 import { View } from 'react-native';
+import { CategorySections } from '../../../components/CategorySections/CategorySections';
 import { CoastalKitchenPicksSection } from '../coastal-kitchen-picks/CoastalKitchenPicksSection';
 import { DealsSection } from '../deals/DealsSection';
 import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
@@ -19,6 +21,7 @@ export function AllTabSections() {
       <NearbyStoresSection />
       <EverydayEssentialsSection />
       <DealsSection />
+      <CategorySections />
       <CoastalKitchenPicksSection />
       <ProductSection title="Today's Steal Deals" products={STEAL_DEALS_PRODUCTS} />
     </View>

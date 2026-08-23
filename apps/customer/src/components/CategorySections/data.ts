@@ -3,6 +3,11 @@
 // from a categories endpoint once one exists (none of specs/00-foundation's
 // endpoint table has one yet — this is UI-only placeholder content, same
 // caveat as screens/home/products/).
+//
+// Lives here (src/components/, not a screens/ subfolder) because it's
+// genuinely shared: both screens/categories/CategoriesScreen.tsx (the full
+// grid) and screens/home/sections/AllTabSections.tsx (a copy below the
+// deals banner) render the exact same section list via CategorySections.tsx.
 
 export interface CategoryTile {
   id: string;

@@ -16,7 +16,7 @@ import { EVERYDAY_ESSENTIALS_PRODUCTS } from './data';
 export function EverydayEssentialsSection() {
   return (
     <View className="pt-6">
-      <Text className="mb-4 px-5 text-lg font-bold text-ink">Everyday essentials</Text>
+      <Text className="mb-4 px-5 text-lg font-medium text-ink">Today&apos;s Stock</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-5">
         {EVERYDAY_ESSENTIALS_PRODUCTS.map((product) => (
