@@ -9,14 +9,25 @@
 // same no-auth caveat as everywhere else in this app.
 
 import { create } from 'zustand';
-import { PLACEHOLDER_PRODUCTS, summarizeVariants, type PartnerProduct, type ProductVariant } from '../screens/catalog/data';
+import {
+  isDuplicateProductName,
+  PLACEHOLDER_PRODUCTS,
+  summarizeVariants,
+  type PartnerProduct,
+  type ProductVariant,
+} from '../screens/catalog/data';
 
 interface CatalogState {
   products: PartnerProduct[];
   updateProduct: (productId: string, name: string, variants: ProductVariant[]) => void;
+  // Returns false (and leaves state untouched) when `name` already exists
+  // elsewhere in this store's catalog — the add-product form (not built
+  // yet) should show that as "already listed", not silently create a
+  // second row for the same product.
+  addProduct: (name: string, category: string, variants: ProductVariant[]) => boolean;
 }
 
-export const useCatalogStore = create<CatalogState>((set) => ({
+export const useCatalogStore = create<CatalogState>((set, get) => ({
   products: PLACEHOLDER_PRODUCTS,
 
   updateProduct: (productId, name, variants) =>
@@ -25,4 +36,12 @@ export const useCatalogStore = create<CatalogState>((set) => ({
         product.id === productId ? { ...product, name, variants, ...summarizeVariants(variants) } : product
       ),
     })),
+
+  addProduct: (name, category, variants) => {
+    if (isDuplicateProductName(get().products, name)) return false;
+    set((state) => ({
+      products: [...state.products, { id: `p-${Date.now()}`, name: name.trim(), category, variants, ...summarizeVariants(variants) }],
+    }));
+    return true;
+  },
 }));

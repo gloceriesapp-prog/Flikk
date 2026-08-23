@@ -126,3 +126,14 @@ export const PLACEHOLDER_PRODUCTS: PartnerProduct[] = PLACEHOLDER_BASE.map((base
   ...base,
   ...summarizeVariants(base.variants),
 }));
+
+// A partner app's catalog is one store's own listing — there's no
+// cross-store "cheapest wins" collapse here like admin's Inventory screen,
+// just the one rule that actually applies at this level: a shop owner
+// can't list the same product twice under two different rows (that's what
+// variants are for — Onion at 250g/500g/1kg is one row, not three). Match
+// is case/whitespace-insensitive, same as admin's own duplicate check.
+export function isDuplicateProductName(products: PartnerProduct[], name: string, excludeProductId?: string): boolean {
+  const normalized = name.trim().toLowerCase();
+  return products.some((p) => p.id !== excludeProductId && p.name.trim().toLowerCase() === normalized);
+}

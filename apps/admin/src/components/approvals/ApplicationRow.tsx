@@ -4,10 +4,13 @@
 // true (specs/04-admin-dashboard/screens.md's own note); rejecting must
 // leave a clear terminal state, not silently do nothing — hence a real
 // "Rejected" pill state below rather than the row just disappearing.
+// Each application is its own bordered card, not a thin table row — a
+// pending one gets an amber left accent, so the ones actually needing a
+// decision read as distinct from the ones already resolved.
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Check, ChevronRight, Store, User, X } from 'lucide-react';
+import { Check, ChevronRight, Clock, Store, User, X } from 'lucide-react';
 import clsx from 'clsx';
 import type { Application, ApplicationStatus } from '@/lib/types';
 
@@ -20,29 +23,46 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
 export function ApplicationRow({ application }: { application: Application }) {
   const [status, setStatus] = useState(application.status);
   const Icon = application.kind === 'store' ? Store : User;
+  const isPending = status === 'pending';
 
   return (
-    <div className="flex items-center gap-4 border-b border-border py-4 last:border-0">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent">
-        <Icon size={16} className="text-ink-soft" />
+    <div
+      className={clsx(
+        'flex items-center gap-4 rounded-2xl border p-4 transition-colors',
+        isPending ? 'border-amber-100 bg-amber-50/40' : 'border-border bg-card',
+      )}
+    >
+      <div
+        className={clsx(
+          'flex h-11 w-11 shrink-0 items-center justify-center rounded-full',
+          isPending ? 'bg-amber-100' : 'bg-accent',
+        )}
+      >
+        <Icon size={17} className={isPending ? 'text-amber-700' : 'text-ink-soft'} />
       </div>
 
       <Link href={`/approvals/${application.id}`} className="group flex min-w-0 flex-1 items-center gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink group-hover:underline">{application.name}</p>
-          <p className="text-xs text-muted">
-            {application.kind === 'store' ? application.category : 'Rider'} · {application.zone} · {application.submittedAt}
+          <p className="flex items-center gap-1.5 text-xs text-muted">
+            <span className="truncate">
+              {application.kind === 'store' ? application.category : 'Rider'} · {application.zone}
+            </span>
+            <span className="flex shrink-0 items-center gap-0.5">
+              <Clock size={11} />
+              {application.submittedAt}
+            </span>
           </p>
         </div>
         <ChevronRight size={15} className="shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100" />
       </Link>
 
-      {status === 'pending' ? (
+      {isPending ? (
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => setStatus('rejected')}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-danger hover:bg-red-50"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-danger hover:bg-red-50"
             aria-label="Reject"
           >
             <X size={16} />

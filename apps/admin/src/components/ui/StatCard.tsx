@@ -15,7 +15,7 @@ export function StatCard({ icon: Icon, value, changePct, label }: StatCardProps)
   const isUp = changePct >= 0;
 
   return (
-    <div className="flex items-center gap-3 rounded-3xl border border-border bg-card px-4 py-4 shadow-sm">
+    <div className="flex items-center gap-3 rounded-3xl border border-border bg-card px-4 py-4">
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent">
         <Icon size={18} className="text-ink" />
       </div>

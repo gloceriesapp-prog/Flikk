@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Check, Store, User, X } from 'lucide-react';
 import { PLACEHOLDER_APPLICATIONS } from '@/lib/mock-data';
+import { DocumentChecklist } from '@/components/approvals/DocumentChecklist';
 
 export default async function ApplicationReviewPage({ params }: PageProps<'/approvals/[id]'>) {
   const { id } = await params;
@@ -24,7 +25,7 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
         Back to Approvals
       </Link>
 
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-3xl border border-border bg-card p-6">
         <div className="flex items-start gap-4">
           {application.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- external/mock URL, no next.config domain to register yet
@@ -35,7 +36,7 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
             </div>
           )}
           <div>
-            <h1 className="text-2xl font-bold text-ink">{application.name}</h1>
+            <h1 className="text-2xl font-medium text-ink">{application.name}</h1>
             <p className="text-sm text-muted">
               {application.kind === 'store' ? application.category : 'Rider application'} · Submitted{' '}
               {application.submittedAt}
@@ -46,13 +47,10 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
         <div className="mt-6 grid grid-cols-1 gap-4 border-t border-border pt-6 sm:grid-cols-2">
           <Field label="Phone" value={application.phone} />
           <Field label="Zone" value={application.zone} />
-          {application.kind === 'store' && (
-            <>
-              <Field label="District" value={application.district ?? '—'} />
-              <Field label="GST number" value={application.gstNumber ?? 'Not provided'} />
-            </>
-          )}
+          {application.kind === 'store' && <Field label="District" value={application.district ?? '—'} />}
         </div>
+
+        {application.kind === 'store' && <DocumentChecklist application={application} />}
 
         {application.status === 'pending' ? (
           <div className="mt-6 flex items-center gap-3 border-t border-border pt-6">

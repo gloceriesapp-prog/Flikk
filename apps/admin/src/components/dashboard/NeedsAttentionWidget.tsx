@@ -1,10 +1,14 @@
 // Home snapshot's own addition, not in the original A1-A4 spec — "orders
 // stuck too long / no rider yet" is exactly the kind of thing a founder
 // needs surfaced without hunting for it across the Orders and Riders
-// screens separately.
+// screens separately. Full-width now that it's the only card in this row
+// — rows lay out left-to-right instead of a cramped vertical stack, and
+// wait time gets a real urgency scale (amber past the threshold, red past
+// double it) instead of one flat warning color for every row.
 
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
 import { ATTENTION_THRESHOLD_MINUTES, PLACEHOLDER_ORDERS } from '@/lib/mock-data';
 
@@ -13,8 +17,8 @@ export function NeedsAttentionWidget() {
     (o) =>
       (o.status === 'placed' || o.status === 'packed') &&
       !o.riderId &&
-      o.minutesSinceStatusChange >= ATTENTION_THRESHOLD_MINUTES
-  );
+      o.minutesSinceStatusChange >= ATTENTION_THRESHOLD_MINUTES,
+  ).sort((a, b) => b.minutesSinceStatusChange - a.minutesSinceStatusChange);
 
   return (
     <Card
@@ -29,25 +33,45 @@ export function NeedsAttentionWidget() {
       }
     >
       {flagged.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted">All caught up — nothing stuck right now.</p>
+        <p className="py-8 text-center text-sm text-muted">All caught up — nothing stuck right now.</p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {flagged.map((order) => (
-            <div key={order.id} className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50">
-                <AlertTriangle size={15} className="text-amber-600" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {flagged.map((order) => {
+            const critical = order.minutesSinceStatusChange >= ATTENTION_THRESHOLD_MINUTES * 2;
+            return (
+              <div
+                key={order.id}
+                className={clsx(
+                  'flex items-center gap-3 rounded-2xl border p-3.5',
+                  critical ? 'border-red-100 bg-red-50/60' : 'border-amber-100 bg-amber-50/60',
+                )}
+              >
+                <div
+                  className={clsx(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+                    critical ? 'bg-red-100' : 'bg-amber-100',
+                  )}
+                >
+                  <AlertTriangle size={16} className={critical ? 'text-danger' : 'text-amber-600'} />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">{order.storeName}</p>
+                  <p className={clsx('text-xs font-medium', critical ? 'text-danger' : 'text-amber-700')}>
+                    {order.id} · waiting {order.minutesSinceStatusChange} min
+                  </p>
+                </div>
+
+                <Link
+                  href="/riders"
+                  className="flex shrink-0 items-center gap-1 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                >
+                  Assign
+                  <ArrowRight size={12} />
+                </Link>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-ink">{order.storeName}</p>
-                <p className="text-xs text-muted">
-                  {order.id} · waiting {order.minutesSinceStatusChange} min
-                </p>
-              </div>
-              <Link href="/riders" className="text-xs font-semibold text-ink underline underline-offset-2">
-                Assign
-              </Link>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Card>

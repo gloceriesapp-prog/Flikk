@@ -4,7 +4,21 @@
 // endpoints later (specs/04-admin-dashboard/api.md) is a data-source swap,
 // not a redesign. Single zone throughout (Kaup/outer Udupi) — CLAUDE.md.
 
-import type { ActiveRider, Application, Order, Payout, RevenuePoint, Store, SystemStatus, WalletBalance, Zone } from './types';
+import type {
+  ActiveRider,
+  AppDownloadStats,
+  Application,
+  Order,
+  Payout,
+  Product,
+  ProductPerformance,
+  RevenuePoint,
+  Store,
+  SystemStatus,
+  WalletBalance,
+  Zone,
+  ZoneRequest,
+} from './types';
 
 export const ZONE_NAME = 'Kaup, Udupi';
 
@@ -12,6 +26,15 @@ export const PLACEHOLDER_SYSTEM_STATUS: SystemStatus = {
   health: 'operational',
   message: 'All systems live',
   lastUpdatedAt: '2 minutes ago',
+};
+
+export const PLACEHOLDER_APP_DOWNLOADS: AppDownloadStats = {
+  android: 812,
+  ios: 341,
+  changePctThisWeek: 6.4,
+  lastSyncedAt: '12 minutes ago',
+  androidStatus: { health: 'issue', message: 'Crash reported on checkout screen — Android 13 devices' },
+  iosStatus: { health: 'operational', message: 'No issues reported' },
 };
 
 export const PLACEHOLDER_WALLET: WalletBalance = {
@@ -22,6 +45,8 @@ export const PLACEHOLDER_WALLET: WalletBalance = {
   pendingSettlementNote: 'Clears in 2 days',
   bankName: 'HDFC Bank',
   bankAccountLast4: '4521',
+  grossCollected: 312600,
+  owedToStores: 263492,
 };
 
 export const PLACEHOLDER_ORDERS: Order[] = [
@@ -50,6 +75,19 @@ export const PLACEHOLDER_ORDERS: Order[] = [
 // default until a real one is defined.
 export const ATTENTION_THRESHOLD_MINUTES = 20;
 
+// completionRate is a real derived number, not a hand-picked one — delivered
+// ÷ (delivered + cancelled), i.e. of every order that reached a terminal
+// outcome, how many actually succeeded. Orders still placed/packed/in
+// transit aren't counted either way yet since they haven't reached one.
+const terminalOrders = PLACEHOLDER_ORDERS.filter((o) => o.status === 'delivered' || o.status === 'cancelled');
+const deliveredCount = terminalOrders.filter((o) => o.status === 'delivered').length;
+
+export const PLACEHOLDER_PRODUCT_PERFORMANCE: ProductPerformance = {
+  completionRate: terminalOrders.length > 0 ? Math.round((deliveredCount / terminalOrders.length) * 100) : 100,
+  avgDeliveryMinutes: 27,
+  repeatCustomerRate: 64,
+};
+
 export const PLACEHOLDER_APPLICATIONS: Application[] = [
   {
     id: 'app1',
@@ -61,8 +99,17 @@ export const PLACEHOLDER_APPLICATIONS: Application[] = [
     status: 'pending',
     phone: '+91 98450 11223',
     photoUrl: undefined,
-    gstNumber: '29ABCDE1234F1Z5',
     district: 'Udupi',
+    // Small kirana under ₹40L — legitimately GST-exempt, not a missing
+    // document. Bank details still outstanding — a real gap the founder
+    // needs to see before approving.
+    fssaiNumber: '11421234000123',
+    shopEstablishmentNumber: 'SE-UD-2025-0442',
+    panNumber: 'ABCDE1234F',
+    aadhaarLast4: '8821',
+    bankAccountLast4: undefined,
+    turnoverExceedsGstThreshold: false,
+    gstNumber: undefined,
   },
   {
     id: 'app2',
@@ -83,8 +130,16 @@ export const PLACEHOLDER_APPLICATIONS: Application[] = [
     submittedAt: '1 day ago',
     status: 'pending',
     phone: '+91 96110 88990',
-    gstNumber: undefined,
     district: 'Udupi',
+    // Above the GST threshold — GSTIN is genuinely required here, and
+    // still missing, alongside the Shop & Establishment license.
+    fssaiNumber: '11421234000456',
+    shopEstablishmentNumber: undefined,
+    panNumber: 'PQRSX5678K',
+    aadhaarLast4: '4410',
+    bankAccountLast4: '6631',
+    turnoverExceedsGstThreshold: true,
+    gstNumber: undefined,
   },
   {
     id: 'app4',
@@ -96,6 +151,34 @@ export const PLACEHOLDER_APPLICATIONS: Application[] = [
     status: 'approved',
     phone: '+91 94480 33445',
     district: 'Udupi',
+    fssaiNumber: '11421234000789',
+    shopEstablishmentNumber: 'SE-UD-2025-0298',
+    panNumber: 'KLMNO9012P',
+    aadhaarLast4: '2290',
+    bankAccountLast4: '1187',
+    turnoverExceedsGstThreshold: false,
+    gstNumber: undefined,
+  },
+  {
+    id: 'app5',
+    kind: 'store',
+    name: 'Shree Medicals',
+    category: 'Pharmacy',
+    zone: ZONE_NAME,
+    submittedAt: '6 hours ago',
+    status: 'pending',
+    phone: '+91 98807 66123',
+    district: 'Udupi',
+    // Pharmacy — the stricter path. Every general document plus a Drug
+    // License, not a substitute for one.
+    fssaiNumber: '11421234001122',
+    shopEstablishmentNumber: 'SE-UD-2025-0511',
+    panNumber: 'FGHIJ3456L',
+    aadhaarLast4: '5567',
+    bankAccountLast4: '9903',
+    turnoverExceedsGstThreshold: true,
+    gstNumber: '29FGHIJ3456L1Z8',
+    drugLicenseNumber: undefined,
   },
 ];
 
@@ -106,26 +189,141 @@ export const PLACEHOLDER_ACTIVE_RIDERS: ActiveRider[] = [
 ];
 
 export const PLACEHOLDER_STORES: Store[] = [
-  { id: 's1', name: 'Ganesh Kirana Store', category: 'Kirana & Grocery', zone: ZONE_NAME, district: 'Udupi', phone: '+91 98765 43210', openTime: '8:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Ganesh Rao', joinedAt: '12 Nov 2025' },
+  { id: 's1', name: 'Ganesh Kirana Store', category: 'Kirana & Grocery', zone: ZONE_NAME, district: 'Kaup', phone: '+91 98765 43210', openTime: '8:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Ganesh Rao', joinedAt: '12 Nov 2025' },
   { id: 's2', name: 'Shree Pharmacy', category: 'Pharmacy', zone: ZONE_NAME, district: 'Udupi', phone: '+91 98456 12309', openTime: '7:30 AM', closeTime: '10:00 PM', isActive: true, ownerName: 'Shreesha Bhat', joinedAt: '18 Nov 2025' },
-  { id: 's3', name: 'Malpe Fresh Mart', category: 'Fruits & Vegetables', zone: ZONE_NAME, district: 'Udupi', phone: '+91 99800 45671', openTime: '6:00 AM', closeTime: '8:30 PM', isActive: true, ownerName: 'Vinod Kamath', joinedAt: '2 Dec 2025' },
-  { id: 's4', name: 'Kaup General Store', category: 'General Store', zone: ZONE_NAME, district: 'Udupi', phone: '+91 97401 22334', openTime: '9:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Prakash Shetty', joinedAt: '9 Dec 2025' },
+  { id: 's3', name: 'Malpe Fresh Mart', category: 'Fruits & Vegetables', zone: ZONE_NAME, district: 'Malpe', phone: '+91 99800 45671', openTime: '6:00 AM', closeTime: '8:30 PM', isActive: true, ownerName: 'Vinod Kamath', joinedAt: '2 Dec 2025' },
+  { id: 's4', name: 'Kaup General Store', category: 'General Store', zone: ZONE_NAME, district: 'Kaup', phone: '+91 97401 22334', openTime: '9:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Prakash Shetty', joinedAt: '9 Dec 2025' },
   { id: 's5', name: 'Udupi Daily Needs', category: 'Kirana & Grocery', zone: ZONE_NAME, district: 'Udupi', phone: '+91 96117 88123', openTime: '7:00 AM', closeTime: '9:30 PM', isActive: false, ownerName: 'Ramesh Pai', joinedAt: '15 Dec 2025' },
 ];
 
 export const PLACEHOLDER_PAYOUTS: Payout[] = [
-  { id: 'p1', storeName: 'Ganesh Kirana Store', cycleLabel: 'Week of 15 Dec', grossSales: 18420, commissionRate: 0.15, netPayout: 15657, status: 'pending', paidAt: null },
-  { id: 'p2', storeName: 'Shree Pharmacy', cycleLabel: 'Week of 15 Dec', grossSales: 9260, commissionRate: 0.12, netPayout: 8149, status: 'pending', paidAt: null },
-  { id: 'p3', storeName: 'Malpe Fresh Mart', cycleLabel: 'Week of 8 Dec', grossSales: 21030, commissionRate: 0.18, netPayout: 17245, status: 'paid', paidAt: '9 Dec 2025' },
-  { id: 'p4', storeName: 'Ganesh Kirana Store', cycleLabel: 'Week of 8 Dec', grossSales: 15980, commissionRate: 0.15, netPayout: 13583, status: 'paid', paidAt: '9 Dec 2025' },
-  { id: 'p5', storeName: 'Kaup General Store', cycleLabel: 'Week of 1 Dec', grossSales: 11200, commissionRate: 0.15, netPayout: 9520, status: 'paid', paidAt: '2 Dec 2025' },
+  { id: 'p1', storeName: 'Ganesh Kirana Store', cycleLabel: 'Week of 15 Dec', grossSales: 18420, commissionRate: 0.15, netPayout: 15657, status: 'pending', paidAt: null, bankName: 'HDFC Bank', bankAccountLast4: '2210' },
+  { id: 'p2', storeName: 'Shree Pharmacy', cycleLabel: 'Week of 15 Dec', grossSales: 9260, commissionRate: 0.12, netPayout: 8149, status: 'pending', paidAt: null, bankName: 'Canara Bank', bankAccountLast4: '7734' },
+  { id: 'p3', storeName: 'Malpe Fresh Mart', cycleLabel: 'Week of 8 Dec', grossSales: 21030, commissionRate: 0.18, netPayout: 17245, status: 'paid', paidAt: '9 Dec 2025', bankName: 'SBI', bankAccountLast4: '5561' },
+  { id: 'p4', storeName: 'Ganesh Kirana Store', cycleLabel: 'Week of 8 Dec', grossSales: 15980, commissionRate: 0.15, netPayout: 13583, status: 'paid', paidAt: '9 Dec 2025', bankName: 'HDFC Bank', bankAccountLast4: '2210' },
+  { id: 'p5', storeName: 'Kaup General Store', cycleLabel: 'Week of 1 Dec', grossSales: 11200, commissionRate: 0.15, netPayout: 9520, status: 'paid', paidAt: '2 Dec 2025', bankName: 'Axis Bank', bankAccountLast4: '9042' },
 ];
+
+// Per-order commission — Order itself carries no commission field (PRD's
+// order_items schema doesn't either), so it's derived here from each
+// store's own rate on PLACEHOLDER_PAYOUTS, same 12-18% range as Payout's
+// own commissionRate (PRD Section 22). Falls back to a 15% platform
+// average for a store with no payout cycle yet.
+const DEFAULT_COMMISSION_RATE = 0.15;
+
+export const STORE_COMMISSION_RATE: Record<string, number> = PLACEHOLDER_PAYOUTS.reduce<Record<string, number>>(
+  (acc, payout) => {
+    if (!(payout.storeName in acc)) acc[payout.storeName] = payout.commissionRate;
+    return acc;
+  },
+  {},
+);
+
+export function commissionForOrder(order: Order): number {
+  const rate = STORE_COMMISSION_RATE[order.storeName] ?? DEFAULT_COMMISSION_RATE;
+  return Math.round(order.amount * rate);
+}
+
+// No payment-gateway payout automation exists yet (Razorpay payout API is
+// a later integration) — every settlement is founder-triggered today.
+// SETTLEMENT_CADENCE_LABEL is just the expected rhythm, not a cron; the
+// Transactions tab's "Release" button is the real mechanism until
+// automation ships.
+export const SETTLEMENT_CADENCE_LABEL = 'Weekly · every Monday';
+export const AUTO_RELEASE_ENABLED = false;
 
 export const PLACEHOLDER_ZONES: Zone[] = [
   { id: 'z1', name: 'Kaup, Udupi', isActive: true, storeCount: PLACEHOLDER_STORES.length, riderCount: PLACEHOLDER_ACTIVE_RIDERS.length },
   { id: 'z2', name: 'Karkala', isActive: false, storeCount: 0, riderCount: 0 },
   { id: 'z3', name: 'Kundapura', isActive: false, storeCount: 0, riderCount: 0 },
 ];
+
+// Each store's share of the active zone's delivered revenue — sums to
+// 100% by construction (every store's slice of the same total), not
+// picked independently per store. A store with zero delivered orders
+// still gets a 0% row rather than being dropped, so the zone's own store
+// count and this breakdown's row count always agree.
+export interface StoreRevenueShare {
+  storeId: string;
+  storeName: string;
+  category: string;
+  revenue: number;
+  sharePct: number;
+}
+
+export function storeRevenueShares(zoneName: string): StoreRevenueShare[] {
+  const storesInZone = PLACEHOLDER_STORES.filter((s) => s.zone === zoneName);
+  const revenueByStore = new Map<string, number>();
+  for (const order of PLACEHOLDER_ORDERS) {
+    if (order.status !== 'delivered') continue;
+    revenueByStore.set(order.storeId, (revenueByStore.get(order.storeId) ?? 0) + order.amount);
+  }
+  const zoneTotal = storesInZone.reduce((sum, s) => sum + (revenueByStore.get(s.id) ?? 0), 0);
+
+  return storesInZone
+    .map((s) => {
+      const revenue = revenueByStore.get(s.id) ?? 0;
+      return {
+        storeId: s.id,
+        storeName: s.name,
+        category: s.category,
+        revenue,
+        sharePct: zoneTotal > 0 ? Math.round((revenue / zoneTotal) * 1000) / 10 : 0,
+      };
+    })
+    .sort((a, b) => b.revenue - a.revenue);
+}
+
+// "We want Flikk here" — places a customer has searched/entered in the
+// customer app that fall outside the active zone (see ZoneRequest's own
+// note in lib/types.ts). Real collection doesn't exist yet — this is
+// what the admin view looks like once it does, sorted by demand.
+export const PLACEHOLDER_ZONE_REQUESTS: ZoneRequest[] = [
+  { id: 'zr1', placeName: 'Manipal', district: 'Udupi', upvotes: 214, firstRequestedAt: '3 Nov 2025' },
+  { id: 'zr2', placeName: 'Brahmavar', district: 'Udupi', upvotes: 132, firstRequestedAt: '11 Nov 2025' },
+  { id: 'zr3', placeName: 'Padubidri', district: 'Udupi', upvotes: 96, firstRequestedAt: '18 Nov 2025' },
+  { id: 'zr4', placeName: 'Karkala', district: 'Udupi', upvotes: 71, firstRequestedAt: '25 Nov 2025' },
+  { id: 'zr5', placeName: 'Santhekatte', district: 'Udupi', upvotes: 48, firstRequestedAt: '2 Dec 2025' },
+  { id: 'zr6', placeName: 'Kundapura', district: 'Udupi', upvotes: 39, firstRequestedAt: '6 Dec 2025' },
+  { id: 'zr7', placeName: 'Yellapur', district: 'Udupi', upvotes: 12, firstRequestedAt: '14 Dec 2025' },
+];
+
+// Peak order hours — Top Performing Stores' own heatmap strip. Aggregated
+// by 2-hour band across the store day (8 AM-10 PM, matching PLACEHOLDER_
+// STORES' own open/close range), not derived from PLACEHOLDER_ORDERS'
+// individual placedAt values — that array only carries a handful of
+// timestamped rows, nowhere near enough to say anything about "when" with
+// a straight face. Keyed by district so the card's place filter can
+// actually change what's shown, not just relabel the same numbers.
+export const PLACEHOLDER_HOURLY_ORDER_VOLUME: Record<string, { hourLabel: string; count: number }[]> = {
+  Kaup: [
+    { hourLabel: '8–10 AM', count: 6 },
+    { hourLabel: '10–12 PM', count: 11 },
+    { hourLabel: '12–2 PM', count: 22 },
+    { hourLabel: '2–4 PM', count: 9 },
+    { hourLabel: '4–6 PM', count: 14 },
+    { hourLabel: '6–8 PM', count: 27 },
+    { hourLabel: '8–10 PM', count: 13 },
+  ],
+  Malpe: [
+    { hourLabel: '8–10 AM', count: 14 },
+    { hourLabel: '10–12 PM', count: 19 },
+    { hourLabel: '12–2 PM', count: 16 },
+    { hourLabel: '2–4 PM', count: 8 },
+    { hourLabel: '4–6 PM', count: 12 },
+    { hourLabel: '6–8 PM', count: 21 },
+    { hourLabel: '8–10 PM', count: 10 },
+  ],
+  Udupi: [
+    { hourLabel: '8–10 AM', count: 5 },
+    { hourLabel: '10–12 PM', count: 9 },
+    { hourLabel: '12–2 PM', count: 18 },
+    { hourLabel: '2–4 PM', count: 11 },
+    { hourLabel: '4–6 PM', count: 16 },
+    { hourLabel: '6–8 PM', count: 24 },
+    { hourLabel: '8–10 PM', count: 17 },
+  ],
+};
 
 // Bar chart series for the Overview screen's "Orders Statistics" widget —
 // two bars per day (orders placed vs. delivered) mirroring the reference's
@@ -141,6 +339,34 @@ export const PLACEHOLDER_ORDER_STATS = [
   { day: '17', orders: 29, delivered: 15 },
   { day: '18', orders: 35, delivered: 27 },
   { day: '19', orders: 58, delivered: 41 },
+];
+
+// Inventory — cross-store catalog snapshot (see Product's own note in
+// types.ts on why this is a read-only view, not a POS sync). Categories
+// deliberately reuse each store's own category so "All" vs. category
+// filtering lines up with how founders already think about the roster on
+// /stores.
+export const PLACEHOLDER_PRODUCTS: Product[] = [
+  { id: 'pr1', name: 'Toor Dal', category: 'Kirana & Grocery', storeName: 'Ganesh Kirana Store', storeId: 's1', price: 168, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🌾' },
+  { id: 'pr2', name: 'Sunflower Oil', category: 'Kirana & Grocery', storeName: 'Ganesh Kirana Store', storeId: 's1', price: 145, unit: '1 L', stockStatus: 'low_stock', imageEmoji: '🫗' },
+  { id: 'pr3', name: 'Basmati Rice', category: 'Kirana & Grocery', storeName: 'Udupi Daily Needs', storeId: 's5', price: 210, unit: '5 kg', stockStatus: 'in_stock', imageEmoji: '🍚' },
+  { id: 'pr4', name: 'Paracetamol 500mg', category: 'Pharmacy', storeName: 'Shree Pharmacy', storeId: 's2', price: 22, unit: 'strip of 10', stockStatus: 'in_stock', imageEmoji: '💊' },
+  { id: 'pr5', name: 'ORS Sachets', category: 'Pharmacy', storeName: 'Shree Pharmacy', storeId: 's2', price: 18, unit: 'pack of 5', stockStatus: 'out_of_stock', imageEmoji: '🧂' },
+  { id: 'pr6', name: 'Cough Syrup', category: 'Pharmacy', storeName: 'Shree Pharmacy', storeId: 's2', price: 85, unit: '100 ml', stockStatus: 'low_stock', imageEmoji: '🧴' },
+  { id: 'pr7', name: 'Alphonso Mango', category: 'Fruits & Vegetables', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 320, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🥭' },
+  { id: 'pr8', name: 'Tomato', category: 'Fruits & Vegetables', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 34, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🍅' },
+  { id: 'pr9', name: 'Banana', category: 'Fruits & Vegetables', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 48, unit: 'dozen', stockStatus: 'low_stock', imageEmoji: '🍌' },
+  { id: 'pr10', name: 'AA Batteries', category: 'General Store', storeName: 'Kaup General Store', storeId: 's4', price: 65, unit: 'pack of 4', stockStatus: 'in_stock', imageEmoji: '🔋' },
+  { id: 'pr11', name: 'LED Bulb 9W', category: 'General Store', storeName: 'Kaup General Store', storeId: 's4', price: 110, unit: 'piece', stockStatus: 'in_stock', imageEmoji: '💡' },
+  { id: 'pr12', name: 'Detergent Powder', category: 'General Store', storeName: 'Kaup General Store', storeId: 's4', price: 190, unit: '1 kg', stockStatus: 'out_of_stock', imageEmoji: '🧺' },
+  { id: 'pr13', name: 'Toned Milk', category: 'Dairy Products', storeName: 'Udupi Daily Needs', storeId: 's5', price: 28, unit: '500 ml', stockStatus: 'in_stock', imageEmoji: '🥛' },
+  { id: 'pr14', name: 'Curd', category: 'Dairy Products', storeName: 'Udupi Daily Needs', storeId: 's5', price: 40, unit: '400 g', stockStatus: 'in_stock', imageEmoji: '🍦' },
+  { id: 'pr15', name: 'Paneer', category: 'Dairy Products', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 90, unit: '200 g', stockStatus: 'low_stock', imageEmoji: '🧀' },
+  // Same product, two stores, two prices — the exact case the customer
+  // app's "cheapest wins" catalog rule (see dedupeCheapest in the
+  // Inventory screen) exists to handle.
+  { id: 'pr16', name: 'Onion', category: 'Fruits & Vegetables', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 21, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🧅' },
+  { id: 'pr17', name: 'Onion', category: 'Kirana & Grocery', storeName: 'Ganesh Kirana Store', storeId: 's1', price: 26, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🧅' },
 ];
 
 // Revenue tab's own trend — total commission earned per week, distinct

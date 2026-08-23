@@ -12,6 +12,7 @@ export function PayoutsTable({ payouts, emptyLabel }: { payouts: Payout[]; empty
             <th className="pb-3 pr-4 font-medium">Gross sales</th>
             <th className="pb-3 pr-4 font-medium">Commission</th>
             <th className="pb-3 pr-4 font-medium">Net payout</th>
+            <th className="pb-3 pr-4 font-medium">Bank account</th>
             <th className="pb-3 font-medium">Status</th>
           </tr>
         </thead>
@@ -21,8 +22,14 @@ export function PayoutsTable({ payouts, emptyLabel }: { payouts: Payout[]; empty
               <td className="py-3 pr-4 font-medium text-ink">{payout.storeName}</td>
               <td className="py-3 pr-4 text-ink-soft">{payout.cycleLabel}</td>
               <td className="py-3 pr-4 tabular-nums text-ink-soft">{formatCurrency(payout.grossSales)}</td>
-              <td className="py-3 pr-4 tabular-nums text-ink-soft">{Math.round(payout.commissionRate * 100)}%</td>
+              <td className="py-3 pr-4 tabular-nums text-ink-soft">
+                {formatCurrency(payout.grossSales - payout.netPayout)}
+                <span className="pl-1 text-xs text-muted">({Math.round(payout.commissionRate * 100)}%)</span>
+              </td>
               <td className="py-3 pr-4 font-semibold tabular-nums text-ink">{formatCurrency(payout.netPayout)}</td>
+              <td className="py-3 pr-4 text-ink-soft">
+                {payout.bankName} •••• {payout.bankAccountLast4}
+              </td>
               <td className="py-3">
                 <span
                   className={
@@ -38,7 +45,7 @@ export function PayoutsTable({ payouts, emptyLabel }: { payouts: Payout[]; empty
           ))}
           {payouts.length === 0 && (
             <tr>
-              <td colSpan={6} className="py-8 text-center text-sm text-muted">
+              <td colSpan={7} className="py-8 text-center text-sm text-muted">
                 {emptyLabel}
               </td>
             </tr>

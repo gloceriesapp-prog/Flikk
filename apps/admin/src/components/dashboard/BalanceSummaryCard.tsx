@@ -38,7 +38,7 @@ export function BalanceSummaryCard() {
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-canvas px-3.5 py-3">
+        <div className="flex items-center gap-2.5 rounded-2xl bg-[#F9FAFB] px-3.5 py-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card">
             <Clock3 size={14} className="text-ink-soft" />
           </div>
@@ -50,7 +50,7 @@ export function BalanceSummaryCard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-canvas px-3.5 py-3">
+        <div className="flex items-center gap-2.5 rounded-2xl bg-[#F9FAFB] px-3.5 py-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card">
             <Building2 size={14} className="text-ink-soft" />
           </div>

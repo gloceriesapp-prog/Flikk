@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Banknote, Bike, LayoutGrid, Map, Package, Settings, UserCheck, Store } from 'lucide-react';
+import { Banknote, Bike, Boxes, LayoutGrid, Map, Package, Settings, UserCheck, Store } from 'lucide-react';
 
 // Grouped sidebar sections, same "Menu" / "Insights" split as the
 // reference — Menu is the day-to-day operational stuff (what needs
@@ -15,6 +15,7 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/approvals', label: 'Approvals', icon: UserCheck },
   { href: '/stores', label: 'Stores', icon: Store },
   { href: '/riders', label: 'Riders', icon: Bike },
+  { href: '/inventory', label: 'Inventory', icon: Boxes },
 ];
 
 export const INSIGHTS_ITEMS: NavItem[] = [
@@ -33,6 +34,7 @@ export const QUICK_ACTION_LABEL: Record<string, string> = {
   '/approvals': 'Review Next',
   '/stores': 'Add Store',
   '/riders': 'Add Rider',
+  '/inventory': 'Add Product',
   '/orders': 'Add Order',
   '/revenue': 'Export CSV',
   '/zones': 'Add Zone',
