@@ -4,7 +4,7 @@
 
 import { ScrollView } from 'react-native';
 import { CategoryTabItem } from './CategoryTabItem';
-import { HOME_CATEGORIES } from '../data/categories';
+import { HOME_CATEGORIES } from '../data/categoryTabs';
 
 interface Props {
   selectedId: string;

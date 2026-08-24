@@ -1,8 +1,11 @@
 // Photo banner with a dark gradient wash at the bottom so white text stays
 // legible over whatever's in the photo — same LinearGradient-needs-style-not-
 // className gotcha as HomeHeader.tsx. Copy/badge are per-tab (passed in by
-// the caller), image is the shared app-wide placeholder — this is what
-// makes it reusable across groceries/, bakery/, essentials/.
+// the caller); image defaults to the shared app-wide placeholder but takes
+// an optional imageUri override (protein/data.ts uses this for its own
+// banner photo) — this is what makes it reusable across groceries/,
+// bakery/, essentials/, protein/ rather than each tab needing its own copy
+// of this component.
 
 import { StyleSheet, Image, Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,13 +16,14 @@ interface Props {
   heading: string;
   subheading: string;
   buttonLabel?: string;
+  imageUri?: string;
 }
 
-export function PromoBanner({ badgeLabel, heading, subheading, buttonLabel = 'Shop now' }: Props) {
+export function PromoBanner({ badgeLabel, heading, subheading, buttonLabel = 'Shop now', imageUri = PLACEHOLDER_IMAGE_URI }: Props) {
   return (
     <View className="mx-5 mt-6 gap-3">
       <View className="h-48 overflow-hidden rounded-3xl border border-gray-100 bg-white">
-        <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+        <Image source={{ uri: imageUri }} className="h-full w-full" resizeMode="cover" />
 
         <LinearGradient
           colors={['transparent', 'rgba(16,28,16,0.85)']}

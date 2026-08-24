@@ -8,12 +8,15 @@
 // relying on that no-op alone — otherwise Android would silently lose the
 // pill's glass look entirely instead of falling back to BlurView.
 //
-// tint="dark" + a low black wash on the BlurView fallback, not
-// tint="systemThickMaterialDark" + a heavy one — that enum value is iOS-only
-// and silently falls back to a flat opaque tint wherever the native blur
-// backend isn't available, reading as a solid black bar instead of glass;
-// "dark" is the cross-platform tint (same one CartBar.tsx and
-// ProductDetailSheet's backdrop use).
+// tint="dark" alone on the BlurView fallback, no extra black wash on top —
+// not tint="systemThickMaterialDark" + a heavy wash — that enum value is
+// iOS-only and silently falls back to a flat opaque tint wherever the
+// native blur backend isn't available, reading as a solid black bar instead
+// of glass; "dark" is the cross-platform tint (same one CartBar.tsx and
+// ProductDetailSheet's backdrop use). An extra bg-black wash on top used to
+// sit here too, but on top of an already-dark tint (and wherever the blur
+// itself doesn't render, e.g. Expo Go) it stacked into a solid black pill
+// instead of reading as glass — dropped per an explicit ask.
 //
 // All four tabs have real screens now.
 //
@@ -117,11 +120,6 @@ export function BottomNavBar() {
               tint="dark"
               style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}
             >
-              {/* mutes whatever's scrolling behind the pill just enough to
-                  read as neutral dark glass, without going opaque and
-                  hiding the blur */}
-              <View className="absolute inset-0 bg-black/15" />
-
               <View className="flex-row items-center justify-around px-2 py-2.5">
                 {BOTTOM_NAV_TABS.map((tab) => (
                   <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />

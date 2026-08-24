@@ -2,12 +2,14 @@
 // (screens/home/products/ProductCard.tsx owns the open/close state — this
 // component is just the presentation).
 //
-// Starts as a floating card anchored near the top of the screen — margin/
-// backdrop visible on all four sides, all four corners rounded. Dragging the
-// content (the ScrollView holding the hero image + ProductDetailInfo) past
-// GROW_TRIGGER_DISTANCE crosses a threshold that animates the card to full
-// screen (margins to 0, bottom corners square off); scrolling back near the
-// top crosses it the other way and animates back to the floating card.
+// Full width always (no left/right margin) and flush with the bottom (no
+// bottom margin, square bottom corners) — only the top has a margin/curve,
+// and only while floating: large rounded top corners, backdrop visible
+// above the card. Dragging the content (the ScrollView holding the hero
+// image + ProductDetailInfo) past GROW_TRIGGER_DISTANCE crosses a threshold
+// that animates the top margin to 0 too (full screen); scrolling back near
+// the top crosses it the other way and animates back to the floating top
+// margin. Top corners stay rounded the whole time, even at full screen.
 //
 // This is a threshold *crossing* (tracked in isGrownRef, flipped inside
 // onScroll, animated with a single Animated.timing per crossing) rather than
@@ -43,7 +45,7 @@
 // (FOOTER_SPACER) so real content doesn't end up hidden under the opaque
 // button.
 
-import { Bookmark01Icon, ChevronDownIcon, Share08Icon } from '@hugeicons/core-free-icons';
+import { Bookmark01Icon, ChevronDownIcon, Share03Icon, Share08Icon } from '@hugeicons/core-free-icons';
 import { useRef, useState } from 'react';
 import { Animated, Image, Modal, NativeScrollEvent, NativeSyntheticEvent, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -59,7 +61,7 @@ const GROW_TRIGGER_DISTANCE = 24;
 const SHRINK_TRIGGER_DISTANCE = 4;
 const GROW_ANIMATION_MS = 220;
 const CARD_MARGIN = 16;
-const CARD_RADIUS = 28;
+const CARD_RADIUS = 38;
 const FOOTER_SPACER = 96;
 
 interface Props {
@@ -90,15 +92,17 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
   };
 
   const cardMarginTop = grow.interpolate({ inputRange: [0, 1], outputRange: [insets.top + CARD_MARGIN, 0] });
-  const cardMarginHorizontal = grow.interpolate({ inputRange: [0, 1], outputRange: [CARD_MARGIN, 0] });
-  const cardMarginBottom = grow.interpolate({ inputRange: [0, 1], outputRange: [insets.bottom + CARD_MARGIN, 0] });
-  const cardBottomRadius = grow.interpolate({ inputRange: [0, 1], outputRange: [CARD_RADIUS, 0] });
-  // At full screen the card's own top/bottom edges are the physical screen
-  // edges, so the floating card's fixed 14px header offset and 0 footer
-  // padding start colliding with the notch/status bar and the home
-  // indicator — grow the safe-area inset in on top of them.
+  // At full screen the card's own top edge is the physical screen edge, so
+  // the floating card's fixed 14px header offset starts colliding with the
+  // notch/status bar — grow the safe-area inset in on top of it.
   const headerTop = grow.interpolate({ inputRange: [0, 1], outputRange: [14, insets.top + 14] });
-  const footerPaddingBottom = grow.interpolate({ inputRange: [0, 1], outputRange: [0, insets.bottom] });
+  // Constant, not animated — the card's bottom edge is *always* the
+  // physical screen edge now (no floating bottom margin at all, see the
+  // file's own header note), so the home-indicator safe-area padding always
+  // applies, not just once "grown". This used to animate 0 -> insets.bottom
+  // from before that change, which left the footer flush against the home
+  // indicator with no padding while the card was still floating.
+  const footerPaddingBottom = insets.bottom;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -118,12 +122,8 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
           style={{
             flex: 1,
             marginTop: cardMarginTop,
-            marginHorizontal: cardMarginHorizontal,
-            marginBottom: cardMarginBottom,
             borderTopLeftRadius: CARD_RADIUS,
             borderTopRightRadius: CARD_RADIUS,
-            borderBottomLeftRadius: cardBottomRadius,
-            borderBottomRightRadius: cardBottomRadius,
             overflow: 'hidden',
             backgroundColor: '#FFFFFF',
           }}
@@ -137,7 +137,7 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
             <Pressable
               onPress={onClose}
               hitSlop={10}
-              className="h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm shadow-black/20"
+              className="h-10 w-10 items-center justify-center rounded-full bg-white/90"
             >
               <AppIcon icon={ChevronDownIcon} size={20} color={colors.ink} />
             </Pressable>
@@ -146,14 +146,14 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
               <Pressable
                 onPress={() => setIsBookmarked((prev) => !prev)}
                 hitSlop={10}
-                className={`h-10 w-10 items-center justify-center rounded-full shadow-sm shadow-black/20 ${
+                className={`h-10 w-10 items-center justify-center rounded-full ${
                   isBookmarked ? 'bg-lime-deep' : 'bg-white/90'
                 }`}
               >
                 <AppIcon icon={Bookmark01Icon} size={18} color={isBookmarked ? '#FFFFFF' : colors.ink} strokeWidth={isBookmarked ? 0 : 1.8} />
               </Pressable>
-              <Pressable hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm shadow-black/20">
-                <AppIcon icon={Share08Icon} size={18} color={colors.ink} />
+              <Pressable hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-white/90">
+                <AppIcon icon={Share03Icon} size={18} color={colors.ink} />
               </Pressable>
             </View>
           </Animated.View>
@@ -165,11 +165,11 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
             scrollEventThrottle={16}
             contentContainerStyle={{ paddingBottom: FOOTER_SPACER }}
           >
-            <View className="relative">
-              <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-72 w-full" resizeMode="cover" />
+            <View className="relative h-72 w-full items-center justify-center" style={{ backgroundColor: '#FAFAFA' }}>
+              <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="contain" />
               <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-1.5">
                 {[0, 1, 2, 3].map((i) => (
-                  <View key={i} className={`h-1.5 w-1.5 rounded-full ${i === 0 ? 'bg-white' : 'bg-white/50'}`} />
+                  <View key={i} className={`h-1.5 w-1.5 rounded-full ${i === 0 ? 'bg-ink' : 'bg-ink/25'}`} />
                 ))}
               </View>
             </View>

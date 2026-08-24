@@ -6,12 +6,15 @@
 // (Product's own note in types.ts).
 //
 // Main card (#FAFAFA bg): title (font-medium, not bold — deliberately
-// quieter than the reference's earlier bold treatment), pack-size chips
-// (sizeOptions — UI selection only, see Product's own note on why it
-// doesn't change the price below it), price + original price if set, then a
-// hairline divider + the seller row. replacementPolicy still exists on
-// Product but no longer renders anywhere in this sheet. ETA/breadcrumb/
-// description rows were removed per an earlier explicit ask.
+// quieter than the reference's earlier bold treatment), description (only
+// when the product has one), pack-size chips (sizeOptions — UI selection
+// only, see Product's own note on why it doesn't change the price below
+// it), price — with a centered vertical divider + "MRP ₹X" (strikethrough
+// only on the number, not the "MRP" label) when there's an originalPrice —
+// then a hairline divider + the seller row. replacementPolicy still exists
+// on Product but no longer renders anywhere in this sheet. The breadcrumb
+// row was removed per an earlier explicit ask; description came back per a
+// later one.
 //
 // SellerDetailsCard (FSSAI/address) and SimilarProductsRow are their own
 // sections below the main card, not inside it and not sharing its
@@ -33,7 +36,7 @@ interface Props {
 }
 
 export function ProductDetailInfo({ product }: Props) {
-  const { name, localName, weight, price, originalPrice, storeName, sizeOptions, sellerDetails, relatedProducts } = product;
+  const { name, localName, weight, price, originalPrice, description, storeName, sizeOptions, sellerDetails, relatedProducts } = product;
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize, setSelectedSize] = useState(chips.includes(weight) ? weight : chips[0]);
 
@@ -43,6 +46,8 @@ export function ProductDetailInfo({ product }: Props) {
         <Text className="text-xl font-medium leading-7 text-ink">
           {name} ({localName})
         </Text>
+
+        {description && <Text className="text-sm leading-5 text-ink/60">{description}</Text>}
 
         <View className="flex-row flex-wrap gap-2">
           {chips.map((size) => {
@@ -59,9 +64,16 @@ export function ProductDetailInfo({ product }: Props) {
           })}
         </View>
 
-        <View className="flex-row items-baseline gap-2">
+        <View className="flex-row items-center gap-2">
           <Text className="text-xl font-medium text-ink">₹{price}</Text>
-          {originalPrice && <Text className="text-sm text-ink/40 line-through">₹{originalPrice}</Text>}
+          {originalPrice && (
+            <>
+              <View className="h-4 w-px bg-mist" />
+              <Text className="text-sm text-ink/50">
+                MRP <Text className="line-through">₹{originalPrice}</Text>
+              </Text>
+            </>
+          )}
         </View>
 
         {storeName && (

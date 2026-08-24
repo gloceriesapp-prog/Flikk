@@ -14,7 +14,7 @@
 import { Pressable, Text } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
-import type { Category } from '../data/categories';
+import type { Category } from '../data/categoryTabs';
 
 interface Props {
   category: Category;

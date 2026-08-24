@@ -1,7 +1,8 @@
-// One store tile in the static row — image card (rounded-md per the
-// reference, not the fully-rounded circular avatar used elsewhere) with the
-// store name underneath. Presentational only; NearbyStoresSection owns
-// navigation.
+// One store tile in the horizontal row — fixed-width landscape rounded card
+// with the store name underneath. Bigger than before (w-36/h-28 image,
+// text-sm name) now that NearbyStoresSection dropped its white-card wrapper
+// — this tile needs to carry its own visual weight on the bare page bg.
+// Presentational only; NearbyStoresSection owns navigation.
 
 import { Image, Pressable, Text, View } from 'react-native';
 import { getStoreImageUri } from '../../../../theme/placeholderImage';
@@ -14,11 +15,11 @@ interface Props {
 
 export function NearbyStoreCard({ store, onPress }: Props) {
   return (
-    <Pressable onPress={onPress} className="flex-1 gap-2">
-      <View className="aspect-square overflow-hidden rounded-2xl border border-gray-100 bg-white">
+    <Pressable onPress={onPress} className="w-36 gap-2">
+      <View className="h-28 w-36 overflow-hidden rounded-2xl border border-gray-100 bg-white">
         <Image source={{ uri: getStoreImageUri(store.id) }} className="h-full w-full" resizeMode="cover" />
       </View>
-      <Text className="text-center text-xs font-semibold text-ink" numberOfLines={1}>
+      <Text className="text-center text-base font-medium text-ink" numberOfLines={1}>
         {store.name}
       </Text>
     </Pressable>

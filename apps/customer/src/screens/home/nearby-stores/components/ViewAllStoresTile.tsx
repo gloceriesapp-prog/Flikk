@@ -1,6 +1,6 @@
-// Trailing tile in the static row — same rounded-md footprint as
-// NearbyStoreCard so it reads as "one more item in the row," not a
-// separate button bolted on the end.
+// Trailing tile in the horizontal row — same fixed-width landscape footprint
+// as NearbyStoreCard (w-36/h-28, bumped up to match) so it reads as "one
+// more item in the row," not a separate button bolted on the end.
 
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
@@ -13,12 +13,12 @@ interface Props {
 
 export function ViewAllStoresTile({ onPress }: Props) {
   return (
-    <Pressable onPress={onPress} className="flex-1 gap-2">
-      <View className="aspect-square items-center justify-center gap-1 rounded-2xl border border-mist bg-mist">
-        <AppIcon icon={ArrowRight01Icon} size={20} color={colors.limeDeep} />
-        <Text className="text-center text-[11px] font-bold text-lime-deep">View all</Text>
+    <Pressable onPress={onPress} className="w-36 gap-2">
+      <View className="h-28 w-36 items-center justify-center gap-1 rounded-2xl border border-mist bg-mist">
+        <AppIcon icon={ArrowRight01Icon} size={24} color={colors.limeDeep} />
+        <Text className="text-center text-sm font-bold text-lime-deep">View all</Text>
       </View>
-      <Text className="text-center text-xs font-semibold text-transparent" numberOfLines={1}>
+      <Text className="text-center text-sm font-semibold text-transparent" numberOfLines={1}>
         {/* spacer — keeps this tile's label row the same height as NearbyStoreCard's name line */}
         .
       </Text>

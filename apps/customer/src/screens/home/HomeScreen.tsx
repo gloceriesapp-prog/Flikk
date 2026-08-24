@@ -1,32 +1,35 @@
 // PRD screen C3 (Home). The header (ETA, location, search, categories) is
 // real UI. The body reacts to the selected category:
 //   'all'         -> nearby stores + essentials + deals promo + coastal picks + Today's Steal Deals (sections/)
-//   'fresh-fish'  -> the Fresh Fish grid (fish/)
+//   'fresh-fish'  -> the Fresh Fish grid (fish/) — id kept from before the
+//                    category-tab rename, label is now "Meat & Fish"
 //   'groceries'   -> sub-category grid + promo banner + farm teaser (groceries/)
 //   'bakery'      -> same pattern, bakery data (bakery/)
-//   'essentials'  -> same pattern, essentials data (essentials/)
-//   everything else -> placeholder
+//   'protein'     -> same pattern, protein data + its own banner photo (protein/)
+//   everything else -> placeholder ('fresh', 'household' from the
+//                    category-tab rename have no dedicated tab screen yet)
 // Full discovery/browse (store lists, C4/C5) is separate work, see
 // specs/01-customer-app/screens.md.
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { setStatusBarStyle, StatusBar } from 'expo-status-bar';
+import { useFocusEffect } from '@react-navigation/native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { HomeHeader } from './components/HomeHeader';
 import { BakeryTab } from './bakery/BakeryTab';
-import { EssentialsTab } from './essentials/EssentialsTab';
 import { FishProductGrid } from './fish/FishProductGrid';
 import { GroceriesTab } from './groceries/GroceriesTab';
+import { ProteinTab } from './protein/ProteinTab';
 import { AllTabSections } from './sections/AllTabSections';
-import { HOME_CATEGORIES } from './data/categories';
+import { HOME_CATEGORIES } from './data/categoryTabs';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
 
-const CATEGORIES_WITH_REAL_CONTENT = ['all', 'fresh-fish', 'groceries', 'bakery', 'essentials'];
+const CATEGORIES_WITH_REAL_CONTENT = ['all', 'fresh-fish', 'groceries', 'bakery', 'protein'];
 
 export function HomeScreen({ navigation }: Props) {
   const [selectedCategoryId, setSelectedCategoryId] = useState(HOME_CATEGORIES[0]?.id ?? 'all');
@@ -38,15 +41,30 @@ export function HomeScreen({ navigation }: Props) {
     scrollY.value = event.contentOffset.y;
   });
 
+  // The <StatusBar style="light"/> below only re-asserts on mount, not on
+  // regaining focus — react-navigation's native-stack keeps prior screens
+  // mounted, so navigating to e.g. Cart (which sets its own "dark" style for
+  // its white header) and then back to Home leaves the icons dark against
+  // Home's own dark header, since nothing re-ran "light" on the way back.
+  // useFocusEffect + the imperative setStatusBarStyle re-applies it every
+  // time this screen becomes the focused one, not just the first time it
+  // mounts.
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('light');
+    }, [])
+  );
+
   return (
     // BottomNavBar is a sibling of the ScrollView, not inside its scrollable
     // content — that's what keeps it floating fixed in place while the page
     // scrolls underneath it.
     <View className="flex-1 bg-white">
-      {/* Local override — App.tsx's global StatusBar is "dark" (dark
-          icons), correct everywhere else, but invisible against Home's
-          own dark radial-gradient header (HomeHeader.tsx). Unmounting
-          this screen reverts to the global one automatically. */}
+      {/* App.tsx's global StatusBar is "dark" (dark icons), correct
+          everywhere else, but invisible against Home's own dark header
+          (HomeHeader.tsx). This mount-time declaration plus the
+          useFocusEffect above together cover both the initial mount and
+          every later refocus. */}
       <StatusBar style="light" />
       <Animated.ScrollView
         className="flex-1"
@@ -71,7 +89,7 @@ export function HomeScreen({ navigation }: Props) {
 
         {selectedCategoryId === 'bakery' && <BakeryTab />}
 
-        {selectedCategoryId === 'essentials' && <EssentialsTab />}
+        {selectedCategoryId === 'protein' && <ProteinTab />}
 
         {!CATEGORIES_WITH_REAL_CONTENT.includes(selectedCategoryId) && (
           <View className="items-center justify-center gap-2 px-6 py-16">

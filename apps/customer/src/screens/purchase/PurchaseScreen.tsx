@@ -1,5 +1,11 @@
 // "Purchase" tab (was "Order Again" in the bottom nav). Reached from
-// BottomNavBar — see src/components/BottomNavBar/data.ts.
+// BottomNavBar — see src/components/BottomNavBar/data.ts. BottomNavBar
+// itself renders here too now (a sibling of the ScrollView, same pattern
+// HomeScreen.tsx uses — floats fixed in place while the page scrolls
+// underneath it), so the tab bar stays reachable from Purchase instead of
+// only from Home; the "Purchase" header above stays exactly as it was.
+// Both ScrollViews get extra bottom padding (pb-28) so their last content
+// doesn't end up hidden under the floating nav pill.
 //
 // Two states: an order exists (LiveOrderCard + past orders list, empty
 // state and feature illustration both hidden) or none does (the original
@@ -11,6 +17,7 @@ import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { colors } from '../../theme/tokens';
 import { LIVE_ORDER, PAST_ORDERS } from './data';
 import { LiveOrderCard } from './components/LiveOrderCard';
@@ -45,7 +52,7 @@ export function PurchaseScreen({ navigation }: Props) {
       </View>
 
       {hasLiveOrder ? (
-        <ScrollView className="flex-1" contentContainerClassName="gap-3 px-6 pb-10 pt-3" showsVerticalScrollIndicator={false}>
+        <ScrollView className="flex-1" contentContainerClassName="gap-3 px-6 pb-28 pt-3" showsVerticalScrollIndicator={false}>
           <Text className="text-lg font-semibold text-ink">Live Order</Text>
           <LiveOrderCard
             order={LIVE_ORDER}
@@ -69,7 +76,7 @@ export function PurchaseScreen({ navigation }: Props) {
           </Text>
         </ScrollView>
       ) : (
-        <ScrollView className="flex-1" contentContainerClassName="flex-grow justify-between pb-16" showsVerticalScrollIndicator={false}>
+        <ScrollView className="flex-1" contentContainerClassName="flex-grow justify-between pb-28" showsVerticalScrollIndicator={false}>
           <View>
             <Image source={{ uri: FEATURE_IMAGE_URI }} className="aspect-[4/5] w-3/5 self-center" resizeMode="cover" />
             <Text className="mt-5 px-8 text-center text-lg font-bold text-ink">No orders yet.</Text>
@@ -84,6 +91,8 @@ export function PurchaseScreen({ navigation }: Props) {
           </Text>
         </ScrollView>
       )}
+
+      <BottomNavBar />
     </View>
   );
 }

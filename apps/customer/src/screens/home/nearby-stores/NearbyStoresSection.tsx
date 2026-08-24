@@ -1,23 +1,29 @@
 // Home's "All" tab, first section — introduces the stores behind the
-// products without a sales-y "come shop with us" pitch, just a plain
-// factual heading. Renders before DealsSection; see
-// screens/home/sections/AllTabSections.tsx for where this slots in.
+// products without a sales-y "come shop with us" pitch. Renders before
+// DealsSection; see screens/home/sections/AllTabSections.tsx for where this
+// slots in.
 //
-// Deliberately a static row, not a horizontal ScrollView — three store
-// tiles plus a trailing "View all" tile, sized to fit the screen width at
-// once (flex-1 per tile) rather than scrolling. Reads from the same
-// STORE_LISTINGS as screens/store-list, so this row and the full Store tab
-// can't drift out of sync with each other.
+// Plain page-bg row, not a card — no white bg/rounded/shadow box and no
+// bottom color-fill strip, both removed per an explicit ask ("remove the bg
+// colour and all, and box effect"). Just the heading (same mb-4 px-5
+// pattern EverydayEssentialsSection.tsx uses for "Today's Stock") followed
+// by a bigger horizontal-scroll row of store tiles — NearbyStoreCard/
+// ViewAllStoresTile both bumped up in size (own files, see their notes) to
+// compensate for the card wrapper no longer giving this row any visual
+// weight of its own.
+//
+// Reads from the same STORE_LISTINGS as screens/store-list, so this row and
+// the full Store tab can't drift out of sync with each other.
 
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { STORE_LISTINGS } from '../../store-list/data';
 import { NearbyStoreCard } from './components/NearbyStoreCard';
 import { ViewAllStoresTile } from './components/ViewAllStoresTile';
 import type { AppStackParamList } from '../../../navigation/types';
 
-const ROW_STORE_COUNT = 3;
+const ROW_STORE_COUNT = 4;
 
 export function NearbyStoresSection() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -28,15 +34,15 @@ export function NearbyStoresSection() {
   }
 
   return (
-    <View className="px-5 pt-6">
-      {/* <Text className="mb-4 text-lg font-extrabold text-ink">Shops near you</Text> */}
+    <View className="pt-6">
+      <Text className="mb-4 px-5 text-lg font-medium text-ink">Shops Near You</Text>
 
-      <View className="flex-row gap-3">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 px-5">
         {rowStores.map((store) => (
           <NearbyStoreCard key={store.id} store={store} onPress={() => goToStore(store.id, store.name)} />
         ))}
         <ViewAllStoresTile onPress={() => navigation.navigate('Store')} />
-      </View>
+      </ScrollView>
     </View>
   );
 }

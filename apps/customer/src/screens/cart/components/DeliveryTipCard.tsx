@@ -26,7 +26,7 @@ export function DeliveryTipCard({ selectedTip, onSelectTip }: Props) {
     <View className="gap-3 rounded-2xl bg-white px-4 py-4">
       <Text className="text-xs font-semibold uppercase tracking-wide text-ink/50">For your rider</Text>
       <Text className="text-sm leading-5 text-ink/60">
-     Your rider dealt with real traffic, heat and distance to get this to you. A small tip is a simple way to say thanks.
+        Your rider deals with real traffic and weather to get this to you. A tip is a small way to say thanks.
       </Text>
 
       <View className="flex-row flex-wrap gap-2">
@@ -36,9 +36,8 @@ export function DeliveryTipCard({ selectedTip, onSelectTip }: Props) {
             <Pressable
               key={amount}
               onPress={() => onSelectTip(isSelected ? null : amount)}
-              className={`min-w-[76px] items-center gap-1 rounded-xl border px-4 py-2.5 ${
-                isSelected ? 'border-lime-deep bg-lime-soft' : 'border-gray-200 bg-[#F9FAFB]'
-              }`}
+              className={`min-w-[76px] items-center gap-1 rounded-xl border px-4 py-2.5 ${isSelected ? 'border-lime-deep bg-lime-soft' : 'border-gray-200 bg-[#F9FAFB]'
+                }`}
             >
               <Text className={`text-[15px] font-medium ${isSelected ? 'text-lime-deep' : 'text-ink'}`}>₹{amount}</Text>
               {/* {amount === MOST_TIPPED_AMOUNT && (
@@ -50,9 +49,8 @@ export function DeliveryTipCard({ selectedTip, onSelectTip }: Props) {
 
         <Pressable
           onPress={() => onSelectTip(selectedTip === 'other' ? null : 'other')}
-          className={`items-center justify-center rounded-xl border px-4 py-2.5 ${
-            selectedTip === 'other' ? 'border-lime-deep bg-lime-soft' : 'border-gray-200 bg-[#F9FAFB]'
-          }`}
+          className={`items-center justify-center rounded-xl border px-4 py-2.5 ${selectedTip === 'other' ? 'border-lime-deep bg-lime-soft' : 'border-gray-200 bg-[#F9FAFB]'
+            }`}
         >
           <Text className={`text-[15px] font-medium ${selectedTip === 'other' ? 'text-lime-deep' : 'text-ink'}`}>Custom</Text>
         </Pressable>
