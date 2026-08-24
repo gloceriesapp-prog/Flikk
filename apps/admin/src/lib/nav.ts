@@ -32,7 +32,6 @@ export const ALL_NAV_ITEMS: NavItem[] = [...MENU_ITEMS, ...INSIGHTS_ITEMS, { hre
 export const QUICK_ACTION_LABEL: Record<string, string> = {
   '/overview': 'Add Store',
   '/approvals': 'Review Next',
-  '/stores': 'Add Store',
   '/riders': 'Add Rider',
   '/inventory': 'Add Product',
   '/orders': 'Add Order',

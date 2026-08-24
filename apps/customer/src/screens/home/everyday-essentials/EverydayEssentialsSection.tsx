@@ -8,18 +8,28 @@
 // Reuses ProductCard as-is (the same card screens/home/products/ProductSection.tsx
 // uses for Today's Deal/Bestsellers) — the reference for this row is that
 // exact card, just laid out horizontally instead of a wrapping grid.
+//
+// Real catalog products (useEverydayEssentials.ts -> GET
+// /stores/products/catalog), not the old EVERYDAY_ESSENTIALS_PRODUCTS mock
+// — same products a founder adds via admin's Inventory screen. Renders
+// nothing when the catalog is empty, same convention AllTabSections.tsx
+// uses for the deals row.
 
 import { ScrollView, Text, View } from 'react-native';
 import { ProductCard } from '../products/ProductCard';
-import { EVERYDAY_ESSENTIALS_PRODUCTS } from './data';
+import { useEverydayEssentials } from './useEverydayEssentials';
 
 export function EverydayEssentialsSection() {
+  const { data: products = [] } = useEverydayEssentials();
+
+  if (products.length === 0) return null;
+
   return (
     <View className="pt-6">
       <Text className="mb-4 px-5 text-lg font-medium text-ink">Today&apos;s Stock</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-5">
-        {EVERYDAY_ESSENTIALS_PRODUCTS.map((product) => (
+        {products.map((product) => (
           <ProductCard key={product.id} product={product} widthClassName="w-36" showDiscountBadge />
         ))}
       </ScrollView>

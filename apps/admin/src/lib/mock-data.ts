@@ -10,7 +10,6 @@ import type {
   Application,
   Order,
   Payout,
-  Product,
   ProductPerformance,
   RevenuePoint,
   Store,
@@ -188,12 +187,32 @@ export const PLACEHOLDER_ACTIVE_RIDERS: ActiveRider[] = [
   { id: 'r3', name: 'Rakesh Poojary', phone: '+91 97406 77889', activeOrders: 1, zone: ZONE_NAME, isOnline: false },
 ];
 
+// Onboarding-document fields (addressLine..drugLicenseNumber) are only
+// real on actual DB rows created via AddStoreModal now — this array feeds
+// other still-mocked widgets (TopStoresCard, StorePerformanceList, revenue/
+// zones placeholders), not the real Stores page (stores/page.tsx reads
+// lib/supabase/stores.ts instead), so these are filled with plausible
+// values just to satisfy Store's type, not real documents.
+const MOCK_DOC_FIELDS = {
+  addressLine: 'Main Road',
+  city: 'Kaup',
+  state: 'Karnataka',
+  country: 'India',
+  fssaiNumber: '21425000000000',
+  shopEstablishmentNumber: 'SE-0000',
+  panNumber: 'AAAPZ0000A',
+  aadhaarLast4: '0000',
+  bankName: 'HDFC Bank',
+  bankAccountLast4: '0000',
+  turnoverExceedsGstThreshold: false,
+};
+
 export const PLACEHOLDER_STORES: Store[] = [
-  { id: 's1', name: 'Ganesh Kirana Store', category: 'Kirana & Grocery', zone: ZONE_NAME, district: 'Kaup', phone: '+91 98765 43210', openTime: '8:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Ganesh Rao', joinedAt: '12 Nov 2025' },
-  { id: 's2', name: 'Shree Pharmacy', category: 'Pharmacy', zone: ZONE_NAME, district: 'Udupi', phone: '+91 98456 12309', openTime: '7:30 AM', closeTime: '10:00 PM', isActive: true, ownerName: 'Shreesha Bhat', joinedAt: '18 Nov 2025' },
-  { id: 's3', name: 'Malpe Fresh Mart', category: 'Fruits & Vegetables', zone: ZONE_NAME, district: 'Malpe', phone: '+91 99800 45671', openTime: '6:00 AM', closeTime: '8:30 PM', isActive: true, ownerName: 'Vinod Kamath', joinedAt: '2 Dec 2025' },
-  { id: 's4', name: 'Kaup General Store', category: 'General Store', zone: ZONE_NAME, district: 'Kaup', phone: '+91 97401 22334', openTime: '9:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Prakash Shetty', joinedAt: '9 Dec 2025' },
-  { id: 's5', name: 'Udupi Daily Needs', category: 'Kirana & Grocery', zone: ZONE_NAME, district: 'Udupi', phone: '+91 96117 88123', openTime: '7:00 AM', closeTime: '9:30 PM', isActive: false, ownerName: 'Ramesh Pai', joinedAt: '15 Dec 2025' },
+  { id: 's1', name: 'Ganesh Kirana Store', category: 'Kirana & Grocery', zone: ZONE_NAME, district: 'Kaup', phone: '+91 98765 43210', openTime: '8:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Ganesh Rao', joinedAt: '12 Nov 2025', ...MOCK_DOC_FIELDS },
+  { id: 's2', name: 'Shree Pharmacy', category: 'Pharmacy', zone: ZONE_NAME, district: 'Udupi', phone: '+91 98456 12309', openTime: '7:30 AM', closeTime: '10:00 PM', isActive: true, ownerName: 'Shreesha Bhat', joinedAt: '18 Nov 2025', ...MOCK_DOC_FIELDS, drugLicenseNumber: 'DL-0000' },
+  { id: 's3', name: 'Malpe Fresh Mart', category: 'Fruits & Vegetables', zone: ZONE_NAME, district: 'Malpe', phone: '+91 99800 45671', openTime: '6:00 AM', closeTime: '8:30 PM', isActive: true, ownerName: 'Vinod Kamath', joinedAt: '2 Dec 2025', ...MOCK_DOC_FIELDS },
+  { id: 's4', name: 'Kaup General Store', category: 'General Store', zone: ZONE_NAME, district: 'Kaup', phone: '+91 97401 22334', openTime: '9:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Prakash Shetty', joinedAt: '9 Dec 2025', ...MOCK_DOC_FIELDS },
+  { id: 's5', name: 'Udupi Daily Needs', category: 'Kirana & Grocery', zone: ZONE_NAME, district: 'Udupi', phone: '+91 96117 88123', openTime: '7:00 AM', closeTime: '9:30 PM', isActive: false, ownerName: 'Ramesh Pai', joinedAt: '15 Dec 2025', ...MOCK_DOC_FIELDS },
 ];
 
 export const PLACEHOLDER_PAYOUTS: Payout[] = [
@@ -341,11 +360,6 @@ export const PLACEHOLDER_ORDER_STATS = [
   { day: '19', orders: 58, delivered: 41 },
 ];
 
-// Inventory — cross-store catalog snapshot (see Product's own note in
-// types.ts on why this is a read-only view, not a POS sync). Categories
-// deliberately reuse each store's own category so "All" vs. category
-// filtering lines up with how founders already think about the roster on
-// /stores.
 // Admin-defined preset list for Product.freshnessTag — a store owner
 // picks one of these, they don't type free text, so the customer app's
 // ProductCard ribbon (apps/customer/src/screens/home/products/ProductCard.tsx)
@@ -353,28 +367,9 @@ export const PLACEHOLDER_ORDER_STATS = [
 // isn't a real option here — omit freshnessTag entirely for that.
 export const FRESHNESS_TAG_PRESETS = ["Today's Fresh", 'Fresh Catch', 'Farm Fresh', 'Fresh Baked'];
 
-export const PLACEHOLDER_PRODUCTS: Product[] = [
-  { id: 'pr1', name: 'Toor Dal', category: 'Kirana & Grocery', storeName: 'Ganesh Kirana Store', storeId: 's1', price: 168, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🌾' },
-  { id: 'pr2', name: 'Sunflower Oil', category: 'Kirana & Grocery', storeName: 'Ganesh Kirana Store', storeId: 's1', price: 145, unit: '1 L', stockStatus: 'low_stock', imageEmoji: '🫗' },
-  { id: 'pr3', name: 'Basmati Rice', category: 'Kirana & Grocery', storeName: 'Udupi Daily Needs', storeId: 's5', price: 210, unit: '5 kg', stockStatus: 'in_stock', imageEmoji: '🍚' },
-  { id: 'pr4', name: 'Paracetamol 500mg', category: 'Pharmacy', storeName: 'Shree Pharmacy', storeId: 's2', price: 22, unit: 'strip of 10', stockStatus: 'in_stock', imageEmoji: '💊' },
-  { id: 'pr5', name: 'ORS Sachets', category: 'Pharmacy', storeName: 'Shree Pharmacy', storeId: 's2', price: 18, unit: 'pack of 5', stockStatus: 'out_of_stock', imageEmoji: '🧂' },
-  { id: 'pr6', name: 'Cough Syrup', category: 'Pharmacy', storeName: 'Shree Pharmacy', storeId: 's2', price: 85, unit: '100 ml', stockStatus: 'low_stock', imageEmoji: '🧴' },
-  { id: 'pr7', name: 'Alphonso Mango', category: 'Fruits & Vegetables', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 320, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🥭' },
-  { id: 'pr8', name: 'Tomato', category: 'Fruits & Vegetables', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 34, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🍅' },
-  { id: 'pr9', name: 'Banana', category: 'Fruits & Vegetables', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 48, unit: 'dozen', stockStatus: 'low_stock', imageEmoji: '🍌' },
-  { id: 'pr10', name: 'AA Batteries', category: 'General Store', storeName: 'Kaup General Store', storeId: 's4', price: 65, unit: 'pack of 4', stockStatus: 'in_stock', imageEmoji: '🔋' },
-  { id: 'pr11', name: 'LED Bulb 9W', category: 'General Store', storeName: 'Kaup General Store', storeId: 's4', price: 110, unit: 'piece', stockStatus: 'in_stock', imageEmoji: '💡' },
-  { id: 'pr12', name: 'Detergent Powder', category: 'General Store', storeName: 'Kaup General Store', storeId: 's4', price: 190, unit: '1 kg', stockStatus: 'out_of_stock', imageEmoji: '🧺' },
-  { id: 'pr13', name: 'Toned Milk', category: 'Dairy Products', storeName: 'Udupi Daily Needs', storeId: 's5', price: 28, unit: '500 ml', stockStatus: 'in_stock', imageEmoji: '🥛' },
-  { id: 'pr14', name: 'Curd', category: 'Dairy Products', storeName: 'Udupi Daily Needs', storeId: 's5', price: 40, unit: '400 g', stockStatus: 'in_stock', imageEmoji: '🍦' },
-  { id: 'pr15', name: 'Paneer', category: 'Dairy Products', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 90, unit: '200 g', stockStatus: 'low_stock', imageEmoji: '🧀' },
-  // Same product, two stores, two prices — the exact case the customer
-  // app's "cheapest wins" catalog rule (see dedupeCheapest in the
-  // Inventory screen) exists to handle.
-  { id: 'pr16', name: 'Onion', category: 'Fruits & Vegetables', storeName: 'Malpe Fresh Mart', storeId: 's3', price: 21, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🧅' },
-  { id: 'pr17', name: 'Onion', category: 'Kirana & Grocery', storeName: 'Ganesh Kirana Store', storeId: 's1', price: 26, unit: '1 kg', stockStatus: 'in_stock', imageEmoji: '🧅' },
-];
+// Inventory itself has no placeholder data anymore — the Inventory screen
+// reads real rows from Supabase (lib/supabase/products.ts) and starts
+// empty until a founder adds something through the Add product modal.
 
 // Revenue tab's own trend — total commission earned per week, distinct
 // from Payouts' per-store breakdown of that same money.

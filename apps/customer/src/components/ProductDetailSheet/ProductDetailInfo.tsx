@@ -22,7 +22,7 @@
 // distinct rather than folded into the product card.
 
 import { useState } from 'react';
-import { ChevronRightIcon } from '@hugeicons/core-free-icons';
+import { ChevronRightIcon, HeartIcon } from '@hugeicons/core-free-icons';
 import { Image, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
@@ -33,19 +33,41 @@ import type { Product } from '../../screens/home/products/types';
 
 interface Props {
   product: Product;
+  // ProductDetailSheet's own resolved list — product.relatedProducts when
+  // a mock product set one inline, otherwise whatever useSimilarProducts
+  // fetched for a real one. Falling back to product.relatedProducts here
+  // too so any other caller that renders this directly (none currently do)
+  // still works without passing the prop.
+  relatedProducts?: Product[];
 }
 
-export function ProductDetailInfo({ product }: Props) {
-  const { name, localName, weight, price, originalPrice, description, storeName, sizeOptions, sellerDetails, relatedProducts } = product;
+export function ProductDetailInfo({ product, relatedProducts }: Props) {
+  const { name, localName, weight, price, originalPrice, description, storeName, sizeOptions, sellerDetails } = product;
+  const related = relatedProducts ?? product.relatedProducts;
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize, setSelectedSize] = useState(chips.includes(weight) ? weight : chips[0]);
+  // Local-only wishlist toggle on the title row itself — separate from the
+  // header's own bookmark button (ProductDetailSheet.tsx), nothing persists
+  // either yet.
+  const [isLiked, setIsLiked] = useState(false);
 
   return (
     <View style={{ backgroundColor: '#FAFAFA' }} className="gap-2.5 px-3 pb-4 pt-3">
       <View className="gap-3 rounded-2xl bg-white px-4 py-4">
-        <Text className="text-xl font-medium leading-7 text-ink">
-          {name} ({localName})
-        </Text>
+        <View className="flex-row items-start justify-between gap-3">
+          <Text className="flex-1 text-xl font-medium leading-7 text-ink">
+            {name}
+            {localName ? ` (${localName})` : ''}
+          </Text>
+          <Pressable onPress={() => setIsLiked((prev) => !prev)} hitSlop={8} className="pt-0.5">
+            <AppIcon
+              icon={HeartIcon}
+              size={22}
+              color={isLiked ? colors.danger : colors.ink}
+              fill={isLiked ? colors.danger : 'none'}
+            />
+          </Pressable>
+        </View>
 
         {description && <Text className="text-sm leading-5 text-ink/60">{description}</Text>}
 
@@ -66,12 +88,14 @@ export function ProductDetailInfo({ product }: Props) {
 
         <View className="flex-row items-center gap-2">
           <Text className="text-xl font-medium text-ink">₹{price}</Text>
-          {originalPrice && (
+          {originalPrice && originalPrice > price && (
             <>
-              <View className="h-4 w-px bg-mist" />
-              <Text className="text-sm text-ink/50">
-                MRP <Text className="line-through">₹{originalPrice}</Text>
-              </Text>
+              <Text className="text-sm text-ink/40 line-through">₹{originalPrice}</Text>
+              <View className="rounded-full bg-lime-soft px-2 py-0.5">
+                <Text className="text-xs font-semibold text-lime-deep">
+                  {Math.round((1 - price / originalPrice) * 100)}%
+                </Text>
+              </View>
             </>
           )}
         </View>
@@ -80,7 +104,7 @@ export function ProductDetailInfo({ product }: Props) {
           <>
             <View className="h-px bg-mist" />
             <Pressable className="flex-row items-center gap-3">
-              <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-10 w-10 rounded-xl" resizeMode="cover" />
+              <Image source={{ uri: product.storePhotoUrl || PLACEHOLDER_IMAGE_URI }} className="h-10 w-10 rounded-xl" resizeMode="cover" />
               <View className="flex-1">
                 <Text className="text-[15px] font-medium text-ink">{storeName}</Text>
                 <Text className="text-xs text-ink/50">Explore all products</Text>
@@ -93,7 +117,7 @@ export function ProductDetailInfo({ product }: Props) {
 
       {sellerDetails && <SellerDetailsCard sellerDetails={sellerDetails} />}
 
-      {relatedProducts && relatedProducts.length > 0 && <SimilarProductsRow products={relatedProducts} />}
+      {related && related.length > 0 && <SimilarProductsRow products={related} />}
     </View>
   );
 }

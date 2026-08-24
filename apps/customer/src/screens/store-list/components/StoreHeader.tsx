@@ -29,7 +29,7 @@ export function StoreHeader({ onBack, onSearch }: Props) {
       </View>
 
       <View className="absolute bottom-6 left-5 right-5">
-        <Text className="text-[28px] font-semibold leading-8 text-black">Shops you{'\n'}already know.</Text>
+        <Text className="text-[28px] font-medium leading-8 text-black">Shops you{'\n'}already know.</Text>
       </View>
     </View>
   );

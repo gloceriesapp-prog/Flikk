@@ -39,11 +39,21 @@ export function AppNavigator() {
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
       <Stack.Screen name="LocationSearch" component={LocationSearchScreen} />
       <Stack.Screen name="MapConfirm" component={MapConfirmScreen} />
-      <Stack.Screen name="Home" component={HomeScreen} />
-      <Stack.Screen name="Categories" component={CategoriesScreen} />
+      {/* animation: 'none' on these four — they're the bottom nav's own tabs
+          (Home/Purchase/Categories/Store), each rendering its own
+          <BottomNavBar/> at the identical screen position/style. Left on
+          native-stack's default slide, switching tabs looked (and the pill
+          itself visibly slid) like drilling into a detail screen — a tab
+          switch should feel instant, with the nav bar reading as fixed
+          chrome, not part of what's animating. Real drill-down screens
+          (StoreDetail, Checkout, etc. below) keep the default slide — that
+          motion is correct there, it's specifically these four siblings
+          where it read as wrong. */}
+      <Stack.Screen name="Home" component={HomeScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="Categories" component={CategoriesScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Search" component={SearchScreen} />
-      <Stack.Screen name="Store" component={StoreListScreen} />
-      <Stack.Screen name="Purchase" component={PurchaseScreen} />
+      <Stack.Screen name="Store" component={StoreListScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="Purchase" component={PurchaseScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
       <Stack.Screen name="StoreDetail" component={StoreDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />

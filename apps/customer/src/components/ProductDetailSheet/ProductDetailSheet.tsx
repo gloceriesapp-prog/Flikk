@@ -47,14 +47,17 @@
 
 import { Bookmark01Icon, ChevronDownIcon, Share03Icon, Share08Icon } from '@hugeicons/core-free-icons';
 import { useRef, useState } from 'react';
-import { Animated, Image, Modal, NativeScrollEvent, NativeSyntheticEvent, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Image, Modal, NativeScrollEvent, NativeSyntheticEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../AppIcon';
+import { CartBar } from '../CartBar/CartBar';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { colors } from '../../theme/tokens';
+import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { ProductDetailInfo } from './ProductDetailInfo';
 import { ProductDetailFooter } from './ProductDetailFooter';
+import { useSimilarProducts } from './useSimilarProducts';
 import type { Product } from '../../screens/home/products/types';
 
 const GROW_TRIGGER_DISTANCE = 24;
@@ -79,6 +82,15 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
   // only constructing the Animated.Value once.
   const [grow] = useState(() => new Animated.Value(0));
   const isGrownRef = useRef(false);
+
+  // Mock products (still used by several data.ts files) set their own
+  // relatedProducts inline — real backend products never do (api/products.ts
+  // has no such field to set), so this only fires for those, and only once
+  // the sheet is actually open.
+  const needsSimilar = visible && !product.relatedProducts;
+  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id);
+  const relatedProducts = product.relatedProducts ?? similar.data ?? [];
+  const cartTotalQuantity = useCartStore(selectCartTotalQuantity);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = event.nativeEvent.contentOffset.y;
@@ -142,6 +154,13 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
               <AppIcon icon={ChevronDownIcon} size={20} color={colors.ink} />
             </Pressable>
 
+            {/* Centered independently of the two icon groups (absolute,
+                not a flex-1 middle column) so its own width never pushes
+                the bookmark/share group off the row's right edge. */}
+            <View pointerEvents="none" className="absolute left-0 right-0 items-center">
+              <Text className="text-lg font-medium text-ink">Product Details</Text>
+            </View>
+
             <View className="flex-row gap-2">
               <Pressable
                 onPress={() => setIsBookmarked((prev) => !prev)}
@@ -165,8 +184,16 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
             scrollEventThrottle={16}
             contentContainerStyle={{ paddingBottom: FOOTER_SPACER }}
           >
-            <View className="relative h-72 w-full items-center justify-center" style={{ backgroundColor: '#FAFAFA' }}>
-              <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="contain" />
+            {/* Real product photo (product.imageUrl), same neutral #FAFAFA
+                backdrop always — no bgColor pastel tint here (that's this
+                sheet's own explicit opt-out; ProductCardView.tsx still uses
+                it on the card this was opened from). */}
+            {/* pt-14 clears the floating header row (close/title/bookmark/
+                share, absolutely positioned on top of this ScrollView) —
+                without it the image's own top edge sits directly under the
+                header with no breathing room. */}
+            <View className="relative h-80 w-full items-center justify-center pt-14" style={{ backgroundColor: '#FAFAFA' }}>
+              <Image source={{ uri: product.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="contain" />
               <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-1.5">
                 {[0, 1, 2, 3].map((i) => (
                   <View key={i} className={`h-1.5 w-1.5 rounded-full ${i === 0 ? 'bg-ink' : 'bg-ink/25'}`} />
@@ -174,16 +201,30 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
               </View>
             </View>
 
-            <ProductDetailInfo product={product} />
+            <ProductDetailInfo product={product} relatedProducts={relatedProducts} />
           </Animated.ScrollView>
 
-          <Animated.View style={{ paddingBottom: footerPaddingBottom }} className="absolute bottom-0 left-0 right-0 overflow-hidden">
-            {/* Same NativeWind-blind-spot as the modal backdrop above —
-                BlurView needs its sizing/positioning on style, not className. */}
-            <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
-            <View className="absolute inset-0 bg-white/40" />
-            <ProductDetailFooter product={product} />
-          </Animated.View>
+          {/* CartBar (same floating "View cart" pill Home's BottomNavBar
+              shows) lives outside the overflow-hidden footer below — that
+              container clips to draw the blur's rounded corners, which
+              would also clip CartBar's own shadow. Plain flow stacking
+              (not a computed absolute offset) puts it directly above the
+              footer regardless of which footer state (button vs stepper)
+              is currently taller. */}
+          <View className="absolute bottom-0 left-0 right-0">
+            {cartTotalQuantity > 0 && (
+              <View className="items-center pb-3">
+                <CartBar />
+              </View>
+            )}
+            <View style={{ paddingBottom: footerPaddingBottom }} className="overflow-hidden">
+              {/* Same NativeWind-blind-spot as the modal backdrop above —
+                  BlurView needs its sizing/positioning on style, not className. */}
+              <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+              <View className="absolute inset-0 bg-white/40" />
+              <ProductDetailFooter product={product} />
+            </View>
+          </View>
         </Animated.View>
       </View>
     </Modal>

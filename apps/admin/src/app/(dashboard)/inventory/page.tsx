@@ -5,16 +5,21 @@
 // see (this is the same content the customer app lists, so name/price
 // layout has to stay clean, never overlapping). Category AND store
 // filters, both starting on "All" — "All" also sorts cheapest-first, the
-// one sort a founder scanning the whole catalog actually wants. Editing
-// is admin-local only (Product's own note in lib/types.ts) — no
-// customer-app write-through logic here.
+// one sort a founder scanning the whole catalog actually wants.
+//
+// Products and stores are both real Supabase reads (lib/supabase/products.ts,
+// anon key, covered by public RLS) — no dummy/placeholder inventory. Add/
+// Edit write through app/api/products/* (service-role, see that route's own
+// note on why) and this page refetches the full list afterward rather than
+// optimistically patching local state, so it never drifts from what's
+// actually in the DB.
 
-import { useMemo, useState } from 'react';
-import { ChevronDown, IndianRupee, Pencil, Plus, Search } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronDown, Image as ImageIcon, IndianRupee, Pencil, Plus, Search } from 'lucide-react';
 import clsx from 'clsx';
 import { formatNumber } from '@/lib/format';
-import { PLACEHOLDER_PRODUCTS, PLACEHOLDER_STORES } from '@/lib/mock-data';
-import type { Product, StockStatus } from '@/lib/types';
+import type { NewProductInput, Product, StockStatus } from '@/lib/types';
+import { fetchProducts, fetchStoreOptions, type StoreOption } from '@/lib/supabase/products';
 import { EditProductModal } from '@/components/inventory/EditProductModal';
 import { AddProductModal } from '@/components/inventory/AddProductModal';
 
@@ -31,23 +36,52 @@ const STOCK_LABELS: Record<StockStatus, string> = {
 };
 
 export default function InventoryPage() {
-  const [products, setProducts] = useState<Product[]>(PLACEHOLDER_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [stores, setStores] = useState<StoreOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const [storeId, setStoreId] = useState('all');
   const [editing, setEditing] = useState<Product | null>(null);
   const [adding, setAdding] = useState(false);
 
+  const loadData = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const [productList, storeList] = await Promise.all([fetchProducts(), fetchStoreOptions()]);
+      setProducts(productList);
+      setStores(storeList);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load inventory from Supabase.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Promise.resolve().then(...) rather than calling loadData() directly —
+    // loadData's first line (setLoadError(null)) is a setState call, and
+    // this repo's react-hooks lint rule flags any setState that happens
+    // synchronously within an effect's own call stack (cascading-render
+    // risk). Deferring the call to a microtask moves that setState outside
+    // the effect's synchronous execution without changing behavior —
+    // fetchProducts/fetchStoreOptions were already async regardless.
+    Promise.resolve().then(loadData);
+  }, [loadData]);
+
   const categories = useMemo(() => ['All', ...Array.from(new Set(products.map((p) => p.category)))], [products]);
 
-  // Store options carry place alongside name — a founder picking a store
+  // Store options carry district alongside name — a founder picking a store
   // out of a dropdown of 20+ across a zone needs the district to tell two
-  // "Kirana Store"s apart, same as PLACEHOLDER_STORES already shows on
-  // /stores.
-  const storeOptions = useMemo(() => {
+  // "Kirana Store"s apart. Only stores that actually have a product listed
+  // show up in this filter (the Add/Edit modals get the full `stores` list
+  // instead, since a store with zero products yet still needs to be
+  // pickable there).
+  const storeFilterOptions = useMemo(() => {
     const storeIdsWithProducts = new Set(products.map((p) => p.storeId));
-    return PLACEHOLDER_STORES.filter((s) => storeIdsWithProducts.has(s.id));
-  }, [products]);
+    return stores.filter((s) => storeIdsWithProducts.has(s.id));
+  }, [products, stores]);
 
   // Same product listed by more than one store shows once, at the
   // cheapest store's price — this list is exactly what the customer app's
@@ -88,13 +122,31 @@ export default function InventoryPage() {
     return deduped.sort((a, b) => (category === 'All' ? a.price - b.price : 0));
   })();
 
-  function handleSave(updated: Product) {
-    setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  async function handleSave(updated: Product) {
+    const res = await fetch(`/api/products/${updated.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error ?? 'Save failed.');
+    }
+    await loadData();
     setEditing(null);
   }
 
-  function handleAdd(newProduct: Product) {
-    setProducts((prev) => [...prev, newProduct]);
+  async function handleAdd(newProduct: NewProductInput) {
+    const res = await fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProduct),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error ?? 'Add failed.');
+    }
+    await loadData();
     setAdding(false);
   }
 
@@ -103,17 +155,29 @@ export default function InventoryPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-medium text-ink">Inventory</h1>
-          <p className="text-sm text-muted">{products.length} products listed across every store in the zone.</p>
+          <p className="text-sm text-muted">
+            {loading ? 'Loading…' : `${products.length} products listed across every store in the zone.`}
+          </p>
         </div>
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+          disabled={loading || stores.length === 0}
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
         >
           <Plus size={15} />
           Add product
         </button>
       </div>
+
+      {loadError && (
+        <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-danger">
+          {loadError} —{' '}
+          <button type="button" onClick={loadData} className="underline">
+            retry
+          </button>
+        </p>
+      )}
 
       {/* Search on the left, both filters as dropdowns on the right —
           category has real range now (Vegetables/Dairy/Pharmacy/…), too
@@ -138,7 +202,7 @@ export default function InventoryPage() {
               className="appearance-none rounded-full bg-accent py-2 pl-3.5 pr-8 text-xs font-semibold text-ink-soft focus:outline-none focus:ring-2 focus:ring-ink/10"
             >
               <option value="all">All stores</option>
-              {storeOptions.map((s) => (
+              {storeFilterOptions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name} — {s.district}
                 </option>
@@ -167,15 +231,29 @@ export default function InventoryPage() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         {filtered.map((product) => (
           <div key={product.id} className="flex items-center gap-4 rounded-3xl border border-border bg-card p-3 pr-4">
-            {/* Random placeholder photo, seeded by product id so it stays
-                stable across re-renders — no upload pipeline yet, this is
-                the "image" slot until one exists. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`https://picsum.photos/seed/${product.id}/160/160`}
-              alt={product.name}
-              className="h-20 w-20 shrink-0 rounded-2xl object-cover"
-            />
+            {/* Real photo (product.imageUrl, set via Add/EditProductModal's
+                ProductImageUpload -> Supabase Storage) when one's been
+                uploaded — no random stock-photo fallback; a product with no
+                photo shows an icon placeholder, same convention as Stores'
+                own list, rather than a picsum image that isn't the actual
+                product. bgColor (lib/bgColor.ts) is a pastel tint extracted
+                from the photo itself, so a no-background product shot sits
+                on a color pulled from its own image instead of a flat
+                white or mismatched tile — object-contain, not cover, so a
+                transparent-bg photo isn't cropped to fill the square. */}
+            {product.imageUrl ? (
+              <div
+                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl"
+                style={{ backgroundColor: product.bgColor ?? '#F6FAF0' }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={product.imageUrl} alt={product.name} className="h-full w-full rounded-2xl object-contain p-1.5" />
+              </div>
+            ) : (
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent">
+                <ImageIcon size={22} className="text-muted" />
+              </div>
+            )}
 
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
@@ -196,34 +274,49 @@ export default function InventoryPage() {
                 <div className="flex items-center gap-1 text-ink">
                   <IndianRupee size={14} className="shrink-0" />
                   <span className="text-base font-semibold tabular-nums">{formatNumber(product.price)}</span>
+                  {product.originalPrice && product.originalPrice > product.price && (
+                    <span className="text-xs text-muted line-through tabular-nums">{formatNumber(product.originalPrice)}</span>
+                  )}
                   {storeId === 'all' && (storeCountByName.get(product.name.toLowerCase()) ?? 1) > 1 && (
                     <span className="text-[11px] font-medium text-muted">
                       cheapest of {storeCountByName.get(product.name.toLowerCase())} stores
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setEditing(product)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold text-ink-soft hover:bg-accent hover:text-ink"
-                >
-                  <Pencil size={12} />
-                  Edit
-                </button>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {/* discount% = ((MRP − price) / MRP) × 100, rounded — only
+                      shown when originalPrice is a real MRP above price
+                      (same guard as the struck-through MRP itself). */}
+                  {product.originalPrice && product.originalPrice > product.price && (
+                    <span className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-danger">
+                      {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setEditing(product)}
+                    className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold text-ink-soft hover:bg-accent hover:text-ink"
+                  >
+                    <Pencil size={12} />
+                    Edit
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         ))}
 
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <p className="col-span-full py-8 text-center text-sm text-muted">
-            No products match “{query}” in {category}.
+            {products.length === 0 ? 'No products yet — add the first one.' : `No products match “${query}” in ${category}.`}
           </p>
         )}
       </div>
 
-      {editing && <EditProductModal product={editing} onClose={() => setEditing(null)} onSave={handleSave} />}
-      {adding && <AddProductModal existingProducts={products} onClose={() => setAdding(false)} onAdd={handleAdd} />}
+      {editing && <EditProductModal product={editing} stores={stores} onClose={() => setEditing(null)} onSave={handleSave} />}
+      {adding && (
+        <AddProductModal stores={stores} existingProducts={products} onClose={() => setAdding(false)} onAdd={handleAdd} />
+      )}
     </div>
   );
 }

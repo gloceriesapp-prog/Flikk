@@ -102,7 +102,28 @@ export interface Store {
   isActive: boolean;
   ownerName: string;
   joinedAt: string;
+  // Real onboarding fields (AddStoreModal / storeValidation.ts) — same
+  // document set Application already tracks pre-approval, now on the live
+  // store record itself since a store is created here directly rather than
+  // graduating through /approvals.
+  addressLine: string;
+  city: string;
+  state: string;
+  country: string;
+  photoUrl?: string;
+  fssaiNumber: string;
+  shopEstablishmentNumber: string;
+  panNumber: string;
+  aadhaarLast4: string;
+  bankName: string;
+  bankAccountLast4: string;
+  turnoverExceedsGstThreshold: boolean;
+  gstNumber?: string;
+  // Pharmacy category only.
+  drugLicenseNumber?: string;
 }
+
+export type NewStoreInput = Omit<Store, 'id' | 'zone' | 'isActive' | 'joinedAt'>;
 
 // zones is first-class in the DB from day 1 (PRD Section 16) even though
 // only one is active at launch — this type exists so the Zones screen can
@@ -234,9 +255,24 @@ export interface Product {
   price: number;
   unit: string;
   stockStatus: StockStatus;
-  // Emoji stand-in for a real product photo — no asset upload pipeline
-  // exists yet, this is the "image" a founder can eyeball and edit today.
-  imageEmoji: string;
+  // A real uploaded photo (Add/EditProductModal -> ProductImageUpload ->
+  // Supabase Storage, stored on products.image_url) rather than the emoji
+  // stand-in this used to be. Optional: the inventory list shows an icon
+  // placeholder (see (dashboard)/inventory/page.tsx) whenever a product has
+  // none — never a random stock photo.
+  imageUrl?: string;
+  // Pastel card background extracted from imageUrl at upload time
+  // (lib/bgColor.ts, app/api/upload), or a category tint / neutral mist
+  // when extraction wasn't possible — see lib/productValidation.ts
+  // toProductRow's own note on the full fallback chain. Always set on any
+  // product written through this dashboard (products.bg_color is NOT NULL
+  // with a mist default), so this is only optional for products fetched
+  // before the column existed.
+  bgColor?: string;
+  // MRP — only shown (struck through, next to price) when it's actually
+  // higher than price, same convention as the customer app's own
+  // originalPrice on Product (apps/customer/src/screens/home/products/types.ts).
+  originalPrice?: number;
   // Same fields the customer app's own ProductCard reads (apps/customer/
   // src/screens/home/products/types.ts) — a store owner sets these when
   // listing a product, they're not admin-computed. localName/isVeg apply
@@ -246,4 +282,30 @@ export interface Product {
   localName?: string;
   isVeg?: boolean;
   freshnessTag?: string;
+  // Shown on the customer app's ProductDetailSheet (that Product's own
+  // description field) — a short paragraph, not required for a card to be
+  // listable at all, same optional-with-graceful-fallback pattern as the
+  // rest of this block.
+  description?: string;
+  // Per-size pricing (Blinkit/Instamart model) — variants[0] is always the
+  // default/primary listing, and its price/unit are exactly what price/unit
+  // above already hold (denormalized server-side, see lib/productValidation.ts
+  // toProductRow). A product with only one size still has exactly one
+  // variant here, never zero.
+  variants: ProductVariant[];
 }
+
+export interface ProductVariant {
+  id?: string;
+  unitType: 'g' | 'kg' | 'ml' | 'l' | 'pc';
+  quantity: number;
+  price: number;
+  originalPrice?: number;
+}
+
+// What AddProductModal actually collects and POSTs to /api/products —
+// everything Product has except `id` (DB-generated on insert) and
+// `storeName` (the API derives it server-side via the stores join, same
+// mapRowToProduct used for reads — the modal only knows storeId, picked
+// from a real StoreOption).
+export type NewProductInput = Omit<Product, 'id' | 'storeName'>;

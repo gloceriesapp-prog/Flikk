@@ -1,12 +1,12 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { PLACEHOLDER_STORES } from '@/lib/mock-data';
+import { fetchStore } from '@/lib/supabase/stores';
 import { StoreDetailForm } from '@/components/stores/StoreDetailForm';
 
 export default async function StoreDetailPage({ params }: PageProps<'/stores/[id]'>) {
   const { id } = await params;
-  const store = PLACEHOLDER_STORES.find((s) => s.id === id);
+  const store = await fetchStore(id);
   if (!store) notFound();
 
   return (

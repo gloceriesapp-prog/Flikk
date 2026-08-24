@@ -12,6 +12,17 @@ export interface Product {
   rating: number;
   ratingCount: string;
   imageSeed: string;
+  // Real uploaded photo (products.image_url, set via admin's Inventory —
+  // see apps/admin/src/lib/supabase/products.ts) — falls back to the
+  // shared placeholder image (imageSeed) when a product has none yet.
+  imageUrl?: string;
+  // Pastel color extracted from imageUrl at upload time (admin's
+  // lib/bgColor.ts, products.bg_color) — the card's own image tile
+  // background, so a no-background product photo sits on a color pulled
+  // from itself instead of a flat mismatched box. Falls back to the
+  // --mist token when unset (mock products, or real ones from before this
+  // column existed).
+  bgColor?: string;
   // Optional, defaults to true in ProductCard — most of a kirana grocery
   // catalog is veg by default, only fish/meat entries need to set this
   // explicitly false, rather than touching every other data.ts file.
@@ -28,6 +39,12 @@ export interface Product {
   // Seller/store this listing belongs to — display only, no storeId to
   // navigate with yet (Product isn't linked to store-list/'s Store type).
   storeName?: string;
+  // Real storefront photo (stores.photo_url, set via admin's Add Store form
+  // -> ProductImageUpload with bucket="store-images", a separate Storage
+  // bucket from product photos — see backend/src/routes/stores.ts's own
+  // note on why). ProductDetailInfo's seller row falls back to the shared
+  // placeholder image when a store has none.
+  storePhotoUrl?: string;
   replacementPolicy?: string;
   // Estimated minutes to delivery — CLAUDE.md's own status-only tracking
   // rule (no live GPS/ETA math) means this is a store-set expectation, not

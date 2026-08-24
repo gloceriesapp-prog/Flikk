@@ -22,7 +22,7 @@ export interface CategorySectionData {
 
 export const CATEGORY_SECTIONS: CategorySectionData[] = [
   {
-    title: 'Grocery & Kitchen',
+    title: 'Groceries & Staples',
     items: [
       { id: 'vegetables-fruits', label: 'Vegetables & Fruits', imageSeed: 'cat-veg-fruit' },
       { id: 'atta-rice-dal', label: 'Atta, Rice & Dal', imageSeed: 'cat-atta-rice' },
@@ -35,7 +35,7 @@ export const CATEGORY_SECTIONS: CategorySectionData[] = [
     ],
   },
   {
-    title: 'Snacks & Drinks',
+    title: 'Fruits & Vegetables',
     items: [
       { id: 'chips-namkeen', label: 'Chips & Namkeen', imageSeed: 'cat-chips' },
       { id: 'sweets-chocolates', label: 'Sweets & Chocolates', imageSeed: 'cat-sweets' },
@@ -44,7 +44,43 @@ export const CATEGORY_SECTIONS: CategorySectionData[] = [
     ],
   },
   {
-    title: 'Household & Personal Care',
+    title: 'Meat & Seafood',
+    items: [
+      { id: 'cleaning-essentials', label: 'Cleaning Essentials', imageSeed: 'cat-cleaning' },
+      { id: 'personal-care', label: 'Personal Care', imageSeed: 'cat-personal-care' },
+      { id: 'baby-care', label: 'Baby Care', imageSeed: 'cat-baby-care' },
+      { id: 'pet-care', label: 'Pet Care', imageSeed: 'cat-pet-care' },
+    ],
+  },
+  {
+    title: 'Bakery & Dairy',
+    items: [
+      { id: 'cleaning-essentials', label: 'Cleaning Essentials', imageSeed: 'cat-cleaning' },
+      { id: 'personal-care', label: 'Personal Care', imageSeed: 'cat-personal-care' },
+      { id: 'baby-care', label: 'Baby Care', imageSeed: 'cat-baby-care' },
+      { id: 'pet-care', label: 'Pet Care', imageSeed: 'cat-pet-care' },
+    ],
+  },
+  {
+    title: 'Home & Kitchen',
+    items: [
+      { id: 'cleaning-essentials', label: 'Cleaning Essentials', imageSeed: 'cat-cleaning' },
+      { id: 'personal-care', label: 'Personal Care', imageSeed: 'cat-personal-care' },
+      { id: 'baby-care', label: 'Baby Care', imageSeed: 'cat-baby-care' },
+      { id: 'pet-care', label: 'Pet Care', imageSeed: 'cat-pet-care' },
+    ],
+  },
+  // {
+  //   title: 'Beauty & Personal Care',
+  //   items: [
+  //     { id: 'cleaning-essentials', label: 'Cleaning Essentials', imageSeed: 'cat-cleaning' },
+  //     { id: 'personal-care', label: 'Personal Care', imageSeed: 'cat-personal-care' },
+  //     { id: 'baby-care', label: 'Baby Care', imageSeed: 'cat-baby-care' },
+  //     { id: 'pet-care', label: 'Pet Care', imageSeed: 'cat-pet-care' },
+  //   ],
+  // },
+  {
+    title: 'Protein & Fitness',
     items: [
       { id: 'cleaning-essentials', label: 'Cleaning Essentials', imageSeed: 'cat-cleaning' },
       { id: 'personal-care', label: 'Personal Care', imageSeed: 'cat-personal-care' },

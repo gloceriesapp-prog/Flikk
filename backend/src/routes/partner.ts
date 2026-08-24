@@ -2,7 +2,9 @@
 // never trusting a store_id from the request body.
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
-import { AppError } from '../lib/errors.js';
+import { replaceProductVariants } from '../db/productVariants.js';
+import { AppError, asValidationError } from '../lib/errors.js';
+import { toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 
 export const partnerRouter = Router();
@@ -28,7 +30,7 @@ partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
 partnerRouter.get('/products', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { data, error } = await supabase.from('products').select('*').eq('store_id', storeId);
+    const { data, error } = await supabase.from('products').select('*, product_variants(*)').eq('store_id', storeId);
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -39,35 +41,57 @@ partnerRouter.get('/products', async (req: AuthedRequest, res, next) => {
 partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { name, unit, price, category, image_url } = req.body;
-    const { data, error } = await supabase
-      .from('products')
-      .insert({ store_id: storeId, name, unit, price, category, image_url, is_in_stock: true })
-      .select()
-      .single();
+    // storeId always comes from the caller's own store, never req.body —
+    // a store owner can only ever create a product for themselves, even if
+    // the request body carries a different storeId.
+    const input: Partial<ProductInput> = { ...req.body, storeId };
+    validateProductInput(input);
+
+    const { data: product, error } = await supabase.from('products').insert(toProductRow(input)).select().single();
     if (error) throw error;
+
+    await replaceProductVariants(product.id, input.variants);
+    const { data, error: refetchError } = await supabase
+      .from('products')
+      .select('*, product_variants(*)')
+      .eq('id', product.id)
+      .single();
+    if (refetchError) throw refetchError;
+
     res.status(201).json(data);
   } catch (err) {
-    next(err);
+    next(asValidationError(err));
   }
 });
 
 partnerRouter.patch('/products/:id', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
+    const input: Partial<ProductInput> = { ...req.body, storeId };
+    validateProductInput(input);
+
     // scoped by store_id so a store owner cannot edit another store's product
     // even with a guessed product id
-    const { data, error } = await supabase
+    const { data: product, error } = await supabase
       .from('products')
-      .update(req.body)
+      .update(toProductRow(input))
       .eq('id', req.params.id)
       .eq('store_id', storeId)
       .select()
       .single();
-    if (error || !data) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Not found for this store.');
+    if (error || !product) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Not found for this store.');
+
+    await replaceProductVariants(product.id, input.variants);
+    const { data, error: refetchError } = await supabase
+      .from('products')
+      .select('*, product_variants(*)')
+      .eq('id', product.id)
+      .single();
+    if (refetchError) throw refetchError;
+
     res.json(data);
   } catch (err) {
-    next(err);
+    next(asValidationError(err));
   }
 });
 

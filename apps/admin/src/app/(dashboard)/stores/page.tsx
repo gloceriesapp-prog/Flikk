@@ -1,24 +1,87 @@
 'use client';
 
 // Store management — the live roster (PRD A1/FR19's "active stores"
-// half; the pending half lives on /approvals). Search + zone filter, same
-// interaction language as OrdersTable's status pills.
+// half; the pending half lives on /approvals). Search, real Supabase read
+// (lib/supabase/stores.ts, anon key, public RLS) — no dummy/placeholder
+// roster. "+ Add store" sits at the title's right end (same convention as
+// Inventory's own "Add product") and opens AddStoreModal, which POSTs to
+// app/api/stores (service-role write, see that route's own note); this
+// page refetches the full list afterward rather than patching local state.
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Search, Store as StoreIcon } from 'lucide-react';
-import { PLACEHOLDER_STORES } from '@/lib/mock-data';
+import clsx from 'clsx';
+import { ChevronRight, Clock, MapPin, Plus, Search, Store as StoreIcon } from 'lucide-react';
+import type { NewStoreInput, Store } from '@/lib/types';
+import { fetchStores } from '@/lib/supabase/stores';
+import { AddStoreModal } from '@/components/stores/AddStoreModal';
 
 export default function StoresPage() {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const filtered = PLACEHOLDER_STORES.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const [adding, setAdding] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoadError(null);
+    try {
+      setStores(await fetchStores());
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load stores from Supabase.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Deferred to a microtask — see inventory/page.tsx's own note on why
+    // (react-hooks/set-state-in-effect: loadData's first line is a setState
+    // call).
+    Promise.resolve().then(loadData);
+  }, [loadData]);
+
+  const filtered = stores.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()));
+
+  async function handleAdd(newStore: NewStoreInput) {
+    const res = await fetch('/api/stores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newStore),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error ?? 'Add failed.');
+    }
+    await loadData();
+    setAdding(false);
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-bold text-ink">Stores</h1>
-        <p className="text-sm text-muted">{PLACEHOLDER_STORES.length} active stores across the zone.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-ink">Stores</h1>
+          <p className="text-sm text-muted">{loading ? 'Loading…' : `${stores.length} active stores across the zone.`}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+        >
+          <Plus size={15} />
+          Add store
+        </button>
       </div>
+
+      {loadError && (
+        <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-danger">
+          {loadError} —{' '}
+          <button type="button" onClick={loadData} className="underline">
+            retry
+          </button>
+        </p>
+      )}
 
       <div className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 sm:max-w-sm">
         <Search size={15} className="text-muted" />
@@ -30,36 +93,69 @@ export default function StoresPage() {
         />
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {filtered.map((store) => (
           <Link
             key={store.id}
             href={`/stores/${store.id}`}
-            className="group flex items-center gap-4 border-b border-border py-4 last:border-0"
+            className="group flex items-center gap-4 rounded-3xl border border-border bg-card p-4 pr-5 transition hover:border-ink/15 hover:shadow-sm"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent">
-              <StoreIcon size={16} className="text-ink-soft" />
-            </div>
+            {store.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={store.photoUrl}
+                alt=""
+                className="h-16 w-16 shrink-0 rounded-2xl border border-border object-cover"
+              />
+            ) : (
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-border bg-accent">
+                <StoreIcon size={22} className="text-ink-soft" />
+              </div>
+            )}
+
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-ink group-hover:underline">{store.name}</p>
-              <p className="text-xs text-muted">
-                {store.category} · {store.district}
-              </p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="truncate text-base font-semibold text-ink group-hover:underline">{store.name}</p>
+                <span
+                  className={clsx(
+                    'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                    store.isActive ? 'bg-green-50 text-success' : 'bg-red-50 text-danger'
+                  )}
+                >
+                  {store.isActive ? 'Open' : 'Deactivated'}
+                </span>
+              </div>
+              <p className="mt-0.5 truncate text-xs font-medium text-muted">{store.category}</p>
+
+              <div className="mt-2 flex flex-col gap-1 text-xs text-muted">
+                <span className="flex items-center gap-1.5 truncate">
+                  <MapPin size={12} className="shrink-0" />
+                  <span className="truncate">
+                    {store.addressLine ? `${store.addressLine}, ` : ''}
+                    {store.city}
+                    {store.state ? `, ${store.state}` : ''}
+                  </span>
+                </span>
+                {(store.openTime || store.closeTime) && (
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={12} className="shrink-0" />
+                    {store.openTime} – {store.closeTime}
+                  </span>
+                )}
+              </div>
             </div>
-            <span
-              className={
-                store.isActive
-                  ? 'rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-success'
-                  : 'rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-danger'
-              }
-            >
-              {store.isActive ? 'Open' : 'Deactivated'}
-            </span>
-            <ChevronRight size={15} className="shrink-0 text-muted" />
+
+            <ChevronRight size={16} className="shrink-0 self-center text-muted" />
           </Link>
         ))}
-        {filtered.length === 0 && <p className="py-8 text-center text-sm text-muted">No stores match “{query}”.</p>}
+        {!loading && filtered.length === 0 && (
+          <p className="col-span-full rounded-3xl border border-border bg-card py-8 text-center text-sm text-muted">
+            {stores.length === 0 ? 'No stores yet — add the first one.' : `No stores match "${query}".`}
+          </p>
+        )}
       </div>
+
+      {adding && <AddStoreModal onClose={() => setAdding(false)} onAdd={handleAdd} />}
     </div>
   );
 }

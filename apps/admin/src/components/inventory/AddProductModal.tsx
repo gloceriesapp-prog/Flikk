@@ -4,13 +4,25 @@
 // check that matters here: a store can't list the same product twice
 // (name match is case/whitespace-insensitive, scoped to the chosen store
 // only — Onion at two different stores is the normal cheapest-wins case,
-// Onion twice at the same store is a data-entry mistake). Admin-local
-// state only, same as edit — no customer-app write-through.
+// Onion twice at the same store is a data-entry mistake). onAdd is async —
+// InventoryPage POSTs to /api/products (service-role write, see that
+// route's own note) and refetches the live list; this modal just shows a
+// submitting state and surfaces whatever error comes back.
+//
+// Category is a fixed dropdown (PRODUCT_CATEGORIES) and price/unit are
+// replaced by a real per-size variant list (ProductVariantsEditor) — see
+// that component's own note on the Blinkit/Instamart pricing model this
+// follows.
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import type { Product, StockStatus } from '@/lib/types';
-import { FRESHNESS_TAG_PRESETS, PLACEHOLDER_STORES } from '@/lib/mock-data';
+import type { NewProductInput, Product, StockStatus } from '@/lib/types';
+import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
+import type { StoreOption } from '@/lib/supabase/products';
+import { PRODUCT_CATEGORIES } from '@/lib/product-options';
+import { formatVariantUnit } from '@/lib/productValidation';
+import { ProductImageUpload } from './ProductImageUpload';
+import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 
 const STOCK_OPTIONS: { value: StockStatus; label: string }[] = [
   { value: 'in_stock', label: 'In stock' },
@@ -21,34 +33,40 @@ const STOCK_OPTIONS: { value: StockStatus; label: string }[] = [
 const FIELD_CLASS =
   'w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10';
 
-const EMPTY_DRAFT = {
-  name: '',
-  localName: '',
-  category: '',
-  storeId: PLACEHOLDER_STORES[0]?.id ?? '',
-  price: 0,
-  unit: '',
-  stockStatus: 'in_stock' as StockStatus,
-  imageEmoji: '📦',
-  isVeg: true,
-  freshnessTag: '',
-};
+function makeEmptyDraft(stores: StoreOption[]) {
+  return {
+    name: '',
+    localName: '',
+    category: PRODUCT_CATEGORIES[0] as string,
+    description: '',
+    storeId: stores[0]?.id ?? '',
+    variants: [emptyVariant()],
+    stockStatus: 'in_stock' as StockStatus,
+    imageUrl: undefined as string | undefined,
+    bgColor: undefined as string | undefined,
+    isVeg: true,
+    freshnessTag: '',
+  };
+}
 
 export function AddProductModal({
+  stores,
   existingProducts,
   onClose,
   onAdd,
 }: {
+  stores: StoreOption[];
   existingProducts: Product[];
   onClose: () => void;
-  onAdd: (product: Product) => void;
+  onAdd: (product: NewProductInput) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [draft, setDraft] = useState(() => makeEmptyDraft(stores));
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleAdd() {
+  async function handleAdd() {
     const name = draft.name.trim();
-    const store = PLACEHOLDER_STORES.find((s) => s.id === draft.storeId);
+    const store = stores.find((s) => s.id === draft.storeId);
     if (!name || !store) return;
 
     const alreadyListed = existingProducts.some(
@@ -59,33 +77,52 @@ export function AddProductModal({
       return;
     }
 
-    onAdd({
-      id: `pr-${Date.now()}`,
-      name,
-      localName: draft.localName.trim() || undefined,
-      category: draft.category.trim() || 'Uncategorized',
-      storeName: store.name,
-      storeId: store.id,
-      price: draft.price,
-      unit: draft.unit.trim() || 'unit',
-      stockStatus: draft.stockStatus,
-      imageEmoji: draft.imageEmoji,
-      isVeg: draft.isVeg,
-      freshnessTag: draft.freshnessTag || undefined,
-    });
+    const defaultVariant = draft.variants[0];
+    if (!defaultVariant) return;
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onAdd({
+        name,
+        localName: draft.localName.trim() || undefined,
+        category: draft.category,
+        description: draft.description.trim() || undefined,
+        storeId: store.id,
+        // Denormalized from the default (first) variant — see
+        // lib/productValidation.ts toProductRow, which the API route
+        // recomputes server-side from `variants` anyway; these just keep
+        // NewProductInput's shape satisfied.
+        price: defaultVariant.price,
+        originalPrice: defaultVariant.originalPrice,
+        unit: formatVariantUnit(defaultVariant),
+        variants: draft.variants,
+        stockStatus: draft.stockStatus,
+        imageUrl: draft.imageUrl,
+        bgColor: draft.bgColor,
+        isVeg: draft.isVeg,
+        freshnessTag: draft.freshnessTag || undefined,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add product — try again.');
+      setSubmitting(false);
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-ink">Add product</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border px-6 py-5">
+          <h3 className="text-lg font-semibold text-ink">Add product</h3>
           <button type="button" onClick={onClose} className="text-muted hover:text-ink">
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4 overflow-y-auto px-6 py-5">
           <select
             value={draft.storeId}
             onChange={(e) => {
@@ -95,7 +132,7 @@ export function AddProductModal({
             className={FIELD_CLASS}
             aria-label="Store"
           >
-            {PLACEHOLDER_STORES.map((s) => (
+            {stores.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name} — {s.district}
               </option>
@@ -103,11 +140,9 @@ export function AddProductModal({
           </select>
 
           <div className="flex items-center gap-3">
-            <input
-              value={draft.imageEmoji}
-              onChange={(e) => setDraft({ ...draft, imageEmoji: e.target.value.slice(0, 2) })}
-              className={`${FIELD_CLASS} w-16 text-center text-xl`}
-              aria-label="Image (emoji)"
+            <ProductImageUpload
+              imageUrl={draft.imageUrl}
+              onChange={(imageUrl, bgColor) => setDraft({ ...draft, imageUrl, bgColor: bgColor ?? undefined })}
             />
             <input
               value={draft.name}
@@ -129,31 +164,28 @@ export function AddProductModal({
             aria-label="Local name"
           />
 
-          <input
+          <select
             value={draft.category}
             onChange={(e) => setDraft({ ...draft, category: e.target.value })}
             className={FIELD_CLASS}
-            placeholder="Category"
             aria-label="Category"
+          >
+            {PRODUCT_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+
+          <textarea
+            value={draft.description}
+            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+            className={`${FIELD_CLASS} min-h-[72px] resize-none`}
+            placeholder="Description — optional"
+            aria-label="Description"
           />
 
-          <div className="flex gap-3">
-            <input
-              type="number"
-              value={draft.price || ''}
-              onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })}
-              className={FIELD_CLASS}
-              placeholder="Price"
-              aria-label="Price"
-            />
-            <input
-              value={draft.unit}
-              onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
-              className={FIELD_CLASS}
-              placeholder="Unit"
-              aria-label="Unit"
-            />
-          </div>
+          <ProductVariantsEditor variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
           {/* Same fields the customer app's ProductCard reads — see
               Product's own note in lib/types.ts. */}
@@ -204,7 +236,7 @@ export function AddProductModal({
           {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-danger">{error}</p>}
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
           <button
             type="button"
             onClick={onClose}
@@ -215,10 +247,10 @@ export function AddProductModal({
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!draft.name.trim()}
-            className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
+            disabled={!draft.name.trim() || submitting}
+            className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
           >
-            Add
+            {submitting ? 'Adding…' : 'Add'}
           </button>
         </div>
       </div>

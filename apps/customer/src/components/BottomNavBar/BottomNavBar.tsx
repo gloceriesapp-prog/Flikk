@@ -30,7 +30,7 @@ import { Image, Pressable, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CartBar } from '../CartBar/CartBar';
@@ -43,14 +43,32 @@ import type { AppStackParamList } from '../../navigation/types';
 
 const USE_LIQUID_GLASS = isLiquidGlassAvailable();
 
+// This component is mounted fresh inside every screen that renders it
+// (HomeScreen, PurchaseScreen, CategoriesScreen, StoreListScreen each render
+// their own <BottomNavBar />), so which tab is "active" can't be local state
+// seeded once at mount — that only ever reflected whichever tab was tapped
+// *from inside this same instance*, not the screen actually on top (e.g.
+// arriving at Categories any way other than tapping this exact pill left it
+// showing Home as active). Deriving it from the real current route name
+// (useRoute, below) instead means it's always correct regardless of how the
+// screen was reached — back navigation, a link from another screen, deep
+// link, anything.
+const ROUTE_TO_TAB_ID: Record<string, string> = {
+  Home: 'home',
+  Purchase: 'order-again',
+  Categories: 'categories',
+  Store: 'store',
+};
+
 const SIDE_BUTTON_SIZE = 60;
 const SIDE_BUTTON_IMAGE_URI =
   'https://images.unsplash.com/photo-1787240663846-598e1033a919?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 export function BottomNavBar() {
-  const [activeId, setActiveId] = useState(BOTTOM_NAV_TABS[0]?.id ?? 'home');
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const route = useRoute();
+  const activeId = ROUTE_TO_TAB_ID[route.name] ?? BOTTOM_NAV_TABS[0]?.id ?? 'home';
 
   const isDeliveryUnlocked = useCartStore((state) => selectCartTotalPrice(state) >= FREE_DELIVERY_THRESHOLD);
   const [showUnlockBanner, setShowUnlockBanner] = useState(false);
@@ -65,7 +83,6 @@ export function BottomNavBar() {
   }, [isDeliveryUnlocked]);
 
   function handlePress(tabId: string) {
-    setActiveId(tabId);
     if (tabId === 'categories') navigation.navigate('Categories');
     if (tabId === 'home') navigation.navigate('Home');
     if (tabId === 'store') navigation.navigate('Store');

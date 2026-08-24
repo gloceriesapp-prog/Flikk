@@ -14,6 +14,7 @@
 // which already mirrors specs/00-foundation/data-model.md's orders table.
 
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { StatusBar } from 'expo-status-bar';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -33,6 +34,11 @@ export function PurchaseScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 bg-white pt-safe">
+      {/* Same fix, same reason, as CategoriesScreen.tsx/CartScreen.tsx —
+          HomeScreen sets the global StatusBar to "light" for its own dark
+          header, which doesn't reset on navigation and leaves invisible
+          white icons against this screen's white background. */}
+      <StatusBar style="dark" />
       <View className="relative flex-row items-center px-5 pb-2 pt-2">
         <Pressable
           onPress={() => navigation.navigate('Home')}

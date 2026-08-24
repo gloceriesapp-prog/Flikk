@@ -20,7 +20,7 @@ export function CategoryTile({ category }: Props) {
       <View className="aspect-square items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-md shadow-black/20">
         <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
       </View>
-      <Text className="text-center text-xs font-semibold leading-4 text-ink" numberOfLines={2}>
+      <Text className="text-center text-sm font-medium leading-4 text-ink" numberOfLines={2}>
         {category.label}
       </Text>
     </Pressable>
