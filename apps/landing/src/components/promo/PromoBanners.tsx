@@ -2,7 +2,8 @@
 
 import React from "react";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 export default function PromoBanners() {
   return (
@@ -41,7 +42,7 @@ export default function PromoBanners() {
                 className="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-full font-bold text-[11px] uppercase tracking-wider shadow-md flex items-center gap-2 group-hover:px-6 transition-all duration-200 cursor-pointer"
               >
                 <span>SHOP NOW</span>
-                <ArrowRight className="w-3.5 h-3.5 text-white/80 group-hover:translate-x-0.5 transition-transform" />
+                <HugeiconsIcon icon={ArrowRight01Icon} className="w-3.5 h-3.5 text-white/80 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
           </div>
@@ -77,7 +78,7 @@ export default function PromoBanners() {
                 className="bg-white hover:bg-slate-50 text-slate-900 px-5 py-2.5 rounded-full font-bold text-[11px] uppercase tracking-wider shadow-md flex items-center gap-2 group-hover:px-6 transition-all duration-200 cursor-pointer"
               >
                 <span>SHOP NOW</span>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-700 group-hover:translate-x-0.5 transition-transform" />
+                <HugeiconsIcon icon={ArrowRight01Icon} className="w-3.5 h-3.5 text-slate-700 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
           </div>
@@ -123,7 +124,7 @@ export default function PromoBanners() {
                 className="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-full font-bold text-[11px] uppercase tracking-wider shadow-md flex items-center gap-2 group-hover:px-6 transition-all duration-200 cursor-pointer"
               >
                 <span>SHOP NOW</span>
-                <ArrowRight className="w-3.5 h-3.5 text-white/80 group-hover:translate-x-0.5 transition-transform" />
+                <HugeiconsIcon icon={ArrowRight01Icon} className="w-3.5 h-3.5 text-white/80 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
           </div>

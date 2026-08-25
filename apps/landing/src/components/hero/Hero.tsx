@@ -2,7 +2,8 @@
 
 import React from "react";
 import Image from "next/image";
-import { Sparkles } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { SparklesIcon } from "@hugeicons/core-free-icons";
 
 const MOCKUP_IMAGE_URL =
   "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/Mockuuups%20Free%20iPhone%20Hand%20Mockup.png";
@@ -16,7 +17,7 @@ export default function Hero() {
           <div className="relative z-10 flex items-end justify-center -mb-1">
             <Image
               src={MOCKUP_IMAGE_URL}
-              alt="Instamart Hand Holding iPhone App Mockup"
+              alt="Flikk Hand Holding iPhone App Mockup"
               width={440}
               height={440}
               priority
@@ -31,7 +32,7 @@ export default function Hero() {
           {/* Left Text Headline */}
           <div className="flex flex-col gap-1">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#0052FF] bg-blue-50 w-fit px-2.5 py-0.5 rounded-full mb-1">
-              <Sparkles className="w-3 h-3" /> Your Everyday Shopping
+              <HugeiconsIcon icon={SparklesIcon} className="w-3 h-3" /> Your Everyday Shopping
             </span>
             <span className="text-2xl sm:text-3xl md:text-[36px] font-semibold text-[#0F172A] leading-[1.18] tracking-tight">
               Everything You Need.

@@ -60,10 +60,35 @@
     font-family: var(--font-gilroy), "Gilroy", sans-serif !important;
   }
 
+  html {
+    scroll-behavior: initial !important;
+  }
+
   html,
   body {
     font-family: var(--font-gilroy), "Gilroy", sans-serif !important;
     background-color: #ffffff !important;
     color: #0f172a;
+  }
+
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+
+  .lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  .lenis.lenis-scrolling iframe {
+    pointer-events: none;
   }
 }

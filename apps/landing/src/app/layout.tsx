@@ -4,8 +4,8 @@ import "./globals.css";
 import SmoothScroll from "@/components/providers/SmoothScroll";
 
 export const metadata: Metadata = {
-  title: "Flikk — 10 Minute Instant Delivery",
-  description: "Get groceries, fresh produce, meat, dairy & daily essentials delivered to your doorstep in 10 minutes in Mangalore.",
+  title: "Flikk — Instant Grocery & Daily Essentials Delivery",
+  description: "Get groceries, fresh produce, meat, dairy & daily essentials delivered to your doorstep in Mangalore.",
 };
 
 export default function RootLayout({

@@ -2,7 +2,13 @@
 
 import React, { useRef } from "react";
 import Image from "next/image";
-import { Plus, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Add01Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Clock01Icon,
+} from "@hugeicons/core-free-icons";
 
 interface ProductItem {
   id: string;
@@ -130,7 +136,7 @@ export default function ProductCarousel() {
                 aria-label="Scroll left"
                 className="w-8 h-8 rounded-full border border-slate-200 bg-white hover:bg-slate-900 hover:text-white text-slate-700 flex items-center justify-center transition-all duration-200 cursor-pointer shadow-xs active:scale-95"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <HugeiconsIcon icon={ArrowLeft01Icon} className="w-4 h-4" />
               </button>
               <button
                 type="button"
@@ -138,7 +144,7 @@ export default function ProductCarousel() {
                 aria-label="Scroll right"
                 className="w-8 h-8 rounded-full border border-slate-200 bg-white hover:bg-slate-900 hover:text-white text-slate-700 flex items-center justify-center transition-all duration-200 cursor-pointer shadow-xs active:scale-95"
               >
-                <ChevronRight className="w-4 h-4" />
+                <HugeiconsIcon icon={ArrowRight01Icon} className="w-4 h-4" />
               </button>
             </div>
 
@@ -147,7 +153,7 @@ export default function ProductCarousel() {
               className="text-sm font-bold text-[#0052FF] hover:underline flex items-center gap-1"
             >
               <span>See All</span>
-              <ChevronRight className="w-4 h-4" />
+              <HugeiconsIcon icon={ArrowRight01Icon} className="w-4 h-4" />
             </a>
           </div>
         </div>
@@ -174,7 +180,7 @@ export default function ProductCarousel() {
                   aria-label={`Add ${prod.name}`}
                   className="absolute top-2.5 right-2.5 w-7 h-7 rounded-xl bg-white hover:bg-[#0052FF] text-[#0052FF] hover:text-white border border-[#0052FF] flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer group-hover:scale-105 active:scale-95 z-10"
                 >
-                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <HugeiconsIcon icon={Add01Icon} className="w-4 h-4" />
                 </button>
               </div>
 
@@ -182,7 +188,7 @@ export default function ProductCarousel() {
               <div className="flex flex-col pt-2.5 px-0.5">
                 {/* Delivery Time */}
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <Clock className="w-2.5 h-2.5 text-slate-400" />
+                  <HugeiconsIcon icon={Clock01Icon} className="w-2.5 h-2.5 text-slate-400" />
                   {prod.deliveryTime}
                 </span>
 

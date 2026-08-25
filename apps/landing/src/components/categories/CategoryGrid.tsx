@@ -2,7 +2,8 @@
 
 import React, { useRef } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 interface CategoryItem {
   id: string;
@@ -79,8 +80,8 @@ export default function CategoryGrid() {
             <h2 className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">
               What are you looking for?
             </h2>
-            <p className="text-xs sm:text-sm font-medium text-slate-500">
-              Explore everyday shopping categories for fast 10-minute delivery
+            <p className="text-sm sm:text-base font-medium text-slate-500">
+              Explore everyday shopping categories with fast local store delivery
             </p>
           </div>
 
@@ -92,7 +93,7 @@ export default function CategoryGrid() {
               aria-label="Scroll categories left"
               className="w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-slate-900 hover:text-white text-slate-700 flex items-center justify-center transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer active:scale-95"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} className="w-4 h-4" />
             </button>
             <button
               type="button"
@@ -100,7 +101,7 @@ export default function CategoryGrid() {
               aria-label="Scroll categories right"
               className="w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-slate-900 hover:text-white text-slate-700 flex items-center justify-center transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer active:scale-95"
             >
-              <ChevronRight className="w-4 h-4" />
+              <HugeiconsIcon icon={ArrowRight01Icon} className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -125,7 +126,7 @@ export default function CategoryGrid() {
                 </h3>
               </div>
 
-              {/* Clean Inner Square Image (NO border, NO outer stroke as requested) */}
+              {/* Clean Inner Square Image */}
               <div className="w-full aspect-square relative rounded-2xl overflow-hidden">
                 <Image
                   src={cat.image}

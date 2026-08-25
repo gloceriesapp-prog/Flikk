@@ -8,10 +8,11 @@ import ProductCarousel from "@/components/products/ProductCarousel";
 import PartnerSection from "@/components/partner/PartnerSection";
 import AppDownloadBanner from "@/components/download/AppDownloadBanner";
 import Footer from "@/components/footer/Footer";
+import StickyBottomDock from "@/components/download/StickyBottomDock";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white flex flex-col justify-between">
+    <div className="min-h-screen bg-white flex flex-col justify-between relative">
       <Navbar />
       <main>
         <Hero />
@@ -24,6 +25,7 @@ export default function Home() {
         <AppDownloadBanner />
       </main>
       <Footer />
+      <StickyBottomDock />
     </div>
   );
 }

@@ -1,20 +1,21 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Zap, Search } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { SparklesIcon, FlashIcon, Search01Icon } from "@hugeicons/core-free-icons";
 
 export default function AppDownloadBanner() {
   return (
-    <section className="w-full bg-white pb-0 overflow-hidden">
+    <section id="app-download-banner" className="w-full bg-white pb-0 overflow-hidden">
       <div className="max-w-[980px] mx-auto px-6">
-        {/* Banner Card Container - Constrained to max-w-[980px], rounded top, flush at bottom with Footer */}
+        {/* Banner Card Container */}
         <div className="w-full bg-[#F2F4F8] rounded-t-3xl pt-8 sm:pt-10 px-8 sm:px-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
           {/* Left Text & Download Buttons Content */}
           <div className="flex flex-col gap-6 max-w-[460px] z-10 py-2">
             {/* Headline */}
             <div className="flex flex-col gap-2">
               <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0052FF] bg-blue-50 w-fit px-3 py-1 rounded-full uppercase tracking-wider">
-                <Sparkles className="w-3 h-3" /> Get 10-Minute Delivery
+                <HugeiconsIcon icon={SparklesIcon} className="w-3 h-3" /> Get Fast Local Delivery
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-[34px] font-extrabold text-[#0F172A] leading-[1.18] tracking-tight">
                 For better experience, download the Flikk app now
@@ -84,7 +85,7 @@ export default function AppDownloadBanner() {
             </div>
           </div>
 
-          {/* Right Smartphone Screen Mockup Visual (Standing Flush at Bottom) */}
+          {/* Right Smartphone Screen Mockup Visual */}
           <div className="relative z-10 flex items-end justify-center md:justify-end mb-0 pt-4 md:pt-0 self-end">
             {/* Phone Outer Chassis Frame */}
             <div className="w-[230px] sm:w-[250px] h-[310px] sm:h-[340px] bg-slate-900 rounded-t-[36px] p-2.5 pb-0 border-4 border-b-0 border-slate-800 relative overflow-hidden">
@@ -98,8 +99,8 @@ export default function AppDownloadBanner() {
                 {/* Header bar inside phone */}
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-1.5 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                    <Zap className="w-2.5 h-2.5 fill-current" />
-                    <span>8 MINS</span>
+                    <HugeiconsIcon icon={FlashIcon} className="w-2.5 h-2.5 fill-current" />
+                    <span>FAST</span>
                   </div>
                   <div className="flex flex-col text-right">
                     <span className="text-[9px] font-bold text-slate-400">Location</span>
@@ -110,7 +111,7 @@ export default function AppDownloadBanner() {
                 {/* Search Bar inside phone */}
                 <div className="w-full bg-slate-100 rounded-xl px-2.5 py-1.5 flex items-center justify-between text-slate-400 text-[10px]">
                   <span>Search "ice cream"</span>
-                  <Search className="w-3 h-3 text-slate-400" />
+                  <HugeiconsIcon icon={Search01Icon} className="w-3 h-3 text-slate-400" />
                 </div>
 
                 {/* Quick Picks Label inside phone */}

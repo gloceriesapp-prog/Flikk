@@ -42,7 +42,7 @@ export function HomeHeader({
   showCategoryTabs = true,
 }: Props) {
   return (
-    // #4B4B4B , or #72D13D
+    // #4B4B4B , or #72D13D or #12231F
     <View className="overflow-hidden" style={{ backgroundColor: '#103C1F' }}>
       <View className="pt-safe">
         <View className="px-6 pt-2">
