@@ -7,7 +7,6 @@ import {
   Add01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  Clock01Icon,
 } from "@hugeicons/core-free-icons";
 
 interface ProductItem {
@@ -17,91 +16,83 @@ interface ProductItem {
   price: number;
   originalPrice?: number;
   discount?: string;
-  deliveryTime: string;
   image: string;
   badgeBg?: string;
 }
 
-const ICE_CREAM_PRODUCTS: ProductItem[] = [
+const DEFAULT_PRODUCT_IMAGE =
+  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/amul.jpeg";
+
+const POPULAR_PRODUCTS: ProductItem[] = [
   {
     id: "p-1",
-    name: "Amul Tru Berry Dazzle Ice Cream Tub",
+    name: "Amul Taaza Toned Fresh Milk",
+    quantity: "500 ml",
+    price: 27,
+    originalPrice: 28,
+    discount: "4% OFF",
+    image: DEFAULT_PRODUCT_IMAGE,
+  },
+  {
+    id: "p-2",
+    name: "Amul Pasteurised Salted Butter",
+    quantity: "100 g",
+    price: 56,
+    originalPrice: 60,
+    discount: "6% OFF",
+    image: DEFAULT_PRODUCT_IMAGE,
+  },
+  {
+    id: "p-3",
+    name: "Fresh Tender Coconut (Elaneer)",
+    quantity: "1 pc",
+    price: 49,
+    originalPrice: 65,
+    discount: "24% OFF",
+    image: DEFAULT_PRODUCT_IMAGE,
+  },
+  {
+    id: "p-4",
+    name: "English Oven Premium Brown Bread",
+    quantity: "400 g",
+    price: 45,
+    originalPrice: 50,
+    discount: "10% OFF",
+    image: DEFAULT_PRODUCT_IMAGE,
+  },
+  {
+    id: "p-5",
+    name: "Amul Tru Berry Dazzle Ice Cream",
     quantity: "1 ltr",
     price: 208,
     originalPrice: 300,
     discount: "30% OFF",
-    deliveryTime: "4 mins",
-    image: "/images/sub_icecream.png",
-    badgeBg: "bg-pink-500",
-  },
-  {
-    id: "p-2",
-    name: "Go Zero Mad Over Mango Guilt Free Tub",
-    quantity: "500 ml",
-    price: 266,
-    originalPrice: 380,
-    discount: "30% OFF",
-    deliveryTime: "4 mins",
-    image: "/images/sub_icecream.png",
-    badgeBg: "bg-amber-500",
-  },
-  {
-    id: "p-3",
-    name: "The Brooklyn Creamery Choco Fudge",
-    quantity: "450 ml",
-    price: 332,
-    originalPrice: 349,
-    discount: "4% OFF",
-    deliveryTime: "4 mins",
-    image: "/images/sub_icecream.png",
-  },
-  {
-    id: "p-4",
-    name: "Go Zero Only Vanilla Guilt Free Tub",
-    quantity: "1 ltr",
-    price: 219,
-    originalPrice: 249,
-    discount: "12% OFF",
-    deliveryTime: "4 mins",
-    image: "/images/sub_icecream.png",
-  },
-  {
-    id: "p-5",
-    name: "Go Zero Simply Sitaphal Guilt Free",
-    quantity: "500 ml",
-    price: 266,
-    originalPrice: 380,
-    discount: "30% OFF",
-    deliveryTime: "4 mins",
-    image: "/images/sub_icecream.png",
+    image: DEFAULT_PRODUCT_IMAGE,
   },
   {
     id: "p-6",
-    name: "The Brooklyn Creamery Holy Moly Mango",
-    quantity: "450 ml",
-    price: 332,
-    originalPrice: 349,
-    discount: "4% OFF",
-    deliveryTime: "4 mins",
-    image: "/images/sub_icecream.png",
+    name: "Thums Up Charged Soft Drink Can",
+    quantity: "300 ml",
+    price: 38,
+    originalPrice: 40,
+    discount: "5% OFF",
+    image: DEFAULT_PRODUCT_IMAGE,
   },
   {
     id: "p-7",
-    name: "Kwality Wall's Alphonso Mango Tub",
-    quantity: "700 ml",
-    price: 160,
-    deliveryTime: "4 mins",
-    image: "/images/sub_icecream.png",
+    name: "Lay's India's Magic Masala Chips",
+    quantity: "50 g",
+    price: 20,
+    image: DEFAULT_PRODUCT_IMAGE,
   },
   {
     id: "p-8",
-    name: "NIC Ice Creams Tender Coconut Tub",
-    quantity: "500 ml",
-    price: 322,
-    originalPrice: 350,
-    discount: "8% OFF",
-    deliveryTime: "4 mins",
-    image: "/images/sub_icecream.png",
+    name: "Ferrero Rocher Hazelnut Box",
+    quantity: "4 pcs (50g)",
+    price: 149,
+    originalPrice: 169,
+    discount: "12% OFF",
+    image: DEFAULT_PRODUCT_IMAGE,
   },
 ];
 
@@ -123,8 +114,8 @@ export default function ProductCarousel() {
       <div className="max-w-[980px] mx-auto px-6 flex flex-col gap-5">
         {/* Section Header: Title & Controls */}
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-tight">
-            Discover Your Favorite Scoop
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[#0F172A] tracking-tight">
+            Most Ordered Right Now ⚡
           </h2>
 
           <div className="flex items-center gap-3 shrink-0">
@@ -149,7 +140,7 @@ export default function ProductCarousel() {
             </div>
 
             <a
-              href="#see-all-icecreams"
+              href="#see-all-products"
               className="text-sm font-bold text-[#0052FF] hover:underline flex items-center gap-1"
             >
               <span>See All</span>
@@ -164,21 +155,27 @@ export default function ProductCarousel() {
           className="flex items-start gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory py-2 px-0.5 scroll-smooth"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {ICE_CREAM_PRODUCTS.map((prod) => (
+          {POPULAR_PRODUCTS.map((prod) => (
             <div
               key={prod.id}
               className="w-[140px] sm:w-[152px] shrink-0 snap-start flex flex-col group cursor-pointer"
             >
-              {/* Product Image Container with Floating (+) Button */}
-              <div className="w-full h-[140px] sm:h-[152px] rounded-2xl bg-[#F8FAFC] group-hover:bg-[#F1F5F9] border border-slate-200/70 p-3 relative flex items-center justify-center overflow-hidden transition-all duration-200 group-hover:shadow-md group-hover:-translate-y-1">
-                {/* SVG Product Graphic / Tub Image */}
-                <IceCreamTubGraphic id={prod.id} />
+              {/* Product Image Container with Floating (+) Button (No Hover Lift) */}
+              <div className="w-full h-[140px] sm:h-[152px] rounded-2xl bg-[#F8FAFC] border border-slate-200/70 p-3 relative flex items-center justify-center overflow-hidden transition-colors duration-200">
+                {/* Real Product Image */}
+                <Image
+                  src={prod.image}
+                  alt={prod.name}
+                  width={120}
+                  height={120}
+                  className="w-full h-full object-contain p-1"
+                />
 
                 {/* Floating (+) ADD Button */}
                 <button
                   type="button"
                   aria-label={`Add ${prod.name}`}
-                  className="absolute top-2.5 right-2.5 w-7 h-7 rounded-xl bg-white hover:bg-[#0052FF] text-[#0052FF] hover:text-white border border-[#0052FF] flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer group-hover:scale-105 active:scale-95 z-10"
+                  className="absolute top-2.5 right-2.5 w-7 h-7 rounded-xl bg-white hover:bg-[#0052FF] text-[#0052FF] hover:text-white border border-[#0052FF] flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer active:scale-95 z-10"
                 >
                   <HugeiconsIcon icon={Add01Icon} className="w-4 h-4" />
                 </button>
@@ -186,14 +183,8 @@ export default function ProductCarousel() {
 
               {/* Product Info */}
               <div className="flex flex-col pt-2.5 px-0.5">
-                {/* Delivery Time */}
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <HugeiconsIcon icon={Clock01Icon} className="w-2.5 h-2.5 text-slate-400" />
-                  {prod.deliveryTime}
-                </span>
-
                 {/* Product Name */}
-                <h3 className="text-xs sm:text-[13px] font-bold text-[#0F172A] leading-snug tracking-tight line-clamp-2 mt-1 min-h-[34px] group-hover:text-[#0052FF] transition-colors">
+                <h3 className="text-xs sm:text-[13px] font-bold text-[#0F172A] leading-snug tracking-tight line-clamp-2 min-h-[34px] group-hover:text-[#0052FF] transition-colors">
                   {prod.name}
                 </h3>
 
@@ -229,50 +220,4 @@ export default function ProductCarousel() {
       </div>
     </section>
   );
-}
-
-{/* Crisp Vector Graphic Component for Ice Cream Tubs */}
-function IceCreamTubGraphic({ id }: { id: string }) {
-  switch (id) {
-    case "p-1": // Berry Dazzle
-      return (
-        <svg viewBox="0 0 100 100" className="w-full h-full object-contain">
-          <ellipse cx="50" cy="30" rx="36" ry="10" fill="#9B2C2C" />
-          <path d="M14 30 L22 80 H78 L86 30 Z" fill="#D53F8C" />
-          <ellipse cx="50" cy="30" rx="33" ry="8" fill="#E53E3E" />
-          <circle cx="50" cy="55" r="14" fill="#FFF" opacity="0.9" />
-          <text x="50" y="58" fontSize="8" fontWeight="bold" textAnchor="middle" fill="#9B2C2C">BERRY</text>
-        </svg>
-      );
-    case "p-2": // Mango Tub
-      return (
-        <svg viewBox="0 0 100 100" className="w-full h-full object-contain">
-          <ellipse cx="50" cy="30" rx="36" ry="10" fill="#D69E2E" />
-          <path d="M14 30 L22 80 H78 L86 30 Z" fill="#DD6B20" />
-          <ellipse cx="50" cy="30" rx="33" ry="8" fill="#F6AD55" />
-          <circle cx="50" cy="55" r="14" fill="#FFF" opacity="0.9" />
-          <text x="50" y="58" fontSize="8" fontWeight="bold" textAnchor="middle" fill="#DD6B20">MANGO</text>
-        </svg>
-      );
-    case "p-3": // Choco Fudge
-      return (
-        <svg viewBox="0 0 100 100" className="w-full h-full object-contain">
-          <ellipse cx="50" cy="30" rx="36" ry="10" fill="#4A5568" />
-          <path d="M14 30 L22 80 H78 L86 30 Z" fill="#2D3748" />
-          <ellipse cx="50" cy="30" rx="33" ry="8" fill="#744210" />
-          <circle cx="50" cy="55" r="14" fill="#3182CE" />
-          <text x="50" y="58" fontSize="7" fontWeight="bold" textAnchor="middle" fill="#FFF">BROOKLYN</text>
-        </svg>
-      );
-    default:
-      return (
-        <svg viewBox="0 0 100 100" className="w-full h-full object-contain">
-          <ellipse cx="50" cy="30" rx="36" ry="10" fill="#319795" />
-          <path d="M14 30 L22 80 H78 L86 30 Z" fill="#319795" />
-          <ellipse cx="50" cy="30" rx="33" ry="8" fill="#4FD1C5" />
-          <circle cx="50" cy="55" r="14" fill="#FFF" />
-          <text x="50" y="58" fontSize="8" fontWeight="bold" textAnchor="middle" fill="#234E52">SCOOP</text>
-        </svg>
-      );
-  }
 }
