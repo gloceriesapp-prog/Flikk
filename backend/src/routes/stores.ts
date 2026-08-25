@@ -20,13 +20,24 @@ const PRODUCT_WITH_VARIANTS_SELECT =
 
 storesRouter.get('/', async (req, res, next) => {
   try {
-    const zoneId = req.query.zone_id as string | undefined;
-    if (!zoneId) throw new AppError(400, 'MISSING_ZONE', 'zone_id query param is required.');
+    // zone_id is optional — single zone at launch (CLAUDE.md), so a caller
+    // that doesn't know one yet (e.g. Home's own "Shops Near You" row,
+    // which has no zone-picking UI to source it from) falls back to
+    // whichever zone is currently active instead of being required to pass
+    // an id it has no way to have. admin's own POST /api/stores resolves
+    // zone_id server-side the same way, for the same reason.
+    let zoneId = req.query.zone_id as string | undefined;
+    if (!zoneId) {
+      const { data: zone, error: zoneError } = await supabase.from('zones').select('id').eq('is_active', true).limit(1).single();
+      if (zoneError) throw zoneError;
+      zoneId = zone.id;
+    }
     const { data, error } = await supabase
       .from('stores')
       .select('*')
       .eq('zone_id', zoneId)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .order('name');
     if (error) throw error;
     res.json(data);
   } catch (err) {

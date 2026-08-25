@@ -12,13 +12,15 @@
 // compensate for the card wrapper no longer giving this row any visual
 // weight of its own.
 //
-// Reads from the same STORE_LISTINGS as screens/store-list, so this row and
-// the full Store tab can't drift out of sync with each other.
+// Real stores (useNearbyStores.ts -> GET /stores), not the old
+// STORE_LISTINGS mock — same stores a founder adds via admin's Add Store
+// form. Renders nothing while there are none, same convention as the
+// deals/essentials sections on this same screen.
 
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScrollView, Text, View } from 'react-native';
-import { STORE_LISTINGS } from '../../store-list/data';
+import { useNearbyStores } from './useNearbyStores';
 import { NearbyStoreCard } from './components/NearbyStoreCard';
 import { ViewAllStoresTile } from './components/ViewAllStoresTile';
 import type { AppStackParamList } from '../../../navigation/types';
@@ -27,11 +29,14 @@ const ROW_STORE_COUNT = 4;
 
 export function NearbyStoresSection() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const rowStores = STORE_LISTINGS.slice(0, ROW_STORE_COUNT);
+  const { data: stores = [] } = useNearbyStores();
+  const rowStores = stores.slice(0, ROW_STORE_COUNT);
 
   function goToStore(storeId: string, storeName: string) {
     navigation.navigate('StoreDetail', { storeId, storeName });
   }
+
+  if (rowStores.length === 0) return null;
 
   return (
     <View className="pt-6">

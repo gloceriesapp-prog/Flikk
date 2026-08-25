@@ -39,7 +39,7 @@ export function ReceiptScreen({ navigation, route }: Props) {
         <Pressable onPress={() => navigation.navigate('Home')} hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={Cancel01Icon} size={20} color={colors.ink} />
         </Pressable>
-        <Text className="text-lg font-extrabold text-ink">E-Receipt</Text>
+        <Text className="text-lg font-semibold text-ink">E-Receipt</Text>
         <Pressable hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={Download03Icon} size={20} color={colors.ink} />
         </Pressable>
@@ -49,7 +49,7 @@ export function ReceiptScreen({ navigation, route }: Props) {
         <SuccessSeal size={72} color={colors.success} />
 
         <View className="items-center gap-0">
-          <Text className="text-xl font-semibold text-ink">Order Confirmed!</Text>
+          <Text className="text-xl font-medium text-ink">Order Confirmed!</Text>
           <Text className="text-center text-base text-ink/50">Thank you for shopping with Flikk.</Text>
         </View>
 

@@ -26,7 +26,7 @@ export function StoreListScreen({ navigation }: Props) {
       <StoreHeader onBack={() => navigation.goBack()} onSearch={() => navigation.navigate('Search')} />
 
       <ScrollView className="flex-1" contentContainerClassName="pb-10">
-        <TopStoresSection />
+        {/* <TopStoresSection /> */}
         <AllStoresSection />
       </ScrollView>
     </View>
