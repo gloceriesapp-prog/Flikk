@@ -115,12 +115,12 @@ export default function ProductCarousel() {
         {/* Section Header: Title & Controls */}
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl sm:text-2xl font-extrabold text-[#0F172A] tracking-tight">
-            Most Ordered Right Now ⚡
+            Most Ordered Right Now
           </h2>
 
           <div className="flex items-center gap-3 shrink-0">
             {/* Scroll Navigation Arrows */}
-            <div className="hidden sm:flex items-center gap-2">
+            {/* <div className="hidden sm:flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => handleScroll("left")}
@@ -137,7 +137,7 @@ export default function ProductCarousel() {
               >
                 <HugeiconsIcon icon={ArrowRight01Icon} className="w-4 h-4" />
               </button>
-            </div>
+            </div> */}
 
             <a
               href="#see-all-products"
@@ -184,18 +184,18 @@ export default function ProductCarousel() {
               {/* Product Info */}
               <div className="flex flex-col pt-2.5 px-0.5">
                 {/* Product Name */}
-                <h3 className="text-xs sm:text-[13px] font-bold text-[#0F172A] leading-snug tracking-tight line-clamp-2 min-h-[34px] group-hover:text-[#0052FF] transition-colors">
+                <h3 className="text-xs sm:text-[14px] font-extrabold text-[#0F172A] leading-snug tracking-tight line-clamp-2 min-h-[36px] transition-colors">
                   {prod.name}
                 </h3>
 
                 {/* Quantity */}
-                <span className="text-[11px] font-medium text-slate-400 mt-0.5">
+                <span className="text-xs font-medium text-slate-400 mt-0.5">
                   {prod.quantity}
                 </span>
 
                 {/* Discount Tag */}
                 {prod.discount ? (
-                  <span className="text-[11px] font-extrabold text-emerald-600 tracking-tight mt-1">
+                  <span className="text-xs font-extrabold text-emerald-600 tracking-tight mt-1">
                     {prod.discount}
                   </span>
                 ) : (
@@ -204,11 +204,11 @@ export default function ProductCarousel() {
 
                 {/* Price Row */}
                 <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-sm font-black text-slate-900">
+                  <span className="text-base font-extrabold text-slate-900">
                     ₹{prod.price}
                   </span>
                   {prod.originalPrice && (
-                    <span className="text-xs font-semibold text-slate-400 line-through">
+                    <span className="text-sm font-semibold text-slate-400 line-through">
                       ₹{prod.originalPrice}
                     </span>
                   )}

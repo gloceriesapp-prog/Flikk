@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import AnnouncementBanner from "./AnnouncementBanner";
+import LocationModal from "../location/LocationModal";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Search01Icon,
@@ -29,12 +31,12 @@ const SEARCH_PLACEHOLDERS = [
 ];
 
 const POPULAR_SEARCHES = [
-  { term: "Ice Cream Tubs", icon: "🍨", category: "Desserts" },
-  { term: "Organic Milk", icon: "🥛", category: "Dairy" },
-  { term: "Fresh Bananas", icon: "🍌", category: "Fruits" },
-  { term: "Dark Chocolate", icon: "🍫", category: "Snacks" },
-  { term: "Farm Eggs", icon: "🥚", category: "Breakfast" },
-  { term: "Cold Drinks", icon: "🥤", category: "Beverages" },
+  { term: "Ice Cream Tubs", category: "Desserts" },
+  { term: "Organic Milk", category: "Dairy" },
+  { term: "Fresh Bananas", category: "Fruits" },
+  { term: "Dark Chocolate", category: "Snacks" },
+  { term: "Farm Fresh Eggs", category: "Breakfast" },
+  { term: "Cold Drinks", category: "Beverages" },
 ];
 
 export default function Navbar() {
@@ -44,8 +46,39 @@ export default function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [modalSearchTerm, setModalSearchTerm] = useState<string | null>(null);
 
+  // User Location State & First-Load Prompt Modal State
+  const [userLocation, setUserLocation] = useState<string>("Kodialbail, Mangalore");
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isFirstVisit, setIsFirstVisit] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // First-load location detection & instant restoration on refresh
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedLoc = localStorage.getItem("flikk_user_location");
+      if (savedLoc && savedLoc.trim() !== "") {
+        setUserLocation(savedLoc);
+        setIsLocationModalOpen(false);
+        setIsFirstVisit(false);
+      } else {
+        setIsFirstVisit(true);
+        const timeout = setTimeout(() => {
+          setIsLocationModalOpen(true);
+        }, 300);
+        return () => clearTimeout(timeout);
+      }
+    }
+  }, []);
+
+  const handleSelectLocation = (newLoc: string) => {
+    setUserLocation(newLoc);
+    setIsFirstVisit(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("flikk_user_location", newLoc);
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -76,6 +109,9 @@ export default function Navbar() {
 
   return (
     <header className="w-full bg-white border-b border-slate-200/80 sticky top-0 z-50">
+      {/* Top Announcement Banner */}
+      <AnnouncementBanner />
+
       <div className="max-w-[980px] mx-auto px-6 py-3 flex items-center justify-between gap-4 sm:gap-6 bg-white">
         {/* Left Brand Logo & Location Pill */}
         <div className="flex items-center gap-3 shrink-0">
@@ -106,18 +142,23 @@ export default function Navbar() {
           <div className="hidden md:block w-px h-7 bg-slate-200" />
 
           {/* Location Badge Pill */}
-          <div className="hidden lg:flex items-center gap-1.5 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl cursor-pointer transition-colors text-left">
+          <button
+            type="button"
+            onClick={() => setIsLocationModalOpen(true)}
+            aria-label="Change delivery location"
+            className="flex items-center gap-1.5 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl cursor-pointer transition-colors text-left group"
+          >
             <HugeiconsIcon icon={Location01Icon} className="w-4 h-4 text-[#0052FF] shrink-0" />
             <div className="flex flex-col leading-tight">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Location
               </span>
-              <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1">
-                Kodialbail, Mangalore
-                <HugeiconsIcon icon={ArrowDown01Icon} className="w-3 h-3 text-slate-500" />
+              <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1 group-hover:text-[#0052FF] transition-colors">
+                {userLocation}
+                <HugeiconsIcon icon={ArrowDown01Icon} className="w-3 h-3 text-slate-500 group-hover:text-[#0052FF] transition-colors" />
               </span>
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Center Search Bar with Interactive Dropdown */}
@@ -152,7 +193,7 @@ export default function Navbar() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5 pb-3">
+              <div className="flex flex-col gap-1 pb-3">
                 {POPULAR_SEARCHES.map((item) => (
                   <button
                     key={item.term}
@@ -162,19 +203,17 @@ export default function Navbar() {
                       setIsSearchFocused(false);
                       setIsDropdownOpen(true);
                     }}
-                    className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-50 text-left transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 text-left transition-colors cursor-pointer group w-full"
                   >
-                    <span className="text-base bg-slate-100 group-hover:bg-blue-100/60 w-7 h-7 rounded-lg flex items-center justify-center transition-colors shrink-0">
-                      {item.icon}
-                    </span>
-                    <div className="flex flex-col overflow-hidden">
-                      <span className="text-xs font-bold text-slate-800 truncate group-hover:text-[#0052FF] transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <HugeiconsIcon icon={Search01Icon} className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0052FF] transition-colors shrink-0" />
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-[#0052FF] transition-colors whitespace-nowrap truncate">
                         {item.term}
                       </span>
-                      <span className="text-[9px] font-medium text-slate-400">
-                        {item.category}
-                      </span>
                     </div>
+                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 group-hover:bg-blue-50 group-hover:text-[#0052FF] px-2 py-0.5 rounded-md transition-colors shrink-0">
+                      {item.category}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -335,6 +374,14 @@ export default function Navbar() {
           )}
         </div>
       </div>
+      {/* Interactive Location Selection Modal */}
+      <LocationModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        onSelectLocation={handleSelectLocation}
+        currentLocation={userLocation}
+        isFirstVisit={isFirstVisit}
+      />
     </header>
   );
 }
