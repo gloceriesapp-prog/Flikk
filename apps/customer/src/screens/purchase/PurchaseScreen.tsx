@@ -69,7 +69,7 @@ export function PurchaseScreen({ navigation }: Props) {
 
           {PAST_ORDERS.length > 0 && (
             <View className="mt-3 gap-3">
-              <Text className="text-lg font-semibold text-ink">Past Orders</Text>
+              <Text className="text-lg font-medium text-ink">Past Orders</Text>
               {PAST_ORDERS.map((order) => (
                 <PastOrderCard key={order.id} order={order} />
               ))}

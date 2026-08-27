@@ -15,7 +15,7 @@ export function PastOrderCard({ order }: Props) {
   const itemsLabel = order.items.map((item) => item.name).join(', ');
 
   return (
-    <View className="flex-row items-center gap-3 rounded-2xl border border-gray-100 bg-gray-100 p-4">
+    <View className="flex-row items-center gap-3 rounded-2xl bg-[#FAFAFA] p-4">
       <ItemAvatarStack items={order.items} />
 
       <View className="flex-1">

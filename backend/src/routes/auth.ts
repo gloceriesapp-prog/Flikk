@@ -53,6 +53,8 @@ authRouter.post('/otp/verify', async (req, res, next) => {
 // Polled by WaitingApprovalScreen and re-checked once after RootNavigator
 // hydrates a persisted session (see that app's own notes) — has_store /
 // is_approved aren't in the JWT, only derivable by asking the DB directly.
+// phone/name ride along too — the customer app's own ProfileScreen needs
+// them and they're already real columns on users, not fetched separately.
 authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     const { count, error } = await supabase
@@ -60,7 +62,20 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       .select('id', { count: 'exact', head: true })
       .eq('owner_user_id', req.user!.id);
     if (error) throw error;
-    res.json({ is_approved: req.user!.isApproved, has_store: (count ?? 0) > 0 });
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('phone, name')
+      .eq('id', req.user!.id)
+      .single();
+    if (userError) throw userError;
+
+    res.json({
+      is_approved: req.user!.isApproved,
+      has_store: (count ?? 0) > 0,
+      phone: user.phone,
+      name: user.name,
+    });
   } catch (err) {
     next(err);
   }

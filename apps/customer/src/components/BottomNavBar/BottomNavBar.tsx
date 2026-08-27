@@ -95,9 +95,15 @@ export function BottomNavBar() {
           — stays faintly visible through the fade instead of disappearing
           into a solid page-color block (which read as an opaque overlay).
           pointerEvents="none" so it never blocks taps to the scroll view
-          underneath. Rendered before the pill so it stacks behind it. */}
+          underneath. Rendered before the pill so it stacks behind it.
+          First stop is 'rgba(255,255,255,0)', not the literal string
+          'transparent' — LinearGradient parses 'transparent' as
+          rgba(0,0,0,0) (black, fully see-through), so interpolating from
+          there to white-55%-opaque crossed through muddy gray/black
+          midtones instead of a clean white fade. Keeping every stop's RGB
+          channel at white and only varying alpha fixes that. */}
       <LinearGradient
-        colors={['transparent', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.7)']}
+        colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.7)']}
         locations={[0, 0.55, 1]}
         pointerEvents="none"
         style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: insets.bottom + 120 }}
@@ -107,12 +113,14 @@ export function BottomNavBar() {
         style={{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + 4 }}
         className="flex-row items-center gap-3"
       >
-        {/* Shadow lives on this outer, non-clipping wrapper — BlurView needs
-            overflow:hidden to clip its rounded corners, which would also
-            clip the shadow if they shared one layer. Kept subtle — a heavy
-            shadow on top of the fade above reads as a dark smudge, not
-            depth. */}
-        <View className="flex-1 shadow-sm shadow-black/15">
+        {/* No shadow on this wrapper (there used to be one, shadow-sm
+            shadow-black/15) — RN's shadow-* utilities map to Android's
+            `elevation`, which renders as a large diffuse dark halo rather
+            than a tight drop shadow, and on top of the fade gradient above
+            it read as a black smudge across the content behind the pill,
+            not depth. Dropped entirely rather than tuned smaller — the
+            glass pill itself already reads as elevated without it. */}
+        <View className="flex-1">
           {USE_LIQUID_GLASS ? (
             <GlassView
               glassEffectStyle="regular"
@@ -146,10 +154,8 @@ export function BottomNavBar() {
           )}
         </View>
 
-        {/* Same shadow-lives-outside-the-clip reasoning as the pill above —
-            GlassView/overflow:hidden would clip a shadow set on the same
-            layer. */}
-        <View style={{ width: SIDE_BUTTON_SIZE, height: SIDE_BUTTON_SIZE }} className="shadow-sm shadow-black/15">
+        {/* Same shadow removal, same reason, as the pill wrapper above. */}
+        <View style={{ width: SIDE_BUTTON_SIZE, height: SIDE_BUTTON_SIZE }}>
           {USE_LIQUID_GLASS ? (
             <GlassView
               glassEffectStyle="regular"

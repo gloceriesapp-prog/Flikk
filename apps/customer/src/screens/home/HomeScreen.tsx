@@ -11,10 +11,8 @@
 // Full discovery/browse (store lists, C4/C5) is separate work, see
 // specs/01-customer-app/screens.md.
 
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Text, View } from 'react-native';
-import { setStatusBarStyle, StatusBar } from 'expo-status-bar';
-import { useFocusEffect } from '@react-navigation/native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
@@ -41,31 +39,16 @@ export function HomeScreen({ navigation }: Props) {
     scrollY.value = event.contentOffset.y;
   });
 
-  // The <StatusBar style="light"/> below only re-asserts on mount, not on
-  // regaining focus — react-navigation's native-stack keeps prior screens
-  // mounted, so navigating to e.g. Cart (which sets its own "dark" style for
-  // its white header) and then back to Home leaves the icons dark against
-  // Home's own dark header, since nothing re-ran "light" on the way back.
-  // useFocusEffect + the imperative setStatusBarStyle re-applies it every
-  // time this screen becomes the focused one, not just the first time it
-  // mounts.
-  useFocusEffect(
-    useCallback(() => {
-      setStatusBarStyle('light');
-    }, [])
-  );
-
   return (
     // BottomNavBar is a sibling of the ScrollView, not inside its scrollable
     // content — that's what keeps it floating fixed in place while the page
     // scrolls underneath it.
     <View className="flex-1 bg-white">
-      {/* App.tsx's global StatusBar is "dark" (dark icons), correct
-          everywhere else, but invisible against Home's own dark header
-          (HomeHeader.tsx). This mount-time declaration plus the
-          useFocusEffect above together cover both the initial mount and
-          every later refocus. */}
-      <StatusBar style="light" />
+      {/* No per-screen StatusBar override needed here anymore — HomeHeader
+          is a light pastel fill now (#E8E7FF), not the earlier dark
+          gradient, so App.tsx's global "dark" style already gives correct,
+          visible icons without Home having to re-assert anything on every
+          focus. */}
       <Animated.ScrollView
         className="flex-1"
         contentContainerClassName="pb-28"

@@ -17,6 +17,7 @@ import { LocationPermissionScreen } from '../screens/location/LocationPermission
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
 import { MapConfirmScreen } from '../screens/location/MapConfirmScreen';
 import { PaymentStatusScreen } from '../screens/payment-status/PaymentStatusScreen';
+import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { PurchaseScreen } from '../screens/purchase/PurchaseScreen';
 import { ReceiptScreen } from '../screens/receipt/ReceiptScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
@@ -54,6 +55,7 @@ export function AppNavigator() {
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Store" component={StoreListScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Purchase" component={PurchaseScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
       <Stack.Screen name="StoreDetail" component={StoreDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />

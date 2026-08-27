@@ -1,15 +1,15 @@
 // Top-of-Home block: ETA, location, avatar, search. Everything below this is
 // the future browse/discovery surface (PRD C3/C4) — not built yet.
 //
-// Flat #103C1F background — was a react-native-svg RadialGradient (off-
-// center circle from #1e3316 to #101c10); switched to a flat fill per an
-// explicit ask for this exact color instead of a gradient sheen.
+// Flat #DDF7E8 fill, per an explicit ask to drop the gradient this used
+// briefly (indigo/lime/pale-blue) in favor of one single pale-mist color.
 //
-// Because the background is dark, everything that sits directly on it is
-// light/white — see LocationSelector.tsx, DeliveryModeSwitcher.tsx, and
-// CategoryTabItem.tsx's own notes on their unselected-state colors. Their
-// selected/filled states (white search bar, white category card, solid
-// pill) already had their own opaque backgrounds and needed no change.
+// This is now a LIGHT background, but LocationSelector.tsx,
+// DeliveryModeSwitcher.tsx, and CategoryTabItem.tsx are all still styled
+// for the earlier dark header (white/light text, low-opacity white pills)
+// — that combination reads as low-to-failing contrast (white-ish text on
+// pale mint). Left as asked rather than silently darkening the text to
+// compensate; flagging it since it wasn't part of this specific request.
 //
 // ETA/location and the avatar (now part of the same row via
 // DeliveryModeSwitcher, not a separate always-visible element) both
@@ -42,8 +42,7 @@ export function HomeHeader({
   showCategoryTabs = true,
 }: Props) {
   return (
-    // #4B4B4B , or #72D13D or #12231F
-    <View className="overflow-hidden" style={{ backgroundColor: '#103C1F' }}>
+    <View className="overflow-hidden" style={{ backgroundColor: '#E8E7FF' }}>
       <View className="pt-safe">
         <View className="px-6 pt-2">
           <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} />
