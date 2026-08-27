@@ -80,7 +80,7 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
   return (
     <Pressable onPress={onPress} className={`${widthClassName} gap-2`}>
       <View
-        className="aspect-square overflow-hidden rounded-2xl border border-gray-100 shadow-md shadow-black/20"
+        className="aspect-square overflow-hidden rounded-xl border border-gray-100 shadow-md shadow-black/20"
         style={{ backgroundColor: imageUrl ? (bgColor ?? colors.mist) : undefined }}
       >
         {/* Real product photos (imageUrl set) render "contain" with a
@@ -126,9 +126,9 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
         {quantity === 0 ? (
           <Pressable
             onPress={() => addItem({ id, name, weight: selectedSize, price, originalPrice })}
-            className="absolute bottom-0 right-0 rounded-tl-lg rounded-br-2xl bg-lime px-3 py-1.5 shadow-sm shadow-black/20"
+            className="absolute bottom-0 right-0 rounded-lg bg-[#2457F5] px-3 py-1.5 shadow-sm shadow-black/20"
           >
-            <Text className="text-xs font-semibold text-ink">ADD</Text>
+            <Text className="text-xs font-medium text-white">ADD</Text>
           </Pressable>
         ) : (
           <View className="absolute bottom-0 right-0 flex-row items-center gap-2 rounded-tl-lg rounded-br-2xl bg-lime px-1.5 py-1.5 shadow-sm shadow-black/20">

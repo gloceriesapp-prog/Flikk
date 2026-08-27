@@ -309,3 +309,37 @@ export interface ProductVariant {
 // mapRowToProduct used for reads — the modal only knows storeId, picked
 // from a real StoreOption).
 export type NewProductInput = Omit<Product, 'id' | 'storeName'>;
+
+// Categories screen — the real name+photo pair the customer app's own
+// Categories browse grid reads (backend/src/routes/categories.ts ->
+// apps/customer/src/components/CategorySections/), not a hardcoded UI
+// string. sortOrder controls the grid's left-to-right/top-to-bottom order;
+// a founder reordering categories is a real, expected operation (a bigger
+// zone's top categories should show first), not a one-time setup step.
+export interface Category {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  sortOrder: number;
+  isActive: boolean;
+  // Which title/group this category shows under on the customer app's
+  // Categories screen (e.g. "Groceries & Staples") — see CategorySection
+  // below. Optional at the type level since a category can technically
+  // exist without one (RLS: on_delete set null if its section is removed),
+  // but AddCategoryModal/EditCategoryModal require picking one — a
+  // category with no title has nowhere to render on the grouped grid.
+  sectionId?: string;
+}
+
+// A title heading on the customer app's Categories screen — "Groceries &
+// Staples", "Snacks & Drinks", etc. — grouping several Category tiles
+// underneath it. Managed from the Categories page's own "Titles" strip,
+// separate from any single category's edit modal since a title is a peer
+// of categories, not a child of one.
+export interface CategorySection {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
+
+export type NewCategoryInput = Omit<Category, 'id'>;

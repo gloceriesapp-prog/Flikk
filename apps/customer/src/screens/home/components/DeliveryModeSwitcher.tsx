@@ -62,11 +62,11 @@ export function DeliveryModeSwitcher() {
       </Pressable>
 
       <Pressable hitSlop={6} className="px-0.5">
-        <AppIcon icon={TruckIcon} size={19} color={colors.ink} strokeWidth={1.8} />
+        <AppIcon icon={TruckIcon} size={19} color={colors.mist} strokeWidth={1.8} />
       </Pressable>
 
       <Pressable hitSlop={6} className="pr-1" onPress={() => navigation.navigate('Profile')}>
-        <AppIcon icon={UserIcon} size={19} color={colors.ink} strokeWidth={1.8} />
+        <AppIcon icon={UserIcon} size={19} color={colors.mist} strokeWidth={1.8} />
       </Pressable>
     </GlassView>
   );

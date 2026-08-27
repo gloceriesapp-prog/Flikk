@@ -42,7 +42,7 @@ export function HomeHeader({
   showCategoryTabs = true,
 }: Props) {
   return (
-    <View className="overflow-hidden" style={{ backgroundColor: '#E8E7FF' }}>
+    <View className="overflow-hidden" style={{ backgroundColor: '#121212' }}>
       <View className="pt-safe">
         <View className="px-6 pt-2">
           <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} />

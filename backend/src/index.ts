@@ -3,6 +3,8 @@ import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { authRouter } from './routes/auth.js';
 import { zonesRouter } from './routes/zones.js';
+import { categoriesRouter } from './routes/categories.js';
+import { categorySectionsRouter } from './routes/categorySections.js';
 import { storesRouter } from './routes/stores.js';
 import { ordersRouter } from './routes/orders.js';
 import { partnerRouter } from './routes/partner.js';
@@ -28,6 +30,8 @@ app.use(express.json());
 
 app.use('/auth', authRouter);
 app.use('/zones', zonesRouter);
+app.use('/categories', categoriesRouter);
+app.use('/category-sections', categorySectionsRouter);
 app.use('/stores', storesRouter);
 app.use('/orders', ordersRouter);
 // Mounted before partnerRouter — its two routes (/store-application,
