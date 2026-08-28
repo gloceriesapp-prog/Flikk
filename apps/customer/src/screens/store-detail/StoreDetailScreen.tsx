@@ -1,33 +1,41 @@
 // Reached from a StoreCard's "Shop now" button. Same "sidebar + product
 // grid" UI as screens/category-detail/CategoryDetailScreen.tsx — this
 // screen reuses that screen's header/sidebar components directly rather
-// than a copy, so a layout fix in one place fixes both. Only the data
-// source differs: a store's own catalog (data/registry.ts), not a
-// category's.
+// than a copy, so a layout fix in one place fixes both.
+//
+// Real catalog (useStoreProducts.ts -> GET /stores/:id/products) — a
+// product only ever belongs to the one store it was added under in admin's
+// Inventory screen, so this screen only ever shows that store's own items,
+// never another store's or Home's own tab data. Sidebar categories are
+// whatever categories this store's own products actually use, "All" first.
 //
 // Product cards are the real, shared ProductCard (home/products/) — same
-// card every other product grid in the app uses (heart bookmark, ADD
-// flush against the image's own corner, size chips, discount% line), not
-// the older bespoke CategoryProductCard this used to render, per an
-// explicit ask to match.
+// card every other product grid in the app uses.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ProductCard } from '../home/products/ProductCard';
 import { CategoryDetailHeader } from '../category-detail/components/CategoryDetailHeader';
 import { SubCategorySidebar } from '../category-detail/components/SubCategorySidebar';
-import { getStoreDetailData } from './data/registry';
+import { useStoreProducts } from './useStoreProducts';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'StoreDetail'>;
 
 export function StoreDetailScreen({ navigation, route }: Props) {
   const { storeId, storeName } = route.params;
-  const data = getStoreDetailData(storeId, storeName);
-  const [selectedSubId, setSelectedSubId] = useState(data.subCategories[0]?.id ?? 'all');
-  const products = data.productsBySubCategory[selectedSubId] ?? [];
+  const { data } = useStoreProducts(storeId);
+  const categories = data?.categories ?? [];
+  const products = data?.products ?? [];
+
+  const [selectedId, setSelectedId] = useState('all');
+  useEffect(() => {
+    setSelectedId('all');
+  }, [storeId]);
+
+  const visibleProducts = selectedId === 'all' ? products : products.filter((p) => p.categoryLabel === selectedId);
 
   return (
     <View className="flex-1 bg-white pt-safe">
@@ -38,20 +46,25 @@ export function StoreDetailScreen({ navigation, route }: Props) {
           icons against this screen's white header. */}
       <StatusBar style="dark" />
       <CategoryDetailHeader
-        title={data.title}
+        title={storeName}
         onBack={() => navigation.goBack()}
         onSearch={() => navigation.navigate('Search')}
       />
 
       <View className="flex-1 flex-row">
-        <SubCategorySidebar items={data.subCategories} selectedId={selectedSubId} onSelect={setSelectedSubId} />
+        <SubCategorySidebar items={categories} selectedId={selectedId} onSelect={setSelectedId} />
 
         <ScrollView
           className="flex-1 bg-mist/30"
           contentContainerClassName="flex-row flex-wrap gap-x-3 gap-y-6 p-3 pb-16"
           showsVerticalScrollIndicator={false}
         >
-          {products.map((product) => (
+          {visibleProducts.length === 0 && (
+            <View className="w-full items-center py-16">
+              <Text className="text-sm text-ink/50">No items here yet.</Text>
+            </View>
+          )}
+          {visibleProducts.map((product) => (
             <ProductCard key={product.id} product={product} widthClassName="w-[47%]" showDiscountBadge />
           ))}
         </ScrollView>

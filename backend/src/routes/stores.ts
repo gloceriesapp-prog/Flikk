@@ -120,12 +120,21 @@ storesRouter.get('/products/similar', async (req, res, next) => {
   }
 });
 
+// One store's own catalog — StoreDetailScreen.tsx (apps/customer). A
+// product only ever belongs to the one store_id it was created under
+// (admin's Inventory screen, per-store — apps/admin/src/app/(dashboard)/
+// inventory), so this is the single source of truth for "what does this
+// store sell": no cross-store mixing, no fallback to another store's
+// products. Same shape/select as /products/deals and /products/catalog so
+// api/products.ts's mapApiProduct works unchanged here too.
 storesRouter.get('/:id/products', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
-      .eq('store_id', req.params.id);
+      .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .eq('store_id', req.params.id)
+      .neq('stock_status', 'out_of_stock')
+      .order('name');
     if (error) throw error;
     res.json(data);
   } catch (err) {

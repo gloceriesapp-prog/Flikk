@@ -10,7 +10,20 @@ import { SOHNE_FONT_FILES } from './src/theme/fonts';
 
 void SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+// staleTime: 60s — every screen was refetching its data on every mount
+// (default staleTime is 0, "always stale"), which multiplies real request
+// volume with no benefit for content that barely changes minute to minute
+// (categories, home tabs, store list, product catalogs). A screen that
+// genuinely needs live data (order tracking) still gets it: refetchInterval
+// polling fires regardless of staleTime, this only skips the redundant
+// automatic refetch-on-mount/refocus for data that's still fresh.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+    },
+  },
+});
 
 export default function App() {
   // Loading the weights here registers them with the OS by font-family name

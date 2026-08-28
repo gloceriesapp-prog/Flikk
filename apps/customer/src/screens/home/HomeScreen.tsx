@@ -7,8 +7,17 @@
 //     falls through to the generic tile grid (hometab/HomeTabTileGrid.tsx).
 // Full discovery/browse (store lists, C4/C5) is separate work, see
 // specs/01-customer-app/screens.md.
+//
+// Tab content stays mounted once visited (visitedIds) and is hidden with
+// `display: none` rather than unmounted — switching tabs used to
+// conditionally render (`{cond && <Comp/>}`), which threw away the whole
+// subtree on every tap: every image had to redecode, every grid had to
+// re-layout, every ScrollView rebuilt from nothing, which is exactly what
+// read as "a few seconds to load" switching tabs on a real device. First
+// visit to a tab still pays that cost once; every visit after is instant
+// since the tree is already there, just hidden.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,7 +29,7 @@ import { GroceriesTab } from './groceries/GroceriesTab';
 import { ProteinTab } from './protein/ProteinTab';
 import { AllTabSections } from './sections/AllTabSections';
 import { ALL_TAB } from './data/categoryTabs';
-import { useHomeTabs } from './data/useHomeTabs';
+import { useHomeTabs, type RemoteHomeTab } from './data/useHomeTabs';
 import { HomeTabTileGrid } from './hometab/HomeTabTileGrid';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -36,11 +45,20 @@ const RICH_SCREEN_BY_NAME: Record<string, 'groceries' | 'meat-fish' | 'bakery' |
   protein: 'protein',
 };
 
+function richScreenFor(tab: RemoteHomeTab) {
+  return RICH_SCREEN_BY_NAME[tab.name.trim().toLowerCase()];
+}
+
 export function HomeScreen({ navigation }: Props) {
   const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_TAB.id);
   const { data: realTabs = [] } = useHomeTabs();
-  const selectedRealTab = realTabs.find((t) => t.id === selectedCategoryId);
-  const richScreen = selectedRealTab ? RICH_SCREEN_BY_NAME[selectedRealTab.name.trim().toLowerCase()] : undefined;
+
+  // Every tab id the user has actually opened at least once — content for
+  // an id only mounts the first time it's selected, then stays mounted.
+  const [visitedIds, setVisitedIds] = useState<Set<string>>(() => new Set([ALL_TAB.id]));
+  useEffect(() => {
+    setVisitedIds((prev) => (prev.has(selectedCategoryId) ? prev : new Set(prev).add(selectedCategoryId)));
+  }, [selectedCategoryId]);
 
   // Drives the collapsing ETA/location block in HomeHeader — see
   // components/CollapsibleHeaderTop.tsx for the actual interpolation.
@@ -74,16 +92,29 @@ export function HomeScreen({ navigation }: Props) {
           scrollY={scrollY}
         />
 
-        {selectedCategoryId === ALL_TAB.id && <AllTabSections />}
+        {visitedIds.has(ALL_TAB.id) && (
+          <View style={{ display: selectedCategoryId === ALL_TAB.id ? 'flex' : 'none' }}>
+            <AllTabSections />
+          </View>
+        )}
 
-        {richScreen === 'groceries' && <GroceriesTab banner={selectedRealTab?.banners[0]} />}
-        {richScreen === 'meat-fish' && <FishProductGrid banner={selectedRealTab?.banners[0]} />}
-        {richScreen === 'bakery' && <BakeryTab banner={selectedRealTab?.banners[0]} />}
-        {richScreen === 'protein' && <ProteinTab banner={selectedRealTab?.banners[0]} />}
+        {realTabs.map((tab) => {
+          if (!visitedIds.has(tab.id)) return null;
+          const richScreen = richScreenFor(tab);
+          const banner = tab.banners[0];
 
-        {selectedRealTab && !richScreen && <HomeTabTileGrid tab={selectedRealTab} />}
+          return (
+            <View key={tab.id} style={{ display: selectedCategoryId === tab.id ? 'flex' : 'none' }}>
+              {richScreen === 'groceries' && <GroceriesTab banner={banner} />}
+              {richScreen === 'meat-fish' && <FishProductGrid banner={banner} />}
+              {richScreen === 'bakery' && <BakeryTab banner={banner} />}
+              {richScreen === 'protein' && <ProteinTab banner={banner} />}
+              {!richScreen && <HomeTabTileGrid tab={tab} />}
+            </View>
+          );
+        })}
 
-        {selectedCategoryId !== ALL_TAB.id && !selectedRealTab && (
+        {selectedCategoryId !== ALL_TAB.id && !realTabs.some((t) => t.id === selectedCategoryId) && (
           <View className="items-center justify-center gap-2 px-6 py-16">
             <Text className="text-base font-semibold text-ink">Store list goes here.</Text>
             <Text className="text-center text-sm text-ink/60">

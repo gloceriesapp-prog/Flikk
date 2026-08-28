@@ -1,6 +1,8 @@
+import compression from 'compression';
 import express from 'express';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { shortCache } from './middleware/shortCache.js';
 import { authRouter } from './routes/auth.js';
 import { zonesRouter } from './routes/zones.js';
 import { categoriesRouter } from './routes/categories.js';
@@ -17,6 +19,10 @@ import { storeOnboardingRouter } from './routes/storeOnboarding.js';
 
 const app = express();
 
+// Smaller responses -> more requests/sec per instance under load. Safe
+// everywhere — gzip is transparent to every client already talking JSON.
+app.use(compression());
+
 // /payments/webhook needs the raw body for signature verification, so it's
 // mounted before the generic json() parser with its own raw-capture.
 app.use(
@@ -31,10 +37,13 @@ app.use(express.json());
 
 app.use('/auth', authRouter);
 app.use('/zones', zonesRouter);
-app.use('/categories', categoriesRouter);
-app.use('/category-sections', categorySectionsRouter);
-app.use('/home-tabs', homeTabsRouter);
-app.use('/stores', storesRouter);
+// Rarely-changing, read-heavy, hit on nearly every screen load — cached for
+// 30s so concurrent traffic doesn't re-query Postgres for identical data a
+// few seconds apart. See shortCache.ts's own note on the Redis upgrade path.
+app.use('/categories', shortCache(), categoriesRouter);
+app.use('/category-sections', shortCache(), categorySectionsRouter);
+app.use('/home-tabs', shortCache(), homeTabsRouter);
+app.use('/stores', shortCache(), storesRouter);
 app.use('/orders', ordersRouter);
 // Mounted before partnerRouter — its two routes (/store-application,
 // /store-photo) must be reachable without partnerRouter's router-wide
