@@ -1,4 +1,5 @@
-// Everything shown on the "All" category tab, below the header: nearby
+// Everything shown on the "All" category tab, below the header:
+// MostBoughtSection (3 premium promo cards, real product data), nearby
 // shops, everyday essentials, the deals promo card, the full category grid
 // (CategorySections — shared with screens/categories/CategoriesScreen.tsx,
 // see that component's own note), Coastal Kitchen picks, Today's Steal
@@ -16,6 +17,7 @@ import { CategoriesFooter } from '../../categories/CategoriesFooter';
 import { CoastalKitchenPicksSection } from '../coastal-kitchen-picks/CoastalKitchenPicksSection';
 import { DealsSection } from '../deals/DealsSection';
 import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
+import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { ProductSection } from '../products/ProductSection';
 import { useDealsProducts } from './useDealsProducts';
@@ -25,6 +27,7 @@ export function AllTabSections() {
 
   return (
     <View>
+      <MostBoughtSection />
       <NearbyStoresSection />
       <EverydayEssentialsSection />
       <DealsSection />
