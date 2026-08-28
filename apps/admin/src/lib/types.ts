@@ -293,6 +293,13 @@ export interface Product {
   // toProductRow). A product with only one size still has exactly one
   // variant here, never zero.
   variants: ProductVariant[];
+  // Real sub_categories.id this product shows under on the customer app's
+  // CategoryDetailScreen (GET /categories/subcategories/:id/products) —
+  // independent of `category` above (the free-text PRODUCT_CATEGORIES
+  // field), see lib/productValidation.ts's own note on why the two aren't
+  // unified yet. Optional — a product with none just doesn't appear in any
+  // category browse grid, only in the general catalog feeds.
+  subCategoryId?: string;
 }
 
 export interface ProductVariant {
@@ -343,3 +350,30 @@ export interface CategorySection {
 }
 
 export type NewCategoryInput = Omit<Category, 'id'>;
+
+// Home screen's own top category-tab row (All/Groceries/Fresh/Bakery/...,
+// apps/customer/src/screens/home/components/CategoryTabs.tsx) and each
+// tab's tile grid — deliberately separate from Category/CategorySection
+// above (the main Categories browse screen's own data). Editing one must
+// never touch the other, per an explicit ask — this dashboard's own
+// "Home Categories" page (app/(dashboard)/home-categories) is a
+// completely separate screen from "Categories" for exactly that reason.
+export interface HomeTab {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface HomeTabTile {
+  id: string;
+  homeTabId: string;
+  name: string;
+  imageUrl?: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export type NewHomeTabInput = Omit<HomeTab, 'id'>;
+export type NewHomeTabTileInput = Omit<HomeTabTile, 'id'>;

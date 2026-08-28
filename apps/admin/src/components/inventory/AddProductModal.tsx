@@ -23,6 +23,7 @@ import { PRODUCT_CATEGORIES } from '@/lib/product-options';
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
+import { SubCategoryPicker } from './SubCategoryPicker';
 
 const STOCK_OPTIONS: { value: StockStatus; label: string }[] = [
   { value: 'in_stock', label: 'In stock' },
@@ -44,6 +45,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     stockStatus: 'in_stock' as StockStatus,
     imageUrl: undefined as string | undefined,
     bgColor: undefined as string | undefined,
+    subCategoryId: undefined as string | undefined,
     isVeg: true,
     freshnessTag: '',
   };
@@ -100,6 +102,7 @@ export function AddProductModal({
         stockStatus: draft.stockStatus,
         imageUrl: draft.imageUrl,
         bgColor: draft.bgColor,
+        subCategoryId: draft.subCategoryId,
         isVeg: draft.isVeg,
         freshnessTag: draft.freshnessTag || undefined,
       });
@@ -186,6 +189,8 @@ export function AddProductModal({
           />
 
           <ProductVariantsEditor variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
+
+          <SubCategoryPicker value={draft.subCategoryId} onChange={(subCategoryId) => setDraft({ ...draft, subCategoryId })} />
 
           {/* Same fields the customer app's ProductCard reads — see
               Product's own note in lib/types.ts. */}

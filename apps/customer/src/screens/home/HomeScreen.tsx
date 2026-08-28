@@ -1,13 +1,10 @@
 // PRD screen C3 (Home). The header (ETA, location, search, categories) is
-// real UI. The body reacts to the selected category:
-//   'all'         -> nearby stores + essentials + deals promo + coastal picks + Today's Steal Deals (sections/)
-//   'fresh-fish'  -> the Fresh Fish grid (fish/) — id kept from before the
-//                    category-tab rename, label is now "Meat & Fish"
-//   'groceries'   -> sub-category grid + promo banner + farm teaser (groceries/)
-//   'bakery'      -> same pattern, bakery data (bakery/)
-//   'protein'     -> same pattern, protein data + its own banner photo (protein/)
-//   everything else -> placeholder ('fresh', 'household' from the
-//                    category-tab rename have no dedicated tab screen yet)
+// real UI. The body reacts to the selected tab:
+//   'all'  -> nearby stores + essentials + deals promo + coastal picks + Today's Steal Deals (sections/)
+//   every other tab is real admin data (GET /home-tabs, data/useHomeTabs.ts)
+//     — a handful of well-known names still get their own rich screen
+//     (Groceries/Fresh & Fish/Bakery/Protein below); any other admin tab
+//     falls through to the generic tile grid (hometab/HomeTabTileGrid.tsx).
 // Full discovery/browse (store lists, C4/C5) is separate work, see
 // specs/01-customer-app/screens.md.
 
@@ -22,15 +19,28 @@ import { FishProductGrid } from './fish/FishProductGrid';
 import { GroceriesTab } from './groceries/GroceriesTab';
 import { ProteinTab } from './protein/ProteinTab';
 import { AllTabSections } from './sections/AllTabSections';
-import { HOME_CATEGORIES } from './data/categoryTabs';
+import { ALL_TAB } from './data/categoryTabs';
+import { useHomeTabs } from './data/useHomeTabs';
+import { HomeTabTileGrid } from './hometab/HomeTabTileGrid';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
 
-const CATEGORIES_WITH_REAL_CONTENT = ['all', 'fresh-fish', 'groceries', 'bakery', 'protein'];
+// Tab names that get a hand-built screen instead of the generic tile grid —
+// matched case-insensitively against whatever an admin names the tab in
+// Home Categories, so renaming "Meat & Fish" there still routes here.
+const RICH_SCREEN_BY_NAME: Record<string, 'groceries' | 'meat-fish' | 'bakery' | 'protein'> = {
+  groceries: 'groceries',
+  'meat & fish': 'meat-fish',
+  bakery: 'bakery',
+  protein: 'protein',
+};
 
 export function HomeScreen({ navigation }: Props) {
-  const [selectedCategoryId, setSelectedCategoryId] = useState(HOME_CATEGORIES[0]?.id ?? 'all');
+  const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_TAB.id);
+  const { data: realTabs = [] } = useHomeTabs();
+  const selectedRealTab = realTabs.find((t) => t.id === selectedCategoryId);
+  const richScreen = selectedRealTab ? RICH_SCREEN_BY_NAME[selectedRealTab.name.trim().toLowerCase()] : undefined;
 
   // Drives the collapsing ETA/location block in HomeHeader — see
   // components/CollapsibleHeaderTop.tsx for the actual interpolation.
@@ -64,17 +74,16 @@ export function HomeScreen({ navigation }: Props) {
           scrollY={scrollY}
         />
 
-        {selectedCategoryId === 'all' && <AllTabSections />}
+        {selectedCategoryId === ALL_TAB.id && <AllTabSections />}
 
-        {selectedCategoryId === 'fresh-fish' && <FishProductGrid />}
+        {richScreen === 'groceries' && <GroceriesTab />}
+        {richScreen === 'meat-fish' && <FishProductGrid />}
+        {richScreen === 'bakery' && <BakeryTab />}
+        {richScreen === 'protein' && <ProteinTab />}
 
-        {selectedCategoryId === 'groceries' && <GroceriesTab />}
+        {selectedRealTab && !richScreen && <HomeTabTileGrid tab={selectedRealTab} />}
 
-        {selectedCategoryId === 'bakery' && <BakeryTab />}
-
-        {selectedCategoryId === 'protein' && <ProteinTab />}
-
-        {!CATEGORIES_WITH_REAL_CONTENT.includes(selectedCategoryId) && (
+        {selectedCategoryId !== ALL_TAB.id && !selectedRealTab && (
           <View className="items-center justify-center gap-2 px-6 py-16">
             <Text className="text-base font-semibold text-ink">Store list goes here.</Text>
             <Text className="text-center text-sm text-ink/60">

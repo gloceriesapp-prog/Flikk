@@ -32,7 +32,7 @@ export function ProductImageUpload({
 }: {
   imageUrl: string | undefined;
   onChange: (url: string, bgColor: string | null) => void;
-  bucket?: 'product-images' | 'store-images' | 'category-images';
+  bucket?: 'product-images' | 'store-images' | 'category-images' | 'home-tab-images';
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);

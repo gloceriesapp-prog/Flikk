@@ -1,11 +1,9 @@
-// Placeholder category data. Real categories should come from `products.category`
-// per store (specs/00-foundation/data-model.md) once Home actually browses stores —
-// that's PRD screens C4/C5, not built yet. This list only exists so the top-of-Home
-// UI has something real to render.
-//
-// Renamed from categories.ts — "category tabs" is more specific than
-// "categories" once this file is the one thing every Home-tab consumer
-// (HomeScreen, CategoryTabs) actually imports.
+// Home's top tab row. "All" is the one permanently hardcoded tab (it isn't
+// a real category, it's "show everything" — nothing to manage in admin).
+// Every other tab is real data an admin adds from the Home Categories
+// screen (apps/admin/src/app/(dashboard)/home-categories) via GET
+// /home-tabs — see useHomeTabs.ts. Removing/renaming a tab in admin removes
+// it here too, no code change needed.
 
 import {
   Bread01Icon,
@@ -24,15 +22,21 @@ export interface Category {
   icon: IconSvgElement;
 }
 
-// 'fresh-fish' keeps its old id (not 'meat-fish') even though the label
-// changed — HomeScreen.tsx routes to FishProductGrid off this exact id, and
-// there's no reason to touch that wiring just because the label did.
-export const HOME_CATEGORIES: Category[] = [
-  { id: 'all', label: 'All', icon: ShoppingBasket01Icon },
-  { id: 'groceries', label: 'Groceries', icon: ShoppingCart01Icon },
-  { id: 'fresh', label: 'Fresh', icon: CarrotIcon },
-  { id: 'fresh-fish', label: 'Meat & Fish', icon: FishIcon },
-  { id: 'bakery', label: 'Bakery', icon: Bread01Icon },
-  { id: 'protein', label: 'Protein', icon: EggsIcon },
-  { id: 'household', label: 'Household', icon: KitchenUtensilsIcon },
-];
+export const ALL_TAB: Category = { id: 'all', label: 'All', icon: ShoppingBasket01Icon };
+
+// Real tabs carry no icon of their own (title-only by admin design — see
+// home-categories/page.tsx's own note on why). A handful of well-known
+// names still get their old icon for continuity; anything else falls back
+// to a generic one.
+const ICON_BY_TAB_NAME: Record<string, IconSvgElement> = {
+  groceries: ShoppingCart01Icon,
+  fresh: CarrotIcon,
+  'meat & fish': FishIcon,
+  bakery: Bread01Icon,
+  protein: EggsIcon,
+  household: KitchenUtensilsIcon,
+};
+
+export function iconForTabName(name: string): IconSvgElement {
+  return ICON_BY_TAB_NAME[name.trim().toLowerCase()] ?? ShoppingBasket01Icon;
+}

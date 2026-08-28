@@ -5,6 +5,7 @@
 export interface SubCategoryWriteInput {
   categoryId: string;
   name: string;
+  imageUrl?: string | null;
   sortOrder?: number;
 }
 
@@ -16,6 +17,7 @@ export function validateSubCategoryInput(input: Partial<SubCategoryWriteInput>):
 export interface SubCategoryRow {
   category_id: string;
   name: string;
+  image_url: string | null;
   sort_order: number;
 }
 
@@ -23,6 +25,7 @@ export function toSubCategoryRow(input: SubCategoryWriteInput): SubCategoryRow {
   return {
     category_id: input.categoryId,
     name: input.name.trim(),
+    image_url: input.imageUrl?.trim() || null,
     sort_order: input.sortOrder ?? 0,
   };
 }

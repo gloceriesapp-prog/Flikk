@@ -16,6 +16,7 @@ import { PRODUCT_CATEGORIES } from '@/lib/product-options';
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
+import { SubCategoryPicker } from './SubCategoryPicker';
 
 const STOCK_OPTIONS: { value: StockStatus; label: string }[] = [
   { value: 'in_stock', label: 'In stock' },
@@ -143,6 +144,8 @@ export function EditProductModal({
           </select>
 
           <ProductVariantsEditor variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
+
+          <SubCategoryPicker value={draft.subCategoryId} onChange={(subCategoryId) => setDraft({ ...draft, subCategoryId })} />
 
           {/* Same fields the customer app's ProductCard reads — see
               Product's own note in lib/types.ts. */}

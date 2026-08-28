@@ -26,7 +26,7 @@ export function SubCategorySidebarItem({ subCategory, isSelected, onPress }: Pro
         className="h-14 w-14 items-center justify-center overflow-hidden rounded-2xl"
         style={{ backgroundColor: '#EDEDF0' }}
       >
-        <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+        <Image source={{ uri: subCategory.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
       </View>
       <Text
         className={`text-center text-[11px] leading-3.5 ${isSelected ? 'font-bold text-ink' : 'font-medium text-ink/55'}`}

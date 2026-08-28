@@ -1,14 +1,24 @@
 'use client';
 
 // Sub-category list for one category — EditCategoryModal's own section.
-// Self-contained (fetches, adds, deletes on its own via app/api/subcategories/*)
-// so EditCategoryModal doesn't need to own this state; only meaningful once
-// a category actually has an id (a brand-new category from AddCategoryModal
-// has to be created first, then edited, before it can carry sub-categories).
+// Self-contained (fetches, adds, updates, deletes on its own via
+// app/api/subcategories/*) so EditCategoryModal doesn't need to own this
+// state; only meaningful once a category actually has an id (a brand-new
+// category from AddCategoryModal has to be created first, then edited,
+// before it can carry sub-categories).
+//
+// Small photo cards, not name-only chips — a sub-category needs a real
+// image for CategoryDetailScreen's own sidebar tiles on the customer app
+// (SubCategorySidebarItem.tsx), same "add photo for this too" ask that
+// drove categories' own image field. Reuses ProductImageUpload with
+// bucket="category-images" (same bucket a top-level category's own photo
+// uses — a sub-category icon is the same kind of asset, not different
+// enough to warrant its own bucket).
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Image as ImageIcon, Plus, X } from 'lucide-react';
 import { fetchSubCategories, type SubCategory } from '@/lib/supabase/subcategories';
+import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 
 export function SubCategoryManager({ categoryId }: { categoryId: string }) {
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
@@ -57,6 +67,27 @@ export function SubCategoryManager({ categoryId }: { categoryId: string }) {
     }
   }
 
+  async function handleImageChange(sub: SubCategory, imageUrl: string) {
+    setBusyId(sub.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/subcategories/${sub.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: sub.name, imageUrl }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Could not save photo.');
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save photo — try again.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function handleDelete(id: string) {
     setBusyId(id);
     setError(null);
@@ -80,23 +111,25 @@ export function SubCategoryManager({ categoryId }: { categoryId: string }) {
 
       {!loading && subCategories.length === 0 && <p className="text-xs text-muted">No sub-categories yet.</p>}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3">
         {subCategories.map((sub) => (
-          <span
-            key={sub.id}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-ink"
-          >
-            {sub.name}
+          <div key={sub.id} className="relative w-20">
             <button
               type="button"
               onClick={() => handleDelete(sub.id)}
               disabled={busyId === sub.id}
               aria-label={`Remove ${sub.name}`}
-              className="text-muted hover:text-danger disabled:opacity-40"
+              className="absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-card text-muted hover:text-danger disabled:opacity-40"
             >
-              <X size={12} />
+              <X size={11} />
             </button>
-          </span>
+
+            <ProductImageUpload imageUrl={sub.imageUrl} onChange={(imageUrl) => handleImageChange(sub, imageUrl)} bucket="category-images" />
+            <p className="mt-1 truncate text-center text-[11px] font-medium text-ink" title={sub.name}>
+              {sub.name}
+            </p>
+            {busyId === sub.id && <ImageIcon className="pointer-events-none absolute inset-0 m-auto animate-pulse text-muted" size={16} />}
+          </div>
         ))}
       </div>
 
@@ -124,6 +157,7 @@ export function SubCategoryManager({ categoryId }: { categoryId: string }) {
           Add
         </button>
       </div>
+      <p className="text-[11px] text-muted">Add the sub-category by name first, then tap its photo box above to upload an image.</p>
 
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-danger">{error}</p>}
     </div>

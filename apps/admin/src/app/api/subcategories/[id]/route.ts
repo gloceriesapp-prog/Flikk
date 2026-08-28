@@ -7,14 +7,14 @@ import { SUB_CATEGORY_SELECT, mapRowToSubCategory, type SubCategoryRow } from '@
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/subcategories/[id]'>) {
   const { id } = await ctx.params;
-  const body: { name?: string } = await request.json();
+  const body: { name?: string; imageUrl?: string | null } = await request.json();
 
   try {
     if (!body.name || !body.name.trim()) throw new Error('Sub-category name is required.');
 
     const { data, error } = await supabaseAdmin
       .from('sub_categories')
-      .update({ name: body.name.trim() })
+      .update({ name: body.name.trim(), image_url: body.imageUrl?.trim() || null })
       .eq('id', id)
       .select(SUB_CATEGORY_SELECT)
       .single();

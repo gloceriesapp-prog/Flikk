@@ -41,7 +41,17 @@ export interface StoreProfile {
 // typed free-hand" reasoning as catalog size variants: a store's category
 // drives filtering/discovery on the customer app, so keeping it off a
 // known list is what makes that filtering possible at all.
-export const STORE_CATEGORIES = ['Kirana & Grocery', 'Pharmacy', 'Bakery', 'Fruits & Vegetables', 'General Store'];
+export const STORE_CATEGORIES = [
+  'Kirana & Grocery',
+  'Supermarket',
+  'Pharmacy',
+  'Bakery',
+  'Fruits & Vegetables',
+  'Hardware',
+  'Paint Shop',
+  'Steel & Vessels',
+  'General Store',
+];
 
 export const STORE_PROFILE: StoreProfile = {
   storeName: 'Ganesh Kirana Store',

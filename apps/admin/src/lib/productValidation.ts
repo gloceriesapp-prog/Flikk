@@ -34,6 +34,12 @@ export interface ProductWriteInput {
   isVeg?: boolean;
   freshnessTag?: string | null;
   description?: string | null;
+  // Real sub_categories.id — powers CategoryDetailScreen's own product grid
+  // on the customer app (GET /categories/subcategories/:id/products).
+  // Optional and independent of `category` above (that's the free-text
+  // PRODUCT_CATEGORIES field this form already had) — the two taxonomies
+  // aren't unified yet, see backend/src/routes/categories.ts's own note.
+  subCategoryId?: string | null;
   variants: VariantInput[];
 }
 
@@ -89,6 +95,7 @@ export interface ProductRow {
   is_veg: boolean;
   freshness_tag: string | null;
   description: string | null;
+  sub_category_id: string | null;
 }
 
 // Fallback chain steps 4-5 (1-3 — LightVibrant/Vibrant/Muted swatch
@@ -119,6 +126,7 @@ export function toProductRow(input: ProductWriteInput): ProductRow {
     is_veg: input.isVeg ?? true,
     freshness_tag: input.freshnessTag?.trim() || null,
     description: input.description?.trim() || null,
+    sub_category_id: input.subCategoryId || null,
   };
 }
 

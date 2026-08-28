@@ -1,4 +1,4 @@
-import { Image, Pressable, Text, View, type DimensionValue } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
@@ -7,24 +7,17 @@ import type { RemoteCategory } from './useCategorySections';
 
 interface Props {
   category: RemoteCategory;
-  // Right-edge gap to the next tile in the row — 0 for the last tile in
-  // each row of 4. Set by CategorySectionGroup.tsx (which knows each
-  // tile's index), not computed here, so a row with fewer than 4 tiles
-  // still packs left instead of justify-between stretching them across the
-  // full row width. Passed as a style prop (not a wrapping View) because a
-  // percentage-width child needs a definite-width parent to resolve
-  // against — wrapping it would collapse that width to 0.
-  marginRight?: DimensionValue;
 }
 
-export function CategoryTile({ category, marginRight }: Props) {
+// Sizing/gap is the parent grid cell's job now (CategorySectionGroup.tsx) —
+// this component just fills whatever width it's given.
+export function CategoryTile({ category }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
   return (
     <Pressable
       onPress={() => navigation.navigate('CategoryDetail', { categoryId: category.id, label: category.name })}
-      className="w-[23%] gap-2"
-      style={{ marginRight }}
+      className="w-full gap-2"
     >
       {/* Soft neutral gray backdrop (not flat white) behind every category
           photo — a plain white tile read as flat/cheap; a warm-neutral gray

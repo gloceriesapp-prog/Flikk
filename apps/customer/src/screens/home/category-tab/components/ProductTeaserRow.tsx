@@ -17,7 +17,7 @@ export function ProductTeaserRow({ title, products }: Props) {
   return (
     <View className="pt-6">
       <View className="flex-row items-center justify-between px-5 pb-4">
-        <Text className="text-lg font-extrabold text-ink">{title}</Text>
+        <Text className="text-lg font-medium text-ink">{title}</Text>
         <AppIcon icon={ArrowRight01Icon} size={18} color={colors.ink} />
       </View>
 

@@ -20,6 +20,7 @@ import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssent
 import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { ProductSection } from '../products/ProductSection';
+import { StoreTypesSection } from '../store-types/StoreTypesSection';
 import { useDealsProducts } from './useDealsProducts';
 
 export function AllTabSections() {
@@ -29,6 +30,7 @@ export function AllTabSections() {
     <View>
       <MostBoughtSection />
       <NearbyStoresSection />
+      <StoreTypesSection />
       <EverydayEssentialsSection />
       <DealsSection />
       <CategorySections />
