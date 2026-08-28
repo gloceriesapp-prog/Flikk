@@ -6,7 +6,7 @@
 // rationale as lib/supabase/categories.ts's own note.
 
 import { supabase } from './client';
-import type { HomeTab, HomeTabTile } from '../types';
+import type { HomeTab, HomeTabBanner, HomeTabTile } from '../types';
 
 export interface HomeTabRow {
   id: string;
@@ -58,4 +58,34 @@ export async function fetchHomeTabTiles(homeTabId: string): Promise<HomeTabTile[
     .order('name');
   if (error) throw error;
   return (data as HomeTabTileRow[]).map(mapRowToHomeTabTile);
+}
+
+export interface HomeTabBannerRow {
+  id: string;
+  home_tab_id: string;
+  image_url: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export const HOME_TAB_BANNER_SELECT = 'id, home_tab_id, image_url, sort_order, is_active';
+
+export function mapRowToHomeTabBanner(row: HomeTabBannerRow): HomeTabBanner {
+  return {
+    id: row.id,
+    homeTabId: row.home_tab_id,
+    imageUrl: row.image_url,
+    sortOrder: row.sort_order,
+    isActive: row.is_active,
+  };
+}
+
+export async function fetchHomeTabBanners(homeTabId: string): Promise<HomeTabBanner[]> {
+  const { data, error } = await supabase
+    .from('home_tab_banners')
+    .select(HOME_TAB_BANNER_SELECT)
+    .eq('home_tab_id', homeTabId)
+    .order('sort_order');
+  if (error) throw error;
+  return (data as HomeTabBannerRow[]).map(mapRowToHomeTabBanner);
 }

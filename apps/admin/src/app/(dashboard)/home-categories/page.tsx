@@ -13,16 +13,18 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import type { HomeTab, HomeTabTile } from '@/lib/types';
-import { fetchHomeTabs, fetchHomeTabTiles } from '@/lib/supabase/homeTabs';
+import type { HomeTab, HomeTabBanner, HomeTabTile } from '@/lib/types';
+import { fetchHomeTabBanners, fetchHomeTabs, fetchHomeTabTiles } from '@/lib/supabase/homeTabs';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 
 export default function HomeCategoriesPage() {
   const [tabs, setTabs] = useState<HomeTab[]>([]);
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
   const [tiles, setTiles] = useState<HomeTabTile[]>([]);
+  const [banners, setBanners] = useState<HomeTabBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [tilesLoading, setTilesLoading] = useState(false);
+  const [bannersLoading, setBannersLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [newTabName, setNewTabName] = useState('');
@@ -31,6 +33,9 @@ export default function HomeCategoriesPage() {
   const [newTileName, setNewTileName] = useState('');
   const [newTileImage, setNewTileImage] = useState<string | undefined>(undefined);
   const [addingTile, setAddingTile] = useState(false);
+
+  const [newBannerImage, setNewBannerImage] = useState<string | undefined>(undefined);
+  const [addingBanner, setAddingBanner] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -62,10 +67,26 @@ export default function HomeCategoriesPage() {
     Promise.resolve().then(loadTabs);
   }, [loadTabs]);
 
+  const loadBanners = useCallback(async (tabId: string) => {
+    setBannersLoading(true);
+    try {
+      setBanners(await fetchHomeTabBanners(tabId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load banners.');
+    } finally {
+      setBannersLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (selectedTabId) Promise.resolve().then(() => loadTiles(selectedTabId));
     else Promise.resolve().then(() => setTiles([]));
   }, [selectedTabId, loadTiles]);
+
+  useEffect(() => {
+    if (selectedTabId) Promise.resolve().then(() => loadBanners(selectedTabId));
+    else Promise.resolve().then(() => setBanners([]));
+  }, [selectedTabId, loadBanners]);
 
   const selectedTab = tabs.find((t) => t.id === selectedTabId) ?? null;
 
@@ -166,6 +187,44 @@ export default function HomeCategoriesPage() {
       if (selectedTabId) await loadTiles(selectedTabId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not delete tile — try again.');
+    }
+  }
+
+  async function handleAddBanner() {
+    if (!newBannerImage || !selectedTabId) return;
+
+    setAddingBanner(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/home-tab-banners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ homeTabId: selectedTabId, imageUrl: newBannerImage, sortOrder: banners.length }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Add failed.');
+      }
+      setNewBannerImage(undefined);
+      await loadBanners(selectedTabId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add banner — try again.');
+    } finally {
+      setAddingBanner(false);
+    }
+  }
+
+  async function handleDeleteBanner(id: string) {
+    setError(null);
+    try {
+      const res = await fetch(`/api/home-tab-banners/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Delete failed.');
+      }
+      if (selectedTabId) await loadBanners(selectedTabId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete banner — try again.');
     }
   }
 
@@ -322,6 +381,45 @@ export default function HomeCategoriesPage() {
                 </button>
               </div>
               <p className="mt-2 text-[11px] text-muted">Add a photo and title, then submit — both are saved together.</p>
+
+              <div className="mt-8 border-t border-border pt-6">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                  Ads &amp; posters inside &quot;{selectedTab.name}&quot;
+                </p>
+                <p className="mb-4 text-[11px] text-muted">Shown as a promo banner below the tiles on this tab, on the customer app.</p>
+
+                <div className="flex flex-wrap gap-3">
+                  {bannersLoading && <p className="text-sm text-muted">Loading…</p>}
+                  {!bannersLoading && banners.length === 0 && <p className="text-sm text-muted">No banners yet — add one below.</p>}
+                  {banners.map((banner) => (
+                    <div key={banner.id} className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={banner.imageUrl} alt="" className="h-24 w-40 rounded-2xl border border-border object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteBanner(banner.id)}
+                        aria-label="Remove banner"
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted hover:text-danger"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center gap-3">
+                  <ProductImageUpload imageUrl={newBannerImage} onChange={(url) => setNewBannerImage(url)} bucket="home-tab-banner-images" />
+                  <button
+                    type="button"
+                    onClick={handleAddBanner}
+                    disabled={!newBannerImage || addingBanner}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                  >
+                    <Plus size={14} />
+                    {addingBanner ? 'Submitting…' : 'Submit'}
+                  </button>
+                </div>
+              </div>
             </>
           )}
         </div>

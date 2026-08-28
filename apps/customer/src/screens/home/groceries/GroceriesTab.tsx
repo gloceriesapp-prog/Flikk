@@ -1,20 +1,28 @@
 // Everything shown when the "Groceries" category tab is selected on Home —
-// sub-category grid, deal image, then a farm-products teaser row. See
+// sub-category grid, promo poster, then a farm-products teaser row. See
 // HomeScreen.tsx for how category selection routes here. Sub-category grid
-// and teaser row come from ../category-tab/ (shared with bakery/ and
-// essentials/); GroceriesDealImage is specific to this tab only.
+// and teaser row come from ../category-tab/. Poster is real admin data
+// (Home Categories -> "Groceries" tab's own "Ads & posters" section), image
+// only — no hardcoded dummy image anymore (GroceriesDealImage.tsx, its old
+// fixed "deal1.jpeg", is gone) and no text overlay; the section renders
+// only when a founder has actually added one.
 
 import { View } from 'react-native';
+import { PosterBanner } from '../category-tab/components/PosterBanner';
 import { ProductTeaserRow } from '../category-tab/components/ProductTeaserRow';
 import { SubCategoryGrid } from '../category-tab/components/SubCategoryGrid';
-import { GroceriesDealImage } from './GroceriesDealImage';
+import type { RemoteHomeTabBanner } from '../data/useHomeTabs';
 import { FARM_PRODUCTS, GROCERY_SUBCATEGORIES } from './data';
 
-export function GroceriesTab() {
+interface Props {
+  banner?: RemoteHomeTabBanner;
+}
+
+export function GroceriesTab({ banner }: Props) {
   return (
     <View className="pb-4">
       <SubCategoryGrid items={GROCERY_SUBCATEGORIES} />
-      <GroceriesDealImage />
+      {banner && <PosterBanner imageUri={banner.imageUrl} />}
       <ProductTeaserRow title="Straight from farms" products={FARM_PRODUCTS} />
     </View>
   );

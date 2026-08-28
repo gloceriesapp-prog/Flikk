@@ -1,9 +1,13 @@
 // Home screen's own top category-tab row (apps/customer/src/screens/home/
-// components/CategoryTabs.tsx) and each tab's tile grid — real rows a
-// founder manages via admin's own "Home Categories" screen
+// components/CategoryTabs.tsx) and each tab's tile grid + banners — real
+// rows a founder manages via admin's own "Home Categories" screen
 // (apps/admin/src/app/(dashboard)/home-categories), deliberately separate
 // from categories/category_sections/sub_categories (the main Categories
 // browse screen's own tables) so editing one can never affect the other.
+// Banners (home_tab_banners) are the "ads and poster for different
+// category" ask — cascades with its parent tab same as tiles. Image only,
+// no badge/heading/subheading text — those columns exist but are unused
+// dead columns now, per an explicit ask to drop the text entirely.
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 
@@ -27,11 +31,19 @@ homeTabsRouter.get('/', async (req, res, next) => {
       .order('name');
     if (tilesError) throw tilesError;
 
+    const { data: banners, error: bannersError } = await supabase
+      .from('home_tab_banners')
+      .select('id, home_tab_id, image_url, sort_order')
+      .eq('is_active', true)
+      .order('sort_order');
+    if (bannersError) throw bannersError;
+
     const grouped = tabs.map((tab) => ({
       id: tab.id,
       name: tab.name,
       image_url: tab.image_url,
       tiles: tiles.filter((t) => t.home_tab_id === tab.id).map((t) => ({ id: t.id, name: t.name, image_url: t.image_url })),
+      banners: banners.filter((b) => b.home_tab_id === tab.id).map((b) => ({ id: b.id, image_url: b.image_url })),
     }));
 
     res.json(grouped);

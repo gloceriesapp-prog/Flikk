@@ -6,11 +6,13 @@ Reached from `BottomNavBar`'s "Store" tab (`navigation.navigate('Store')`).
 store-list/
   StoreListScreen.tsx            reuses ../home/components/HomeHeader.tsx for the top
                                    section (same component Home uses, not a copy) +
-                                   a vertical list of StoreCard below
-  data.ts                        placeholder store list — fictional names, same
-                                   convention as ../search/data.ts's Top Grocery Stores
+                                   FeaturedStoreBanner + AllStoresSection below
+  all-stores/
+    AllStoresSection.tsx           real store list (useAllStores.ts -> GET /stores)
+    useAllStores.ts                 fetch + map real stores.* columns only
   components/
-    StoreCard.tsx                  one card — image, name, distance, "Shop now" CTA
+    StoreCard.tsx                   one card — photo, name, category, open/closed,
+                                      rating/prep-time (only when set), district, "Shop now"
 ```
 
 ## Why HomeHeader is reused, not rebuilt
@@ -21,9 +23,12 @@ render, this screen owns its own copies of both — same pattern
 `HomeScreen.tsx` uses. Category tab selection here is visual only; there's no
 per-category store filtering yet, just the one list.
 
-## Placeholder, not real
+## Real data, not placeholder
 
-Store names, distances, and images are all placeholder — no real
-store-listing backend wired to this screen (the `stores` table exists in
-`specs/00-foundation/data-model.md`, nothing serves it here yet). "Shop now"
-doesn't navigate anywhere yet — there's no store-detail screen to send it to.
+Replaced the old `STORE_LISTINGS` mock (fictional Shetty Stores/Krishna
+Mart/etc) — every store here is real (`GET /stores`, admin's own Add Store
+form). Only fields that actually exist on the `stores` table are shown:
+no distance (no geolocation on stores yet, PRD v3 scope), no per-store
+"owner note" copy (never a real column). Rating and avg-prep-time are
+nullable on the real row — `StoreCard.tsx` only shows them once a founder
+has actually set them, rather than faking a number.

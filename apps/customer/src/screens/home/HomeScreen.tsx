@@ -76,10 +76,10 @@ export function HomeScreen({ navigation }: Props) {
 
         {selectedCategoryId === ALL_TAB.id && <AllTabSections />}
 
-        {richScreen === 'groceries' && <GroceriesTab />}
-        {richScreen === 'meat-fish' && <FishProductGrid />}
-        {richScreen === 'bakery' && <BakeryTab />}
-        {richScreen === 'protein' && <ProteinTab />}
+        {richScreen === 'groceries' && <GroceriesTab banner={selectedRealTab?.banners[0]} />}
+        {richScreen === 'meat-fish' && <FishProductGrid banner={selectedRealTab?.banners[0]} />}
+        {richScreen === 'bakery' && <BakeryTab banner={selectedRealTab?.banners[0]} />}
+        {richScreen === 'protein' && <ProteinTab banner={selectedRealTab?.banners[0]} />}
 
         {selectedRealTab && !richScreen && <HomeTabTileGrid tab={selectedRealTab} />}
 

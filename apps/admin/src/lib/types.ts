@@ -375,5 +375,20 @@ export interface HomeTabTile {
   isActive: boolean;
 }
 
+// "Ads and poster for different category" — a tab's own promo banner(s),
+// same isolation reasoning as HomeTab/HomeTabTile above. Image only, no
+// badge/heading/subheading text — per an explicit ask to drop the text
+// entirely and keep this a pure image poster. Rendered by apps/customer's
+// PosterBanner.tsx across every tab (generic + the 4 hand-built rich
+// screens alike).
+export interface HomeTabBanner {
+  id: string;
+  homeTabId: string;
+  imageUrl: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
 export type NewHomeTabInput = Omit<HomeTab, 'id'>;
 export type NewHomeTabTileInput = Omit<HomeTabTile, 'id'>;
+export type NewHomeTabBannerInput = Omit<HomeTabBanner, 'id'>;

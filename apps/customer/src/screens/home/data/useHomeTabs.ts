@@ -4,6 +4,10 @@
 // admin's own Home Categories screen. Deliberately separate from
 // useCategorySections.ts (categories/category_sections) — same isolation
 // this whole home_tabs/home_tab_tiles system was built for.
+// Banners are the "ads and poster for different category" ask — a tab's
+// own promo poster image(s), rendered via PosterBanner.tsx. Image only, no
+// badge/heading/subheading text — per an explicit ask to drop the text
+// entirely.
 
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../../api/client';
@@ -14,10 +18,16 @@ export interface RemoteHomeTabTile {
   imageUrl?: string;
 }
 
+export interface RemoteHomeTabBanner {
+  id: string;
+  imageUrl: string;
+}
+
 export interface RemoteHomeTab {
   id: string;
   name: string;
   tiles: RemoteHomeTabTile[];
+  banners: RemoteHomeTabBanner[];
 }
 
 interface ApiHomeTab {
@@ -25,6 +35,7 @@ interface ApiHomeTab {
   name: string;
   image_url: string | null;
   tiles: { id: string; name: string; image_url: string | null }[];
+  banners: { id: string; image_url: string }[];
 }
 
 export function useHomeTabs() {
@@ -37,6 +48,7 @@ export function useHomeTabs() {
           id: row.id,
           name: row.name,
           tiles: row.tiles.map((t) => ({ id: t.id, name: t.name, imageUrl: t.image_url ?? undefined })),
+          banners: row.banners.map((b) => ({ id: b.id, imageUrl: b.image_url })),
         }),
       );
     },

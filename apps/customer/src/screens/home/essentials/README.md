@@ -1,13 +1,7 @@
-# Essentials tab
+# Essentials data
 
-Shown on Home when the "Essentials" category tab is selected. Same shape as
-`../groceries/` — see `../category-tab/README.md` for the shared components.
-
-```
-essentials/
-  data.ts             placeholder sub-categories + essentials-teaser products
-  EssentialsTab.tsx     composes ../category-tab/'s shared components with this data
-```
-
-Placeholder data, no real catalog backend — same caveat as every other
-category-tab folder.
+`EssentialsTab.tsx` (the screen this data was originally built for) was
+deleted — it was never wired into `HomeScreen.tsx`, dead code. `data.ts`
+survives only because `../store-detail/data/registry.ts`'s Shetty Stores
+entry reuses `ESSENTIALS_PRODUCTS` — keep it until that consumer is
+removed or given its own data.

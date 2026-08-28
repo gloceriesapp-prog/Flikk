@@ -59,6 +59,33 @@ export function toHomeTabTileRow(input: HomeTabTileWriteInput): HomeTabTileRow {
   };
 }
 
+// Image only, no badge/heading/subheading text — per an explicit ask to
+// drop the text fields entirely and keep this a pure image poster.
+export interface HomeTabBannerWriteInput {
+  homeTabId: string;
+  imageUrl: string;
+  sortOrder?: number;
+}
+
+export function validateHomeTabBannerInput(input: Partial<HomeTabBannerWriteInput>): asserts input is HomeTabBannerWriteInput {
+  if (!input.homeTabId) throw new Error('homeTabId is required.');
+  if (!input.imageUrl || !input.imageUrl.trim()) throw new Error('Banner photo is required.');
+}
+
+export interface HomeTabBannerRow {
+  home_tab_id: string;
+  image_url: string;
+  sort_order: number;
+}
+
+export function toHomeTabBannerRow(input: HomeTabBannerWriteInput): HomeTabBannerRow {
+  return {
+    home_tab_id: input.homeTabId,
+    image_url: input.imageUrl.trim(),
+    sort_order: input.sortOrder ?? 0,
+  };
+}
+
 // Same PostgrestError-isn't-an-Error-instance gotcha as
 // lib/categoryValidation.ts's own toCategoryErrorMessage — 23505 is
 // Postgres's unique-violation code (home_tabs.name globally unique,

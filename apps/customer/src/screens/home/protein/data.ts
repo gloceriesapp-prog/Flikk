@@ -4,15 +4,12 @@
 //
 // Subcategories are sports-nutrition/supplement lines (protein powder,
 // gainer, creatine, etc.), not whole-food protein sources (eggs, paneer) —
-// matches the banner photo and an explicit re-scoping of what this tab
-// actually sells.
+// an explicit re-scoping of what this tab actually sells. Banner photo is
+// real admin data now (ProteinTab.tsx's own banner prop), not a hardcoded
+// constant here anymore.
 
 import type { Product } from '../products/types';
 import type { SubCategory } from '../category-tab/types';
-
-// Real photo (not the shared PLACEHOLDER_IMAGE_URI) — passed to PromoBanner's
-// own imageUri override, see that component's note on why it takes one.
-export const PROTEIN_BANNER_IMAGE_URI = 'https://i.pinimg.com/1200x/1d/b7/ec/1db7ec1c0fe1624139278ee8de0fb24d.jpg';
 
 export const PROTEIN_SUBCATEGORIES: SubCategory[] = [
   { id: 'protein-powder', label: 'Protein Powder', imageSeed: 'protein-powder' },
