@@ -1,23 +1,23 @@
-// Maps to POST /auth/otp/request and POST /auth/otp/verify — shared across
-// all 4 apps per specs/00-foundation/auth-and-roles.md, same endpoints
-// apps/customer/src/api/auth.ts calls. The verify response carries more
-// than customer's does (`is_approved`, `has_store`) — this app needs both
-// to decide where to route after login (straight to Orders, the waiting
-// screen, or first-time Store Setup) in a way customer's simpler
-// "token exists = logged in" check doesn't need. GET /auth/me is the
-// lightweight recheck useAuthStore polls while the waiting screen is up,
-// standing in for a real Supabase Realtime subscription on the user's own
-// row (see specs/04-admin-dashboard/flows.md's onboarding flow) until this
-// app wires that up directly.
+// Maps to POST /auth/otp/request, POST /auth/otp/verify, GET /auth/me, and
+// POST /auth/push-token — the actual HTTP contract for all four now lives
+// in one place (@flikk/shared's auth module, packages/shared/src/auth/
+// otp.ts) instead of being hand-copied per app; this file wraps that
+// shared implementation with the two things that are genuinely specific to
+// this app: the devAuthFallback dev-mode stand-in below, and this app's
+// own richer VerifyOtpResponse/AccountStatus needs (is_approved/has_store/
+// application_submitted — customer's own copy of the shared contract only
+// needs "token exists = logged in", nothing else, so it stays on the
+// shared shape unwrapped).
 //
-// Every function here falls back to devAuthFallback.ts when the real
-// backend is unreachable (not when it responds with a real error — see
-// isBackendUnreachable's own note) — that's what "OTP not receiving" in
-// this sandbox actually was: no backend/SMS provider running anywhere,
-// same situation every other screen in this app already handles via
+// Every OTP/session function here falls back to devAuthFallback.ts when
+// the real backend is unreachable (not when it responds with a real error
+// — see isBackendUnreachable's own note) — that's what "OTP not receiving"
+// in this sandbox actually was: no backend/SMS provider reachable, same
+// situation every other screen in this app already handles via
 // placeholder data. The fallback disappears on its own the moment a real
 // backend answers; nothing here needs to change when that happens.
 
+import { createAuthApi, type AccountStatus, type VerifyOtpResponse } from '@flikk/shared';
 import { apiRequest } from './client';
 import {
   devCheckAccountStatus,
@@ -27,6 +27,10 @@ import {
   isBackendUnreachable,
 } from './devAuthFallback';
 
+const authApi = createAuthApi({ apiRequest });
+
+export type { AccountStatus, VerifyOtpResponse };
+
 export interface RequestOtpResult {
   ok: true;
   devMode: boolean;
@@ -34,7 +38,7 @@ export interface RequestOtpResult {
 
 export async function requestOtp(phone: string): Promise<RequestOtpResult> {
   try {
-    const result = await apiRequest<{ ok: true }>('/auth/otp/request', { method: 'POST', body: { phone }, auth: false });
+    const result = await authApi.requestOtp(phone);
     return { ...result, devMode: false };
   } catch (err) {
     if (!isBackendUnreachable(err)) throw err;
@@ -43,15 +47,9 @@ export async function requestOtp(phone: string): Promise<RequestOtpResult> {
   }
 }
 
-export interface VerifyOtpResponse {
-  access_token: string;
-  is_approved: boolean;
-  has_store: boolean;
-}
-
 export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpResponse> {
   try {
-    return await apiRequest('/auth/otp/verify', { method: 'POST', body: { phone, code }, auth: false });
+    return await authApi.verifyOtp(phone, code);
   } catch (err) {
     if (!isBackendUnreachable(err)) throw err;
     return devVerifyOtp(phone, code);
@@ -66,6 +64,8 @@ export interface StoreApplication {
   photoUrl?: string;
 }
 
+// Partner-only endpoint (Store Setup submission) — not part of the shared
+// auth contract, stays local to this app.
 export async function submitStoreApplication(application: StoreApplication): Promise<{ ok: true }> {
   try {
     return await apiRequest('/partner/store-application', { method: 'POST', body: application });
@@ -92,17 +92,12 @@ export async function uploadStorePhoto(base64: string, contentType: string, loca
   }
 }
 
-export interface AccountStatus {
-  is_approved: boolean;
-  has_store: boolean;
-}
-
 // Re-checked on cold start (a returning session's approval/store status
 // isn't persisted alongside the token, see useAuthStore.ts's own note) and
 // polled by WaitingApprovalScreen — one endpoint, two callers.
 export async function checkAccountStatus(): Promise<AccountStatus> {
   try {
-    return await apiRequest('/auth/me');
+    return await authApi.checkAccountStatus();
   } catch (err) {
     if (!isBackendUnreachable(err)) throw err;
     return devCheckAccountStatus();
@@ -114,7 +109,7 @@ export async function checkAccountStatus(): Promise<AccountStatus> {
 // what actually go over the wire. Both best-effort, no dev-mode fallback:
 // a failed save just means a closed app restarts that step blank instead
 // of resuming, same severity as a failed push-token registration, not
-// worth a fake local stand-in for.
+// worth a fake local stand-in for. Partner-only endpoint, stays local.
 export interface StoreDraftPatch {
   storeName?: string;
   category?: string;
@@ -152,5 +147,5 @@ export async function saveStoreDraft(patch: StoreDraftPatch): Promise<void> {
 // a failed registration just means no push, not a broken flow; the caller
 // already treats this as best-effort.
 export async function savePushToken(token: string): Promise<void> {
-  await apiRequest('/auth/push-token', { method: 'POST', body: { token } });
+  await authApi.savePushToken(token);
 }

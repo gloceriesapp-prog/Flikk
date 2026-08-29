@@ -14,8 +14,23 @@ import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 
 export const storeOnboardingRouter = Router();
 
-const PHOTO_BUCKET = 'store-photos';
+// Same bucket admin's own Add Store form uploads to (apps/admin/src/
+// app/api/upload/route.ts's ALLOWED_BUCKETS) — one real Storage bucket for
+// every storefront photo regardless of which surface uploaded it, not a
+// second one. 'store-photos' (the old value here) was never actually
+// created in Supabase — every onboarding photo upload was silently
+// failing against a bucket that didn't exist.
+const PHOTO_BUCKET = 'store-images';
 
+// Submitting no longer writes a real `stores` row — it only marks the
+// draft as "ready for review" (submitted_at). The real store row (and the
+// role flip to store_owner) is created later, by admin's own approve
+// action (apps/admin/src/app/api/approvals/stores/[userId]/route.ts) —
+// per an explicit ask: a founder rejecting an application should never
+// leave a half-real store sitting in the main `stores` table. Until
+// approved, this applicant is still just a 'customer' role with a pending
+// draft; nothing in the real product data model knows they applied except
+// this one row.
 storeOnboardingRouter.post('/store-application', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     const { storeName, category, district, gstNumber, photoUrl } = req.body as {
@@ -29,28 +44,20 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
       throw new AppError(400, 'MISSING_FIELDS', 'storeName, category and district are required.');
     }
 
-    // Single-zone launch (CLAUDE.md) — the app never picks a zone, this is
-    // the one active one.
-    const { data: zone, error: zoneErr } = await supabase.from('zones').select('id').eq('is_active', true).single();
-    if (zoneErr || !zone) throw new AppError(500, 'NO_ACTIVE_ZONE', 'No active zone configured.');
-
-    const { error: roleErr } = await supabase.from('users').update({ role: 'store_owner' }).eq('id', req.user!.id);
-    if (roleErr) throw roleErr;
-
-    const { error: storeErr } = await supabase.from('stores').insert({
-      owner_user_id: req.user!.id,
-      zone_id: zone.id,
-      name: storeName,
-      category,
-      district,
-      gst_number: gstNumber || null,
-      photo_url: photoUrl || null,
-    });
-    if (storeErr) throw storeErr;
-
-    // Draft's only purpose was surviving an app close mid-wizard — a real
-    // store row now exists, so there's nothing left to resume into.
-    await supabase.from('store_onboarding_drafts').delete().eq('user_id', req.user!.id);
+    const { error } = await supabase.from('store_onboarding_drafts').upsert(
+      {
+        user_id: req.user!.id,
+        store_name: storeName,
+        category,
+        district,
+        gst_number: gstNumber || null,
+        photo_url: photoUrl || null,
+        submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id' },
+    );
+    if (error) throw error;
 
     res.status(201).json({ ok: true });
   } catch (err) {
@@ -70,7 +77,7 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
   try {
     const { data, error } = await supabase
       .from('store_onboarding_drafts')
-      .select('store_name, category, district, lat, lng, photo_url, gst_number')
+      .select('store_name, category, district, lat, lng, photo_url, gst_number, submitted_at')
       .eq('user_id', req.user!.id)
       .maybeSingle();
     if (error) throw error;

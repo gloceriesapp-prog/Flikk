@@ -63,7 +63,11 @@ export function useOrderExpiryWatcher(): void {
 
           const stage = index === REMINDER_CHECKPOINTS_MS.length - 1 ? 'final' : 'first';
           showReminder({ orderId: order.id, customerName: order.customerName, stage });
-          void sendOrderReminderNotification(order.customerName, stage);
+          // Best-effort — a notification-permission/scheduling failure
+          // shouldn't crash the watcher (showReminder's in-app banner
+          // already fired), and `void` alone doesn't catch a rejection,
+          // just discards the return value.
+          sendOrderReminderNotification(order.customerName, stage).catch(() => {});
         });
       }
     }, 1000);

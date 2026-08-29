@@ -23,7 +23,11 @@ export function StoreReviewScreen({ navigation, route }: Props) {
   const { draft } = route.params;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const setHasStore = useAuthStore((s) => s.setHasStore);
+  // Not setHasStore — submitting no longer creates a real `stores` row
+  // (backend's storeOnboarding.ts's own note), only admin's approve action
+  // does. This is the "submitted, waiting on a decision" flag instead;
+  // RootNavigator routes to WaitingApprovalScreen off it, not off hasStore.
+  const setApplicationSubmitted = useAuthStore((s) => s.setApplicationSubmitted);
   const clearSession = useAuthStore((s) => s.clear);
 
   async function handleSubmit() {
@@ -37,7 +41,7 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         gstNumber: draft.gstNumber || undefined,
         photoUrl: draft.photoUrl || undefined,
       });
-      setHasStore(true);
+      setApplicationSubmitted(true);
     } catch (err) {
       // A 401 here means the stored session token is stale or invalid —
       // e.g. a dev-mode token from before a real backend existed, now

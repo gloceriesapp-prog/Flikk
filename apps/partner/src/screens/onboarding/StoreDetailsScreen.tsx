@@ -9,7 +9,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { Camera01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { saveStoreDraft, uploadStorePhoto } from '../../api/auth';
+import { ApiError } from '../../api/client';
 import { AppIcon } from '../../components/AppIcon';
+import { compressImageToTarget } from '../../media/compressImage';
 import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import type { Coordinates } from '../../location/geocoding';
@@ -23,6 +25,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
   const { draft } = route.params;
   const [photoUrl, setPhotoUrl] = useState(draft.photoUrl);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [district, setDistrict] = useState(draft.district);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(draft.coordinates);
   const [gstNumber, setGstNumber] = useState(draft.gstNumber);
@@ -33,9 +36,13 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
 
+    // quality: 1 (not a fixed 0.6 baked in here) — compressImageToTarget
+    // below decides how much compression an image actually needs based on
+    // its real size, instead of blindly degrading every photo the same
+    // amount regardless of whether it needed it.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 0.6,
+      quality: 1,
       base64: true,
     });
     if (result.canceled) return;
@@ -44,14 +51,27 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
     if (!asset.base64) return;
 
     setUploadingPhoto(true);
+    setPhotoError(null);
     try {
-      const contentType = asset.mimeType ?? 'image/jpeg';
-      const { url } = await uploadStorePhoto(asset.base64, contentType, asset.uri);
+      const compressed = await compressImageToTarget(asset.uri, asset.base64);
+      // Untouched (already under target) keeps its real original type;
+      // anything compressImageToTarget actually re-encoded is always JPEG.
+      const contentType = compressed.uri === asset.uri ? (asset.mimeType ?? 'image/jpeg') : 'image/jpeg';
+      const { url } = await uploadStorePhoto(compressed.base64, contentType, compressed.uri);
       setPhotoUrl(url);
       // Photo's already hosted the moment this resolves — save it now
       // rather than waiting for "Next" so it survives an app close even
-      // mid-Step-2, same as Step 1's own save-then-advance.
-      void saveStoreDraft({ photoUrl: url });
+      // mid-Step-2, same as Step 1's own save-then-advance. Best-effort —
+      // .catch() here matters, not just the `void`: `void promise` only
+      // discards the return value, a still-rejecting promise with no
+      // handler surfaces as an uncaught "Something went wrong" error
+      // screen for a background save nobody was watching.
+      saveStoreDraft({ photoUrl: url }).catch(() => {});
+    } catch (err) {
+      // Previously uncaught entirely — an upload failure (e.g. the real
+      // bucket-doesn't-exist bug this replaced) just left the photo box
+      // empty forever with zero indication anything went wrong.
+      setPhotoError(err instanceof ApiError ? err.message : 'Could not upload photo. Please try again.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -71,12 +91,13 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
     if (!canContinue) return;
     const trimmedGst = gstNumber.trim();
 
-    void saveStoreDraft({
+    // Best-effort, same reasoning as handlePickPhoto's own note above.
+    saveStoreDraft({
       district: district ?? undefined,
       lat: coordinates?.latitude,
       lng: coordinates?.longitude,
       gstNumber: trimmedGst,
-    });
+    }).catch(() => {});
 
     navigation.navigate('StoreReview', {
       draft: { ...draft, photoUrl, district, coordinates, gstNumber: trimmedGst },
@@ -113,6 +134,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
                 </View>
               )}
             </Pressable>
+            {photoError && <Text className="text-[13px] font-medium text-danger">{photoError}</Text>}
           </View>
 
           <View className="gap-1.5">

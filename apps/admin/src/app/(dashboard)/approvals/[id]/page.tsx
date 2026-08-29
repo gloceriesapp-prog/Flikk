@@ -9,17 +9,36 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Store, User } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { mapRiderApplication, mapStoreApplication, type ApiRiderApplication, type ApiStoreApplication } from '@/lib/supabase/approvals';
+import {
+  mapApprovedStore,
+  mapRiderApplication,
+  mapStoreDraft,
+  type ApiApprovedStore,
+  type ApiRiderApplication,
+  type ApiStoreDraft,
+} from '@/lib/supabase/approvals';
 import { DocumentChecklist } from '@/components/approvals/DocumentChecklist';
 import { DecisionButtons } from '@/components/approvals/DecisionButtons';
 import type { Application } from '@/lib/types';
 
-const STORE_SELECT =
-  'owner_user_id, name, category, district, photo_url, gst_number, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_account_last4, turnover_exceeds_gst_threshold, drug_license_number, created_at, users!owner_user_id(phone, is_approved, is_rejected)';
+const DRAFT_SELECT = 'user_id, store_name, category, district, photo_url, gst_number, submitted_at, users!user_id(phone, is_rejected)';
+const STORE_SELECT = 'owner_user_id, name, category, district, photo_url, gst_number, created_at, users!owner_user_id(phone)';
 
+// Pending/rejected (draft, no real store yet) and approved (real `stores`
+// row) are two different tables now — see lib/supabase/approvals.ts's own
+// note on why. Check the draft first since that's the far more common case
+// (most applications are pending review, not yet approved).
 async function loadApplication(id: string): Promise<Application | null> {
+  const { data: draftRow } = await supabaseAdmin
+    .from('store_onboarding_drafts')
+    .select(DRAFT_SELECT)
+    .eq('user_id', id)
+    .not('submitted_at', 'is', null)
+    .maybeSingle();
+  if (draftRow) return mapStoreDraft(draftRow as unknown as ApiStoreDraft);
+
   const { data: storeRow } = await supabaseAdmin.from('stores').select(STORE_SELECT).eq('owner_user_id', id).maybeSingle();
-  if (storeRow) return mapStoreApplication(storeRow as unknown as ApiStoreApplication);
+  if (storeRow) return mapApprovedStore(storeRow as unknown as ApiApprovedStore);
 
   const { data: riderRow } = await supabaseAdmin
     .from('users')
@@ -73,20 +92,19 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
 
         {application.kind === 'store' && <DocumentChecklist application={application} />}
 
-        {application.status === 'pending' ? (
-          <DecisionButtons applicationId={application.id} kind={application.kind} />
-        ) : (
+        {application.status === 'approved' ? (
           <div className="mt-6 border-t border-border pt-6">
-            <span
-              className={
-                application.status === 'approved'
-                  ? 'rounded-full bg-green-50 px-3 py-1.5 text-xs font-semibold text-success'
-                  : 'rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-danger'
-              }
-            >
-              {application.status === 'approved' ? 'Approved' : 'Rejected'}
-            </span>
+            <span className="rounded-full bg-green-50 px-3 py-1.5 text-xs font-semibold text-success">Approved</span>
           </div>
+        ) : (
+          <>
+            {application.status === 'rejected' && (
+              <p className="mt-6 border-t border-border pt-6 text-xs font-medium text-danger">
+                Previously rejected — approving now still creates the store.
+              </p>
+            )}
+            <DecisionButtons applicationId={application.id} kind={application.kind} />
+          </>
         )}
       </div>
     </div>

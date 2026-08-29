@@ -39,7 +39,9 @@ export async function requireAuth(req: AuthedRequest, _res: Response, next: Next
       .insert({ id: sessionUser.user.id, phone: sessionUser.user.phone, role: 'customer' })
       .select('id, role, is_approved')
       .single();
-    if (createErr || !created) return next(new AppError(401, 'UNAUTHENTICATED', 'Could not provision user record.'));
+    if (createErr || !created) {
+      return next(new AppError(401, 'UNAUTHENTICATED', 'Could not provision user record.'));
+    }
     req.user = { id: created.id, role: created.role as Role, isApproved: created.is_approved };
     return next();
   }

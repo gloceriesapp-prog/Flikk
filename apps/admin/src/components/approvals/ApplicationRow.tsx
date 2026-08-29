@@ -25,7 +25,10 @@ export function ApplicationRow({ application }: { application: Application }) {
   const [status, setStatus] = useState(application.status);
   const [busy, setBusy] = useState(false);
   const Icon = application.kind === 'store' ? Store : User;
-  const isPending = status === 'pending';
+  // Rejected still shows the decide buttons, not a terminal pill — a
+  // founder who changes their mind can approve it later (the draft is
+  // kept, not deleted, on reject — see the approve route's own note).
+  const needsDecision = status !== 'approved';
 
   async function decide(approve: boolean) {
     setBusy(true);
@@ -45,16 +48,16 @@ export function ApplicationRow({ application }: { application: Application }) {
     <div
       className={clsx(
         'flex items-center gap-4 rounded-2xl border p-4 transition-colors',
-        isPending ? 'border-amber-100 bg-amber-50/40' : 'border-border bg-card',
+        needsDecision ? 'border-amber-100 bg-amber-50/40' : 'border-border bg-card',
       )}
     >
       <div
         className={clsx(
           'flex h-11 w-11 shrink-0 items-center justify-center rounded-full',
-          isPending ? 'bg-amber-100' : 'bg-accent',
+          needsDecision ? 'bg-amber-100' : 'bg-accent',
         )}
       >
-        <Icon size={17} className={isPending ? 'text-amber-700' : 'text-ink-soft'} />
+        <Icon size={17} className={needsDecision ? 'text-amber-700' : 'text-ink-soft'} />
       </div>
 
       <Link href={`/approvals/${application.id}`} className="group flex min-w-0 flex-1 items-center gap-2">
@@ -73,7 +76,7 @@ export function ApplicationRow({ application }: { application: Application }) {
         <ChevronRight size={15} className="shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100" />
       </Link>
 
-      {isPending ? (
+      {needsDecision ? (
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"

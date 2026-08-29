@@ -55,10 +55,9 @@ module.exports = {
       ],
     ],
     // getExpoPushTokenAsync needs this once the app runs outside Expo Go's
-    // managed flow — empty/undefined until `eas init` links a real EAS
-    // project (registerPushToken.ts's own note: every push-registration
-    // path already no-ops gracefully without it, this isn't required to
-    // use the app).
+    // managed flow — set via EAS_PROJECT_ID in .env (eas init'd project:
+    // @nishal777/partner). Still no-ops gracefully if unset, per
+    // registerPushToken.ts's own note — this isn't required to use the app.
     extra: {
       eas: {
         projectId: process.env.EAS_PROJECT_ID,

@@ -1,38 +1,45 @@
 // Real store/rider applications (A1) — replaces lib/mock-data.ts's
-// PLACEHOLDER_APPLICATIONS. `id` is always the applicant's own users.id
-// (owner_user_id for a store, the rider's own id for a rider) — that's
-// what the approve/deny routes key off, matching the same is_approved flip
-// apps/partner's WaitingApprovalScreen polls for. is_rejected is a real,
-// persisted tri-state alongside is_approved (both default false = still
-// pending) — manual review only for now (a founder decides every
-// application by hand); an automated approval path is a later-scale
-// problem per CLAUDE.md's own MVP scope, not built speculatively now.
+// PLACEHOLDER_APPLICATIONS. `id` is always the applicant's own users.id —
+// that's what the approve/deny routes key off, matching the same
+// is_approved flip apps/partner's WaitingApprovalScreen polls for.
+//
+// Store applications are two different shapes stitched into one list now:
+// a *pending* (or rejected) one only exists as a store_onboarding_drafts
+// row — no real `stores` row is created until a founder actually approves
+// it (see app/api/approvals/stores/[userId]/route.ts's own note on why:
+// an explicit ask that unapproved data never lands in the main `stores`
+// table). An *approved* one is the real `stores` row created at that
+// moment — the draft is gone by then, deleted the instant it's
+// materialized. GET /api/approvals/stores fetches both and maps each
+// through its own function below into the one shared Application shape.
+//
+// Rider applications don't have this draft/real split — a rider row is
+// just `users` with role='rider', is_approved/is_rejected are real columns
+// on it directly, no separate table.
 
 import { ZONE_NAME } from '../mock-data';
 import type { Application } from '../types';
 
-function statusFor(isApproved: boolean, isRejected: boolean): Application['status'] {
-  if (isApproved) return 'approved';
-  if (isRejected) return 'rejected';
-  return 'pending';
+export interface ApiStoreDraft {
+  user_id: string;
+  store_name: string | null;
+  category: string | null;
+  district: string | null;
+  photo_url: string | null;
+  gst_number: string | null;
+  submitted_at: string;
+  users: { phone: string; is_rejected: boolean } | null;
 }
 
-export interface ApiStoreApplication {
+export interface ApiApprovedStore {
   owner_user_id: string;
   name: string;
   category: string | null;
   district: string | null;
   photo_url: string | null;
   gst_number: string | null;
-  fssai_number: string | null;
-  shop_establishment_number: string | null;
-  pan_number: string | null;
-  aadhaar_last4: string | null;
-  bank_account_last4: string | null;
-  turnover_exceeds_gst_threshold: boolean | null;
-  drug_license_number: string | null;
   created_at: string;
-  users: { phone: string; is_approved: boolean; is_rejected: boolean } | null;
+  users: { phone: string } | null;
 }
 
 export interface ApiRiderApplication {
@@ -44,7 +51,23 @@ export interface ApiRiderApplication {
   created_at: string;
 }
 
-export function mapStoreApplication(row: ApiStoreApplication): Application {
+export function mapStoreDraft(row: ApiStoreDraft): Application {
+  return {
+    id: row.user_id,
+    kind: 'store',
+    name: row.store_name ?? 'Untitled store',
+    category: row.category,
+    zone: ZONE_NAME,
+    submittedAt: new Date(row.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+    status: row.users?.is_rejected ? 'rejected' : 'pending',
+    phone: row.users?.phone ?? '',
+    photoUrl: row.photo_url ?? undefined,
+    gstNumber: row.gst_number ?? undefined,
+    district: row.district ?? undefined,
+  };
+}
+
+export function mapApprovedStore(row: ApiApprovedStore): Application {
   return {
     id: row.owner_user_id,
     kind: 'store',
@@ -52,18 +75,11 @@ export function mapStoreApplication(row: ApiStoreApplication): Application {
     category: row.category,
     zone: ZONE_NAME,
     submittedAt: new Date(row.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-    status: statusFor(row.users?.is_approved ?? false, row.users?.is_rejected ?? false),
+    status: 'approved',
     phone: row.users?.phone ?? '',
     photoUrl: row.photo_url ?? undefined,
     gstNumber: row.gst_number ?? undefined,
     district: row.district ?? undefined,
-    fssaiNumber: row.fssai_number ?? undefined,
-    shopEstablishmentNumber: row.shop_establishment_number ?? undefined,
-    panNumber: row.pan_number ?? undefined,
-    aadhaarLast4: row.aadhaar_last4 ?? undefined,
-    bankAccountLast4: row.bank_account_last4 ?? undefined,
-    turnoverExceedsGstThreshold: row.turnover_exceeds_gst_threshold ?? undefined,
-    drugLicenseNumber: row.drug_license_number ?? undefined,
   };
 }
 
@@ -75,7 +91,7 @@ export function mapRiderApplication(row: ApiRiderApplication): Application {
     category: null,
     zone: ZONE_NAME,
     submittedAt: new Date(row.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-    status: statusFor(row.is_approved, row.is_rejected),
+    status: row.is_approved ? 'approved' : row.is_rejected ? 'rejected' : 'pending',
     phone: row.phone,
   };
 }

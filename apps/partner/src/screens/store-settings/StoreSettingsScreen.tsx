@@ -95,7 +95,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
             className="h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gray-100"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            <Image source={{ uri: getAvatarImageUri(profile.avatarSeed) }} className="h-full w-full" />
+            <Image source={{ uri: profile.photoUrl ?? getAvatarImageUri(profile.id || 'partner-store') }} className="h-full w-full" />
             <View className="absolute bottom-0 h-6 w-full items-center justify-center bg-black/40">
               <AppIcon icon={ImageAdd01Icon} size={13} color="#FFFFFF" />
             </View>

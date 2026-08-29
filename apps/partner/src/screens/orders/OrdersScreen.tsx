@@ -8,15 +8,13 @@
 // useState — OrderDetailScreen (P3) needs to read and act on the same
 // orders. This screen just renders what the store holds.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { useLiveDistrict } from '../../location/useLiveDistrict';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { useStoreProfileStore } from '../../store/useStoreProfileStore';
 import type { PartnerOrderStatus } from './data';
-import { LocationPermissionBanner } from './components/LocationPermissionBanner';
 import { OrderCard } from './components/OrderCard';
 import { OrderStatusFilter, type OrderStatusFilterValue } from './components/OrderStatusFilter';
 import { StoreProfileHeader } from './components/StoreProfileHeader';
@@ -45,7 +43,11 @@ export function OrdersScreen({ navigation }: Props) {
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilterValue>('placed');
   const profile = useStoreProfileStore((state) => state.profile);
   const toggleOpen = useStoreProfileStore((state) => state.toggleOpen);
-  const { status: locationStatus, district: liveDistrict, requestLiveDistrict } = useLiveDistrict();
+  const loadProfile = useStoreProfileStore((state) => state.loadProfile);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
 
   const newOrderCount = orders.filter((order) => order.status === 'placed').length;
   const earningTotal = orders.reduce((sum, order) => sum + order.total, 0);
@@ -60,7 +62,7 @@ export function OrdersScreen({ navigation }: Props) {
           boxes still read as cards on their own (border + shadow), same
           layout/spacing as before, just no colored backdrop under it. */}
       <StoreProfileHeader
-        profile={{ ...profile, district: liveDistrict ?? profile.district }}
+        profile={profile}
         onToggleOpen={toggleOpen}
         onPressSettings={() => navigation.navigate('StoreSettings')}
         // No notifications backend yet (specs/05-platform/notifications.md)
@@ -68,8 +70,6 @@ export function OrdersScreen({ navigation }: Props) {
         // apps/customer's HomeSearchBar mic icon.
         onPressNotifications={() => {}}
       />
-
-      <LocationPermissionBanner status={locationStatus} onRequest={requestLiveDistrict} />
 
       <View className="pb-1">
         <TodayStatsCard orderCount={orders.length} pendingCount={newOrderCount} earningTotal={earningTotal} />

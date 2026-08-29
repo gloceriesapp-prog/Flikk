@@ -35,7 +35,7 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressSettings, onP
       <View className="flex-row items-center justify-between px-5 pb-5 pt-3">
         <View className="flex-1 flex-row items-center gap-3.5">
           <View className="rounded-full p-0.5 shadow-sm shadow-black/5">
-            <Image source={{ uri: getAvatarImageUri(profile.avatarSeed) }} className="h-11 w-11 rounded-full" />
+            <Image source={{ uri: profile.photoUrl ?? getAvatarImageUri(profile.id || 'partner-store') }} className="h-11 w-11 rounded-full" />
           </View>
 
           <View className="flex-1 gap-0">

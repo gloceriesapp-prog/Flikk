@@ -13,13 +13,17 @@
 // useStoreProfileStore, not a server.
 
 export interface StoreProfile {
+  id: string;
   storeName: string;
   category: string;
   isOpen: boolean;
   // District only, not a full street address — see StoreProfileHeader.tsx's
   // own note on why. A full address belongs here once one is needed.
   district: string;
-  avatarSeed: string;
+  // Real storefront photo (stores.photo_url, set during onboarding) — null
+  // until one's uploaded, StoreProfileHeader/StoreSettingsScreen fall back
+  // to a seeded placeholder keyed by `id`, never a fake name.
+  photoUrl: string | null;
   hasUnreadNotifications: boolean;
   // "9:00 AM" / "9:00 PM" — free text, not a time picker component, at
   // this scale. Store hours are informational display only for now (the
@@ -53,15 +57,21 @@ export const STORE_CATEGORIES = [
   'General Store',
 ];
 
-export const STORE_PROFILE: StoreProfile = {
-  storeName: 'Ganesh Kirana Store',
-  category: 'Kirana & Grocery',
-  isOpen: true,
-  district: 'Udupi',
-  avatarSeed: 'partner-owner-ganesh',
-  hasUnreadNotifications: true,
-  openTime: '8:00 AM',
-  closeTime: '9:00 PM',
+// Empty shell — real data loads via GET /partner/store (useStoreProfileStore's
+// loadProfile) the moment a session exists. Never rendered as-is on a real
+// device: OrdersScreen's mount effect calls loadProfile before this would
+// show, this is just a safe non-null default for the brief window before
+// that resolves.
+export const EMPTY_STORE_PROFILE: StoreProfile = {
+  id: '',
+  storeName: '',
+  category: '',
+  isOpen: false,
+  district: '',
+  photoUrl: null,
+  hasUnreadNotifications: false,
+  openTime: '',
+  closeTime: '',
   avgPrepMinutes: 15,
-  phone: '+91 98765 43210',
+  phone: '',
 };

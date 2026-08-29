@@ -47,8 +47,8 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
       setError(null);
       setLoading(true);
       try {
-        const { access_token, is_approved, has_store } = await verifyOtp(phone, otp);
-        await setSession(access_token, is_approved, has_store);
+        const { access_token, is_approved, has_store, application_submitted } = await verifyOtp(phone, otp);
+        await setSession(access_token, is_approved, has_store, application_submitted);
         // RootNavigator swaps to Store Setup / Waiting / the app shell
         // automatically once the store updates — see that file's own note.
       } catch (err) {

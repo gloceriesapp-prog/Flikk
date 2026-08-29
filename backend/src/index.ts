@@ -33,7 +33,25 @@ app.use(
     },
   }),
 );
-app.use(express.json());
+// Default body limit is 100kb — fine for ordinary JSON, but every photo
+// upload in this app (store-photo here, product photos, etc.) sends the
+// file as base64 inside a JSON body, which inflates a real device photo
+// well past that default and gets silently rejected outright (a real
+// device photo failed here even after the store-images bucket fix,
+// because the request body itself never made it past this limit — a tiny
+// 1x1 test image during verification stayed under 100kb and masked this).
+// 10mb covers a compressed photo (ImagePicker's own quality: 0.6) with
+// real headroom.
+app.use(express.json({ limit: '10mb' }));
+
+// No root route existed at all — visiting the backend's own URL in a
+// browser (the natural "is it actually running?" check) just 404'd with
+// no way to tell a dead server from a wrong URL/port. Plain JSON, not a
+// health-check library — this only needs to answer "yes, this is Flikk's
+// backend, it's up," not report on DB/dependency health.
+app.get('/', (_req, res) => {
+  res.json({ ok: true, service: 'flikk-backend', message: 'Flikk backend is running.' });
+});
 
 app.use('/auth', authRouter);
 app.use('/zones', zonesRouter);

@@ -84,7 +84,10 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
     setActiveOrder(next);
     setSecondsLeft(AUTO_DECLINE_SECONDS);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    void playOrderAlertSound();
+    // Best-effort — a device audio-session failure shouldn't crash the
+    // alert flow (the haptic above already fired), and `void` alone
+    // doesn't catch a rejection, just discards the return value.
+    playOrderAlertSound().catch(() => {});
   }, [orders, activeOrder, acknowledgedOrderIds]);
 
   // The attention-phase countdown — ticks once a second while an order is

@@ -1,11 +1,17 @@
-// Thin fetch wrapper for the Flikk backend (specs/00-foundation/api-conventions.md).
-// Attaches the session token when present; never handles routing/auth-state,
-// that's the caller's/store's job. Copied from apps/customer/src/api/client.ts
-// (identical shape, same backend, same conventions) — see
-// specs/00-foundation/repo-structure.md on why this app copies rather than
-// imports across apps.
+// Thin instantiation of @flikk/shared's createApiClient — the actual
+// fetch/error-shaping logic now lives in one place (packages/shared/src/
+// auth/client.ts) instead of being hand-copied per app; this file's only
+// job is supplying this app's own base URL and its own session-token
+// getter (useAuthStore), which the shared factory takes as plain
+// parameters rather than importing any app's store directly. Re-exports
+// `apiRequest`/`ApiError` under their original names so every existing
+// call site in this app (storeOnboarding calls, etc. — not just the OTP
+// endpoints) keeps working unchanged.
 
+import { createApiClient } from '@flikk/shared';
 import { useAuthStore } from '../store/useAuthStore';
+
+export { ApiError } from '@flikk/shared';
 
 // Fallback only matters when EXPO_PUBLIC_API_URL is unset — backend/Express
 // listens on 4000, not 3000 (that's apps/admin's Next.js dev server). A
@@ -14,44 +20,9 @@ import { useAuthStore } from '../store/useAuthStore';
 // var added (see that file's own note).
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string
-  ) {
-    super(message);
-  }
-}
+const client = createApiClient({
+  baseUrl: API_URL,
+  getAccessToken: () => useAuthStore.getState().accessToken,
+});
 
-interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  body?: unknown;
-  auth?: boolean; // attach the stored session token — default true
-}
-
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, auth = true } = options;
-
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (auth) {
-    const token = useAuthStore.getState().accessToken;
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const json = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    const code = json?.error?.code ?? 'UNKNOWN_ERROR';
-    const message = json?.error?.message ?? 'Something went wrong. Please try again.';
-    throw new ApiError(res.status, code, message);
-  }
-
-  return json as T;
-}
+export const apiRequest = client.apiRequest;

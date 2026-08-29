@@ -26,6 +26,7 @@ const POLL_INTERVAL_MS = 10_000;
 
 export function WaitingApprovalScreen() {
   const setApproved = useAuthStore((s) => s.setApproved);
+  const setHasStore = useAuthStore((s) => s.setHasStore);
   const clearSession = useAuthStore((s) => s.clear);
   const [checking, setChecking] = useState(false);
 
@@ -35,10 +36,17 @@ export function WaitingApprovalScreen() {
     async function poll() {
       setChecking(true);
       try {
-        const { is_approved } = await checkAccountStatus();
+        const { is_approved, has_store } = await checkAccountStatus();
         // RootNavigator swaps to the app shell automatically the instant
-        // this flips true — no explicit navigation call needed here.
-        if (!cancelled && is_approved) setApproved(true);
+        // both flip true — no explicit navigation call needed here. Both,
+        // not just is_approved: a real `stores` row (has_store) only gets
+        // created at the same moment admin approves now (backend's
+        // storeOnboarding.ts's own note), so this screen's unlock
+        // condition needs both flags to actually match what just happened.
+        if (!cancelled && is_approved && has_store) {
+          setApproved(true);
+          setHasStore(true);
+        }
       } catch {
         // Silent — a failed poll just tries again next interval. Nothing
         // useful to show the owner for "the recheck itself didn't work,"
@@ -56,7 +64,7 @@ export function WaitingApprovalScreen() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [setApproved]);
+  }, [setApproved, setHasStore]);
 
   return (
     <View className="flex-1 items-center justify-center gap-6 bg-white px-8 pb-safe pt-safe">

@@ -36,7 +36,10 @@ const AUTO_APPROVE_DELAY_MS = 20_000;
 interface DevAccount {
   hasStore: boolean;
   isApproved: boolean;
+  applicationSubmitted: boolean;
 }
+
+const EMPTY_ACCOUNT: DevAccount = { hasStore: false, isApproved: false, applicationSubmitted: false };
 
 const devAccounts = new Map<string, DevAccount>();
 
@@ -50,7 +53,7 @@ function phoneFromCurrentToken(): string {
 }
 
 export async function devRequestOtp(phone: string): Promise<{ ok: true }> {
-  if (!devAccounts.has(phone)) devAccounts.set(phone, { hasStore: false, isApproved: false });
+  if (!devAccounts.has(phone)) devAccounts.set(phone, { ...EMPTY_ACCOUNT });
   return { ok: true };
 }
 
@@ -58,20 +61,29 @@ export async function devVerifyOtp(phone: string, code: string): Promise<VerifyO
   if (code !== DEMO_OTP_CODE) {
     throw new ApiError(401, 'INVALID_OTP', `Incorrect code — dev mode uses ${DEMO_OTP_CODE}.`);
   }
-  const account = devAccounts.get(phone) ?? { hasStore: false, isApproved: false };
+  const account = devAccounts.get(phone) ?? { ...EMPTY_ACCOUNT };
   devAccounts.set(phone, account);
-  return { access_token: tokenFor(phone), is_approved: account.isApproved, has_store: account.hasStore };
+  return {
+    access_token: tokenFor(phone),
+    is_approved: account.isApproved,
+    has_store: account.hasStore,
+    application_submitted: account.applicationSubmitted,
+  };
 }
 
+// Mirrors the real model now (storeOnboarding.ts's own note): submitting
+// only marks the application as submitted/pending — hasStore doesn't flip
+// until the simulated "admin approve" below, same as a real founder
+// clicking Approve creates the real `stores` row that flips it for real.
 export async function devSubmitStoreApplication(_application: StoreApplication): Promise<{ ok: true }> {
   const phone = phoneFromCurrentToken();
-  const account = devAccounts.get(phone) ?? { hasStore: false, isApproved: false };
-  account.hasStore = true;
+  const account = devAccounts.get(phone) ?? { ...EMPTY_ACCOUNT };
+  account.applicationSubmitted = true;
   devAccounts.set(phone, account);
 
   setTimeout(() => {
     const current = devAccounts.get(phone);
-    if (current) devAccounts.set(phone, { ...current, isApproved: true });
+    if (current) devAccounts.set(phone, { ...current, isApproved: true, hasStore: true });
   }, AUTO_APPROVE_DELAY_MS);
 
   return { ok: true };
@@ -79,8 +91,8 @@ export async function devSubmitStoreApplication(_application: StoreApplication):
 
 export async function devCheckAccountStatus(): Promise<AccountStatus> {
   const phone = phoneFromCurrentToken();
-  const account = devAccounts.get(phone) ?? { hasStore: false, isApproved: false };
-  return { is_approved: account.isApproved, has_store: account.hasStore };
+  const account = devAccounts.get(phone) ?? { ...EMPTY_ACCOUNT };
+  return { is_approved: account.isApproved, has_store: account.hasStore, application_submitted: account.applicationSubmitted };
 }
 
 // Only a genuine network failure (backend unreachable — connection

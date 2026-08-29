@@ -76,7 +76,6 @@ export interface PartnerOrder {
 // type moved. Live mutations (the Open/Closed toggle, settings edits) go
 // through ../../store/useStoreProfileStore.ts, not this constant directly.
 export type { StoreProfile } from '../store-settings/data';
-export { STORE_PROFILE } from '../store-settings/data';
 
 // Anchors every placeholder order's placedAtTimestamp to app-load time,
 // offset to match its own placedAtLabel — so the order-expiry grace

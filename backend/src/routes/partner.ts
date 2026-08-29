@@ -16,6 +16,46 @@ async function ownStoreId(userId: string): Promise<string> {
   return data.id;
 }
 
+partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('id, name, category, is_active, district, photo_url, phone, open_time, close_time, avg_prep_minutes')
+      .eq('owner_user_id', req.user!.id)
+      .single();
+    if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    const { name, category, is_active, district, open_time, close_time, avg_prep_minutes } = req.body as Record<string, unknown>;
+    const patch: Record<string, unknown> = {};
+    if (name !== undefined) patch.name = name;
+    if (category !== undefined) patch.category = category;
+    if (is_active !== undefined) patch.is_active = is_active;
+    if (district !== undefined) patch.district = district;
+    if (open_time !== undefined) patch.open_time = open_time;
+    if (close_time !== undefined) patch.close_time = close_time;
+    if (avg_prep_minutes !== undefined) patch.avg_prep_minutes = avg_prep_minutes;
+
+    const { data, error } = await supabase
+      .from('stores')
+      .update(patch)
+      .eq('id', storeId)
+      .select('id, name, category, is_active, district, photo_url, phone, open_time, close_time, avg_prep_minutes')
+      .single();
+    if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);

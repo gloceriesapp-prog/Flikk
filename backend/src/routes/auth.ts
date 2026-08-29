@@ -1,6 +1,6 @@
 // Shared across all 4 apps. Source: specs/00-foundation/auth-and-roles.md
 import { Router } from 'express';
-import { supabase } from '../db/supabase.js';
+import { supabase, supabaseAuth } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 
@@ -10,7 +10,7 @@ authRouter.post('/otp/request', async (req, res, next) => {
   try {
     const { phone } = req.body as { phone?: string };
     if (!phone) throw new AppError(400, 'INVALID_PHONE', 'phone is required.');
-    const { error } = await supabase.auth.signInWithOtp({ phone });
+    const { error } = await supabaseAuth.auth.signInWithOtp({ phone });
     if (error) throw new AppError(400, 'OTP_SEND_FAILED', error.message);
     res.status(200).json({ ok: true });
   } catch (err) {
@@ -22,7 +22,7 @@ authRouter.post('/otp/verify', async (req, res, next) => {
   try {
     const { phone, code } = req.body as { phone?: string; code?: string };
     if (!phone || !code) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
-    const { data, error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' });
+    const { data, error } = await supabaseAuth.auth.verifyOtp({ phone, token: code, type: 'sms' });
     if (error || !data.session) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
 
     const userId = data.session.user.id;
@@ -39,11 +39,22 @@ authRouter.post('/otp/verify', async (req, res, next) => {
       userRow = created;
     }
     const { count } = await supabase.from('stores').select('id', { count: 'exact', head: true }).eq('owner_user_id', userId);
+    // A real `stores` row only ever exists post-approval now (see
+    // storeOnboarding.ts's own note) — a returning applicant with no store
+    // yet still needs to know "you already submitted, don't restart the
+    // wizard" vs. "you never finished it," which has_store alone can't
+    // tell apart anymore.
+    const { data: draft } = await supabase
+      .from('store_onboarding_drafts')
+      .select('submitted_at')
+      .eq('user_id', userId)
+      .maybeSingle();
 
     res.status(200).json({
       access_token: data.session.access_token,
       is_approved: userRow?.is_approved ?? false,
       has_store: (count ?? 0) > 0,
+      application_submitted: !!draft?.submitted_at,
     });
   } catch (err) {
     next(err);
@@ -70,9 +81,16 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       .single();
     if (userError) throw userError;
 
+    const { data: draft } = await supabase
+      .from('store_onboarding_drafts')
+      .select('submitted_at')
+      .eq('user_id', req.user!.id)
+      .maybeSingle();
+
     res.json({
       is_approved: req.user!.isApproved,
       has_store: (count ?? 0) > 0,
+      application_submitted: !!draft?.submitted_at,
       phone: user.phone,
       name: user.name,
     });
