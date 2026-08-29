@@ -4,12 +4,13 @@
 // local file — see uploadStorePhoto's own note and StoreDraft's shape.
 
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { uploadStorePhoto } from '../../api/auth';
+import { saveStoreDraft, uploadStorePhoto } from '../../api/auth';
 import { AppIcon } from '../../components/AppIcon';
+import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import type { Coordinates } from '../../location/geocoding';
 import { colors } from '../../theme/tokens';
@@ -47,6 +48,10 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
       const contentType = asset.mimeType ?? 'image/jpeg';
       const { url } = await uploadStorePhoto(asset.base64, contentType, asset.uri);
       setPhotoUrl(url);
+      // Photo's already hosted the moment this resolves — save it now
+      // rather than waiting for "Next" so it survives an app close even
+      // mid-Step-2, same as Step 1's own save-then-advance.
+      void saveStoreDraft({ photoUrl: url });
     } finally {
       setUploadingPhoto(false);
     }
@@ -64,65 +69,78 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
 
   function handleNext() {
     if (!canContinue) return;
+    const trimmedGst = gstNumber.trim();
+
+    void saveStoreDraft({
+      district: district ?? undefined,
+      lat: coordinates?.latitude,
+      lng: coordinates?.longitude,
+      gstNumber: trimmedGst,
+    });
+
     navigation.navigate('StoreReview', {
-      draft: { ...draft, photoUrl, district, coordinates, gstNumber: gstNumber.trim() },
+      draft: { ...draft, photoUrl, district, coordinates, gstNumber: trimmedGst },
     });
   }
 
   return (
-    <View className="flex-1 bg-white pb-safe pt-safe">
-      <View className="px-6 pt-4">
-        <Text className="text-xs font-bold uppercase tracking-wide text-lime-deep">Step 2 of 3</Text>
-        <Text className="mt-1 text-3xl font-medium text-ink">Add store details</Text>
-        <Text className="mt-1 text-base font-medium text-ink/60">A photo and location help customers find you.</Text>
-      </View>
-
-      <ScrollView className="flex-1" contentContainerClassName="gap-5 px-6 pt-6" keyboardShouldPersistTaps="handled">
-        <View className="gap-1.5">
-          <Text className="text-base font-medium text-ink/60">Store photo</Text>
-          <Pressable
-            onPress={handlePickPhoto}
-            disabled={uploadingPhoto}
-            className="h-40 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-mist"
-          >
-            {uploadingPhoto ? (
-              <ActivityIndicator color={colors.limeDeep} />
-            ) : photoUrl ? (
-              <Image source={{ uri: photoUrl }} className="h-full w-full" resizeMode="cover" />
-            ) : (
-              <View className="items-center gap-2">
-                <AppIcon icon={Camera01Icon} size={24} color={`${colors.ink}60`} />
-                <Text className="text-sm font-medium text-ink/50">Add a storefront photo</Text>
-              </View>
-            )}
-          </Pressable>
+    // Keyboard was covering the Next button below (no keyboard-avoidance
+    // at all) — same fix/reasoning as LoginScreen.tsx's own note.
+    <DismissKeyboardView>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white pb-safe pt-safe">
+        <View className="px-6 pt-4">
+          <Text className="text-xs font-bold uppercase tracking-wide text-lime-deep">Step 2 of 3</Text>
+          <Text className="mt-1 text-3xl font-medium text-ink">Add store details</Text>
+          <Text className="mt-1 text-base font-medium text-ink/60">A photo and location help customers find you.</Text>
         </View>
 
-        <View className="gap-1.5">
-          <Text className="text-base font-medium text-ink/60">Location</Text>
-          <StoreLocationCard
-            district={district}
-            onUseCurrentLocation={() => handleOpenLocationPin()}
-            onSelectPlace={(place) => handleOpenLocationPin(place)}
-          />
-        </View>
+        <ScrollView className="flex-1" contentContainerClassName="gap-5 px-6 pt-6" keyboardShouldPersistTaps="handled">
+          <View className="gap-1.5">
+            <Text className="text-base font-medium text-ink/60">Store photo</Text>
+            <Pressable
+              onPress={handlePickPhoto}
+              disabled={uploadingPhoto}
+              className="h-40 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-mist"
+            >
+              {uploadingPhoto ? (
+                <ActivityIndicator color={colors.limeDeep} />
+              ) : photoUrl ? (
+                <Image source={{ uri: photoUrl }} className="h-full w-full" resizeMode="cover" />
+              ) : (
+                <View className="items-center gap-2">
+                  <AppIcon icon={Camera01Icon} size={24} color={`${colors.ink}60`} />
+                  <Text className="text-sm font-medium text-ink/50">Add a storefront photo</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
 
-        <View className="gap-1.5">
-          <Text className="text-base font-medium text-ink/60">GST number (optional)</Text>
-          <TextInput
-            value={gstNumber}
-            onChangeText={setGstNumber}
-            placeholder="e.g. 29ABCDE1234F1Z5"
-            placeholderTextColor="#9AA5A3"
-            autoCapitalize="characters"
-            className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-base font-medium text-ink"
-          />
-        </View>
-      </ScrollView>
+          <View className="gap-1.5">
+            <Text className="text-base font-medium text-ink/60">Location</Text>
+            <StoreLocationCard
+              district={district}
+              onUseCurrentLocation={() => handleOpenLocationPin()}
+              onSelectPlace={(place) => handleOpenLocationPin(place)}
+            />
+          </View>
 
-      <View className="px-6 pb-4 pt-2">
-        <PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} />
-      </View>
-    </View>
+          <View className="gap-1.5">
+            <Text className="text-base font-medium text-ink/60">GST number (optional)</Text>
+            <TextInput
+              value={gstNumber}
+              onChangeText={setGstNumber}
+              placeholder="e.g. 29ABCDE1234F1Z5"
+              placeholderTextColor="#9AA5A3"
+              autoCapitalize="characters"
+              className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-base font-medium text-ink"
+            />
+          </View>
+        </ScrollView>
+
+        <View className="px-6 pb-4 pt-2">
+          <PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} />
+        </View>
+      </KeyboardAvoidingView>
+    </DismissKeyboardView>
   );
 }

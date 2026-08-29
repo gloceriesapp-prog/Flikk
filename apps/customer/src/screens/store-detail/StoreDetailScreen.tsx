@@ -32,7 +32,7 @@ export function StoreDetailScreen({ navigation, route }: Props) {
 
   const [selectedId, setSelectedId] = useState('all');
   useEffect(() => {
-    setSelectedId('all');
+    Promise.resolve().then(() => setSelectedId('all'));
   }, [storeId]);
 
   const visibleProducts = selectedId === 'all' ? products : products.filter((p) => p.categoryLabel === selectedId);

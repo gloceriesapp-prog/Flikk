@@ -1,19 +1,40 @@
 // Dedicated review screen for one application — the full submitted detail
 // (photo, GST, district, phone) that a one-line list row can't show.
-// Mirrors apps/partner's StoreReviewScreen almost exactly, because it's
-// genuinely the same submission viewed from the other side of the same
-// flow. Approving here is the only UI path that flips users.is_approved
-// (specs/04-admin-dashboard/screens.md) once wired to a real endpoint.
+// Real data (supabaseAdmin, service-role — same rationale as every other
+// app/api/* route in this dashboard) — `id` is the applicant's own
+// users.id, checked against both stores and riders since this route
+// doesn't know which kind it is ahead of time.
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Store, User, X } from 'lucide-react';
-import { PLACEHOLDER_APPLICATIONS } from '@/lib/mock-data';
+import { ArrowLeft, Store, User } from 'lucide-react';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { mapRiderApplication, mapStoreApplication, type ApiRiderApplication, type ApiStoreApplication } from '@/lib/supabase/approvals';
 import { DocumentChecklist } from '@/components/approvals/DocumentChecklist';
+import { DecisionButtons } from '@/components/approvals/DecisionButtons';
+import type { Application } from '@/lib/types';
+
+const STORE_SELECT =
+  'owner_user_id, name, category, district, photo_url, gst_number, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_account_last4, turnover_exceeds_gst_threshold, drug_license_number, created_at, users!owner_user_id(phone, is_approved, is_rejected)';
+
+async function loadApplication(id: string): Promise<Application | null> {
+  const { data: storeRow } = await supabaseAdmin.from('stores').select(STORE_SELECT).eq('owner_user_id', id).maybeSingle();
+  if (storeRow) return mapStoreApplication(storeRow as unknown as ApiStoreApplication);
+
+  const { data: riderRow } = await supabaseAdmin
+    .from('users')
+    .select('id, name, phone, is_approved, is_rejected, created_at')
+    .eq('id', id)
+    .eq('role', 'rider')
+    .maybeSingle();
+  if (riderRow) return mapRiderApplication(riderRow as ApiRiderApplication);
+
+  return null;
+}
 
 export default async function ApplicationReviewPage({ params }: PageProps<'/approvals/[id]'>) {
   const { id } = await params;
-  const application = PLACEHOLDER_APPLICATIONS.find((a) => a.id === id);
+  const application = await loadApplication(id);
   if (!application) notFound();
 
   const Icon = application.kind === 'store' ? Store : User;
@@ -28,7 +49,7 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
       <div className="rounded-3xl border border-border bg-card p-6">
         <div className="flex items-start gap-4">
           {application.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- external/mock URL, no next.config domain to register yet
+            // eslint-disable-next-line @next/next/no-img-element -- real Storage URL, no next.config domain to register yet
             <img src={application.photoUrl} alt="" className="h-20 w-20 rounded-2xl object-cover" />
           ) : (
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent">
@@ -53,22 +74,7 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
         {application.kind === 'store' && <DocumentChecklist application={application} />}
 
         {application.status === 'pending' ? (
-          <div className="mt-6 flex items-center gap-3 border-t border-border pt-6">
-            <button
-              type="button"
-              className="flex flex-1 items-center justify-center gap-2 rounded-full border border-danger/30 py-3 text-sm font-semibold text-danger hover:bg-red-50"
-            >
-              <X size={16} />
-              Reject
-            </button>
-            <button
-              type="button"
-              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-ink py-3 text-sm font-semibold text-white hover:opacity-90"
-            >
-              <Check size={16} />
-              Approve
-            </button>
-          </div>
+          <DecisionButtons applicationId={application.id} kind={application.kind} />
         ) : (
           <div className="mt-6 border-t border-border pt-6">
             <span

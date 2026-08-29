@@ -108,3 +108,49 @@ export async function checkAccountStatus(): Promise<AccountStatus> {
     return devCheckAccountStatus();
   }
 }
+
+// Store Setup's "resume where you left off" — StoreDraft (navigation/
+// types.ts) shape minus the derived Coordinates object, since lat/lng are
+// what actually go over the wire. Both best-effort, no dev-mode fallback:
+// a failed save just means a closed app restarts that step blank instead
+// of resuming, same severity as a failed push-token registration, not
+// worth a fake local stand-in for.
+export interface StoreDraftPatch {
+  storeName?: string;
+  category?: string;
+  district?: string;
+  lat?: number;
+  lng?: number;
+  photoUrl?: string;
+  gstNumber?: string;
+}
+
+export interface SavedStoreDraft {
+  store_name: string | null;
+  category: string | null;
+  district: string | null;
+  lat: number | null;
+  lng: number | null;
+  photo_url: string | null;
+  gst_number: string | null;
+}
+
+export async function fetchStoreDraft(): Promise<SavedStoreDraft | null> {
+  return apiRequest('/partner/store-draft');
+}
+
+export async function saveStoreDraft(patch: StoreDraftPatch): Promise<void> {
+  await apiRequest('/partner/store-draft', { method: 'PATCH', body: patch });
+}
+
+// Registers this device's Expo push token so admin's approve action
+// (apps/admin/src/app/api/approvals/*) can reach it — see
+// features/push-notifications/registerPushToken.ts for where this is
+// called from. Called even while pending approval (requireAuth only on
+// the backend, not requireApproved) so the token is already on file the
+// moment a founder approves, not only after. No dev-mode fallback needed —
+// a failed registration just means no push, not a broken flow; the caller
+// already treats this as best-effort.
+export async function savePushToken(token: string): Promise<void> {
+  await apiRequest('/auth/push-token', { method: 'POST', body: { token } });
+}

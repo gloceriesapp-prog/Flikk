@@ -48,7 +48,67 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
     });
     if (storeErr) throw storeErr;
 
+    // Draft's only purpose was surviving an app close mid-wizard — a real
+    // store row now exists, so there's nothing left to resume into.
+    await supabase.from('store_onboarding_drafts').delete().eq('user_id', req.user!.id);
+
     res.status(201).json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Store Setup's own "resume where you left off" — every step (StoreSetup/
+// StoreDetails screens) PUTs whatever fields it just collected, merged
+// onto whatever's already saved; RootNavigator's own AuthNavigator drops a
+// returning has_store:false session at StoreSetupScreen, which GETs this
+// on mount to decide which step to actually resume at instead of always
+// restarting from a blank Step 1. requireAuth only, same reasoning as
+// /store-application: this exists specifically for someone who hasn't
+// finished becoming a store_owner yet.
+storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('store_onboarding_drafts')
+      .select('store_name, category, district, lat, lng, photo_url, gst_number')
+      .eq('user_id', req.user!.id)
+      .maybeSingle();
+    if (error) throw error;
+
+    res.json(data ?? null);
+  } catch (err) {
+    next(err);
+  }
+});
+
+storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const { storeName, category, district, lat, lng, photoUrl, gstNumber } = req.body as {
+      storeName?: string;
+      category?: string;
+      district?: string;
+      lat?: number;
+      lng?: number;
+      photoUrl?: string;
+      gstNumber?: string;
+    };
+
+    // Partial upsert — only fields the caller actually sent overwrite the
+    // existing row; a Step 2 PUT (photo/location/GST) must never blank out
+    // Step 1's storeName/category that a separate PUT already saved.
+    const patch: Record<string, unknown> = { user_id: req.user!.id, updated_at: new Date().toISOString() };
+    if (storeName !== undefined) patch.store_name = storeName;
+    if (category !== undefined) patch.category = category;
+    if (district !== undefined) patch.district = district;
+    if (lat !== undefined) patch.lat = lat;
+    if (lng !== undefined) patch.lng = lng;
+    if (photoUrl !== undefined) patch.photo_url = photoUrl;
+    if (gstNumber !== undefined) patch.gst_number = gstNumber;
+
+    const { error } = await supabase.from('store_onboarding_drafts').upsert(patch, { onConflict: 'user_id' });
+    if (error) throw error;
+
+    res.status(200).json({ ok: true });
   } catch (err) {
     next(err);
   }

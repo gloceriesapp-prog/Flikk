@@ -57,7 +57,9 @@ export function HomeScreen({ navigation }: Props) {
   // an id only mounts the first time it's selected, then stays mounted.
   const [visitedIds, setVisitedIds] = useState<Set<string>>(() => new Set([ALL_TAB.id]));
   useEffect(() => {
-    setVisitedIds((prev) => (prev.has(selectedCategoryId) ? prev : new Set(prev).add(selectedCategoryId)));
+    Promise.resolve().then(() =>
+      setVisitedIds((prev) => (prev.has(selectedCategoryId) ? prev : new Set(prev).add(selectedCategoryId))),
+    );
   }, [selectedCategoryId]);
 
   // Drives the collapsing ETA/location block in HomeHeader — see

@@ -80,3 +80,23 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
     next(err);
   }
 });
+
+// Registers this session's Expo push token — called once after login (and
+// again whenever Expo rotates the token) by every app, not just partner.
+// requireAuth only, deliberately not requireApproved: a store owner still
+// pending approval needs their token saved now so admin's approve action
+// (apps/admin/src/app/api/approvals/*) can actually reach their phone the
+// moment they're approved, not only after.
+authRouter.post('/push-token', requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const { token } = req.body as { token?: string };
+    if (!token) throw new AppError(400, 'MISSING_TOKEN', 'token is required.');
+
+    const { error } = await supabase.from('users').update({ expo_push_token: token }).eq('id', req.user!.id);
+    if (error) throw error;
+
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});

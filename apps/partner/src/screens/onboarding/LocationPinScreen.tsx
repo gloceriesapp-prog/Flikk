@@ -8,7 +8,7 @@
 // diff than a shared slice.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import MapView, { type Region } from 'react-native-maps';
 import { BlurView } from 'expo-blur';
 import {
@@ -22,6 +22,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import {
   getCurrentCoordinates,
@@ -182,7 +183,11 @@ export function LocationPinScreen({ navigation, route }: Props) {
   const secondaryLabel = rest.join(', ');
 
   return (
-    <View className="flex-1 bg-white">
+    // Keyboard was covering the "Confirm location" bar below when the
+    // search input above is focused (no keyboard-avoidance at all) — same
+    // fix/reasoning as LoginScreen.tsx's own note.
+    <DismissKeyboardView>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
       <View className="flex-1">
         {region ? (
           <MapView
@@ -325,6 +330,7 @@ export function LocationPinScreen({ navigation, route }: Props) {
           />
         </View>
       </BlurView>
-    </View>
+    </KeyboardAvoidingView>
+    </DismissKeyboardView>
   );
 }

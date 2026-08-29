@@ -1,12 +1,13 @@
 'use client';
 
-// A1 — approving here is the only UI path that flips users.is_approved to
-// true (specs/04-admin-dashboard/screens.md's own note); rejecting must
-// leave a clear terminal state, not silently do nothing — hence a real
-// "Rejected" pill state below rather than the row just disappearing.
-// Each application is its own bordered card, not a thin table row — a
-// pending one gets an amber left accent, so the ones actually needing a
-// decision read as distinct from the ones already resolved.
+// A1 — approve/reject via PATCH /api/approvals/{stores,riders}/[userId],
+// which flips users.is_approved/is_rejected (both real, persisted columns —
+// manual review only for now, no auto-approve logic; that's a later-scale
+// problem per CLAUDE.md's own MVP scope). Approving also sends the
+// applicant a push notification — see that route's own note. Each
+// application is its own bordered card, not a thin table row — a pending
+// one gets an amber left accent, so the ones actually needing a decision
+// read as distinct from the ones already resolved.
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -22,8 +23,23 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
 
 export function ApplicationRow({ application }: { application: Application }) {
   const [status, setStatus] = useState(application.status);
+  const [busy, setBusy] = useState(false);
   const Icon = application.kind === 'store' ? Store : User;
   const isPending = status === 'pending';
+
+  async function decide(approve: boolean) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/approvals/${application.kind === 'store' ? 'stores' : 'riders'}/${application.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approve }),
+      });
+      if (res.ok) setStatus(approve ? 'approved' : 'rejected');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div
@@ -61,19 +77,21 @@ export function ApplicationRow({ application }: { application: Application }) {
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => setStatus('rejected')}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-danger hover:bg-red-50"
+            onClick={() => decide(false)}
+            disabled={busy}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-danger hover:bg-red-50 disabled:opacity-40"
             aria-label="Reject"
           >
             <X size={16} />
           </button>
           <button
             type="button"
-            onClick={() => setStatus('approved')}
-            className="flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-semibold text-white hover:opacity-90"
+            onClick={() => decide(true)}
+            disabled={busy}
+            className="flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
           >
             <Check size={14} />
-            Approve
+            {busy ? 'Approving…' : 'Approve'}
           </button>
         </div>
       ) : (

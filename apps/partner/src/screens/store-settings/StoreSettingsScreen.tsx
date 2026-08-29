@@ -27,11 +27,12 @@ import {
   Store01Icon,
   TagsIcon,
 } from '@hugeicons/core-free-icons';
-import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { colors } from '../../theme/tokens';
 import { getAvatarImageUri } from '../../theme/placeholderImage';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -68,6 +69,11 @@ export function StoreSettingsScreen({ navigation }: Props) {
   }
 
   return (
+    // Keyboard was covering the "Save changes" bar below (name TextInput
+    // in the scrollable content, no keyboard-avoidance at all) — same
+    // fix/reasoning as LoginScreen.tsx's own note.
+    <DismissKeyboardView>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View className="relative flex-row items-center px-5 py-3">
         <Pressable
@@ -180,5 +186,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
         </Pressable>
       </View>
     </SafeAreaView>
+    </KeyboardAvoidingView>
+    </DismissKeyboardView>
   );
 }

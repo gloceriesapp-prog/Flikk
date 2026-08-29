@@ -2,11 +2,13 @@
 
 // A1 — Store + rider onboarding, tabbed (specs/04-admin-dashboard/
 // screens.md's resolution of the PRD's numbering gap: one screen, not two).
+// Real applications (GET /api/approvals/stores, /api/approvals/riders) —
+// replaces PLACEHOLDER_APPLICATIONS.
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { ApplicationRow } from '@/components/approvals/ApplicationRow';
-import { PLACEHOLDER_APPLICATIONS } from '@/lib/mock-data';
+import type { Application } from '@/lib/types';
 
 const TABS = [
   { label: 'Stores', kind: 'store' as const },
@@ -15,7 +17,30 @@ const TABS = [
 
 export default function ApprovalsPage() {
   const [tab, setTab] = useState<'store' | 'rider'>('store');
-  const applications = PLACEHOLDER_APPLICATIONS.filter((a) => a.kind === tab);
+  const [stores, setStores] = useState<Application[]>([]);
+  const [riders, setRiders] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const [storesRes, ridersRes] = await Promise.all([fetch('/api/approvals/stores'), fetch('/api/approvals/riders')]);
+      if (!storesRes.ok || !ridersRes.ok) throw new Error('Could not load applications.');
+      setStores(await storesRes.json());
+      setRiders(await ridersRes.json());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load applications.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    Promise.resolve().then(load);
+  }, [load]);
+
+  const applications = tab === 'store' ? stores : riders;
   const pendingCount = applications.filter((a) => a.status === 'pending').length;
 
   return (
@@ -25,9 +50,18 @@ export default function ApprovalsPage() {
         <p className="text-sm text-muted">Review and approve new store and rider applications.</p>
       </div>
 
+      {error && (
+        <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-danger">
+          {error} —{' '}
+          <button type="button" onClick={load} className="underline">
+            retry
+          </button>
+        </p>
+      )}
+
       <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1">
         {TABS.map((t) => {
-          const count = PLACEHOLDER_APPLICATIONS.filter((a) => a.kind === t.kind && a.status === 'pending').length;
+          const count = (t.kind === 'store' ? stores : riders).filter((a) => a.status === 'pending').length;
           const active = tab === t.kind;
           return (
             <button
@@ -61,7 +95,9 @@ export default function ApprovalsPage() {
           <span className="text-xs text-muted">{pendingCount} pending</span>
         </div>
 
-        {applications.length === 0 ? (
+        {loading ? (
+          <p className="py-8 text-center text-sm text-muted">Loading…</p>
+        ) : applications.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted">No applications yet.</p>
         ) : (
           <div className="flex flex-col gap-3">

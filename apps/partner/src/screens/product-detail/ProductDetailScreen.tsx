@@ -22,11 +22,12 @@
 
 import { useState } from 'react';
 import { ArrowLeft01Icon, Edit02Icon, ShoppingBasketAdd01Icon } from '@hugeicons/core-free-icons';
-import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { colors } from '../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { useCatalogStore } from '../../store/useCatalogStore';
@@ -97,6 +98,11 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   }
 
   return (
+    // Keyboard was covering the "Save changes" bar below (quantity
+    // TextInputs inside the ScrollView, no keyboard-avoidance at all) —
+    // same fix/reasoning as LoginScreen.tsx's own note.
+    <DismissKeyboardView>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View className="relative flex-row items-center px-5 py-3">
         {/* navigate, not goBack — this screen is only ever reached from
@@ -195,5 +201,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         </Pressable>
       </View>
     </SafeAreaView>
+    </KeyboardAvoidingView>
+    </DismissKeyboardView>
   );
 }

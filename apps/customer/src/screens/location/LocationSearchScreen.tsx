@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import {
   geocodeAddress,
   getCurrentCoordinates,
@@ -65,43 +66,45 @@ export function LocationSearchScreen({ navigation }: Props) {
   }
 
   return (
-    <View className="flex-1 bg-white px-6 pb-safe pt-safe">
-      <View className="mt-2 flex-row items-center justify-between">
-        <Text className="text-xl font-extrabold text-ink">Select delivery address</Text>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-end justify-center">
-          <AppIcon icon={Cancel01Icon} size={20} color={colors.ink} />
+    <DismissKeyboardView>
+      <View className="flex-1 bg-white px-6 pb-safe pt-safe">
+        <View className="mt-2 flex-row items-center justify-between">
+          <Text className="text-xl font-extrabold text-ink">Select delivery address</Text>
+          <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-end justify-center">
+            <AppIcon icon={Cancel01Icon} size={20} color={colors.ink} />
+          </Pressable>
+        </View>
+
+        <View className="mt-5 h-[52px] flex-row items-center rounded-full bg-mist px-4">
+          <View className="pr-2">
+            <AppIcon icon={Search01Icon} size={18} color={colors.ink} />
+          </View>
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+            placeholder="Search for area, street name..."
+            placeholderTextColor="#9AA5A3"
+            textAlignVertical="center"
+            className="h-full flex-1 py-0 text-base leading-tight text-ink"
+          />
+        </View>
+
+        <Pressable
+          onPress={handleUseCurrentLocation}
+          disabled={loading}
+          className="mt-3 flex-row items-center justify-between rounded-2xl bg-mist px-4 py-4"
+        >
+          <View className="flex-row items-center gap-3">
+            <AppIcon icon={GpsSignal01Icon} size={18} color={colors.limeDeep} />
+            <Text className="text-base font-semibold text-lime-deep">Use your current location</Text>
+          </View>
+          <AppIcon icon={ArrowRight01Icon} size={16} color={colors.ink} />
         </Pressable>
+
+        {error && <Text className="mt-3 text-[13px] text-danger">{error}</Text>}
       </View>
-
-      <View className="mt-5 h-[52px] flex-row items-center rounded-full bg-mist px-4">
-        <View className="pr-2">
-          <AppIcon icon={Search01Icon} size={18} color={colors.ink} />
-        </View>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          onSubmitEditing={handleSearch}
-          returnKeyType="search"
-          placeholder="Search for area, street name..."
-          placeholderTextColor="#9AA5A3"
-          textAlignVertical="center"
-          className="h-full flex-1 py-0 text-base leading-tight text-ink"
-        />
-      </View>
-
-      <Pressable
-        onPress={handleUseCurrentLocation}
-        disabled={loading}
-        className="mt-3 flex-row items-center justify-between rounded-2xl bg-mist px-4 py-4"
-      >
-        <View className="flex-row items-center gap-3">
-          <AppIcon icon={GpsSignal01Icon} size={18} color={colors.limeDeep} />
-          <Text className="text-base font-semibold text-lime-deep">Use your current location</Text>
-        </View>
-        <AppIcon icon={ArrowRight01Icon} size={16} color={colors.ink} />
-      </Pressable>
-
-      {error && <Text className="mt-3 text-[13px] text-danger">{error}</Text>}
-    </View>
+    </DismissKeyboardView>
   );
 }

@@ -4,7 +4,12 @@
 
 import { useAuthStore } from '../store/useAuthStore';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+// Fallback only matters when EXPO_PUBLIC_API_URL is unset (shouldn't
+// happen — .env.local always sets it) — backend/Express listens on 4000,
+// not 3000 (that's apps/admin's Next.js dev server). A wrong fallback here
+// would silently point every request at the wrong server instead of
+// failing loudly.
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 export class ApiError extends Error {
   constructor(

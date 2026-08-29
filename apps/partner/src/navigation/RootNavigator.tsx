@@ -23,6 +23,8 @@ import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { checkAccountStatus } from '../api/auth';
+import { ApiError } from '../api/client';
+import { registerPushToken } from '../features/push-notifications/registerPushToken';
 import { WaitingApprovalScreen } from '../screens/onboarding/WaitingApprovalScreen';
 import { useAuthStore } from '../store/useAuthStore';
 import { colors } from '../theme/tokens';
@@ -31,12 +33,22 @@ import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 
 export function RootNavigator() {
-  const { accessToken, isApproved, hasStore, isHydrated, hydrate, setApproved, setHasStore } = useAuthStore();
+  const { accessToken, isApproved, hasStore, isHydrated, hydrate, setApproved, setHasStore, clear } = useAuthStore();
   const [statusChecked, setStatusChecked] = useState(false);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // Registered once per fresh login (accessToken change), same as the
+  // status recheck below — a pending owner still gets their token saved
+  // now (backend's POST /auth/push-token is requireAuth only, not
+  // requireApproved) so admin's approve action can reach them the instant
+  // it happens, not only after this app is reopened.
+  useEffect(() => {
+    if (!isHydrated || !accessToken) return;
+    void registerPushToken();
+  }, [isHydrated, accessToken]);
 
   useEffect(() => {
     if (!isHydrated || !accessToken) return;
@@ -48,9 +60,20 @@ export function RootNavigator() {
         setApproved(is_approved);
         setHasStore(has_store);
       })
-      .catch(() => {
-        // Leave whatever's already in the store — a failed recheck
-        // shouldn't kick a possibly-still-valid session back to login.
+      .catch((err) => {
+        // A 401 here means the stored token is genuinely invalid (expired,
+        // or a leftover devAuthFallback "dev:<phone>" token from before a
+        // real backend existed — see StoreReviewScreen.tsx's own note on
+        // that exact failure mode) — the backend rejected it outright,
+        // it's not coming back on its own. Left uncleared, this token
+        // stays in SecureStore forever: accessToken keeps looking
+        // "logged in" to RootNavigator's own branch below, so the app
+        // never falls back to Welcome/Login and just gets stuck wherever
+        // hasStore/isApproved's stale local defaults happen to point.
+        // Any other failure (network blip, backend genuinely down) is
+        // left alone — a possibly-still-valid session shouldn't be logged
+        // out just because one status check didn't get through.
+        if (err instanceof ApiError && err.status === 401) void clear();
       })
       .finally(() => {
         if (!cancelled) setStatusChecked(true);
