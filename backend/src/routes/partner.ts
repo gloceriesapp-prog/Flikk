@@ -1,5 +1,14 @@
 // Source: specs/02-partner-app/api.md — every query scoped to the caller's own store,
 // never trusting a store_id from the request body.
+//
+// A product a store owner adds/edits here lands with products.approval_status
+// = 'pending' (POST /products below) — it's real, scoped to their own
+// store, visible in their own GET /products, but every customer-facing
+// feed (routes/stores.ts, routes/categories.ts) filters to 'approved' only,
+// so it stays invisible to shoppers until a founder approves it from
+// admin. This is the same "store owner writes, admin approval gates
+// visibility" shape as store onboarding itself (storeOnboarding.ts).
+import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { replaceProductVariants } from '../db/productVariants.js';
@@ -67,6 +76,30 @@ partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
   }
 });
 
+// Product photo upload — base64 in, public Storage URL out. Same
+// bucket/pattern as admin's own upload route (apps/admin/src/app/api/
+// upload — 'product-images'), so a photo uploaded from either app renders
+// identically wherever products.image_url is read.
+partnerRouter.post('/product-photo', async (req: AuthedRequest, res, next) => {
+  try {
+    const { base64, contentType } = req.body as { base64?: string; contentType?: string };
+    if (!base64 || !contentType) throw new AppError(400, 'MISSING_FIELDS', 'base64 and contentType are required.');
+
+    const storeId = await ownStoreId(req.user!.id);
+    const extension = contentType.split('/')[1] ?? 'jpg';
+    const path = `${storeId}/${randomUUID()}.${extension}`;
+    const { error: uploadErr } = await supabase.storage
+      .from('product-images')
+      .upload(path, Buffer.from(base64, 'base64'), { contentType });
+    if (uploadErr) throw new AppError(500, 'UPLOAD_FAILED', uploadErr.message);
+
+    const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+    res.status(201).json({ url: data.publicUrl });
+  } catch (err) {
+    next(err);
+  }
+});
+
 partnerRouter.get('/products', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
@@ -87,7 +120,17 @@ partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
     const input: Partial<ProductInput> = { ...req.body, storeId };
     validateProductInput(input);
 
-    const { data: product, error } = await supabase.from('products').insert(toProductRow(input)).select().single();
+    // A store owner's own product never goes live on its own — see this
+    // router's own note at the top and backend/src/routes/stores.ts's
+    // customer-facing feeds, every one of which filters to 'approved'
+    // only. Admin's own POST /api/products (apps/admin) sets 'approved'
+    // instead, since a founder adding a product for a store is already the
+    // approval.
+    const { data: product, error } = await supabase
+      .from('products')
+      .insert({ ...toProductRow(input), approval_status: 'pending' })
+      .select()
+      .single();
     if (error) throw error;
 
     await replaceProductVariants(product.id, input.variants);

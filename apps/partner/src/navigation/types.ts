@@ -64,6 +64,10 @@ export type AppStackParamList = {
   // id-only pattern as OrderDetail; the screen reads the live product from
   // ../store/useCatalogStore.ts.
   ProductDetail: { productId: string };
+  // New-product form (part of P4) — reached from Inventory's own "Add
+  // product" button (InventorySummaryCard). No params: unlike ProductDetail
+  // this isn't reading an existing product, it's writing a brand new one.
+  AddProduct: undefined;
   // Full order-by-order breakdown for one settlement (part of P5) —
   // reached from "View all orders" on either payout card. A weekly
   // settlement's order count only grows, so this list belongs on its own

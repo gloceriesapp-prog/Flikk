@@ -15,7 +15,7 @@
 // actually in the DB.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Image as ImageIcon, IndianRupee, Pencil, Plus, Search } from 'lucide-react';
+import { Check, ChevronDown, Image as ImageIcon, IndianRupee, Pencil, Plus, Search, X } from 'lucide-react';
 import clsx from 'clsx';
 import { formatNumber } from '@/lib/format';
 import type { NewProductInput, Product, StockStatus } from '@/lib/types';
@@ -134,6 +134,19 @@ export default function InventoryPage() {
     }
     await loadData();
     setEditing(null);
+  }
+
+  async function handleApproval(id: string, approve: boolean) {
+    const res = await fetch(`/api/products/${id}/approval`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approve }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error ?? 'Could not update approval status.');
+    }
+    await loadData();
   }
 
   async function handleAdd(newProduct: NewProductInput) {
@@ -265,10 +278,46 @@ export default function InventoryPage() {
                     {product.storeName}
                   </p>
                 </div>
-                <span className={clsx('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold', STOCK_STYLES[product.stockStatus])}>
-                  {STOCK_LABELS[product.stockStatus]}
-                </span>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className={clsx('rounded-full px-2.5 py-1 text-[11px] font-semibold', STOCK_STYLES[product.stockStatus])}>
+                    {STOCK_LABELS[product.stockStatus]}
+                  </span>
+                  {product.approvalStatus === 'pending' && (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                      Pending approval
+                    </span>
+                  )}
+                  {product.approvalStatus === 'rejected' && (
+                    <span className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-danger">Rejected</span>
+                  )}
+                </div>
               </div>
+
+              {/* Only a store owner's own submission (partner app's POST/
+                  PATCH /partner/products) ever lands 'pending' — this
+                  dashboard's own Add product always inserts 'approved'
+                  directly, so this row never shows for anything added
+                  from here. */}
+              {product.approvalStatus === 'pending' && (
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleApproval(product.id, true)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-success px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                  >
+                    <Check size={13} />
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleApproval(product.id, false)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-danger hover:bg-red-50"
+                  >
+                    <X size={13} />
+                    Reject
+                  </button>
+                </div>
+              )}
 
               <div className="mt-2 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1 text-ink">

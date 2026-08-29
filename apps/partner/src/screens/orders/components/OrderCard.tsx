@@ -3,15 +3,18 @@
 // order's items being shown, not a person.
 //
 // A 'placed' order now has two distinct visual states, not one:
-// - Pending (not yet acknowledged): "Order Pending" badge, a live
-//   countdown to the 15-minute grace-window deadline (matches
-//   useOrderExpiryWatcher.ts's ORDER_ACCEPT_WINDOW_MS — this chip and
-//   that watcher read the same clock, so the number on screen is never
-//   out of sync with when the order actually gets rejected), and exactly
-//   two actions — Accept Order / Reject. No View Order here either —
-//   there's nothing to view yet beyond what's already on the card, and
-//   reject only stays available before the shop owner has committed to
-//   the order (see below).
+// - Pending (not yet acknowledged): "Pending" badge, a live countdown to
+//   the 15-minute grace-window deadline (matches useOrderExpiryWatcher.ts's
+//   ORDER_ACCEPT_WINDOW_MS — this chip and that watcher read the same
+//   clock, so the number on screen is never out of sync with when the
+//   order actually gets rejected), and exactly one action — Accept, full
+//   width. No View Order here either — there's nothing to view yet beyond
+//   what's already on the card. No manual Reject button either — a shop
+//   owner backing out of a brand-new order is rare enough that the auto-
+//   reject-on-timeout (useOrderExpiryWatcher.ts, unaffected by this — it
+//   calls useOrdersStore.rejectOrder directly, not through this card) is
+//   the one path that matters; Accept is the only decision this card
+//   should be asking for.
 // - Accepted (acknowledged via useOrdersStore.acknowledgeOrder — a local
 //   UI flag, not a status change, see that store's own note): "Accepted"
 //   badge, no more countdown (the auto-reject safety net has stood down
@@ -20,16 +23,11 @@
 //   still this app's one and only real status transition
 //   (specs/02-partner-app/flows.md) — Accept never was.
 //
-// Reject disappears once accepted on purpose — backing out is a decision
-// for before you've committed to an order, not after; declining a
-// physically-packed order needs a different (currently unbuilt) flow, not
-// a stray button on this card.
-//
 // 'packed'/'out_for_delivery' orders are read-only here beyond View
 // Order. See ../data.ts's own note on why this app can display
 // 'out_for_delivery' even though it can't trigger it.
 
-import { ArrowRight01Icon, Cancel01Icon, CheckmarkCircle02Icon, Clock01Icon, DeliveryTruck01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, CheckmarkCircle02Icon, Clock01Icon, DeliveryTruck01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import type { IconSvgElement } from '@hugeicons/react-native';
 import { AppIcon } from '../../../components/AppIcon';
@@ -43,7 +41,6 @@ import { ItemAvatarStack } from './ItemAvatarStack';
 interface Props {
   order: PartnerOrder;
   onAcknowledge: (orderId: string) => void;
-  onReject: (orderId: string) => void;
   onMarkPacked: (orderId: string) => void;
   onViewOrder: () => void;
 }
@@ -57,7 +54,7 @@ const STATUS_BADGE: Partial<Record<PartnerOrderStatus, { label: string; icon: Ic
 // moment this card should feel urgent rather than just informational.
 const URGENT_THRESHOLD_MS = 2 * 60 * 1000;
 
-export function OrderCard({ order, onAcknowledge, onReject, onMarkPacked, onViewOrder }: Props) {
+export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: Props) {
   const itemsLabel = order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ');
   const isPlaced = order.status === 'placed';
   const isAccepted = useOrdersStore((state) => state.acknowledgedOrderIds.has(order.id));
@@ -90,7 +87,7 @@ export function OrderCard({ order, onAcknowledge, onReject, onMarkPacked, onView
               >
                 <View className={`h-1.5 w-1.5 rounded-full ${isAccepted ? 'bg-lime' : 'bg-gold'}`} />
                 <Text className={`text-sm font-medium ${isAccepted ? 'text-black' : 'text-ink/70'}`}>
-                  {isAccepted ? 'Accepted' : 'Order Pending'}
+                  {isAccepted ? 'Accepted' : 'Pending'}
                 </Text>
               </View>
             )}
@@ -136,30 +133,18 @@ export function OrderCard({ order, onAcknowledge, onReject, onMarkPacked, onView
 
       <View className="flex-row gap-2.5">
         {isPending ? (
-          <>
-            {/* Reject stays narrow (flex-1) — Accept is the dominant,
-                taller, fully-rounded action (flex-[2]) — only in this
-                pending state; once accepted the row below reverts to the
-                original View Order/Mark Packed split untouched. Solid
-                limeDeep, not a gradient — the shadow is what carries the
-                "premium" read here, not a color blend. */}
-            <Pressable
-              onPress={() => onReject(order.id)}
-              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white py-3"
-            >
-              <AppIcon icon={Cancel01Icon} size={13} color={colors.danger} />
-              <Text className="text-sm font-medium text-danger">Reject</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => onAcknowledge(order.id)}
-              className="flex-[2] flex-row items-center justify-center gap-1.5 rounded-xl bg-lime-deep py-3.5"
-              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-            >
-              <AppIcon icon={CheckmarkCircle02Icon} size={14} color="#FFFFFF" />
-              <Text className="text-sm font-medium text-white">Accept Order</Text>
-            </Pressable>
-          </>
+          // Full width, the one and only action on a still-new order — see
+          // this file's own note on why manual Reject isn't here. Solid
+          // limeDeep, not a gradient — the shadow is what carries the
+          // "premium" read here, not a color blend.
+          <Pressable
+            onPress={() => onAcknowledge(order.id)}
+            className="w-full flex-row items-center justify-center gap-1.5 rounded-xl bg-lime-deep py-3.5"
+            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+          >
+            <AppIcon icon={CheckmarkCircle02Icon} size={14} color="#FFFFFF" />
+            <Text className="text-sm font-medium text-white">Accept Order</Text>
+          </Pressable>
         ) : (
           <>
             <Pressable

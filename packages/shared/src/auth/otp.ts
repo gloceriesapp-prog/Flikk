@@ -20,9 +20,19 @@ export interface RequestOtpResult {
 
 export interface VerifyOtpResponse {
   access_token: string;
+  // Long-lived, unlike access_token — an app that persists this and wires
+  // it into createApiClient's own `refresh` option (client.ts) never gets
+  // logged out just because the short-lived access token expired. See
+  // backend's own note on POST /otp/verify and POST /refresh.
+  refresh_token: string;
   is_approved: boolean;
   has_store: boolean;
   application_submitted: boolean;
+}
+
+export interface RefreshResponse {
+  access_token: string;
+  refresh_token: string;
 }
 
 export interface AccountStatus {
@@ -38,6 +48,10 @@ export interface AuthApi {
   verifyOtp: (phone: string, code: string) => Promise<VerifyOtpResponse>;
   checkAccountStatus: () => Promise<AccountStatus>;
   savePushToken: (token: string) => Promise<void>;
+  // Not wired through apiRequest's own automatic-retry-on-401 (client.ts's
+  // `refresh` option) — this IS that option's implementation. An app calls
+  // this directly from the `refresh` callback it hands to createApiClient.
+  refreshSession: (refreshToken: string) => Promise<RefreshResponse>;
 }
 
 export function createAuthApi({ apiRequest }: ApiClient): AuthApi {
@@ -50,5 +64,8 @@ export function createAuthApi({ apiRequest }: ApiClient): AuthApi {
     checkAccountStatus: () => apiRequest<AccountStatus>('/auth/me'),
 
     savePushToken: (token) => apiRequest<void>('/auth/push-token', { method: 'POST', body: { token } }),
+
+    refreshSession: (refreshToken) =>
+      apiRequest<RefreshResponse>('/auth/refresh', { method: 'POST', body: { refresh_token: refreshToken }, auth: false }),
   };
 }

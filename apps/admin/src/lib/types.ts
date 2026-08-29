@@ -300,6 +300,16 @@ export interface Product {
   // unified yet. Optional — a product with none just doesn't appear in any
   // category browse grid, only in the general catalog feeds.
   subCategoryId?: string;
+  // 'pending' when a store owner added/edited it from the partner app
+  // (backend's POST/PATCH /partner/products) — invisible on every
+  // customer-facing feed until this flips to 'approved' (see this
+  // dashboard's own Inventory page, approve/reject buttons). Products this
+  // dashboard adds itself insert as 'approved' directly — a founder adding
+  // one already is the approval. Optional on NewProductInput (Omit<Product,
+  // 'id' | 'storeName'>) — always server-assigned on write, never sent by
+  // Add/EditProductModal; always present on anything read back via
+  // mapRowToProduct.
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface ProductVariant {

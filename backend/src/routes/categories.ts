@@ -57,6 +57,7 @@ categoriesRouter.get('/:id/products', async (req, res, next) => {
       )
       .eq('sub_categories.category_id', req.params.id)
       .eq('stores.is_active', true)
+      .eq('approval_status', 'approved')
       .neq('stock_status', 'out_of_stock')
       .order('name');
     if (error) throw error;
@@ -82,6 +83,7 @@ categoriesRouter.get('/subcategories/:id/products', async (req, res, next) => {
       .select('*, stores!inner(name, is_active, fssai_number, address_line, city, district, photo_url), product_variants(*)')
       .eq('sub_category_id', req.params.id)
       .eq('stores.is_active', true)
+      .eq('approval_status', 'approved')
       .neq('stock_status', 'out_of_stock')
       .order('name');
     if (error) throw error;

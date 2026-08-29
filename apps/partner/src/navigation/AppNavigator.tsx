@@ -9,6 +9,7 @@
 // built-in tab bar UI.
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { AddProductScreen } from '../screens/catalog/AddProductScreen';
 import { CatalogScreen } from '../screens/catalog/CatalogScreen';
 import { OrderDetailScreen } from '../screens/order-detail/OrderDetailScreen';
 import { OrdersScreen } from '../screens/orders/OrdersScreen';
@@ -35,6 +36,7 @@ export function AppNavigator() {
         options={{ presentation: 'card', gestureEnabled: false }}
       />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="AddProduct" component={AddProductScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="PayoutOrderHistory" component={PayoutOrderHistoryScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="StoreSettings" component={StoreSettingsScreen} options={{ presentation: 'card' }} />
     </Stack.Navigator>

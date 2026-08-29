@@ -18,6 +18,13 @@ export const storesRouter = Router();
 const PRODUCT_WITH_VARIANTS_SELECT =
   '*, stores!inner(name, is_active, fssai_number, address_line, city, district, photo_url), product_variants(*)';
 
+// Every one of this file's customer-facing feeds also filters
+// .eq('approval_status', 'approved') — a store owner's own product
+// (routes/partner.ts POST /products) starts 'pending' and only a founder's
+// approval in admin (apps/admin's Inventory) flips it, same gate store
+// onboarding already has. Admin's own product adds insert 'approved'
+// directly, so they show up here immediately.
+
 storesRouter.get('/', async (req, res, next) => {
   try {
     // zone_id is optional — single zone at launch (CLAUDE.md), so a caller
@@ -58,6 +65,7 @@ storesRouter.get('/products/deals', async (req, res, next) => {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .eq('approval_status', 'approved')
       .eq('stores.is_active', true)
       .neq('stock_status', 'out_of_stock')
       .not('original_price', 'is', null)
@@ -80,6 +88,7 @@ storesRouter.get('/products/catalog', async (req, res, next) => {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .eq('approval_status', 'approved')
       .eq('stores.is_active', true)
       .neq('stock_status', 'out_of_stock')
       .order('name')
@@ -105,6 +114,7 @@ storesRouter.get('/products/similar', async (req, res, next) => {
     let query = supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .eq('approval_status', 'approved')
       .eq('stores.is_active', true)
       .eq('category', category)
       .neq('stock_status', 'out_of_stock')
@@ -132,6 +142,7 @@ storesRouter.get('/:id/products', async (req, res, next) => {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .eq('approval_status', 'approved')
       .eq('store_id', req.params.id)
       .neq('stock_status', 'out_of_stock')
       .order('name');

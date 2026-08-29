@@ -35,7 +35,6 @@ const STATUS_GROUPS: { status: PartnerOrderStatus; filterValue: OrderStatusFilte
 export function OrdersScreen({ navigation }: Props) {
   const orders = useOrdersStore((state) => state.orders);
   const acknowledgeOrder = useOrdersStore((state) => state.acknowledgeOrder);
-  const rejectOrder = useOrdersStore((state) => state.rejectOrder);
   const markPacked = useOrdersStore((state) => state.markPacked);
   // Defaults to New Orders, not All — the screen a shop owner opens
   // should lead with what needs their action, not a mixed list they have
@@ -112,7 +111,6 @@ export function OrdersScreen({ navigation }: Props) {
                       key={order.id}
                       order={order}
                       onAcknowledge={acknowledgeOrder}
-                      onReject={rejectOrder}
                       onMarkPacked={markPacked}
                       onViewOrder={() => navigation.navigate('OrderDetail', { orderId: order.id })}
                     />

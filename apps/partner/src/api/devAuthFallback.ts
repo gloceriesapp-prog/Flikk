@@ -65,6 +65,10 @@ export async function devVerifyOtp(phone: string, code: string): Promise<VerifyO
   devAccounts.set(phone, account);
   return {
     access_token: tokenFor(phone),
+    // No real expiry concept in dev mode — reusing the same fake token is
+    // fine, refreshAccessToken (api/client.ts) never actually needs to
+    // call a real /auth/refresh here since a dev session never 401s.
+    refresh_token: tokenFor(phone),
     is_approved: account.isApproved,
     has_store: account.hasStore,
     application_submitted: account.applicationSubmitted,

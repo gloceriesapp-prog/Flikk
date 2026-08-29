@@ -52,9 +52,41 @@ authRouter.post('/otp/verify', async (req, res, next) => {
 
     res.status(200).json({
       access_token: data.session.access_token,
+      // Supabase's own access tokens are short-lived (1hr default) — see
+      // POST /refresh below. Without shipping this too, every session
+      // would silently die the moment its access token expired: the next
+      // authenticated call 401s, and every app's own RootNavigator (its
+      // "a real 401 means log out" effect) reads that as a genuinely
+      // invalid session and clears it, even though the person never asked
+      // to log out. That's the exact "logs out on its own" bug this fixes.
+      refresh_token: data.session.refresh_token,
       is_approved: userRow?.is_approved ?? false,
       has_store: (count ?? 0) > 0,
       application_submitted: !!draft?.submitted_at,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Exchanges a still-valid refresh token for a new access/refresh pair —
+// called by an app's own api client the moment any authenticated request
+// comes back 401 (see @flikk/shared's createApiClient own `refresh`
+// option), transparently, before ever treating that 401 as a real
+// logged-out session. No requireAuth — the refresh token itself is the
+// credential here, there's no access token left to check by the time this
+// is needed.
+authRouter.post('/refresh', async (req, res, next) => {
+  try {
+    const { refresh_token } = req.body as { refresh_token?: string };
+    if (!refresh_token) throw new AppError(400, 'MISSING_REFRESH_TOKEN', 'refresh_token is required.');
+
+    const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token });
+    if (error || !data.session) throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'Session could not be refreshed.');
+
+    res.status(200).json({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
     });
   } catch (err) {
     next(err);

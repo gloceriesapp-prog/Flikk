@@ -9,7 +9,7 @@
 // "View" on a row pushes ProductDetailScreen rather than opening a sheet —
 // see that screen's own note on why a sheet stopped fitting the job.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
@@ -25,7 +25,12 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Catalog'>;
 
 export function CatalogScreen({ navigation }: Props) {
   const products = useCatalogStore((state) => state.products);
+  const loadProducts = useCatalogStore((state) => state.loadProducts);
   const [stockFilter, setStockFilter] = useState<InventoryStatusFilterValue>('all');
+
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
 
   const inStockCount = products.filter((product) => product.isInStock).length;
   const visibleProducts = products.filter((product) => {
@@ -41,7 +46,7 @@ export function CatalogScreen({ navigation }: Props) {
       <InventorySummaryCard
         listedCount={products.length}
         lastUpdatedLabel={CATALOG_LAST_UPDATED_LABEL}
-        onPressManageStocks={() => {}}
+        onPressAddProduct={() => navigation.navigate('AddProduct')}
       />
 
       <View className="py-3">

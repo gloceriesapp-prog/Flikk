@@ -1,10 +1,11 @@
 // Summary card under the Inventory header — icon + "Product Listed" label,
 // the big listed-count, a last-updated timestamp, and a full-width
-// "Manage stocks" pill. Reference: sketch had a fixed mock count; this one
-// reads the real product count so it never drifts from what's actually
-// listed below it.
+// "Add product" pill (was "Manage stocks", which had no action wired to
+// it — this now opens AddProductScreen, the real write path). Reference:
+// sketch had a fixed mock count; this one reads the real product count so
+// it never drifts from what's actually listed below it.
 
-import { Package01Icon } from '@hugeicons/core-free-icons';
+import { Add01Icon, Package01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -12,10 +13,10 @@ import { colors } from '../../../theme/tokens';
 interface Props {
   listedCount: number;
   lastUpdatedLabel: string;
-  onPressManageStocks: () => void;
+  onPressAddProduct: () => void;
 }
 
-export function InventorySummaryCard({ listedCount, lastUpdatedLabel, onPressManageStocks }: Props) {
+export function InventorySummaryCard({ listedCount, lastUpdatedLabel, onPressAddProduct }: Props) {
   return (
     <View className="mx-5 gap-4 rounded-3xl bg-gray-100 p-4">
       <View className="flex-row items-center gap-2">
@@ -28,8 +29,12 @@ export function InventorySummaryCard({ listedCount, lastUpdatedLabel, onPressMan
         <Text className="mb-1 text-base font-regular text-ink/50">{lastUpdatedLabel}</Text>
       </View>
 
-      <Pressable onPress={onPressManageStocks} className="items-center justify-center rounded-2xl bg-black py-4">
-        <Text className="text-base font-medium text-white">Manage stocks</Text>
+      <Pressable
+        onPress={onPressAddProduct}
+        className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-black py-4"
+      >
+        <AppIcon icon={Add01Icon} size={16} color="#FFFFFF" />
+        <Text className="text-base font-medium text-white">Add product</Text>
       </Pressable>
     </View>
   );

@@ -20,7 +20,15 @@ export async function POST(request: Request) {
     const input: Partial<ProductWriteInput> = body;
     validateProductInput(input);
 
-    const { data: product, error } = await supabaseAdmin.from('products').insert(toProductRow(input)).select('id').single();
+    // 'approved' explicitly, not left to the column's own default — a
+    // founder adding a product here already is the approval (see
+    // backend/src/routes/partner.ts's own note on the partner-app side of
+    // this same gate).
+    const { data: product, error } = await supabaseAdmin
+      .from('products')
+      .insert({ ...toProductRow(input), approval_status: 'approved' })
+      .select('id')
+      .single();
     if (error) throw error;
 
     const { error: variantsError } = await supabaseAdmin.from('product_variants').insert(toVariantRows(product.id, input.variants));

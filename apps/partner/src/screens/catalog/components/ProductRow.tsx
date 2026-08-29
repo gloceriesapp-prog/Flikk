@@ -33,14 +33,14 @@ export function ProductRow({ product, onPressView }: Props) {
       className="flex-row items-center gap-3 rounded-2xl bg-white p-3 shadow-sm shadow-black/5"
       style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
     >
-      <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-14 w-14 rounded-2xl bg-mist" resizeMode="cover" />
+      <Image source={{ uri: product.imageUrl ?? PLACEHOLDER_IMAGE_URI }} className="h-14 w-14 rounded-2xl bg-mist" resizeMode="cover" />
 
       <View className="flex-1 gap-1.5">
         <Text className="text-[15px] font-medium text-ink" numberOfLines={1}>
           {product.name}
         </Text>
 
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row flex-wrap items-center gap-2">
           <Text className="text-lg font-semibold text-ink">{priceLabel}</Text>
 
           <View
@@ -53,6 +53,22 @@ export function ProductRow({ product, onPressView }: Props) {
               {product.isInStock ? 'In Stock' : 'Out of Stock'}
             </Text>
           </View>
+
+          {/* Only ever set by POST /partner/products (this store owner's
+              own add) — invisible to customers until a founder approves it
+              in admin, see useCatalogStore.ts's own note. */}
+          {product.approvalStatus === 'pending' && (
+            <View className="flex-row items-center gap-1 rounded-full bg-amber-50 px-2 py-1">
+              <View className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              <Text className="text-[12px] font-medium text-amber-700">Pending approval</Text>
+            </View>
+          )}
+          {product.approvalStatus === 'rejected' && (
+            <View className="flex-row items-center gap-1 rounded-full bg-danger/10 px-2 py-1">
+              <View className="h-1.5 w-1.5 rounded-full bg-danger" />
+              <Text className="text-[12px] font-medium text-danger">Rejected</Text>
+            </View>
+          )}
         </View>
       </View>
 
