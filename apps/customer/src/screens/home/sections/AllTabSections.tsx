@@ -29,11 +29,11 @@ export function AllTabSections() {
   return (
     <View>
       <MostBoughtSection />
-      <NearbyStoresSection />
+      {/* <NearbyStoresSection /> */}
       <StoreTypesSection />
-      <EverydayEssentialsSection />
-      <DealsSection />
       <CategorySections />
+      {/* <EverydayEssentialsSection /> */}
+      <DealsSection />
       <CoastalKitchenPicksSection />
       {dealsProducts.length > 0 && (
         <ProductSection title="Today's Steal Deals" products={dealsProducts} showDiscountBadge />

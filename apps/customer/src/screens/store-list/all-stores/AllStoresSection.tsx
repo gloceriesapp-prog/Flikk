@@ -4,14 +4,21 @@
 // both layouts inline. Real stores (useAllStores.ts -> GET /stores), not
 // the old STORE_LISTINGS mock — renders nothing while there are none, same
 // convention as every Home section that reads real data.
+//
+// `stores` is passed in (StoreListScreen owns the single useAllStores()
+// call, since CategoryFilterBar needs the same data to build its category
+// chips) rather than fetched again here — one real fetch, filtered two
+// different ways, not a second independent query for the same rows.
 
 import { Text, View } from 'react-native';
 import { StoreCard } from '../components/StoreCard';
-import { useAllStores } from './useAllStores';
+import type { RealStore } from './useAllStores';
 
-export function AllStoresSection() {
-  const { data: stores = [] } = useAllStores();
+interface Props {
+  stores: RealStore[];
+}
 
+export function AllStoresSection({ stores }: Props) {
   if (stores.length === 0) return null;
 
   return (

@@ -16,7 +16,7 @@ export function ViewAllStoresTile({ onPress }: Props) {
     <Pressable onPress={onPress} className="w-36 gap-2">
       <View className="h-28 w-36 items-center justify-center gap-1 rounded-2xl border border-mist bg-mist">
         <AppIcon icon={ArrowRight01Icon} size={24} color={colors.limeDeep} />
-        <Text className="text-center text-sm font-bold text-lime-deep">View all</Text>
+        <Text className="text-center text-sm font-semibold text-lime-deep">View all</Text>
       </View>
       <Text className="text-center text-sm font-semibold text-transparent" numberOfLines={1}>
         {/* spacer — keeps this tile's label row the same height as NearbyStoreCard's name line */}

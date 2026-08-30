@@ -19,6 +19,8 @@ export interface RealStore {
   district?: string;
   rating?: number;
   avgPrepMinutes?: number;
+  openTime?: string;
+  closeTime?: string;
 }
 
 interface ApiStore {
@@ -30,6 +32,8 @@ interface ApiStore {
   district: string | null;
   rating: number | null;
   avg_prep_minutes: number | null;
+  open_time: string | null;
+  close_time: string | null;
 }
 
 export function useAllStores() {
@@ -47,6 +51,8 @@ export function useAllStores() {
           district: row.district ?? undefined,
           rating: row.rating ?? undefined,
           avgPrepMinutes: row.avg_prep_minutes ?? undefined,
+          openTime: row.open_time ?? undefined,
+          closeTime: row.close_time ?? undefined,
         }),
       );
     },

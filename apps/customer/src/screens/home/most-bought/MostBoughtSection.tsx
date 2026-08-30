@@ -15,7 +15,6 @@
 // per an explicit ask.
 
 import { ScrollView, View } from 'react-native';
-import { Discount01Icon, Leaf01Icon, ShoppingBasket01Icon } from '@hugeicons/core-free-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEverydayEssentials } from '../everyday-essentials/useEverydayEssentials';
@@ -51,39 +50,15 @@ export function MostBoughtSection() {
         <LocalShopCard />
 
         {mostBought.length > 0 && (
-          <PromoListCard
-            title="Most Bought Near You"
-            icon={ShoppingBasket01Icon}
-            iconBg="#DDF7E8"
-            accentColor="#5A9A2E"
-            gradientColors={['#EEF7DC', '#FFFFFF']}
-            products={mostBought}
-            onSeeAll={seeAll}
-          />
+          <PromoListCard title="Most Bought Near You" accentColor="#5A9A2E" products={mostBought} onSeeAll={seeAll} />
         )}
 
         {bestDeals.length > 0 && (
-          <PromoListCard
-            title="Best Deals Today"
-            icon={Discount01Icon}
-            iconBg="#FDE8E4"
-            accentColor="#D9694A"
-            gradientColors={['#FFF1EC', '#FFFFFF']}
-            products={bestDeals}
-            onSeeAll={seeAll}
-          />
+          <PromoListCard title="Best Deals Today" accentColor="#D9694A" products={bestDeals} onSeeAll={seeAll} />
         )}
 
         {freshPicks.length > 0 && (
-          <PromoListCard
-            title="Fresh Picks For You"
-            icon={Leaf01Icon}
-            iconBg="#E3F0FF"
-            accentColor="#3E7DC9"
-            gradientColors={['#EAF3FF', '#FFFFFF']}
-            products={freshPicks}
-            onSeeAll={seeAll}
-          />
+          <PromoListCard title="Fresh Picks For You" accentColor="#3E7DC9" products={freshPicks} onSeeAll={seeAll} />
         )}
       </ScrollView>
     </View>
