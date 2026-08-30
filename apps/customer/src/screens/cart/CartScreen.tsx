@@ -13,12 +13,14 @@
 // both need to read it.
 
 import { useState } from 'react';
-import { ArrowLeft01Icon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, Location04Icon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
+import { fetchAddresses } from '../../api/addresses';
 import { selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { CartItemRow } from './components/CartItemRow';
 import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
@@ -34,6 +36,14 @@ export function CartScreen({ navigation }: Props) {
   const itemTotal = useCartStore(selectCartTotalPrice);
 
   const [tip, setTip] = useState<TipSelection>(null);
+
+  // Real address-book check (api/addresses.ts) — not a guess: whether the
+  // bottom bar can say "Checkout" at all depends on a saved address
+  // actually existing. Refetches every time Cart mounts, same reasoning
+  // as CheckoutScreen's own query — the address book can change between
+  // visits (added, deleted) with no shared store to invalidate otherwise.
+  const { data: addresses, isLoading: addressesLoading } = useQuery({ queryKey: ['addresses'], queryFn: fetchAddresses });
+  const hasAddress = (addresses?.length ?? 0) > 0;
 
   const originalItemTotal = items.some((item) => item.originalPrice)
     ? items.reduce((sum, item) => sum + (item.originalPrice ?? item.price) * item.quantity, 0)
@@ -91,9 +101,22 @@ export function CartScreen({ navigation }: Props) {
           </ScrollView>
 
           <View className="border-t border-mist px-5 pb-safe-offset-4 pt-4">
-            <Pressable onPress={() => navigation.navigate('Checkout')} className="items-center rounded-3xl bg-black py-4">
-              <Text className="text-xl font-semibold text-white">Checkout</Text>
-            </Pressable>
+            {/* No saved address yet — the button itself becomes the fix,
+                not a separate dead-end "Checkout" that would just fail
+                downstream. Real state (api/addresses.ts), not a guess. */}
+            {!addressesLoading && !hasAddress ? (
+              <Pressable
+                onPress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
+                className="flex-row items-center justify-center gap-2 rounded-3xl bg-coral py-4"
+              >
+                <AppIcon icon={Location04Icon} size={18} color="#FFFFFF" />
+                <Text className="text-xl font-semibold text-white">Add delivery address</Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => navigation.navigate('Checkout')} className="items-center rounded-3xl bg-black py-4">
+                <Text className="text-xl font-semibold text-white">Checkout</Text>
+              </Pressable>
+            )}
           </View>
         </>
       )}

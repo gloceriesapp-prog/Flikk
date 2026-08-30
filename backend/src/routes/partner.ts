@@ -68,7 +68,11 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
 partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { data, error } = await supabase.from('orders').select('*, order_items(*)').eq('store_id', storeId).order('placed_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*, order_items(*, products(name, unit, image_url)), users!customer_id(name, phone), addresses(line1, landmark, recipient_name)')
+      .eq('store_id', storeId)
+      .order('placed_at', { ascending: false });
     if (error) throw error;
     res.json(data);
   } catch (err) {

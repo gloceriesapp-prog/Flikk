@@ -92,7 +92,7 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
               </View>
             )}
           </View>
-          <Text className="text-sm font-medium text-ink/70">{order.id}</Text>
+          <Text className="text-sm font-medium text-ink/70">{order.orderNumber}</Text>
         </View>
       </View>
 

@@ -56,6 +56,8 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
   const orders = useOrdersStore((state) => state.orders);
   const acknowledgeOrder = useOrdersStore((state) => state.acknowledgeOrder);
   const rejectOrder = useOrdersStore((state) => state.rejectOrder);
+  const newlyArrivedOrderIds = useOrdersStore((state) => state.newlyArrivedOrderIds);
+  const clearNewlyArrived = useOrdersStore((state) => state.clearNewlyArrived);
 
   const acknowledgedOrderIds = useOrdersStore((state) => state.acknowledgedOrderIds);
   const [activeOrder, setActiveOrder] = useState<PartnerOrder | null>(null);
@@ -65,17 +67,21 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
   // SlideToConfirmButton's own refs-in-gesture-handlers note.
   const dismissedOrderIdsRef = useRef<Set<string>>(new Set());
 
-  // Picks up the next un-dismissed, un-acknowledged 'placed' order
-  // whenever the queue changes and nothing is currently on screen — this
-  // is the "new order arrived" trigger until a real push-driven one
-  // replaces it. The acknowledged check is a defensive backstop —
-  // dismissedOrderIdsRef already covers this hook's own instance, but an
-  // acknowledged order should never re-trigger the alert regardless.
+  // Picks up the next un-dismissed, un-acknowledged order that
+  // useOrdersStore itself has flagged as genuinely newly-arrived (see that
+  // store's own note on baselineEstablished/newlyArrivedOrderIds) — not
+  // just "any 'placed' order currently in the queue," which used to
+  // re-trigger this full-screen interrupt for orders that had already
+  // been sitting there before the app ever polled. The acknowledged check
+  // is a defensive backstop — dismissedOrderIdsRef already covers this
+  // hook's own instance, but an acknowledged order should never re-trigger
+  // the alert regardless.
   useEffect(() => {
     if (activeOrder) return;
     const next = orders.find(
       (order) =>
         order.status === 'placed' &&
+        newlyArrivedOrderIds.has(order.id) &&
         !dismissedOrderIdsRef.current.has(order.id) &&
         !acknowledgedOrderIds.has(order.id)
     );
@@ -88,7 +94,7 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
     // alert flow (the haptic above already fired), and `void` alone
     // doesn't catch a rejection, just discards the return value.
     playOrderAlertSound().catch(() => {});
-  }, [orders, activeOrder, acknowledgedOrderIds]);
+  }, [orders, activeOrder, acknowledgedOrderIds, newlyArrivedOrderIds]);
 
   // The attention-phase countdown — ticks once a second while an order is
   // active. At zero: stop interrupting and send the shop owner to the
@@ -108,6 +114,10 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
     const timeout = setTimeout(() => {
       if (secondsLeft <= 1) {
         dismissedOrderIdsRef.current.add(activeOrder.id);
+        // Handed off to the Orders queue's own grace-window countdown now
+        // (OrderCard) — not "new" anymore in the sense this flag means,
+        // even though the order itself is still 'placed'.
+        clearNewlyArrived(activeOrder.id);
         setActiveOrder(null);
         if (navigationRef.isReady()) navigationRef.navigate('Orders');
       } else {
@@ -116,7 +126,7 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
     }, 1000);
 
     return () => clearTimeout(timeout);
-  }, [activeOrder, secondsLeft]);
+  }, [activeOrder, secondsLeft, clearNewlyArrived]);
 
   // Neither of these navigates anywhere on purpose — accepting/declining
   // just clears activeOrder, closing the alert (Modal visible={false} on
@@ -126,6 +136,7 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
   function onAccept() {
     if (!activeOrder) return;
     dismissedOrderIdsRef.current.add(activeOrder.id);
+    clearNewlyArrived(activeOrder.id);
     acknowledgeOrder(activeOrder.id);
     setActiveOrder(null);
   }
@@ -133,7 +144,14 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
   function onDecline() {
     if (!activeOrder) return;
     dismissedOrderIdsRef.current.add(activeOrder.id);
-    rejectOrder(activeOrder.id);
+    clearNewlyArrived(activeOrder.id);
+    // rejectOrder is a real backend call now (PATCH /orders/:id/status) —
+    // best-effort here: the modal has already closed and there's no
+    // sensible mid-decline retry UI for this specific interrupt flow, but
+    // a failure still needs to not be a silently-swallowed unhandled
+    // rejection (the exact bug class this app already got bitten by once,
+    // see features/order-expiry's own note on the same fix).
+    rejectOrder(activeOrder.id).catch(() => {});
     setActiveOrder(null);
   }
 

@@ -1,12 +1,12 @@
-// Reached automatically once PaymentProcessingSheet finishes its
-// success phase (see checkout/CheckoutScreen.tsx) — the cart is already
-// cleared by then, so `items`/`amount`/`paymentMethodLabel` arrive as a
-// route-param snapshot, not read live from useCartStore.
+// Reached once CheckoutScreen's own handlePay finishes — either
+// immediately (Cash on Delivery) or after a real Razorpay Checkout
+// success + server-side signature verification (Pay Online). The cart is
+// already cleared by then, so `items`/`amount`/`paymentMethodLabel` arrive
+// as a route-param snapshot, not read live from useCartStore.
 //
 // "Track Order" opens screens/track-order/TrackOrderScreen.tsx — status-only
 // 4-stage tracking (no live map/GPS, see that screen's own header for why).
 
-import { useState } from 'react';
 import { Cancel01Icon, Download03Icon } from '@hugeicons/core-free-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -16,7 +16,6 @@ import { AppIcon } from '../../components/AppIcon';
 import { SuccessSeal } from '../../components/SuccessSeal';
 import { colors } from '../../theme/tokens';
 import { useLocationStore } from '../../store/useLocationStore';
-import { generateOrderId } from '../../utils/generateOrderId';
 import { ReceiptCard } from './components/ReceiptCard';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -28,8 +27,16 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Receipt'>;
 const LIQUID_GLASS_AVAILABLE = isLiquidGlassAvailable();
 
 export function ReceiptScreen({ navigation, route }: Props) {
-  const { amount, items, paymentMethodLabel } = route.params;
-  const [orderId] = useState(generateOrderId);
+  const { orderId: realOrderId, orderNumber, amount, items, paymentMethodLabel, placedAt, avgPrepMinutes } = route.params;
+  // Real orders.order_number ("FLK-100042"), shown as-is — no "#" prefix,
+  // matching exactly what the partner app and TrackOrderScreen display for
+  // the same order. This used to be a locally-sliced fragment of the UUID
+  // PK ("#0272FCC6") that looked like an order id but wasn't the same
+  // identifier as anything else in the system — the actual bug this fixes
+  // ("order id doesn't match between customer and partner app"). The full
+  // UUID still rides along in route params for TrackOrder's own real
+  // lookup, this is display-only.
+  const orderId = orderNumber;
   const address = useLocationStore((s) => s.location?.addressLabel) ?? 'your saved address';
   const itemTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
@@ -60,6 +67,8 @@ export function ReceiptScreen({ navigation, route }: Props) {
           items={items}
           itemTotal={itemTotal}
           total={amount}
+          placedAt={placedAt}
+          avgPrepMinutes={avgPrepMinutes}
         />
       </ScrollView>
 
@@ -70,7 +79,7 @@ export function ReceiptScreen({ navigation, route }: Props) {
           else — glass only applies to this one button, not Track Order. */}
       <View className="flex-row gap-3 px-5 pb-safe-offset-4 pt-4">
         <Pressable
-          onPress={() => navigation.navigate('TrackOrder', { orderId, paymentMethodLabel })}
+          onPress={() => navigation.navigate('TrackOrder', { orderId: realOrderId, paymentMethodLabel })}
           className="flex-1 items-center rounded-2xl bg-black py-4"
         >
           <Text className="text-lg font-semibold text-white">Track Order</Text>

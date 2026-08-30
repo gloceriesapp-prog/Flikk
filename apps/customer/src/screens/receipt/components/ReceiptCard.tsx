@@ -26,6 +26,7 @@ import { Text, View } from 'react-native';
 import { BarcodeSvg } from '../../../components/BarcodeSvg';
 import { colors } from '../../../theme/tokens';
 import { CART_DELIVERY_FEE, CART_HANDLING_FEE, type CartItem } from '../../../store/useCartStore';
+import { estimateDeliveryTime, formatEta } from '../../../utils/estimateDelivery';
 
 interface Props {
   orderId: string;
@@ -34,6 +35,11 @@ interface Props {
   items: CartItem[];
   itemTotal: number;
   total: number;
+  // Real order.placed_at + the store's avg_prep_minutes (route params,
+  // from POST /orders's own response) — same ETA math TrackOrderScreen
+  // uses, so a customer sees one consistent estimate across both screens.
+  placedAt: string;
+  avgPrepMinutes: number | null;
 }
 
 function FeeRow({ label, value }: { label: string; value: number }) {
@@ -56,16 +62,38 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ReceiptCard({ orderId, paymentMethodLabel, deliveryAddress, items, itemTotal, total }: Props) {
-  const orderedAt = new Date();
+export function ReceiptCard({
+  orderId,
+  paymentMethodLabel,
+  deliveryAddress,
+  items,
+  itemTotal,
+  total,
+  placedAt,
+  avgPrepMinutes,
+}: Props) {
+  // Real placed_at now, not `new Date()` at render time — this card can
+  // render a little after the order actually landed (payment-processing
+  // sheet, navigation), so "now" was drifting a few seconds ahead of when
+  // the order was genuinely placed.
+  const orderedAt = new Date(placedAt);
   const dateLabel = orderedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeLabel = orderedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const eta = estimateDeliveryTime(placedAt, avgPrepMinutes);
   const receiptUrl = `https://flikk.app/r/${orderId.replace('#', '')}`;
   const paymentStatusLabel =
     paymentMethodLabel === 'Cash on Delivery' ? 'Cash on Delivery' : `Paid via ${paymentMethodLabel}`;
 
   return (
     <View className="w-full overflow-hidden rounded-3xl border border-gray-100 bg-gray-200 p-6 shadow-sm shadow-black/5">
+      {/* Same "when will it actually arrive" answer as TrackOrderScreen's
+          own ETA card, right up top here too — an explicit ask, since a
+          receipt is the very first place a customer looks for this. */}
+      <View className="mb-4 items-center rounded-2xl bg-lime-soft py-3">
+        <Text className="text-sm font-semibold text-lime-deep">Estimated Delivery</Text>
+        <Text className="text-xl font-bold text-ink">{formatEta(eta)}</Text>
+      </View>
+
       <View className="gap-2.5">
         <DetailRow label="Date" value={dateLabel} />
         <DetailRow label="Time" value={timeLabel} />

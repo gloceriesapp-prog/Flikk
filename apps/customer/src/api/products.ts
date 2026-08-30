@@ -34,6 +34,10 @@ export interface ApiProduct {
   is_veg: boolean;
   freshness_tag: string | null;
   product_variants: ApiVariant[];
+  // Real FK, present on every row regardless of the stores join below —
+  // what mapApiProduct's own storeId comes from (see that field's note in
+  // types.ts).
+  store_id: string;
   // Only present on feeds that join stores (all of routes/stores.ts's
   // product feeds do) — fssai_number/address_line/city are what
   // SellerDetailsCard needs, real columns a founder fills in on admin's Add
@@ -78,6 +82,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     sizeOptions: variants.length > 0 ? variants.map(formatVariant) : undefined,
     description: row.description ?? undefined,
     categoryLabel: row.category,
+    storeId: row.store_id,
     storeName: store?.name,
     storePhotoUrl: store?.photo_url ?? undefined,
     // Only set when the store actually has an FSSAI number on file —

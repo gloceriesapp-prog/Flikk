@@ -8,6 +8,8 @@
 // for their location on every single app open.
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { AddressFormScreen } from '../screens/address/AddressFormScreen';
+import { AddressListScreen } from '../screens/address/AddressListScreen';
 import { CartScreen } from '../screens/cart/CartScreen';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
 import { CategoryDetailScreen } from '../screens/category-detail/CategoryDetailScreen';
@@ -60,6 +62,8 @@ export function AppNavigator() {
       <Stack.Screen name="StoreDetail" component={StoreDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
+      <Stack.Screen name="AddressList" component={AddressListScreen} />
+      <Stack.Screen name="AddressForm" component={AddressFormScreen} />
       <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} />
       <Stack.Screen name="Receipt" component={ReceiptScreen} />
       <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />

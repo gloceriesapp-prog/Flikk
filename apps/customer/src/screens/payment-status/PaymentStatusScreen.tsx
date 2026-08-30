@@ -1,7 +1,8 @@
 // Failure screen — a successful payment goes straight to
-// screens/receipt/ReceiptScreen.tsx instead (see PaymentProcessingSheet.tsx).
-// Nothing navigates here yet; kept ready for when a real Razorpay failure
-// needs somewhere to land.
+// screens/receipt/ReceiptScreen.tsx instead. CheckoutScreen's own
+// handlePay/runOnlineCheckout already handle a failed/cancelled Razorpay
+// Checkout inline (an alert with "Try again"), so nothing navigates here
+// yet; kept ready for a fuller dedicated failure screen later.
 
 import { Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

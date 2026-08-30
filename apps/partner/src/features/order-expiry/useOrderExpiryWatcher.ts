@@ -47,7 +47,12 @@ export function useOrderExpiryWatcher(): void {
         if (order.status !== 'placed' || acknowledgedOrderIds.has(order.id)) continue;
 
         if (hasAcceptWindowExpired(order, now)) {
-          rejectOrder(order.id);
+          // Real backend call now (PATCH /orders/:id/status, 'cancelled')
+          // — best-effort here specifically: a failed auto-reject just
+          // means the order stays visible past its window, which a store
+          // owner can still act on manually, not a broken flow worth
+          // surfacing mid-background-timer.
+          rejectOrder(order.id).catch(() => {});
           remindedCheckpointsRef.current.delete(order.id);
           continue;
         }

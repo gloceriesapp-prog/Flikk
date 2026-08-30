@@ -8,7 +8,7 @@
 // ellipsis, not a hand-rolled "..." string, so it degrades correctly at any
 // width instead of a fixed cutoff.
 
-import { ArrowRight01Icon, DeliveryTruck01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, CheckmarkCircle02Icon, DeliveryTruck01Icon, Store01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '../../../components/AppIcon';
@@ -20,6 +20,21 @@ interface Props {
   order: PurchaseOrder;
   onTrackOrder: () => void;
 }
+
+// order.status is real now (api/orders.ts, GET /orders) — this used to be
+// a hardcoded "Your order is out for delivery" string regardless of what
+// statusLabel actually said, misleading the moment a real order hadn't
+// reached that stage yet (a 'placed' or 'packed' order still showed the
+// out-for-delivery headline).
+const STATUS_HEADLINE: Record<PurchaseOrder['status'], string> = {
+  placed: 'Your order has been placed',
+  packed: 'Your order is being packed',
+  out_for_delivery: 'Your order is out for delivery',
+  delivered: 'Your order has been delivered',
+  cancelled: 'Your order was cancelled',
+};
+
+const STATUS_ICON = { placed: CheckmarkCircle02Icon, packed: Store01Icon, out_for_delivery: DeliveryTruck01Icon, delivered: CheckmarkCircle02Icon, cancelled: CheckmarkCircle02Icon };
 
 export function LiveOrderCard({ order, onTrackOrder }: Props) {
   const itemsLabel = order.items.map((item) => item.name).join(', ');
@@ -43,7 +58,7 @@ export function LiveOrderCard({ order, onTrackOrder }: Props) {
             <Text className="text-xs font-semibold text-white">{order.statusLabel}</Text>
           </View>
           <View className="h-8 w-8 items-center justify-center rounded-full bg-white">
-            <AppIcon icon={DeliveryTruck01Icon} size={18} color={colors.limeDeep} />
+            <AppIcon icon={STATUS_ICON[order.status]} size={18} color={colors.limeDeep} />
           </View>
         </View>
 
@@ -52,7 +67,7 @@ export function LiveOrderCard({ order, onTrackOrder }: Props) {
 
           <View className="flex-1">
             <Text className="text-lg font-semibold text-ink" numberOfLines={1}>
-              Your order is out for delivery
+              {STATUS_HEADLINE[order.status]}
             </Text>
             <Text className="text-sm font-medium text-ink/55" numberOfLines={1} ellipsizeMode="tail">
               {itemsLabel}

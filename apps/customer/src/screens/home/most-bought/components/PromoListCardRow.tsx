@@ -14,6 +14,7 @@ import { AppIcon } from '../../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../../theme/placeholderImage';
 import { colors } from '../../../../theme/tokens';
 import { useCartStore } from '../../../../store/useCartStore';
+import { addToCart } from '../../../../store/addToCart';
 import type { Product } from '../../products/types';
 
 export const ROW_HEIGHT = 46;
@@ -24,10 +25,9 @@ interface Props {
 }
 
 export function PromoListCardRow({ product, onPress }: Props) {
-  const { id, name, weight, price, originalPrice, imageUrl } = product;
+  const { id, name, weight, price, originalPrice, imageUrl, storeId, storeName } = product;
 
   const quantity = useCartStore((state) => state.items.find((item) => item.id === id)?.quantity ?? 0);
-  const addItem = useCartStore((state) => state.addItem);
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
@@ -46,7 +46,7 @@ export function PromoListCardRow({ product, onPress }: Props) {
 
       {quantity === 0 ? (
         <Pressable
-          onPress={() => addItem({ id, name, weight, price, originalPrice })}
+          onPress={() => addToCart({ id, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })}
           className="shrink-0 rounded-full border border-lime-deep bg-white px-2.5 py-1"
         >
           <Text className="text-[10px] font-extrabold text-lime-deep">ADD</Text>

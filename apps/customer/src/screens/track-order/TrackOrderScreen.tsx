@@ -1,27 +1,42 @@
-// Reached from ReceiptScreen's "Track Order" button. Status-only, 4-stage
-// timeline (placed -> packed -> out_for_delivery -> delivered), no live
-// map/GPS — CLAUDE.md scopes v1 tracking to status-only, deliberately, even
-// though a rider app exists in this product. No real order-status backend
-// is wired to this screen yet (see track-order/data.ts) — the timeline
-// shows a fixed demo progress state, ready to swap for a real order's
-// actual status the same shape already matches
-// (backend/src/lib/orderStateMachine.ts).
+// Reached from ReceiptScreen's "Track Order" button and Purchase's own
+// Live Order card. Status-only, 4-stage timeline (placed -> packed ->
+// out_for_delivery -> delivered), no live map/GPS — CLAUDE.md scopes v1
+// tracking to status-only, deliberately, even though a rider app exists in
+// this product.
+//
+// Real order now (GET /orders/:id, api/orders.ts) — polled every 8s while
+// the order hasn't reached a terminal status (delivered/cancelled), so a
+// partner marking an order packed (or a rider moving it further, once that
+// app exists) shows up here without the customer needing to pull-to-refresh
+// or reopen the screen. Polling stops on its own once terminal, no manual
+// cleanup needed beyond the effect's own unmount.
 
-import { useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
+import { fetchOrder } from '../../api/orders';
 import { OrderInfoCard } from './components/OrderInfoCard';
 import { TrackingTimeline } from './components/TrackingTimeline';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'TrackOrder'>;
 
+const POLL_INTERVAL_MS = 8000;
+
 export function TrackOrderScreen({ navigation, route }: Props) {
   const { orderId, paymentMethodLabel } = route.params;
-  const [orderedAt] = useState(() => new Date());
+
+  const { data: order, isLoading } = useQuery({
+    queryKey: ['order', orderId],
+    queryFn: () => fetchOrder(orderId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'delivered' || status === 'cancelled' ? false : POLL_INTERVAL_MS;
+    },
+  });
 
   return (
     <View className="flex-1 bg-white pt-safe">
@@ -33,17 +48,25 @@ export function TrackOrderScreen({ navigation, route }: Props) {
         <View className="h-11 w-11" />
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="items-center gap-5 px-5 pb-8 pt-2">
-        <OrderInfoCard orderId={orderId} paymentMethodLabel={paymentMethodLabel} orderedAt={orderedAt} />
-
-        <View className="w-full rounded-3xl border border-gray-100 bg-gray-100 p-5 shadow-sm shadow-black/5">
-          <TrackingTimeline orderedAt={orderedAt} />
+      {isLoading || !order ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={colors.ink} />
         </View>
+      ) : (
+        <ScrollView className="flex-1" contentContainerClassName="items-center gap-5 px-5 pb-8 pt-2">
+          <OrderInfoCard order={order} paymentMethodLabel={paymentMethodLabel} />
 
-        <Text className="px-6 text-center text-sm font-medium text-gray-500">
-          Thanks for shopping, we&apos;ll be here when you need us again.
-        </Text>
-      </ScrollView>
+          <View className="w-full rounded-3xl border border-gray-100 bg-gray-100 p-5 shadow-sm shadow-black/5">
+            <TrackingTimeline order={order} />
+          </View>
+
+          <Text className="px-6 text-center text-sm font-medium text-gray-500">
+            {order.status === 'delivered'
+              ? "Thanks for shopping, we'll be here when you need us again."
+              : "We'll keep this updated as your order moves along."}
+          </Text>
+        </ScrollView>
+      )}
     </View>
   );
 }

@@ -41,6 +41,7 @@ import { AppIcon } from '../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { colors } from '../../../theme/tokens';
 import { useCartStore } from '../../../store/useCartStore';
+import { addToCart } from '../../../store/addToCart';
 import type { Product } from './types';
 
 interface Props {
@@ -64,7 +65,21 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
   // imageSeed is kept on Product (data.ts files) for when a mock product has
   // no imageUrl of its own — real products (see that field's own note in
   // types.ts) carry their actual uploaded photo instead.
-  const { id, name, localName, weight, price, originalPrice, imageUrl, bgColor, isVeg = true, freshnessTag, sizeOptions } = product;
+  const {
+    id,
+    name,
+    localName,
+    weight,
+    price,
+    originalPrice,
+    imageUrl,
+    bgColor,
+    isVeg = true,
+    freshnessTag,
+    sizeOptions,
+    storeId,
+    storeName,
+  } = product;
   const discountPercent =
     showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
 
@@ -73,7 +88,6 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
   const [isBookmarked, setIsBookmarked] = useState(false);
 
   const quantity = useCartStore((state) => state.items.find((item) => item.id === id)?.quantity ?? 0);
-  const addItem = useCartStore((state) => state.addItem);
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
@@ -125,7 +139,9 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             row below it anymore. */}
         {quantity === 0 ? (
           <Pressable
-            onPress={() => addItem({ id, name, weight: selectedSize, price, originalPrice })}
+            onPress={() =>
+              addToCart({ id, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
+            }
             className="absolute bottom-0 right-0 rounded-lg bg-[#2457F5] px-3 py-1.5 shadow-sm shadow-black/20"
           >
             <Text className="text-xs font-medium text-white">ADD</Text>

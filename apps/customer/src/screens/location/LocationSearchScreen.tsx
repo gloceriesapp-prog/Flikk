@@ -19,7 +19,8 @@ import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'LocationSearch'>;
 
-export function LocationSearchScreen({ navigation }: Props) {
+export function LocationSearchScreen({ navigation, route }: Props) {
+  const intent = route.params?.intent;
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export function LocationSearchScreen({ navigation }: Props) {
       // searched for), but city still needs to come from the geocoder —
       // free text alone doesn't reliably carry a clean city name.
       const { city } = await reverseGeocode(coords);
-      navigation.replace('MapConfirm', { ...coords, addressLabel: query.trim(), city });
+      navigation.replace('MapConfirm', { ...coords, addressLabel: query.trim(), city, intent });
     } catch {
       setError('Search failed. Please try again.');
     } finally {
@@ -57,7 +58,7 @@ export function LocationSearchScreen({ navigation }: Props) {
       }
       const coords = await getCurrentCoordinates();
       const { addressLabel, city } = await reverseGeocode(coords);
-      navigation.replace('MapConfirm', { ...coords, addressLabel, city });
+      navigation.replace('MapConfirm', { ...coords, addressLabel, city, intent });
     } catch {
       setError('Could not get your location. Please try searching instead.');
     } finally {

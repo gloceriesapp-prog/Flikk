@@ -1,8 +1,7 @@
 // Scalloped "seal" badge (8 petal circles behind a center circle) —
 // approximates the blob/flower checkmark badge from the reference designs
 // using plain Views (trig-positioned circles), not an image asset or an
-// SVG library. Reused by PaymentProcessingSheet's success phase and
-// ReceiptScreen's header so the two share one shape instead of two.
+// SVG library. Used by ReceiptScreen's own header.
 
 import { Tick02Icon } from '@hugeicons/core-free-icons';
 import { View } from 'react-native';

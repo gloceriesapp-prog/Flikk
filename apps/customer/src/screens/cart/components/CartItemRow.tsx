@@ -30,7 +30,7 @@ export function CartItemRow({ item }: Props) {
   return (
     <View className="flex-row items-center gap-3 py-3">
       <View className="h-16 w-16 overflow-hidden rounded-xl bg-white">
-        <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+        <Image source={{ uri: item.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
       </View>
 
       <View className="flex-1 gap-0.5">

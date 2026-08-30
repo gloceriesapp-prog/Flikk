@@ -82,13 +82,13 @@ export function CartBar() {
           <View className="flex-row items-center gap-2 px-2 py-2">
             {isDeliveryUnlocked ? (
               <View className="flex-row">
-                {Array.from({ length: thumbnailCount }).map((_, i) => (
+                {items.slice(0, thumbnailCount).map((item, i) => (
                   <View
-                    key={i}
+                    key={item.id}
                     style={{ marginLeft: i === 0 ? 0 : -14, zIndex: thumbnailCount - i }}
                     className="h-9 w-9 overflow-hidden rounded-full bg-white"
                   >
-                    <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+                    <Image source={{ uri: item.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
                   </View>
                 ))}
               </View>

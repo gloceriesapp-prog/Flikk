@@ -1,5 +1,6 @@
-// Maps to POST /auth/otp/request and POST /auth/otp/verify — shared across all
-// 4 apps per specs/00-foundation/auth-and-roles.md. No customer-specific auth logic.
+// Maps to POST /auth/otp/request, POST /auth/otp/verify, POST /auth/refresh,
+// and GET /auth/me — shared across all 4 apps per
+// specs/00-foundation/auth-and-roles.md. No customer-specific auth logic.
 
 import { apiRequest } from './client';
 
@@ -7,6 +8,19 @@ export function requestOtp(phone: string): Promise<{ ok: true }> {
   return apiRequest('/auth/otp/request', { method: 'POST', body: { phone }, auth: false });
 }
 
-export function verifyOtp(phone: string, code: string): Promise<{ access_token: string }> {
+export function verifyOtp(phone: string, code: string): Promise<{ access_token: string; refresh_token: string }> {
   return apiRequest('/auth/otp/verify', { method: 'POST', body: { phone, code }, auth: false });
+}
+
+// Exchanges a still-valid refresh token for a new access/refresh pair — see
+// useAuthStore.ts's own note on why this exists. Called from api/client.ts's
+// `refresh` handling on a 401, not directly from any screen.
+export function refreshSession(refreshToken: string): Promise<{ access_token: string; refresh_token: string }> {
+  return apiRequest('/auth/refresh', { method: 'POST', body: { refresh_token: refreshToken }, auth: false });
+}
+
+// AddressFormScreen's own phone prefill (the account's own verified number
+// is the sensible default recipient contact — see that screen's own note).
+export function fetchAccountInfo(): Promise<{ phone: string; name: string | null }> {
+  return apiRequest('/auth/me');
 }

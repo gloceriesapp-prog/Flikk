@@ -33,6 +33,7 @@ import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
 import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
+import { addToCart } from '../../store/addToCart';
 import type { Product } from '../../screens/home/products/types';
 
 interface Props {
@@ -40,11 +41,10 @@ interface Props {
 }
 
 export function ProductDetailFooter({ product }: Props) {
-  const { id, name, weight, price, originalPrice } = product;
+  const { id, name, weight, price, originalPrice, storeId, storeName, imageUrl } = product;
 
   const quantity = useCartStore((state) => state.items.find((item) => item.id === id)?.quantity ?? 0);
   const cartTotalQuantity = useCartStore(selectCartTotalQuantity);
-  const addItem = useCartStore((state) => state.addItem);
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
@@ -52,7 +52,7 @@ export function ProductDetailFooter({ product }: Props) {
     return (
       <View className="px-5 py-4">
         <Pressable
-          onPress={() => addItem({ id, name, weight, price, originalPrice })}
+          onPress={() => addToCart({ id, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })}
           className="items-center rounded-2xl bg-lime-deep py-3.5"
         >
           <Text className="text-base font-medium text-ink">Add to cart</Text>

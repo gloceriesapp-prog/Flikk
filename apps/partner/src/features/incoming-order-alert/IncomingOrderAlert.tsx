@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { useIncomingOrderAlert } from './useIncomingOrderAlert';
+import { useOrderPolling } from './useOrderPolling';
 import { AutoRejectChip } from './components/AutoRejectChip';
 import { DeliverToSection } from './components/DeliverToSection';
 import { ItemsSection } from './components/ItemsSection';
@@ -32,6 +33,7 @@ import { OrderInfoRow } from './components/OrderInfoRow';
 const HERO_IMAGE_URL = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/app-images/order-alert.png';
 
 export function IncomingOrderAlert() {
+  useOrderPolling();
   const { activeOrder, secondsLeft, onAccept, onDecline } = useIncomingOrderAlert();
   const insets = useSafeAreaInsets();
 
@@ -81,7 +83,7 @@ export function IncomingOrderAlert() {
               <View className="flex-row items-start justify-between">
                 <View>
                   <Text className="text-sm font-medium text-ink/40">Order ID</Text>
-                  <Text className="text-xl font-medium text-ink">{activeOrder.id}</Text>
+                  <Text className="text-xl font-medium text-ink">{activeOrder.orderNumber}</Text>
                 </View>
                 <AutoRejectChip secondsLeft={secondsLeft} />
               </View>

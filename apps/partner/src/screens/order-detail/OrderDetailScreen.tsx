@@ -4,20 +4,21 @@
 // action.
 //
 // Order is read live from useOrdersStore by orderId (not passed as a
-// route param) — see store/useOrdersStore.ts's own note on why. No Reject
-// here (or anywhere in this app) — rejecting an order isn't a transition
-// this app owns, per specs/02-partner-app/flows.md's "Partner app triggers
-// no status transition other than `packed`"; useOrdersStore.rejectOrder
-// stays unused/available for whenever that's actually wired to a backend
-// cancel call.
+// route param) — see store/useOrdersStore.ts's own note on why. No manual
+// Reject action on this screen specifically — OrderCard's own pending
+// state (before acknowledge) is the only place a store owner backs out of
+// an order, and useOrderExpiryWatcher's auto-reject-on-timeout covers the
+// rest; a real reject call exists now (useOrdersStore.rejectOrder, PATCH
+// /orders/:id/status → cancelled) but this screen doesn't surface it.
 
 import { ArrowLeft01Icon, Cash01Icon, Copy01Icon, Mic01Icon, PrinterIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
+import { ApiError } from '../../api/client';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { PLATFORM_COMMISSION_PERCENT } from '../orders/data';
 import type { AppStackParamList } from '../../navigation/types';
@@ -80,7 +81,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             <AppIcon icon={PrinterIcon} size={17} color={colors.ink} />
           </Pressable>
           <Pressable className="flex-row items-center gap-1.5 rounded-full bg-gray-100 px-3.5 py-2.5">
-            <Text className="text-sm font-bold text-ink">{order.id}</Text>
+            <Text className="text-sm font-bold text-ink">{order.orderNumber}</Text>
             <AppIcon icon={Copy01Icon} size={14} color={colors.ink} />
           </Pressable>
         </View>
@@ -138,8 +139,16 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             sublabel="Slide when it's packaged & ready for pickup"
             successLabel="Packed!"
             onConfirm={() => {
-              markPacked(order.id);
-              navigation.goBack();
+              // Wait for the real PATCH before leaving — navigating back
+              // immediately (the old behavior) would show the "Packed!"
+              // success animation even if the backend call failed, and the
+              // order would silently still read 'placed' the next time
+              // this screen (or the queue) loaded.
+              markPacked(order.id)
+                .then(() => navigation.goBack())
+                .catch((err) => {
+                  Alert.alert('Could not update order', err instanceof ApiError ? err.message : 'Please try again.');
+                });
             }}
           />
         ) : (

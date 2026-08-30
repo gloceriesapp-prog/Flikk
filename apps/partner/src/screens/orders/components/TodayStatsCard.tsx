@@ -4,7 +4,7 @@
 // edge) is what reads as "3 distinct boxes" instead of one segmented card.
 // Label sits small top-left, the number large and bold below it — same
 // layout the sketch shows for every box. All values derived live from
-// today's PLACEHOLDER_ORDERS (see OrdersScreen.tsx), not separate
+// useOrdersStore's real order queue (GET /partner/orders), not separate
 // hardcoded numbers that could drift out of sync with the queue below it.
 
 import { Text, View } from 'react-native';

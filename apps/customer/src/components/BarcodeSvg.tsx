@@ -1,6 +1,6 @@
 // Real CODE128 barcode, actually scannable — but rendered with
 // react-native-svg (already a dependency, already works in this app, see
-// SvgUri usage in screens/checkout/components/PaymentMethodCard.tsx)
+// SvgUri usage in screens/checkout/components/PaymentMethodList.tsx)
 // instead of react-native-barcode-builder, which renders through
 // @react-native-community/art. ART is a legacy renderer Expo Go doesn't
 // register (`View config not found for component 'ARTShape'` at runtime —

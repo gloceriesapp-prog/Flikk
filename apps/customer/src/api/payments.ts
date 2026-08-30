@@ -1,6 +1,8 @@
-// Maps to POST /payments/create-order. Returns just enough to open Razorpay
-// Checkout client-side (order id + publishable key_id) — the secret key
-// never leaves the backend, see backend/src/routes/payments.ts.
+// Maps to POST /payments/create-order and POST /payments/verify. The
+// secret key never leaves the backend — the client only ever gets an
+// order id + the publishable key_id, and only ever sends back what
+// Razorpay Checkout itself returned on success, never a self-reported
+// "it worked."
 
 import { apiRequest } from './client';
 
@@ -13,4 +15,20 @@ export interface RazorpayOrder {
 
 export function createRazorpayOrder(orderId: string): Promise<RazorpayOrder> {
   return apiRequest('/payments/create-order', { method: 'POST', body: { orderId } });
+}
+
+export interface VerifyPaymentInput {
+  orderId: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+// The one and only call that can mark an order paid — backend/src/routes/
+// payments.ts's own POST /verify re-derives the HMAC signature server-side
+// from these three ids and rejects anything that doesn't match exactly,
+// so this is never "tell the server I paid," it's "hand over what
+// Razorpay's own SDK returned and let the server prove it for real."
+export function verifyPayment(input: VerifyPaymentInput): Promise<{ ok: true }> {
+  return apiRequest('/payments/verify', { method: 'POST', body: input });
 }

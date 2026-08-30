@@ -9,7 +9,8 @@
 // orders. This screen just renders what the store holds.
 
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
+import { ApiError } from '../../api/client';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { useOrdersStore } from '../../store/useOrdersStore';
@@ -36,6 +37,7 @@ export function OrdersScreen({ navigation }: Props) {
   const orders = useOrdersStore((state) => state.orders);
   const acknowledgeOrder = useOrdersStore((state) => state.acknowledgeOrder);
   const markPacked = useOrdersStore((state) => state.markPacked);
+  const loadOrders = useOrdersStore((state) => state.loadOrders);
   // Defaults to New Orders, not All — the screen a shop owner opens
   // should lead with what needs their action, not a mixed list they have
   // to scan through to find it.
@@ -46,7 +48,19 @@ export function OrdersScreen({ navigation }: Props) {
 
   useEffect(() => {
     void loadProfile();
-  }, [loadProfile]);
+    void loadOrders();
+  }, [loadProfile, loadOrders]);
+
+  // OrderCard's own onMarkPacked expects a plain (orderId) => void — this
+  // wraps the store's real, throwing action so a failed PATCH surfaces as
+  // an alert instead of an unhandled rejection (same "never bare `void
+  // asyncCall()`" rule this app already learned the hard way, see
+  // features/incoming-order-alert's own note on that exact bug class).
+  function handleMarkPacked(orderId: string) {
+    markPacked(orderId).catch((err) => {
+      Alert.alert('Could not update order', err instanceof ApiError ? err.message : 'Please try again.');
+    });
+  }
 
   const newOrderCount = orders.filter((order) => order.status === 'placed').length;
   const earningTotal = orders.reduce((sum, order) => sum + order.total, 0);
@@ -111,7 +125,7 @@ export function OrdersScreen({ navigation }: Props) {
                       key={order.id}
                       order={order}
                       onAcknowledge={acknowledgeOrder}
-                      onMarkPacked={markPacked}
+                      onMarkPacked={handleMarkPacked}
                       onViewOrder={() => navigation.navigate('OrderDetail', { orderId: order.id })}
                     />
                   ))}

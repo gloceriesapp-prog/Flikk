@@ -1,7 +1,6 @@
 // Same 4 stages as backend/src/lib/orderStateMachine.ts (placed -> packed ->
 // out_for_delivery -> delivered) — this screen's timeline mirrors the real
-// state machine on purpose, not an invented one, so wiring it to a real
-// order's actual status later is a data swap, not a redesign.
+// state machine, not an invented one.
 //
 // No live map/GPS here deliberately — CLAUDE.md scopes v1 to status-only
 // 4-stage tracking; "a rider app exists" doesn't mean live map tracking for
@@ -27,17 +26,3 @@ export const ORDER_STAGES: StageMeta[] = [
   { status: 'out_for_delivery', title: 'Out for Delivery', subtitle: 'Your rider is on the way', icon: DeliveryTruck01Icon },
   { status: 'delivered', title: 'Delivered', subtitle: 'Estimated delivery', icon: PackageIcon },
 ];
-
-// No real order-status backend wired to this screen yet (see
-// TrackOrderScreen.tsx) — minute offsets from order-placed time, purely to
-// demo the timeline with plausible-looking timestamps.
-export const STAGE_OFFSET_MINUTES: Record<OrderStatus, number> = {
-  placed: 0,
-  packed: 5,
-  out_for_delivery: 15,
-  delivered: 35,
-};
-
-// Which stage is "current" in the demo — out_for_delivery done, delivered
-// still pending. Swap this for a real `order.status` once one exists.
-export const DEMO_CURRENT_STATUS: OrderStatus = 'out_for_delivery';

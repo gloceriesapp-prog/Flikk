@@ -24,7 +24,7 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS);
-  const setToken = useAuthStore((s) => s.setToken);
+  const setSession = useAuthStore((s) => s.setSession);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -41,8 +41,8 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
       setError(null);
       setLoading(true);
       try {
-        const { access_token } = await verifyOtp(phone, otp);
-        await setToken(access_token);
+        const { access_token, refresh_token } = await verifyOtp(phone, otp);
+        await setSession(access_token, refresh_token);
         // RootNavigator swaps to the app shell automatically once accessToken is set
       } catch (err) {
         setError(err instanceof ApiError ? err.message : 'Invalid code. Please try again.');
@@ -51,7 +51,7 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
         setLoading(false);
       }
     },
-    [phone, setToken],
+    [phone, setSession],
   );
 
   // auto-submit once all 6 digits are entered — one less tap for the user.

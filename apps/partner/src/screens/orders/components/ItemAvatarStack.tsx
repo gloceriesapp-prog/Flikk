@@ -5,8 +5,12 @@
 // (see specs/00-foundation/repo-structure.md on why there's no
 // /packages/shared yet). No border ring this time (an explicit ask) — a
 // soft mist background behind each circle does the separation work
-// instead, since there's no per-product photo yet to make the border
-// necessary for contrast.
+// instead of a border.
+//
+// Real per-product photo (item.imageUrl, products.image_url) when one's
+// been uploaded, falling back to the shared placeholder only for a
+// product with no photo — every item used to show the same generic
+// placeholder regardless.
 
 import { Image, View } from 'react-native';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
@@ -29,7 +33,7 @@ export function ItemAvatarStack({ items }: Props) {
           style={{ marginLeft: i === 0 ? 0 : -14, zIndex: visibleItems.length - i }}
           className="h-12 w-12 overflow-hidden rounded-full bg-white"
         >
-          <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+          <Image source={{ uri: item.imageUrl ?? PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
         </View>
       ))}
     </View>

@@ -36,9 +36,16 @@ export interface Product {
   // data.ts entry doesn't set them.
   description?: string;
   categoryLabel?: string;
-  // Seller/store this listing belongs to — display only, no storeId to
-  // navigate with yet (Product isn't linked to store-list/'s Store type).
+  // Seller/store this listing belongs to.
   storeName?: string;
+  // Real products.store_id — every real product feed (routes/stores.ts)
+  // joins stores, so this is always set on anything that came from the
+  // backend (mock/local data.ts entries are the only ones that'd omit it).
+  // What useCartStore uses to enforce single-store-per-order at add-to-cart
+  // time (CLAUDE.md: "Multi-store cart... enforced at schema and UI
+  // level") and what POST /orders needs to know which store an order
+  // belongs to.
+  storeId?: string;
   // Real storefront photo (stores.photo_url, set via admin's Add Store form
   // -> ProductImageUpload with bucket="store-images", a separate Storage
   // bucket from product photos — see backend/src/routes/stores.ts's own

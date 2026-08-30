@@ -21,6 +21,10 @@ export interface OrderLineItem {
   // Line price (quantity already factored in) — shown per-item in
   // OrderDetailScreen's item list. Sums to PartnerOrder.total.
   price: number;
+  // Real products.image_url — ItemAvatarStack's own note on why this
+  // replaces the shared PLACEHOLDER_IMAGE_URI stand-in it used to always
+  // show regardless of whether a product actually had a photo.
+  imageUrl: string | null;
 }
 
 // Flikk's cut, shown to the store owner as a transparent breakdown on
@@ -30,7 +34,13 @@ export interface OrderLineItem {
 export const PLATFORM_COMMISSION_PERCENT = 12;
 
 export interface PartnerOrder {
+  // Real orders.id (UUID) — what PATCH /orders/:id/status and every
+  // action callback (markPacked, rejectOrder, acknowledgeOrder) actually
+  // use. Never rendered as text — orderNumber is what's shown.
   id: string;
+  // Real orders.order_number ("FLK-100042") — what OrderCard/
+  // OrderDetailScreen display instead of the raw UUID above.
+  orderNumber: string;
   customerName: string;
   items: OrderLineItem[];
   total: number;
@@ -77,104 +87,62 @@ export interface PartnerOrder {
 // through ../../store/useStoreProfileStore.ts, not this constant directly.
 export type { StoreProfile } from '../store-settings/data';
 
-// Anchors every placeholder order's placedAtTimestamp to app-load time,
-// offset to match its own placedAtLabel — so the order-expiry grace
-// window (5 min total) reflects what the label already says instead of
-// contradicting it. Kept under 5 min for every 'placed' order on purpose:
-// a demo order that's already past the window would get silently
-// auto-rejected by useOrderExpiryWatcher the instant the app opens, which
-// reads as a bug, not a feature, to whoever's looking at this data.
-const NOW = Date.now();
-const MINUTES = 60 * 1000;
+// Real order queue now — mapApiOrder converts one GET /partner/orders row
+// (api/orders.ts's own ApiOrder) into this screen's display shape.
+// orderCount (repeat-customer signal) is computed across the *other*
+// already-fetched rows passed in, not a separate query — GET /partner/orders
+// already returns this store's entire order history in one call, so
+// counting a customer's prior orders at this store is free.
 
-export const PLACEHOLDER_ORDERS: PartnerOrder[] = [
-  // Newest first, matching the "new order" reference this app's own alert
-  // (src/features/incoming-order-alert/) is built to match — see that
-  // folder's own note on why it's mounted unconditionally for now.
-  {
-    id: '#OD48221',
-    customerName: 'Nishal P.',
-    items: [
-      { name: 'Toor Dal', quantity: 1, unit: '500 g', price: 156 },
-      { name: 'Kori Rotti Masala', quantity: 1, unit: '100 g', price: 68 },
-      { name: 'Milk', quantity: 1, unit: '500 ml', price: 80 },
-    ],
-    total: 304,
-    status: 'placed',
-    placedAtLabel: 'Just now',
-    placedAtTime: '12:44 pm',
-    orderCount: 3,
-    paymentMode: 'prepaid',
-    deliveryAddress: ['Koramangala 4th Block', 'Kaup Main Road, Udupi'],
-    customerPhone: '+919845012345',
-    placedAtTimestamp: NOW,
-  },
-  {
-    id: '#OD48213',
-    customerName: 'Ramesh K.',
-    items: [
-      { name: 'Nandini Pouch Curd', quantity: 2, unit: '400 g pouch', price: 60 },
-      { name: 'Onion (Eerulli)', quantity: 1, unit: '1 kg', price: 28 },
-      { name: 'Tomato', quantity: 1, unit: '500 g', price: 40 },
-    ],
-    total: 128,
-    status: 'placed',
-    placedAtLabel: '2 min ago',
-    placedAtTime: '12:40 pm',
-    orderCount: 7,
-    paymentMode: 'prepaid',
-    deliveryAddress: ['Vidya Nagar 2nd Cross', 'Near Kaup Beach Road, Udupi'],
-    customerPhone: '+919845098765',
-    placedAtTimestamp: NOW - 2 * MINUTES,
-  },
-  {
-    id: '#OD48209',
-    customerName: 'Anjali S.',
-    items: [{ name: 'Basmati Rice 1kg', quantity: 1, unit: '1 kg', price: 95 }],
-    total: 95,
-    status: 'placed',
-    // Was '6 min ago' — moved inside the 5-minute window (see NOW/MINUTES
-    // note above) so this order doesn't vanish on app load.
-    placedAtLabel: '3 min ago',
-    placedAtTime: '12:36 pm',
-    orderCount: 2,
-    paymentMode: 'cod',
-    deliveryAddress: ['Santhekatte Junction', 'Kaup, Udupi'],
-    customerPhone: '+919845011223',
-    placedAtTimestamp: NOW - 3 * MINUTES,
-  },
-  {
-    id: '#OD48198',
-    customerName: 'Vinod P.',
-    items: [
-      { name: 'Cow Ghee', quantity: 1, unit: '500 ml', price: 300 },
-      { name: 'Toor Dal', quantity: 2, unit: '500 g', price: 156 },
-    ],
-    total: 456,
-    status: 'packed',
-    placedAtLabel: '22 min ago',
-    placedAtTime: '12:20 pm',
-    orderCount: 4,
-    paymentMode: 'prepaid',
-    deliveryAddress: ['Church Road', 'Kaup Main Road, Udupi'],
-    customerPhone: '+919845033445',
-    placedAtTimestamp: NOW - 22 * MINUTES,
-  },
-  {
-    id: '#OD48187',
-    customerName: 'Lakshmi N.',
-    items: [
-      { name: 'Sunflower Oil', quantity: 1, unit: '1 L', price: 140 },
-      { name: 'Basmati Rice 1kg', quantity: 1, unit: '1 kg', price: 100 },
-    ],
-    total: 240,
-    status: 'out_for_delivery',
-    placedAtLabel: '38 min ago',
-    placedAtTime: '12:04 pm',
-    orderCount: 1,
-    paymentMode: 'cod',
-    deliveryAddress: ['Mangalpady Road', 'Kaup, Udupi'],
-    customerPhone: '+919845066778',
-    placedAtTimestamp: NOW - 38 * MINUTES,
-  },
-];
+import type { ApiOrder } from '../../api/orders';
+
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrder {
+  // Every order this same customer has placed at this store, oldest first
+  // — this order's own 1-based position in that list is "the Nth order",
+  // matching the original "Ramesh's 7th order" convention.
+  const sameCustomerOrdered = allOrders
+    .filter((o) => o.users?.phone === order.users?.phone)
+    .sort((a, b) => new Date(a.placed_at).getTime() - new Date(b.placed_at).getTime());
+  const orderCount = sameCustomerOrdered.findIndex((o) => o.id === order.id) + 1;
+
+  return {
+    id: order.id,
+    orderNumber: order.order_number,
+    customerName: order.users?.name?.trim() || order.users?.phone || 'Customer',
+    items: order.order_items.map((item) => ({
+      name: item.products?.name ?? 'Item',
+      quantity: item.quantity,
+      unit: item.products?.unit ?? '',
+      price: item.unit_price_at_order * item.quantity,
+      imageUrl: item.products?.image_url ?? null,
+    })),
+    total: order.total,
+    // 'delivered'/'cancelled' orders are filtered out before this ever
+    // runs (useOrdersStore's own loadOrders) — this screen's queue has no
+    // use for either, same as the placeholder data it replaces.
+    status: order.status as PartnerOrderStatus,
+    placedAtLabel: formatRelativeTime(order.placed_at),
+    placedAtTime: new Date(order.placed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    orderCount,
+    // No real payment_mode column on `orders` yet — a captured Razorpay
+    // payment id is the honest proxy available today (see backend's own
+    // POST /payments/confirm-simulated note): if one exists, the order was
+    // paid online; if not, it's COD. A real payment_mode field belongs on
+    // the schema once COD stops routing through the same simulated-payment
+    // call prepaid orders do — a real, separate gap, not invented here.
+    paymentMode: order.razorpay_payment_id ? 'prepaid' : 'cod',
+    deliveryAddress: [order.addresses?.line1 ?? 'Address unavailable', order.addresses?.landmark ?? ''],
+    customerPhone: order.users?.phone ?? '',
+    placedAtTimestamp: new Date(order.placed_at).getTime(),
+  };
+}
