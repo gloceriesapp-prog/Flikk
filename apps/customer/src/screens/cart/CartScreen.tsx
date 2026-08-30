@@ -13,8 +13,8 @@
 // both need to read it.
 
 import { useState } from 'react';
-import { ArrowLeft01Icon, Location04Icon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ArrowLeft01Icon, ArrowRight01Icon, Location04Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,6 +26,7 @@ import { CartItemRow } from './components/CartItemRow';
 import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
 import { YouMayAlsoLikeRow } from './components/YouMayAlsoLikeRow';
 import { BillDetailsCard } from './components/BillDetailsCard';
+import { CancellationNoteCard } from './components/CancellationNoteCard';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Cart'>;
@@ -34,6 +35,14 @@ export function CartScreen({ navigation }: Props) {
   const items = useCartStore((state) => state.items);
   const totalQuantity = useCartStore(selectCartTotalQuantity);
   const itemTotal = useCartStore(selectCartTotalPrice);
+  const clearCart = useCartStore((state) => state.clear);
+
+  function handleClearCart() {
+    Alert.alert('Clear your cart?', 'Every item you\'ve added will be removed.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Clear cart', style: 'destructive', onPress: clearCart },
+    ]);
+  }
 
   const [tip, setTip] = useState<TipSelection>(null);
 
@@ -48,6 +57,11 @@ export function CartScreen({ navigation }: Props) {
   const originalItemTotal = items.some((item) => item.originalPrice)
     ? items.reduce((sum, item) => sum + (item.originalPrice ?? item.price) * item.quantity, 0)
     : null;
+  // TEMP: dummy fallback so the "Saved ₹X (Y% off)" header UI is visible
+  // without a real discounted item in the cart — remove once real
+  // discounted products exist to test against.
+  const savings = originalItemTotal !== null ? originalItemTotal - itemTotal : 42;
+  const savingsPercent = originalItemTotal ? Math.round((savings / originalItemTotal) * 100) : 18;
 
   return (
     <View className="flex-1 bg-[#FAFAFA]">
@@ -64,11 +78,29 @@ export function CartScreen({ navigation }: Props) {
           <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
             <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
           </Pressable>
-          <Text className="flex-1 text-center text-xl font-semibold text-ink">My Cart</Text>
-          {/* Spacer matching the back button's width — keeps the title
-              genuinely centered in the row, not just centered in the
-              remaining space next to the button. */}
-          <View className="h-11 w-11" />
+          <View className="flex-1 pl-1">
+            <Text className="text-[17px] font-medium text-ink">Your Cart</Text>
+            {items.length > 0 ? (
+              savings > 0 ? (
+                <Text className="text-[12.5px] font-semibold text-success">
+                  Saved ₹{savings.toFixed(0)} ({savingsPercent}% off)
+                </Text>
+              ) : (
+                <Text className="text-[12.5px] font-medium text-ink/45">
+                  {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'} ready to go
+                </Text>
+              )
+            ) : null}
+          </View>
+          {items.length > 0 ? (
+            <Pressable onPress={handleClearCart} hitSlop={12} className="h-11 w-11 items-center justify-center">
+              <AppIcon icon={MoreVerticalIcon} size={22} color={colors.ink} />
+            </Pressable>
+          ) : (
+            // Spacer matching the back button's width — keeps the title
+            // genuinely centered in the row when there's no menu button.
+            <View className="h-11 w-11" />
+          )}
         </View>
       </View>
 
@@ -80,24 +112,31 @@ export function CartScreen({ navigation }: Props) {
         </View>
       ) : (
         <>
-          <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pb-40 pt-1">
+          <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pb-40 pt-4">
             <View className="rounded-2xl bg-white px-4 py-4">
-              <Text className="text-sm font-semibold text-ink/50">
-                {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}
+              <Text className="text-sm font-medium text-ink/60">
+                {totalQuantity} {totalQuantity === 1 ? 'item ready to go' : 'items ready to go'}
               </Text>
               <View className="my-3 h-px border-t border-dashed border-mist" />
 
               {items.map((item, index) => (
                 <View key={item.id}>
                   <CartItemRow item={item} />
-                  {index < items.length - 1 && <View className="h-px bg-mist" />}
+                  {index < items.length - 1 && <View className="h-px bg-white" />}
                 </View>
               ))}
             </View>
 
             <DeliveryTipCard selectedTip={tip} onSelectTip={setTip} />
             <YouMayAlsoLikeRow />
-            <BillDetailsCard itemTotal={itemTotal} originalItemTotal={originalItemTotal} tip={tip} />
+            <BillDetailsCard
+              itemTotal={itemTotal}
+              originalItemTotal={originalItemTotal}
+              itemCount={totalQuantity}
+              tip={tip}
+              onAddTip={() => setTip(20)}
+            />
+            <CancellationNoteCard />
           </ScrollView>
 
           <View className="border-t border-mist px-5 pb-safe-offset-4 pt-4">
@@ -113,8 +152,12 @@ export function CartScreen({ navigation }: Props) {
                 <Text className="text-xl font-semibold text-white">Add delivery address</Text>
               </Pressable>
             ) : (
-              <Pressable onPress={() => navigation.navigate('Checkout')} className="items-center rounded-3xl bg-black py-4">
-                <Text className="text-xl font-semibold text-white">Checkout</Text>
+              <Pressable
+                onPress={() => navigation.navigate('Checkout')}
+                className="flex-row items-center justify-center gap-2 rounded-3xl py-4"
+                style={{ backgroundColor: '#1447e6' }}
+              >
+                <Text className="text-lg font-medium text-white">Proceed to Pay</Text>
               </Pressable>
             )}
           </View>

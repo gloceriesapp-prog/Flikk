@@ -29,6 +29,7 @@ import { ApiError } from '../../api/client';
 import { selectCartGrandTotal, useCartStore } from '../../store/useCartStore';
 import { CheckoutHeader } from './components/CheckoutHeader';
 import { PAYMENT_METHOD_LABEL, PaymentMethodList, type PaymentMethod } from './components/PaymentMethodList';
+import { RewardPointsBanner } from './components/RewardPointsBanner';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Checkout'>;
@@ -118,8 +119,9 @@ export function CheckoutScreen({ navigation }: Props) {
   return (
     <View className="flex-1 bg-[#FAFAFA]">
       <CheckoutHeader onBack={() => navigation.goBack()} itemCount={items.length} total={grandTotal} />
+      <RewardPointsBanner totalPrice={grandTotal} />
 
-      <ScrollView className="flex-1" contentContainerClassName="px-5 pb-8 pt-2">
+      <ScrollView className="flex-1" contentContainerClassName="px-5 pb-8 pt-4">
         <PaymentMethodList
           method={paymentMethod}
           onSelect={setPaymentMethod}

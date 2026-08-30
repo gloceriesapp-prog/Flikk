@@ -13,7 +13,7 @@ import { AppIcon } from '../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { useCartStore, type CartItem } from '../../../store/useCartStore';
 
-const STEPPER_TINT = '#2F6FED';
+const STEPPER_TINT = '#155DFC';
 
 interface Props {
   item: CartItem;
@@ -26,15 +26,21 @@ export function CartItemRow({ item }: Props) {
   const lineTotal = item.price * item.quantity;
   const hasDiscount = Boolean(item.originalPrice && item.originalPrice > item.price);
   const originalLineTotal = hasDiscount ? item.originalPrice! * item.quantity : null;
+  const discountPercent = hasDiscount ? Math.round(((item.originalPrice! - item.price) / item.originalPrice!) * 100) : 0;
 
   return (
-    <View className="flex-row items-center gap-3 py-3">
-      <View className="h-16 w-16 overflow-hidden rounded-xl bg-white">
+    <View className="flex-row items-center gap-3 py-3.5">
+      <View className="relative h-[68px] w-[68px] overflow-hidden rounded-2xl border border-gray-100 bg-white">
         <Image source={{ uri: item.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+        {hasDiscount ? (
+          <View className="absolute bottom-0 w-full items-center bg-success py-0.5">
+            <Text className="text-[9px] font-bold text-white">{discountPercent}% OFF</Text>
+          </View>
+        ) : null}
       </View>
 
-      <View className="flex-1 gap-0.5">
-        <Text className="text-[15px] font-semibold text-ink" numberOfLines={2}>
+      <View className="flex-1 gap-1">
+        <Text className="text-[15px] font-medium text-ink" numberOfLines={2}>
           {item.name}
         </Text>
         <Text className="text-sm text-ink/50">{item.weight}</Text>
@@ -49,7 +55,7 @@ export function CartItemRow({ item }: Props) {
         >
           <AppIcon icon={MinusSignIcon} size={12} color={STEPPER_TINT} />
         </Pressable>
-        <Text className="min-w-[14px] text-center text-[13px] font-semibold" style={{ color: STEPPER_TINT }}>
+        <Text className="min-w-[16px] text-center text-[13px] font-bold" style={{ color: STEPPER_TINT }}>
           {item.quantity}
         </Text>
         <Pressable
@@ -64,7 +70,7 @@ export function CartItemRow({ item }: Props) {
 
       <View className="items-end gap-0.5">
         {originalLineTotal && <Text className="text-xs text-ink/40 line-through">₹{originalLineTotal}</Text>}
-        <Text className="text-[15px] font-medium text-ink">₹{lineTotal}</Text>
+        <Text className="text-[16px] font-semibold tabular-nums text-ink">₹{lineTotal}</Text>
       </View>
     </View>
   );
