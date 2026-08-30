@@ -45,8 +45,7 @@ src/
 | Login (phone) | `screens/LoginScreen.tsx` | `specs/00-foundation/auth-and-roles.md` |
 | OTP verification | `screens/OtpVerificationScreen.tsx` | `specs/00-foundation/auth-and-roles.md` |
 | Location permission | `screens/location/LocationPermissionScreen.tsx` | See `screens/location/README.md` |
-| Location search | `screens/location/LocationSearchScreen.tsx` | See `screens/location/README.md` |
-| Map pin confirm | `screens/location/MapConfirmScreen.tsx` | See `screens/location/README.md` |
+| Location search + map pin confirm | `screens/location/LocationSearchScreen.tsx` | See `screens/location/README.md` |
 | Home | `screens/home/HomeScreen.tsx` | PRD C3 — header is real, body is a placeholder. See `screens/home/README.md` |
 | Categories | `screens/categories/CategoriesScreen.tsx` | See `screens/categories/README.md` |
 | Search | `screens/search/SearchScreen.tsx` | See `screens/search/README.md` |

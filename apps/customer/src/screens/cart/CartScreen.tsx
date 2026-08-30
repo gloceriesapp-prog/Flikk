@@ -13,16 +13,19 @@
 // both need to read it.
 
 import { useState } from 'react';
-import { ArrowLeft01Icon, ArrowRight01Icon, Location04Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { fetchAddresses } from '../../api/addresses';
+import { deleteAddress, fetchAddresses, setDefaultAddress } from '../../api/addresses';
+import { ApiError } from '../../api/client';
 import { selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
+import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
+import { CartCheckoutFooter } from './components/CartCheckoutFooter';
 import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
 import { YouMayAlsoLikeRow } from './components/YouMayAlsoLikeRow';
 import { BillDetailsCard } from './components/BillDetailsCard';
@@ -45,6 +48,10 @@ export function CartScreen({ navigation }: Props) {
   }
 
   const [tip, setTip] = useState<TipSelection>(null);
+  const [addressSheetVisible, setAddressSheetVisible] = useState(false);
+  const [selectingAddressId, setSelectingAddressId] = useState<string | null>(null);
+  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // Real address-book check (api/addresses.ts) — not a guess: whether the
   // bottom bar can say "Checkout" at all depends on a saved address
@@ -52,7 +59,44 @@ export function CartScreen({ navigation }: Props) {
   // as CheckoutScreen's own query — the address book can change between
   // visits (added, deleted) with no shared store to invalidate otherwise.
   const { data: addresses, isLoading: addressesLoading } = useQuery({ queryKey: ['addresses'], queryFn: fetchAddresses });
-  const hasAddress = (addresses?.length ?? 0) > 0;
+  // Last-used = the account's own default (or its first address if none
+  // is marked default — same fallback CheckoutScreen's own selectedAddress
+  // uses), shown directly on the footer instead of making every cart
+  // visit tap through a picker for an address that hasn't changed.
+  const selectedAddress = (addresses ?? []).find((a) => a.is_default) ?? addresses?.[0] ?? null;
+
+  async function handleSelectAddress(id: string) {
+    setSelectingAddressId(id);
+    try {
+      await setDefaultAddress(id);
+      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      setAddressSheetVisible(false);
+      navigation.navigate('Checkout');
+    } catch (err) {
+      console.error('[CartScreen] failed to set default address', id, err);
+      Alert.alert('Could not select this address', err instanceof ApiError ? err.message : 'Please try again.');
+    } finally {
+      setSelectingAddressId(null);
+    }
+  }
+
+  async function handleDeleteAddress(id: string) {
+    setDeletingAddressId(id);
+    try {
+      await deleteAddress(id);
+      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
+    } catch (err) {
+      // Surfaced, not swallowed — a silent catch here looks identical to
+      // "the tap did nothing" from the outside, which is exactly the bug
+      // report this was written in response to. Logged too, since
+      // ApiError.message alone (e.g. a generic 500) isn't always enough
+      // to tell what actually failed server-side.
+      console.error('[CartScreen] failed to delete address', id, err);
+      Alert.alert('Could not remove this address', err instanceof ApiError ? err.message : 'Please try again.');
+    } finally {
+      setDeletingAddressId(null);
+    }
+  }
 
   const originalItemTotal = items.some((item) => item.originalPrice)
     ? items.reduce((sum, item) => sum + (item.originalPrice ?? item.price) * item.quantity, 0)
@@ -139,28 +183,27 @@ export function CartScreen({ navigation }: Props) {
             <CancellationNoteCard />
           </ScrollView>
 
-          <View className="border-t border-mist px-5 pb-safe-offset-4 pt-4">
-            {/* No saved address yet — the button itself becomes the fix,
-                not a separate dead-end "Checkout" that would just fail
-                downstream. Real state (api/addresses.ts), not a guess. */}
-            {!addressesLoading && !hasAddress ? (
-              <Pressable
-                onPress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
-                className="flex-row items-center justify-center gap-2 rounded-3xl bg-coral py-4"
-              >
-                <AppIcon icon={Location04Icon} size={18} color="#FFFFFF" />
-                <Text className="text-xl font-semibold text-white">Add delivery address</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => navigation.navigate('Checkout')}
-                className="flex-row items-center justify-center gap-2 rounded-3xl py-4"
-                style={{ backgroundColor: '#1447e6' }}
-              >
-                <Text className="text-lg font-medium text-white">Proceed to Pay</Text>
-              </Pressable>
-            )}
-          </View>
+          <CartCheckoutFooter
+            addressesLoading={addressesLoading}
+            selectedAddress={selectedAddress}
+            onAddAddress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
+            onOpenAddressPicker={() => setAddressSheetVisible(true)}
+            onProceedToPay={() => navigation.navigate('Checkout')}
+          />
+
+          <AddressSelectSheet
+            visible={addressSheetVisible}
+            addresses={addresses ?? []}
+            selectingId={selectingAddressId}
+            deletingId={deletingAddressId}
+            onClose={() => setAddressSheetVisible(false)}
+            onSelect={handleSelectAddress}
+            onDelete={handleDeleteAddress}
+            onAddNew={() => {
+              setAddressSheetVisible(false);
+              navigation.navigate('LocationSearch', { intent: 'address-book' });
+            }}
+          />
         </>
       )}
     </View>

@@ -27,17 +27,18 @@ export function AddressTypePicker({ label, customName, onSelectPreset, onChangeC
 
   return (
     <View className="gap-2.5">
-      <View className="flex-row overflow-hidden rounded-2xl bg-gray-100 p-1">
+      <View className="flex-row overflow-hidden rounded-2xl p-1" style={{ backgroundColor: '#FAFAFA' }}>
         {PRESETS.map((preset) => {
           const isActive = preset.value === label;
           return (
             <Pressable
               key={preset.value}
               onPress={() => onSelectPreset(preset.value)}
-              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2.5 ${isActive ? 'bg-ink' : ''}`}
+              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2.5"
+              style={{ backgroundColor: isActive ? '#155DFC' : 'transparent' }}
             >
               <AppIcon icon={preset.icon} size={14} color={isActive ? '#FFFFFF' : colors.ink} />
-              <Text className={`text-sm font-semibold ${isActive ? 'text-white' : 'text-ink/70'}`}>{preset.value}</Text>
+              <Text className={`text-sm font-medium ${isActive ? 'text-white' : 'text-ink/60'}`}>{preset.value}</Text>
             </Pressable>
           );
         })}

@@ -114,7 +114,21 @@ addressesRouter.delete('/:id', async (req: AuthedRequest, res, next) => {
     if (!target) throw new AppError(404, 'ADDRESS_NOT_FOUND', 'Address not found.');
 
     const { error } = await supabase.from('addresses').delete().eq('id', req.params.id);
-    if (error) throw error;
+    if (error) {
+      // 23503 = foreign_key_violation — orders.address_id references this
+      // row with no ON DELETE behavior (migrations/001_init.sql), so any
+      // address a real order was ever placed against can't be hard-deleted
+      // without corrupting that order's history. A real, expected
+      // referential-integrity failure, not a bug — surfaced as a clear 409
+      // instead of falling through to errorHandler's generic 500 (raw
+      // Postgrest errors aren't AppError instances, so an unwrapped throw
+      // here would otherwise read as "Something went wrong" with no way
+      // to tell a real server bug apart from this expected case).
+      if ((error as { code?: string }).code === '23503') {
+        throw new AppError(409, 'ADDRESS_IN_USE', 'This address is linked to a past order and can\'t be deleted.');
+      }
+      throw error;
+    }
 
     // Deleting the default address shouldn't leave the account with zero
     // default among any addresses it still has — promote whichever one's

@@ -15,11 +15,10 @@ interface Props {
 
 export function CategoryDetailHeader({ title, onBack, onSearch }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  // useLocationStore.location is only ever set by LocationSearchScreen /
-  // MapConfirmScreen — real GPS reverse-geocode or a real search result the
-  // user picked (see those screens' own notes), never a canned/fallback
-  // address. "Set your location" only shows before the user has picked
-  // anything at all.
+  // useLocationStore.location is only ever set by LocationSearchScreen —
+  // real GPS reverse-geocode or a real search result the user picked (see
+  // that screen's own notes), never a canned/fallback address. "Set your
+  // location" only shows before the user has picked anything at all.
   const location = useLocationStore((s) => s.location);
   const address = location?.addressLabel ?? 'Set your location';
 

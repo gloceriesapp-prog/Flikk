@@ -5,12 +5,13 @@ Runs once between login and Home, until a delivery location is saved (then
 
 ```
 LocationPermissionScreen
-  ├─ Allow  → GPS fix → reverse-geocode → MapConfirmScreen
-  └─ Deny   → LocationSearchScreen
-                ├─ text search  → geocode      → MapConfirmScreen
-                └─ "use current location" retry → MapConfirmScreen
+  ├─ Allow  → GPS fix → reverse-geocode → LocationSearchScreen (pre-centered)
+  └─ Deny   → LocationSearchScreen (default zone center)
 
-MapConfirmScreen
+LocationSearchScreen
+  → search bar + live map + fixed center pin, all one screen
+  → text search or the on-map "Current location" pill both just re-center
+    the same map — no separate confirm page to navigate to
   → drag map under the fixed center pin, reverse-geocode on settle
   → "Confirm location" → useLocationStore.setLocation() → reset stack to Home
 ```
@@ -39,7 +40,7 @@ MapConfirmScreen
   `data-model.md`. Add that endpoint deliberately when "save to account" is
   actually needed — don't bolt it onto this flow silently.
 - **`react-native-maps` isn't in Expo Go** (SDK 52+ dropped it from the
-  prebuilt client). `MapConfirmScreen` needs a dev build
+  prebuilt client). `LocationSearchScreen` needs a dev build
   (`npx expo run:ios` / `run:android`, or an EAS dev client) to render at all.
 - **Android needs a Google Maps API key** (`app.json` →
   `android.config.googleMapsApiKey`) or the map renders blank grey tiles.

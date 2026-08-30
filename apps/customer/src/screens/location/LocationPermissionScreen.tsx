@@ -3,9 +3,9 @@
 // the native prompt cold) measurably reduces hard-denial rates — standard
 // practice, not decoration.
 //
-// Allow  -> capture GPS position -> MapConfirmScreen (pre-filled, user still
-//           confirms the exact pin before it's saved)
-// Deny   -> LocationSearchScreen (manual search, per the reference flow)
+// Allow  -> capture GPS position -> LocationSearchScreen (map pre-centered
+//           there, user still confirms the exact pin before it's saved)
+// Deny   -> LocationSearchScreen (default center, manual search instead)
 
 import { Location01Icon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
@@ -34,7 +34,7 @@ export function LocationPermissionScreen({ navigation }: Props) {
       }
       const coords = await getCurrentCoordinates();
       const { addressLabel, city } = await reverseGeocode(coords);
-      navigation.replace('MapConfirm', { ...coords, addressLabel, city });
+      navigation.replace('LocationSearch', { ...coords, addressLabel, city });
     } catch {
       setError('Could not get your location. You can search for it instead.');
     } finally {

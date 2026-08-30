@@ -17,7 +17,6 @@ import { CheckoutScreen } from '../screens/checkout/CheckoutScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
-import { MapConfirmScreen } from '../screens/location/MapConfirmScreen';
 import { PaymentStatusScreen } from '../screens/payment-status/PaymentStatusScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { PurchaseScreen } from '../screens/purchase/PurchaseScreen';
@@ -41,7 +40,6 @@ export function AppNavigator() {
     >
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
       <Stack.Screen name="LocationSearch" component={LocationSearchScreen} />
-      <Stack.Screen name="MapConfirm" component={MapConfirmScreen} />
       {/* animation: 'none' on these four — they're the bottom nav's own tabs
           (Home/Purchase/Categories/Store), each rendering its own
           <BottomNavBar/> at the identical screen position/style. Left on

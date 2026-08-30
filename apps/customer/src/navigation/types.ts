@@ -12,18 +12,23 @@ export type AppStackParamList = {
   // One-time (per session, until a saved location exists) flow between login
   // and Home — see src/screens/location/README.md for the full sequence.
   LocationPermission: undefined;
-  // intent: 'address-book' threads through LocationSearch -> MapConfirm so
-  // "Confirm location" pushes to AddressForm (a real saved address) instead
-  // of its default behavior (set useLocationStore's browsing location and
-  // reset to Home) — see MapConfirmScreen.tsx's own note. Omitted/undefined
-  // means the default, unrelated-to-checkout flow.
-  LocationSearch: { intent?: 'address-book' } | undefined;
-  MapConfirm: { latitude: number; longitude: number; addressLabel: string; city: string; intent?: 'address-book' };
+  // Single screen now — search bar + live map + confirm sheet all in one
+  // (LocationSearchScreen.tsx), no separate MapConfirm page to navigate to.
+  // latitude/longitude/addressLabel/city are an optional starting point
+  // (LocationPermissionScreen passes real GPS coords straight in so the map
+  // opens already centered there); omitted means the map opens on the
+  // default zone center and waits for a search or the on-map "current
+  // location" pill instead. intent: 'address-book' makes "Confirm location"
+  // push to AddressForm (a real saved address) instead of its default
+  // behavior (set useLocationStore's browsing location and reset to Home).
+  LocationSearch:
+    | { latitude?: number; longitude?: number; addressLabel?: string; city?: string; intent?: 'address-book' }
+    | undefined;
   // Real map pin + reverse-geocoded starting text for a new saved address
-  // — reached only via LocationSearch/MapConfirm's own intent='address-book'
-  // branch, never directly. AddressFormScreen.tsx collects the rest
-  // (recipient name/phone, landmark, label, delivery instructions) and
-  // POSTs the real address (backend/src/routes/addresses.ts).
+  // — reached only via LocationSearch's own intent='address-book' branch,
+  // never directly. AddressFormScreen.tsx collects the rest (recipient
+  // name/phone, landmark, label, delivery instructions) and POSTs the real
+  // address (backend/src/routes/addresses.ts).
   AddressForm: { latitude: number; longitude: number; addressLabel: string; city: string };
   // The real address book — list of saved addresses (GET /addresses) with
   // a tap-to-select and a "+ Add new address" entry point into the flow

@@ -23,8 +23,11 @@ export async function requestLocationPermission(): Promise<boolean> {
 }
 
 export async function getCurrentCoordinates(): Promise<Coordinates> {
+  // High, not Balanced — this fix becomes the map's starting pin position
+  // and, once confirmed, the actual delivery address. A rider follows this
+  // exact point, so it's worth the extra second+battery over a coarser fix.
   const position = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
+    accuracy: Location.Accuracy.High,
   });
   return { latitude: position.coords.latitude, longitude: position.coords.longitude };
 }
@@ -56,4 +59,19 @@ export async function geocodeAddress(query: string): Promise<Coordinates | null>
   const results = await Location.geocodeAsync(query);
   const first = results[0];
   return first ? { latitude: first.latitude, longitude: first.longitude } : null;
+}
+
+const EARTH_RADIUS_KM = 6371;
+
+// Great-circle distance between two points, in km — used by the map
+// confirm screen to warn when a picked pin is unrealistically far from the
+// device's own GPS fix (e.g. someone testing on a simulator with a stock
+// US location while dropping a pin in Kaup/Udupi).
+export function distanceKm(a: Coordinates, b: Coordinates): number {
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const lat1 = (a.latitude * Math.PI) / 180;
+  const lat2 = (b.latitude * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }

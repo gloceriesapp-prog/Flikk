@@ -1,53 +1,67 @@
 // Who the rider actually hands the order to — required, see
 // AddressFormScreen's own note on why every real quick-commerce app
-// collects this. "Use my number" is a one-tap fill from the account's own
-// verified phone (still editable after — a customer ordering for someone
-// else needs to overwrite it), not a checkbox that locks the field.
+// collects this. No "Use mine" shortcut here anymore — AddressFormScreen's
+// own OrderingForToggle alread ay auto-fills both fields straight from the
+// account the moment "Myself" is picked (still editable after, for a
+// delivery meant for someone else), so a second manual "fill from account"
+// action inside this card would just be a redundant path to the same data.
+// "Someone else" never gets the account's own number handed to it — that
+// branch clears the field outright (AddressFormScreen's own
+// handleChangeOrderingFor), so it's always a real number someone typed in.
+//
+// +91 is a fixed prefix here, not editable text — every login on this app
+// already goes through +91 (LoginScreen's own `+91${phone}`), so `phone`
+// is always stored/passed around as the full "+91XXXXXXXXXX" string; this
+// component only ever lets someone type the 10 digits after it.
 
-import { Call02Icon, UserIcon } from '@hugeicons/core-free-icons';
-import { Pressable, Text, TextInput, View } from 'react-native';
-import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
+import { Text, TextInput, View } from 'react-native';
+
+const COUNTRY_CODE = '+91';
 
 interface Props {
   name: string;
   phone: string;
-  accountPhone: string | null;
   onChangeName: (value: string) => void;
   onChangePhone: (value: string) => void;
 }
 
-export function ReceiverDetailsCard({ name, phone, accountPhone, onChangeName, onChangePhone }: Props) {
-  return (
-    <View className="gap-3 rounded-2xl border border-gray-200 bg-white p-4">
-      <Text className="text-sm font-bold text-ink">Who&apos;s receiving this?</Text>
+export function ReceiverDetailsCard({ name, phone, onChangeName, onChangePhone }: Props) {
+  const digits = phone.replace(/^\+91/, '');
 
-      <View className="flex-row items-center gap-3 border-b border-gray-100 pb-3">
-        <AppIcon icon={UserIcon} size={16} color={`${colors.ink}80`} />
+  function handleChangeDigits(next: string) {
+    const cleaned = next.replace(/\D/g, '').slice(0, 10);
+    onChangePhone(cleaned ? `${COUNTRY_CODE}${cleaned}` : '');
+  }
+
+  return (
+    <View className="gap-3 rounded-2xl bg-white p-4">
+      <Text className="text-[15px] font-medium text-ink">
+        Who should we hand this to? <Text className="text-danger">*</Text>
+      </Text>
+
+      <View className="justify-center rounded-xl px-4 py-3" style={{ backgroundColor: '#FAFAFA' }}>
         <TextInput
           value={name}
           onChangeText={onChangeName}
           placeholder="Receiver's name"
           placeholderTextColor="#9AA5A3"
-          className="flex-1 text-base text-ink"
+          className="text-base text-ink"
         />
       </View>
 
-      <View className="flex-row items-center gap-3">
-        <AppIcon icon={Call02Icon} size={16} color={`${colors.ink}80`} />
+      <View className="flex-row items-center rounded-xl px-4 py-3" style={{ backgroundColor: '#FAFAFA' }}>
+        <Text className="text-base text-ink">🇮🇳</Text>
+        <Text className="ml-2 text-base text-ink">{COUNTRY_CODE}</Text>
+        <View className="mx-3 h-6 w-px bg-gray-300" />
         <TextInput
-          value={phone}
-          onChangeText={onChangePhone}
+          value={digits}
+          onChangeText={handleChangeDigits}
           placeholder="10-digit mobile number"
           placeholderTextColor="#9AA5A3"
           keyboardType="phone-pad"
+          maxLength={10}
           className="flex-1 text-base text-ink"
         />
-        {accountPhone && phone !== accountPhone && (
-          <Pressable onPress={() => onChangePhone(accountPhone)} hitSlop={8} className="rounded-full bg-lime-soft px-3 py-1.5">
-            <Text className="text-xs font-bold text-lime-deep">Use mine</Text>
-          </Pressable>
-        )}
       </View>
     </View>
   );
