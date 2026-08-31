@@ -1,20 +1,53 @@
+// Providers every screen needs (safe area, query client) + RootNavigator
+// + the global incoming-order alert, which is deliberately gated to only
+// mount once there's a real session — a rider on the Welcome/Login/OTP
+// screens has no orders to be alerted about.
+
+import './global.css';
+import { useCallback, useEffect } from 'react';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { RootNavigator } from './src/navigation/RootNavigator';
+import { useAuthStore } from './src/store/useAuthStore';
+import { useRiderOrdersStore } from './src/store/useRiderOrdersStore';
+import { IncomingOrderAlert } from './src/features/incoming-order-alert/IncomingOrderAlert';
+import { SUISSE_FONT_FILES } from './src/theme/fonts';
+
+void SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient();
 
 export default function App() {
+  // Loading the weights here registers them with the OS by font-family
+  // name (e.g. "SuisseIntl-SemiBold") — the actual app-wide default is
+  // applied via global.css's `@layer base`/weight-utility mapping, not
+  // from this hook or any React defaultProps mechanism (same split as
+  // apps/partner's own Sohne setup — see that file's App.tsx note on why
+  // defaultProps doesn't work with NativeWind's cssInterop-wrapped Text).
+  const [fontsLoaded, fontError] = useFonts(SUISSE_FONT_FILES);
+  const hasSession = useAuthStore((s) => !!s.accessToken);
+  const hydrateHistory = useRiderOrdersStore((s) => s.hydrateHistory);
+
+  const onRootLayout = useCallback(() => {
+    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
+  }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    void hydrateHistory();
+  }, [hydrateHistory]);
+
+  if (!fontsLoaded && !fontError) return null;
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider onLayout={onRootLayout}>
+      <QueryClientProvider client={queryClient}>
+        <RootNavigator />
+        {hasSession ? <IncomingOrderAlert /> : null}
+        <StatusBar style="dark" />
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

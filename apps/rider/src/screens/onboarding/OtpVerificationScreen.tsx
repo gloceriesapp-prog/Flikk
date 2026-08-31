@@ -1,0 +1,63 @@
+// Any 6-digit code succeeds — api/auth.ts's own note on why there's no
+// real code to check against. The 6-box input and length validation are
+// still real UX, not skipped, just not compared against anything server-
+// side.
+
+import { useState } from 'react';
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { Alert, Pressable, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { AppIcon } from '../../components/AppIcon';
+import { DismissKeyboardView } from '../../components/DismissKeyboardView';
+import { OtpBoxInput } from '../../components/OtpBoxInput';
+import { PrimaryButton } from '../../components/PrimaryButton';
+import { colors } from '../../theme/tokens';
+import { verifyOtp } from '../../api/auth';
+import { useAuthStore } from '../../store/useAuthStore';
+import type { AuthStackParamList } from '../../navigation/types';
+
+type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
+
+export function OtpVerificationScreen({ navigation, route }: Props) {
+  const { phone } = route.params;
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const setSession = useAuthStore((s) => s.setSession);
+
+  async function handleVerify() {
+    setLoading(true);
+    try {
+      const result = await verifyOtp(phone, code);
+      await setSession(result.accessToken, result.phone);
+      // No further navigation needed — RootNavigator swaps to AppNavigator
+      // the instant useAuthStore.accessToken becomes non-null.
+    } catch (err) {
+      Alert.alert('Could not verify code', err instanceof Error ? err.message : 'Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <DismissKeyboardView>
+      <View className="flex-1 bg-white px-6 pb-safe-offset-6 pt-safe-offset-4">
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
+          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+        </Pressable>
+
+        <View className="mt-4 flex-1 gap-8">
+          <View className="gap-2">
+            <Text className="text-2xl font-bold text-ink">Enter the code</Text>
+            <Text className="text-[15px] text-ink/55">
+              Sent to <Text className="font-semibold text-ink">{phone}</Text>
+            </Text>
+          </View>
+
+          <OtpBoxInput value={code} onChangeText={setCode} autoFocus />
+        </View>
+
+        <PrimaryButton label="Verify & continue" onPress={handleVerify} loading={loading} disabled={code.length !== 6} />
+      </View>
+    </DismissKeyboardView>
+  );
+}

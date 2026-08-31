@@ -1,0 +1,104 @@
+// No backend/src/routes/rider.ts exists yet — this app has nothing real
+// to fetch orders from, so useRiderOrdersStore.ts generates plausible
+// assignments locally instead. Kept in its own file (not inlined in the
+// store) so swapping this for a real GET /rider/orders call later is
+// deleting this file and one import, not restructuring the store itself.
+//
+// Names/addresses are grounded in the real launch zone (CLAUDE.md: Kaup,
+// outer Udupi) rather than generic placeholder text like "Store A" —
+// still fabricated data (no real backend to read from), but plausible
+// for what this app will actually show once one exists.
+
+export interface RiderOrder {
+  id: string;
+  orderNumber: string;
+  storeName: string;
+  storeAddress: string;
+  customerName: string;
+  customerAddress: string;
+  customerPhone: string;
+  itemCount: number;
+  // baseFare + distanceFare + surge always sums to payout — shown as an
+  // itemized breakup (OrderDetailScreen/EarningsScreen) instead of one bare
+  // number, since an unexplained payout figure is the single biggest
+  // driver of gig-app 1-star reviews.
+  payout: number;
+  baseFare: number;
+  distanceFare: number;
+  surge: number;
+  distanceKm: number;
+  status: 'assigned' | 'arrived_at_store' | 'picked_up' | 'arrived_at_customer' | 'delivered' | 'cancelled';
+  placedAt: string;
+  deliveredAt?: string;
+  cancelReason?: string;
+  // Set only once delivered (generateMockRating in useRiderOrdersStore) —
+  // stands in for a real post-delivery customer rating.
+  customerRating?: number;
+  // Also set only on delivery, same as customerRating — a real tip is a
+  // customer action that happens after handoff, never known at assignment
+  // time, so this has no business being generated alongside payout in
+  // generateMockOrder below. Separate from payout on purpose: a tip is the
+  // customer's own money on top of the fare, not part of what the delivery
+  // itself earned — shown as its own line everywhere payout is broken down.
+  tip?: number;
+}
+
+const STORE_NAMES = ['Ganesh Kirana Store', 'Suvarna Supermarket', 'Kaup Fresh Mart', 'Udupi Daily Needs', 'Anantha Provision Store'];
+const STORE_AREAS = ['Kaup Beach Road', 'Near Kaup Bus Stand', 'Padubidri Road', 'Kaup Market Junction'];
+const CUSTOMER_NAMES = ['Deepak Shetty', 'Vidya Rao', 'Prakash Kamath', 'Shwetha Pai', 'Naveen Kotian', 'Anitha Bhat'];
+const CUSTOMER_AREAS = ['near St. Mary\'s Church, Kaup', 'Kaup Lighthouse Road', 'behind Kaup Post Office', 'Katapadi Road, Kaup'];
+
+let orderSequence = 1001;
+
+function pick<T>(pool: T[]): T {
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function randomPhone(): string {
+  return `+91${9000000000 + Math.floor(Math.random() * 999999999)}`.slice(0, 13);
+}
+
+const BASE_FARE = 15;
+
+export function generateMockOrder(): RiderOrder {
+  orderSequence += 1;
+  const distanceKm = Number((1 + Math.random() * 3.5).toFixed(1));
+  const distanceFare = Math.round(distanceKm * 8);
+  // Surge fires ~1 in 4 orders — a flat "sometimes there's more" is enough
+  // for a mock; a real surge model reads live demand, out of scope here.
+  const surge = Math.random() < 0.25 ? 10 : 0;
+
+  return {
+    id: `mock-order-${orderSequence}-${Date.now()}`,
+    orderNumber: `FLK-${orderSequence}`,
+    storeName: pick(STORE_NAMES),
+    storeAddress: pick(STORE_AREAS),
+    customerName: pick(CUSTOMER_NAMES),
+    customerAddress: pick(CUSTOMER_AREAS),
+    customerPhone: randomPhone(),
+    itemCount: 2 + Math.floor(Math.random() * 8),
+    payout: BASE_FARE + distanceFare + surge,
+    baseFare: BASE_FARE,
+    distanceFare,
+    surge,
+    distanceKm,
+    status: 'assigned',
+    placedAt: new Date().toISOString(),
+  };
+}
+
+// Weighted toward 4-5 stars — matches what a genuinely working delivery
+// flow should produce; a real rating comes from the customer app, not a
+// coin flip, but the distribution shape is worth mirroring even mocked.
+const RATING_POOL = [5, 5, 5, 4, 4, 4, 3, 5, 4, 5];
+
+export function generateMockRating(): number {
+  return pick(RATING_POOL);
+}
+
+// ~45% of deliveries get a tip, ₹10-60 — plausible spread for this zone's
+// payout range, not a tuned real figure.
+export function generateMockTip(): number {
+  if (Math.random() > 0.45) return 0;
+  return 10 + Math.floor(Math.random() * 6) * 10;
+}
