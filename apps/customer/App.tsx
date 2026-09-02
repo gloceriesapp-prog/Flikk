@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { SOHNE_FONT_FILES } from './src/theme/fonts';
+import { SUISSE_FONT_FILES } from './src/theme/fonts';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -27,10 +27,10 @@ const queryClient = new QueryClient({
 
 export default function App() {
   // Loading the weights here registers them with the OS by font-family name
-  // (e.g. "Sohne-Buch") — the actual global default is applied via
+  // (e.g. "SuisseIntl-Regular") — the actual global default is applied via
   // global.css's `@layer base { * { font-family: ... } }`, not from this
   // hook or any React defaultProps mechanism.
-  const [fontsLoaded, fontError] = useFonts(SOHNE_FONT_FILES);
+  const [fontsLoaded, fontError] = useFonts(SUISSE_FONT_FILES);
 
   const onRootLayout = useCallback(() => {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();
@@ -43,8 +43,14 @@ export default function App() {
     // used throughout src/screens — without it those classes resolve to 0.
     <SafeAreaProvider onLayout={onRootLayout}>
       <QueryClientProvider client={queryClient}>
-        <RootNavigator />
+        {/* Must render BEFORE RootNavigator, not after — expo-status-bar
+            lets multiple StatusBar instances mount at once, and whichever
+            one is later in render/mount order wins. With this one after
+            RootNavigator, this global "dark" always overrode any
+            per-screen style="light" override (e.g. HomeScreen.tsx's own),
+            regardless of which screen was actually focused. */}
         <StatusBar style="dark" />
+        <RootNavigator />
       </QueryClientProvider>
     </SafeAreaProvider>
   );

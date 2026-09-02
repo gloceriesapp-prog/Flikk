@@ -5,15 +5,14 @@
 //   itself becomes the fix instead of a separate dead-end "Checkout" that
 //   would just fail downstream once real order creation needs a real
 //   address_id.
-// - One or more saved addresses: the last-used one (its own default,
-//   AddressListScreen's own "first address becomes default" rule) shows
-//   above the button, so returning with a saved address doesn't force a
-//   tap-through every single cart visit — tapping that card is what opens
-//   AddressSelectSheet to actually change it. The button itself is always
-//   "Proceed to Pay" here, straight into Checkout with whichever address
-//   is currently shown.
+// - One or more saved addresses: just "Proceed to Pay", straight into
+//   Checkout with whichever address is currently selected. The address
+//   itself (and the "Change" affordance to reopen AddressSelectSheet) now
+//   lives in CartDeliveryInfoBar's "Delivery Details" card up in the
+//   scroll list — showing it again down here duplicated that card for no
+//   reason.
 
-import { ChevronRightIcon, Location01Icon } from '@hugeicons/core-free-icons';
+import { Location01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import type { ApiAddress } from '../../../api/addresses';
@@ -24,11 +23,10 @@ interface Props {
   addressesLoading: boolean;
   selectedAddress: ApiAddress | null;
   onAddAddress: () => void;
-  onOpenAddressPicker: () => void;
   onProceedToPay: () => void;
 }
 
-export function CartCheckoutFooter({ addressesLoading, selectedAddress, onAddAddress, onOpenAddressPicker, onProceedToPay }: Props) {
+export function CartCheckoutFooter({ addressesLoading, selectedAddress, onAddAddress, onProceedToPay }: Props) {
   if (!addressesLoading && !selectedAddress) {
     return (
       <View className="border-t border-mist bg-white px-5 pb-safe-offset-4 pt-4">
@@ -45,24 +43,7 @@ export function CartCheckoutFooter({ addressesLoading, selectedAddress, onAddAdd
   }
 
   return (
-    <View className="gap-3 border-t border-mist bg-white px-5 pb-safe-offset-4 pt-4">
-      {selectedAddress ? (
-        <Pressable onPress={onOpenAddressPicker} className="flex-row items-center gap-3 rounded-2xl px-3.5 py-3" style={{ backgroundColor: `${ACCENT}0D` }}>
-          <View className="h-9 w-9 items-center justify-center rounded-full bg-white">
-            <AppIcon icon={Location01Icon} size={16} color={ACCENT} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-[14px] font-bold text-ink" numberOfLines={1}>
-              {selectedAddress.label}
-            </Text>
-            <Text className="text-[12.5px] text-ink/50" numberOfLines={1}>
-              {selectedAddress.line1}
-            </Text>
-          </View>
-          <AppIcon icon={ChevronRightIcon} size={16} color={ACCENT} />
-        </Pressable>
-      ) : null}
-
+    <View className="border-t border-mist bg-white px-5 pb-safe-offset-4 pt-4">
       <Pressable
         onPress={onProceedToPay}
         disabled={addressesLoading}

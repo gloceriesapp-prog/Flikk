@@ -3,12 +3,19 @@
 // This bar just looks like an input and shows the rolling search-term hint
 // (RotatingSearchHint — same rotating-text mechanism kept, only the outer
 // shell changed). One pill now, not a search box plus a separate icon box:
-// magnifying glass + hint on the left, a filter icon on the right, matching
-// the reference exactly. Truck/mic shortcuts dropped — TrackOrder is still
-// reachable from Purchase's LiveOrderCard, this bar just no longer
-// duplicates that shortcut.
+// magnifying glass + hint on the left, a wishlist icon on the right (was a
+// filter icon — swapped per an explicit ask; that filter control had no
+// onPress of its own either, so this isn't removing working filter
+// behavior). Truck/mic shortcuts dropped — TrackOrder is still reachable
+// from Purchase's LiveOrderCard, this bar just no longer duplicates that
+// shortcut.
+//
+// Wishlist icon has no onPress yet — same "UI exists, flow not wired"
+// convention as ProductCardView's own bookmark heart: this app has no
+// wishlist screen to open yet (CartItemRow's own note on why there's no
+// "move to wishlist" link either).
 
-import { PreferenceVerticalIcon, Search01Icon } from '@hugeicons/core-free-icons';
+import { HeartIcon, Mic01Icon, Search01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -28,10 +35,8 @@ export function HomeSearchBar({ onPress }: Props) {
         <RotatingSearchHint />
       </View>
 
-      <View className="h-5 w-px bg-gray-300" />
-
       <Pressable hitSlop={8} className="pl-3">
-        <AppIcon icon={PreferenceVerticalIcon} size={19} color={colors.ink} strokeWidth={1.8} />
+        <AppIcon icon={Mic01Icon} size={19} color={colors.ink} strokeWidth={1.8} />
       </Pressable>
     </Pressable>
   );

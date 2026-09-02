@@ -17,7 +17,7 @@
 // got its own translucent-white background + a soft border for the same
 // reason, rather than the dark tint it used to need.
 
-import { HeartIcon, TruckIcon, UserIcon } from '@hugeicons/core-free-icons';
+import { ClipboardListIcon, HeartIcon, TruckIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { GlassView } from 'expo-glass-effect';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -62,7 +62,7 @@ export function DeliveryModeSwitcher() {
       </Pressable>
 
       <Pressable hitSlop={6} className="px-0.5">
-        <AppIcon icon={TruckIcon} size={19} color={colors.mist} strokeWidth={1.8} />
+        <AppIcon icon={ClipboardListIcon} size={19} color={colors.mist} strokeWidth={1.8} />
       </Pressable>
 
       <Pressable hitSlop={6} className="pr-1" onPress={() => navigation.navigate('Profile')}>

@@ -12,9 +12,12 @@ import { useHomeTabs } from '../data/useHomeTabs';
 interface Props {
   selectedId: string;
   onSelect: (id: string) => void;
+  // Passed straight through to every CategoryTabItem — see
+  // HomeHeader.tsx's own note on why the scoop needs this.
+  headerBottomColor: string;
 }
 
-export function CategoryTabs({ selectedId, onSelect }: Props) {
+export function CategoryTabs({ selectedId, onSelect, headerBottomColor }: Props) {
   const { data: realTabs = [] } = useHomeTabs();
   const tabs: Category[] = [ALL_TAB, ...realTabs.map((t) => ({ id: t.id, label: t.name, icon: iconForTabName(t.name) }))];
 
@@ -31,6 +34,7 @@ export function CategoryTabs({ selectedId, onSelect }: Props) {
           category={category}
           isSelected={category.id === selectedId}
           onPress={() => onSelect(category.id)}
+          headerBottomColor={headerBottomColor}
         />
       ))}
     </ScrollView>

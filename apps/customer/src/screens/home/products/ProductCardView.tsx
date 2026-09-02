@@ -35,7 +35,7 @@
 // product is also in the cart bar/CartScreen.
 
 import { useState } from 'react';
-import { AddSquareIcon, HeartIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
+import { Add01Icon, HeartIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Image, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
@@ -43,6 +43,8 @@ import { colors } from '../../../theme/tokens';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
 import type { Product } from './types';
+
+const IMAGE_TILE_BG = '#F3F4F6';
 
 interface Props {
   product: Product;
@@ -73,7 +75,6 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
     price,
     originalPrice,
     imageUrl,
-    bgColor,
     isVeg = true,
     freshnessTag,
     sizeOptions,
@@ -95,13 +96,15 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
     <Pressable onPress={onPress} className={`${widthClassName} gap-2`}>
       <View
         className="aspect-square overflow-hidden rounded-xl border border-gray-100 shadow-md shadow-black/20"
-        style={{ backgroundColor: imageUrl ? (bgColor ?? colors.mist) : undefined }}
+        style={{ backgroundColor: imageUrl ? IMAGE_TILE_BG : undefined }}
       >
-        {/* Real product photos (imageUrl set) render "contain" with a
-            pastel backdrop pulled from the photo itself (bgColor, admin's
-            lib/bgColor.ts) — a no-background product shot sits on its own
-            color instead of being cropped to fill the square. Mock/
-            placeholder images keep the old "cover" fill. */}
+        {/* Real product photos (imageUrl set) render "contain" on a flat
+            neutral gray backdrop — deliberately NOT colors.mist, which is
+            a pale *green* brand tint (#F6FAF0), not actually neutral, and
+            NOT the old per-product bgColor pastel (admin's lib/bgColor.ts)
+            either. Same #F3F4F6 gray CartItemRow's own thumbnail already
+            settled on, so every product card reads the same everywhere.
+            Mock/placeholder images keep the old "cover" fill. */}
         <Image
           source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }}
           className={imageUrl ? 'h-full w-full p-3' : 'h-full w-full'}
@@ -115,14 +118,21 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
           </View>
         )}
 
-        {/* bookmark/wishlist (heart) — local toggle only, nothing persists this yet */}
+        {/* bookmark/wishlist (heart) — local toggle only, nothing persists
+            this yet. Bg always white; only the heart itself changes
+            (outline -> filled red) on tap, not a green badge swap. */}
         <Pressable
           onPress={() => setIsBookmarked((prev) => !prev)}
           hitSlop={8}
-          className={`absolute right-1.5 top-1.5 h-7 w-7 items-center justify-center rounded-full ${isBookmarked ? 'bg-lime-deep' : 'bg-white'
-            }`}
+          className="absolute right-1.5 top-1.5 h-7 w-7 items-center justify-center rounded-full bg-white"
         >
-          <AppIcon icon={HeartIcon} size={14} color={isBookmarked ? '#FFFFFF' : colors.ink} strokeWidth={isBookmarked ? 0 : 1.8} />
+          <AppIcon
+            icon={HeartIcon}
+            size={14}
+            color={isBookmarked ? colors.danger : colors.ink}
+            strokeWidth={isBookmarked ? 0 : 1.8}
+            fill={isBookmarked ? colors.danger : undefined}
+          />
         </Pressable>
 
         {/* veg/non-veg indicator — the standard Indian-grocery-app square +
@@ -142,18 +152,26 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             onPress={() =>
               addToCart({ id, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
             }
-            className="absolute bottom-0 right-0 rounded-lg bg-[#2457F5] px-3 py-1.5 shadow-sm shadow-black/20"
+            className="absolute bottom-0 right-0 rounded-xl border bg-white px-3 py-1.5 shadow-sm shadow-black/20"
+            style={{ borderColor: '#2457F5' }}
           >
-            <Text className="text-xs font-medium text-white">ADD</Text>
+            <Text className="text-xs font-bold" style={{ color: '#2457F5' }}>
+              ADD
+            </Text>
           </Pressable>
         ) : (
-          <View className="absolute bottom-0 right-0 flex-row items-center gap-2 rounded-tl-lg rounded-br-2xl bg-lime px-1.5 py-1.5 shadow-sm shadow-black/20">
+          <View
+            className="absolute bottom-0 right-0 flex-row items-center gap-2 rounded-full border bg-white px-2 py-1.5 shadow-sm shadow-black/20"
+            style={{ borderColor: '#2457F5' }}
+          >
             <Pressable onPress={() => decrementItem(id)} hitSlop={6}>
-              <AppIcon icon={MinusSignIcon} size={13} color={colors.ink} />
+              <AppIcon icon={MinusSignIcon} size={15} color="#2457F5" strokeWidth={3} />
             </Pressable>
-            <Text className="min-w-[14px] text-center text-xs font-semibold text-ink">{quantity}</Text>
+            <Text className="min-w-[14px] text-center text-xs font-semibold" style={{ color: '#2457F5' }}>
+              {quantity}
+            </Text>
             <Pressable onPress={() => incrementItem(id)} hitSlop={6}>
-              <AppIcon icon={AddSquareIcon} size={13} color={colors.ink} />
+              <AppIcon icon={Add01Icon} size={15} color="#2457F5" strokeWidth={3} />
             </Pressable>
           </View>
         )}

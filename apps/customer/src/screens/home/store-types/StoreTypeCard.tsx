@@ -1,9 +1,13 @@
-// One store-type tile — icon (not a photo, there's no per-category image)
-// in a limeSoft circle + label, matching the design system's own
-// selected/highlighted-surface token (CLAUDE.md's design tokens section).
+// One store-type chip — icon (not a photo, there's no per-category image)
+// + label side by side in a single rounded pill, not the old icon-circle-
+// with-label-wrapping-below layout. One line always (numberOfLines={1}, no
+// wrap to two lines like "Kirana & Grocery" used to). Flat neutral gray
+// fill (#F3F4F6, same tone the cart/product-card image tiles already
+// settled on), not the lime-soft brand tint — deliberately plain so it
+// doesn't compete with the coral "Your Favorites" chip next to it.
 // Presentational only; StoreTypesSection owns navigation.
 
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { iconForStoreCategory } from './storeTypeIcons';
@@ -16,14 +20,13 @@ interface Props {
 
 export function StoreTypeCard({ storeType, onPress }: Props) {
   return (
-    <Pressable onPress={onPress} className="w-20 items-center gap-2">
-      <View
-        className="h-16 w-16 items-center justify-center rounded-full"
-        style={{ backgroundColor: colors.limeSoft }}
-      >
-        <AppIcon icon={iconForStoreCategory(storeType.category)} size={26} color={colors.limeDeep} />
-      </View>
-      <Text className="text-center text-xs font-medium leading-4 text-ink" numberOfLines={2}>
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-2 rounded-full px-4 py-2.5"
+      style={{ backgroundColor: '#f7f7f7' }}
+    >
+      <AppIcon icon={iconForStoreCategory(storeType.category)} size={18} color={colors.ink} />
+      <Text className="text-[13px] font-medium text-ink" numberOfLines={1}>
         {storeType.category}
       </Text>
     </Pressable>

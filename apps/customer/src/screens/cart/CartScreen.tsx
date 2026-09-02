@@ -26,6 +26,8 @@ import { selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../
 import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
+import { CartDeliveryInfoBar } from './components/CartDeliveryInfoBar';
+import { DeliverySchedulingCard, type DeliverySelection } from './components/DeliverySchedulingCard';
 import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
 import { YouMayAlsoLikeRow } from './components/YouMayAlsoLikeRow';
 import { BillDetailsCard } from './components/BillDetailsCard';
@@ -48,6 +50,7 @@ export function CartScreen({ navigation }: Props) {
   }
 
   const [tip, setTip] = useState<TipSelection>(null);
+  const [delivery, setDelivery] = useState<DeliverySelection>({ mode: 'now' });
   const [addressSheetVisible, setAddressSheetVisible] = useState(false);
   const [selectingAddressId, setSelectingAddressId] = useState<string | null>(null);
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
@@ -157,6 +160,8 @@ export function CartScreen({ navigation }: Props) {
       ) : (
         <>
           <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pb-40 pt-4">
+            {selectedAddress ? <CartDeliveryInfoBar address={selectedAddress} onPress={() => setAddressSheetVisible(true)} /> : null}
+
             <View className="rounded-2xl bg-white px-4 py-4">
               <Text className="text-sm font-medium text-ink/60">
                 {totalQuantity} {totalQuantity === 1 ? 'item ready to go' : 'items ready to go'}
@@ -171,6 +176,7 @@ export function CartScreen({ navigation }: Props) {
               ))}
             </View>
 
+            <DeliverySchedulingCard selection={delivery} onChange={setDelivery} />
             <DeliveryTipCard selectedTip={tip} onSelectTip={setTip} />
             <YouMayAlsoLikeRow />
             <BillDetailsCard
@@ -187,7 +193,6 @@ export function CartScreen({ navigation }: Props) {
             addressesLoading={addressesLoading}
             selectedAddress={selectedAddress}
             onAddAddress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
-            onOpenAddressPicker={() => setAddressSheetVisible(true)}
             onProceedToPay={() => navigation.navigate('Checkout')}
           />
 

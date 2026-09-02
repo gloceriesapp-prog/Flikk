@@ -3,8 +3,22 @@
 // Good enough for "search an address, drop a pin" at MVP scale; not a live
 // autocomplete-as-you-type (that needs Google Places, a paid API — see
 // specs/00-foundation/environments-and-config.md's cost ceiling before adding it).
+//
+// reverseGeocode itself now tries the real Google Geocoding API first, via
+// backend/src/routes/location.ts's /reverse-geocode proxy (that key is
+// server-side only, never shipped here — see that route's own note on
+// why). This on-device geocoder is the fallback, not the primary path
+// anymore: it's Apple's CLGeocoder on iOS, which is measurably coarse
+// outside major Indian metros — a village-level pin in CLAUDE.md's own
+// Kaup/outer-Udupi launch zone often resolves no finer than city/state,
+// which is the "nearest big place, not my genuine address" gap Google's
+// API closes. Still used when the backend call fails or the key isn't
+// configured yet — never a hard dependency, degrades to what this file
+// already did before.
 
 import * as Location from 'expo-location';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 export interface Coordinates {
   latitude: number;
@@ -42,8 +56,15 @@ export interface ReverseGeocodeResult {
 }
 
 // Coordinates -> human-readable label, used to prefill the confirm screen and
-// the final saved address line.
+// the final saved address line. Tries the real Google-backed backend proxy
+// first; falls back to the on-device geocoder on any failure (network,
+// timeout, key not configured server-side) — this must never throw, the
+// map confirm screen already treats a failed reverse-geocode as "keep the
+// previous label," not a hard error.
 export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocodeResult> {
+  const fromGoogle = await reverseGeocodeViaGoogle(coords);
+  if (fromGoogle) return fromGoogle;
+
   const results = await Location.reverseGeocodeAsync(coords);
   const first = results[0];
   if (!first) return { addressLabel: 'Selected location', city: '' };
@@ -52,6 +73,18 @@ export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocod
   const addressLabel = parts.length > 0 ? parts.join(', ') : 'Selected location';
   const city = first.city ?? first.district ?? first.subregion ?? '';
   return { addressLabel, city };
+}
+
+async function reverseGeocodeViaGoogle(coords: Coordinates): Promise<ReverseGeocodeResult | null> {
+  try {
+    const res = await fetch(`${API_URL}/location/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { addressLabel: string | null; city?: string };
+    if (!data.addressLabel) return null;
+    return { addressLabel: data.addressLabel, city: data.city ?? '' };
+  } catch {
+    return null;
+  }
 }
 
 // Free-text address -> coordinates, for the manual-search fallback.

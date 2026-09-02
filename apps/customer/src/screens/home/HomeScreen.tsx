@@ -19,6 +19,7 @@
 
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
@@ -62,6 +63,12 @@ export function HomeScreen({ navigation }: Props) {
     );
   }, [selectedCategoryId]);
 
+  // Resolved once here (this component already has the real tab list)
+  // rather than re-fetched inside HomeHeader.tsx — that component only
+  // needs the name to look up its per-category gradient.
+  const activeCategoryName =
+    selectedCategoryId === ALL_TAB.id ? 'all' : (realTabs.find((t) => t.id === selectedCategoryId)?.name ?? 'all');
+
   // Drives the collapsing ETA/location block in HomeHeader — see
   // components/CollapsibleHeaderTop.tsx for the actual interpolation.
   const scrollY = useSharedValue(0);
@@ -74,11 +81,13 @@ export function HomeScreen({ navigation }: Props) {
     // content — that's what keeps it floating fixed in place while the page
     // scrolls underneath it.
     <View className="flex-1 bg-white">
-      {/* No per-screen StatusBar override needed here anymore — HomeHeader
-          is a light pastel fill now (#E8E7FF), not the earlier dark
-          gradient, so App.tsx's global "dark" style already gives correct,
-          visible icons without Home having to re-assert anything on every
-          focus. */}
+      {/* HomeHeader is a dark gradient again (categoryHeaderGradients.ts)
+          — App.tsx's global StatusBar style="dark" (dark icons) is
+          invisible against it on both iOS and Android, same
+          expo-status-bar API either way. "light" here renders white
+          time/wifi/battery icons, overriding the global default only
+          while Home is focused. */}
+      <StatusBar style="light" />
       <Animated.ScrollView
         className="flex-1"
         contentContainerClassName="pb-28"
@@ -91,6 +100,7 @@ export function HomeScreen({ navigation }: Props) {
           onOpenSearch={() => navigation.navigate('Search')}
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
+          activeCategoryName={activeCategoryName}
           scrollY={scrollY}
         />
 

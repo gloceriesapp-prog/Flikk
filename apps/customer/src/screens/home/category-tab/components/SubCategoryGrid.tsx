@@ -23,7 +23,7 @@ const GAP = 12;
 export function SubCategoryGrid({ title, items }: Props) {
   return (
     <View className="px-5 pt-6">
-      {title && <Text className="mb-4 text-xl font-medium text-ink">{title}</Text>}
+      {title && <Text className="mb-4 text-xl font-bold text-ink">{title}</Text>}
       <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
         {items.map((category) => (
           <View key={category.id} style={{ width: '25%', paddingHorizontal: GAP / 2, paddingBottom: 20 }}>

@@ -40,7 +40,7 @@ export function NearbyStoresSection() {
 
   return (
     <View className="pt-6">
-      <Text className="mb-4 px-5 text-lg font-medium text-ink">Shops Near You</Text>
+      <Text className="mb-4 px-5 text-lg font-bold text-ink">Shops Near You</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 px-5">
         {rowStores.map((store) => (

@@ -8,9 +8,9 @@
 import {
   Bread01Icon,
   CarrotIcon,
-  EggsIcon,
   FishIcon,
   KitchenUtensilsIcon,
+  Location05Icon,
   ShoppingBasket01Icon,
   ShoppingCart01Icon,
 } from '@hugeicons/core-free-icons';
@@ -33,7 +33,7 @@ const ICON_BY_TAB_NAME: Record<string, IconSvgElement> = {
   fresh: CarrotIcon,
   'meat & fish': FishIcon,
   bakery: Bread01Icon,
-  protein: EggsIcon,
+  regional: Location05Icon,
   household: KitchenUtensilsIcon,
 };
 

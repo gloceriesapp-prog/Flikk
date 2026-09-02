@@ -9,44 +9,33 @@
    component, which doesn't inherit defaultProps set on the raw RN Text. */
 @layer base {
   * {
-    font-family: 'Sohne-Buch';
+    font-family: 'SuisseIntl-Regular';
   }
 }
 
 /* Tailwind's font-weight utilities (font-bold, font-semibold, etc.) only
-   set numeric fontWeight, which RN can't use to pick a different Söhne
-   file — each weight is its own separate .otf, not one variable font.
-   These pair every weight utility already used across the app with its
-   matching Söhne face, so `font-bold` renders Sohne-Dreiviertelfett
-   instead of a synthesized bold Sohne-Buch. Söhne only has 8 real weights
-   against Tailwind's 9 numeric steps — font-thin and font-extralight both
-   collapse onto Extraleicht, the lightest face that exists. */
+   set numeric fontWeight, which RN can't use to pick a different Suisse
+   Int'l file — each weight is its own separate .otf, not one variable
+   font. Only 4 real faces exist (Thin/Light/Regular/SemiBold — see
+   theme/fonts.ts's own note), so every utility from medium upward
+   collapses onto SemiBold, the heaviest face that actually exists, same
+   mapping apps/rider's own Suisse Int'l setup already uses. */
 @layer utilities {
-  .font-thin {
-    font-family: 'Sohne-Extraleicht';
-  }
+  .font-thin,
   .font-extralight {
-    font-family: 'Sohne-Extraleicht';
+    font-family: 'SuisseIntl-Thin';
   }
   .font-light {
-    font-family: 'Sohne-Leicht';
+    font-family: 'SuisseIntl-Light';
   }
   .font-normal {
-    font-family: 'Sohne-Buch';
+    font-family: 'SuisseIntl-Regular';
   }
-  .font-medium {
-    font-family: 'Sohne-Kraftig';
-  }
-  .font-semibold {
-    font-family: 'Sohne-Halbfett';
-  }
-  .font-bold {
-    font-family: 'Sohne-Dreiviertelfett';
-  }
-  .font-extrabold {
-    font-family: 'Sohne-Fett';
-  }
+  .font-medium,
+  .font-semibold,
+  .font-bold,
+  .font-extrabold,
   .font-black {
-    font-family: 'Sohne-Extrafett';
+    font-family: 'SuisseIntl-SemiBold';
   }
 }

@@ -1,5 +1,7 @@
 // Everything shown on the "All" category tab, below the header:
-// MostBoughtSection (3 premium promo cards, real product data), nearby
+// SeasonalSection (reskinned per festival, self-hides once its mock data
+// list is empty — see that file's own note), MostBoughtSection (3 premium
+// promo cards, real product data), nearby
 // shops, everyday essentials, the deals promo card, the full category grid
 // (CategorySections — shared with screens/categories/CategoriesScreen.tsx,
 // see that component's own note), Coastal Kitchen picks, Today's Steal
@@ -20,6 +22,7 @@ import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssent
 import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { ProductSection } from '../products/ProductSection';
+import { SeasonalSection } from '../seasonal/SeasonalSection';
 import { StoreTypesSection } from '../store-types/StoreTypesSection';
 import { useDealsProducts } from './useDealsProducts';
 
@@ -28,7 +31,8 @@ export function AllTabSections() {
 
   return (
     <View>
-      <MostBoughtSection />
+      <SeasonalSection />
+      {/* <MostBoughtSection /> */}
       {/* <NearbyStoresSection /> */}
       <StoreTypesSection />
       <CategorySections />

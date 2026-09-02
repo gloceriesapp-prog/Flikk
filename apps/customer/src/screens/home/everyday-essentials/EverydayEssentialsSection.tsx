@@ -26,7 +26,7 @@ export function EverydayEssentialsSection() {
 
   return (
     <View className="pt-6">
-      <Text className="mb-4 px-5 text-lg font-medium text-ink">Today&apos;s Stock</Text>
+      <Text className="mb-4 px-5 text-lg font-bold text-ink">Today&apos;s Stock</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-5">
         {products.map((product) => (

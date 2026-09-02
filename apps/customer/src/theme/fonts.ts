@@ -1,38 +1,26 @@
-// Single source of truth for Söhne — every font-family name used anywhere
-// in the app, and the exact file map expo-font needs to load them, live
-// here. Same convention as apps/admin and apps/partner's own Söhne setup —
-// this is genuinely the same font, "copied not shared" per this repo's
-// own convention (specs/00-foundation/repo-structure.md), not cross-
-// imported. Italic (Kursiv) intentionally excluded, per standing
-// instruction applied identically across every app that's adopted Söhne
-// this way.
+// Single source of truth for Suisse Int'l — every font-family name used
+// anywhere in this app, and the exact file map expo-font needs to load
+// them, live here. Same pattern as apps/rider's own Suisse Int'l setup and
+// apps/partner's Söhne setup — copied, not shared
+// (specs/00-foundation/repo-structure.md).
 //
-// Söhne only ships 8 real weights (German naming, lightest to heaviest);
-// Tailwind's 9 numeric font-weight utilities collapse onto them —
-// font-thin and font-extralight both resolve to Extraleicht, see
-// global.css's own mapping. Screens that need a specific weight face
-// directly can import SOHNE and set style={{ fontFamily: SOHNE.kraftig }};
-// everything else gets Söhne for free via the global Text/TextInput
-// default set in global.css.
+// Source files: apps/font/SuisseInt/ (repo-root font vault) — copied into
+// assets/fonts/ below, same as every sibling app copies its own font
+// vault in rather than requiring across app boundaries. Only 4 faces
+// exist (Thin/Light/Regular/SemiBold — no Bold/Black cut) — global.css's
+// font-weight-utility mapping caps every Tailwind weight utility at
+// SemiBold, the heaviest face actually available.
 
-export const SOHNE = {
-  extraleicht: 'Sohne-Extraleicht', // 200
-  leicht: 'Sohne-Leicht', // 300
-  buch: 'Sohne-Buch', // 400 — regular/body weight
-  kraftig: 'Sohne-Kraftig', // 500
-  halbfett: 'Sohne-Halbfett', // 600
-  dreiviertelfett: 'Sohne-Dreiviertelfett', // 700
-  fett: 'Sohne-Fett', // 800
-  extrafett: 'Sohne-Extrafett', // 900
+export const SUISSE = {
+  thin: 'SuisseIntl-Thin',
+  light: 'SuisseIntl-Light',
+  regular: 'SuisseIntl-Regular',
+  semiBold: 'SuisseIntl-SemiBold',
 } as const;
 
-export const SOHNE_FONT_FILES = {
-  [SOHNE.extraleicht]: require('../../assets/fonts/Sohne-Extraleicht.otf'),
-  [SOHNE.leicht]: require('../../assets/fonts/Sohne-Leicht.otf'),
-  [SOHNE.buch]: require('../../assets/fonts/Sohne-Buch.otf'),
-  [SOHNE.kraftig]: require('../../assets/fonts/Sohne-Kraftig.otf'),
-  [SOHNE.halbfett]: require('../../assets/fonts/Sohne-Halbfett.otf'),
-  [SOHNE.dreiviertelfett]: require('../../assets/fonts/Sohne-Dreiviertelfett.otf'),
-  [SOHNE.fett]: require('../../assets/fonts/Sohne-Fett.otf'),
-  [SOHNE.extrafett]: require('../../assets/fonts/Sohne-Extrafett.otf'),
+export const SUISSE_FONT_FILES = {
+  [SUISSE.thin]: require('../../assets/fonts/SuisseIntl-Thin.otf'),
+  [SUISSE.light]: require('../../assets/fonts/SuisseIntl-Light.otf'),
+  [SUISSE.regular]: require('../../assets/fonts/SuisseIntl-Regular.otf'),
+  [SUISSE.semiBold]: require('../../assets/fonts/SuisseIntl-SemiBold.otf'),
 } as const;
