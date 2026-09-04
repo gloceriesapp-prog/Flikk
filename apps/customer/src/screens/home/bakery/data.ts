@@ -17,8 +17,8 @@ export const BAKERY_SUBCATEGORIES: SubCategory[] = [
 ];
 
 export const BAKERY_PRODUCTS: Product[] = [
-  { id: 'wheat-bread', name: 'Whole Wheat Bread', localName: 'Gothi Rotti', weight: '400 g', price: 45, rating: 4.3, ratingCount: '7.4k', imageSeed: 'bakery-wheat-bread' },
-  { id: 'butter-croissant', name: 'Butter Croissant', localName: 'Bakery Special', weight: '2 pc', price: 60, originalPrice: 70, rating: 4.6, ratingCount: '3.1k', imageSeed: 'bakery-croissant' },
+  { id: 'wheat-bread', name: 'Whole Wheat Bread', localName: 'Gothi Rotti', weight: '400 g', price: 45, rating: 4.3, ratingCount: '7.4k', imageSeed: 'bakery-wheat-bread', freshnessTag: 'Baked today' },
+  { id: 'butter-croissant', name: 'Butter Croissant', localName: 'Bakery Special', weight: '2 pc', price: 60, originalPrice: 70, rating: 4.6, ratingCount: '3.1k', imageSeed: 'bakery-croissant', freshnessTag: 'Baked today' },
   { id: 'choco-muffin', name: 'Chocolate Muffin', localName: 'Bakery Special', weight: '4 pc', price: 85, rating: 4.5, ratingCount: '5.6k', imageSeed: 'bakery-muffin' },
-  { id: 'dinner-rolls', name: 'Dinner Rolls', localName: 'Bun', weight: '6 pc', price: 40, originalPrice: 48, rating: 4.2, ratingCount: '2.9k', imageSeed: 'bakery-rolls' },
+  { id: 'dinner-rolls', name: 'Dinner Rolls', localName: 'Bun', weight: '6 pc', price: 40, originalPrice: 48, rating: 4.2, ratingCount: '2.9k', imageSeed: 'bakery-rolls', freshnessTag: 'Baked today' },
 ];

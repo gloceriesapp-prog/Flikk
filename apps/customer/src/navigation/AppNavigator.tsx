@@ -25,6 +25,7 @@ import { SearchScreen } from '../screens/search/SearchScreen';
 import { StoreDetailScreen } from '../screens/store-detail/StoreDetailScreen';
 import { StoreListScreen } from '../screens/store-list/StoreListScreen';
 import { TrackOrderScreen } from '../screens/track-order/TrackOrderScreen';
+import { WishlistScreen } from '../screens/wishlist/WishlistScreen';
 import { useLocationStore } from '../store/useLocationStore';
 import type { AppStackParamList } from './types';
 
@@ -65,6 +66,7 @@ export function AppNavigator() {
       <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} />
       <Stack.Screen name="Receipt" component={ReceiptScreen} />
       <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
+      <Stack.Screen name="Wishlist" component={WishlistScreen} />
     </Stack.Navigator>
   );
 }

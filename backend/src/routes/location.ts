@@ -43,6 +43,43 @@ interface MapplsAutosuggestResponse {
   suggestedLocations?: MapplsAutosuggestLocation[];
 }
 
+// Google Geocoding API — server-side only, never shipped in the mobile
+// bundle. A key restricted for a raw HTTPS Geocoding call can't use
+// Google's "Android app" restriction type (that restriction only applies
+// to the Maps SDK rendering a map, not the REST Geocoding/Places APIs) —
+// so the only safe way to hold this key is IP-restricted, on this server,
+// same reasoning the Mappls key above already documents. Do not move this
+// call into the app.
+//
+// Why this exists alongside expo-location's free on-device geocoder
+// (apps/customer/src/location/geocoding.ts): that geocoder is Apple's
+// CLGeocoder on iOS / the device's own Google-backed Geocoder on Android —
+// CLGeocoder is measurably coarse in India outside major metros (often
+// resolves no finer than city/state for a village-level coordinate in
+// CLAUDE.md's own Kaup/outer-Udupi launch zone), which is the actual
+// "not genuine, nearest city instead of my real address" complaint this
+// route fixes. Android's on-device result is usually fine already; this
+// mainly closes the iOS gap, and gives Android a second, often more
+// detailed, opinion too.
+interface GoogleGeocodeResult {
+  formatted_address?: string;
+  address_components?: { long_name: string; types: string[] }[];
+}
+
+interface GoogleGeocodeResponse {
+  status: string;
+  results?: GoogleGeocodeResult[];
+}
+
+function pickComponent(components: GoogleGeocodeResult['address_components'], ...types: string[]): string | null {
+  if (!components) return null;
+  for (const type of types) {
+    const match = components.find((c) => c.types.includes(type));
+    if (match) return match.long_name;
+  }
+  return null;
+}
+
 locationRouter.get('/search', async (req, res, next) => {
   try {
     const query = (req.query.q as string | undefined)?.trim();
@@ -67,6 +104,46 @@ locationRouter.get('/search', async (req, res, next) => {
       .slice(0, 6);
 
     res.json({ labels });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Coordinates -> genuine address, real village/street naming (Google's
+// results, not the coarse on-device fallback). Degrades to
+// { addressLabel: null } — never a 500 — whenever the key isn't
+// configured or Google's own call fails, same "never block the caller"
+// convention /search above already uses; apps/customer's geocoding.ts
+// falls back to the on-device geocoder when it sees a null addressLabel.
+locationRouter.get('/reverse-geocode', async (req, res, next) => {
+  try {
+    if (!env.googleGeocodingApiKey) return res.json({ addressLabel: null });
+
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return res.json({ addressLabel: null });
+
+    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    url.searchParams.set('latlng', `${lat},${lng}`);
+    url.searchParams.set('key', env.googleGeocodingApiKey);
+
+    const googleRes = await fetch(url);
+    if (!googleRes.ok) return res.json({ addressLabel: null });
+
+    const data = (await googleRes.json()) as GoogleGeocodeResponse;
+    // results[0] is Google's own best/most-precise match — already
+    // ordered rooftop/street-address first, no re-ranking needed here.
+    const best = data.status === 'OK' ? data.results?.[0] : undefined;
+    if (!best?.formatted_address) return res.json({ addressLabel: null });
+
+    const city =
+      pickComponent(best.address_components, 'locality') ??
+      pickComponent(best.address_components, 'sublocality', 'sublocality_level_1') ??
+      pickComponent(best.address_components, 'administrative_area_level_3') ??
+      pickComponent(best.address_components, 'administrative_area_level_2') ??
+      '';
+
+    res.json({ addressLabel: best.formatted_address, city });
   } catch (err) {
     next(err);
   }

@@ -14,7 +14,10 @@ interface Props {
 }
 
 export function CategoryTabItem({ category, isSelected, onPress, headerBottomColor }: Props) {
-  const selectedBg = category.id === ALL_TAB.id ? '#E7F5EE' : '#FFFFFF';
+  // #F2ECF8 — pale lavender, synced to HomeHeader's own All-tab gradient
+  // (categoryHeaderGradients.ts, deep charcoal-to-aubergine), not the
+  // leftover mint green from the header's earlier emerald palette.
+  const selectedBg = category.id === ALL_TAB.id ? '#F2ECF8' : '#FFFFFF';
 
   return (
     <View className="relative w-[76px]">

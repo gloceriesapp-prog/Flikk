@@ -68,7 +68,7 @@ Each `/apps/*` folder has its own `package.json` and lockfile — they are not w
 The out-of-scope list is not a backlog for "later" — it's what must NOT appear in the codebase until v1 has shipped and proven the metrics in PRD Section 8. Adding any of these early is scope creep delaying the only thing that matters right now: real orders, real stores, real riders using this in the launch zone.
 
 **Do not build, scaffold, or add dependencies for, until explicitly told the MVP has validated:**
-- Live GPS delivery tracking (status-only 4-stage tracking is the v1 spec, even though a rider app exists — a rider app does not imply live map tracking for the customer)
+- Live GPS delivery tracking **for the customer app** (status-only 4-stage tracking is still the v1 spec there). **Exception, deliberately overridden:** the rider app's own `OrderDetailScreen` (final-leg step only, `arrived_at_customer`) shows an in-app map with the rider's real live GPS position plus a fixed customer pin, via `react-native-maps` + `expo-location` — the rider needs to see their own progress toward the drop, which is a different need than a customer watching a moving dot. This does **not** extend to the customer app or to any earlier rider-app step; adding live tracking there still requires the same explicit override this line documents.
 - Automated rider-assignment/routing algorithm (manual/founder-assigned dispatch is correct at MVP volume — the rider app receives assignments, it doesn't compute them)
 - Multi-city or multi-zone support (single zone only — `zone` exists as a DB concept from day 1, the app only ever surfaces one active zone in v1)
 - Real-time inventory sync with store POS systems

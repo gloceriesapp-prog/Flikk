@@ -21,7 +21,7 @@ interface Props {
 
 export function ProteinTab({ banner }: Props) {
   return (
-    <View className="pb-4">
+    <View className="pb-32">
       <SubCategoryGrid items={PROTEIN_SUBCATEGORIES} />
       {banner && <PosterBanner imageUri={banner.imageUrl} />}
       <ProductTeaserRow title="Everyday protein" products={PROTEIN_PRODUCTS} />

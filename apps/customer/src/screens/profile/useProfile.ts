@@ -3,12 +3,16 @@
 // has_store; phone/name ride along on that same response now. auth: true
 // (default) — needs the session token, same as every other authed call.
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../api/client';
 
 export interface Profile {
   phone: string;
   name: string | null;
+  // YYYY-MM-DD, or null when the customer hasn't added one yet
+  // (users.birthday, migration 004) — ProfileScreen's own "Add your
+  // birthday" banner only shows while this is null.
+  birthday: string | null;
   isApproved: boolean;
   hasStore: boolean;
 }
@@ -16,6 +20,7 @@ export interface Profile {
 interface ApiMe {
   phone: string;
   name: string | null;
+  birthday: string | null;
   is_approved: boolean;
   has_store: boolean;
 }
@@ -25,8 +30,28 @@ export function useProfile() {
     queryKey: ['profile', 'me'],
     queryFn: async () => {
       const data = await apiRequest<ApiMe>('/auth/me');
-      const profile: Profile = { phone: data.phone, name: data.name, isApproved: data.is_approved, hasStore: data.has_store };
+      const profile: Profile = {
+        phone: data.phone,
+        name: data.name,
+        birthday: data.birthday,
+        isApproved: data.is_approved,
+        hasStore: data.has_store,
+      };
       return profile;
     },
+  });
+}
+
+// Saves AccountDetailsCard's Name/Date-of-birth row edits — PATCH
+// /auth/me (backend). Phone is never sent here: it's the verified OTP
+// identity, not an editable field. Invalidates the same query key
+// useProfile reads so the card shows the new value immediately, without a
+// manual refetch call at each call site.
+export function useUpdateProfileField() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: { name?: string; birthday?: string }) =>
+      apiRequest<{ name: string | null; birthday: string | null }>('/auth/me', { method: 'PATCH', body: patch }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile', 'me'] }),
   });
 }

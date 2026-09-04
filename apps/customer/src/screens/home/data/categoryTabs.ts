@@ -13,6 +13,7 @@ import {
   Location05Icon,
   ShoppingBasket01Icon,
   ShoppingCart01Icon,
+  Store03Icon,
 } from '@hugeicons/core-free-icons';
 import type { IconSvgElement } from '@hugeicons/react-native';
 
@@ -33,7 +34,7 @@ const ICON_BY_TAB_NAME: Record<string, IconSvgElement> = {
   fresh: CarrotIcon,
   'meat & fish': FishIcon,
   bakery: Bread01Icon,
-  regional: Location05Icon,
+  regional: Store03Icon,
   household: KitchenUtensilsIcon,
 };
 

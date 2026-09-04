@@ -2,49 +2,70 @@
 // own header pill) — a real account summary + settings menu, not the "no
 // feature behind it yet" stub that pill's truck icon still is.
 //
-// Premium treatment: a gradient account card up top (avatar initial, real
-// name/phone from useProfile.ts -> GET /auth/me, not placeholder text) —
-// same ink/lime-deep diagonal language as StoreListScreen's own
-// FeaturedStoreBanner, so the brand's "premium" gradient card isn't a
-// one-off. Below it, two grouped menu sections in the Blinkit/Instamart
-// mold (My Orders, Addresses, Payment Methods, Wishlist / Notifications,
-// Refer & Earn, Help & Support, About Flikk) as one shared white card per
-// group with hairline row dividers, not a separately-shadowed card per row
-// — reads calmer, more like a real settings screen. Logout sits alone,
-// visually separated and danger-colored. Footer is the same brand sign-off
-// CategoriesFooter/Home end on, plus the real app version
-// (package.json/app.json, not hardcoded twice).
+// Fully redesigned per an explicit ask to move away from the earlier
+// Blinkit-shaped layout (flat rows top to bottom) entirely — page
+// background stays the same #FAFAFA, everything on top of it is new:
+//   1. AccountDetailsCard — one compact identity hero (avatar initial +
+//      name + phone, DOB as a small pill chip), not three stacked rows.
+//   2. ProfileActionsBento — one wide "My Orders" tile + one card
+//      grouping Wishlist/Support/My Refunds as three columns. Gray
+//      throughout, no lime/green accent — this screen doesn't carry the
+//      brand color, unlike Home. Address Book and Payment Methods live in
+//      Preferences below instead; Track Order was dropped (same
+//      destination as My Orders, a redundant second tile).
+//   3. Preferences — still a compact icon-forward list (ProfileMenuRow.tsx)
+//      since a bento treatment for every settings toggle would be noise,
+//      not premium — but sits on its own soft off-white card now instead
+//      of bare page background, so it doesn't read as a re-skinned
+//      version of the same reference list. Logout lives inside it,
+//      danger-colored, same row shape as everything above it.
+// Footer is the same brand sign-off CategoriesFooter/Home end on, plus the
+// real app version (package.json, not hardcoded twice).
 //
-// Only "My Orders" and "Logout" are wired to something real — every other
-// row has no destination screen yet (same "UI-only, not wired up" category
-// as this app's other coming-soon rows, e.g. BottomNavBar's own side
-// button) and is a no-op for now rather than implying a feature that
-// doesn't exist.
+// Content itself (which rows/tiles exist) is unchanged from the earlier
+// curation against Blinkit's own Profile screen — still deliberately NOT
+// a 1:1 port: no Blinkit Money/wallet, gift cards, donation/CSR, recipes,
+// prescriptions, GST details, "sell on platform", or rewards (out per
+// CLAUDE.md's loyalty-program scope note). This pass only changes how
+// those same rows are laid out, not which ones exist.
+//
+// "My Orders", "Address Book", "Wishlist", "Share Flikk", "Rate Flikk"
+// and "Logout" are wired to something real. Payment Methods/Track Order
+// (routes to Purchase)/Support/My Refunds/Notifications/Help & Support/
+// Account Privacy/About Flikk have no dedicated screen yet — same
+// "UI-only, not wired up" category as this app's other coming-soon rows
+// (e.g. BottomNavBar's own side button) — a no-op for now rather than
+// implying a feature that doesn't exist.
 
 import { useState } from 'react';
 import {
+  ArrowDown01Icon,
   ArrowLeft01Icon,
-  Call02Icon,
+  CheckmarkCircle02Icon,
   CreditCardIcon,
   CustomerService01Icon,
-  GiftIcon,
   HeartIcon,
   InformationCircleIcon,
   Location05Icon,
+  LockIcon,
   Logout03Icon,
+  Moon01Icon,
   Notification03Icon,
-  PackageIcon,
-  PencilEdit02Icon,
+  Share08Icon,
+  StarIcon,
+  Sun01Icon,
 } from '@hugeicons/core-free-icons';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useProfile } from './useProfile';
+import { AccountDetailsCard } from './components/AccountDetailsCard';
+import { ProfileActionsBento } from './components/ProfileActionsBento';
 import { ProfileMenuRow } from './components/ProfileMenuRow';
+import { RateUsModal } from './components/RateUsModal';
 import packageJson from '../../../package.json';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -54,21 +75,20 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Profile'>;
 // hardcoded string that can drift from it.
 const APP_VERSION = packageJson.version;
 
-function formatPhone(phone: string): string {
-  // Stored as E.164 (+91XXXXXXXXXX) — split into a readable "+91 98765
-  // 43210" rather than showing the raw digit string.
-  const digits = phone.replace(/^\+91/, '');
-  if (digits.length !== 10) return phone;
-  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
-}
+type AppearanceMode = 'Light' | 'Dark';
 
 export function ProfileScreen({ navigation }: Props) {
   const { data: profile } = useProfile();
   const clearSession = useAuthStore((s) => s.clear);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  const displayName = profile?.name?.trim() || 'Flikk Customer';
-  const initial = displayName.charAt(0).toUpperCase();
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
+  // Defaults to Light and stays local-only (no persistence, no theming
+  // effect) — this app's design system is fixed light-only (CLAUDE.md's
+  // own system-font-stack note), so picking Dark here only updates what
+  // this row displays, it doesn't reskin the app. Real theming is a
+  // separate, much larger piece of work than this selector.
+  const [appearance, setAppearance] = useState<AppearanceMode>('Light');
+  const [isAppearanceSheetOpen, setIsAppearanceSheetOpen] = useState(false);
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -78,8 +98,16 @@ export function ProfileScreen({ navigation }: Props) {
     // moment the store updates.
   }
 
+  // Real, working feature (RN's own Share API, no dependency/backend
+  // needed) — not another no-op row. No app-store link included yet since
+  // this app has no public listing to point to; the message stands on its
+  // own until one exists.
+  function handleShare() {
+    Share.share({ message: 'Ordering from local stores near you, delivered fast — check out Flikk.' });
+  }
+
   return (
-    <View className="flex-1 bg-mist/40 pt-safe">
+    <View className="flex-1 bg-[#FAFAFA] pt-safe">
       {/* Same fix class as every other light-header screen's own note
           (Categories/Purchase/CategoryDetail/StoreDetail) — a prior screen
           may have left the global StatusBar set to "light". */}
@@ -93,67 +121,129 @@ export function ProfileScreen({ navigation }: Props) {
         <View className="h-11 w-11" />
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="gap-5 px-5 pb-16 pt-2" showsVerticalScrollIndicator={false}>
-        <View className="overflow-hidden rounded-3xl shadow-lg shadow-black/15">
-          <LinearGradient colors={[colors.ink, colors.limeDeep]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="px-5 py-6">
-            <View className="flex-row items-center gap-4">
-              <View className="h-16 w-16 items-center justify-center rounded-full bg-white/15 border border-white/25">
-                <Text className="text-2xl font-extrabold text-white">{initial}</Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-lg font-bold text-white" numberOfLines={1}>
-                  {displayName}
-                </Text>
-                {profile?.phone && (
-                  <View className="mt-1 flex-row items-center gap-1.5">
-                    <AppIcon icon={Call02Icon} size={13} color="#FFFFFFB3" />
-                    <Text className="text-sm font-medium text-white/70">{formatPhone(profile.phone)}</Text>
-                  </View>
-                )}
-              </View>
-              <Pressable hitSlop={8} className="h-9 w-9 items-center justify-center rounded-full bg-white/15">
-                <AppIcon icon={PencilEdit02Icon} size={16} color="#FFFFFF" strokeWidth={1.8} />
-              </Pressable>
+      <ScrollView className="flex-1" contentContainerClassName="gap-3.5 px-5 pb-16 pt-2" showsVerticalScrollIndicator={false}>
+        <View className="px-1">
+          <Text className="text-2xl font-extrabold text-ink">Your account</Text>
+        </View>
+
+        {/* Identity hero — avatar initial, name, phone, DOB chip. Real
+            data + edits (AccountDetailsCard's own PATCH /auth/me). */}
+        {profile && <AccountDetailsCard profile={profile} />}
+
+        {/* Bento — My Orders (wide) + one card grouping Wishlist/Support/
+            My Refunds. Address Book and Payment Methods live in
+            Preferences below instead. */}
+        <ProfileActionsBento
+          onMyOrders={() => navigation.navigate('Purchase')}
+          onWishlist={() => navigation.navigate('Wishlist')}
+          onSupport={() => {}}
+          onRefunds={() => {}}
+        />
+
+        {/* Preferences — still a compact list (secondary/utility rows,
+            neutral gray icon circles), but on its own soft card now
+            instead of bare page background. */}
+        <View className="gap-1 rounded-[24px] bg-white px-3 py-2 ">
+          <Text className="px-1.5 pt-1 text-xs font-semibold uppercase tracking-wide text-ink/40">Preferences</Text>
+          {/* Appearance — tapping opens a real Light/Dark picker
+              (AppearanceSheet below). Defaults to Light. Selecting Dark
+              only updates this row's own value — this app's design
+              system is fixed light-only (CLAUDE.md's own system-font-
+              stack note), so there's no actual reskin to apply yet; a
+              full theming pass is separate, larger work. */}
+          <Pressable onPress={() => setIsAppearanceSheetOpen(true)} className="flex-row items-center gap-3.5 py-2">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+              <AppIcon icon={Sun01Icon} size={18} color={`${colors.ink}99`} strokeWidth={1.7} />
             </View>
-          </LinearGradient>
+            <Text className="flex-1 text-[15px] font-medium text-ink">Appearance</Text>
+            <View className="flex-row items-center gap-1">
+              <View className="rounded-full bg-gray-100 px-3 py-1.5">
+                <Text className="text-[12px] font-medium text-ink/60">{appearance}</Text>
+              </View>
+              <AppIcon icon={ArrowDown01Icon} size={14} color={`${colors.ink}40`} strokeWidth={2} />
+            </View>
+          </Pressable>
+          <ProfileMenuRow icon={Location05Icon} label="Address Book" onPress={() => navigation.navigate('AddressList')} />
+          <ProfileMenuRow icon={CreditCardIcon} label="Payment Methods" onPress={() => {}} />
+          <ProfileMenuRow icon={Notification03Icon} label="Notifications" onPress={() => {}} />
+          <ProfileMenuRow icon={Share08Icon} label="Share Flikk" onPress={handleShare} />
+          {/* Rate us — real interaction (RateUsModal.tsx): 5 tappable
+              stars, 4-5 hands off to the OS's own native App Store/Play
+              Store review sheet (expo-store-review), 1-3 just says thanks.
+              Never funnels a low score toward the public store listing —
+              same gate every major app (Zomato/Swiggy included) uses. */}
+          <ProfileMenuRow icon={StarIcon} label="Rate Flikk" onPress={() => setIsRateModalOpen(true)} />
+          <ProfileMenuRow icon={CustomerService01Icon} label="Help & Support" onPress={() => {}} />
+          {/* Account privacy — added per the reference's own row (real ask:
+              a place that says how a customer's data is handled). No
+              privacy-policy screen exists yet, same no-op category as the
+              rows above it until one does. */}
+          <ProfileMenuRow icon={LockIcon} label="Account Privacy" onPress={() => {}} />
+          <ProfileMenuRow icon={InformationCircleIcon} label="About Flikk" onPress={() => {}} />
+          {/* Logout lives inside this same card now, right after About
+              Flikk — same row width/spacing as everything above it, not a
+              separately-boxed full-width pill. */}
+          <ProfileMenuRow
+            icon={Logout03Icon}
+            label={isLoggingOut ? 'Logging out…' : 'Log out'}
+            onPress={handleLogout}
+            disabled={isLoggingOut}
+            danger
+          />
         </View>
 
-        <View>
-          <Text className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-ink/40">Orders & Shopping</Text>
-          <View className="overflow-hidden rounded-2xl bg-white shadow-sm shadow-black/5">
-            <ProfileMenuRow icon={PackageIcon} label="My Orders" onPress={() => navigation.navigate('Purchase')} />
-            <ProfileMenuRow icon={Location05Icon} label="Saved Addresses" onPress={() => navigation.navigate('LocationSearch')} />
-            <ProfileMenuRow icon={HeartIcon} label="Wishlist" onPress={() => {}} />
-            <ProfileMenuRow icon={CreditCardIcon} label="Payment Methods" onPress={() => {}} isLast />
-          </View>
-        </View>
+        <RateUsModal visible={isRateModalOpen} onClose={() => setIsRateModalOpen(false)} />
 
-        <View>
-          <Text className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-ink/40">More</Text>
-          <View className="overflow-hidden rounded-2xl bg-white shadow-sm shadow-black/5">
-            <ProfileMenuRow icon={Notification03Icon} label="Notifications" onPress={() => {}} />
-            <ProfileMenuRow icon={GiftIcon} label="Refer & Earn" onPress={() => {}} />
-            <ProfileMenuRow icon={CustomerService01Icon} label="Help & Support" onPress={() => {}} />
-            <ProfileMenuRow icon={InformationCircleIcon} label="About Flikk" onPress={() => {}} isLast />
-          </View>
-        </View>
-
-        <Pressable
-          onPress={handleLogout}
-          disabled={isLoggingOut}
-          className="flex-row items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3.5 shadow-sm shadow-black/5"
+        {/* Appearance picker — bottom sheet, two options, checkmark on
+            whichever is currently selected. Tap an option to select and
+            close in one step, same as AccountDetailsCard's own DOB
+            "Done" flow but without a separate confirm step since there's
+            only a value to pick, nothing to draft. */}
+        <Modal
+          visible={isAppearanceSheetOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setIsAppearanceSheetOpen(false)}
         >
-          <AppIcon icon={Logout03Icon} size={18} color={colors.danger} strokeWidth={1.8} />
-          <Text className="text-[15px] font-semibold text-danger">{isLoggingOut ? 'Logging out…' : 'Log out'}</Text>
-        </Pressable>
+          <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setIsAppearanceSheetOpen(false)}>
+            <Pressable className="rounded-t-3xl bg-white pb-safe" onPress={(e) => e.stopPropagation()}>
+              <Text className="px-5 pt-5 text-[15px] font-semibold text-ink">Appearance</Text>
+              {(['Light', 'Dark'] as const).map((mode) => (
+                <Pressable
+                  key={mode}
+                  onPress={() => {
+                    setAppearance(mode);
+                    setIsAppearanceSheetOpen(false);
+                  }}
+                  className="flex-row items-center gap-3.5 px-5 py-3.5"
+                >
+                  <View className="h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+                    <AppIcon icon={mode === 'Light' ? Sun01Icon : Moon01Icon} size={16} color={`${colors.ink}99`} strokeWidth={1.7} />
+                  </View>
+                  <Text className="flex-1 text-[15px] font-medium text-ink">{mode}</Text>
+                  {appearance === mode && <AppIcon icon={CheckmarkCircle02Icon} size={20} color={colors.ink} strokeWidth={1.8} />}
+                </Pressable>
+              ))}
+            </Pressable>
+          </Pressable>
+        </Modal>
 
-        <View className="items-center gap-1 pb-4 pt-4">
+        {/* Wordmark + version on one line (dot separator, small caps-style
+            tracking), a muted one-line sign-off underneath — same shape as
+            a Settings-screen footer every major app ends on (name, version,
+            where it's from), rebuilt in this app's own brand voice rather
+            than reusing anyone else's exact wording/mascot. */}
+        <View className="items-center gap-1.5 pb-4 pt-5">
+          <View className="flex-row items-center gap-2">
+            <Text className="text-[13px] font-extrabold text-ink/35">Flikk</Text>
+            <Text className="text-[13px] font-extrabold text-ink/35">v{APP_VERSION}</Text>
+          </View>
           <View className="flex-row items-center gap-1">
             <Text className="text-xs font-medium text-ink/40">Made with</Text>
             <AppIcon icon={HeartIcon} size={11} color={colors.danger} fill={colors.danger} />
-            <Text className="text-xs font-medium text-ink/40">in Udupi, India</Text>
+            <Text className="text-xs font-medium text-ink/40">in Udupi, KA</Text>
           </View>
-          <Text className="text-[11px] font-medium text-ink/25">Version {APP_VERSION}</Text>
+
         </View>
       </ScrollView>
     </View>

@@ -8,6 +8,13 @@
 // convention ProductCardView's own bookmark button already uses elsewhere
 // in this app, kept consistent rather than inventing new placeholder
 // behavior here.
+//
+// Pale lavender panel (#F2ECF8, same tone Home's own SeasonalSection uses)
+// instead of sitting bare on the screen's white background — per an
+// explicit ask, this bar read as chrome-less/unfinished once scrolled
+// past StoreHeader's own gradient. Same layered look Home already
+// establishes: dark gradient header -> soft lavender panel -> white list
+// below, not a jump straight from color to plain white.
 
 import { useState } from 'react';
 import { FavouriteIcon, Search01Icon } from '@hugeicons/core-free-icons';
@@ -27,15 +34,15 @@ export function CategoryFilterBar({ categories, selected, onSelect, onSearch }: 
   const chips = ['All', ...categories];
 
   return (
-    <View className="flex-row items-center gap-2.5 px-5 py-4">
-      <Pressable onPress={onSearch} hitSlop={8} className="h-11 w-11 items-center justify-center rounded-full border border-gray-200">
+    <View className="flex-row items-center gap-2.5 px-5 py-4" style={{ backgroundColor: '#F2ECF8' }}>
+      <Pressable onPress={onSearch} hitSlop={8} className="h-11 w-11 items-center justify-center rounded-full bg-white">
         <AppIcon icon={Search01Icon} size={18} color={colors.ink} />
       </Pressable>
 
       <Pressable
         onPress={() => setIsFavourited((prev) => !prev)}
         hitSlop={8}
-        className="h-11 w-11 items-center justify-center rounded-full border border-gray-200"
+        className="h-11 w-11 items-center justify-center rounded-full bg-white"
       >
         <AppIcon icon={FavouriteIcon} size={17} color={isFavourited ? colors.danger : colors.ink} strokeWidth={isFavourited ? 0 : 1.8} />
       </Pressable>

@@ -5,8 +5,7 @@ import { colors } from '../../../theme/tokens';
 import type { RiderOrder } from '../../../data/mockOrders';
 
 const STATUS_LABEL: Record<RiderOrder['status'], string> = {
-  assigned: 'Head to store',
-  arrived_at_store: 'At the store',
+  assigned: 'At the store',
   picked_up: 'Delivering',
   arrived_at_customer: 'At customer',
   delivered: 'Delivered',

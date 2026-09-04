@@ -44,7 +44,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
-import { colors } from '../../theme/tokens';
 import { FREE_DELIVERY_THRESHOLD, selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -79,7 +78,7 @@ export function CartBar() {
               dark glass, without going opaque and hiding the blur */}
           <View className="absolute inset-0 bg-black/15" />
 
-          <View className="flex-row items-center gap-2 px-2 py-2">
+          <View className="flex-row items-center gap-3 px-3 py-2">
             {isDeliveryUnlocked ? (
               <View className="flex-row">
                 {items.slice(0, thumbnailCount).map((item, i) => (
@@ -105,8 +104,8 @@ export function CartBar() {
               </Text>
             </View>
 
-            <View className="h-9 w-9 items-center justify-center rounded-full bg-lime">
-              <AppIcon icon={ArrowRight02Icon} size={16} color={colors.ink} />
+            <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: '#2457F5' }}>
+              <AppIcon icon={ArrowRight02Icon} size={16} color="#FFFFFF" />
             </View>
           </View>
         </BlurView>

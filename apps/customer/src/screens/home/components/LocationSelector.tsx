@@ -32,7 +32,7 @@ export function LocationSelector({ onPress }: Props) {
   return (
     <Pressable onPress={onPress} className="max-w-[230px]">
       <View className="flex-row items-center gap-1">
-        <AppIcon icon={Navigation03Icon} size={12} color="rgba(255,255,255,0.6)" strokeWidth={2} />
+        <AppIcon icon={Navigation03Icon} size={12} color="rgba(255,255,255,0.6)" fill="rgba(255,255,255,0.6)" strokeWidth={0} />
         <Text className="text-base font-medium text-white/60">Delivering to</Text>
       </View>
       <View className="flex-row items-center gap-1">

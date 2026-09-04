@@ -6,15 +6,17 @@
 //
 // Source files: apps/font/SuisseInt/ (repo-root font vault) — copied into
 // assets/fonts/ below, same as every sibling app copies its own font
-// vault in rather than requiring across app boundaries. Only 4 faces
-// exist (Thin/Light/Regular/SemiBold — no Bold/Black cut) — global.css's
-// font-weight-utility mapping caps every Tailwind weight utility at
-// SemiBold, the heaviest face actually available.
+// vault in rather than requiring across app boundaries. 5 faces exist now
+// (Thin/Light/Regular/Medium/SemiBold — Medium added, no Bold/Black cut
+// still) — global.css's font-weight-utility mapping points font-medium at
+// this real Medium face instead of collapsing it onto SemiBold; font-bold
+// and up still cap at SemiBold, the heaviest face actually available.
 
 export const SUISSE = {
   thin: 'SuisseIntl-Thin',
   light: 'SuisseIntl-Light',
   regular: 'SuisseIntl-Regular',
+  medium: 'SuisseIntl-Medium',
   semiBold: 'SuisseIntl-SemiBold',
 } as const;
 
@@ -22,5 +24,6 @@ export const SUISSE_FONT_FILES = {
   [SUISSE.thin]: require('../../assets/fonts/SuisseIntl-Thin.otf'),
   [SUISSE.light]: require('../../assets/fonts/SuisseIntl-Light.otf'),
   [SUISSE.regular]: require('../../assets/fonts/SuisseIntl-Regular.otf'),
+  [SUISSE.medium]: require('../../assets/fonts/SuisseIntl-Medium.ttf'),
   [SUISSE.semiBold]: require('../../assets/fonts/SuisseIntl-SemiBold.otf'),
 } as const;

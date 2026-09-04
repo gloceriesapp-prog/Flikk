@@ -27,7 +27,7 @@ export function CategoriesFooter() {
           icon), not the ❤️ emoji — renders identically across platforms
           instead of whatever heart glyph each OS's emoji font ships. */}
       <View className="mt-2 flex-row items-center gap-1 ">
-        <Text className="text-sm font-medium text-ink/50">Made with </Text>
+        <Text className="text-sm font-medium text-ink/50">Made with</Text>
         <AppIcon icon={HeartIcon} size={14} color={colors.danger} fill={colors.danger} />
         <Text className="text-sm font-medium text-ink/50">in Udupi (Tulunadu), India</Text>
       </View>

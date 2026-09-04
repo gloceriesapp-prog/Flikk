@@ -37,7 +37,7 @@ export function HomeTabTileGrid({ tab }: Props) {
   }
 
   return (
-    <View className="pb-4">
+    <View className="pb-32">
       {tab.tiles.length > 0 && (
         <View className="px-5 pt-6">
           <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>

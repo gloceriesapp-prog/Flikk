@@ -6,9 +6,9 @@
 // delivery-mode icon set and the separate always-visible ProfileAvatarButton
 // circle (profile now lives inside this pill instead).
 //
-// Heart/truck stay UI-only (no destination screen yet) — the person icon
-// now navigates to ProfileScreen (screens/profile/), a real account +
-// settings screen, not a stub.
+// Heart navigates to WishlistScreen (screens/wishlist/) — truck stays
+// UI-only (no destination screen yet). The person icon navigates to
+// ProfileScreen (screens/profile/), a real account + settings screen.
 //
 // colorScheme="light" + ink icons — HomeHeader's background is a light
 // pastel fill (#E8E7FF), not the earlier dark gradient, so the glass and
@@ -57,7 +57,10 @@ export function DeliveryModeSwitcher() {
         Platform.OS !== 'ios' && { backgroundColor: 'rgba(255,255,255,0.55)', borderWidth: 1, borderColor: 'rgba(16,28,16,0.1)' },
       ]}
     >
-      <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm shadow-black/10">
+      <Pressable
+        className="h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm shadow-black/10"
+        onPress={() => navigation.navigate('Wishlist')}
+      >
         <AppIcon icon={HeartIcon} size={18} color={colors.ink} strokeWidth={1.8} />
       </Pressable>
 

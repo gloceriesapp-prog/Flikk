@@ -18,8 +18,9 @@
 //
 // Image-corner elements: freshness ribbon top-left (only when freshnessTag
 // is set — same-day perishables like dairy, not shelf-stable goods),
-// bookmark/wishlist top-right (local-only toggle, no store — nothing
-// persists this yet), veg/non-veg indicator bottom-left (defaults to veg;
+// bookmark/wishlist top-right (useWishlistStore — on-device persisted,
+// see that file's own note on why it's local-only for now), veg/non-veg
+// indicator bottom-left (defaults to veg;
 // only fish/meat data sets isVeg: false explicitly, see Product's own note
 // in types.ts), ADD/stepper sits bottom-right overlapping the image itself
 // (not below it anymore).
@@ -42,6 +43,7 @@ import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { colors } from '../../../theme/tokens';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
+import { useWishlistStore } from '../../../store/useWishlistStore';
 import type { Product } from './types';
 
 const IMAGE_TILE_BG = '#F3F4F6';
@@ -86,7 +88,8 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
 
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize, setSelectedSize] = useState(chips[0]);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const isBookmarked = useWishlistStore((state) => state.isWishlisted(id));
+  const toggleWishlist = useWishlistStore((state) => state.toggle);
 
   const quantity = useCartStore((state) => state.items.find((item) => item.id === id)?.quantity ?? 0);
   const incrementItem = useCartStore((state) => state.incrementItem);
@@ -122,7 +125,7 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             this yet. Bg always white; only the heart itself changes
             (outline -> filled red) on tap, not a green badge swap. */}
         <Pressable
-          onPress={() => setIsBookmarked((prev) => !prev)}
+          onPress={() => toggleWishlist(product)}
           hitSlop={8}
           className="absolute right-1.5 top-1.5 h-7 w-7 items-center justify-center rounded-full bg-white"
         >
@@ -152,7 +155,7 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             onPress={() =>
               addToCart({ id, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
             }
-            className="absolute bottom-0 right-0 rounded-xl border bg-white px-3 py-1.5 shadow-sm shadow-black/20"
+            className="absolute bottom-0 right-0 rounded-lg border bg-white px-3 py-1.5 shadow-sm shadow-black/20"
             style={{ borderColor: '#2457F5' }}
           >
             <Text className="text-xs font-bold" style={{ color: '#2457F5' }}>
@@ -191,16 +194,16 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             <Pressable
               key={size}
               onPress={() => setSelectedSize(size)}
-              className={`rounded-lg border px-2 py-0.5 ${selectedSize === size ? 'border-lime-deep bg-lime-soft/20' : 'border bg-[#F5F5F5]'
+              className={`rounded-lg border px-2 py-0.5 ${selectedSize === size ? 'border-[#2457F5]/80' : 'border bg-[#F5F5F5]'
                 }`}
             >
-              <Text className={`text-[11px] font-medium ${selectedSize === size ? 'text-lime-deep' : 'text-ink'}`}>{size}</Text>
+              <Text className={`text-[11px] font-medium ${selectedSize === size ? 'text-[#2457F5]/80' : 'text-ink'}`}>{size}</Text>
             </Pressable>
           ))}
         </View>
 
         {discountPercent !== null && discountPercent > 0 && (
-          <Text className="text-[11px] font-semibold text-lime-deep">{discountPercent}% OFF</Text>
+          <Text className="text-[11px] font-bold text-lime-deep">{discountPercent}% OFF</Text>
         )}
 
         <View className="flex-row items-center gap-1.5">

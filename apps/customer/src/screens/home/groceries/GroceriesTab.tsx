@@ -20,7 +20,7 @@ interface Props {
 
 export function GroceriesTab({ banner }: Props) {
   return (
-    <View className="pb-4">
+    <View className="pb-32">
       <SubCategoryGrid items={GROCERY_SUBCATEGORIES} />
       {banner && <PosterBanner imageUri={banner.imageUrl} />}
       <ProductTeaserRow title="Straight from farms" products={FARM_PRODUCTS} />

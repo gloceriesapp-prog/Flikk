@@ -2,6 +2,9 @@
 // (api/auth.ts's own note on why there's no name/vehicle/rating data
 // yet); the name shown is DUMMY_RIDER_NAME (data/appConfig.ts), a
 // placeholder until real onboarding data exists, same as Home's greeting.
+// Performance/Completion/Rating moved here from Home — a checked-
+// occasionally trust signal, not something a rider needs mid-shift every
+// time they glance at the dashboard (Home's own note on why it left).
 // Log out is the one real, functional action here.
 
 import { Alert, Linking, Pressable, Text, View } from 'react-native';
@@ -12,11 +15,16 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from '../../data/support';
 import { DUMMY_RIDER_NAME } from '../../data/appConfig';
+import { computePerformanceStats } from '../../utils/performance';
+import { PerformanceRow } from '../../components/PerformanceRow';
 
 export function ProfileScreen() {
   const phone = useAuthStore((s) => s.phone);
   const clear = useAuthStore((s) => s.clear);
   const goOffline = useRiderOrdersStore((s) => s.goOffline);
+  const completedOrders = useRiderOrdersStore((s) => s.completedOrders);
+  const cancelledOrders = useRiderOrdersStore((s) => s.cancelledOrders);
+  const performanceStats = computePerformanceStats(completedOrders, cancelledOrders);
 
   function handleLogout() {
     Alert.alert('Log out?', 'You\'ll need to verify your number again to sign back in.', [
@@ -33,7 +41,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <View className="flex-1 bg-[#FAFAFA]">
+    <View className="flex-1 bg-white">
       <View className="bg-white px-5 pb-4 pt-safe-offset-4">
         <Text className="text-xl font-bold text-ink">Profile</Text>
       </View>
@@ -51,6 +59,8 @@ export function ProfileScreen() {
             </View>
           </View>
         </View>
+
+        <PerformanceRow stats={performanceStats} />
 
         <View className="gap-2 rounded-2xl bg-white p-2">
           <Text className="px-2 pt-1 text-xs font-bold uppercase tracking-wide text-ink/40">Support</Text>

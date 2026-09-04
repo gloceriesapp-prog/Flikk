@@ -10,22 +10,26 @@
 // note). SeasonalSection.tsx renders nothing if this list is empty, so an
 // empty list here turns the whole section off, never a placeholder
 // category with nothing behind it.
+//
+// Every tile points at the same placeholder image (banana.png) for now,
+// per an explicit ask — real per-tile photos come later, this just proves
+// the image-tile layout works before that content exists.
 
 export interface SeasonalTile {
   id: string;
   title: string;
-  emoji: string;
-  price?: number;
-  originalPrice?: number;
+  imageUrl: string;
 }
+
+const PLACEHOLDER_TILE_IMAGE = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/festival-images/banana.png';
 
 // 3 columns x 2 rows (SeasonalSection.tsx's own grid) — 6 keeps every row
 // full; a count that isn't a multiple of 3 leaves a gap in the last row.
 export const SEASONAL_TILES: SeasonalTile[] = [
-  { id: 'modak-prasad', title: 'Modak & Prasad', emoji: '🍡', price: 85, originalPrice: 95 },
-  { id: 'pooja-essentials', title: 'Pooja Essentials', emoji: '🌺' },
-  { id: 'banana-leaf-decor', title: 'Banana Leaves', emoji: '🍌' },
-  { id: 'sweets-jaggery', title: 'Sweets & Jaggery', emoji: '🍯', price: 55, originalPrice: 65 },
-  { id: 'incense-diya', title: 'Incense & Diya', emoji: '🪔' },
-  { id: 'flowers-garland', title: 'Flowers & Garland', emoji: '💐' },
+  { id: 'modak-prasad', title: 'Modak & Prasad', imageUrl: PLACEHOLDER_TILE_IMAGE },
+  { id: 'pooja-essentials', title: 'Pooja Essentials', imageUrl: PLACEHOLDER_TILE_IMAGE },
+  { id: 'banana-leaf-decor', title: 'Banana Leaves', imageUrl: PLACEHOLDER_TILE_IMAGE },
+  { id: 'sweets-jaggery', title: 'Sweets & Jaggery', imageUrl: PLACEHOLDER_TILE_IMAGE },
+  { id: 'incense-diya', title: 'Incense & Diya', imageUrl: PLACEHOLDER_TILE_IMAGE },
+  { id: 'flowers-garland', title: 'Flowers & Garland', imageUrl: PLACEHOLDER_TILE_IMAGE },
 ];

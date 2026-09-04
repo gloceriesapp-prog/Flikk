@@ -31,12 +31,15 @@ export function RootNavigator() {
     );
   }
 
-  return (
-    <NavigationContainer>
-      {/* Keyed by accessToken so a logout always remounts a fresh
-          AuthNavigator instance instead of reusing the AppNavigator's tree
-          position — same fix as apps/partner's own RootNavigator.tsx note. */}
-      {accessToken ? <AppNavigator key={accessToken} /> : <AuthNavigator key="anon" />}
-    </NavigationContainer>
-  );
+  // No key={accessToken} here — AppNavigator and AuthNavigator are already
+  // different component types at this exact tree position, so React
+  // unmounts/remounts cleanly on its own the moment the ternary flips; an
+  // extra key tied to the live token *value* only adds a second remount
+  // trigger that fires any time the token string itself changes (e.g. a
+  // transient reset/re-hydrate during a Fast Refresh in dev) — exactly
+  // the kind of mid-interaction navigator remount that produces
+  // "Couldn't find a navigation context" (a Navigator's own unmount
+  // cleanup effect reaching for a parent context that's already been torn
+  // down). Removing the value-keyed remount removes that trigger surface.
+  return <NavigationContainer>{accessToken ? <AppNavigator /> : <AuthNavigator />}</NavigationContainer>;
 }

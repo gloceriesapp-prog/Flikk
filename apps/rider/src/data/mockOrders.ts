@@ -9,13 +9,20 @@
 // still fabricated data (no real backend to read from), but plausible
 // for what this app will actually show once one exists.
 
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
 export interface RiderOrder {
   id: string;
   orderNumber: string;
   storeName: string;
   storeAddress: string;
+  storeCoords: Coordinates;
   customerName: string;
   customerAddress: string;
+  customerCoords: Coordinates;
   customerPhone: string;
   itemCount: number;
   // baseFare + distanceFare + surge always sums to payout — shown as an
@@ -27,7 +34,7 @@ export interface RiderOrder {
   distanceFare: number;
   surge: number;
   distanceKm: number;
-  status: 'assigned' | 'arrived_at_store' | 'picked_up' | 'arrived_at_customer' | 'delivered' | 'cancelled';
+  status: 'assigned' | 'picked_up' | 'arrived_at_customer' | 'delivered' | 'cancelled';
   placedAt: string;
   deliveredAt?: string;
   cancelReason?: string;
@@ -58,6 +65,19 @@ function randomPhone(): string {
   return `+91${9000000000 + Math.floor(Math.random() * 999999999)}`.slice(0, 13);
 }
 
+// Kaup/outer Udupi — this app's only launch zone (CLAUDE.md). Real
+// addresses have no real geocoded coordinates behind them (no backend to
+// look them up from), so store/customer pins are placed with a small
+// random offset from this center — plausible positions for a delivery
+// map, not actually where "Kaup Beach Road" sits.
+const ZONE_CENTER: Coordinates = { latitude: 13.2167, longitude: 74.7469 };
+
+function randomNearbyCoords(): Coordinates {
+  // ~0.01-0.03 deg offset ≈ 1-3km, matching distanceKm's own range below.
+  const jitter = () => (Math.random() - 0.5) * 0.03;
+  return { latitude: ZONE_CENTER.latitude + jitter(), longitude: ZONE_CENTER.longitude + jitter() };
+}
+
 const BASE_FARE = 15;
 
 export function generateMockOrder(): RiderOrder {
@@ -73,8 +93,10 @@ export function generateMockOrder(): RiderOrder {
     orderNumber: `FLK-${orderSequence}`,
     storeName: pick(STORE_NAMES),
     storeAddress: pick(STORE_AREAS),
+    storeCoords: randomNearbyCoords(),
     customerName: pick(CUSTOMER_NAMES),
     customerAddress: pick(CUSTOMER_AREAS),
+    customerCoords: randomNearbyCoords(),
     customerPhone: randomPhone(),
     itemCount: 2 + Math.floor(Math.random() * 8),
     payout: BASE_FARE + distanceFare + surge,

@@ -24,21 +24,27 @@
 // Glass/Blur choice, a photo filling it. "Coming soon" slot with no feature
 // behind it yet, so onPress is a no-op — an icon would imply a destination
 // that doesn't exist.
+//
+// `hidden` (optional SharedValue<number>, 0..1) — the nav pill + side
+// button + fade gradient animate away (slide down + fade) as this goes
+// toward 1, driven by the caller's own scroll handler (HomeScreen.tsx's
+// own note on the direction-detection logic); the CartBar row below stays
+// untouched and always visible regardless, per an explicit ask ("only add
+// to cart section need to be visible"). Screens that don't pass this
+// (Purchase/Categories/Store) fall back to a local always-0 value, so the
+// pill just never hides there — no behavior change for them.
 
-import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CartBar } from '../CartBar/CartBar';
-import { FreeDeliveryBar } from '../CartBar/FreeDeliveryBar';
-import { FreeDeliveryUnlockBanner } from '../CartBar/FreeDeliveryUnlockBanner';
 import { BottomNavBarItem } from './BottomNavBarItem';
 import { BOTTOM_NAV_TABS } from './data';
-import { FREE_DELIVERY_THRESHOLD, selectCartTotalPrice, useCartStore } from '../../store/useCartStore';
 import type { AppStackParamList } from '../../navigation/types';
 
 const USE_LIQUID_GLASS = isLiquidGlassAvailable();
@@ -64,23 +70,34 @@ const SIDE_BUTTON_SIZE = 60;
 const SIDE_BUTTON_IMAGE_URI =
   'https://images.unsplash.com/photo-1787240663846-598e1033a919?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
-export function BottomNavBar() {
+interface Props {
+  hidden?: SharedValue<number>;
+}
+
+export function BottomNavBar({ hidden }: Props) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute();
   const activeId = ROUTE_TO_TAB_ID[route.name] ?? BOTTOM_NAV_TABS[0]?.id ?? 'home';
 
-  const isDeliveryUnlocked = useCartStore((state) => selectCartTotalPrice(state) >= FREE_DELIVERY_THRESHOLD);
-  const [showUnlockBanner, setShowUnlockBanner] = useState(false);
-  // Starts at the current unlocked state, not false — so a cart that's
-  // already unlocked when this mounts (e.g. app relaunch) shows the plain
-  // centered CartBar right away instead of replaying the celebration banner.
-  const wasUnlockedRef = useRef(isDeliveryUnlocked);
-
-  useEffect(() => {
-    if (isDeliveryUnlocked && !wasUnlockedRef.current) setShowUnlockBanner(true);
-    wasUnlockedRef.current = isDeliveryUnlocked;
-  }, [isDeliveryUnlocked]);
+  // Always-visible fallback for screens that don't drive this (no scroll
+  // tracking there yet) — keeping the hook order identical regardless of
+  // whether `hidden` was passed.
+  const localHidden = useSharedValue(0);
+  const navProgress = hidden ?? localHidden;
+  const navAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(navProgress.value, [0, 1], [0, 110]) }],
+    opacity: interpolate(navProgress.value, [0, 1], [1, 0]),
+  }));
+  // CartBar row drops down to fill the gap the pill leaves behind when
+  // hidden — 73 = the pill's own height + the gap between the two rows
+  // (insets.bottom + 81 for the row, insets.bottom + 4 + ~73 + 4 for
+  // where the pill used to be — see the comment on the row itself).
+  // Opacity untouched — this row should stay fully visible throughout,
+  // only its position changes.
+  const cartBarAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(navProgress.value, [0, 1], [0, 73]) }],
+  }));
 
   function handlePress(tabId: string) {
     if (tabId === 'categories') navigation.navigate('Categories');
@@ -91,6 +108,13 @@ export function BottomNavBar() {
 
   return (
     <>
+      {/* Wraps the pill + side button + fade gradient only — CartBar's own
+          row (below) is a sibling outside this Animated.View, so it never
+          animates with the pill. absolute/inset-0 so this wrapper spans
+          the same full-screen area the fragment's children already
+          positioned themselves against (left/right/bottom values below
+          are relative to it, not to some collapsed intermediate box). */}
+      <Animated.View pointerEvents="box-none" style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 }, navAnimatedStyle]}>
       {/* Dims scrolled content under the nav rather than hiding it outright
           — stays faintly visible through the fade instead of disappearing
           into a solid page-color block (which read as an opaque overlay).
@@ -174,36 +198,31 @@ export function BottomNavBar() {
           )}
         </View>
       </View>
+      </Animated.View>
 
-      {/* Sits right above the pill — insets.bottom + 4 (pill's own offset) +
-          ~73 (pill height) + 4 (gap, trimmed down from 10 — was reading as
-          too much empty space between the two rows). Same left/right
-          margins as the pill row above, so both rows line up. Three states,
-          in order of precedence: (1) showUnlockBanner — the couple-second
-          celebration moment right after crossing FREE_DELIVERY_THRESHOLD,
-          full width; (2) still locked — FreeDeliveryBar + CartBar share the
-          row (FreeDeliveryBar shrinks first, CartBar keeps its natural size
-          on the right, so they divide the width instead of overlapping);
-          (3) already unlocked (banner already played, or was unlocked on
-          mount) — just CartBar, centered, no left pill at all. All of
-          CartBar/FreeDeliveryBar self-null when the cart's empty, so states
-          (2)/(3) are simply empty then. */}
-      <View
+      {/* Sits right above the pill — insets.bottom + 81 = insets.bottom + 4
+          (pill's own offset) + ~73 (pill height) + 4 (gap, trimmed down
+          from 10 — was reading as too much empty space between the two
+          rows) — while the pill is visible. When the pill hides
+          (navAnimatedStyle above), this row has nothing left to sit above,
+          so cartBarAnimatedStyle slides it down by that same ~73px to
+          rest near the real screen edge instead of floating in the gap
+          the pill left behind — same navProgress driving both, so they
+          move in lockstep rather than the cart row lagging/leading the
+          pill's own animation. Same left/right margins as the pill row
+          above, so both line up while the pill's still shown.
+          Free-delivery messaging (the "Unlock FREE Delivery" pill + its
+          unlock celebration) was pulled from this bar entirely per an
+          explicit ask — just CartBar now, always centered, no locked/
+          unlocked/celebrating state to branch on. CartBar itself
+          self-nulls when the cart's empty. */}
+      <Animated.View
         pointerEvents="box-none"
-        style={{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + 81 }}
-        className={`flex-row items-center gap-2 ${showUnlockBanner || isDeliveryUnlocked ? 'justify-center' : 'justify-between'}`}
+        style={[{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + 81 }, cartBarAnimatedStyle]}
+        className="flex-row items-center justify-center"
       >
-        {showUnlockBanner ? (
-          <View className="flex-1">
-            <FreeDeliveryUnlockBanner onFinish={() => setShowUnlockBanner(false)} />
-          </View>
-        ) : (
-          <>
-            {!isDeliveryUnlocked && <FreeDeliveryBar />}
-            <CartBar />
-          </>
-        )}
-      </View>
+        <CartBar />
+      </Animated.View>
     </>
   );
 }

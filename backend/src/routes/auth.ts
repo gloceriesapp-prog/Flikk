@@ -108,7 +108,7 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
 
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('phone, name')
+      .select('phone, name, birthday')
       .eq('id', req.user!.id)
       .single();
     if (userError) throw userError;
@@ -125,7 +125,37 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       application_submitted: !!draft?.submitted_at,
       phone: user.phone,
       name: user.name,
+      birthday: user.birthday,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Customer-self-update — name and/or birthday (Profile screen's own
+// account-details card: Name row, Date of birth row — phone is never
+// editable here, it's the verified OTP identity, not a free-text field).
+// Same partial-patch style as partner.ts's own PATCH /store: only fields
+// present in the body get touched, everything else on the row is left
+// alone.
+authRouter.patch('/me', requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const { name, birthday } = req.body as { name?: string; birthday?: string };
+    if (birthday !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+      throw new AppError(400, 'INVALID_BIRTHDAY', 'birthday must be YYYY-MM-DD.');
+    }
+    if (name !== undefined && !name.trim()) {
+      throw new AppError(400, 'INVALID_NAME', 'name cannot be empty.');
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (birthday !== undefined) patch.birthday = birthday;
+    if (name !== undefined) patch.name = name.trim();
+
+    const { data, error } = await supabase.from('users').update(patch).eq('id', req.user!.id).select('name, birthday').single();
+    if (error) throw error;
+
+    res.json({ name: data.name, birthday: data.birthday });
   } catch (err) {
     next(err);
   }

@@ -30,7 +30,12 @@ export function AllTabSections() {
   const { data: dealsProducts = [] } = useDealsProducts();
 
   return (
-    <View>
+    // pb-32 — same floating-CartBar clearance fix applied across every
+    // tab body (Groceries/Bakery/Fish/Protein/Regional/generic tile
+    // grid); "All" ends on CategoriesFooter, which needs the same
+    // breathing room from BottomNavBar + CartBar as every other tab's
+    // last row.
+    <View className="pb-32">
       <SeasonalSection />
       {/* <MostBoughtSection /> */}
       {/* <NearbyStoresSection /> */}

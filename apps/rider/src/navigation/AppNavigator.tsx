@@ -14,7 +14,13 @@ export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Tabs">
       <Stack.Screen name="Tabs" component={TabNavigator} />
-      <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ presentation: 'card' }} />
+      {/* gestureEnabled off — OrderDetailScreen's SlideToConfirmButton is a
+          horizontal drag too, and it was fighting iOS's edge-swipe-back
+          gesture (dragging the knob dragged the whole screen back along
+          with it). Same fix apps/partner's own AppNavigator applies to its
+          slide-to-confirm screen. Back navigation still works via
+          OrderDetailScreen's own back-arrow button. */}
+      <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ presentation: 'card', gestureEnabled: false }} />
     </Stack.Navigator>
   );
 }

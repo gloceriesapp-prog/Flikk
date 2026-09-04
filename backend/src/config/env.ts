@@ -12,4 +12,9 @@ export const env = {
   razorpayKeySecret: required('RAZORPAY_KEY_SECRET'),
   razorpayWebhookSecret: required('RAZORPAY_WEBHOOK_SECRET'),
   mapplsAccessToken: required('MAPPLS_ACCESS_TOKEN'),
+  // Optional, not required() — routes/location.ts's /reverse-geocode
+  // degrades to { addressLabel: null } (client falls back to the free
+  // on-device geocoder) rather than the whole backend refusing to boot
+  // over one enhancement-only key.
+  googleGeocodingApiKey: process.env.GOOGLE_GEOCODING_API_KEY,
 };

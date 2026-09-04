@@ -72,4 +72,5 @@ export type AppStackParamList = {
     avgPrepMinutes: number | null;
   };
   TrackOrder: { orderId: string; paymentMethodLabel: string };
+  Wishlist: undefined;
 };

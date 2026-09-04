@@ -13,10 +13,11 @@
 // line instead of wrapping. Fixed by giving every tile the same
 // %-based width with no flex-1, so wrapping is driven purely by width,
 // same recipe ProductSection.tsx's own grid already uses successfully.
-// White cards (not a solid tint) — closer to the actual reference
-// (Blinkit's own festival grid: white cards, green "UP TO X% OFF" text),
-// and reads cleaner against this section's own mint panel than 6 solid
-// terracotta blocks would.
+// White cards (not a solid tint) — reads cleaner against this section's
+// own lavender panel than 6 solid color blocks would. Real image per tile
+// (tile.imageUrl, data.ts), not an emoji or a discount-percent line —
+// per an explicit ask to drop both; every tile currently points at the
+// same placeholder photo until real per-tile photography exists.
 //
 // These are category shortcuts a customer taps into, not individual
 // add-to-cart products, so ProductCard's own image/ADD/stepper UI was the
@@ -27,16 +28,18 @@
 // Renders nothing when SEASONAL_TILES is empty — same convention as every
 // other Home section (StoreTypesSection.tsx's own note).
 //
-// Pale mint panel, scoped to THIS section only (not AllTabSections' own
-// page bg, which stays plain white for every other section) — a
-// rounded-bottom block that reads as one deliberate seasonal module
-// dropped into the page.
+// Pale lavender panel (not mint) — synced to HomeHeader's own All-tab
+// gradient (categoryHeaderGradients.ts, deep charcoal-to-aubergine),
+// scoped to THIS section only (not AllTabSections' own page bg, which
+// stays plain white for every other section) — a rounded-bottom block
+// that reads as one deliberate seasonal module dropped into the page,
+// carrying the same premium purple identity the header just switched to
+// instead of clashing with it in leftover green.
 
-import { Pressable, Text, View } from 'react-native';
-import { GaneshaIcon } from '../../../components/GaneshaIcon';
+import { Image, Pressable, Text, View } from 'react-native';
 import { SEASONAL_TILES } from './data';
 
-const PANEL_BG = '#E7F5EE';
+const PANEL_BG = '#F2ECF8';
 
 const FESTIVAL_TITLE = 'Ganesh Chaturthi Specials';
 const FESTIVAL_SUBTITLE = "Everything for this year's pooja, from your local store";
@@ -51,30 +54,21 @@ export function SeasonalSection() {
           <GaneshaIcon size={24} color="#B33A1E" />
         </View> */}
         <View className="flex-1">
-          <Text className="text-[20px] font-medium text-ink">{FESTIVAL_TITLE}</Text>
-          <Text className="text-[12.5px] text-ink/60">{FESTIVAL_SUBTITLE}</Text>
+          <Text className="text-[20px] font-extrabold text-center text-ink">{FESTIVAL_TITLE}</Text>
+          {/* <Text className="text-[12.5px] text-ink/60">{FESTIVAL_SUBTITLE}</Text> */}
         </View>
       </View>
 
       <View className="flex-row flex-wrap gap-3">
-        {SEASONAL_TILES.map((tile) => {
-          const discountPercent =
-            tile.originalPrice && tile.price ? Math.round((1 - tile.price / tile.originalPrice) * 100) : null;
+        {SEASONAL_TILES.map((tile) => (
+          <Pressable key={tile.id} className="h-[128px] w-[31%] justify-between rounded-2xl bg-white p-3">
+            <Text className="text-[14px] font-medium leading-4 text-ink" numberOfLines={2}>
+              {tile.title}
+            </Text>
 
-          return (
-            <Pressable key={tile.id} className="h-[150px] w-[31%] justify-between rounded-2xl bg-white p-3">
-              <Text className="text-[14px] font-medium leading-4 text-ink" numberOfLines={2}>
-                {tile.title}
-              </Text>
-
-              {discountPercent ? (
-                <Text className="text-[13px] font-extrabold leading-4 text-lime-deep">UP TO{'\n'}{discountPercent}% OFF</Text>
-              ) : null}
-
-              <Text className="self-end text-3xl">{tile.emoji}</Text>
-            </Pressable>
-          );
-        })}
+            <Image source={{ uri: tile.imageUrl }} className="h-16 w-16 self-end" resizeMode="contain" />
+          </Pressable>
+        ))}
       </View>
     </View>
   );

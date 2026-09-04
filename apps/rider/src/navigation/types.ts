@@ -21,11 +21,7 @@ export type AuthStackParamList = {
 export type AppTabParamList = {
   Home: undefined;
   Orders: undefined;
-  // Optional initialRange — Home's WeeklyEarningsStrip jumps straight to
-  // the week tab instead of always landing on Today, which EarningsScreen
-  // itself still defaults to when opened via the tab bar directly (no
-  // params).
-  Earnings: { initialRange?: 'today' | 'week' | 'all' } | undefined;
+  Earnings: undefined;
   Profile: undefined;
 };
 

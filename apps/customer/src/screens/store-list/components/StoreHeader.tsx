@@ -1,35 +1,56 @@
-// Full-bleed photo banner header — back/search circles float over the image,
-// title sits bottom-left on a dark image so it stays white, rounded bottom
-// corners separate it from the store list below.
+// Header banner — swapped from a full-bleed stock illustration to a
+// gradient. Own deep midnight-indigo palette (not Home's 'all' charcoal-
+// aubergine) — per an explicit ask for a distinct, more premium color for
+// this screen specifically rather than reusing Home's tone.
 
-import { ArrowLeft01Icon, Search01Icon } from '@hugeicons/core-free-icons';
-import { Image, Pressable, Text, View } from 'react-native';
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 
-const BANNER_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/image3.png';
+const HEADER_GRADIENT = {
+  colors: ['#05070F', '#0E1530', '#16205A', '#2438A8'] as const,
+  stops: [0, 0.35, 0.68, 1] as const,
+};
 
 interface Props {
   onBack: () => void;
-  onSearch: () => void;
 }
 
-export function StoreHeader({ onBack, onSearch }: Props) {
+// Search icon dropped — CategoryFilterBar directly below already has its
+// own search pill, so this was a duplicate control on the same screen.
+export function StoreHeader({ onBack }: Props) {
   return (
-    <View className="h-60 w-full overflow-hidden rounded-b-[32px] bg-[#f7f8f6]">
-      <Image source={{ uri: BANNER_IMAGE_URI }} className="h-full w-full opacity-90" resizeMode="cover" />
+    // Fixed size lives on this plain View, not on LinearGradient itself —
+    // every child here is position:absolute (no intrinsic size), so if the
+    // size were on LinearGradient's own className and that class ever
+    // failed to apply, the gradient collapses to 0 height with nothing to
+    // fall back on (exactly what happened once already). Same
+    // wrapper-owns-size / gradient-fills-it split the old Image version
+    // used, just swapped from Image to LinearGradient.
+    <View className="h-60 w-full overflow-hidden rounded-b-[32px]">
+      {/* style, not className — LinearGradient's className is silently
+          ignored (same gotcha BottomNavBar.tsx/CartBar.tsx already
+          document for BlurView), which is why this was invisible. */}
+      <LinearGradient
+        colors={HEADER_GRADIENT.colors}
+        locations={HEADER_GRADIENT.stops}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
 
-      <View className="absolute inset-x-5 top-0 flex-row items-center justify-between pt-safe-offset-3">
+      <View className="absolute inset-x-5 top-0 pt-safe-offset-3">
         <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={ArrowLeft01Icon} size={20} color={colors.ink} />
         </Pressable>
-        <Pressable onPress={onSearch} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
-          <AppIcon icon={Search01Icon} size={19} color={colors.ink} />
-        </Pressable>
       </View>
 
-      <View className="absolute bottom-6 left-5 right-5">
-        <Text className="text-[28px] font-medium leading-8 text-black">Shops you{'\n'}already know.</Text>
+      {/* Eyebrow + tight single-word headline reads punchier/more premium
+          than the old two-line wrapped sentence — a short capitalized
+          label doing the "what is this" work instead of the headline
+          itself having to spell it out. */}
+      <View className="absolute bottom-7 left-5 right-5">
+        <Text className="mt-1 text-[29px] font-medium tracking-tight text-white">Nearby, Local stores.</Text>
       </View>
     </View>
   );

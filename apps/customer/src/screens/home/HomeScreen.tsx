@@ -20,7 +20,7 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { HomeHeader } from './components/HomeHeader';
@@ -28,6 +28,7 @@ import { BakeryTab } from './bakery/BakeryTab';
 import { FishProductGrid } from './fish/FishProductGrid';
 import { GroceriesTab } from './groceries/GroceriesTab';
 import { ProteinTab } from './protein/ProteinTab';
+import { RegionalTab } from './regional/RegionalTab';
 import { AllTabSections } from './sections/AllTabSections';
 import { ALL_TAB } from './data/categoryTabs';
 import { useHomeTabs, type RemoteHomeTab } from './data/useHomeTabs';
@@ -39,11 +40,12 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
 // Tab names that get a hand-built screen instead of the generic tile grid —
 // matched case-insensitively against whatever an admin names the tab in
 // Home Categories, so renaming "Meat & Fish" there still routes here.
-const RICH_SCREEN_BY_NAME: Record<string, 'groceries' | 'meat-fish' | 'bakery' | 'protein'> = {
+const RICH_SCREEN_BY_NAME: Record<string, 'groceries' | 'meat-fish' | 'bakery' | 'protein' | 'regional'> = {
   groceries: 'groceries',
   'meat & fish': 'meat-fish',
   bakery: 'bakery',
   protein: 'protein',
+  regional: 'regional',
 };
 
 function richScreenFor(tab: RemoteHomeTab) {
@@ -72,8 +74,34 @@ export function HomeScreen({ navigation }: Props) {
   // Drives the collapsing ETA/location block in HomeHeader — see
   // components/CollapsibleHeaderTop.tsx for the actual interpolation.
   const scrollY = useSharedValue(0);
+
+  // BottomNavBar's own pill hide/show — 0 = visible, 1 = hidden.
+  // Direction-based, not just "scrolled past N px": prevScrollY tracks the
+  // last frame's offset so every scroll event can tell up from down, not
+  // just how far from the top the page is. SCROLL_HIDE_THRESHOLD ignores
+  // tiny sub-pixel jitter (momentum deceleration, a light finger twitch)
+  // that would otherwise flicker the nav in and out on every frame: only
+  // a real, deliberate scroll gesture in either direction actually flips
+  // it. Always forced visible near the very top (< 40px) regardless of
+  // direction — starting scrolled-down-hidden the instant the list
+  // barely moves would feel broken, not premium.
+  const prevScrollY = useSharedValue(0);
+  const navHidden = useSharedValue(0);
+  const SCROLL_HIDE_THRESHOLD = 6;
+
   const scrollHandler = useAnimatedScrollHandler((event) => {
-    scrollY.value = event.contentOffset.y;
+    const y = event.contentOffset.y;
+    scrollY.value = y;
+
+    const delta = y - prevScrollY.value;
+    if (y < 40) {
+      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
+    } else if (delta > SCROLL_HIDE_THRESHOLD) {
+      navHidden.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
+    } else if (delta < -SCROLL_HIDE_THRESHOLD) {
+      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
+    }
+    prevScrollY.value = y;
   });
 
   return (
@@ -121,6 +149,7 @@ export function HomeScreen({ navigation }: Props) {
               {richScreen === 'meat-fish' && <FishProductGrid banner={banner} />}
               {richScreen === 'bakery' && <BakeryTab banner={banner} />}
               {richScreen === 'protein' && <ProteinTab banner={banner} />}
+              {richScreen === 'regional' && <RegionalTab />}
               {!richScreen && <HomeTabTileGrid tab={tab} />}
             </View>
           );
@@ -136,7 +165,7 @@ export function HomeScreen({ navigation }: Props) {
         )}
       </Animated.ScrollView>
 
-      <BottomNavBar />
+      <BottomNavBar hidden={navHidden} />
     </View>
   );
 }

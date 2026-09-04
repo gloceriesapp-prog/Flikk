@@ -16,7 +16,12 @@ interface Props {
 
 export function FishProductGrid({ banner }: Props) {
   return (
-    <View>
+    // pb-32 — the floating CartBar ("Unlock FREE Delivery"/"View cart")
+    // stacks on top of BottomNavBar once the cart has items, and without
+    // real clearance here it covers this tab's own last product row (same
+    // fix applied across every tab body: Groceries/Bakery/Protein/
+    // Regional/generic tile grid).
+    <View className="pb-32">
       {banner && <PosterBanner imageUri={banner.imageUrl} />}
       <ProductSection title="Fresh meat and fish, every day." products={FISH_PRODUCTS} />
     </View>

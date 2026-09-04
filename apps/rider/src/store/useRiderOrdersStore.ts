@@ -14,17 +14,18 @@
 // Status step order mirrors backend/src/lib/orderStateMachine.ts's own
 // stages (placed -> packed -> out_for_delivery -> delivered) but split
 // finer for what a rider specifically does: 'assigned' (backend's
-// 'packed', rider hasn't reached the store yet) -> 'arrived_at_store' ->
-// 'picked_up' (this is what flips the order to backend's
-// 'out_for_delivery') -> 'arrived_at_customer' -> 'delivered'. A real
-// backend integration would fire the matching PATCH at each step instead
-// of just updating local state.
+// 'packed'; rider slides to confirm pickup once at the store — this is
+// what flips the order to backend's 'out_for_delivery') -> 'picked_up'
+// (heading to the customer) -> 'arrived_at_customer' -> 'delivered'. A
+// real backend integration would fire the matching PATCH at each step
+// instead of just updating local state.
 
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 import { generateMockOrder, generateMockRating, generateMockTip, type RiderOrder } from '../data/mockOrders';
+import { startOfWeek } from '../utils/earnings';
 
-export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'arrived_at_store', 'picked_up', 'arrived_at_customer', 'delivered'];
+export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'picked_up', 'arrived_at_customer', 'delivered'];
 
 // How long after going online before a demo order "arrives" — stands in
 // for a founder actually assigning one (CLAUDE.md: manual/founder-assigned
@@ -70,6 +71,17 @@ interface RiderOrdersState {
   declineIncomingOrder: () => void;
   advanceOrderStatus: (orderId: string) => void;
   cancelOrder: (orderId: string, reason: string) => void;
+  // Demo/preview aid only — seeds one order into each of active/completed/
+  // cancelled so every list layout on Home/Orders/Earnings can be seen
+  // without waiting out the real accept-and-deliver flow. Not a real data
+  // source; wired to a button only in Home's empty state (HomeScreen.tsx).
+  loadSampleData: () => void;
+  // Same demo-only purpose as loadSampleData, but shaped for
+  // EarningsScreen's weekly bar chart specifically — a real spread across
+  // three magnitudes (a couple of ₹1,000s days, a couple of ₹100s days,
+  // two genuine ₹0 days), not a flat run of similarly-sized bars. Wired to
+  // a button on EarningsScreen only.
+  loadSampleWeek: () => void;
 }
 
 let incomingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -208,5 +220,77 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     if (state.isOnline && state.activeOrders.length === 0 && !state.incomingOrder) {
       state.goOnline();
     }
+  },
+
+  loadSampleData: () => {
+    const active: RiderOrder = { ...generateMockOrder(), status: 'picked_up' };
+
+    const completedOne: RiderOrder = {
+      ...generateMockOrder(),
+      status: 'delivered',
+      deliveredAt: new Date().toISOString(),
+      customerRating: generateMockRating(),
+      tip: generateMockTip(),
+    };
+    const completedTwo: RiderOrder = {
+      ...generateMockOrder(),
+      status: 'delivered',
+      deliveredAt: new Date().toISOString(),
+      customerRating: generateMockRating(),
+      tip: generateMockTip(),
+    };
+
+    const cancelledBase = generateMockOrder();
+    const cancelled: RiderOrder = { ...cancelledBase, status: 'cancelled', cancelReason: 'Store is closed' };
+
+    set((state) => ({
+      activeOrders: [active, ...state.activeOrders],
+      completedOrders: [completedOne, completedTwo, ...state.completedOrders],
+      cancelledOrders: [cancelled, ...state.cancelledOrders],
+    }));
+
+    void persistHistory(get().completedOrders);
+  },
+
+  loadSampleWeek: () => {
+    const weekStart = startOfWeek(new Date());
+
+    // Deliberate, not left to chance — a genuine spread across three
+    // magnitudes: a couple of days stacked with enough orders to land in
+    // the ₹1,000s (a real busy day), a couple with just a few orders in
+    // the ₹100s, and two real ₹0 days (no orders at all, not a tiny bar).
+    // A single order is only ~₹25-120 (base fare + distance + tip), so
+    // "thousands" needs real order-count weight behind it, not one lucky
+    // surge.
+    // Mon  Tue  Wed  Thu  Fri  Sat  Sun
+    const ORDERS_PER_DAY = [18, 4, 0, 3, 15, 0, 2];
+
+    // Preview data only — deliberately covers the whole Mon-Sun week,
+    // including days after today, so every bar has something to render
+    // right away. A real delivery can't have a future deliveredAt; this
+    // is fine purely as a chart-preview seed, never written by the real
+    // accept-and-deliver flow (advanceOrderStatus always uses
+    // new Date().toISOString(), today or earlier by construction).
+    const sampleOrders: RiderOrder[] = [];
+    ORDERS_PER_DAY.forEach((orderCount, dayOffset) => {
+      const day = new Date(weekStart);
+      day.setDate(day.getDate() + dayOffset);
+
+      for (let i = 0; i < orderCount; i += 1) {
+        const deliveredAt = new Date(day);
+        deliveredAt.setHours(9 + i * 3, 15, 0, 0);
+
+        sampleOrders.push({
+          ...generateMockOrder(),
+          status: 'delivered',
+          deliveredAt: deliveredAt.toISOString(),
+          customerRating: generateMockRating(),
+          tip: generateMockTip(),
+        });
+      }
+    });
+
+    set((state) => ({ completedOrders: [...sampleOrders, ...state.completedOrders] }));
+    void persistHistory(get().completedOrders);
   },
 }));

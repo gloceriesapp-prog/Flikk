@@ -15,6 +15,7 @@ import { useAuthStore } from './src/store/useAuthStore';
 import { useRiderOrdersStore } from './src/store/useRiderOrdersStore';
 import { IncomingOrderAlert } from './src/features/incoming-order-alert/IncomingOrderAlert';
 import { SUISSE_FONT_FILES } from './src/theme/fonts';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -44,8 +45,10 @@ export default function App() {
   return (
     <SafeAreaProvider onLayout={onRootLayout}>
       <QueryClientProvider client={queryClient}>
-        <RootNavigator />
-        {hasSession ? <IncomingOrderAlert /> : null}
+        <ErrorBoundary>
+          <RootNavigator />
+          {hasSession ? <IncomingOrderAlert /> : null}
+        </ErrorBoundary>
         <StatusBar style="dark" />
       </QueryClientProvider>
     </SafeAreaProvider>

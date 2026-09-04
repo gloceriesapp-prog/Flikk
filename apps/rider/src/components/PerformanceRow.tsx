@@ -1,15 +1,19 @@
 // Performance / Completion / Rating — the three trust-signal numbers real
-// rider apps surface on Home (Swiggy/Rapido-style). All derived from
+// rider apps surface (Swiggy/Rapido-style). Lives in shared components/
+// (not screens/home or screens/profile) — currently only rendered on
+// ProfileScreen (a checked-occasionally trust signal, not something a
+// rider needs mid-shift on Home — Home's own note on why it moved out of
+// there), but nothing here is Profile-specific. All derived from
 // utils/performance.ts's computePerformanceStats, which is the one place
 // the actual scoring math lives — this component only renders it. Same
-// card shell as StatCard.tsx (border/shadow/radius) for visual
-// consistency with the row above it, not a fourth one-off card style.
+// card shell as screens/home/components/StatCard.tsx (border/shadow/
+// radius) for visual consistency, not a one-off card style.
 
 import { StarIcon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
-import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
-import type { PerformanceStats } from '../../../utils/performance';
+import { AppIcon } from './AppIcon';
+import { colors } from '../theme/tokens';
+import type { PerformanceStats } from '../utils/performance';
 
 const LABEL_COLOR: Record<PerformanceStats['performanceLabel'], string> = {
   Excellent: colors.success,

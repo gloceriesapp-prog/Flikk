@@ -35,7 +35,7 @@ export function StoreListScreen({ navigation }: Props) {
           doesn't leave invisible dark icons behind on arrival — same fix
           class as those screens' own note, opposite value. */}
       <StatusBar style="light" />
-      <StoreHeader onBack={() => navigation.goBack()} onSearch={() => navigation.navigate('Search')} />
+      <StoreHeader onBack={() => navigation.goBack()} />
       <CategoryFilterBar
         categories={categories}
         selected={selectedCategory}
