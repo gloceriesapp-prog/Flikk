@@ -1,8 +1,9 @@
 // Seller/regulatory info block — FSSAI license number + registered address, a
-// real requirement for Indian grocery/food listings. Its own card (white,
-// rounded, own margin), rendered as its own section below ProductDetailSheet's
-// main product card rather than folded inside it — an explicit ask to keep
-// this visually distinct, not just another row on the product card.
+// real requirement for Indian grocery/food listings. Own section (own file/
+// collapse state) below the main product info, but no longer its own
+// rounded-2xl/bg-white card — ProductDetailInfo.tsx supplies one shared
+// white background across every section now, this just adds its own
+// padding and lets the parent's divider above it do the separating.
 // Collapsible: starts collapsed with the address clipped to 2 lines and a
 // "Show more" toggle, matching the reference — this is compliance text
 // nobody reads by default, not a scannable field.
@@ -22,7 +23,7 @@ export function SellerDetailsCard({ sellerDetails }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <View className="gap-3 rounded-2xl bg-white px-4 py-4">
+    <View className="gap-3 px-4 py-4">
       <Pressable onPress={() => setIsExpanded((prev) => !prev)} className="flex-row items-center justify-between">
         <Text className="text-base font-semibold text-ink">Seller Details</Text>
         <View style={{ transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] }}>

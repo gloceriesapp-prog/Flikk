@@ -6,18 +6,24 @@
 // delivery-mode icon set and the separate always-visible ProfileAvatarButton
 // circle (profile now lives inside this pill instead).
 //
-// Heart navigates to WishlistScreen (screens/wishlist/) — truck stays
+// Heart navigates to WishlistScreen (screens/wishlist/), clipboard
+// navigates to ShoppingListScreen (screens/shopping-list/) — truck stays
 // UI-only (no destination screen yet). The person icon navigates to
 // ProfileScreen (screens/profile/), a real account + settings screen.
 //
-// colorScheme="light" + ink icons — HomeHeader's background is a light
-// pastel fill (#E8E7FF), not the earlier dark gradient, so the glass and
-// its plain (unselected) icons both need the light-mode treatment to stay
-// legible. The Android/web fallback (GlassView renders a plain View there)
-// got its own translucent-white background + a soft border for the same
-// reason, rather than the dark tint it used to need.
+// colorScheme="dark" + white icons (not ink) — HomeHeader's background is
+// one of categoryHeaderGradients.ts's own dark gradients (deep charcoal/
+// aubergine for 'all', etc.), not a light pastel fill — an earlier version
+// of this comment claimed otherwise and the icon colors were picked to
+// match that stale claim, which is why clipboard/person were reading as
+// near-invisible dark-on-dark (real bug, not a design choice — ink at any
+// opacity disappears against a dark glass pill). White at reduced opacity
+// is the correct muted-but-visible treatment against a dark backdrop, same
+// convention BottomNavBar.tsx already uses for its own glass pill icons.
+// The Android/web fallback (GlassView renders a plain View there) got a
+// dark translucent background + a soft light border to match.
 
-import { ClipboardListIcon, HeartIcon, TruckIcon, UserIcon } from '@hugeicons/core-free-icons';
+import { ClipboardListIcon, HeartIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { GlassView } from 'expo-glass-effect';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -51,12 +57,15 @@ export function DeliveryModeSwitcher() {
     <GlassView
       glassEffectStyle="regular"
       isInteractive
-      colorScheme="light"
+      colorScheme="dark"
       style={[
         styles.pill,
-        Platform.OS !== 'ios' && { backgroundColor: 'rgba(255,255,255,0.55)', borderWidth: 1, borderColor: 'rgba(16,28,16,0.1)' },
+        Platform.OS !== 'ios' && { backgroundColor: 'rgba(20,20,20,0.35)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
       ]}
     >
+      {/* Heart stays on a solid white sub-box (the "selected/primary"
+          treatment) regardless of light/dark pill — ink reads fine on
+          white either way, this one was never the contrast bug. */}
       <Pressable
         className="h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm shadow-black/10"
         onPress={() => navigation.navigate('Wishlist')}
@@ -64,12 +73,12 @@ export function DeliveryModeSwitcher() {
         <AppIcon icon={HeartIcon} size={18} color={colors.ink} strokeWidth={1.8} />
       </Pressable>
 
-      <Pressable hitSlop={6} className="px-0.5">
-        <AppIcon icon={ClipboardListIcon} size={19} color={colors.mist} strokeWidth={1.8} />
+      <Pressable hitSlop={6} className="px-0.5" onPress={() => navigation.navigate('ShoppingList')}>
+        <AppIcon icon={ClipboardListIcon} size={19} color="#FFFFFFCC" strokeWidth={1.8} />
       </Pressable>
 
       <Pressable hitSlop={6} className="pr-1" onPress={() => navigation.navigate('Profile')}>
-        <AppIcon icon={UserIcon} size={19} color={colors.mist} strokeWidth={1.8} />
+        <AppIcon icon={UserIcon} size={19} color="#FFFFFFCC" strokeWidth={1.8} />
       </Pressable>
     </GlassView>
   );

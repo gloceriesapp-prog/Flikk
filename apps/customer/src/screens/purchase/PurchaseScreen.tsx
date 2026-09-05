@@ -8,12 +8,23 @@
 // Real order history now — GET /orders (api/orders.ts), not the old
 // LIVE_ORDER/PAST_ORDERS placeholder dataset. "Live" is any order not yet
 // delivered/cancelled (placed/packed/out_for_delivery); everything else is
-// "Past". Multiple live orders are possible in principle (nothing stops a
-// customer placing a second order before the first is delivered) — shown
-// as multiple Live Order cards, not just the first one, rather than
-// silently hiding a real in-flight order.
+// "Past" — that distinction still drives sort order and OrderStatusFilter,
+// but per an explicit ask it's no longer two separately-headed sections
+// ("Live Order" / "Past Orders") with different card designs. One flat
+// list (OrderRow.tsx) now, sorted current-on-top/done-at-bottom
+// (sortedOrders below) — a plain row (photo, status, items, chevron), no
+// card background/gradient, no per-row CTA button; the whole row is the
+// tap target for live orders (wired to TrackOrder), inert for past ones.
+//
+// Header redesign, same earlier ask: "Purchase" title stays centered,
+// PurchaseSearchBar (real search + filter icon) sits directly below it —
+// only once there's actually something to search/filter (hasAnyOrder),
+// not on the empty state. Search matches store name or any item name
+// (both already on PurchaseOrder, no extra fetch); the filter icon opens
+// OrderStatusFilterSheet (All/Live/Past), a real filter over the same
+// status field the sort above uses.
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery } from '@tanstack/react-query';
@@ -23,9 +34,10 @@ import { AppIcon } from '../../components/AppIcon';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { colors } from '../../theme/tokens';
 import { fetchMyOrders } from '../../api/orders';
-import { mapApiOrder } from './data';
-import { LiveOrderCard } from './components/LiveOrderCard';
-import { PastOrderCard } from './components/PastOrderCard';
+import { mapApiOrder, SAMPLE_PREVIEW_ORDERS } from './data';
+import { OrderRow } from './components/OrderRow';
+import { OrderStatusFilterSheet, type OrderStatusFilter } from './components/OrderStatusFilterSheet';
+import { PurchaseSearchBar } from './components/PurchaseSearchBar';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Purchase'>;
@@ -33,10 +45,19 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Purchase'>;
 const FEATURE_IMAGE_URI = 'https://i.pinimg.com/1200x/a1/dc/37/a1dc376c96e834e7ae7baf401202b79a.jpg';
 
 export function PurchaseScreen({ navigation }: Props) {
-  const { data: orders, isLoading, refetch } = useQuery({
+  const { data: fetchedOrders, isLoading, refetch } = useQuery({
     queryKey: ['my-orders'],
     queryFn: async () => (await fetchMyOrders()).map(mapApiOrder),
   });
+  // SAMPLE_PREVIEW_ORDERS appended temporarily — real orders rarely have
+  // enough line items to show off ItemThumbnailStack's 3-item and 4+-item
+  // ("+N" badge) cases, this is just so that's actually visible on screen.
+  // Remove this concat (and the import above) once confirmed.
+  const orders = fetchedOrders ? [...fetchedOrders, ...SAMPLE_PREVIEW_ORDERS] : fetchedOrders;
+
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('all');
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
 
   // Purchase is reached repeatedly across a session (Home tab bar, after
   // checkout, etc.) — refetching on every focus keeps a live order's
@@ -48,9 +69,32 @@ export function PurchaseScreen({ navigation }: Props) {
     return unsubscribe;
   }, [navigation, refetch]);
 
-  const liveOrders = (orders ?? []).filter((o) => o.status === 'placed' || o.status === 'packed' || o.status === 'out_for_delivery');
-  const pastOrders = (orders ?? []).filter((o) => o.status === 'delivered' || o.status === 'cancelled');
-  const hasAnyOrder = liveOrders.length > 0 || pastOrders.length > 0;
+  const isLive = (status: string) => status === 'placed' || status === 'packed' || status === 'out_for_delivery';
+
+  const hasAnyOrder = (orders ?? []).length > 0;
+
+  const filteredOrders = useMemo(() => {
+    const trimmedQuery = query.trim().toLowerCase();
+    return (orders ?? []).filter((order) => {
+      const matchesFilter =
+        statusFilter === 'all' || (statusFilter === 'live' ? isLive(order.status) : !isLive(order.status));
+      if (!matchesFilter) return false;
+      if (!trimmedQuery) return true;
+      return (
+        order.storeName.toLowerCase().includes(trimmedQuery) ||
+        order.items.some((item) => item.name.toLowerCase().includes(trimmedQuery))
+      );
+    });
+  }, [orders, query, statusFilter]);
+
+  // One flat list now, not separate Live/Past sections — current
+  // (not-yet-delivered) orders sorted to the top, done ones to the
+  // bottom. Stable sort (JS's Array.sort has been stable since ES2019)
+  // keeps each group in whatever order the API already returned it in —
+  // this only reorders the two groups relative to each other, not within
+  // themselves.
+  const sortedOrders = [...filteredOrders].sort((a, b) => Number(isLive(b.status)) - Number(isLive(a.status)));
+  const hasFilteredResults = sortedOrders.length > 0;
 
   return (
     <View className="flex-1 bg-white pt-safe">
@@ -73,33 +117,37 @@ export function PurchaseScreen({ navigation }: Props) {
         </Text>
       </View>
 
+      {hasAnyOrder && (
+        <PurchaseSearchBar
+          value={query}
+          onChangeText={setQuery}
+          onOpenFilter={() => setIsFilterSheetOpen(true)}
+          isFilterActive={statusFilter !== 'all'}
+        />
+      )}
+
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={colors.ink} />
         </View>
+      ) : hasAnyOrder && !hasFilteredResults ? (
+        <View className="flex-1 items-center justify-center gap-1 px-10">
+          <Text className="text-center text-base font-semibold text-ink">No matching orders</Text>
+          <Text className="text-center text-sm text-ink/50">Try a different search or filter.</Text>
+        </View>
       ) : hasAnyOrder ? (
-        <ScrollView className="flex-1" contentContainerClassName="gap-3 px-6 pb-28 pt-3" showsVerticalScrollIndicator={false}>
-          {liveOrders.length > 0 && (
-            <>
-              <Text className="text-lg font-semibold text-ink">Live Order</Text>
-              {liveOrders.map((order) => (
-                <LiveOrderCard
-                  key={order.orderId}
-                  order={order}
-                  onTrackOrder={() => navigation.navigate('TrackOrder', { orderId: order.orderId, paymentMethodLabel: 'UPI' })}
-                />
-              ))}
-            </>
-          )}
-
-          {pastOrders.length > 0 && (
-            <View className="mt-3 gap-3">
-              <Text className="text-lg font-medium text-ink">Past Orders</Text>
-              {pastOrders.map((order) => (
-                <PastOrderCard key={order.orderId} order={order} />
-              ))}
-            </View>
-          )}
+        <ScrollView className="flex-1" contentContainerClassName="px-6 pb-28 pt-1" showsVerticalScrollIndicator={false}>
+          {sortedOrders.map((order) => (
+            <OrderRow
+              key={order.orderId}
+              order={order}
+              onPress={
+                isLive(order.status)
+                  ? () => navigation.navigate('TrackOrder', { orderId: order.orderId, paymentMethodLabel: 'UPI' })
+                  : undefined
+              }
+            />
+          ))}
 
           <Text className="mt-4 px-2 text-center text-base font-semibold leading-6 text-gray-500">
             You&apos;re not just ordering. You&apos;re keeping{"\n"}
@@ -124,6 +172,13 @@ export function PurchaseScreen({ navigation }: Props) {
       )}
 
       <BottomNavBar />
+
+      <OrderStatusFilterSheet
+        visible={isFilterSheetOpen}
+        value={statusFilter}
+        onSelect={setStatusFilter}
+        onClose={() => setIsFilterSheetOpen(false)}
+      />
     </View>
   );
 }

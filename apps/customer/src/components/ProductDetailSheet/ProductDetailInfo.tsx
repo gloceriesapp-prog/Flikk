@@ -5,21 +5,24 @@
 // Every row here only renders when the product actually has the field set
 // (Product's own note in types.ts).
 //
-// Main card (#FAFAFA bg): title (font-medium, not bold — deliberately
-// quieter than the reference's earlier bold treatment), description (only
-// when the product has one), pack-size chips (sizeOptions — UI selection
-// only, see Product's own note on why it doesn't change the price below
-// it), price — with a centered vertical divider + "MRP ₹X" (strikethrough
-// only on the number, not the "MRP" label) when there's an originalPrice —
-// then a hairline divider + the seller row. replacementPolicy still exists
-// on Product but no longer renders anywhere in this sheet. The breadcrumb
-// row was removed per an earlier explicit ask; description came back per a
-// later one.
+// One continuous white flow, not three separately-boxed rounded cards with
+// gray gaps between them — per an explicit ask to match a reference layout
+// where title/price/seller/similar-products all sit on the same plain
+// white sheet, divided by hairline rules instead of nested card chrome.
+// SellerDetailsCard and SimilarProductsRow still own their own
+// files/logic (collapse state, product grid) but no longer wrap
+// themselves in their own rounded-2xl/bg-white card — this file supplies
+// one shared white background and the dividers between sections.
 //
-// SellerDetailsCard (FSSAI/address) and SimilarProductsRow are their own
-// sections below the main card, not inside it and not sharing its
-// background — an explicit ask to keep seller/regulatory info visually
-// distinct rather than folded into the product card.
+// Title (font-medium, not bold — deliberately quieter than an earlier
+// bold treatment), description (only when the product has one), pack-size
+// chips (sizeOptions — UI selection only, see Product's own note on why
+// it doesn't change the price below it), price — with a centered vertical
+// divider + "MRP ₹X" (strikethrough only on the number, not the "MRP"
+// label) when there's an originalPrice. replacementPolicy still exists on
+// Product but no longer renders anywhere in this sheet. The breadcrumb row
+// was removed per an earlier explicit ask; description came back per a
+// later one.
 
 import { useState } from 'react';
 import { ChevronRightIcon, HeartIcon } from '@hugeicons/core-free-icons';
@@ -52,8 +55,8 @@ export function ProductDetailInfo({ product, relatedProducts }: Props) {
   const [isLiked, setIsLiked] = useState(false);
 
   return (
-    <View style={{ backgroundColor: '#FAFAFA' }} className="gap-2.5 px-3 pb-4 pt-3">
-      <View className="gap-3 rounded-2xl bg-white px-4 py-4">
+    <View className="bg-white">
+      <View className="gap-3 px-4 pb-4 pt-3">
         <View className="flex-row items-start justify-between gap-3">
           <Text className="flex-1 text-xl font-medium leading-7 text-ink">
             {name}
@@ -115,9 +118,19 @@ export function ProductDetailInfo({ product, relatedProducts }: Props) {
         )}
       </View>
 
-      {sellerDetails && <SellerDetailsCard sellerDetails={sellerDetails} />}
+      {sellerDetails && (
+        <>
+          <View className="h-2 bg-mist/60" />
+          <SellerDetailsCard sellerDetails={sellerDetails} />
+        </>
+      )}
 
-      {related && related.length > 0 && <SimilarProductsRow products={related} />}
+      {related && related.length > 0 && (
+        <>
+          <View className="h-2 bg-mist/60" />
+          <SimilarProductsRow products={related} />
+        </>
+      )}
     </View>
   );
 }

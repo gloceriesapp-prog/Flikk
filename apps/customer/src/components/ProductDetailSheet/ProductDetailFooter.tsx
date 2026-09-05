@@ -28,7 +28,7 @@
 // BlurView glass overlay and needs this content transparent so the blur
 // actually shows through underneath it.
 
-import { AddSquareIcon, MinusSignIcon, ShoppingBasket01Icon } from '@hugeicons/core-free-icons';
+import { AddSquareIcon, MinusSignIcon, ShoppingBag01Icon, ShoppingBasket01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
@@ -53,9 +53,10 @@ export function ProductDetailFooter({ product }: Props) {
       <View className="px-5 py-4">
         <Pressable
           onPress={() => addToCart({ id, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })}
-          className="items-center rounded-2xl bg-lime-deep py-3.5"
+          className="flex-row items-center justify-center gap-2 rounded-2xl bg-[#1447e6] py-3.5"
         >
-          <Text className="text-base font-medium text-ink">Add to cart</Text>
+          <AppIcon icon={ShoppingBag01Icon} size={18} color={colors.mist} strokeWidth={1.8} />
+          <Text className="text-base font-medium text-white">Add to cart</Text>
         </Pressable>
       </View>
     );

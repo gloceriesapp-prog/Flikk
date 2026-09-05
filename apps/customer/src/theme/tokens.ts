@@ -16,6 +16,7 @@ export const colors = {
   danger: '#D64545',
   whiteOG: '#f7f8f6',
   pink: '#FF69B4',
+  blue: '#007BFF',
 } as const;
 
 export const spacing = (multiplier: number) => multiplier * 4;

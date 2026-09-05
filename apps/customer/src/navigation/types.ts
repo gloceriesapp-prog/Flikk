@@ -73,4 +73,5 @@ export type AppStackParamList = {
   };
   TrackOrder: { orderId: string; paymentMethodLabel: string };
   Wishlist: undefined;
+  ShoppingList: undefined;
 };

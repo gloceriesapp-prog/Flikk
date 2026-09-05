@@ -28,3 +28,13 @@ export function formatEta(eta: Date): string {
   const time = eta.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   return eta.toDateString() === now.toDateString() ? `Today, ${time}` : `${eta.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, ${time}`;
 }
+
+// "Arriving in X min" for OrderRow.tsx's own compact list row — same real
+// eta Date as formatEta above, just phrased as a countdown instead of a
+// clock time. Floored at 1 (never "in 0 min" or a negative number) since
+// this is a coarse single-zone estimate (DELIVERY_TRANSIT_BUFFER_MINUTES's
+// own note), not a live countdown that should ever hit exactly zero.
+export function formatEtaMinutesRemaining(eta: Date): string {
+  const minutesRemaining = Math.max(1, Math.round((eta.getTime() - Date.now()) / 60_000));
+  return `Arriving in ${minutesRemaining} min`;
+}

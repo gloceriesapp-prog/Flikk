@@ -23,18 +23,47 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isHydrated: boolean; // true once we've checked SecureStore on cold start
+  // Browse-without-login (LoginScreen.tsx's own Skip button). In-memory
+  // only, not persisted to SecureStore — there's no real identity behind
+  // it, so it deliberately doesn't survive a cold start; a relaunched app
+  // lands back on Login, same as never having skipped. RootNavigator
+  // mounts the real app shell for accessToken OR isGuest, but every
+  // authenticated backend call still requires a real token — a guest can
+  // browse, not check out, add reviews, etc.; screens that need a real
+  // session check accessToken themselves (ProfileScreen.tsx's own guest
+  // branch is the first of these).
+  isGuest: boolean;
+  // Set once OnboardingScreen's "Get Started" is tapped — stays true for
+  // the rest of the app's lifetime (in-memory, resets on a real cold
+  // relaunch, which is fine — seeing the splash once per fresh launch is
+  // normal). AuthNavigator.tsx reads this to pick its own initial route:
+  // Onboarding the first time, straight to Login every time after —
+  // without it, exiting guest mode (ProfileScreen.tsx's own redirect)
+  // remounted AuthNavigator at Onboarding again, re-showing a splash
+  // screen the person had already dismissed minutes earlier.
+  hasSeenOnboarding: boolean;
+  markOnboardingSeen: () => void;
   hydrate: () => Promise<void>;
   setSession: (token: string, refreshToken: string) => Promise<void>;
   // Called only by api/client.ts's `refresh` callback after a successful
   // silent token refresh.
   setTokens: (token: string, refreshToken: string) => Promise<void>;
   clear: () => Promise<void>;
+  continueAsGuest: () => void;
+  // Drops guest mode and sends the person back to the real login flow —
+  // called from ProfileScreen.tsx's own "Log in" prompt, not from clear()
+  // (clear() is a real logout of a real session; exiting guest mode never
+  // had a session to log out of).
+  exitGuestMode: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
   isHydrated: false,
+  isGuest: false,
+  hasSeenOnboarding: false,
+  markOnboardingSeen: () => set({ hasSeenOnboarding: true }),
 
   hydrate: async () => {
     const [token, refreshToken] = await Promise.all([
@@ -46,7 +75,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setSession: async (token, refreshToken) => {
     await Promise.all([SecureStore.setItemAsync(TOKEN_KEY, token), SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken)]);
-    set({ accessToken: token, refreshToken });
+    set({ accessToken: token, refreshToken, isGuest: false });
   },
 
   setTokens: async (token, refreshToken) => {
@@ -56,6 +85,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   clear: async () => {
     await Promise.all([SecureStore.deleteItemAsync(TOKEN_KEY), SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)]);
-    set({ accessToken: null, refreshToken: null });
+    set({ accessToken: null, refreshToken: null, isGuest: false });
   },
+
+  continueAsGuest: () => set({ isGuest: true }),
+  exitGuestMode: () => set({ isGuest: false }),
 }));

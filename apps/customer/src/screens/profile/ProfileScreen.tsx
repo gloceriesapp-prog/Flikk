@@ -36,8 +36,15 @@
 // "UI-only, not wired up" category as this app's other coming-soon rows
 // (e.g. BottomNavBar's own side button) — a no-op for now rather than
 // implying a feature that doesn't exist.
+//
+// Guest branch (no accessToken — LoginScreen.tsx's own Skip flow):
+// everything below requires a real identity (orders, wishlist, addresses,
+// logout), so a guest hitting this screen is redirected straight back to
+// the real Login screen — no interstitial "you're a guest, log in?"
+// content in between. exitGuestMode() drops isGuest, RootNavigator swaps
+// to AuthNavigator on its own the moment that happens.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowDown01Icon,
   ArrowLeft01Icon,
@@ -78,6 +85,8 @@ const APP_VERSION = packageJson.version;
 type AppearanceMode = 'Light' | 'Dark';
 
 export function ProfileScreen({ navigation }: Props) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const exitGuestMode = useAuthStore((s) => s.exitGuestMode);
   const { data: profile } = useProfile();
   const clearSession = useAuthStore((s) => s.clear);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -105,6 +114,18 @@ export function ProfileScreen({ navigation }: Props) {
   function handleShare() {
     Share.share({ message: 'Ordering from local stores near you, delivered fast — check out Flikk.' });
   }
+
+  // Guest (no accessToken) hitting Profile — straight back to the real
+  // Login screen, no interstitial "you're a guest" content in between.
+  // exitGuestMode() drops isGuest, which flips RootNavigator over to
+  // AuthNavigator on its own. In an effect, not called directly during
+  // render — a zustand set() during render is a side effect React's
+  // rules don't allow, even though it happens to work in practice.
+  useEffect(() => {
+    if (!accessToken) exitGuestMode();
+  }, [accessToken, exitGuestMode]);
+
+  if (!accessToken) return null;
 
   return (
     <View className="flex-1 bg-[#FAFAFA] pt-safe">

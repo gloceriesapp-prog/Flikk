@@ -1,7 +1,11 @@
 // Splits the app in two: AuthNavigator while logged out, AppNavigator once a
-// session token exists. Waits on SecureStore hydration first (cold-start
-// session check — PRD screen C1's "cold start / returning user" variant)
-// so a returning user never flashes the onboarding screen before landing home.
+// session token exists — OR once the person has explicitly chosen to browse
+// as a guest (LoginScreen.tsx's own Skip button, useAuthStore's own isGuest
+// flag). Waits on SecureStore hydration first (cold-start session check —
+// PRD screen C1's "cold start / returning user" variant) so a returning
+// user never flashes the onboarding screen before landing home. isGuest is
+// in-memory only (see useAuthStore.ts's own note) so it doesn't need to
+// wait on hydration the way accessToken does.
 //
 // Also hydrates useLocationStore here, before AppNavigator ever mounts —
 // AppNavigator picks its initial route (LocationPermission vs. Home) off that
@@ -17,7 +21,7 @@ import { AppNavigator } from './AppNavigator';
 import { colors } from '../theme/tokens';
 
 export function RootNavigator() {
-  const { accessToken, isHydrated: authHydrated, hydrate: hydrateAuth } = useAuthStore();
+  const { accessToken, isGuest, isHydrated: authHydrated, hydrate: hydrateAuth } = useAuthStore();
   const { isHydrated: locationHydrated, hydrate: hydrateLocation } = useLocationStore();
 
   useEffect(() => {
@@ -39,7 +43,7 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer>
-      {accessToken ? <AppNavigator /> : <AuthNavigator />}
+      {accessToken || isGuest ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }

@@ -24,6 +24,7 @@ import { ReceiptScreen } from '../screens/receipt/ReceiptScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
 import { StoreDetailScreen } from '../screens/store-detail/StoreDetailScreen';
 import { StoreListScreen } from '../screens/store-list/StoreListScreen';
+import { ShoppingListScreen } from '../screens/shopping-list/ShoppingListScreen';
 import { TrackOrderScreen } from '../screens/track-order/TrackOrderScreen';
 import { WishlistScreen } from '../screens/wishlist/WishlistScreen';
 import { useLocationStore } from '../store/useLocationStore';
@@ -67,6 +68,7 @@ export function AppNavigator() {
       <Stack.Screen name="Receipt" component={ReceiptScreen} />
       <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} />
+      <Stack.Screen name="ShoppingList" component={ShoppingListScreen} />
     </Stack.Navigator>
   );
 }

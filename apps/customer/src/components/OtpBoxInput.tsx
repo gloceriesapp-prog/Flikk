@@ -25,8 +25,8 @@ export function OtpBoxInput({ value, onChangeText, autoFocus }: Props) {
       {digits.map((digit, i) => (
         <View
           key={i}
-          className={`h-14 w-12 items-center justify-center rounded-button border-[1.5px] bg-white shadow-sm shadow-black/5 ${
-            i === value.length ? 'border-lime' : 'border-slate-200'
+          className={`h-14 w-12 items-center justify-center rounded-button border bg-white ${
+            i === value.length ? 'border-ink' : 'border-slate-200'
           }`}
         >
           <Text className="text-xl font-semibold text-ink">{digit.trim()}</Text>

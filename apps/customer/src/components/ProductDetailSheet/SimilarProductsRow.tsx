@@ -1,8 +1,10 @@
-// "Similar products" section below ProductDetailSheet's main card. A wrapping
-// 3-column grid (not horizontal scroll) on a white background, capped at 9
-// products (3 rows) — reuses the same card UI as everywhere else (its own
-// ADD/stepper), same convention as other grid rows in this app (e.g.
-// home/products/ProductSection).
+// "Similar products" section — last section in ProductDetailInfo.tsx's one
+// continuous white flow, not its own separately-boxed card. A wrapping
+// 3-column grid (not horizontal scroll), capped at 9 products (3 rows) —
+// reuses the same card UI as everywhere else (its own ADD/stepper), same
+// convention as other grid rows in this app (e.g. home/products/
+// ProductSection). px-4, matching every other section's own horizontal
+// padding above it.
 //
 // Uses ProductCardView (presentational only), not ProductCard — ProductCard
 // wraps this same view with tap-to-open-ProductDetailSheet, and this file
@@ -24,7 +26,7 @@ interface Props {
 
 export function SimilarProductsRow({ products }: Props) {
   return (
-    <View className="gap-3 bg-white px-3 pb-4 pt-3">
+    <View className="gap-3 px-4 pb-4 pt-3">
       <Text className="text-base font-semibold text-ink">Similar products</Text>
       <View className="flex-row flex-wrap gap-x-3 gap-y-4">
         {products.slice(0, MAX_PRODUCTS).map((product) => (
