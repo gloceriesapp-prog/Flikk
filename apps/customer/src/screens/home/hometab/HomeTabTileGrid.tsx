@@ -10,7 +10,8 @@
 // a founder wanting a rotating set is a later upgrade, not built
 // speculatively now.
 
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { AppImage as Image } from '../../../components/AppImage';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { PosterBanner } from '../category-tab/components/PosterBanner';
 import type { RemoteHomeTab } from '../data/useHomeTabs';

@@ -12,7 +12,8 @@
 
 import { useState } from 'react';
 import { AtIcon, BankIcon, BanknoteIcon, SmartPhone01Icon, Tick02Icon, Wallet01Icon } from '@hugeicons/core-free-icons';
-import { ActivityIndicator, Image, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { AppImage as Image } from '../../../components/AppImage';
 import type { IconSvgElement } from '@hugeicons/react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { PAYMENT_METHOD_ICON_URL } from '../../../theme/paymentIcons';

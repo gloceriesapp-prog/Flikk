@@ -10,7 +10,8 @@
 // as ProductCardView's own note on why a random image is worse than a
 // plain fallback.
 
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { AppImage as Image } from '../../../../components/AppImage';
 import { PLACEHOLDER_IMAGE_URI } from '../../../../theme/placeholderImage';
 import type { NearbyStore } from '../useNearbyStores';
 

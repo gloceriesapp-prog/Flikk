@@ -13,7 +13,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { AppImage as Image } from '../components/AppImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

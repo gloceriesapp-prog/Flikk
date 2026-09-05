@@ -17,11 +17,18 @@
 // countdown) in green, the same color this app already uses for "in
 // progress and going well" elsewhere (colors.success).
 //
-// 'placed' specifically keeps its own moment — per an explicit ask, the
-// very first status still reads as "Order Placed" (that literal phrase
-// stays), just written with real brand voice instead of the bare
-// three-word label every other app uses for the same event. Delivered
-// orders show "Delivered" in the normal ink color; cancelled orders show
+// 'placed' specifically keeps its own moment, written in plain words
+// anyone reads correctly at a glance — "We got your order 🌱" says exactly
+// what happened (the order was received) with no room to misread it as
+// something further along (packed/on its way) or further behind
+// (still in the cart). Clarity comes first; the only "voice" left is the
+// 🌱, not a clever rephrasing that could cost a confused support message.
+// Short by design, not just for style: numberOfLines={1}
+// below only stops overflow from wrapping, it doesn't stop it truncating
+// with "…" — a headline has to actually fit the row's width on the
+// smallest supported phone or it gets clipped exactly the way the old
+// "Order Placed — your store just got the word 🌱" did. Delivered orders
+// show "Delivered" in the normal ink color; cancelled orders show
 // "Cancelled" in danger red.
 
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
@@ -40,7 +47,7 @@ interface Props {
 function headlineFor(order: PurchaseOrder): { text: string; color: string } {
   if (order.status === 'cancelled') return { text: 'Cancelled', color: colors.danger };
   if (order.status === 'delivered') return { text: 'Delivered', color: colors.ink };
-  if (order.status === 'placed') return { text: 'Order Placed — your store just got the word 🌱', color: colors.success };
+  if (order.status === 'placed') return { text: 'We got your order', color: colors.success };
   const eta = estimateDeliveryTime(order.placedAtIso, order.avgPrepMinutes);
   return { text: formatEtaMinutesRemaining(eta), color: colors.success };
 }

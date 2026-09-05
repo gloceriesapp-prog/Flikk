@@ -34,7 +34,8 @@
 // (Purchase/Categories/Store) fall back to a local always-0 value, so the
 // pill just never hides there — no behavior change for them.
 
-import { Image, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { AppImage as Image } from '../AppImage';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';

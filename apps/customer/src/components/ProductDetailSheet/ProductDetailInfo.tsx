@@ -26,7 +26,8 @@
 
 import { useState } from 'react';
 import { ChevronRightIcon, HeartIcon } from '@hugeicons/core-free-icons';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { AppImage as Image } from '../AppImage';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';

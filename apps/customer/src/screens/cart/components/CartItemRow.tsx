@@ -14,7 +14,8 @@
 // cards, per an explicit ask to drop it here).
 
 import { AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { useCartStore, type CartItem } from '../../../store/useCartStore';

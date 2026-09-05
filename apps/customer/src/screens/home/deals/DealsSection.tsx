@@ -3,7 +3,8 @@
 // image (not the app-wide placeholder) since this section's whole purpose
 // is showing this specific deal creative.
 
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
+import { AppImage as Image } from '../../../components/AppImage';
 
 const DEAL_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/deal.jpeg';
 

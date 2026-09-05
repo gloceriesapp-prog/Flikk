@@ -30,7 +30,9 @@
 // button.
 
 import { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { AppImage as Image } from '../components/AppImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -151,7 +153,7 @@ export function LoginScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View className="gap-5 bg-white px-6 pb-6 pt-7">
             {/* Left-aligned headline — no lime accent word anymore, per an
                 explicit ask to drop green from this screen entirely; the

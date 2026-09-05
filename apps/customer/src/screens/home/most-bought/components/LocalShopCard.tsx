@@ -13,7 +13,8 @@
 // Renders nothing while there's no store yet.
 
 import { Store01Icon } from '@hugeicons/core-free-icons';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { AppImage as Image } from '../../../../components/AppImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';

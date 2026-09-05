@@ -36,7 +36,8 @@
 // carrying the same premium purple identity the header just switched to
 // instead of clashing with it in leftover green.
 
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { AppImage as Image } from '../../../components/AppImage';
 import { SEASONAL_TILES } from './data';
 
 const PANEL_BG = '#F2ECF8';

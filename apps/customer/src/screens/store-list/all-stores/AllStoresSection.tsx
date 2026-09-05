@@ -6,11 +6,20 @@
 // convention as every Home section that reads real data.
 //
 // `stores` is passed in (StoreListScreen owns the single useAllStores()
-// call, since CategoryFilterBar needs the same data to build its category
-// chips) rather than fetched again here — one real fetch, filtered two
-// different ways, not a second independent query for the same rows.
+// call, since StoreFilterBar/StoreFilterSheet need the same data to build
+// their category options) rather than fetched again here — one real
+// fetch, filtered/sorted one way, not a second independent query for the
+// same rows.
+//
+// No "All stores near you" heading anymore, per an explicit ask — the
+// flat divider-separated list (StoreFilterBar/StoreFilterSheet directly
+// above already make it obvious this is the store list) speaks for
+// itself without a label repeating that. Every card, including the last
+// one, gets its own trailing divider + gap now (not "between items only"
+// like the previous pass) — same edge-to-edge line, just consistently
+// after each card rather than only before all-but-the-first.
 
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { StoreCard } from '../components/StoreCard';
 import type { RealStore } from './useAllStores';
 
@@ -22,18 +31,13 @@ export function AllStoresSection({ stores }: Props) {
   if (stores.length === 0) return null;
 
   return (
-    <View className="pt-6">
-      <View className="flex-row items-center justify-between px-5 pb-4">
-        <Text className="text-lg font-semibold text-ink">
-          All stores near you
-        </Text>
-      </View>
-
-      <View className="gap-5 px-5">
-        {stores.map((store) => (
-          <StoreCard key={store.id} store={store} />
-        ))}
-      </View>
+    <View className="px-5 pt-6">
+      {stores.map((store) => (
+        <View key={store.id} className="mb-6">
+          <StoreCard store={store} />
+          <View className="-mx-5 mt-6 h-px bg-gray-100" />
+        </View>
+      ))}
     </View>
   );
 }

@@ -28,7 +28,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { AppImage as Image } from '../../components/AppImage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
@@ -89,11 +90,14 @@ export function PurchaseScreen({ navigation }: Props) {
 
   // One flat list now, not separate Live/Past sections — current
   // (not-yet-delivered) orders sorted to the top, done ones to the
-  // bottom. Stable sort (JS's Array.sort has been stable since ES2019)
-  // keeps each group in whatever order the API already returned it in —
-  // this only reorders the two groups relative to each other, not within
-  // themselves.
-  const sortedOrders = [...filteredOrders].sort((a, b) => Number(isLive(b.status)) - Number(isLive(a.status)));
+  // bottom, and newest-placed-first within each of those two groups (an
+  // order placed 2 minutes ago belongs above one placed yesterday
+  // regardless of which the API happened to return first).
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    const liveDiff = Number(isLive(b.status)) - Number(isLive(a.status));
+    if (liveDiff !== 0) return liveDiff;
+    return new Date(b.placedAtIso).getTime() - new Date(a.placedAtIso).getTime();
+  });
   const hasFilteredResults = sortedOrders.length > 0;
 
   return (

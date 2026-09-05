@@ -11,7 +11,8 @@
 // it's not a dead affordance sitting there from an empty list.
 
 import { ArrowLeft01Icon, ClipboardListIcon } from '@hugeicons/core-free-icons';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';

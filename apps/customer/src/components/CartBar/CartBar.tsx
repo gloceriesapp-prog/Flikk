@@ -38,7 +38,8 @@
 // place, same fix as that backdrop's own tuning.
 
 import { ArrowRight02Icon, ShoppingBagAddIcon } from '@hugeicons/core-free-icons';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { AppImage as Image } from '../AppImage';
 import { BlurView } from 'expo-blur';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';

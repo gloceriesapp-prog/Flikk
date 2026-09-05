@@ -18,7 +18,8 @@
 // end.
 
 import { useEffect } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { AppImage as Image } from '../AppImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme/tokens';
 import { CART_DELIVERY_FEE } from '../../store/useCartStore';

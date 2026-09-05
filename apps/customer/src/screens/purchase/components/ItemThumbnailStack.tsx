@@ -4,7 +4,8 @@
 // photo, so a long order still reads as "here's roughly what's in it" at a
 // glance rather than silently dropping items with no indication more exist.
 
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { AppImage as Image } from '../../../components/AppImage';
 import type { OrderItemSummary } from '../data';
 
 const MAX_PHOTOS = 3;

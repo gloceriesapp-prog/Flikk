@@ -35,7 +35,12 @@ export function HomeSearchBar({ onPress }: Props) {
         <RotatingSearchHint />
       </View>
 
-      <Pressable hitSlop={8} className="pl-3">
+      {/* This bar isn't a real input (see file header) so real voice
+          capture can't happen here — tapping the mic does the same thing
+          as tapping the rest of the bar (opens the real Search screen,
+          SearchHeader.tsx's own mic button is the one that actually
+          listens), rather than being a dead icon with no onPress at all. */}
+      <Pressable onPress={onPress} hitSlop={8} className="pl-3">
         <AppIcon icon={Mic01Icon} size={19} color={colors.ink} strokeWidth={1.8} />
       </Pressable>
     </Pressable>

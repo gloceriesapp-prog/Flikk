@@ -49,8 +49,17 @@ module.exports = {
           locationWhenInUsePermission: 'Flikk uses your location to find stores near you and set your delivery address.',
         },
       ],
+      [
+        'expo-speech-recognition',
+        {
+          microphonePermission: 'Flikk uses your microphone so you can search by voice.',
+          speechRecognitionPermission: 'Flikk uses speech recognition to turn what you say into a search.',
+          androidSpeechServicePackages: ['com.google.android.googlequicksearchbox'],
+        },
+      ],
       'expo-font',
       'expo-splash-screen',
+      'expo-image',
     ],
     extra: {
       eas: {

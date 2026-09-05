@@ -10,7 +10,7 @@ export const colors = {
   limeSoft: '#EEF7DC',
   ink: '#101C10',
   coral: '#FF6B4A',
-  gold: '#D9A441',
+  gold: '#FFD700',
   mist: '#F6FAF0',
   success: '#2E9E77',
   danger: '#D64545',

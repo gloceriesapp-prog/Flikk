@@ -4,7 +4,8 @@
 // selected tab's own "Ads & posters" section), no fallback/dummy image —
 // callers only render this when a real banner exists.
 
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
+import { AppImage as Image } from '../../../../components/AppImage';
 
 interface Props {
   imageUri: string;

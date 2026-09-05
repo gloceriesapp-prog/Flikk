@@ -15,6 +15,7 @@ import { replaceProductVariants } from '../db/productVariants.js';
 import { AppError, asValidationError } from '../lib/errors.js';
 import { toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
+import { toWebp } from '../utils/image.js';
 
 export const partnerRouter = Router();
 partnerRouter.use(requireAuth, requireRole('store_owner'), requireApproved);
@@ -83,18 +84,22 @@ partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
 // Product photo upload — base64 in, public Storage URL out. Same
 // bucket/pattern as admin's own upload route (apps/admin/src/app/api/
 // upload — 'product-images'), so a photo uploaded from either app renders
-// identically wherever products.image_url is read.
+// identically wherever products.image_url is read. Re-encoded to webp
+// (utils/image.ts's toWebp) before it ever reaches Storage — same
+// normalization admin's own upload route does, so every product photo is
+// webp regardless of which app uploaded it or what format the source
+// camera/gallery photo was in.
 partnerRouter.post('/product-photo', async (req: AuthedRequest, res, next) => {
   try {
-    const { base64, contentType } = req.body as { base64?: string; contentType?: string };
-    if (!base64 || !contentType) throw new AppError(400, 'MISSING_FIELDS', 'base64 and contentType are required.');
+    const { base64 } = req.body as { base64?: string };
+    if (!base64) throw new AppError(400, 'MISSING_FIELDS', 'base64 is required.');
 
     const storeId = await ownStoreId(req.user!.id);
-    const extension = contentType.split('/')[1] ?? 'jpg';
-    const path = `${storeId}/${randomUUID()}.${extension}`;
+    const webpBuffer = await toWebp(Buffer.from(base64, 'base64'));
+    const path = `${storeId}/${randomUUID()}.webp`;
     const { error: uploadErr } = await supabase.storage
       .from('product-images')
-      .upload(path, Buffer.from(base64, 'base64'), { contentType });
+      .upload(path, webpBuffer, { contentType: 'image/webp' });
     if (uploadErr) throw new AppError(500, 'UPLOAD_FAILED', uploadErr.message);
 
     const { data } = supabase.storage.from('product-images').getPublicUrl(path);

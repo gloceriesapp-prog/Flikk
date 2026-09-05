@@ -65,6 +65,7 @@ function sampleItem(name: string): OrderItemSummary {
 }
 
 const PREVIEW_PLACED_AT = new Date(Date.now() - 5 * 60_000).toISOString(); // 5 min ago
+const PREVIEW_DELIVERED_AT = new Date(Date.now() - 26 * 60 * 60_000).toISOString(); // yesterday
 
 export const SAMPLE_PREVIEW_ORDERS: PurchaseOrder[] = [
   {
@@ -97,6 +98,22 @@ export const SAMPLE_PREVIEW_ORDERS: PurchaseOrder[] = [
     placedAtLabel: 'Today, 12:05 PM',
     total: 245,
     placedAtIso: PREVIEW_PLACED_AT,
+    avgPrepMinutes: 15,
+  },
+  // Delivered — so the "Past" group (OrderRow's own ink-colored,
+  // non-tappable "Delivered" headline) is actually visible on screen
+  // alongside the two live previews above, not just live statuses.
+  {
+    id: 'FLK-PREVIEW-DELIVERED',
+    orderId: 'preview-delivered',
+    status: 'delivered',
+    storeName: 'Preview Store',
+    items: [sampleItem('Onion'), sampleItem('Tomato')],
+    statusLabel: 'Delivered',
+    etaLabel: 'Delivered at Yesterday, 06:30 PM',
+    placedAtLabel: 'Yesterday, 06:30 PM',
+    total: 90,
+    placedAtIso: PREVIEW_DELIVERED_AT,
     avgPrepMinutes: 15,
   },
 ];

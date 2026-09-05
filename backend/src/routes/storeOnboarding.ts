@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
+import { toWebp } from '../utils/image.js';
 
 export const storeOnboardingRouter = Router();
 
@@ -123,17 +124,20 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
 
 // Storefront photo upload — base64 in, public Supabase Storage URL out.
 // requireAuth only, same reasoning as above: the owner uploading their
-// storefront photo during signup isn't role='store_owner' yet.
+// storefront photo during signup isn't role='store_owner' yet. Re-encoded
+// to webp (utils/image.ts's toWebp) before it reaches Storage — same
+// normalization the product-photo route and admin's own upload route do,
+// so every storefront photo is webp regardless of source format.
 storeOnboardingRouter.post('/store-photo', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { base64, contentType } = req.body as { base64?: string; contentType?: string };
-    if (!base64 || !contentType) throw new AppError(400, 'MISSING_FIELDS', 'base64 and contentType are required.');
+    const { base64 } = req.body as { base64?: string };
+    if (!base64) throw new AppError(400, 'MISSING_FIELDS', 'base64 is required.');
 
-    const extension = contentType.split('/')[1] ?? 'jpg';
-    const path = `${req.user!.id}/${randomUUID()}.${extension}`;
+    const webpBuffer = await toWebp(Buffer.from(base64, 'base64'));
+    const path = `${req.user!.id}/${randomUUID()}.webp`;
     const { error: uploadErr } = await supabase.storage
       .from(PHOTO_BUCKET)
-      .upload(path, Buffer.from(base64, 'base64'), { contentType });
+      .upload(path, webpBuffer, { contentType: 'image/webp' });
     if (uploadErr) throw new AppError(500, 'UPLOAD_FAILED', uploadErr.message);
 
     const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);

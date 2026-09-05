@@ -26,6 +26,7 @@
 // exactly the kind of input a form field shouldn't get to decide unchecked.
 
 import { NextResponse } from 'next/server';
+import sharp from 'sharp';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { generateProductBgColor } from '@/lib/bgColor';
 
@@ -58,12 +59,23 @@ export async function POST(request: Request) {
       ? (requestedBucket as Bucket)
       : 'product-images';
 
-    const extension = file.name.split('.').pop() || 'jpg';
-    const path = `${crypto.randomUUID()}.${extension}`;
+    // Every upload normalizes to webp (smaller than jpg/png at equal
+    // quality, and one stored format everywhere) regardless of what format
+    // the source file was — same normalization the backend's own
+    // partner.ts/storeOnboarding.ts upload routes do (utils/image.ts's
+    // toWebp) for the mobile-app upload paths into this same bucket set.
+    // 800px cap: nothing in any of the four apps displays these anywhere
+    // near full camera resolution; withoutEnlargement so a smaller source
+    // photo is never upscaled.
+    const webpBuffer = await sharp(Buffer.from(await file.arrayBuffer()))
+      .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    const path = `${crypto.randomUUID()}.webp`;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from(bucket)
-      .upload(path, await file.arrayBuffer(), { contentType: file.type });
+      .upload(path, webpBuffer, { contentType: 'image/webp' });
     if (uploadError) throw uploadError;
 
     const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
