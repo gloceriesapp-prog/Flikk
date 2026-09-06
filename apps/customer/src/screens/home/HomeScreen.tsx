@@ -147,6 +147,16 @@ export function HomeScreen({ navigation }: Props) {
         stickyHeaderIndices={[0]}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        // stickyHeaderIndices keeps the header pinned during a normal
+        // scroll, but iOS's default elastic overscroll bounce still lets a
+        // pull-down-past-the-top gesture visually drag/stretch the sticky
+        // header down before it snaps back — bounces={false} removes that
+        // rubber-banding entirely so the header reads as genuinely fixed.
+        // overScrollMode="never" is the Android equivalent (its default
+        // over-scroll is a glow effect, not a drag, but this keeps both
+        // platforms behaving identically here).
+        bounces={false}
+        overScrollMode="never"
       >
         <HomeHeader
           onChangeLocation={() => navigation.navigate('SelectLocation')}

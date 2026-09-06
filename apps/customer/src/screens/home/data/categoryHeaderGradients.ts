@@ -25,11 +25,14 @@ function gradient(colors: readonly [string, string, string, string]): CategoryHe
 }
 
 const GRADIENT_BY_TAB_NAME: Record<string, CategoryHeaderGradient> = {
-  // Deep charcoal-to-aubergine (near-black with a plum undertone), not
-  // green — per an explicit ask, All's own header reads as generic
-  // "grocery-app green" next to the brand's own lime, where a genuinely
-  // distinct near-black/jewel-purple tone reads as premium instead.
-  all: gradient(['#0D0A12', '#241A34', '#3C2857', '#5A3B7E']),
+  // Deep emerald-to-near-black — replaces an earlier yellow attempt.
+  // Ties back to the brand's own lime accent (a dark, desaturated version
+  // of the same hue family) rather than an unrelated color, which is what
+  // actually reads as premium/intentional instead of just "a different
+  // bright color than competitors." Kept noticeably darker/more
+  // desaturated than 'fresh' below (a brighter, more saturated green) so
+  // the two don't collide.
+  all: gradient(['#050B06', '#0E1F12', '#173A1E', '#215A29']),
   groceries: gradient(['#1F1409', '#4A2E12', '#7A4A1E', '#A8732F']),
   fresh: gradient(['#0C2410', '#194A1E', '#2E7A2E', '#4FA83B']),
   'meat & fish': gradient(['#04141F', '#0A2E42', '#134F63', '#1C7A8C']),
