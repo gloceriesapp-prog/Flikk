@@ -30,6 +30,13 @@ module.exports = {
         monochromeImage: './assets/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
+      // 'pan' — Android's default ('resize') shrinks the whole window when
+      // the keyboard opens, which squished/cropped the hero background
+      // image (LoginScreen.tsx). 'pan' leaves the window (and the image)
+      // untouched; LoginScreen.tsx's own KeyboardAvoidingView (behavior
+      // 'position', wrapping only the bottom sheet) is fully responsible
+      // for moving the phone input above the keyboard.
+      softwareKeyboardLayoutMode: 'pan',
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
       config: {
         googleMaps: {

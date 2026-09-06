@@ -7,39 +7,43 @@
 // since iOS has no Google Maps API key configured here and falls back to
 // default Apple Maps regardless (see app.config.js's own note).
 export const GRAYSCALE_MAP_STYLE = [
-  // Ground is real white now (was #f2f2f2) — per an explicit ask, the flat
-  // gray ground was reading as low-contrast/muddy rather than clean. Roads
-  // and buildings below get their own light-gray tones specifically so
-  // they still stand out against a pure white ground instead of vanishing
-  // into it the way they would have on the old #f2f2f2/near-white pairing.
-  { elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  // Per an explicit ask/reference (Blinkit/Flipkart's own pin-confirm map)
+  // — real building depth/shading only ever came from Google's own native
+  // building renderer, never from a JSON style (a JSON style can only set
+  // a flat fill/stroke color, no shadow or extrusion). The earlier flat
+  // landscape.man_made fill+stroke override drawn here was a from-scratch
+  // attempt at faking that "3D box" look, but it only ever produced plain
+  // flat rectangles with a border — not what the reference shows. Removing
+  // that override (and showsBuildings={false} on the MapView itself,
+  // LocationSearchScreen.tsx's own note) lets Google's real building layer
+  // render again, complete with its own shading. POI icons are back on too
+  // (labels.icon's own visibility:'off' removed) — the reference shows real
+  // colored POI badges (shop/lock icons), not text-only labels.
+  // No blanket `elementType: 'geometry'` base rule (three different
+  // versions of one were tried and each broke something else — hiding
+  // buildings, then losing road contrast, then this Android SDK washing
+  // EVERYTHING out to flat white regardless of the more specific rules
+  // below, which means Android's style parser here doesn't reliably
+  // resolve overlapping rules by specificity the way the style spec
+  // otherwise implies). Every feature below sets its own explicit color
+  // instead; ground left unstyled entirely falls back to Google's own
+  // default (a pale cream, not pure white) rather than fighting for global
+  // control of "geometry" and breaking unrelated features again.
+  { featureType: 'landscape.man_made', elementType: 'geometry.fill', stylers: [{ color: '#eef0f4' }] },
+  { featureType: 'landscape.man_made', elementType: 'geometry.stroke', stylers: [{ color: '#d5d9e2' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
   { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
-  // Building footprints get their own fill + stroke, distinct from the
-  // blanket landscape color above — per an explicit ask for the "3D box"
-  // look Google Maps' own building rendering has. That box/shadow effect
-  // is baked into the SDK's renderer for this feature type, not something
-  // a JSON style can draw itself; it only shows up once buildings aren't
-  // colored identically to the ground around them. Darker/more saturated
-  // than the old #e9ebf1/#d5d9e2 pair specifically because the ground is
-  // now pure white — the previous pairing read as invisible pale squares
-  // once there was no gray ground left to contrast against.
-  { featureType: 'landscape.man_made', elementType: 'geometry.fill', stylers: [{ color: '#e4e7ee' }] },
-  { featureType: 'landscape.man_made', elementType: 'geometry.stroke', stylers: [{ color: '#b9c0cd' }] },
-  // POI/road labels are back on now, per an explicit ask — the earlier
-  // "hide everything so the pin stays the focus" pass also hid every
-  // street/place name, leaving the map genuinely blank/unreadable rather
-  // than just visually calm. POI icons still hidden (labels.icon's own
-  // rule above already does that globally) so it's text labels only, not
-  // full-color business icon clutter — a middle ground, not a straight
-  // revert to default Google Maps. Roads are light gray now (were white),
-  // since white roads on a white ground were invisible.
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#eceff3' }] },
-  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#eceff3' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#dfe3e9' }] },
-  { featureType: 'road.local', elementType: 'geometry', stylers: [{ color: '#eceff3' }] },
+  // Darkened (was #eceff3/#dfe3e9) — those were too close in luminance to
+  // Google's own default ground color once the blanket white base rule
+  // was removed (this file's own note above), so roads read as gone
+  // rather than just slightly less contrasty. Real gray now, not a
+  // near-white tint, so they stand out regardless of whatever the
+  // unstyled ground ends up being.
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#c9ced6' }] },
+  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#c9ced6' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#b5bbc5' }] },
+  { featureType: 'road.local', elementType: 'geometry', stylers: [{ color: '#d6dae0' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#d6dade' }] },
 ];

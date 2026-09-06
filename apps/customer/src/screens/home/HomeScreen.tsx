@@ -149,7 +149,7 @@ export function HomeScreen({ navigation }: Props) {
         scrollEventThrottle={16}
       >
         <HomeHeader
-          onChangeLocation={() => navigation.navigate('LocationSearch')}
+          onChangeLocation={() => navigation.navigate('SelectLocation')}
           onOpenSearch={() => navigation.navigate('Search')}
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}

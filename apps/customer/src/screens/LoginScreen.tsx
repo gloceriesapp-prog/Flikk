@@ -29,9 +29,10 @@
 // shape, see that file's own note), Continue, terms line below the
 // button.
 
-import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { useRef, useState } from 'react';
+import { Platform, Pressable, Text, View } from 'react-native';
+import { KeyboardAvoidingView, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { AppImage as Image } from '../components/AppImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -55,6 +56,28 @@ export function LoginScreen({ navigation }: Props) {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // expo-image's Android backend doesn't always compute "cover" scaling
+  // correctly from pure position:absolute inset styling (StyleSheet.
+  // absoluteFill sets top/left/right/bottom: 0, but no explicit numeric
+  // width/height) — the hero rendered narrower than its container, with
+  // visible side margins, Android-only (iOS handled the same absoluteFill
+  // styling fine). Measuring the actual box and handing the Image explicit
+  // pixel dimensions instead of relying on inset-only sizing fixes it.
+  // Captured ONCE (measuredHero ref guards against the shrink animation
+  // below re-firing onLayout with a smaller size and corrupting this) —
+  // this is the image's real full-size dimensions, not whatever its
+  // current shrunk-for-keyboard height is.
+  const [heroSize, setHeroSize] = useState({ width: 0, height: 0 });
+  const measuredHero = useRef(false);
+  // Real keyboard height, animated — used to shrink the hero container by
+  // exactly that much as the keyboard opens (this app deliberately runs
+  // Android in 'pan' mode, see app.config.js's own note, so the OS never
+  // resizes the window itself; nothing shrinks the hero unless this does
+  // it manually). Sign convention isn't guaranteed, hence Math.abs below.
+  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
+  const heroAnimatedStyle = useAnimatedStyle(() => ({
+    height: heroSize.height > 0 ? Math.max(heroSize.height - Math.abs(keyboardHeight.value), 80) : undefined,
+  }));
 
   const canContinue = phone.length === PHONE_LENGTH && !loading;
 
@@ -88,12 +111,15 @@ export function LoginScreen({ navigation }: Props) {
     // (blocking a user's own back button is exactly the kind of trap this
     // repo's own safety guidance warns against).
     //
-    // Numeric-pad keyboards (PhoneInput below) don't push content up on
-    // their own — without this, the keyboard just overlaps the Continue
-    // button at the bottom of the screen instead of sitting above it.
-    // 'padding' on iOS, 'height' on Android — the standard split, iOS's
-    // own keyboard-avoidance model doesn't resize the view the way
-    // Android's does.
+    // Android runs 'pan' mode (app.config.js's own note) so the OS never
+    // resizes the window when the keyboard opens — which also means
+    // nothing shrinks the hero automatically the way iOS's 'padding'
+    // behavior does. heroAnimatedStyle above does that shrink manually,
+    // driven by the real keyboard height, so the sheet below has room to
+    // sit fully above the keyboard without needing its own
+    // KeyboardAvoidingView translate on top of it (that was tried and
+    // either overshot — 'position' on the whole screen — or did nothing —
+    // 'height' with no resize signal to react to).
     <View className="flex-1 bg-white">
         {/* Dark icons — the actual hero photo's own top edge is light
             (near-white), not dark, so "light" (white icons) was reading
@@ -103,12 +129,39 @@ export function LoginScreen({ navigation }: Props) {
             reason — no dark flash behind a light image while it loads. */}
         <StatusBar style="dark" />
 
-        {/* Single hero illustration, the only flex-1 in this column — it
-            claims exactly whatever space the sheet below doesn't need
-            (that sheet sizes to its own content, no competing flex-1 on
-            it). */}
-        <View className="flex-1">
-          <Image source={{ uri: HERO_IMAGE_URI }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        {/* flex-1 only until the first real measurement lands (heroSize),
+            then heroAnimatedStyle's explicit height takes over — a plain
+            flex-1 box has no fixed height for the shrink animation above
+            to animate FROM, so the very first layout has to be measured
+            unshrunk before any keyboard interaction can happen. overflow
+            hidden clips the (fixed-size, never-resized) Image's bottom
+            edge as this container shrinks — cheaper and simpler than
+            re-sizing the Image itself every animation frame. */}
+        {/* Inline style, not className, for flex:1 here — Animated.View
+            (react-native-reanimated's own wrapped component, not a plain
+            host View) isn't NativeWind-patched the same way a bare View
+            is, same gotcha this file's own LinearGradient/BlurView usage
+            elsewhere works around. className="flex-1" was silently
+            ignored, which meant this container never actually sized
+            itself before the first measurement — heroSize came back
+            near-zero, and everything downstream (the shrink animation,
+            the Image's explicit dimensions) was built on that broken
+            base. */}
+        <Animated.View
+          style={[{ flex: heroSize.height === 0 ? 1 : undefined, overflow: 'hidden' }, heroSize.height > 0 && heroAnimatedStyle]}
+          onLayout={(e) => {
+            if (measuredHero.current) return;
+            measuredHero.current = true;
+            setHeroSize(e.nativeEvent.layout);
+          }}
+        >
+          {heroSize.width > 0 && (
+            <Image
+              source={{ uri: HERO_IMAGE_URI }}
+              style={{ position: 'absolute', top: 0, left: 0, width: heroSize.width, height: heroSize.height }}
+              resizeMode="cover"
+            />
+          )}
 
           {/* Top scrim — a soft white wash right under the notch/status
               bar, dissolving to fully transparent by mid-fade so it reads
@@ -151,9 +204,15 @@ export function LoginScreen({ navigation }: Props) {
           <Pressable onPress={continueAsGuest} className="absolute right-5 top-safe-offset-4 rounded-full bg-gray-200 px-5 py-2.5">
             <Text className="text-[15px] font-medium text-black">Skip</Text>
           </Pressable>
-        </View>
+        </Animated.View>
 
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        {/* Android gets no behavior here (undefined = no-op) — the hero's
+            own shrink animation above already makes room for the
+            keyboard; adding 'position' on top of that would shrink AND
+            translate, overshooting past the keyboard the same way the
+            earlier whole-screen 'position' attempt did. iOS still needs
+            'padding' since it has no equivalent manual shrink. */}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View className="gap-5 bg-white px-6 pb-6 pt-7">
             {/* Left-aligned headline — no lime accent word anymore, per an
                 explicit ask to drop green from this screen entirely; the

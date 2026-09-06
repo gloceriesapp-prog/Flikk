@@ -7,15 +7,17 @@
 // this banner used to, so that hook stays — only the banner component/its
 // render here were removed).
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { ScrollView, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { prefetchImages } from '../../components/AppImage';
 import { AllStoresSection } from './all-stores/AllStoresSection';
 import { useAllStores } from './all-stores/useAllStores';
 import { StoreFilterBar } from './components/StoreFilterBar';
 import { StoreFilterSheet, type MinRating, type StoreSort } from './components/StoreFilterSheet';
 import { StoreHeader } from './components/StoreHeader';
+import { getStoreImageUri, PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { useLikedStoresStore } from '../../store/useLikedStoresStore';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -23,6 +25,23 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Store'>;
 
 export function StoreListScreen({ navigation }: Props) {
   const { data: allStores = [] } = useAllStores();
+
+  // Each card fetches 3 photos (StoreCard.tsx) from picsum.photos, a slow
+  // third-party random-image generator with no real CDN edge — on Android,
+  // waiting for each card's own request to start only once it scrolls into
+  // view is what read as "images take forever to load". Firing all of them
+  // the moment the list resolves overlaps that latency with everything else
+  // the screen is already doing, so most tiles are warm by the time they're
+  // actually scrolled to. Same pattern AppImage.tsx's own prefetchImages
+  // already documents for ProductCard.
+  useEffect(() => {
+    const uris = allStores.flatMap((store) => [
+      store.photoUrl || PLACEHOLDER_IMAGE_URI,
+      getStoreImageUri(`${store.id}-b`),
+      getStoreImageUri(`${store.id}-c`),
+    ]);
+    prefetchImages(uris);
+  }, [allStores]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sort, setSort] = useState<StoreSort>('relevance');
   const [minRating, setMinRating] = useState<MinRating>(0);

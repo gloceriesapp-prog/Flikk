@@ -12,6 +12,13 @@ export type AppStackParamList = {
   // One-time (per session, until a saved location exists) flow between login
   // and Home — see src/screens/location/README.md for the full sequence.
   LocationPermission: undefined;
+  // Reached from Home's own "Delivering to" header tap — the intermediate
+  // "search / use current location / add new address / saved / recently
+  // searched" picker that used to skip straight to the map (LocationSearch)
+  // with no way to reuse a saved address or a past search. Every row here
+  // still ends up at LocationSearch, just pre-filled instead of starting
+  // from the default zone center.
+  SelectLocation: undefined;
   // Single screen now — search bar + live map + confirm sheet all in one
   // (LocationSearchScreen.tsx), no separate MapConfirm page to navigate to.
   // latitude/longitude/addressLabel/city are an optional starting point

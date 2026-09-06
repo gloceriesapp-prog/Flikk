@@ -165,11 +165,18 @@ export function BottomNavBar({ hidden }: Props) {
             // className here is silently ignored, same as LinearGradient
             // elsewhere in this app. Positioning/rounding must go through
             // style.
+            // Android's BlurView backend renders visibly weaker/flatter than
+            // iOS's — intensity alone (was 90) still read as a plain gray
+            // bar, not glass. Pushed to max (100) plus a dark wash layered
+            // on top (rgba black, not the tint prop alone) for real contrast
+            // against light content scrolling underneath — per an explicit
+            // "increase the black a bit more" ask.
             <BlurView
-              intensity={90}
+              intensity={100}
               tint="dark"
               style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }}
             >
+              <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} />
               <View className="flex-row items-center justify-around px-2 py-2.5">
                 {BOTTOM_NAV_TABS.map((tab) => (
                   <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
@@ -179,23 +186,47 @@ export function BottomNavBar({ hidden }: Props) {
           )}
         </View>
 
-        {/* Same shadow removal, same reason, as the pill wrapper above. */}
+        {/* Same shadow removal, same reason, as the pill wrapper above.
+            The image used to fill the circle edge-to-edge (resizeMode
+            cover, 100% width/height) — that read as a hard zoomed-in crop
+            with no glass visible around it at all. Shrinking the image to
+            ~72% and centering it inside the full-size glass circle is what
+            actually shows the glass effect as a visible ring/backdrop
+            around the artwork, on both the iOS GlassView path and the
+            Android BlurView fallback — same fix, same reason, both
+            platforms. */}
         <View style={{ width: SIDE_BUTTON_SIZE, height: SIDE_BUTTON_SIZE }}>
           {USE_LIQUID_GLASS ? (
             <GlassView
               glassEffectStyle="regular"
               colorScheme="dark"
               isInteractive
-              style={{ width: '100%', height: '100%', borderRadius: 999, overflow: 'hidden' }}
+              style={{ width: '100%', height: '100%', borderRadius: 999, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}
             >
-              <Pressable style={{ width: '100%', height: '100%' }}>
+              <Pressable style={{ width: '72%', height: '72%', borderRadius: 999, overflow: 'hidden' }}>
                 <Image source={{ uri: SIDE_BUTTON_IMAGE_URI }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
               </Pressable>
             </GlassView>
           ) : (
-            <Pressable style={{ width: '100%', height: '100%', borderRadius: 999, overflow: 'hidden', backgroundColor: '#000000' }}>
-              <Image source={{ uri: SIDE_BUTTON_IMAGE_URI }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            </Pressable>
+            // Same glass treatment as the pill above (was a flat solid
+            // black View, inconsistent with the pill's own BlurView look) —
+            // per an explicit ask to match. android_ripple: transparent
+            // removes Android's default press ripple — there's no real
+            // destination behind this button yet (this file's own header
+            // note), so a tap feedback that implies one is misleading.
+            <BlurView
+              intensity={100}
+              tint="dark"
+              style={{ width: '100%', height: '100%', borderRadius: 999, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} />
+              <Pressable
+                android_ripple={{ color: 'transparent' }}
+                style={{ width: '72%', height: '72%', borderRadius: 999, overflow: 'hidden' }}
+              >
+                <Image source={{ uri: SIDE_BUTTON_IMAGE_URI }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              </Pressable>
+            </BlurView>
           )}
         </View>
       </View>

@@ -13,8 +13,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { Platform, Pressable, Text, View } from 'react-native';
+import { KeyboardAvoidingView, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { AppImage as Image } from '../components/AppImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -44,6 +45,19 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
   const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS);
   const setSession = useAuthStore((s) => s.setSession);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Same fix as LoginScreen.tsx's own identical hero+keyboard setup —
+  // Android runs 'pan' mode (app.config.js) so the OS never resizes the
+  // window when the keyboard opens; this manually shrinks the hero by the
+  // real keyboard height instead, since 'height' behavior gets no resize
+  // signal to react to under 'pan'. See LoginScreen.tsx's own note for the
+  // full reasoning (KeyboardAvoidingView's 'height'/'position' on the
+  // whole screen were both tried and failed before landing on this).
+  const [heroSize, setHeroSize] = useState({ width: 0, height: 0 });
+  const measuredHero = useRef(false);
+  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
+  const heroAnimatedStyle = useAnimatedStyle(() => ({
+    height: heroSize.height > 0 ? Math.max(heroSize.height - Math.abs(keyboardHeight.value), 80) : undefined,
+  }));
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -98,8 +112,26 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
           it. */}
       <StatusBar style="dark" />
 
-      <View className="flex-1">
-        <Image source={{ uri: HERO_IMAGE_URI }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      {/* Inline style, not className, for flex:1 here — Animated.View isn't
+          NativeWind-patched the same way a bare View is (LoginScreen.tsx's
+          own identical note). Explicit numeric width/height on the Image
+          (not StyleSheet.absoluteFill) works around expo-image's Android
+          "cover" sizing quirk, also documented there. */}
+      <Animated.View
+        style={[{ flex: heroSize.height === 0 ? 1 : undefined, overflow: 'hidden' }, heroSize.height > 0 && heroAnimatedStyle]}
+        onLayout={(e) => {
+          if (measuredHero.current) return;
+          measuredHero.current = true;
+          setHeroSize(e.nativeEvent.layout);
+        }}
+      >
+        {heroSize.width > 0 && (
+          <Image
+            source={{ uri: HERO_IMAGE_URI }}
+            style={{ position: 'absolute', top: 0, left: 0, width: heroSize.width, height: heroSize.height }}
+            resizeMode="cover"
+          />
+        )}
 
         <LinearGradient
           colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0)']}
@@ -123,16 +155,14 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
         >
           <AppIcon icon={ArrowLeft01Icon} size={20} color={colors.ink} />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      {/* KeyboardAvoidingView was missing here (LoginScreen.tsx has one,
-          this screen didn't) — with autoFocus firing the keyboard the
-          instant this screen mounts, the OTP boxes/resend/verify button
-          sat wherever they laid out before the keyboard opened, which put
-          them underneath it on shorter screens. 'padding' on iOS,
-          'height' on Android — same split as Login's own, iOS doesn't
-          resize the view the way Android does. */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {/* Android gets no behavior here (undefined = no-op) — the hero's
+          own shrink animation above already makes room for the keyboard;
+          LoginScreen.tsx's own identical note explains why adding
+          'position' on top would overshoot and 'height' does nothing
+          under this app's 'pan' softwareKeyboardLayoutMode. */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View className="gap-5 bg-white px-6 pb-safe-offset-6 pt-7">
           <View className="gap-1.5">
             <Text className="text-2xl font-semibold leading-8 text-ink">Verify your number.</Text>

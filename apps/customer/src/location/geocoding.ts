@@ -135,3 +135,12 @@ export function distanceKm(a: Coordinates, b: Coordinates): number {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
+
+// Meters below 1km (matches how Google/Zepto-style pickers phrase short
+// distances — "324 m" reads immediately, "0.3 km" needs a second to parse),
+// one decimal km above that. Shared by LocationSearchScreen and
+// SelectLocationScreen, both of which show a "Xkm away" line.
+export function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  return `${km.toFixed(1)} km`;
+}

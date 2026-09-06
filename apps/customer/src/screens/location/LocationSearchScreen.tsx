@@ -17,7 +17,7 @@
 // of SDK 52+, this screen requires a development build (`npx expo run:ios` /
 // EAS dev client) to actually render. See src/screens/location/README.md.
 
-import { ArrowLeft01Icon, GpsSignal01Icon, Location01Icon, Search01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, GpsSignal01Icon, Search01Icon } from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -31,6 +31,7 @@ import { AppImage as Image } from '../../components/AppImage';
 import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import {
   distanceKm,
+  formatDistance,
   geocodeAddress,
   getCurrentCoordinates,
   requestLocationPermission,
@@ -40,20 +41,13 @@ import {
 } from '../../location/geocoding';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
 import { useLocationStore } from '../../store/useLocationStore';
+import { useRecentSearchesStore } from '../../store/useRecentSearchesStore';
 import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'LocationSearch'>;
 
 const BUTTON_ACCENT = '#1447e6';
-
-// Meters below 1km (matches how Google/Zepto-style pickers phrase short
-// distances — "324 m" reads immediately, "0.3 km" needs a second to parse),
-// one decimal km above that.
-function formatDistance(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)} m`;
-  return `${km.toFixed(1)} km`;
-}
 
 // ~130m span (tighter than the previous 0.004/~350m), per an explicit
 // "zoom in more" ask — used for animateToRegion calls after a search/
@@ -93,6 +87,9 @@ const DEFAULT_CENTER = { latitude: 13.2167, longitude: 74.7469 };
 const PIN_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/gps.png';
 const PIN_SIZE = 64;
 const PIN_TIP_RATIO = 0.87;
+// Small pin icon inside the confirm card's address row — a different asset
+// from PIN_IMAGE_URI above (that one's the actual draggable map marker).
+const CARD_PIN_ICON_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/map-pin.png';
 
 export function LocationSearchScreen({ navigation, route }: Props) {
   const { intent, ...startingPoint } = route.params ?? {};
@@ -133,23 +130,47 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // asked). Requesting again when already granted is a harmless no-op —
   // this makes the dot work reliably regardless of which path got here.
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  // The native "my location" blue dot's own live coordinate (from
+  // onUserLocationChange below) — "Use my current location" used to call
+  // getCurrentCoordinates() fresh instead, a SEPARATE one-off GPS fetch
+  // that can genuinely differ from wherever the continuously-tracked blue
+  // dot is actually drawn (a new fix, drift, or just a slightly later/
+  // earlier sample), which is exactly why the pin could land visibly off
+  // from the blue dot despite the blue dot itself being accurate. A ref,
+  // not state — it updates many times a second and is only ever read once,
+  // on tap, not rendered from.
+  const liveUserLocation = useRef<Coordinates | null>(null);
   // Live place-name suggestions as the user types — searchPlaces
   // (geocoding.ts, backend's Mappls autosuggest proxy) was already built
   // server-side but never actually wired into this screen's search bar,
   // which is why no dropdown ever showed no matter what you typed.
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const setLocation = useLocationStore((s) => s.setLocation);
+  const addRecentSearch = useRecentSearchesStore((s) => s.add);
 
-  // Best-effort, once — purely to power the "Xkm away from your current
-  // location" sanity-check line below, never blocks anything if it fails
-  // (permission denied, GPS off, whatever) since the map itself doesn't
-  // need this to function.
+  // Best-effort, once — powers the "Xkm away from your current location"
+  // sanity-check line, and (per an explicit ask) also recenters the map on
+  // the user's real GPS position when this screen opened with no real
+  // starting point of its own (route.params.latitude/longitude unset —
+  // e.g. reached via SelectLocationScreen's "Select it manually", not
+  // LocationPermissionScreen or a saved-address tap, both of which already
+  // hand in real coords). Falling back to the default zone center in that
+  // case made the pin start somewhere the user has to notice and correct
+  // before it means anything, instead of already being right. Never blocks
+  // anything if it fails (permission denied, GPS off) — the map just stays
+  // wherever it already was.
   useEffect(() => {
     requestLocationPermission()
       .then(setHasLocationPermission)
       .catch(() => setHasLocationPermission(false));
     getCurrentCoordinates()
-      .then(setCurrentCoords)
+      .then((coords) => {
+        setCurrentCoords(coords);
+        if (startingPoint.latitude == null) {
+          setCenter(coords);
+          mapRef.current?.animateToRegion({ ...coords, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -171,6 +192,19 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   }, [query]);
 
   const distanceFromCurrent = currentCoords ? distanceKm(currentCoords, center) : null;
+
+  // Shared by mapPadding (below) and the pin's own vertical anchor — this
+  // MUST be the same number in both places. mapPadding tells Google's
+  // camera "the bottom `bottomPadding` px are obscured," so it centers
+  // whatever coordinate we ask for within the REMAINING visible area
+  // above that, not the full MapView box. The teardrop pin overlay used
+  // to sit at a flat `top: '50%'` of the full box regardless — correct
+  // only when mapPadding is zero, off by half of bottomPadding otherwise,
+  // which is exactly the "pin isn't on my exact location" mismatch this
+  // fixes: Google was centering the coordinate one place, our pin was
+  // drawn somewhere else entirely.
+  const bottomPadding = cardHeight + insets.bottom + 16 + 16;
+  const pinAnchorTop = (mapAreaHeight - bottomPadding) / 2;
 
   async function handleRegionSettled(region: Region) {
     const next = { latitude: region.latitude, longitude: region.longitude };
@@ -201,6 +235,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       // reverse-geocodes the real pin position — onRegionChangeComplete
       // overwrites it right after.
       setAddressLabel(label);
+      addRecentSearch({ label, ...coords });
     } catch {
       setError('Search failed. Please try again.');
     }
@@ -223,7 +258,12 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   async function handleGoToCurrentLocation() {
     setError(null);
     try {
-      const coords = await getCurrentCoordinates();
+      // Prefer the blue dot's own live-tracked coordinate over a fresh
+      // getCurrentCoordinates() fetch — see liveUserLocation's own note on
+      // why those two can genuinely disagree. Falls back to a fresh fetch
+      // only if the blue dot hasn't emitted a position yet (e.g. tapped
+      // immediately on mount, before the first onUserLocationChange).
+      const coords = liveUserLocation.current ?? (await getCurrentCoordinates());
       mapRef.current?.animateToRegion({ ...coords, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
     } catch {
       setError('Could not get your location. Please try searching instead.');
@@ -282,13 +322,28 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // the correct react-native-maps API for this — it insets where
           // the SDK positions its own built-in UI (logo, compass), not
           // just a visual crop.
-          mapPadding={{ top: 0, right: 0, bottom: cardHeight + insets.bottom + 16 + 16, left: 0 }}
+          mapPadding={{ top: 0, right: 0, bottom: bottomPadding, left: 0 }}
           // initialCamera, not initialRegion — a Region has no pitch/zoom
           // concept at all, only a lat/lng delta "span", which is exactly
           // why the 3D buildings weren't showing regardless of how tight
           // that span was made.
           initialCamera={{ center, pitch: INITIAL_PITCH, heading: 0, zoom: INITIAL_ZOOM, altitude: INITIAL_ALTITUDE }}
+          // Caps how far out this screen can zoom — per an explicit ask,
+          // and it also sidesteps Google's own default blue "world view"
+          // ocean/base color that only appears once you zoom out past
+          // roughly city level, which this file's own mapStyle.ts doesn't
+          // (and shouldn't need to) style. 14 still shows several
+          // surrounding blocks, which is plenty for a pin-precision
+          // confirm screen — nobody needs to zoom out to city-scale here.
+          minZoomLevel={14}
           onRegionChangeComplete={handleRegionSettled}
+          // Keeps liveUserLocation (handleGoToCurrentLocation's own note)
+          // in sync with wherever the native blue dot actually is,
+          // continuously — not just once on mount.
+          onUserLocationChange={(e) => {
+            const coordinate = e.nativeEvent.coordinate;
+            if (coordinate) liveUserLocation.current = { latitude: coordinate.latitude, longitude: coordinate.longitude };
+          }}
           // The real "my location" blue dot — GPS-anchored to the actual
           // device position, native to the map (not a custom marker), so
           // it stays fixed on the real coordinate as the map pans
@@ -301,18 +356,14 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // instead of the OS-default one.
           showsUserLocation={hasLocationPermission}
           showsMyLocationButton={false}
-          // false, not the default true — Google's native 3D BUILDINGS
-          // layer this prop controls is separate from mapStyle.ts's own
-          // flat landscape.man_made footprint styling, has its own zoom-
-          // dependent level-of-detail behavior we can't touch via JSON
-          // style, and is exactly what was still disappearing at close
-          // zoom even after the camera itself went flat (pitch: 0,
-          // above) — that pitch change alone wasn't the real fix, this
-          // native layer was still switching in underneath it. Turning
-          // it off leaves ONLY the flat, JSON-styled footprint, which
-          // never disappears at any zoom because it's a plain colored
-          // polygon, not a 3D layer with its own LOD.
-          showsBuildings={false}
+          // Back on (was false) — per an explicit ask/reference (Blinkit/
+          // Flipkart's own pin-confirm map shows real shaded building
+          // depth, which only Google's native buildings layer can draw;
+          // mapStyle.ts's own note explains why a flat JSON fill/stroke
+          // can't reproduce it). This was disabled earlier because it
+          // still disappeared at close zoom even at pitch: 0 — if that
+          // recurs, it's this prop, not mapStyle.ts, to revisit.
+          showsBuildings
         />
 
         {/* Subtle scrim over the whole map — pure decoration (masking, not a
@@ -343,16 +394,18 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 44, height: 28 }}
         />
 
-        {/* The pin itself, anchored by its TIP (not its center) to screen
-            center — see this file's own header note on PIN_TIP_RATIO for
-            why the box is shifted up by that fraction of its own height
-            instead of the usual half-height a center-anchored image
-            would use. */}
+        {/* The pin itself, anchored by its TIP (not its center) to the
+            map's own visually-centered point — see this file's own
+            bottomPadding/pinAnchorTop note above for why that's
+            `pinAnchorTop`, not a flat `top: '50%'` (only correct when
+            mapPadding is zero). marginTop shifts the box up by
+            PIN_TIP_RATIO's own fraction of its height on top of that,
+            same reasoning as before. */}
         <View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: '50%',
+            top: pinAnchorTop,
             left: '50%',
             width: PIN_SIZE,
             height: PIN_SIZE,
@@ -486,45 +539,56 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           </View>
 
           <View className="gap-4 px-5 pb-5 pt-4">
-            <View className="flex-row items-center gap-3">
-              {/* Filled pin in a soft blue circle — matches the reference's
-                  colored pin instead of a plain black outline icon, and ties
-                  visually back to this screen's own draggable map pin. */}
-              <View className="h-11 w-11 items-center justify-center rounded-full" style={{ backgroundColor: `${BUTTON_ACCENT}1A` }}>
-                <AppIcon icon={Location01Icon} size={24} color={BUTTON_ACCENT} />
+            {/* One single white card now, not two separate rounded boxes
+                stacked with a gap — the address row and the distance line
+                are one visual unit, not two unrelated pieces of info. */}
+            <View className="rounded-2xl bg-white p-3">
+              <View className="flex-row items-center gap-3">
+                {/* Real pin image, not the outline AppIcon — ties visually
+                    back to this screen's own draggable map pin. */}
+                <View className="h-11 w-11 items-center justify-center rounded-full">
+                  <Image source={{ uri: CARD_PIN_ICON_URI }} style={{ width: 28, height: 28 }} resizeMode="contain" />
+                </View>
+                <View className="flex-1">
+                  {resolving ? (
+                    <Text className="text-[15px] text-ink/50">Locating…</Text>
+                  ) : (
+                    <>
+                      <Text className="text-[16px] font-bold text-ink" numberOfLines={1}>
+                        {addressLabel.split(',')[0] || 'Move the pin to your location'}
+                      </Text>
+                      {/* Only rendered when there's real content — Google's
+                          reverse-geocode sometimes returns just a single
+                          short place name with no city either (sparse rural
+                          data, this file's own note on Plus-Code fallbacks
+                          elsewhere), and an empty subtitle line still took
+                          up its own row, reading as "the address is broken"
+                          rather than "there's just nothing more to show". */}
+                      {(addressLabel.split(',').slice(1).join(',').trim() || city) ? (
+                        <Text className="text-[13px] text-ink/45" numberOfLines={1}>
+                          {addressLabel.split(',').slice(1).join(',').trim() || city}
+                        </Text>
+                      ) : null}
+                    </>
+                  )}
+                </View>
+                <Pressable
+                  onPress={() => searchInputRef.current?.focus()}
+                  hitSlop={8}
+                  className="rounded-full border border-mist bg-white/70 px-3 py-1.5"
+                >
+                  <Text className="text-[12.5px] font-bold" style={{ color: BUTTON_ACCENT }}>
+                    Change
+                  </Text>
+                </Pressable>
               </View>
-              <View className="flex-1">
-                {resolving ? (
-                  <Text className="text-[15px] text-ink/50">Locating…</Text>
-                ) : (
-                  <>
-                    <Text className="text-[16px] font-bold text-ink" numberOfLines={1}>
-                      {addressLabel.split(',')[0] || 'Move the pin to your location'}
-                    </Text>
-                    <Text className="text-[13px] text-ink/45" numberOfLines={1}>
-                      {addressLabel.split(',').slice(1).join(',').trim() || city}
-                    </Text>
-                  </>
-                )}
-              </View>
-              <Pressable
-                onPress={() => searchInputRef.current?.focus()}
-                hitSlop={8}
-                className="rounded-full border border-mist bg-white/70 px-3 py-1.5"
-              >
-                <Text className="text-[12.5px] font-bold" style={{ color: BUTTON_ACCENT }}>
-                  Change
-                </Text>
-              </Pressable>
-            </View>
 
-            {distanceFromCurrent !== null ? (
-              <View className="rounded-xl px-3.5 py-2.5" style={{ backgroundColor: `${colors.gold}26` }}>
-                <Text className="text-[12.5px] font-medium" style={{ color: colors.gold }}>
+              {distanceFromCurrent !== null ? (
+                <Text className="mt-2.5 text-[12.5px] font-medium text-red-600">
                   This pin is {formatDistance(distanceFromCurrent)} from your current location
                 </Text>
-              </View>
-            ) : null}
+              ) : null}
+            </View>
 
             <Pressable
               onPress={handleConfirm}

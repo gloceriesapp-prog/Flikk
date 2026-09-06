@@ -47,8 +47,6 @@ import { addToCart } from '../../../store/addToCart';
 import { useWishlistStore } from '../../../store/useWishlistStore';
 import type { Product } from './types';
 
-const IMAGE_TILE_BG = '#F3F4F6';
-
 interface Props {
   product: Product;
   // Grid rows (ProductSection) need a %-based width to divide the row evenly;
@@ -98,22 +96,23 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
 
   return (
     <Pressable onPress={onPress} className={`${widthClassName} gap-2`}>
+      {/* backgroundColor is always explicit white, never undefined —
+          Android's `elevation`-based shadow (shadow-md below) needs an
+          opaque background on the elevated View to composite correctly;
+          leaving it undefined rendered a mismatched gray fill behind the
+          image on Android only (iOS's shadow implementation has no such
+          requirement, which is why this never showed up there). */}
       <View
         className="aspect-square overflow-hidden rounded-xl border border-gray-100 shadow-md shadow-black/20"
-        style={{ backgroundColor: imageUrl ? IMAGE_TILE_BG : undefined }}
+        style={{ backgroundColor: '#FFFFFF' }}
       >
-        {/* Real product photos (imageUrl set) render "contain" on a flat
-            neutral gray backdrop — deliberately NOT colors.mist, which is
-            a pale *green* brand tint (#F6FAF0), not actually neutral, and
-            NOT the old per-product bgColor pastel (admin's lib/bgColor.ts)
-            either. Same #F3F4F6 gray CartItemRow's own thumbnail already
-            settled on, so every product card reads the same everywhere.
-            Mock/placeholder images keep the old "cover" fill. */}
-        <Image
-          source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }}
-          className={imageUrl ? 'h-full w-full p-3' : 'h-full w-full'}
-          resizeMode={imageUrl ? 'contain' : 'cover'}
-        />
+        {/* Every card renders the same way now — full-bleed "cover", no
+            padding, no gray contain-backdrop. That gray-box treatment used
+            to apply only to real photos (imageUrl set), which made mock/
+            placeholder cards and real-photo cards look like two different
+            products of card — per an explicit ask, one consistent look for
+            every card regardless of image source. */}
+        <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
 
         {/* freshness ribbon — top-left, only for same-day perishables. */}
         {freshnessTag && (
