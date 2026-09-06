@@ -53,15 +53,24 @@ export function PhoneInput({ value, onChangeText, autoFocus }: Props) {
           // TextInput carries platform-default vertical padding (worse on Android)
           // that the parent's items-center alone doesn't cancel — zero it out and
           // let the row height + textAlignVertical do the centering instead.
-          className="h-full flex-1 py-0 text-base leading-tight text-ink9741"
+          className="h-full flex-1 py-0 text-base leading-tight text-ink"
         />
       </View>
 
       {/* Notch — absolutely positioned over the box's own top border,
           white background clipping the border line behind the text so it
-          reads as a break in the outline, not a label floating above it. */}
-      <View className="absolute -top-2.5 left-3 bg-white px-1">
-        <Text className="text-xs font-medium text-ink/50">Your Phone Number</Text>
+          reads as a break in the outline, not a label floating above it.
+          Plain inline style, not className — this Text was silently
+          rendering truncated to "Your Phone" (no ellipsis, no wrap, the
+          word "Number" just never painted) even with a verified-clean
+          source string and a verified-correct served bundle, on a
+          completely fresh install with no possible stale cache. That
+          combination points at a NativeWind class-compilation quirk
+          specific to this Text/View pair, not a real content bug —
+          switching to inline style removes NativeWind from the render
+          path for this label entirely. */}
+      <View style={{ position: 'absolute', top: -10, left: 12, backgroundColor: '#FFFFFF', paddingHorizontal: 4 }}>
+        <Text style={{ fontSize: 12, fontWeight: '500', color: `${colors.ink}80` }}>Your Phone Number</Text>
       </View>
     </View>
   );

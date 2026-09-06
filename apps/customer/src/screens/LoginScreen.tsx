@@ -48,7 +48,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 const PHONE_LENGTH = 10;
 // Placeholder — see this file's own header note on why the actual
 // requested Pinterest-pin URL can't be used directly.
-const HERO_IMAGE_URI = 'https://i.pinimg.com/1200x/53/0f/0f/530f0f3dd202c67cc866513e91058475.jpg';
+const HERO_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/login-image.png';
 
 export function LoginScreen({ navigation }: Props) {
   const continueAsGuest = useAuthStore((s) => s.continueAsGuest);

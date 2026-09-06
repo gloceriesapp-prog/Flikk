@@ -143,7 +143,22 @@ locationRouter.get('/reverse-geocode', async (req, res, next) => {
       pickComponent(best.address_components, 'administrative_area_level_2') ??
       '';
 
-    res.json({ addressLabel: best.formatted_address, city });
+    // A bare Plus Code ("7PMX+WC4, Yenna Gudde, Karnataka") is Google's own
+    // genuine result — it means Google has no closer-by named address for
+    // this exact point, common in this app's own rural Kaup/outer-Udupi
+    // launch zone (CLAUDE.md). It's still real data, not an error, but a
+    // Plus Code as the headline reads as broken/meaningless to a customer
+    // where a real place name (address_components already has one — the
+    // same neighborhood/city chain `city` above already extracts) is
+    // available. Prefer that instead when the formatted_address starts
+    // with one; fall back to the Plus Code only if there's truly nothing
+    // better (neighborhood and city both empty).
+    const isPlusCode = /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}/.test(best.formatted_address);
+    const neighborhood = pickComponent(best.address_components, 'neighborhood', 'sublocality_level_2');
+    const fallbackLabel = [neighborhood, city].filter(Boolean).join(', ');
+    const addressLabel = isPlusCode && fallbackLabel ? fallbackLabel : best.formatted_address;
+
+    res.json({ addressLabel, city });
   } catch (err) {
     next(err);
   }

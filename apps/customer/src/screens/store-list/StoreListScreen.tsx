@@ -16,6 +16,7 @@ import { useAllStores } from './all-stores/useAllStores';
 import { StoreFilterBar } from './components/StoreFilterBar';
 import { StoreFilterSheet, type MinRating, type StoreSort } from './components/StoreFilterSheet';
 import { StoreHeader } from './components/StoreHeader';
+import { useLikedStoresStore } from '../../store/useLikedStoresStore';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Store'>;
@@ -26,7 +27,9 @@ export function StoreListScreen({ navigation }: Props) {
   const [sort, setSort] = useState<StoreSort>('relevance');
   const [minRating, setMinRating] = useState<MinRating>(0);
   const [openNowOnly, setOpenNowOnly] = useState(false);
+  const [likedOnly, setLikedOnly] = useState(false);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const likedStoreIds = useLikedStoresStore((state) => state.ids);
 
   // Real, deduped categories from the actual store rows — not a fixed
   // fabricated list that could drift from what's really on file.
@@ -34,6 +37,7 @@ export function StoreListScreen({ navigation }: Props) {
   const filteredStores = useMemo(() => {
     let result = selectedCategory === 'All' ? allStores : allStores.filter((store) => store.category === selectedCategory);
     if (openNowOnly) result = result.filter((store) => store.isOpen);
+    if (likedOnly) result = result.filter((store) => likedStoreIds.includes(store.id));
     if (minRating > 0) result = result.filter((store) => (store.rating ?? 0) >= minRating);
 
     // Stores missing the sorted-on field (rating/avgPrepMinutes not yet
@@ -47,7 +51,7 @@ export function StoreListScreen({ navigation }: Props) {
       result = [...result].sort((a, b) => (a.avgPrepMinutes ?? Infinity) - (b.avgPrepMinutes ?? Infinity));
     }
     return result;
-  }, [allStores, selectedCategory, openNowOnly, minRating, sort]);
+  }, [allStores, selectedCategory, openNowOnly, likedOnly, likedStoreIds, minRating, sort]);
 
   return (
     <View className="flex-1 bg-[#FAFAFA]">
@@ -63,8 +67,10 @@ export function StoreListScreen({ navigation }: Props) {
         minRating={minRating}
         selectedCategory={selectedCategory}
         openNowOnly={openNowOnly}
+        likedOnly={likedOnly}
         onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
         onToggleOpenNow={() => setOpenNowOnly((prev) => !prev)}
+        onToggleLikedOnly={() => setLikedOnly((prev) => !prev)}
       />
 
       <ScrollView className="flex-1" contentContainerClassName="pb-10">

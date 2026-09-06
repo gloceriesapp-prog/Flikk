@@ -40,13 +40,13 @@
 // dummyDistanceLabel below) the moment real columns exist to replace them
 // with. No price range, no review quote — those still aren't shown at all.
 
-import { useState } from 'react';
-import { ArrowRight01Icon, Bookmark01Icon, Share03Icon, StarIcon } from '@hugeicons/core-free-icons';
+import { FavouriteIcon, Share03Icon, StarIcon } from '@hugeicons/core-free-icons';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../../components/AppIcon';
+import { useLikedStoresStore } from '../../../store/useLikedStoresStore';
 import { getStoreImageUri, PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { colors } from '../../../theme/tokens';
 import type { AppStackParamList } from '../../../navigation/types';
@@ -91,7 +91,8 @@ function dummyDistanceLabel(id: string): string {
 
 export function StoreCard({ store }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const isLiked = useLikedStoresStore((state) => state.isLiked(store.id));
+  const toggleLiked = useLikedStoresStore((state) => state.toggle);
 
   function goToStore() {
     navigation.navigate('StoreDetail', { storeId: store.id, storeName: store.name });
@@ -177,16 +178,22 @@ export function StoreCard({ store }: Props) {
           <Text className="text-[14px] font-medium text-black">Share</Text>
         </Pressable>
 
+        {/* Liking here is the same shared state StoreFilterBar.tsx's own
+            heart button reads (useLikedStoresStore) — per an explicit
+            ask, this button's only job is filling the heart icon red on
+            tap, nothing else about the button itself (bg/border stay the
+            plain gray-200 outline every time, active or not). */}
         <Pressable
-          onPress={() => setIsBookmarked((prev) => !prev)}
+          onPress={() => toggleLiked(store.id)}
           hitSlop={8}
-          className={`h-11 w-11 items-center justify-center rounded-full ${isBookmarked ? 'bg-lime-deep' : 'border border-gray-200'}`}
+          className="h-11 w-11 items-center justify-center rounded-full border border-gray-200"
         >
           <AppIcon
-            icon={Bookmark01Icon}
+            icon={FavouriteIcon}
             size={17}
-            color={isBookmarked ? '#FFFFFF' : colors.ink}
-            strokeWidth={isBookmarked ? 0 : 1.8}
+            color={isLiked ? colors.danger : colors.ink}
+            fill={isLiked ? colors.danger : undefined}
+            strokeWidth={isLiked ? 0 : 1.8}
           />
         </Pressable>
       </View>

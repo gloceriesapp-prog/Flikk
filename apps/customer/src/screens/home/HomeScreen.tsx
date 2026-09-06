@@ -20,7 +20,13 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { HomeHeader } from './components/HomeHeader';
@@ -64,6 +70,25 @@ export function HomeScreen({ navigation }: Props) {
       setVisitedIds((prev) => (prev.has(selectedCategoryId) ? prev : new Set(prev).add(selectedCategoryId))),
     );
   }, [selectedCategoryId]);
+
+  // Smooth crossfade on tab switch — this used to be an instant
+  // display:none/flex snap with zero transition (visitedIds' own note
+  // above explains why display-toggling, not unmount, is used at all;
+  // this is purely the missing polish on top of that), which is exactly
+  // the "not smooth/premium" moment on this screen. Snap opacity to 0
+  // the instant a new tab is picked, then animate it to 1 — the switch
+  // itself stays instantaneous (no delay before content underneath
+  // actually changes), only the new content's appearance is eased in, so
+  // tapping a tab still feels immediately responsive rather than
+  // sluggish. Native-driven (useAnimatedStyle/withTiming, not JS-thread
+  // Animated) so it stays smooth even if the JS thread is busy laying
+  // out the newly-visible tab's content underneath it.
+  const contentOpacity = useSharedValue(1);
+  useEffect(() => {
+    contentOpacity.value = 0;
+    contentOpacity.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
+  }, [selectedCategoryId, contentOpacity]);
+  const contentFadeStyle = useAnimatedStyle(() => ({ opacity: contentOpacity.value }));
 
   // Resolved once here (this component already has the real tab list)
   // rather than re-fetched inside HomeHeader.tsx — that component only
@@ -132,37 +157,39 @@ export function HomeScreen({ navigation }: Props) {
           scrollY={scrollY}
         />
 
-        {visitedIds.has(ALL_TAB.id) && (
-          <View style={{ display: selectedCategoryId === ALL_TAB.id ? 'flex' : 'none' }}>
-            <AllTabSections />
-          </View>
-        )}
-
-        {realTabs.map((tab) => {
-          if (!visitedIds.has(tab.id)) return null;
-          const richScreen = richScreenFor(tab);
-          const banner = tab.banners[0];
-
-          return (
-            <View key={tab.id} style={{ display: selectedCategoryId === tab.id ? 'flex' : 'none' }}>
-              {richScreen === 'groceries' && <GroceriesTab banner={banner} />}
-              {richScreen === 'meat-fish' && <FishProductGrid banner={banner} />}
-              {richScreen === 'bakery' && <BakeryTab banner={banner} />}
-              {richScreen === 'protein' && <ProteinTab banner={banner} />}
-              {richScreen === 'regional' && <RegionalTab />}
-              {!richScreen && <HomeTabTileGrid tab={tab} />}
+        <Animated.View style={contentFadeStyle}>
+          {visitedIds.has(ALL_TAB.id) && (
+            <View style={{ display: selectedCategoryId === ALL_TAB.id ? 'flex' : 'none' }}>
+              <AllTabSections />
             </View>
-          );
-        })}
+          )}
 
-        {selectedCategoryId !== ALL_TAB.id && !realTabs.some((t) => t.id === selectedCategoryId) && (
-          <View className="items-center justify-center gap-2 px-6 py-16">
-            <Text className="text-base font-semibold text-ink">Store list goes here.</Text>
-            <Text className="text-center text-sm text-ink/60">
-              Browse/discovery (PRD C4/C5) is the next piece of work.
-            </Text>
-          </View>
-        )}
+          {realTabs.map((tab) => {
+            if (!visitedIds.has(tab.id)) return null;
+            const richScreen = richScreenFor(tab);
+            const banner = tab.banners[0];
+
+            return (
+              <View key={tab.id} style={{ display: selectedCategoryId === tab.id ? 'flex' : 'none' }}>
+                {richScreen === 'groceries' && <GroceriesTab banner={banner} />}
+                {richScreen === 'meat-fish' && <FishProductGrid banner={banner} />}
+                {richScreen === 'bakery' && <BakeryTab banner={banner} />}
+                {richScreen === 'protein' && <ProteinTab banner={banner} />}
+                {richScreen === 'regional' && <RegionalTab />}
+                {!richScreen && <HomeTabTileGrid tab={tab} />}
+              </View>
+            );
+          })}
+
+          {selectedCategoryId !== ALL_TAB.id && !realTabs.some((t) => t.id === selectedCategoryId) && (
+            <View className="items-center justify-center gap-2 px-6 py-16">
+              <Text className="text-base font-semibold text-ink">Store list goes here.</Text>
+              <Text className="text-center text-sm text-ink/60">
+                Browse/discovery (PRD C4/C5) is the next piece of work.
+              </Text>
+            </View>
+          )}
+        </Animated.View>
       </Animated.ScrollView>
 
       <BottomNavBar hidden={navHidden} />

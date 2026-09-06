@@ -69,7 +69,7 @@ const ROUTE_TO_TAB_ID: Record<string, string> = {
 
 const SIDE_BUTTON_SIZE = 60;
 const SIDE_BUTTON_IMAGE_URI =
-  'https://images.unsplash.com/photo-1787240663846-598e1033a919?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/coming-soon.png';
 
 interface Props {
   hidden?: SharedValue<number>;

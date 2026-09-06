@@ -7,10 +7,12 @@
 //
 // Search dropped per an explicit ask (StoreHeader.tsx's own note on why
 // it doesn't carry a search icon of its own needs revisiting if this ever
-// comes back) — the heart/favourite icon takes that slot instead, same
-// local-only toggle CategoryFilterBar's old one was (no wishlist-for-
-// stores screen/persistence exists, same as that one — not a regression
-// introduced here, just restoring the same decorative affordance).
+// comes back) — the heart/favourite icon takes that slot instead. No
+// longer a local-only decorative toggle: it's now a real filter,
+// controlled from StoreListScreen (same lifted-state shape as
+// openNowOnly) — tapping it fills red and switches the list to only the
+// stores liked from their own StoreCard.tsx heart button
+// (useLikedStoresStore, shared between both).
 //
 // No standalone sliders/filter icon anymore, per an explicit ask — it was
 // a redundant fourth way to open the exact same StoreFilterSheet the
@@ -28,7 +30,6 @@
 // longer text, just don't shrink below that floor.
 
 import { ArrowDown01Icon, FavouriteIcon } from '@hugeicons/core-free-icons';
-import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -54,22 +55,37 @@ interface Props {
   minRating: MinRating;
   selectedCategory: string;
   openNowOnly: boolean;
+  likedOnly: boolean;
   onOpenFilterSheet: () => void;
   onToggleOpenNow: () => void;
+  onToggleLikedOnly: () => void;
 }
 
-export function StoreFilterBar({ sort, minRating, selectedCategory, openNowOnly, onOpenFilterSheet, onToggleOpenNow }: Props) {
-  const [isFavourited, setIsFavourited] = useState(false);
-
+export function StoreFilterBar({
+  sort,
+  minRating,
+  selectedCategory,
+  openNowOnly,
+  likedOnly,
+  onOpenFilterSheet,
+  onToggleOpenNow,
+  onToggleLikedOnly,
+}: Props) {
   return (
     <View className="flex-row items-center gap-2.5 px-5 py-4">
       <Pressable
-        onPress={() => setIsFavourited((prev) => !prev)}
+        onPress={onToggleLikedOnly}
         hitSlop={8}
         className="items-center justify-center rounded-full bg-gray-200"
         style={{ height: CHIP_HEIGHT, width: CHIP_HEIGHT }}
       >
-        <AppIcon icon={FavouriteIcon} size={19} color={isFavourited ? colors.danger : colors.ink} strokeWidth={isFavourited ? 0 : 1.8} />
+        <AppIcon
+          icon={FavouriteIcon}
+          size={19}
+          color={likedOnly ? colors.danger : colors.ink}
+          fill={likedOnly ? colors.danger : undefined}
+          strokeWidth={likedOnly ? 0 : 1.8}
+        />
       </Pressable>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2.5">

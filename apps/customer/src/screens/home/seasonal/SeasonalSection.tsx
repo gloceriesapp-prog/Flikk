@@ -7,69 +7,100 @@
 // (just SEASONAL_TILES + FESTIVAL_TITLE/SUBTITLE below, nothing
 // structural).
 //
-// Real 3-column x 2-row grid (6 equal white cards), not the earlier
-// "1 large + 4 thin pills" layout — that broke because flex-1 on a
-// flex-wrap row fights the w-[47%] basis and forces every item onto one
-// line instead of wrapping. Fixed by giving every tile the same
-// %-based width with no flex-1, so wrapping is driven purely by width,
-// same recipe ProductSection.tsx's own grid already uses successfully.
-// White cards (not a solid tint) — reads cleaner against this section's
-// own lavender panel than 6 solid color blocks would. Real image per tile
-// (tile.imageUrl, data.ts), not an emoji or a discount-percent line —
-// per an explicit ask to drop both; every tile currently points at the
-// same placeholder photo until real per-tile photography exists.
+// FINAL call, with an actual reason this time: a plain free-scrolling
+// row, not the paged/snap-to-full-page version tried in between — the
+// last tile in view is deliberately cut at the edge so it visibly signals
+// "there's more, keep scrolling" (an explicit ask, same peek-carousel
+// pattern StoreCard.tsx's own photo strip already uses on the Store
+// screen).
 //
-// These are category shortcuts a customer taps into, not individual
-// add-to-cart products, so ProductCard's own image/ADD/stepper UI was the
-// wrong component for this content. No onPress wired yet — there's no
-// per-tile category browse screen built, same "UI exists, flow not
-// wired" convention as ProductCardView's own bookmark heart.
-//
-// Renders nothing when SEASONAL_TILES is empty — same convention as every
-// other Home section (StoreTypesSection.tsx's own note).
-//
-// Pale lavender panel (not mint) — synced to HomeHeader's own All-tab
-// gradient (categoryHeaderGradients.ts, deep charcoal-to-aubergine),
-// scoped to THIS section only (not AllTabSections' own page bg, which
-// stays plain white for every other section) — a rounded-bottom block
-// that reads as one deliberate seasonal module dropped into the page,
-// carrying the same premium purple identity the header just switched to
-// instead of clashing with it in leftover green.
+// Square tiles (equal width/height — "4x4" per an earlier ask), sized so
+// exactly 3 fit fully plus half of a 4th (VISIBLE_TILES), per an explicit
+// reference — tileSize is derived from a MEASURED width (rowWidth state,
+// onLayout below), not a hardcoded pixel guess, so the 3-full-plus-half
+// ratio actually holds on any screen size rather than only the one it
+// was eyeballed against.
 
-import { Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, Text, View, type LayoutChangeEvent } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { SEASONAL_TILES } from './data';
 
 const PANEL_BG = '#F2ECF8';
+const TILE_GAP = 12; // matches contentContainerClassName's own gap-3
+const VISIBLE_TILES = 3.5; // 3 full tiles + half of the 4th, in view at once
 
-const FESTIVAL_TITLE = 'Ganesh Chaturthi Specials';
-const FESTIVAL_SUBTITLE = "Everything for this year's pooja, from your local store";
+// Placeholder — real seasonal banner art (swapped per festival, same as
+// SEASONAL_TILES below) once that exists; this is just a real asset to
+// look at for now, not tied to any specific festival's own branding.
+const SEASONAL_BANNER_URI = 'https://i.pinimg.com/736x/0c/69/84/0c6984c0bbf9097af96e3a64ba140b9c.jpg';
 
 export function SeasonalSection() {
+  const [rowWidth, setRowWidth] = useState(0);
+
   if (SEASONAL_TILES.length === 0) return null;
 
+  const tileSize = rowWidth > 0 ? (rowWidth - TILE_GAP * Math.floor(VISIBLE_TILES)) / VISIBLE_TILES : 0;
+
+  function handleRowLayout(event: LayoutChangeEvent) {
+    setRowWidth(event.nativeEvent.layout.width);
+  }
+
   return (
-    <View className="gap-4 rounded-b-[32px] px-5 pb-6 pt-6" style={{ backgroundColor: PANEL_BG }}>
-      <View className="flex-row items-center gap-3">
-        {/* <View className="h-11 w-11 items-center justify-center rounded-full" style={{ backgroundColor: '#D9822B26' }}>
-          <GaneshaIcon size={24} color="#B33A1E" />
-        </View> */}
-        <View className="flex-1">
-          <Text className="text-[20px] font-extrabold text-center text-ink">{FESTIVAL_TITLE}</Text>
-          {/* <Text className="text-[12.5px] text-ink/60">{FESTIVAL_SUBTITLE}</Text> */}
-        </View>
-      </View>
+    // w-full is explicit, not decorative — this panel was relying on
+    // implicit flex-stretch (a column's default cross-axis behavior) to
+    // reach full screen width, but HomeScreen.tsx's own Animated.ScrollView
+    // uses stickyHeaderIndices={[0]} (for HomeHeader), and RN's sticky-
+    // header implementation re-wraps the flagged child in a way that can
+    // leave LATER siblings' implicit stretch unreliable on some platform/
+    // RN-version combinations — this section sits right after that sticky
+    // header in the same content list. Declaring the width explicitly
+    // instead of depending on inherited stretch is what actually
+    // guarantees this panel's own background reaches the real screen
+    // edge regardless of that ancestor's own stickyHeaderIndices setup.
+    <View className="w-full gap-4 rounded-b-[32px] px-5 pb-6 pt-6" style={{ backgroundColor: PANEL_BG }}>
+      {/* Replaces the old "Ganesh Chaturthi Specials" text heading, per an
+          explicit ask — short (h-20), and no side inset now (mx-0, not the
+          first pass's mx-10): the grid row below has no horizontal margin
+          of its own beyond this panel's own px-5, so this banner needs
+          none either to actually match the 3-card row's own width, per a
+          later ask ("increase the image width... 3 card max width"). */}
+      <Image
+        source={{ uri: SEASONAL_BANNER_URI }}
+        contentFit="cover"
+        className="h-20 rounded-2xl"
+      />
 
-      <View className="flex-row flex-wrap gap-3">
-        {SEASONAL_TILES.map((tile) => (
-          <Pressable key={tile.id} className="h-[128px] w-[31%] justify-between rounded-2xl bg-white p-3">
-            <Text className="text-[14px] font-medium leading-4 text-ink" numberOfLines={2}>
-              {tile.title}
-            </Text>
+      {/* Asymmetric on purpose: the LEFT edge stays governed by this
+          panel's own px-5 (same as the banner image above it, per an
+          explicit ask), but -mr-5 cancels the panel's right padding for
+          this row only, so the scrollable area bleeds to the true screen
+          edge instead of matching the left's inset — that's what lets
+          the trailing tile actually get cut off right at the edge
+          (rather than the panel's own padding creating a blank gap
+          before the cut ever shows). onLayout measures that real
+          (left-inset, right-bled) width once, which tileSize above is
+          derived from. Renders nothing on the very first frame (rowWidth
+          still 0) rather than flashing wrongly-sized tiles before that
+          measurement lands. */}
+      <View className="-mr-5" onLayout={handleRowLayout}>
+        {rowWidth > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
+            {SEASONAL_TILES.map((tile) => (
+              <Pressable
+                key={tile.id}
+                className="justify-between rounded-2xl bg-white p-3"
+                style={{ width: tileSize, height: tileSize }}
+              >
+                <Text className="text-[12px] font-medium text-center item-center leading-4 text-ink" numberOfLines={2}>
+                  {tile.title}
+                </Text>
 
-            <Image source={{ uri: tile.imageUrl }} className="h-16 w-16 self-end" resizeMode="contain" />
-          </Pressable>
-        ))}
+                <Image source={{ uri: tile.imageUrl }} className="h-16 w-16 self-end" resizeMode="contain" />
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
       </View>
     </View>
   );

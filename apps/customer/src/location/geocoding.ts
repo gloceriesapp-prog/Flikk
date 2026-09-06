@@ -69,7 +69,15 @@ export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocod
   const first = results[0];
   if (!first) return { addressLabel: 'Selected location', city: '' };
 
-  const parts = [first.name, first.street, first.district, first.city].filter(Boolean);
+  // Android's own system geocoder (what this call resolves to there) can
+  // hand back a bare Plus Code as `name` for a rural point with nothing
+  // closer-by named — same real-but-unhelpful-headline problem
+  // backend/src/routes/location.ts's own Google-proxy route already
+  // guards against for ITS path; this is the on-device fallback path,
+  // reached whenever the server key isn't configured (as it currently
+  // isn't) or that call fails, so it needs the same guard independently.
+  const isPlusCode = first.name ? /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}/.test(first.name) : false;
+  const parts = [isPlusCode ? null : first.name, first.street, first.district, first.city].filter(Boolean);
   const addressLabel = parts.length > 0 ? parts.join(', ') : 'Selected location';
   const city = first.city ?? first.district ?? first.subregion ?? '';
   return { addressLabel, city };
@@ -92,6 +100,25 @@ export async function geocodeAddress(query: string): Promise<Coordinates | null>
   const results = await Location.geocodeAsync(query);
   const first = results[0];
   return first ? { latitude: first.latitude, longitude: first.longitude } : null;
+}
+
+// Live place-name suggestions as the user types — backend/src/routes/
+// location.ts's /search proxy (Mappls Autosuggest). Text-only, on purpose:
+// that route's own header note explains why (Mappls's free tier doesn't
+// return coordinates from Autosuggest) — tapping a suggestion here still
+// has to go through geocodeAddress above to actually resolve it to a
+// pin, same as typing a full address and hitting search. Never throws —
+// an empty array degrades to "no suggestions shown," not a crash, same
+// convention the backend route's own network-failure branch already uses.
+export async function searchPlaces(query: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${API_URL}/location/search?q=${encodeURIComponent(query)}`);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { labels?: string[] };
+    return data.labels ?? [];
+  } catch {
+    return [];
+  }
 }
 
 const EARTH_RADIUS_KM = 6371;
