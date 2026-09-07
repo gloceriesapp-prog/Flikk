@@ -11,13 +11,14 @@
 // or reopen the screen. Polling stops on its own once terminal, no manual
 // cleanup needed beyond the effect's own unmount.
 
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, CustomerService01Icon } from '@hugeicons/core-free-icons';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { fetchOrder } from '../../api/orders';
+import { DeliveryRiderCard } from './components/DeliveryRiderCard';
 import { OrderInfoCard } from './components/OrderInfoCard';
 import { TrackingTimeline } from './components/TrackingTimeline';
 import type { AppStackParamList } from '../../navigation/types';
@@ -27,7 +28,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'TrackOrder'>;
 const POLL_INTERVAL_MS = 8000;
 
 export function TrackOrderScreen({ navigation, route }: Props) {
-  const { orderId, paymentMethodLabel } = route.params;
+  const { orderId } = route.params;
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['order', orderId],
@@ -39,13 +40,18 @@ export function TrackOrderScreen({ navigation, route }: Props) {
   });
 
   return (
-    <View className="flex-1 bg-white pt-safe">
-      <View className="flex-row items-center px-2 pb-2 pt-2">
+    <View className="flex-1 bg-[#FAFAFA]">
+      <View className="flex-row items-center bg-white px-2 pb-2 pt-safe-offset-2">
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
         <Text className="flex-1 text-center text-xl font-bold text-ink">Track Order</Text>
-        <View className="h-11 w-11" />
+        {/* No support screen exists yet — wire this to a real destination
+            once one does, same no-op ProfileScreen's own Support tile uses
+            today. */}
+        <Pressable onPress={() => {}} hitSlop={12} className="h-11 w-11 items-center justify-center">
+          <AppIcon icon={CustomerService01Icon} size={22} color={colors.ink} />
+        </Pressable>
       </View>
 
       {isLoading || !order ? (
@@ -53,10 +59,12 @@ export function TrackOrderScreen({ navigation, route }: Props) {
           <ActivityIndicator color={colors.ink} />
         </View>
       ) : (
-        <ScrollView className="flex-1" contentContainerClassName="items-center gap-5 px-5 pb-8 pt-2">
-          <OrderInfoCard order={order} paymentMethodLabel={paymentMethodLabel} />
+        <ScrollView className="flex-1" contentContainerClassName="items-center gap-5 px-5 pb-8 pt-4">
+          <OrderInfoCard order={order} />
 
-          <View className="w-full rounded-3xl border border-gray-100 bg-gray-100 p-5 shadow-sm shadow-black/5">
+          <DeliveryRiderCard order={order} />
+
+          <View className="w-full rounded-3xl bg-white p-5">
             <TrackingTimeline order={order} />
           </View>
 

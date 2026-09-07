@@ -27,6 +27,7 @@ import { createOrder } from '../../api/orders';
 import { fetchAddresses } from '../../api/addresses';
 import { ApiError } from '../../api/client';
 import { selectCartGrandTotal, useCartStore } from '../../store/useCartStore';
+import { isOutsideOperatingHours, REOPEN_TIME_LABEL } from '../../utils/operatingHours';
 import { CheckoutHeader } from './components/CheckoutHeader';
 import { PAYMENT_METHOD_LABEL, PaymentMethodList, type PaymentMethod } from './components/PaymentMethodList';
 import { RewardPointsBanner } from './components/RewardPointsBanner';
@@ -70,6 +71,19 @@ export function CheckoutScreen({ navigation }: Props) {
 
   async function handlePay() {
     if (!paymentMethod || isPlacingOrder) return;
+    // The one real enforcement point for the 10:30 PM–6:00 AM IST ordering
+    // window (utils/operatingHours.ts) — Home's own header treatment
+    // (HomeHeader's red gradient + LocationSelector's "Closed for now") is
+    // just an announcement, browsing stays open there either way. This is
+    // the actual hard stop: someone with a cart already built from before
+    // closing time (or who just ignored the header) can't complete a real
+    // order once the window has closed. Checked fresh on every tap, not
+    // once at mount, so a checkout screen left open across the 9:30 cutover
+    // still blocks correctly instead of trusting a stale render.
+    if (isOutsideOperatingHours()) {
+      Alert.alert('We’re closed for the night', `Orders reopen at ${REOPEN_TIME_LABEL} IST. Your cart is saved.`);
+      return;
+    }
     // items.length, not cartStoreId — an empty cart and a cart whose items
     // legitimately have an empty-string storeId (see useCartStore's own
     // addItem guard, which now refuses those adds outright) used to read

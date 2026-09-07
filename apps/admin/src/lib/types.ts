@@ -121,6 +121,13 @@ export interface Store {
   gstNumber?: string;
   // Pharmacy category only.
   drugLicenseNumber?: string;
+  // The store's own fixed map pin — customer app's "Shops Near You" sorts
+  // by this (apps/customer/src/screens/home/nearby-stores/useNearbyStores.ts).
+  // Undefined for any store approved before migrations/005_stores_lat_lng.sql
+  // added these columns; StoreDetailForm is how a founder backfills one by
+  // hand instead of hand-writing a SQL UPDATE.
+  lat?: number;
+  lng?: number;
 }
 
 export type NewStoreInput = Omit<Store, 'id' | 'zone' | 'isActive' | 'joinedAt'>;

@@ -39,7 +39,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
 
     const { data: draft, error: draftError } = await supabaseAdmin
       .from('store_onboarding_drafts')
-      .select('store_name, category, district, photo_url, gst_number')
+      .select('store_name, category, district, photo_url, gst_number, lat, lng')
       .eq('user_id', userId)
       .not('submitted_at', 'is', null)
       .single();
@@ -50,6 +50,10 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
     const { data: zone, error: zoneError } = await supabaseAdmin.from('zones').select('id').eq('is_active', true).single();
     if (zoneError || !zone) throw new Error('No active zone configured.');
 
+    // lat/lng carried straight through from the draft — the owner already
+    // pinned their exact store location during onboarding (LocationPinScreen),
+    // this is the one moment that pin becomes the store's permanent,
+    // queryable location (this file's own header note has the full context).
     const { error: storeError } = await supabaseAdmin.from('stores').insert({
       owner_user_id: userId,
       zone_id: zone.id,
@@ -58,6 +62,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
       district: draft.district,
       gst_number: draft.gst_number,
       photo_url: draft.photo_url,
+      lat: draft.lat,
+      lng: draft.lng,
     });
     if (storeError) throw storeError;
 

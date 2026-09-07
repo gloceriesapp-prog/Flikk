@@ -192,7 +192,18 @@ ordersRouter.get('/:id', requireAuth, async (req: AuthedRequest, res, next) => {
       if (!store) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
     }
 
-    res.json(data);
+    // riders.user_id -> users.id, same FK orders.rider_id points at — no
+    // direct orders->riders FK for PostgREST to auto-embed, so this is a
+    // second real lookup, not a fabricated join. Only present once a rider
+    // is actually assigned (out_for_delivery onward); TrackOrderScreen's
+    // own rider card renders nothing without it, never a placeholder.
+    let rider: { name: string; phone: string } | null = null;
+    if (data.rider_id) {
+      const { data: riderRow } = await supabase.from('riders').select('name, phone').eq('user_id', data.rider_id).single();
+      rider = riderRow ?? null;
+    }
+
+    res.json({ ...data, riders: rider });
   } catch (err) {
     next(err);
   }

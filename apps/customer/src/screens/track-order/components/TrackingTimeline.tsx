@@ -15,8 +15,11 @@ const STAGE_TIMESTAMP: Record<OrderStatus, keyof Pick<ApiOrder, 'placed_at' | 'p
   delivered: 'delivered_at',
 };
 
+// timeZone pinned to IST explicitly — single-zone product (Kaup/outer
+// Udupi, CLAUDE.md); a device set to a different system timezone would
+// otherwise display the wrong clock time for the same real instant.
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' });
 }
 
 export function TrackingTimeline({ order }: Props) {

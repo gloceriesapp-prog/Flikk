@@ -23,9 +23,10 @@ import { View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { SharedValue } from 'react-native-reanimated';
 import { CollapsibleHeaderTop } from './CollapsibleHeaderTop';
+import { HeaderRays } from './HeaderRays';
 import { HomeSearchBar } from './HomeSearchBar';
 import { CategoryTabs } from './CategoryTabs';
-import { gradientForTabName } from '../data/categoryHeaderGradients';
+import { CLOSED_HOURS_GRADIENT, gradientForTabName } from '../data/categoryHeaderGradients';
 
 interface Props {
   onChangeLocation: () => void;
@@ -40,6 +41,9 @@ interface Props {
   // (e.g. store-list/StoreListScreen.tsx) may not want it — there's nothing
   // for the tabs to filter there.
   showCategoryTabs?: boolean;
+  // 10:30 PM–6:00 AM IST (utils/operatingHours.ts) — overrides whichever
+  // category gradient would otherwise show with CLOSED_HOURS_GRADIENT.
+  isClosed?: boolean;
 }
 
 export function HomeHeader({
@@ -50,14 +54,16 @@ export function HomeHeader({
   activeCategoryName,
   scrollY,
   showCategoryTabs = true,
+  isClosed = false,
 }: Props) {
-  const gradient = gradientForTabName(activeCategoryName);
+  const gradient = isClosed ? CLOSED_HOURS_GRADIENT : gradientForTabName(activeCategoryName);
 
   return (
     <LinearGradient colors={gradient.colors} locations={gradient.stops} className="overflow-hidden">
+      <HeaderRays />
       <View className="pt-safe">
         <View className="px-6 pt-5">
-          <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} />
+          <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} isClosed={isClosed} />
         </View>
 
         <View className="px-6">

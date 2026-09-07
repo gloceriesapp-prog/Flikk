@@ -205,12 +205,23 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
   const [handlePagerScroll] = useState(() =>
     Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false }),
   );
+  const pagerRef = useRef<ScrollView>(null);
   // Only one page can be grown at a time; while any is, the pager itself
   // stops scrolling (a half-visible neighbor sliding under a fullscreen
   // card would look broken) and re-enables once that page shrinks back.
   const [grownProductId, setGrownProductId] = useState<string | null>(null);
 
-  const contentWidth = pages.length * pageWidth + (pages.length - 1) * PAGE_GAP + 2 * sideInset;
+  // + sideInset slack: the rightmost page, once grown, sits at
+  // `left: scrollX` (≈ its own restLeft) with `width: screenWidth` — that
+  // span runs exactly `sideInset` px past this content width without the
+  // extra room below. RN's horizontal ScrollView clips absolutely-
+  // positioned children to the declared contentContainerStyle width
+  // (strictly enforced on Android), so without this the last product's
+  // grown card got its right edge sheared off — the actual bug behind
+  // "card doesn't fill the screen when dragged up". Only the last index
+  // can ever overflow (the math is symmetric the other direction), so a
+  // flat sideInset of slack at the end covers every case.
+  const contentWidth = pages.length * pageWidth + (pages.length - 1) * PAGE_GAP + 2 * sideInset + sideInset;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -228,6 +239,7 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
 
         {pages.length > 1 ? (
           <ScrollView
+            ref={pagerRef}
             horizontal
             decelerationRate="fast"
             snapToInterval={pageWidth + PAGE_GAP}
@@ -256,7 +268,28 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
                     product={p}
                     onClose={onClose}
                     grow={grow}
-                    onGrowChange={(isGrown) => setGrownProductId(isGrown ? p.id : (prev) => (prev === p.id ? null : prev))}
+                    onGrowChange={(isGrown) => {
+                      // Snap the REAL ScrollView to this page's exact known
+                      // SCROLL OFFSET the instant it starts growing — the
+                      // live tracked scrollX can be a few px off if
+                      // momentum from a horizontal swipe hadn't fully
+                      // settled when the vertical grow-drag registered.
+                      // i * (pageWidth + PAGE_GAP), NOT restLeft — restLeft
+                      // is this page's position in CONTENT space (it
+                      // includes sideInset, the resting-state gutter that
+                      // scrolling reveals); the scroll OFFSET that brings
+                      // page i to rest is initialScrollX's own formula,
+                      // which never includes sideInset. Using restLeft
+                      // here (an earlier version of this fix) was off by
+                      // exactly sideInset on both grow (shifted the whole
+                      // fullscreen card sideways) and shrink (left the
+                      // ScrollView's real position permanently off by that
+                      // same amount once scrolling re-enabled, corrupting
+                      // the peek layout afterward — the actual "not proper
+                      // size when closed" bug).
+                      if (isGrown) pagerRef.current?.scrollTo({ x: i * (pageWidth + PAGE_GAP), y: 0, animated: false });
+                      setGrownProductId(isGrown ? p.id : (prev) => (prev === p.id ? null : prev));
+                    }}
                   />
                 </Animated.View>
               );

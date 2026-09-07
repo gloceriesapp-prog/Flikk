@@ -35,7 +35,7 @@ import { AppIcon } from '../../components/AppIcon';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { colors } from '../../theme/tokens';
 import { fetchMyOrders } from '../../api/orders';
-import { mapApiOrder, SAMPLE_PREVIEW_ORDERS } from './data';
+import { mapApiOrder } from './data';
 import { OrderRow } from './components/OrderRow';
 import { OrderStatusFilterSheet, type OrderStatusFilter } from './components/OrderStatusFilterSheet';
 import { PurchaseSearchBar } from './components/PurchaseSearchBar';
@@ -50,11 +50,6 @@ export function PurchaseScreen({ navigation }: Props) {
     queryKey: ['my-orders'],
     queryFn: async () => (await fetchMyOrders()).map(mapApiOrder),
   });
-  // SAMPLE_PREVIEW_ORDERS appended temporarily — real orders rarely have
-  // enough line items to show off ItemThumbnailStack's 3-item and 4+-item
-  // ("+N" badge) cases, this is just so that's actually visible on screen.
-  // Remove this concat (and the import above) once confirmed.
-  const orders = fetchedOrders ? [...fetchedOrders, ...SAMPLE_PREVIEW_ORDERS] : fetchedOrders;
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('all');
@@ -72,11 +67,11 @@ export function PurchaseScreen({ navigation }: Props) {
 
   const isLive = (status: string) => status === 'placed' || status === 'packed' || status === 'out_for_delivery';
 
-  const hasAnyOrder = (orders ?? []).length > 0;
+  const hasAnyOrder = (fetchedOrders ?? []).length > 0;
 
   const filteredOrders = useMemo(() => {
     const trimmedQuery = query.trim().toLowerCase();
-    return (orders ?? []).filter((order) => {
+    return (fetchedOrders ?? []).filter((order) => {
       const matchesFilter =
         statusFilter === 'all' || (statusFilter === 'live' ? isLive(order.status) : !isLive(order.status));
       if (!matchesFilter) return false;
@@ -86,7 +81,7 @@ export function PurchaseScreen({ navigation }: Props) {
         order.items.some((item) => item.name.toLowerCase().includes(trimmedQuery))
       );
     });
-  }, [orders, query, statusFilter]);
+  }, [fetchedOrders, query, statusFilter]);
 
   // One flat list now, not separate Live/Past sections — current
   // (not-yet-delivered) orders sorted to the top, done ones to the

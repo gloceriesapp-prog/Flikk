@@ -27,7 +27,11 @@ import type { AppStackParamList } from '../../../navigation/types';
 export function MostBoughtSection() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { data: catalog = [] } = useEverydayEssentials();
-  const { data: deals = [] } = useDealsProducts();
+  // Not rendered anywhere right now (AllTabSections.tsx's own note on
+  // still-mock sections) — undefined storeId just means this card's
+  // "Best Deals" slot stays on its dummy fallback below, same as it
+  // already does for real data below 4 items.
+  const { data: deals = [] } = useDealsProducts(undefined);
 
   // TEMPORARY — falls back to dummyPreviewProducts.ts only when the real
   // feed has fewer than 4 items, purely so the 4-row card layout can be

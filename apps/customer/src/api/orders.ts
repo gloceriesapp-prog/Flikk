@@ -47,6 +47,11 @@ export interface ApiOrder {
   delivered_at: string | null;
   order_items: ApiOrderItem[];
   stores: { name: string; avg_prep_minutes: number | null } | null;
+  // Only on GET /orders/:id (its own second lookup, no direct orders->
+  // riders FK to auto-embed) — absent on GET /orders's list response, and
+  // null on the single-order response until a rider is actually assigned,
+  // never a placeholder name/phone.
+  riders?: { name: string; phone: string } | null;
   // Only present on POST /orders's own response (backend's own note there)
   // — a redundant top-level copy of stores.avg_prep_minutes, since
   // CheckoutScreen needs it the instant an order is created and hasn't

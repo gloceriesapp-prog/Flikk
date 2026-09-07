@@ -13,6 +13,8 @@ interface StoreUpdateInput {
   openTime?: string;
   closeTime?: string;
   isActive?: boolean;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/stores/[id]'>) {
@@ -26,6 +28,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/stores/[id
     if (body.openTime !== undefined) patch.open_time = body.openTime;
     if (body.closeTime !== undefined) patch.close_time = body.closeTime;
     if (body.isActive !== undefined) patch.is_active = body.isActive;
+    if (body.lat !== undefined) patch.lat = body.lat;
+    if (body.lng !== undefined) patch.lng = body.lng;
 
     const { data, error } = await supabaseAdmin.from('stores').update(patch).eq('id', id).select(STORE_SELECT).single();
     if (error) throw error;

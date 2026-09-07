@@ -39,6 +39,7 @@ import { AllTabSections } from './sections/AllTabSections';
 import { ALL_TAB } from './data/categoryTabs';
 import { useHomeTabs, type RemoteHomeTab } from './data/useHomeTabs';
 import { HomeTabTileGrid } from './hometab/HomeTabTileGrid';
+import { useIsOutsideOperatingHours } from '../../utils/useOperatingHours';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
@@ -61,6 +62,12 @@ function richScreenFor(tab: RemoteHomeTab) {
 export function HomeScreen({ navigation }: Props) {
   const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_TAB.id);
   const { data: realTabs = [] } = useHomeTabs();
+  // Drives HomeHeader's closed-hours treatment (10:30 PM–6:00 AM IST,
+  // utils/operatingHours.ts) — the red CLOSED_HOURS_GRADIENT background and
+  // LocationSelector's "Closed for now"/"Opens 6:00 AM tomorrow" text.
+  // AllTabSections no longer needs this — it used to swap in its own
+  // ClosedForNightBanner, since removed as redundant with the header.
+  const isClosed = useIsOutsideOperatingHours();
 
   // Every tab id the user has actually opened at least once — content for
   // an id only mounts the first time it's selected, then stays mounted.
@@ -165,6 +172,7 @@ export function HomeScreen({ navigation }: Props) {
           onSelectCategory={setSelectedCategoryId}
           activeCategoryName={activeCategoryName}
           scrollY={scrollY}
+          isClosed={isClosed}
         />
 
         <Animated.View style={contentFadeStyle}>

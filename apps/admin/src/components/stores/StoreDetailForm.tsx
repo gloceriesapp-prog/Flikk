@@ -21,6 +21,11 @@ export function StoreDetailForm({ store }: { store: Store }) {
   const [openTime, setOpenTime] = useState(store.openTime);
   const [closeTime, setCloseTime] = useState(store.closeTime);
   const [isActive, setIsActive] = useState(store.isActive);
+  // Strings, not numbers — an in-progress "13." or "-" while typing a
+  // coordinate isn't a valid number yet but shouldn't be rejected/reset
+  // mid-keystroke. Parsed to numbers (or null if blank) only on save.
+  const [lat, setLat] = useState(store.lat?.toString() ?? '');
+  const [lng, setLng] = useState(store.lng?.toString() ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,10 +33,15 @@ export function StoreDetailForm({ store }: { store: Store }) {
     setSaving(true);
     setError(null);
     try {
+      const parsedLat = lat.trim() === '' ? null : Number(lat);
+      const parsedLng = lng.trim() === '' ? null : Number(lng);
+      if ((parsedLat !== null && Number.isNaN(parsedLat)) || (parsedLng !== null && Number.isNaN(parsedLng))) {
+        throw new Error('Latitude/longitude must be numbers.');
+      }
       const res = await fetch(`/api/stores/${store.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, phone, openTime, closeTime, isActive }),
+        body: JSON.stringify({ category, phone, openTime, closeTime, isActive, lat: parsedLat, lng: parsedLng }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -116,6 +126,30 @@ export function StoreDetailForm({ store }: { store: Store }) {
               className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none"
             />
           </Field>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-muted">Map pin (lat, lng)</label>
+          <p className="mb-2 text-xs text-muted">
+            Used by the customer app to sort &quot;Shops Near You&quot; by real distance. Right-click the store&apos;s
+            location on Google Maps and copy the coordinates shown at the top of the menu.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <input
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              placeholder="Latitude, e.g. 13.2158"
+              inputMode="decimal"
+              className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none"
+            />
+            <input
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+              placeholder="Longitude, e.g. 74.7431"
+              inputMode="decimal"
+              className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none"
+            />
+          </div>
         </div>
 
         <div className="border-t border-border pt-5">

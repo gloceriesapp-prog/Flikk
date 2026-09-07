@@ -14,32 +14,50 @@
 // Dark text/icon — HomeHeader's background is a light pastel fill now
 // (#E8E7FF), not the earlier dark gradient; the chevron was still hardcoded
 // white from that era and read as invisible against the light bg.
+//
+// isClosed (10:30 PM–6:00 AM IST, utils/operatingHours.ts) swaps both
+// lines: "Delivering to" becomes the reopen time (the actual answer to
+// "when can I order" instead of a label that's momentarily false), and the
+// address becomes a short, deliberate two-word closed statement instead of
+// silently keeping the address visible as if ordering were still live.
+// Location is still tappable/changeable underneath either way — this is
+// just what the header SAYS while closed.
 
 import { ChevronDownIcon, Navigation03Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
+import { REOPEN_TIME_LABEL } from '../../../utils/operatingHours';
 import { colors } from '../../../theme/tokens';
 import { useLocationStore } from '../../../store/useLocationStore';
 
 interface Props {
   onPress: () => void;
+  isClosed?: boolean;
 }
 
-export function LocationSelector({ onPress }: Props) {
+export function LocationSelector({ onPress, isClosed = false }: Props) {
   const location = useLocationStore((s) => s.location);
   const label = location?.addressLabel || location?.city || 'Set your location';
 
   return (
     <Pressable onPress={onPress} className="max-w-[230px]">
       <View className="flex-row items-center gap-1">
-        <AppIcon icon={Navigation03Icon} size={12} color="rgba(255,255,255,0.6)" fill="rgba(255,255,255,0.6)" strokeWidth={0} />
-        <Text className="text-base font-medium text-white/60">Delivering to</Text>
+        {/* Both icons hidden while closed — the send/navigation arrow
+            implies "this is your live delivery point" and the chevron
+            implies "tap to pick a different one right now", neither of
+            which reads right next to a closed-hours statement. */}
+        {!isClosed && (
+          <AppIcon icon={Navigation03Icon} size={12} color="rgba(255,255,255,0.6)" fill="rgba(255,255,255,0.6)" strokeWidth={0} />
+        )}
+        <Text className="text-base font-medium text-white/60">
+          {isClosed ? `Opens ${REOPEN_TIME_LABEL} tomorrow` : 'Delivering to'}
+        </Text>
       </View>
       <View className="flex-row items-center gap-1">
         <Text className="text-lg font-semibold text-white" numberOfLines={1}>
-          {label}
+          {isClosed ? 'Closed for now' : label}
         </Text>
-        <AppIcon icon={ChevronDownIcon} size={16} color={colors.ink} strokeWidth={2.2} />
+        {!isClosed && <AppIcon icon={ChevronDownIcon} size={16} color={colors.ink} strokeWidth={2.2} />}
       </View>
     </Pressable>
   );
