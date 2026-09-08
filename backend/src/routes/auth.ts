@@ -108,14 +108,14 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
 
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('phone, name, birthday')
+      .select('phone, name, birthday, is_rejected')
       .eq('id', req.user!.id)
       .single();
     if (userError) throw userError;
 
     const { data: draft } = await supabase
       .from('store_onboarding_drafts')
-      .select('submitted_at')
+      .select('submitted_at, rejection_reason')
       .eq('user_id', req.user!.id)
       .maybeSingle();
 
@@ -123,6 +123,13 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       is_approved: req.user!.isApproved,
       has_store: (count ?? 0) > 0,
       application_submitted: !!draft?.submitted_at,
+      // Only a real, current rejection — a fresh resubmission's own PATCH
+      // /store-draft doesn't clear is_rejected on the user row by itself,
+      // so this also requires a submitted application still be on file;
+      // without that a rejected-then-resubmitted owner would keep seeing
+      // the old rejected state even after fixing and resubmitting.
+      is_rejected: !!user.is_rejected && !!draft?.submitted_at,
+      rejection_reason: draft?.rejection_reason ?? null,
       phone: user.phone,
       name: user.name,
       birthday: user.birthday,

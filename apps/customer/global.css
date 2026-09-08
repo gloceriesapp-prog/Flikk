@@ -9,36 +9,42 @@
    component, which doesn't inherit defaultProps set on the raw RN Text. */
 @layer base {
   * {
-    font-family: 'SuisseIntl-Regular';
+    font-family: 'AeonikSoftPro-Regular';
   }
 }
 
 /* Tailwind's font-weight utilities (font-bold, font-semibold, etc.) only
-   set numeric fontWeight, which RN can't use to pick a different Suisse
-   Int'l file — each weight is its own separate font file, not one
-   variable font. 5 real faces exist now (Thin/Light/Regular/Medium/
-   SemiBold — Medium added, see theme/fonts.ts's own note): font-medium
-   maps to its own real face below instead of collapsing onto SemiBold.
-   font-semibold and everything above it still caps at SemiBold, the
-   heaviest face that actually exists — no Bold/Black cut. */
+   set numeric fontWeight, which RN can't use to pick a different Aeonik
+   Soft Pro file — each weight is its own separate font file, not one
+   variable font. All 8 non-italic faces the vault ships map one-to-one
+   onto Tailwind's 9-step weight scale (extralight and black/extrabold
+   double up, since Aeonik has no separate face at exactly those steps) —
+   full coverage top to bottom, no capping partway up the scale the way
+   the previous Suisse Int'l setup had to (only 5 faces existed there). */
 @layer utilities {
-  .font-thin,
+  .font-thin {
+    font-family: 'AeonikSoftPro-Thin';
+  }
   .font-extralight {
-    font-family: 'SuisseIntl-Thin';
+    font-family: 'AeonikSoftPro-Air';
   }
   .font-light {
-    font-family: 'SuisseIntl-Light';
+    font-family: 'AeonikSoftPro-Light';
   }
   .font-normal {
-    font-family: 'SuisseIntl-Regular';
+    font-family: 'AeonikSoftPro-Regular';
   }
   .font-medium {
-    font-family: 'SuisseIntl-Medium';
+    font-family: 'AeonikSoftPro-Medium';
   }
-  .font-semibold,
-  .font-bold,
+  .font-semibold {
+    font-family: 'AeonikSoftPro-SemiBold';
+  }
+  .font-bold {
+    font-family: 'AeonikSoftPro-Bold';
+  }
   .font-extrabold,
   .font-black {
-    font-family: 'SuisseIntl-SemiBold';
+    font-family: 'AeonikSoftPro-Black';
   }
 }

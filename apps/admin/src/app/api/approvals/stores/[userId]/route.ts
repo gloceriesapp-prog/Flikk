@@ -12,34 +12,60 @@
 // set by the partner app's own POST /auth/push-token) so a closed app
 // still finds out, not just the partner app's in-app polling.
 //
-// Reject only flips is_rejected on the user row — the draft is left
-// intact (not deleted), so a founder who changes their mind can still
-// approve it later without the applicant having to redo the wizard.
+// Reject flips is_rejected on the user row and writes a real reason onto
+// the still-kept draft (store_onboarding_drafts.rejection_reason) — the
+// partner app's own WaitingApprovalScreen reads it via GET /auth/me so
+// the owner sees why, not just a status flip with no explanation. Draft
+// itself is left intact (not deleted), so a founder who changes their
+// mind can still approve it later, and the owner can edit + resubmit
+// without redoing the whole wizard from scratch.
+//
+// No `.eq('role', 'customer')` filter on the reject query anymore — that
+// was the actual bug behind "reject button does nothing": a store owner
+// who was already approved once and later submits a fresh application
+// (edits their store, resubmits) has role='store_owner' by then, so that
+// filter matched zero rows and silently 400'd. Rejecting only needs the
+// applicant to exist, regardless of what role they currently hold.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { sendPushNotification } from '@/lib/pushNotification';
+
+const DEFAULT_REJECTION_REASON =
+  "We couldn't verify your store documents this time. Please double-check your store details and photo, then resubmit your application.";
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/stores/[userId]'>) {
   const { userId } = await ctx.params;
 
   try {
-    const { approve } = (await request.json()) as { approve: boolean };
+    const { approve, reason } = (await request.json()) as { approve: boolean; reason?: string };
 
     if (!approve) {
-      const { data, error } = await supabaseAdmin
+      const { data: user, error } = await supabaseAdmin
         .from('users')
         .update({ is_approved: false, is_rejected: true })
         .eq('id', userId)
-        .eq('role', 'customer')
-        .select('id')
+        .select('id, expo_push_token')
         .single();
-      if (error || !data) throw new Error('No pending store application for that id.');
+      if (error || !user) throw new Error('No pending store application for that id.');
+
+      const rejectionReason = reason?.trim() || DEFAULT_REJECTION_REASON;
+      await supabaseAdmin
+        .from('store_onboarding_drafts')
+        .update({ rejection_reason: rejectionReason })
+        .eq('user_id', userId);
+
+      await sendPushNotification(
+        user.expo_push_token,
+        'Your application needs another look',
+        rejectionReason,
+      );
+
       return NextResponse.json({ ok: true });
     }
 
     const { data: draft, error: draftError } = await supabaseAdmin
       .from('store_onboarding_drafts')
-      .select('store_name, category, district, photo_url, gst_number, lat, lng')
+      .select('store_name, category, district, photo_url, gst_number, lat, lng, owner_name, shop_establishment_number')
       .eq('user_id', userId)
       .not('submitted_at', 'is', null)
       .single();
@@ -64,6 +90,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
       photo_url: draft.photo_url,
       lat: draft.lat,
       lng: draft.lng,
+      owner_name: draft.owner_name,
+      shop_establishment_number: draft.shop_establishment_number,
     });
     if (storeError) throw storeError;
 

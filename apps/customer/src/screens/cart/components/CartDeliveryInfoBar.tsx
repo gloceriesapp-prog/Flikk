@@ -1,5 +1,5 @@
 // "Delivery Details" card — first card in Cart's scroll list, same white
-// rounded-2xl recipe as DeliveryTipCard/DeliverySchedulingCard below it
+// rounded-2xl recipe as the other cards below it (BillDetailsCard etc.)
 // (not a thin header bar anymore) so it reads as one of the cart's stack
 // of cards instead of chrome bolted under the nav bar. Title + "Change" on
 // one row, ETA pill below, address below that — deliberately in that
@@ -37,10 +37,7 @@ export function CartDeliveryInfoBar({ address, onPress }: Props) {
     <View className="gap-3 rounded-2xl bg-white px-4 py-4">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center">
-          <View className="h-9 w-9 items-center justify-center">
-            <AppIcon icon={Location01Icon} size={18}  />
-          </View>
-          <Text className="text-[15px] font-medium text-ink">Delivery Details</Text>
+          <Text className="text-[15px] font-semibold text-ink">Your address</Text>
         </View>
         <Pressable onPress={onPress} hitSlop={8} className="flex-row items-center gap-0.5">
           <Text className="text-[13px] font-semibold" style={{ color: ACCENT }}>
@@ -52,9 +49,8 @@ export function CartDeliveryInfoBar({ address, onPress }: Props) {
 
       <View className="flex-row items-center gap-2.5">
         <View className="flex-row items-center gap-1 rounded-full px-2.5 py-1" style={{ backgroundColor: `${ACCENT}14` }}>
-          <AppIcon icon={ZapIcon} size={12} color={ACCENT} />
-          <Text className="text-[12px] font-bold" style={{ color: ACCENT }}>
-            {ETA_LABEL}
+          <Text className="text-[12px] font-semibold" style={{ color: ACCENT }}>
+          {ETA_LABEL}
           </Text>
         </View>
 

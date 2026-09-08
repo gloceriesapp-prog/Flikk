@@ -4,31 +4,70 @@
 // approval shouldn't be able to silently fat-finger a value on this
 // screen — going back to the right step (via "Edit") is the only way to
 // change something.
+//
+// Layout per an explicit reference wireframe: a profile-style header
+// (circular store photo + store name + location beside it) instead of
+// the photo/store/category/location all being separate card rows, then a
+// plain flat list below for everything else — no icon badges, no card
+// background, no dividers, just label-over-value rows. Every field in
+// that list always renders, even ones the owner left blank (shown as
+// "—" per an explicit ask) — a founder reviewing an approval later
+// should see the whole shape of what was/wasn't provided, not have empty
+// optional fields silently vanish.
+//
+// Phone number is shown too, even though nothing on this screen collects
+// it — it's the account's own verified number (GET /auth/me), fetched
+// once on mount purely for display. Read-only (no edit — phone changes
+// require a fresh OTP verification, that's Login's job, not this
+// screen's).
+//
+// Every "Edit" tap carries the full current draft as a param
+// (navigation.navigate('StoreSetup'/'StoreDetails', { draft })) —
+// StoreSetupScreen skips its own cold-start resume-fetch whenever a
+// draft param is present (see that file's own note), which is what
+// actually fixes edit taps previously getting silently redirected
+// straight back here before you could type anything.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
-import { ArrowRight01Icon, Location01Icon, StoreLocation01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, ImageAdd01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { submitStoreApplication } from '../../api/auth';
+import { checkAccountStatus, submitStoreApplication } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useAuthStore } from '../../store/useAuthStore';
-import { colors } from '../../theme/tokens';
+import { formatPhone } from '../../utils/formatPhone';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'StoreReview'>;
+
+const ACCENT = '#1754cf';
+const EMPTY_VALUE = '—';
 
 export function StoreReviewScreen({ navigation, route }: Props) {
   const { draft } = route.params;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
   // Not setHasStore — submitting no longer creates a real `stores` row
   // (backend's storeOnboarding.ts's own note), only admin's approve action
   // does. This is the "submitted, waiting on a decision" flag instead;
   // RootNavigator routes to WaitingApprovalScreen off it, not off hasStore.
   const setApplicationSubmitted = useAuthStore((s) => s.setApplicationSubmitted);
   const clearSession = useAuthStore((s) => s.clear);
+
+  useEffect(() => {
+    let cancelled = false;
+    checkAccountStatus()
+      .then(({ phone: accountPhone }) => {
+        if (!cancelled) setPhone(accountPhone ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit() {
     setError(null);
@@ -40,6 +79,8 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         district: draft.district ?? 'Udupi',
         gstNumber: draft.gstNumber || undefined,
         photoUrl: draft.photoUrl || undefined,
+        ownerName: draft.ownerName || undefined,
+        shopLicenseNumber: draft.shopLicenseNumber || undefined,
       });
       setApplicationSubmitted(true);
     } catch (err) {
@@ -66,53 +107,52 @@ export function StoreReviewScreen({ navigation, route }: Props) {
   return (
     <View className="flex-1 bg-white pb-safe pt-safe">
       <View className="px-6 pt-4">
-        <Text className="text-xs font-bold uppercase tracking-wide text-lime-deep">Step 3 of 3</Text>
-        <Text className="mt-1 text-3xl font-medium text-ink">Review & submit</Text>
-        <Text className="mt-1 text-base font-medium text-ink/60">
+        <Text className="text-[13px] font-bold uppercase tracking-wide" style={{ color: ACCENT }}>
+          Step 3 of 3
+        </Text>
+        <Text className="mt-1 text-[28px] font-bold text-ink">Review & submit</Text>
+        <Text className="mt-1 text-[15px] font-medium text-ink/60">
           Double-check everything — we’ll review this before your store goes live.
         </Text>
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 pt-6">
-        {draft.photoUrl && (
-          <Image source={{ uri: draft.photoUrl }} className="h-40 w-full rounded-2xl" resizeMode="cover" />
-        )}
+      <ScrollView className="flex-1" contentContainerClassName="gap-1 px-6 pt-7">
+        {/* Profile-style header — circular photo, store name + location
+            beside it. Tapping either opens Step 1/2 to fix it, same as
+            every other Edit below. */}
+        <Pressable
+          onPress={() => navigation.navigate('StoreSetup', { draft })}
+          className="mb-6 flex-row items-center gap-4"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        >
+          <View className="h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-black/5 bg-[#F9FAFB]">
+            {draft.photoUrl ? (
+              <Image source={{ uri: draft.photoUrl }} className="h-full w-full" resizeMode="cover" />
+            ) : (
+              <AppIcon icon={ImageAdd01Icon} size={20} color="#9AA5A3" />
+            )}
+          </View>
+          <View className="flex-1">
+            <Text className="text-[18px] font-bold text-ink" numberOfLines={1}>
+              {draft.storeName}
+            </Text>
+            <Text className="text-[14px] font-medium text-ink/50" numberOfLines={1}>
+              {draft.district ?? EMPTY_VALUE}
+            </Text>
+          </View>
+        </Pressable>
 
-        <View className="gap-3 rounded-2xl border border-gray-200 bg-white p-4">
-          <Row
-            icon={StoreLocation01Icon}
-            label="Store"
-            value={draft.storeName}
-            onEdit={() => navigation.navigate('StoreSetup')}
-          />
-          <View className="h-px bg-gray-100" />
-          <Row
-            icon={StoreLocation01Icon}
-            label="Category"
-            value={draft.category}
-            onEdit={() => navigation.navigate('StoreSetup')}
-          />
-          <View className="h-px bg-gray-100" />
-          <Row
-            icon={Location01Icon}
-            label="Location"
-            value={draft.district ?? 'Not set'}
-            onEdit={() => navigation.navigate('StoreDetails', { draft })}
-          />
-          {draft.gstNumber.length > 0 && (
-            <>
-              <View className="h-px bg-gray-100" />
-              <Row
-                icon={StoreLocation01Icon}
-                label="GST number"
-                value={draft.gstNumber}
-                onEdit={() => navigation.navigate('StoreDetails', { draft })}
-              />
-            </>
-          )}
-        </View>
+        <Row label="Owner name" value={draft.ownerName} onEdit={() => navigation.navigate('StoreSetup', { draft })} />
+        <Row label="Category" value={draft.category} onEdit={() => navigation.navigate('StoreSetup', { draft })} />
+        <Row label="Phone number" value={phone ? formatPhone(phone) : ''} />
+        <Row label="GSTIN" value={draft.gstNumber} onEdit={() => navigation.navigate('StoreDetails', { draft })} />
+        <Row
+          label="Shop & Establishment license"
+          value={draft.shopLicenseNumber}
+          onEdit={() => navigation.navigate('StoreDetails', { draft })}
+        />
 
-        {error && <Text className="text-[13px] font-medium text-danger">{error}</Text>}
+        {error && <Text className="mt-3 text-[13px] font-medium text-danger">{error}</Text>}
       </ScrollView>
 
       <View className="px-6 pb-4 pt-2">
@@ -123,27 +163,25 @@ export function StoreReviewScreen({ navigation, route }: Props) {
 }
 
 interface RowProps {
-  icon: Parameters<typeof AppIcon>[0]['icon'];
   label: string;
   value: string;
-  onEdit: () => void;
+  onEdit?: () => void;
 }
 
-function Row({ icon, label, value, onEdit }: RowProps) {
+function Row({ label, value, onEdit }: RowProps) {
   return (
-    <View className="flex-row items-center gap-3">
-      <View className="h-9 w-9 items-center justify-center rounded-full bg-lime-soft">
-        <AppIcon icon={icon} size={16} color={colors.limeDeep} />
+    <View className="flex-row items-center justify-between border-b border-black/5 py-3.5">
+      <View>
+        <Text className="text-[13px] font-medium text-ink/45">{label}</Text>
+        <Text className="mt-0.5 text-[16px] font-semibold text-ink">{value.length > 0 ? value : EMPTY_VALUE}</Text>
       </View>
-      <View className="flex-1">
-        <Text className="text-xs font-medium text-ink/50">{label}</Text>
-        <Text className="text-sm font-semibold text-ink" numberOfLines={1}>
-          {value}
-        </Text>
-      </View>
-      <Pressable onPress={onEdit} hitSlop={8}>
-        <Text className="text-xs font-bold text-lime-deep">Edit</Text>
-      </Pressable>
+      {onEdit && (
+        <Pressable onPress={onEdit} hitSlop={10}>
+          <Text className="text-[13px] font-bold" style={{ color: ACCENT }}>
+            Edit
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

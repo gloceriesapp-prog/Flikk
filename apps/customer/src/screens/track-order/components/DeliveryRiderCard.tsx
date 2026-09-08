@@ -56,7 +56,7 @@ function ActionButton({ icon, label, onPress }: { icon: Parameters<typeof AppIco
   return (
     <Pressable onPress={onPress} className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-gray-100 py-3">
       <AppIcon icon={icon} size={16} color={colors.ink} />
-      <Text className="text-sm font-bold text-ink">{label}</Text>
+      <Text className="text-sm font-medium text-ink">{label}</Text>
     </Pressable>
   );
 }
@@ -73,8 +73,8 @@ export function DeliveryRiderCard({ order }: Props) {
 
   return (
     <View className="w-full rounded-3xl bg-white p-5">
-      <Text className="text-[14px] font-normal leading-6 text-ink/70">
-        {storeName} has handed off your order. {rider.name} is on the way to you.
+      <Text className="text-[13px] font-medium leading-6 text-ink/70">
+        {rider.name} picked up your order from {storeName} and is headed your way.
       </Text>
 
       <View className="mt-4 flex-row items-center gap-3">
@@ -84,7 +84,7 @@ export function DeliveryRiderCard({ order }: Props) {
           className="h-11 w-11 rounded-full bg-gray-100"
         />
         <View>
-          <Text className="text-base font-bold text-ink">{rider.name}</Text>
+          <Text className="text-base font-medium text-ink">{rider.name}</Text>
           {isDummy ? (
             <View className="mt-0.5 flex-row items-center gap-1">
               <AppIcon icon={StarIcon} size={13} color={colors.gold} fill={colors.gold} />

@@ -1,40 +1,29 @@
 // Sticky bar — no price/weight shown, per an explicit ask (that lives in
 // ProductDetailInfo's own price row already, showing it twice was
-// redundant). Two states:
+// redundant). Two states, both a single flat blue (#1447e6) bar per an
+// explicit reference image — no lime-deep stepper pill or separate basket
+// count anymore, one bar the whole time:
 //
-// - Not in cart: one full-width "Add to cart" button, nothing else.
-// - In cart: this product's own +/- stepper centered in the row (reads/
-//   writes useCartStore, same as ProductCard's), plus a basket icon pinned
-//   right showing selectCartTotalQuantity — the *whole cart's* item count,
-//   not just this product's — so it visibly ticks up as more gets added,
-//   whether that's this item or something else.
+// - Not in cart: one full-width "Add to Cart" row.
+// - In cart: the stepper (-/count/+) sits inside the SAME bar on the left,
+//   an "Added" label stays on the right (not "Add to Cart" again — the tap
+//   already happened) — matches the reference's "stepper left, label
+//   right, one bar" layout, instead of the stepper being its own centered
+//   pill with a basket-count button pulled out to the side. Same py-3.5
+//   bar height in both states, not a smaller pill for the in-cart one.
 //
-// The stepper is the row's only in-flow child (justify-center centers it
-// against the row's actual full width) — the basket is pulled OUT of flow
-// (position: absolute, pinned right) rather than the row centering the
-// stepper between two flex-1 side columns. That flex-1 approach only
-// centers correctly if both side columns end up exactly equal width, and
-// in practice the basket icon+count's own content pulled its column wider
-// than the empty spacer column, dragging the stepper off-true-center.
-// Removing the basket from flex distribution entirely (absolute) means
-// nothing about its width can affect the stepper's position, guaranteeing
-// a true center regardless. The basket itself is one Pressable (not just an
-// icon next to a bare Text) so the icon and count read as a single centered
-// unit/button, not two loosely aligned siblings — top-0/bottom-0 center it
-// vertically against the row's own height, which the stepper (the only
-// in-flow child) still determines.
-//
-// No background/border of its own — ProductDetailSheet.tsx wraps this in a
-// BlurView glass overlay and needs this content transparent so the blur
-// actually shows through underneath it.
+// No background/border of its own beyond the bar itself — ProductDetailSheet.tsx
+// wraps this in a BlurView glass overlay; only the bar (not the row padding
+// around it) needs to be opaque blue.
 
-import { AddSquareIcon, MinusSignIcon, ShoppingBag01Icon, ShoppingBasket01Icon } from '@hugeicons/core-free-icons';
+import { AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../AppIcon';
-import { colors } from '../../theme/tokens';
-import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
+import { useCartStore } from '../../store/useCartStore';
 import { addToCart } from '../../store/addToCart';
 import type { Product } from '../../screens/home/products/types';
+
+const BAR_BLUE = '#1447e6';
 
 interface Props {
   product: Product;
@@ -44,7 +33,6 @@ export function ProductDetailFooter({ product }: Props) {
   const { id, name, weight, price, originalPrice, storeId, storeName, imageUrl } = product;
 
   const quantity = useCartStore((state) => state.items.find((item) => item.id === id)?.quantity ?? 0);
-  const cartTotalQuantity = useCartStore(selectCartTotalQuantity);
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
@@ -53,31 +41,32 @@ export function ProductDetailFooter({ product }: Props) {
       <View className="px-5 py-4">
         <Pressable
           onPress={() => addToCart({ id, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })}
-          className="flex-row items-center justify-center gap-2 rounded-2xl bg-[#1447e6] py-3.5"
+          className="flex-row items-center justify-center rounded-2xl py-3.5"
+          style={{ backgroundColor: BAR_BLUE }}
         >
-          <AppIcon icon={ShoppingBag01Icon} size={18} color={colors.mist} strokeWidth={1.8} />
-          <Text className="text-base font-medium text-white">Add to cart</Text>
+          <Text className="text-base font-medium text-white">Add to Cart</Text>
         </Pressable>
       </View>
     );
   }
 
   return (
-    <View className="relative flex-row items-center justify-center px-5 py-4">
-      <View className="flex-row items-center gap-4 rounded-2xl bg-lime-deep px-4 py-3.5">
-        <Pressable onPress={() => decrementItem(id)} hitSlop={8}>
-          <AppIcon icon={MinusSignIcon} size={18} color={colors.ink} />
-        </Pressable>
-        <Text className="min-w-[18px] text-center text-base font-extrabold text-ink">{quantity}</Text>
-        <Pressable onPress={() => incrementItem(id)} hitSlop={8}>
-          <AppIcon icon={AddSquareIcon} size={18} color={colors.ink} />
-        </Pressable>
-      </View>
+    <View className="px-5 py-4">
+      <View className="flex-row items-center justify-between rounded-2xl py-3.5 pl-4 pr-5" style={{ backgroundColor: BAR_BLUE }}>
+        <View className="flex-row items-center gap-4">
+          <Pressable onPress={() => decrementItem(id)} hitSlop={8}>
+            <AppIcon icon={MinusSignIcon} size={18} color="#FFFFFF" />
+          </Pressable>
+          <Text className="min-w-[20px] text-center text-base font-extrabold text-white">
+            {quantity < 10 ? `0${quantity}` : quantity}
+          </Text>
+          <Pressable onPress={() => incrementItem(id)} hitSlop={8}>
+            <AppIcon icon={AddSquareIcon} size={18} color="#FFFFFF" />
+          </Pressable>
+        </View>
 
-      <Pressable className="absolute bottom-0 right-5 top-0 flex-row items-center justify-center gap-1.5">
-        <AppIcon icon={ShoppingBasket01Icon} size={22} color={colors.ink} />
-        <Text className="text-base font-bold text-ink">{cartTotalQuantity}</Text>
-      </Pressable>
+        <Text className="text-base font-medium text-white">Added</Text>
+      </View>
     </View>
   );
 }

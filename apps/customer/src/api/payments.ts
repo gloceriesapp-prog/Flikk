@@ -17,6 +17,25 @@ export function createRazorpayOrder(orderId: string): Promise<RazorpayOrder> {
   return apiRequest('/payments/create-order', { method: 'POST', body: { orderId } });
 }
 
+export interface UpiIntentPayment {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  // Raw `upi://pay?...` deep link — payments/upiIntent.ts's own openUpiApp
+  // launches this exactly as received, never modified (Razorpay's docs
+  // explicitly warn changing it can break the payment).
+  upiLink: string;
+}
+
+// POST /payments/create-upi-intent (backend/src/routes/payments.ts) — the
+// S2S UPI Intent flow. Unlike createRazorpayOrder above (which feeds
+// Razorpay's own bundled Checkout SDK), this returns a raw deep link the
+// app launches itself at a specific installed UPI app — no Razorpay
+// branding, same mechanism Blinkit/Instamart use for their own UPI-app
+// grid (payments/upiIntent.ts).
+export function createUpiIntentPayment(orderId: string): Promise<UpiIntentPayment> {
+  return apiRequest('/payments/create-upi-intent', { method: 'POST', body: { orderId } });
+}
+
 export interface VerifyPaymentInput {
   orderId: string;
   razorpay_order_id: string;

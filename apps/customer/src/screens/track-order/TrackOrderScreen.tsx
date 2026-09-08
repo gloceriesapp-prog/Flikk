@@ -45,7 +45,7 @@ export function TrackOrderScreen({ navigation, route }: Props) {
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
-        <Text className="flex-1 text-center text-xl font-bold text-ink">Track Order</Text>
+        <Text className="flex-1 text-center text-xl font-semibold text-ink">Track Order</Text>
         {/* No support screen exists yet — wire this to a real destination
             once one does, same no-op ProfileScreen's own Support tile uses
             today. */}

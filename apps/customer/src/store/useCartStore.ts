@@ -138,12 +138,12 @@ export function selectCartTotalPrice(state: CartState): number {
 // real ones. Shared here (not duplicated per-screen) so CartScreen and
 // CheckoutScreen can't quote two different totals for the same cart.
 export const CART_DELIVERY_FEE = 25;
-export const CART_HANDLING_FEE = 5;
+export const CART_HANDLING_FEE = 3;
 
-// FreeDeliveryBar-only threshold — display/incentive only, doesn't waive
-// CART_DELIVERY_FEE at checkout (no pricing-rules backend exists to compute
-// a real discounted total yet, see selectCartGrandTotal's own note).
-export const FREE_DELIVERY_THRESHOLD = 129;
+// Real free-delivery threshold — BillDetailsCard and FreeDeliveryProgressCard
+// both waive/show CART_DELIVERY_FEE off this same constant once itemTotal
+// crosses it, so the two can't quote different thresholds.
+export const FREE_DELIVERY_THRESHOLD = 199;
 
 export function selectCartGrandTotal(state: CartState): number {
   return selectCartTotalPrice(state) + CART_DELIVERY_FEE + CART_HANDLING_FEE;

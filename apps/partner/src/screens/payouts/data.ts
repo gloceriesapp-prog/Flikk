@@ -7,7 +7,12 @@
 // `gross_amount` / `commission_deducted` / `net_payout` columns so a real
 // fetch is a data swap, not a shape change.
 
-export type PayoutStatus = 'pending' | 'paid';
+// Mirrors payouts.status (migration 012) — 'processing' (Razorpay accepted
+// the payout, awaiting the bank's final confirmation) and 'blocked' (no
+// verified payout destination on file yet) are real states a row can be
+// in now that weeklyPayouts.ts actually releases these, not just the
+// original 'pending'/'paid'.
+export type PayoutStatus = 'pending' | 'processing' | 'paid' | 'blocked' | 'failed';
 
 // One order's contribution to a settlement — what a shop owner checks a
 // weekly total against order by order, the same way they'd check a bank

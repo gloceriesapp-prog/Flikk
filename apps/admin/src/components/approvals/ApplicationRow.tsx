@@ -21,6 +21,9 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
   rejected: 'bg-red-50 text-danger',
 };
 
+const DEFAULT_REJECTION_REASON =
+  "We couldn't verify your store documents this time. Please double-check your store details and photo, then resubmit your application.";
+
 export function ApplicationRow({ application }: { application: Application }) {
   const [status, setStatus] = useState(application.status);
   const [busy, setBusy] = useState(false);
@@ -31,14 +34,36 @@ export function ApplicationRow({ application }: { application: Application }) {
   const needsDecision = status !== 'approved';
 
   async function decide(approve: boolean) {
+    // Reject asks for a reason so the applicant gets a real explanation,
+    // not just a status flip — window.prompt is a plain-but-functional
+    // way to collect that without a whole modal component for one text
+    // field. Pre-filled with a clean default so a founder in a hurry can
+    // just hit OK; editing it is optional, not required.
+    let reason: string | undefined;
+    if (!approve) {
+      const typed = window.prompt('Reason for rejecting this application (shown to the applicant):', DEFAULT_REJECTION_REASON);
+      if (typed === null) return; // cancelled — don't reject at all
+      reason = typed.trim() || undefined;
+    }
+
     setBusy(true);
     try {
       const res = await fetch(`/api/approvals/${application.kind === 'store' ? 'stores' : 'riders'}/${application.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approve }),
+        body: JSON.stringify(approve ? { approve } : { approve, reason }),
       });
-      if (res.ok) setStatus(approve ? 'approved' : 'rejected');
+      if (res.ok) {
+        setStatus(approve ? 'approved' : 'rejected');
+      } else {
+        // Previously silent — a failed decide() just stopped spinning
+        // with zero indication anything went wrong, which is exactly
+        // what "reject button does nothing" looked like from the outside.
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        window.alert(body?.error ?? 'Could not update this application.');
+      }
+    } catch {
+      window.alert('Could not reach the server. Please try again.');
     } finally {
       setBusy(false);
     }

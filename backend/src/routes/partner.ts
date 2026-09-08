@@ -15,6 +15,7 @@ import { replaceProductVariants } from '../db/productVariants.js';
 import { AppError, asValidationError } from '../lib/errors.js';
 import { toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
+import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
 import { toWebp } from '../utils/image.js';
 
 export const partnerRouter = Router();
@@ -26,15 +27,38 @@ async function ownStoreId(userId: string): Promise<string> {
   return data.id;
 }
 
+// The real, verified account phone (users.phone, set at OTP verify time)
+// — never stores.phone, which is a separate unset column meant for a
+// storefront contact number that nothing here ever populates. Settings'
+// own "Phone number" row was reading that always-null column, which is
+// why it never showed anything real.
+async function ownerPhone(userId: string): Promise<string | null> {
+  const { data } = await supabase.from('users').select('phone').eq('id', userId).single();
+  return data?.phone ?? null;
+}
+
+// Never sends the real bank account number to the client, even though
+// it's kept in full in the DB (needed to actually run a payout later) —
+// last-4-visible masking, same convention Razorpay's own API responses
+// already use for account numbers.
+function maskAccountNumber(full: string | null): string | null {
+  if (!full) return null;
+  return `XXXXXXXX${full.slice(-4)}`;
+}
+
+const STORE_SELECT =
+  'id, name, category, is_active, district, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number';
+
+function toStoreResponse(data: Record<string, unknown>, phone: string | null) {
+  const { payout_bank_account_number, ...rest } = data;
+  return { ...rest, payout_bank_account_number: maskAccountNumber(payout_bank_account_number as string | null), phone };
+}
+
 partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('stores')
-      .select('id, name, category, is_active, district, photo_url, phone, open_time, close_time, avg_prep_minutes')
-      .eq('owner_user_id', req.user!.id)
-      .single();
+    const { data, error } = await supabase.from('stores').select(STORE_SELECT).eq('owner_user_id', req.user!.id).single();
     if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
-    res.json(data);
+    res.json(toStoreResponse(data, await ownerPhone(req.user!.id)));
   } catch (err) {
     next(err);
   }
@@ -43,7 +67,14 @@ partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
 partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { name, category, is_active, district, open_time, close_time, avg_prep_minutes } = req.body as Record<string, unknown>;
+    const { name, category, is_active, district, open_time, close_time, avg_prep_minutes, photo_url, owner_name, gst_number, shop_establishment_number } =
+      req.body as Record<string, unknown>;
+    // Deliberately NOT accepting payout_upi_id/payout_upi_verified_name/
+    // payout_method/payout_bank_* here — every payout-destination field
+    // is only ever written by POST /verify-payout, which requires a real
+    // RazorpayX verification to have just succeeded. Accepting them as
+    // plain PATCH fields would let an unverified value slip in through
+    // this screen's generic Save button, defeating the whole point.
     const patch: Record<string, unknown> = {};
     if (name !== undefined) patch.name = name;
     if (category !== undefined) patch.category = category;
@@ -52,15 +83,102 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     if (open_time !== undefined) patch.open_time = open_time;
     if (close_time !== undefined) patch.close_time = close_time;
     if (avg_prep_minutes !== undefined) patch.avg_prep_minutes = avg_prep_minutes;
+    if (photo_url !== undefined) patch.photo_url = photo_url;
+    if (owner_name !== undefined) patch.owner_name = owner_name;
+    if (gst_number !== undefined) patch.gst_number = gst_number;
+    if (shop_establishment_number !== undefined) patch.shop_establishment_number = shop_establishment_number;
 
-    const { data, error } = await supabase
-      .from('stores')
-      .update(patch)
-      .eq('id', storeId)
-      .select('id, name, category, is_active, district, photo_url, phone, open_time, close_time, avg_prep_minutes')
-      .single();
+    const { data, error } = await supabase.from('stores').update(patch).eq('id', storeId).select(STORE_SELECT).single();
     if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
-    res.json(data);
+    res.json(toStoreResponse(data, await ownerPhone(req.user!.id)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Real RazorpayX Fund Account Validation (verifyPayoutAccount.ts) — a
+// genuine bank-verified check, not the deprecated standalone
+// VPA-validate endpoint (NPCI retired UPI Collect 28 Feb 2026, taking
+// that simpler API with it). Persists the RazorpayX contact id (avoids
+// recreating a Contact on every verify) plus the bank name/holder
+// name/account details immediately — a verification result IS a real
+// fact about the store the moment Razorpay confirms it, not something
+// that should evaporate if the owner navigates away before hitting the
+// separate "Save changes" button on the rest of the form.
+//
+// Verifying one method clears the other's saved fields — a store only
+// ever has one active payout destination at a time (payout_method), and
+// leaving stale bank details behind after switching to UPI (or vice
+// versa) would let the app show two "verified" payout methods for the
+// same store, which is never actually true.
+partnerRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
+  try {
+    const body = req.body as { method?: 'upi' | 'bank_account'; vpa?: string; accountNumber?: string; ifsc?: string; accountHolderName?: string };
+
+    let input: PayoutAccountInput;
+    if (body.method === 'upi') {
+      if (!body.vpa?.trim()) throw new AppError(400, 'MISSING_FIELDS', 'vpa is required.');
+      input = { method: 'upi', vpa: body.vpa.trim() };
+    } else if (body.method === 'bank_account') {
+      if (!body.accountNumber?.trim() || !body.ifsc?.trim() || !body.accountHolderName?.trim()) {
+        throw new AppError(400, 'MISSING_FIELDS', 'accountNumber, ifsc and accountHolderName are required.');
+      }
+      input = {
+        method: 'bank_account',
+        accountNumber: body.accountNumber.trim(),
+        ifsc: body.ifsc.trim().toUpperCase(),
+        accountHolderName: body.accountHolderName.trim(),
+      };
+    } else {
+      throw new AppError(400, 'INVALID_METHOD', 'method must be "upi" or "bank_account".');
+    }
+
+    const storeId = await ownStoreId(req.user!.id);
+    const { data: store } = await supabase.from('stores').select('owner_name, razorpay_contact_id').eq('id', storeId).single();
+    const phone = await ownerPhone(req.user!.id);
+
+    const { result, contactId, fundAccountId } = await verifyPayoutAccount(
+      input,
+      store?.owner_name ?? '',
+      phone,
+      store?.razorpay_contact_id ?? null,
+    );
+
+    const patch: Record<string, unknown> =
+      input.method === 'upi'
+        ? {
+            payout_method: 'upi',
+            payout_upi_id: input.vpa,
+            payout_upi_verified_name: result.registeredName,
+            payout_bank_name: result.bankName,
+            payout_bank_account_number: null,
+            payout_bank_ifsc: null,
+            razorpay_contact_id: contactId,
+            razorpay_fund_account_id: fundAccountId,
+          }
+        : {
+            payout_method: 'bank_account',
+            payout_upi_id: null,
+            payout_upi_verified_name: result.registeredName,
+            payout_bank_name: result.bankName,
+            payout_bank_account_number: input.accountNumber,
+            payout_bank_ifsc: result.bankIfsc ?? input.ifsc,
+            razorpay_contact_id: contactId,
+            razorpay_fund_account_id: fundAccountId,
+          };
+    await supabase.from('stores').update(patch).eq('id', storeId);
+
+    res.json({
+      method: input.method,
+      vpa: input.method === 'upi' ? input.vpa : null,
+      maskedAccountNumber: input.method === 'bank_account' ? maskAccountNumber(input.accountNumber) : null,
+      ifsc: input.method === 'bank_account' ? result.bankIfsc ?? input.ifsc : null,
+      accountHolderName: result.registeredName,
+      accountStatus: result.accountStatus,
+      bankName: result.bankName,
+      accountType: result.accountType,
+      nameMatchScore: result.nameMatchScore,
+    });
   } catch (err) {
     next(err);
   }

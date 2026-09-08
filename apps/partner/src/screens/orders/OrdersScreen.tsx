@@ -18,6 +18,7 @@ import { useStoreProfileStore } from '../../store/useStoreProfileStore';
 import type { PartnerOrderStatus } from './data';
 import { OrderCard } from './components/OrderCard';
 import { OrderStatusFilter, type OrderStatusFilterValue } from './components/OrderStatusFilter';
+import { ProfileSetupBanner } from './components/ProfileSetupBanner';
 import { StoreProfileHeader } from './components/StoreProfileHeader';
 import { TodayStatsCard } from './components/TodayStatsCard';
 import type { AppStackParamList } from '../../navigation/types';
@@ -84,6 +85,10 @@ export function OrdersScreen({ navigation }: Props) {
         onPressNotifications={() => {}}
       />
 
+      {profile.id.length > 0 && (
+        <ProfileSetupBanner profile={profile} onPress={() => navigation.navigate('StoreSettings')} />
+      )}
+
       <View className="pb-1">
         <TodayStatsCard orderCount={orders.length} pendingCount={newOrderCount} earningTotal={earningTotal} />
       </View>
@@ -107,9 +112,9 @@ export function OrdersScreen({ navigation }: Props) {
       </View>
 
       {orders.length === 0 ? (
-        <View className="flex-1 items-center justify-center gap-2 px-10">
+        <View className="flex-1 items-center justify-center px-10">
           <Text className="text-base font-medium text-ink">No orders yet</Text>
-          <Text className="text-center text-sm text-ink/50">New orders will show up here the moment they come in.</Text>
+          <Text className="text-center text-sm text-ink/50 font-normal">New orders will show up here the moment they come in.</Text>
         </View>
       ) : (
         <ScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-28">

@@ -23,6 +23,13 @@ export function estimateDeliveryTime(placedAt: string, avgPrepMinutes: number | 
   return new Date(new Date(placedAt).getTime() + (prepMinutes + DELIVERY_TRANSIT_BUFFER_MINUTES) * 60_000);
 }
 
+// Pre-order estimate (Cart screen) — no placedAt/avg_prep_minutes yet since
+// no order exists, so this is the same default-prep + transit-buffer math
+// above with "now" as the placed time, not a separate fabricated number.
+export function estimateCartEtaMinutes(): number {
+  return DEFAULT_PREP_MINUTES + DELIVERY_TRANSIT_BUFFER_MINUTES;
+}
+
 export function formatEta(eta: Date): string {
   const now = new Date();
   const time = eta.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });

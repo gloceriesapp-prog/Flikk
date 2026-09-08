@@ -26,7 +26,7 @@ export function InventorySummaryCard({ listedCount, lastUpdatedLabel, onPressAdd
 
       <View className="flex-row items-end justify-between">
         <Text className="text-4xl font-medium text-ink">{listedCount}</Text>
-        <Text className="mb-1 text-base font-regular text-ink/50">{lastUpdatedLabel}</Text>
+        <Text className="mb-1 text-base font-normal text-ink/50">{lastUpdatedLabel}</Text>
       </View>
 
       <Pressable

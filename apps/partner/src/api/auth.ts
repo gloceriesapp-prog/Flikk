@@ -62,6 +62,8 @@ export interface StoreApplication {
   district: string;
   gstNumber?: string;
   photoUrl?: string;
+  ownerName?: string;
+  shopLicenseNumber?: string;
 }
 
 // Partner-only endpoint (Store Setup submission) — not part of the shared
@@ -92,6 +94,40 @@ export async function uploadStorePhoto(base64: string, contentType: string, loca
   }
 }
 
+// Real RazorpayX Fund Account Validation (backend's routes/partner.ts's
+// own note has the full flow) — no dev-mode fallback, unlike most of this
+// file: a fake "verified" result here would be actively worse than an
+// honest failure, since Settings persists whatever this returns as if a
+// real bank confirmed it. A real 4xx/5xx (including "RazorpayX not
+// configured yet" while that account activation is pending) always
+// surfaces as a real ApiError to the caller.
+export interface PayoutVerificationResult {
+  method: 'upi' | 'bank_account';
+  vpa: string | null;
+  maskedAccountNumber: string | null;
+  ifsc: string | null;
+  accountHolderName: string | null;
+  accountStatus: string;
+  bankName: string | null;
+  accountType: string | null;
+  nameMatchScore: number | null;
+}
+
+export async function verifyPayoutUpi(vpa: string): Promise<PayoutVerificationResult> {
+  return apiRequest('/partner/verify-payout', { method: 'POST', body: { method: 'upi', vpa } });
+}
+
+export async function verifyPayoutBankAccount(
+  accountNumber: string,
+  ifsc: string,
+  accountHolderName: string,
+): Promise<PayoutVerificationResult> {
+  return apiRequest('/partner/verify-payout', {
+    method: 'POST',
+    body: { method: 'bank_account', accountNumber, ifsc, accountHolderName },
+  });
+}
+
 // Re-checked on cold start (a returning session's approval/store status
 // isn't persisted alongside the token, see useAuthStore.ts's own note) and
 // polled by WaitingApprovalScreen — one endpoint, two callers.
@@ -118,6 +154,8 @@ export interface StoreDraftPatch {
   lng?: number;
   photoUrl?: string;
   gstNumber?: string;
+  ownerName?: string;
+  shopLicenseNumber?: string;
 }
 
 export interface SavedStoreDraft {
@@ -128,6 +166,8 @@ export interface SavedStoreDraft {
   lng: number | null;
   photo_url: string | null;
   gst_number: string | null;
+  owner_name: string | null;
+  shop_establishment_number: string | null;
 }
 
 export async function fetchStoreDraft(): Promise<SavedStoreDraft | null> {

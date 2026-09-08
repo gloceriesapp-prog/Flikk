@@ -17,7 +17,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
-import { SOHNE_FONT_FILES } from './src/theme/fonts';
+import { AEONIK_FONT_FILES } from './src/theme/fonts';
 import { IncomingOrderAlert } from './src/features/incoming-order-alert/IncomingOrderAlert';
 import { primeOrderAlertSound } from './src/features/incoming-order-alert/playOrderAlertSound';
 import { OrderReminderBanner } from './src/features/order-expiry/components/OrderReminderBanner';
@@ -29,13 +29,13 @@ const queryClient = new QueryClient();
 
 export default function App() {
   // Loading the weights here registers them with the OS by font-family
-  // name (e.g. "Sohne-Buch") — the actual app-wide default is applied via
-  // global.css's `@layer base { * { font-family: ... } }` and its
-  // font-weight-utility mapping, not from this hook or any React
-  // defaultProps mechanism. Same split as apps/customer/App.tsx's Gilroy
-  // setup — see that file's own note on why defaultProps doesn't work
-  // with NativeWind's cssInterop-wrapped Text.
-  const [fontsLoaded, fontError] = useFonts(SOHNE_FONT_FILES);
+  // name (e.g. "AeonikSoftPro-Regular") — the actual app-wide default is
+  // applied via global.css's `@layer base { * { font-family: ... } }` and
+  // its font-weight-utility mapping, not from this hook or any React
+  // defaultProps mechanism. Same split as apps/customer/App.tsx's own
+  // Aeonik setup — see that file's own note on why defaultProps doesn't
+  // work with NativeWind's cssInterop-wrapped Text.
+  const [fontsLoaded, fontError] = useFonts(AEONIK_FONT_FILES);
   const hasFullAccess = useAuthStore((s) => !!s.accessToken && s.hasStore && s.isApproved);
 
   const onRootLayout = useCallback(() => {

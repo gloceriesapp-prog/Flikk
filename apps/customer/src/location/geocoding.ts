@@ -33,6 +33,22 @@ export class LocationPermissionDeniedError extends Error {
 
 export async function requestLocationPermission(): Promise<boolean> {
   const { status } = await Location.requestForegroundPermissionsAsync();
+  // Real crash this works around, not a defensive-programming guess: the
+  // OS permission dialog tears down and recreates the host Activity: on
+  // React Native's New Architecture (enabled in this app,
+  // android/gradle.properties), a getCurrentPositionAsync call fired
+  // immediately after this resolves races that recreation and resolves
+  // its promise against a now-stale native bridge reference — a native
+  // NullPointerException (expo.modules.location.LocationHelpers.
+  // requestSingleLocation -> PromiseImpl.resolve), unrecoverable by any
+  // JS try/catch since the whole process crashes below the JS layer.
+  // Every caller of this function goes straight into a
+  // getCurrentPositionAsync call once permission is granted (Location-
+  // PermissionScreen/LocationSearchScreen), so the wait belongs here
+  // once, not duplicated at each call site. 400ms is comfortably past
+  // the activity-recreation window on real hardware without being a
+  // noticeable pause to the user waiting on a permission prompt.
+  if (status === 'granted') await new Promise((resolve) => setTimeout(resolve, 400));
   return status === 'granted';
 }
 

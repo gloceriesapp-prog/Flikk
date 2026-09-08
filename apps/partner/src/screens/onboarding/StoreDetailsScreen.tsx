@@ -21,6 +21,8 @@ import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'StoreDetails'>;
 
+const ACCENT = '#1754cf';
+
 export function StoreDetailsScreen({ navigation, route }: Props) {
   const { draft } = route.params;
   const [photoUrl, setPhotoUrl] = useState(draft.photoUrl);
@@ -29,6 +31,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
   const [district, setDistrict] = useState(draft.district);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(draft.coordinates);
   const [gstNumber, setGstNumber] = useState(draft.gstNumber);
+  const [shopLicenseNumber, setShopLicenseNumber] = useState(draft.shopLicenseNumber);
 
   const canContinue = district !== null;
 
@@ -90,6 +93,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
   function handleNext() {
     if (!canContinue) return;
     const trimmedGst = gstNumber.trim();
+    const trimmedShopLicense = shopLicenseNumber.trim();
 
     // Best-effort, same reasoning as handlePickPhoto's own note above.
     saveStoreDraft({
@@ -97,10 +101,11 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
       lat: coordinates?.latitude,
       lng: coordinates?.longitude,
       gstNumber: trimmedGst,
+      shopLicenseNumber: trimmedShopLicense,
     }).catch(() => {});
 
     navigation.navigate('StoreReview', {
-      draft: { ...draft, photoUrl, district, coordinates, gstNumber: trimmedGst },
+      draft: { ...draft, photoUrl, district, coordinates, gstNumber: trimmedGst, shopLicenseNumber: trimmedShopLicense },
     });
   }
 
@@ -110,21 +115,21 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
     <DismissKeyboardView>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white pb-safe pt-safe">
         <View className="px-6 pt-4">
-          <Text className="text-xs font-bold uppercase tracking-wide text-lime-deep">Step 2 of 3</Text>
-          <Text className="mt-1 text-3xl font-medium text-ink">Add store details</Text>
-          <Text className="mt-1 text-base font-medium text-ink/60">A photo and location help customers find you.</Text>
+          <Text className="text-[13px] font-bold uppercase tracking-wide" style={{ color: ACCENT }}>Step 2 of 3</Text>
+          <Text className="mt-1 text-[28px] font-bold text-ink">Add store details</Text>
+          <Text className="mt-1 text-[15px] font-medium text-ink/60">A photo and location help customers find you.</Text>
         </View>
 
         <ScrollView className="flex-1" contentContainerClassName="gap-5 px-6 pt-6" keyboardShouldPersistTaps="handled">
           <View className="gap-1.5">
-            <Text className="text-base font-medium text-ink/60">Store photo</Text>
+            <Text className="text-[15px] font-medium text-ink/60">Store photo</Text>
             <Pressable
               onPress={handlePickPhoto}
               disabled={uploadingPhoto}
               className="h-40 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-mist"
             >
               {uploadingPhoto ? (
-                <ActivityIndicator color={colors.limeDeep} />
+                <ActivityIndicator color={ACCENT} />
               ) : photoUrl ? (
                 <Image source={{ uri: photoUrl }} className="h-full w-full" resizeMode="cover" />
               ) : (
@@ -138,7 +143,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-base font-medium text-ink/60">Location</Text>
+            <Text className="text-[15px] font-medium text-ink/60">Location</Text>
             <StoreLocationCard
               district={district}
               onUseCurrentLocation={() => handleOpenLocationPin()}
@@ -147,14 +152,26 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-base font-medium text-ink/60">GST number (optional)</Text>
+            <Text className="text-[15px] font-medium text-ink/60">GST number (optional)</Text>
             <TextInput
               value={gstNumber}
               onChangeText={setGstNumber}
               placeholder="e.g. 29ABCDE1234F1Z5"
               placeholderTextColor="#9AA5A3"
               autoCapitalize="characters"
-              className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-base font-medium text-ink"
+              className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-[15px] font-medium text-ink"
+            />
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-[15px] font-medium text-ink/60">Shop & Establishment license (optional)</Text>
+            <TextInput
+              value={shopLicenseNumber}
+              onChangeText={setShopLicenseNumber}
+              placeholder="License number, if you have one"
+              placeholderTextColor="#9AA5A3"
+              autoCapitalize="characters"
+              className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-[15px] font-medium text-ink"
             />
           </View>
         </ScrollView>

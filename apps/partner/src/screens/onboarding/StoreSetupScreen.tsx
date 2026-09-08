@@ -27,13 +27,25 @@ import type { AuthStackParamList, StoreDraft } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'StoreSetup'>;
 
-export function StoreSetupScreen({ navigation }: Props) {
-  const [storeName, setStoreName] = useState('');
-  const [category, setCategory] = useState('');
-  const [resuming, setResuming] = useState(true);
+const ACCENT = '#1754cf';
+
+export function StoreSetupScreen({ navigation, route }: Props) {
+  // Editing (reached via StoreReviewScreen's own "Edit" tap) carries the
+  // full in-progress draft as a param — its presence is what skips the
+  // cold-start resume-fetch below entirely, so tapping Edit never gets
+  // hijacked by that auto-forward-back-to-Review logic (see this file's
+  // own header note — that hijack was the actual "can't edit" bug).
+  const editDraft = route.params?.draft;
+
+  const [ownerName, setOwnerName] = useState(editDraft?.ownerName ?? '');
+  const [storeName, setStoreName] = useState(editDraft?.storeName ?? '');
+  const [category, setCategory] = useState(editDraft?.category ?? '');
+  const [resuming, setResuming] = useState(!editDraft);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (editDraft) return; // editing an existing draft — nothing to resume
+
     let cancelled = false;
 
     async function resume() {
@@ -41,11 +53,13 @@ export function StoreSetupScreen({ navigation }: Props) {
         const draft = await fetchStoreDraft();
         if (cancelled || !draft) return;
 
+        if (draft.owner_name) setOwnerName(draft.owner_name);
         if (draft.store_name) setStoreName(draft.store_name);
         if (draft.category) setCategory(draft.category);
 
         // Step 1 is only ever "done" once both fields are set — anything
-        // less and this screen is still the right place to be.
+        // less and this screen is still the right place to be. Owner name
+        // isn't part of that gate (see canContinue below) — it's optional.
         if (!draft.store_name || !draft.category) return;
 
         const partialDraft: StoreDraft = {
@@ -55,6 +69,8 @@ export function StoreSetupScreen({ navigation }: Props) {
           coordinates: draft.lat !== null && draft.lng !== null ? { latitude: draft.lat, longitude: draft.lng } : null,
           photoUrl: draft.photo_url,
           gstNumber: draft.gst_number ?? '',
+          ownerName: draft.owner_name ?? '',
+          shopLicenseNumber: draft.shop_establishment_number ?? '',
         };
 
         // Step 2 also done (district set) -> skip straight to Review;
@@ -77,17 +93,18 @@ export function StoreSetupScreen({ navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [navigation]);
+  }, [editDraft, navigation]);
 
   const canContinue = storeName.trim().length > 0 && category.length > 0;
 
   async function handleNext() {
     if (!canContinue) return;
+    const trimmedOwnerName = ownerName.trim();
     const trimmedName = storeName.trim();
 
     setSaving(true);
     try {
-      await saveStoreDraft({ storeName: trimmedName, category });
+      await saveStoreDraft({ storeName: trimmedName, category, ownerName: trimmedOwnerName });
     } catch {
       // Best-effort — see this file's own note on why a failed save just
       // costs a resume, not a blocked flow.
@@ -95,14 +112,20 @@ export function StoreSetupScreen({ navigation }: Props) {
       setSaving(false);
     }
 
+    // Editing preserves whatever Step 2 already had (photo/location/GST/
+    // license) — a plain fresh Step 1 has none of that yet, hence the ??
+    // fallbacks. Overwriting those with blanks here was the other half of
+    // the "editing broke my progress" risk this fix closes.
     navigation.navigate('StoreDetails', {
       draft: {
         storeName: trimmedName,
         category,
-        district: null,
-        coordinates: null,
-        photoUrl: null,
-        gstNumber: '',
+        district: editDraft?.district ?? null,
+        coordinates: editDraft?.coordinates ?? null,
+        photoUrl: editDraft?.photoUrl ?? null,
+        gstNumber: editDraft?.gstNumber ?? '',
+        ownerName: trimmedOwnerName,
+        shopLicenseNumber: editDraft?.shopLicenseNumber ?? '',
       },
     });
   }
@@ -121,25 +144,38 @@ export function StoreSetupScreen({ navigation }: Props) {
     <DismissKeyboardView>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white pb-safe pt-safe">
         <View className="px-6 pt-4">
-          <Text className="text-xs font-bold uppercase tracking-wide text-lime-deep">Step 1 of 3</Text>
-          <Text className="mt-1 text-3xl font-medium text-ink">Let’s get your store ready</Text>
-          <Text className="mt-1 text-base font-medium text-ink/60">Tell us your store’s name and what it sells.</Text>
+          <Text className="text-[13px] font-bold uppercase tracking-wide" style={{ color: ACCENT }}>
+            {editDraft ? 'Editing' : 'Step 1 of 3'}
+          </Text>
+          <Text className="mt-1 text-[28px] font-bold text-ink">Let’s get your store ready</Text>
+          <Text className="mt-1 text-[15px] font-medium text-ink/60">Tell us your store’s name and what it sells.</Text>
         </View>
 
         <View className="flex-1 gap-5 px-6 pt-6">
           <View className="gap-1.5">
-            <Text className="text-base font-medium text-ink/60">Store name</Text>
+            <Text className="text-[15px] font-medium text-ink/60">Your name (optional)</Text>
+            <TextInput
+              value={ownerName}
+              onChangeText={setOwnerName}
+              placeholder="e.g. Nishal Poojary"
+              placeholderTextColor="#9AA5A3"
+              className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-[15px] font-medium text-ink"
+            />
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-[15px] font-medium text-ink/60">Store name</Text>
             <TextInput
               value={storeName}
               onChangeText={setStoreName}
               placeholder="e.g. Ganesh Kirana Store"
               placeholderTextColor="#9AA5A3"
-              className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-base font-medium text-ink"
+              className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-[15px] font-medium text-ink"
             />
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-base font-medium text-ink/60">Category</Text>
+            <Text className="text-[15px] font-medium text-ink/60">Category</Text>
             <StoreCategoryPicker selected={category} onSelect={setCategory} />
           </View>
         </View>

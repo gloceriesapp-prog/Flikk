@@ -1,50 +1,41 @@
-// Two sections — "Pay on Delivery" gets its own inline Pay button the
-// moment it's picked (Cash on Delivery is the only method this app
-// actually settles right now), and "Pay by any UPI App" lists the
-// individual apps a customer expects to see plus a fourth "Enter UPI ID"
-// row that reveals a real text field instead of just a radio dot. None of
-// these UPI rows launch a real app yet — the real Razorpay Checkout SDK
-// (api/payments.ts, payments/openRazorpayCheckout.ts) needs a native
-// dev-client build this app isn't shipping while it runs in Expo Go —
-// CheckoutScreen's handlePay shows a "coming soon" alert for every method
-// except cod. Only the COD row carries a subtitle; the UPI app rows are
-// self-explanatory by name+icon alone.
+// Three sections — "Pay on Delivery" (Cash), a UPI-app grid built from
+// whatever's actually detected installed on this device (payments/
+// upiIntent.ts's detectInstalledUpiApps), and "More payment options"
+// (cards/netbanking/any other UPI app) falling back to Razorpay's own
+// bundled Checkout screen. The UPI grid is Flikk's own screen, own icons,
+// own tap targets — no Razorpay/Cashfree branding shown at any point in
+// it, same as Blinkit/Instamart's own checkout. See payments/upiIntent.ts
+// for how a tapped app is actually launched.
+//
+// PaymentMethod encodes a chosen UPI app as `upi_app:<id>` rather than a
+// separate field — keeps CheckoutScreen's handlePay a single switch on
+// one value instead of two independent pieces of state that could
+// disagree (e.g. method='online' with a stale selectedUpiApp left over
+// from a previous tap).
+//
+// `upiApps` (the detected list) is a prop, not detected here internally
+// — CheckoutScreen owns detection and passes the same list down that it
+// looks the tapped app up in for handlePay. Two independent detection
+// calls (one here, one there) risk two different results if apps get
+// installed/uninstalled between them — id `upi_app:<packageName>` would
+// then resolve here but fail to find a match in CheckoutScreen's own
+// list, which is exactly the "Unknown UPI app selected" bug this fixes.
 
-import { useState } from 'react';
-import { AtIcon, BankIcon, BanknoteIcon, SmartPhone01Icon, Tick02Icon, Wallet01Icon } from '@hugeicons/core-free-icons';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
-import { AppImage as Image } from '../../../components/AppImage';
-import type { IconSvgElement } from '@hugeicons/react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { BankIcon, BanknoteIcon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
-import { PAYMENT_METHOD_ICON_URL } from '../../../theme/paymentIcons';
+import type { UpiApp } from '../../../payments/upiApps';
 
-export type PaymentMethod = 'cod' | 'google_pay' | 'phonepe' | 'amazon_pay' | 'upi_id';
+export type PaymentMethod = 'cod' | 'online' | `upi_app:${string}`;
 
-export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
-  cod: 'Cash on Delivery',
-  google_pay: 'Google Pay',
-  phonepe: 'PhonePe UPI',
-  amazon_pay: 'Amazon Pay UPI',
-  upi_id: 'UPI ID',
-};
-
-const BRAND_ACCENT = '#3E21E0';
-
-interface UpiOption {
-  id: PaymentMethod;
-  label: string;
-  icon: IconSvgElement;
-  badgeBg: string;
-  badgeText: string;
+export function paymentMethodLabel(method: PaymentMethod, upiApps: UpiApp[]): string {
+  if (method === 'cod') return 'Cash on Delivery';
+  if (method === 'online') return 'Online Payment';
+  const appId = method.slice('upi_app:'.length);
+  return upiApps.find((a) => a.id === appId)?.name ?? 'UPI';
 }
 
-const UPI_APP_OPTIONS: UpiOption[] = [
-  { id: 'google_pay', label: 'Google Pay', icon: BankIcon, badgeBg: '#E8F0FE', badgeText: '#1A73E8' },
-  { id: 'phonepe', label: 'PhonePe UPI', icon: SmartPhone01Icon, badgeBg: '#F1E9FE', badgeText: '#5F259F' },
-  { id: 'amazon_pay', label: 'Amazon Pay UPI', icon: Wallet01Icon, badgeBg: '#FFF3E0', badgeText: '#CC7A00' },
-];
-
-const UPI_ID_OPTION: UpiOption = { id: 'upi_id', label: 'Pay via UPI ID', icon: AtIcon, badgeBg: '#EDE9FE', badgeText: BRAND_ACCENT };
+const BRAND_ACCENT = '#3E21E0';
 
 function RadioCheck({ selected }: { selected: boolean }) {
   if (!selected) return <View className="h-6 w-6 rounded-full border-2 border-gray-300" />;
@@ -55,23 +46,27 @@ function RadioCheck({ selected }: { selected: boolean }) {
   );
 }
 
-// Prefers a real brand icon (PAYMENT_METHOD_ICON_URL) when one's set —
-// shown large on a plain white, bordered tile so the brand's own colors
-// carry the badge instead of a tinted background fighting with them. Falls
-// back to the in-app tinted hugeicon (its own colored tile) when a method
-// has no real logo yet, so it still reads as deliberate rather than broken.
-function AppBadge({ method, icon, bg, iconColor }: { method: PaymentMethod; icon: IconSvgElement; bg: string; iconColor: string }) {
-  const iconUrl = PAYMENT_METHOD_ICON_URL[method];
-  if (iconUrl) {
-    return (
-      <View className="h-12 w-12 items-center justify-center rounded-xl border border-gray-100 bg-white">
-        <Image source={{ uri: iconUrl }} className="h-7 w-7" resizeMode="contain" />
-      </View>
-    );
-  }
+function AppBadge({ icon, bg, iconColor }: { icon: typeof BankIcon; bg: string; iconColor: string }) {
   return (
     <View className="h-12 w-12 items-center justify-center rounded-xl" style={{ backgroundColor: bg }}>
       <AppIcon icon={icon} size={22} color={iconColor} />
+    </View>
+  );
+}
+
+// Android: app.iconUri is the real launcher icon, read straight off the
+// device's own PackageManager (payments/upiIntent.ts, UpiAppsModule.kt) —
+// not a fetched/external asset. iOS has no iconUri (no API to fetch
+// another app's icon) — falls back to a brand-colored circle + initial,
+// still tied to a genuinely installed, genuinely launchable app, never a
+// fabricated placeholder.
+function UpiAppBadge({ app }: { app: UpiApp }) {
+  if (app.iconUri) {
+    return <Image source={{ uri: app.iconUri }} className="h-12 w-12 rounded-xl" />;
+  }
+  return (
+    <View className="h-12 w-12 items-center justify-center rounded-xl" style={{ backgroundColor: app.color }}>
+      <Text className="text-lg font-extrabold text-white">{app.name.charAt(0)}</Text>
     </View>
   );
 }
@@ -113,13 +108,13 @@ interface Props {
   onPay: () => void;
   totalPrice: number;
   isPlacingOrder?: boolean;
+  upiApps: UpiApp[];
 }
 
-export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlacingOrder }: Props) {
-  const [upiId, setUpiId] = useState('');
+export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlacingOrder, upiApps }: Props) {
   const codSelected = method === 'cod';
-  const upiIdSelected = method === 'upi_id';
-  const upiIdValid = upiId.trim().length >= 4 && upiId.includes('@');
+  const onlineSelected = method === 'online';
+  const selectedUpiAppId = method?.startsWith('upi_app:') ? method.slice('upi_app:'.length) : null;
 
   return (
     <View className="mt-4 gap-6">
@@ -127,7 +122,7 @@ export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlaci
         <Text className="mb-2 px-1 text-[16px] font-medium text-ink mb-4">Pay When It Arrives</Text>
         <View className="rounded-2xl bg-white p-4">
           <Pressable onPress={() => onSelect('cod')} className="flex-row items-center gap-3">
-            <AppBadge method="cod" icon={BanknoteIcon} bg="#E4F6EC" iconColor="#1E9E5C" />
+            <AppBadge icon={BanknoteIcon} bg="#E4F6EC" iconColor="#1E9E5C" />
             <View className="flex-1">
               <Text className="text-[15px] font-medium text-ink">Cash / Pay on Delivery</Text>
               <Text className="mt-0.5 text-[12.5px] text-ink/50">Keep exact change ready for the rider.</Text>
@@ -146,64 +141,58 @@ export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlaci
         </View>
       </View>
 
-      <View>
-        <Text className="mb-2 px-1 text-[16px] font-medium text-ink">Pay Instantly with UPI</Text>
-        <View className="overflow-hidden rounded-2xl bg-white">
-          {UPI_APP_OPTIONS.map((option, index) => {
-            const isSelected = method === option.id;
-            const isLast = index === UPI_APP_OPTIONS.length - 1 && !isSelected;
-            return (
-              <View key={option.id} className={isLast ? '' : 'border-b border-dashed border-gray-200'}>
-                <Pressable onPress={() => onSelect(option.id)} className="flex-row items-center gap-3 px-4 py-4">
-                  <AppBadge method={option.id} icon={option.icon} bg={option.badgeBg} iconColor={option.badgeText} />
-                  <Text className="flex-1 text-[15px] font-medium text-ink">{option.label}</Text>
-                  <RadioCheck selected={isSelected} />
-                </Pressable>
-                {isSelected ? (
-                  <View className="px-4 pb-4">
+      {upiApps.length > 0 && (
+        <View>
+          <Text className="mb-2 px-1 text-[16px] font-medium text-ink">Pay via UPI</Text>
+          <View className="rounded-2xl bg-white p-4">
+            {upiApps.map((app, index) => {
+              const isSelected = selectedUpiAppId === app.id;
+              const isLast = index === upiApps.length - 1;
+              return (
+                <View key={app.id} className={isLast ? '' : 'mb-3 border-b border-dashed border-gray-100 pb-3'}>
+                  <Pressable onPress={() => onSelect(`upi_app:${app.id}`)} className="flex-row items-center gap-3">
+                    <UpiAppBadge app={app} />
+                    <Text className="flex-1 text-[15px] font-medium text-ink">{app.name}</Text>
+                    <RadioCheck selected={isSelected} />
+                  </Pressable>
+
+                  {isSelected ? (
                     <PayButton
                       label={isPlacingOrder ? 'Placing order…' : `Pay Now · ₹${totalPrice}`}
-                      subtext={`Secured checkout with ${option.label}`}
+                      subtext={`Opens ${app.name} to complete payment`}
                       loading={isPlacingOrder}
                       onPress={onPay}
                     />
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
-
-          <View>
-            <Pressable onPress={() => onSelect('upi_id')} className="flex-row items-center gap-3 px-4 py-4">
-              <AppBadge method={UPI_ID_OPTION.id} icon={UPI_ID_OPTION.icon} bg={UPI_ID_OPTION.badgeBg} iconColor={UPI_ID_OPTION.badgeText} />
-              <Text className="flex-1 text-[15px] font-medium text-ink">{UPI_ID_OPTION.label}</Text>
-              <RadioCheck selected={upiIdSelected} />
-            </Pressable>
-
-            {upiIdSelected ? (
-              <View className="gap-3 px-4 pb-4">
-                <View className="gap-1">
-                  <TextInput
-                    value={upiId}
-                    onChangeText={setUpiId}
-                    placeholder="yourname@bank"
-                    placeholderTextColor="#9CA3AF"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    className="rounded-xl border border-gray-200 bg-mist px-4 py-3 text-[15px] font-medium text-ink"
-                  />
-                  <Text className="px-1 text-[11.5px] text-ink/40">We'll send a payment request straight to this UPI ID.</Text>
+                  ) : null}
                 </View>
-                <PayButton
-                  label={isPlacingOrder ? 'Placing order…' : `Pay Now · ₹${totalPrice}`}
-                  subtext="Secured checkout via UPI"
-                  disabled={!upiIdValid}
-                  loading={isPlacingOrder}
-                  onPress={onPay}
-                />
-              </View>
-            ) : null}
+              );
+            })}
           </View>
+        </View>
+      )}
+
+      <View>
+        <Text className="mb-2 px-1 text-[16px] font-medium text-ink">More Payment Options</Text>
+        <View className="rounded-2xl bg-white p-4">
+          <Pressable onPress={() => onSelect('online')} className="flex-row items-center gap-3">
+            <AppBadge icon={BankIcon} bg="#E8F0FE" iconColor="#1A73E8" />
+            <View className="flex-1">
+              <Text className="text-[15px] font-medium text-ink">Cards, Netbanking & more</Text>
+              <Text className="mt-0.5 text-[12.5px] text-ink/50">
+                {upiApps.length > 0 ? 'Or a UPI app not listed above.' : 'Includes UPI, if no app was detected above.'}
+              </Text>
+            </View>
+            <RadioCheck selected={onlineSelected} />
+          </Pressable>
+
+          {onlineSelected ? (
+            <PayButton
+              label={isPlacingOrder ? 'Placing order…' : `Pay Now · ₹${totalPrice}`}
+              subtext="Secured checkout via Razorpay"
+              loading={isPlacingOrder}
+              onPress={onPay}
+            />
+          ) : null}
         </View>
       </View>
     </View>

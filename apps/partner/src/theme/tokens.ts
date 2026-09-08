@@ -27,7 +27,7 @@ export const radius = {
 // directly, same as apps/customer's own Gilroy setup). Deliberate
 // departure from design-system.md's system-font-stack default, per an
 // explicit ask that this app "strictly use that font only."
-export const fontFamily = 'Sohne-Buch';
+export const fontFamily = 'AeonikSoftPro-Regular';
 
 export const fontWeight = {
   regular: '400' as const,

@@ -39,6 +39,11 @@ export interface AccountStatus {
   is_approved: boolean;
   has_store: boolean;
   application_submitted: boolean;
+  // Only true for a still-current rejection (a resubmission clears this
+  // server-side, see backend's POST /store-application own note) — never
+  // stale once the owner has tried again.
+  is_rejected?: boolean;
+  rejection_reason?: string | null;
   phone?: string;
   name?: string | null;
 }

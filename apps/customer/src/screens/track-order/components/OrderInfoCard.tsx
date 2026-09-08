@@ -96,17 +96,17 @@ export function OrderInfoCard({ order }: Props) {
   return (
     <>
       <View className="w-full rounded-3xl bg-white p-5">
-        <Text className="text-base font-medium uppercase tracking-wide text-ink">{label}</Text>
+        <Text className="text-base font-medium tracking-wide text-ink">{label}</Text>
 
         <View className="mt-2 flex-row items-center gap-2.5">
           {isActive && (
             <View className={`rounded-full px-2.5 py-1 ${isDelayed ? 'bg-gold/15' : 'bg-success/15'}`}>
-              <Text className={`text-xs font-bold ${isDelayed ? 'text-gold' : 'text-success'}`}>
+              <Text className={`text-xs font-medium ${isDelayed ? 'text-gold' : 'text-success'}`}>
                 {isDelayed ? 'Slight delay' : 'On time'}
               </Text>
             </View>
           )}
-          <Text className={`text-2xl font-extrabold ${isCancelled ? 'text-danger' : 'text-ink'}`}>{timeText}</Text>
+          <Text className={`text-xl font-semibold ${isCancelled ? 'text-danger' : 'text-ink'}`}>{timeText}</Text>
           <Pressable onPress={() => setIsReasonOpen((open) => !open)} hitSlop={10} className="h-6 w-6 items-center justify-center">
             <AppIcon icon={InformationCircleIcon} size={18} color={colors.ink + '80'} />
           </Pressable>

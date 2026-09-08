@@ -94,17 +94,6 @@ adminRouter.get('/stores/pending', async (_req, res, next) => {
   }
 });
 
-adminRouter.patch('/stores/pending/:userId', async (req, res, next) => {
-  try {
-    const { approve } = req.body as { approve: boolean };
-    const { data, error } = await supabase.from('users').update({ is_approved: approve }).eq('id', req.params.userId).eq('role', 'store_owner').select().single();
-    if (error || !data) throw new AppError(404, 'USER_NOT_FOUND', 'No pending store owner with that id.');
-    res.json(data);
-  } catch (err) {
-    next(err);
-  }
-});
-
 adminRouter.get('/riders/pending', async (_req, res, next) => {
   try {
     const { data, error } = await supabase.from('users').select('*').eq('role', 'rider').eq('is_approved', false);

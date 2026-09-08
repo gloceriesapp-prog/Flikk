@@ -40,8 +40,19 @@ import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 
 export function RootNavigator() {
-  const { accessToken, isApproved, hasStore, applicationSubmitted, isHydrated, hydrate, setApproved, setHasStore, setApplicationSubmitted, clear } =
-    useAuthStore();
+  const {
+    accessToken,
+    isApproved,
+    hasStore,
+    applicationSubmitted,
+    isHydrated,
+    hydrate,
+    setApproved,
+    setHasStore,
+    setApplicationSubmitted,
+    setRejection,
+    clear,
+  } = useAuthStore();
   const [statusChecked, setStatusChecked] = useState(false);
 
   useEffect(() => {
@@ -63,11 +74,12 @@ export function RootNavigator() {
 
     let cancelled = false;
     checkAccountStatus()
-      .then(({ is_approved, has_store, application_submitted }) => {
+      .then(({ is_approved, has_store, application_submitted, is_rejected, rejection_reason }) => {
         if (cancelled) return;
         setApproved(is_approved);
         setHasStore(has_store);
         setApplicationSubmitted(application_submitted);
+        setRejection(!!is_rejected, rejection_reason ?? null);
       })
       .catch((err) => {
         // A 401 here means the stored token is genuinely invalid (expired,

@@ -39,6 +39,10 @@ interface AuthState {
   isApproved: boolean;
   hasStore: boolean;
   applicationSubmitted: boolean;
+  // Only ever true for a still-current rejection — see backend's GET
+  // /auth/me own note on why a resubmission clears this server-side.
+  isRejected: boolean;
+  rejectionReason: string | null;
   isHydrated: boolean; // true once we've checked SecureStore on cold start
   hydrate: () => Promise<void>;
   setSession: (
@@ -56,6 +60,7 @@ interface AuthState {
   setApproved: (isApproved: boolean) => void;
   setHasStore: (hasStore: boolean) => void;
   setApplicationSubmitted: (applicationSubmitted: boolean) => void;
+  setRejection: (isRejected: boolean, rejectionReason: string | null) => void;
   clear: () => Promise<void>;
 }
 
@@ -65,6 +70,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   isApproved: false,
   hasStore: false,
   applicationSubmitted: false,
+  isRejected: false,
+  rejectionReason: null,
   isHydrated: false,
 
   hydrate: async () => {
@@ -92,9 +99,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   setApproved: (isApproved) => set({ isApproved }),
   setHasStore: (hasStore) => set({ hasStore }),
   setApplicationSubmitted: (applicationSubmitted) => set({ applicationSubmitted }),
+  setRejection: (isRejected, rejectionReason) => set({ isRejected, rejectionReason }),
 
   clear: async () => {
     await Promise.all([SecureStore.deleteItemAsync(TOKEN_KEY), SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)]);
-    set({ accessToken: null, refreshToken: null, isApproved: false, hasStore: false, applicationSubmitted: false });
+    set({
+      accessToken: null,
+      refreshToken: null,
+      isApproved: false,
+      hasStore: false,
+      applicationSubmitted: false,
+      isRejected: false,
+      rejectionReason: null,
+    });
   },
 }));

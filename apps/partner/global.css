@@ -7,48 +7,44 @@
    Text.defaultProps in App.tsx does not, because NativeWind's babel plugin
    swaps every screen's `Text` import for its own cssInterop-wrapped
    component, which doesn't inherit defaultProps set on the raw RN Text —
-   same gotcha documented in apps/customer's own global.css). Sohne-Buch is
-   the family's roman/regular weight — the base every other weight below
-   builds on. */
+   same gotcha documented in apps/customer's own global.css). */
 @layer base {
   * {
-    font-family: 'Sohne-Buch';
+    font-family: 'AeonikSoftPro-Regular';
   }
 }
 
 /* Tailwind's font-weight utilities (font-bold, font-semibold, etc.) only
-   set numeric fontWeight, which RN can't use to pick a different Söhne
-   file — each weight is its own separate .otf, not one variable font.
-   These pair every weight utility used across the app with its matching
-   Söhne face, so e.g. `font-bold` renders Sohne-Dreiviertelfett instead of
-   a synthesized bold Sohne-Buch. Söhne has no true hairline weight, so
-   font-thin falls back to the lightest face that exists (Extraleicht). */
+   set numeric fontWeight, which RN can't use to pick a different Aeonik
+   Soft Pro file — each weight is its own separate font file, not one
+   variable font. All 8 non-italic faces the vault ships map one-to-one
+   onto Tailwind's 9-step weight scale (extralight and black/extrabold
+   double up, since Aeonik has no separate face at exactly those steps),
+   same mapping as apps/customer's own global.css. */
 @layer utilities {
   .font-thin {
-    font-family: 'Sohne-Extraleicht';
+    font-family: 'AeonikSoftPro-Thin';
   }
   .font-extralight {
-    font-family: 'Sohne-Extraleicht';
+    font-family: 'AeonikSoftPro-Air';
   }
   .font-light {
-    font-family: 'Sohne-Leicht';
+    font-family: 'AeonikSoftPro-Light';
   }
   .font-normal {
-    font-family: 'Sohne-Buch';
+    font-family: 'AeonikSoftPro-Regular';
   }
   .font-medium {
-    font-family: 'Sohne-Kraftig';
+    font-family: 'AeonikSoftPro-Medium';
   }
   .font-semibold {
-    font-family: 'Sohne-Halbfett';
+    font-family: 'AeonikSoftPro-SemiBold';
   }
   .font-bold {
-    font-family: 'Sohne-Dreiviertelfett';
+    font-family: 'AeonikSoftPro-Bold';
   }
-  .font-extrabold {
-    font-family: 'Sohne-Fett';
-  }
+  .font-extrabold,
   .font-black {
-    font-family: 'Sohne-Extrafett';
+    font-family: 'AeonikSoftPro-Black';
   }
 }

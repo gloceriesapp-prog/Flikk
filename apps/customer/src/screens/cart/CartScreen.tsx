@@ -3,17 +3,17 @@
 // — the actual "place order" action lives there, not here; this screen is
 // just the editable item list + fee breakdown.
 //
-// Page bg is #FAFAFA with four white rounded cards stacked on it (items,
+// Page bg is #F1F2F4 with white rounded cards stacked on it (items,
 // DeliveryTipCard, YouMayAlsoLikeRow, BillDetailsCard) rather than one
 // continuous white sheet — matches the reference. Items card: "N items"
 // header + a dashed divider, then one CartItemRow per item.
 //
 // Tip selection is lifted up here (not local to DeliveryTipCard) because
-// BillDetailsCard's "Delivery Partner Tip" line and its own To Pay total
-// both need to read it.
+// BillDetailsCard's tip line and its own Total payable both need to
+// read it.
 
 import { useState } from 'react';
-import { ArrowLeft01Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, MoreVerticalIcon, PackageIcon, ShoppingBasket03Icon, Timer02Icon } from '@hugeicons/core-free-icons';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -22,13 +22,14 @@ import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { deleteAddress, fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
+import { estimateCartEtaMinutes } from '../../utils/estimateDelivery';
 import { selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
 import { CartDeliveryInfoBar } from './components/CartDeliveryInfoBar';
-import { DeliverySchedulingCard, type DeliverySelection } from './components/DeliverySchedulingCard';
 import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
+import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
 import { YouMayAlsoLikeRow } from './components/YouMayAlsoLikeRow';
 import { BillDetailsCard } from './components/BillDetailsCard';
 import { CancellationNoteCard } from './components/CancellationNoteCard';
@@ -50,7 +51,6 @@ export function CartScreen({ navigation }: Props) {
   }
 
   const [tip, setTip] = useState<TipSelection>(null);
-  const [delivery, setDelivery] = useState<DeliverySelection>({ mode: 'now' });
   const [addressSheetVisible, setAddressSheetVisible] = useState(false);
   const [selectingAddressId, setSelectingAddressId] = useState<string | null>(null);
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
@@ -111,7 +111,7 @@ export function CartScreen({ navigation }: Props) {
   const savingsPercent = originalItemTotal ? Math.round((savings / originalItemTotal) * 100) : 18;
 
   return (
-    <View className="flex-1 bg-[#FAFAFA]">
+    <View className="flex-1 bg-[#F1F2F4]">
       {/* App.tsx sets a global dark-icon StatusBar, but a screen further
           back in the stack (e.g. HomeScreen) can leave it set to "light" —
           expo-status-bar's style is a single global native call, not scoped
@@ -126,7 +126,7 @@ export function CartScreen({ navigation }: Props) {
             <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
           </Pressable>
           <View className="flex-1 pl-1">
-            <Text className="text-[17px] font-medium text-ink">Your Cart</Text>
+            <Text className="text-[17px] font-semibold text-ink">Your Cart</Text>
             {items.length > 0 ? (
               savings > 0 ? (
                 <Text className="text-[12.5px] font-semibold text-success">
@@ -159,14 +159,22 @@ export function CartScreen({ navigation }: Props) {
         </View>
       ) : (
         <>
-          <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pb-40 pt-4">
+          <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pb-4 pt-4">
             {selectedAddress ? <CartDeliveryInfoBar address={selectedAddress} onPress={() => setAddressSheetVisible(true)} /> : null}
 
             <View className="rounded-2xl bg-white px-4 py-4">
-              <Text className="text-sm font-medium text-ink/60">
-                {totalQuantity} {totalQuantity === 1 ? 'item ready to go' : 'items ready to go'}
-              </Text>
-              <View className="my-3 h-px border-t border-dashed border-mist" />
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2.5">
+                  <View>
+                    <Text className="text-[16px] font-semibold text-ink">Delivery in {estimateCartEtaMinutes()} minutes</Text>
+                    <Text className="text-[12.5px] text-ink/45 font-medium">
+                      {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'} in this order
+                    </Text>
+                  </View>
+                </View>
+
+              </View>
+              <View className="my-3 h-px border-t border-dashed border-gray-200" />
 
               {items.map((item, index) => (
                 <View key={item.id}>
@@ -176,9 +184,9 @@ export function CartScreen({ navigation }: Props) {
               ))}
             </View>
 
-            <DeliverySchedulingCard selection={delivery} onChange={setDelivery} />
             <DeliveryTipCard selectedTip={tip} onSelectTip={setTip} />
             <YouMayAlsoLikeRow />
+            <FreeDeliveryProgressCard itemTotal={itemTotal} />
             <BillDetailsCard
               itemTotal={itemTotal}
               originalItemTotal={originalItemTotal}

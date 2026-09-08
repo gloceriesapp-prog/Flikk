@@ -424,21 +424,11 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
         >
           <View pointerEvents="none" className="h-1 w-9 rounded-full bg-ink/15" />
 
-          <View className="w-full flex-row items-center justify-end">
-            <View pointerEvents="none" className="absolute left-0 right-0 items-center">
-              <Text className="text-lg font-medium text-ink">Product Details</Text>
-            </View>
+          <View className="w-full flex-row items-center justify-between">
+            <Text className="text-lg font-medium text-ink">Product Details</Text>
 
             <View className="flex-row gap-2">
-              <Pressable
-                onPress={() => setIsBookmarked((prev) => !prev)}
-                hitSlop={10}
-                className={`h-10 w-10 items-center justify-center rounded-full ${
-                  isBookmarked ? 'bg-lime-deep' : 'bg-white/90'
-                }`}
-              >
-                <AppIcon icon={Bookmark01Icon} size={18} color={isBookmarked ? '#FFFFFF' : colors.ink} strokeWidth={isBookmarked ? 0 : 1.8} />
-              </Pressable>
+           
               <Pressable hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-white/90">
                 <AppIcon icon={Share03Icon} size={18} color={colors.ink} />
               </Pressable>

@@ -34,12 +34,14 @@ const PHOTO_BUCKET = 'store-images';
 // this one row.
 storeOnboardingRouter.post('/store-application', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { storeName, category, district, gstNumber, photoUrl } = req.body as {
+    const { storeName, category, district, gstNumber, photoUrl, ownerName, shopLicenseNumber } = req.body as {
       storeName?: string;
       category?: string;
       district?: string;
       gstNumber?: string;
       photoUrl?: string;
+      ownerName?: string;
+      shopLicenseNumber?: string;
     };
     if (!storeName || !category || !district) {
       throw new AppError(400, 'MISSING_FIELDS', 'storeName, category and district are required.');
@@ -53,12 +55,23 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
         district,
         gst_number: gstNumber || null,
         photo_url: photoUrl || null,
+        owner_name: ownerName || null,
+        shop_establishment_number: shopLicenseNumber || null,
+        // Clears out any reason from a previous rejection — a fresh
+        // submission means a fresh review, not the old verdict still
+        // hanging around next to it.
+        rejection_reason: null,
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'user_id' },
     );
     if (error) throw error;
+
+    // Resubmitting after a rejection is a fresh review, not a continuation
+    // of the old one — clear is_rejected so GET /auth/me stops reporting
+    // the stale verdict the instant this new submission goes in.
+    await supabase.from('users').update({ is_rejected: false }).eq('id', req.user!.id);
 
     res.status(201).json({ ok: true });
   } catch (err) {
@@ -78,7 +91,7 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
   try {
     const { data, error } = await supabase
       .from('store_onboarding_drafts')
-      .select('store_name, category, district, lat, lng, photo_url, gst_number, submitted_at')
+      .select('store_name, category, district, lat, lng, photo_url, gst_number, owner_name, shop_establishment_number, submitted_at')
       .eq('user_id', req.user!.id)
       .maybeSingle();
     if (error) throw error;
@@ -91,7 +104,7 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
 
 storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { storeName, category, district, lat, lng, photoUrl, gstNumber } = req.body as {
+    const { storeName, category, district, lat, lng, photoUrl, gstNumber, ownerName, shopLicenseNumber } = req.body as {
       storeName?: string;
       category?: string;
       district?: string;
@@ -99,11 +112,13 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
       lng?: number;
       photoUrl?: string;
       gstNumber?: string;
+      ownerName?: string;
+      shopLicenseNumber?: string;
     };
 
     // Partial upsert — only fields the caller actually sent overwrite the
     // existing row; a Step 2 PUT (photo/location/GST) must never blank out
-    // Step 1's storeName/category that a separate PUT already saved.
+    // Step 1's storeName/category/ownerName that a separate PUT already saved.
     const patch: Record<string, unknown> = { user_id: req.user!.id, updated_at: new Date().toISOString() };
     if (storeName !== undefined) patch.store_name = storeName;
     if (category !== undefined) patch.category = category;
@@ -112,6 +127,8 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
     if (lng !== undefined) patch.lng = lng;
     if (photoUrl !== undefined) patch.photo_url = photoUrl;
     if (gstNumber !== undefined) patch.gst_number = gstNumber;
+    if (ownerName !== undefined) patch.owner_name = ownerName;
+    if (shopLicenseNumber !== undefined) patch.shop_establishment_number = shopLicenseNumber;
 
     const { error } = await supabase.from('store_onboarding_drafts').upsert(patch, { onConflict: 'user_id' });
     if (error) throw error;

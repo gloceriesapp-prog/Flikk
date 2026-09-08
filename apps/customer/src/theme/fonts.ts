@@ -1,29 +1,34 @@
-// Single source of truth for Suisse Int'l — every font-family name used
+// Single source of truth for Aeonik Soft Pro — every font-family name used
 // anywhere in this app, and the exact file map expo-font needs to load
 // them, live here. Same pattern as apps/rider's own Suisse Int'l setup and
 // apps/partner's Söhne setup — copied, not shared
 // (specs/00-foundation/repo-structure.md).
 //
-// Source files: apps/font/SuisseInt/ (repo-root font vault) — copied into
-// assets/fonts/ below, same as every sibling app copies its own font
-// vault in rather than requiring across app boundaries. 5 faces exist now
-// (Thin/Light/Regular/Medium/SemiBold — Medium added, no Bold/Black cut
-// still) — global.css's font-weight-utility mapping points font-medium at
-// this real Medium face instead of collapsing it onto SemiBold; font-bold
-// and up still cap at SemiBold, the heaviest face actually available.
+// Source files: apps/font/Aeonik Soft Pro/ (repo-root font vault) — copied
+// into assets/fonts/ below, same as every sibling app copies its own font
+// vault in rather than requiring across app boundaries. All 8 non-italic
+// weights the vault ships (Thin/Air/Light/Regular/Medium/SemiBold/Bold/
+// Black) — italics dropped entirely, per an explicit ask; nothing in this
+// app currently sets fontStyle: 'italic' so there's no gap to fill.
 
-export const SUISSE = {
-  thin: 'SuisseIntl-Thin',
-  light: 'SuisseIntl-Light',
-  regular: 'SuisseIntl-Regular',
-  medium: 'SuisseIntl-Medium',
-  semiBold: 'SuisseIntl-SemiBold',
+export const AEONIK = {
+  thin: 'AeonikSoftPro-Thin',
+  air: 'AeonikSoftPro-Air',
+  light: 'AeonikSoftPro-Light',
+  regular: 'AeonikSoftPro-Regular',
+  medium: 'AeonikSoftPro-Medium',
+  semiBold: 'AeonikSoftPro-SemiBold',
+  bold: 'AeonikSoftPro-Bold',
+  black: 'AeonikSoftPro-Black',
 } as const;
 
-export const SUISSE_FONT_FILES = {
-  [SUISSE.thin]: require('../../assets/fonts/SuisseIntl-Thin.otf'),
-  [SUISSE.light]: require('../../assets/fonts/SuisseIntl-Light.otf'),
-  [SUISSE.regular]: require('../../assets/fonts/SuisseIntl-Regular.otf'),
-  [SUISSE.medium]: require('../../assets/fonts/SuisseIntl-Medium.ttf'),
-  [SUISSE.semiBold]: require('../../assets/fonts/SuisseIntl-SemiBold.otf'),
+export const AEONIK_FONT_FILES = {
+  [AEONIK.thin]: require('../../assets/fonts/AeonikSoftPro-Thin.otf'),
+  [AEONIK.air]: require('../../assets/fonts/AeonikSoftPro-Air.otf'),
+  [AEONIK.light]: require('../../assets/fonts/AeonikSoftPro-Light.otf'),
+  [AEONIK.regular]: require('../../assets/fonts/AeonikSoftPro-Regular.otf'),
+  [AEONIK.medium]: require('../../assets/fonts/AeonikSoftPro-Medium.otf'),
+  [AEONIK.semiBold]: require('../../assets/fonts/AeonikSoftPro-SemiBold.otf'),
+  [AEONIK.bold]: require('../../assets/fonts/AeonikSoftPro-Bold.otf'),
+  [AEONIK.black]: require('../../assets/fonts/AeonikSoftPro-Black.otf'),
 } as const;

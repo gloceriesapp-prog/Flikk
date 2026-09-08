@@ -20,29 +20,29 @@ interface Props {
 export function PrepTimeStepper({ minutes, onChange }: Props) {
   return (
     <View className="flex-row items-center justify-between rounded-2xl border border-black/10 bg-white px-4 py-3">
-      <Text className="text-sm font-medium text-ink/70">Avg. prep time</Text>
+      <Text className="text-[15px] font-medium text-ink/70">Avg. prep time</Text>
 
       <View className="flex-row items-center gap-4">
         <Pressable
           onPress={() => onChange(Math.max(MIN_MINUTES, minutes - STEP))}
           hitSlop={8}
-          className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
+          className="h-9 w-9 items-center justify-center rounded-full bg-gray-100"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
-          <AppIcon icon={MinusSignIcon} size={14} color={colors.ink} />
+          <AppIcon icon={MinusSignIcon} size={15} color={colors.ink} />
         </Pressable>
 
-        <Text className="w-16 text-center text-base font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
+        <Text className="w-16 text-center text-[17px] font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
           {minutes} min
         </Text>
 
         <Pressable
           onPress={() => onChange(Math.min(MAX_MINUTES, minutes + STEP))}
           hitSlop={8}
-          className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
+          className="h-9 w-9 items-center justify-center rounded-full bg-gray-100"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
-          <AppIcon icon={PlusSignIcon} size={14} color={colors.ink} />
+          <AppIcon icon={PlusSignIcon} size={15} color={colors.ink} />
         </Pressable>
       </View>
     </View>

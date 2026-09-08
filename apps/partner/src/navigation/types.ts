@@ -22,6 +22,8 @@ export interface StoreDraft {
   coordinates: import('../location/geocoding').Coordinates | null;
   photoUrl: string | null;
   gstNumber: string;
+  ownerName: string;
+  shopLicenseNumber: string;
 }
 
 export type AuthStackParamList = {
@@ -34,8 +36,12 @@ export type AuthStackParamList = {
   OtpVerification: { phone: string; devMode: boolean };
   // Only reached when the verify response says has_store: false — an
   // existing, already-onboarded owner skips straight past this. Step 1/3:
-  // name + category only, starts a fresh StoreDraft.
-  StoreSetup: undefined;
+  // name + category only, starts a fresh StoreDraft. `draft` is only set
+  // when reached via an "Edit" tap from StoreReviewScreen — its presence
+  // is what skips the cold-start "resume where you left off" fetch below
+  // (see StoreSetupScreen.tsx's own note), so editing never gets hijacked
+  // by that auto-forward-to-Review logic.
+  StoreSetup: { draft?: StoreDraft } | undefined;
   // Step 2/3: photo + location + optional GST — appends to the draft
   // step 1 started.
   StoreDetails: { draft: StoreDraft };

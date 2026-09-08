@@ -17,7 +17,7 @@ module.exports = {
       bundleIdentifier: 'com.flikk.customer',
       infoPlist: {
         NSLocationWhenInUseUsageDescription: 'Flikk uses your location to find stores near you and set your delivery address.',
-        LSApplicationQueriesSchemes: ['tez', 'phonepe', 'paytmmp'],
+        LSApplicationQueriesSchemes: ['tez', 'phonepe', 'paytmmp', 'bhim', 'credpay', 'whatsapp'],
         ITSAppUsesNonExemptEncryption: false,
       },
     },
@@ -67,6 +67,7 @@ module.exports = {
       'expo-font',
       'expo-splash-screen',
       'expo-image',
+      './plugins/withUpiAppQueries',
     ],
     extra: {
       eas: {

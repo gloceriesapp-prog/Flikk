@@ -44,10 +44,16 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressSettings, onP
             </Text>
 
             <View className="flex-row items-center gap-1.5">
+              {/* Never a bare icon with nothing next to it — the real
+                  district (GET /partner/store, synced via
+                  useStoreProfileStore.loadProfile) is only known once
+                  that fetch resolves; before/if it doesn't, this falls
+                  back to a real label instead of silently rendering
+                  empty text next to an orphaned pin. */}
               <View className="flex-row items-center gap-1">
                 <AppIcon icon={Location04Icon} size={14} color={`${colors.ink}80`} />
                 <Text className="text-sm font-medium text-ink/50" numberOfLines={1}>
-                  {profile.district}
+                  {profile.district || 'Loading…'}
                 </Text>
               </View>
 

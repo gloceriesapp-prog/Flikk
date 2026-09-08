@@ -13,7 +13,7 @@
 // too colorful/inconsistent against this row's own gray-toned neutral
 // cards, per an explicit ask to drop it here).
 
-import { AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
+import { Add01Icon, AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
@@ -39,7 +39,7 @@ export function CartItemRow({ item }: Props) {
   return (
     <View className="flex-row items-center gap-3 py-3.5">
       <View
-        className="relative h-[68px] w-[68px] overflow-hidden rounded-2xl border border-gray-100"
+        className="relative h-12 w-12 overflow-hidden rounded-xl border border-gray-100"
         style={{ backgroundColor: item.imageUrl ? IMAGE_TILE_BG : '#FFFFFF' }}
       >
         <Image
@@ -50,36 +50,36 @@ export function CartItemRow({ item }: Props) {
       </View>
 
       <View className="flex-1 gap-1">
-        <Text className="text-[15px] font-medium text-ink" numberOfLines={2}>
+        <Text className="text-[13px] font-medium text-ink" numberOfLines={2}>
           {item.name}
         </Text>
-        <Text className="text-sm text-ink/50">{item.weight}</Text>
+        <Text className="text-xs text-ink/50 font-medium">{item.weight}</Text>
       </View>
 
-      <View className="flex-row items-center gap-1.5 rounded-full border border-gray-200 p-1">
+      <View className="flex-row items-center gap-1.5 rounded-xl border border-gray-100 p-1 " style={{ backgroundColor: `${STEPPER_TINT}0A` }}>
         <Pressable
           onPress={() => decrementItem(item.id)}
           hitSlop={6}
           className="h-6 w-6 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${STEPPER_TINT}1A` }}
+          style={{ backgroundColor: `${STEPPER_TINT}0A` }}
         >
           <AppIcon icon={MinusSignIcon} size={12} color={STEPPER_TINT} />
         </Pressable>
-        <Text className="min-w-[16px] text-center text-[13px] font-bold" style={{ color: STEPPER_TINT }}>
+        <Text className="min-w-[16px] text-center text-[13px] font-semibold" style={{ color: STEPPER_TINT }}>
           {item.quantity}
         </Text>
         <Pressable
           onPress={() => incrementItem(item.id)}
           hitSlop={6}
           className="h-6 w-6 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${STEPPER_TINT}1A` }}
+          style={{ backgroundColor: `${STEPPER_TINT}0A` }}
         >
-          <AppIcon icon={AddSquareIcon} size={12} color={STEPPER_TINT} />
+          <AppIcon icon={Add01Icon} size={12} color={STEPPER_TINT} />
         </Pressable>
       </View>
 
       <View className="items-end gap-0.5">
-        {originalLineTotal && <Text className="text-xs text-ink/40 line-through">₹{originalLineTotal}</Text>}
+        {originalLineTotal && <Text className="text-xs text-ink/40 line-through font-semibold">₹{originalLineTotal}</Text>}
         <Text className="text-[16px] font-semibold tabular-nums text-ink">₹{lineTotal}</Text>
       </View>
     </View>

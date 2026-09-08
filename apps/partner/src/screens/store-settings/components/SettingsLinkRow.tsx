@@ -23,10 +23,10 @@ export function SettingsLinkRow({ icon, label, value, destructive, onPress }: Pr
       className="flex-row items-center gap-3 py-1"
       style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
     >
-      <AppIcon icon={icon} size={16} color={destructive ? colors.danger : `${colors.ink}80`} />
-      <Text className={`flex-1 text-sm font-medium ${destructive ? 'text-danger' : 'text-ink/80'}`}>{label}</Text>
-      {value && <Text className="text-xs font-medium text-ink/40">{value}</Text>}
-      <AppIcon icon={ArrowRight01Icon} size={14} color={`${colors.ink}40`} />
+      <AppIcon icon={icon} size={17} color={destructive ? colors.danger : `${colors.ink}80`} />
+      <Text className={`flex-1 text-[15px] font-medium ${destructive ? 'text-danger' : 'text-ink/80'}`}>{label}</Text>
+      {value && <Text className="text-sm font-medium text-ink/40">{value}</Text>}
+      <AppIcon icon={ArrowRight01Icon} size={15} color={`${colors.ink}40`} />
     </Pressable>
   );
 }

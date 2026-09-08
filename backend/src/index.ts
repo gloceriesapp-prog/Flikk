@@ -14,9 +14,11 @@ import { addressesRouter } from './routes/addresses.js';
 import { partnerRouter } from './routes/partner.js';
 import { riderRouter } from './routes/rider.js';
 import { adminRouter } from './routes/admin.js';
-import { paymentsRouter } from './routes/payments.js';
+import { paymentsRouter } from './payments/router.js';
 import { locationRouter } from './routes/location.js';
 import { storeOnboardingRouter } from './routes/storeOnboarding.js';
+import cron from 'node-cron';
+import { runWeeklyPayoutJob } from './jobs/weeklyPayouts.js';
 
 const app = express();
 
@@ -82,3 +84,17 @@ app.use(errorHandler);
 app.listen(env.port, () => {
   console.log(`Flikk backend listening on :${env.port}`);
 });
+
+// Weekly store payout release — every Monday 9 AM IST. node-cron runs
+// in-process (this backend is a long-running monolith on Railway/Render,
+// per CLAUDE.md — no separate scheduler infra needed at this scale). A
+// crash mid-job just means Monday's run didn't complete; the next
+// Monday's run picks up any still-'pending' rows from computeWeeklyPayouts'
+// own unique-per-store-per-week guarantee, nothing is silently lost.
+cron.schedule(
+  '0 9 * * 1',
+  () => {
+    void runWeeklyPayoutJob().catch((err) => console.error('[weeklyPayouts] job failed', err));
+  },
+  { timezone: 'Asia/Kolkata' },
+);

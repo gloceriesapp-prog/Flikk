@@ -160,18 +160,31 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // anything if it fails (permission denied, GPS off) — the map just stays
   // wherever it already was.
   useEffect(() => {
+    // Chained, not parallel — getCurrentCoordinates (native
+    // requestSingleLocation) used to fire in the same tick as
+    // requestLocationPermission, racing the OS permission dialog's own
+    // activity teardown/recreation on every mount of this screen (reached
+    // from BOTH LocationPermissionScreen's buttons — this useEffect runs
+    // regardless of which one was tapped). That race crashed natively
+    // (expo.modules.location.LocationHelpers.requestSingleLocation ->
+    // PromiseImpl.resolve NullPointerException), below the JS layer where
+    // the .catch below could never have caught it. Only fetching a fix
+    // once permission is confirmed granted — and requestLocationPermission
+    // (geocoding.ts) itself now waits out the post-dialog settle window —
+    // is what actually closes the race, not just papering over the crash.
     requestLocationPermission()
-      .then(setHasLocationPermission)
-      .catch(() => setHasLocationPermission(false));
-    getCurrentCoordinates()
-      .then((coords) => {
-        setCurrentCoords(coords);
-        if (startingPoint.latitude == null) {
-          setCenter(coords);
-          mapRef.current?.animateToRegion({ ...coords, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
-        }
+      .then((granted) => {
+        setHasLocationPermission(granted);
+        if (!granted) return;
+        return getCurrentCoordinates().then((coords) => {
+          setCurrentCoords(coords);
+          if (startingPoint.latitude == null) {
+            setCenter(coords);
+            mapRef.current?.animateToRegion({ ...coords, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
+          }
+        });
       })
-      .catch(() => {});
+      .catch(() => setHasLocationPermission(false));
   }, []);
 
   // Debounced (300ms) — firing a request on every keystroke would spam

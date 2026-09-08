@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { CheckmarkCircle02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
+import { AlertCircleIcon, ArrowRight01Icon, Clock01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { checkAccountStatus } from '../../api/auth';
@@ -27,7 +27,10 @@ const POLL_INTERVAL_MS = 10_000;
 export function WaitingApprovalScreen() {
   const setApproved = useAuthStore((s) => s.setApproved);
   const setHasStore = useAuthStore((s) => s.setHasStore);
-  const clearSession = useAuthStore((s) => s.clear);
+  const setApplicationSubmitted = useAuthStore((s) => s.setApplicationSubmitted);
+  const setRejection = useAuthStore((s) => s.setRejection);
+  const isRejected = useAuthStore((s) => s.isRejected);
+  const rejectionReason = useAuthStore((s) => s.rejectionReason);
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export function WaitingApprovalScreen() {
     async function poll() {
       setChecking(true);
       try {
-        const { is_approved, has_store } = await checkAccountStatus();
+        const { is_approved, has_store, is_rejected, rejection_reason } = await checkAccountStatus();
         // RootNavigator swaps to the app shell automatically the instant
         // both flip true — no explicit navigation call needed here. Both,
         // not just is_approved: a real `stores` row (has_store) only gets
@@ -47,6 +50,7 @@ export function WaitingApprovalScreen() {
           setApproved(true);
           setHasStore(true);
         }
+        if (!cancelled) setRejection(!!is_rejected, rejection_reason ?? null);
       } catch {
         // Silent — a failed poll just tries again next interval. Nothing
         // useful to show the owner for "the recheck itself didn't work,"
@@ -57,6 +61,11 @@ export function WaitingApprovalScreen() {
       }
     }
 
+    // Rejected: stop polling — nothing left to wait on until the owner
+    // actually resubmits (handleResubmit below), which itself drops this
+    // screen entirely.
+    if (isRejected) return;
+
     const interval = setInterval(poll, POLL_INTERVAL_MS);
     void poll(); // check once immediately, don't wait a full interval first
 
@@ -64,7 +73,44 @@ export function WaitingApprovalScreen() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [setApproved, setHasStore]);
+  }, [isRejected, setApproved, setHasStore, setRejection]);
+
+  // Drops RootNavigator back into the wizard at StoreSetup — the kept
+  // draft (admin's reject route never deletes it, only approve does)
+  // means StoreSetupScreen's own resume-draft fetch pre-fills everything
+  // the owner already entered, so this is "edit and resubmit," not
+  // "start over." applicationSubmitted flips false locally only; the
+  // real submitted_at on the server doesn't change until POST
+  // /store-application actually resubmits.
+  function handleResubmit() {
+    setApplicationSubmitted(false);
+  }
+
+  if (isRejected) {
+    return (
+      <View className="flex-1 items-center justify-center gap-6 bg-white px-8 pb-safe pt-safe">
+        <View className="h-20 w-20 items-center justify-center rounded-full bg-danger/10">
+          <AppIcon icon={AlertCircleIcon} size={32} color={colors.danger} />
+        </View>
+
+        <View className="items-center gap-2">
+          <Text className="text-center text-xl font-bold text-ink">We couldn&apos;t approve your application</Text>
+          <Text className="max-w-[300px] text-center text-sm font-medium text-ink/60">
+            {rejectionReason ?? "We couldn't verify your store documents this time. Please review your details and resubmit."}
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={handleResubmit}
+          className="flex-row items-center gap-1.5 rounded-full bg-ink px-6 py-3.5"
+          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+        >
+          <Text className="text-sm font-semibold text-white">Edit & resubmit</Text>
+          <AppIcon icon={ArrowRight01Icon} size={15} color="#FFFFFF" />
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 items-center justify-center gap-6 bg-white px-8 pb-safe pt-safe">
@@ -75,8 +121,8 @@ export function WaitingApprovalScreen() {
       <View className="items-center gap-2">
         <Text className="text-center text-xl font-bold text-ink">Application under review</Text>
         <Text className="max-w-[280px] text-center text-sm font-medium text-ink/60">
-          Our team typically reviews new stores within <Text className="font-bold text-ink">24 hours</Text>. We&apos;ll
-          notify you right here in the app the moment your store is approved — no need to check back.
+          We received your application, Our team typically reviews new stores within <Text className="font-bold text-ink">2 - 3 hours</Text>. We&apos;ll
+          notify you right here in the app the moment your store is approved, no need to check back.
         </Text>
       </View>
 
@@ -85,14 +131,6 @@ export function WaitingApprovalScreen() {
         <Text className="text-xs font-semibold text-ink/60">{checking ? 'Checking status…' : 'Waiting for approval'}</Text>
       </View>
 
-      <View className="mt-4 flex-row items-center gap-1.5">
-        <AppIcon icon={CheckmarkCircle02Icon} size={13} color={`${colors.ink}50`} />
-        <Text className="text-xs font-medium text-ink/40">Your application was received</Text>
-      </View>
-
-      <Pressable onPress={() => void clearSession()} hitSlop={8} className="mt-8">
-        <Text className="text-xs font-semibold text-ink/40">Log out</Text>
-      </Pressable>
     </View>
   );
 }

@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { SUISSE_FONT_FILES } from './src/theme/fonts';
+import { AEONIK_FONT_FILES } from './src/theme/fonts';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -28,10 +28,10 @@ const queryClient = new QueryClient({
 
 export default function App() {
   // Loading the weights here registers them with the OS by font-family name
-  // (e.g. "SuisseIntl-Regular") — the actual global default is applied via
-  // global.css's `@layer base { * { font-family: ... } }`, not from this
-  // hook or any React defaultProps mechanism.
-  const [fontsLoaded, fontError] = useFonts(SUISSE_FONT_FILES);
+  // (e.g. "AeonikSoftPro-Regular") — the actual global default is applied
+  // via global.css's `@layer base { * { font-family: ... } }`, not from
+  // this hook or any React defaultProps mechanism.
+  const [fontsLoaded, fontError] = useFonts(AEONIK_FONT_FILES);
 
   const onRootLayout = useCallback(() => {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();
