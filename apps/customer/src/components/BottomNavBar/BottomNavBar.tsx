@@ -35,7 +35,7 @@
 
 import { View } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -46,7 +46,14 @@ import { BottomNavBarItem } from './BottomNavBarItem';
 import { BOTTOM_NAV_TABS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
 
-const USE_LIQUID_GLASS = isLiquidGlassAvailable();
+// isLiquidGlassAvailable() alone only confirms the GlassView *component*
+// exists — expo-glass-effect's own isGlassEffectAPIAvailable() doc note
+// explains why that's not sufficient: some iOS 26 beta builds have the
+// component present but the underlying native rendering API not actually
+// functional yet (https://github.com/expo/expo/issues/40911), so GlassView
+// silently renders flat instead of real glass despite the check passing.
+// Checking both is what actually gates on "will this render as glass".
+const USE_LIQUID_GLASS = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
 
 // This component is mounted fresh inside every screen that renders it
 // (HomeScreen, PurchaseScreen, CategoriesScreen, StoreListScreen each render
@@ -137,12 +144,23 @@ export function BottomNavBar({ hidden }: Props) {
           elevated without it. */}
       <View style={{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + 4 }}>
         {USE_LIQUID_GLASS ? (
+          // Real glass/blur materials work by refracting/blurring whatever
+          // sits BEHIND them — with nothing there (a plain page background,
+          // no scrolled content underneath), a fully-untinted GlassView has
+          // nothing to refract and reads as literally invisible instead of
+          // a pill. A light baseline tintColor + a hairline border is what
+          // keeps the pill visibly present on its own, while colorScheme
+          // ="light" + glassEffectStyle="regular" still let real content
+          // scrolling behind it show through and refract on top of that
+          // baseline — same idea BlurView's own wash+border fallback below
+          // already uses, just via the native tint instead of a manual
+          // overlay View.
           <GlassView
             glassEffectStyle="regular"
-            tintColor="rgba(20,20,20,0.35)"
-            colorScheme="dark"
+            colorScheme="light"
+            tintColor="rgba(255,255,255,0.4)"
             isInteractive
-            style={{ borderRadius: 999, overflow: 'hidden' }}
+            style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }}
           >
             <View className="flex-row items-center justify-around px-2 py-2.5">
               {BOTTOM_NAV_TABS.map((tab) => (
@@ -167,10 +185,14 @@ export function BottomNavBar({ hidden }: Props) {
           // it still reads as glass, not a flat black bar.
           <BlurView
             intensity={100}
-            tint="dark"
-            style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }}
+            tint="light"
+            style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }}
           >
-            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.62)' }} />
+            {/* Light wash, not the old dark one — BottomNavBarItem.tsx's
+                icons/text are ink/black now, so the fallback pill needs to
+                stay light too, same reasoning as the GlassView branch's own
+                colorScheme="light" change. */}
+            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.55)' }} />
             <View className="flex-row items-center justify-around px-2 py-2.5">
               {BOTTOM_NAV_TABS.map((tab) => (
                 <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />

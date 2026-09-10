@@ -17,8 +17,12 @@ export function SubCategorySidebar({ items, selectedId, onSelect }: Props) {
     // No border-r divider line — the sidebar/grid split already reads
     // clearly from the plain-white/mist-tinted background contrast alone,
     // per an explicit ask to drop the hairline.
-    <View style={{ width: 84 }} className="bg-white">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="gap-5 py-4">
+    // Width/tile size bumped up slightly (84 -> 96, tile 56 -> 64 in
+    // SubCategorySidebarItem.tsx) per an explicit "make it look even
+    // better" ask — bigger, easier-to-tap tiles read more premium than the
+    // earlier compact rail.
+    <View style={{ width: 86 }} className="bg-white">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="gap-6 py-5">
         {items.map((item) => (
           <SubCategorySidebarItem
             key={item.id}

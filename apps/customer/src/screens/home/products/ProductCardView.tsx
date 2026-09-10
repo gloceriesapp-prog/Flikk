@@ -22,10 +22,8 @@
 // see that file's own note on why it's local-only for now), veg/non-veg
 // indicator bottom-left (defaults to veg;
 // only fish/meat data sets isVeg: false explicitly, see Product's own note
-// in types.ts), ADD sits bottom-right, HALF outside the image's own corner
-// (a solid blue circle + a white "+" — per an explicit reference image),
-// not the earlier in-bounds text pill. Once added, it becomes a compact
-// pill stepper instead (-, qty, +) since a circle can't fit three elements.
+// in types.ts), ADD/stepper sits bottom-right overlapping the image itself
+// (not below it anymore).
 //
 // Size chips (sizeOptions, e.g. ['500 g', '1 kg']) are a selection toggle
 // only — picking one doesn't change price yet, no per-size pricing model
@@ -44,6 +42,8 @@ import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { colors } from '../../../theme/tokens';
+import { estimateCartEtaMinutes } from '../../../utils/estimateDelivery';
+import { getPerUnitPriceLabel } from '../../../utils/perUnitPrice';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
 import { useWishlistStore } from '../../../store/useWishlistStore';
@@ -86,6 +86,14 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
   } = product;
   const discountPercent =
     showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
+  // Same real, non-fabricated pre-order estimate CartScreen already shows
+  // (DEFAULT_PREP_MINUTES + DELIVERY_TRANSIT_BUFFER_MINUTES) — no per-order
+  // context exists yet at the card level to compute anything more specific.
+  const etaMinutes = estimateCartEtaMinutes();
+  // Only weight/volume-based products (g/kg/ml/l) get a real "per 100"
+  // line — count-based units (pcs, dozen) have no sane equivalent, see
+  // that util's own note.
+  const perUnitLabel = getPerUnitPriceLabel(weight, price);
 
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize, setSelectedSize] = useState(chips[0]);
@@ -98,95 +106,88 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
 
   return (
     <Pressable onPress={onPress} className={`${widthClassName} gap-2`}>
-      {/* Outer wrapper has NO overflow-hidden — the ADD circle below sits
-          half outside the image tile's own corner and would get clipped
-          if this View were the one hiding overflow. Only the inner tile
-          (image + freshness/bookmark/veg-dot, all in-bounds) clips. */}
       <View className="aspect-square">
-        {/* backgroundColor is always explicit white, never undefined —
-            Android's `elevation`-based shadow (shadow-md below) needs an
-            opaque background on the elevated View to composite correctly;
-            leaving it undefined rendered a mismatched gray fill behind the
-            image on Android only (iOS's shadow implementation has no such
-            requirement, which is why this never showed up there). */}
+        {/* backgroundColor is a flat premium gray, not white — every card
+            gets the same neutral photo backdrop regardless of what the
+            actual product photo looks like (a per-product pastel would
+            mean two cards next to each other look like different card
+            *types*; one consistent gray reads as one deliberate system).
+            Still always explicit (never undefined) for the same Android
+            shadow-compositing reason as before. */}
+        {/* Only the top corners round — bottom stays sharp so the veg/ADD
+            cutout badges below still sit flush square in the corners,
+            matching the reference's cutout look instead of getting
+            clipped into a rounded corner themselves. */}
         <View
-          className="h-full w-full overflow-hidden rounded-xl border border-gray-100 shadow-md shadow-black/20"
-          style={{ backgroundColor: '#FFFFFF' }}
+          className="h-full w-full overflow-hidden rounded-t-xl rounded-br-[8px] shadow-sm shadow-black/20"
+          style={{ backgroundColor: '#EEEEEE' }}
         >
-        {/* Every card renders the same way now — full-bleed "cover", no
-            padding, no gray contain-backdrop. That gray-box treatment used
-            to apply only to real photos (imageUrl set), which made mock/
-            placeholder cards and real-photo cards look like two different
-            products of card — per an explicit ask, one consistent look for
-            every card regardless of image source. */}
-        <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+          <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
 
-        {/* freshness ribbon — top-left, only for same-day perishables. */}
-        {freshnessTag && (
-          <View className="absolute left-0 top-2 rounded-r-full bg-gold py-1 pl-2 pr-2.5">
-            <Text className="text-[10px] font-bold text-white">{freshnessTag}</Text>
-          </View>
-        )}
+          {/* freshness ribbon */}
+          {freshnessTag && (
+            <View className="absolute left-0 top-2 rounded-r-full bg-gold py-0.5 pl-1.5 pr-2">
+              <Text className="text-[9px] font-bold text-white">{freshnessTag}</Text>
+            </View>
+          )}
 
-        {/* bookmark/wishlist (heart) — local toggle only, nothing persists
-            this yet. Bg always white; only the heart itself changes
-            (outline -> filled red) on tap, not a green badge swap. */}
-        <Pressable
-          onPress={() => toggleWishlist(product)}
-          hitSlop={8}
-          className="absolute right-1.5 top-1.5 h-7 w-7 items-center justify-center rounded-full bg-white"
-        >
-          <AppIcon
-            icon={HeartIcon}
-            size={14}
-            color={isBookmarked ? colors.danger : colors.ink}
-            strokeWidth={isBookmarked ? 0 : 1.8}
-            fill={isBookmarked ? colors.danger : undefined}
-          />
-        </Pressable>
-
-        {/* veg/non-veg indicator — the standard Indian-grocery-app square +
-            dot symbol, not a generic checkmark. */}
-        <View
-          className={`absolute bottom-1.5 left-1.5 h-4 w-4 items-center justify-center rounded-[3px] border bg-white ${isVeg ? 'border-success' : 'border-danger'
-            }`}
-        >
-          <View className={`h-1.5 w-1.5 rounded-full ${isVeg ? 'bg-success' : 'bg-danger'}`} />
-        </View>
-        </View>
-
-        {/* ADD — a solid blue circle sitting HALF outside the image tile's
-            own bottom-right corner (per an explicit reference image), not
-            an in-bounds text pill anymore. Lives on the outer (non-clipped)
-            wrapper, not inside the tile above — see that View's own note. */}
-        {quantity === 0 ? (
+          {/* bookmark/wishlist */}
           <Pressable
-            onPress={() =>
-              addToCart({ id, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
-            }
-            className="absolute -bottom-3 -right-3 h-9 w-9 items-center justify-center rounded-full shadow-md shadow-black/30"
-            style={{ backgroundColor: '#2457F5' }}
+            onPress={() => toggleWishlist(product)}
+            hitSlop={8}
+            className="absolute right-2 top-2 items-center justify-center"
           >
-            <AppIcon icon={Add01Icon} size={18} color="#FFFFFF" strokeWidth={2.4} />
+            <AppIcon
+              icon={HeartIcon}
+              size={20}
+              color={isBookmarked ? colors.danger : 'rgba(0,0,0,0.5)'}
+              strokeWidth={isBookmarked ? 0 : 1.5}
+              fill={isBookmarked ? colors.danger : 'rgba(0,0,0,0.5)'}
+            />
           </Pressable>
-        ) : (
-          <View
-            className="absolute -bottom-3 -right-3 flex-row items-center gap-2 rounded-full px-2.5 py-1.5 shadow-md shadow-black/30"
-            style={{ backgroundColor: '#2457F5' }}
-          >
-            <Pressable onPress={() => decrementItem(id)} hitSlop={6}>
-              <AppIcon icon={MinusSignIcon} size={15} color="#FFFFFF" strokeWidth={3} />
-            </Pressable>
-            <Text className="min-w-[14px] text-center text-xs font-bold text-white">{quantity}</Text>
-            <Pressable onPress={() => incrementItem(id)} hitSlop={6}>
-              <AppIcon icon={Add01Icon} size={15} color="#FFFFFF" strokeWidth={3} />
-            </Pressable>
+
+          {/* veg/non-veg indicator — cutout corner, only the inner (top-right)
+              corner curved so it reads as a notch cut out of the photo,
+              not a floating square. */}
+          <View className="absolute bottom-0 left-0 rounded-tr-md bg-white pr-1 pt-1">
+            <View
+              className={`h-4 w-4 items-center justify-center rounded-[3px] border ${isVeg ? 'border-success' : 'border-danger'
+                }`}
+            >
+              <View className={`h-1.5 w-1.5 rounded-full ${isVeg ? 'bg-success' : 'bg-danger'}`} />
+            </View>
           </View>
-        )}
+
+          {/* ADD button — docked entirely flush to the bottom-right corner. */}
+          <View className="absolute bottom-0 right-0">
+            {quantity === 0 ? (
+              <Pressable
+                onPress={() =>
+                  addToCart({ id, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
+                }
+                className="h-9 items-center justify-center rounded-[8px] border-[1px] border-[#2457F5] bg-[#F4F7FF] px-3"
+              >
+                <Text className="text-[13px] font-semibold text-[#2457F5]">ADD</Text>
+              </Pressable>
+            ) : (
+              <View className="h-8 flex-row items-center justify-between gap-1 rounded-[8px] border-[1.5px] border-[#2457F5] bg-[#F4F7FF] px-1.5">
+                <Pressable onPress={() => decrementItem(id)} hitSlop={6}>
+                  <AppIcon icon={MinusSignIcon} size={14} color="#2457F5" strokeWidth={2.5} />
+                </Pressable>
+                <Text className="min-w-[12px] text-center text-[12px] font-bold text-[#2457F5]">{quantity}</Text>
+                <Pressable onPress={() => incrementItem(id)} hitSlop={6}>
+                  <AppIcon icon={Add01Icon} size={14} color="#2457F5" strokeWidth={2.5} />
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </View>
       </View>
 
 
       <View className="gap-1 px-1">
+        <Text className="text-[11px] font-medium uppercase text-ink/40">{etaMinutes} mins</Text>
+
         <Text className="text-[13px] font-medium leading-4 text-ink" numberOfLines={2}>
           {name}
           {localName ? ` (${localName})` : ''}
@@ -215,6 +216,8 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
           <Text className="text-[15px] font-semibold text-ink">₹{price}</Text>
           {originalPrice && <Text className="text-xs text-ink/40 line-through">₹{originalPrice}</Text>}
         </View>
+
+        {perUnitLabel && <Text className="text-[11px] font-medium text-ink/40">{perUnitLabel}</Text>}
       </View>
     </Pressable>
   );

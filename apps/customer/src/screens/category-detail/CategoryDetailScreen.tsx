@@ -72,7 +72,7 @@ export function CategoryDetailScreen({ navigation, route }: Props) {
 
         <ScrollView
           className="flex-1 bg-mist/30"
-          contentContainerClassName="flex-row flex-wrap gap-x-3 gap-y-6 p-3 pb-16"
+          contentContainerClassName="flex-row flex-wrap gap-x-3 gap-y-6 py-3 pl-0.5 pr-3 pb-16"
           showsVerticalScrollIndicator={false}
         >
           {products.map((product) => (
