@@ -1,8 +1,9 @@
-// No backend/src/routes/rider.ts exists yet — this app has nothing real
-// to fetch orders from, so useRiderOrdersStore.ts generates plausible
-// assignments locally instead. Kept in its own file (not inlined in the
-// store) so swapping this for a real GET /rider/orders call later is
-// deleting this file and one import, not restructuring the store itself.
+// Dev-only preview data now — useRiderOrdersStore.ts's real order source
+// is api/orders.ts's fetchAssignments (backend/src/routes/rider.ts's real
+// GET /assignments). This file is only still used by loadSampleData/
+// loadSampleWeek, both gated behind __DEV__ at their call sites
+// (HomeScreen.tsx/EarningsScreen.tsx) — never a real beta rider's actual
+// order queue.
 //
 // Names/addresses are grounded in the real launch zone (CLAUDE.md: Kaup,
 // outer Udupi) rather than generic placeholder text like "Store A" —
@@ -12,6 +13,11 @@
 export interface Coordinates {
   latitude: number;
   longitude: number;
+}
+
+export interface OrderItemLine {
+  name: string;
+  quantity: number;
 }
 
 export interface RiderOrder {
@@ -25,6 +31,11 @@ export interface RiderOrder {
   customerCoords: Coordinates;
   customerPhone: string;
   itemCount: number;
+  // Plausible kirana-store line items (mock, same reasoning as this
+  // file's own header note — no real backend order to read the actual
+  // cart from yet). Quantities always sum to itemCount, so the two never
+  // disagree on-screen.
+  items: OrderItemLine[];
   // baseFare + distanceFare + surge always sums to payout — shown as an
   // itemized breakup (OrderDetailScreen/EarningsScreen) instead of one bare
   // number, since an unexplained payout figure is the single biggest
@@ -80,6 +91,38 @@ function randomNearbyCoords(): Coordinates {
 
 const BASE_FARE = 15;
 
+// Real kirana/grocery staples — same "plausible, not generic placeholder"
+// bar this file's own header note holds every mock field to.
+const ITEM_POOL = [
+  'Toor Dal 1kg',
+  'Sunflower Oil 1L',
+  'Basmati Rice 5kg',
+  'Amul Milk 500ml',
+  'Tomatoes 1kg',
+  'Onions 1kg',
+  'Maggi Noodles',
+  'Britannia Bread',
+  'Parle-G Biscuits',
+  'Tata Salt 1kg',
+  'Red Chilli Powder 200g',
+  'Bananas (dozen)',
+  'Curd 400g',
+  'Eggs (6 pack)',
+  'Potatoes 1kg',
+  'Tea Powder 250g',
+];
+
+// Picks enough distinct items for a plausible cart and spreads the given
+// total quantity across them — always sums back to exactly `itemCount`,
+// so the summary line and the expanded list can never disagree.
+function generateOrderItems(itemCount: number): OrderItemLine[] {
+  const lineCount = Math.min(itemCount, 2 + Math.floor(Math.random() * 3));
+  const shuffled = [...ITEM_POOL].sort(() => Math.random() - 0.5).slice(0, lineCount);
+  const base = Math.floor(itemCount / lineCount);
+  const remainder = itemCount - base * lineCount;
+  return shuffled.map((name, i) => ({ name, quantity: base + (i < remainder ? 1 : 0) }));
+}
+
 export function generateMockOrder(): RiderOrder {
   orderSequence += 1;
   const distanceKm = Number((1 + Math.random() * 3.5).toFixed(1));
@@ -87,6 +130,7 @@ export function generateMockOrder(): RiderOrder {
   // Surge fires ~1 in 4 orders — a flat "sometimes there's more" is enough
   // for a mock; a real surge model reads live demand, out of scope here.
   const surge = Math.random() < 0.25 ? 10 : 0;
+  const itemCount = 2 + Math.floor(Math.random() * 8);
 
   return {
     id: `mock-order-${orderSequence}-${Date.now()}`,
@@ -98,7 +142,8 @@ export function generateMockOrder(): RiderOrder {
     customerAddress: pick(CUSTOMER_AREAS),
     customerCoords: randomNearbyCoords(),
     customerPhone: randomPhone(),
-    itemCount: 2 + Math.floor(Math.random() * 8),
+    itemCount,
+    items: generateOrderItems(itemCount),
     payout: BASE_FARE + distanceFare + surge,
     baseFare: BASE_FARE,
     distanceFare,

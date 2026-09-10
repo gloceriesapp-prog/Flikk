@@ -1,7 +1,6 @@
-// Any 6-digit code succeeds — api/auth.ts's own note on why there's no
-// real code to check against. The 6-box input and length validation are
-// still real UX, not skipped, just not compared against anything server-
-// side.
+// Real OTP verification against Supabase phone auth (backend's POST
+// /auth/otp/verify) — see api/auth.ts's own note on the one real gap this
+// doesn't solve (no self-serve "become a rider" flow yet).
 
 import { useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
@@ -28,7 +27,7 @@ export function OtpVerificationScreen({ navigation, route }: Props) {
     setLoading(true);
     try {
       const result = await verifyOtp(phone, code);
-      await setSession(result.accessToken, result.phone);
+      await setSession(result.accessToken, result.refreshToken, result.phone);
       // No further navigation needed — RootNavigator swaps to AppNavigator
       // the instant useAuthStore.accessToken becomes non-null.
     } catch (err) {

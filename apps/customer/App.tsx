@@ -8,6 +8,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AEONIK_FONT_FILES } from './src/theme/fonts';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -61,7 +62,9 @@ export default function App() {
               per-screen style="light" override (e.g. HomeScreen.tsx's own),
               regardless of which screen was actually focused. */}
           <StatusBar style="dark" />
-          <RootNavigator />
+          <ErrorBoundary>
+            <RootNavigator />
+          </ErrorBoundary>
         </QueryClientProvider>
       </KeyboardProvider>
     </SafeAreaProvider>

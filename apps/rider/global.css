@@ -7,36 +7,46 @@
    Text.defaultProps in App.tsx does not, because NativeWind's babel plugin
    swaps every screen's `Text` import for its own cssInterop-wrapped
    component, which doesn't inherit defaultProps set on the raw RN Text —
-   same gotcha apps/partner's own global.css documents for Sohne). */
+   same gotcha apps/customer and apps/partner's own global.css document). */
 @layer base {
   * {
-    font-family: 'SuisseIntl-Regular';
+    font-family: 'AeonikSoftPro-Regular';
   }
 }
 
 /* Tailwind's font-weight utilities (font-bold, font-semibold, etc.) only
-   set numeric fontWeight, which RN can't use to pick a different Suisse
-   Int'l file — each weight is its own .otf, not one variable font. Only 4
-   real faces exist (Thin/Light/Regular/SemiBold — theme/fonts.ts's own
-   note on why there's no separate Bold/Black file), so every utility from
-   medium upward collapses onto SemiBold, the heaviest face that actually
-   exists, rather than a finer ladder that doesn't. */
+   set numeric fontWeight, which RN can't use to pick a different Aeonik
+   Soft Pro file — each weight is its own separate font file, not one
+   variable font. All 8 non-italic faces the vault ships map one-to-one
+   onto Tailwind's 9-step weight scale (extralight and black/extrabold
+   double up, since Aeonik has no separate face at exactly those steps),
+   same mapping as apps/customer and apps/partner's own global.css — full
+   coverage top to bottom, not capped partway up the scale the way the
+   previous Suisse Int'l setup had to be (only 4 faces existed there). */
 @layer utilities {
-  .font-thin,
+  .font-thin {
+    font-family: 'AeonikSoftPro-Thin';
+  }
   .font-extralight {
-    font-family: 'SuisseIntl-Thin';
+    font-family: 'AeonikSoftPro-Air';
   }
   .font-light {
-    font-family: 'SuisseIntl-Light';
+    font-family: 'AeonikSoftPro-Light';
   }
   .font-normal {
-    font-family: 'SuisseIntl-Regular';
+    font-family: 'AeonikSoftPro-Regular';
   }
-  .font-medium,
-  .font-semibold,
-  .font-bold,
+  .font-medium {
+    font-family: 'AeonikSoftPro-Medium';
+  }
+  .font-semibold {
+    font-family: 'AeonikSoftPro-SemiBold';
+  }
+  .font-bold {
+    font-family: 'AeonikSoftPro-Bold';
+  }
   .font-extrabold,
   .font-black {
-    font-family: 'SuisseIntl-SemiBold';
+    font-family: 'AeonikSoftPro-Black';
   }
 }

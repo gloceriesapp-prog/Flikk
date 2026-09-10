@@ -60,7 +60,7 @@ export function EarningsScreen() {
             would disappear with no way left to seed the rest of the
             week's bars — exactly the "sample data isn't showing, and I
             can't find the button to add it" bug this was hiding. */}
-        {weekOffset === 0 ? (
+        {weekOffset === 0 && __DEV__ ? (
           <View className="px-5">
             <PrimaryButton label="Load sample data" onPress={loadSampleWeek} />
           </View>

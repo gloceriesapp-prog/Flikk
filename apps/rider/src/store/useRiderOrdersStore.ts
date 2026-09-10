@@ -3,47 +3,66 @@
 // assignments, and the full delivered-order history (persisted across
 // restarts — EarningsScreen derives its Today/Week/All-time views from
 // this one array by filtering on deliveredAt, rather than keeping
-// separate "today" vs "history" state to drift out of sync). Backed by
-// data/mockOrders.ts, not a real GET /rider/orders (backend/src/routes/
-// rider.ts doesn't exist yet) — see that file's own note. Every action
-// here (accept/reject/advance status) is written the way it would work
-// against a real endpoint (optimistic local update, single source of
-// truth), so swapping in a real API later touches this file's internals,
-// not every screen that reads from it.
+// separate "today" vs "history" state to drift out of sync).
+//
+// Backed by real data now: api/orders.ts's fetchAssignments polls
+// backend/src/routes/rider.ts's GET /assignments (real orders, real RLS,
+// real rider_id = this account), not data/mockOrders.ts's fake generator.
+// That file still exists and is still used, but only by loadSampleData/
+// loadSampleWeek — explicitly dev-only preview seeders now (gated behind
+// __DEV__ in HomeScreen.tsx/EarningsScreen.tsx), never this store's real
+// order source.
+//
+// Two real backend limitations this works around rather than pretends
+// don't exist:
+// 1. No presence/availability system — isOnline is a purely local UI
+//    concept (goOnline/goOffline never call the backend). Going offline
+//    doesn't tell admin anything; it only suppresses this app's own
+//    incoming-order interrupt for orders that arrive while offline (they
+//    still land quietly in the queue, per CLAUDE.md's manual-dispatch
+//    scope — the founder still has to actually reach the rider some other
+//    way to know they're free). Syncing itself always runs while a
+//    session exists, independent of this toggle, so an already-active
+//    delivery never goes stale just because the rider flips offline
+//    mid-drop.
+// 2. No accept/reject concept server-side — admin's PATCH /admin/orders/
+//    :id/assign-rider already commits the assignment before this app ever
+//    sees it. "Accept" here just acknowledges it locally (moves it into
+//    activeOrders); "Decline"/an expired accept window can't actually
+//    unassign anything — it only stops re-alerting on it locally
+//    (dismissedIds, in-memory only). The order stays real and assigned
+//    either way; there's no reassignment pool to return it to yet.
 //
 // Status step order mirrors backend/src/lib/orderStateMachine.ts's own
 // stages (placed -> packed -> out_for_delivery -> delivered) but split
 // finer for what a rider specifically does: 'assigned' (backend's
-// 'packed'; rider slides to confirm pickup once at the store — this is
-// what flips the order to backend's 'out_for_delivery') -> 'picked_up'
-// (heading to the customer) -> 'arrived_at_customer' -> 'delivered'. A
-// real backend integration would fire the matching PATCH at each step
-// instead of just updating local state.
+// 'packed') -> 'picked_up' (backend's 'out_for_delivery'; the real PATCH
+// fires on this transition) -> 'arrived_at_customer' (local-only — no
+// backend column for this sub-stage) -> 'delivered' (another real PATCH,
+// which is also what makes backend/src/routes/orders.ts write the real
+// rider_earnings row).
 
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import { fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders';
 import { generateMockOrder, generateMockRating, generateMockTip, type RiderOrder } from '../data/mockOrders';
 import { startOfWeek } from '../utils/earnings';
 
 export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'picked_up', 'arrived_at_customer', 'delivered'];
 
-// How long after going online before a demo order "arrives" — stands in
-// for a founder actually assigning one (CLAUDE.md: manual/founder-assigned
-// dispatch is correct at this scale, this app only ever receives
-// assignments, it never computes them). Re-arms itself after every
-// accept/reject/deliver so more than one order can show up in a session.
-const INCOMING_ORDER_DELAY_MS = 8_000;
-
-// Real rider apps give ~15-30s to accept before auto-reassigning — an
-// untimed modal has no urgency and leaves a rider feeling "stuck" if they
-// step away. 25s splits that range.
+// Real rider apps give ~15-30s to accept before auto-reassigning — kept as
+// a local UX device (see this file's own header note on why there's
+// nothing real to "reassign" yet) so the interrupt still has urgency
+// instead of sitting untimed.
 export const ACCEPT_WINDOW_SECONDS = 25;
 const ACCEPT_WINDOW_MS = ACCEPT_WINDOW_SECONDS * 1000;
 
-// ponytail: capped array persisted as one SecureStore JSON blob — fine at
-// mock/demo scale (SecureStore has no server round-trip and a few hundred
-// small records is well within its per-item size ceiling); a real backend
-// would paginate this from an endpoint instead.
+// How often to re-fetch real assignments. Backend has no realtime push for
+// this yet (Supabase Realtime is available but not subscribed to here) —
+// polling is the simpler thing that's actually buildable client-side right
+// now, same tradeoff apps/partner's WaitingApprovalScreen makes.
+const POLL_INTERVAL_MS = 12_000;
+
 const HISTORY_KEY = 'flikk_rider_order_history';
 const MAX_HISTORY = 200;
 
@@ -53,10 +72,6 @@ async function persistHistory(orders: RiderOrder[]): Promise<void> {
 
 interface RiderOrdersState {
   isOnline: boolean;
-  // Set once, the moment isOnline actually flips false->true — goOnline()
-  // is also called internally to re-arm the incoming-order timer while
-  // already online (after a decline/delivery), which must NOT reset this,
-  // or "online for" would jump back to 0 every time an order completes.
   onlineSince: number | null;
   incomingOrder: RiderOrder | null;
   incomingOrderExpiresAt: number | null;
@@ -64,35 +79,31 @@ interface RiderOrdersState {
   completedOrders: RiderOrder[];
   cancelledOrders: RiderOrder[];
   isHistoryHydrated: boolean;
+  // In-memory only, on purpose (this file's own header note #2) — an
+  // order dismissed this session shouldn't keep re-interrupting, but a
+  // fresh app launch is a legitimate reason to see a still-unacknowledged
+  // assignment again.
+  dismissedIds: Set<string>;
   hydrateHistory: () => Promise<void>;
+  startSync: () => void;
+  stopSync: () => void;
   goOnline: () => void;
   goOffline: () => void;
   acceptIncomingOrder: () => void;
   declineIncomingOrder: () => void;
-  advanceOrderStatus: (orderId: string) => void;
-  cancelOrder: (orderId: string, reason: string) => void;
+  advanceOrderStatus: (orderId: string) => Promise<void>;
+  cancelOrder: (orderId: string, reason: string) => Promise<void>;
   // Demo/preview aid only — seeds one order into each of active/completed/
   // cancelled so every list layout on Home/Orders/Earnings can be seen
-  // without waiting out the real accept-and-deliver flow. Not a real data
-  // source; wired to a button only in Home's empty state (HomeScreen.tsx).
+  // without waiting on a real assignment. Not a real data source; gated
+  // behind __DEV__ at the call site (HomeScreen.tsx), never shown to a
+  // real rider in a production build.
   loadSampleData: () => void;
-  // Same demo-only purpose as loadSampleData, but shaped for
-  // EarningsScreen's weekly bar chart specifically — a real spread across
-  // three magnitudes (a couple of ₹1,000s days, a couple of ₹100s days,
-  // two genuine ₹0 days), not a flat run of similarly-sized bars. Wired to
-  // a button on EarningsScreen only.
   loadSampleWeek: () => void;
 }
 
-let incomingTimer: ReturnType<typeof setTimeout> | null = null;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 let autoDeclineTimer: ReturnType<typeof setTimeout> | null = null;
-
-function clearIncomingTimer() {
-  if (incomingTimer) {
-    clearTimeout(incomingTimer);
-    incomingTimer = null;
-  }
-}
 
 function clearAutoDeclineTimer() {
   if (autoDeclineTimer) {
@@ -110,41 +121,114 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
   completedOrders: [],
   cancelledOrders: [],
   isHistoryHydrated: false,
+  dismissedIds: new Set(),
 
   hydrateHistory: async () => {
     const raw = await SecureStore.getItemAsync(HISTORY_KEY);
     set({ completedOrders: raw ? (JSON.parse(raw) as RiderOrder[]) : [], isHistoryHydrated: true });
   },
 
-  goOnline: () => {
-    set((state) => ({ isOnline: true, onlineSince: state.isOnline ? state.onlineSince : Date.now() }));
-    clearIncomingTimer();
-    incomingTimer = setTimeout(() => {
-      // Only surface a new incoming order if there isn't already one
-      // waiting and the rider isn't already juggling an active delivery —
-      // a real dispatcher wouldn't stack a second assignment on someone
-      // mid-delivery either.
-      const state = get();
-      if (state.isOnline && !state.incomingOrder && state.activeOrders.length === 0) {
-        const order = generateMockOrder();
-        const expiresAt = Date.now() + ACCEPT_WINDOW_MS;
-        set({ incomingOrder: order, incomingOrderExpiresAt: expiresAt });
+  startSync: () => {
+    if (pollTimer) return; // already running
+    const sync = async () => {
+      let rows;
+      try {
+        rows = await fetchAssignments();
+      } catch {
+        // Network blip / not-yet-approved-as-a-rider — just skip this
+        // cycle, the next poll tries again. Nothing useful to surface to
+        // a rider for one missed background refresh.
+        return;
+      }
 
+      const state = get();
+      const mapped = rows.map(toRiderOrder).filter((o): o is RiderOrder => o !== null);
+
+      const knownIds = new Set([
+        ...state.activeOrders.map((o) => o.id),
+        ...state.completedOrders.map((o) => o.id),
+        ...state.cancelledOrders.map((o) => o.id),
+        ...state.dismissedIds,
+        ...(state.incomingOrder ? [state.incomingOrder.id] : []),
+      ]);
+
+      const nextActive: RiderOrder[] = [];
+      const newlyDelivered: RiderOrder[] = [];
+      const newlyCancelled: RiderOrder[] = [];
+      let nextIncoming = state.incomingOrder;
+      let nextIncomingExpiresAt = state.incomingOrderExpiresAt;
+
+      for (const order of mapped) {
+        if (order.status === 'delivered') {
+          if (!state.completedOrders.some((o) => o.id === order.id)) newlyDelivered.push(order);
+          continue;
+        }
+        if (order.status === 'cancelled') {
+          if (!state.cancelledOrders.some((o) => o.id === order.id)) newlyCancelled.push(order);
+          continue;
+        }
+
+        // Still the pending incoming order — stays there, not double-shown
+        // in the active list until actually accepted.
+        if (nextIncoming?.id === order.id) continue;
+
+        const brandNew = !knownIds.has(order.id) && order.status === 'assigned';
+        if (brandNew && !nextIncoming) {
+          if (state.isOnline) {
+            nextIncoming = order;
+            nextIncomingExpiresAt = Date.now() + ACCEPT_WINDOW_MS;
+          } else {
+            // Offline: still real, still theirs — just no interrupt.
+            nextActive.push(order);
+          }
+          continue;
+        }
+
+        // Preserve the local-only 'arrived_at_customer' sub-stage — the
+        // server only ever reports 'picked_up' for this order (mapped
+        // from out_for_delivery) until the real 'delivered' PATCH fires.
+        const existing = state.activeOrders.find((o) => o.id === order.id);
+        const effectiveStatus = existing?.status === 'arrived_at_customer' && order.status === 'picked_up' ? 'arrived_at_customer' : order.status;
+        nextActive.push({ ...order, status: effectiveStatus });
+      }
+
+      set({
+        activeOrders: nextActive,
+        completedOrders: newlyDelivered.length ? [...newlyDelivered, ...state.completedOrders] : state.completedOrders,
+        cancelledOrders: newlyCancelled.length ? [...newlyCancelled, ...state.cancelledOrders] : state.cancelledOrders,
+        incomingOrder: nextIncoming,
+        incomingOrderExpiresAt: nextIncomingExpiresAt,
+      });
+
+      if (newlyDelivered.length) void persistHistory(get().completedOrders);
+
+      if (nextIncoming && nextIncoming.id !== state.incomingOrder?.id) {
         clearAutoDeclineTimer();
+        const incomingId = nextIncoming.id;
         autoDeclineTimer = setTimeout(() => {
-          // Still the same, still-pending order once the window runs out
-          // — auto-decline it exactly like a rider tapping Decline, so a
-          // missed alert never leaves the rider silently stuck.
-          if (get().incomingOrder?.id === order.id) get().declineIncomingOrder();
+          if (get().incomingOrder?.id === incomingId) get().declineIncomingOrder();
         }, ACCEPT_WINDOW_MS);
       }
-    }, INCOMING_ORDER_DELAY_MS);
+    };
+
+    void sync();
+    pollTimer = setInterval(sync, POLL_INTERVAL_MS);
+  },
+
+  stopSync: () => {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+    clearAutoDeclineTimer();
+  },
+
+  goOnline: () => {
+    set((state) => ({ isOnline: true, onlineSince: state.isOnline ? state.onlineSince : Date.now() }));
   },
 
   goOffline: () => {
-    clearIncomingTimer();
-    clearAutoDeclineTimer();
-    set({ isOnline: false, onlineSince: null, incomingOrder: null, incomingOrderExpiresAt: null });
+    set({ isOnline: false, onlineSince: null });
   },
 
   acceptIncomingOrder: () => {
@@ -159,67 +243,78 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
   },
 
   declineIncomingOrder: () => {
+    const order = get().incomingOrder;
     clearAutoDeclineTimer();
-    set({ incomingOrder: null, incomingOrderExpiresAt: null });
-    // Re-arm — a declined order doesn't mean the rider went offline, they
-    // should still be able to get the next real assignment.
-    if (get().isOnline) get().goOnline();
+    set((state) => ({
+      incomingOrder: null,
+      incomingOrderExpiresAt: null,
+      dismissedIds: order ? new Set(state.dismissedIds).add(order.id) : state.dismissedIds,
+    }));
   },
 
-  advanceOrderStatus: (orderId) => {
-    let delivered: RiderOrder | null = null;
+  advanceOrderStatus: async (orderId) => {
+    const order = get().activeOrders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    if (order.status === 'assigned') {
+      // Real transition: packed -> out_for_delivery. Backend also stamps
+      // picked_up_at here (orderStateMachine.ts's timestampColumnFor).
+      await updateOrderStatus(orderId, 'out_for_delivery');
+      set((state) => ({
+        activeOrders: state.activeOrders.map((o) => (o.id === orderId ? { ...o, status: 'picked_up' } : o)),
+      }));
+      return;
+    }
+
+    if (order.status === 'picked_up') {
+      // Local-only sub-stage — no backend call (this file's own header
+      // note on why).
+      set((state) => ({
+        activeOrders: state.activeOrders.map((o) => (o.id === orderId ? { ...o, status: 'arrived_at_customer' } : o)),
+      }));
+      return;
+    }
+
+    if (order.status === 'arrived_at_customer') {
+      // Real transition: out_for_delivery -> delivered. This is also what
+      // makes backend write the real rider_earnings row (routes/orders.ts).
+      await updateOrderStatus(orderId, 'delivered');
+      const delivered: RiderOrder = {
+        ...order,
+        status: 'delivered',
+        deliveredAt: new Date().toISOString(),
+        // No backend concept for either yet (this file's own header note
+        // on the flat, tip-less real earnings model) — left genuinely
+        // absent rather than fabricated, same as api/orders.ts's mapper.
+        customerRating: undefined,
+        tip: undefined,
+      };
+      set((state) => ({
+        activeOrders: state.activeOrders.filter((o) => o.id !== orderId),
+        completedOrders: [delivered, ...state.completedOrders],
+      }));
+      void persistHistory(get().completedOrders);
+    }
+  },
+
+  cancelOrder: async (orderId, reason) => {
+    // Real transition — only valid while still 'packed' (this app's own
+    // 'assigned'), same rule CancelOrderModal's own placement already
+    // assumes (only ever shown pre-pickup). A rejection here (already
+    // picked up, not actually this rider's order, etc.) is a real 403/409
+    // from the backend — thrown straight through, not swallowed, so the
+    // screen that called this can Alert the real reason instead of
+    // silently pretending it worked.
+    await updateOrderStatus(orderId, 'cancelled', reason);
 
     set((state) => {
       const order = state.activeOrders.find((o) => o.id === orderId);
       if (!order) return state;
-
-      const currentIndex = STATUS_STEPS.indexOf(order.status);
-      const nextStatus = STATUS_STEPS[currentIndex + 1];
-      if (!nextStatus) return state;
-
-      if (nextStatus === 'delivered') {
-        delivered = {
-          ...order,
-          status: 'delivered',
-          deliveredAt: new Date().toISOString(),
-          customerRating: generateMockRating(),
-          tip: generateMockTip(),
-        };
-        return {
-          activeOrders: state.activeOrders.filter((o) => o.id !== orderId),
-          completedOrders: [delivered, ...state.completedOrders],
-        };
-      }
-
-      return {
-        activeOrders: state.activeOrders.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o)),
-      };
-    });
-
-    if (delivered) void persistHistory(get().completedOrders);
-
-    // Freed up (order delivered) — re-arm the incoming-order timer so the
-    // next assignment can show up, same as declining one.
-    const state = get();
-    if (state.isOnline && state.activeOrders.length === 0 && !state.incomingOrder) {
-      state.goOnline();
-    }
-  },
-
-  cancelOrder: (orderId, reason) => {
-    set((state) => {
-      const order = state.activeOrders.find((o) => o.id === orderId);
-      const cancelled = order ? [{ ...order, status: 'cancelled' as const, cancelReason: reason }, ...state.cancelledOrders] : state.cancelledOrders;
       return {
         activeOrders: state.activeOrders.filter((o) => o.id !== orderId),
-        cancelledOrders: cancelled,
+        cancelledOrders: [{ ...order, status: 'cancelled', cancelReason: reason }, ...state.cancelledOrders],
       };
     });
-
-    const state = get();
-    if (state.isOnline && state.activeOrders.length === 0 && !state.incomingOrder) {
-      state.goOnline();
-    }
   },
 
   loadSampleData: () => {
@@ -254,23 +349,8 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
 
   loadSampleWeek: () => {
     const weekStart = startOfWeek(new Date());
-
-    // Deliberate, not left to chance — a genuine spread across three
-    // magnitudes: a couple of days stacked with enough orders to land in
-    // the ₹1,000s (a real busy day), a couple with just a few orders in
-    // the ₹100s, and two real ₹0 days (no orders at all, not a tiny bar).
-    // A single order is only ~₹25-120 (base fare + distance + tip), so
-    // "thousands" needs real order-count weight behind it, not one lucky
-    // surge.
-    // Mon  Tue  Wed  Thu  Fri  Sat  Sun
     const ORDERS_PER_DAY = [18, 4, 0, 3, 15, 0, 2];
 
-    // Preview data only — deliberately covers the whole Mon-Sun week,
-    // including days after today, so every bar has something to render
-    // right away. A real delivery can't have a future deliveredAt; this
-    // is fine purely as a chart-preview seed, never written by the real
-    // accept-and-deliver flow (advanceOrderStatus always uses
-    // new Date().toISOString(), today or earlier by construction).
     const sampleOrders: RiderOrder[] = [];
     ORDERS_PER_DAY.forEach((orderCount, dayOffset) => {
       const day = new Date(weekStart);

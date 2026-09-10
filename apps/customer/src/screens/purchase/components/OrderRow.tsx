@@ -1,41 +1,44 @@
-// One flat row — replaces LiveOrderCard/PastOrderCard's separate card
-// designs (gradient-wash card + CTA button for live, flat gray card for
-// past) with a single plain row per an explicit ask to strip the card/
-// background chrome entirely: item-photo stack on the left (ItemThumbnailStack
-// — up to 3 items each get their own circle; past 3, it's 2 circles + a
-// "+N" badge for the rest), a headline + "Items: …" line in the middle,
-// chevron on the right. No card background, no border, no CTA button — the
-// whole row is the tap target (PurchaseScreen.tsx wires onPress to
-// TrackOrder for live orders; past/delivered orders pass no onPress since
-// there's nothing left to track, same behavior split PastOrderCard used to
-// encode structurally).
+// Order card — redesigned per two explicit references: a hand-drawn
+// wireframe (icon-free "Delivery by 4:30 PM" header, 3-photo item stack +
+// count, expandable item list, date + total footer) and a Myntra-style
+// "Delivered" status block (status icon bubble, store name, rate-this-order
+// prompt). Real white card on PurchaseScreen's own #FCFCFB background.
 //
-// Headline is no longer the raw status word ("Packed") for an
-// already-in-motion order — it's "Arriving in X min" (formatEtaMinutesRemaining,
-// the same real ETA math TrackOrderScreen/ReceiptScreen already use —
-// order.placedAtIso + the store's own avg_prep_minutes, not a fabricated
-// countdown) in green, the same color this app already uses for "in
-// progress and going well" elsewhere (colors.success).
+// Status icon bubble replaces the old text-only status pill — PackageIcon
+// (live, green), PackageDeliveredIcon (delivered, ink-on-mint), CancelCircleIcon
+// (cancelled, red) — same color meaning as before, just given a real icon
+// instead of a colored word.
 //
-// 'placed' specifically keeps its own moment, written in plain words
-// anyone reads correctly at a glance — "We got your order 🌱" says exactly
-// what happened (the order was received) with no room to misread it as
-// something further along (packed/on its way) or further behind
-// (still in the cart). Clarity comes first; the only "voice" left is the
-// 🌱, not a clever rephrasing that could cost a confused support message.
-// Short by design, not just for style: numberOfLines={1}
-// below only stops overflow from wrapping, it doesn't stop it truncating
-// with "…" — a headline has to actually fit the row's width on the
-// smallest supported phone or it gets clipped exactly the way the old
-// "Order Placed — your store just got the word 🌱" did. Delivered orders
-// show "Delivered" in the normal ink color; cancelled orders show
-// "Cancelled" in danger red.
+// Headline for a live order is now the real delivery-by CLOCK time
+// (estimateDeliveryTime, same math TrackOrderScreen/ReceiptScreen use),
+// matching the wireframe's "Delivery by 4:30 PM" instead of a countdown —
+// still nothing fabricated, same underlying Date just formatted differently.
+//
+// Item row is now a real expand/collapse (useState) — tapping "N items"
+// reveals every item's own name + photo below the thumbnail stack, tapping
+// again collapses it. This is local, per-card UI state, not new data.
+//
+// The star-rating row only renders for delivered orders — decorative for
+// now (no rating-submission backend/screen exists yet), same "UI exists,
+// flow not wired" convention already used elsewhere in this app (e.g.
+// ProductCardView's own unwired bookmark heart) rather than either faking a
+// real average rating or blocking this redesign on building that feature.
 
-import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { useState } from 'react';
+import {
+  ArrowRight01Icon,
+  CancelCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PackageDeliveredIcon,
+  PackageIcon,
+  StarIcon,
+} from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
+import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
-import { estimateDeliveryTime, formatEtaMinutesRemaining } from '../../../utils/estimateDelivery';
+import { estimateDeliveryTime } from '../../../utils/estimateDelivery';
 import type { PurchaseOrder } from '../data';
 import { ItemThumbnailStack } from './ItemThumbnailStack';
 
@@ -44,32 +47,82 @@ interface Props {
   onPress?: () => void;
 }
 
-function headlineFor(order: PurchaseOrder): { text: string; color: string } {
-  if (order.status === 'cancelled') return { text: 'Cancelled', color: colors.danger };
-  if (order.status === 'delivered') return { text: 'Delivered', color: colors.ink };
-  if (order.status === 'placed') return { text: 'We got your order', color: colors.success };
-  const eta = estimateDeliveryTime(order.placedAtIso, order.avgPrepMinutes);
-  return { text: formatEtaMinutesRemaining(eta), color: colors.success };
+function statusFor(order: PurchaseOrder) {
+  if (order.status === 'cancelled') {
+    return { icon: CancelCircleIcon, color: colors.danger, headline: 'Cancelled' };
+  }
+  if (order.status === 'delivered') {
+    return { icon: PackageDeliveredIcon, color: colors.success, headline: 'Delivered' };
+  }
+  const etaTime = estimateDeliveryTime(order.placedAtIso, order.avgPrepMinutes).toLocaleTimeString('en-IN', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  return { icon: PackageIcon, color: colors.success, headline: `Delivery by ${etaTime}` };
 }
 
 export function OrderRow({ order, onPress }: Props) {
-  const itemsLabel = order.items.map((item) => item.name).join(', ');
-  const headline = headlineFor(order);
+  const [expanded, setExpanded] = useState(false);
+  const status = statusFor(order);
 
   return (
-    <Pressable onPress={onPress} disabled={!onPress} className="flex-row items-center gap-3.5 py-3">
-      <ItemThumbnailStack items={order.items} />
+    <View className="mb-3.5 rounded-2xl border border-black/[0.06] bg-white p-4 ">
+      <Pressable onPress={onPress} disabled={!onPress} className="flex-row items-center gap-3">
+        <View className="h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: `${status.color}17` }}>
+          <AppIcon icon={status.icon} size={21} color={status.color} strokeWidth={1.8} />
+        </View>
+        <View className="flex-1">
+          <Text className="text-[15px] font-semibold text-ink" numberOfLines={1}>
+            {status.headline}
+          </Text>
+          <Text className="mt-0.5 text-[12px] font-medium text-ink/45" numberOfLines={1}>
+            {order.storeName}
+          </Text>
+        </View>
+        {onPress && <AppIcon icon={ArrowRight01Icon} size={16} color={`${colors.ink}55`} />}
+      </Pressable>
 
-      <View className="flex-1">
-        <Text className="text-[15px] font-semibold" numberOfLines={1} style={{ color: headline.color }}>
-          {headline.text}
+      <Pressable onPress={() => setExpanded((v) => !v)} className="mt-3.5 flex-row items-center gap-3">
+        <ItemThumbnailStack items={order.items} />
+        <Text className="flex-1 text-[13px] font-semibold text-ink/70">
+          {order.items.length} item{order.items.length === 1 ? '' : 's'}
         </Text>
-        <Text className="mt-0.5 text-[13px] font-normal text-ink/50" numberOfLines={1} ellipsizeMode="tail">
-          Items: {itemsLabel}
-        </Text>
+        <AppIcon icon={expanded ? ChevronUpIcon : ChevronDownIcon} size={17} color={`${colors.ink}55`} strokeWidth={1.8} />
+      </Pressable>
+
+      {expanded && (
+        <View className="mt-3 gap-2.5 rounded-xl bg-[#FAFAF9] p-3">
+          {order.items.map((item) => (
+            <View key={item.name} className="flex-row items-center gap-2.5">
+              <View className="h-9 w-9 overflow-hidden rounded-lg bg-gray-100">
+                <Image source={{ uri: item.imageUri }} className="h-full w-full" resizeMode="cover" />
+              </View>
+              <Text className="flex-1 text-[13px] font-medium text-ink/80" numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text className="text-[12px] font-bold text-ink/40">x{item.quantity}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View className="mb-3 mt-3.5 h-px bg-black/[0.06]" />
+
+      <View className="flex-row items-center justify-between">
+        <Text className="text-[12px] font-medium text-ink/45">{order.placedAtLabel}</Text>
+        <Text className="text-[14px] font-bold tabular-nums text-ink">₹{order.total.toFixed(0)}</Text>
       </View>
 
-      {onPress && <AppIcon icon={ArrowRight01Icon} size={16} color={`${colors.ink}60`} />}
-    </Pressable>
+      {order.status === 'delivered' && (
+        <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-[#FDF6E9] px-3 py-2.5">
+          <View className="flex-row">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <AppIcon key={i} icon={StarIcon} size={14} color={colors.gold} fill={colors.gold} strokeWidth={0} />
+            ))}
+          </View>
+          <Text className="flex-1 text-[12px] font-semibold text-ink/70">Rate your order</Text>
+        </View>
+      )}
+    </View>
   );
 }

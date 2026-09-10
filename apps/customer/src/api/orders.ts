@@ -35,6 +35,7 @@ export interface ApiOrderItem {
 export interface ApiOrder {
   id: string;
   order_number: string;
+  store_id: string;
   status: OrderStatus | 'cancelled';
   item_total: number;
   delivery_fee: number;

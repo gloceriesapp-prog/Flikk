@@ -1,29 +1,75 @@
 // Reached by tapping the Home search bar (HomeSearchBar.tsx navigates here
-// instead of allowing inline typing — see that file's comment). Real typing
-// happens in SearchHeader; the Top Grocery Stores row and "Most searched
-// Product" grid below are placeholder content, no live search wired yet.
+// instead of allowing inline typing — see SearchHeader.tsx's own comment).
+// Real search now: matching stores come from useAllStores' already-real
+// GET /stores list (filtered client-side — the whole zone's store list is
+// small enough at this scale, same "no premature complexity" judgment
+// call StoreListScreen's own category filter already makes), matching
+// products come from a real cross-store backend search
+// (useProductSearch.ts -> GET /stores/products/search). Both reuse the
+// exact same StoreCard/ProductSection components the rest of the app
+// already uses, so tapping a result behaves identically to tapping the
+// same store/product anywhere else (StoreCard self-navigates to
+// StoreDetail; ProductCard self-opens ProductDetailSheet).
 
-import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { StoreCard } from '../store-list/components/StoreCard';
+import { useAllStores } from '../store-list/all-stores/useAllStores';
 import { ProductSection } from '../home/products/ProductSection';
+import { useProductSearch } from './useProductSearch';
 import { SearchHeader } from './components/SearchHeader';
-import { TopStoresRow } from './components/TopStoresRow';
-import { MOST_SEARCHED_PRODUCTS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Search'>;
 
+const MIN_QUERY_LENGTH = 2;
+
 export function SearchScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
+  const trimmedQuery = query.trim();
+  const isSearching = trimmedQuery.length >= MIN_QUERY_LENGTH;
+
+  const { data: allStores = [] } = useAllStores();
+  const matchingStores = useMemo(() => {
+    if (!isSearching) return [];
+    const needle = trimmedQuery.toLowerCase();
+    return allStores.filter((store) => store.name.toLowerCase().includes(needle));
+  }, [allStores, isSearching, trimmedQuery]);
+
+  const { data: matchingProducts = [], isLoading: isLoadingProducts } = useProductSearch(query);
+
+  const hasNoResults = isSearching && !isLoadingProducts && matchingStores.length === 0 && matchingProducts.length === 0;
 
   return (
     <View className="flex-1 bg-white">
       <SearchHeader value={query} onChangeText={setQuery} onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerClassName="pb-10">
-        <TopStoresRow />
-        <ProductSection title="Most searched Product" products={MOST_SEARCHED_PRODUCTS} showDiscountBadge />
+        {!isSearching ? (
+          <View className="items-center px-6 pt-16">
+            <Text className="text-center text-[15px] font-medium text-ink/50">Search for products or stores near you</Text>
+          </View>
+        ) : hasNoResults ? (
+          <View className="items-center px-6 pt-16">
+            <Text className="text-center text-[15px] font-medium text-ink/50">No results for &quot;{trimmedQuery}&quot;</Text>
+          </View>
+        ) : (
+          <>
+            {matchingStores.length > 0 ? (
+              <View className="px-5 pt-6">
+                <Text className="mb-4 text-lg font-extrabold text-ink">Stores</Text>
+                {matchingStores.map((store) => (
+                  <View key={store.id} className="mb-5">
+                    <StoreCard store={store} />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {matchingProducts.length > 0 ? <ProductSection title="Products" products={matchingProducts} /> : null}
+          </>
+        )}
       </ScrollView>
     </View>
   );

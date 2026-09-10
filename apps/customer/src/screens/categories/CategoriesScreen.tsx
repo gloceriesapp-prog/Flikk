@@ -11,7 +11,7 @@ import { AppIcon } from '../../components/AppIcon';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { CategorySections } from '../../components/CategorySections/CategorySections';
 import { colors } from '../../theme/tokens';
-import { CategoriesFooter } from './CategoriesFooter';
+import { BrandFooter } from '../../components/BrandFooter';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Categories'>;
@@ -40,7 +40,7 @@ export function CategoriesScreen({ navigation }: Props) {
 
       <ScrollView className="flex-1" contentContainerClassName="pb-28">
         <CategorySections />
-        <CategoriesFooter />
+        <BrandFooter />
       </ScrollView>
 
       <BottomNavBar />

@@ -7,26 +7,28 @@ on this screen).
 ```
 search/
   SearchScreen.tsx              composes the pieces below
-  data.ts                       placeholder top stores + most-searched products
+  useProductSearch.ts           real, debounced GET /stores/products/search
   components/
     SearchHeader.tsx              back button + real, autofocused TextInput
-    TopStoresRow.tsx                "Top Grocery Stores" title + "View all" + horizontal scroll
-    StoreLogoItem.tsx                one circular store logo + name
 ```
 
-An earlier version had quick-category filter chips here instead of the
-stores row — removed entirely (not left as dead code) per a later revision.
+Matching stores reuse `../store-list/all-stores/useAllStores.ts` (already-real
+`GET /stores`), filtered client-side by name — no separate store-search
+backend endpoint, the whole zone's store list is small enough at this scale.
+Matching products come from a real cross-store backend search
+(`useProductSearch.ts`), unlike `useDealsProducts.ts`'s deliberate single-store
+scoping — a customer searching wants every store selling a match, not just
+their nearest one.
 
-Product grid reuses `../home/products/` (`ProductSection`/`ProductCard`) —
-same shared module used by Fresh Fish, Groceries, Bakery, Essentials. This
-screen is the first consumer of `ProductCard`'s `showDiscountBadge` prop
-(off by default everywhere else) — see that file's comment for why it's
-opt-in rather than always-on.
+Store results reuse `../store-list/components/StoreCard.tsx` (self-navigates
+to `StoreDetail`); product results reuse `../home/products/` (`ProductSection`/
+`ProductCard`, self-opens `ProductDetailSheet`) — same components the rest of
+the app already uses, so a tapped result behaves identically everywhere.
 
-## Placeholder, not real
+## Not built here
 
-Store names are fictional (not the real chains from whatever reference UI
-inspired this — those are that app's actual partners, not Flikk's) and their
-logos are random images. "Most searched Product" is also static placeholder
-data. No real search/catalog/store backend exists yet — typing in
-`SearchHeader` doesn't filter anything currently.
+No typo tolerance, ranking, or multi-word AND/OR — a plain `ILIKE` substring
+match on product name, real but simple, matching every other feed in
+`backend/src/routes/stores.ts`. No recent-searches list (a different feature
+from `useRecentSearchesStore.ts`, which is address search for delivery
+locations, not this screen).

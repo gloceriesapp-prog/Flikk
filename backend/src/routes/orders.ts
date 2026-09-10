@@ -11,6 +11,19 @@ import {
   timestampColumnFor,
   type OrderStatus,
 } from '../lib/orderStateMachine.js';
+import { sendPushNotification } from '../lib/pushNotifications.js';
+
+// Only these three transitions are ones the customer didn't just cause
+// themselves (they placed the order) or won't see reflected in the receipt
+// screen right after paying (placed) — so only these are worth an OS-level
+// push. TrackOrderScreen's own polling still shows every status live while
+// the app's open; this is what covers it being closed.
+const CUSTOMER_STATUS_PUSH_COPY: Partial<Record<OrderStatus, { title: string; body: string }>> = {
+  packed: { title: 'Order packed', body: 'Your order has been packed and will be picked up soon.' },
+  out_for_delivery: { title: 'Out for delivery', body: 'Your rider is on the way with your order.' },
+  delivered: { title: 'Order delivered', body: 'Enjoy! Your order has been delivered.' },
+  cancelled: { title: 'Order cancelled', body: 'Your order has been cancelled.' },
+};
 
 export const ordersRouter = Router();
 
@@ -138,7 +151,21 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     // transit buffer, see apps/customer's own estimateDelivery.ts) without
     // a second round trip. Best-effort: a lookup failure here doesn't fail
     // order creation, the customer app just falls back to a generic ETA.
-    const { data: store } = await supabase.from('stores').select('avg_prep_minutes').eq('id', body.store_id).single();
+    // The owner's expo_push_token rides along on the same query — this is
+    // the one real push a store owner gets for a brand-new order; without
+    // it, apps/partner's own useOrderPolling.ts (10s interval) is the only
+    // thing that ever finds out, and only while the app is foregrounded.
+    const { data: store } = await supabase
+      .from('stores')
+      .select('avg_prep_minutes, users!owner_user_id(expo_push_token)')
+      .eq('id', body.store_id)
+      .single();
+
+    void sendPushNotification(
+      store?.users?.[0]?.expo_push_token,
+      'New order received',
+      `Order ${created.id.slice(0, 6).toUpperCase()} · ₹${total} — tap to view.`,
+    );
 
     // Razorpay payment intent initiated by the caller once the order id is known —
     // kept out of this handler to avoid a second external-service failure mode
@@ -211,6 +238,11 @@ ordersRouter.get('/:id', requireAuth, async (req: AuthedRequest, res, next) => {
 
 interface StatusBody {
   status: OrderStatus;
+  // Only meaningful (and only ever stored) alongside status: 'cancelled' —
+  // apps/rider's CancelOrderModal and apps/partner's reject flow both
+  // already collect a real reason from the person cancelling; this is
+  // where it lands instead of being silently discarded.
+  reason?: string;
 }
 
 // PATCH /orders/:id/status — state machine + role-ownership enforced here, not client-side.
@@ -221,7 +253,7 @@ ordersRouter.patch(
   requireApproved,
   async (req: AuthedRequest, res, next) => {
     try {
-      const { status: to } = req.body as StatusBody;
+      const { status: to, reason } = req.body as StatusBody;
       const { data: order, error } = await supabase
         .from('orders')
         .select('id, status, store_id, rider_id')
@@ -247,6 +279,7 @@ ordersRouter.patch(
       const tsCol = timestampColumnFor(to);
       const update: Record<string, unknown> = { status: to };
       if (tsCol) update[tsCol] = new Date().toISOString();
+      if (to === 'cancelled' && reason) update.cancel_reason = reason;
 
       const { data: updated, error: updateErr } = await supabase
         .from('orders')
@@ -265,9 +298,16 @@ ordersRouter.patch(
         });
       }
 
-      // Realtime propagation is automatic via Supabase's replication on this table
-      // update; notification dispatch (WhatsApp/push) is a side effect wired in
-      // specs/05-platform/notifications.md, not duplicated here.
+      // Realtime propagation is automatic via Supabase's replication on this
+      // table update. Push is best-effort and never blocks the response —
+      // a customer who didn't get notified still sees the new status next
+      // time TrackOrderScreen polls.
+      const pushCopy = CUSTOMER_STATUS_PUSH_COPY[to];
+      if (pushCopy) {
+        const { data: customer } = await supabase.from('users').select('expo_push_token').eq('id', updated.customer_id).single();
+        void sendPushNotification(customer?.expo_push_token, pushCopy.title, pushCopy.body);
+      }
+
       res.json(updated);
     } catch (err) {
       next(err);

@@ -1,54 +1,34 @@
-// Second redesign — the hero-photo-with-overlay-badges layout (rating/
-// open-status badges floating on a single full-bleed image) is gone,
-// replaced with a Google-Maps-listing shape per an explicit reference:
-// text header block first (name, then rating · category, then
-// open/closed · closing time), THEN a row of three photo thumbnails
-// below it, THEN the Shop now / Share / bookmark footer.
+// Third redesign — bordered card per an explicit reference (rating badge
+// overlaying the photo, bookmark top-right, name/category/open-status
+// block, a divider, then a footer info row) replacing the previous flat
+// Google-Maps-listing shape entirely (no more 3-photo strip, no Shop now/
+// Share buttons — this card now only ever navigates to StoreDetail on tap,
+// same as everywhere else a store card appears in this app).
 //
-// Flat, not a card — no white box/shadow/rounded-corner background and
-// no own horizontal padding, per an explicit ask to strip that chrome
-// entirely; AllStoresSection.tsx's own `px-5` on the list container
-// already provides the left/right margin every card needs, so adding a
-// second one here would double it up. The full-bleed divider that used
-// to live at the bottom of this file now lives in AllStoresSection.tsx
-// instead, between items only (not after the last one) — same edge-to-
-// edge divider the Google Maps reference itself uses between listings.
+// No "Flat X% OFF" pill, unlike the reference — there is no per-store
+// discount concept anywhere in this schema (same reasoning
+// StorePromoBanner.tsx/NearestToYouSection.tsx's own header notes already
+// give): discounts live on individual products' original_price, never on
+// a store as a whole. Fabricating one here would be exactly the dummy
+// content this app has been deliberately stripped of elsewhere.
 //
-// The three-photo row is the one deliberately-fake part of this card,
-// and only per an explicit ask ("add random image of 3 for now") — every
-// other field on this card is real store data, nothing else invented.
-// getStoreImageUri (theme/placeholderImage.ts) already exists in this
-// exact codebase for exactly this situation (real per-store photos don't
-// exist until store onboarding grows one — that file's own header note),
-// seeded so the same store always shows the same three photos across
-// renders/sessions instead of reshuffling on every scroll. The real
-// store.photoUrl (when a store actually has one) always fills the first
-// slot rather than being discarded in favor of an all-random three —
-// once real photo galleries exist, this only needs to swap the other two
-// getStoreImageUri calls for real URLs, not restructure the row.
-//
-// Review count and distance are both dummy data, per explicit asks ("add
-// some dummy data for it", then a reference screenshot showing a
-// "780.0m"-style distance too) — neither has a real column behind it
-// (no reviews table; no geolocation on stores yet, PRD Section 26 v3
-// scope, same reasoning useAllStores.ts's own header note gives), unlike
-// rating/category/open-status/closeTime, which are real. Same
-// deterministic-hash trick ProductDetailSheet.tsx's own sibling-picking
-// uses: a plain function of store.id, not Math.random(), so a given store
-// shows the same dummy values on every render/session instead of
-// reshuffling — easy to spot and delete (dummyReviewCount/
-// dummyDistanceLabel below) the moment real columns exist to replace them
-// with. No price range, no review quote — those still aren't shown at all.
+// No "price for two"/"Bookings available" either — both are restaurant-
+// booking concepts with no equivalent in a grocery-delivery schema. The
+// footer row is real instead: avg_prep_minutes (the same real prep-time
+// column TrackOrderScreen's own ETA math already uses), not a restaurant
+// reservation time.
 
-import { FavouriteIcon, Share03Icon, StarIcon } from '@hugeicons/core-free-icons';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Bookmark01Icon, ArrowRight01Icon, Clock01Icon, Location01Icon, StarIcon } from '@hugeicons/core-free-icons';
+import { Pressable, Text, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../../components/AppIcon';
 import { useLikedStoresStore } from '../../../store/useLikedStoresStore';
-import { getStoreImageUri, PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
+import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { colors } from '../../../theme/tokens';
+import { getStoreStatusText } from '../storeHours';
+import { getDeliveryMessage } from '../deliveryMessage';
 import type { AppStackParamList } from '../../../navigation/types';
 import type { RealStore } from '../all-stores/useAllStores';
 
@@ -56,38 +36,7 @@ interface Props {
   store: RealStore;
 }
 
-// Same #2457F5 CartBar.tsx/ProductDetailFooter.tsx/PrimaryButton.tsx's own
-// variant="blue" already use — per an explicit ask to use "the blue which
-// we have used in our app" for Shop now, not the coral this card had
-// (coral is still this app's one CTA color everywhere else per the design
-// system; Shop now here is a deliberate screen-specific opt-in, same as
-// LoginScreen.tsx's own PrimaryButton variant="blue"). A colored shadow
-// (shadowColor: STORE_BLUE, not black) is what makes it read as an
-// elevated glow rather than a flat rectangle — same "wow" a plain
-// drop-shadow can't give since a black shadow under a blue pill just
-// looks muddy, not lit.
-const STORE_BLUE = '#2457F5';
-
-// djb2 — a plain pure hash, used only to make the dummy review count/
-// distance below deterministic per store instead of calling Math.random().
-function hashString(id: string): number {
-  let hash = 5381;
-  for (let i = 0; i < id.length; i++) hash = (hash * 33 + id.charCodeAt(i)) >>> 0;
-  return hash;
-}
-
-function dummyReviewCount(id: string): number {
-  return 40 + (hashString(id) % 260); // lands somewhere in 40-299
-}
-
-// Dummy — no geolocation on stores yet (PRD Section 26 v3 scope, same
-// reasoning useAllStores.ts's own header note gives), added only per an
-// explicit ask matching a reference screenshot's own "780.0m"/"950.0m"/
-// "7.3km" formatting. Meters under 1km, km with one decimal above it.
-function dummyDistanceLabel(id: string): string {
-  const meters = 80 + (hashString(id + 'd') % 4920); // 80m-5000m
-  return meters < 1000 ? `${meters.toFixed(1)}m` : `${(meters / 1000).toFixed(1)}km`;
-}
+const PHOTO_SIZE = 108;
 
 export function StoreCard({ store }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -98,105 +47,100 @@ export function StoreCard({ store }: Props) {
     navigation.navigate('StoreDetail', { storeId: store.id, storeName: store.name });
   }
 
-  const photos = [
-    store.photoUrl || PLACEHOLDER_IMAGE_URI,
-    getStoreImageUri(`${store.id}-b`),
-    getStoreImageUri(`${store.id}-c`),
-  ];
+  const status = getStoreStatusText(store.isOpen, store.openTime, store.closeTime);
 
   return (
-    <View>
-      <Pressable onPress={goToStore}>
-        <Text className="text-[17px] font-medium leading-6 tracking-tight text-ink" numberOfLines={1}>
-          {store.name}
-        </Text>
-
-        <View className="mt-1.5 flex-row items-center gap-1.5">
-          <AppIcon icon={StarIcon} size={13} color={colors.gold} fill={colors.gold} strokeWidth={0} />
-          <Text className="text-[13px] font-semibold text-ink/70">{(store.rating ?? 4.6).toFixed(1)}</Text>
-          <Text className="text-[13px] font-normal text-ink/60">({dummyReviewCount(store.id)})</Text>
-          <Text className="text-[13px] text-ink/30">·</Text>
-          <Text className="text-[13px] font-normal text-ink/60">{store.category}</Text>
+    <Pressable
+      onPress={goToStore}
+      className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm shadow-black/5"
+    >
+      <View className="flex-row gap-3 p-3">
+        <View style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}>
+          <Image
+            source={{ uri: store.photoUrl || PLACEHOLDER_IMAGE_URI }}
+            style={{ flex: 1 }}
+            className="rounded-xl bg-mist"
+            contentFit="cover"
+          />
+          {/* Real rating (store.rating), same overlay-on-photo treatment
+              NearestToYouSection.tsx's own cards use — no fabricated
+              review count riding along with it. */}
+          {store.rating !== undefined && (
+            <View className="absolute left-1.5 top-1.5 flex-row items-center gap-1 rounded-lg bg-success px-1.5 py-0.5">
+              <Text className="text-[12px] font-bold text-white">{store.rating.toFixed(1)}</Text>
+              <AppIcon icon={StarIcon} size={10} color="#FFFFFF" fill="#FFFFFF" strokeWidth={0} />
+            </View>
+          )}
         </View>
 
-        <Text className="mt-1 text-[13px] font-medium">
-          {store.isOpen ? (
-            <Text style={{ color: colors.success }}>Open</Text>
-          ) : (
-            <Text className="text-ink/60">Closed</Text>
-          )}
-          <Text className="text-ink/60 font-normal text-[13px]">
-            {store.closeTime ? ` · Closes ${store.closeTime}` : ''} · {dummyDistanceLabel(store.id)}
+        <View className="flex-1 gap-1">
+          <View className="flex-row items-start justify-between gap-2">
+            {/* 2 lines, not 1 — a real store name (per the founder's own
+                Add Store form, no length cap there) was getting cut off
+                mid-word ("Ammanna Enterprises S...") on a single line at
+                this card's own column width. */}
+            <Text className="flex-1 text-[16px] font-semibold leading-5 text-ink" numberOfLines={2}>
+              {store.name}
+            </Text>
+            <Pressable onPress={() => toggleLiked(store.id)} hitSlop={8}>
+              <AppIcon
+                icon={Bookmark01Icon}
+                size={19}
+                color={isLiked ? colors.limeDeep : colors.ink}
+                fill={isLiked ? colors.limeDeep : undefined}
+                strokeWidth={isLiked ? 0 : 1.8}
+              />
+            </Pressable>
+          </View>
+
+          <Text className="text-[12.5px] font-medium text-ink/50" numberOfLines={1}>
+            Category: {store.category}
           </Text>
-        </Text>
 
-      </Pressable>
+          {/* Full real address — stores.address_line + city + district
+              (useAllStores.ts's own real columns). A location-pin icon
+              in front, per an explicit ask, instead of bare text.
+              Falls back gracefully to whichever of the three a given
+              store actually has on file rather than showing an empty
+              line or a fabricated one. */}
+          {(store.addressLine || store.city || store.district) && (
+            <View className="flex-row items-start gap-1">
+              <View className="mt-0.5">
+                <AppIcon icon={Location01Icon} size={12} color={`${colors.ink}80`} strokeWidth={1.8} />
+              </View>
+              <Text className="flex-1 text-[12.5px] font-medium text-ink/50" numberOfLines={2}>
+                {[store.addressLine, store.district, store.city].filter(Boolean).join(', ')}
+              </Text>
+            </View>
+          )}
 
-      {/* Fixed-width tiles wider than a third of the screen (not flex-1
-          splitting it evenly) — the point is the same peeking-third-photo
-          effect the reference screenshot shows, which only reads as
-          scrollable if the row is actually wider than the screen.
-          -mx-5 cancels AllStoresSection.tsx's own px-5 list padding just
-          for this row (same trick the divider between cards already
-          uses) so the last tile actually bleeds to the real screen edge
-          instead of stopping short with a blank margin after it — that
-          gap was the bug: the ScrollView's own viewport was still boxed
-          inside the outer padding, so there was nowhere for a peeking
-          tile to peek INTO. contentContainerClassName's pl-5 puts that
-          same 20px back as leading space so the first tile still lines up
-          with the name/rating text above it, just without a matching
-          trailing pr-5 that would recreate the same gap on the right.
-          Nested inside its own ScrollView rather than the outer Pressable
-          so a horizontal drag here scrolls the photos instead of being
-          swallowed as a tap on goToStore; a plain tap (no drag) still
-          reaches the Pressable underneath either way — same gesture
-          arbitration ProductDetailSheet.tsx's own nested ScrollView
-          relies on elsewhere in this app. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="-mx-5 mb-3.5 mt-3.5"
-        contentContainerClassName="gap-2 pl-5"
-      >
-        {photos.map((uri, i) => (
-          <Pressable key={i} onPress={goToStore} className="h-36 w-44 overflow-hidden rounded-2xl bg-mist">
-            <Image source={{ uri }} style={{ flex: 1 }} contentFit="cover" />
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      <View className="flex-row items-center gap-2.5">
-        <Pressable
-          onPress={goToStore}
-          className="flex-1 flex-row items-center justify-center gap-2 rounded-full py-3.5 bg-[#2457F5]"
-        >
-          <Text className="text-[15px] font-medium text-white">Shop now</Text>
-        </Pressable>
-
-        <Pressable className="flex-row items-center gap-1.5 rounded-full border border-gray-200 px-4 py-3">
-          <AppIcon icon={Share03Icon} size={15} color={colors.ink} />
-          <Text className="text-[14px] font-medium text-black">Share</Text>
-        </Pressable>
-
-        {/* Liking here is the same shared state StoreFilterBar.tsx's own
-            heart button reads (useLikedStoresStore) — per an explicit
-            ask, this button's only job is filling the heart icon red on
-            tap, nothing else about the button itself (bg/border stay the
-            plain gray-200 outline every time, active or not). */}
-        <Pressable
-          onPress={() => toggleLiked(store.id)}
-          hitSlop={8}
-          className="h-11 w-11 items-center justify-center rounded-full border border-gray-200"
-        >
-          <AppIcon
-            icon={FavouriteIcon}
-            size={17}
-            color={isLiked ? colors.danger : colors.ink}
-            fill={isLiked ? colors.danger : undefined}
-            strokeWidth={isLiked ? 0 : 1.8}
-          />
-        </Pressable>
+          {/* Real is_active/open_time/close_time — green while open, red
+              while closed. The suffix swaps from the plain clock time to
+              a real countdown ("Closing in 1h 30m"/"Opens in 45m",
+              storeHours.ts's own getStoreStatusText) once the gap is
+              inside the urgency window — gold, not plain black, so it
+              actually reads as time-sensitive. Recomputed per render, not
+              a live-ticking timer (this file's own note on why). */}
+          <Text className="text-[13px] font-medium">
+            <Text style={{ color: status.word === 'Open' ? colors.success : colors.danger }}>{status.word}</Text>
+            {status.suffix ? <Text style={{ color: status.urgent ? colors.gold : colors.ink }}>{status.suffix}</Text> : null}
+          </Text>
+        </View>
       </View>
-    </View>
+
+      <View className="h-px bg-gray-100" />
+
+      <View className="flex-row items-center justify-between px-4 py-3">
+        <View className="flex-row items-center gap-2">
+          <AppIcon icon={Clock01Icon} size={15} color={colors.ink} strokeWidth={1.8} />
+          {/* Varied, honest fallback lines instead of literally the same
+              "Delivery time varies" on every card with no real prep time
+              on file yet (deliveryMessage.ts's own note on why these are
+              never a fabricated number). */}
+          <Text className="text-[13px] font-medium text-ink/70">{getDeliveryMessage(store.id, store.avgPrepMinutes)}</Text>
+        </View>
+        <AppIcon icon={ArrowRight01Icon} size={16} color={`${colors.ink}80`} strokeWidth={2} />
+      </View>
+    </Pressable>
   );
 }

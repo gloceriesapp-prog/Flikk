@@ -27,7 +27,7 @@
 
 import { View } from 'react-native';
 import { CategorySections } from '../../../components/CategorySections/CategorySections';
-import { CategoriesFooter } from '../../categories/CategoriesFooter';
+import { BrandFooter } from '../../../components/BrandFooter';
 import { CoastalKitchenPicksSection } from '../coastal-kitchen-picks/CoastalKitchenPicksSection';
 import { DealsSection } from '../deals/DealsSection';
 import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
@@ -65,7 +65,7 @@ export function AllTabSections() {
       {dealsProducts.length > 0 && (
         <ProductSection title="Today's Steal Deals" products={dealsProducts} showDiscountBadge />
       )}
-      <CategoriesFooter />
+      <BrandFooter />
     </View>
   );
 }

@@ -19,6 +19,7 @@ import { useLocationStore } from '../store/useLocationStore';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 import { colors } from '../theme/tokens';
+import { registerPushToken } from '../features/push-notifications/registerPushToken';
 
 export function RootNavigator() {
   const { accessToken, isGuest, isHydrated: authHydrated, hydrate: hydrateAuth } = useAuthStore();
@@ -30,6 +31,15 @@ export function RootNavigator() {
   }, [hydrateAuth, hydrateLocation]);
 
   const isHydrated = authHydrated && locationHydrated;
+
+  // Registered once per fresh login (accessToken change) — a guest browsing
+  // without an account has no order to be notified about, so this only
+  // fires for a real session. Backend's POST /auth/push-token is what
+  // orders.ts's PATCH /:id/status pushes order-status updates through.
+  useEffect(() => {
+    if (!authHydrated || !accessToken) return;
+    void registerPushToken();
+  }, [authHydrated, accessToken]);
 
   if (!isHydrated) {
     return (

@@ -1,101 +1,111 @@
-// Header banner — full-bleed real shop photo (HEADER_ART) again, per an
-// explicit ask, not the right-58%-width split from the previous pass.
-// HEADER_GRADIENT stays underneath the photo (inset:0, same as the photo
-// itself) purely as the color that shows through while the photo is
-// still loading/if it ever fails — not a visible design element anymore
-// on its own now that the photo covers the whole header.
+// Same shell as HomeHeader.tsx (location row + DeliveryModeSwitcher pill +
+// search bar), not the old photo-banner-with-back-arrow header this used
+// to be — this is a bottom-tab screen (BottomNavBar is now rendered on
+// StoreListScreen itself, same as Home), not a pushed detail screen, so a
+// back arrow never belonged here in the first place.
 //
-// DARK_OVERLAY is what makes a full-bleed photo actually work as a header
-// instead of just washing out the white back-button/headline text sitting
-// on top of it — same subtle-but-necessary technique most premium photo
-// headers use: a soft black gradient, stronger at the bottom-left (where
-// the headline lives) than the top-right, rather than a flat uniform tint
-// that would darken the whole photo evenly for no reason.
+// Background is a distinct indigo/sapphire palette, deliberately not one
+// of categoryHeaderGradients.ts's own tab colors (emerald/brown/teal/red/
+// plum) — this screen needs its own identity, not to look like whichever
+// Home tab happens to be selected.
+//
+// Scroll behavior, per an explicit ask (drag down: everything except the
+// search bar hides, a blur shows through, search bar stays pinned at the
+// top). Three layers, bottom to top, all driven by the same scrollY
+// StoreListScreen.tsx already tracks for BottomNavBar's own hide/show:
+// 1. BlurView, always there — invisible at rest (fully hidden behind the
+//    opaque gradient above it), only becomes visible once the gradient
+//    thins out.
+// 2. The gradient + HeaderRays — opaque at scroll 0, fades toward
+//    translucent over COLLAPSE_DISTANCE px, revealing the blur underneath
+//    (which is itself blurring whatever's scrolling behind this sticky
+//    header, same as a real iOS translucent nav bar).
+// 3. The real content (location row + search bar) — drawn on top of
+//    both, never faded or blurred itself. Only the location/
+//    DeliveryModeSwitcher row inside it collapses (height + opacity to 0,
+//    same shape CollapsibleHeaderTop.tsx already gives Home's own header)
+//    — the search bar never does, per the explicit ask.
+//
+// This component is item 0 inside StoreListScreen's own ScrollView with
+// stickyHeaderIndices={[0]} — same mechanism HomeHeader.tsx already uses
+// to stay pinned while everything below it scrolls away.
 
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { useCallback, useState } from 'react';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, Text, View } from 'react-native';
-import { AppImage as Image } from '../../../components/AppImage';
-import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
+import { StyleSheet, View } from 'react-native';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
+import { LocationSelector } from '../../home/components/LocationSelector';
+import { DeliveryModeSwitcher } from '../../home/components/DeliveryModeSwitcher';
+import { HomeSearchBar } from '../../home/components/HomeSearchBar';
+import { HeaderRays } from '../../home/components/HeaderRays';
+import { useIsOutsideOperatingHours } from '../../../utils/useOperatingHours';
 
-const HEADER_GRADIENT = {
-  colors: ['#030415', '#0A1140', '#1B2C8C', '#3547DA', '#5568FF'] as const,
-  stops: [0, 0.28, 0.55, 0.8, 1] as const,
+const STORE_HEADER_GRADIENT = {
+  colors: ['#04050F', '#0A0E2E', '#141B52', '#232E7A'] as const,
+  stops: [0, 0.35, 0.68, 1] as const,
 };
 
-const DARK_OVERLAY = {
-  colors: ['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.72)'] as const,
-  stops: [0, 0.55, 1] as const,
-};
-
-const HEADER_ART =
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/1788601744.png';
+// Same 50px collapse window CollapsibleHeaderTop.tsx uses on Home — the
+// location row and the blur/gradient crossfade both finish over this same
+// distance so nothing looks like it's animating on its own timeline.
+const COLLAPSE_DISTANCE = 50;
 
 interface Props {
-  onBack: () => void;
+  onChangeLocation: () => void;
+  onOpenSearch: () => void;
+  scrollY: SharedValue<number>;
 }
 
-// No search icon on this header — StoreFilterBar directly below carries
-// a filter/favourite pair instead (search was dropped from this screen
-// entirely per an explicit ask).
-export function StoreHeader({ onBack }: Props) {
+export function StoreHeader({ onChangeLocation, onOpenSearch, scrollY }: Props) {
+  const isClosed = useIsOutsideOperatingHours();
+  // Measured once on layout — the location row's real height, not a
+  // guessed pixel constant that would drift the moment its content
+  // (isClosed's own two-line copy, DeliveryModeSwitcher) changes.
+  const [rowHeight, setRowHeight] = useState(0);
+  const onRowLayout = useCallback((event: { nativeEvent: { layout: { height: number } } }) => {
+    setRowHeight((current) => current || event.nativeEvent.layout.height);
+  }, []);
+
+  const rowStyle = useAnimatedStyle(() => {
+    const progress = interpolate(scrollY.value, [0, COLLAPSE_DISTANCE], [0, 1], Extrapolation.CLAMP);
+    return {
+      height: rowHeight ? (1 - progress) * rowHeight : undefined,
+      opacity: 1 - progress,
+      marginBottom: (1 - progress) * 16,
+    };
+  });
+
+  const gradientStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COLLAPSE_DISTANCE], [1, 0.12], Extrapolation.CLAMP),
+  }));
+
   return (
-    // Fixed size lives on this plain View, not on LinearGradient itself —
-    // every child here is position:absolute (no intrinsic size), so if the
-    // size were on LinearGradient's own className and that class ever
-    // failed to apply, the gradient collapses to 0 height with nothing to
-    // fall back on (exactly what happened once already). Same
-    // wrapper-owns-size / gradient-fills-it split the old Image version
-    // used, just swapped from Image to LinearGradient.
-    <View className="h-60 w-full overflow-hidden rounded-b-[32px]">
-      {/* style, not className — LinearGradient's className is silently
-          ignored (same gotcha BottomNavBar.tsx/CartBar.tsx already
-          document for BlurView), which is why this was invisible. */}
-      <LinearGradient
-        colors={HEADER_GRADIENT.colors}
-        locations={HEADER_GRADIENT.stops}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-      />
+    // No rounded bottom corners — this header is sticky/pinned now
+    // (stickyHeaderIndices in StoreListScreen.tsx), and a rounded bottom
+    // edge on a bar pinned flush to the top of the screen just exposed
+    // whatever's scrolling behind it through the corner cutouts instead
+    // of reading as a deliberate shape.
+    <View className="overflow-hidden">
+      <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
 
-      {/* Full width AND height now (inset:0), not the previous right-58%
-          split — contentFit="cover" fills the whole box instead of
-          letterboxing. pointerEvents="none" so it never intercepts the
-          back-button/headline area's own touches. */}
-      <Image
-        source={{ uri: HEADER_ART }}
-        contentFit="cover"
-        pointerEvents="none"
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-      />
+      <Animated.View style={[StyleSheet.absoluteFill, gradientStyle]}>
+        <LinearGradient colors={STORE_HEADER_GRADIENT.colors} locations={STORE_HEADER_GRADIENT.stops} style={StyleSheet.absoluteFill} />
+        <HeaderRays />
+      </Animated.View>
 
-      {/* See this file's own header note on why this exists — legibility
-          for the white text/icons sitting on top of a now-full-bleed
-          photo, stronger toward the bottom-left where the headline is. */}
-      <LinearGradient
-        colors={DARK_OVERLAY.colors}
-        locations={DARK_OVERLAY.stops}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        pointerEvents="none"
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-      />
+      <View className="px-6 pb-5 pt-safe-offset-3">
+        <Animated.View onLayout={onRowLayout} style={[{ overflow: 'hidden' }, rowStyle]}>
+          <View className="flex-row items-center justify-between">
+            <LocationSelector onPress={onChangeLocation} isClosed={isClosed} />
+            <DeliveryModeSwitcher />
+          </View>
+        </Animated.View>
 
-      <View className="absolute inset-x-5 top-0 pt-safe-offset-3">
-        <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
-          <AppIcon icon={ArrowLeft01Icon} size={20} color={colors.ink} />
-        </Pressable>
+        {/* Never collapses — the one thing that stays visible while
+            everything else in this header hides, per an explicit ask. */}
+        <HomeSearchBar onPress={onOpenSearch} />
       </View>
-
-      {/* Eyebrow + tight single-word headline reads punchier/more premium
-          than the old two-line wrapped sentence — a short capitalized
-          label doing the "what is this" work instead of the headline
-          itself having to spell it out. */}
-      {/* <View className="absolute bottom-7 left-5 right-5">
-        <Text className="mt-1 text-[29px] font-medium tracking-tight text-white">Nearby, Local stores.</Text>
-      </View> */}
     </View>
   );
 }

@@ -22,7 +22,7 @@
 // this one (own Fragment sibling, not a Modal/popover) — no overlay, no
 // animation, just another item in the same gap-5 ScrollView flow.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Cancel01Icon, CheckmarkCircle02Icon, DeliveryDelay01Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import type { ApiOrder } from '../../../api/orders';
@@ -65,6 +65,16 @@ const TONE = {
 
 export function OrderInfoCard({ order }: Props) {
   const [isReasonOpen, setIsReasonOpen] = useState(false);
+  // Date.now() can't be called directly in render (React's purity rule —
+  // an impure read during render can produce unstable results). This
+  // isn't a live countdown (no live GPS, CLAUDE.md), so a 30s-granularity
+  // synced value is plenty — TrackOrderScreen's own 8s polling already
+  // re-renders this component far more often than this actually needs.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
   const isCancelled = order.status === 'cancelled';
   const isDelivered = order.status === 'delivered';
   const isActive = !isCancelled && !isDelivered;
@@ -79,7 +89,7 @@ export function OrderInfoCard({ order }: Props) {
     const eta = estimateDeliveryTime(order.placed_at, order.stores?.avg_prep_minutes ?? order.avg_prep_minutes ?? null);
     const etaWindowEnd = new Date(eta.getTime() + ETA_WINDOW_MINUTES * 60_000);
     timeText = `${clockTime(eta)} - ${clockTime(etaWindowEnd)}`;
-    isDelayed = Date.now() > etaWindowEnd.getTime();
+    isDelayed = nowMs > etaWindowEnd.getTime();
   }
 
   const tone = isCancelled ? 'danger' : isDelayed ? 'delay' : 'success';

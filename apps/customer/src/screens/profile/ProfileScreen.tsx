@@ -51,7 +51,6 @@ import {
   CheckmarkCircle02Icon,
   CreditCardIcon,
   CustomerService01Icon,
-  HeartIcon,
   InformationCircleIcon,
   Location05Icon,
   LockIcon,
@@ -73,14 +72,10 @@ import { AccountDetailsCard } from './components/AccountDetailsCard';
 import { ProfileActionsBento } from './components/ProfileActionsBento';
 import { ProfileMenuRow } from './components/ProfileMenuRow';
 import { RateUsModal } from './components/RateUsModal';
-import packageJson from '../../../package.json';
+import { BrandFooter } from '../../components/BrandFooter';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Profile'>;
-
-// package.json's own version — one source of truth instead of a second
-// hardcoded string that can drift from it.
-const APP_VERSION = packageJson.version;
 
 type AppearanceMode = 'Light' | 'Dark';
 
@@ -249,23 +244,7 @@ export function ProfileScreen({ navigation }: Props) {
           </Pressable>
         </Modal>
 
-        {/* Wordmark + version on one line (dot separator, small caps-style
-            tracking), a muted one-line sign-off underneath — same shape as
-            a Settings-screen footer every major app ends on (name, version,
-            where it's from), rebuilt in this app's own brand voice rather
-            than reusing anyone else's exact wording/mascot. */}
-        <View className="items-center gap-1.5 pb-4 pt-5">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-[13px] font-extrabold text-ink/35">Flikk</Text>
-            <Text className="text-[13px] font-extrabold text-ink/35">v{APP_VERSION}</Text>
-          </View>
-          <View className="flex-row items-center gap-1">
-            <Text className="text-xs font-medium text-ink/40">Made with</Text>
-            <AppIcon icon={HeartIcon} size={11} color={colors.danger} fill={colors.danger} />
-            <Text className="text-xs font-medium text-ink/40">in Udupi, KA</Text>
-          </View>
-
-        </View>
+        <BrandFooter variant="compact" />
       </ScrollView>
     </View>
   );

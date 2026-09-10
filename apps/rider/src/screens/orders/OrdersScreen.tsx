@@ -26,7 +26,7 @@ export function OrdersScreen() {
   return (
     <View className="flex-1 bg-[#FAFAFA]">
       <View className="bg-white px-5 pb-4 pt-safe-offset-4">
-        <Text className="text-xl font-bold text-ink">Orders</Text>
+        <Text className="text-xl font-semibold text-ink">Orders</Text>
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-28 pt-4">
@@ -36,7 +36,7 @@ export function OrdersScreen() {
             <Text className="text-center text-base font-semibold text-ink">
               {isOnline ? 'Waiting for your next order' : "You're offline"}
             </Text>
-            <Text className="text-center text-[13px] text-ink/50">
+            <Text className="text-center text-[13px] text-ink/50 font-medium">
               {isOnline
                 ? "You'll get an alert the moment a store assigns you one."
                 : 'Go online from the Home tab to start receiving orders.'}
@@ -50,13 +50,13 @@ export function OrdersScreen() {
 
         {completedOrders.length > 0 ? (
           <View className="mt-2 gap-2">
-            <Text className="px-1 text-xs font-bold uppercase tracking-wide text-ink/40">Delivered today</Text>
+            <Text className="px-1 text-[12px] font-semibold uppercase tracking-wide text-ink/60">Delivered today</Text>
             {completedOrders.map((order) => (
               <View key={order.id} className="flex-row items-center gap-3 rounded-2xl bg-white p-4">
                 <AppIcon icon={CheckmarkCircle02Icon} size={18} color={colors.success} />
                 <View className="flex-1">
                   <Text className="text-[13px] font-semibold text-ink">{order.orderNumber}</Text>
-                  <Text className="text-[12px] text-ink/45">{order.customerName}</Text>
+                  <Text className="text-[12px] text-ink/45 font-medium">{order.customerName}</Text>
                 </View>
                 {order.customerRating ? (
                   <View className="flex-row items-center gap-1">
@@ -64,7 +64,7 @@ export function OrdersScreen() {
                     <Text className="text-[12px] font-semibold text-ink/60">{order.customerRating}</Text>
                   </View>
                 ) : null}
-                <Text className="ml-3 text-[13px] font-bold text-ink">₹{order.payout}</Text>
+                <Text className="ml-3 text-[13px] font-semibold text-ink">₹{order.payout}</Text>
               </View>
             ))}
           </View>

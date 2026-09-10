@@ -64,7 +64,7 @@ export function HomeScreen() {
         {/* The one control this whole screen exists for, plus
             always-reachable Help/SOS. */}
         <StatusHeaderBar isOnline={isOnline} onToggle={(value) => (value ? goOnline() : goOffline())} />
-        <Text className="-mt-2 px-1 text-[12.5px] text-ink/45">
+        <Text className="-mt-2 px-1 text-[12.5px] text-ink/45 font-normal">
           {isOnline ? 'Ready to receive new orders' : 'Go online to start getting orders'}
         </Text>
 
@@ -75,7 +75,7 @@ export function HomeScreen() {
         </View>
       </View>
 
-      {completedOrders[0] ? <LastRatingCallout order={completedOrders[0]} /> : null}
+      {/* {completedOrders[0] ? <LastRatingCallout order={completedOrders[0]} /> : null} */}
 
       <View className="gap-3">
         <FilterChipRow
@@ -101,7 +101,10 @@ export function HomeScreen() {
                 (useRiderOrdersStore.loadSampleData's own note). Only
                 offered on the true "nothing at all" state, not a single
                 empty filter tab. */}
-            {!hasAnything ? (
+            {/* __DEV__-only — a real beta rider should never see a button
+                that fabricates fake deliveries into their own real order
+                history. */}
+            {!hasAnything && __DEV__ ? (
               <View className="mt-4 w-full">
                 <PrimaryButton label="Load sample data" onPress={loadSampleData} />
               </View>
@@ -111,7 +114,7 @@ export function HomeScreen() {
           <View className="gap-4">
             {showActive && activeOrders.length > 0 ? (
               <View className="gap-2.5">
-                {filter === 'all' ? <Text className="px-1 text-xs font-bold uppercase tracking-wide text-ink/40">Active</Text> : null}
+                {/* {filter === 'all' ? <Text className="px-1 text-xs font-semibold uppercase tracking-wide text-ink/40">Active</Text> : null} */}
                 {activeOrders.map((order) => (
                   <ActiveDeliveryCard key={order.id} order={order} onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })} />
                 ))}

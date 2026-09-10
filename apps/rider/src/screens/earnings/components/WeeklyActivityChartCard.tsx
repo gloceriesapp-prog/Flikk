@@ -89,17 +89,17 @@ export function WeeklyActivityChartCard({ weeklyActivity, tipsThisWeek, weekTota
             <AppIcon icon={CheckmarkCircle02Icon} size={15} color={colors.success} />
             {tipsThisWeek > 0 ? (
               <>
-                <Text className="text-[12.5px] font-bold text-success">Includes customer tips</Text>
+                <Text className="text-[12.5px] font-semibold text-success">Includes customer tips</Text>
                 <View className="h-3.5 w-px bg-success/30" />
-                <Text className="text-[12.5px] font-bold text-success">₹{tipsThisWeek}</Text>
+                <Text className="text-[12.5px] font-semibold text-success">₹{tipsThisWeek}</Text>
               </>
             ) : null}
             {tipsThisWeek > 0 && incentiveEarned > 0 ? <View className="h-3.5 w-px bg-success/30" /> : null}
             {incentiveEarned > 0 ? (
               <>
-                <Text className="text-[12.5px] font-bold text-success">Incentive</Text>
+                <Text className="text-[12.5px] font-semibold text-success">Incentive</Text>
                 <View className="h-3.5 w-px bg-success/30" />
-                <Text className="text-[12.5px] font-bold text-success">₹{incentiveEarned}</Text>
+                <Text className="text-[12.5px] font-semibold text-success">₹{incentiveEarned}</Text>
               </>
             ) : null}
           </View>
@@ -138,8 +138,7 @@ export function WeeklyActivityChartCard({ weeklyActivity, tipsThisWeek, weekTota
                     style={{ position: 'absolute', bottom: barHeight + 10 }}
                     className="flex-row items-center gap-1 rounded-full bg-ink px-3 py-1.5"
                   >
-                    <Text className="text-[12px] font-bold text-white">₹{day.total.toLocaleString('en-IN')}</Text>
-                    <AppIcon icon={ArrowRight01Icon} size={11} color="#FFFFFF" />
+                    <Text className="text-[12px] font-semibold text-white">₹{day.total.toLocaleString('en-IN')}</Text>
                   </View>
                 ) : null}
                 <View className="w-4" style={{ height: barHeight, backgroundColor: day.isToday ? BAR_COLOR_TODAY : BAR_COLOR }} />
@@ -151,7 +150,7 @@ export function WeeklyActivityChartCard({ weeklyActivity, tipsThisWeek, weekTota
         <View className="flex-row items-center justify-between" style={{ height: LABEL_ROW_HEIGHT }}>
           {weeklyActivity.map((day, index) => (
             <View key={index} className="flex-1 items-center">
-              <Text className={`text-[11.5px] ${day.isToday ? 'font-extrabold text-ink' : 'font-medium text-ink/40'}`}>
+              <Text className={`text-[11.5px] ${day.isToday ? 'font-semibold text-ink' : 'font-medium text-ink/40'}`}>
                 {day.isToday ? 'Today' : day.label}
               </Text>
             </View>

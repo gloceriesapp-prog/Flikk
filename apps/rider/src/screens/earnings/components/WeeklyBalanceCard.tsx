@@ -13,7 +13,7 @@ interface Props {
 export function WeeklyBalanceCard({ weekTotal }: Props) {
   return (
     <View className="items-center gap-1.5 rounded-3xl px-5 py-7">
-      <Text className="text-[38px] font-extrabold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
+      <Text className="text-[38px] font-semibold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
         ₹{weekTotal.toLocaleString('en-IN')}
       </Text>
       <Text className="text-[12px] font-medium uppercase tracking-wider text-ink/40">Your weekly earnings</Text>

@@ -24,3 +24,12 @@ export function refreshSession(refreshToken: string): Promise<{ access_token: st
 export function fetchAccountInfo(): Promise<{ phone: string; name: string | null }> {
   return apiRequest('/auth/me');
 }
+
+// Registers this device's Expo push token so backend/src/routes/orders.ts's
+// PATCH /:id/status can reach it the moment a store/rider moves the order
+// forward — see features/push-notifications/registerPushToken.ts for where
+// this is called from. No dev-mode fallback needed: a failed registration
+// just means no push, TrackOrderScreen's own polling still covers it.
+export function savePushToken(token: string): Promise<void> {
+  return apiRequest('/auth/push-token', { method: 'POST', body: { token } });
+}

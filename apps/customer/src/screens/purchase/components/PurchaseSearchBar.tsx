@@ -1,9 +1,11 @@
-// Sits directly below the "Purchase" title — a real typeable search box
-// (filters PurchaseScreen's own order list by store name / item name,
-// client-side, both fields already on PurchaseOrder) plus a filter icon at
-// the right end that opens OrderStatusFilterSheet. Same TextInput-directly-
-// styled pattern search/components/SearchHeader.tsx already uses in this
-// app, not a fake pill that opens a separate screen.
+// Sits directly below PurchaseHeader's location row — a real typeable
+// search box (filters PurchaseScreen's own order list by store name / item
+// name, client-side, both fields already on PurchaseOrder) plus a filter
+// icon that opens OrderStatusFilterSheet. One seamless white pill (not a
+// pill + a separate outside button) to match the app's other premium
+// header search bars (HomeSearchBar/StoreHeader) — the filter icon sits
+// where those bars put a decorative mic, except this one is real (there's
+// no voice search anywhere in this app to fake).
 
 import { FilterIcon, Search01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, TextInput, View } from 'react-native';
@@ -19,25 +21,22 @@ interface Props {
 
 export function PurchaseSearchBar({ value, onChangeText, onOpenFilter, isFilterActive }: Props) {
   return (
-    <View className="flex-row items-center gap-2.5 px-5 pb-2 pt-1">
-      <View className="flex-1 flex-row items-center gap-2 rounded-full bg-gray-100 px-4">
-        <AppIcon icon={Search01Icon} size={17} color={`${colors.ink}80`} />
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder="Search your orders"
-          placeholderTextColor={`${colors.ink}66`}
-          className="h-11 flex-1 text-[15px] text-ink"
-        />
-      </View>
-
+    <View className="h-[52px] flex-row items-center rounded-full bg-white px-4 shadow-sm shadow-black/10">
+      <AppIcon icon={Search01Icon} size={18} color={colors.ink} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder="Search your orders"
+        placeholderTextColor={`${colors.ink}66`}
+        className="ml-2.5 h-full flex-1 text-[15px] text-ink"
+      />
       <Pressable
         onPress={onOpenFilter}
         hitSlop={8}
-        className="h-11 w-11 items-center justify-center rounded-full"
-        style={{ backgroundColor: isFilterActive ? colors.ink : `${colors.ink}14` }}
+        className="-mr-1 h-9 w-9 items-center justify-center rounded-full"
+        style={{ backgroundColor: isFilterActive ? colors.ink : 'transparent' }}
       >
-        <AppIcon icon={FilterIcon} size={18} color={isFilterActive ? '#FFFFFF' : colors.ink} strokeWidth={1.8} />
+        <AppIcon icon={FilterIcon} size={19} color={isFilterActive ? '#FFFFFF' : colors.ink} strokeWidth={1.8} />
       </Pressable>
     </View>
   );

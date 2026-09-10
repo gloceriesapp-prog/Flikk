@@ -120,6 +120,13 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       .maybeSingle();
 
     res.json({
+      // Already resolved by requireAuth's own users.role lookup — no extra
+      // query. apps/rider's own RootNavigator needs this alongside
+      // is_approved: a rider account has no onboarding wizard the way a
+      // store owner does, so "is this phone number even registered as a
+      // rider yet" is a real, distinct state from "registered but pending
+      // approval" that only this field can tell apart.
+      role: req.user!.role,
       is_approved: req.user!.isApproved,
       has_store: (count ?? 0) > 0,
       application_submitted: !!draft?.submitted_at,

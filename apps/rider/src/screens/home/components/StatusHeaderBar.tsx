@@ -34,7 +34,7 @@ export function StatusHeaderBar({ isOnline, onToggle }: Props) {
       <View
         className={`h-14 flex-row items-center gap-3 rounded-full pl-4 pr-2.5 ${isOnline ? 'bg-success/10' : 'bg-danger/10'}`}
       >
-        <Text className={`text-[15px] font-bold ${isOnline ? 'text-success' : 'text-danger'}`}>
+        <Text className={`text-[15px] font-semibold ${isOnline ? 'text-success' : 'text-danger'}`}>
           {isOnline ? 'Online' : 'Offline'}
         </Text>
         <IosSwitch value={isOnline} onValueChange={onToggle} />
@@ -46,14 +46,14 @@ export function StatusHeaderBar({ isOnline, onToggle }: Props) {
           className="h-12 flex-row items-center gap-1.5 rounded-3xl bg-gray-200 px-4"
         >
           <AppIcon icon={HeadphonesIcon} size={15} color={colors.ink} />
-          <Text className="text-[11px] font-extrabold uppercase tracking-wide text-ink">Help</Text>
+          <Text className="text-[11px] font-semibold uppercase tracking-wide text-ink">Help</Text>
         </Pressable>
 
         <Pressable
           onPress={handleSos}
           className="h-12 items-center justify-center rounded-3xl bg-danger px-4"
         >
-          <Text className="text-[11px] font-medium uppercase tracking-wide text-white">SOS</Text>
+          <Text className="text-[11px] font-semibold uppercase tracking-wide text-white">SOS</Text>
         </Pressable>
       </View>
     </View>

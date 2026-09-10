@@ -4,14 +4,19 @@
 // Each transition is owned by exactly one role — a role attempting a transition
 // outside its own set is a 403, not a 409 (see routes/orders.ts).
 //
-// cancelled is owned by both store_owner and admin — a store owner
+// cancelled is owned by store_owner, admin, AND rider — a store owner
 // declining a brand-new order (out of stock, closing early) is a normal
 // real scenario at this app's own scale (matches the partner app's already-
 // built Reject button + auto-reject-on-timeout, apps/partner/src/features/
 // order-expiry — those need a real transition to call, not a local-only
-// UI flag), not just a founder override. isValidTransition still only
-// allows cancelled from 'placed' or 'packed', so this doesn't let a store
-// owner cancel anything already handed to a rider.
+// UI flag), not just a founder override. A rider needs the same real
+// escape hatch (apps/rider's own CancelOrderModal: vehicle breakdown,
+// unsafe address) for an order they haven't picked up yet — routes/
+// orders.ts's own rider-ownership check (rider_id must match the caller)
+// already scopes this to their own assignment, same as every other status
+// write a rider makes. isValidTransition still only allows cancelled from
+// 'placed' or 'packed', so none of these three roles can cancel an order
+// that's already out for delivery or delivered.
 
 export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
 export type Role = 'customer' | 'store_owner' | 'rider' | 'admin';
@@ -29,7 +34,7 @@ const TRANSITION_OWNER: Record<OrderStatus, Role[]> = {
   packed: ['store_owner'],
   out_for_delivery: ['rider'],
   delivered: ['rider'],
-  cancelled: ['store_owner', 'admin'],
+  cancelled: ['store_owner', 'admin', 'rider'],
 };
 
 export function isValidTransition(from: OrderStatus, to: OrderStatus): boolean {

@@ -14,7 +14,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
 import { useRiderOrdersStore } from './src/store/useRiderOrdersStore';
 import { IncomingOrderAlert } from './src/features/incoming-order-alert/IncomingOrderAlert';
-import { SUISSE_FONT_FILES } from './src/theme/fonts';
+import { AEONIK_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 void SplashScreen.preventAutoHideAsync();
@@ -23,12 +23,13 @@ const queryClient = new QueryClient();
 
 export default function App() {
   // Loading the weights here registers them with the OS by font-family
-  // name (e.g. "SuisseIntl-SemiBold") — the actual app-wide default is
+  // name (e.g. "AeonikSoftPro-Regular") — the actual app-wide default is
   // applied via global.css's `@layer base`/weight-utility mapping, not
   // from this hook or any React defaultProps mechanism (same split as
-  // apps/partner's own Sohne setup — see that file's App.tsx note on why
-  // defaultProps doesn't work with NativeWind's cssInterop-wrapped Text).
-  const [fontsLoaded, fontError] = useFonts(SUISSE_FONT_FILES);
+  // apps/customer and apps/partner's own Aeonik setups — see those
+  // files' App.tsx notes on why defaultProps doesn't work with
+  // NativeWind's cssInterop-wrapped Text).
+  const [fontsLoaded, fontError] = useFonts(AEONIK_FONT_FILES);
   const hasSession = useAuthStore((s) => !!s.accessToken);
   const hydrateHistory = useRiderOrdersStore((s) => s.hydrateHistory);
 

@@ -176,6 +176,38 @@ storesRouter.get('/products/catalog', async (req, res, next) => {
   }
 });
 
+// Cross-store product search — SearchScreen.tsx (apps/customer), the one
+// screen in this app that previously had a text input whose value went
+// nowhere. `q` is a plain substring match on name (ILIKE), not a real
+// search engine (ranking, typo tolerance, multi-word AND/OR) — the
+// product catalog is small enough at this scale that a straightforward
+// substring scan is genuinely enough, same "no premature complexity"
+// judgment call as every other feed in this file. `%`/`_` are ILIKE
+// wildcards themselves — escaped so a query containing them is matched
+// literally instead of accidentally behaving like a broader pattern than
+// the customer typed.
+storesRouter.get('/products/search', async (req, res, next) => {
+  try {
+    const q = (req.query.q as string | undefined)?.trim();
+    if (!q || q.length < 2) return res.json([]);
+
+    const escaped = q.replace(/[%_]/g, (match) => `\\${match}`);
+    const { data, error } = await supabase
+      .from('products')
+      .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .eq('approval_status', 'approved')
+      .eq('stores.is_active', true)
+      .neq('stock_status', 'out_of_stock')
+      .ilike('name', `%${escaped}%`)
+      .order('name')
+      .limit(30);
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // "You may also like" — ProductDetailSheet's own SimilarProductsRow.
 // Same category, active store, not out of stock, excluding the product the
 // sheet is already open on. category/exclude come from the client's own

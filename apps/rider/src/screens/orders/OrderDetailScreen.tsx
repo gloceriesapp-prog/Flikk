@@ -12,19 +12,20 @@
 // applies to "mark order done." Every other step transition stays a plain
 // tap (arriving somewhere isn't a moment that benefits from friction).
 //
-// No customer-facing "out for delivery" push/rating-popup here — that's
-// the customer app's own screen and would need a real backend endpoint
-// this rider app has no route to yet (backend/src/routes/rider.ts doesn't
-// exist). Flagged, not faked.
+// No customer-facing "out for delivery" push/rating-popup triggered from
+// here directly — already handled server-side (backend/src/routes/
+// orders.ts sends the customer's own push the instant this screen's real
+// PATCH /orders/:id/status call lands), not something this screen needs
+// to fire itself.
 
 import { useState } from 'react';
 import { ArrowLeft01Icon, Call02Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors } from '../../theme/tokens';
-import { STATUS_STEPS, useRiderOrdersStore } from '../../store/useRiderOrdersStore';
+import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import { DeliveryOtpModal } from './components/DeliveryOtpModal';
 import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryMapView } from './components/DeliveryMapView';
@@ -33,13 +34,11 @@ import type { RiderOrder } from '../../data/mockOrders';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OrderDetail'>;
 
-const STEP_LABEL: Record<RiderOrder['status'], string> = {
-  assigned: 'Assigned',
-  picked_up: 'Picked up',
-  arrived_at_customer: 'At customer',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-};
+// User-supplied trip-line end markers (Pinterest-hosted, referenced by URL
+// like any other remote image — RN's Image fetches at render, no local
+// download step).
+const TRIP_START_ICON = 'https://i.pinimg.com/736x/d0/21/cc/d021cc669f8688a757199873421035f3.jpg';
+const TRIP_END_ICON = 'https://i.pinimg.com/1200x/a6/2a/df/a62adf699b6951ec9d0fa954f1edc5b3.jpg';
 
 const NEXT_ACTION_LABEL: Record<Exclude<RiderOrder['status'], 'delivered' | 'cancelled'>, string> = {
   assigned: 'Slide to start delivery',
@@ -68,26 +67,41 @@ export function OrderDetailScreen({ route, navigation }: Props) {
     );
   }
 
-  const stepIndex = STATUS_STEPS.indexOf(order.status);
-
-  function handlePrimaryAction() {
+  // advanceOrderStatus/cancelOrder now hit the real backend (assigned ->
+  // picked_up and arrived_at_customer -> delivered are real PATCH /orders/
+  // :id/status calls) — a network failure or an unexpected 403/409 needs
+  // to actually stop the rider from thinking the step went through, not
+  // just silently proceed to close the screen either way.
+  async function handlePrimaryAction() {
     if (order!.status === 'arrived_at_customer') {
       setOtpVisible(true);
       return;
     }
-    advanceOrderStatus(order!.id);
+    try {
+      await advanceOrderStatus(order!.id);
+    } catch (err) {
+      Alert.alert('Could not update this order', err instanceof Error ? err.message : 'Please try again.');
+    }
   }
 
-  function handleConfirmDelivery() {
+  async function handleConfirmDelivery() {
     setOtpVisible(false);
-    advanceOrderStatus(order!.id);
-    navigation.goBack();
+    try {
+      await advanceOrderStatus(order!.id);
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Could not confirm delivery', err instanceof Error ? err.message : 'Please try again.');
+    }
   }
 
-  function handleConfirmCancel(reason: string) {
+  async function handleConfirmCancel(reason: string) {
     setCancelVisible(false);
-    cancelOrder(order!.id, reason);
-    navigation.goBack();
+    try {
+      await cancelOrder(order!.id, reason);
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Could not cancel this delivery', err instanceof Error ? err.message : 'Please try again.');
+    }
   }
 
   const isAtCustomer = order.status === 'arrived_at_customer';
@@ -183,7 +197,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-gray-50">
       <ScrollView className="flex-1" contentContainerClassName="gap-5 px-5 pb-6 pt-safe-offset-4">
         <View className="flex-row items-center gap-3">
           <Pressable
@@ -193,31 +207,29 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           >
             <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
           </Pressable>
-          <View>
-            <Text className="text-[13px] text-ink/45">Order</Text>
-            <Text className="text-2xl font-bold text-ink">{order.orderNumber}</Text>
-          </View>
+          <Text className="text-xl font-bold text-ink">Order Id: {order.orderNumber}</Text>
         </View>
 
-        {/* Step progress */}
-        <View className="flex-row items-center">
-          {STATUS_STEPS.map((step, index) => {
-            const isDone = index <= stepIndex;
-            const isLast = index === STATUS_STEPS.length - 1;
-            return (
-              <View key={step} className="flex-1 flex-row items-center">
-                <View className={`h-2.5 w-2.5 rounded-full ${isDone ? 'bg-lime-deep' : 'bg-gray-200'}`} />
-                {!isLast ? <View className={`h-[2px] flex-1 ${index < stepIndex ? 'bg-lime-deep' : 'bg-gray-200'}`} /> : null}
-              </View>
-            );
-          })}
+        {/* Trip line — full-width rule with Start/distance underneath,
+            same minimal recipe as the wireframe: no dots, no icons, just
+            the line and the two numbers that matter. Light weight, not a
+            heavy full-ink bar. */}
+        <View className="w-full gap-2">
+          <View className="flex-row items-center gap-2">
+            <Image source={{ uri: TRIP_START_ICON }} className="h-8 w-8" resizeMode="contain" />
+            <View className="h-px flex-1 bg-gray-200" />
+            <Image source={{ uri: TRIP_END_ICON }} className="h-8 w-8" resizeMode="contain" />
+          </View>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-[13px] font-semibold text-ink/60">Start</Text>
+            <Text className="text-[13px] font-semibold text-ink/60">{order.distanceKm}km</Text>
+          </View>
         </View>
-        <Text className="-mt-3 text-[12.5px] font-semibold text-ink/50">{STEP_LABEL[order.status]}</Text>
 
         {/* Pickup -> drop route — same dot/dashed-line/dot recipe as
             ActiveDeliveryCard.tsx's own trip summary, for a rider to read
             "where do I go" at a glance instead of parsing two flat rows. */}
-        <View className="flex-row gap-3 rounded-2xl bg-mist p-4">
+        <View className="flex-row gap-3 rounded-2xl bg-white p-4">
           <View className="items-center py-0.5" style={{ width: 14 }}>
             <View className="h-3 w-3 items-center justify-center rounded-full bg-lime-deep">
               <AppIcon icon={Store01Icon} size={8} color="#FFFFFF" />
@@ -237,7 +249,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        <View className="gap-2.5 rounded-2xl border border-gray-100 px-4 py-3.5">
+        <View className="gap-2.5 rounded-2xl bg-white px-4 py-3.5">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <AppIcon icon={PackageIcon} size={16} color={colors.ink} />
@@ -245,25 +257,48 @@ export function OrderDetailScreen({ route, navigation }: Props) {
                 {order.itemCount} items · {order.distanceKm} km
               </Text>
             </View>
-            <Text className="text-[15px] font-bold text-ink">₹{order.payout}</Text>
+            <Text className="text-[15px] font-semibold text-ink">₹{order.payout}</Text>
           </View>
+
+          {/* What's actually in the bag — a rider picking up from the
+              store benefits from knowing this before they're standing at
+              the counter, not just a bare count. Always shown, no
+              expand/collapse — this is the same kind of thing the fare
+              breakup below already is, plainly on screen, not tucked
+              behind a tap. */}
+          <View className="gap-1.5 border-t border-mist pt-2.5">
+            <Text className="text-[13px] font-semibold text-ink/70">Items</Text>
+            {order.items.map((item) => (
+              <View key={item.name} className="flex-row items-center justify-between">
+                <Text className="text-[13px] text-ink/60">{item.name}</Text>
+                <Text className="text-[13px] font-semibold text-ink/60">×{item.quantity}</Text>
+              </View>
+            ))}
+          </View>
+
           {/* Itemized payout breakup — an unexplained total is the #1
-              driver of payout-dispute reviews in every gig app. */}
+              driver of payout-dispute reviews in every gig app. Surge
+              always shown now (₹0 when there isn't one), same as Base
+              fare/Distance — a rider should see it's a real tracked
+              component of every payout, not something that only exists
+              on screen the days it's non-zero. */}
           <View className="gap-1 border-t border-mist pt-2.5">
             <View className="flex-row justify-between">
-              <Text className="text-[12.5px] text-ink/50">Base fare</Text>
-              <Text className="text-[12.5px] text-ink/70">₹{order.baseFare}</Text>
+              <Text className="text-[13px] text-ink/60 font-medium">Base fare</Text>
+              <Text className="text-[13px] text-ink/70 font-medium">₹{order.baseFare}</Text>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-[12.5px] text-ink/50">Distance</Text>
-              <Text className="text-[12.5px] text-ink/70">₹{order.distanceFare}</Text>
+              <Text className="text-[13px] text-ink/60 font-medium">Distance</Text>
+              <Text className="text-[13px] text-ink/70 font-medium">₹{order.distanceFare}</Text>
             </View>
-            {order.surge > 0 ? (
-              <View className="flex-row items-center justify-between rounded-lg bg-surge-soft px-2 py-1">
-                <Text className="text-[12.5px] font-semibold text-surge">Surge</Text>
-                <Text className="text-[12.5px] font-bold text-surge">+₹{order.surge}</Text>
-              </View>
-            ) : null}
+            <View
+              className={`flex-row items-center justify-between rounded-lg px-2 py-1 ${order.surge > 0 ? 'bg-surge-soft' : 'bg-mist'}`}
+            >
+              <Text className={`text-[12.5px] font-semibold ${order.surge > 0 ? 'text-surge' : 'text-ink/60'}`}>Surge</Text>
+              <Text className={`text-[12.5px] font-bold ${order.surge > 0 ? 'text-surge' : 'text-ink/70'}`}>
+                {order.surge > 0 ? `+₹${order.surge}` : '₹0'}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -278,12 +313,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
         </Pressable>
       </ScrollView>
 
-      <View className="border-t border-mist px-5 pb-safe-offset-4 pt-4">
-        <SlideToConfirmButton
-          label={NEXT_ACTION_LABEL.assigned}
-          successLabel="Heading to customer"
-          onConfirm={() => advanceOrderStatus(order!.id)}
-        />
+      <View className="border-t border-mist bg-white px-5 pb-safe-offset-4 pt-4">
+        <SlideToConfirmButton label={NEXT_ACTION_LABEL.assigned} successLabel="Heading to customer" onConfirm={handlePrimaryAction} />
       </View>
 
       <DeliveryOtpModal visible={otpVisible} onCancel={() => setOtpVisible(false)} onConfirm={handleConfirmDelivery} />

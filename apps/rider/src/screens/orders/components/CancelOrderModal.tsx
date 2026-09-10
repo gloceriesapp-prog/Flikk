@@ -39,8 +39,8 @@ export function CancelOrderModal({ visible, onCancel, onConfirm }: Props) {
         <View className="gap-5 rounded-t-3xl bg-white px-6 pb-safe-offset-6 pt-6">
           <View className="h-1.5 w-12 self-center rounded-full bg-gray-200" />
           <View className="gap-1">
-            <Text className="text-xl font-bold text-ink">Cancel this delivery?</Text>
-            <Text className="text-[14px] text-ink/55">Tell us why — this helps if the store or customer follows up.</Text>
+            <Text className="text-xl font-semibold text-ink">Cancel this delivery?</Text>
+            <Text className="text-[14px] text-ink/55 font-medium">Tell us why, this helps if the store or customer follows up.</Text>
           </View>
 
           <View className="gap-2">

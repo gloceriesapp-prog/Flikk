@@ -1,5 +1,5 @@
-// Phone entry -> OTP. Mock auth throughout (api/auth.ts's own note) — any
-// valid-shaped 10-digit number works, there's no real SMS being sent.
+// Phone entry -> OTP. Real backend SMS via Supabase phone auth
+// (api/auth.ts's own POST /auth/otp/request).
 
 import { useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
@@ -23,7 +23,7 @@ export function LoginScreen({ navigation }: Props) {
     setLoading(true);
     try {
       const phone = `+91${digits}`;
-      await requestOtp(digits);
+      await requestOtp(phone);
       navigation.navigate('OtpVerification', { phone });
     } catch (err) {
       Alert.alert('Could not send code', err instanceof Error ? err.message : 'Please try again.');

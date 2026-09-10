@@ -26,13 +26,27 @@ describe('order state machine', () => {
     expect(isValidTransition('cancelled', 'placed')).toBe(false);
   });
 
-  it('scopes each transition to exactly one role', () => {
+  it('scopes packed/out_for_delivery/delivered to exactly one role', () => {
     expect(canRoleTransition('store_owner', 'packed')).toBe(true);
     expect(canRoleTransition('rider', 'packed')).toBe(false);
     expect(canRoleTransition('rider', 'out_for_delivery')).toBe(true);
     expect(canRoleTransition('rider', 'delivered')).toBe(true);
     expect(canRoleTransition('customer', 'delivered')).toBe(false);
+  });
+
+  // cancelled is the one deliberate exception with three owners, not one —
+  // see orderStateMachine.ts's own note: a store owner needs to decline a
+  // fresh order (out of stock, closing early) via the partner app's real
+  // Reject button / auto-reject-on-timeout (useOrderExpiryWatcher.ts), a
+  // rider needs the same real escape hatch for an order they haven't
+  // picked up yet (apps/rider's CancelOrderModal), on top of admin's
+  // founder-override. Still gated by isValidTransition to only
+  // 'placed'/'packed' — none of the three can cancel an order that's
+  // already out for delivery or delivered.
+  it('scopes cancelled to store_owner, admin, and rider only', () => {
+    expect(canRoleTransition('store_owner', 'cancelled')).toBe(true);
     expect(canRoleTransition('admin', 'cancelled')).toBe(true);
-    expect(canRoleTransition('store_owner', 'cancelled')).toBe(false);
+    expect(canRoleTransition('rider', 'cancelled')).toBe(true);
+    expect(canRoleTransition('customer', 'cancelled')).toBe(false);
   });
 });

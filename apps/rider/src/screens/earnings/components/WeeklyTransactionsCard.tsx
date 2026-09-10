@@ -28,14 +28,14 @@ function TransactionRow({ transaction, kind }: { transaction: WeekTransaction; k
         <AppIcon icon={isEarning ? ArrowDownLeft01Icon : ArrowUpRight01Icon} size={16} color={isEarning ? colors.success : colors.ink} />
       </View>
       <View className="flex-1">
-        <Text className="text-[14px] font-bold text-ink" numberOfLines={1}>
+        <Text className="text-[14px] font-semibold text-ink" numberOfLines={1}>
           {transaction.title}
         </Text>
-        <Text className="mt-0.5 text-[12px] text-ink/45" numberOfLines={1}>
+        <Text className="mt-0.5 text-[12px] text-ink/45 font-medium" numberOfLines={1}>
           {formatDate(transaction.date)} · {transaction.subtitle}
         </Text>
       </View>
-      <Text className={`text-[14px] font-bold ${isEarning ? 'text-success' : 'text-ink'}`}>
+      <Text className={`text-[14px] font-semibold ${isEarning ? 'text-success' : 'text-ink'}`}>
         {isEarning ? '+' : '-'}₹{transaction.amount}
       </Text>
     </View>
@@ -73,7 +73,7 @@ export function WeeklyTransactionsCard({ earnings, withdrawal }: Props) {
           <Text className="text-center text-[14px] font-semibold text-ink">
             {tab === 'all' ? 'No earnings this week yet' : 'Not paid out yet'}
           </Text>
-          <Text className="text-center text-[12.5px] text-ink/45">
+          <Text className="text-center text-[12.5px] text-ink/45 font-medium">
             {tab === 'all'
               ? 'Finish a delivery to see it show up here.'
               : "This week's payout lands the Monday after it ends."}

@@ -18,9 +18,9 @@ function firstName(fullName: string): string {
 export function HomeGreeting() {
   return (
     <View className="flex-row items-center gap-1.5">
-      <Text className="text-[16px] font-bold text-ink">Hi, {firstName(DUMMY_RIDER_NAME)},</Text>
+      <Text className="text-[16px] font-semibold text-ink">Hi, {firstName(DUMMY_RIDER_NAME)},</Text>
       <AppIcon icon={Location01Icon} size={12} color={colors.limeDeep} />
-      <Text className="flex-1 text-[13px] font-semibold text-lime-deep" numberOfLines={1}>
+      <Text className="flex-1 text-[13px] font-medium text-lime-deep" numberOfLines={1}>
         {ZONE_LABEL}
       </Text>
     </View>

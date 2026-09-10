@@ -21,6 +21,12 @@ export interface RealStore {
   category: string;
   isOpen: boolean;
   photoUrl?: string;
+  // Real stores.address_line/city — same real columns
+  // routes/stores.ts's own PRODUCT_WITH_VARIANTS_SELECT already joins for
+  // ProductDetailSheet's seller card; GET /stores returns them too
+  // (select('*')), this just wasn't reading them onto RealStore yet.
+  addressLine?: string;
+  city?: string;
   district?: string;
   rating?: number;
   avgPrepMinutes?: number;
@@ -36,6 +42,8 @@ interface ApiStore {
   category: string | null;
   is_active: boolean;
   photo_url: string | null;
+  address_line: string | null;
+  city: string | null;
   district: string | null;
   rating: number | null;
   avg_prep_minutes: number | null;
@@ -57,6 +65,8 @@ export function useAllStores() {
           category: row.category ?? 'Store',
           isOpen: row.is_active,
           photoUrl: row.photo_url ?? undefined,
+          addressLine: row.address_line ?? undefined,
+          city: row.city ?? undefined,
           district: row.district ?? undefined,
           rating: row.rating ?? undefined,
           avgPrepMinutes: row.avg_prep_minutes ?? undefined,

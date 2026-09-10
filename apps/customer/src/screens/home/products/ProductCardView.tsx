@@ -22,8 +22,10 @@
 // see that file's own note on why it's local-only for now), veg/non-veg
 // indicator bottom-left (defaults to veg;
 // only fish/meat data sets isVeg: false explicitly, see Product's own note
-// in types.ts), ADD/stepper sits bottom-right overlapping the image itself
-// (not below it anymore).
+// in types.ts), ADD sits bottom-right, HALF outside the image's own corner
+// (a solid blue circle + a white "+" — per an explicit reference image),
+// not the earlier in-bounds text pill. Once added, it becomes a compact
+// pill stepper instead (-, qty, +) since a circle can't fit three elements.
 //
 // Size chips (sizeOptions, e.g. ['500 g', '1 kg']) are a selection toggle
 // only — picking one doesn't change price yet, no per-size pricing model
@@ -96,16 +98,21 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
 
   return (
     <Pressable onPress={onPress} className={`${widthClassName} gap-2`}>
-      {/* backgroundColor is always explicit white, never undefined —
-          Android's `elevation`-based shadow (shadow-md below) needs an
-          opaque background on the elevated View to composite correctly;
-          leaving it undefined rendered a mismatched gray fill behind the
-          image on Android only (iOS's shadow implementation has no such
-          requirement, which is why this never showed up there). */}
-      <View
-        className="aspect-square overflow-hidden rounded-xl border border-gray-100 shadow-md shadow-black/20"
-        style={{ backgroundColor: '#FFFFFF' }}
-      >
+      {/* Outer wrapper has NO overflow-hidden — the ADD circle below sits
+          half outside the image tile's own corner and would get clipped
+          if this View were the one hiding overflow. Only the inner tile
+          (image + freshness/bookmark/veg-dot, all in-bounds) clips. */}
+      <View className="aspect-square">
+        {/* backgroundColor is always explicit white, never undefined —
+            Android's `elevation`-based shadow (shadow-md below) needs an
+            opaque background on the elevated View to composite correctly;
+            leaving it undefined rendered a mismatched gray fill behind the
+            image on Android only (iOS's shadow implementation has no such
+            requirement, which is why this never showed up there). */}
+        <View
+          className="h-full w-full overflow-hidden rounded-xl border border-gray-100 shadow-md shadow-black/20"
+          style={{ backgroundColor: '#FFFFFF' }}
+        >
         {/* Every card renders the same way now — full-bleed "cover", no
             padding, no gray contain-backdrop. That gray-box treatment used
             to apply only to real photos (imageUrl set), which made mock/
@@ -146,35 +153,33 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
         >
           <View className={`h-1.5 w-1.5 rounded-full ${isVeg ? 'bg-success' : 'bg-danger'}`} />
         </View>
+        </View>
 
-        {/* ADD/stepper — flush against the image's own bottom-right corner
-            (redesigned reference: no gap from either edge), not a separate
-            row below it anymore. */}
+        {/* ADD — a solid blue circle sitting HALF outside the image tile's
+            own bottom-right corner (per an explicit reference image), not
+            an in-bounds text pill anymore. Lives on the outer (non-clipped)
+            wrapper, not inside the tile above — see that View's own note. */}
         {quantity === 0 ? (
           <Pressable
             onPress={() =>
               addToCart({ id, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
             }
-            className="absolute bottom-0 right-0 rounded-lg border bg-white px-3 py-1.5 shadow-sm shadow-black/20"
-            style={{ borderColor: '#2457F5' }}
+            className="absolute -bottom-3 -right-3 h-9 w-9 items-center justify-center rounded-full shadow-md shadow-black/30"
+            style={{ backgroundColor: '#2457F5' }}
           >
-            <Text className="text-xs font-bold" style={{ color: '#2457F5' }}>
-              ADD
-            </Text>
+            <AppIcon icon={Add01Icon} size={18} color="#FFFFFF" strokeWidth={2.4} />
           </Pressable>
         ) : (
           <View
-            className="absolute bottom-0 right-0 flex-row items-center gap-2 rounded-full border bg-white px-2 py-1.5 shadow-sm shadow-black/20"
-            style={{ borderColor: '#2457F5' }}
+            className="absolute -bottom-3 -right-3 flex-row items-center gap-2 rounded-full px-2.5 py-1.5 shadow-md shadow-black/30"
+            style={{ backgroundColor: '#2457F5' }}
           >
             <Pressable onPress={() => decrementItem(id)} hitSlop={6}>
-              <AppIcon icon={MinusSignIcon} size={15} color="#2457F5" strokeWidth={3} />
+              <AppIcon icon={MinusSignIcon} size={15} color="#FFFFFF" strokeWidth={3} />
             </Pressable>
-            <Text className="min-w-[14px] text-center text-xs font-semibold" style={{ color: '#2457F5' }}>
-              {quantity}
-            </Text>
+            <Text className="min-w-[14px] text-center text-xs font-bold text-white">{quantity}</Text>
             <Pressable onPress={() => incrementItem(id)} hitSlop={6}>
-              <AppIcon icon={Add01Icon} size={15} color="#2457F5" strokeWidth={3} />
+              <AppIcon icon={Add01Icon} size={15} color="#FFFFFF" strokeWidth={3} />
             </Pressable>
           </View>
         )}

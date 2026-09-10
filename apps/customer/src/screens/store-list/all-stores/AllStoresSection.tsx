@@ -11,16 +11,15 @@
 // fetch, filtered/sorted one way, not a second independent query for the
 // same rows.
 //
-// No "All stores near you" heading anymore, per an explicit ask — the
-// flat divider-separated list (StoreFilterBar/StoreFilterSheet directly
-// above already make it obvious this is the store list) speaks for
-// itself without a label repeating that. Every card, including the last
-// one, gets its own trailing divider + gap now (not "between items only"
-// like the previous pass) — same edge-to-edge line, just consistently
-// after each card rather than only before all-but-the-first.
+// "All stores" heading restored per an explicit ask/reference — each card
+// is now its own bordered/shadowed unit (StoreCard.tsx's own redesign),
+// not a flat divider-separated list, so the section needs a real title to
+// introduce it again (a bordered-card list with no heading above it reads
+// like a cut-off fragment of another section).
 
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import { StoreCard } from '../components/StoreCard';
+import { DUMMY_PREVIEW_STORE } from './dummyPreviewStore';
 import type { RealStore } from './useAllStores';
 
 interface Props {
@@ -30,14 +29,21 @@ interface Props {
 export function AllStoresSection({ stores }: Props) {
   if (stores.length === 0) return null;
 
+  // TEMPORARY — one fake store appended so the new 2-line-name + full-
+  // address card layout can actually be seen with real-looking data (most
+  // stores on file don't have address_line filled in yet). See
+  // dummyPreviewStore.ts's own header note; delete this append once that's
+  // no longer true.
+  const displayStores = [...stores, DUMMY_PREVIEW_STORE];
+
   return (
     <View className="px-5 pt-6">
-      {stores.map((store) => (
-        <View key={store.id} className="mb-6">
-          <StoreCard store={store} />
-          <View className="-mx-5 mt-6 h-px bg-gray-100" />
-        </View>
-      ))}
+      <Text className="mb-4 text-xl font-bold text-ink">All stores</Text>
+      <View className="gap-4">
+        {displayStores.map((store) => (
+          <StoreCard key={store.id} store={store} />
+        ))}
+      </View>
     </View>
   );
 }

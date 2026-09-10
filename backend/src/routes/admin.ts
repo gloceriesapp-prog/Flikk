@@ -9,6 +9,7 @@ import { replaceProductVariants } from '../db/productVariants.js';
 import { AppError, asValidationError } from '../lib/errors.js';
 import { toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { sendPushNotification } from '../lib/pushNotifications.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('admin'));
@@ -144,6 +145,13 @@ adminRouter.patch('/orders/:id/assign-rider', async (req, res, next) => {
     if (error || !data) {
       throw new AppError(409, 'NOT_ASSIGNABLE', 'Order is not packed or already has a rider.');
     }
+
+    // Best-effort, never blocks the assignment itself — a rider who missed
+    // the push still sees the real assignment next time their own app
+    // polls GET /rider/assignments (apps/rider's useRiderOrdersStore.ts).
+    const { data: rider } = await supabase.from('users').select('expo_push_token').eq('id', rider_id).single();
+    void sendPushNotification(rider?.expo_push_token, 'New delivery assigned', `Order ${data.id.slice(0, 6).toUpperCase()} is ready for pickup.`);
+
     res.json(data);
   } catch (err) {
     next(err);

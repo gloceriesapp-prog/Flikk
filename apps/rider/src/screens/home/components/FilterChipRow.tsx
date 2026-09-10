@@ -33,9 +33,9 @@ export function FilterChipRow({ value, onChange, counts }: Props) {
             onPress={() => onChange(filter.id)}
             className={`flex-row items-center gap-1.5 rounded-full px-4 py-2 ${isActive ? 'bg-ink' : 'bg-white border border-gray-100'}`}
           >
-            <Text className={`text-[13px] font-bold ${isActive ? 'text-white' : 'text-ink/60'}`}>{filter.label}</Text>
+            <Text className={`text-[13px] font-semibold ${isActive ? 'text-white' : 'text-ink/60'}`}>{filter.label}</Text>
             <Text
-              className={`text-[11px] font-bold ${isActive ? 'text-white/70' : 'text-ink/35'}`}
+              className={`text-[11px] font-semibold ${isActive ? 'text-white/70' : 'text-ink/35'}`}
               style={{ fontVariant: ['tabular-nums'] }}
             >
               {counts[filter.id]}

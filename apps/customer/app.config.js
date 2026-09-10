@@ -67,6 +67,7 @@ module.exports = {
       'expo-font',
       'expo-splash-screen',
       'expo-image',
+      'expo-notifications',
       './plugins/withUpiAppQueries',
     ],
     extra: {

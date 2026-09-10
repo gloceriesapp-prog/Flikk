@@ -1,47 +1,57 @@
-// Mock auth — no backend/src/routes/rider.ts exists yet (only customer
-// and partner have real auth routes today), so this isn't a "fallback"
-// the way apps/partner/src/api/devAuthFallback.ts is (that one stands in
-// only when a REAL endpoint is unreachable). Here there is no real
-// endpoint to call at all yet — per an explicit ask, any phone number and
-// any OTP code succeeds, no fixed demo code, no backend round trip.
+// Real backend auth — maps to POST /auth/otp/request, POST /auth/otp/
+// verify, POST /auth/refresh, and GET /auth/me, shared across all 4 apps
+// per specs/00-foundation/auth-and-roles.md. Replaces the old mock (any
+// phone/any code succeeded, no backend round trip) now that backend/src/
+// routes/rider.ts is real and this app actually needs a real session to
+// call it.
 //
-// Kept in this exact shape (requestOtp/verifyOtp, async, same param/return
-// names a real /auth/otp/request + /auth/otp/verify pair would have) on
-// purpose — swapping in the real backend later is rewriting the bodies of
-// these two functions, not restructuring every screen that calls them.
+// One real gap this does NOT solve: there is no self-serve "become a
+// rider" endpoint anywhere in the backend. A brand-new phone number always
+// gets provisioned as role='customer' (requireAuth's own lazy-provisioning
+// note) — a rider account only exists because someone (currently: manual
+// SQL against the users table) already flipped that row's role to 'rider'.
+// fetchAccountStatus below is what lets RootNavigator tell "not a rider
+// yet" apart from "a rider pending admin approval" instead of just 403ing
+// forever on every backend/src/routes/rider.ts call.
+
+import { apiRequest } from './client';
 
 export interface VerifyOtpResult {
   accessToken: string;
+  refreshToken: string;
   phone: string;
 }
 
-// Simulated network latency so the loading states (PrimaryButton's own
-// `loading` prop) are actually visible/testable, not just an instant
-// no-op that make the UI look unfinished during a real demo.
-const MOCK_LATENCY_MS = 500;
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export async function requestOtp(phone: string): Promise<{ ok: true }> {
-  if (phone.trim().length !== 10) {
-    throw new Error('Enter a valid 10-digit mobile number.');
-  }
-  await delay(MOCK_LATENCY_MS);
-  return { ok: true };
+  return apiRequest('/auth/otp/request', { method: 'POST', body: { phone }, auth: false });
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpResult> {
-  // Real length check (an OTP box UI that accepts a 1-digit "code" isn't a
-  // realistic input to test against), but no actual code comparison —
-  // every code of the right length succeeds, per the explicit ask.
-  if (code.trim().length !== 6) {
-    throw new Error('Enter the 6-digit code.');
-  }
-  await delay(MOCK_LATENCY_MS);
-  // No real server session exists — the token just carries the phone
-  // number back out, same shape useAuthStore already expects from a real
-  // JWT (something to persist, something to identify "this session").
-  return { accessToken: `mock-rider:${phone}`, phone };
+  const { access_token, refresh_token } = await apiRequest<{ access_token: string; refresh_token: string }>(
+    '/auth/otp/verify',
+    { method: 'POST', body: { phone, code }, auth: false },
+  );
+  return { accessToken: access_token, refreshToken: refresh_token, phone };
+}
+
+export interface AccountStatus {
+  role: 'customer' | 'store_owner' | 'rider' | 'admin';
+  is_approved: boolean;
+}
+
+// Polled by a waiting/gate screen the same way apps/partner's own
+// WaitingApprovalScreen polls GET /auth/me — see RootNavigator's own note
+// on the two distinct blocking states this resolves.
+export function fetchAccountStatus(): Promise<AccountStatus> {
+  return apiRequest('/auth/me');
+}
+
+// Registers this device's Expo push token so backend/src/routes/admin.ts's
+// PATCH /orders/:id/assign-rider can reach it the instant a founder
+// assigns this rider a real order — see features/push-notifications/
+// registerPushToken.ts for where this is called from. No dev-mode
+// fallback needed: a failed registration just means no push, this app's
+// own 12s poll (useRiderOrdersStore.ts) still covers it.
+export function savePushToken(token: string): Promise<void> {
+  return apiRequest('/auth/push-token', { method: 'POST', body: { token } });
 }

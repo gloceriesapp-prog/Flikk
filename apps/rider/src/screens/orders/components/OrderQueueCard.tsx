@@ -23,21 +23,21 @@ export function OrderQueueCard({ order, onPress }: Props) {
       <View className="flex-row items-center justify-between">
         <Text className="text-[15px] font-bold text-ink">{order.orderNumber}</Text>
         <View className="rounded-full bg-lime-soft px-2.5 py-1">
-          <Text className="text-[11px] font-bold text-lime-deep">{STATUS_LABEL[order.status]}</Text>
+          <Text className="text-[11px] font-semibold text-lime-deep">{STATUS_LABEL[order.status]}</Text>
         </View>
       </View>
 
       <View className="flex-row items-center gap-2">
         <AppIcon icon={PackageIcon} size={14} color={colors.ink} />
-        <Text className="flex-1 text-[13px] text-ink/60" numberOfLines={1}>
+        <Text className="flex-1 text-[13px] text-ink/60 font-medium" numberOfLines={1}>
           {order.storeName} → {order.customerName}
         </Text>
       </View>
 
       <View className="flex-row items-center justify-between">
-        <Text className="text-[13px] font-semibold text-ink/70">{order.itemCount} items · {order.distanceKm} km</Text>
+        <Text className="text-[13px] font-medium text-ink/70">{order.itemCount} items · {order.distanceKm} km</Text>
         <View className="flex-row items-center gap-1">
-          <Text className="text-[15px] font-bold text-ink">₹{order.payout}</Text>
+          <Text className="text-[15px] font-semibold text-ink">₹{order.payout}</Text>
           <AppIcon icon={ArrowRight01Icon} size={15} color={colors.ink} />
         </View>
       </View>

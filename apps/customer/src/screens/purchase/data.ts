@@ -8,14 +8,22 @@ import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import type { ApiOrder } from '../../api/orders';
 
 export interface OrderItemSummary {
+  productId: string;
   name: string;
   imageUri: string;
+  quantity: number;
+  // Real order_items.unit_price_at_order — the price actually paid, not a
+  // live re-lookup (CLAUDE.md: never derive an order's total from current
+  // product prices). Used by PurchaseBestSellers to re-add a past item to
+  // the cart at a sane starting price.
+  price: number;
 }
 
 export interface PurchaseOrder {
   id: string; // display order_number
   orderId: string; // real UUID — TrackOrder navigation target
   status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  storeId: string;
   storeName: string;
   items: OrderItemSummary[];
   statusLabel: string;
@@ -63,10 +71,14 @@ export function mapApiOrder(order: ApiOrder): PurchaseOrder {
     id: order.order_number,
     orderId: order.id,
     status,
+    storeId: order.store_id,
     storeName: order.stores?.name ?? 'Store',
     items: order.order_items.map((item) => ({
+      productId: item.product_id,
       name: item.products?.name ?? 'Item',
       imageUri: item.products?.image_url ?? PLACEHOLDER_IMAGE_URI,
+      quantity: item.quantity,
+      price: item.unit_price_at_order,
     })),
     statusLabel: STATUS_LABEL[status],
     etaLabel: deliveredOrCancelled ? `${STATUS_LABEL[status]} at ${formatRelativeDateTime(timestamp)}` : 'Your order is on its way',

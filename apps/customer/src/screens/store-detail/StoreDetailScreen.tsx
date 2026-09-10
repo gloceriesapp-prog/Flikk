@@ -55,7 +55,7 @@ export function StoreDetailScreen({ navigation, route }: Props) {
         <SubCategorySidebar items={categories} selectedId={selectedId} onSelect={setSelectedId} />
 
         <ScrollView
-          className="flex-1 bg-mist/30"
+          className="flex-1 bg-[#FCFCFB]"
           contentContainerClassName="flex-row flex-wrap gap-x-3 gap-y-6 p-3 pb-16"
           showsVerticalScrollIndicator={false}
         >

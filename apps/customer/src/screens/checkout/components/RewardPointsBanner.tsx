@@ -25,7 +25,7 @@ export function RewardPointsBanner({ totalPrice }: Props) {
       className="items-center py-3"
     >
       <Text className="text-center text-[13px] font-medium text-ink/70">
-        🎉 Congrats! You're earning <Text className="font-bold text-[#4C7A16]">{points} points</Text>
+        🎉 Congrats! You&apos;re earning <Text className="font-bold text-[#4C7A16]">{points} points</Text>
       </Text>
     </LinearGradient>
   );
