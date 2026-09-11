@@ -14,10 +14,11 @@ interface Props {
 }
 
 export function CategoryTabItem({ category, isSelected, onPress, headerBottomColor }: Props) {
-  // #F2ECF8 — pale lavender, synced to HomeHeader's own All-tab gradient
-  // (categoryHeaderGradients.ts, deep charcoal-to-aubergine), not the
-  // leftover mint green from the header's earlier emerald palette.
-  const selectedBg = category.id === ALL_TAB.id ? '#F2ECF8' : '#FFFFFF';
+  // #FBE9DD — pale peach, synced to SeasonalSection/FestivalPicksSection's
+  // shared PANEL_BG (categoryHeaderGradients.ts's own red-orange All-tab
+  // gradient), not the earlier lavender tied to a purple panel that no
+  // longer exists.
+  const selectedBg = category.id === ALL_TAB.id ? '#FBE9DD' : '#FFFFFF';
 
   return (
     <View className="relative w-[76px]">

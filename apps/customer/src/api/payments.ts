@@ -13,8 +13,12 @@ export interface RazorpayOrder {
   key_id: string;
 }
 
-export function createRazorpayOrder(orderId: string): Promise<RazorpayOrder> {
-  return apiRequest('/payments/create-order', { method: 'POST', body: { orderId } });
+// Exactly one of orderId/tripId — a single-store checkout passes orderId
+// (POST /orders' own row), a multi-store checkout passes tripId (POST
+// /trips' own row, backend/src/lib/trips.ts) so the amount is read from
+// the trip's combined total instead of any one store's own order total.
+export function createRazorpayOrder(id: { orderId: string } | { tripId: string }): Promise<RazorpayOrder> {
+  return apiRequest('/payments/create-order', { method: 'POST', body: id });
 }
 
 export interface UpiIntentPayment {
@@ -36,12 +40,11 @@ export function createUpiIntentPayment(orderId: string): Promise<UpiIntentPaymen
   return apiRequest('/payments/create-upi-intent', { method: 'POST', body: { orderId } });
 }
 
-export interface VerifyPaymentInput {
-  orderId: string;
+export type VerifyPaymentInput = ({ orderId: string; tripId?: undefined } | { tripId: string; orderId?: undefined }) & {
   razorpay_order_id: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
-}
+};
 
 // The one and only call that can mark an order paid — backend/src/routes/
 // payments.ts's own POST /verify re-derives the HMAC signature server-side

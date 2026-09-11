@@ -32,6 +32,10 @@ interface RawAssignment {
   placed_at: string;
   delivered_at: string | null;
   cancel_reason: string | null;
+  // Real orders.trip_id (backend/migrations/014_trips.sql) — null for the
+  // common single-store order, set when this is one leg of a multi-store
+  // checkout. RiderOrder's own note explains what this drives.
+  trip_id: string | null;
   order_items: RawOrderItem[];
   stores: { name: string; lat: number | null; lng: number | null; zones: { name: string } | null } | null;
   users: { name: string | null; phone: string } | null;
@@ -112,5 +116,6 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     placedAt: row.placed_at,
     deliveredAt: row.delivered_at ?? undefined,
     cancelReason: row.cancel_reason ?? undefined,
+    tripId: row.trip_id ?? undefined,
   };
 }

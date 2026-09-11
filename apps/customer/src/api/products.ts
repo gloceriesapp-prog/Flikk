@@ -57,8 +57,32 @@ function formatVariant(variant: ApiVariant): string {
   return `${variant.quantity} ${UNIT_LABEL[variant.unit_type]}`;
 }
 
+// TEMPORARY preview-only — same convention as store-detail's own
+// dummyStoreCategories.ts: no real product on file yet has more than one
+// product_variants row (a founder hasn't entered multi-size pricing via
+// admin's Inventory screen for any real product), so ProductVariantOptions'
+// card grid has never actually had real data to render. This synthesizes a
+// second size from a real product's own real price/weight ONLY when the
+// backend returned 0-1 real variants, purely so the UI can be previewed
+// end-to-end. Delete this whole function (and its one call site below)
+// once real multi-size products exist — real variants always win over it.
+function withPreviewVariants(realVariants: ApiVariant[], basePrice: number, baseOriginalPrice: number | null): ApiVariant[] {
+  if (realVariants.length > 1) return realVariants;
+  const base = realVariants[0];
+  const bulkPrice = Math.round(basePrice * 2.7);
+  const bulkOriginal = baseOriginalPrice ? Math.round(baseOriginalPrice * 2.7) : null;
+  return [
+    base ?? { id: 'preview-base', unit_type: 'g', quantity: 500, price: basePrice, original_price: baseOriginalPrice, is_default: true },
+    { id: 'preview-bulk', unit_type: base?.unit_type ?? 'g', quantity: (base?.quantity ?? 500) * 3, price: bulkPrice, original_price: bulkOriginal, is_default: false },
+  ];
+}
+
 export function mapApiProduct(row: ApiProduct): Product {
-  const variants = [...row.product_variants].sort((a, b) => Number(b.is_default) - Number(a.is_default));
+  const variants = withPreviewVariants(
+    [...row.product_variants].sort((a, b) => Number(b.is_default) - Number(a.is_default)),
+    row.price,
+    row.original_price,
+  );
   const defaultVariant = variants[0];
   const store = row.stores;
 
@@ -80,6 +104,14 @@ export function mapApiProduct(row: ApiProduct): Product {
     isVeg: row.is_veg,
     freshnessTag: row.freshness_tag ?? undefined,
     sizeOptions: variants.length > 0 ? variants.map(formatVariant) : undefined,
+    // Only set when there's genuinely more than one real size to choose
+    // between — ProductVariantOptions.tsx's own guard also checks this,
+    // but not setting it here at all keeps a single-variant product's
+    // Product object identical to how it looked before this field existed.
+    variants:
+      variants.length > 1
+        ? variants.map((v) => ({ id: v.id, label: formatVariant(v), price: v.price, originalPrice: v.original_price ?? undefined }))
+        : undefined,
     description: row.description ?? undefined,
     categoryLabel: row.category,
     storeId: row.store_id,

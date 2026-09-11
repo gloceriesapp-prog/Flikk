@@ -39,7 +39,7 @@ export function NearbyStoreCard({ store, onPress }: Props) {
           </View>
         )}
       </View>
-      <Text className="text-center text-base font-medium text-ink" numberOfLines={1}>
+      <Text className="text-base font-medium text-ink" numberOfLines={1}>
         {store.name}
       </Text>
       {/* Real distance from the customer's saved delivery location
@@ -47,7 +47,7 @@ export function NearbyStoreCard({ store, onPress }: Props) {
           lat/lng on file yet, not a fabricated placeholder number. */}
       {store.distanceLabel && (
         <Text
-          className="-mt-1 text-center text-xs"
+          className="-mt-2  text-xs font-medium"
           style={{ color: store.isOpen ? `${colors.ink}80` : colors.danger }}
           numberOfLines={1}
         >

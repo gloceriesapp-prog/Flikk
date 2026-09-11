@@ -11,14 +11,36 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
+import { MultiStopJobCard } from './components/MultiStopJobCard';
 import { OrderQueueCard } from './components/OrderQueueCard';
 import { isToday } from '../../utils/date';
+import type { RiderOrder } from '../../data/mockOrders';
 import type { AppStackParamList } from '../../navigation/types';
+
+// Groups activeOrders into single-order entries and multi-leg trip groups
+// (same trip_id — see RiderOrder's own note) so a 3-store trip renders as
+// one MultiStopJobCard, not 3 separate OrderQueueCards that would read as
+// 3 unrelated deliveries.
+function groupByTrip(orders: RiderOrder[]): (RiderOrder | RiderOrder[])[] {
+  const seenTripIds = new Set<string>();
+  const groups: (RiderOrder | RiderOrder[])[] = [];
+  for (const order of orders) {
+    if (!order.tripId) {
+      groups.push(order);
+      continue;
+    }
+    if (seenTripIds.has(order.tripId)) continue;
+    seenTripIds.add(order.tripId);
+    groups.push(orders.filter((o) => o.tripId === order.tripId));
+  }
+  return groups;
+}
 
 export function OrdersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const isOnline = useRiderOrdersStore((s) => s.isOnline);
   const activeOrders = useRiderOrdersStore((s) => s.activeOrders);
+  const activeGroups = groupByTrip(activeOrders);
   const completedOrders = useRiderOrdersStore((s) => s.completedOrders).filter(
     (order) => order.deliveredAt && isToday(order.deliveredAt)
   );
@@ -43,9 +65,17 @@ export function OrdersScreen() {
             </Text>
           </View>
         ) : (
-          activeOrders.map((order) => (
-            <OrderQueueCard key={order.id} order={order} onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })} />
-          ))
+          activeGroups.map((group) =>
+            Array.isArray(group) ? (
+              <MultiStopJobCard
+                key={group[0]!.tripId}
+                legs={group}
+                onPress={(nextLegId) => navigation.navigate('OrderDetail', { orderId: nextLegId })}
+              />
+            ) : (
+              <OrderQueueCard key={group.id} order={group} onPress={() => navigation.navigate('OrderDetail', { orderId: group.id })} />
+            ),
+          )
         )}
 
         {completedOrders.length > 0 ? (

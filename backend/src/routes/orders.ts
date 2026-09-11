@@ -5,6 +5,7 @@ import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { calcCommission, calcItemTotal, calcOrderTotal } from '../lib/pricing.js';
 import { CartValidationError, validateCart } from '../lib/orderValidation.js';
+import { resolveAddressId } from '../lib/resolveAddress.js';
 import {
   canRoleTransition,
   isValidTransition,
@@ -58,49 +59,8 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     if (!body.store_id || (!body.address_id && !body.address?.line1) || !body.items?.length) {
       throw new AppError(400, 'INVALID_ORDER', 'store_id, an address, and items are required.');
     }
-    if (!body.address_id && !body.address?.recipient_name?.trim()) {
-      throw new AppError(400, 'MISSING_RECIPIENT_NAME', 'recipient_name is required.');
-    }
 
-    let addressId = body.address_id;
-    if (addressId) {
-      // A client-supplied address_id is never trusted at face value — an
-      // order paid for by one account but silently delivered to a
-      // different account's saved address (a real IDOR: pass any UUID,
-      // see if it's accepted) is exactly the kind of "bypass" this whole
-      // flow needs to be provably closed against. Ownership is re-checked
-      // here even though addresses.ts's own routes already scope every
-      // read/write to the caller — this endpoint takes the id over the
-      // wire independently and can't assume the caller only ever got it
-      // from a legitimate GET /addresses response.
-      const { data: ownedAddress, error: ownedAddressErr } = await supabase
-        .from('addresses')
-        .select('id')
-        .eq('id', addressId)
-        .eq('user_id', req.user!.id)
-        .single();
-      if (ownedAddressErr || !ownedAddress) throw new AppError(403, 'FORBIDDEN', 'Not your delivery address.');
-    } else {
-      // Single zone at launch (CLAUDE.md) — same "no zone-picker exists,
-      // fall back to whichever zone is active" resolution as GET /stores.
-      const { data: zone, error: zoneError } = await supabase.from('zones').select('id').eq('is_active', true).limit(1).single();
-      if (zoneError || !zone) throw new AppError(500, 'NO_ACTIVE_ZONE', 'No active zone configured.');
-
-      const { data: address, error: addressError } = await supabase
-        .from('addresses')
-        .insert({
-          user_id: req.user!.id,
-          label: body.address!.label?.trim() || 'Delivery address',
-          line1: body.address!.line1.trim(),
-          landmark: body.address!.landmark?.trim() || null,
-          recipient_name: body.address!.recipient_name.trim(),
-          zone_id: zone.id,
-        })
-        .select('id')
-        .single();
-      if (addressError || !address) throw new AppError(500, 'ADDRESS_CREATE_FAILED', 'Could not save delivery address.');
-      addressId = address.id;
-    }
+    const addressId = await resolveAddressId(req.user!.id, body);
 
     const productIds = body.items.map((i) => i.product_id);
     const { data: products, error: productErr } = await supabase

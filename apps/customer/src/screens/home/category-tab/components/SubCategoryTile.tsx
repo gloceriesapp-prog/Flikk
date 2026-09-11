@@ -32,7 +32,7 @@ export function SubCategoryTile({ category }: Props) {
         <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
       </View>
 
-      <Text className="text-center text-sm font-medium leading-4 text-ink" numberOfLines={2}>
+      <Text className="text-center text-[13px] font-medium leading-4 text-ink" numberOfLines={2}>
         {category.label}
       </Text>
     </Pressable>

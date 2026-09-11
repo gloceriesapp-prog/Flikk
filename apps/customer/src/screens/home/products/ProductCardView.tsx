@@ -127,7 +127,7 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
           {/* freshness ribbon */}
           {freshnessTag && (
             <View className="absolute left-0 top-2 rounded-r-full bg-gold py-0.5 pl-1.5 pr-2">
-              <Text className="text-[9px] font-bold text-white">{freshnessTag}</Text>
+              <Text className="text-[9px] font-semibold text-white">{freshnessTag}</Text>
             </View>
           )}
 
@@ -186,7 +186,7 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
 
 
       <View className="gap-1 px-1">
-        <Text className="text-[11px] font-medium uppercase text-ink/40">{etaMinutes} mins</Text>
+        <Text className="text-[10px] font-medium uppercase text-ink/40">Get it in {etaMinutes} mins</Text>
 
         <Text className="text-[13px] font-medium leading-4 text-ink" numberOfLines={2}>
           {name}
@@ -200,16 +200,16 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             <Pressable
               key={size}
               onPress={() => setSelectedSize(size)}
-              className={`rounded-lg border px-2 py-0.5 ${selectedSize === size ? 'border-[#2457F5]/80' : 'border bg-[#F5F5F5]'
+              className={`rounded-md border px-2 py-0.5 font-medium ${selectedSize === size ? 'border-[#2457F5]/60' : 'border-[#7C8B87]'
                 }`}
             >
-              <Text className={`text-[11px] font-medium ${selectedSize === size ? 'text-[#2457F5]/80' : 'text-ink'}`}>{size}</Text>
+              <Text className={`text-[11px] font-medium ${selectedSize === size ? 'text-[#2457F5]' : 'text-[#7C8B87]'}`}>{size}</Text>
             </Pressable>
           ))}
         </View>
 
         {discountPercent !== null && discountPercent > 0 && (
-          <Text className="text-[11px] font-bold text-lime-deep">{discountPercent}% OFF</Text>
+          <Text className="text-[11px] font-semibold text-lime-deep">{discountPercent}% OFF</Text>
         )}
 
         <View className="flex-row items-center gap-1.5">

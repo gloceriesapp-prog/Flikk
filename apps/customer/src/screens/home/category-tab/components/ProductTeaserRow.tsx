@@ -17,13 +17,12 @@ export function ProductTeaserRow({ title, products }: Props) {
   return (
     <View className="pt-6">
       <View className="flex-row items-center justify-between px-5 pb-4">
-        <Text className="text-lg font-bold text-ink">{title}</Text>
-        <AppIcon icon={ArrowRight01Icon} size={18} color={colors.ink} />
+        <Text className="text-[19px] font-semibold text-ink">{title}</Text>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-5">
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} widthClassName="w-36" />
+          <ProductCard key={product.id} product={product} widthClassName="w-28" />
         ))}
       </ScrollView>
     </View>

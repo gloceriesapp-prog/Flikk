@@ -23,7 +23,7 @@ import { colors } from '../../theme/tokens';
 import { deleteAddress, fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
 import { estimateCartEtaMinutes } from '../../utils/estimateDelivery';
-import { selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
+import { selectCartGroupedByStore, selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
@@ -41,6 +41,11 @@ export function CartScreen({ navigation }: Props) {
   const items = useCartStore((state) => state.items);
   const totalQuantity = useCartStore(selectCartTotalQuantity);
   const itemTotal = useCartStore(selectCartTotalPrice);
+  // One group per store — the cart no longer forces every item into one
+  // store (useCartStore's own header note); a cart spanning more than one
+  // store renders as multiple "From {store}" mini-sections below instead
+  // of a single flat list that silently implied they were all one order.
+  const storeGroups = useCartStore(selectCartGroupedByStore);
   const clearCart = useCartStore((state) => state.clear);
 
   function handleClearCart() {
@@ -168,18 +173,37 @@ export function CartScreen({ navigation }: Props) {
                   <View>
                     <Text className="text-[16px] font-semibold text-ink">Delivery in {estimateCartEtaMinutes()} minutes</Text>
                     <Text className="text-[12.5px] text-ink/45 font-medium">
-                      {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'} in this order
+                      {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}
+                      {storeGroups.length > 1 ? ` from ${storeGroups.length} stores` : ' in this order'}
                     </Text>
                   </View>
                 </View>
-
               </View>
               <View className="my-3 h-px border-t border-dashed border-gray-200" />
 
-              {items.map((item, index) => (
-                <View key={item.id}>
-                  <CartItemRow item={item} />
-                  {index < items.length - 1 && <View className="h-px bg-white" />}
+              {storeGroups.map((group, groupIndex) => (
+                <View key={group.storeId}>
+                  {/* Only shown once there's more than one store to tell
+                      apart — a single-store cart (still the common case)
+                      looks exactly like it always did, no group header
+                      inserted for no reason. */}
+                  {storeGroups.length > 1 && (
+                    <View className="mb-2 flex-row items-center justify-between">
+                      <Text className="text-[13px] font-semibold text-ink" numberOfLines={1}>
+                        From {group.storeName ?? 'this store'}
+                      </Text>
+                      <Text className="text-[13px] font-medium text-ink/50">₹{group.itemTotal.toFixed(0)}</Text>
+                    </View>
+                  )}
+
+                  {group.items.map((item, index) => (
+                    <View key={item.id}>
+                      <CartItemRow item={item} />
+                      {index < group.items.length - 1 && <View className="h-px bg-white" />}
+                    </View>
+                  ))}
+
+                  {groupIndex < storeGroups.length - 1 && <View className="my-3 h-px border-t border-dashed border-gray-200" />}
                 </View>
               ))}
             </View>

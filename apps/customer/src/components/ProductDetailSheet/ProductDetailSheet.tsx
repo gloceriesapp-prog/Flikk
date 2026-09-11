@@ -147,7 +147,7 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
   // has no such field to set), so this only fires for those, and only once
   // the sheet is actually open.
   const needsSimilar = visible && !product.relatedProducts;
-  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id);
+  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId);
   const relatedProducts = product.relatedProducts ?? similar.data ?? [];
 
   // Two distinct neighbors from the related pool, picked by hashing
@@ -316,9 +316,20 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
 
   const needsSimilar = !product.relatedProducts;
-  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id);
+  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId);
   const relatedProducts = product.relatedProducts ?? similar.data ?? [];
   const cartTotalQuantity = useCartStore(selectCartTotalQuantity);
+
+  // Lifted here (not local to ProductDetailInfo) — ProductDetailFooter is
+  // this component's own sibling, not a child of ProductDetailInfo, and
+  // needs to know which real variant is selected to add the CORRECT
+  // price/weight to the cart, not always the base product's default one.
+  // Defaults to the real default variant (product_variants.is_default —
+  // variants[0], per api/products.ts's own sort) when the product has
+  // more than one; undefined when it doesn't, which is exactly the
+  // "if there is no options" fallback signal both children already read.
+  const [selectedVariantId, setSelectedVariantId] = useState(product.variants?.[0]?.id);
+  const selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
 
   const isGrownRef = useRef(false);
   // Drag-to-dismiss offset — 0 at rest, animates toward screenHeight on a
@@ -466,7 +477,12 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
             </View>
           </View>
 
-          <ProductDetailInfo product={product} relatedProducts={relatedProducts} />
+          <ProductDetailInfo
+            product={product}
+            relatedProducts={relatedProducts}
+            selectedVariantId={selectedVariantId}
+            onSelectVariant={setSelectedVariantId}
+          />
         </Animated.ScrollView>
 
         <View className="absolute bottom-0 left-0 right-0">
@@ -478,7 +494,7 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
           <Animated.View style={{ paddingBottom: footerPaddingBottom }} className="overflow-hidden">
             <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
             <View className="absolute inset-0 bg-white/40" />
-            <ProductDetailFooter product={product} />
+            <ProductDetailFooter product={product} selectedVariant={selectedVariant} />
           </Animated.View>
         </View>
       </Animated.View>

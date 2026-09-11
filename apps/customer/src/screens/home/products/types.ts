@@ -57,13 +57,27 @@ export interface Product {
   // rule (no live GPS/ETA math) means this is a store-set expectation, not
   // a computed live estimate.
   deliveryEtaMinutes?: number;
-  // Pack-size chips on ProductDetailSheet (e.g. ['250 g', '1 kg']) — UI
-  // selection only, doesn't change price/weight below it yet (no
-  // per-size pricing model exists on Product, just the one price/weight
-  // pair). Falls back to a single non-interactive chip showing `weight`
+  // Pack-size chips on ProductCardView (e.g. ['250 g', '1 kg']) — UI
+  // selection only, doesn't change price/weight below it there (that
+  // card's own compact chip row has no room for a full price readout per
+  // size). Falls back to a single non-interactive chip showing `weight`
   // when unset, so products without explicit options still show
-  // something instead of an empty row.
+  // something instead of an empty row. ProductDetailSheet uses the richer
+  // `variants` field below instead, where each size genuinely can have its
+  // own real price.
   sizeOptions?: string[];
+  // Real per-size pricing (backend's product_variants table — see
+  // backend/src/lib/products.ts's own note: "250 g Onion at ₹15 and 1 kg
+  // Onion at ₹52 are two variant rows under one product... each size
+  // genuinely has its own price"). Powers ProductVariantOptions.tsx's
+  // card-grid selector on ProductDetailSheet — only rendered when this has
+  // more than one entry; a single-variant or variant-less product falls
+  // back to the plain weight/price display, same as before this field
+  // existed. `id` is the real product_variants row id, used to key that
+  // specific size as its own cart line (so "250 g" and "1 kg" of the same
+  // product can both sit in the cart at their own real prices instead of
+  // colliding under one product id).
+  variants?: { id: string; label: string; price: number; originalPrice?: number }[];
   // Regulatory/seller info block on ProductDetailSheet (SellerDetailsCard) —
   // FSSAI license display is a real requirement for Indian grocery/food
   // listings, not decorative. Optional since most placeholder data doesn't

@@ -31,10 +31,11 @@ import { BrandFooter } from '../../../components/BrandFooter';
 import { CoastalKitchenPicksSection } from '../coastal-kitchen-picks/CoastalKitchenPicksSection';
 import { DealsSection } from '../deals/DealsSection';
 import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
+import { FestivalPicksSection } from '../festival-picks/FestivalPicksSection';
 import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { ProductSection } from '../products/ProductSection';
-import { SeasonalSection } from '../seasonal/SeasonalSection';
+import { PANEL_BG, SeasonalSection } from '../seasonal/SeasonalSection';
 import { StoreTypesSection } from '../store-types/StoreTypesSection';
 import { useNearestStore } from '../useNearestStore';
 import { useDealsProducts } from './useDealsProducts';
@@ -54,8 +55,16 @@ export function AllTabSections() {
     // breathing room from BottomNavBar + CartBar as every other tab's
     // last row.
     <View className="pb-32">
-      <SeasonalSection />
-      {/* <MostBoughtSection /> */}
+      {/* One shared panel — SeasonalSection's own banner/tiles and
+          FestivalPicksSection's product row read as one continuous
+          section (same background, one rounded bottom edge), per an
+          explicit ask, rather than two separately-backed blocks stacked
+          on top of each other. */}
+      <View className="rounded-b-[32px]" style={{ backgroundColor: PANEL_BG }}>
+        <SeasonalSection />
+        <FestivalPicksSection />
+      </View>
+      <MostBoughtSection />
       <NearbyStoresSection />
       <StoreTypesSection />
       <CategorySections />

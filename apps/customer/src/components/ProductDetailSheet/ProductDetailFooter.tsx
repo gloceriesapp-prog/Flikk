@@ -27,10 +27,25 @@ const BAR_BLUE = '#1447e6';
 
 interface Props {
   product: Product;
+  // ProductDetailSheet.tsx's own selected ProductVariantOptions pick —
+  // undefined for a product with 0-1 real variants (the "no options" case),
+  // in which case this falls back to the base product's own id/weight/
+  // price exactly as before this prop existed.
+  selectedVariant?: { id: string; label: string; price: number; originalPrice?: number };
 }
 
-export function ProductDetailFooter({ product }: Props) {
-  const { id, name, weight, price, originalPrice, storeId, storeName, imageUrl } = product;
+export function ProductDetailFooter({ product, selectedVariant }: Props) {
+  const { name, storeId, storeName, imageUrl } = product;
+  // A different real variant genuinely has its own price (backend's
+  // product_variants — see that table's own note: not a scaled base
+  // price), so it needs its own cart line, not to overwrite/merge into
+  // whichever variant of this product was added first. Suffixing the
+  // product id with the variant id is what keeps "250 g" and "1 kg" of the
+  // same product as two independent, correctly-priced CartItems.
+  const id = selectedVariant ? `${product.id}::${selectedVariant.id}` : product.id;
+  const weight = selectedVariant?.label ?? product.weight;
+  const price = selectedVariant?.price ?? product.price;
+  const originalPrice = selectedVariant?.originalPrice ?? product.originalPrice;
 
   const quantity = useCartStore((state) => state.items.find((item) => item.id === id)?.quantity ?? 0);
   const incrementItem = useCartStore((state) => state.incrementItem);

@@ -45,7 +45,7 @@ export function CartBar() {
       {/* Left capsule — shadow lives on this outer, non-clipping wrapper so
           the rounded-full clip below doesn't also clip the shadow. */}
       <View className="shadow-lg shadow-black/30">
-        <View className="h-12 flex-row items-center gap-1.5 overflow-hidden rounded-full border border-white/10 bg-[#000000]/90 pl-1.5 pr-3">
+        <View className="h-12 flex-row items-center gap-1.5 overflow-hidden rounded-full border border-white/10 bg-[#000000]/90 pl-1.5 pr-3 backdrop-blur-sm">
           <View className="flex-row">
             {items.slice(0, thumbnailCount).map((item, i) => (
               <View
@@ -67,7 +67,7 @@ export function CartBar() {
           rather than each sizing independently off its own content. */}
       <View className="shadow-lg shadow-black/30">
         <View className="h-12 flex-row items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-[#000000]/90 pl-4 pr-2">
-          <Text className="text-sm font-medium text-white">View cart</Text>
+          <Text className="text-[13px] font-medium text-white">View basket</Text>
           <View className="h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: '#00a63e' }}>
             <AppIcon icon={ArrowRight02Icon} size={14} color="#FFFFFF" />
           </View>

@@ -59,6 +59,15 @@ export interface RiderOrder {
   // customer's own money on top of the fare, not part of what the delivery
   // itself earned — shown as its own line everywhere payout is broken down.
   tip?: number;
+  // Real orders.trip_id (backend/migrations/014_trips.sql) — set only when
+  // this order is one leg of a multi-store checkout. Multiple RiderOrders
+  // can share the same tripId: same customer/drop address, different
+  // store/pickup per leg. OrdersScreen groups siblings into one job card;
+  // OrderDetailScreen shows "stop X of N" and moves every sibling leg
+  // through pickup/delivery together (see that screen's own note) rather
+  // than treating them as N unrelated deliveries that happen to arrive at
+  // the same address.
+  tripId?: string;
 }
 
 const STORE_NAMES = ['Ganesh Kirana Store', 'Suvarna Supermarket', 'Kaup Fresh Mart', 'Udupi Daily Needs', 'Anantha Provision Store'];

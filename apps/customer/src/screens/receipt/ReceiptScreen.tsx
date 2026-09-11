@@ -27,7 +27,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Receipt'>;
 const LIQUID_GLASS_AVAILABLE = isLiquidGlassAvailable();
 
 export function ReceiptScreen({ navigation, route }: Props) {
-  const { orderId: realOrderId, orderNumber, amount, items, paymentMethodLabel, placedAt, avgPrepMinutes } = route.params;
+  const { orderId: realOrderId, orderNumber, amount, items, paymentMethodLabel, placedAt, avgPrepMinutes, isTrip } = route.params;
   // Real orders.order_number ("FLK-100042"), shown as-is — no "#" prefix,
   // matching exactly what the partner app and TrackOrderScreen display for
   // the same order. This used to be a locally-sliced fragment of the UUID
@@ -79,7 +79,7 @@ export function ReceiptScreen({ navigation, route }: Props) {
           else — glass only applies to this one button, not Track Order. */}
       <View className="flex-row gap-3 px-5 pb-safe-offset-4 pt-4">
         <Pressable
-          onPress={() => navigation.navigate('TrackOrder', { orderId: realOrderId, paymentMethodLabel })}
+          onPress={() => navigation.navigate('TrackOrder', { orderId: realOrderId, paymentMethodLabel, isTrip })}
           className="flex-1 items-center rounded-2xl bg-black py-4"
         >
           <Text className="text-lg font-semibold text-white">Track Order</Text>

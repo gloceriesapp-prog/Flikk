@@ -5,24 +5,23 @@
 // Every row here only renders when the product actually has the field set
 // (Product's own note in types.ts).
 //
-// One continuous white flow, not three separately-boxed rounded cards with
-// gray gaps between them — per an explicit ask to match a reference layout
-// where title/price/seller/similar-products all sit on the same plain
-// white sheet, divided by hairline rules instead of nested card chrome.
-// SellerDetailsCard and SimilarProductsRow still own their own
-// files/logic (collapse state, product grid) but no longer wrap
-// themselves in their own rounded-2xl/bg-white card — this file supplies
-// one shared white background and the dividers between sections.
+// Separately-boxed white rounded cards on a gray canvas — per an explicit
+// reference image (title/variants block, then each other section, as its
+// own white rounded card with visible gray gutter between them, not one
+// continuous white sheet with hairline dividers). SellerDetailsCard and
+// SimilarProductsRow still own their own files/logic (collapse state,
+// product grid); this file just wraps each in the shared white-card shell
+// rather than duplicating that chrome into both of them.
 //
-// Title (font-medium, not bold — deliberately quieter than an earlier
-// bold treatment), description (only when the product has one), pack-size
+// Title only (font-medium, not bold — deliberately quieter than an earlier
+// bold treatment) — no description line anymore, per an explicit ask to
+// keep every card's header to just the name, consistently. Pack-size
 // chips (sizeOptions — UI selection only, see Product's own note on why
 // it doesn't change the price below it), price — with a centered vertical
 // divider + "MRP ₹X" (strikethrough only on the number, not the "MRP"
 // label) when there's an originalPrice. replacementPolicy still exists on
 // Product but no longer renders anywhere in this sheet. The breadcrumb row
-// was removed per an earlier explicit ask; description came back per a
-// later one.
+// was removed per an earlier explicit ask.
 
 import { useState } from 'react';
 import { ChevronRightIcon, HeartIcon } from '@hugeicons/core-free-icons';
@@ -31,6 +30,7 @@ import { AppImage as Image } from '../AppImage';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
+import { ProductVariantOptions } from './ProductVariantOptions';
 import { SellerDetailsCard } from './SellerDetailsCard';
 import { SimilarProductsRow } from './SimilarProductsRow';
 import type { Product } from '../../screens/home/products/types';
@@ -43,21 +43,32 @@ interface Props {
   // too so any other caller that renders this directly (none currently do)
   // still works without passing the prop.
   relatedProducts?: Product[];
+  // Real variant selection, lifted to ProductDetailSheet.tsx's own Card so
+  // ProductDetailFooter (a sibling, not a child of this component) can
+  // read the same pick — see that file's own note. Both undefined when the
+  // product has 0-1 real variants; this component falls back to the plain
+  // single weight/price display in that case, same as before this prop
+  // existed.
+  selectedVariantId?: string;
+  onSelectVariant?: (id: string) => void;
 }
 
-export function ProductDetailInfo({ product, relatedProducts }: Props) {
-  const { name, localName, weight, price, originalPrice, description, storeName, sizeOptions, sellerDetails } = product;
+export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant }: Props) {
+  const { name, localName, weight, price, originalPrice, storeName, variants, sellerDetails } = product;
   const related = relatedProducts ?? product.relatedProducts;
-  const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
-  const [selectedSize, setSelectedSize] = useState(chips.includes(weight) ? weight : chips[0]);
+  const hasRealVariants = variants && variants.length > 1;
+  const selectedVariant = hasRealVariants ? variants!.find((v) => v.id === selectedVariantId) : undefined;
   // Local-only wishlist toggle on the title row itself — separate from the
   // header's own bookmark button (ProductDetailSheet.tsx), nothing persists
   // either yet.
   const [isLiked, setIsLiked] = useState(false);
 
+  const displayPrice = selectedVariant?.price ?? price;
+  const displayOriginalPrice = selectedVariant?.originalPrice ?? originalPrice;
+
   return (
-    <View className="bg-white">
-      <View className="gap-3 px-4 pb-4 pt-3">
+    <View className="gap-3 bg-[#F1F1EF] px-3 pb-4 pt-3">
+      <View className="gap-3 rounded-2xl bg-white px-4 py-4">
         <View className="flex-row items-start justify-between gap-3">
           <Text className="flex-1 text-xl font-medium leading-7 text-ink">
             {name}
@@ -73,36 +84,42 @@ export function ProductDetailInfo({ product, relatedProducts }: Props) {
           </Pressable>
         </View>
 
-        {description && <Text className="text-sm leading-5 text-ink/60">{description}</Text>}
+        {/* Real per-size card grid when there's genuinely more than one
+            variant to choose between; a single-size product just shows its
+            one weight pill + price below, unchanged from before this
+            component existed ("if there is no options" case). */}
+        {hasRealVariants ? (
+          <ProductVariantOptions
+            variants={variants!}
+            selectedId={selectedVariantId ?? variants![0]!.id}
+            onSelect={(id) => onSelectVariant?.(id)}
+          />
+        ) : (
+          <View className="flex-row flex-wrap gap-2">
+            <View className="rounded-xl border border-lime-deep bg-lime-soft px-4 py-2">
+              <Text className="text-xs font-medium text-lime-deep">{weight}</Text>
+            </View>
+          </View>
+        )}
 
-        <View className="flex-row flex-wrap gap-2">
-          {chips.map((size) => {
-            const isSelected = size === selectedSize;
-            return (
-              <Pressable
-                key={size}
-                onPress={() => setSelectedSize(size)}
-                className={`rounded-xl border px-4 py-2 ${isSelected ? 'border-lime-deep bg-lime-soft' : 'border-mist bg-white'}`}
-              >
-                <Text className={`text-xs font-medium ${isSelected ? 'text-lime-deep' : 'text-ink/70'}`}>{size}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View className="flex-row items-center gap-2">
-          <Text className="text-xl font-medium text-ink">₹{price}</Text>
-          {originalPrice && originalPrice > price && (
-            <>
-              <Text className="text-sm text-ink/40 line-through">₹{originalPrice}</Text>
-              <View className="rounded-full bg-lime-soft px-2 py-0.5">
-                <Text className="text-xs font-semibold text-lime-deep">
-                  {Math.round((1 - price / originalPrice) * 100)}%
-                </Text>
-              </View>
-            </>
-          )}
-        </View>
+        {/* Once a real variant selector is shown, its own cards already
+            carry each size's price/discount — repeating one summary price
+            below would just be the previous selection's price shown twice. */}
+        {!hasRealVariants && (
+          <View className="flex-row items-center gap-2">
+            <Text className="text-xl font-medium text-ink">₹{displayPrice}</Text>
+            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+              <>
+                <Text className="text-sm text-ink/40 line-through">₹{displayOriginalPrice}</Text>
+                <View className="rounded-full bg-lime-soft px-2 py-0.5">
+                  <Text className="text-xs font-semibold text-lime-deep">
+                    {Math.round((1 - displayPrice / displayOriginalPrice) * 100)}%
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        )}
 
         {storeName && (
           <>
@@ -120,17 +137,15 @@ export function ProductDetailInfo({ product, relatedProducts }: Props) {
       </View>
 
       {sellerDetails && (
-        <>
-          <View className="h-2 bg-mist/60" />
+        <View className="overflow-hidden rounded-2xl bg-white">
           <SellerDetailsCard sellerDetails={sellerDetails} />
-        </>
+        </View>
       )}
 
       {related && related.length > 0 && (
-        <>
-          <View className="h-2 bg-mist/60" />
+        <View className="overflow-hidden rounded-2xl bg-white">
           <SimilarProductsRow products={related} />
-        </>
+        </View>
       )}
     </View>
   );

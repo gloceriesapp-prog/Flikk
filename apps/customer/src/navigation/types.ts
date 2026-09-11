@@ -77,8 +77,15 @@ export type AppStackParamList = {
     paymentMethodLabel: string;
     placedAt: string;
     avgPrepMinutes: number | null;
+    // Set when orderId is actually a real trips.id (a multi-store
+    // checkout, CheckoutScreen's own isMultiStore branch) rather than a
+    // real orders.id — TrackOrderScreen reads this to know whether to
+    // call api/trips.ts's fetchTrip or api/orders.ts's fetchOrder.
+    // Undefined (not false) for every single-store order, same as before
+    // this field existed.
+    isTrip?: boolean;
   };
-  TrackOrder: { orderId: string; paymentMethodLabel: string };
+  TrackOrder: { orderId: string; paymentMethodLabel: string; isTrip?: boolean };
   Wishlist: undefined;
   ShoppingList: undefined;
 };

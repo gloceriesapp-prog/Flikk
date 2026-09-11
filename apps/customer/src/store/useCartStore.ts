@@ -1,9 +1,22 @@
 // In-memory cart for the current session only — no persistence (POST
-// /orders, called from CheckoutScreen, is what actually persists an order
-// once checkout completes; the cart itself is just the pre-order draft).
-// Every "ADD" button across the app (ProductCard, CategoryProductCard)
-// calls addItem with the same shape, so the cart never needs to know which
-// screen a product was added from.
+// /orders or POST /trips, called from CheckoutScreen, is what actually
+// persists an order once checkout completes; the cart itself is just the
+// pre-order draft). Every "ADD" button across the app (ProductCard,
+// CategoryProductCard) calls addItem with the same shape, so the cart
+// never needs to know which screen a product was added from.
+//
+// Multi-store cart — items are grouped BY STORE (selectCartGroupedByStore
+// below), not forced into a single store the way this used to work. Adding
+// a product from Store B while Store A's items are already in the cart no
+// longer conflicts or blocks; both sit in the cart as their own group.
+// This mirrors the real checkout split: a cart touching only one store
+// still checks out via POST /orders (backend/src/routes/orders.ts,
+// unchanged), a cart spanning more than one store checks out as one
+// "trip" via POST /trips (backend/src/routes/trips.ts) — one payment, one
+// delivery fee, one real order per store under the hood. See
+// backend/migrations/014_trips.sql's own note on why: a single rider does
+// one multi-stop pickup instead of the customer being blocked from buying
+// from two stores at once.
 
 import { create } from 'zustand';
 
@@ -18,11 +31,12 @@ export interface CartItem {
   // order_items.unit_price_at_order per CLAUDE.md.
   originalPrice?: number;
   // Real products.store_id (Product.storeId, home/products/types.ts) —
-  // what enforces "single-store-per-order" at add-to-cart time below, and
-  // what POST /orders reads to know which store this order belongs to.
+  // what groups this item into its own store's line at checkout, and what
+  // POST /orders or POST /trips's own per-leg grouping reads to know which
+  // store each item belongs to.
   storeId: string;
-  // Real stores.name (Product.storeName) — CheckoutScreen's own order
-  // summary card shows this so a customer sees which real store they're
+  // Real stores.name (Product.storeName) — CheckoutScreen's own per-store
+  // group header shows this so a customer sees which real store they're
   // paying, not just a delivery address with no seller context.
   storeName?: string;
   // Real products.image_url (Product.imageUrl) — what CartItemRow/CartBar
@@ -36,73 +50,37 @@ export interface CartItem {
 // not the caller.
 export type CartProduct = Omit<CartItem, 'quantity'>;
 
-// What addItem reports back so a caller can react — this store can't pop a
-// confirm dialog itself (a synchronous zustand action, no way to await a
-// tap), so a cross-store add is reported, not auto-resolved. Every ADD
-// button's own onPress (see the 3 real call sites) checks this and shows
-// an Alert "replace your cart?" before ever calling replaceCartWithItem.
-export type AddItemResult = 'added' | 'store_conflict';
-
 interface CartState {
   items: CartItem[];
-  // Real store this cart currently belongs to — null once empty. Every add
-  // is checked against it (see addItem's own note).
-  storeId: string | null;
-  addItem: (product: CartProduct) => AddItemResult;
-  // Only ever called after a caller's own confirm dialog on a
-  // 'store_conflict' result — clears whatever was in the cart and starts a
-  // fresh one with just this product. Never called directly from a bare
-  // ADD button tap.
-  replaceCartWithItem: (product: CartProduct) => void;
+  addItem: (product: CartProduct) => void;
   incrementItem: (id: string) => void;
   decrementItem: (id: string) => void;
   removeItem: (id: string) => void;
   clear: () => void;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
+export const useCartStore = create<CartState>((set) => ({
   items: [],
-  storeId: null,
 
   addItem: (product) => {
     // A product with no real store id (any feed that hasn't been wired to
-    // the real backend) can never be part of a real order. Refusing the
-    // add outright, rather than letting '' through as if it were a real
-    // store, keeps it from ever reaching the store-conflict check below
-    // and corrupting a genuinely real cart.
-    if (!product.storeId) return 'store_conflict';
-
-    const state = get();
-    // Single-store-per-order (CLAUDE.md's own scope note) — a product
-    // from a different store than what's already in the cart can't just
-    // be added (POST /orders would reject the mix anyway, validateCart's
-    // own MULTI_STORE_CART check) and doesn't silently replace the cart
-    // either anymore — that silently discarded whatever was already
-    // there the instant a customer browsed a cross-store row like Home's
-    // "Today's Stock" (real bug: adding Brinjal from Store A then Onion
-    // from Store B looked like "I can only ever add one item"). The
-    // caller shows a real confirm dialog instead and calls
-    // replaceCartWithItem only if the customer actually agrees to start
-    // over with a different store.
-    if (state.storeId && state.storeId !== product.storeId) {
-      return 'store_conflict';
-    }
+    // the real backend) can never be part of a real order — refusing the
+    // add outright keeps it from ever reaching checkout, same guard this
+    // store has always had, unrelated to the multi-store change above.
+    if (!product.storeId) return;
 
     set((state) => {
       const existing = state.items.find((item) => item.id === product.id);
       if (existing) {
         return {
           items: state.items.map((item) =>
-            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
           ),
         };
       }
-      return { items: [...state.items, { ...product, quantity: 1 }], storeId: product.storeId };
+      return { items: [...state.items, { ...product, quantity: 1 }] };
     });
-    return 'added';
   },
-
-  replaceCartWithItem: (product) => set({ items: [{ ...product, quantity: 1 }], storeId: product.storeId }),
 
   incrementItem: (id) =>
     set((state) => ({
@@ -110,20 +88,18 @@ export const useCartStore = create<CartState>((set, get) => ({
     })),
 
   decrementItem: (id) =>
-    set((state) => {
-      const items = state.items
+    set((state) => ({
+      items: state.items
         .map((item) => (item.id === id ? { ...item, quantity: item.quantity - 1 } : item))
-        .filter((item) => item.quantity > 0);
-      return { items, storeId: items.length > 0 ? state.storeId : null };
-    }),
+        .filter((item) => item.quantity > 0),
+    })),
 
   removeItem: (id) =>
-    set((state) => {
-      const items = state.items.filter((item) => item.id !== id);
-      return { items, storeId: items.length > 0 ? state.storeId : null };
-    }),
+    set((state) => ({
+      items: state.items.filter((item) => item.id !== id),
+    })),
 
-  clear: () => set({ items: [], storeId: null }),
+  clear: () => set({ items: [] }),
 }));
 
 export function selectCartTotalQuantity(state: CartState): number {
@@ -134,9 +110,43 @@ export function selectCartTotalPrice(state: CartState): number {
   return state.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 }
 
+export interface CartStoreGroup {
+  storeId: string;
+  storeName?: string;
+  items: CartItem[];
+  itemTotal: number;
+}
+
+// Groups the flat item list into one section per store — CartScreen's own
+// "From Store 1 / From Store 2" mini-sections read straight off this,
+// instead of the cart pretending every item belongs to one store.
+export function selectCartGroupedByStore(state: CartState): CartStoreGroup[] {
+  const groups = new Map<string, CartStoreGroup>();
+  for (const item of state.items) {
+    let group = groups.get(item.storeId);
+    if (!group) {
+      group = { storeId: item.storeId, storeName: item.storeName, items: [], itemTotal: 0 };
+      groups.set(item.storeId, group);
+    }
+    group.items.push(item);
+    group.itemTotal += item.price * item.quantity;
+  }
+  return [...groups.values()];
+}
+
+// Whether this cart checks out via POST /orders (1 store) or POST /trips
+// (>1 store) — CheckoutScreen's own call-site decision, kept here so it
+// can't drift out of sync with how the cart actually groups items.
+export function selectCartStoreCount(state: CartState): number {
+  return new Set(state.items.map((item) => item.storeId)).size;
+}
+
 // Flat placeholder fees — no pricing-rules backend exists yet to compute
 // real ones. Shared here (not duplicated per-screen) so CartScreen and
-// CheckoutScreen can't quote two different totals for the same cart.
+// CheckoutScreen can't quote two different totals for the same cart. Only
+// ONE of these is ever charged per checkout regardless of how many stores
+// are in the cart — same "one delivery fee per trip, not per store" rule
+// backend/src/lib/trips.ts's own calcTripTotal enforces server-side.
 export const CART_DELIVERY_FEE = 25;
 export const CART_HANDLING_FEE = 3;
 

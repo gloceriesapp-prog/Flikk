@@ -51,10 +51,10 @@ export function MostBoughtSection() {
   return (
     <View className="pt-6">
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 px-5">
-        <LocalShopCard />
+        {/* <LocalShopCard /> */}
 
         {mostBought.length > 0 && (
-          <PromoListCard title="Most Bought Near You" accentColor="#5A9A2E" products={mostBought} onSeeAll={seeAll} />
+          <PromoListCard title="Most Bought Near You" accentColor="#2e7002" products={mostBought} onSeeAll={seeAll} />
         )}
 
         {bestDeals.length > 0 && (

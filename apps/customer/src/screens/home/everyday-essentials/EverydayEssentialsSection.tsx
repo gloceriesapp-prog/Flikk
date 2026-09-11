@@ -30,7 +30,7 @@ export function EverydayEssentialsSection() {
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-5">
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} widthClassName="w-36" showDiscountBadge />
+          <ProductCard key={product.id} product={product} widthClassName="w-28" showDiscountBadge />
         ))}
       </ScrollView>
     </View>

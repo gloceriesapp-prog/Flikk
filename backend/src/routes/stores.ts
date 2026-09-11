@@ -208,15 +208,28 @@ storesRouter.get('/products/search', async (req, res, next) => {
   }
 });
 
-// "You may also like" — ProductDetailSheet's own SimilarProductsRow.
-// Same category, active store, not out of stock, excluding the product the
-// sheet is already open on. category/exclude come from the client's own
-// already-fetched Product (it just came from one of the feeds above, which
-// already carry category), so this doesn't need a product lookup first.
+// "You may also like" — ProductDetailSheet's own SimilarProductsRow (and
+// the sheet's own peek-pager, which needs at least one result to show the
+// swipeable "next/prev card" UI at all). Same category, active store, not
+// out of stock, excluding the product the sheet is already open on.
+// category/exclude come from the client's own already-fetched Product (it
+// just came from one of the feeds above, which already carry category), so
+// this doesn't need a product lookup first.
+//
+// storeId (optional) enables a fallback: real catalogs are thin enough
+// right now that "same category, any store" often comes back empty, which
+// silently disabled the whole peek-pager for that product (not a bug — the
+// code always required pages.length > 1, there was just nothing to fill it
+// with). Falling back to "anything else this SAME store sells" instead of
+// giving up is honest (it's a real product from the exact store the
+// customer is already shopping) and, since a store selling a single
+// product is essentially never the case, means the peek-pager has
+// something to show for virtually every real product.
 storesRouter.get('/products/similar', async (req, res, next) => {
   try {
     const category = req.query.category as string | undefined;
     const excludeId = req.query.exclude as string | undefined;
+    const storeId = req.query.storeId as string | undefined;
     if (!category) throw new AppError(400, 'MISSING_CATEGORY', 'category query param is required.');
 
     let query = supabase
@@ -232,7 +245,31 @@ storesRouter.get('/products/similar', async (req, res, next) => {
 
     const { data, error } = await query;
     if (error) throw error;
-    res.json(data);
+
+    if (data && data.length > 0) {
+      res.json(data);
+      return;
+    }
+
+    if (!storeId) {
+      res.json([]);
+      return;
+    }
+
+    let fallbackQuery = supabase
+      .from('products')
+      .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .eq('approval_status', 'approved')
+      .eq('stores.is_active', true)
+      .eq('store_id', storeId)
+      .neq('stock_status', 'out_of_stock')
+      .order('name')
+      .limit(4);
+    if (excludeId) fallbackQuery = fallbackQuery.neq('id', excludeId);
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    if (fallbackError) throw fallbackError;
+    res.json(fallbackData);
   } catch (err) {
     next(err);
   }

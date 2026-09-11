@@ -44,3 +44,24 @@ export function validateCart(items: CartItem[], products: CartProduct[], storeId
     );
   }
 }
+
+// Same existence/stock checks as validateCart, minus the single-store rule
+// — POST /trips (routes/trips.ts, lib/trips.ts) is the one caller allowed
+// to accept a cart spanning more than one store, since it fans the items
+// out into one real order per store rather than pretending they're all one
+// order. Sharing this instead of duplicating the two checks is what keeps
+// "a product that no longer exists" / "an out-of-stock product" caught the
+// same way on both the single-store and multi-store checkout paths.
+export function validateMultiStoreCart(items: CartItem[], products: CartProduct[]): void {
+  if (products.length !== items.length) {
+    throw new CartValidationError('PRODUCT_NOT_FOUND', 'One or more items no longer exist.');
+  }
+
+  const outOfStock = products.filter((p) => !p.is_in_stock);
+  if (outOfStock.length > 0) {
+    throw new CartValidationError(
+      'STOCK_UNAVAILABLE',
+      `Out of stock: ${outOfStock.map((p) => p.id).join(', ')}`,
+    );
+  }
+}

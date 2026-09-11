@@ -14,6 +14,15 @@
 // Tapping a row opens ProductDetailSheet, same as every other product row
 // in the app — one shared `openProductId` (not one state hook per row)
 // since at most one sheet needs to be open from this card at a time.
+//
+// Header: title + a reserved image slot on the right, per an explicit
+// reference image — no real per-card illustration exists yet ("I'll add
+// image later"), so that slot is empty for now (a plain sized box, not a
+// placeholder graphic) rather than blocking this layout on having one.
+//
+// Footer: plain centered "See all >>" text spanning the full width, sat
+// directly on the colored frame — no separate circular arrow button
+// anymore, per the same reference image.
 
 import { useState } from 'react';
 import { ArrowRight02Icon } from '@hugeicons/core-free-icons';
@@ -40,13 +49,19 @@ export function PromoListCard({ title, accentColor, products, onSeeAll }: Props)
 
   return (
     <View
-      style={{ width: 288, height: 300, borderRadius: CARD_RADIUS, backgroundColor: `${accentColor}30`, padding: 8 }}
+      style={{ width: 288, height: 356, borderRadius: CARD_RADIUS, backgroundColor: `${accentColor}30`, padding: 8 }}
       className="shadow-lg shadow-black/10"
     >
-      <View style={{ borderRadius: PANEL_RADIUS }} className="flex-1 gap-3 bg-white px-4 py-4">
-        <Text className="text-[15px] font-medium leading-6 tracking-tight text-ink" numberOfLines={2}>
-          {title}
-        </Text>
+      <View style={{ borderRadius: PANEL_RADIUS }} className="flex-1 bg-white px-4 py-5">
+        <View className="flex-row items-center justify-between gap-1 border-b border-mist pb-2">
+          <Text className="flex-1 text-[17px] font-semibold leading-6 tracking-tight text-ink" numberOfLines={2}>
+            {title}
+          </Text>
+          {/* Reserved — a real per-card illustration goes here later.
+              Zero footprint until then, so its absence doesn't push the
+              border/rows below down with dead space. */}
+          <View className="h-0 w-0" />
+        </View>
 
         <View>
           {rows.map((product, index) => (
@@ -57,13 +72,11 @@ export function PromoListCard({ title, accentColor, products, onSeeAll }: Props)
         </View>
       </View>
 
-      <Pressable onPress={onSeeAll} className="flex-row items-center justify-between px-2 py-3">
-        <Text className="text-[13px] font-medium" style={{ color: accentColor }}>
+      <Pressable onPress={onSeeAll} className="flex-row items-center justify-center gap-1.5 px-2 py-3.5">
+        <Text className="text-[14px] font-semibold" style={{ color: accentColor }}>
           See all
         </Text>
-        <View className="h-8 w-8 items-center justify-center rounded-full" style={{ backgroundColor: accentColor }}>
-          <AppIcon icon={ArrowRight02Icon} size={15} color="#FFFFFF" strokeWidth={2} />
-        </View>
+        <AppIcon icon={ArrowRight02Icon} size={14} color={accentColor} strokeWidth={2.5} />
       </Pressable>
 
       {openProduct && (

@@ -22,7 +22,7 @@ import { useCartStore } from '../../../../store/useCartStore';
 import { addToCart } from '../../../../store/addToCart';
 import type { Product } from '../../products/types';
 
-export const ROW_HEIGHT = 46;
+export const ROW_HEIGHT = 56;
 
 interface Props {
   product: Product;
@@ -39,24 +39,24 @@ export function PromoListCardRow({ product, accentColor, onPress }: Props) {
 
   return (
     <Pressable onPress={onPress} style={{ height: ROW_HEIGHT }} className="flex-row items-center gap-2.5">
-      <View className="h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-white">
+      <View className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-white">
         <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
       </View>
 
-      <View className="min-w-0 flex-1">
-        <Text className="text-[12px] font-semibold leading-3.5 text-ink" numberOfLines={1}>
+      <View className="min-w-0 flex-1 gap-0.5">
+        <Text className="text-[14px] font-medium leading-4 text-ink" numberOfLines={1}>
           {name}
         </Text>
-        <Text className="text-[10px] text-ink/45">{weight}</Text>
+        <Text className="text-[12px] text-ink/45">{weight}</Text>
       </View>
 
       {quantity === 0 ? (
         <Pressable
           onPress={() => addToCart({ id, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })}
-          className="shrink-0 rounded-full border border-[#155dfc] bg-white px-2.5 py-1"
+          className="shrink-0 rounded-lg border border-[#155dfc] bg-white px-2.5 py-1"
           
         >
-          <Text className="text-[10px] font-semibold text-[#155dfc]">
+          <Text className="text-[12px] font-semibold text-[#155dfc]">
             ADD
           </Text>
         </Pressable>
@@ -72,10 +72,10 @@ export function PromoListCardRow({ product, accentColor, onPress }: Props) {
         </View>
       )}
 
-      <View className="w-11 shrink-0 items-end">
-        <Text className="text-[12px] font-bold text-ink">₹{price}</Text>
+      <View className="w-12 shrink-0 items-end">
+        <Text className="text-[14px] font-semibold text-ink">₹{price}</Text>
         {originalPrice && originalPrice > price && (
-          <Text className="text-[9px] text-ink/35 line-through">₹{originalPrice}</Text>
+          <Text className="text-[10px] text-ink/35 line-through font-medium">₹{originalPrice}</Text>
         )}
       </View>
     </Pressable>

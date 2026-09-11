@@ -3,10 +3,10 @@
 // to know every store selling one, not just their own nearest store's
 // catalog (unlike useDealsProducts.ts, which is deliberately scoped to one
 // store since a promo card only ever means one store's own deals).
-// useCartStore already has a real cross-store conflict flow
-// (addItem returning 'store_conflict' + replaceCartWithItem) — tapping a
+// useCartStore now genuinely supports items from more than one store
+// (grouped by store at checkout, addToCart.ts's own note) — tapping a
 // searched product from a different store than what's already in the cart
-// is a case this app already handles correctly, not new ground.
+// just adds it, not new ground to handle here.
 //
 // Debounced by hand (setTimeout, no extra dependency) rather than firing a
 // request on every keystroke — a customer typing "tomato" would otherwise

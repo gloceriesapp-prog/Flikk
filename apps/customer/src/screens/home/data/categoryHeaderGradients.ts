@@ -25,14 +25,12 @@ function gradient(colors: readonly [string, string, string, string]): CategoryHe
 }
 
 const GRADIENT_BY_TAB_NAME: Record<string, CategoryHeaderGradient> = {
-  // Deep emerald-to-near-black — replaces an earlier yellow attempt.
-  // Ties back to the brand's own lime accent (a dark, desaturated version
-  // of the same hue family) rather than an unrelated color, which is what
-  // actually reads as premium/intentional instead of just "a different
-  // bright color than competitors." Kept noticeably darker/more
-  // desaturated than 'fresh' below (a brighter, more saturated green) so
-  // the two don't collide.
-  all: gradient(['#050B06', '#0E1F12', '#173A1E', '#215A29']),
+  // Deep red-to-orange sweep — per an explicit ask, overriding CLAUDE.md's
+  // own "not orange" anti-clone rule (flagged and confirmed before this
+  // change landed). Same dark-top -> richer-saturated-bottom shape every
+  // other gradient here uses, just this hue family instead of the earlier
+  // emerald.
+  all: gradient(['#2B0A02', '#5C1A05', '#A8390D', '#E85D1F']),
   groceries: gradient(['#1F1409', '#4A2E12', '#7A4A1E', '#A8732F']),
   fresh: gradient(['#0C2410', '#194A1E', '#2E7A2E', '#4FA83B']),
   'meat & fish': gradient(['#04141F', '#0A2E42', '#134F63', '#1C7A8C']),

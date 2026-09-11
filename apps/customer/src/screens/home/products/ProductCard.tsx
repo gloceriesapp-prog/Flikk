@@ -44,7 +44,7 @@ export function ProductCard({ product, widthClassName, showDiscountBadge }: Prop
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const needsSimilar = !product.relatedProducts;
-  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id);
+  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId);
   useEffect(() => {
     if (similar.data) prefetchImages(similar.data.map((p) => p.imageUrl));
   }, [similar.data]);

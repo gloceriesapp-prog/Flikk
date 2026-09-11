@@ -1,0 +1,139 @@
+// Multi-store checkout — a cart spanning more than one store becomes one
+// trip: one payment, one delivery fee, one real order per store (own
+// store_id/order_items/status each), linked by a shared trip_id. See
+// migrations/014_trips.sql's own note on why this exists (a single rider
+// does one multi-stop pickup instead of the customer being blocked from
+// buying from two stores at once).
+//
+// A single-store cart should keep using POST /orders (routes/orders.ts,
+// unaffected by this file) — this route explicitly rejects a cart that
+// only touches one store, so there's exactly one code path for that
+// common case, not two that could quietly drift apart.
+
+import { Router } from 'express';
+import { supabase } from '../db/supabase.js';
+import { AppError } from '../lib/errors.js';
+import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
+import { CartValidationError, validateMultiStoreCart } from '../lib/orderValidation.js';
+import { calcTripTotal, groupCartByStore } from '../lib/trips.js';
+import { resolveAddressId, type AddressInput } from '../lib/resolveAddress.js';
+import { sendPushNotification } from '../lib/pushNotifications.js';
+
+export const tripsRouter = Router();
+
+// Same values POST /orders uses — kept in sync manually for now (both
+// files import from lib/pricing.ts for the actual math; only these two
+// input constants are duplicated). Move to a shared config module if a
+// third caller ever needs them.
+const COMMISSION_RATE = 0.15;
+const DELIVERY_FEE = 25;
+
+interface CreateTripBody extends AddressInput {
+  items: { product_id: string; quantity: number }[];
+}
+
+tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
+  try {
+    const body = req.body as CreateTripBody;
+    if ((!body.address_id && !body.address?.line1) || !body.items?.length) {
+      throw new AppError(400, 'INVALID_TRIP', 'An address and items are required.');
+    }
+
+    const addressId = await resolveAddressId(req.user!.id, body);
+
+    const productIds = body.items.map((i) => i.product_id);
+    const { data: products, error: productErr } = await supabase
+      .from('products')
+      .select('id, store_id, price, is_in_stock')
+      .in('id', productIds);
+    if (productErr) throw productErr;
+
+    try {
+      validateMultiStoreCart(body.items, products ?? []);
+    } catch (validationErr) {
+      if (validationErr instanceof CartValidationError) {
+        throw new AppError(400, validationErr.code, validationErr.message);
+      }
+      throw validationErr;
+    }
+
+    const legs = groupCartByStore(body.items, products ?? [], COMMISSION_RATE);
+    if (legs.length <= 1) {
+      // Not an error a real customer can hit through the app (the cart
+      // itself decides which endpoint to call based on how many distinct
+      // stores are in it) — this only fires against a hand-crafted
+      // request, so a plain 400 is enough; no need to silently fall
+      // through to single-store behavior and blur the two paths.
+      throw new AppError(400, 'SINGLE_STORE_CART', 'This cart only touches one store — use POST /orders instead.');
+    }
+
+    const { itemTotal, total } = calcTripTotal(legs, DELIVERY_FEE);
+
+    const { data: trip, error: rpcErr } = await supabase.rpc('create_trip_orders', {
+      p_customer_id: req.user!.id,
+      p_address_id: addressId,
+      p_delivery_fee: DELIVERY_FEE,
+      p_item_total: itemTotal,
+      p_total: total,
+      p_legs: legs.map((leg) => ({
+        store_id: leg.storeId,
+        item_total: leg.itemTotal,
+        commission_amount: leg.commissionAmount,
+        items: leg.items,
+      })),
+    });
+    if (rpcErr) throw new AppError(500, 'TRIP_CREATE_FAILED', rpcErr.message);
+
+    // Best-effort "new order" push to every store involved — same alert
+    // POST /orders already sends on a single-store order, just fanned out
+    // per leg. Each store owner only ever hears about their own leg; they
+    // have no idea (and don't need to) that this was part of a bigger trip.
+    for (const leg of legs) {
+      const { data: store } = await supabase
+        .from('stores')
+        .select('users!owner_user_id(expo_push_token)')
+        .eq('id', leg.storeId)
+        .single();
+      void sendPushNotification(
+        store?.users?.[0]?.expo_push_token,
+        'New order received',
+        `New order — ₹${leg.itemTotal} — tap to view.`,
+      );
+    }
+
+    // Razorpay payment intent initiated by the caller once the trip id is
+    // known — same separation POST /orders already documents (a second
+    // external-service failure mode kept out of this handler).
+    res.status(201).json(trip);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /trips/:id — the combined view a customer's tracker/receipt needs:
+// the trip's own one payment/delivery-fee total, plus every child order
+// (each with its own real status/order_items), oldest-created first (the
+// order they were placed in, which is also pickup order — legs are
+// created in the same order the cart grouped them in).
+tripsRouter.get('/:id', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
+  try {
+    const { data: trip, error: tripErr } = await supabase.from('trips').select('*').eq('id', req.params.id).single();
+    if (tripErr || !trip) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found.');
+    // Real RLS (trips_customer_read, 014_trips.sql) already scopes this to
+    // the caller's own trip via a user-scoped client; this explicit check
+    // is defense in depth for the service-role fetch above, same reasoning
+    // orders.ts's own GET /:id already documents.
+    if (trip.customer_id !== req.user!.id) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found.');
+
+    const { data: orders, error: ordersErr } = await supabase
+      .from('orders')
+      .select('*, order_items(*, products(name, image_url)), stores(name, avg_prep_minutes)')
+      .eq('trip_id', trip.id)
+      .order('placed_at', { ascending: true });
+    if (ordersErr) throw ordersErr;
+
+    res.json({ ...trip, orders: orders ?? [] });
+  } catch (err) {
+    next(err);
+  }
+});

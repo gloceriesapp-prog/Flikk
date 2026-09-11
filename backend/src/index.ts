@@ -10,6 +10,7 @@ import { categorySectionsRouter } from './routes/categorySections.js';
 import { homeTabsRouter } from './routes/homeTabs.js';
 import { storesRouter } from './routes/stores.js';
 import { ordersRouter } from './routes/orders.js';
+import { tripsRouter } from './routes/trips.js';
 import { addressesRouter } from './routes/addresses.js';
 import { partnerRouter } from './routes/partner.js';
 import { riderRouter } from './routes/rider.js';
@@ -66,6 +67,7 @@ app.use('/category-sections', shortCache(), categorySectionsRouter);
 app.use('/home-tabs', shortCache(), homeTabsRouter);
 app.use('/stores', shortCache(), storesRouter);
 app.use('/orders', ordersRouter);
+app.use('/trips', tripsRouter);
 app.use('/addresses', addressesRouter);
 // Mounted before partnerRouter — its two routes (/store-application,
 // /store-photo) must be reachable without partnerRouter's router-wide

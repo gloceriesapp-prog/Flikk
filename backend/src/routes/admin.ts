@@ -158,6 +158,42 @@ adminRouter.patch('/orders/:id/assign-rider', async (req, res, next) => {
   }
 });
 
+// Trip-wide rider assignment — one manual action assigns every unassigned
+// leg of a multi-store trip (routes/trips.ts) to the same rider, instead
+// of the founder repeating the single-order assignment above once per
+// store. Deliberately does NOT require every leg to already be 'packed'
+// (unlike the single-order endpoint): the rider is assigned to the whole
+// multi-stop trip upfront and travels to each store in turn, picking up
+// whichever legs are ready by the time they arrive — apps/rider's own
+// screen shows the trip as one job with N pickup stops + 1 drop, in the
+// order the legs were created (routes/trips.ts's own GET /:id note).
+adminRouter.patch('/trips/:id/assign-rider', async (req, res, next) => {
+  try {
+    const { rider_id } = req.body as { rider_id: string };
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ rider_id })
+      .eq('trip_id', req.params.id)
+      .is('rider_id', null)
+      .select();
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new AppError(409, 'NOT_ASSIGNABLE', 'Trip has no unassigned legs.');
+    }
+
+    const { data: rider } = await supabase.from('users').select('expo_push_token').eq('id', rider_id).single();
+    void sendPushNotification(
+      rider?.expo_push_token,
+      'New delivery assigned',
+      `A ${data.length}-stop pickup is ready for you.`,
+    );
+
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 adminRouter.get('/payouts', async (_req, res, next) => {
   try {
     const { data, error } = await supabase.from('payouts').select('*').order('week_start', { ascending: false });

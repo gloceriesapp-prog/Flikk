@@ -26,9 +26,15 @@ import { Pressable, ScrollView, Text, View, type LayoutChangeEvent } from 'react
 import { AppImage as Image } from '../../../components/AppImage';
 import { SEASONAL_TILES } from './data';
 
-const PANEL_BG = '#F2ECF8';
+// Exported — AllTabSections.tsx wraps this section AND FestivalPicksSection
+// in one shared panel using this same color, per an explicit ask to treat
+// the seasonal banner/tiles and the festival product row as one continuous
+// section rather than two separately-backed blocks. This file no longer
+// owns the panel's background/rounding itself (see the root View below) —
+// the wrapper in AllTabSections.tsx does, since it now spans both sections.
+export const PANEL_BG = '#FBE9DD';
 const TILE_GAP = 12; // matches contentContainerClassName's own gap-3
-const VISIBLE_TILES = 3.5; // 3 full tiles + half of the 4th, in view at once
+const VISIBLE_TILES = 3.3; // bigger tiles — 3 full + a peek of the 4th, scroll for the rest
 
 // Placeholder — real seasonal banner art (swapped per festival, same as
 // SEASONAL_TILES below) once that exists; this is just a real asset to
@@ -58,7 +64,7 @@ export function SeasonalSection() {
     // instead of depending on inherited stretch is what actually
     // guarantees this panel's own background reaches the real screen
     // edge regardless of that ancestor's own stickyHeaderIndices setup.
-    <View className="w-full gap-4 rounded-b-[32px] px-5 pb-6 pt-6" style={{ backgroundColor: PANEL_BG }}>
+    <View className="w-full gap-4 px-5 pb-6 pt-6">
       {/* Replaces the old "Ganesh Chaturthi Specials" text heading, per an
           explicit ask — short (h-20), and no side inset now (mx-0, not the
           first pass's mx-10): the grid row below has no horizontal margin

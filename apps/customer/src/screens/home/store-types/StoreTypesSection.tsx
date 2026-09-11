@@ -19,7 +19,7 @@
 
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { HeartIcon } from '@hugeicons/core-free-icons';
+import { Bookmark01Icon, HeartIcon } from '@hugeicons/core-free-icons';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -35,13 +35,13 @@ export function StoreTypesSection() {
 
   return (
     <View className="pt-6">
-      <Text className="mb-4 px-5 text-lg font-bold text-ink">Shop by Store Type</Text>
+      <Text className="mb-4 px-5 text-[17px] font-semibold text-ink">Shop by Store Type</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-5">
         <Pressable className="flex-row items-center gap-2 rounded-full bg-coral/10 px-4 py-2.5">
-          <AppIcon icon={HeartIcon} size={18} color={colors.coral} fill={colors.coral} />
+          <AppIcon icon={Bookmark01Icon} size={18} color={colors.coral} fill={colors.coral} />
           <Text className="text-[13px] font-semibold text-ink" numberOfLines={1}>
-            Your Favorites
+            Wishlist
           </Text>
         </Pressable>
 

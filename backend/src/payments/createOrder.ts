@@ -13,24 +13,26 @@ import type { OrderIdBody } from './types.js';
 
 export async function createOrder(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
-    const { orderId } = req.body as OrderIdBody;
-    if (!orderId) {
-      throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'orderId is required.');
+    const { orderId, tripId } = req.body as OrderIdBody;
+    if (!orderId && !tripId) {
+      throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'orderId or tripId is required.');
     }
 
-    const { data: order, error } = await supabase
-      .from('orders')
-      .select('id, customer_id, total')
-      .eq('id', orderId)
-      .single();
-    if (error || !order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
-    if (order.customer_id !== req.user!.id) throw new AppError(403, 'FORBIDDEN', 'Not your order.');
+    // Same "amount is never trusted from the client" rule either way —
+    // just reading it from `trips.total` (the one combined amount for a
+    // multi-store checkout, backend/src/lib/trips.ts's own calcTripTotal)
+    // instead of a single order's own total.
+    const table = tripId ? 'trips' : 'orders';
+    const id = (tripId ?? orderId)!;
+    const { data: record, error } = await supabase.from(table).select('id, customer_id, total').eq('id', id).single();
+    if (error || !record) throw new AppError(404, tripId ? 'TRIP_NOT_FOUND' : 'ORDER_NOT_FOUND', `${tripId ? 'Trip' : 'Order'} not found.`);
+    if (record.customer_id !== req.user!.id) throw new AppError(403, 'FORBIDDEN', tripId ? 'Not your trip.' : 'Not your order.');
 
     const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(order.total * 100), // paise — trust the order's own stored total, not the client-supplied amount
+      amount: Math.round(record.total * 100), // paise — trust the stored total, not the client-supplied amount
       currency: 'INR',
-      receipt: order.id,
-      notes: { flikk_order_id: order.id },
+      receipt: record.id,
+      notes: tripId ? { flikk_trip_id: record.id } : { flikk_order_id: record.id },
     });
 
     res.status(201).json({

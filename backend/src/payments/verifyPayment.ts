@@ -30,19 +30,17 @@ function verifyCheckoutSignature(razorpayOrderId: string, razorpayPaymentId: str
 
 export async function verifyPayment(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
-    const { orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body as Partial<VerifyPaymentBody>;
-    if (!orderId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'orderId, razorpay_order_id, razorpay_payment_id, and razorpay_signature are all required.');
+    const { orderId, tripId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body as Partial<VerifyPaymentBody>;
+    if ((!orderId && !tripId) || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'orderId or tripId, razorpay_order_id, razorpay_payment_id, and razorpay_signature are all required.');
     }
 
-    const { data: order, error } = await supabase
-      .from('orders')
-      .select('id, customer_id, razorpay_payment_id')
-      .eq('id', orderId)
-      .single();
-    if (error || !order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
-    if (order.customer_id !== req.user!.id) throw new AppError(403, 'FORBIDDEN', 'Not your order.');
-    if (order.razorpay_payment_id) {
+    const table = tripId ? 'trips' : 'orders';
+    const id = (tripId ?? orderId)!;
+    const { data: record, error } = await supabase.from(table).select('id, customer_id, razorpay_payment_id').eq('id', id).single();
+    if (error || !record) throw new AppError(404, tripId ? 'TRIP_NOT_FOUND' : 'ORDER_NOT_FOUND', `${tripId ? 'Trip' : 'Order'} not found.`);
+    if (record.customer_id !== req.user!.id) throw new AppError(403, 'FORBIDDEN', tripId ? 'Not your trip.' : 'Not your order.');
+    if (record.razorpay_payment_id) {
       // Already paid (the webhook could theoretically have landed first)
       // — idempotent no-op, not an error.
       res.status(200).json({ ok: true });
@@ -53,8 +51,20 @@ export async function verifyPayment(req: AuthedRequest, res: Response, next: Nex
       throw new AppError(401, 'INVALID_SIGNATURE', 'Payment signature verification failed.');
     }
 
-    const { error: updateError } = await supabase.from('orders').update({ razorpay_payment_id }).eq('id', orderId);
+    const { error: updateError } = await supabase.from(table).update({ razorpay_payment_id }).eq('id', id);
     if (updateError) throw updateError;
+
+    // A trip's own child orders need the same razorpay_payment_id written
+    // onto each of them too — every existing reader (Purchase screen,
+    // TrackOrderScreen, admin/partner order views, the store-owner's own
+    // GET /orders/:id) checks a real `orders` row's own payment_id to know
+    // "is this paid", none of them know trips exist. Cascading here is
+    // what keeps that true without teaching every one of those readers
+    // about trips.
+    if (tripId) {
+      const { error: cascadeError } = await supabase.from('orders').update({ razorpay_payment_id }).eq('trip_id', tripId);
+      if (cascadeError) throw cascadeError;
+    }
 
     res.status(200).json({ ok: true });
   } catch (err) {

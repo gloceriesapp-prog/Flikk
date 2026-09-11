@@ -23,13 +23,11 @@ export interface SeasonalTile {
 
 const PLACEHOLDER_TILE_IMAGE = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/festival-images/banana.png';
 
-// 3 columns x 2 rows (SeasonalSection.tsx's own grid) — 6 keeps every row
-// full; a count that isn't a multiple of 3 leaves a gap in the last row.
+// Capped at 4, per an explicit ask — SeasonalSection.tsx sizes VISIBLE_TILES
+// to match so all 4 fit in the row with no peek-cut trailing tile.
 export const SEASONAL_TILES: SeasonalTile[] = [
   { id: 'modak-prasad', title: 'Modak & Prasad', imageUrl: PLACEHOLDER_TILE_IMAGE },
   { id: 'pooja-essentials', title: 'Pooja Essentials', imageUrl: PLACEHOLDER_TILE_IMAGE },
   { id: 'banana-leaf-decor', title: 'Banana Leaves', imageUrl: PLACEHOLDER_TILE_IMAGE },
   { id: 'sweets-jaggery', title: 'Sweets & Jaggery', imageUrl: PLACEHOLDER_TILE_IMAGE },
-  { id: 'incense-diya', title: 'Incense & Diya', imageUrl: PLACEHOLDER_TILE_IMAGE },
-  { id: 'flowers-garland', title: 'Flowers & Garland', imageUrl: PLACEHOLDER_TILE_IMAGE },
 ];

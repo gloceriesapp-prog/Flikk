@@ -40,13 +40,14 @@ import { Alert, ScrollView, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createOrder } from '../../api/orders';
+import { createTrip } from '../../api/trips';
 import { fetchAddresses } from '../../api/addresses';
 import { createRazorpayOrder, createUpiIntentPayment, verifyPayment } from '../../api/payments';
 import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
 import { pollOrderPaid } from '../../payments/pollOrderPaid';
 import type { UpiApp } from '../../payments/upiApps';
 import { detectInstalledUpiApps, openUpiApp } from '../../payments/upiIntent';
-import { selectCartGrandTotal, useCartStore } from '../../store/useCartStore';
+import { selectCartGrandTotal, selectCartStoreCount, useCartStore } from '../../store/useCartStore';
 import { useLocationStore } from '../../store/useLocationStore';
 import { isOutsideOperatingHours, REOPEN_TIME_LABEL } from '../../utils/operatingHours';
 import { CheckoutHeader } from './components/CheckoutHeader';
@@ -58,7 +59,15 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Checkout'>;
 
 export function CheckoutScreen({ navigation }: Props) {
   const items = useCartStore((state) => state.items);
-  const cartStoreId = useCartStore((state) => state.storeId);
+  const storeCount = useCartStore(selectCartStoreCount);
+  // >1 store means checkout goes through POST /trips (one payment, one
+  // delivery fee, one real order per store — useCartStore's own header
+  // note) instead of the plain single-store POST /orders. The S2S UPI
+  // Intent quick-pick grid stays single-store-only for now (that path's
+  // webhook keys off a single flikk_order_id — createUpiIntent.ts hasn't
+  // been made trip-aware yet); a multi-store checkout still pays fine via
+  // COD or Razorpay's own Standard Checkout (online), just not that grid.
+  const isMultiStore = storeCount > 1;
   const grandTotal = useCartStore(selectCartGrandTotal);
   const clear = useCartStore((state) => state.clear);
   const recipientName = useLocationStore((state) => state.recipientName);
@@ -105,6 +114,7 @@ export function CheckoutScreen({ navigation }: Props) {
       paymentMethodLabel: methodLabel,
       placedAt: order.placedAt,
       avgPrepMinutes: order.avgPrepMinutes,
+      isTrip: isMultiStore,
     });
   }
 
@@ -132,14 +142,6 @@ export function CheckoutScreen({ navigation }: Props) {
       Alert.alert('Your cart is empty', 'Add something to your cart before checking out.');
       return;
     }
-    if (!cartStoreId) {
-      // Defensive only — addItem's own guard means this shouldn't be
-      // reachable with a non-empty cart, but a real order can never be
-      // placed without a real store id, so this stays as a hard stop
-      // rather than trusting that invariant blindly.
-      Alert.alert('Something went wrong', 'Could not tell which store this order belongs to. Please try again.');
-      return;
-    }
     if (!selectedAddress) {
       Alert.alert('Add a delivery address', 'Pick where this order should go before checking out.');
       navigation.navigate('AddressList');
@@ -147,17 +149,43 @@ export function CheckoutScreen({ navigation }: Props) {
     }
     setIsPlacingOrder(true);
     try {
-      const order = await createOrder({
-        store_id: cartStoreId,
-        address_id: selectedAddress.id,
-        items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
-      });
-      const orderSummary = {
-        orderId: order.id,
-        orderNumber: order.order_number,
-        placedAt: order.placed_at,
-        avgPrepMinutes: order.avg_prep_minutes ?? null,
-      };
+      // Exactly one of these two calls runs — a single-store cart keeps
+      // using the plain, unaffected POST /orders path; a cart spanning
+      // more than one store goes through POST /trips instead (one
+      // payment, one delivery fee, one real order per store under the
+      // hood — useCartStore's own header note on why).
+      const paymentRecord = isMultiStore
+        ? await createTrip({
+            address_id: selectedAddress.id,
+            items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
+          })
+        : await createOrder({
+            store_id: items[0]!.storeId,
+            address_id: selectedAddress.id,
+            items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
+          });
+
+      const orderSummary = isMultiStore
+        ? {
+            orderId: paymentRecord.id,
+            // Trips have no real order_number of their own (that's a
+            // per-store-order thing) — a short id-based label is honest
+            // about what this actually is rather than borrowing one leg's
+            // real order_number as if it spoke for the whole trip.
+            orderNumber: `TRIP-${paymentRecord.id.slice(0, 6).toUpperCase()}`,
+            placedAt: (paymentRecord as { created_at: string }).created_at,
+            // No single store to source an ETA from at the trip level —
+            // ReceiptScreen already falls back to a generic estimate when
+            // this is null, same as any single-store order whose own
+            // avg_prep_minutes lookup failed.
+            avgPrepMinutes: null,
+          }
+        : {
+            orderId: paymentRecord.id,
+            orderNumber: (paymentRecord as { order_number: string }).order_number,
+            placedAt: (paymentRecord as { placed_at: string }).placed_at,
+            avgPrepMinutes: (paymentRecord as { avg_prep_minutes?: number | null }).avg_prep_minutes ?? null,
+          };
 
       if (paymentMethod === 'cod') {
         goToReceipt(orderSummary, paymentMethodLabel('cod', upiApps));
@@ -170,7 +198,9 @@ export function CheckoutScreen({ navigation }: Props) {
       // Intent call below, which needs that specific API enabled on the
       // account — see the upi_app branch's own note).
       async function payViaRazorpayCheckout() {
-        const razorpayOrder = await createRazorpayOrder(order.id);
+        const razorpayOrder = await createRazorpayOrder(
+          isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id },
+        );
         const result = await openRazorpayCheckout({
           keyId: razorpayOrder.key_id,
           razorpayOrderId: razorpayOrder.id,
@@ -179,13 +209,16 @@ export function CheckoutScreen({ navigation }: Props) {
           name: recipientName,
         });
         await verifyPayment({
-          orderId: order.id,
+          ...(isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id }),
           razorpay_order_id: result.razorpay_order_id,
           razorpay_payment_id: result.razorpay_payment_id,
           razorpay_signature: result.razorpay_signature,
         });
       }
 
+      // isMultiStore never reaches here — PaymentMethodList is handed an
+      // empty upiApps list in that case (this screen's own note above), so
+      // paymentMethod can never actually be an 'upi_app:' value for a trip.
       if (paymentMethod.startsWith('upi_app:')) {
         const app = upiApps.find((a) => a.id === paymentMethod.slice('upi_app:'.length));
         // Can't happen from the UI (PaymentMethodList only ever emits an
@@ -196,7 +229,7 @@ export function CheckoutScreen({ navigation }: Props) {
 
         let upiLink: string;
         try {
-          upiLink = (await createUpiIntentPayment(order.id)).upiLink;
+          upiLink = (await createUpiIntentPayment(paymentRecord.id)).upiLink;
         } catch {
           // The S2S UPI Intent API (backend's own note, payments/
           // createUpiIntent.ts) needs to be explicitly enabled on the
@@ -220,7 +253,7 @@ export function CheckoutScreen({ navigation }: Props) {
         // inside the app, or the poll below times out, it just stays
         // that way, same as every other path here that doesn't complete.
         setIsAwaitingUpiConfirmation(true);
-        const paid = await pollOrderPaid(order.id);
+        const paid = await pollOrderPaid(paymentRecord.id);
         setIsAwaitingUpiConfirmation(false);
 
         if (!paid) {
@@ -262,7 +295,11 @@ export function CheckoutScreen({ navigation }: Props) {
           onPay={handlePay}
           totalPrice={grandTotal}
           isPlacingOrder={isPlacingOrder || isAwaitingUpiConfirmation}
-          upiApps={upiApps}
+          // Empty, not the real detected list, for a multi-store cart —
+          // the S2S UPI Intent quick-pick grid isn't trip-aware yet
+          // (this screen's own note on isMultiStore); COD and Razorpay's
+          // own Standard Checkout ('online') still both work fine.
+          upiApps={isMultiStore ? [] : upiApps}
         />
       </ScrollView>
     </View>

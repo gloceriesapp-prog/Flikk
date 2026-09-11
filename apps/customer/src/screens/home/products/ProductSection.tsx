@@ -13,10 +13,11 @@ import { Text, View } from 'react-native';
 import { ProductCard } from './ProductCard';
 import type { Product } from './types';
 
-// Same fixed width as CoastalKitchenPicksSection's own cards (w-36) — not
-// a %-based column, so a card here is the exact same physical size
+// Same fixed width every fixed-width product card row in this app uses
+// now (FestivalPicksSection/CoastalKitchenPicksSection/etc, w-28) — not a
+// %-based column, so a card here is the exact same physical size
 // regardless of which section it's rendered in.
-const CARD_WIDTH = 'w-36';
+const CARD_WIDTH = 'w-28';
 
 interface Props {
   title: string;

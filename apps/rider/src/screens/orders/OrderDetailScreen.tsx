@@ -49,6 +49,15 @@ const NEXT_ACTION_LABEL: Record<Exclude<RiderOrder['status'], 'delivered' | 'can
 export function OrderDetailScreen({ route, navigation }: Props) {
   const { orderId } = route.params;
   const order = useRiderOrdersStore((s) => s.activeOrders.find((o) => o.id === orderId));
+  // Every other active leg of the same multi-store trip (backend's own
+  // trip_id — RiderOrder.tripId's note) — same customer/drop address,
+  // different store each. Empty for the common single-store order. Kept
+  // as a hook call before the early `if (!order)` return below (order can
+  // be undefined on that render), same rule every other hook in this
+  // component already follows.
+  const siblingLegs = useRiderOrdersStore((s) =>
+    order?.tripId ? s.activeOrders.filter((o) => o.tripId === order.tripId && o.id !== order.id) : [],
+  );
   const advanceOrderStatus = useRiderOrdersStore((s) => s.advanceOrderStatus);
   const cancelOrder = useRiderOrdersStore((s) => s.cancelOrder);
   const [otpVisible, setOtpVisible] = useState(false);
@@ -67,6 +76,20 @@ export function OrderDetailScreen({ route, navigation }: Props) {
     );
   }
 
+  // Every sibling leg still waiting to be picked up from its own store —
+  // the pickup step stays genuinely PER-STORE (the rider physically visits
+  // each one in turn), so this screen never groups THAT action across
+  // legs. It only groups the drop-off side below, which is real: there's
+  // one customer, one address, one arrival, regardless of how many stores
+  // fed into this trip.
+  const unpickedSiblings = siblingLegs.filter((leg) => leg.status === 'assigned');
+  // Once every leg has actually been collected, "arriving at the
+  // customer"/"confirm delivery" is one shared event for the whole trip,
+  // not N separate ones — advanceOrderStatus is called for this order AND
+  // every sibling leg together so they move through arrived_at_customer
+  // and delivered in lockstep.
+  const tripLegIds = [order.id, ...siblingLegs.map((leg) => leg.id)];
+
   // advanceOrderStatus/cancelOrder now hit the real backend (assigned ->
   // picked_up and arrived_at_customer -> delivered are real PATCH /orders/
   // :id/status calls) — a network failure or an unexpected 403/409 needs
@@ -78,7 +101,12 @@ export function OrderDetailScreen({ route, navigation }: Props) {
       return;
     }
     try {
-      await advanceOrderStatus(order!.id);
+      // Reaching this branch (not the pickup slide-button below) only
+      // happens once every trip leg is already picked_up or beyond — see
+      // this screen's own allLegsPickedUp guard on the map branch — so
+      // advancing every leg together here is always the whole trip
+      // actually arriving, never a leg that's still mid-pickup elsewhere.
+      await Promise.all(tripLegIds.map((id) => advanceOrderStatus(id)));
     } catch (err) {
       Alert.alert('Could not update this order', err instanceof Error ? err.message : 'Please try again.');
     }
@@ -87,7 +115,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   async function handleConfirmDelivery() {
     setOtpVisible(false);
     try {
-      await advanceOrderStatus(order!.id);
+      await Promise.all(tripLegIds.map((id) => advanceOrderStatus(id)));
       navigation.goBack();
     } catch (err) {
       Alert.alert('Could not confirm delivery', err instanceof Error ? err.message : 'Please try again.');
@@ -105,8 +133,13 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   }
 
   const isAtCustomer = order.status === 'arrived_at_customer';
+  // The full-screen "heading to customer" map only makes sense once every
+  // store in the trip has actually been visited — a rider who's picked up
+  // Store 1 but still needs Store 2 isn't heading to the customer yet,
+  // regardless of what THIS one leg's own status says.
+  const allLegsPickedUp = unpickedSiblings.length === 0;
 
-  if (order.status === 'picked_up' || isAtCustomer) {
+  if ((order.status === 'picked_up' || isAtCustomer) && allLegsPickedUp) {
     // Full-screen, Uber-style navigating view: the map IS the screen the
     // instant the rider's got the order — no intermediate route-card/fare
     // list screen to tap through first. Shared by picked_up (heading to
@@ -162,6 +195,21 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             </View>
           </View>
 
+          {/* Multi-stop trip banner — this rider is now carrying items
+              picked up from every store in the trip (allLegsPickedUp
+              guards this whole branch), so the payout/items row below
+              needs to add up ALL of them, not just this one leg's own
+              numbers, or it would silently under-report what one drop-off
+              actually earns. */}
+          {siblingLegs.length > 0 && (
+            <View className="flex-row items-center gap-2 rounded-xl bg-lime-soft px-3 py-2">
+              <AppIcon icon={PackageIcon} size={14} color={colors.limeDeep} />
+              <Text className="text-[12px] font-bold text-lime-deep">
+                {siblingLegs.length + 1}-stop trip — picked up from {[order, ...siblingLegs].map((leg) => leg.storeName).join(', ')}
+              </Text>
+            </View>
+          )}
+
           {/* Package/payout row — same data the old scroll-list screen
               showed, surfaced here instead so the card isn't just a name
               and a button: a rider glancing at this wants to know what
@@ -170,10 +218,10 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             <View className="flex-row items-center gap-2">
               <AppIcon icon={PackageIcon} size={16} color={colors.ink} />
               <Text className="text-[13px] font-semibold text-ink/70">
-                {order.itemCount} items · {order.distanceKm} km
+                {order.itemCount + siblingLegs.reduce((sum, leg) => sum + leg.itemCount, 0)} items · {order.distanceKm} km
               </Text>
             </View>
-            <Text className="text-[16px] font-bold text-ink">₹{order.payout}</Text>
+            <Text className="text-[16px] font-bold text-ink">₹{order.payout + siblingLegs.reduce((sum, leg) => sum + leg.payout, 0)}</Text>
           </View>
 
           <View className="flex-row gap-3">
@@ -209,6 +257,25 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           </Pressable>
           <Text className="text-xl font-bold text-ink">Order Id: {order.orderNumber}</Text>
         </View>
+
+        {/* Multi-store trip progress — only shown when this order is one
+            leg of a trip (siblingLegs.length > 0). Tells the rider what's
+            still ahead (other stores not yet picked up) or that this store
+            was the last one and the customer drop is next. */}
+        {siblingLegs.length > 0 && (
+          <View className="gap-1 rounded-2xl bg-lime-soft px-4 py-3">
+            <Text className="text-[12px] font-bold uppercase tracking-wide text-lime-deep">
+              {siblingLegs.length + 1}-stop trip · one delivery
+            </Text>
+            <Text className="text-[13px] font-semibold text-ink/70">
+              {order.status === 'assigned'
+                ? `Pick up here first, then: ${unpickedSiblings.map((leg) => leg.storeName).join(', ') || 'head to the customer'}`
+                : unpickedSiblings.length > 0
+                  ? `Picked up here — still need: ${unpickedSiblings.map((leg) => leg.storeName).join(', ')}`
+                  : 'All stores picked up — heading to the customer next.'}
+            </Text>
+          </View>
+        )}
 
         {/* Trip line — full-width rule with Start/distance underneath,
             same minimal recipe as the wireframe: no dots, no icons, just
@@ -302,19 +369,33 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        {/* This scroll screen is 'assigned' only now — picked_up and
-            arrived_at_customer both go straight to the full-screen map
-            branch above. Only real action left here is cancelling before
-            the order's even picked up; Call/Navigate to the store were
-            already dropped (CLAUDE.md: rider's already at the store by
-            the time this screen matters). */}
-        <Pressable onPress={() => setCancelVisible(true)} className="items-center py-2">
-          <Text className="text-[13px] font-semibold text-danger">Cancel this delivery</Text>
-        </Pressable>
+        {/* Cancelling only makes sense before this specific leg's own
+            pickup — once picked up (even if still waiting on sibling
+            stores), there's real inventory in hand, same rule this screen
+            already applied for the single-store case. */}
+        {order.status === 'assigned' && (
+          <Pressable onPress={() => setCancelVisible(true)} className="items-center py-2">
+            <Text className="text-[13px] font-semibold text-danger">Cancel this delivery</Text>
+          </Pressable>
+        )}
       </ScrollView>
 
       <View className="border-t border-mist bg-white px-5 pb-safe-offset-4 pt-4">
-        <SlideToConfirmButton label={NEXT_ACTION_LABEL.assigned} successLabel="Heading to customer" onConfirm={handlePrimaryAction} />
+        {order.status === 'assigned' ? (
+          // Still 'assigned' only now — picked_up-and-done legs fall
+          // through to either the full-screen map above (every leg
+          // collected) or the "waiting" state below (siblings still
+          // pending), never back to this slide button a second time.
+          <SlideToConfirmButton label={NEXT_ACTION_LABEL.assigned} successLabel="Heading to customer" onConfirm={handlePrimaryAction} />
+        ) : (
+          // Picked up here, but a sibling store isn't ready yet — nothing
+          // to confirm at THIS screen right now; the rider's real next
+          // action is opening the next store's own OrderDetail from the
+          // trip's job card on OrdersScreen.
+          <View className="items-center rounded-2xl bg-gray-100 py-4">
+            <Text className="text-[13px] font-bold text-ink/50">Waiting on other pickups in this trip</Text>
+          </View>
+        )}
       </View>
 
       <DeliveryOtpModal visible={otpVisible} onCancel={() => setOtpVisible(false)} onConfirm={handleConfirmDelivery} />
