@@ -1,12 +1,15 @@
 // "Delivery Details" card — first card in Cart's scroll list, same white
 // rounded-2xl recipe as the other cards below it (BillDetailsCard etc.)
-// (not a thin header bar anymore) so it reads as one of the cart's stack
-// of cards instead of chrome bolted under the nav bar. Title + "Change" on
-// one row, ETA pill below, address below that — deliberately in that
-// order (title -> when -> where) rather than one cramped line, since
-// that's the actual reading priority: a customer glancing at this wants
-// "is this still going to the right place, roughly when" before the exact
-// street.
+// so it reads as one of the cart's stack of cards instead of chrome
+// bolted under the nav bar.
+//
+// Redesigned tighter/single-row per an explicit ask ("reduce the size...
+// make a proper alignment") — a pin-in-a-circle icon doubles as the
+// title's own leading glyph (one element carrying two jobs: "this is the
+// address section" + a visual anchor) instead of a bare text label, and
+// the ETA pill sits inline with the address on one line instead of its
+// own separate row above it. Still the same info (address + ETA + Change),
+// just read left-to-right in one glance rather than stacked in three.
 //
 // Only renders once a real saved address exists; the zero-address state
 // is already handled by CartCheckoutFooter's own "Add delivery address"
@@ -34,30 +37,34 @@ interface Props {
 
 export function CartDeliveryInfoBar({ address, onPress }: Props) {
   return (
-    <View className="gap-3 rounded-2xl bg-white px-4 py-4">
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <Text className="text-[15px] font-semibold text-ink">Your address</Text>
-        </View>
-        <Pressable onPress={onPress} hitSlop={8} className="flex-row items-center gap-0.5">
-          <Text className="text-[13px] font-semibold" style={{ color: ACCENT }}>
-            Change
-          </Text>
-          <AppIcon icon={ChevronRightIcon} size={14} color={ACCENT} />
-        </Pressable>
+    <Pressable onPress={onPress} className="flex-row items-center gap-2.5 rounded-2xl bg-white px-3.5 py-3">
+      <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: `${ACCENT}14` }}>
+        <AppIcon icon={Location01Icon} size={17} color={ACCENT} />
       </View>
 
-      <View className="flex-row items-center gap-2.5">
-        <View className="flex-row items-center gap-1 rounded-full px-2.5 py-1" style={{ backgroundColor: `${ACCENT}14` }}>
-          <Text className="text-[12px] font-semibold" style={{ color: ACCENT }}>
-          {ETA_LABEL}
+      <View className="min-w-0 flex-1 gap-0.5">
+        <View className="flex-row items-center gap-1.5">
+          <Text numberOfLines={1} className="shrink text-[13px] font-semibold text-ink">
+            {address.label}
           </Text>
+          <View className="flex-row items-center gap-0.5 rounded-full px-1.5 py-[1px]" style={{ backgroundColor: `${ACCENT}14` }}>
+            <AppIcon icon={ZapIcon} size={9} color={ACCENT} />
+            <Text className="text-[10px] font-bold" style={{ color: ACCENT }}>
+              {ETA_LABEL}
+            </Text>
+          </View>
         </View>
-
-        <Text numberOfLines={1} className="flex-1 text-[13px] text-ink/60">
-          <Text className="font-semibold text-ink">{address.label}</Text> · {address.line1}
+        <Text numberOfLines={1} className="text-[12px] text-ink/50">
+          {address.line1}
         </Text>
       </View>
-    </View>
+
+      <View className="flex-row items-center gap-0.5">
+        <Text className="text-[12px] font-semibold" style={{ color: ACCENT }}>
+          Change
+        </Text>
+        <AppIcon icon={ChevronRightIcon} size={13} color={ACCENT} />
+      </View>
+    </Pressable>
   );
 }

@@ -16,6 +16,7 @@
 
 import { Plus, X } from 'lucide-react';
 import { GRAM_PRESETS, ML_PRESETS, UNIT_TYPE_OPTIONS, hasFixedPresets, presetsForUnit, type UnitType } from '@/lib/product-options';
+import { suggestedMrp } from '@/lib/pricing';
 import type { ProductVariant } from '@/lib/types';
 
 function emptyVariant(unitType: UnitType = 'g'): ProductVariant {
@@ -25,14 +26,26 @@ function emptyVariant(unitType: UnitType = 'g'): ProductVariant {
 export { emptyVariant };
 
 export function ProductVariantsEditor({
+  category,
   variants,
   onChange,
 }: {
+  category: string;
   variants: ProductVariant[];
   onChange: (variants: ProductVariant[]) => void;
 }) {
   function updateVariant(index: number, patch: Partial<ProductVariant>) {
     onChange(variants.map((v, i) => (i === index ? { ...v, ...patch } : v)));
+  }
+
+  // Auto-fills a suggested MRP the moment a founder types a price, ONLY
+  // when this row's own MRP is still empty — never overwrites a real
+  // value they already entered or edited themselves. Still just a normal
+  // editable input afterward (see ProductVariantsEditor's own file note).
+  function updatePrice(index: number, price: number) {
+    const variant = variants[index]!;
+    const suggestion = variant.originalPrice == null ? (suggestedMrp(category, price) ?? undefined) : undefined;
+    updateVariant(index, { price, ...(suggestion !== undefined ? { originalPrice: suggestion } : {}) });
   }
 
   function changeUnitType(index: number, unitType: UnitType) {
@@ -100,7 +113,7 @@ export function ProductVariantsEditor({
           <input
             type="number"
             value={variant.price || ''}
-            onChange={(e) => updateVariant(index, { price: Number(e.target.value) })}
+            onChange={(e) => updatePrice(index, Number(e.target.value))}
             placeholder="Price"
             className="w-24 flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             aria-label={`Size ${index + 1} price`}

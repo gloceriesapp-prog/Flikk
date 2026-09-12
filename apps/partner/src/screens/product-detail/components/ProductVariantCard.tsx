@@ -13,11 +13,12 @@ interface Props {
   canRemove: boolean;
   onToggleStock: (isInStock: boolean) => void;
   onChangePrice: (text: string) => void;
+  onChangeMrp: (text: string) => void;
   onChangeQuantity: (text: string) => void;
   onRemove: () => void;
 }
 
-export function ProductVariantCard({ variant, canRemove, onToggleStock, onChangePrice, onChangeQuantity, onRemove }: Props) {
+export function ProductVariantCard({ variant, canRemove, onToggleStock, onChangePrice, onChangeMrp, onChangeQuantity, onRemove }: Props) {
   return (
     <View className="gap-3 rounded-3xl bg-[#F9FAFB] p-4">
       <View className="flex-row items-center justify-between">
@@ -78,6 +79,24 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
         <Text className="ml-2 text-sm font-medium text-ink/40">
           per {variant.label}
         </Text>
+      </View>
+
+      {/* MRP — optional: an empty field means "no MRP set", not zero.
+          Auto-suggested per category the moment a price is entered here
+          (see AddProductScreen/ProductDetailScreen's own onChangePrice),
+          but a founder can always clear or overwrite it — dashed border
+          matches the same "optional field" convention the stock count
+          below already uses. */}
+      <View className="flex-row items-center gap-2 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-3">
+        <AppIcon icon={RupeeIcon} size={15} color={`${colors.ink}60`} />
+        <TextInput
+          value={variant.originalPrice === undefined ? '' : String(variant.originalPrice)}
+          onChangeText={onChangeMrp}
+          keyboardType="number-pad"
+          placeholder="MRP (optional)"
+          placeholderTextColor={`${colors.ink}60`}
+          className="flex-1 text-base font-medium text-ink"
+        />
       </View>
 
       {/* Stock count — optional: an empty field means "not tracked", not

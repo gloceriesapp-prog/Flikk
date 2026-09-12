@@ -29,6 +29,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
+import { UpvoteAreaBar } from '../../components/BottomNavBar/UpvoteAreaBar';
 import { HomeHeader } from './components/HomeHeader';
 import { BakeryTab } from './bakery/BakeryTab';
 import { FishProductGrid } from './fish/FishProductGrid';
@@ -40,6 +41,8 @@ import { ALL_TAB } from './data/categoryTabs';
 import { useHomeTabs, type RemoteHomeTab } from './data/useHomeTabs';
 import { HomeTabTileGrid } from './hometab/HomeTabTileGrid';
 import { useIsOutsideOperatingHours } from '../../utils/useOperatingHours';
+import { useLocationStore } from '../../store/useLocationStore';
+import { isLocationServiceable } from '../../utils/serviceability';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
@@ -68,6 +71,11 @@ export function HomeScreen({ navigation }: Props) {
   // AllTabSections no longer needs this — it used to swap in its own
   // ClosedForNightBanner, since removed as redundant with the header.
   const isClosed = useIsOutsideOperatingHours();
+  // Same check AllTabSections.tsx uses to swap in UnavailableZoneSection —
+  // read again here rather than lifted/prop-drilled, since BottomNavBar is
+  // a sibling of that content, not a descendant of it.
+  const location = useLocationStore((state) => state.location);
+  const isServiceable = isLocationServiceable(location);
 
   // Every tab id the user has actually opened at least once — content for
   // an id only mounts the first time it's selected, then stays mounted.
@@ -172,7 +180,11 @@ export function HomeScreen({ navigation }: Props) {
           onSelectCategory={setSelectedCategoryId}
           activeCategoryName={activeCategoryName}
           scrollY={scrollY}
-          isClosed={isClosed}
+          // Outside the serviceable zone, closed-hours messaging ("Opens
+          // 6:00 AM tomorrow") would compete with UnavailableZoneSection's
+          // own explanation below — force the header back to its normal
+          // open-state look here regardless of the real clock.
+          isClosed={isServiceable && isClosed}
         />
 
         <Animated.View style={contentFadeStyle}>
@@ -210,7 +222,7 @@ export function HomeScreen({ navigation }: Props) {
         </Animated.View>
       </Animated.ScrollView>
 
-      <BottomNavBar hidden={navHidden} />
+      {isServiceable ? <BottomNavBar hidden={navHidden} /> : <UpvoteAreaBar />}
     </View>
   );
 }

@@ -19,7 +19,6 @@
 
 import { Text, View } from 'react-native';
 import { StoreCard } from '../components/StoreCard';
-import { DUMMY_PREVIEW_STORE } from './dummyPreviewStore';
 import type { RealStore } from './useAllStores';
 
 interface Props {
@@ -29,18 +28,11 @@ interface Props {
 export function AllStoresSection({ stores }: Props) {
   if (stores.length === 0) return null;
 
-  // TEMPORARY — one fake store appended so the new 2-line-name + full-
-  // address card layout can actually be seen with real-looking data (most
-  // stores on file don't have address_line filled in yet). See
-  // dummyPreviewStore.ts's own header note; delete this append once that's
-  // no longer true.
-  const displayStores = [...stores, DUMMY_PREVIEW_STORE];
-
   return (
     <View className="px-5 pt-6">
       <Text className="mb-4 text-xl font-bold text-ink">All stores</Text>
       <View className="gap-4">
-        {displayStores.map((store) => (
+        {stores.map((store) => (
           <StoreCard key={store.id} store={store} />
         ))}
       </View>

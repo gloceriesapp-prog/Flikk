@@ -10,12 +10,27 @@
 // useful: a founder watching store performance shouldn't have to
 // cross-reference Orders + Stores manually to see who's actually driving
 // sales, or when.
+//
+// The ranked list (`topStores` prop) is real data — Overview page's
+// app/api/overview, delivered orders this month, grouped by store. The
+// peak-hours heatmap below it is still PLACEHOLDER_HOURLY_ORDER_VOLUME —
+// that needs real hourly order-volume history to mean anything, which
+// isn't part of this pass; left as a labeled mock rather than silently
+// claimed as real.
 
 import { useState } from 'react';
 import { ChevronDown, Store as StoreIcon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { formatCurrency } from '@/lib/format';
-import { PLACEHOLDER_HOURLY_ORDER_VOLUME, PLACEHOLDER_ORDERS, PLACEHOLDER_STORES } from '@/lib/mock-data';
+import { PLACEHOLDER_HOURLY_ORDER_VOLUME } from '@/lib/mock-data';
+
+export interface TopStoreRow {
+  storeId: string;
+  name: string;
+  district: string;
+  orders: number;
+  revenue: number;
+}
 
 const RANK_STYLES = ['bg-amber-100 text-amber-700', 'bg-gray-200 text-gray-700', 'bg-orange-100 text-orange-700'];
 
@@ -29,27 +44,10 @@ function heatGradient(intensity: number): string {
   return `linear-gradient(180deg, hsl(${hue}, 85%, 68%), hsl(${hue}, 80%, 46%))`;
 }
 
-export function TopStoresCard() {
+export function TopStoresCard({ topStores }: { topStores: TopStoreRow[] }) {
   const [place, setPlace] = useState('All places');
 
-  const storesInPlace = place === 'All places' ? PLACEHOLDER_STORES : PLACEHOLDER_STORES.filter((s) => s.district === place);
-
-  const revenueByStore = new Map<string, { orders: number; revenue: number }>();
-  for (const order of PLACEHOLDER_ORDERS) {
-    if (order.status !== 'delivered') continue;
-    const entry = revenueByStore.get(order.storeId) ?? { orders: 0, revenue: 0 };
-    entry.orders += 1;
-    entry.revenue += order.amount;
-    revenueByStore.set(order.storeId, entry);
-  }
-
-  const ranked = storesInPlace
-    .map((store) => ({
-      store,
-      ...(revenueByStore.get(store.id) ?? { orders: 0, revenue: 0 }),
-    }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 4);
+  const ranked = (place === 'All places' ? topStores : topStores.filter((s) => s.district === place)).slice(0, 4);
 
   const topRevenue = ranked[0]?.revenue || 1;
 
@@ -85,7 +83,7 @@ export function TopStoresCard() {
     >
       <div className="flex flex-col gap-3">
         {ranked.map((row, i) => (
-          <div key={row.store.id} className="flex items-center gap-3">
+          <div key={row.storeId} className="flex items-center gap-3">
             <div
               className={
                 i < 3
@@ -101,7 +99,7 @@ export function TopStoresCard() {
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-ink">{row.store.name}</p>
+              <p className="truncate text-sm font-medium text-ink">{row.name}</p>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-accent">
                 <div
                   className="h-full rounded-full bg-ink"

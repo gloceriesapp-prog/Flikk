@@ -19,11 +19,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ProductCard } from '../home/products/ProductCard';
 import { SubCategorySidebar } from '../category-detail/components/SubCategorySidebar';
 import { StoreCategoryGrid } from './components/StoreCategoryGrid';
-import { DUMMY_STORE_CATEGORIES } from './components/dummyStoreCategories';
 import { StoreDetailHeader } from './components/StoreDetailHeader';
 import { StorePriceRangeSheet, matchesPriceRange, type StorePriceRange } from './components/StorePriceRangeSheet';
 import { StoreProductFilterBar } from './components/StoreProductFilterBar';
-import { StoreRecommendedSection } from './components/StoreRecommendedSection';
 import { StoreSortSheet, type StoreProductSort } from './components/StoreSortSheet';
 import { useStoreProducts } from './useStoreProducts';
 import type { AppStackParamList } from '../../navigation/types';
@@ -36,12 +34,10 @@ export function StoreDetailScreen({ navigation, route }: Props) {
   const categories = data?.categories ?? [];
   const products = data?.products ?? [];
 
-  // TEMPORARY: same dummyStoreCategories.ts fallback StoreCategoryGrid
-  // already uses — most real stores here don't have enough distinct
-  // categories yet to preview the bigger sidebar tiles with a real,
-  // scrollable list. Only stands in when there's nothing real beyond
-  // 'All'; never overrides a store's real categories.
-  const sidebarItems = categories.length > 1 ? categories : [categories[0] ?? { id: 'all', label: 'All' }, ...DUMMY_STORE_CATEGORIES];
+  // Real categories only — no dummy fallback (dummyStoreCategories.ts
+  // removed per an explicit ask). A store with nothing beyond 'All' just
+  // shows the one real 'All' entry.
+  const sidebarItems = categories.length > 0 ? categories : [{ id: 'all', label: 'All' }];
 
   const [selectedId, setSelectedId] = useState('all');
   useEffect(() => {
@@ -115,7 +111,6 @@ export function StoreDetailScreen({ navigation, route }: Props) {
             {selectedId === 'all' && (
               <>
                 <StoreCategoryGrid categories={categories} products={products} onSelect={setSelectedId} />
-                <StoreRecommendedSection />
               </>
             )}
 

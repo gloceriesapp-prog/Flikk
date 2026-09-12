@@ -14,10 +14,12 @@ import { ProductCard } from './ProductCard';
 import type { Product } from './types';
 
 // Same fixed width every fixed-width product card row in this app uses
-// now (FestivalPicksSection/CoastalKitchenPicksSection/etc, w-28) — not a
-// %-based column, so a card here is the exact same physical size
-// regardless of which section it's rendered in.
-const CARD_WIDTH = 'w-28';
+// now (FestivalPicksSection/EverydayEssentialsSection/PromoListCard/etc) —
+// not a %-based column, so a card here is the exact same physical size
+// regardless of which section it's rendered in. Bumped w-28 -> w-32 per
+// an explicit ask — the bottom content (price/ETA row) was cramped at
+// w-28, this gives it a little more room to breathe.
+const CARD_WIDTH = 'w-32';
 
 interface Props {
   title: string;

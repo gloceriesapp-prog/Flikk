@@ -47,7 +47,8 @@ export async function handleWebhook(req: Request, res: Response, next: NextFunct
       const payoutId = event.payload.payout.entity.reference_id;
       const finalStatus = event.event === 'payout.processed' ? 'paid' : 'failed';
       if (payoutId) {
-        const { error } = await supabase.from('payouts').update({ status: finalStatus }).eq('id', payoutId).eq('status', 'processing');
+        const update = finalStatus === 'paid' ? { status: finalStatus, paid_at: new Date().toISOString() } : { status: finalStatus };
+        const { error } = await supabase.from('payouts').update(update).eq('id', payoutId).eq('status', 'processing');
         if (error) throw error;
       }
     }

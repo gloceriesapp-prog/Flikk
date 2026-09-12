@@ -127,7 +127,7 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
       category,
       imageUrl,
       stockStatus: 'in_stock' as const,
-      variants: variants.map((v) => parseVariantLabel(v.label, v.price)),
+      variants: variants.map((v) => parseVariantLabel(v.label, v.price, v.originalPrice)),
     };
     const row = await apiRequest<ProductRow>('/partner/products', { method: 'POST', body });
     set((state) => ({ products: [...state.products, fromRow(row)] }));

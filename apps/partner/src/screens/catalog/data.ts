@@ -17,6 +17,11 @@ export interface ProductVariant {
   // Optional — a shop owner may not always know or care to track an exact
   // count. `undefined` means "not tracked", not "zero".
   stockQuantity?: number;
+  // Optional MRP — undefined means "no MRP set", not zero/free. Auto-
+  // suggested per category (pricing.ts's own suggestedMrp) the moment a
+  // price is entered and this is still empty, but always a normal
+  // editable field afterward — never silently forced.
+  originalPrice?: number;
 }
 
 export interface PartnerProduct {
@@ -111,17 +116,18 @@ export interface BackendVariantInput {
   unitType: BackendUnitType;
   quantity: number;
   price: number;
+  originalPrice?: number;
 }
 
 // Every label this screen ever produces comes from standardSizeOptions
 // above (never typed free-hand) — always "<number> <g|kg|ml|L>" — so this
 // parse is exhaustive over what a shop owner can actually pick, not a
 // general-purpose unit parser.
-export function parseVariantLabel(label: string, price: number): BackendVariantInput {
+export function parseVariantLabel(label: string, price: number, originalPrice?: number): BackendVariantInput {
   const match = /^(\d+(?:\.\d+)?)\s*(g|kg|ml|l)$/i.exec(label.trim());
   if (!match) throw new Error(`Unrecognized size "${label}".`);
   const [, qty, unit] = match;
-  return { unitType: unit.toLowerCase() as BackendUnitType, quantity: Number(qty), price };
+  return { unitType: unit.toLowerCase() as BackendUnitType, quantity: Number(qty), price, originalPrice };
 }
 
 // A partner app's catalog is one store's own listing — there's no

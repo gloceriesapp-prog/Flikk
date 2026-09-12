@@ -29,7 +29,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
-import { HeartIcon } from '@hugeicons/core-free-icons';
+import { HeartIcon, Search01Icon } from '@hugeicons/core-free-icons';
 import { AppImage as Image } from '../../components/AppImage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -40,8 +40,7 @@ import { fetchMyOrders } from '../../api/orders';
 import { mapApiOrder } from './data';
 import { OrderRow } from './components/OrderRow';
 import { OrderStatusFilterSheet, type OrderStatusFilter } from './components/OrderStatusFilterSheet';
-import { PurchaseBestSellers, type BestSellerItem } from './components/PurchaseBestSellers';
-import { PurchaseHeader } from './components/PurchaseHeader';
+import { PurchaseRecommendations } from './components/PurchaseRecommendations';
 import { PurchaseSearchBar } from './components/PurchaseSearchBar';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -103,36 +102,15 @@ export function PurchaseScreen({ navigation }: Props) {
   const visibleOrders = showAllOrders ? sortedOrders : sortedOrders.slice(0, VISIBLE_ORDER_LIMIT);
   const hasMoreOrders = sortedOrders.length > visibleOrders.length;
 
-  // "Your Best Sellers" — tallied from every real past order (not just the
-  // filtered/paged list above), ranked by total quantity ever ordered, top
-  // 6. A real personal signal (what this customer actually reorders), not
-  // a fabricated store-wide "bestseller" flag.
-  const bestSellers = useMemo(() => {
-    const tally = new Map<string, BestSellerItem>();
-    for (const order of fetchedOrders ?? []) {
-      for (const item of order.items) {
-        const existing = tally.get(item.name);
-        if (existing) {
-          existing.timesOrdered += item.quantity;
-        } else {
-          tally.set(item.name, { ...item, timesOrdered: item.quantity });
-        }
-      }
-    }
-    return [...tally.values()].sort((a, b) => b.timesOrdered - a.timesOrdered).slice(0, 6);
-  }, [fetchedOrders]);
-
   // Same direction-based hide/show BottomNavBar logic as StoreListScreen.tsx
   // (itself copied from HomeScreen.tsx) — direction-based, not a plain
   // "scrolled past N px", so it reads as intentional here too.
-  const scrollY = useSharedValue(0);
   const prevScrollY = useSharedValue(0);
   const navHidden = useSharedValue(0);
   const SCROLL_HIDE_THRESHOLD = 6;
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     const y = event.contentOffset.y;
-    scrollY.value = y;
 
     const delta = y - prevScrollY.value;
     if (y < 40) {
@@ -146,40 +124,43 @@ export function PurchaseScreen({ navigation }: Props) {
   });
 
   return (
-    <View className="flex-1 bg-[#FCFCFB]">
-      {/* This screen's own header is dark now (PurchaseHeader), same
-          reasoning as HomeScreen/StoreListScreen's own "light" override. */}
-      <StatusBar style="light" />
+    <View className="flex-1 bg-[#FFFFFF]">
+      {/* Plain background again — no gradient header (PurchaseHeader.tsx,
+          deleted) to keep light icons legible against. */}
+      <StatusBar style="dark" />
 
-      {/* PurchaseHeader is item 0 inside this same ScrollView with
-          stickyHeaderIndices={[0]} — same mechanism StoreHeader.tsx uses
-          (drag down: header collapses to just the search bar, blur shows
-          through, search bar stays pinned at top). */}
+      {/* Plain left-aligned title + search bar — per an explicit ask to
+          drop the premium gradient/location-row header this screen
+          briefly had, in favor of a simple section title. Not sticky —
+          same reasoning as CategoriesScreen.tsx's own header removal. */}
+      <View className="px-6 pb-1 pt-safe-offset-3 flex-row items-center justify-between">
+        <Text className="text-[20px] font-semibold text-ink">Purchase</Text>
+        <Pressable onPress={() => navigation.navigate('Search')} hitSlop={10} className="h-9 w-9 items-center justify-center">
+          <AppIcon icon={Search01Icon} size={22} color={colors.ink} />
+        </Pressable>
+
+      </View>
+
       <Animated.ScrollView
         className="flex-1"
         contentContainerClassName="flex-grow pb-28"
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        stickyHeaderIndices={[0]}
         showsVerticalScrollIndicator={false}
       >
-        <PurchaseHeader
-          onChangeLocation={() => navigation.navigate('SelectLocation')}
-          scrollY={scrollY}
-          searchBar={
-            hasAnyOrder ? (
-              <PurchaseSearchBar
-                value={query}
-                onChangeText={(text) => {
-                  setQuery(text);
-                  setShowAllOrders(false);
-                }}
-                onOpenFilter={() => setIsFilterSheetOpen(true)}
-                isFilterActive={statusFilter !== 'all'}
-              />
-            ) : undefined
-          }
-        />
+        {hasAnyOrder && (
+          <View className="px-6 pt-3">
+            <PurchaseSearchBar
+              value={query}
+              onChangeText={(text) => {
+                setQuery(text);
+                setShowAllOrders(false);
+              }}
+              onOpenFilter={() => setIsFilterSheetOpen(true)}
+              isFilterActive={statusFilter !== 'all'}
+            />
+          </View>
+        )}
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center py-24">
@@ -207,7 +188,7 @@ export function PurchaseScreen({ navigation }: Props) {
             {hasMoreOrders ? (
               <Pressable
                 onPress={() => setShowAllOrders(true)}
-                className="mb-1 items-center rounded-xl border border-ink/10 bg-white py-3.5 "
+                className="mb-1 items-center rounded-xl  bg-[#F8F8F6] py-3.5 "
               >
                 <Text className="text-[14px] font-semibold text-ink">
                   View {sortedOrders.length - visibleOrders.length} more order{sortedOrders.length - visibleOrders.length === 1 ? '' : 's'}
@@ -225,14 +206,14 @@ export function PurchaseScreen({ navigation }: Props) {
               )
             )}
 
-            <PurchaseBestSellers items={bestSellers} />
+            <PurchaseRecommendations />
 
             <View className="mt-8 gap-2 pb-44 pt-10">
-              <Text className="text-5xl font-semibold tracking-tight text-ink/10">Every order, a small win.</Text>
+              <Text className="text-5xl font-bold tracking-tight text-ink/10">Every order, a small win.</Text>
               <View className="flex-row items-center gap-1.5">
-                <Text className="text-sm font-medium text-ink/50">Made with</Text>
-                <AppIcon icon={HeartIcon} size={14} color={colors.danger} fill={colors.danger} />
-                <Text className="text-sm font-medium text-ink/50">for your neighborhood</Text>
+                <Text className="text-sm font-medium text-ink/50">#GloceriesApp</Text>
+                {/* <AppIcon icon={HeartIcon} size={14} color={colors.danger} fill={colors.danger} />
+                <Text className="text-sm font-medium text-ink/50">for your neighborhood</Text> */}
               </View>
             </View>
 

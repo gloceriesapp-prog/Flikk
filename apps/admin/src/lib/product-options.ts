@@ -33,6 +33,19 @@ export const PRODUCT_CATEGORIES = [
 // --mist token every other surface in this dashboard already uses.
 export const MIST_FALLBACK = '#F6FAF0';
 
+// Veg/non-veg only makes sense where a real animal-origin option exists —
+// meat/fish itself, and dairy/eggs/bread (eggs share that category, and a
+// veg-vs-egg distinction is a real thing a customer cares about there).
+// Every other category (Vegetables & Fruits, Personal Care, Household,
+// Pharmacy, etc.) has no real non-veg variant to distinguish from, so the
+// toggle doesn't show there at all — per an explicit ask, not just hidden
+// behind a default.
+const VEG_TOGGLE_CATEGORIES = new Set(['Meat, Eggs & Fish', 'Dairy, Bread & Eggs']);
+
+export function categoryHasVegToggle(category: string): boolean {
+  return VEG_TOGGLE_CATEGORIES.has(category);
+}
+
 // One pastel tint per category, used when a product's own photo yields no
 // usable color (see lib/bgColor.ts). Deliberately capped to the same
 // pastel range generateProductBgColor forces real extracted colors into

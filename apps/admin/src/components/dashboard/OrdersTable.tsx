@@ -5,12 +5,18 @@
 // headers, and numbered pagination with a per-page picker — same
 // component shape, Flikk's own OrderStatus values instead of lead-warmth
 // pills.
+//
+// Real data now (app/api/orders, service-role Supabase read — orders has
+// no public RLS policy admin can use) with a live Supabase Realtime
+// subscription (useAdminRealtime -> app/api/realtime's SSE relay) so any
+// order write from the customer, partner, or rider app refetches this
+// table without a manual page reload.
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, Download, Grid3x3, List, Plus, SlidersHorizontal } from 'lucide-react';
 import clsx from 'clsx';
-import { formatCurrency } from '@/lib/format';
-import { PLACEHOLDER_ORDERS } from '@/lib/mock-data';
+import { formatCurrency, formatDateTime } from '@/lib/format';
+import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import type { Order, OrderStatus } from '@/lib/types';
 import { StatusPill } from '@/components/ui/StatusPill';
 
@@ -33,13 +39,27 @@ const COLUMNS: { key: keyof Order; label: string }[] = [
 const PAGE_SIZE_OPTIONS = [5, 10, 20];
 
 export function OrdersTable() {
+  const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [sortKey, setSortKey] = useState<keyof Order>('placedAt');
   const [sortAsc, setSortAsc] = useState(true);
   const [pageSize, setPageSize] = useState(5);
   const [page, setPage] = useState(1);
 
-  const filtered = filter === 'all' ? PLACEHOLDER_ORDERS : PLACEHOLDER_ORDERS.filter((o) => o.status === filter);
+  const loadOrders = useCallback(async () => {
+    const res = await fetch('/api/orders');
+    if (res.ok) setOrders(await res.json());
+  }, []);
+
+  useEffect(() => {
+    // Deferred to a microtask — same react-hooks/set-state-in-effect
+    // pattern as inventory/page.tsx and stores/page.tsx.
+    Promise.resolve().then(loadOrders);
+  }, [loadOrders]);
+
+  useAdminRealtime(loadOrders);
+
+  const filtered = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -153,10 +173,10 @@ export function OrdersTable() {
                 <td className="py-3">
                   <input type="checkbox" className="h-4 w-4 rounded border-border" aria-label={`Select ${order.id}`} />
                 </td>
-                <td className="py-3 pr-4 font-medium text-ink">{order.id}</td>
+                <td className="py-3 pr-4 font-medium text-ink">#{order.id.slice(0, 6).toUpperCase()}</td>
                 <td className="py-3 pr-4 text-ink-soft">{order.storeName}</td>
                 <td className="py-3 pr-4 text-ink-soft">{order.zone}</td>
-                <td className="py-3 pr-4 text-ink-soft">{order.placedAt}</td>
+                <td className="py-3 pr-4 text-ink-soft">{formatDateTime(order.placedAt)}</td>
                 <td className="py-3 pr-4 font-medium tabular-nums text-ink">{formatCurrency(order.amount)}</td>
                 <td className="py-3">
                   <StatusPill status={order.status} />

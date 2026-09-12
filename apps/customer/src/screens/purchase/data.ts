@@ -14,8 +14,7 @@ export interface OrderItemSummary {
   quantity: number;
   // Real order_items.unit_price_at_order — the price actually paid, not a
   // live re-lookup (CLAUDE.md: never derive an order's total from current
-  // product prices). Used by PurchaseBestSellers to re-add a past item to
-  // the cart at a sane starting price.
+  // product prices).
   price: number;
 }
 

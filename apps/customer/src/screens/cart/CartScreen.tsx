@@ -4,9 +4,14 @@
 // just the editable item list + fee breakdown.
 //
 // Page bg is #F1F2F4 with white rounded cards stacked on it (items,
-// DeliveryTipCard, YouMayAlsoLikeRow, BillDetailsCard) rather than one
-// continuous white sheet — matches the reference. Items card: "N items"
-// header + a dashed divider, then one CartItemRow per item.
+// DeliveryTipCard, BillDetailsCard) rather than one continuous white
+// sheet — matches the reference. Items card: "N items" header + a dashed
+// divider, then one CartItemRow per item.
+//
+// YouMayAlsoLikeRow ("You might also need these") is gone — per an
+// explicit ask to strip every product-card dummy dataset out of the app;
+// its product pool was entirely fabricated (a random pick across four
+// per-tab mock lists). Re-add once a real recommendation feed exists.
 //
 // Tip selection is lifted up here (not local to DeliveryTipCard) because
 // BillDetailsCard's tip line and its own Total payable both need to
@@ -30,7 +35,6 @@ import { CartCheckoutFooter } from './components/CartCheckoutFooter';
 import { CartDeliveryInfoBar } from './components/CartDeliveryInfoBar';
 import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
 import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
-import { YouMayAlsoLikeRow } from './components/YouMayAlsoLikeRow';
 import { BillDetailsCard } from './components/BillDetailsCard';
 import { CancellationNoteCard } from './components/CancellationNoteCard';
 import type { AppStackParamList } from '../../navigation/types';
@@ -209,7 +213,6 @@ export function CartScreen({ navigation }: Props) {
             </View>
 
             <DeliveryTipCard selectedTip={tip} onSelectTip={setTip} />
-            <YouMayAlsoLikeRow />
             <FreeDeliveryProgressCard itemTotal={itemTotal} />
             <BillDetailsCard
               itemTotal={itemTotal}

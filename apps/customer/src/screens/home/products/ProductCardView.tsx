@@ -36,7 +36,7 @@
 // product is also in the cart bar/CartScreen.
 
 import { useState } from 'react';
-import { Add01Icon, HeartIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
+import { Add01Icon, Bookmark02Icon, Clock01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
@@ -48,6 +48,13 @@ import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
 import { useWishlistStore } from '../../../store/useWishlistStore';
 import type { Product } from './types';
+
+// Same two categories admin's own categoryHasVegToggle (product-options.ts)
+// gates the Add/Edit product form's veg/non-veg field with — kept in sync
+// by convention (both are a deliberate copy, same as PRODUCT_CATEGORIES
+// itself already is across admin/partner), not a shared import, since this
+// is a separate app.
+const VEG_INDICATOR_CATEGORIES = new Set(['Meat, Eggs & Fish', 'Dairy, Bread & Eggs']);
 
 interface Props {
   product: Product;
@@ -83,7 +90,15 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
     sizeOptions,
     storeId,
     storeName,
+    categoryLabel,
   } = product;
+  // Veg/non-veg only means something for meat/fish and dairy/eggs — every
+  // other category (Vegetables & Fruits, Personal Care, Household, etc.)
+  // has no real non-veg variant to distinguish from, so the badge doesn't
+  // render there at all rather than defaulting every product to a green
+  // "veg" dot regardless of category. Same category set admin's own
+  // categoryHasVegToggle (product-options.ts) gates the form field with.
+  const showVegIndicator = categoryLabel != null && VEG_INDICATOR_CATEGORIES.has(categoryLabel);
   const discountPercent =
     showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
   // Same real, non-fabricated pre-order estimate CartScreen already shows
@@ -105,8 +120,8 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
   const decrementItem = useCartStore((state) => state.decrementItem);
 
   return (
-    <Pressable onPress={onPress} className={`${widthClassName} gap-2`}>
-      <View className="aspect-square">
+    <Pressable onPress={onPress} className={`${widthClassName} gap-3`}>
+      <View className="aspect-[4/5]">
         {/* backgroundColor is a flat premium gray, not white — every card
             gets the same neutral photo backdrop regardless of what the
             actual product photo looks like (a per-product pastel would
@@ -114,14 +129,29 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             *types*; one consistent gray reads as one deliberate system).
             Still always explicit (never undefined) for the same Android
             shadow-compositing reason as before. */}
-        {/* Only the top corners round — bottom stays sharp so the veg/ADD
-            cutout badges below still sit flush square in the corners,
-            matching the reference's cutout look instead of getting
-            clipped into a rounded corner themselves. */}
+        {/* Top corners always round; bottom-right stays sharp so the ADD
+            cutout badge sits flush square in it, matching the reference's
+            cutout look instead of getting clipped into a rounded corner.
+            Bottom-LEFT only stays sharp when the veg/non-veg cutout is
+            actually there to fill it (showVegIndicator) — with no badge
+            in that corner (most categories, see this file's own note),
+            a square corner just looked like an unfinished edge, so it
+            rounds like every other corner instead. */}
         <View
-          className="h-full w-full overflow-hidden rounded-t-xl rounded-br-[8px] shadow-sm shadow-black/20"
+          className={`h-full w-full overflow-hidden rounded-t-xl rounded-br-[8px] shadow-sm shadow-black/20 ${showVegIndicator ? '' : 'rounded-bl-xl'}`}
           style={{ backgroundColor: '#EEEEEE' }}
         >
+          {/* Fills the entire box edge-to-edge (no inset padding) —
+              resizeMode="cover" per an explicit reference image: every
+              real product photo already carries its own full-bleed
+              background (a flat color backdrop, or the product shot
+              filling the frame), so the photo itself should occupy 100%
+              of the card. The `#EEEEEE` box above is what actually
+              handles "no background" — a real product photo that IS a
+              transparent-bg cutout shows this gray through its own alpha
+              channel automatically (cover only crops opaque bounds, it
+              never adds letterboxing), so no separate per-image "has its
+              own background?" detection is needed here. */}
           <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
 
           {/* freshness ribbon */}
@@ -138,25 +168,30 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             className="absolute right-2 top-2 items-center justify-center"
           >
             <AppIcon
-              icon={HeartIcon}
+              icon={Bookmark02Icon}
               size={20}
               color={isBookmarked ? colors.danger : 'rgba(0,0,0,0.5)'}
-              strokeWidth={isBookmarked ? 0 : 1.5}
-              fill={isBookmarked ? colors.danger : 'rgba(0,0,0,0.5)'}
+              strokeWidth={1.5}
+              fill={isBookmarked ? colors.danger : 'none'}
             />
           </Pressable>
 
           {/* veg/non-veg indicator — cutout corner, only the inner (top-right)
               corner curved so it reads as a notch cut out of the photo,
-              not a floating square. */}
-          <View className="absolute bottom-0 left-0 rounded-tr-md bg-white pr-1 pt-1">
-            <View
-              className={`h-4 w-4 items-center justify-center rounded-[3px] border ${isVeg ? 'border-success' : 'border-danger'
-                }`}
-            >
-              <View className={`h-1.5 w-1.5 rounded-full ${isVeg ? 'bg-success' : 'bg-danger'}`} />
+              not a floating square. Only for categories where this is a
+              real distinction (showVegIndicator, above) — every other
+              category just skips this corner entirely rather than
+              defaulting to a fake "veg" claim. */}
+          {showVegIndicator && (
+            <View className="absolute bottom-0 left-0 rounded-tr-md bg-white pr-1 pt-1">
+              <View
+                className={`h-4 w-4 items-center justify-center rounded-[3px] border ${isVeg ? 'border-success' : 'border-danger'
+                  }`}
+              >
+                <View className={`h-1.5 w-1.5 rounded-full ${isVeg ? 'bg-success' : 'bg-danger'}`} />
+              </View>
             </View>
-          </View>
+          )}
 
           {/* ADD button — docked entirely flush to the bottom-right corner. */}
           <View className="absolute bottom-0 right-0">
@@ -165,12 +200,12 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
                 onPress={() =>
                   addToCart({ id, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
                 }
-                className="h-9 items-center justify-center rounded-[8px] border-[1px] border-[#2457F5] bg-[#F4F7FF] px-3"
+                className="h-9 items-center justify-center rounded-[8px] border-[1.5px] border-[#2457F5] bg-[#F4F7FF] px-3"
               >
                 <Text className="text-[13px] font-semibold text-[#2457F5]">ADD</Text>
               </Pressable>
             ) : (
-              <View className="h-8 flex-row items-center justify-between gap-1 rounded-[8px] border-[1.5px] border-[#2457F5] bg-[#F4F7FF] px-1.5">
+              <View className="h-9 flex-row items-center justify-between gap-1 rounded-[8px] border-[1.5px] border-[#2457F5] bg-[#F4F7FF] px-1.5">
                 <Pressable onPress={() => decrementItem(id)} hitSlop={6}>
                   <AppIcon icon={MinusSignIcon} size={14} color="#2457F5" strokeWidth={2.5} />
                 </Pressable>
@@ -186,11 +221,16 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
 
 
       <View className="gap-1 px-1">
-        <Text className="text-[10px] font-medium uppercase text-ink/40">Get it in {etaMinutes} mins</Text>
+        {/* <Text className="text-[10px] font-medium uppercase text-ink/40">Get it in {etaMinutes} mins</Text> */}
 
-        <Text className="text-[13px] font-medium leading-4 text-ink" numberOfLines={2}>
+        <Text className="text-[13.5px] font-medium leading-4 text-ink" numberOfLines={2}>
           {name}
-          {localName ? ` (${localName})` : ''}
+          {/* Some real localName values already come wrapped in parens
+              (admin-entered) — stripping any existing leading/trailing
+              pair before adding our own is what actually fixes the
+              double-parens bug ("Banana ((...))") rather than trusting
+              the data to always be bare. */}
+          {localName ? ` (${localName.trim().replace(/^\(+/, '').replace(/\)+$/, '')})` : ''}
         </Text>
 
         {/* size chips — selection only, doesn't change price yet (see this
@@ -209,15 +249,20 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
         </View>
 
         {discountPercent !== null && discountPercent > 0 && (
-          <Text className="text-[11px] font-semibold text-lime-deep">{discountPercent}% OFF</Text>
+          <Text className="text-[12px] font-semibold text-lime-deep">{discountPercent}% OFF</Text>
         )}
 
         <View className="flex-row items-center gap-1.5">
-          <Text className="text-[15px] font-semibold text-ink">₹{price}</Text>
+          <Text className="text-[16px] font-semibold text-ink">₹{price}</Text>
           {originalPrice && <Text className="text-xs text-ink/40 line-through">₹{originalPrice}</Text>}
         </View>
 
         {perUnitLabel && <Text className="text-[11px] font-medium text-ink/40">{perUnitLabel}</Text>}
+        <View className="flex-row items-center gap-1">
+          <AppIcon icon={Clock01Icon} size={13} color={`${colors.ink}66`} />
+          <Text className="text-[10px] font-medium text-ink/40">{etaMinutes} mins</Text>
+        </View>
+
       </View>
     </Pressable>
   );

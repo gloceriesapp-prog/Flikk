@@ -18,7 +18,6 @@ import { AppImage as Image } from '../../../components/AppImage';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import type { Product } from '../../home/products/types';
 import type { StoreCategory } from '../useStoreProducts';
-import { DUMMY_STORE_CATEGORIES } from './dummyStoreCategories';
 
 interface Props {
   categories: StoreCategory[];
@@ -28,19 +27,13 @@ interface Props {
 
 export function StoreCategoryGrid({ categories, products, onSelect }: Props) {
   // 'All' itself doesn't need its own card in a grid whose whole purpose
-  // is jumping INTO a specific category.
+  // is jumping INTO a specific category. No dummy fallback (
+  // dummyStoreCategories.ts removed per an explicit ask) — renders
+  // nothing while a store has no real categories beyond 'All'.
   const realCategories = categories.filter((c) => c.id !== 'all');
+  const cards = realCategories.map((c) => ({ id: c.id, label: c.label, imageUrl: products.find((p) => p.categoryLabel === c.label)?.imageUrl }));
 
-  // TEMPORARY: most real stores here don't have enough distinct categories
-  // yet to preview a full grid against — falls back to dummyStoreCategories
-  // ONLY when there's no real category list at all. Tapping one of these
-  // won't match any real product (there's nothing real behind them yet),
-  // same "preview-only, not wired to real filtering" caveat
-  // dummyPreviewStore.ts already documents for its own stand-in.
-  const usingDummyData = realCategories.length === 0;
-  const cards = usingDummyData
-    ? DUMMY_STORE_CATEGORIES.map((c) => ({ id: c.id, label: c.label, imageUrl: c.imageUrl }))
-    : realCategories.map((c) => ({ id: c.id, label: c.label, imageUrl: products.find((p) => p.categoryLabel === c.label)?.imageUrl }));
+  if (cards.length === 0) return null;
 
   return (
     <View className="mb-5 w-full">

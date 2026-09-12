@@ -1,14 +1,16 @@
-// Wrapper over the shared ProductSection (see ../products/) pairing the
-// Fresh Fish catalog with its section title, plus this tab's own promo
-// poster — real admin data (Home Categories -> "Meat & Fish" tab's own
-// "Ads & posters" section), image only, renders only when a founder has
-// actually added one, same convention as GroceriesTab/BakeryTab/ProteinTab.
+// This tab's own promo poster — real admin data (Home Categories ->
+// "Meat & Fish" tab's own "Ads & posters" section), image only, renders
+// only when a founder has actually added one, same convention as
+// GroceriesTab/BakeryTab/ProteinTab.
+//
+// The "Fresh meat and fish, every day." product grid (FISH_PRODUCTS) is
+// gone — per an explicit ask to strip every product-card dummy dataset
+// out of the app. No real Meat & Fish-scoped catalog feed exists yet;
+// re-add once one does, not with fabricated data in the meantime.
 
 import { View } from 'react-native';
 import { PosterBanner } from '../category-tab/components/PosterBanner';
-import { ProductSection } from '../products/ProductSection';
 import type { RemoteHomeTabBanner } from '../data/useHomeTabs';
-import { FISH_PRODUCTS } from './data';
 
 interface Props {
   banner?: RemoteHomeTabBanner;
@@ -21,9 +23,6 @@ export function FishProductGrid({ banner }: Props) {
     // real clearance here it covers this tab's own last product row (same
     // fix applied across every tab body: Groceries/Bakery/Protein/
     // Regional/generic tile grid).
-    <View className="pb-32">
-      {banner && <PosterBanner imageUri={banner.imageUrl} />}
-      <ProductSection title="Fresh meat and fish, every day." products={FISH_PRODUCTS} />
-    </View>
+    <View className="pb-32">{banner && <PosterBanner imageUri={banner.imageUrl} />}</View>
   );
 }

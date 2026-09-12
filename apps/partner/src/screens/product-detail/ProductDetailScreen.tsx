@@ -32,6 +32,7 @@ import { colors } from '../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { useCatalogStore } from '../../store/useCatalogStore';
 import { standardSizeOptions, type ProductVariant } from '../catalog/data';
+import { suggestedMrp } from '../catalog/pricing';
 import type { AppStackParamList } from '../../navigation/types';
 import { AddSizeButton } from './components/AddSizeButton';
 import { ProductVariantCard } from './components/ProductVariantCard';
@@ -69,7 +70,21 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
   function setVariantPrice(variantId: string, rawPrice: string) {
     const price = Number(rawPrice.replace(/[^0-9]/g, '')) || 0;
-    setDraft((prev) => prev.map((v) => (v.id === variantId ? { ...v, price } : v)));
+    setDraft((prev) =>
+      prev.map((v) => {
+        if (v.id !== variantId) return v;
+        // Auto-fills a suggested MRP the moment a price is typed, only
+        // while this variant's own MRP is still untouched.
+        const originalPrice = v.originalPrice === undefined ? suggestedMrp(currentProduct.category, price) : v.originalPrice;
+        return { ...v, price, originalPrice };
+      }),
+    );
+  }
+
+  function setVariantMrp(variantId: string, rawMrp: string) {
+    const digits = rawMrp.replace(/[^0-9]/g, '');
+    const originalPrice = digits ? Number(digits) : undefined;
+    setDraft((prev) => prev.map((v) => (v.id === variantId ? { ...v, originalPrice } : v)));
   }
 
   function setVariantQuantity(variantId: string, rawQty: string) {
@@ -173,6 +188,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
               canRemove={draft.length > 1}
               onToggleStock={(isInStock) => setVariantStock(variant.id, isInStock)}
               onChangePrice={(text) => setVariantPrice(variant.id, text)}
+              onChangeMrp={(text) => setVariantMrp(variant.id, text)}
               onChangeQuantity={(text) => setVariantQuantity(variant.id, text)}
               onRemove={() => removeVariant(variant.id)}
             />

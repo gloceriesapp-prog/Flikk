@@ -192,19 +192,6 @@ export interface WalletBalance {
   owedToStores: number;
 }
 
-// Platform health — stands in for a real uptime/incident feed once one
-// exists (status page, error-rate alerting, etc.). Overview's header shows
-// this instead of a static "Export/Add" button pair — "is the product
-// actually live right now" is a more useful glance-and-go signal for a
-// founder than two action buttons that already live inline elsewhere.
-export type SystemHealth = 'operational' | 'degraded' | 'down';
-
-export interface SystemStatus {
-  health: SystemHealth;
-  message: string;
-  lastUpdatedAt: string;
-}
-
 // Customer-app installs, split by store — no App Store Connect / Play
 // Console API integration exists yet (same category as Razorpay/WhatsApp
 // in CLAUDE.md's env-scoped external services, just not wired up), so

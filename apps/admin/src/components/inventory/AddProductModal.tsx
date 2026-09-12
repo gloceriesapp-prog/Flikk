@@ -19,7 +19,7 @@ import { X } from 'lucide-react';
 import type { NewProductInput, Product, StockStatus } from '@/lib/types';
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
-import { PRODUCT_CATEGORIES } from '@/lib/product-options';
+import { categoryHasVegToggle, PRODUCT_CATEGORIES } from '@/lib/product-options';
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
@@ -188,28 +188,34 @@ export function AddProductModal({
             aria-label="Description"
           />
 
-          <ProductVariantsEditor variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
+          <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
           <SubCategoryPicker value={draft.subCategoryId} onChange={(subCategoryId) => setDraft({ ...draft, subCategoryId })} />
 
-          {/* Same fields the customer app's ProductCard reads — see
-              Product's own note in lib/types.ts. */}
-          <div className="flex items-center gap-2 rounded-xl border border-border p-1">
-            <button
-              type="button"
-              onClick={() => setDraft({ ...draft, isVeg: true })}
-              className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${draft.isVeg ? 'bg-success/10 text-success' : 'text-muted'}`}
-            >
-              Veg
-            </button>
-            <button
-              type="button"
-              onClick={() => setDraft({ ...draft, isVeg: false })}
-              className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${!draft.isVeg ? 'bg-danger/10 text-danger' : 'text-muted'}`}
-            >
-              Non-veg
-            </button>
-          </div>
+          {/* Same field the customer app's ProductCard reads — see
+              Product's own note in lib/types.ts. Only shown for
+              categories where veg/non-veg is a real distinction (meat/
+              fish, dairy/eggs) — per an explicit ask, every other
+              category (Vegetables & Fruits, Personal Care, etc.) has no
+              real non-veg variant to distinguish from. */}
+          {categoryHasVegToggle(draft.category) && (
+            <div className="flex items-center gap-2 rounded-xl border border-border p-1">
+              <button
+                type="button"
+                onClick={() => setDraft({ ...draft, isVeg: true })}
+                className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${draft.isVeg ? 'bg-success/10 text-success' : 'text-muted'}`}
+              >
+                Veg
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraft({ ...draft, isVeg: false })}
+                className={`flex-1 rounded-lg py-1.5 text-sm font-medium ${!draft.isVeg ? 'bg-danger/10 text-danger' : 'text-muted'}`}
+              >
+                Non-veg
+              </button>
+            </div>
+          )}
 
           <select
             value={draft.freshnessTag}

@@ -21,7 +21,7 @@ interface Props {
 
 export function PurchaseSearchBar({ value, onChangeText, onOpenFilter, isFilterActive }: Props) {
   return (
-    <View className="h-[52px] flex-row items-center rounded-full bg-white px-4 shadow-sm shadow-black/10">
+    <View className="h-[52px] flex-row items-center rounded-full bg-white border border-gray-100 px-4">
       <AppIcon icon={Search01Icon} size={18} color={colors.ink} />
       <TextInput
         value={value}

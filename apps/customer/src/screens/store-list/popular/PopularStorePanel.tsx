@@ -6,13 +6,9 @@
 // navigates to that store's own StoreDetail screen, same as tapping the
 // store elsewhere in this app.
 //
-// Falls back to DUMMY_POPULAR_PRODUCTS (dummyPopularProducts.ts) only
-// while this store has zero real deals on file — TEMPORARY, purely so the
-// 4-row layout can actually be seen at real size before any store has
-// enough real discounted products; never overrides real data once a store
-// has some. Delete this fallback once that's no longer true, same
-// convention screens/home/most-bought/dummyPreviewProducts.ts already
-// documents for its own sections.
+// Real deals only — no dummy fallback (dummyPopularProducts.ts removed
+// per an explicit ask). Renders nothing while a store has zero real
+// discounted products on file.
 
 import { Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -22,7 +18,6 @@ import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { useStorePopularProducts } from './useStorePopularProducts';
 import { PopularProductRow } from './PopularProductRow';
-import { DUMMY_POPULAR_PRODUCTS } from './dummyPopularProducts';
 import type { AppStackParamList } from '../../../navigation/types';
 
 const PANEL_WIDTH = 300;
@@ -37,8 +32,7 @@ interface Props {
 
 export function PopularStorePanel({ storeId, storeName }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const { data: realProducts = [] } = useStorePopularProducts(storeId);
-  const products = realProducts.length > 0 ? realProducts : DUMMY_POPULAR_PRODUCTS;
+  const { data: products = [] } = useStorePopularProducts(storeId);
 
   if (products.length === 0) return null;
 

@@ -1,9 +1,9 @@
 // Everything shown on the "All" category tab, below the header:
 // SeasonalSection, nearby shops, the category grid (CategorySections —
 // shared with screens/categories/CategoriesScreen.tsx), the deals promo
-// card, Coastal Kitchen picks, Today's Steal Deals, then the same brand
-// sign-off footer CategoriesScreen ends on. Only rendered when "all" is
-// selected — see HomeScreen.tsx.
+// card, Today's Steal Deals, then the same brand sign-off footer
+// CategoriesScreen ends on. Only rendered when "all" is selected — see
+// HomeScreen.tsx.
 //
 // Closed-hours (10:30 PM–6:00 AM IST, utils/operatingHours.ts) is
 // communicated entirely in the header now (HomeHeader's red gradient +
@@ -16,19 +16,20 @@
 // Today's Steal Deals (useDealsProducts) queries that one store's own
 // catalog — real inventory with real checkout consequences (single-store-
 // per-order, CLAUDE.md), not pooled across every partnered store the way
-// it used to be. Every OTHER section rendered here (SeasonalSection,
-// StoreTypesSection, CategorySections, DealsSection's own promo card,
-// CoastalKitchenPicksSection) is static mock/demo content with no real
-// per-store inventory behind it yet — MostBoughtSection and
-// EverydayEssentialsSection are commented out below for the same reason.
-// Scoping those to a store would mean fabricating which store "owns" a
-// hardcoded product list; that's a content problem (real products need to
-// exist per store first), not something to paper over here.
+// it used to be.
+//
+// CoastalKitchenPicksSection is gone entirely — per an explicit ask to
+// strip every product-card dummy dataset out of the app
+// (COASTAL_KITCHEN_PICKS_PRODUCTS was fully fabricated, shown
+// unconditionally). EverydayEssentialsSection stays commented out below
+// (real data, just not store-scoped yet — a content/scoping question, not
+// a dummy-data one, so out of scope for this cleanup).
 
 import { View } from 'react-native';
 import { CategorySections } from '../../../components/CategorySections/CategorySections';
 import { BrandFooter } from '../../../components/BrandFooter';
-import { CoastalKitchenPicksSection } from '../coastal-kitchen-picks/CoastalKitchenPicksSection';
+import { useLocationStore } from '../../../store/useLocationStore';
+import { isLocationServiceable } from '../../../utils/serviceability';
 import { DealsSection } from '../deals/DealsSection';
 import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
 import { FestivalPicksSection } from '../festival-picks/FestivalPicksSection';
@@ -37,6 +38,7 @@ import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { ProductSection } from '../products/ProductSection';
 import { PANEL_BG, SeasonalSection } from '../seasonal/SeasonalSection';
 import { StoreTypesSection } from '../store-types/StoreTypesSection';
+import { UnavailableZoneSection } from '../unavailable-zone/UnavailableZoneSection';
 import { useNearestStore } from '../useNearestStore';
 import { useDealsProducts } from './useDealsProducts';
 
@@ -47,6 +49,8 @@ export function AllTabSections() {
   // end up disagreeing about which store an order here would go to.
   const { storeId } = useNearestStore();
   const { data: dealsProducts = [] } = useDealsProducts(storeId);
+  const location = useLocationStore((state) => state.location);
+  const isServiceable = isLocationServiceable(location);
 
   return (
     // pb-32 — same floating-CartBar clearance fix applied across every
@@ -55,22 +59,27 @@ export function AllTabSections() {
     // breathing room from BottomNavBar + CartBar as every other tab's
     // last row.
     <View className="pb-32">
-      {/* One shared panel — SeasonalSection's own banner/tiles and
-          FestivalPicksSection's product row read as one continuous
-          section (same background, one rounded bottom edge), per an
-          explicit ask, rather than two separately-backed blocks stacked
-          on top of each other. */}
-      <View className="rounded-b-[32px]" style={{ backgroundColor: PANEL_BG }}>
-        <SeasonalSection />
-        <FestivalPicksSection />
-      </View>
-      <MostBoughtSection />
-      <NearbyStoresSection />
-      <StoreTypesSection />
+      {isServiceable ? (
+        <>
+          {/* One shared panel — SeasonalSection's own banner/tiles and
+              FestivalPicksSection's product row read as one continuous
+              section (same background, one rounded bottom edge), per an
+              explicit ask, rather than two separately-backed blocks stacked
+              on top of each other. */}
+          <View className="rounded-b-[32px]" style={{ backgroundColor: PANEL_BG }}>
+            <SeasonalSection />
+            <FestivalPicksSection />
+          </View>
+          <MostBoughtSection />
+          <NearbyStoresSection />
+          {/* <StoreTypesSection /> */}
+        </>
+      ) : (
+        <UnavailableZoneSection />
+      )}
       <CategorySections />
       {/* <EverydayEssentialsSection /> */}
       <DealsSection />
-      <CoastalKitchenPicksSection />
       {dealsProducts.length > 0 && (
         <ProductSection title="Today's Steal Deals" products={dealsProducts} showDiscountBadge />
       )}

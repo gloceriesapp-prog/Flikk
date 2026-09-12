@@ -31,7 +31,7 @@ import { SEASONAL_TILES } from './data';
 // the seasonal banner/tiles and the festival product row as one continuous
 // section rather than two separately-backed blocks. This file no longer
 // owns the panel's background/rounding itself (see the root View below) —
-// the wrapper in AllTabSections.tsx does, since it now spans both sections.
+// the wrapper in AllTabSections.tsx does.
 export const PANEL_BG = '#FBE9DD';
 const TILE_GAP = 12; // matches contentContainerClassName's own gap-3
 const VISIBLE_TILES = 3.3; // bigger tiles — 3 full + a peek of the 4th, scroll for the rest

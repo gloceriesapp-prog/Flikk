@@ -122,7 +122,7 @@ export async function releasePendingPayouts(): Promise<{ released: number; block
     if (payout.net_payout <= 0) {
       // Nothing owed (e.g. every order that week was fully commission) —
       // mark paid directly, no real money movement needed or possible.
-      await supabase.from('payouts').update({ status: 'paid' }).eq('id', payout.id);
+      await supabase.from('payouts').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', payout.id);
       continue;
     }
 

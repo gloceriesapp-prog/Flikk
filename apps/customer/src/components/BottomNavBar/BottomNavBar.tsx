@@ -20,9 +20,11 @@
 //
 // All four tabs have real screens now.
 //
-// The detached "coming soon" circular button that used to sit to the
-// pill's right is gone — per an explicit ask, removed entirely rather than
-// left as dead weight now that the pill has the full row width to itself.
+// A detached circular button sits to the pill's right again — per an
+// explicit reference image (a solid colored circle badge next to the nav
+// pill, own icon, no label). No onPress yet — same "UI exists, flow not
+// wired" convention as ProductCardView's own bookmark heart, since there's
+// no real destination for this to open yet.
 //
 // `hidden` (optional SharedValue<number>, 0..1) — the nav pill + side
 // button + fade gradient animate away (slide down + fade) as this goes
@@ -33,18 +35,34 @@
 // (Purchase/Categories/Store) fall back to a local always-0 value, so the
 // pill just never hides there — no behavior change for them.
 
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { LinearGradient } from 'expo-linear-gradient';
+import { SaleTag01Icon } from '@hugeicons/core-free-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppIcon } from '../AppIcon';
 import { CartBar } from '../CartBar/CartBar';
 import { BottomNavBarItem } from './BottomNavBarItem';
 import { BOTTOM_NAV_TABS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
+
+// Circle button's own fixed size + gap from the pill — the pill's own
+// right inset (below) is widened by exactly this much so the two never
+// overlap.
+const SIDE_BUTTON_SIZE = 52;
+const SIDE_BUTTON_GAP = 12;
+// The pill's own real height (icon + label + vertical padding) — used to
+// vertically CENTER the circle button against it, not bottom-align the
+// two (see that Pressable's own comment). Same 73 the CartBar row's own
+// animation offset below already treats as the pill's real height.
+const PILL_HEIGHT = 73;
+// Distance from the safe-area edge up to the pill's own bottom — lowered
+// (was +4) per an explicit ask to sit the whole nav a little closer to
+// the screen edge.
+const PILL_BOTTOM_OFFSET = -10;
 
 // isLiquidGlassAvailable() alone only confirms the GlassView *component*
 // exists — expo-glass-effect's own isGlassEffectAPIAvailable() doc note
@@ -92,9 +110,8 @@ export function BottomNavBar({ hidden }: Props) {
     opacity: interpolate(navProgress.value, [0, 1], [1, 0]),
   }));
   // CartBar row drops down to fill the gap the pill leaves behind when
-  // hidden — 73 = the pill's own height + the gap between the two rows
-  // (insets.bottom + 81 for the row, insets.bottom + 4 + ~73 + 4 for
-  // where the pill used to be — see the comment on the row itself).
+  // hidden — 73 = PILL_HEIGHT, the same distance the row's own resting
+  // position (below) sits above the pill (see that row's own comment).
   // Opacity untouched — this row should stay fully visible throughout,
   // only its position changes.
   const cartBarAnimatedStyle = useAnimatedStyle(() => ({
@@ -117,32 +134,33 @@ export function BottomNavBar({ hidden }: Props) {
           positioned themselves against (left/right/bottom values below
           are relative to it, not to some collapsed intermediate box). */}
       <Animated.View pointerEvents="box-none" style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 }, navAnimatedStyle]}>
-      {/* Dims scrolled content under the nav rather than hiding it outright
-          — stays faintly visible through the fade instead of disappearing
-          into a solid page-color block (which read as an opaque overlay).
-          pointerEvents="none" so it never blocks taps to the scroll view
-          underneath. Rendered before the pill so it stacks behind it.
-          First stop is 'rgba(255,255,255,0)', not the literal string
-          'transparent' — LinearGradient parses 'transparent' as
-          rgba(0,0,0,0) (black, fully see-through), so interpolating from
-          there to white-55%-opaque crossed through muddy gray/black
-          midtones instead of a clean white fade. Keeping every stop's RGB
-          channel at white and only varying alpha fixes that. */}
-      <LinearGradient
-        colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.7)']}
-        locations={[0, 0.55, 1]}
-        pointerEvents="none"
-        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: insets.bottom + 120 }}
-      />
+      {/* The white dim/fade gradient that used to sit here (behind the
+          pill, over whatever's scrolling underneath) is gone — per an
+          explicit ask to leave scrolled content exactly as it looks, not
+          washed toward white near the bottom of the screen. The glass
+          pill's own blur is what should visually separate it from the
+          content now, not a page-wide overlay. */}
 
-      {/* Occupies the full row width now that the "coming soon" side
-          button (this file's own header note) is gone — no shadow on this
-          wrapper (RN's shadow-* utilities map to Android's `elevation`,
-          which renders as a large diffuse dark halo rather than a tight
-          drop shadow, and read as a black smudge over the fade gradient
-          above rather than depth). The glass pill itself already reads as
-          elevated without it. */}
-      <View style={{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + 4 }}>
+      {/* Right inset makes room for the circle button beside it (its own
+          size + gap, this file's own constants above). shadowOffset
+          {0,0} + a real shadowRadius (not a directional offset) is what
+          gives an even halo on every side rather than just below it —
+          per an explicit ask for a shadow "for all the side". elevation
+          is Android's own equivalent (no offset/radius split there, one
+          number controls the whole halo). */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 20,
+          right: 20 + SIDE_BUTTON_SIZE + SIDE_BUTTON_GAP,
+          bottom: insets.bottom + PILL_BOTTOM_OFFSET,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.18,
+          shadowRadius: 16,
+          elevation: 12,
+        }}
+      >
         {USE_LIQUID_GLASS ? (
           // Real glass/blur materials work by refracting/blurring whatever
           // sits BEHIND them — with nothing there (a plain page background,
@@ -158,9 +176,9 @@ export function BottomNavBar({ hidden }: Props) {
           <GlassView
             glassEffectStyle="regular"
             colorScheme="light"
-            tintColor="rgba(255,255,255,0.4)"
+            // tintColor="rgba(255, 255, 255, 0.95)"
             isInteractive
-            style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }}
+            style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.08)' }}
           >
             <View className="flex-row items-center justify-around px-2 py-2.5">
               {BOTTOM_NAV_TABS.map((tab) => (
@@ -173,26 +191,27 @@ export function BottomNavBar({ hidden }: Props) {
           // className here is silently ignored, same as LinearGradient
           // elsewhere in this app. Positioning/rounding must go through
           // style.
-          // Android's BlurView backend renders visibly weaker/flatter than
-          // iOS's — intensity alone (was 90) still read as a plain gray
-          // bar, not glass. Pushed to max (100) plus a dark wash layered
-          // on top (rgba black, not the tint prop alone) for real contrast
-          // against light content scrolling underneath. Wash bumped again
-          // (0.4 -> 0.62) — per an explicit ask, 0.4 still read as a
-          // washed-out gray rather than the rich near-black glass a
-          // premium pill needs; a brighter 0.22 highlight border (up from
-          // 0.14) adds a thin top-edge sheen on top of the darker wash so
-          // it still reads as glass, not a flat black bar.
+          // Android's default BlurView backend doesn't do a real blur at
+          // all (it's a flat semi-opaque tint) — that's the actual root
+          // cause of "can't see the liquid glass when I scroll": there was
+          // never anything behind the pill actually blurring, on Android.
+          // experimentalBlurMethod="dimezisBlurView" switches to expo-blur's
+          // real native blur implementation there, same visual family as
+          // iOS's own backdrop blur. Wash dropped (0.55 -> 0.3) now that
+          // there's a genuine blur underneath it to show through — the old
+          // higher wash was hiding whatever little blur Android's flat-tint
+          // fallback did produce.
           <BlurView
             intensity={100}
             tint="light"
+            experimentalBlurMethod="dimezisBlurView"
             style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }}
           >
             {/* Light wash, not the old dark one — BottomNavBarItem.tsx's
                 icons/text are ink/black now, so the fallback pill needs to
                 stay light too, same reasoning as the GlassView branch's own
                 colorScheme="light" change. */}
-            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.55)' }} />
+            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.3)' }} />
             <View className="flex-row items-center justify-around px-2 py-2.5">
               {BOTTOM_NAV_TABS.map((tab) => (
                 <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
@@ -201,12 +220,36 @@ export function BottomNavBar({ hidden }: Props) {
           </BlurView>
         )}
       </View>
+
+      {/* Detached circle, vertically CENTERED against the pill, not
+          bottom-aligned with it — the pill is ~73px tall (PILL_HEIGHT,
+          the same number cartBarAnimatedStyle's own comment below already
+          uses) and this circle is only SIDE_BUTTON_SIZE (52), so sharing
+          the same `bottom` value as the pill left the circle sitting
+          noticeably lower than the pill's own visual center (the
+          misalignment in the reference screenshot). Solid coral
+          (CLAUDE.md's CTA color, the one accent never used as the base
+          pill/tab color) so it reads as its own separate action, not a
+          5th tab. */}
+      <Pressable
+        hitSlop={4}
+        className="items-center justify-center rounded-full bg-coral shadow-md shadow-black/20"
+        style={{
+          position: 'absolute',
+          right: 20,
+          bottom: insets.bottom + PILL_BOTTOM_OFFSET + (PILL_HEIGHT - SIDE_BUTTON_SIZE) / 2,
+          width: SIDE_BUTTON_SIZE,
+          height: SIDE_BUTTON_SIZE,
+        }}
+      >
+        <AppIcon icon={SaleTag01Icon} size={22} color="#FFFFFF" />
+      </Pressable>
       </Animated.View>
 
-      {/* Sits right above the pill — insets.bottom + 81 = insets.bottom + 4
-          (pill's own offset) + ~73 (pill height) + 4 (gap, trimmed down
-          from 10 — was reading as too much empty space between the two
-          rows) — while the pill is visible. When the pill hides
+      {/* Sits right above the pill — insets.bottom + PILL_BOTTOM_OFFSET +
+          PILL_HEIGHT + 4 (that last 4 is the gap between the two rows,
+          trimmed down from 10 — was reading as too much empty space) —
+          while the pill is visible. When the pill hides
           (navAnimatedStyle above), this row has nothing left to sit above,
           so cartBarAnimatedStyle slides it down by that same ~73px to
           rest near the real screen edge instead of floating in the gap
@@ -221,7 +264,7 @@ export function BottomNavBar({ hidden }: Props) {
           self-nulls when the cart's empty. */}
       <Animated.View
         pointerEvents="box-none"
-        style={[{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + 81 }, cartBarAnimatedStyle]}
+        style={[{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + PILL_BOTTOM_OFFSET + PILL_HEIGHT + 4 }, cartBarAnimatedStyle]}
         className="flex-row items-center justify-center"
       >
         <CartBar />

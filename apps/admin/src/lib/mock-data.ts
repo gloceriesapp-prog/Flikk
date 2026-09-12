@@ -13,19 +13,12 @@ import type {
   ProductPerformance,
   RevenuePoint,
   Store,
-  SystemStatus,
   WalletBalance,
   Zone,
   ZoneRequest,
 } from './types';
 
 export const ZONE_NAME = 'Kaup, Udupi';
-
-export const PLACEHOLDER_SYSTEM_STATUS: SystemStatus = {
-  health: 'operational',
-  message: 'All systems live',
-  lastUpdatedAt: '2 minutes ago',
-};
 
 export const PLACEHOLDER_APP_DOWNLOADS: AppDownloadStats = {
   android: 812,

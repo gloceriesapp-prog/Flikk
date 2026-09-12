@@ -8,9 +8,9 @@ interface Props {
   category: Category;
   isSelected: boolean;
   onPress: () => void;
-  // Retained so we don't break the parent component, 
+  // Retained so we don't break the parent component,
   // but it is no longer needed for the masking hack!
-  headerBottomColor: string; 
+  headerBottomColor: string;
 }
 
 export function CategoryTabItem({ category, isSelected, onPress, headerBottomColor }: Props) {
