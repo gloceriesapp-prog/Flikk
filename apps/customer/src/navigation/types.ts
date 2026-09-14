@@ -3,7 +3,6 @@
 import type { CartItem } from '../store/useCartStore';
 
 export type AuthStackParamList = {
-  Onboarding: undefined;
   Login: undefined;
   OtpVerification: { phone: string };
 };
@@ -88,4 +87,8 @@ export type AppStackParamList = {
   TrackOrder: { orderId: string; paymentMethodLabel: string; isTrip?: boolean };
   Wishlist: undefined;
   ShoppingList: undefined;
+  // Invite/referral tracking only — no credit/discount payout (backend's
+  // routes/referrals.ts own note on why: that would be a loyalty/rewards
+  // mechanic, explicitly out of scope until MVP validates).
+  Referral: undefined;
 };

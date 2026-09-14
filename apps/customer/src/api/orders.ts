@@ -6,6 +6,8 @@
 // name) — no field here is invented.
 
 import { apiRequest } from './client';
+import { mapApiProduct, type ApiProduct } from './products';
+import type { Product } from '../screens/home/products/types';
 import type { OrderStatus } from '../screens/track-order/data';
 
 export interface CreateOrderItem {
@@ -22,6 +24,9 @@ export interface CreateOrderInput {
   // own note), but the customer app itself no longer sends one.
   address_id: string;
   items: CreateOrderItem[];
+  // Cart-level coupon (api/promos.ts) — re-validated server-side, never
+  // trusted from the client's own earlier POST /promos/validate call.
+  promo_code?: string;
 }
 
 export interface ApiOrderItem {
@@ -41,6 +46,10 @@ export interface ApiOrder {
   delivery_fee: number;
   commission_amount: number;
   total: number;
+  // Real orders.discount_amount/promo_code_id (migrations/019_promo_codes.sql)
+  // — 0/null on the overwhelmingly common no-code order.
+  discount_amount: number;
+  promo_code_id: string | null;
   razorpay_payment_id: string | null;
   placed_at: string;
   packed_at: string | null;
@@ -71,4 +80,16 @@ export function fetchMyOrders(): Promise<ApiOrder[]> {
 
 export function fetchOrder(orderId: string): Promise<ApiOrder> {
   return apiRequest(`/orders/${orderId}`);
+}
+
+// GET /orders/buy-it-again — real repeat-purchase products (every product
+// this customer has actually had delivered before, ranked by how many
+// separate delivered orders included it — see that route's own note).
+// Row shape is the exact same ApiProduct every other product feed already
+// returns (routes/stores.ts's PRODUCT_WITH_VARIANTS_SELECT, reused
+// server-side), so mapApiProduct handles it identically — no second
+// mapping function for this one feed.
+export async function fetchBuyItAgain(): Promise<Product[]> {
+  const rows = await apiRequest<ApiProduct[]>('/orders/buy-it-again');
+  return rows.map(mapApiProduct);
 }

@@ -27,15 +27,22 @@ function gradient(colors: readonly [string, string, string, string]): CategoryHe
 const GRADIENT_BY_TAB_NAME: Record<string, CategoryHeaderGradient> = {
   // Deep red-to-orange sweep — per an explicit ask, overriding CLAUDE.md's
   // own "not orange" anti-clone rule (flagged and confirmed before this
-  // change landed). Same dark-top -> richer-saturated-bottom shape every
-  // other gradient here uses, just this hue family instead of the earlier
-  // emerald.
-  all: gradient(['#2B0A02', '#5C1A05', '#A8390D', '#E85D1F']),
-  groceries: gradient(['#1F1409', '#4A2E12', '#7A4A1E', '#A8732F']),
-  fresh: gradient(['#0C2410', '#194A1E', '#2E7A2E', '#4FA83B']),
-  'meat & fish': gradient(['#04141F', '#0A2E42', '#134F63', '#1C7A8C']),
-  regional: gradient(['#210808', '#4A1414', '#7A2620', '#A8432A']),
-  bakery: gradient(['#1F0D16', '#421B2C', '#6B2E44', '#9C4A5C']),
+  // change landed).
+  //
+  // Every palette below stays dark-to-deep across all 4 stops now, per a
+  // later explicit ask ("dark bg colour effect... more premium") —
+  // previously the last stop brightened into a fully saturated, fairly
+  // light color (e.g. 'all' ended at a bright #E85D1F orange); that read
+  // as cheerful/energetic rather than premium. Same per-category hue
+  // identity, same dark-top starting point, just the bottom stop now
+  // lands on a deep, moody, still-saturated-but-dark version of that hue
+  // instead of continuing to brighten toward it.
+  all: gradient(['#200801', '#3D1102', '#5C1D05', '#7A2708']),
+  groceries: gradient(['#150D05', '#2C1B0A', '#432A10', '#5A3916']),
+  fresh: gradient(['#07150A', '#102910', '#1B3F1A', '#265424']),
+  'meat & fish': gradient(['#020E15', '#062028', '#0B333F', '#114756']),
+  regional: gradient(['#160505', '#2C0D0D', '#441515', '#5C1F16']),
+  bakery: gradient(['#140811', '#2A121C', '#411D2A', '#582838']),
 };
 
 export function gradientForTabName(name: string): CategoryHeaderGradient {
@@ -46,11 +53,14 @@ export function gradientForTabName(name: string): CategoryHeaderGradient {
 // (utils/operatingHours.ts) — light red, replacing whichever category
 // gradient would otherwise show, so this state reads as "paused for now,"
 // not as just another category's own brand color. Keeps the same dark-top
-// -> lighter-bottom shape every other gradient here uses (not a literally
-// pale-at-the-top gradient) — CollapsibleHeaderTop/search bar text and
-// icons are white, and a truly pale top would make them unreadable;
-// "light red" is expressed as noticeably lighter/softer than 'regional'
-// above, not as low-contrast. Reverts to the normal per-tab gradient the
+// -> deep-bottom shape every other gradient here now uses (not a
+// literally pale-at-the-top gradient) — CollapsibleHeaderTop/search bar
+// text and icons are white, and a truly pale top would make them
+// unreadable; "light red" is expressed as noticeably lighter/softer than
+// 'regional' above at every stop, not as low-contrast — darkened by the
+// same "stay deep, never brighten to a fully saturated color" rule as
+// every other palette here, just started from a lighter base so that
+// relative signal still holds. Reverts to the normal per-tab gradient the
 // instant isOutsideOperatingHours() flips back at 6 AM (HomeHeader.tsx
 // picks between the two, nothing here needs to know about time itself).
-export const CLOSED_HOURS_GRADIENT: CategoryHeaderGradient = gradient(['#3A0E0E', '#6B1E1A', '#A03B2E', '#D46A52']);
+export const CLOSED_HOURS_GRADIENT: CategoryHeaderGradient = gradient(['#241010', '#3E1917', '#5C231F', '#7A2E24']);

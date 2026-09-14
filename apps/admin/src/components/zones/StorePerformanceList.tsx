@@ -1,13 +1,13 @@
 // "Which store is doing best" for one active zone — every store's slice
 // of the zone's own delivered revenue, always summing to 100% since each
 // row is a share of the same total (see storeRevenueShares' own note in
-// lib/mock-data.ts). Sorted best-first; #1 gets the crown, everyone else
+// lib/revenue.ts). Sorted best-first; #1 gets the crown, everyone else
 // gets a straight rank number.
 
 import { Crown } from 'lucide-react';
 import clsx from 'clsx';
 import { formatCurrency } from '@/lib/format';
-import type { StoreRevenueShare } from '@/lib/mock-data';
+import type { StoreRevenueShare } from '@/lib/revenue';
 
 export function StorePerformanceList({ shares }: { shares: StoreRevenueShare[] }) {
   return (

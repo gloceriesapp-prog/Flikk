@@ -33,16 +33,6 @@ interface AuthState {
   // session check accessToken themselves (ProfileScreen.tsx's own guest
   // branch is the first of these).
   isGuest: boolean;
-  // Set once OnboardingScreen's "Get Started" is tapped — stays true for
-  // the rest of the app's lifetime (in-memory, resets on a real cold
-  // relaunch, which is fine — seeing the splash once per fresh launch is
-  // normal). AuthNavigator.tsx reads this to pick its own initial route:
-  // Onboarding the first time, straight to Login every time after —
-  // without it, exiting guest mode (ProfileScreen.tsx's own redirect)
-  // remounted AuthNavigator at Onboarding again, re-showing a splash
-  // screen the person had already dismissed minutes earlier.
-  hasSeenOnboarding: boolean;
-  markOnboardingSeen: () => void;
   hydrate: () => Promise<void>;
   setSession: (token: string, refreshToken: string) => Promise<void>;
   // Called only by api/client.ts's `refresh` callback after a successful
@@ -62,8 +52,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   refreshToken: null,
   isHydrated: false,
   isGuest: false,
-  hasSeenOnboarding: false,
-  markOnboardingSeen: () => set({ hasSeenOnboarding: true }),
 
   hydrate: async () => {
     const [token, refreshToken] = await Promise.all([

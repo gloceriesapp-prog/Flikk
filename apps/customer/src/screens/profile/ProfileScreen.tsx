@@ -29,8 +29,8 @@
 // CLAUDE.md's loyalty-program scope note). This pass only changes how
 // those same rows are laid out, not which ones exist.
 //
-// "My Orders", "Address Book", "Wishlist", "Share Flikk", "Rate Flikk"
-// and "Logout" are wired to something real. Payment Methods/Track Order
+// "My Orders", "Address Book", "Wishlist", "Share Flikk", "Invite Friends",
+// "Rate Flikk" and "Logout" are wired to something real. Payment Methods/Track Order
 // (routes to Purchase)/Support/My Refunds/Notifications/Help & Support/
 // Account Privacy/About Flikk have no dedicated screen yet — same
 // "UI-only, not wired up" category as this app's other coming-soon rows
@@ -60,6 +60,7 @@ import {
   Share08Icon,
   StarIcon,
   Sun01Icon,
+  UserAdd01Icon,
 } from '@hugeicons/core-free-icons';
 import { StatusBar } from 'expo-status-bar';
 import { Modal, Pressable, ScrollView, Share, Text, View } from 'react-native';
@@ -183,6 +184,11 @@ export function ProfileScreen({ navigation }: Props) {
           <ProfileMenuRow icon={CreditCardIcon} label="Payment Methods" onPress={() => {}} />
           <ProfileMenuRow icon={Notification03Icon} label="Notifications" onPress={() => {}} />
           <ProfileMenuRow icon={Share08Icon} label="Share Flikk" onPress={handleShare} />
+          {/* Invite Friends — real tracking (ReferralScreen -> backend's
+              routes/referrals.ts), no credit/discount on either side (that
+              route file's own note: a loyalty/rewards mechanic, out of
+              scope until MVP validates). */}
+          <ProfileMenuRow icon={UserAdd01Icon} label="Invite Friends" onPress={() => navigation.navigate('Referral')} />
           {/* Rate us — real interaction (RateUsModal.tsx): 5 tappable
               stars, 4-5 hands off to the OS's own native App Store/Play
               Store review sheet (expo-store-review), 1-3 just says thanks.

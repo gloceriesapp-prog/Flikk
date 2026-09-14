@@ -1,6 +1,6 @@
 // Reached from HomeHeader's heart icon. Shows every product a customer has
-// hearted (useWishlistStore, on-device persisted — see that store's own
-// note on why not backend-synced yet). Same 3-column ProductCard grid
+// hearted (useWishlistStore, real account-backed sync via GET /wishlist —
+// see that store's own note). Same 3-column ProductCard grid
 // ProductSection.tsx already uses elsewhere, reused as-is rather than a new
 // grid layout invented for this one screen.
 

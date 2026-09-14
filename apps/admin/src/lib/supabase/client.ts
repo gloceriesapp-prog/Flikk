@@ -5,10 +5,17 @@
 // 'use client' component. Writes to products go through
 // app/api/products/* instead (lib/supabase/admin.ts's own client), not
 // through this one.
+//
+// createBrowserClient (not the plain createClient) — this is also the
+// client middleware.ts's session check reads back on the server: it
+// stores the auth session in cookies instead of localStorage, which is
+// what actually lets a server-side check (middleware, Route Handlers) see
+// the same signed-in session the browser has, for real login-gate
+// enforcement (see middleware.ts's own note).
 
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);

@@ -25,6 +25,7 @@ export interface TripLeg {
 
 export interface TripTotals {
   itemTotal: number;
+  deliveryFee: number;
   total: number;
 }
 
@@ -60,8 +61,16 @@ export function groupCartByStore(items: CartItem[], products: CartProduct[], com
 
 // One delivery fee for the whole trip, added once to the sum of every
 // leg's own item total — not once per store, which is the entire point of
-// a trip over N independent single-store orders.
-export function calcTripTotal(legs: TripLeg[], deliveryFee: number): TripTotals {
+// a trip over N independent single-store orders. The fee itself still
+// scales with leg count: a 3-store trip means three separate pickups, not
+// one, so it's baseFee plus extraStopFee for every store beyond the
+// first. This computed deliveryFee becomes the rider's own trip-level
+// earning once delivered (routes/orders.ts's trip-aware rider_earnings
+// logic reads trips.delivery_fee, not a flat per-order rate) — the
+// multi-stop surcharge customers pay is exactly what a rider is paid
+// extra for doing the extra pickups.
+export function calcTripTotal(legs: TripLeg[], baseFee: number, extraStopFee: number): TripTotals {
   const itemTotal = round2(legs.reduce((sum, leg) => sum + leg.itemTotal, 0));
-  return { itemTotal, total: calcOrderTotal(itemTotal, deliveryFee) };
+  const deliveryFee = round2(baseFee + extraStopFee * Math.max(0, legs.length - 1));
+  return { itemTotal, deliveryFee, total: calcOrderTotal(itemTotal, deliveryFee) };
 }

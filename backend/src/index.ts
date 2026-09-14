@@ -19,6 +19,10 @@ import { adminRouter } from './routes/admin.js';
 import { paymentsRouter } from './payments/router.js';
 import { locationRouter } from './routes/location.js';
 import { storeOnboardingRouter } from './routes/storeOnboarding.js';
+import { promosRouter } from './routes/promos.js';
+import { reviewsRouter } from './routes/reviews.js';
+import { wishlistRouter } from './routes/wishlist.js';
+import { referralsRouter } from './routes/referrals.js';
 import cron from 'node-cron';
 import { runWeeklyPayoutJob } from './jobs/weeklyPayouts.js';
 
@@ -71,6 +75,10 @@ app.use('/stores', shortCache(), storesRouter);
 app.use('/orders', ordersRouter);
 app.use('/trips', tripsRouter);
 app.use('/addresses', addressesRouter);
+app.use('/promos', promosRouter);
+app.use('/reviews', reviewsRouter);
+app.use('/wishlist', wishlistRouter);
+app.use('/referrals', referralsRouter);
 // Mounted before partnerRouter — its two routes (/store-application,
 // /store-photo) must be reachable without partnerRouter's router-wide
 // requireRole('store_owner')/requireApproved gate (see that file's own

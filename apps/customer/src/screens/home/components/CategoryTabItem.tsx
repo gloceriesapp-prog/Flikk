@@ -24,9 +24,17 @@ export function CategoryTabItem({ category, isSelected, onPress, headerBottomCol
     <View className="relative w-[76px]">
       <Pressable
         onPress={onPress}
-        // Unselected tabs get the white/30 background. Selected gets its specific color via style.
-        className={`w-full items-center gap-1.5 py-3 rounded-t-[24px] z-10 ${
-          isSelected ? '' : 'bg-white/30'
+        // Unselected tabs get a light bg + a real shadow now, not just a
+        // translucent white/30 wash — per an explicit ask, once
+        // HomeHeader.tsx's own frosted/blurred scroll state landed, that
+        // wash read as basically invisible against an already-light
+        // blurred background (no color contrast left to lean on). A
+        // shadow is a depth cue independent of what color sits behind it,
+        // so it keeps working whether the header is the dark gradient
+        // (rest) or the light blur (scrolled) — same reasoning applied to
+        // the selected tab's own white/peach capsule below.
+        className={`w-full items-center gap-1.5 py-3 rounded-t-[24px] z-10 shadow-sm shadow-black/20 ${
+          isSelected ? '' : 'bg-white/70'
         }`}
         style={isSelected ? { backgroundColor: selectedBg } : undefined}
       >

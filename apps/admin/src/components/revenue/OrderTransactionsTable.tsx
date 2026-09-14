@@ -1,13 +1,12 @@
 // Order-level money detail — every order, its full amount, and the slice
-// of that amount Flikk actually kept (commission, via commissionForOrder's
-// own note on where the rate comes from). Delivered orders count as
-// earned; anything still in flight is "pending" and cancelled orders
-// earned nothing, shown at ₹0 rather than hidden, so the table still
-// reconciles against Orders' own total count.
+// of that amount Flikk actually kept (order.commissionAmount, the real
+// orders.commission_amount column). Delivered orders count as earned;
+// anything still in flight is "pending" and cancelled orders earned
+// nothing, shown at ₹0 rather than hidden, so the table still reconciles
+// against Orders' own total count.
 
 import clsx from 'clsx';
 import { formatCurrency } from '@/lib/format';
-import { commissionForOrder } from '@/lib/mock-data';
 import type { Order } from '@/lib/types';
 
 const EARNED_STATUSES: Order['status'][] = ['delivered'];
@@ -30,7 +29,7 @@ export function OrderTransactionsTable({ orders }: { orders: Order[] }) {
           {orders.map((order) => {
             const earned = EARNED_STATUSES.includes(order.status);
             const cancelled = order.status === 'cancelled';
-            const commission = cancelled ? 0 : commissionForOrder(order);
+            const commission = cancelled ? 0 : order.commissionAmount;
 
             return (
               <tr key={order.id} className="border-b border-border last:border-0">

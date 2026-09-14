@@ -1,9 +1,21 @@
-// Everything shown on the "All" category tab, below the header:
-// SeasonalSection, nearby shops, the category grid (CategorySections —
-// shared with screens/categories/CategoriesScreen.tsx), the deals promo
-// card, Today's Steal Deals, then the same brand sign-off footer
-// CategoriesScreen ends on. Only rendered when "all" is selected — see
-// HomeScreen.tsx.
+// Everything shown on the "All" category tab, below the header, in this
+// agreed order (personalized-to-you first, then browse/social-proof, then
+// deals/urgency, then long-tail filler, footer last):
+//
+//   1. Seasonal + Festival panel (hero, brand/timely)
+//   2. Buy It Again          — personalized, real order history
+//   3. Nearby Stores
+//   4. Most Bought
+//   5. Trending This Week    — momentum (TEMPORARY data source, see its own note)
+//   6. Category Sections
+//   7. Top Rated Stores Near You — trust signal, right before Deals
+//   8. Deals Section
+//   9. Today's Steal Deals
+//  10. Everyday Essentials
+//  11. New on Flikk          — discovery-only, least urgent
+//  12. Brand footer
+//
+// Only rendered when "all" is selected — see HomeScreen.tsx.
 //
 // Closed-hours (10:30 PM–6:00 AM IST, utils/operatingHours.ts) is
 // communicated entirely in the header now (HomeHeader's red gradient +
@@ -16,28 +28,34 @@
 // Today's Steal Deals (useDealsProducts) queries that one store's own
 // catalog — real inventory with real checkout consequences (single-store-
 // per-order, CLAUDE.md), not pooled across every partnered store the way
-// it used to be.
+// it used to be. Top Rated Stores/New on Flikk are zone-wide, not
+// nearest-store-scoped (they're both re-sorts of useAllStores' own GET
+// /stores, which already scopes to the one active zone — CLAUDE.md,
+// single zone at launch), so they render outside the isServiceable branch
+// below, same as CategorySections/DealsSection.
 //
 // CoastalKitchenPicksSection is gone entirely — per an explicit ask to
 // strip every product-card dummy dataset out of the app
 // (COASTAL_KITCHEN_PICKS_PRODUCTS was fully fabricated, shown
-// unconditionally). EverydayEssentialsSection stays commented out below
-// (real data, just not store-scoped yet — a content/scoping question, not
-// a dummy-data one, so out of scope for this cleanup).
+// unconditionally).
 
 import { View } from 'react-native';
 import { CategorySections } from '../../../components/CategorySections/CategorySections';
 import { BrandFooter } from '../../../components/BrandFooter';
 import { useLocationStore } from '../../../store/useLocationStore';
 import { isLocationServiceable } from '../../../utils/serviceability';
+import { BuyItAgainSection } from '../buy-it-again/BuyItAgainSection';
 import { DealsSection } from '../deals/DealsSection';
 import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
 import { FestivalPicksSection } from '../festival-picks/FestivalPicksSection';
 import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
+import { NewOnFlikkSection } from '../new-on-flikk/NewOnFlikkSection';
 import { ProductSection } from '../products/ProductSection';
 import { PANEL_BG, SeasonalSection } from '../seasonal/SeasonalSection';
 import { StoreTypesSection } from '../store-types/StoreTypesSection';
+import { TopRatedStoresSection } from '../top-rated-stores/TopRatedStoresSection';
+import { TrendingSection } from '../trending/TrendingSection';
 import { UnavailableZoneSection } from '../unavailable-zone/UnavailableZoneSection';
 import { useNearestStore } from '../useNearestStore';
 import { useDealsProducts } from './useDealsProducts';
@@ -70,19 +88,33 @@ export function AllTabSections() {
             <SeasonalSection />
             <FestivalPicksSection />
           </View>
-          <MostBoughtSection />
+          {/* Personalized-to-you first, before general browse/discovery
+              rows further down (agreed Home section order) — real repeat-
+              purchase data, off entirely for a guest or a customer with no
+              delivered order yet (BuyItAgainSection's own note). */}
+          <BuyItAgainSection />
           <NearbyStoresSection />
+          <MostBoughtSection />
+          {/* Momentum signal, right after MostBought — see that section's
+              own note on why its data source is temporary. */}
+          <TrendingSection />
           {/* <StoreTypesSection /> */}
         </>
       ) : (
         <UnavailableZoneSection />
       )}
       <CategorySections />
-      {/* <EverydayEssentialsSection /> */}
+      {/* Trust signal, right before DealsSection — reassurance ->
+          purchase nudge, per the agreed Home section order. */}
+      <TopRatedStoresSection />
       <DealsSection />
       {dealsProducts.length > 0 && (
         <ProductSection title="Today's Steal Deals" products={dealsProducts} showDiscountBadge />
       )}
+      <EverydayEssentialsSection />
+      {/* Discovery-only, least urgent — near the very end, right before
+          the footer. */}
+      <NewOnFlikkSection />
       <BrandFooter />
     </View>
   );

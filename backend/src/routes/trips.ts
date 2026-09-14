@@ -16,20 +16,33 @@ import { AppError } from '../lib/errors.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { CartValidationError, validateMultiStoreCart } from '../lib/orderValidation.js';
 import { calcTripTotal, groupCartByStore } from '../lib/trips.js';
+import { calcOrderTotal } from '../lib/pricing.js';
 import { resolveAddressId, type AddressInput } from '../lib/resolveAddress.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
+import { lookupPromoForCheckout } from './promos.js';
 
 export const tripsRouter = Router();
 
-// Same values POST /orders uses — kept in sync manually for now (both
-// files import from lib/pricing.ts for the actual math; only these two
-// input constants are duplicated). Move to a shared config module if a
-// third caller ever needs them.
+// COMMISSION_RATE/DELIVERY_FEE — same values POST /orders uses, kept in
+// sync manually for now (both files import from lib/pricing.ts for the
+// actual math; only these input constants are duplicated). Move to a
+// shared config module if a third caller ever needs them.
+//
+// EXTRA_STOP_FEE — the multi-stop pickup surcharge (lib/trips.ts's own
+// calcTripTotal note): every store beyond the first in a trip adds this
+// much to the delivery fee, which is also exactly what the rider earns
+// extra for that trip (routes/orders.ts reads trips.delivery_fee as the
+// rider's payout amount). A founder-set number, same "flat ₹20-30" PRD
+// convention as DELIVERY_FEE itself (PRD Section 22).
 const COMMISSION_RATE = 0.15;
 const DELIVERY_FEE = 25;
+const EXTRA_STOP_FEE = 15;
 
 interface CreateTripBody extends AddressInput {
   items: { product_id: string; quantity: number }[];
+  // Same promo contract as POST /orders (routes/orders.ts's own note) —
+  // one code against the whole trip's item_total, re-validated here.
+  promo_code?: string;
 }
 
 tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
@@ -67,12 +80,21 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       throw new AppError(400, 'SINGLE_STORE_CART', 'This cart only touches one store — use POST /orders instead.');
     }
 
-    const { itemTotal, total } = calcTripTotal(legs, DELIVERY_FEE);
+    const { itemTotal, deliveryFee } = calcTripTotal(legs, DELIVERY_FEE, EXTRA_STOP_FEE);
+
+    let promoCodeId: string | null = null;
+    let discountAmount = 0;
+    if (body.promo_code) {
+      const promoResult = await lookupPromoForCheckout(body.promo_code, req.user!.id, itemTotal);
+      promoCodeId = promoResult.promoCodeId;
+      discountAmount = promoResult.discountAmount;
+    }
+    const total = calcOrderTotal(itemTotal, deliveryFee, discountAmount);
 
     const { data: trip, error: rpcErr } = await supabase.rpc('create_trip_orders', {
       p_customer_id: req.user!.id,
       p_address_id: addressId,
-      p_delivery_fee: DELIVERY_FEE,
+      p_delivery_fee: deliveryFee,
       p_item_total: itemTotal,
       p_total: total,
       p_legs: legs.map((leg) => ({
@@ -81,6 +103,8 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
         commission_amount: leg.commissionAmount,
         items: leg.items,
       })),
+      p_promo_code_id: promoCodeId,
+      p_discount_amount: discountAmount,
     });
     if (rpcErr) throw new AppError(500, 'TRIP_CREATE_FAILED', rpcErr.message);
 

@@ -15,20 +15,23 @@
 // expand chevron lives on "Items:" itself rather than on the thumbnail
 // row above it.
 //
-// The star-rating row only renders for delivered orders — decorative for
-// now (no rating-submission backend/screen exists yet), same "UI exists,
-// flow not wired" convention already used elsewhere in this app (e.g.
-// ProductCardView's own unwired bookmark heart) rather than either faking a
-// real average rating or blocking this redesign on building that feature.
+// The star-rating row only renders for delivered orders — real submission
+// now (RateOrderModal -> POST /reviews, backend/src/routes/reviews.ts).
+// GET /reviews/order/:orderId (fetchReviewForOrder) tells this row whether
+// the order's already been rated, so a re-render after re-opening Purchase
+// shows the real star count instead of re-offering the prompt.
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowRight01Icon, ChevronDownIcon, ChevronUpIcon, StarIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
+import { fetchReviewForOrder } from '../../../api/reviews';
 import type { PurchaseOrder } from '../data';
 import { ItemThumbnailStack } from './ItemThumbnailStack';
+import { RateOrderModal } from './RateOrderModal';
 
 interface Props {
   order: PurchaseOrder;
@@ -43,7 +46,14 @@ function statusFor(order: PurchaseOrder) {
 
 export function OrderRow({ order, onPress }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const status = statusFor(order);
+
+  const { data: existingReview, refetch: refetchReview } = useQuery({
+    queryKey: ['review', order.orderId],
+    queryFn: () => fetchReviewForOrder(order.orderId),
+    enabled: order.status === 'delivered',
+  });
 
   return (
     <View className="mb-3 rounded-2xl bg-[#F8F8F6] p-3.5">
@@ -85,15 +95,39 @@ export function OrderRow({ order, onPress }: Props) {
       )}
 
       {order.status === 'delivered' && (
-        <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-[#FDF6E9] px-3 py-2">
+        <Pressable
+          onPress={() => !existingReview && setIsRatingModalOpen(true)}
+          disabled={!!existingReview}
+          className="mt-3 flex-row items-center gap-2 rounded-xl bg-[#FDF6E9] px-3 py-2"
+        >
           <View className="flex-row">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <AppIcon key={i} icon={StarIcon} size={13} color={colors.gold} fill={colors.gold} strokeWidth={0} />
+            {[1, 2, 3, 4, 5].map((i) => (
+              <AppIcon
+                key={i}
+                icon={StarIcon}
+                size={13}
+                color={colors.gold}
+                fill={existingReview ? (i <= existingReview.rating ? colors.gold : 'transparent') : colors.gold}
+                strokeWidth={existingReview ? 1.2 : 0}
+              />
             ))}
           </View>
-          <Text className="flex-1 text-[12px] font-semibold text-ink/70">Rate your order</Text>
-        </View>
+          <Text className="flex-1 text-[12px] font-semibold text-ink/70">
+            {existingReview ? 'You rated this order' : 'Rate your order'}
+          </Text>
+        </Pressable>
       )}
+
+      <RateOrderModal
+        visible={isRatingModalOpen}
+        orderId={order.orderId}
+        storeName={order.storeName}
+        onClose={() => setIsRatingModalOpen(false)}
+        onSubmitted={() => {
+          setIsRatingModalOpen(false);
+          void refetchReview();
+        }}
+      />
     </View>
   );
 }

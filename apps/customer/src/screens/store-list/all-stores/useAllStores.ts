@@ -34,6 +34,11 @@ export interface RealStore {
   closeTime?: string;
   latitude?: number;
   longitude?: number;
+  // Real stores.created_at — TopRatedStoresSection/NewOnFlikkSection's own
+  // client-side sort reads this (this hook already fetches every active
+  // store in the zone; those two sections just re-sort/slice the same
+  // list rather than adding a second store-list fetch each).
+  createdAt: string;
 }
 
 interface ApiStore {
@@ -51,6 +56,7 @@ interface ApiStore {
   close_time: string | null;
   lat: number | null;
   lng: number | null;
+  created_at: string;
 }
 
 export function useAllStores() {
@@ -74,6 +80,7 @@ export function useAllStores() {
           closeTime: row.close_time ?? undefined,
           latitude: row.lat ?? undefined,
           longitude: row.lng ?? undefined,
+          createdAt: row.created_at,
         }),
       );
     },

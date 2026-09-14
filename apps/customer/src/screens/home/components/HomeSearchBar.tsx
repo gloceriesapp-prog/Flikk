@@ -14,6 +14,10 @@
 // convention as ProductCardView's own bookmark heart: this app has no
 // wishlist screen to open yet (CartItemRow's own note on why there's no
 // "move to wishlist" link either).
+//
+// mt-1.5 (was mt-4) — this was a real, static gap above the bar that a
+// few rounds of tightening CollapsibleHeaderTop's own spacing never
+// touched, since it lives here, not there. Reduced per an explicit ask.
 
 import { HeartIcon, Mic01Icon, Search01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, View } from 'react-native';
@@ -27,7 +31,7 @@ interface Props {
 
 export function HomeSearchBar({ onPress }: Props) {
   return (
-    <Pressable onPress={onPress} className="mt-4 h-[52px] flex-row items-center rounded-full bg-gray-100 px-4">
+    <Pressable onPress={onPress} className="mt-1.5 h-[52px] flex-row items-center rounded-full bg-gray-100 px-4">
       <View className="pr-2">
         <AppIcon icon={Search01Icon} size={18} color={colors.ink} />
       </View>

@@ -13,6 +13,9 @@ import {
   type OrderStatus,
 } from '../lib/orderStateMachine.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
+import { lookupPromoForCheckout } from './promos.js';
+import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
+import { rankRepeatPurchases, reorderByRank } from '../lib/buyItAgain.js';
 
 // Only these three transitions are ones the customer didn't just cause
 // themselves (they placed the order) or won't see reflected in the receipt
@@ -48,6 +51,10 @@ interface CreateOrderBody {
   // field — the account's own verified phone already serves that role.
   address?: { label?: string; line1: string; landmark?: string; recipient_name: string };
   items: { product_id: string; quantity: number }[];
+  // Optional cart-level coupon (lib/promos.ts) — re-validated here from
+  // scratch even if the client already called POST /promos/validate; the
+  // discount actually applied is never trusted from that earlier call.
+  promo_code?: string;
 }
 
 // POST /orders — all-or-nothing: validate stock, lock prices, single-store only,
@@ -85,7 +92,15 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     }));
     const itemTotal = calcItemTotal(lines);
     const commissionAmount = calcCommission(itemTotal, COMMISSION_RATE);
-    const total = calcOrderTotal(itemTotal, DELIVERY_FEE);
+
+    let promoCodeId: string | null = null;
+    let discountAmount = 0;
+    if (body.promo_code) {
+      const promoResult = await lookupPromoForCheckout(body.promo_code, req.user!.id, itemTotal);
+      promoCodeId = promoResult.promoCodeId;
+      discountAmount = promoResult.discountAmount;
+    }
+    const total = calcOrderTotal(itemTotal, DELIVERY_FEE, discountAmount);
 
     // Supabase JS has no multi-statement transaction API; this is executed as a
     // Postgres function (create_order) to keep order + order_items atomic.
@@ -102,6 +117,8 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
         quantity: i.quantity,
         unit_price_at_order: priceByProduct.get(i.product_id),
       })),
+      p_promo_code_id: promoCodeId,
+      p_discount_amount: discountAmount,
     });
     if (rpcErr) throw new AppError(500, 'ORDER_CREATE_FAILED', rpcErr.message);
 
@@ -150,6 +167,66 @@ ordersRouter.get('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       .order('placed_at', { ascending: false });
     if (error) throw error;
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /orders/buy-it-again — Home's "Buy It Again" row (apps/customer's
+// screens/home/buy-it-again/). Real repeat-purchase signal, not a
+// recommendation: every product this customer has actually had delivered
+// before, ranked by how many separate delivered orders included it (most
+// repeat-bought first), ties broken by most recently ordered. Registered
+// BEFORE GET /:id below — Express matches routes in declaration order, and
+// :id would otherwise swallow this literal path as if "buy-it-again" were
+// an order id.
+//
+// Renders an empty array for a brand-new customer with no delivered order
+// yet — apps/customer's own useBuyItAgain hook treats that as "don't show
+// this section" (same "no real data = section off" convention every other
+// Home row already follows), never a placeholder product.
+const BUY_IT_AGAIN_LIMIT = 10;
+
+ordersRouter.get('/buy-it-again', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
+  try {
+    const { data: deliveredOrders, error: ordersErr } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('customer_id', req.user!.id)
+      .eq('status', 'delivered');
+    if (ordersErr) throw ordersErr;
+    if (!deliveredOrders || deliveredOrders.length === 0) return res.json([]);
+
+    const { data: items, error: itemsErr } = await supabase
+      .from('order_items')
+      .select('product_id, orders(placed_at)')
+      .in(
+        'order_id',
+        deliveredOrders.map((o) => o.id),
+      );
+    if (itemsErr) throw itemsErr;
+
+    const deliveredItems = ((items ?? []) as unknown as { product_id: string; orders: { placed_at: string } | null }[])
+      .filter((item) => item.orders?.placed_at != null)
+      .map((item) => ({ product_id: item.product_id, placed_at: item.orders!.placed_at }));
+
+    const rankedProductIds = rankRepeatPurchases(deliveredItems, BUY_IT_AGAIN_LIMIT);
+    if (rankedProductIds.length === 0) return res.json([]);
+
+    // Same real-catalog gates every other product feed applies (routes/
+    // stores.ts's own note) — a product this customer bought before but
+    // that's since gone out of stock, been unapproved, or had its store
+    // deactivated has no business showing up as reorderable right now.
+    const { data: products, error: productsErr } = await supabase
+      .from('products')
+      .select(PRODUCT_WITH_VARIANTS_SELECT)
+      .in('id', rankedProductIds)
+      .eq('approval_status', 'approved')
+      .eq('stores.is_active', true)
+      .neq('stock_status', 'out_of_stock');
+    if (productsErr) throw productsErr;
+
+    res.json(reorderByRank(rankedProductIds, products ?? []));
   } catch (err) {
     next(err);
   }
@@ -216,7 +293,7 @@ ordersRouter.patch(
       const { status: to, reason } = req.body as StatusBody;
       const { data: order, error } = await supabase
         .from('orders')
-        .select('id, status, store_id, rider_id')
+        .select('id, status, store_id, rider_id, trip_id')
         .eq('id', req.params.id)
         .single();
       if (error || !order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
@@ -251,11 +328,43 @@ ordersRouter.patch(
 
       if (to === 'delivered') {
         // rider_earnings write-on-delivery. See specs/03-rider-app/flows.md.
-        await supabase.from('rider_earnings').insert({
-          rider_id: req.user!.id,
-          order_id: order.id,
-          amount: DELIVERY_FEE,
-        });
+        //
+        // Trip legs (order.trip_id set — lib/trips.ts's own note) pay
+        // differently: the rider app marks every leg of a trip 'delivered'
+        // together (one customer drop for the whole trip), but this
+        // handler still receives one PATCH per leg. Paying DELIVERY_FEE
+        // per leg here would silently multiply a rider's earnings by the
+        // store count — instead, pay the trip's own delivery_fee (which
+        // already includes the multi-stop surcharge, see routes/trips.ts's
+        // EXTRA_STOP_FEE) exactly once, from whichever leg happens to be
+        // the last one to reach 'delivered'.
+        if (order.trip_id) {
+          const { data: siblings } = await supabase.from('orders').select('id, status').eq('trip_id', order.trip_id);
+          const allDelivered = (siblings ?? []).every((s) => s.id === order.id || s.status === 'delivered');
+          if (allDelivered) {
+            const siblingIds = (siblings ?? []).map((s) => s.id);
+            // Guard against paying twice if two legs' PATCH requests race
+            // each other into "all delivered" at once — ponytail: a tiny
+            // check-then-insert window remains (no DB-level uniqueness on
+            // trip payouts), upgrade to a unique constraint on trip_id if
+            // this ever shows up as a real double-pay in practice.
+            const { data: existingPayout } = await supabase.from('rider_earnings').select('id').in('order_id', siblingIds).limit(1);
+            if (!existingPayout || existingPayout.length === 0) {
+              const { data: trip } = await supabase.from('trips').select('delivery_fee').eq('id', order.trip_id).single();
+              await supabase.from('rider_earnings').insert({
+                rider_id: req.user!.id,
+                order_id: order.id,
+                amount: trip?.delivery_fee ?? DELIVERY_FEE,
+              });
+            }
+          }
+        } else {
+          await supabase.from('rider_earnings').insert({
+            rider_id: req.user!.id,
+            order_id: order.id,
+            amount: DELIVERY_FEE,
+          });
+        }
       }
 
       // Realtime propagation is automatic via Supabase's replication on this

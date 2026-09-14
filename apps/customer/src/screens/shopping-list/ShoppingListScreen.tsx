@@ -2,8 +2,8 @@
 // freeform notes list ("milk, bread, eggs"), separate from the cart and
 // the wishlist: this is for jotting down what's needed before shopping,
 // not for products already picked. Real, persisted state
-// (useShoppingListStore.ts, on-device — same local-only reasoning
-// useWishlistStore.ts documents, no backend list/notes table exists yet).
+// (useShoppingListStore.ts, on-device only — no backend list/notes table
+// exists yet, unlike useWishlistStore.ts which is account-backed now).
 //
 // Add bar pinned to the bottom (AddItemBar), items above it in a plain
 // list (ShoppingListItemRow — tap to check off, X to delete). "Clear

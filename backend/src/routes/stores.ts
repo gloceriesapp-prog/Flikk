@@ -19,7 +19,11 @@ const NEAREST_MAX_LIMIT = 20;
 // already real columns on stores (apps/admin's Store onboarding form, see
 // storeValidation.ts; photo_url specifically comes from admin's
 // ProductImageUpload with bucket="store-images"), not invented for this feed.
-const PRODUCT_WITH_VARIANTS_SELECT =
+// Exported — routes/orders.ts's own GET /orders/buy-it-again reuses this
+// exact shape (same stores/product_variants embed) so a repeat-purchase
+// product and a fresh-catalog product map through the identical
+// mapApiProduct() on the client, not two subtly different row shapes.
+export const PRODUCT_WITH_VARIANTS_SELECT =
   '*, stores!inner(name, is_active, fssai_number, address_line, city, district, photo_url), product_variants(*)';
 
 // Every one of this file's customer-facing feeds also filters

@@ -23,8 +23,11 @@ export function calcCommission(itemTotal: number, commissionRate: number): numbe
   return round2(itemTotal * commissionRate);
 }
 
-export function calcOrderTotal(itemTotal: number, deliveryFee: number): number {
-  return round2(itemTotal + deliveryFee);
+// discountAmount defaults to 0 — every existing call site (no promo
+// applied) behaves exactly as before. Floored at 0: a discount can never
+// make a total negative, no matter how it was computed upstream.
+export function calcOrderTotal(itemTotal: number, deliveryFee: number, discountAmount = 0): number {
+  return round2(Math.max(itemTotal + deliveryFee - discountAmount, 0));
 }
 
 export function calcNetPayout(grossAmount: number, commissionDeducted: number): number {

@@ -1,9 +1,9 @@
 // Shopping list — freeform notes ("milk, bread, eggs"), not tied to the
 // product catalog like useCartStore/useWishlistStore are. Persisted
-// on-device (zustand persist + AsyncStorage), same pattern
-// useWishlistStore.ts already established — local-only for the same
-// reason documented there: no backend list/notes table exists yet, this
-// is client-owned state today.
+// on-device only (zustand persist + AsyncStorage) — no backend list/notes
+// table exists yet, this is client-owned state today (unlike
+// useWishlistStore.ts, which used to follow this same local-only pattern
+// but is account-backed now).
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';

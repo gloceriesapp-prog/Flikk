@@ -6,8 +6,8 @@
 // variant="blue" is an explicit per-screen opt-in (LoginScreen.tsx's own
 // redesign asked for the same blue this app already uses elsewhere —
 // CartBar.tsx/ProductDetailFooter.tsx's #2457F5), not a change to the
-// shared default — Onboarding/OTP/LocationPermission all still render the
-// default coral, untouched.
+// shared default — OTP/LocationPermission all still render the default
+// coral, untouched.
 
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 

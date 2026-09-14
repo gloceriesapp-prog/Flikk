@@ -22,7 +22,12 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
         // stores has no street-address column at all (migration 005 only
         // ever added lat/lng) — zones(name) is the most specific real
         // location text available for a pickup point today.
-        '*, order_items(*, products(name, unit)), stores(name, lat, lng, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude)',
+        // trips(delivery_fee) — only present when trip_id is set (a
+        // multi-store leg); apps/rider's toRiderOrder reads this to show
+        // the real trip-level payout (base fee + multi-stop surcharge,
+        // routes/trips.ts's EXTRA_STOP_FEE) instead of assuming every
+        // order pays the flat single-store DELIVERY_FEE.
+        '*, order_items(*, products(name, unit)), stores(name, lat, lng, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude), trips(delivery_fee)',
       )
       .eq('rider_id', req.user!.id)
       .order('placed_at', { ascending: false });

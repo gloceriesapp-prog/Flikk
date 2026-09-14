@@ -41,7 +41,7 @@ src/
 
 | Screen | File | Spec |
 |---|---|---|
-| Onboarding | `screens/OnboardingScreen.tsx` | PRD C1 (Splash), expanded |
+| Welcome (timed splash) | `screens/WelcomeScreen.tsx` | PRD C1 (Splash) — RootNavigator's own timed gate, shown on every cold open |
 | Login (phone) | `screens/LoginScreen.tsx` | `specs/00-foundation/auth-and-roles.md` |
 | OTP verification | `screens/OtpVerificationScreen.tsx` | `specs/00-foundation/auth-and-roles.md` |
 | Location permission | `screens/location/LocationPermissionScreen.tsx` | See `screens/location/README.md` |

@@ -13,7 +13,7 @@
 
 import { View } from 'react-native';
 import { useEverydayEssentials } from '../everyday-essentials/useEverydayEssentials';
-import { PromoListCard } from './components/PromoListCard';
+import { PromoListCard } from '../products/PromoListCard';
 
 export function MostBoughtSection() {
   const { data: catalog = [] } = useEverydayEssentials();
@@ -21,7 +21,7 @@ export function MostBoughtSection() {
   if (catalog.length === 0) return null;
 
   return (
-    <View className="pt-6">
+    <View className="pt-12">
       <PromoListCard title="Most Bought Near You" products={catalog} />
     </View>
   );

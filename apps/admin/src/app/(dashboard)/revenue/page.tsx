@@ -6,46 +6,88 @@
 // today, see SETTLEMENT_CADENCE_LABEL's own note in mock-data.ts on why),
 // and Settlement History (A4's paid-cycle log) — four related views,
 // tabbed on one screen since they're all "the money" to a founder.
+//
+// Real data now: app/api/payouts (payouts table), app/api/revenue-trend
+// (weekly commission from delivered orders), app/api/orders (already
+// real, shared with Orders page), and app/api/balance (already real,
+// shared with Overview's BalanceSummaryCard). "Release" now actually
+// writes to payouts via PATCH /api/payouts instead of only flipping local
+// state.
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CalendarClock, CheckCircle2 } from 'lucide-react';
 import clsx from 'clsx';
 import { PayoutsTable } from '@/components/revenue/PayoutsTable';
 import { RevenueBalanceCard } from '@/components/revenue/RevenueBalanceCard';
 import { OrderTransactionsTable } from '@/components/revenue/OrderTransactionsTable';
+import type { BalanceSummary } from '@/components/dashboard/BalanceSummaryCard';
 import { formatCurrency, formatNumber } from '@/lib/format';
-import {
-  AUTO_RELEASE_ENABLED,
-  PLACEHOLDER_ORDERS,
-  PLACEHOLDER_PAYOUTS,
-  PLACEHOLDER_REVENUE_TREND,
-  PLACEHOLDER_WALLET,
-  SETTLEMENT_CADENCE_LABEL,
-} from '@/lib/mock-data';
-import type { Payout } from '@/lib/types';
+import { AUTO_RELEASE_ENABLED, SETTLEMENT_CADENCE_LABEL } from '@/lib/mock-data';
+import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
+import type { Order, Payout, RevenuePoint } from '@/lib/types';
 
 const TABS = ['Overview', 'Payouts', 'Transactions', 'Settlement history'] as const;
 
 export default function RevenuePage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>('Overview');
-  const [payouts, setPayouts] = useState<Payout[]>(PLACEHOLDER_PAYOUTS);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [trend, setTrend] = useState<RevenuePoint[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [balance, setBalance] = useState<BalanceSummary | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [releasing, setReleasing] = useState(false);
   const [justReleased, setJustReleased] = useState(false);
 
-  const totalRevenue = PLACEHOLDER_REVENUE_TREND.reduce((sum, p) => sum + p.commission, 0);
-  const latest = PLACEHOLDER_REVENUE_TREND[PLACEHOLDER_REVENUE_TREND.length - 1];
-  const prior = PLACEHOLDER_REVENUE_TREND[PLACEHOLDER_REVENUE_TREND.length - 2];
-  const weekOverWeekPct = prior ? Math.round(((latest.commission - prior.commission) / prior.commission) * 100) : 0;
+  const loadData = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const [payoutsRes, trendRes, ordersRes, balanceRes] = await Promise.all([
+        fetch('/api/payouts'),
+        fetch('/api/revenue-trend'),
+        fetch('/api/orders'),
+        fetch('/api/balance'),
+      ]);
+      if (!payoutsRes.ok) throw new Error((await payoutsRes.json()).error ?? 'Could not load payouts.');
+      if (!trendRes.ok) throw new Error((await trendRes.json()).error ?? 'Could not load revenue trend.');
+      if (!ordersRes.ok) throw new Error((await ordersRes.json()).error ?? 'Could not load orders.');
+      setPayouts(await payoutsRes.json());
+      setTrend(await trendRes.json());
+      setOrders(await ordersRes.json());
+      if (balanceRes.ok) setBalance(await balanceRes.json());
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load revenue data.');
+    }
+  }, []);
 
-  const ordersByRecency = [...PLACEHOLDER_ORDERS].reverse();
+  useEffect(() => {
+    Promise.resolve().then(loadData);
+  }, [loadData]);
+  useAdminRealtime(loadData);
+
+  const totalRevenue = trend.reduce((sum, p) => sum + p.commission, 0);
+  const latest = trend[trend.length - 1];
+  const prior = trend[trend.length - 2];
+  const weekOverWeekPct = latest && prior && prior.commission > 0 ? Math.round(((latest.commission - prior.commission) / prior.commission) * 100) : 0;
+
+  const ordersByRecency = [...orders].reverse();
 
   const pendingPayouts = payouts.filter((p) => p.status === 'pending');
   const paidPayouts = payouts.filter((p) => p.status === 'paid');
   const pendingTotal = pendingPayouts.reduce((sum, p) => sum + p.netPayout, 0);
 
-  function handleRelease() {
-    const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-    setPayouts((prev) => prev.map((p) => (p.status === 'pending' ? { ...p, status: 'paid', paidAt: today } : p)));
-    setJustReleased(true);
+  async function handleRelease() {
+    setReleasing(true);
+    setJustReleased(false);
+    try {
+      const res = await fetch('/api/payouts', { method: 'PATCH' });
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Could not release payouts.');
+      await loadData();
+      setJustReleased(true);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not release payouts.');
+    } finally {
+      setReleasing(false);
+    }
   }
 
   return (
@@ -57,11 +99,13 @@ export default function RevenuePage() {
         </div>
       </div>
 
+      {loadError && <p className="text-sm text-danger">{loadError}</p>}
+
       <RevenueBalanceCard
         totalRevenue={totalRevenue}
-        thisWeek={latest.commission}
+        thisWeek={latest?.commission ?? 0}
         weekOverWeekPct={weekOverWeekPct}
-        wallet={PLACEHOLDER_WALLET}
+        wallet={balance}
       />
 
       <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1">
@@ -169,11 +213,11 @@ export default function RevenuePage() {
               <button
                 type="button"
                 onClick={handleRelease}
-                disabled={pendingPayouts.length === 0}
+                disabled={pendingPayouts.length === 0 || releasing}
                 className="flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <CheckCircle2 size={15} />
-                Release this week&apos;s payouts
+                {releasing ? 'Releasing…' : "Release this week's payouts"}
               </button>
               {justReleased && pendingPayouts.length === 0 && (
                 <span className="flex items-center gap-1.5 text-sm font-medium text-success">

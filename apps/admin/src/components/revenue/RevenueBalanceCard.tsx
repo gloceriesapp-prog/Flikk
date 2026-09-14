@@ -1,13 +1,14 @@
 // Revenue's own hero — total earned, this week's trend, and the two
 // numbers that round it out: what's still settling and what's already
-// sitting ready to withdraw (same split as Overview's BalanceSummaryCard,
-// reused here since it's the same wallet, just viewed from the revenue
-// side instead of the "founder's own money" side).
+// sitting ready to withdraw. Same real source and shape as Overview's
+// BalanceSummaryCard (app/api/balance — RazorpayX balance + payouts
+// ledger), reused here since it's the same wallet, just viewed from the
+// revenue side instead of the "founder's own money" side.
 
 import { ArrowDownToLine, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import clsx from 'clsx';
 import { formatCurrency } from '@/lib/format';
-import type { WalletBalance } from '@/lib/types';
+import type { BalanceSummary } from '@/components/dashboard/BalanceSummaryCard';
 
 export function RevenueBalanceCard({
   totalRevenue,
@@ -18,7 +19,7 @@ export function RevenueBalanceCard({
   totalRevenue: number;
   thisWeek: number;
   weekOverWeekPct: number;
-  wallet: WalletBalance;
+  wallet: BalanceSummary | null;
 }) {
   const isUp = weekOverWeekPct >= 0;
 
@@ -59,12 +60,14 @@ export function RevenueBalanceCard({
 
         <div className="rounded-2xl bg-[#F9FAFB] px-3.5 py-3">
           <p className="text-sm text-muted">Available to withdraw</p>
-          <p className="text-base font-medium tabular-nums text-ink">{formatCurrency(wallet.availableToWithdraw)}</p>
+          <p className="text-base font-medium tabular-nums text-ink">
+            {wallet?.configured && wallet.availableToWithdraw !== null ? formatCurrency(wallet.availableToWithdraw) : '—'}
+          </p>
         </div>
 
         <div className="rounded-2xl bg-[#F9FAFB] px-3.5 py-3">
           <p className="text-sm text-muted">Pending settlement</p>
-          <p className="text-base font-medium tabular-nums text-ink">{formatCurrency(wallet.pendingSettlement)}, <span className="text-[11px] font-medium text-muted">{wallet.pendingSettlementNote}</span></p>
+          <p className="text-base font-medium tabular-nums text-ink">{formatCurrency(wallet?.pendingSettlement ?? 0)}</p>
         </div>
       </div>
     </div>

@@ -69,6 +69,11 @@ export function CheckoutScreen({ navigation }: Props) {
   // COD or Razorpay's own Standard Checkout (online), just not that grid.
   const isMultiStore = storeCount > 1;
   const grandTotal = useCartStore(selectCartGrandTotal);
+  // Cart-level coupon (PromoCodeCard, useCartStore.appliedPromo) — the
+  // code string is all POST /orders / POST /trips need; the discount
+  // itself is always recomputed there from scratch (routes/promos.ts's
+  // own note), never trusted from this earlier client-side apply.
+  const promoCode = useCartStore((state) => state.appliedPromo?.code);
   const clear = useCartStore((state) => state.clear);
   const recipientName = useLocationStore((state) => state.recipientName);
 
@@ -158,11 +163,13 @@ export function CheckoutScreen({ navigation }: Props) {
         ? await createTrip({
             address_id: selectedAddress.id,
             items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
+            promo_code: promoCode,
           })
         : await createOrder({
             store_id: items[0]!.storeId,
             address_id: selectedAddress.id,
             items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
+            promo_code: promoCode,
           });
 
       const orderSummary = isMultiStore

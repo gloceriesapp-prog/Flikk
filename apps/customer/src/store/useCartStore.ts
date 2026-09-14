@@ -50,17 +50,32 @@ export interface CartItem {
 // not the caller.
 export type CartProduct = Omit<CartItem, 'quantity'>;
 
+// A cart-level promo (api/promos.ts's own POST /promos/validate) — set
+// once CartScreen's "Apply" succeeds. Cleared on any cart edit (add/
+// remove/qty change) rather than kept stale: a code's min_order_value or
+// percent-of-cart discount can stop making sense the instant the cart
+// changes, and the backend re-validates from scratch at checkout anyway
+// (routes/orders.ts's own note) — clearing here just keeps what's
+// displayed honest in the meantime, it's not the actual enforcement.
+export interface AppliedPromo {
+  code: string;
+  discountAmount: number;
+}
+
 interface CartState {
   items: CartItem[];
+  appliedPromo: AppliedPromo | null;
   addItem: (product: CartProduct) => void;
   incrementItem: (id: string) => void;
   decrementItem: (id: string) => void;
   removeItem: (id: string) => void;
+  setAppliedPromo: (promo: AppliedPromo | null) => void;
   clear: () => void;
 }
 
 export const useCartStore = create<CartState>((set) => ({
   items: [],
+  appliedPromo: null,
 
   addItem: (product) => {
     // A product with no real store id (any feed that hasn't been wired to
@@ -76,15 +91,17 @@ export const useCartStore = create<CartState>((set) => ({
           items: state.items.map((item) =>
             item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
           ),
+          appliedPromo: null,
         };
       }
-      return { items: [...state.items, { ...product, quantity: 1 }] };
+      return { items: [...state.items, { ...product, quantity: 1 }], appliedPromo: null };
     });
   },
 
   incrementItem: (id) =>
     set((state) => ({
       items: state.items.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item)),
+      appliedPromo: null,
     })),
 
   decrementItem: (id) =>
@@ -92,14 +109,18 @@ export const useCartStore = create<CartState>((set) => ({
       items: state.items
         .map((item) => (item.id === id ? { ...item, quantity: item.quantity - 1 } : item))
         .filter((item) => item.quantity > 0),
+      appliedPromo: null,
     })),
 
   removeItem: (id) =>
     set((state) => ({
       items: state.items.filter((item) => item.id !== id),
+      appliedPromo: null,
     })),
 
-  clear: () => set({ items: [] }),
+  setAppliedPromo: (promo) => set({ appliedPromo: promo }),
+
+  clear: () => set({ items: [], appliedPromo: null }),
 }));
 
 export function selectCartTotalQuantity(state: CartState): number {
@@ -156,5 +177,6 @@ export const CART_HANDLING_FEE = 3;
 export const FREE_DELIVERY_THRESHOLD = 199;
 
 export function selectCartGrandTotal(state: CartState): number {
-  return selectCartTotalPrice(state) + CART_DELIVERY_FEE + CART_HANDLING_FEE;
+  const discount = state.appliedPromo?.discountAmount ?? 0;
+  return Math.max(selectCartTotalPrice(state) + CART_DELIVERY_FEE + CART_HANDLING_FEE - discount, 0);
 }

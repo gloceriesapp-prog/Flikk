@@ -17,7 +17,10 @@ interface Props {
 }
 
 export function MultiStopJobCard({ legs, onPress }: Props) {
-  const totalPayout = legs.reduce((sum, leg) => sum + leg.payout, 0);
+  // One combined payout for the whole trip, not one per leg summed —
+  // every leg carries the same trip-level payout (apps/rider/src/api/
+  // orders.ts's own note), so legs[0]'s is the trip's real total.
+  const totalPayout = legs[0]!.payout;
   const totalItems = legs.reduce((sum, leg) => sum + leg.itemCount, 0);
   // A leg still 'assigned' needs pickup before anything else — the first
   // one found is next up (no real routing/sequencing beyond store order,

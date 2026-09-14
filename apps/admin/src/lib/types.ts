@@ -16,6 +16,10 @@ export interface Order {
   // snapshot's "needs attention" widget and Orders' own flag are computed,
   // not a separate field the backend sends.
   minutesSinceStatusChange: number;
+  // Real column (orders.commission_amount) — what Flikk actually earned
+  // from this specific order, not an estimated rate applied after the
+  // fact. 0 for a cancelled/non-delivered order (nothing earned yet).
+  commissionAmount: number;
 }
 
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';

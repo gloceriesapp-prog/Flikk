@@ -2,12 +2,13 @@
 // NEVER import this from a 'use client' component or any file that ends up
 // in the browser bundle; only app/api/products/* route handlers (server
 // code) should touch it. This exists because products/stores RLS write
-// policies require an authenticated store-owner session (auth.uid()), and
-// this admin dashboard has no login flow yet — a founder using this tool
-// is trusted by definition, so writes route through this privileged
-// server-side client instead of loosening RLS to allow anonymous writes
-// (which would let anyone with the public anon key, visible in the
-// client bundle, write arbitrary products).
+// policies require an authenticated store-owner session (auth.uid()), not
+// the founder's own admin session — so writes still route through this
+// privileged server-side client instead of loosening RLS to allow anonymous
+// writes (which would let anyone with the public anon key, visible in the
+// client bundle, write arbitrary products). middleware.ts now gates every
+// request that reaches these routes at all; this client's privilege is a
+// separate, still-necessary layer underneath that gate, not a stand-in for it.
 
 import { createClient } from '@supabase/supabase-js';
 

@@ -9,21 +9,56 @@
 // it is winning) and "Zone Requests" (customer-app demand signal for
 // where Flikk isn't yet — informational only, never an activation
 // control).
+//
+// Real data now: app/api/zones (service role) for the zone roster + store/
+// rider counts, lib/supabase/stores.ts + app/api/orders (both already
+// real, shared with Stores/Orders pages) for the store-performance
+// breakdown. Zone Requests stays a labeled placeholder — no real
+// collection pipeline exists (would mean a new customer-app feature, out
+// of this fix's scope), so an honest "not collected yet" beats a
+// fabricated number here.
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Lock, MapPin } from 'lucide-react';
 import clsx from 'clsx';
 import { StorePerformanceList } from '@/components/zones/StorePerformanceList';
 import { ZoneRequestsList } from '@/components/zones/ZoneRequestsList';
-import { PLACEHOLDER_ZONES, PLACEHOLDER_ZONE_REQUESTS, storeRevenueShares } from '@/lib/mock-data';
+import { PLACEHOLDER_ZONE_REQUESTS } from '@/lib/mock-data';
+import { storeRevenueShares } from '@/lib/revenue';
+import { fetchStores } from '@/lib/supabase/stores';
+import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
+import type { Order, Store, Zone } from '@/lib/types';
 
 const TABS = ['Zones', 'Zone Requests'] as const;
 
 export default function ZonesPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>('Zones');
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const activeZone = PLACEHOLDER_ZONES.find((z) => z.isActive);
-  const shares = activeZone ? storeRevenueShares(activeZone.name) : [];
+  const loadData = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const [zonesRes, ordersRes, storesData] = await Promise.all([fetch('/api/zones'), fetch('/api/orders'), fetchStores()]);
+      if (!zonesRes.ok) throw new Error((await zonesRes.json()).error ?? 'Could not load zones.');
+      if (!ordersRes.ok) throw new Error((await ordersRes.json()).error ?? 'Could not load orders.');
+      setZones(await zonesRes.json());
+      setOrders(await ordersRes.json());
+      setStores(storesData);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load zones.');
+    }
+  }, []);
+
+  useEffect(() => {
+    Promise.resolve().then(loadData);
+  }, [loadData]);
+  useAdminRealtime(loadData);
+
+  const activeZone = zones.find((z) => z.isActive);
+  const shares = activeZone ? storeRevenueShares(activeZone.name, stores, orders) : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,6 +66,8 @@ export default function ZonesPage() {
         <h1 className="text-3xl font-medium text-ink">Zones</h1>
         <p className="text-sm text-muted">Flikk launches single-zone — this is where a second zone activates later.</p>
       </div>
+
+      {loadError && <p className="text-sm text-danger">{loadError}</p>}
 
       <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1">
         {TABS.map((t) => (
@@ -61,7 +98,7 @@ export default function ZonesPage() {
       {tab === 'Zones' && (
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {PLACEHOLDER_ZONES.map((zone) => (
+            {zones.map((zone) => (
               <div
                 key={zone.id}
                 className={
@@ -93,6 +130,7 @@ export default function ZonesPage() {
                 )}
               </div>
             ))}
+            {zones.length === 0 && !loadError && <p className="py-8 text-center text-sm text-muted">Loading zones…</p>}
           </div>
 
           {activeZone && (

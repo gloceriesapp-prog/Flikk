@@ -15,6 +15,8 @@ export interface CreateTripItem {
 export interface CreateTripInput {
   address_id: string;
   items: CreateTripItem[];
+  // Cart-level coupon (api/promos.ts) — same contract as CreateOrderInput.
+  promo_code?: string;
 }
 
 export interface ApiTrip {
@@ -24,6 +26,8 @@ export interface ApiTrip {
   delivery_fee: number;
   item_total: number;
   total: number;
+  discount_amount: number;
+  promo_code_id: string | null;
   razorpay_payment_id: string | null;
   status: 'placed' | 'delivered' | 'cancelled';
   created_at: string;

@@ -22,6 +22,7 @@ import { PaymentStatusScreen } from '../screens/payment-status/PaymentStatusScre
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { PurchaseScreen } from '../screens/purchase/PurchaseScreen';
 import { ReceiptScreen } from '../screens/receipt/ReceiptScreen';
+import { ReferralScreen } from '../screens/referral/ReferralScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
 import { StoreDetailScreen } from '../screens/store-detail/StoreDetailScreen';
 import { StoreListScreen } from '../screens/store-list/StoreListScreen';
@@ -71,6 +72,7 @@ export function AppNavigator() {
       <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} />
       <Stack.Screen name="ShoppingList" component={ShoppingListScreen} />
+      <Stack.Screen name="Referral" component={ReferralScreen} />
     </Stack.Navigator>
   );
 }

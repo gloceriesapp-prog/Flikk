@@ -4,19 +4,7 @@
 // endpoints later (specs/04-admin-dashboard/api.md) is a data-source swap,
 // not a redesign. Single zone throughout (Kaup/outer Udupi) — CLAUDE.md.
 
-import type {
-  ActiveRider,
-  AppDownloadStats,
-  Application,
-  Order,
-  Payout,
-  ProductPerformance,
-  RevenuePoint,
-  Store,
-  WalletBalance,
-  Zone,
-  ZoneRequest,
-} from './types';
+import type { ActiveRider, AppDownloadStats, Application, Order, ProductPerformance, ZoneRequest } from './types';
 
 export const ZONE_NAME = 'Kaup, Udupi';
 
@@ -29,19 +17,11 @@ export const PLACEHOLDER_APP_DOWNLOADS: AppDownloadStats = {
   iosStatus: { health: 'operational', message: 'No issues reported' },
 };
 
-export const PLACEHOLDER_WALLET: WalletBalance = {
-  availableToWithdraw: 42890,
-  lastWithdrawnAmount: 30828,
-  lastWithdrawnAt: '8 Dec 2025',
-  pendingSettlement: 6218,
-  pendingSettlementNote: 'Clears in 2 days',
-  bankName: 'HDFC Bank',
-  bankAccountLast4: '4521',
-  grossCollected: 312600,
-  owedToStores: 263492,
-};
-
-export const PLACEHOLDER_ORDERS: Order[] = [
+// commissionAmount added via .map below — Order now carries a real
+// commission_amount-shaped field (see lib/types.ts), computed here at a
+// flat 15% for these still-mock rows since DeliveryTrackingCard (Overview)
+// is the only remaining reader and doesn't care about the exact figure.
+const PLACEHOLDER_ORDERS_RAW: Omit<Order, 'commissionAmount'>[] = [
   { id: 'FLK-2031', storeName: 'Ganesh Kirana Store', storeId: 's1', zone: ZONE_NAME, placedAt: '10:12 AM', amount: 486, status: 'delivered', riderId: 'r1', minutesSinceStatusChange: 42 },
   { id: 'FLK-2032', storeName: 'Shree Pharmacy', storeId: 's2', zone: ZONE_NAME, placedAt: '10:24 AM', amount: 212, status: 'out_for_delivery', riderId: 'r2', minutesSinceStatusChange: 8 },
   { id: 'FLK-2033', storeName: 'Malpe Fresh Mart', storeId: 's3', zone: ZONE_NAME, placedAt: '10:31 AM', amount: 730, status: 'packed', riderId: null, minutesSinceStatusChange: 23 },
@@ -61,6 +41,11 @@ export const PLACEHOLDER_ORDERS: Order[] = [
   { id: 'FLK-2019', storeName: 'Udupi Daily Needs', storeId: 's5', zone: ZONE_NAME, placedAt: '14 Dec', amount: 720, status: 'delivered', riderId: 'r1', minutesSinceStatusChange: 0 },
   { id: 'FLK-2025', storeName: 'Kaup General Store', storeId: 's4', zone: ZONE_NAME, placedAt: '16 Dec', amount: 380, status: 'delivered', riderId: 'r3', minutesSinceStatusChange: 0 },
 ];
+
+export const PLACEHOLDER_ORDERS: Order[] = PLACEHOLDER_ORDERS_RAW.map((o) => ({
+  ...o,
+  commissionAmount: o.status === 'cancelled' ? 0 : Math.round(o.amount * 0.15),
+}));
 
 // Threshold past which an order counts as "needs attention" on the Home
 // snapshot — no real SLA config exists yet, this is a reasonable founder
@@ -180,62 +165,6 @@ export const PLACEHOLDER_ACTIVE_RIDERS: ActiveRider[] = [
   { id: 'r3', name: 'Rakesh Poojary', phone: '+91 97406 77889', activeOrders: 1, zone: ZONE_NAME, isOnline: false },
 ];
 
-// Onboarding-document fields (addressLine..drugLicenseNumber) are only
-// real on actual DB rows created via AddStoreModal now — this array feeds
-// other still-mocked widgets (TopStoresCard, StorePerformanceList, revenue/
-// zones placeholders), not the real Stores page (stores/page.tsx reads
-// lib/supabase/stores.ts instead), so these are filled with plausible
-// values just to satisfy Store's type, not real documents.
-const MOCK_DOC_FIELDS = {
-  addressLine: 'Main Road',
-  city: 'Kaup',
-  state: 'Karnataka',
-  country: 'India',
-  fssaiNumber: '21425000000000',
-  shopEstablishmentNumber: 'SE-0000',
-  panNumber: 'AAAPZ0000A',
-  aadhaarLast4: '0000',
-  bankName: 'HDFC Bank',
-  bankAccountLast4: '0000',
-  turnoverExceedsGstThreshold: false,
-};
-
-export const PLACEHOLDER_STORES: Store[] = [
-  { id: 's1', name: 'Ganesh Kirana Store', category: 'Kirana & Grocery', zone: ZONE_NAME, district: 'Kaup', phone: '+91 98765 43210', openTime: '8:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Ganesh Rao', joinedAt: '12 Nov 2025', ...MOCK_DOC_FIELDS },
-  { id: 's2', name: 'Shree Pharmacy', category: 'Pharmacy', zone: ZONE_NAME, district: 'Udupi', phone: '+91 98456 12309', openTime: '7:30 AM', closeTime: '10:00 PM', isActive: true, ownerName: 'Shreesha Bhat', joinedAt: '18 Nov 2025', ...MOCK_DOC_FIELDS, drugLicenseNumber: 'DL-0000' },
-  { id: 's3', name: 'Malpe Fresh Mart', category: 'Fruits & Vegetables', zone: ZONE_NAME, district: 'Malpe', phone: '+91 99800 45671', openTime: '6:00 AM', closeTime: '8:30 PM', isActive: true, ownerName: 'Vinod Kamath', joinedAt: '2 Dec 2025', ...MOCK_DOC_FIELDS },
-  { id: 's4', name: 'Kaup General Store', category: 'General Store', zone: ZONE_NAME, district: 'Kaup', phone: '+91 97401 22334', openTime: '9:00 AM', closeTime: '9:00 PM', isActive: true, ownerName: 'Prakash Shetty', joinedAt: '9 Dec 2025', ...MOCK_DOC_FIELDS },
-  { id: 's5', name: 'Udupi Daily Needs', category: 'Kirana & Grocery', zone: ZONE_NAME, district: 'Udupi', phone: '+91 96117 88123', openTime: '7:00 AM', closeTime: '9:30 PM', isActive: false, ownerName: 'Ramesh Pai', joinedAt: '15 Dec 2025', ...MOCK_DOC_FIELDS },
-];
-
-export const PLACEHOLDER_PAYOUTS: Payout[] = [
-  { id: 'p1', storeName: 'Ganesh Kirana Store', cycleLabel: 'Week of 15 Dec', grossSales: 18420, commissionRate: 0.15, netPayout: 15657, status: 'pending', paidAt: null, bankName: 'HDFC Bank', bankAccountLast4: '2210' },
-  { id: 'p2', storeName: 'Shree Pharmacy', cycleLabel: 'Week of 15 Dec', grossSales: 9260, commissionRate: 0.12, netPayout: 8149, status: 'pending', paidAt: null, bankName: 'Canara Bank', bankAccountLast4: '7734' },
-  { id: 'p3', storeName: 'Malpe Fresh Mart', cycleLabel: 'Week of 8 Dec', grossSales: 21030, commissionRate: 0.18, netPayout: 17245, status: 'paid', paidAt: '9 Dec 2025', bankName: 'SBI', bankAccountLast4: '5561' },
-  { id: 'p4', storeName: 'Ganesh Kirana Store', cycleLabel: 'Week of 8 Dec', grossSales: 15980, commissionRate: 0.15, netPayout: 13583, status: 'paid', paidAt: '9 Dec 2025', bankName: 'HDFC Bank', bankAccountLast4: '2210' },
-  { id: 'p5', storeName: 'Kaup General Store', cycleLabel: 'Week of 1 Dec', grossSales: 11200, commissionRate: 0.15, netPayout: 9520, status: 'paid', paidAt: '2 Dec 2025', bankName: 'Axis Bank', bankAccountLast4: '9042' },
-];
-
-// Per-order commission — Order itself carries no commission field (PRD's
-// order_items schema doesn't either), so it's derived here from each
-// store's own rate on PLACEHOLDER_PAYOUTS, same 12-18% range as Payout's
-// own commissionRate (PRD Section 22). Falls back to a 15% platform
-// average for a store with no payout cycle yet.
-const DEFAULT_COMMISSION_RATE = 0.15;
-
-export const STORE_COMMISSION_RATE: Record<string, number> = PLACEHOLDER_PAYOUTS.reduce<Record<string, number>>(
-  (acc, payout) => {
-    if (!(payout.storeName in acc)) acc[payout.storeName] = payout.commissionRate;
-    return acc;
-  },
-  {},
-);
-
-export function commissionForOrder(order: Order): number {
-  const rate = STORE_COMMISSION_RATE[order.storeName] ?? DEFAULT_COMMISSION_RATE;
-  return Math.round(order.amount * rate);
-}
-
 // No payment-gateway payout automation exists yet (Razorpay payout API is
 // a later integration) — every settlement is founder-triggered today.
 // SETTLEMENT_CADENCE_LABEL is just the expected rhythm, not a cron; the
@@ -243,48 +172,6 @@ export function commissionForOrder(order: Order): number {
 // automation ships.
 export const SETTLEMENT_CADENCE_LABEL = 'Weekly · every Monday';
 export const AUTO_RELEASE_ENABLED = false;
-
-export const PLACEHOLDER_ZONES: Zone[] = [
-  { id: 'z1', name: 'Kaup, Udupi', isActive: true, storeCount: PLACEHOLDER_STORES.length, riderCount: PLACEHOLDER_ACTIVE_RIDERS.length },
-  { id: 'z2', name: 'Karkala', isActive: false, storeCount: 0, riderCount: 0 },
-  { id: 'z3', name: 'Kundapura', isActive: false, storeCount: 0, riderCount: 0 },
-];
-
-// Each store's share of the active zone's delivered revenue — sums to
-// 100% by construction (every store's slice of the same total), not
-// picked independently per store. A store with zero delivered orders
-// still gets a 0% row rather than being dropped, so the zone's own store
-// count and this breakdown's row count always agree.
-export interface StoreRevenueShare {
-  storeId: string;
-  storeName: string;
-  category: string;
-  revenue: number;
-  sharePct: number;
-}
-
-export function storeRevenueShares(zoneName: string): StoreRevenueShare[] {
-  const storesInZone = PLACEHOLDER_STORES.filter((s) => s.zone === zoneName);
-  const revenueByStore = new Map<string, number>();
-  for (const order of PLACEHOLDER_ORDERS) {
-    if (order.status !== 'delivered') continue;
-    revenueByStore.set(order.storeId, (revenueByStore.get(order.storeId) ?? 0) + order.amount);
-  }
-  const zoneTotal = storesInZone.reduce((sum, s) => sum + (revenueByStore.get(s.id) ?? 0), 0);
-
-  return storesInZone
-    .map((s) => {
-      const revenue = revenueByStore.get(s.id) ?? 0;
-      return {
-        storeId: s.id,
-        storeName: s.name,
-        category: s.category,
-        revenue,
-        sharePct: zoneTotal > 0 ? Math.round((revenue / zoneTotal) * 1000) / 10 : 0,
-      };
-    })
-    .sort((a, b) => b.revenue - a.revenue);
-}
 
 // "We want Flikk here" — places a customer has searched/entered in the
 // customer app that fall outside the active zone (see ZoneRequest's own
@@ -364,11 +251,3 @@ export const FRESHNESS_TAG_PRESETS = ["Today's Fresh", 'Fresh Catch', 'Farm Fres
 // reads real rows from Supabase (lib/supabase/products.ts) and starts
 // empty until a founder adds something through the Add product modal.
 
-// Revenue tab's own trend — total commission earned per week, distinct
-// from Payouts' per-store breakdown of that same money.
-export const PLACEHOLDER_REVENUE_TREND: RevenuePoint[] = [
-  { label: 'Wk 24 Nov', commission: 6840 },
-  { label: 'Wk 1 Dec', commission: 8120 },
-  { label: 'Wk 8 Dec', commission: 30828 },
-  { label: 'Wk 15 Dec', commission: 23806 },
-];

@@ -35,6 +35,7 @@ import { CartCheckoutFooter } from './components/CartCheckoutFooter';
 import { CartDeliveryInfoBar } from './components/CartDeliveryInfoBar';
 import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
 import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
+import { PromoCodeCard } from './components/PromoCodeCard';
 import { BillDetailsCard } from './components/BillDetailsCard';
 import { CancellationNoteCard } from './components/CancellationNoteCard';
 import type { AppStackParamList } from '../../navigation/types';
@@ -50,6 +51,7 @@ export function CartScreen({ navigation }: Props) {
   // store renders as multiple "From {store}" mini-sections below instead
   // of a single flat list that silently implied they were all one order.
   const storeGroups = useCartStore(selectCartGroupedByStore);
+  const appliedPromo = useCartStore((state) => state.appliedPromo);
   const clearCart = useCartStore((state) => state.clear);
 
   function handleClearCart() {
@@ -214,12 +216,14 @@ export function CartScreen({ navigation }: Props) {
 
             <DeliveryTipCard selectedTip={tip} onSelectTip={setTip} />
             <FreeDeliveryProgressCard itemTotal={itemTotal} />
+            <PromoCodeCard itemTotal={itemTotal} appliedPromo={appliedPromo} />
             <BillDetailsCard
               itemTotal={itemTotal}
               originalItemTotal={originalItemTotal}
               itemCount={totalQuantity}
               tip={tip}
               onAddTip={() => setTip(20)}
+              discountAmount={appliedPromo?.discountAmount ?? 0}
             />
             <CancellationNoteCard />
           </ScrollView>

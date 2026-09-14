@@ -7,22 +7,26 @@
 // (just SEASONAL_TILES + FESTIVAL_TITLE/SUBTITLE below, nothing
 // structural).
 //
-// FINAL call, with an actual reason this time: a plain free-scrolling
-// row, not the paged/snap-to-full-page version tried in between — the
-// last tile in view is deliberately cut at the edge so it visibly signals
-// "there's more, keep scrolling" (an explicit ask, same peek-carousel
-// pattern StoreCard.tsx's own photo strip already uses on the Store
-// screen).
+// Fixed 2x2 grid now, no scrolling — per an explicit ask, replacing the
+// earlier free-scrolling "3 full + a peek of the 4th" row. SEASONAL_TILES
+// is capped at exactly 4 for this reason (data.ts's own note); a 2-column
+// wrap is what actually shows all of them at once with nothing cut off or
+// hidden behind a scroll a customer might not notice.
 //
-// Square tiles (equal width/height — "4x4" per an earlier ask), sized so
-// exactly 3 fit fully plus half of a 4th (VISIBLE_TILES), per an explicit
-// reference — tileSize is derived from a MEASURED width (rowWidth state,
-// onLayout below), not a hardcoded pixel guess, so the 3-full-plus-half
-// ratio actually holds on any screen size rather than only the one it
-// was eyeballed against.
+// Panel background is plain white now (PANEL_BG), not the earlier tinted
+// peach — per an explicit ask to move the color onto the cards
+// themselves instead (data.ts's own per-tile bgColor) so each tile reads
+// as its own small colored object sitting on a clean white shelf, rather
+// than white cards on one flat tinted background.
+//
+// Tiles fill their full half-row width (2 per row, edge to edge via
+// justify-between), sized from a MEASURED row width (rowWidth state,
+// onLayout below) rather than a hardcoded pixel guess — height is a
+// fraction of that measured width (HEIGHT_RATIO), not equal to it, so the
+// tile is a shorter rectangle rather than a full square.
 
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { SEASONAL_TILES } from './data';
 
@@ -32,9 +36,15 @@ import { SEASONAL_TILES } from './data';
 // section rather than two separately-backed blocks. This file no longer
 // owns the panel's background/rounding itself (see the root View below) —
 // the wrapper in AllTabSections.tsx does.
-export const PANEL_BG = '#FBE9DD';
-const TILE_GAP = 12; // matches contentContainerClassName's own gap-3
-const VISIBLE_TILES = 3.3; // bigger tiles — 3 full + a peek of the 4th, scroll for the rest
+export const PANEL_BG = '#FFFFFF';
+const TILE_GAP = 12; // matches the grid's own gap-y-3
+const COLUMNS = 2;
+// Not square anymore — width takes the tile's full even half-row share
+// (justify-between pins both columns flush to the panel's real edges),
+// height is a fraction of that width. Per an explicit ask: shrink the
+// tile's height, but widen it back out to fill the row properly rather
+// than shrinking both dimensions together (which made a too-small square).
+const HEIGHT_RATIO = 0.72;
 
 // Placeholder — real seasonal banner art (swapped per festival, same as
 // SEASONAL_TILES below) once that exists; this is just a real asset to
@@ -46,7 +56,8 @@ export function SeasonalSection() {
 
   if (SEASONAL_TILES.length === 0) return null;
 
-  const tileSize = rowWidth > 0 ? (rowWidth - TILE_GAP * Math.floor(VISIBLE_TILES)) / VISIBLE_TILES : 0;
+  const tileWidth = rowWidth > 0 ? (rowWidth - TILE_GAP * (COLUMNS - 1)) / COLUMNS : 0;
+  const tileHeight = tileWidth * HEIGHT_RATIO;
 
   function handleRowLayout(event: LayoutChangeEvent) {
     setRowWidth(event.nativeEvent.layout.width);
@@ -69,44 +80,28 @@ export function SeasonalSection() {
           explicit ask — short (h-20), and no side inset now (mx-0, not the
           first pass's mx-10): the grid row below has no horizontal margin
           of its own beyond this panel's own px-5, so this banner needs
-          none either to actually match the 3-card row's own width, per a
-          later ask ("increase the image width... 3 card max width"). */}
+          none either to actually match the row's own width. */}
       <Image
         source={{ uri: SEASONAL_BANNER_URI }}
         contentFit="cover"
         className="h-20 rounded-2xl"
       />
 
-      {/* Asymmetric on purpose: the LEFT edge stays governed by this
-          panel's own px-5 (same as the banner image above it, per an
-          explicit ask), but -mr-5 cancels the panel's right padding for
-          this row only, so the scrollable area bleeds to the true screen
-          edge instead of matching the left's inset — that's what lets
-          the trailing tile actually get cut off right at the edge
-          (rather than the panel's own padding creating a blank gap
-          before the cut ever shows). onLayout measures that real
-          (left-inset, right-bled) width once, which tileSize above is
-          derived from. Renders nothing on the very first frame (rowWidth
-          still 0) rather than flashing wrongly-sized tiles before that
-          measurement lands. */}
-      <View className="-mr-5" onLayout={handleRowLayout}>
-        {rowWidth > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
-            {SEASONAL_TILES.map((tile) => (
-              <Pressable
-                key={tile.id}
-                className="justify-between rounded-2xl bg-white p-3"
-                style={{ width: tileSize, height: tileSize }}
-              >
-                <Text className="text-[12px] font-medium text-center item-center leading-4 text-ink" numberOfLines={2}>
-                  {tile.title}
-                </Text>
+      <View className="flex-row flex-wrap justify-between gap-y-3" onLayout={handleRowLayout}>
+        {rowWidth > 0 &&
+          SEASONAL_TILES.map((tile) => (
+            <Pressable
+              key={tile.id}
+              className="justify-between rounded-[20px] border border-black/[0.04] p-3 shadow-sm shadow-black/5 active:opacity-80"
+              style={{ width: tileWidth, height: tileHeight, backgroundColor: tile.bgColor }}
+            >
+              <Text className="text-[12px] font-semibold text-center item-center leading-4 text-ink" numberOfLines={2}>
+                {tile.title}
+              </Text>
 
-                <Image source={{ uri: tile.imageUrl }} className="h-16 w-16 self-end" resizeMode="contain" />
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
+              <Image source={{ uri: tile.imageUrl }} className="h-14 w-14 self-end" resizeMode="contain" />
+            </Pressable>
+          ))}
       </View>
     </View>
   );

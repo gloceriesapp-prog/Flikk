@@ -7,7 +7,8 @@
 // bottom color-fill strip, both removed per an explicit ask ("remove the bg
 // colour and all, and box effect"). Just the heading (same mb-4 px-5
 // pattern EverydayEssentialsSection.tsx uses for "Today's Stock") followed
-// by a bigger horizontal-scroll row of store tiles — NearbyStoreCard/
+// by a bigger horizontal-scroll row of store tiles — StoreTileCard
+// (home/components/, shared with TopRatedStoresSection/NewOnFlikkSection)/
 // ViewAllStoresTile both bumped up in size (own files, see their notes) to
 // compensate for the card wrapper no longer giving this row any visual
 // weight of its own.
@@ -21,7 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScrollView, Text, View } from 'react-native';
 import { useNearbyStores } from './useNearbyStores';
-import { NearbyStoreCard } from './components/NearbyStoreCard';
+import { StoreTileCard } from '../components/StoreTileCard';
 import { ViewAllStoresTile } from './components/ViewAllStoresTile';
 import type { AppStackParamList } from '../../../navigation/types';
 
@@ -40,11 +41,15 @@ export function NearbyStoresSection() {
 
   return (
     <View className="pt-6">
-      <Text className="mb-4 px-5 text-[17px] font-semibold text-ink">Shop Any Store Nearby</Text>
+      <Text className="mb-4 px-5 text-[18.5px] font-semibold text-black/80">Shop Any Store Nearby</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 px-5">
         {rowStores.map((store) => (
-          <NearbyStoreCard key={store.id} store={store} onPress={() => goToStore(store.id, store.name)} />
+          <StoreTileCard
+            key={store.id}
+            store={{ ...store, metaLabel: store.distanceLabel ? `${store.distanceLabel} away` : undefined }}
+            onPress={() => goToStore(store.id, store.name)}
+          />
         ))}
         <ViewAllStoresTile onPress={() => navigation.navigate('Store')} />
       </ScrollView>

@@ -9,7 +9,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Plus, Settings } from 'lucide-react';
+import { Bell, LogOut, Plus, Settings } from 'lucide-react';
 import { ALL_NAV_ITEMS, QUICK_ACTION_LABEL } from '@/lib/nav';
 
 const TEAM_AVATAR_COLORS = ['bg-rose-200', 'bg-amber-200', 'bg-sky-200'];
@@ -56,6 +56,16 @@ export function TopNav() {
         >
           <Bell size={16} />
         </button>
+
+        <form action="/api/auth/logout" method="POST">
+          <button
+            type="submit"
+            aria-label="Sign out"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-ink-soft hover:text-ink"
+          >
+            <LogOut size={16} />
+          </button>
+        </form>
 
         {quickActionLabel && (
           <button

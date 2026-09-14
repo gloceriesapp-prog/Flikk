@@ -74,7 +74,7 @@ The out-of-scope list is not a backlog for "later" — it's what must NOT appear
 - Real-time inventory sync with store POS systems
 - AI/conversational ordering
 - Loyalty/rewards programs
-- Multi-store cart (single-store-per-order, enforced at schema and UI level)
+- ~~Multi-store cart~~ — **overridden, now in scope.** A customer cart can span multiple stores in one checkout (`trips` table, `backend/migrations/014_trips.sql`/`015_create_trip_orders_fn.sql`): each store still gets its own real `orders` row (own `store_id`/`order_items`/status), linked by a shared `trip_id`, with one combined payment and one delivery fee for the whole trip. The rider does one multi-stop pickup (`apps/rider`'s `MultiStopJobCard`, grouped by `trip_id`) and gets paid the trip's own `delivery_fee` — base fee (`DELIVERY_FEE`) plus `EXTRA_STOP_FEE` per store beyond the first (`backend/src/routes/trips.ts`, `backend/src/lib/trips.ts`) — as one combined `rider_earnings` row per trip, not once per leg (`backend/src/routes/orders.ts`'s trip-aware payout logic). Still single-store-per-*order* at the schema level; it's the *cart* that now fans out into N orders sharing one trip.
 
 If a task seems to require one of these, stop and flag it rather than building around the constraint.
 

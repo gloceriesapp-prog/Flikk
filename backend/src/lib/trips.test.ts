@@ -47,7 +47,7 @@ describe('groupCartByStore', () => {
 });
 
 describe('calcTripTotal', () => {
-  it('charges the delivery fee once, not once per leg', () => {
+  it('charges one base delivery fee for a two-store trip (one extra stop)', () => {
     const legs = groupCartByStore(
       [
         { product_id: 'p1', quantity: 1 },
@@ -60,8 +60,39 @@ describe('calcTripTotal', () => {
       0.15,
     );
 
-    const { itemTotal, total } = calcTripTotal(legs, 25);
+    const { itemTotal, deliveryFee, total } = calcTripTotal(legs, 25, 15);
     expect(itemTotal).toBe(300);
-    expect(total).toBe(325); // NOT 300 + 25 + 25
+    expect(deliveryFee).toBe(40); // 25 base + 15 for the one extra stop
+    expect(total).toBe(340); // NOT 300 + 25 + 25, and NOT 300 + 25
+  });
+
+  it('scales the surcharge with every extra store, not just the second', () => {
+    const legs = groupCartByStore(
+      [
+        { product_id: 'p1', quantity: 1 },
+        { product_id: 'p2', quantity: 1 },
+        { product_id: 'p3', quantity: 1 },
+      ],
+      [
+        { id: 'p1', store_id: 'store-a', price: 10, is_in_stock: true },
+        { id: 'p2', store_id: 'store-b', price: 10, is_in_stock: true },
+        { id: 'p3', store_id: 'store-c', price: 10, is_in_stock: true },
+      ],
+      0.15,
+    );
+
+    const { deliveryFee } = calcTripTotal(legs, 25, 15);
+    expect(deliveryFee).toBe(55); // 25 base + 15 × 2 extra stops
+  });
+
+  it('charges only the base fee for a single-leg "trip" (defensive — never actually routed here)', () => {
+    const legs = groupCartByStore(
+      [{ product_id: 'p1', quantity: 1 }],
+      [{ id: 'p1', store_id: storeA, price: 100, is_in_stock: true }],
+      0.15,
+    );
+
+    const { deliveryFee } = calcTripTotal(legs, 25, 15);
+    expect(deliveryFee).toBe(25);
   });
 });

@@ -14,12 +14,10 @@
 // vocabulary (CLAUDE.md: "rider", never "delivery partner") rather than
 // borrowing a competitor's term for the same role.
 //
-// No fabricated "Flat ₹X OFF" row (a reference screenshot had one) — this
-// app has no cart-level coupon/promo system, only real per-item discounts
-// (originalPrice vs price) and the real free-delivery waiver, both
-// already tracked. Inventing a flat discount number with nothing behind
-// it would just be a wrong price shown to a paying customer. Everything
-// shown here is a real, computed figure.
+// discountAmount is a real cart-level coupon (PromoCodeCard's own
+// validatePromoCode call, api/promos.ts) — not fabricated. Everything
+// shown here is a real, computed figure: item-level discounts
+// (originalPrice vs price), the free-delivery waiver, and now this.
 //
 // itemTotal/originalItemTotal/tip inputs and the toPay math are
 // unchanged from the previous version of this card — CheckoutScreen's
@@ -27,7 +25,7 @@
 // free-delivery waiver, so this card keeps computing its own total
 // rather than risk the two silently diverging.
 
-import { Motorbike01Icon, ReceiptIndianRupeeIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
+import { DiscountTag01Icon, Motorbike01Icon, ReceiptIndianRupeeIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { CART_DELIVERY_FEE, CART_HANDLING_FEE, FREE_DELIVERY_THRESHOLD } from '../../../store/useCartStore';
@@ -46,6 +44,7 @@ interface Props {
   itemCount: number;
   tip: TipSelection;
   onAddTip?: () => void;
+  discountAmount?: number;
 }
 
 function RowIcon({ icon }: { icon: typeof Motorbike01Icon }) {
@@ -70,11 +69,11 @@ function ScallopEdge() {
   );
 }
 
-export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, onAddTip }: Props) {
+export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, onAddTip, discountAmount = 0 }: Props) {
   const isDeliveryFree = itemTotal >= FREE_DELIVERY_THRESHOLD;
   const tipAmount = typeof tip === 'number' ? tip : 0;
   const deliveryFee = isDeliveryFree ? 0 : CART_DELIVERY_FEE;
-  const toPay = itemTotal + CART_HANDLING_FEE + tipAmount + deliveryFee;
+  const toPay = Math.max(itemTotal + CART_HANDLING_FEE + tipAmount + deliveryFee - discountAmount, 0);
   const originalToPay = originalItemTotal
     ? (originalItemTotal > itemTotal ? originalItemTotal : itemTotal) + CART_HANDLING_FEE + tipAmount + CART_DELIVERY_FEE
     : isDeliveryFree
@@ -137,6 +136,16 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
             </View>
             <Text className="text-[13px] font-medium tabular-nums text-ink">₹{CART_HANDLING_FEE}</Text>
           </View>
+
+          {discountAmount > 0 && (
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <RowIcon icon={DiscountTag01Icon} />
+                <RowLabel>Promo discount</RowLabel>
+              </View>
+              <Text className="text-[13px] font-semibold tabular-nums text-success">-₹{discountAmount}</Text>
+            </View>
+          )}
 
           <View className="flex-row items-center justify-between">
             <Text className="text-[13px] font-medium text-ink/75">Tip for your rider</Text>

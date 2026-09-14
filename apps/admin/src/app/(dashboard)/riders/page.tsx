@@ -1,14 +1,46 @@
+'use client';
+
 // Rider management — active roster + manual assignment (A3/FR22) on one
 // screen, since a founder doing either is looking at "who's actually on
 // shift right now" either way. Fully manual: no suggested-rider algorithm,
 // no auto-assign (specs/00-foundation/out-of-scope.md).
+//
+// Real data now: app/api/riders (service role — riders has no public RLS
+// read policy admin can use) for the roster, app/api/orders (already real,
+// shared with the Orders page) for which orders are waiting on a rider.
+// useAdminRealtime refetches both on any orders/riders write from the
+// customer/partner/rider apps, same pattern as Orders/Overview.
 
+import { useCallback, useEffect, useState } from 'react';
 import { Phone } from 'lucide-react';
 import { AssignRiderRow } from '@/components/dispatch/AssignRiderRow';
-import { PLACEHOLDER_ACTIVE_RIDERS, PLACEHOLDER_ORDERS } from '@/lib/mock-data';
+import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
+import type { ActiveRider, Order } from '@/lib/types';
 
 export default function RidersPage() {
-  const unassigned = PLACEHOLDER_ORDERS.filter((o) => o.status === 'packed' && !o.riderId);
+  const [riders, setRiders] = useState<ActiveRider[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const [ridersRes, ordersRes] = await Promise.all([fetch('/api/riders'), fetch('/api/orders')]);
+      if (!ridersRes.ok) throw new Error((await ridersRes.json()).error ?? 'Could not load riders.');
+      if (!ordersRes.ok) throw new Error((await ordersRes.json()).error ?? 'Could not load orders.');
+      setRiders(await ridersRes.json());
+      setOrders(await ordersRes.json());
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load riders.');
+    }
+  }, []);
+
+  useEffect(() => {
+    Promise.resolve().then(loadData);
+  }, [loadData]);
+  useAdminRealtime(loadData);
+
+  const unassigned = orders.filter((o) => o.status === 'packed' && !o.riderId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -17,11 +49,13 @@ export default function RidersPage() {
         <p className="text-sm text-muted">Active roster and manual order assignment.</p>
       </div>
 
+      {loadError && <p className="text-sm text-danger">{loadError}</p>}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
           <h3 className="mb-3 text-sm font-semibold text-ink">Active riders</h3>
           <div className="flex flex-col gap-3">
-            {PLACEHOLDER_ACTIVE_RIDERS.map((rider) => (
+            {riders.map((rider) => (
               <div key={rider.id} className="flex items-center gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
                 <div className="relative">
                   <div className="h-10 w-10 rounded-full bg-accent" />
@@ -43,6 +77,7 @@ export default function RidersPage() {
                 <span className="text-xs font-semibold text-ink-soft">{rider.activeOrders} active</span>
               </div>
             ))}
+            {riders.length === 0 && <p className="py-8 text-center text-sm text-muted">No riders onboarded yet.</p>}
           </div>
         </div>
 
@@ -55,7 +90,7 @@ export default function RidersPage() {
             <p className="py-8 text-center text-sm text-muted">Nothing waiting on a rider right now.</p>
           ) : (
             unassigned.map((order) => (
-              <AssignRiderRow key={order.id} order={order} riders={PLACEHOLDER_ACTIVE_RIDERS.filter((r) => r.isOnline)} />
+              <AssignRiderRow key={order.id} order={order} riders={riders.filter((r) => r.isOnline)} />
             ))
           )}
         </div>

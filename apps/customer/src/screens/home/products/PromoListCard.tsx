@@ -1,8 +1,11 @@
-// Plain section — title + a horizontally-scrolling row of real product
-// cards. Per an explicit ask, the earlier colored-frame/white-panel card
-// shell, shadow, and "See all" footer are all gone; just the title and
-// the shared ProductCard row remain. Same real product feed the parent
-// section passes in (MostBoughtSection.tsx).
+// Generic Home row — title + a horizontally-scrolling row of real product
+// cards. Shared by every section that's fundamentally "a title and a
+// product row" with no card shell/background/"See all" footer of its own
+// (MostBoughtSection.tsx, BuyItAgainSection.tsx) — one component, not a
+// copy per section, so a layout fix here (snap behavior, card width) never
+// needs to be repeated across sections that happen to look identical.
+// Lives in home/products/ (not any one section's own folder) precisely
+// because it isn't owned by a single section anymore.
 //
 // Full-width scroll, same fix as EverydayEssentialsSection.tsx's own
 // note: the horizontal inset (px-5) lives on the TITLE and on the
@@ -15,8 +18,8 @@
 // dropped (it read as an unwanted white wash rather than a subtle cue).
 
 import { ScrollView, Text, View } from 'react-native';
-import { ProductCard } from '../../products/ProductCard';
-import type { Product } from '../../products/types';
+import { ProductCard } from './ProductCard';
+import type { Product } from './types';
 
 const VISIBLE_PRODUCTS = 6;
 const PRODUCT_CARD_WIDTH = 'w-32';
@@ -32,7 +35,7 @@ export function PromoListCard({ title, products }: Props) {
 
   return (
     <View>
-      <Text className="px-5 text-[17px] font-bold leading-6 tracking-tight text-ink">{title}</Text>
+      <Text className="px-5 text-[18.5px] font-semibold leading-6 tracking-tight text-black/80">{title}</Text>
 
       <ScrollView
         horizontal
