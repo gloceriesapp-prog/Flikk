@@ -32,6 +32,24 @@ const app = express();
 // everywhere — gzip is transparent to every client already talking JSON.
 app.use(compression());
 
+// Only web clients (apps/partner-dashboard, apps/admin) hit CORS at all —
+// the three RN apps talk to this backend natively, no browser involved.
+// Reflects an allowlisted origin rather than '*' so credentials/auth
+// headers stay usable and no arbitrary site can call these endpoints.
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && env.webDashboardOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  }
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 // /payments/webhook needs the raw body for signature verification, so it's
 // mounted before the generic json() parser with its own raw-capture.
 app.use(

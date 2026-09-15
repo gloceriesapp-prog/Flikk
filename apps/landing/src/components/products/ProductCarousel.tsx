@@ -8,96 +8,23 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
+import type { LandingProduct } from "@/lib/products";
 
-interface ProductItem {
-  id: string;
-  name: string;
-  quantity: string;
-  price: number;
-  originalPrice?: number;
-  discount?: string;
-  image: string;
-  badgeBg?: string;
+interface Props {
+  // Real products (fetchRandomProducts, src/lib/products.ts) — fetched
+  // server-side in page.tsx (a Server Component) and passed down, since
+  // this component itself is 'use client' for the scroll-drag interaction
+  // below. Card UI/markup is unchanged from the old POPULAR_PRODUCTS mock
+  // version — only the data source moved.
+  products: LandingProduct[];
 }
 
-const DEFAULT_PRODUCT_IMAGE =
-  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/amul.jpeg";
-
-const POPULAR_PRODUCTS: ProductItem[] = [
-  {
-    id: "p-1",
-    name: "Amul Taaza Toned Fresh Milk",
-    quantity: "500 ml",
-    price: 27,
-    originalPrice: 28,
-    discount: "4% OFF",
-    image: DEFAULT_PRODUCT_IMAGE,
-  },
-  {
-    id: "p-2",
-    name: "Amul Pasteurised Salted Butter",
-    quantity: "100 g",
-    price: 56,
-    originalPrice: 60,
-    discount: "6% OFF",
-    image: DEFAULT_PRODUCT_IMAGE,
-  },
-  {
-    id: "p-3",
-    name: "Fresh Tender Coconut (Elaneer)",
-    quantity: "1 pc",
-    price: 49,
-    originalPrice: 65,
-    discount: "24% OFF",
-    image: DEFAULT_PRODUCT_IMAGE,
-  },
-  {
-    id: "p-4",
-    name: "English Oven Premium Brown Bread",
-    quantity: "400 g",
-    price: 45,
-    originalPrice: 50,
-    discount: "10% OFF",
-    image: DEFAULT_PRODUCT_IMAGE,
-  },
-  {
-    id: "p-5",
-    name: "Amul Tru Berry Dazzle Ice Cream",
-    quantity: "1 ltr",
-    price: 208,
-    originalPrice: 300,
-    discount: "30% OFF",
-    image: DEFAULT_PRODUCT_IMAGE,
-  },
-  {
-    id: "p-6",
-    name: "Thums Up Charged Soft Drink Can",
-    quantity: "300 ml",
-    price: 38,
-    originalPrice: 40,
-    discount: "5% OFF",
-    image: DEFAULT_PRODUCT_IMAGE,
-  },
-  {
-    id: "p-7",
-    name: "Lay's India's Magic Masala Chips",
-    quantity: "50 g",
-    price: 20,
-    image: DEFAULT_PRODUCT_IMAGE,
-  },
-  {
-    id: "p-8",
-    name: "Ferrero Rocher Hazelnut Box",
-    quantity: "4 pcs (50g)",
-    price: 149,
-    originalPrice: 169,
-    discount: "12% OFF",
-    image: DEFAULT_PRODUCT_IMAGE,
-  },
-];
-
-export default function ProductCarousel() {
+export default function ProductCarousel({ products }: Props) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // No placeholder row pretending to be real data — same "no real data =
+  // section off" convention the rest of this monorepo already follows.
+  if (products.length === 0) return null;
 
   const handleScroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
@@ -155,20 +82,30 @@ export default function ProductCarousel() {
           className="flex items-start gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory py-2 px-0.5 scroll-smooth"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {POPULAR_PRODUCTS.map((prod) => (
+          {products.map((prod) => (
             <div
               key={prod.id}
               className="w-[140px] sm:w-[152px] shrink-0 snap-start flex flex-col group cursor-pointer"
             >
               {/* Product Image Container with Floating (+) Button (No Hover Lift) */}
               <div className="w-full h-[140px] sm:h-[152px] rounded-2xl bg-[#F8FAFC] border border-slate-200/70 p-3 relative flex items-center justify-center overflow-hidden transition-colors duration-200">
-                {/* Real Product Image */}
+                {/* Real Product Image — fill (not fixed width/height) is
+                    what actually makes this work for real product photos:
+                    the old mock data was one fixed-size placeholder image
+                    reused for every card, so a hardcoded 120x120 box never
+                    revealed the problem. Real photos come in whatever
+                    dimensions a store owner uploaded, and fixed width/
+                    height fights object-contain's own aspect-ratio-
+                    preserving scale-to-fit — fill (sized against the
+                    parent's own relative, fixed-size box above) is what
+                    correctly fits any real image inside that box without
+                    stretching or clipping it. */}
                 <Image
                   src={prod.image}
                   alt={prod.name}
-                  width={120}
-                  height={120}
-                  className="w-full h-full object-contain p-1"
+                  fill
+                  sizes="(max-width: 640px) 140px, 152px"
+                  className="object-contain p-2"
                 />
 
                 {/* Floating (+) ADD Button */}

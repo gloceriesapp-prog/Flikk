@@ -18,7 +18,10 @@
 // meant to sit directly on the same panel SeasonalSection's own banner/
 // tiles already painted (AllTabSections.tsx wraps both together, per an
 // explicit "treat this as one section" ask), not float on its own
-// separately-backed block below it.
+// separately-backed block below it. That panel is HomeHeader's own dark
+// 'all' gradient now (per a later ask that header/panel match) — the
+// title text below is white for that reason, not ink; dark-on-dark would
+// be unreadable against it.
 //
 // Capped at 6 real cards + a trailing "See All" card (same width as the
 // product cards beside it, so it reads as the row's own closing card) —
@@ -43,7 +46,7 @@ export function FestivalPicksSection() {
   return (
     <View className="pb-6">
       <View className="gap-1 px-5 pb-4">
-        <Text className="text-[19px] font-semibold text-ink">{section.title}</Text>
+        <Text className="text-[19px] font-semibold text-white">{section.title}</Text>
       </View>
 
       {/* items-start — a horizontal ScrollView's content container

@@ -40,6 +40,7 @@
 // unconditionally).
 
 import { View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CategorySections } from '../../../components/CategorySections/CategorySections';
 import { BrandFooter } from '../../../components/BrandFooter';
 import { useLocationStore } from '../../../store/useLocationStore';
@@ -52,8 +53,9 @@ import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { NewOnFlikkSection } from '../new-on-flikk/NewOnFlikkSection';
 import { ProductSection } from '../products/ProductSection';
-import { PANEL_BG, SeasonalSection } from '../seasonal/SeasonalSection';
+import { SeasonalSection } from '../seasonal/SeasonalSection';
 import { StoreTypesSection } from '../store-types/StoreTypesSection';
+import { gradientForTabName } from '../data/categoryHeaderGradients';
 import { TopRatedStoresSection } from '../top-rated-stores/TopRatedStoresSection';
 import { TrendingSection } from '../trending/TrendingSection';
 import { UnavailableZoneSection } from '../unavailable-zone/UnavailableZoneSection';
@@ -69,6 +71,11 @@ export function AllTabSections() {
   const { data: dealsProducts = [] } = useDealsProducts(storeId);
   const location = useLocationStore((state) => state.location);
   const isServiceable = isLocationServiceable(location);
+  // This screen only ever renders while Home's "All" tab is selected (see
+  // this file's own header note), so the panel always matches HomeHeader's
+  // own 'all' gradient specifically — not whichever tab happens to be
+  // active, since there's no other tab this component renders under.
+  const panelGradient = gradientForTabName('all');
 
   return (
     // pb-32 — same floating-CartBar clearance fix applied across every
@@ -83,11 +90,14 @@ export function AllTabSections() {
               FestivalPicksSection's product row read as one continuous
               section (same background, one rounded bottom edge), per an
               explicit ask, rather than two separately-backed blocks stacked
-              on top of each other. */}
-          <View className="rounded-b-[32px]" style={{ backgroundColor: PANEL_BG }}>
+              on top of each other. That background is HomeHeader's own
+              'all' gradient (LinearGradient, not a flat color) per a later
+              ask that the header and this panel read as the exact same
+              background rather than two different treatments. */}
+          <LinearGradient colors={panelGradient.colors} locations={panelGradient.stops} className="overflow-hidden rounded-b-[32px]">
             <SeasonalSection />
             <FestivalPicksSection />
-          </View>
+          </LinearGradient>
           {/* Personalized-to-you first, before general browse/discovery
               rows further down (agreed Home section order) — real repeat-
               purchase data, off entirely for a guest or a customer with no

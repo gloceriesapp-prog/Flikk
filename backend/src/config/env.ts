@@ -27,4 +27,12 @@ export const env = {
   // rather than the whole server refusing to start over one blocked
   // feature.
   razorpayxAccountNumber: process.env.RAZORPAYX_ACCOUNT_NUMBER,
+  // apps/partner-dashboard (and any future web surface) calls this backend
+  // directly from browser JS, unlike admin which only talks to Supabase/its
+  // own Next API routes — the only client that actually needs CORS.
+  // Comma-separated allowlist; defaults to the dashboard's local dev port.
+  webDashboardOrigins: (process.env.WEB_DASHBOARD_ORIGINS ?? 'http://localhost:3000,http://localhost:3001,http://localhost:3002')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 };

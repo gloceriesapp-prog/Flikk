@@ -22,6 +22,19 @@ import {
 const LOGO_IMAGE_URL =
   "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/All_Right-removebg-preview.png";
 
+// Real launch area this landing page already commits to elsewhere
+// (AnnouncementBanner's own "Fast Local Delivery in Mangalore", and 7 of
+// LocationModal's own 8 suggested addresses) — not a guess invented for
+// this badge. "Manipal, Udupi" (the modal's one non-Mangalore suggestion)
+// deliberately stays "Coming Soon": it's listed as a heads-up for what's
+// next, not a place real delivery already runs.
+const SERVICEABLE_AREA_KEYWORDS = ["mangalore"];
+
+function isLocationServiceable(location: string): boolean {
+  const needle = location.toLowerCase();
+  return SERVICEABLE_AREA_KEYWORDS.some((area) => needle.includes(area));
+}
+
 const SEARCH_PLACEHOLDERS = [
   'Search for "Ice Cream"',
   'Search for "Fresh Milk"',
@@ -112,7 +125,7 @@ export default function Navbar() {
       {/* Top Announcement Banner */}
       <AnnouncementBanner />
 
-      <div className="max-w-[980px] mx-auto px-6 py-3 flex items-center justify-between gap-4 sm:gap-6 bg-white">
+      <div className="max-w-[980px] mx-auto px-6 py-4 flex items-center justify-between gap-4 sm:gap-6 bg-white">
         {/* Left Brand Logo & Location Pill */}
         <div className="flex items-center gap-3 shrink-0">
           <a
@@ -120,7 +133,7 @@ export default function Navbar() {
             className="flex items-center gap-2 cursor-pointer select-none group"
             aria-label="Flikk Home"
           >
-            <Image
+            {/* <Image
               src={LOGO_IMAGE_URL}
               alt="Flikk Logo"
               width={48}
@@ -128,14 +141,14 @@ export default function Navbar() {
               priority
               style={{ width: "auto", height: "42px" }}
               className="object-contain group-hover:scale-105 transition-transform shrink-0"
-            />
+            /> */}
             <div className="flex flex-col leading-[0.95]">
-              <span className="text-[20px] font-black text-[#000000] tracking-tight">
-                Flikk
+              <span className="text-[30px] sm:text-[34px] font-black text-[#000000] tracking-tight">
+                gloceries <span className="text-[#155dfc] h-2 w-2 rounded-full inline-block bg-[#155dfc]"></span>
               </span>
-              <span className="text-[20px] font-black text-[#00000] tracking-tight">
+              {/* <span className="text-[20px] font-black text-[#00000] tracking-tight">
                 Now in Mangalore <HugeiconsIcon icon={FavouriteIcon} className="w-4 h-4 text-red-500 fill-red-500 inline" />
-              </span>
+              </span> */}
             </div>
           </a>
 
@@ -146,25 +159,40 @@ export default function Navbar() {
             type="button"
             onClick={() => setIsLocationModalOpen(true)}
             aria-label="Change delivery location"
-            className="flex items-center gap-1.5 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl cursor-pointer transition-colors text-left group"
+            className="flex items-center gap-1.5 px-3  cursor-pointer transition-colors text-left group"
           >
-            <HugeiconsIcon icon={Location01Icon} className="w-4 h-4 text-[#0052FF] shrink-0" />
+            {/* <HugeiconsIcon icon={Location01Icon} className="w-4 h-4 text-[#0052FF] shrink-0" /> */}
             <div className="flex flex-col leading-tight">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Location
+              <span className="flex items-center gap-2">
+                <span className="text-[20px] font-semibold text-black tracking-tight">
+                  Your location
+                </span>
+                {/* Real check against this page's own committed launch
+                    area (SERVICEABLE_AREA_KEYWORDS above), not decorative —
+                    a customer picking an address outside it should know
+                    before they browse, not after trying to check out. */}
+                {isLocationServiceable(userLocation) ? (
+                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                    Available
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                    Coming Soon
+                  </span>
+                )}
               </span>
-              <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1 group-hover:text-[#0052FF] transition-colors">
+              <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1 group-hover:text-[#0052FF] transition-colors">
                 {userLocation}
-                <HugeiconsIcon icon={ArrowDown01Icon} className="w-3 h-3 text-slate-500 group-hover:text-[#0052FF] transition-colors" />
+                <HugeiconsIcon icon={ArrowDown01Icon} className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#0052FF] transition-colors" />
               </span>
             </div>
           </button>
         </div>
 
         {/* Center Search Bar with Interactive Dropdown */}
-        <div className="flex-1 max-w-[420px] relative" ref={searchRef}>
+        <div className="flex-1 max-w-[460px] relative" ref={searchRef}>
           <div
-            className={`flex items-center bg-[#F1F3F6] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0052FF]/20 focus-within:border-[#0052FF] border rounded-xl px-4 h-[44px] transition-all ${
+            className={`flex items-center bg-[#F1F3F6] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0052FF]/20 focus-within:border-[#0052FF] border rounded-xl px-5 h-[54px] transition-all ${
               isSearchFocused
                 ? "border-[#0052FF] bg-white ring-2 ring-[#0052FF]/20 shadow-md"
                 : "border-transparent"
@@ -176,9 +204,9 @@ export default function Navbar() {
               onFocus={() => setIsSearchFocused(true)}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={SEARCH_PLACEHOLDERS[placeholderIndex]}
-              className="w-full bg-transparent outline-none text-sm font-medium text-slate-800 placeholder:text-slate-400"
+              className="w-full bg-transparent outline-none text-base font-medium text-slate-800 placeholder:text-slate-400"
             />
-            <HugeiconsIcon icon={Search01Icon} className="w-[18px] h-[18px] text-slate-500 shrink-0 cursor-pointer" />
+            <HugeiconsIcon icon={Search01Icon} className="w-5 h-5 text-slate-500 shrink-0 cursor-pointer" />
           </div>
 
           {/* Trending Searches Floating Dropdown */}
@@ -251,9 +279,9 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() => setIsDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-2 bg-gradient-to-r from-[#0052FF] to-[#0040E0] hover:from-[#0048E5] hover:to-[#0036C7] active:scale-[0.98] text-white px-4 sm:px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all cursor-pointer group shrink-0"
+            className="flex items-center gap-2 bg-gradient-to-r from-[#0052FF] to-[#0040E0] hover:from-[#0048E5] hover:to-[#0036C7] active:scale-[0.98] text-white px-5 sm:px-6 py-3.5 rounded-xl font-extrabold text-sm sm:text-base shadow-md hover:shadow-lg transition-all cursor-pointer group shrink-0"
           >
-            <HugeiconsIcon icon={ShoppingBag01Icon} className="w-4 h-4 text-white shrink-0 group-hover:scale-110 transition-transform" />
+            <HugeiconsIcon icon={ShoppingBag01Icon} className="w-5 h-5 text-white shrink-0 group-hover:scale-110 transition-transform" />
             <span className="hidden xs:inline">Order on Flikk App</span>
             <span className="xs:hidden">Get App</span>
             <HugeiconsIcon

@@ -10,15 +10,21 @@
 // already uses, so tapping a result behaves identically to tapping the
 // same store/product anywhere else (StoreCard self-navigates to
 // StoreDetail; ProductCard self-opens ProductDetailSheet).
+//
+// Pre-search state (empty/too-short query) is SearchSuggestions.tsx now —
+// recommended row + Shop by Category + a 9-card grid — replacing what used
+// to be a single centered placeholder line.
 
 import { useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StoreCard } from '../store-list/components/StoreCard';
 import { useAllStores } from '../store-list/all-stores/useAllStores';
 import { ProductSection } from '../home/products/ProductSection';
 import { useProductSearch } from './useProductSearch';
 import { SearchHeader } from './components/SearchHeader';
+import { SearchSuggestions } from './components/SearchSuggestions';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Search'>;
@@ -43,13 +49,17 @@ export function SearchScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 bg-white">
+      {/* Home (still mounted underneath this pushed screen) sets its own
+          StatusBar to style="light" (white icons, for its own dark
+          gradient header) — expo-status-bar's style is one global native
+          call, not scoped per screen, so without this override Search's
+          own white bg was left with white-on-white icons. */}
+      <StatusBar style="dark" />
       <SearchHeader value={query} onChangeText={setQuery} onBack={() => navigation.goBack()} />
 
       <ScrollView contentContainerClassName="pb-10">
         {!isSearching ? (
-          <View className="items-center px-6 pt-16">
-            <Text className="text-center text-[15px] font-medium text-ink/50">Search for products or stores near you</Text>
-          </View>
+          <SearchSuggestions />
         ) : hasNoResults ? (
           <View className="items-center px-6 pt-16">
             <Text className="text-center text-[15px] font-medium text-ink/50">No results for &quot;{trimmedQuery}&quot;</Text>

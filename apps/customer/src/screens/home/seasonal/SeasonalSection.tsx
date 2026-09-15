@@ -13,11 +13,12 @@
 // wrap is what actually shows all of them at once with nothing cut off or
 // hidden behind a scroll a customer might not notice.
 //
-// Panel background is plain white now (PANEL_BG), not the earlier tinted
-// peach — per an explicit ask to move the color onto the cards
-// themselves instead (data.ts's own per-tile bgColor) so each tile reads
-// as its own small colored object sitting on a clean white shelf, rather
-// than white cards on one flat tinted background.
+// Panel background matches HomeHeader.tsx's own 'all' gradient now — per
+// an explicit ask that the header and this panel read as the same
+// background, not two different treatments stacked on top of each other.
+// AllTabSections.tsx owns painting that gradient (it wraps this section
+// AND FestivalPicksSection in one shared panel); this file just keeps its
+// own background transparent so that gradient shows through unbroken.
 //
 // Tiles fill their full half-row width (2 per row, edge to edge via
 // justify-between), sized from a MEASURED row width (rowWidth state,
@@ -30,13 +31,6 @@ import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { SEASONAL_TILES } from './data';
 
-// Exported — AllTabSections.tsx wraps this section AND FestivalPicksSection
-// in one shared panel using this same color, per an explicit ask to treat
-// the seasonal banner/tiles and the festival product row as one continuous
-// section rather than two separately-backed blocks. This file no longer
-// owns the panel's background/rounding itself (see the root View below) —
-// the wrapper in AllTabSections.tsx does.
-export const PANEL_BG = '#FFFFFF';
 const TILE_GAP = 12; // matches the grid's own gap-y-3
 const COLUMNS = 2;
 // Not square anymore — width takes the tile's full even half-row share

@@ -9,8 +9,19 @@ import PartnerSection from "@/components/partner/PartnerSection";
 import AppDownloadBanner from "@/components/download/AppDownloadBanner";
 import Footer from "@/components/footer/Footer";
 import StickyBottomDock from "@/components/download/StickyBottomDock";
+import { fetchRandomProducts } from "@/lib/products";
 
-export default function Home() {
+const PRODUCT_CAROUSEL_COUNT = 8;
+
+export default async function Home() {
+  // Fetched here (Server Component) rather than inside ProductCarousel
+  // itself — that component is 'use client' for its scroll-drag
+  // interaction, and a client component doing its own Supabase fetch on
+  // mount would mean an empty carousel flashing before the real data
+  // arrives. Fetching here means the page's own initial HTML already has
+  // the real products in it.
+  const products = await fetchRandomProducts(PRODUCT_CAROUSEL_COUNT);
+
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between relative">
       <Navbar />
@@ -20,7 +31,7 @@ export default function Home() {
         <NearbyStores />
         <CategoryGrid />
         <SubcategoriesGrid />
-        <ProductCarousel />
+        <ProductCarousel products={products} />
         <PartnerSection />
         <AppDownloadBanner />
       </main>

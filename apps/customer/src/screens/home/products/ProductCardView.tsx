@@ -67,7 +67,6 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
               <Text className="text-[9px] font-semibold text-white">{freshnessTag}</Text>
             </View>
           )}
-
           <Pressable
             onPress={() => toggleWishlist(product)}
             hitSlop={8}
@@ -76,9 +75,9 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             <AppIcon
               icon={Bookmark02Icon}
               size={22}
-              color={isBookmarked ? colors.danger : "#b0b0b0"}
+              color={isBookmarked ? colors.danger : "#9CA3AF"}
               strokeWidth={2}
-              fill={isBookmarked ? colors.danger : 'none'}
+              fill={isBookmarked ? colors.danger : "#9CA3AF"}
             />
           </Pressable>
 
@@ -144,12 +143,12 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
 
         {/* Product Title (Bolded, acting as primary text block) */}
 
-      <View className="flex-row items-center self-start gap-1 mt-1 bg-gray-100 py-1 px-2.5 rounded-full">
-  {/* <AppIcon icon={Clock01Icon} size={10} color="#6B7280" /> */}
-  <Text className="text-[10px] font-medium uppercase tracking-wide text-[#7C8B87]">
-    In {etaMinutes} mins
-  </Text>
-</View>
+        <View className="flex-row items-center self-start gap-1 mt-1 bg-gray-100 py-1 px-2.5 rounded-full">
+          {/* <AppIcon icon={Clock01Icon} size={10} color="#6B7280" /> */}
+          <Text className="text-[10px] font-medium uppercase tracking-wide text-[#7C8B87]">
+            In {etaMinutes} mins
+          </Text>
+        </View>
 
 
       </View>

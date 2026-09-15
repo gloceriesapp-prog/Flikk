@@ -37,6 +37,16 @@
 // regardless of what's behind them, so they stay legible against the
 // gradient AND against the frosted state.
 //
+// On iOS, that frosted layer is real Liquid Glass (GlassView, expo-glass-
+// effect) — same primitive DeliveryModeSwitcher.tsx already uses for its
+// own pill, per a later ask for "more blur... liquid glass effect" rather
+// than a plain tinted blur. GlassView's own Android/web fallback renders
+// as an unstyled, non-blurring View (its own library's documented
+// behavior, same note DeliveryModeSwitcher.tsx makes), so BlurView stays
+// underneath as the real cross-platform blur — GlassView layers its glass
+// sheen on top of that on iOS; on Android/web it's invisible and BlurView
+// alone (intensity bumped up for "more blur") does the work.
+//
 // The OS status bar itself (clock/signal/battery) switches from white
 // icons to real black ones once scrolled past this same point — no
 // background box behind it, just the OS icon color itself flipping, since
@@ -47,8 +57,9 @@
 // from a useAnimatedReaction), not this file; this component only ever
 // renders the visual header itself.
 
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { GlassView } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import { CollapsibleHeaderTop, COLLAPSE_DISTANCE } from './CollapsibleHeaderTop';
@@ -125,7 +136,10 @@ export function HomeHeader({
           "none" so it never steals a touch meant for whatever's beneath
           it. */}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, frostedStyle]}>
-        <BlurView intensity={55} tint="light" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={75} tint="light" style={StyleSheet.absoluteFill} />
+        {Platform.OS === 'ios' && (
+          <GlassView glassEffectStyle="regular" colorScheme="light" style={StyleSheet.absoluteFill} />
+        )}
       </Animated.View>
 
       <View className="pt-safe">
