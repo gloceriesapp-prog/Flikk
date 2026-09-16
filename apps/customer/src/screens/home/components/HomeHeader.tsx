@@ -89,8 +89,11 @@ interface Props {
   // (e.g. store-list/StoreListScreen.tsx) may not want it — there's nothing
   // for the tabs to filter there.
   showCategoryTabs?: boolean;
-  // 10:30 PM–6:00 AM IST (utils/operatingHours.ts) — overrides whichever
-  // category gradient would otherwise show with CLOSED_HOURS_GRADIENT.
+  // 10:30 PM–6:00 AM IST (utils/operatingHours.ts) — still drives
+  // CollapsibleHeaderTop's LocationSelector text ("Closed for now"/"Opens
+  // 6:00 AM tomorrow"); no longer swaps the header's own background color
+  // (removed per an explicit ask, "remove that red... keep it as how it is
+  // only bg").
   isClosed?: boolean;
 }
 
@@ -106,11 +109,11 @@ export function HomeHeader({
 }: Props) {
   // useSpotlightAccent=false — per an explicit ask, the header no longer
   // follows whichever SpotlightCarousel card is currently on screen; it
-  // just shows the plain per-category gradient (still isClosed-aware).
-  // SpotlightHeaderBleed.tsx's own background still uses that spotlight
-  // accent for itself (its own call to this same hook), unaffected by
-  // this — the header's own gradient is a separate resolution now.
-  const gradient = useActiveHeaderGradient(activeCategoryName, isClosed, false);
+  // just shows the plain per-category gradient. SpotlightHeaderBleed.tsx's
+  // own background still uses that spotlight accent for itself (its own
+  // call to this same hook), unaffected by this — the header's own
+  // gradient is a separate resolution now.
+  const gradient = useActiveHeaderGradient(activeCategoryName, false);
 
   // Same [0, COLLAPSE_DISTANCE] scroll window CollapsibleHeaderTop already
   // uses for its own fold — the frosted state and the folded-away ETA row

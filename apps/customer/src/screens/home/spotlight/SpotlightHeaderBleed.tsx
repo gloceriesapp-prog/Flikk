@@ -39,7 +39,6 @@
 // under the header's own bottom edge removes any gap for that to appear in.
 
 import { View } from 'react-native';
-import { useIsOutsideOperatingHours } from '../../../utils/useOperatingHours';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
 import { CARD_HEIGHT } from '../most-shopped/MostShoppedCard';
 import { SpotlightCarousel } from './SpotlightCarousel';
@@ -47,15 +46,9 @@ import { SpotlightCarousel } from './SpotlightCarousel';
 const PANEL_HEIGHT = 12 + CARD_HEIGHT + 8;
 
 export function SpotlightHeaderBleed() {
-  // Same real-time check HomeScreen.tsx feeds into HomeHeader's own
-  // isClosed — computed independently here (a pure function of the clock,
-  // not view state) rather than threaded down as a prop, so this panel
-  // can't get a stale/mismatched answer just because nobody happened to
-  // pass it through.
-  const isClosed = useIsOutsideOperatingHours();
   // useSpotlightAccent=false — matches HomeHeader.tsx's own call, so this
   // panel's color can't drift from the header's per-category color.
-  const headerGradient = useActiveHeaderGradient('all', isClosed, false);
+  const headerGradient = useActiveHeaderGradient('all', false);
 
   return (
     <View

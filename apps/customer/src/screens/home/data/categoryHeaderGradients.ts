@@ -53,18 +53,3 @@ export function gradientForTabName(name: string): CategoryHeaderGradient {
   return GRADIENT_BY_TAB_NAME[name.trim().toLowerCase()] ?? GRADIENT_BY_TAB_NAME.all;
 }
 
-// Header background during the 10:30 PM–6:00 AM IST closed window
-// (utils/operatingHours.ts) — light red, replacing whichever category
-// gradient would otherwise show, so this state reads as "paused for now,"
-// not as just another category's own brand color. Keeps the same dark-top
-// -> deep-bottom shape every other gradient here now uses (not a
-// literally pale-at-the-top gradient) — CollapsibleHeaderTop/search bar
-// text and icons are white, and a truly pale top would make them
-// unreadable; "light red" is expressed as noticeably lighter/softer than
-// 'regional' above at every stop, not as low-contrast — darkened by the
-// same "stay deep, never brighten to a fully saturated color" rule as
-// every other palette here, just started from a lighter base so that
-// relative signal still holds. Reverts to the normal per-tab gradient the
-// instant isOutsideOperatingHours() flips back at 6 AM (HomeHeader.tsx
-// picks between the two, nothing here needs to know about time itself).
-export const CLOSED_HOURS_GRADIENT: CategoryHeaderGradient = gradient(['#241010', '#3E1917', '#5C231F', '#7A2E24']);
