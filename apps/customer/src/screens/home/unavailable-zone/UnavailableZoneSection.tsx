@@ -1,9 +1,11 @@
 // Shown on Home's "All" tab in place of SeasonalSection/FestivalPicksSection/
 // MostBoughtSection/NearbyStoresSection/StoreTypesSection when the user's
-// picked delivery location falls outside Flikk's one active zone (see
-// utils/serviceability.ts — single-zone-only per CLAUDE.md). Those sections
-// all assume a real nearby store to browse; outside the zone there is none,
-// so this replaces them rather than rendering next to them.
+// picked delivery location has no real store within the 12km delivery
+// radius (useNearestStore.ts's own isServiceable, backed by GET
+// /stores/nearest's server-side distance cutoff — single-zone-only per
+// CLAUDE.md). Those sections all assume a real nearby store to browse;
+// with none in range there's nothing for them to show, so this replaces
+// them rather than rendering next to them.
 
 import { Text, View } from 'react-native';
 

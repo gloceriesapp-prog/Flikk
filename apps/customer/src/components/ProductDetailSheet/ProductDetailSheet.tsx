@@ -58,6 +58,7 @@ import { Bookmark01Icon, Cancel01Icon, Share03Icon } from '@hugeicons/core-free-
 import { useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Easing,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -77,6 +78,7 @@ import { CartBar } from '../CartBar/CartBar';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { colors } from '../../theme/tokens';
 import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
+import { useEverydayEssentials } from '../../screens/home/everyday-essentials/useEverydayEssentials';
 import { ProductDetailInfo } from './ProductDetailInfo';
 import { ProductDetailFooter } from './ProductDetailFooter';
 import { useSimilarProducts } from './useSimilarProducts';
@@ -84,7 +86,13 @@ import type { Product } from '../../screens/home/products/types';
 
 const GROW_TRIGGER_DISTANCE = 24;
 const SHRINK_TRIGGER_DISTANCE = 4;
-const GROW_ANIMATION_MS = 220;
+// Bumped from 220ms + default (linear) easing — per an explicit ask
+// ("make it even smooth"), an ease-out curve (fast start, gentle landing)
+// reads as a real physical settle rather than a mechanical linear resize,
+// and the extra ~70ms gives it room to actually be felt rather than
+// snapping through the curve almost as fast as linear did.
+const GROW_ANIMATION_MS = 290;
+const GROW_EASING = Easing.out(Easing.cubic);
 const CARD_RADIUS = 38;
 const FOOTER_SPACER = 96;
 // Resting top margin as a fraction of screen height, not a fixed px — the
@@ -123,6 +131,9 @@ const DISMISS_ANIMATION_MS = 200;
 // PAGE_GAP of breathing room between pages so they don't visually touch.
 const PEEK_WIDTH = 22;
 const PAGE_GAP = 12;
+// SimilarProductsRow's own grid cap (that file's own MAX_PRODUCTS) — the
+// number Card's own relatedProducts padding below fills up to.
+const SIMILAR_PRODUCTS_TARGET = 9;
 
 // djb2 — a plain pure hash, used to deterministically pick this product's
 // two peek-pager neighbors (see the sibling-picking useMemo below) without
@@ -195,16 +206,6 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
     }
     return value;
   }
-  // Tracks continuous horizontal scroll offset (not native-driver, same as
-  // `grow` below — `left` isn't a native-drivable prop either) so a grown
-  // page's `left` can be driven to exactly cancel the pager's own scroll
-  // transform (screenX = contentX - scrollX, so contentX must equal
-  // scrollX for screenX to land at 0, i.e. flush with the real screen
-  // edge) regardless of where the user had scrolled to when they grew it.
-  const [scrollX] = useState(() => new Animated.Value(initialScrollX));
-  const [handlePagerScroll] = useState(() =>
-    Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false }),
-  );
   const pagerRef = useRef<ScrollView>(null);
   // Only one page can be grown at a time; while any is, the pager itself
   // stops scrolling (a half-visible neighbor sliding under a fullscreen
@@ -246,19 +247,28 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
             snapToAlignment="start"
             showsHorizontalScrollIndicator={false}
             scrollEnabled={grownProductId === null}
-            onScroll={handlePagerScroll}
-            scrollEventThrottle={16}
             contentOffset={{ x: initialScrollX, y: 0 }}
             contentContainerStyle={{ width: contentWidth, height: '100%' }}
             style={{ flex: 1 }}
           >
             {pages.map((p, i) => {
               const grow = getGrowValue(p.id);
+              // restOffset is the exact scroll offset onGrowChange below
+              // imperatively scrollTo's the pager to the instant this page
+              // starts growing — using that same constant here (rather than
+              // a live-tracked scroll position) means "flush with the real
+              // screen edge" (screenX = contentLeft - actualScrollOffset = 0)
+              // holds by construction, not by hoping a separately-tracked
+              // value stays in sync with the native scroll position. A prior
+              // version drove this off a JS-tracked `scrollX` Animated.Value
+              // (updated via onScroll) that could still reflect the
+              // pre-snap offset for a frame when growth started, landing
+              // the fullscreen card shifted off to one side with a sliver
+              // of a neighbor peeking through (the "goes to full left side"
+              // bug this replaced).
               const restLeft = sideInset + i * (pageWidth + PAGE_GAP);
-              const left = Animated.add(
-                Animated.multiply(grow.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }), restLeft),
-                Animated.multiply(grow, scrollX),
-              );
+              const restOffset = i * (pageWidth + PAGE_GAP);
+              const left = grow.interpolate({ inputRange: [0, 1], outputRange: [restLeft, restOffset] });
               const width = grow.interpolate({ inputRange: [0, 1], outputRange: [pageWidth, screenWidth] });
               const zIndex = grow.interpolate({ inputRange: [0, 1], outputRange: [i + 1, 100] });
 
@@ -317,7 +327,29 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
 
   const needsSimilar = !product.relatedProducts;
   const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId);
-  const relatedProducts = product.relatedProducts ?? similar.data ?? [];
+  // /stores/products/similar (useSimilarProducts) often comes back short of
+  // SimilarProductsRow's own 9-card cap — a category/store just doesn't
+  // always have 9 real matches. Padded here with real products from the
+  // full zone-wide catalog (useEverydayEssentials — same cross-store feed
+  // Home's own rows already trust) rather than leaving the grid half-empty,
+  // per an explicit ask ("add total 9 cards ... randomly"). Picked via
+  // hashString (already used above for the peek-pager siblings), not
+  // Math.random — same reasoning: this repo's react-compiler lint rule
+  // forbids an impure function during render/useMemo, and a hash of
+  // (product.id + candidate.id) is "random-looking" per product without
+  // being impure or reshuffling on every unrelated re-render.
+  const { data: catalog = [] } = useEverydayEssentials();
+  const relatedProducts = useMemo(() => {
+    const base = product.relatedProducts ?? similar.data ?? [];
+    const need = SIMILAR_PRODUCTS_TARGET - base.length;
+    if (need <= 0) return base;
+    const usedIds = new Set([product.id, ...base.map((p) => p.id)]);
+    const filler = catalog
+      .filter((p) => !usedIds.has(p.id))
+      .sort((a, b) => hashString(product.id + a.id) - hashString(product.id + b.id))
+      .slice(0, need);
+    return [...base, ...filler];
+  }, [product.id, product.relatedProducts, similar.data, catalog]);
   const cartTotalQuantity = useCartStore(selectCartTotalQuantity);
 
   // Lifted here (not local to ProductDetailInfo) — ProductDetailFooter is
@@ -362,11 +394,11 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
     if (offsetY > GROW_TRIGGER_DISTANCE && !isGrownRef.current) {
       isGrownRef.current = true;
       onGrowChange(true);
-      Animated.timing(grow, { toValue: 1, duration: GROW_ANIMATION_MS, useNativeDriver: false }).start();
+      Animated.timing(grow, { toValue: 1, duration: GROW_ANIMATION_MS, easing: GROW_EASING, useNativeDriver: false }).start();
     } else if (offsetY <= SHRINK_TRIGGER_DISTANCE && isGrownRef.current) {
       isGrownRef.current = false;
       onGrowChange(false);
-      Animated.timing(grow, { toValue: 0, duration: GROW_ANIMATION_MS, useNativeDriver: false }).start();
+      Animated.timing(grow, { toValue: 0, duration: GROW_ANIMATION_MS, easing: GROW_EASING, useNativeDriver: false }).start();
     }
 
     if (isOverscrollDismissingRef.current) return;
@@ -428,6 +460,21 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
         }}
         className="shadow-lg shadow-black/30"
       >
+        {/* Status-bar blur — only reachable once grown to full screen (the
+            floating card's own top margin already clears the status bar,
+            so this stays invisible until then); fades in with `grow`. Also
+            doubles as a frosted backing for the header row's title/icons,
+            which otherwise float directly on the scrolling hero image with
+            nothing behind them once grown — per an explicit ask for a
+            "premium" top treatment near the status bar. */}
+        <Animated.View
+          pointerEvents="none"
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 44, opacity: grow, zIndex: 5 }}
+        >
+          <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
+          <View className="absolute inset-0 bg-white/10" />
+        </Animated.View>
+
         <Animated.View
           {...panResponder.panHandlers}
           style={{ top: headerTop }}

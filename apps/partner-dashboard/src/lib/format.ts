@@ -2,6 +2,21 @@ export function formatInr(amount: number): string {
   return `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 }
 
+// For chart axis ticks, where "₹12,450" would crowd the axis — "₹12.5K" instead.
+export function formatInrCompact(amount: number): string {
+  return `₹${new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(amount)}`;
+}
+
+// "500 g" / "1 kg" / "500 ml" / "1 L" / "2 pc" — display twin of backend/
+// src/lib/products.ts's formatVariantUnit, kept independent since it's
+// pure presentation (this file's whole job), not a write-path contract.
+const VARIANT_UNIT_LABELS: Record<string, string> = { g: 'g', kg: 'kg', ml: 'ml', l: 'L', pc: 'pc' };
+
+export function formatVariantSize(quantity: number, unitType: string): string {
+  const qty = Number.isInteger(quantity) ? quantity : quantity.toFixed(2).replace(/\.?0+$/, '');
+  return `${qty}${VARIANT_UNIT_LABELS[unitType] ?? unitType}`;
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }

@@ -8,6 +8,19 @@ export const storesRouter = Router();
 
 const NEAREST_DEFAULT_LIMIT = 5;
 const NEAREST_MAX_LIMIT = 20;
+// Business rule, not a UI preference: a store more than this many km from a
+// customer's delivery location isn't "nearest," it's out of the launch
+// zone's real delivery reach. Applied as a hard cutoff in GET /stores/nearest
+// below (filtered out entirely, not just ranked last) — every "nearest
+// store" consumer in the customer app (Home's "Shops Near You" row,
+// useNearestStore.ts's own single-store resolution, useDealsProducts/
+// useSpotlightCards which both scope to that same resolved store) goes
+// through this one endpoint, so the cutoff is enforced exactly once here
+// rather than re-checked by every caller. Overridable via `max_distance_km`
+// (bounded to MAX_ALLOWED_DISTANCE_KM) for ops/testing — never wider than
+// what the business actually delivers to.
+const DEFAULT_MAX_DISTANCE_KM = 12;
+const MAX_ALLOWED_DISTANCE_KM = 50;
 
 // Shared by every cross-store product feed below — store name/active flag
 // (so a deactivated store's stock can be filtered out) plus the full
@@ -92,6 +105,16 @@ storesRouter.get('/', async (req, res, next) => {
 // "what's nearest me" wants a real ranked answer, not an unranked store
 // mixed into a "nearest" list with no actual distance behind it. They still
 // show up fine in the plain GET / list above.
+//
+// The DEFAULT_MAX_DISTANCE_KM cutoff (above) is applied AFTER ranking but
+// BEFORE slicing to `limit` — a store outside the radius must never occupy
+// one of the `limit` slots just because fewer than `limit` real stores are
+// in range; it should be excluded entirely, not returned as a false
+// "nearest" result. An empty response here is the real, server-computed
+// signal that a customer has no store coverage at all (this endpoint is
+// the single source apps/customer's own useNearestStore.ts resolves from,
+// and useIsServiceable.ts's own "coming soon" gate reads off it) — not a
+// client-side circular-zone guess.
 storesRouter.get('/nearest', async (req, res, next) => {
   try {
     const lat = Number(req.query.lat);
@@ -104,6 +127,11 @@ storesRouter.get('/nearest', async (req, res, next) => {
     const limit = Number.isFinite(requestedLimit)
       ? Math.min(Math.max(1, Math.trunc(requestedLimit)), NEAREST_MAX_LIMIT)
       : NEAREST_DEFAULT_LIMIT;
+
+    const requestedMaxDistanceKm = Number(req.query.max_distance_km);
+    const maxDistanceKm = Number.isFinite(requestedMaxDistanceKm)
+      ? Math.min(Math.max(0.1, requestedMaxDistanceKm), MAX_ALLOWED_DISTANCE_KM)
+      : DEFAULT_MAX_DISTANCE_KM;
 
     let zoneId = req.query.zone_id as string | undefined;
     if (!zoneId) {
@@ -123,6 +151,7 @@ storesRouter.get('/nearest', async (req, res, next) => {
     const customer = { latitude: lat, longitude: lng };
     const ranked = data
       .map((store) => ({ ...store, distance_km: distanceKm(customer, { latitude: store.lat, longitude: store.lng }) }))
+      .filter((store) => store.distance_km <= maxDistanceKm)
       .sort((a, b) => a.distance_km - b.distance_km)
       .slice(0, limit);
 

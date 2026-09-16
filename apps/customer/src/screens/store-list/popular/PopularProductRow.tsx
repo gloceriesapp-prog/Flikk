@@ -23,7 +23,7 @@
 
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
+import { Add01Icon, AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
@@ -58,9 +58,9 @@ function AddControl({ product }: { product: Product }) {
           })
         }
         hitSlop={8}
-        className="items-center justify-center rounded-lg border px-4 py-1.5 border-[#1447e6] bg-[#155dfc]/10"
+        className="items-center justify-center rounded-[12px] border px-4 py-1.5 border border-[#155dfc]"
       >
-        <Text className="text-[12.5px] font-bold text-[#1447e6]">
+        <Text className="text-[12.5px] font-semibold text-[#155dfc]">
           ADD
         </Text>
       </Pressable>
@@ -68,13 +68,13 @@ function AddControl({ product }: { product: Product }) {
   }
 
   return (
-    <View className="flex-row items-center gap-2.5 rounded-lg px-2 py-1.5" style={{ backgroundColor: colors.coral }}>
+    <View className="flex-row items-center gap-2.5 rounded-lg px-2 py-1.5 bg-white border border-[#155dfc]">
       <Pressable onPress={() => decrementItem(product.id)} hitSlop={8}>
-        <AppIcon icon={MinusSignIcon} size={14} color="#FFFFFF" />
+        <AppIcon icon={MinusSignIcon} size={14} color="#155dfc" />
       </Pressable>
-      <Text className="min-w-[14px] text-center text-[12.5px] font-extrabold text-white">{quantity}</Text>
+      <Text className="min-w-[14px] text-center text-[12.5px] font-bold text-[#155dfc]">{quantity}</Text>
       <Pressable onPress={() => incrementItem(product.id)} hitSlop={8}>
-        <AppIcon icon={AddSquareIcon} size={14} color="#FFFFFF" />
+        <AppIcon icon={Add01Icon} size={14} color="#155dfc" />
       </Pressable>
     </View>
   );

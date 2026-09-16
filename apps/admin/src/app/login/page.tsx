@@ -1,14 +1,14 @@
 'use client';
 
 // The only page this dashboard can reach without a session (middleware.ts
-// enforces that everywhere else). Email-only — no password field, since
-// this is a single-founder tool with no password to invent/store/rotate;
-// submitting requests a Supabase magic link (app/api/auth/request-otp),
-// gated server-side by ADMIN_ALLOWED_EMAILS so a stranger who finds this
-// URL can't just request their own way in with their own inbox.
+// enforces that everywhere else). Username/password — replaces the old
+// magic-link flow (see api/auth/login/route.ts's own note on why: single
+// founder, no inbox dependency). ADMIN_USERNAME/ADMIN_LOGIN_EMAIL
+// (server-only) are the real credentials this checks against, not
+// anything client-visible here.
 
 import { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
   return (
@@ -19,28 +19,31 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const linkExpired = searchParams.get('error') === 'link_expired';
+  const next = searchParams.get('next') ?? '/overview';
 
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus('sending');
+    setIsSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/request-otp', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, redirectOrigin: window.location.origin }),
+        body: JSON.stringify({ username, password }),
       });
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Could not send the link.');
-      setStatus('sent');
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Invalid username or password.');
+      router.push(next);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send the link.');
-      setStatus('idle');
+      setError(err instanceof Error ? err.message : 'Invalid username or password.');
+      setIsSubmitting(false);
     }
   }
 
@@ -48,38 +51,36 @@ function LoginForm() {
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-8 shadow-sm">
         <p className="text-2xl font-medium text-ink">Flikk Admin</p>
-        <p className="mt-1 text-sm text-muted">Founder sign-in — enter your email for a one-time link.</p>
+        <p className="mt-1 text-sm text-muted">Founder sign-in.</p>
 
-        {linkExpired && (
-          <p className="mt-4 rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">
-            That link expired or was already used. Request a new one below.
-          </p>
-        )}
-
-        {status === 'sent' ? (
-          <p className="mt-6 rounded-2xl bg-success/10 px-4 py-3 text-sm text-success">
-            If that email is allowed in, a sign-in link is on its way — check your inbox.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@flikk.app"
-              className="rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
-            />
-            {error && <p className="text-sm text-danger">{error}</p>}
-            <button
-              type="submit"
-              disabled={status === 'sending'}
-              className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
-            >
-              {status === 'sending' ? 'Sending…' : 'Send sign-in link'}
-            </button>
-          </form>
-        )}
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
+          <input
+            type="text"
+            required
+            autoComplete="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Username"
+            className="rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+          />
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            className="rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+          />
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+          >
+            {isSubmitting ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
       </div>
     </div>
   );

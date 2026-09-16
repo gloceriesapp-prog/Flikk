@@ -29,6 +29,7 @@ import { deleteAddress, fetchAddresses, setDefaultAddress } from '../../api/addr
 import { ApiError } from '../../api/client';
 import { estimateCartEtaMinutes } from '../../utils/estimateDelivery';
 import { selectCartGroupedByStore, selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
@@ -72,7 +73,22 @@ export function CartScreen({ navigation }: Props) {
   // actually existing. Refetches every time Cart mounts, same reasoning
   // as CheckoutScreen's own query — the address book can change between
   // visits (added, deleted) with no shared store to invalidate otherwise.
-  const { data: addresses, isLoading: addressesLoading } = useQuery({ queryKey: ['addresses'], queryFn: fetchAddresses });
+  //
+  // enabled: !!accessToken — GET /addresses requires a real session
+  // server-side. A guest can already add to cart and open this screen with
+  // no token; firing this query anyway always 401s, and apiRequest's own
+  // 401 handler (api/client.ts) responds by clearing auth state entirely
+  // (accessToken/refreshToken/isGuest all reset), which instantly bounces
+  // RootNavigator back to the login screen — the actual "error" a guest
+  // saw tapping "View basket". Guarding it here means a guest simply sees
+  // no saved address (same as someone with a real account and zero
+  // addresses), not a forced logout.
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const { data: addresses, isLoading: addressesLoading } = useQuery({
+    queryKey: ['addresses'],
+    queryFn: fetchAddresses,
+    enabled: !!accessToken,
+  });
   // Last-used = the account's own default (or its first address if none
   // is marked default — same fallback CheckoutScreen's own selectedAddress
   // uses), shown directly on the footer instead of making every cart

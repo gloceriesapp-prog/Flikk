@@ -35,14 +35,23 @@ const PLACEHOLDER_ETA_MINUTES = 9; // real value should come from the nearest st
 // that now kicks in just as quickly too — both were always meant to
 // finish together.
 export const COLLAPSE_DISTANCE = 16;
-const MAX_HEIGHT = 44; // measured-by-eye: just the icon row now that the tagline is gone
-// Both at the floor now (0) after a few rounds of "reduce it further" —
-// this used to be HomeHeader.tsx's own static `pt-5` (20px). Whatever gap
-// is still visible above the search bar past this point is the real
-// safe-area inset (pt-safe, HomeHeader.tsx) or this block's own MAX_HEIGHT
-// icon row, not spare padding — reducing further means shrinking one of
-// those instead, a bigger change than closing a gap.
-const MAX_TOP_PADDING = 0;
+// 64, was 44 ("measured-by-eye: just the icon row now that the tagline is
+// gone") — that 44 was already a tight fit for LocationSelector's real
+// two-line content (a text-base "Delivering to" line + a text-lg bold
+// address line, ~50px combined) even at zero padding; this height is
+// applied together with overflow:hidden, so adding MAX_TOP_PADDING below
+// ate directly into that same fixed budget and pushed it over the edge —
+// the bottom of "Yenna Gudde" started visibly clipping (per a reference
+// screenshot). 64 leaves real room for both lines plus the padding.
+const MAX_HEIGHT = 64;
+// MAX_TOP_PADDING was pushed all the way to 0 in an earlier round of
+// "reduce it further" — with genuinely zero breathing room, the
+// "Delivering to"/location text sat flush against the very top of its own
+// row and visibly clipped (per a reference screenshot: "vering to"/"Gudde"
+// instead of "Delivering to"/"Yenna Gudde"). A small 10px restores real
+// legibility at rest. MIN_TOP_PADDING stays 0 — this row still collapses
+// down to fully flush once scrolled past COLLAPSE_DISTANCE, same as before.
+const MAX_TOP_PADDING = 10;
 const MIN_TOP_PADDING = 0;
 
 interface Props {

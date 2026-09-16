@@ -25,19 +25,23 @@ function gradient(colors: readonly [string, string, string, string]): CategoryHe
 }
 
 const GRADIENT_BY_TAB_NAME: Record<string, CategoryHeaderGradient> = {
-  // Deep red-to-orange sweep — per an explicit ask, overriding CLAUDE.md's
-  // own "not orange" anti-clone rule (flagged and confirmed before this
-  // change landed).
+  // Deep emerald jewel-tone — per an explicit ask ("different colour...
+  // more premium... attractive, clean"), replacing the earlier red-to-
+  // orange sweep (which itself had overridden CLAUDE.md's own "not
+  // orange" anti-clone rule). This brings 'all' back in line with the
+  // app's own brand green family (ink/lime, CLAUDE.md design tokens) —
+  // same near-black 'ink' starting point every palette here uses, ending
+  // on a deep, saturated emerald rather than a hue outside the brand
+  // palette entirely.
   //
   // Every palette below stays dark-to-deep across all 4 stops now, per a
   // later explicit ask ("dark bg colour effect... more premium") —
   // previously the last stop brightened into a fully saturated, fairly
-  // light color (e.g. 'all' ended at a bright #E85D1F orange); that read
-  // as cheerful/energetic rather than premium. Same per-category hue
-  // identity, same dark-top starting point, just the bottom stop now
-  // lands on a deep, moody, still-saturated-but-dark version of that hue
-  // instead of continuing to brighten toward it.
-  all: gradient(['#200801', '#3D1102', '#5C1D05', '#7A2708']),
+  // light color; that read as cheerful/energetic rather than premium.
+  // Same per-category hue identity, same dark-top starting point, just
+  // the bottom stop lands on a deep, moody, still-saturated-but-dark
+  // version of that hue instead of continuing to brighten toward it.
+  all: gradient(['#050F06', '#0F2915', '#1A4527', '#256B3D']),
   groceries: gradient(['#150D05', '#2C1B0A', '#432A10', '#5A3916']),
   fresh: gradient(['#07150A', '#102910', '#1B3F1A', '#265424']),
   'meat & fish': gradient(['#020E15', '#062028', '#0B333F', '#114756']),

@@ -25,7 +25,7 @@ export function CategoryTile({ category }: Props) {
           reads closer to how Blinkit/Instamart's own category tiles look. */}
       <View
         className="aspect-[4/5] items-center justify-center overflow-hidden rounded-2xl"
-        style={{ backgroundColor: '#EDEDF0' }}
+        style={{ backgroundColor: '#EEF6FD' }}
       >
         {/* Real category photo (admin's own Categories screen ->
             "category-images" Storage bucket) — falls back to the shared

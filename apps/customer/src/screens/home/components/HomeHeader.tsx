@@ -57,16 +57,24 @@
 // from a useAnimatedReaction), not this file; this component only ever
 // renders the visual header itself.
 
+import { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { GlassView } from 'expo-glass-effect';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { Extrapolation, interpolate, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  runOnJS,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { CollapsibleHeaderTop, COLLAPSE_DISTANCE } from './CollapsibleHeaderTop';
-import { HeaderRays } from './HeaderRays';
+import { HeaderBackgroundGradient } from './HeaderBackgroundGradient';
+// import { HeaderRays } from './HeaderRays';
 import { HomeSearchBar } from './HomeSearchBar';
 import { CategoryTabs } from './CategoryTabs';
-import { CLOSED_HOURS_GRADIENT, gradientForTabName } from '../data/categoryHeaderGradients';
+import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
 
 interface Props {
   onChangeLocation: () => void;
@@ -96,7 +104,13 @@ export function HomeHeader({
   showCategoryTabs = true,
   isClosed = false,
 }: Props) {
-  const gradient = isClosed ? CLOSED_HOURS_GRADIENT : gradientForTabName(activeCategoryName);
+  // useSpotlightAccent=false — per an explicit ask, the header no longer
+  // follows whichever SpotlightCarousel card is currently on screen; it
+  // just shows the plain per-category gradient (still isClosed-aware).
+  // SpotlightHeaderBleed.tsx's own background still uses that spotlight
+  // accent for itself (its own call to this same hook), unaffected by
+  // this — the header's own gradient is a separate resolution now.
+  const gradient = useActiveHeaderGradient(activeCategoryName, isClosed, false);
 
   // Same [0, COLLAPSE_DISTANCE] scroll window CollapsibleHeaderTop already
   // uses for its own fold — the frosted state and the folded-away ETA row
@@ -112,20 +126,32 @@ export function HomeHeader({
     opacity: interpolate(scrollY.value, [0, COLLAPSE_DISTANCE], [1, 0], Extrapolation.CLAMP),
   }));
 
+  // Same isScrolled flip HomeScreen.tsx already does for the OS status bar
+  // (same COLLAPSE_DISTANCE threshold) — CategoryTabs' icons/label are
+  // white against the gradient, but once the frosted BlurView takes over
+  // (frostedStyle above) that white becomes near-invisible against its
+  // light tint, so they need to flip to black at the same scroll point.
+  const [isFrosted, setIsFrosted] = useState(false);
+  useAnimatedReaction(
+    () => scrollY.value > COLLAPSE_DISTANCE,
+    (isScrolled, wasScrolled) => {
+      if (isScrolled !== wasScrolled) runOnJS(setIsFrosted)(isScrolled);
+    },
+  );
+
   return (
     <View className="overflow-hidden">
-      {/* Explicit style (not className) on these two overlay layers —
-          LinearGradient/BlurView are third-party native views, not core
-          RN primitives nativewind pre-registers for className->style
-          interop, and absolute positioning silently failing to apply is
-          exactly what made the whole background disappear (nothing left
-          giving this header any real height/color once the gradient
-          wasn't actually absolutely positioned). style is always
-          guaranteed to reach the native view regardless of that. */}
+      {/* HeaderBackgroundGradient — the one shared file that actually
+          renders a background gradient layer for Home (its own note on
+          why); explicit style here is just this scroll-fade wrapper's own
+          opacity animation, not a second copy of the gradient-positioning
+          logic that file already owns. */}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, gradientStyle]}>
-        <LinearGradient colors={gradient.colors} locations={gradient.stops} style={StyleSheet.absoluteFill}>
-          <HeaderRays />
-        </LinearGradient>
+        <HeaderBackgroundGradient colors={gradient.colors} locations={gradient.stops}>
+          {/* Hidden per an explicit ask ("white overlay like a spotlight")
+              — the diagonal light-ray decorative overlay. Not deleted,
+              just not rendered. <HeaderRays /> */}
+        </HeaderBackgroundGradient>
       </Animated.View>
 
       {/* Sits between the gradient and the real content below — blurs
@@ -150,12 +176,17 @@ export function HomeHeader({
           <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} isClosed={isClosed} />
         </View>
 
-        <View className="px-6">
+        {/* pb-7 only when the tab row is hidden — with it shown, CategoryTabs'
+            own content already fills this space; without it, the search bar
+            was the last thing in the gradient and needed real breathing room
+            below it instead of the panel ending flush against its bottom
+            edge. */}
+        <View className={`px-6 ${showCategoryTabs ? '' : 'pb-7'}`}>
           <HomeSearchBar onPress={onOpenSearch} />
         </View>
 
         {showCategoryTabs && (
-          <CategoryTabs selectedId={selectedCategoryId} onSelect={onSelectCategory} headerBottomColor={gradient.bottomColor} />
+          <CategoryTabs selectedId={selectedCategoryId} onSelect={onSelectCategory} isFrosted={isFrosted} />
         )}
       </View>
     </View>

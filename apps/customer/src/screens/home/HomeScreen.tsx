@@ -44,8 +44,7 @@ import { ALL_TAB } from './data/categoryTabs';
 import { useHomeTabs, type RemoteHomeTab } from './data/useHomeTabs';
 import { HomeTabTileGrid } from './hometab/HomeTabTileGrid';
 import { useIsOutsideOperatingHours } from '../../utils/useOperatingHours';
-import { useLocationStore } from '../../store/useLocationStore';
-import { isLocationServiceable } from '../../utils/serviceability';
+import { useNearestStore } from './useNearestStore';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
@@ -75,10 +74,10 @@ export function HomeScreen({ navigation }: Props) {
   // ClosedForNightBanner, since removed as redundant with the header.
   const isClosed = useIsOutsideOperatingHours();
   // Same check AllTabSections.tsx uses to swap in UnavailableZoneSection —
-  // read again here rather than lifted/prop-drilled, since BottomNavBar is
-  // a sibling of that content, not a descendant of it.
-  const location = useLocationStore((state) => state.location);
-  const isServiceable = isLocationServiceable(location);
+  // read again here (same React Query cache key, so this is a cache hit,
+  // not a second network request) rather than lifted/prop-drilled, since
+  // BottomNavBar is a sibling of that content, not a descendant of it.
+  const { isServiceable } = useNearestStore();
 
   // Every tab id the user has actually opened at least once — content for
   // an id only mounts the first time it's selected, then stays mounted.
@@ -201,6 +200,14 @@ export function HomeScreen({ navigation }: Props) {
           onSelectCategory={setSelectedCategoryId}
           activeCategoryName={activeCategoryName}
           scrollY={scrollY}
+          // Re-enabled per an explicit ask/reference (restyled white icons/
+          // text, no bg capsule, a horizontal divider — CategoryTabItem.tsx/
+          // CategoryTabs.tsx's own notes). QuickCategoryStrip further down
+          // the page (AllTabSections.tsx) still does the same job for
+          // anyone who's already scrolled past this — both drive the exact
+          // same onSelectCategory/selectedCategoryId state, not two
+          // competing selections.
+          showCategoryTabs={true}
           // Outside the serviceable zone, closed-hours messaging ("Opens
           // 6:00 AM tomorrow") would compete with UnavailableZoneSection's
           // own explanation below — force the header back to its normal
@@ -211,7 +218,7 @@ export function HomeScreen({ navigation }: Props) {
         <Animated.View style={contentFadeStyle}>
           {visitedIds.has(ALL_TAB.id) && (
             <View style={{ display: selectedCategoryId === ALL_TAB.id ? 'flex' : 'none' }}>
-              <AllTabSections />
+              <AllTabSections onSelectCategory={setSelectedCategoryId} />
             </View>
           )}
 

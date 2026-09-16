@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { ClipboardList, Clock, PackageCheck, Truck } from 'lucide-react';
 import { fetchMyOrders, type OrderStatus, type PartnerOrder } from '@/lib/partnerApi';
-import { formatInr, formatDateTime, statusColor, statusLabel } from '@/lib/format';
-import clsx from 'clsx';
-
-const FILTERS: Array<OrderStatus | 'all'> = ['all', 'placed', 'packed', 'out_for_delivery', 'delivered', 'cancelled'];
+import { DEMO_ORDERS } from '@/lib/demoOrders';
+import { StatCard } from '@/components/StatCard';
+import { OrdersFilterBar, ORDER_FILTERS } from '@/components/orders/OrdersFilterBar';
+import { OrdersTable } from '@/components/orders/OrdersTable';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<PartnerOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchMyOrders()
@@ -18,73 +20,59 @@ export default function OrdersPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  // DEMO DATA — this store has zero real orders, so the table/filters/stat
+  // strip would render entirely empty. Same isDemo convention as the
+  // Overview page: shown only while orders.length === 0, and replaced the
+  // instant a real order lands (this flips false automatically then).
+  const isDemo = !isLoading && orders.length === 0;
+  const sourceOrders = isDemo ? DEMO_ORDERS : orders;
+
+  const sorted = useMemo(
+    () => [...sourceOrders].sort((a, b) => +new Date(b.placed_at) - +new Date(a.placed_at)),
+    [sourceOrders],
+  );
+
+  const counts = useMemo(() => {
+    const result = { all: sorted.length } as Record<OrderStatus | 'all', number>;
+    for (const f of ORDER_FILTERS) {
+      if (f !== 'all') result[f] = sorted.filter((o) => o.status === f).length;
+    }
+    return result;
+  }, [sorted]);
+
   const filtered = useMemo(() => {
-    const sorted = [...orders].sort((a, b) => +new Date(b.placed_at) - +new Date(a.placed_at));
-    return filter === 'all' ? sorted : sorted.filter((o) => o.status === filter);
-  }, [orders, filter]);
+    const byStatus = filter === 'all' ? sorted : sorted.filter((o) => o.status === filter);
+    const q = search.trim().toLowerCase();
+    if (!q) return byStatus;
+    return byStatus.filter((o) => {
+      const customer = (o.addresses?.recipient_name ?? o.users?.name ?? '').toLowerCase();
+      return customer.includes(q) || o.id.toLowerCase().includes(q);
+    });
+  }, [sorted, filter, search]);
+
+  const activeCount = counts.placed + counts.packed + counts.out_for_delivery;
+  const todaysCount = sorted.filter((o) => new Date(o.placed_at).toDateString() === new Date().toDateString()).length;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Orders</h1>
-        <p className="mt-1 text-sm text-neutral-500">{orders.length} total</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-black">Orders</h1>
+        <p className="mt-1 text-sm text-neutral-400">Every order placed with your store, in one place.</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setFilter(f)}
-            className={clsx(
-              'rounded-full px-3.5 py-1.5 text-sm font-medium',
-              filter === f ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-600 border border-neutral-200',
-            )}
-          >
-            {f === 'all' ? 'All' : statusLabel(f)}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard label="Total orders" value={String(sorted.length)} icon={ClipboardList} iconClassName="bg-neutral-100 text-neutral-600" />
+        <StatCard label="Today" value={String(todaysCount)} icon={Clock} iconClassName="bg-blue-50 text-blue-600" />
+        <StatCard label="Active" value={String(activeCount)} icon={Truck} iconClassName="bg-violet-50 text-violet-600" />
+        <StatCard label="Delivered" value={String(counts.delivered)} icon={PackageCheck} iconClassName="bg-emerald-50 text-emerald-600" />
       </div>
+
+      <OrdersFilterBar filter={filter} onFilterChange={setFilter} search={search} onSearchChange={setSearch} counts={counts} />
 
       {isLoading ? (
-        <p className="text-sm text-neutral-400">Loading…</p>
-      ) : filtered.length === 0 ? (
-        <p className="text-sm text-neutral-400">No orders here.</p>
+        <div className="rounded-2xl border border-neutral-200 bg-white py-20 text-center text-sm text-neutral-400">Loading orders…</div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {filtered.map((order) => (
-            <div key={order.id} className="rounded-2xl border border-neutral-200 bg-white p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-neutral-900">
-                    {order.addresses?.recipient_name ?? order.users?.name ?? 'Customer'}
-                  </p>
-                  <p className="text-xs text-neutral-400">{order.users?.phone}</p>
-                  <p className="mt-1 text-xs text-neutral-400">{formatDateTime(order.placed_at)}</p>
-                </div>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusColor(order.status)}`}>
-                  {statusLabel(order.status)}
-                </span>
-              </div>
-
-              <ul className="mt-4 flex flex-col gap-1.5 border-t border-neutral-100 pt-4">
-                {order.order_items.map((item) => (
-                  <li key={item.id} className="flex justify-between text-sm">
-                    <span className="text-neutral-600">
-                      {item.quantity} × {item.products?.name ?? 'Item'} ({item.products?.unit})
-                    </span>
-                    <span className="text-neutral-900">{formatInr(item.unit_price_at_order * item.quantity)}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-4 flex items-center justify-between border-t border-neutral-100 pt-4 text-sm">
-                <span className="text-neutral-500">{order.addresses?.line1}</span>
-                <span className="font-semibold text-neutral-900">{formatInr(order.total)}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+        <OrdersTable orders={filtered} />
       )}
     </div>
   );

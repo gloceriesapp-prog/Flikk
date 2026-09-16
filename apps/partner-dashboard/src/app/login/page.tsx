@@ -58,9 +58,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#FFFFFF] px-4">
       <div className="w-full max-w-sm rounded-3xl border border-neutral-200 bg-white p-8 shadow-sm">
-        <p className="text-2xl font-semibold text-neutral-900">Flikk Partner</p>
+        <p className="text-[26px] font-bold tracking-tight text-neutral-900">Flikk Partner</p>
         <p className="mt-1 text-sm text-neutral-500">
           {step === 'phone' ? 'Sign in with your store owner phone number.' : `Enter the code sent to ${fullPhone}.`}
         </p>

@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Ban, ListOrdered, Receipt, Wallet } from 'lucide-react';
 import { fetchMyOrders, type PartnerOrder } from '@/lib/partnerApi';
 import { StatCard } from '@/components/StatCard';
 import { formatInr } from '@/lib/format';
@@ -68,16 +69,19 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Analytics</h1>
-        <p className="mt-1 text-sm text-neutral-500">Last {DAYS_WINDOW} days, computed from your orders</p>
-      </div>
+      <p className="text-sm text-neutral-500">Last {DAYS_WINDOW} days, computed from your orders</p>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Total revenue" value={formatInr(totalRevenue)} hint="all-time" />
-        <StatCard label="Orders" value={String(delivered.length)} hint="all-time, excl. cancelled" />
-        <StatCard label="Avg. order value" value={formatInr(avgOrderValue)} />
-        <StatCard label="Cancelled" value={String(cancelledCount)} />
+        <StatCard label="Total revenue" value={formatInr(totalRevenue)} hint="all-time" icon={Wallet} iconClassName="bg-emerald-50 text-emerald-600" />
+        <StatCard
+          label="Orders"
+          value={String(delivered.length)}
+          hint="all-time, excl. cancelled"
+          icon={ListOrdered}
+          iconClassName="bg-blue-50 text-blue-600"
+        />
+        <StatCard label="Avg. order value" value={formatInr(avgOrderValue)} icon={Receipt} iconClassName="bg-violet-50 text-violet-600" />
+        <StatCard label="Cancelled" value={String(cancelledCount)} icon={Ban} iconClassName="bg-red-50 text-red-600" />
       </div>
 
       <div className="rounded-2xl border border-neutral-200 bg-white p-5">

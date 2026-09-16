@@ -13,9 +13,9 @@ export default function PendingApprovalPage() {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FAFAF9] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#FFFFFF] px-4">
       <div className="w-full max-w-sm rounded-3xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
-        <p className="text-2xl font-semibold text-neutral-900">Almost there</p>
+        <p className="text-[26px] font-bold tracking-tight text-neutral-900">Almost there</p>
         <p className="mt-2 text-sm text-neutral-500">
           Your store application is still being reviewed, or hasn&apos;t been submitted yet. Finish onboarding and check
           approval status from the Flikk Partner mobile app — this dashboard unlocks once your store is approved.

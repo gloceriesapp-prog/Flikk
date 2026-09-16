@@ -11,6 +11,16 @@
 // Disabled with no delivery location, same reasoning useNearbyStores.ts
 // already documents: "nearest to me" has no real answer with no "me" to
 // measure from.
+//
+// isServiceable — GET /stores/nearest applies a real, server-side 12km
+// delivery-radius cutoff (DEFAULT_MAX_DISTANCE_KM, stores.ts) before
+// returning anything, so an empty result here is a real "no store within
+// delivery range" answer, not a client-side guess. This replaces the old
+// isLocationServiceable() (utils/serviceability.ts) — a hardcoded circular
+// zone around the launch area used only as a placeholder until real
+// per-store coverage existed to check against. `!hasResolved` and `!location`
+// both read as serviceable (never flash "coming soon" before we actually
+// know the answer) — same rule the old placeholder used for missing coords.
 
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../api/client';
@@ -36,5 +46,12 @@ export function useNearestStore() {
     enabled: deliveryLocation !== null,
   });
 
-  return { storeId: query.data?.id, storeName: query.data?.name, isLoading: query.isLoading };
+  const hasResolved = query.isSuccess;
+
+  return {
+    storeId: query.data?.id,
+    storeName: query.data?.name,
+    isLoading: query.isLoading,
+    isServiceable: !deliveryLocation || !hasResolved || query.data !== null,
+  };
 }

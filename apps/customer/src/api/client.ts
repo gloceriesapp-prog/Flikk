@@ -95,6 +95,7 @@ function refreshAccessToken(): Promise<string | null> {
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = true } = options;
+  const hadAccessToken = useAuthStore.getState().accessToken != null;
 
   let res: Response;
   let json: unknown;
@@ -123,7 +124,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
         console.error(`[apiRequest] network error retrying ${path}:`, err);
         throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your internet connection and try again.');
       }
-    } else if (res.status === 401) {
+    } else if (res.status === 401 && hadAccessToken) {
       // Refresh genuinely couldn't recover this session — no refresh
       // token stored at all (a session created before this fix existed,
       // or one that's outlived its refresh token too) or the backend
@@ -133,6 +134,16 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       // expired session" error, with no way back to login short of
       // manually clearing app storage. Clearing here is what makes
       // RootNavigator naturally bounce to AuthNavigator instead.
+      //
+      // hadAccessToken guard: a GUEST (isGuest: true, accessToken already
+      // null) calling an auth-required endpoint that forgot its own
+      // `enabled` gate (e.g. a stray useQuery with no guest check) will
+      // always 401 here too — but there's no real session to invalidate in
+      // that case, and clear() also resets isGuest to false, which
+      // RootNavigator reads as "log out" and instantly bounces the guest
+      // to the login screen for what should just be a failed optional
+      // fetch. Only a request that actually HAD a token worth losing
+      // should trigger this recovery path.
       await useAuthStore.getState().clear();
     }
   }

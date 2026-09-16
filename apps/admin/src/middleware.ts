@@ -10,18 +10,17 @@
 //  - an /api/* request gets a plain 401 JSON instead of a redirect, since
 //    a fetch() caller can't follow an HTML redirect usefully
 //
-// /login and /auth/callback (the magic-link landing route) are the only
-// two paths left open — everything else, page or API, requires a real
-// signed-in session. See app/login/page.tsx and app/api/auth/* for the
-// actual sign-in flow (email allowlist + Supabase magic link, not a
-// password this solo-founder tool would have to store/rotate).
+// /login is the only page left open — everything else, page or API,
+// requires a real signed-in session. See app/login/page.tsx and
+// app/api/auth/login/route.ts for the actual sign-in flow (username/
+// password, mapped server-side to a real Supabase Auth email+password).
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-// /api/auth/* has to stay open too — that's the route that REQUESTS the
-// magic link in the first place, before any session can exist yet.
-const PUBLIC_PATHS = ['/login', '/auth/callback', '/api/auth'];
+// /api/auth/* has to stay open too — that's the route that PERFORMS the
+// sign-in in the first place, before any session can exist yet.
+const PUBLIC_PATHS = ['/login', '/api/auth'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

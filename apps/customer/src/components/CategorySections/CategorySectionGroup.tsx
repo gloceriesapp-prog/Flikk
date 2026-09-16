@@ -20,7 +20,7 @@ const GAP = 12;
 export function CategorySectionGroup({ section }: Props) {
   return (
     <View className="px-5 pt-6">
-      <Text className="mb-4 text-[17px] font-semibold text-black/80">{section.name}</Text>
+      <Text className="mb-4 text-[17px] font-bold text-black/80">{section.name}</Text>
       <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
         {section.categories.map((item) => (
           <View key={item.id} style={{ width: '25%', paddingHorizontal: GAP / 2, paddingBottom: 20 }}>

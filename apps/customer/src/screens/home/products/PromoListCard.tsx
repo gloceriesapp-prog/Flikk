@@ -35,7 +35,7 @@ export function PromoListCard({ title, products }: Props) {
 
   return (
     <View>
-      <Text className="px-5 text-[18.5px] font-semibold leading-6 tracking-tight text-black/80">{title}</Text>
+      <Text className="px-5 text-[17px] font-bold leading-6 tracking-tight text-black/80">{title}</Text>
 
       <ScrollView
         horizontal

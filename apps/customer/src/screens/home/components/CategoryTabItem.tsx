@@ -1,79 +1,50 @@
+// One tab in CategoryTabs — per an explicit ask/reference, no background
+// capsule/scoop-cutout at all anymore (that was this component's entire
+// previous design: a white/peach pill behind the selected tab, SVG-drawn
+// corner "scoops" blending it into the header). Now it's just an icon +
+// label sitting directly on the header's own dark gradient, white by
+// default (readable against that dark bg) — the selected tab's only
+// distinguishing mark is a short underline bar beneath its label.
+//
+// isFrosted (from HomeHeader, via CategoryTabs) flips icon/text/underline
+// to black once scrolled past the header's own frosted-blur threshold —
+// white against that light blur was unreadable.
+
 import { Pressable, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
-import { ALL_TAB, type Category } from '../data/categoryTabs';
+import type { Category } from '../data/categoryTabs';
 
 interface Props {
   category: Category;
   isSelected: boolean;
   onPress: () => void;
-  // Retained so we don't break the parent component,
-  // but it is no longer needed for the masking hack!
-  headerBottomColor: string;
+  isFrosted?: boolean;
 }
 
-export function CategoryTabItem({ category, isSelected, onPress, headerBottomColor }: Props) {
-  // #FBE9DD — pale peach, synced to SeasonalSection/FestivalPicksSection's
-  // shared PANEL_BG (categoryHeaderGradients.ts's own red-orange All-tab
-  // gradient), not the earlier lavender tied to a purple panel that no
-  // longer exists.
-  const selectedBg = category.id === ALL_TAB.id ? '#FBE9DD' : '#FFFFFF';
+export function CategoryTabItem({ category, isSelected, onPress, isFrosted = false }: Props) {
+  const iconColor = isFrosted ? '#101C10' : '#FFFFFF';
+  const textColorClass = isFrosted ? 'text-ink' : 'text-white';
+  const mutedTextColorClass = isFrosted ? 'text-ink/60' : 'text-white/75';
 
   return (
-    <View className="relative w-[76px]">
-      <Pressable
-        onPress={onPress}
-        // Unselected tabs get a light bg + a real shadow now, not just a
-        // translucent white/30 wash — per an explicit ask, once
-        // HomeHeader.tsx's own frosted/blurred scroll state landed, that
-        // wash read as basically invisible against an already-light
-        // blurred background (no color contrast left to lean on). A
-        // shadow is a depth cue independent of what color sits behind it,
-        // so it keeps working whether the header is the dark gradient
-        // (rest) or the light blur (scrolled) — same reasoning applied to
-        // the selected tab's own white/peach capsule below.
-        className={`w-full items-center gap-1.5 py-3 rounded-t-[24px] z-10 shadow-sm shadow-black/20 ${
-          isSelected ? '' : 'bg-white/70'
-        }`}
-        style={isSelected ? { backgroundColor: selectedBg } : undefined}
+    // pt-2 only (no pb-2) — the underline below needs to sit flush against
+    // this item's own bottom edge, which is what makes it land exactly on
+    // CategoryTabs' own border-b divider instead of floating above it with
+    // a visible gap (per a reference screenshot: two separate lines with
+    // daylight between them, not the one clean line a reference image
+    // shows).
+    <Pressable onPress={onPress} className="w-[76px] items-center gap-1.5 pt-2">
+      <AppIcon icon={category.icon} size={22} color={iconColor} strokeWidth={isSelected ? 2 : 1.6} />
+      <Text
+        className={`text-center text-xs ${isSelected ? `font-bold ${textColorClass}` : `font-medium ${mutedTextColorClass}`}`}
+        numberOfLines={1}
+        adjustsFontSizeToFit
       >
-        <AppIcon
-          icon={category.icon}
-          size={22}
-          color={isSelected ? colors.ink : `${colors.ink}99`}
-        />
-        <Text
-          className={`text-center text-xs ${
-            isSelected ? 'font-bold text-ink' : 'font-medium text-ink/60'
-          }`}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-        >
-          {category.label}
-        </Text>
-      </Pressable>
+        {category.label}
+      </Text>
 
-      {/* Bottom Scoops (True SVG Negative Space) */}
-      {isSelected && (
-        <>
-          {/* Left Scoop */}
-          <View className="absolute -left-[20px] bottom-0 h-[20px] w-[20px] z-0 pointer-events-none">
-            <Svg width="20" height="20" viewBox="0 0 20 20">
-              {/* Draws strictly the filled white corner, leaving the rest 100% transparent */}
-              <Path d="M20 0 C20 11.0457 11.0457 20 0 20 L20 20 Z" fill={selectedBg} />
-            </Svg>
-          </View>
-
-          {/* Right Scoop */}
-          <View className="absolute -right-[20px] bottom-0 h-[20px] w-[20px] z-0 pointer-events-none">
-            <Svg width="20" height="20" viewBox="0 0 20 20">
-              {/* Draws strictly the filled white corner, leaving the rest 100% transparent */}
-              <Path d="M0 0 C0 11.0457 8.9543 20 20 20 L0 20 Z" fill={selectedBg} />
-            </Svg>
-          </View>
-        </>
-      )}
-    </View>
+      {/* Active-tab indicator — a short underline, not the old capsule. */}
+      <View className={`h-[3px] w-8 rounded-full ${isSelected ? textColorClass.replace('text-', 'bg-') : 'bg-transparent'}`} />
+    </Pressable>
   );
 }

@@ -1,9 +1,9 @@
 // Replaces BottomNavBar entirely (same fixed bottom position) when the
-// user's location is outside Flikk's one active zone (HomeScreen.tsx's
-// own isServiceable check, utils/serviceability.ts) — the four tabs it'd
-// otherwise show (Home/Categories/Store/Order Again) all assume a
-// browsable nearby store, which doesn't exist here. A single centered
-// black pill instead: upvote to say "bring Flikk here."
+// user has no real store within delivery range (HomeScreen.tsx's own
+// isServiceable, from useNearestStore.ts's server-side 12km cutoff) — the
+// four tabs it'd otherwise show (Home/Categories/Store/Order Again) all
+// assume a browsable nearby store, which doesn't exist here. A single
+// centered black pill instead: upvote to say "bring Flikk here."
 //
 // No backend endpoint for area upvotes exists yet — this is local-only UI
 // feedback (tap -> pill swaps to a thank-you state), not a persisted vote.
