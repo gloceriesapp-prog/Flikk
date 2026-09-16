@@ -17,7 +17,7 @@
 // BillDetailsCard's tip line and its own Total payable both need to
 // read it.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowLeft01Icon, MoreVerticalIcon, PackageIcon, ShoppingBasket03Icon, Timer02Icon } from '@hugeicons/core-free-icons';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -28,7 +28,7 @@ import { colors } from '../../theme/tokens';
 import { deleteAddress, fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
 import { estimateCartEtaMinutes } from '../../utils/estimateDelivery';
-import { selectCartGroupedByStore, selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
+import { groupCartItemsByStore, selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
@@ -51,7 +51,10 @@ export function CartScreen({ navigation }: Props) {
   // store (useCartStore's own header note); a cart spanning more than one
   // store renders as multiple "From {store}" mini-sections below instead
   // of a single flat list that silently implied they were all one order.
-  const storeGroups = useCartStore(selectCartGroupedByStore);
+  // Memoized off `items` (already selected above, reference-stable) — see
+  // groupCartItemsByStore's own note on why this can't be a plain zustand
+  // selector.
+  const storeGroups = useMemo(() => groupCartItemsByStore(items), [items]);
   const appliedPromo = useCartStore((state) => state.appliedPromo);
   const clearCart = useCartStore((state) => state.clear);
 

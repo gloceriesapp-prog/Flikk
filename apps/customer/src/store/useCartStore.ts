@@ -138,12 +138,28 @@ export interface CartStoreGroup {
   itemTotal: number;
 }
 
-// Groups the flat item list into one section per store — CartScreen's own
+// Groups a flat item list into one section per store — CartScreen's own
 // "From Store 1 / From Store 2" mini-sections read straight off this,
 // instead of the cart pretending every item belongs to one store.
-export function selectCartGroupedByStore(state: CartState): CartStoreGroup[] {
+//
+// A plain function of `items`, NOT a zustand selector (`(state: CartState)
+// => ...`) — a selector re-runs on every store update and this one builds a
+// brand-new array/objects each time, so its return value is never
+// reference-equal to the previous call even when the cart hasn't actually
+// changed. zustand v5's `useCartStore(selector)` compares snapshots via
+// `useSyncExternalStore`, which requires a STABLE reference for "nothing
+// changed" — a selector that always returns a new reference makes every
+// render see a "changed" snapshot, which schedules another render, which
+// calls the selector again... the exact "Maximum update depth exceeded" /
+// "getSnapshot should be cached" crash CartScreen hit. Call sites now
+// select the plain `items` array (already reference-stable — zustand only
+// gives it a new reference on a real mutation) and memoize this
+// computation themselves off of it (`useMemo(() =>
+// groupCartItemsByStore(items), [items])`), so it only re-runs when the
+// cart actually changes.
+export function groupCartItemsByStore(items: CartItem[]): CartStoreGroup[] {
   const groups = new Map<string, CartStoreGroup>();
-  for (const item of state.items) {
+  for (const item of items) {
     let group = groups.get(item.storeId);
     if (!group) {
       group = { storeId: item.storeId, storeName: item.storeName, items: [], itemTotal: 0 };
