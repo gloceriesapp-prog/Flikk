@@ -21,22 +21,32 @@
 // to the floating margins. Top corners stay rounded the whole time, even at
 // full screen; only the bottom corners square off once grown.
 //
-// This is a threshold *crossing* (tracked in isGrownRef, flipped inside
-// handleScroll, animated with a single Animated.timing per crossing)
-// rather than scrollY driving the margins directly via 1:1 interpolation —
-// that direct approach has a feedback loop: growing the card enlarges the
-// ScrollView's own visible height, which shrinks how far there is left to
-// scroll, which caps scrollY below the distance needed to finish growing,
-// leaving the card stuck part-grown. Decoupling "grown" from continuous
-// scroll position (it only changes on a discrete crossing) breaks that
-// loop. useNativeDriver: false throughout because margin/borderRadius
-// aren't transforms/opacity — the two props the native driver supports.
+// This is a threshold *crossing* (tracked in a shared value, flipped inside
+// the scroll worklet, animated once per crossing) rather than scrollY
+// driving the margins directly via 1:1 interpolation — that direct
+// approach has a feedback loop: growing the card enlarges the ScrollView's
+// own visible height, which shrinks how far there is left to scroll, which
+// caps scrollY below the distance needed to finish growing, leaving the
+// card stuck part-grown. Decoupling "grown" from continuous scroll
+// position (it only changes on a discrete crossing) breaks that loop.
+//
+// PERFORMANCE: this used to run on RN's classic Animated API with
+// useNativeDriver: false throughout (margin/borderRadius/width/left aren't
+// transforms/opacity — the only props the classic native driver supports),
+// which meant every frame of the grow animation, and all scroll-driven
+// gesture math, ran on the JS thread — exactly what read as "laggy" when
+// scrolling or dragging. Reanimated's shared values + worklets commit
+// straight to the shadow tree from the UI thread regardless of which
+// style properties are involved, and react-native-gesture-handler's Pan
+// gesture recognizes touches on the UI thread instead of round-tripping
+// through the JS thread the way PanResponder does — this file now uses
+// both for exactly that reason, not just to add a dependency.
 //
 // Closing works four ways: the floating X above whichever card is
-// centered, dragging that card's header row down (PanResponder, dragY),
+// centered, dragging that card's header row down (Gesture.Pan, translationY),
 // dragging the content DOWN while already scrolled to the very top
 // (bounces enabled — the resulting negative contentOffset.y mirrors 1:1
-// into that same dragY, see handleScroll/handleScrollEndDrag's own notes),
+// into that same dragY shared value, see the scroll handler's own notes),
 // or tapping the backdrop. This coexists with the grow-on-scroll-up
 // behavior above because they key off opposite signs of the same
 // contentOffset.y: positive (scrolling up) grows the card, negative
@@ -53,23 +63,30 @@
 // Backdrop is a real glassmorphism blur (BlurView, same convention as
 // BottomNavBar.tsx's own glass pill), rendered once behind the whole
 // horizontal pager.
+//
+// No FlashList here, deliberately — FlashList virtualizes long, repeated-
+// item lists (that's what it's for), and this pager never renders more
+// than 3 items (the product + up to 2 siblings), each a fully distinct,
+// non-repeating layout. There's nothing here for virtualization to help
+// with; the jank this file actually had was animation/gesture-thread work,
+// which is what the Reanimated/gesture-handler rewrite above addresses.
 
 import { Bookmark01Icon, Cancel01Icon, Share03Icon } from '@hugeicons/core-free-icons';
 import { useMemo, useRef, useState } from 'react';
-import {
-  Animated,
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
   Easing,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+  interpolate,
+  makeMutable,
+  runOnJS,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../AppIcon';
@@ -119,12 +136,15 @@ const CLOSE_BUTTON_GAP = 12;
 // Drag-to-dismiss (the header row's own grab handle, not the ScrollView
 // content — dragging content itself is already spoken for by the grow/
 // shrink gesture above). Past DRAG_DISMISS_DISTANCE, or a fast enough
-// downward flick (DRAG_DISMISS_VELOCITY) even if short, closes the sheet;
-// otherwise it springs back to resting position. Real screen height, not a
-// fixed px, for the slide-away distance so the card fully clears the
-// screen on every device size.
+// downward flick (DRAG_DISMISS_VELOCITY_PX_S) even if short, closes the
+// sheet; otherwise it springs back to resting position. Real screen
+// height, not a fixed px, for the slide-away distance so the card fully
+// clears the screen on every device size.
 const DRAG_DISMISS_DISTANCE = 120;
-const DRAG_DISMISS_VELOCITY = 1.1;
+// gesture-handler reports velocity in px/second (RN's old PanResponder
+// reported px/ms) — 1.1 px/ms scaled up to that same unit is 1100 px/s,
+// the same real flick speed the original threshold meant.
+const DRAG_DISMISS_VELOCITY_PX_S = 1100;
 const DISMISS_ANIMATION_MS = 200;
 // Sibling peek pager — each page is narrower than the screen so the next/
 // previous card's edge peeks in (PEEK_WIDTH visible on each side), with
@@ -183,25 +203,22 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
   const sideInset = (screenWidth - pageWidth) / 2;
   const initialScrollX = centerIndex * (pageWidth + PAGE_GAP);
 
-  // One grow value per page, created lazily and kept keyed by product id
-  // (not array index) so it survives leftSibling/rightSibling being
-  // re-picked — see this file's own note on why grow lives here now, not
-  // inside Card: a grown page needs to escape its narrow peek-pager slot
-  // and cover the full screen, which means the *pager* has to read that
-  // page's grow value to widen its slot, not just Card itself.
-  // A Map in useState (not useRef) — this repo's react-compiler lint rule
-  // flags reading `.current` during render, which pages.map below needs to
-  // do on every render to look up (or lazily create) each page's grow
-  // value. A useState value read during render is fine; only `ref.current`
-  // access is what the rule targets — same reasoning as the lazy
-  // useState(() => new Animated.Value(0)) pattern already used for `grow`/
-  // `dragY` elsewhere in this file, just keyed by id instead of being a
-  // single value.
-  const [growValues] = useState(() => new Map<string, Animated.Value>());
+  // One grow shared value per page, created lazily and kept keyed by
+  // product id (not array index) so it survives leftSibling/rightSibling
+  // being re-picked — see this file's own note on why grow lives here now,
+  // not inside Card: a grown page needs to escape its narrow peek-pager
+  // slot and cover the full screen, which means the *pager* has to read
+  // that page's grow value to widen its slot, not just Card itself.
+  // makeMutable, not the useSharedValue hook — this Map is read/populated
+  // during render (pages.map below), which the useSharedValue hook can't
+  // be called conditionally/in a loop for; makeMutable creates the same
+  // kind of shared value imperatively, exactly like the previous
+  // `new Animated.Value(0)` this replaced.
+  const [growValues] = useState(() => new Map<string, SharedValue<number>>());
   function getGrowValue(id: string) {
     let value = growValues.get(id);
     if (!value) {
-      value = new Animated.Value(0);
+      value = makeMutable(0);
       growValues.set(id, value);
     }
     return value;
@@ -259,21 +276,20 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
               // a live-tracked scroll position) means "flush with the real
               // screen edge" (screenX = contentLeft - actualScrollOffset = 0)
               // holds by construction, not by hoping a separately-tracked
-              // value stays in sync with the native scroll position. A prior
-              // version drove this off a JS-tracked `scrollX` Animated.Value
-              // (updated via onScroll) that could still reflect the
-              // pre-snap offset for a frame when growth started, landing
-              // the fullscreen card shifted off to one side with a sliver
-              // of a neighbor peeking through (the "goes to full left side"
-              // bug this replaced).
+              // value stays in sync with the native scroll position.
               const restLeft = sideInset + i * (pageWidth + PAGE_GAP);
               const restOffset = i * (pageWidth + PAGE_GAP);
-              const left = grow.interpolate({ inputRange: [0, 1], outputRange: [restLeft, restOffset] });
-              const width = grow.interpolate({ inputRange: [0, 1], outputRange: [pageWidth, screenWidth] });
-              const zIndex = grow.interpolate({ inputRange: [0, 1], outputRange: [i + 1, 100] });
 
               return (
-                <Animated.View key={p.id} style={{ position: 'absolute', top: 0, height: '100%', left, width, zIndex }}>
+                <PagerPage
+                  key={p.id}
+                  grow={grow}
+                  restLeft={restLeft}
+                  restOffset={restOffset}
+                  pageWidth={pageWidth}
+                  screenWidth={screenWidth}
+                  zIndexBase={i + 1}
+                >
                   <Card
                     product={p}
                     onClose={onClose}
@@ -297,11 +313,11 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
                       // same amount once scrolling re-enabled, corrupting
                       // the peek layout afterward — the actual "not proper
                       // size when closed" bug).
-                      if (isGrown) pagerRef.current?.scrollTo({ x: i * (pageWidth + PAGE_GAP), y: 0, animated: false });
+                      if (isGrown) pagerRef.current?.scrollTo({ x: restOffset, y: 0, animated: false });
                       setGrownProductId(isGrown ? p.id : (prev) => (prev === p.id ? null : prev));
                     }}
                   />
-                </Animated.View>
+                </PagerPage>
               );
             })}
           </ScrollView>
@@ -313,10 +329,48 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
   );
 }
 
+interface PagerPageProps {
+  grow: SharedValue<number>;
+  // Rest state (grow=0): this page's position in CONTENT space, includes
+  // sideInset — the resting-state gutter around every page. Grown state
+  // (grow=1): the real scroll OFFSET that brings this page flush to the
+  // screen edge, which never includes sideInset. Conflating these two
+  // (using one value for both ends of the interpolation) is exactly the
+  // "off by sideInset on grow/shrink" bug this file's own header comment
+  // documents having already fixed once — restLeft and restOffset must
+  // stay two distinct numbers here.
+  restLeft: number;
+  restOffset: number;
+  pageWidth: number;
+  screenWidth: number;
+  zIndexBase: number;
+  children: React.ReactNode;
+}
+
+// One useAnimatedStyle per page, in its OWN component instance — pulled
+// out of the pager's own pages.map() specifically because a hook can't be
+// called inside a .map() callback (the count would change if
+// leftSibling/rightSibling load in asynchronously after first render,
+// which is a real rules-of-hooks violation, not just a lint nag). Keying
+// each PagerPage by product.id (in the parent's pages.map) gives each one
+// its own stable component instance instead.
+function PagerPage({ grow, restLeft, restOffset, pageWidth, screenWidth, zIndexBase, children }: PagerPageProps) {
+  const style = useAnimatedStyle(() => ({
+    position: 'absolute',
+    top: 0,
+    height: '100%',
+    left: interpolate(grow.value, [0, 1], [restLeft, restOffset]),
+    width: interpolate(grow.value, [0, 1], [pageWidth, screenWidth]),
+    zIndex: interpolate(grow.value, [0, 1], [zIndexBase, 100]),
+  }));
+
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
+
 interface CardProps {
   product: Product;
   onClose: () => void;
-  grow: Animated.Value;
+  grow: SharedValue<number>;
   onGrowChange: (isGrown: boolean) => void;
 }
 
@@ -363,78 +417,112 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
   const [selectedVariantId, setSelectedVariantId] = useState(product.variants?.[0]?.id);
   const selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
 
-  const isGrownRef = useRef(false);
   // Drag-to-dismiss offset — 0 at rest, animates toward screenHeight on a
-  // successful drag-down dismissal. Separate Animated.Value from `grow`
+  // successful drag-down dismissal. Separate shared value from `grow`
   // (that one drives the resting-vs-full-screen margins/radii) since this
   // is a transform offset layered on top of whatever `grow` state the card
   // is already in, not a replacement for it.
-  const [dragY] = useState(() => new Animated.Value(0));
-  const [panResponder] = useState(() =>
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) => gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
-      onPanResponderMove: Animated.event([null, { dy: dragY }], { useNativeDriver: true }),
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dy > DRAG_DISMISS_DISTANCE || gesture.vy > DRAG_DISMISS_VELOCITY) {
-          Animated.timing(dragY, { toValue: screenHeight, duration: DISMISS_ANIMATION_MS, useNativeDriver: true }).start(() => {
-            onClose();
-            dragY.setValue(0);
-          });
-        } else {
-          Animated.spring(dragY, { toValue: 0, useNativeDriver: true }).start();
-        }
-      },
-    }),
-  );
+  const dragY = useSharedValue(0);
+  // isGrown/isOverscrollDismissing used to be plain refs — now shared
+  // values, since the scroll worklet below runs on the UI thread and can't
+  // reliably read/write a React ref's `.current` across threads. 0/1
+  // stand in for boolean (Reanimated shared values are fine with booleans
+  // too, but keeping this numeric matches `grow`'s own 0..1 range for
+  // consistency).
+  const isGrown = useSharedValue(0);
+  const isOverscrollDismissing = useSharedValue(0);
 
-  const isOverscrollDismissingRef = useRef(false);
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-
-    if (offsetY > GROW_TRIGGER_DISTANCE && !isGrownRef.current) {
-      isGrownRef.current = true;
-      onGrowChange(true);
-      Animated.timing(grow, { toValue: 1, duration: GROW_ANIMATION_MS, easing: GROW_EASING, useNativeDriver: false }).start();
-    } else if (offsetY <= SHRINK_TRIGGER_DISTANCE && isGrownRef.current) {
-      isGrownRef.current = false;
-      onGrowChange(false);
-      Animated.timing(grow, { toValue: 0, duration: GROW_ANIMATION_MS, easing: GROW_EASING, useNativeDriver: false }).start();
-    }
-
-    if (isOverscrollDismissingRef.current) return;
-    dragY.setValue(offsetY < 0 ? -offsetY : 0);
-  };
-
-  const handleScrollEndDrag = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    if (offsetY > -DRAG_DISMISS_DISTANCE) return;
-    isOverscrollDismissingRef.current = true;
-    Animated.timing(dragY, { toValue: screenHeight, duration: DISMISS_ANIMATION_MS, useNativeDriver: true }).start(() => {
-      onClose();
-      dragY.setValue(0);
-      isOverscrollDismissingRef.current = false;
+  // Header row's own grab handle — dragging DOWN dismisses; dragging UP is
+  // left alone (activeOffsetY(6) with no negative bound only activates on
+  // downward movement past 6px, same as the original PanResponder's own
+  // `gesture.dy > 6` check), and a big horizontal move fails this gesture
+  // outright so it doesn't fight the horizontal sibling pager underneath.
+  const panGesture = Gesture.Pan()
+    .activeOffsetY(6)
+    .failOffsetX([-15, 15])
+    .onUpdate((event) => {
+      dragY.value = event.translationY;
+    })
+    .onEnd((event) => {
+      if (event.translationY > DRAG_DISMISS_DISTANCE || event.velocityY > DRAG_DISMISS_VELOCITY_PX_S) {
+        dragY.value = withTiming(screenHeight, { duration: DISMISS_ANIMATION_MS }, (finished) => {
+          if (finished) {
+            runOnJS(onClose)();
+            dragY.value = 0;
+          }
+        });
+      } else {
+        dragY.value = withSpring(0);
+      }
     });
-  };
 
-  const cardMarginTop = grow.interpolate({ inputRange: [0, 1], outputRange: [screenHeight * REST_MARGIN_FRACTION, 0] });
-  const closeButtonTop = grow.interpolate({
-    inputRange: [0, 1],
-    outputRange: [screenHeight * REST_MARGIN_FRACTION - CLOSE_BUTTON_SIZE - CLOSE_BUTTON_GAP, -CLOSE_BUTTON_SIZE],
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      const offsetY = event.contentOffset.y;
+
+      // `grow` is a Reanimated SharedValue passed down as a prop so the
+      // pager (one level up) can read the same value for its own
+      // page-width/left interpolation — mutating `.value` on both grow
+      // branches below is the actual Reanimated API contract for a shared
+      // value, not the accidental prop mutation this lint rule is meant
+      // to catch, hence the disable on each assignment.
+      if (offsetY > GROW_TRIGGER_DISTANCE && isGrown.value === 0) {
+        isGrown.value = 1;
+        // eslint-disable-next-line react-hooks/immutability
+        grow.value = withTiming(1, { duration: GROW_ANIMATION_MS, easing: GROW_EASING });
+        runOnJS(onGrowChange)(true);
+      } else if (offsetY <= SHRINK_TRIGGER_DISTANCE && isGrown.value === 1) {
+        isGrown.value = 0;
+        grow.value = withTiming(0, { duration: GROW_ANIMATION_MS, easing: GROW_EASING });
+        runOnJS(onGrowChange)(false);
+      }
+
+      if (isOverscrollDismissing.value === 1) return;
+      dragY.value = offsetY < 0 ? -offsetY : 0;
+    },
+    onEndDrag: (event) => {
+      const offsetY = event.contentOffset.y;
+      if (offsetY > -DRAG_DISMISS_DISTANCE) return;
+      isOverscrollDismissing.value = 1;
+      dragY.value = withTiming(screenHeight, { duration: DISMISS_ANIMATION_MS }, (finished) => {
+        if (finished) {
+          runOnJS(onClose)();
+          dragY.value = 0;
+          isOverscrollDismissing.value = 0;
+        }
+      });
+    },
   });
-  const closeButtonOpacity = grow.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
-  const cardMarginBottom = grow.interpolate({ inputRange: [0, 1], outputRange: [CARD_BOTTOM_MARGIN, 0] });
-  const cardBottomRadius = grow.interpolate({ inputRange: [0, 1], outputRange: [CARD_BOTTOM_RADIUS, 0] });
-  const headerTop = grow.interpolate({ inputRange: [0, 1], outputRange: [14, insets.top + 14] });
-  const footerPaddingBottom = grow.interpolate({ inputRange: [0, 1], outputRange: [FOOTER_REST_PADDING, insets.bottom] });
+
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    marginTop: interpolate(grow.value, [0, 1], [screenHeight * REST_MARGIN_FRACTION, 0]),
+    marginBottom: interpolate(grow.value, [0, 1], [CARD_BOTTOM_MARGIN, 0]),
+    borderBottomLeftRadius: interpolate(grow.value, [0, 1], [CARD_BOTTOM_RADIUS, 0]),
+    borderBottomRightRadius: interpolate(grow.value, [0, 1], [CARD_BOTTOM_RADIUS, 0]),
+    transform: [{ translateY: dragY.value }],
+  }));
+
+  const closeButtonStyle = useAnimatedStyle(() => ({
+    top: interpolate(grow.value, [0, 1], [screenHeight * REST_MARGIN_FRACTION - CLOSE_BUTTON_SIZE - CLOSE_BUTTON_GAP, -CLOSE_BUTTON_SIZE]),
+    opacity: interpolate(grow.value, [0, 1], [1, 0]),
+  }));
+
+  const statusBarBlurStyle = useAnimatedStyle(() => ({
+    opacity: grow.value,
+  }));
+
+  const headerRowStyle = useAnimatedStyle(() => ({
+    top: interpolate(grow.value, [0, 1], [14, insets.top + 14]),
+  }));
+
+  const footerStyle = useAnimatedStyle(() => ({
+    paddingBottom: interpolate(grow.value, [0, 1], [FOOTER_REST_PADDING, insets.bottom]),
+  }));
 
   return (
     <View style={{ flex: 1 }} pointerEvents="box-none">
       {/* Floating close (X), centered above this card's own top edge. */}
-      <Animated.View
-        pointerEvents="box-none"
-        style={{ position: 'absolute', top: closeButtonTop, left: 0, right: 0, opacity: closeButtonOpacity }}
-        className="items-center"
-      >
+      <Animated.View pointerEvents="box-none" style={[{ position: 'absolute', left: 0, right: 0 }, closeButtonStyle]} className="items-center">
         <Pressable
           onPress={onClose}
           hitSlop={10}
@@ -446,18 +534,16 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
       </Animated.View>
 
       <Animated.View
-        style={{
-          flex: 1,
-          marginTop: cardMarginTop,
-          marginBottom: cardMarginBottom,
-          borderTopLeftRadius: CARD_RADIUS,
-          borderTopRightRadius: CARD_RADIUS,
-          borderBottomLeftRadius: cardBottomRadius,
-          borderBottomRightRadius: cardBottomRadius,
-          overflow: 'hidden',
-          backgroundColor: '#FFFFFF',
-          transform: [{ translateY: dragY }],
-        }}
+        style={[
+          {
+            flex: 1,
+            borderTopLeftRadius: CARD_RADIUS,
+            borderTopRightRadius: CARD_RADIUS,
+            overflow: 'hidden',
+            backgroundColor: '#FFFFFF',
+          },
+          cardAnimatedStyle,
+        ]}
         className="shadow-lg shadow-black/30"
       >
         {/* Status-bar blur — only reachable once grown to full screen (the
@@ -469,36 +555,32 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
             "premium" top treatment near the status bar. */}
         <Animated.View
           pointerEvents="none"
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 44, opacity: grow, zIndex: 5 }}
+          style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 44, zIndex: 5 }, statusBarBlurStyle]}
         >
           <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
           <View className="absolute inset-0 bg-white/10" />
         </Animated.View>
 
-        <Animated.View
-          {...panResponder.panHandlers}
-          style={{ top: headerTop }}
-          className="absolute left-4 right-4 z-10 items-center gap-2.5"
-        >
-          <View pointerEvents="none" className="h-1 w-9 rounded-full bg-ink/15" />
+        <GestureDetector gesture={panGesture}>
+          <Animated.View style={[{ position: 'absolute' }, headerRowStyle]} className="left-4 right-4 z-10 items-center gap-2.5">
+            <View pointerEvents="none" className="h-1 w-9 rounded-full bg-ink/15" />
 
-          <View className="w-full flex-row items-center justify-between">
-            <Text className="text-lg font-medium text-ink">Product Details</Text>
+            <View className="w-full flex-row items-center justify-between">
+              <Text className="text-lg font-medium text-ink">Product Details</Text>
 
-            <View className="flex-row gap-2">
-           
-              <Pressable hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-white/90">
-                <AppIcon icon={Share03Icon} size={18} color={colors.ink} />
-              </Pressable>
+              <View className="flex-row gap-2">
+                <Pressable hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-white/90">
+                  <AppIcon icon={Share03Icon} size={18} color={colors.ink} />
+                </Pressable>
+              </View>
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        </GestureDetector>
 
         <Animated.ScrollView
           bounces
           showsVerticalScrollIndicator={false}
-          onScroll={handleScroll}
-          onScrollEndDrag={handleScrollEndDrag}
+          onScroll={scrollHandler}
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingBottom: FOOTER_SPACER }}
         >
@@ -538,7 +620,7 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
               <CartBar />
             </View>
           )}
-          <Animated.View style={{ paddingBottom: footerPaddingBottom }} className="overflow-hidden">
+          <Animated.View style={[{ overflow: 'hidden' }, footerStyle]}>
             <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
             <View className="absolute inset-0 bg-white/40" />
             <ProductDetailFooter product={product} selectedVariant={selectedVariant} />

@@ -18,9 +18,11 @@
 
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ProductCard } from '../home/products/ProductCard';
+import type { Product } from '../home/products/types';
 import { CategoryDetailHeader } from './components/CategoryDetailHeader';
 import { SubCategorySidebar } from './components/SubCategorySidebar';
 import { getCategoryDetailData } from './data/registry';
@@ -70,15 +72,28 @@ export function CategoryDetailScreen({ navigation, route }: Props) {
       <View className="flex-1 flex-row">
         <SubCategorySidebar items={sidebarItems} selectedId={selectedSubId} onSelect={setSelectedSubId} />
 
-        <ScrollView
-          className="flex-1 bg-mist/30"
-          contentContainerClassName="flex-row flex-wrap gap-x-3 gap-y-6 py-3 pl-0.5 pr-3 pb-16"
-          showsVerticalScrollIndicator={false}
-        >
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} widthClassName="w-[47%]" showDiscountBadge />
-          ))}
-        </ScrollView>
+        {/* FlashList, not a ScrollView + flex-wrap — a real category's full
+            product catalog has no cap (useCategoryProducts/
+            useSubCategoryProducts return everything, unlike Home's own
+            4-6-item teaser rows), so this can genuinely grow long.
+            className on the wrapping View, not FlashList itself — FlashList
+            isn't one of NativeWind's auto-patched core components (same
+            gotcha AppImage.tsx/BlurView already document elsewhere in this
+            app), so a className directly on it would silently no-op. */}
+        <View className="flex-1 bg-mist/30">
+          <FlashList
+            data={products}
+            numColumns={2}
+            keyExtractor={(product: Product) => product.id}
+            contentContainerStyle={{ paddingVertical: 12, paddingLeft: 2, paddingRight: 12, paddingBottom: 64 }}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }: { item: Product }) => (
+              <View style={{ flex: 1, paddingHorizontal: 6, paddingBottom: 24 }}>
+                <ProductCard product={item} widthClassName="w-full" showDiscountBadge />
+              </View>
+            )}
+          />
+        </View>
       </View>
     </View>
   );

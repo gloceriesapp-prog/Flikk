@@ -14,9 +14,11 @@
 
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ProductCard } from '../home/products/ProductCard';
+import type { Product } from '../home/products/types';
 import { SubCategorySidebar } from '../category-detail/components/SubCategorySidebar';
 import { StoreCategoryGrid } from './components/StoreCategoryGrid';
 import { StoreDetailHeader } from './components/StoreDetailHeader';
@@ -100,29 +102,44 @@ export function StoreDetailScreen({ navigation, route }: Props) {
             onOpenPriceRange={() => setIsPriceSheetOpen(true)}
           />
 
-          <ScrollView
-            className="flex-1 bg-white"
-            contentContainerClassName="flex-row flex-wrap gap-x-3 gap-y-6 py-3 pl-0.5 pr-3 pb-16"
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Quick-jump grid — only on 'All', above the flat product list.
-                Once a specific category is picked there's nothing left for it
-                to jump to, so it steps aside for the product grid itself. */}
-            {selectedId === 'all' && (
-              <>
-                <StoreCategoryGrid categories={categories} products={products} onSelect={setSelectedId} />
-              </>
-            )}
-
-            {visibleProducts.length === 0 && (
-              <View className="w-full items-center py-16">
-                <Text className="text-sm text-ink/50">No items here yet.</Text>
-              </View>
-            )}
-            {visibleProducts.map((product) => (
-              <ProductCard key={product.id} product={product} widthClassName="w-[47%]" showDiscountBadge />
-            ))}
-          </ScrollView>
+          {/* FlashList, not a ScrollView + flex-wrap — a store's full real
+              catalog (useStoreProducts) has no cap, unlike Home's own
+              4-6-item teaser rows, so this can genuinely grow long.
+              className on the wrapping View, not FlashList itself —
+              FlashList isn't one of NativeWind's auto-patched core
+              components (same gotcha AppImage.tsx/BlurView already
+              document elsewhere), so a className directly on it would
+              silently no-op. StoreCategoryGrid moves to ListHeaderComponent
+              (renders once, full-width, above the columned grid regardless
+              of numColumns — not itself subject to column-splitting) and
+              the empty state becomes ListEmptyComponent, the real prop
+              FlatList/FlashList both have for exactly this. */}
+          <View className="flex-1 bg-white">
+            <FlashList
+              data={visibleProducts}
+              numColumns={2}
+              keyExtractor={(product: Product) => product.id}
+              contentContainerStyle={{ paddingVertical: 12, paddingLeft: 2, paddingRight: 12, paddingBottom: 64 }}
+              showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                // Quick-jump grid — only on 'All', above the flat product
+                // list. Once a specific category is picked there's nothing
+                // left for it to jump to, so it steps aside for the
+                // product grid itself.
+                selectedId === 'all' ? <StoreCategoryGrid categories={categories} products={products} onSelect={setSelectedId} /> : null
+              }
+              ListEmptyComponent={
+                <View className="w-full items-center py-16">
+                  <Text className="text-sm text-ink/50">No items here yet.</Text>
+                </View>
+              }
+              renderItem={({ item }: { item: Product }) => (
+                <View style={{ flex: 1, paddingHorizontal: 6, paddingBottom: 24 }}>
+                  <ProductCard product={item} widthClassName="w-full" showDiscountBadge />
+                </View>
+              )}
+            />
+          </View>
         </View>
       </View>
 
