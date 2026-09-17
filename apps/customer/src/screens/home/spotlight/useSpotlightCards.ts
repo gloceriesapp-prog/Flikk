@@ -34,6 +34,8 @@ import type { Product } from '../products/types';
 import { useEverydayEssentials } from '../everyday-essentials/useEverydayEssentials';
 import { useNearestStore } from '../useNearestStore';
 
+const MAX_ROWS_PER_CARD = 4;
+
 export interface SpotlightCard {
   key: string;
   title: string;
@@ -41,12 +43,23 @@ export interface SpotlightCard {
   ctaLabel: string;
 }
 
+export interface SpotlightCardsResult {
+  cards: SpotlightCard[];
+  // Whichever card in this batch actually has the most real rows to show
+  // (capped at MAX_ROWS_PER_CARD, same cap CatalogRowsList's own default
+  // applies) — MostShoppedCard.tsx pads every card up to this many rows
+  // so all their "See all" bars land on the same y, without assuming a
+  // worst-case 4 that a genuinely shorter data set (e.g. only 2 real
+  // discounted products in "Best Deals") would never actually reach.
+  minRows: number;
+}
+
 function discountPercent(product: Product): number {
   if (!product.originalPrice || product.originalPrice <= product.price) return 0;
   return Math.round((1 - product.price / product.originalPrice) * 100);
 }
 
-export function useSpotlightCards(): SpotlightCard[] {
+export function useSpotlightCards(): SpotlightCardsResult {
   const { data: catalog = [] } = useEverydayEssentials();
   const { storeId: nearestStoreId, storeName: nearestStoreName } = useNearestStore();
 
@@ -82,6 +95,8 @@ export function useSpotlightCards(): SpotlightCard[] {
         ctaLabel: 'Shop more',
       });
     }
-    return cards;
+
+    const minRows = cards.reduce((max, card) => Math.max(max, Math.min(card.products.length, MAX_ROWS_PER_CARD)), 0);
+    return { cards, minRows };
   }, [catalog, nearestStoreId, nearestStoreName]);
 }

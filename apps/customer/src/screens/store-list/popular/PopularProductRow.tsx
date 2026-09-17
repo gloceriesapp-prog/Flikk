@@ -28,7 +28,6 @@ import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
-import { colors } from '../../../theme/tokens';
 import { addToCart } from '../../../store/addToCart';
 import { useCartStore } from '../../../store/useCartStore';
 import type { Product } from '../../home/products/types';
@@ -82,13 +81,13 @@ function AddControl({ product }: { product: Product }) {
 
 export function PopularProductRow({ product }: Props) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const discountPercent =
-    product.originalPrice && product.originalPrice > product.price
-      ? Math.round((1 - product.price / product.originalPrice) * 100)
-      : undefined;
 
   return (
     <>
+      {/* Image | title (2 lines) + weight | AddControl | price column —
+          image/title/weight are one Pressable opening the detail sheet,
+          AddControl and the price readout sit outside it as their own
+          non-nested touch targets (AddControl's own header note on why). */}
       <View className="flex-row items-center gap-3 px-4 py-3">
         <Pressable onPress={() => setIsDetailOpen(true)} className="flex-1 flex-row items-center gap-3">
           <Image
@@ -97,24 +96,44 @@ export function PopularProductRow({ product }: Props) {
             contentFit="cover"
           />
           <View className="flex-1 gap-1">
-            <Text className="text-[14.5px] font-medium text-ink" numberOfLines={1}>
+            <Text className="text-[14.5px] font-medium text-ink" numberOfLines={2}>
               {product.name}
             </Text>
-            <View className="flex-row items-center gap-1.5">
-              <Text className="text-[13px] font-semibold text-ink">₹{product.price}</Text>
-              {product.originalPrice ? (
-                <Text className="text-[12px] font-medium text-ink/40 line-through">₹{product.originalPrice}</Text>
-              ) : null}
-            </View>
-            {discountPercent ? (
-              <Text className="text-[12px] font-semibold" style={{ color: colors.limeDeep }}>
-                {discountPercent}% OFF
-              </Text>
-            ) : null}
+            <Text className="text-[12.5px] font-medium text-ink/50">{product.weight}</Text>
           </View>
         </Pressable>
 
-        <AddControl product={product} />
+        {/* AddControl and the price column share a tighter gap of their
+            own (gap-1), separate from the outer row's gap-3 that spaces
+            the title block away from them — these two read as one paired
+            unit (what to tap, what it costs), not two independent row
+            sections that need the same breathing room as image-to-title. */}
+        <View className="flex-row items-center gap-1">
+          <AddControl product={product} />
+
+          {/* Right-aligned again — price belongs flush at the row's true
+              end, not tucked next to AddControl — but the box is now just
+              wide enough for the actual widest realistic value (₹1000-ish,
+              44px) instead of a looser 56px, so a short ₹14 doesn't leave
+              much dead space to its own left before landing at that right
+              edge. Fixed width is still what matters for AddControl's own
+              alignment (this column's own earlier note): a plain ₹14 vs. a
+              two-line ₹48/₹45 discount block render at different natural
+              widths, and since this column sits AFTER AddControl, letting
+              it size to its own content shrinks the title's flex-1 space
+              by a different amount per row, which shifts AddControl's own
+              x position left/right instead of it staying in one line. */}
+          <View className="items-end gap-0.5" style={{ width: 44 }}>
+            {product.originalPrice && product.originalPrice > product.price ? (
+              <Text className="text-[12px] font-medium text-ink/40 line-through" numberOfLines={1}>
+                ₹{product.originalPrice}
+              </Text>
+            ) : null}
+            <Text className="text-[14.5px] font-semibold text-ink" numberOfLines={1}>
+              ₹{product.price}
+            </Text>
+          </View>
+        </View>
       </View>
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>

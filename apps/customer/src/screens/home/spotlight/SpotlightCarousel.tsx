@@ -22,7 +22,7 @@ const CARD_GAP = 16;
 const CARD_STEP = 300 + CARD_GAP; // MostShoppedCard's own fixed PANEL_WIDTH + gap
 
 export function SpotlightCarousel() {
-  const cards = useSpotlightCards();
+  const { cards, minRows } = useSpotlightCards();
   const indexRef = useRef(0);
   const setActiveCardKey = useSpotlightAccentStore((state) => state.setActiveCardKey);
 
@@ -53,13 +53,12 @@ export function SpotlightCarousel() {
   if (cards.length === 0) return null;
 
   return (
-    // pt-3 — CategoryTabs is visible again above this (HomeScreen.tsx's
-    // showCategoryTabs), so the earlier pt-16 "more breathing room" bump
-    // (made while that tab row was hidden) left a large, awkward empty
-    // gap of pure gradient between the tabs and the card, per a reference
-    // screenshot. SpotlightHeaderBleed.tsx's own PANEL_HEIGHT constant
-    // hardcodes this same 12px — keep the two in sync if this changes.
-    <View className="pt-3">
+    // pt-5 — a real gap above the card now, matching the same green
+    // breathing room SpotlightHeaderBleed.tsx's own trimmed panel leaves
+    // below it, per an explicit ask to add the same treatment on top.
+    // SpotlightHeaderBleed.tsx's own panelHeight formula hardcodes this
+    // same 20px — keep the two in sync if this changes.
+    <View className="pt-5">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -71,7 +70,7 @@ export function SpotlightCarousel() {
         onMomentumScrollEnd={handleScrollSettled}
       >
         {cards.map((card) => (
-          <MostShoppedCard key={card.key} title={card.title} products={card.products} ctaLabel={card.ctaLabel} />
+          <MostShoppedCard key={card.key} title={card.title} products={card.products} ctaLabel={card.ctaLabel} minRows={minRows} />
         ))}
       </ScrollView>
     </View>

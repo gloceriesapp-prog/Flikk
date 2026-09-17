@@ -26,15 +26,17 @@
 //  - Width is a hardcoded PANEL_WIDTH constant, not a prop — same as
 //    PopularStorePanel's own PANEL_WIDTH (300), per an explicit ask to
 //    match that card's real width, not this carousel's peek-width math.
-//  - Fixed CARD_HEIGHT, not content-driven: per an explicit ask ("however
-//    much content, the See all button should be fixed in the bottom"), the
-//    bottom CTA bar has to land at the exact same y position on every card
-//    regardless of how many real rows a given card's slice has (trending-
-//    store/best-deals can come up shorter than a full 4). The header block
-//    and footer bar are both fixed-height; CatalogRowsList sits in a
-//    flex-1 middle section that absorbs whatever's left — a short card
-//    just leaves blank space in that middle section instead of the footer
-//    riding up to meet fewer rows.
+//  - Height driven by real content, not a hardcoded worst-case guess — but
+//    the "See all" bar still has to land on the same y across every card
+//    in the same carousel (SpotlightCarousel.tsx), so a shorter card's
+//    footer doesn't ride up above a taller sibling's. `minRows` (computed
+//    once, in useSpotlightCards.ts, from this carousel's own real data —
+//    whichever card actually has the most rows to show, capped at 4) pads
+//    a shorter card's row area up to match via ROW_HEIGHT arithmetic
+//    instead of a fixed 460px constant that could over- or under-shoot
+//    the real content. A carousel where every card happens to have only
+//    2 real rows now renders a genuinely shorter card, not one padded out
+//    to a "4 rows" guess that was never true for this data.
 //  - Plain white background (explicit ask) instead of PopularStorePanel's
 //    own light-tint-per-card scheme.
 //  - Bottom CTA bar (per an explicit ask/reference image): full-width, flush
@@ -49,20 +51,24 @@
 //    cross-category cuts yet.
 
 import { Pressable, Text, View } from 'react-native';
-import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
-import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
 import { CatalogRowsList } from './CatalogRowsList';
 import type { Product } from '../products/types';
 
 // Same width PopularStorePanel.tsx hardcodes for itself.
 const PANEL_WIDTH = 300;
-// Header block (~69: pt-4 + title/subtitle text + pb-3) + a full 4-row
-// CatalogRowsList (~320: PopularProductRow's own h-14 image + py-3, times
-// 4) + the bottom CTA bar (~62: mt-4 + border-t + py-3.5 + label) — a real
-// FIXED height now (not a floor), so SpotlightHeaderBleed.tsx's own
-// PANEL_HEIGHT can size off this exact number instead of a rough estimate.
-export const CARD_HEIGHT = 460;
+// PopularProductRow's own real per-row height: h-14 (56px) image + py-3
+// (12+12=24px) vertical padding = 80px. Exported so useSpotlightCards.ts
+// and SpotlightHeaderBleed.tsx can size off this same real number instead
+// of each guessing their own.
+export const ROW_HEIGHT = 80;
+// Header block (pt-4 + title/subtitle text + pb-3) + the bottom CTA bar
+// (border-t + py-3.5 + label) — real measured chrome height around
+// whatever CatalogRowsList itself ends up being. SpotlightHeaderBleed.tsx
+// sizes its own background bleed off HEADER_HEIGHT + FOOTER_HEIGHT +
+// (minRows * ROW_HEIGHT), the same real arithmetic this card's own layout
+// uses, not a separate guessed total.
+export const HEADER_HEIGHT = 69;
+export const FOOTER_HEIGHT = 62;
 // Same indigo family PopularStorePanel.tsx uses for its own title accent.
 const ACCENT = '#4C5FE0';
 
@@ -70,27 +76,36 @@ interface Props {
   title: string;
   products: Product[];
   ctaLabel: string;
+  // Pads this card's row area up to match whichever card in the same
+  // carousel actually has the most real rows (useSpotlightCards.ts's own
+  // note) — so every card's "See all" bar lands on the same y regardless
+  // of how many real rows THIS card's own slice happens to have.
+  minRows?: number;
 }
 
-export function MostShoppedCard({ title, products, ctaLabel }: Props) {
+export function MostShoppedCard({ title, products, ctaLabel, minRows }: Props) {
+  // Only pad a card that's genuinely SHORTER than minRows — a card that
+  // already has the max real row count (4/4 here) gets no forced
+  // minHeight at all, so it can never show a gap from a real row's
+  // rendered height coming in even a few px under the ROW_HEIGHT estimate
+  // (border hairlines, font line-height rounding). That gap only has a
+  // reason to exist for a card with genuinely fewer real rows than its
+  // siblings, never for one already matching the tallest.
+  const thisCardRows = Math.min(products.length, 4);
+  const rowAreaMinHeight = minRows && minRows > thisCardRows ? minRows * ROW_HEIGHT : undefined;
+
   return (
-    <View
-      className="overflow-hidden rounded-[24px] border border-gray-100 bg-white"
-      style={{ width: PANEL_WIDTH, height: CARD_HEIGHT }}
-    >
+    <View className="overflow-hidden rounded-[24px] border border-gray-100 bg-white" style={{ width: PANEL_WIDTH }}>
       <View className="flex-row items-start justify-between gap-2 px-4 pb-3 pt-4">
         <View className="flex-1 gap-1">
-          <Text className="text-[15px] font-semibold" numberOfLines={1} style={{ color: ACCENT }}>
+          <Text className="text-[16px] font-semibold" numberOfLines={1} style={{ color: ACCENT }}>
             {title}
           </Text>
           <Text className="text-[12.5px] font-medium text-ink/50">Tap an item to add it to your order</Text>
         </View>
-        <Pressable className="mt-0.5 h-7 w-7 items-center justify-center rounded-full bg-gray-100 active:opacity-70">
-          <AppIcon icon={ArrowRight01Icon} size={14} color={colors.ink} strokeWidth={2} />
-        </Pressable>
       </View>
 
-      <View className="flex-1">
+      <View style={{ minHeight: rowAreaMinHeight }}>
         <CatalogRowsList products={products} />
       </View>
 

@@ -5,31 +5,31 @@
 //
 // Plain SOLID fill (headerGradient.bottomColor — the exact color
 // HomeHeader.tsx itself ends on, so the two can never visibly mismatch),
-// not a fade/gradient — per an explicit ask ("dont add css marking for
-// now, just below the 3 card till there add the bg"): a hard cut at the
-// card's own bottom edge, not a soft blend into white below it.
+// not a fade/gradient — per an explicit ask ("dont add css masking, just
+// reduce the bottom space"): a hard cut at the card's own bottom edge.
 //
 // This is ONLY ever visible beside/around the cards (the gaps above,
 // below, and between them) — the cards themselves are opaque and sit ON
 // TOP of this layer, so it never touches their real content.
 //
-// PANEL_HEIGHT is an EXPLICIT, fixed height on the outer container — not
-// left to size itself from SpotlightCarousel's own (async) content, which
-// is what an earlier version of this file did (useEverydayEssentials'
-// catalog loads async, so on first paint SpotlightCarousel briefly renders
-// null — sizing off that would flash a compressed/wrong-height band before
-// real cards mount). PANEL_HEIGHT (below, after the imports):
-//   12 — SpotlightCarousel's own `pt-3` top padding (keep in sync with
-//        that file's own pt- value if it changes)
-// + CARD_HEIGHT — MostShoppedCard's own real, FIXED height (that file's own
-//        CARD_HEIGHT export — the card stopped being content-driven once
-//        its bottom CTA bar had to land at a fixed y position regardless of
-//        row count, so this can size off the card's real number instead of
-//        a rough estimate).
-// +  8 — small breathing room past the card's own bottom edge, per an
-//        explicit ask ("extend the bg green... proper space in bottom") —
-//        trimmed way down from an earlier 28px overshoot ("its too much")
-//        to a modest gap, not a second empty band.
+// PANEL_HEIGHT is computed from the same real per-row/header/footer
+// arithmetic MostShoppedCard.tsx's own layout uses (HEADER_HEIGHT +
+// minRows*ROW_HEIGHT + FOOTER_HEIGHT), not a separate guessed constant —
+// this file calls useSpotlightCards() itself to get the exact same
+// minRows the carousel's own cards are padded to. Left at 0 (no bleed)
+// while cards.length === 0 — useEverydayEssentials' catalog loads async,
+// so on first paint there's genuinely nothing to size a background bleed
+// for yet; SpotlightCarousel itself renders null in that state too.
+//   20 — SpotlightCarousel's own `pt-5` top padding, the same real gap
+//        now added above the card to match the green breathing room
+//        below it (keep in sync with that file's own pt- value)
+// - 45 — real card content is sized by MostShoppedCard's own actual
+//        layout now, not forced to this formula's own worst-case
+//        estimate (that file's own minHeight note) — the formula still
+//        overshoots the real rendered card height by more than the
+//        earlier -20 trim accounted for, so this cuts further back
+//        toward the card's real bottom edge instead of leaving a visible
+//        band of solid green past it.
 //
 // marginTop: -2 closes a separate, well-known RN sticky-header seam:
 // HomeHeader is stickyHeaderIndices={[0]} (HomeScreen.tsx), rendered as its
@@ -40,12 +40,15 @@
 
 import { View } from 'react-native';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
-import { CARD_HEIGHT } from '../most-shopped/MostShoppedCard';
+import { FOOTER_HEIGHT, HEADER_HEIGHT, ROW_HEIGHT } from '../most-shopped/MostShoppedCard';
 import { SpotlightCarousel } from './SpotlightCarousel';
-
-const PANEL_HEIGHT = 12 + CARD_HEIGHT + 8;
+import { useSpotlightCards } from './useSpotlightCards';
 
 export function SpotlightHeaderBleed() {
+  const { cards, minRows } = useSpotlightCards();
+  const cardHeight = HEADER_HEIGHT + minRows * ROW_HEIGHT + FOOTER_HEIGHT;
+  const panelHeight = cards.length > 0 ? 20 + cardHeight - 45 : 0;
+
   // useSpotlightAccent=false — matches HomeHeader.tsx's own call, so this
   // panel's color can't drift from the header's per-category color.
   const headerGradient = useActiveHeaderGradient('all', false);
@@ -53,7 +56,7 @@ export function SpotlightHeaderBleed() {
   return (
     <View
       className="overflow-hidden"
-      style={{ position: 'relative', height: PANEL_HEIGHT, marginTop: -2, backgroundColor: headerGradient.bottomColor }}
+      style={{ position: 'relative', height: panelHeight, marginTop: -2, backgroundColor: headerGradient.bottomColor }}
     >
       <SpotlightCarousel />
     </View>
