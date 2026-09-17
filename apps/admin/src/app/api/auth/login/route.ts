@@ -7,9 +7,20 @@
 // anon client) so signInWithPassword's session gets written to cookies
 // via the same cookie adapter middleware.ts reads, exactly like the old
 // callback route did for exchangeCodeForSession.
+//
+// isAllowedAdminEmail (lib/adminAccess.ts) is checked here too, right
+// after a successful password check — not just left for middleware.ts to
+// catch on the next request. Per an explicit ask ("stick to
+// [nishalpoojary810@gmail.com] only, reject all other emails, make a
+// strict rule for it"): a correct username+password for ANY OTHER
+// Supabase Auth account must never even report success here, let alone
+// leave a session sitting in cookies that middleware then has to reject
+// one request later. Signs the session back out immediately on mismatch,
+// same as app/auth/callback/route.ts's own Google-path rejection.
 
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { isAllowedAdminEmail } from '@/lib/adminAccess';
 
 export async function POST(request: Request) {
   try {
@@ -25,8 +36,13 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
     if (error) throw new Error('Invalid username or password.');
+
+    if (!isAllowedAdminEmail(data.user?.email)) {
+      await supabase.auth.signOut();
+      throw new Error('This account is not authorized for admin access.');
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

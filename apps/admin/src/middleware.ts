@@ -12,15 +12,27 @@
 //
 // /login is the only page left open — everything else, page or API,
 // requires a real signed-in session. See app/login/page.tsx and
-// app/api/auth/login/route.ts for the actual sign-in flow (username/
-// password, mapped server-side to a real Supabase Auth email+password).
+// app/api/auth/login/route.ts for the username/password sign-in flow, and
+// app/auth/callback/route.ts for the Google one.
+//
+// A valid session alone isn't enough, though — isAllowedAdminEmail
+// (lib/adminAccess.ts) is re-checked here on EVERY request, not just at
+// sign-in time, so a session created any other way (a user added directly
+// in the Supabase dashboard, a stale session from before this check
+// existed) can't reach anything either. This is the one real enforcement
+// point for "only this one email is admin" — app/auth/callback/route.ts's
+// own check is a courtesy that rejects a mismatched Google account before
+// it ever sees the dashboard shell, not a second place this same rule has
+// to stay in sync.
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isAllowedAdminEmail } from '@/lib/adminAccess';
 
-// /api/auth/* has to stay open too — that's the route that PERFORMS the
-// sign-in in the first place, before any session can exist yet.
-const PUBLIC_PATHS = ['/login', '/api/auth'];
+// /api/auth/* and /auth/callback have to stay open too — those are the
+// routes that PERFORM the sign-in in the first place, before any session
+// can exist yet.
+const PUBLIC_PATHS = ['/login', '/api/auth', '/auth/callback'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -47,7 +59,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user || !isAllowedAdminEmail(user.email)) {
     if (pathname.startsWith('/api')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
