@@ -1,10 +1,10 @@
 // Maps between the real public.delivery_settings row (a guaranteed
-// singleton — migrations/029_delivery_settings.sql) and this dashboard's
-// DeliverySettings type. Covered by the public delivery_settings_read_all
-// RLS policy, same rationale as lib/supabase/homeTabs.ts's own note.
-// Writes live in app/api/delivery-settings/route.ts instead (service_role,
-// since there's no owner_user_id here for a normal RLS write policy to
-// check against — this is a single zone-wide config, not a per-owner row).
+// singleton — migrations/029/030) and this dashboard's DeliverySettings
+// type. Covered by the public delivery_settings_read_all RLS policy, same
+// rationale as lib/supabase/homeTabs.ts's own note. Writes live in
+// app/api/delivery-settings/route.ts instead (service_role, since there's
+// no owner_user_id here for a normal RLS write policy to check against —
+// this is a single zone-wide config, not a per-owner row).
 
 import { supabase } from './client';
 
@@ -13,6 +13,7 @@ export interface DeliverySettingsRow {
   flat_delivery_fee: number;
   free_delivery_enabled: boolean;
   free_delivery_threshold: number;
+  handling_fee: number;
 }
 
 export interface DeliverySettings {
@@ -20,9 +21,10 @@ export interface DeliverySettings {
   flatDeliveryFee: number;
   freeDeliveryEnabled: boolean;
   freeDeliveryThreshold: number;
+  handlingFee: number;
 }
 
-export const DELIVERY_SETTINGS_SELECT = 'id, flat_delivery_fee, free_delivery_enabled, free_delivery_threshold';
+export const DELIVERY_SETTINGS_SELECT = 'id, flat_delivery_fee, free_delivery_enabled, free_delivery_threshold, handling_fee';
 
 export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySettings {
   // Number(...) — PostgREST serializes Postgres `numeric` columns as JSON
@@ -35,6 +37,7 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     flatDeliveryFee: Number(row.flat_delivery_fee),
     freeDeliveryEnabled: row.free_delivery_enabled,
     freeDeliveryThreshold: Number(row.free_delivery_threshold),
+    handlingFee: Number(row.handling_fee),
   };
 }
 

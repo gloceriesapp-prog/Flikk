@@ -46,7 +46,12 @@ export default function SettingsPage() {
   // what the two inputs/toggle edit; `saved` is what's actually live,
   // so "Save changes" only enables once draft genuinely differs from it.
   const [saved, setSaved] = useState<DeliverySettings | null>(null);
-  const [draft, setDraft] = useState<{ flatDeliveryFee: string; freeDeliveryEnabled: boolean; freeDeliveryThreshold: string } | null>(null);
+  const [draft, setDraft] = useState<{
+    flatDeliveryFee: string;
+    freeDeliveryEnabled: boolean;
+    freeDeliveryThreshold: string;
+    handlingFee: string;
+  } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -57,6 +62,7 @@ export default function SettingsPage() {
         flatDeliveryFee: String(settings.flatDeliveryFee),
         freeDeliveryEnabled: settings.freeDeliveryEnabled,
         freeDeliveryThreshold: String(settings.freeDeliveryThreshold),
+        handlingFee: String(settings.handlingFee),
       });
     });
   }, []);
@@ -66,7 +72,8 @@ export default function SettingsPage() {
     saved !== null &&
     (Number(draft.flatDeliveryFee) !== saved.flatDeliveryFee ||
       draft.freeDeliveryEnabled !== saved.freeDeliveryEnabled ||
-      Number(draft.freeDeliveryThreshold) !== saved.freeDeliveryThreshold);
+      Number(draft.freeDeliveryThreshold) !== saved.freeDeliveryThreshold ||
+      Number(draft.handlingFee) !== saved.handlingFee);
 
   async function handleSaveDelivery() {
     if (!draft || isSaving) return;
@@ -80,6 +87,7 @@ export default function SettingsPage() {
           flatDeliveryFee: Number(draft.flatDeliveryFee),
           freeDeliveryEnabled: draft.freeDeliveryEnabled,
           freeDeliveryThreshold: Number(draft.freeDeliveryThreshold),
+          handlingFee: Number(draft.handlingFee),
         }),
       });
       const body = await res.json();
@@ -126,9 +134,9 @@ export default function SettingsPage() {
       </div>
 
       <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-        <h3 className="mb-1 text-sm font-semibold text-ink">Delivery</h3>
+        <h3 className="mb-1 text-sm font-semibold text-ink">Delivery &amp; fees</h3>
         <p className="mb-4 text-xs text-muted">
-          Applies to every customer order right now. Free delivery is off deliberately — a flat fee only, until it&apos;s
+          Applies to every customer order right now. Free delivery is off deliberately — flat fees only, until it&apos;s
           switched on here.
         </p>
 
@@ -148,6 +156,23 @@ export default function SettingsPage() {
                   min={0}
                   value={draft.flatDeliveryFee}
                   onChange={(e) => setDraft({ ...draft, flatDeliveryFee: e.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+              <div>
+                <p className="text-sm font-medium text-ink">Handling fee</p>
+                <p className="text-xs text-muted">Charged on every order, regardless of free delivery.</p>
+              </div>
+              <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                <span className="text-sm text-muted">₹</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={draft.handlingFee}
+                  onChange={(e) => setDraft({ ...draft, handlingFee: e.target.value })}
                   className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
                 />
               </div>

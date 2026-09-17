@@ -30,10 +30,12 @@ export async function PATCH(request: Request) {
   try {
     const flatDeliveryFee = Number(body.flatDeliveryFee);
     const freeDeliveryThreshold = Number(body.freeDeliveryThreshold);
+    const handlingFee = Number(body.handlingFee);
     if (!Number.isFinite(flatDeliveryFee) || flatDeliveryFee < 0) throw new Error('Delivery fee must be a real number, 0 or more.');
     if (!Number.isFinite(freeDeliveryThreshold) || freeDeliveryThreshold < 0) {
       throw new Error('Free-delivery threshold must be a real number, 0 or more.');
     }
+    if (!Number.isFinite(handlingFee) || handlingFee < 0) throw new Error('Handling fee must be a real number, 0 or more.');
 
     const { data, error } = await supabaseAdmin
       .from('delivery_settings')
@@ -41,6 +43,7 @@ export async function PATCH(request: Request) {
         flat_delivery_fee: flatDeliveryFee,
         free_delivery_enabled: Boolean(body.freeDeliveryEnabled),
         free_delivery_threshold: freeDeliveryThreshold,
+        handling_fee: handlingFee,
         updated_at: new Date().toISOString(),
       })
       .select(DELIVERY_SETTINGS_SELECT)
