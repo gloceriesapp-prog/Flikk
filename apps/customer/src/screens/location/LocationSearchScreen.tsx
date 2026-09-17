@@ -40,6 +40,7 @@ import {
   type Coordinates,
 } from '../../location/geocoding';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
+import { useAuthStore } from '../../store/useAuthStore';
 import { useLocationStore } from '../../store/useLocationStore';
 import { useRecentSearchesStore } from '../../store/useRecentSearchesStore';
 import { colors } from '../../theme/tokens';
@@ -93,6 +94,29 @@ const CARD_PIN_ICON_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/o
 
 export function LocationSearchScreen({ navigation, route }: Props) {
   const { intent, ...startingPoint } = route.params ?? {};
+  const isAddressBookIntent = intent === 'address-book';
+
+  // Guest (no accessToken) hitting the address-book flow specifically —
+  // every one of its entry points (CartScreen's "Add address", the empty-
+  // cart-address-sheet's "Add new", AddressListScreen, SelectLocationScreen)
+  // funnels through here first, so this is the ONE place that needs the
+  // guard rather than duplicating it at every call site. Left ungated for
+  // every OTHER intent (plain delivery-location picking) — that's not
+  // account-scoped, a guest browsing the app needs it to work same as
+  // always. Same exitGuestMode() pattern ProfileScreen.tsx already
+  // established: drops isGuest, RootNavigator swaps to AuthNavigator on
+  // its own, no manual navigation.navigate('Login') call needed. Gating
+  // HERE (before the map/search UI even renders) instead of letting a
+  // guest fill in the whole pin-pick + address form only to have the
+  // final POST /addresses 401 with a raw server error is the actual fix —
+  // same class of bug as the earlier CartScreen/addresses-query one this
+  // session, just caught before the user invests any time in the flow.
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const exitGuestMode = useAuthStore((s) => s.exitGuestMode);
+  useEffect(() => {
+    if (isAddressBookIntent && !accessToken) exitGuestMode();
+  }, [isAddressBookIntent, accessToken, exitGuestMode]);
+
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const searchInputRef = useRef<TextInput>(null);
@@ -301,6 +325,12 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       setConfirming(false);
     }
   }
+
+  // After every hook above (Rules of Hooks — an early return before them
+  // would call a different number of hooks on the render that flips this
+  // true, which React doesn't allow). See this file's own note next to
+  // the accessToken/exitGuestMode declarations for why this check exists.
+  if (isAddressBookIntent && !accessToken) return null;
 
   return (
     <DismissKeyboardView>
