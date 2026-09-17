@@ -20,8 +20,9 @@
 // reached from (Checkout -> AddressList -> LocationSearch -> here).
 
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -42,6 +43,7 @@ const ACCENT = '#1447E6';
 
 export function AddressFormScreen({ route, navigation }: Props) {
   const { latitude, longitude, addressLabel, city } = route.params;
+  const insets = useSafeAreaInsets();
 
   const [building, setBuilding] = useState('');
   // Not prefilled from addressLabel — LocationDetailsCard's own pin-preview
@@ -131,7 +133,7 @@ export function AddressFormScreen({ route, navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-[#FAFAFA]">
+    <View className="flex-1 bg-[#FAFAFA]">
         <View className="flex-row items-center gap-3 bg-white px-5 pb-3 pt-safe-offset-3">
           <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-10 w-10 items-center justify-center">
             <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
@@ -146,11 +148,22 @@ export function AddressFormScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        <ScrollView
+        {/* KeyboardAwareScrollView, not a plain ScrollView + KeyboardAvoidingView
+            — a fixed 'padding' shift only resizes the whole screen for the
+            keyboard, it never scrolls a specific focused field into view.
+            The bottom fields here (landmark, rider instructions) sat lower
+            than that shift could reach, so they ended up rendered right
+            behind the keyboard the moment they were focused — this
+            auto-scrolls whichever input is focused above the keyboard
+            instead. bottomOffset reserves room for the fixed "Confirm
+            address" footer below this scroll view, which the keyboard sits
+            on top of but isn't part of the scrollable content. */}
+        <KeyboardAwareScrollView
           className="flex-1"
           contentContainerClassName="gap-3 px-4 pb-6 pt-4"
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          bottomOffset={110}
         >
           <View className="gap-3 rounded-2xl bg-white p-4">
             <Text className="text-[15px] font-medium text-ink">Who are you ordering for?</Text>
@@ -207,15 +220,24 @@ export function AddressFormScreen({ route, navigation }: Props) {
                 placeholder="Leave at door, call before arriving..."
                 placeholderTextColor="#9AA5A3"
                 multiline
-                className="min-h-[40px] text-base text-ink"
+                className="min-h-[40px] text-base text-ink font-medium"
               />
             </View>
           </View>
 
           {error && <Text className="text-[13px] font-medium text-danger">{error}</Text>}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
-        <View className="bg-white px-5 pb-safe-offset-4 pt-3 shadow-sm shadow-black/5">
+        {/* pb-safe-offset-4's bottom padding exists to clear the home
+            indicator/nav-bar when the keyboard is closed — with it open,
+            the keyboard itself already sits there, so that same padding
+            just reads as dead space between this button and the keys.
+            offset.opened pushes the view DOWN by that same inset (positive
+            = toward the keyboard for this component) to cancel it out the
+            moment the keyboard's up; offset.closed stays 0 so the resting
+            state is untouched. (Was -insets.bottom — verified live that
+            direction was backwards, it widened the gap instead of closing it.) */}
+        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }} className="bg-white px-5 pb-safe-offset-4 pt-3 shadow-sm shadow-black/5">
           <Pressable
             onPress={() => setConfirmVisible(true)}
             disabled={!canReview}
@@ -224,7 +246,7 @@ export function AddressFormScreen({ route, navigation }: Props) {
           >
             <Text className="text-lg font-medium text-white">Confirm address</Text>
           </Pressable>
-        </View>
+        </KeyboardStickyView>
 
         <ConfirmAddressSheet
           visible={confirmVisible}
@@ -237,6 +259,6 @@ export function AddressFormScreen({ route, navigation }: Props) {
           onEdit={() => setConfirmVisible(false)}
           onConfirm={handleConfirmSave}
         />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

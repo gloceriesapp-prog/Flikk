@@ -44,23 +44,23 @@ export function CartDeliveryInfoBar({ address, onPress }: Props) {
 
       <View className="min-w-0 flex-1 gap-0.5">
         <View className="flex-row items-center gap-1.5">
-          <Text numberOfLines={1} className="shrink text-[13px] font-semibold text-ink">
-            {address.label}
+          <Text numberOfLines={1} className="shrink text-[15px] font-semibold text-ink">
+           {address.label}
           </Text>
           <View className="flex-row items-center gap-0.5 rounded-full px-1.5 py-[1px]" style={{ backgroundColor: `${ACCENT}14` }}>
             <AppIcon icon={ZapIcon} size={9} color={ACCENT} />
-            <Text className="text-[10px] font-bold" style={{ color: ACCENT }}>
+            <Text className="text-[12.5px] font-semibold" style={{ color: ACCENT }}>
               {ETA_LABEL}
             </Text>
           </View>
         </View>
-        <Text numberOfLines={1} className="text-[12px] text-ink/50">
+        <Text numberOfLines={1} className="text-[12.5px] text-ink/50 font-medium">
           {address.line1}
         </Text>
       </View>
 
       <View className="flex-row items-center gap-0.5">
-        <Text className="text-[12px] font-semibold" style={{ color: ACCENT }}>
+        <Text className="text-[12.5px] font-semibold" style={{ color: ACCENT }}>
           Change
         </Text>
         <AppIcon icon={ChevronRightIcon} size={13} color={ACCENT} />

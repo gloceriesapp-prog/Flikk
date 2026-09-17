@@ -51,12 +51,12 @@ export function ConfirmAddressSheet({
           <View className="gap-3 rounded-2xl p-4" style={{ backgroundColor: '#FAFAFA' }}>
             <View className="flex-row items-center gap-2">
               <AppIcon icon={LABEL_ICON[label] ?? Location04Icon} size={16} color={ACCENT} />
-              <Text className="text-sm font-bold text-black">{label}</Text>
+              <Text className="text-[14px] font-semibold text-black">{label}</Text>
             </View>
-            <Text className="text-[15px] text-ink">{fullAddress}</Text>
+            <Text className="text-[15px] text-ink font-medium">{fullAddress}</Text>
             <View className="h-px bg-gray-200" />
             <Text className="text-[15px] font-medium text-ink">
-              {recipientName} <Text className="font-medium text-ink">· {recipientPhone}</Text>
+              {recipientName} <Text className="font-medium text-ink">· {recipientPhone.replace(/^\+91/, '')}</Text>
             </Text>
 
             {instructions.trim() ? (

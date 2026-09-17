@@ -26,6 +26,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { deleteAddress, fetchAddresses, setDefaultAddress } from '../../api/addresses';
+import type { ApiAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
 import { estimateCartEtaMinutes } from '../../utils/estimateDelivery';
 import { groupCartItemsByStore, selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
@@ -33,7 +34,6 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
-import { CartDeliveryInfoBar } from './components/CartDeliveryInfoBar';
 import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
 // import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
 import { ForgotToAddSection } from './components/ForgotToAddSection';
@@ -125,10 +125,16 @@ export function CartScreen({ navigation }: Props) {
 
   async function handleDeleteAddress(id: string) {
     setDeletingAddressId(id);
+    // Optimistic removal — the row disappears the instant you tap, not
+    // after a round trip + refetch. Snapshot the prior list so a failed
+    // delete can roll back to it instead of leaving the UI wrong.
+    const previous = queryClient.getQueryData<ApiAddress[]>(['addresses']);
+    queryClient.setQueryData<ApiAddress[]>(['addresses'], (current) => (current ?? []).filter((a) => a.id !== id));
     try {
       await deleteAddress(id);
       await queryClient.invalidateQueries({ queryKey: ['addresses'] });
     } catch (err) {
+      queryClient.setQueryData(['addresses'], previous);
       // Surfaced, not swallowed — a silent catch here looks identical to
       // "the tap did nothing" from the outside, which is exactly the bug
       // report this was written in response to. Logged too, since
@@ -166,8 +172,8 @@ export function CartScreen({ navigation }: Props) {
             <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
           </Pressable>
           <View className="flex-1 pl-1">
-            <Text className="text-[17px] font-semibold text-ink">Your Cart</Text>
-            {items.length > 0 ? (
+            <Text className="text-[17px] font-semibold text-ink">Checkout</Text>
+            {/* {items.length > 0 ? (
               savings > 0 ? (
                 <Text className="text-[13.5px] font-semibold text-success">
                   Saved ₹{savings.toFixed(0)} ({savingsPercent}% off)
@@ -177,7 +183,7 @@ export function CartScreen({ navigation }: Props) {
                   {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'} ready to go
                 </Text>
               )
-            ) : null}
+            ) : null} */}
           </View>
           {items.length > 0 ? (
             <Pressable onPress={() => setIsMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center">
@@ -197,16 +203,23 @@ export function CartScreen({ navigation }: Props) {
           sheet. The backdrop Pressable closes it on an outside tap; the
           menu card itself sits just under the "..." button, right-aligned
           to match where that button actually is. */}
-      <Modal visible={isMenuOpen} transparent animationType="fade" onRequestClose={() => setIsMenuOpen(false)}>
+      <Modal
+        visible={isMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsMenuOpen(false)}
+      >
         <Pressable className="flex-1" onPress={() => setIsMenuOpen(false)}>
           <View className="items-end px-2 pt-safe" style={{ paddingTop: 112 }}>
-            <View className="w-44 overflow-hidden rounded-2xl border border-ink bg-white shadow-lg shadow-black/20">
+            <View className="self-end overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg shadow-black/30">
               <Pressable
                 onPress={handleClearCart}
                 className="flex-row items-center gap-2.5 px-4 py-3.5 active:bg-gray-50"
               >
                 <AppIcon icon={Delete02Icon} size={18} color={colors.danger} />
-                <Text className="text-[14.5px] font-semibold text-danger">Clear cart</Text>
+                <Text className="text-[14.5px] font-semibold text-danger">
+                  Clear cart
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -222,7 +235,12 @@ export function CartScreen({ navigation }: Props) {
       ) : (
         <>
           <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pb-4 pt-4">
-            {selectedAddress ? <CartDeliveryInfoBar address={selectedAddress} onPress={() => setAddressSheetVisible(true)} /> : null}
+            {/* CartDeliveryInfoBar removed from here per an explicit ask —
+                the same address/Change readout now lives in
+                CartCheckoutFooter's own row right above "Proceed to Pay",
+                which made showing it a second time up here redundant.
+                CartDeliveryInfoBar.tsx itself is untouched, just no longer
+                called from this screen. */}
 
             <View className="rounded-2xl bg-white px-4 py-4">
               <View className="flex-row items-center justify-between">
@@ -284,6 +302,7 @@ export function CartScreen({ navigation }: Props) {
             addressesLoading={addressesLoading}
             selectedAddress={selectedAddress}
             onAddAddress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
+            onChangeAddress={() => setAddressSheetVisible(true)}
             onProceedToPay={() => navigation.navigate('Checkout')}
           />
 

@@ -21,7 +21,7 @@
 // delete Alert's own callback ever ran), which is why delete looked like
 // it silently did nothing.
 
-import { AddCircleIcon, Delete02Icon, Location01Icon } from '@hugeicons/core-free-icons';
+import { AddCircleIcon, Cancel01Icon, Delete02Icon, Location01Icon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -51,6 +51,23 @@ export function AddressSelectSheet({ visible, addresses, selectingId, deletingId
   return (
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <Pressable className="flex-1 justify-end bg-black/50" onPress={onClose}>
+        {/* Floating close button, centered above the sheet's own top edge
+            — same circular black/70 + white Cancel01Icon treatment
+            ProductDetailSheet.tsx/ForgotToAddModal.tsx already use for
+            this exact "close a sheet floating over a dark backdrop"
+            pattern, per an explicit ask. Sits on the backdrop Pressable
+            (not inside the sheet's own stopPropagation wrapper below), so
+            it keeps working as a real "close" tap. */}
+        <View pointerEvents="box-none" className="items-center pb-3">
+          <Pressable
+            onPress={onClose}
+            hitSlop={10}
+            className="h-10 w-10 items-center justify-center rounded-full bg-black/70"
+          >
+            <AppIcon icon={Cancel01Icon} size={18} color="#FFFFFF" strokeWidth={2} />
+          </Pressable>
+        </View>
+
         <Pressable onPress={(e) => e.stopPropagation()} className="rounded-t-3xl bg-white px-5 pb-safe-offset-4 pt-4" style={{ maxHeight: '75%' }}>
           <View className="mb-3 h-1.5 w-12 self-center rounded-full bg-gray-200" />
           <Text className="mb-3 text-lg font-bold text-ink">Select address</Text>

@@ -4,11 +4,13 @@
 // customer on how big this order even is, right where they're about to
 // commit to paying for it.
 //
-// Owns its own pt-safe + white background (not the screen root) — the
-// page canvas below is off-white/gray (CheckoutScreen's own note on flat
-// elevation-via-contrast), but the header band, including the status-bar
-// area behind it, needs to read as a distinct solid-white surface, not
-// gray bleeding all the way to the top of the phone.
+// Owns its own pt-safe background (not the screen root), matching the
+// same #F1F2F4 canvas CartScreen/CheckoutScreen both use — this header now
+// reads as one continuous surface with the page below it, not a separate
+// white band sitting on top. The back arrow is the one element that still
+// needs to stand out against that flat gray, so it gets its own small
+// white circle behind it instead of relying on a whole-header color
+// contrast.
 
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
@@ -23,15 +25,15 @@ interface Props {
 
 export function CheckoutHeader({ onBack, itemCount, total }: Props) {
   return (
-    <View className="flex-row items-center gap-2 bg-white px-2 pb-3 pt-safe-offset-2">
-      <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center">
+    <View className="flex-row items-center gap-2 bg-[#F1F2F4] px-2 pb-1 pt-safe-offset-2">
+      <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
         <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
       </Pressable>
       <View>
-        <Text className="text-[17px] font-medium text-ink">Choose how to pay</Text>
-        <Text className="text-sm font-medium text-ink/50">
+        <Text className="text-[18px] pl-1 font-medium text-ink">Select a Payment Option</Text>
+        {/* <Text className="text-[13.5px] font-medium text-ink/50">
           {itemCount} {itemCount === 1 ? 'item' : 'items'}. Total: ₹{total}
-        </Text>
+        </Text> */}
       </View>
     </View>
   );

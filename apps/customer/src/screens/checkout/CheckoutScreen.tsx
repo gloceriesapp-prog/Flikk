@@ -36,7 +36,8 @@
 // thing that can ever actually mark an order paid, same as the 'online'
 // path's POST /payments/verify below.
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createOrder } from '../../api/orders';
@@ -53,7 +54,11 @@ import { useLocationStore } from '../../store/useLocationStore';
 import { isOutsideOperatingHours, REOPEN_TIME_LABEL } from '../../utils/operatingHours';
 import { CheckoutHeader } from './components/CheckoutHeader';
 import { paymentMethodLabel, PaymentMethodList, type PaymentMethod } from './components/PaymentMethodList';
-import { RewardPointsBanner } from './components/RewardPointsBanner';
+import { TotalAmountCard } from './components/TotalAmountCard';
+// RewardPointsBanner hidden — no real points ledger behind it yet
+// (cosmetic-only "you're earning X points" copy), see this session's own
+// explicit ask to pull it until real logic backs it. Not deleted —
+// import { RewardPointsBanner } from './components/RewardPointsBanner';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Checkout'>;
@@ -117,6 +122,11 @@ export function CheckoutScreen({ navigation }: Props) {
     // to empty.
     const orderedItems = items;
     const orderedAmount = grandTotal;
+    // The real address this order was actually placed against (handlePay
+    // already blocks Pay entirely when this is null, so it's real here) —
+    // not ambient GPS/location-store state, which can drift from the
+    // account's actual saved address.
+    const orderedAddress = selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address';
     clear();
     navigation.navigate('Receipt', {
       orderId: order.orderId,
@@ -127,6 +137,7 @@ export function CheckoutScreen({ navigation }: Props) {
       placedAt: order.placedAt,
       avgPrepMinutes: order.avgPrepMinutes,
       isTrip: isMultiStore,
+      deliveryAddress: orderedAddress,
     });
   }
 
@@ -282,13 +293,14 @@ export function CheckoutScreen({ navigation }: Props) {
         return;
       }
 
-      // 'online' — order row already exists (unpaid) at this point; a
-      // cancelled or failed checkout below just leaves it that way, same
-      // as every other path here. Nothing second-guesses which card/
-      // netbanking/UPI-app-not-in-our-list the customer actually used —
-      // that choice is entirely Razorpay's own native checkout UI.
+      // 'online' and 'upi_id' both land here — order row already exists
+      // (unpaid) at this point; a cancelled or failed checkout below just
+      // leaves it that way, same as every other path here. 'upi_id' is
+      // sample UI only (PaymentMethodList's own note) with no real VPA
+      // verification yet, so it goes through the exact same Razorpay
+      // Standard Checkout as 'online' until that gets wired up for real.
       await payViaRazorpayCheckout();
-      goToReceipt(orderSummary, paymentMethodLabel('online', upiApps));
+      goToReceipt(orderSummary, paymentMethodLabel(paymentMethod, upiApps));
     } catch (err) {
       Alert.alert('Could not place order', err instanceof Error ? err.message : 'Please try again.');
     } finally {
@@ -298,11 +310,18 @@ export function CheckoutScreen({ navigation }: Props) {
   }
 
   return (
-    <View className="flex-1 bg-[#FAFAFA]">
+    <View className="flex-1 bg-[#F1F2F4]">
       <CheckoutHeader onBack={() => navigation.goBack()} itemCount={items.length} total={grandTotal} />
-      <RewardPointsBanner totalPrice={grandTotal} />
+      <TotalAmountCard items={items} totalPrice={grandTotal} />
+      {/* <RewardPointsBanner totalPrice={grandTotal} /> */}
 
-      <ScrollView className="flex-1" contentContainerClassName="px-5 pb-8 pt-4">
+      {/* KeyboardAwareScrollView, not a plain ScrollView — same fix as
+          AddressFormScreen's own note: a plain ScrollView never scrolls a
+          specific focused field into view, only "Pay via UPI ID"'s own
+          text input sits low enough on this screen to get covered by the
+          keyboard once focused. This auto-scrolls it above the keyboard
+          instead, and keeps the rest of the list freely scrollable either way. */}
+      <KeyboardAwareScrollView className="flex-1" contentContainerClassName="px-5 pb-8 pt-1" bottomOffset={40}>
         <PaymentMethodList
           method={paymentMethod}
           onSelect={setPaymentMethod}
@@ -315,7 +334,7 @@ export function CheckoutScreen({ navigation }: Props) {
           // own Standard Checkout ('online') still both work fine.
           upiApps={isMultiStore ? [] : upiApps}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

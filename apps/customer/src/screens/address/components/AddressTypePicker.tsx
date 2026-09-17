@@ -48,9 +48,9 @@ export function AddressTypePicker({ label, customName, onSelectPreset, onChangeC
         <TextInput
           value={customName}
           onChangeText={onChangeCustomName}
-          placeholder="Name this address — e.g. Friend's place"
+          placeholder="Name this address, e.g. Friend's place"
           placeholderTextColor="#9AA5A3"
-          className="rounded-2xl border border-gray-200 px-4 py-3.5 text-base text-ink"
+          className="rounded-2xl border border-gray-200 px-4 py-3.5 text-base text-ink font-medium"
         />
       )}
     </View>

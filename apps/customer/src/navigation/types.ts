@@ -83,6 +83,14 @@ export type AppStackParamList = {
     // Undefined (not false) for every single-store order, same as before
     // this field existed.
     isTrip?: boolean;
+    // The real addresses row this order was actually placed against
+    // (CheckoutScreen's own selectedAddress at the moment Pay was tapped)
+    // — not the ambient useLocationStore label ReceiptScreen used to fall
+    // back to, which could disagree with the order's real address if the
+    // customer changed their default address after paying but before this
+    // screen rendered, or simply never matched a multi-address account's
+    // current GPS-derived location at all.
+    deliveryAddress: string;
   };
   TrackOrder: { orderId: string; paymentMethodLabel: string; isTrip?: boolean };
   Wishlist: undefined;

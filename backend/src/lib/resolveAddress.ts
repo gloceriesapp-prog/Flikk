@@ -26,6 +26,7 @@ export async function resolveAddressId(customerId: string, input: AddressInput):
       .select('id')
       .eq('id', input.address_id)
       .eq('user_id', customerId)
+      .is('deleted_at', null)
       .single();
     if (ownedAddressErr || !ownedAddress) throw new AppError(403, 'FORBIDDEN', 'Not your delivery address.');
     return ownedAddress.id;

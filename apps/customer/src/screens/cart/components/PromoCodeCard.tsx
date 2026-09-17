@@ -67,16 +67,22 @@ export function PromoCodeCard({ itemTotal, appliedPromo }: Props) {
               autoCapitalize="characters"
               className="flex-1 text-[13px] font-medium text-ink"
             />
-            <Pressable onPress={handleApply} disabled={!code.trim() || isApplying} hitSlop={6}>
+            <Pressable
+              onPress={handleApply}
+              disabled={!code.trim() || isApplying}
+              hitSlop={6}
+            >
               <Text
                 className="text-[13px] font-semibold"
-                style={{ color: !code.trim() || isApplying ? `${colors.ink}40` : colors.lime }}
+                style={{
+                  color: !code.trim() || isApplying ? `${colors.ink}40` : '#155DFC',
+                }}
               >
                 {isApplying ? 'Checking…' : 'Apply'}
               </Text>
             </Pressable>
           </View>
-          {error && <Text className="mt-1.5 text-[12px] text-danger">{error}</Text>}
+          {error && <Text className="mt-1.5 text-[12px] font-medium text-danger">{error}</Text>}
         </>
       )}
     </View>

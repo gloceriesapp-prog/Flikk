@@ -37,45 +37,48 @@ export function LocationDetailsCard({
         Pin the exact spot <Text className="text-danger">*</Text>
       </Text>
 
-      <View className="rounded-xl px-4 py-3" style={{ backgroundColor: '#FAFAFA' }}>
+      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
         <TextInput
           value={building}
           onChangeText={onChangeBuilding}
           placeholder="Flat / House no., building"
           placeholderTextColor="#9AA5A3"
-          className="text-base text-ink"
+          textAlignVertical="center"
+          className="h-full flex-1 py-0 text-base leading-tight text-ink font-medium"
         />
       </View>
 
-      <View className="rounded-xl px-4 py-3" style={{ backgroundColor: '#FAFAFA' }}>
+      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
         <TextInput
           value={street}
           onChangeText={onChangeStreet}
           placeholder="Street / area (optional)"
           placeholderTextColor="#9AA5A3"
-          className="text-base text-ink"
+          textAlignVertical="center"
+          className="h-full flex-1 py-0 text-base leading-tight text-ink font-medium"
         />
       </View>
 
-      <Pressable onPress={onChangePin} className="flex-row items-center gap-3 rounded-xl px-4 py-3" style={{ backgroundColor: '#FAFAFA' }}>
-        <Text className="flex-1 text-sm text-ink/70" numberOfLines={1}>
+      <Pressable onPress={onChangePin} className="h-[52px] flex-row items-center gap-3 rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
+        <Text className="flex-1 text-[13px] text-ink font-medium" numberOfLines={2}>
           {pinnedArea}
         </Text>
         <View className="flex-row items-center gap-0.5">
-          <Text className="text-sm font-bold" style={{ color: '#155DFC' }}>
+          <Text className="text-[13px] font-semibold" style={{ color: '#155DFC' }}>
             Change
           </Text>
           <AppIcon icon={ArrowRight01Icon} size={13} color="#155DFC" />
         </View>
       </Pressable>
 
-      <View className="rounded-xl px-4 py-3" style={{ backgroundColor: '#FAFAFA' }}>
+      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
         <TextInput
           value={landmark}
           onChangeText={onChangeLandmark}
-          placeholder="Landmark — near X, opposite Y (optional)"
+          placeholder="Landmark (optional)"
           placeholderTextColor="#9AA5A3"
-          className="text-base text-ink"
+          textAlignVertical="center"
+          className="h-full flex-1 py-0 text-base leading-tight text-ink font-medium"
         />
       </View>
     </View>

@@ -15,7 +15,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { SuccessSeal } from '../../components/SuccessSeal';
 import { colors } from '../../theme/tokens';
-import { useLocationStore } from '../../store/useLocationStore';
 import { ReceiptCard } from './components/ReceiptCard';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -27,7 +26,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Receipt'>;
 const LIQUID_GLASS_AVAILABLE = isLiquidGlassAvailable();
 
 export function ReceiptScreen({ navigation, route }: Props) {
-  const { orderId: realOrderId, orderNumber, amount, items, paymentMethodLabel, placedAt, avgPrepMinutes, isTrip } = route.params;
+  const { orderId: realOrderId, orderNumber, amount, items, paymentMethodLabel, placedAt, avgPrepMinutes, isTrip, deliveryAddress } = route.params;
   // Real orders.order_number ("FLK-100042"), shown as-is — no "#" prefix,
   // matching exactly what the partner app and TrackOrderScreen display for
   // the same order. This used to be a locally-sliced fragment of the UUID
@@ -37,16 +36,22 @@ export function ReceiptScreen({ navigation, route }: Props) {
   // UUID still rides along in route params for TrackOrder's own real
   // lookup, this is display-only.
   const orderId = orderNumber;
-  const address = useLocationStore((s) => s.location?.addressLabel) ?? 'your saved address';
   const itemTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // A real reset, not navigate('Home') — this order's Checkout/Receipt are
+  // done with, so leaving them in the stack meant a back-gesture from Home
+  // could land back on a receipt for an already-cleared cart. Same pattern
+  // LocationSearchScreen's own post-checkout reset uses.
+  function goHome() {
+    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+  }
 
   return (
     <View className="flex-1 bg-white pt-safe">
       <View className="flex-row items-center justify-between px-5 pt-2">
-        <Pressable onPress={() => navigation.navigate('Home')} hitSlop={12} className="h-11 w-11 items-center justify-center">
+        <Pressable onPress={goHome} hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={Cancel01Icon} size={20} color={colors.ink} />
         </Pressable>
-        <Text className="text-lg font-semibold text-ink">E-Receipt</Text>
+        <Text className="text-[17px] font-semibold text-ink">E-Receipt</Text>
         <Pressable hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={Download03Icon} size={20} color={colors.ink} />
         </Pressable>
@@ -56,14 +61,14 @@ export function ReceiptScreen({ navigation, route }: Props) {
         <SuccessSeal size={72} color={colors.success} />
 
         <View className="items-center gap-0">
-          <Text className="text-xl font-medium text-ink">Order Confirmed!</Text>
-          <Text className="text-center text-base text-ink/50">Thank you for shopping with Flikk.</Text>
+          <Text className="text-xl font-semibold text-ink">Order Confirmed!</Text>
+          <Text className="text-center text-base text-ink/50 font-medium">Thank you for shopping with Gloceries.</Text>
         </View>
 
         <ReceiptCard
           orderId={orderId}
           paymentMethodLabel={paymentMethodLabel}
-          deliveryAddress={address}
+          deliveryAddress={deliveryAddress}
           items={items}
           itemTotal={itemTotal}
           total={amount}
@@ -73,20 +78,23 @@ export function ReceiptScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* No footer background — sits directly on the page. One horizontal
-          row, equal-width buttons (flex-1 on both). Track Order is solid
-          black; Continue Shopping is real Liquid Glass on iOS 26
-          (GlassView), falling back to BlurView's light glass everywhere
-          else — glass only applies to this one button, not Track Order. */}
+          row, equal-width buttons (flex-1 on both). Track Order uses this
+          app's own blue accent (#1447E6, same as CartCheckoutFooter/
+          CheckoutHeader's back button), not plain black; Continue Shopping
+          is real Liquid Glass on iOS 26 (GlassView), falling back to
+          BlurView's light glass everywhere else — glass only applies to
+          this one button, not Track Order. */}
       <View className="flex-row gap-3 px-5 pb-safe-offset-4 pt-4">
         <Pressable
           onPress={() => navigation.navigate('TrackOrder', { orderId: realOrderId, paymentMethodLabel, isTrip })}
-          className="flex-1 items-center rounded-2xl bg-black py-4"
+          className="flex-1 items-center rounded-2xl py-4"
+          style={{ backgroundColor: '#1447E6' }}
         >
           <Text className="text-lg font-semibold text-white">Track Order</Text>
         </Pressable>
 
         <Pressable
-          onPress={() => navigation.navigate('Home')}
+          onPress={goHome}
           className="flex-1 overflow-hidden rounded-2xl border border-black/10 shadow-sm shadow-black/10"
         >
           {/* GlassView/BlurView aren't NativeWind-patched components —

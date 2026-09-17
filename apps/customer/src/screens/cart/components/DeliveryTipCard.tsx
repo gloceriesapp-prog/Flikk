@@ -65,21 +65,33 @@ export function DeliveryTipCard({ selectedTip, onSelectTip }: Props) {
                   backgroundColor: isSelected ? `${TIP_ACCENT}0F` : '#F9FAFB',
                 }}
               >
-                <View className="flex-1 items-center justify-center px-2 py-2">
-                  <View className="flex-row items-center gap-1">
-                    <Text className="text-[12.5px] font-semibold" style={{ color: isSelected ? TIP_ACCENT : '#101C10' }}>
-                      ₹{amount}
-                    </Text>
-                    {isSelected ? <AppIcon icon={Tick02Icon} size={10} color={TIP_ACCENT} /> : null}
-                  </View>
-                </View>
                 {isPopular ? (
-                  <View className="w-full items-center text-center py-0.5" style={{ backgroundColor: TIP_ACCENT }}>
-                    <Text className="text-[10px] font-semibold r text-white" numberOfLines={1}>
+                  <View
+                    className="w-full items-center justify-center py-0.5"
+                    style={{ backgroundColor: '#155dfc' }}
+                  >
+                    <Text className="text-center text-[10px] font-semibold text-white">
                       Popular
                     </Text>
                   </View>
                 ) : null}
+
+                <View className="flex-1 items-center justify-center px-2 py-2">
+                  <View className="flex-row items-center justify-center gap-1">
+                    <Text
+                      className="text-[12.5px] font-semibold"
+                      style={{
+                        color: isSelected ? TIP_ACCENT : '#101C10',
+                      }}
+                    >
+                      ₹{amount}
+                    </Text>
+
+                    {isSelected ? (
+                      <AppIcon icon={Tick02Icon} size={10} color={TIP_ACCENT} />
+                    ) : null}
+                  </View>
+                </View>
               </Pressable>
             );
           })}

@@ -39,19 +39,20 @@ export function ReceiverDetailsCard({ name, phone, onChangeName, onChangePhone }
         Who should we hand this to? <Text className="text-danger">*</Text>
       </Text>
 
-      <View className="justify-center rounded-xl px-4 py-3" style={{ backgroundColor: '#FAFAFA' }}>
+      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
         <TextInput
           value={name}
           onChangeText={onChangeName}
           placeholder="Receiver's name"
           placeholderTextColor="#9AA5A3"
-          className="text-base text-ink"
+          textAlignVertical="center"
+          className="h-full flex-1 py-0 text-base leading-tight text-ink font-medium"
         />
       </View>
 
-      <View className="flex-row items-center rounded-xl px-4 py-3" style={{ backgroundColor: '#FAFAFA' }}>
+      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
         <Text className="text-base text-ink">🇮🇳</Text>
-        <Text className="ml-2 text-base text-ink">{COUNTRY_CODE}</Text>
+        <Text className="ml-2 text-base text-ink font-medium">{COUNTRY_CODE}</Text>
         <View className="mx-3 h-6 w-px bg-gray-300" />
         <TextInput
           value={digits}
@@ -60,7 +61,8 @@ export function ReceiverDetailsCard({ name, phone, onChangeName, onChangePhone }
           placeholderTextColor="#9AA5A3"
           keyboardType="phone-pad"
           maxLength={10}
-          className="flex-1 text-base text-ink"
+          textAlignVertical="center"
+          className="h-full flex-1 py-0 text-base leading-tight text-ink"
         />
       </View>
     </View>

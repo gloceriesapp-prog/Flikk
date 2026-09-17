@@ -20,6 +20,7 @@ addressesRouter.get('/', async (req: AuthedRequest, res, next) => {
       .from('addresses')
       .select('*')
       .eq('user_id', req.user!.id)
+      .is('deleted_at', null)
       .order('is_default', { ascending: false });
     if (error) throw error;
     res.json(data);
@@ -110,32 +111,39 @@ addressesRouter.patch('/:id/default', async (req: AuthedRequest, res, next) => {
 
 addressesRouter.delete('/:id', async (req: AuthedRequest, res, next) => {
   try {
-    const { data: target } = await supabase.from('addresses').select('id, is_default').eq('id', req.params.id).eq('user_id', req.user!.id).single();
+    const { data: target } = await supabase
+      .from('addresses')
+      .select('id, is_default')
+      .eq('id', req.params.id)
+      .eq('user_id', req.user!.id)
+      .is('deleted_at', null)
+      .single();
     if (!target) throw new AppError(404, 'ADDRESS_NOT_FOUND', 'Address not found.');
 
-    const { error } = await supabase.from('addresses').delete().eq('id', req.params.id);
-    if (error) {
-      // 23503 = foreign_key_violation — orders.address_id references this
-      // row with no ON DELETE behavior (migrations/001_init.sql), so any
-      // address a real order was ever placed against can't be hard-deleted
-      // without corrupting that order's history. A real, expected
-      // referential-integrity failure, not a bug — surfaced as a clear 409
-      // instead of falling through to errorHandler's generic 500 (raw
-      // Postgrest errors aren't AppError instances, so an unwrapped throw
-      // here would otherwise read as "Something went wrong" with no way
-      // to tell a real server bug apart from this expected case).
-      if ((error as { code?: string }).code === '23503') {
-        throw new AppError(409, 'ADDRESS_IN_USE', 'This address is linked to a past order and can\'t be deleted.');
-      }
-      throw error;
-    }
+    // Soft delete, not a hard DELETE — orders.address_id references this
+    // row with no ON DELETE behavior (migrations/001_init.sql), and a
+    // past order's own address history shouldn't disappear just because
+    // the customer no longer wants this address on their active list (the
+    // rider already delivered against it; nothing downstream needs the
+    // row gone, just hidden). migrations/031_soft_delete_addresses.sql.
+    const { error } = await supabase
+      .from('addresses')
+      .update({ deleted_at: new Date().toISOString(), is_default: false })
+      .eq('id', req.params.id);
+    if (error) throw error;
 
     // Deleting the default address shouldn't leave the account with zero
     // default among any addresses it still has — promote whichever one's
     // left, arbitrarily (no real recency signal on this table to prefer
     // one over another).
     if (target.is_default) {
-      const { data: remaining } = await supabase.from('addresses').select('id').eq('user_id', req.user!.id).limit(1).single();
+      const { data: remaining } = await supabase
+        .from('addresses')
+        .select('id')
+        .eq('user_id', req.user!.id)
+        .is('deleted_at', null)
+        .limit(1)
+        .single();
       if (remaining) await supabase.from('addresses').update({ is_default: true }).eq('id', remaining.id);
     }
 

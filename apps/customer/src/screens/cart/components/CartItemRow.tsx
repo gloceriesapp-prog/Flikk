@@ -50,13 +50,13 @@ export function CartItemRow({ item }: Props) {
       </View>
 
       <View className="flex-1 gap-1">
-        <Text className="text-[13px] font-medium text-ink" numberOfLines={2}>
+        <Text className="text-[13.5px] font-medium text-ink" numberOfLines={2}>
           {item.name}
         </Text>
-        <Text className="text-xs text-ink/50 font-medium">{item.weight}</Text>
+        <Text className="text-[12px] text-ink/50 font-medium">{item.weight}</Text>
       </View>
 
-      <View className="flex-row items-center gap-1.5 rounded-xl border border-gray-100 p-1 " style={{ backgroundColor: `${STEPPER_TINT}0A` }}>
+      <View className="flex-row items-center gap-1.5 rounded-xl border border-[#155dfc] p-1 bg-white">
         <Pressable
           onPress={() => decrementItem(item.id)}
           hitSlop={6}
@@ -65,7 +65,7 @@ export function CartItemRow({ item }: Props) {
         >
           <AppIcon icon={MinusSignIcon} size={12} color={STEPPER_TINT} />
         </Pressable>
-        <Text className="min-w-[16px] text-center text-[13px] font-semibold" style={{ color: STEPPER_TINT }}>
+        <Text className="min-w-[16px] text-center text-[13px] font-bold text-[#155dfc]">
           {item.quantity}
         </Text>
         <Pressable
