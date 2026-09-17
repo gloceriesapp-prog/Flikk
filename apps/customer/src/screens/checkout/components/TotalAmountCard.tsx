@@ -25,10 +25,10 @@ export function TotalAmountCard({ items, totalPrice }: Props) {
     <>
       <Pressable
         onPress={() => setExpanded(true)}
-        className="mx-5 mt-3 flex-row items-center justify-between rounded-2xl bg-white px-4 py-3.5"
+        className="flex-row items-center justify-between rounded-2xl bg-white px-4 py-3.5"
       >
         <View className="flex-row items-center gap-1.5">
-          <Text className="text-[15px] font-medium text-ink">Total Amount</Text>
+          <Text className="text-[15px] font-semibold text-ink">Total Amount</Text>
           <AppIcon icon={ArrowDown01Icon} size={16} color={colors.ink} />
         </View>
         <Text className="text-[15px] font-semibold text-ink">₹{totalPrice}</Text>
@@ -39,7 +39,7 @@ export function TotalAmountCard({ items, totalPrice }: Props) {
           <Pressable onPress={(e) => e.stopPropagation()} className="rounded-t-3xl bg-white px-5 pb-safe-offset-4 pt-4" style={{ maxHeight: '75%' }}>
             <View className="mb-3 flex-row items-center justify-between">
               <Text className="text-lg font-medium text-ink">Order Summary</Text>
-              <Pressable onPress={() => setExpanded(false)} hitSlop={10} className="h-9 w-9 items-center justify-center rounded-full bg-mist">
+              <Pressable onPress={() => setExpanded(false)} hitSlop={10} className="h-9 w-9 items-center justify-center rounded-full bg-gray-100">
                 <AppIcon icon={Cancel01Icon} size={16} color={colors.ink} />
               </Pressable>
             </View>

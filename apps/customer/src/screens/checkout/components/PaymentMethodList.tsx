@@ -94,10 +94,10 @@ function ImageBadge({ uri }: { uri: string }) {
 // fabricated placeholder.
 function UpiAppBadge({ app }: { app: UpiApp }) {
   if (app.iconUri) {
-    return <Image source={{ uri: app.iconUri }} className="h-12 w-12 rounded-xl" />;
+    return <Image source={{ uri: app.iconUri }} className="h-12 w-12" />;
   }
   return (
-    <View className="h-12 w-12 items-center justify-center rounded-xl" style={{ backgroundColor: app.color }}>
+    <View className="h-12 w-12 items-center justify-center" style={{ backgroundColor: app.color }}>
       <Text className="text-lg font-extrabold text-white">{app.name.charAt(0)}</Text>
     </View>
   );
@@ -167,7 +167,7 @@ export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlaci
     <View className="mt-6 gap-6">
       <View>
         <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Recommended</Text>
-        <View className="rounded-2xl bg-white p-4">
+        <View className="bg-white p-4" style={{ borderRadius: 12 }}>
           {upiApps.length > 0 ? (
             upiApps.map((app, index) => {
               const isSelected = selectedUpiAppId === app.id;
@@ -212,7 +212,7 @@ export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlaci
 
       <View>
         <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Card</Text>
-        <View className="rounded-2xl bg-white p-4">
+        <View className="bg-white p-4" style={{ borderRadius: 12 }}>
           <Pressable onPress={() => toggle('card')} className="flex-row items-center gap-3">
             <AppBadge icon={CreditCardIcon} />
             <Text className="flex-1 text-[15px] font-medium text-ink">Credit / Debit Card</Text>
@@ -226,8 +226,8 @@ export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlaci
       </View>
 
       <View>
-        <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Pay via UPI ID</Text>
-        <View className="rounded-2xl bg-white p-4">
+        <Text className="mb-2 px-1 text-[16px] font-semibold text-ink/90">Pay via UPI ID</Text>
+        <View className="bg-white p-4" style={{ borderRadius: 12 }}>
           <Pressable onPress={() => toggle('upi_id')} className="flex-row items-center gap-3">
             <ImageBadge uri={UPI_ICON_URL} />
             <Text className="flex-1 text-[15px] font-medium text-ink">Enter UPI ID</Text>
@@ -260,7 +260,7 @@ export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlaci
 
       {/* <View> future 
         <Text className="mb-2 px-1 text-[16px] font-medium text-ink">Netbanking</Text>
-        <View className="rounded-2xl bg-white p-4">
+        <View className="bg-white p-4" style={{ borderRadius: 12 }}>
           <Pressable onPress={() => toggle('netbanking')} className="flex-row items-center gap-3">
             <AppBadge icon={BankIcon} />
             <Text className="flex-1 text-[15px] font-medium text-ink">Netbanking</Text>
@@ -275,7 +275,7 @@ export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlaci
 
       <View>
         <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Pay on Delivery</Text>
-        <View className="rounded-2xl bg-white p-4 mt-1">
+        <View className="bg-white p-4 mt-1" style={{ borderRadius: 12 }}>
           <Pressable onPress={() => toggle('cod')} className="flex-row items-center gap-3">
             <ImageBadge uri={CASH_ICON_URL} />
             <View className="flex-1">

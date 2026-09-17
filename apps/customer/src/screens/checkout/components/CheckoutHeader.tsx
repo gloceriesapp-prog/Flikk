@@ -1,16 +1,15 @@
-// Back arrow stays put on the left; the title sits next to it instead of
-// centered across the row, with a real "N item(s). Total: ₹X" subtitle
-// underneath — a centered title alone had nothing to actually orient the
-// customer on how big this order even is, right where they're about to
-// commit to paying for it.
+// Back arrow (own white circle, left) and the title, centered across the
+// full row via an absolutely-positioned overlay (not flex-1 balancing,
+// which drifts off-center whenever the row isn't symmetric) — a spacer
+// view matching the arrow's own width sits on the right so the row stays
+// balanced even with nothing else there.
 //
 // Owns its own pt-safe background (not the screen root), matching the
 // same #F1F2F4 canvas CartScreen/CheckoutScreen both use — this header now
 // reads as one continuous surface with the page below it, not a separate
 // white band sitting on top. The back arrow is the one element that still
-// needs to stand out against that flat gray, so it gets its own small
-// white circle behind it instead of relying on a whole-header color
-// contrast.
+// needs to stand out against that flat gray, so it gets its own white
+// circle instead of relying on a whole-header color contrast.
 
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
@@ -25,15 +24,19 @@ interface Props {
 
 export function CheckoutHeader({ onBack, itemCount, total }: Props) {
   return (
-    <View className="flex-row items-center gap-2 bg-[#F1F2F4] px-2 pb-1 pt-safe-offset-2">
-      <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
-        <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
-      </Pressable>
-      <View>
-        <Text className="text-[18px] pl-1 font-medium text-ink">Select a Payment Option</Text>
-        {/* <Text className="text-[13.5px] font-medium text-ink/50">
-          {itemCount} {itemCount === 1 ? 'item' : 'items'}. Total: ₹{total}
-        </Text> */}
+    <View className="bg-[#F1F2F4] px-3 pb-1 pt-safe-offset-2">
+      <View className="relative flex-row items-center justify-between">
+        <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
+          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+        </Pressable>
+
+        <View className="h-11 w-11" />
+
+        <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+          <Text className="text-[18px] font-semibold text-ink" numberOfLines={1}>
+            Choose how to pay
+          </Text>
+        </View>
       </View>
     </View>
   );

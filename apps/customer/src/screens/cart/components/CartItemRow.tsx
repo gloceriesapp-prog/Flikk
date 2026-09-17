@@ -1,8 +1,17 @@
 // Single row inside CartScreen's items card (the white card itself, "N
 // items" header + dashed divider, lives in CartScreen.tsx — this is just one
 // row). One layout for every item — image | name/weight | stepper | price,
-// all one horizontal line. No "Move to wishlist" link — per an explicit
-// ask, this app has no wishlist screen to move something to yet.
+// all one horizontal line, plus a "Save for later" row underneath the
+// weight that really adds/removes this item from the real account-backed
+// wishlist (api/wishlist.ts) — not local-only, the exact same store
+// ProductCardView's own heart icon and WishlistScreen already read.
+//
+// CartItem doesn't carry a full Product (no rating/localName — Cart never
+// needed those), so the Product handed to useWishlistStore.toggle is built
+// here from what CartItem actually has, with rating: 0/ratingCount: ''
+// for the rest — the exact same placeholder values api/products.ts's own
+// mapApiProduct already defaults every real product to (no rating system
+// exists yet, CLAUDE.md's own out-of-scope list), not a fabricated stand-in.
 //
 // Strikethrough original price only shows when the item has a real
 // discount (originalPrice set and higher than price).
@@ -13,16 +22,35 @@
 // too colorful/inconsistent against this row's own gray-toned neutral
 // cards, per an explicit ask to drop it here).
 
-import { Add01Icon, AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
+import { Add01Icon, Bookmark02Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { useCartStore, type CartItem } from '../../../store/useCartStore';
+import { useWishlistStore } from '../../../store/useWishlistStore';
+import type { Product } from '../../home/products/types';
 
 const IMAGE_TILE_BG = '#F3F4F6';
 
 const STEPPER_TINT = '#155DFC';
+
+function cartItemToProduct(item: CartItem): Product {
+  return {
+    id: item.id,
+    name: item.name,
+    localName: '',
+    weight: item.weight,
+    price: item.price,
+    originalPrice: item.originalPrice,
+    rating: 0,
+    ratingCount: '',
+    imageSeed: item.id,
+    imageUrl: item.imageUrl,
+    storeId: item.storeId,
+    storeName: item.storeName,
+  };
+}
 
 interface Props {
   item: CartItem;
@@ -31,15 +59,24 @@ interface Props {
 export function CartItemRow({ item }: Props) {
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
+  const isSaved = useWishlistStore((state) => state.isWishlisted(item.id));
+  const toggleWishlist = useWishlistStore((state) => state.toggle);
 
   const lineTotal = item.price * item.quantity;
   const hasDiscount = Boolean(item.originalPrice && item.originalPrice > item.price);
   const originalLineTotal = hasDiscount ? item.originalPrice! * item.quantity : null;
 
   return (
-    <View className="flex-row items-center gap-3 py-3.5">
+    // items-start, not items-center — the "Save for later" row added below
+    // the weight makes the left text column taller than the 48px image, so
+    // centering the whole row against that taller block pushed the image
+    // down past the title's first line. Top-aligning here keeps image and
+    // title level regardless of how tall the text column grows; the
+    // stepper/price columns get their own self-center below so they still
+    // sit centered on the row overall, unaffected by this.
+    <View className="flex-row items-start gap-3 py-3.5">
       <View
-        className="relative h-12 w-12 overflow-hidden rounded-xl border border-gray-100"
+        className="relative h-16 w-16 overflow-hidden rounded-xl border border-gray-100"
         style={{ backgroundColor: item.imageUrl ? IMAGE_TILE_BG : '#FFFFFF' }}
       >
         <Image
@@ -54,9 +91,16 @@ export function CartItemRow({ item }: Props) {
           {item.name}
         </Text>
         <Text className="text-[12px] text-ink/50 font-medium">{item.weight}</Text>
+
+        <Pressable onPress={() => toggleWishlist(cartItemToProduct(item))} hitSlop={8} className="flex-row items-center gap-1 self-start">
+          <AppIcon icon={Bookmark02Icon} size={13} color={isSaved ? STEPPER_TINT : `${STEPPER_TINT}99`} fill={isSaved ? STEPPER_TINT : 'transparent'} />
+          <Text className="text-[11.5px] font-semibold" style={{ color: STEPPER_TINT }}>
+            {isSaved ? 'Saved for later' : 'Save for later'}
+          </Text>
+        </Pressable>
       </View>
 
-      <View className="flex-row items-center gap-1.5 rounded-xl border border-[#155dfc] p-1 bg-white">
+      <View className="flex-row items-center gap-1.5 self-center rounded-xl border border-[#155dfc] p-1 bg-white">
         <Pressable
           onPress={() => decrementItem(item.id)}
           hitSlop={6}
@@ -78,7 +122,7 @@ export function CartItemRow({ item }: Props) {
         </Pressable>
       </View>
 
-      <View className="items-end gap-0.5">
+      <View className="items-end gap-0.5 self-center">
         {originalLineTotal && <Text className="text-xs text-ink/40 line-through font-semibold">₹{originalLineTotal}</Text>}
         <Text className="text-[16px] font-semibold tabular-nums text-ink">₹{lineTotal}</Text>
       </View>

@@ -1,19 +1,11 @@
 // Order card. Real white card on PurchaseScreen's own #FCFCFB background.
 //
-// Header is title-only now — no status icon bubble, no store-name
-// subheading — per an explicit ask. Just a plain status message ("On the
-// way" / "Delivered" / "Cancelled"), colored per status, no estimated
-// clock time (that needed avgPrepMinutes math nobody asked to see spelled
-// out here) and no icon glyph competing with it.
-//
-// Item row is now a real expand/collapse (useState) — tapping "Items:"
-// reveals every item's own name + photo below it, tapping again collapses
-// it. This is local, per-card UI state, not new data. Layout order (photo
-// stack + count, THEN a divider, THEN the "Items:" toggle row) matches a
-// later hand-drawn wireframe exactly — the divider sits above "Items:",
-// not below the expanded list the way an earlier pass had it, and the
-// expand chevron lives on "Items:" itself rather than on the thumbnail
-// row above it.
+// Status lives as a tinted pill in the card's own top-right corner, level
+// with the photo stack. The arrow-right on the "Arriving on…" line is no
+// longer an inline expand/collapse toggle — tapping the card (or the
+// arrow, same handler) now always opens TrackOrderScreen, live order or
+// finished one, which is where the real item list lives now (an explicit
+// ask to move it off this card entirely, not just visually declutter it).
 //
 // The star-rating row only renders for delivered orders — real submission
 // now (RateOrderModal -> POST /reviews, backend/src/routes/reviews.ts).
@@ -23,19 +15,19 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight01Icon, ChevronDownIcon, ChevronUpIcon, StarIcon } from '@hugeicons/core-free-icons';
+import { ArrowRight02Icon, StarIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
-import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { fetchReviewForOrder } from '../../../api/reviews';
+import { estimateDeliveryTime, formatEta } from '../../../utils/estimateDelivery';
 import type { PurchaseOrder } from '../data';
 import { ItemThumbnailStack } from './ItemThumbnailStack';
 import { RateOrderModal } from './RateOrderModal';
 
 interface Props {
   order: PurchaseOrder;
-  onPress?: () => void;
+  onPress: () => void;
 }
 
 function statusFor(order: PurchaseOrder) {
@@ -45,9 +37,20 @@ function statusFor(order: PurchaseOrder) {
 }
 
 export function OrderRow({ order, onPress }: Props) {
-  const [expanded, setExpanded] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const status = statusFor(order);
+  const isFinished = order.status === 'delivered' || order.status === 'cancelled';
+
+  // Live orders show a real forward-looking ETA; a finished order instead
+  // shows when it actually finished — order.etaLabel already carries that
+  // real terminal timestamp (data.ts's own note), no separate computation
+  // needed for that branch.
+  const arrivingLabel = isFinished
+    ? order.etaLabel
+    : `Arriving on ${formatEta(estimateDeliveryTime(order.placedAtIso, order.avgPrepMinutes))}`;
+
+  const placedAt = new Date(order.placedAtIso);
+  const placedAtLabel = `${placedAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, ${placedAt.toLocaleDateString('en-IN', { weekday: 'short' })} · ${placedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
 
   const { data: existingReview, refetch: refetchReview } = useQuery({
     queryKey: ['review', order.orderId],
@@ -56,43 +59,40 @@ export function OrderRow({ order, onPress }: Props) {
   });
 
   return (
-    <View className="mb-3 rounded-2xl bg-[#F8F8F6] p-3.5">
-      <Pressable onPress={onPress} disabled={!onPress} className="flex-row items-center gap-2.5">
-        <Text className="flex-1 text-[16px] font-semibold" style={{ color: status.color }} numberOfLines={1}>
-          {status.headline}
-        </Text>
-        {onPress && <AppIcon icon={ArrowRight01Icon} size={15} color={`${colors.ink}55`} />}
-      </Pressable>
+    <View className="mb-3 rounded-2xl bg-[#F7F8FA] p-3.5">
+      {/* Row 1: photo stack + item count on the left, the status pill
+          pinned to the right end of the SAME line. Row 2: "Arriving on…"
+          on the left, the expand arrow pinned to the right end of THAT
+          line instead — not stacked under the pill — so the arrow reads
+          as acting on the arrival info specifically, one row down from
+          status the way the reference lays it out. */}
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-2.5">
+          <ItemThumbnailStack items={order.items} />
+          <Text className="text-[13px] font-semibold text-ink/70">
+            {order.items.length} item{order.items.length === 1 ? '' : 's'}
+          </Text>
+        </View>
 
-      <View className="mt-3 flex-row items-center gap-2.5">
-        <ItemThumbnailStack items={order.items} />
-        <Text className="flex-1 text-[13px] font-semibold text-ink/70">
-          {order.items.length} item{order.items.length === 1 ? '' : 's'}
-        </Text>
+        <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: `${status.color}1A` }}>
+          <Text className="text-[12.5px] font-semibold" style={{ color: status.color }} numberOfLines={1}>
+            {status.headline}
+          </Text>
+        </View>
       </View>
 
-      <View className="my-2.5 h-px bg-black/[0.06]" />
-
-      <Pressable onPress={() => setExpanded((v) => !v)} className="flex-row items-center justify-between">
-        <Text className="text-[13px] font-semibold text-ink/70">Items:</Text>
-        <AppIcon icon={expanded ? ChevronUpIcon : ChevronDownIcon} size={16} color={`${colors.ink}55`} strokeWidth={1.8} />
-      </Pressable>
-
-      {expanded && (
-        <View className="mt-2.5 gap-2 rounded-xl bg-[#FAFAF9] p-2.5">
-          {order.items.map((item) => (
-            <View key={item.name} className="flex-row items-center gap-2.5">
-              <View className="h-8 w-8 overflow-hidden rounded-lg bg-gray-100">
-                <Image source={{ uri: item.imageUri }} className="h-full w-full" resizeMode="cover" />
-              </View>
-              <Text className="flex-1 text-[13px] font-medium text-ink/80" numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text className="text-[12px] font-bold text-ink/40">x{item.quantity}</Text>
-            </View>
-          ))}
+      <Pressable onPress={onPress} className="mt-3 flex-row items-start justify-between gap-3">
+        <View className="flex-1">
+          <Text className="text-[13.5px] font-semibold text-ink/80" numberOfLines={1}>
+            {arrivingLabel}
+          </Text>
+          <Text className="mt-0.5 text-[12px] font-medium text-ink/45">{placedAtLabel}</Text>
         </View>
-      )}
+
+        <View className="h-8 w-8 items-center justify-center rounded-full bg-white">
+          <AppIcon icon={ArrowRight02Icon} size={16} color={colors.ink} strokeWidth={1.8} />
+        </View>
+      </Pressable>
 
       {order.status === 'delivered' && (
         <Pressable

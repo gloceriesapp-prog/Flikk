@@ -164,7 +164,14 @@ ordersRouter.get('/', requireAuth, requireRole('customer'), async (req: AuthedRe
   try {
     const { data, error } = await supabase
       .from('orders')
-      .select('*, order_items(*, products(name, image_url)), stores(name, avg_prep_minutes)')
+      // trips(total, delivery_fee) — only non-null for a leg of a real
+      // multi-store trip (orders.trip_id FK); PurchaseScreen groups these
+      // by trip_id into one combined card and needs the trip's own real
+      // combined total, not a sum of each leg's own total (which is
+      // deliberately just item_total with delivery_fee=0 per leg —
+      // migrations/015_create_trip_orders_fn.sql's own note — the real
+      // combined charge lives only on trips.total).
+      .select('*, order_items(*, products(name, image_url, unit)), stores(name, avg_prep_minutes), trips(total, delivery_fee)')
       .eq('customer_id', req.user!.id)
       .order('placed_at', { ascending: false });
     if (error) throw error;
@@ -240,7 +247,7 @@ ordersRouter.get('/:id', requireAuth, async (req: AuthedRequest, res, next) => {
     // here is filtered defensively so a route bug can't leak cross-role data.
     const { data, error } = await supabase
       .from('orders')
-      .select('*, order_items(*, products(name, image_url)), stores(name, avg_prep_minutes)')
+      .select('*, order_items(*, products(name, image_url, unit)), stores(name, avg_prep_minutes)')
       .eq('id', req.params.id)
       .single();
     if (error || !data) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');

@@ -162,31 +162,18 @@ export function CartScreen({ navigation }: Props) {
           back in the stack (e.g. HomeScreen) can leave it set to "light" —
           expo-status-bar's style is a single global native call, not scoped
           per screen, so it doesn't reset itself on navigation. This local
-          override guarantees dark (visible) icons on Cart's white header
+          override guarantees dark (visible) icons on Cart's header
           regardless of what the previous screen left it as. */}
       <StatusBar style="dark" />
 
-      <View className="bg-white pt-safe">
-        <View className="flex-row items-center px-2 pb-2 pt-2">
-          <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
+      <View className="bg-[#F1F2F4] pt-safe">
+        <View className="flex-row items-center px-4 pb-2 pt-2">
+          <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
             <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
           </Pressable>
-          <View className="flex-1 pl-1">
-            <Text className="text-[17px] font-semibold text-ink">Checkout</Text>
-            {/* {items.length > 0 ? (
-              savings > 0 ? (
-                <Text className="text-[13.5px] font-semibold text-success">
-                  Saved ₹{savings.toFixed(0)} ({savingsPercent}% off)
-                </Text>
-              ) : (
-                <Text className="text-[12.5px] font-medium text-ink/45">
-                  {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'} ready to go
-                </Text>
-              )
-            ) : null} */}
-          </View>
+          <Text className="flex-1 text-center text-[17px] font-semibold text-ink">Checkout</Text>
           {items.length > 0 ? (
-            <Pressable onPress={() => setIsMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center">
+            <Pressable onPress={() => setIsMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
               <AppIcon icon={MoreVerticalIcon} size={22} color={colors.ink} />
             </Pressable>
           ) : (

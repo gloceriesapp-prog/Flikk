@@ -108,7 +108,7 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
 
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('phone, name, birthday, is_rejected')
+      .select('phone, name, birthday, is_rejected, created_at')
       .eq('id', req.user!.id)
       .single();
     if (userError) throw userError;
@@ -140,6 +140,10 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       phone: user.phone,
       name: user.name,
       birthday: user.birthday,
+      // Real users.created_at — PurchaseScreen's order-time filter builds
+      // its year list (2024, 2023, ...) down to whichever year this
+      // account actually started in, not a hardcoded lookback window.
+      created_at: user.created_at,
     });
   } catch (err) {
     next(err);

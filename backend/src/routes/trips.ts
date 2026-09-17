@@ -163,7 +163,7 @@ tripsRouter.get('/:id', requireAuth, requireRole('customer'), async (req: Authed
 
     const { data: orders, error: ordersErr } = await supabase
       .from('orders')
-      .select('*, order_items(*, products(name, image_url)), stores(name, avg_prep_minutes)')
+      .select('*, order_items(*, products(name, image_url, unit)), stores(name, avg_prep_minutes)')
       .eq('trip_id', trip.id)
       .order('placed_at', { ascending: true });
     if (ordersErr) throw ordersErr;

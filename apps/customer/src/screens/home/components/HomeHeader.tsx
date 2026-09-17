@@ -71,7 +71,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { CollapsibleHeaderTop, COLLAPSE_DISTANCE } from './CollapsibleHeaderTop';
 import { HeaderBackgroundGradient } from './HeaderBackgroundGradient';
-// import { HeaderRays } from './HeaderRays';
+import { HeaderRays } from './HeaderRays';
 import { HomeSearchBar } from './HomeSearchBar';
 import { CategoryTabs } from './CategoryTabs';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
@@ -154,6 +154,7 @@ export function HomeHeader({
           {/* Hidden per an explicit ask ("white overlay like a spotlight")
               — the diagonal light-ray decorative overlay. Not deleted,
               just not rendered. <HeaderRays /> */}
+              <HeaderRays />
         </HeaderBackgroundGradient>
       </Animated.View>
 

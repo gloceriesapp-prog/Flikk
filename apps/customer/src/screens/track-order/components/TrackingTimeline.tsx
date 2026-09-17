@@ -31,7 +31,7 @@ export function TrackingTimeline({ order }: Props) {
 
   return (
     <View className="w-full">
-      <Text className="mb-4 text-lg font-semibold text-ink">Tracking Timeline</Text>
+      <Text className="mb-4 text-[16px] font-semibold text-ink">Tracking Timeline</Text>
 
       {order.status === 'cancelled' && (
         <Text className="mb-4 text-sm font-medium text-danger">This order was cancelled.</Text>

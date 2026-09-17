@@ -1,8 +1,9 @@
 // The rider-handoff card — reference is a familiar food-delivery app
-// pattern (status line, rider row, action buttons, expandable order
-// details), but every field here is real: order.riders (name + phone, a
-// second real lookup on GET /orders/:id — see api/orders.ts's own note)
-// and order.order_items (already fetched for this same order). No
+// pattern (status line, rider row, action buttons), but every field here
+// is real: order.riders (name + phone, a second real lookup on
+// GET /orders/:id — see api/orders.ts's own note). The item list this
+// card used to expand inline now lives in its own OrderItemsCard, sitting
+// right below OrderInfoCard on TrackOrderScreen — no
 // fabricated rating, delivery count, or "Top X" badge — the riders table
 // has no such columns (backend/migrations/001_init.sql), and inventing a
 // specific number about a real person is a different kind of wrong than a
@@ -27,7 +28,7 @@
 // to, and an unlabelled no-op here would look broken, not "coming soon".
 
 import { useState } from 'react';
-import { ArrowDown01Icon, Call02Icon, Message01Icon, StarIcon } from '@hugeicons/core-free-icons';
+import { Call02Icon, Message01Icon, StarIcon } from '@hugeicons/core-free-icons';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import type { ApiOrder } from '../../../api/orders';
@@ -56,13 +57,12 @@ function ActionButton({ icon, label, onPress }: { icon: Parameters<typeof AppIco
   return (
     <Pressable onPress={onPress} className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-gray-100 py-3">
       <AppIcon icon={icon} size={16} color={colors.ink} />
-      <Text className="text-sm font-medium text-ink">{label}</Text>
+      <Text className="text-[15px] font-semibold text-ink">{label}</Text>
     </Pressable>
   );
 }
 
 export function DeliveryRiderCard({ order }: Props) {
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [avatarUri, setAvatarUri] = useState(RIDER_AVATAR_URI);
   const isDummy = !order.riders;
   const rider = order.riders ?? DUMMY_RIDER;
@@ -73,7 +73,7 @@ export function DeliveryRiderCard({ order }: Props) {
 
   return (
     <View className="w-full rounded-3xl bg-white p-5">
-      <Text className="text-[13px] font-medium leading-6 text-ink/70">
+      <Text className="text-[14.5px] font-medium leading-6 text-ink/90">
         {rider.name} picked up your order from {storeName} and is headed your way.
       </Text>
 
@@ -84,12 +84,12 @@ export function DeliveryRiderCard({ order }: Props) {
           className="h-11 w-11 rounded-full bg-gray-100"
         />
         <View>
-          <Text className="text-base font-medium text-ink">{rider.name}</Text>
+          <Text className="text-[14px] font-medium text-ink">{rider.name}</Text>
           {isDummy ? (
             <View className="mt-0.5 flex-row items-center gap-1">
               <AppIcon icon={StarIcon} size={13} color={colors.gold} fill={colors.gold} />
-              <Text className="text-sm font-medium text-ink/60">{DUMMY_RIDER.rating}</Text>
-              <Text className="text-sm font-medium text-ink/60"> · {DUMMY_RIDER.deliveries.toLocaleString('en-IN')} deliveries</Text>
+              <Text className="text-[12.5px] font-medium text-ink/60">{DUMMY_RIDER.rating}</Text>
+              <Text className="text-[12.5px] font-medium text-ink/60"> · {DUMMY_RIDER.deliveries.toLocaleString('en-IN')} deliveries</Text>
             </View>
           ) : (
             <Text className="text-sm font-medium text-ink/40">{rider.phone}</Text>
@@ -101,29 +101,6 @@ export function DeliveryRiderCard({ order }: Props) {
         <ActionButton icon={Call02Icon} label="Call" onPress={() => Linking.openURL(`tel:${rider.phone}`)} />
         <ActionButton icon={Message01Icon} label="Chat" onPress={() => Linking.openURL(`https://wa.me/${digitsOnly(rider.phone)}`)} />
       </View>
-
-      <Pressable
-        onPress={() => setDetailsOpen((open) => !open)}
-        className="mt-3 flex-row items-center justify-center gap-1.5 rounded-2xl bg-gray-100 py-3.5"
-      >
-        <Text className="text-base font-medium text-ink">Order details</Text>
-        <View style={{ transform: [{ rotate: detailsOpen ? '180deg' : '0deg' }] }}>
-          <AppIcon icon={ArrowDown01Icon} size={16} color={colors.ink} />
-        </View>
-      </Pressable>
-
-      {detailsOpen && (
-        <View className="mt-3 gap-2 border-t border-gray-100 pt-3">
-          {order.order_items.map((item) => (
-            <View key={item.id} className="flex-row items-center justify-between">
-              <Text className="flex-1 text-sm font-medium text-ink/70" numberOfLines={1}>
-                {item.quantity} x {item.products?.name ?? 'Item'}
-              </Text>
-              <Text className="text-sm font-semibold text-ink">₹{item.unit_price_at_order * item.quantity}</Text>
-            </View>
-          ))}
-        </View>
-      )}
     </View>
   );
 }

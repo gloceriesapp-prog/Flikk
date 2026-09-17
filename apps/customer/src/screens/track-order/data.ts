@@ -8,7 +8,7 @@
 // had a live map with a moving vehicle icon; that part was intentionally
 // left out, not missed.
 
-import { CheckmarkCircle02Icon, DeliveryTruck01Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
+import { DeliveryTruck01Icon, PackageIcon, Store01Icon, Tick01Icon } from '@hugeicons/core-free-icons';
 import type { IconSvgElement } from '@hugeicons/react-native';
 
 export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered';
@@ -21,7 +21,7 @@ export interface StageMeta {
 }
 
 export const ORDER_STAGES: StageMeta[] = [
-  { status: 'placed', title: 'Order Placed', subtitle: "We've received your order", icon: CheckmarkCircle02Icon },
+  { status: 'placed', title: 'Order Placed', subtitle: "We've received your order", icon: Tick01Icon },
   { status: 'packed', title: 'Packed', subtitle: 'Store has packed your items', icon: Store01Icon },
   { status: 'out_for_delivery', title: 'Out for Delivery', subtitle: 'Your rider is on the way', icon: DeliveryTruck01Icon },
   { status: 'delivered', title: 'Delivered', subtitle: 'Estimated delivery', icon: PackageIcon },

@@ -106,17 +106,17 @@ export function OrderInfoCard({ order }: Props) {
   return (
     <>
       <View className="w-full rounded-3xl bg-white p-5">
-        <Text className="text-base font-medium tracking-wide text-ink">{label}</Text>
+        <Text className="text-[15.5px] font-medium text-ink">{label}</Text>
 
         <View className="mt-2 flex-row items-center gap-2.5">
           {isActive && (
             <View className={`rounded-full px-2.5 py-1 ${isDelayed ? 'bg-gold/15' : 'bg-success/15'}`}>
-              <Text className={`text-xs font-medium ${isDelayed ? 'text-gold' : 'text-success'}`}>
+              <Text className={`text-[12.5px] font-medium ${isDelayed ? 'text-gold' : 'text-success'}`}>
                 {isDelayed ? 'Slight delay' : 'On time'}
               </Text>
             </View>
           )}
-          <Text className={`text-xl font-semibold ${isCancelled ? 'text-danger' : 'text-ink'}`}>{timeText}</Text>
+          <Text className={`text-[18px] font-semibold ${isCancelled ? 'text-danger' : 'text-ink'}`}>{timeText}</Text>
           <Pressable onPress={() => setIsReasonOpen((open) => !open)} hitSlop={10} className="h-6 w-6 items-center justify-center">
             <AppIcon icon={InformationCircleIcon} size={18} color={colors.ink + '80'} />
           </Pressable>
@@ -126,12 +126,12 @@ export function OrderInfoCard({ order }: Props) {
       {isReasonOpen && (
         <View className="w-full rounded-3xl bg-white p-5">
           <View className="flex-row items-center justify-between">
-            <Text className="text-xs font-bold uppercase tracking-wide text-ink/40">{reasonTitle}</Text>
+            <Text className="text-[15px] font-semibold text-ink">{reasonTitle}</Text>
             <View className={`h-8 w-8 items-center justify-center rounded-full ${toneBg}`}>
               <AppIcon icon={toneIcon} size={16} color={toneFg} />
             </View>
           </View>
-          <Text className="mt-1.5 text-sm font-medium leading-5 text-ink/80">{reasonMessage}</Text>
+          <Text className="mt-1.5 text-[14.5px] font-medium leading-5 text-ink/80">{reasonMessage}</Text>
         </View>
       )}
     </>

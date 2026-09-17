@@ -21,7 +21,7 @@ export function refreshSession(refreshToken: string): Promise<{ access_token: st
 
 // AddressFormScreen's own phone prefill (the account's own verified number
 // is the sensible default recipient contact — see that screen's own note).
-export function fetchAccountInfo(): Promise<{ phone: string; name: string | null }> {
+export function fetchAccountInfo(): Promise<{ phone: string; name: string | null; created_at: string }> {
   return apiRequest('/auth/me');
 }
 

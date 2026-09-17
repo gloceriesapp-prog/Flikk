@@ -312,16 +312,21 @@ export function CheckoutScreen({ navigation }: Props) {
   return (
     <View className="flex-1 bg-[#F1F2F4]">
       <CheckoutHeader onBack={() => navigation.goBack()} itemCount={items.length} total={grandTotal} />
-      <TotalAmountCard items={items} totalPrice={grandTotal} />
       {/* <RewardPointsBanner totalPrice={grandTotal} /> */}
 
-      {/* KeyboardAwareScrollView, not a plain ScrollView — same fix as
-          AddressFormScreen's own note: a plain ScrollView never scrolls a
-          specific focused field into view, only "Pay via UPI ID"'s own
-          text input sits low enough on this screen to get covered by the
-          keyboard once focused. This auto-scrolls it above the keyboard
-          instead, and keeps the rest of the list freely scrollable either way. */}
-      <KeyboardAwareScrollView className="flex-1" contentContainerClassName="px-5 pb-8 pt-1" bottomOffset={40}>
+      {/* Only the header above stays fixed — TotalAmountCard used to sit
+          outside this scroll view (visually "stuck" under the header,
+          per an explicit ask that it shouldn't be) and now scrolls away
+          with everything else instead. KeyboardAwareScrollView, not a
+          plain ScrollView — same fix as AddressFormScreen's own note: a
+          plain ScrollView never scrolls a specific focused field into
+          view, only "Pay via UPI ID"'s own text input sits low enough on
+          this screen to get covered by the keyboard once focused. This
+          auto-scrolls it above the keyboard instead, and keeps the rest
+          of the list freely scrollable either way. */}
+      <KeyboardAwareScrollView className="flex-1" contentContainerClassName="px-5 pb-8 pt-4" bottomOffset={40}>
+        <TotalAmountCard items={items} totalPrice={grandTotal} />
+
         <PaymentMethodList
           method={paymentMethod}
           onSelect={setPaymentMethod}

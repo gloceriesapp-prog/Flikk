@@ -34,7 +34,7 @@ export interface ApiOrderItem {
   product_id: string;
   quantity: number;
   unit_price_at_order: number;
-  products: { name: string; image_url: string | null } | null;
+  products: { name: string; image_url: string | null; unit: string } | null;
 }
 
 export interface ApiOrder {
@@ -68,6 +68,20 @@ export interface ApiOrder {
   // fetched the stores join at all. Absent (undefined) on GET /orders and
   // GET /orders/:id, which use stores.avg_prep_minutes instead.
   avg_prep_minutes?: number | null;
+  // Real orders.trip_id (migrations/014_trips.sql) — null for a plain
+  // single-store order, shared by every real per-store order row born
+  // from the same multi-store checkout. PurchaseScreen groups GET /orders'
+  // own flat list by this so one trip shows as one order card, not N.
+  trip_id: string | null;
+  // Only present on GET /orders' list response (that route's own trips(
+  // total, delivery_fee) join) — absent (undefined) on GET /orders/:id,
+  // which doesn't need it (TrackOrderScreen's isTrip branch fetches the
+  // trip separately via fetchTrip instead). Non-null alongside a real
+  // trip_id — the trip's own real combined total/delivery_fee. Each leg's
+  // own `total` above is deliberately just its item_total with
+  // delivery_fee 0 (backend's own note on why), so this is the one real
+  // source for what a multi-store trip actually charged in total.
+  trips?: { total: number; delivery_fee: number } | null;
 }
 
 export function createOrder(input: CreateOrderInput): Promise<ApiOrder> {

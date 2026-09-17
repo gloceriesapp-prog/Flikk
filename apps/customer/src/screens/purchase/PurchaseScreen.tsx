@@ -17,12 +17,14 @@
 // tap target for live orders (wired to TrackOrder), inert for past ones.
 //
 // Header redesign, same earlier ask: "Purchase" title stays centered,
-// PurchaseSearchBar (real search + filter icon) sits directly below it —
+// PurchaseSearchBar (real search + Filter button) sits directly below it —
 // only once there's actually something to search/filter (hasAnyOrder),
 // not on the empty state. Search matches store name or any item name
-// (both already on PurchaseOrder, no extra fetch); the filter icon opens
-// OrderStatusFilterSheet (All/Live/Past), a real filter over the same
-// status field the sort above uses.
+// (both already on PurchaseOrder, no extra fetch); the Filter button opens
+// OrderFilterSheet's two independent sections — order status (On the way/
+// Delivered/Cancelled) and order time (Last 30 days, then one entry per
+// real calendar year back to the account's own creation year, from GET
+// /auth/me's created_at).
 
 import { useEffect, useMemo, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
@@ -36,10 +38,12 @@ import { AppIcon } from '../../components/AppIcon';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { BrandFooter } from '../../components/BrandFooter';
 import { colors } from '../../theme/tokens';
+import { fetchAccountInfo } from '../../api/auth';
 import { fetchMyOrders } from '../../api/orders';
-import { mapApiOrder } from './data';
+import { groupOrdersByTrip } from '../../utils/tripLegs';
+import { mapOrderGroup } from './data';
 import { OrderRow } from './components/OrderRow';
-import { OrderStatusFilterSheet, type OrderStatusFilter } from './components/OrderStatusFilterSheet';
+import { OrderFilterSheet, type OrderStatusFilter, type OrderTimeFilter } from './components/OrderFilterSheet';
 import { PurchaseRecommendations } from './components/PurchaseRecommendations';
 import { PurchaseSearchBar } from './components/PurchaseSearchBar';
 import type { AppStackParamList } from '../../navigation/types';
@@ -51,11 +55,24 @@ const FEATURE_IMAGE_URI = 'https://i.pinimg.com/1200x/a1/dc/37/a1dc376c96e834e7a
 export function PurchaseScreen({ navigation }: Props) {
   const { data: fetchedOrders, isLoading, refetch } = useQuery({
     queryKey: ['my-orders'],
-    queryFn: async () => (await fetchMyOrders()).map(mapApiOrder),
+    // One card per trip, not one per real per-store order row — a
+    // multi-store checkout creates N real orders sharing one trip_id
+    // (backend/migrations/014_trips.sql), grouped here before mapping so
+    // Purchase's list shows exactly what the customer actually checked
+    // out with, once each.
+    queryFn: async () => groupOrdersByTrip(await fetchMyOrders()).map(mapOrderGroup),
   });
+
+  // Real account creation date (GET /auth/me's created_at) — OrderFilterSheet's
+  // own "Order time" year list runs from the current year down to this,
+  // never a hardcoded lookback window a brand-new account couldn't have
+  // orders spanning.
+  const { data: accountInfo } = useQuery({ queryKey: ['account-info'], queryFn: fetchAccountInfo });
+  const accountCreatedYear = accountInfo ? new Date(accountInfo.created_at).getFullYear() : new Date().getFullYear();
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('all');
+  const [timeFilter, setTimeFilter] = useState<OrderTimeFilter>('all');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [showAllOrders, setShowAllOrders] = useState(false);
   const VISIBLE_ORDER_LIMIT = 5;
@@ -74,19 +91,39 @@ export function PurchaseScreen({ navigation }: Props) {
 
   const hasAnyOrder = (fetchedOrders ?? []).length > 0;
 
+  // Order status and order time are two independent filters (both can be
+  // active at once, e.g. "Delivered" + "2025") — matches OrderFilterSheet's
+  // own two separate sections, not one combined picker.
+  function matchesStatusFilter(status: string): boolean {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'on_the_way') return status === 'out_for_delivery';
+    return status === statusFilter;
+  }
+
+  function matchesTimeFilter(placedAtIso: string): boolean {
+    if (timeFilter === 'all') return true;
+    const placedAt = new Date(placedAtIso);
+    if (timeFilter === 'last_30_days') {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return placedAt >= thirtyDaysAgo;
+    }
+    return placedAt.getFullYear() === timeFilter;
+  }
+
   const filteredOrders = useMemo(() => {
     const trimmedQuery = query.trim().toLowerCase();
     return (fetchedOrders ?? []).filter((order) => {
-      const matchesFilter =
-        statusFilter === 'all' || (statusFilter === 'live' ? isLive(order.status) : !isLive(order.status));
-      if (!matchesFilter) return false;
+      if (!matchesStatusFilter(order.status)) return false;
+      if (!matchesTimeFilter(order.placedAtIso)) return false;
       if (!trimmedQuery) return true;
       return (
         order.storeName.toLowerCase().includes(trimmedQuery) ||
         order.items.some((item) => item.name.toLowerCase().includes(trimmedQuery))
       );
     });
-  }, [fetchedOrders, query, statusFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedOrders, query, statusFilter, timeFilter]);
 
   // One flat list now, not separate Live/Past sections — current
   // (not-yet-delivered) orders sorted to the top, done ones to the
@@ -157,7 +194,7 @@ export function PurchaseScreen({ navigation }: Props) {
                 setShowAllOrders(false);
               }}
               onOpenFilter={() => setIsFilterSheetOpen(true)}
-              isFilterActive={statusFilter !== 'all'}
+              isFilterActive={statusFilter !== 'all' || timeFilter !== 'all'}
             />
           </View>
         )}
@@ -177,10 +214,14 @@ export function PurchaseScreen({ navigation }: Props) {
               <OrderRow
                 key={order.orderId}
                 order={order}
-                onPress={
-                  isLive(order.status)
-                    ? () => navigation.navigate('TrackOrder', { orderId: order.orderId, paymentMethodLabel: 'UPI' })
-                    : undefined
+                // Every order opens Track Order now, live or finished —
+                // the card itself no longer shows an items list inline
+                // (an explicit ask), so this is the only place left to
+                // see what was actually in a past order too, not just a
+                // live one. TrackOrderScreen's own timeline already reads
+                // fine for a terminal (delivered/cancelled) status.
+                onPress={() =>
+                  navigation.navigate('TrackOrder', { orderId: order.orderId, paymentMethodLabel: 'UPI', isTrip: order.isTrip })
                 }
               />
             ))}
@@ -239,11 +280,17 @@ export function PurchaseScreen({ navigation }: Props) {
 
       <BottomNavBar hidden={navHidden} />
 
-      <OrderStatusFilterSheet
+      <OrderFilterSheet
         visible={isFilterSheetOpen}
-        value={statusFilter}
-        onSelect={(filter) => {
+        statusValue={statusFilter}
+        timeValue={timeFilter}
+        accountCreatedYear={accountCreatedYear}
+        onSelectStatus={(filter) => {
           setStatusFilter(filter);
+          setShowAllOrders(false);
+        }}
+        onSelectTime={(filter) => {
+          setTimeFilter(filter);
           setShowAllOrders(false);
         }}
         onClose={() => setIsFilterSheetOpen(false)}

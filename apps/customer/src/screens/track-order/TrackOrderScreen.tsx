@@ -14,12 +14,25 @@
 // Trip-aware (route.params.isTrip, set by CheckoutScreen's own isMultiStore
 // branch): a multi-store checkout is one trip made of N real per-store
 // orders (backend/migrations/014_trips.sql) — this screen fetches the
-// combined trip (api/trips.ts's fetchTrip) instead of a single order, and
-// renders one OrderInfoCard/DeliveryRiderCard/TrackingTimeline PER LEG,
-// each showing that store's own real, independent status, under one
-// shared trip banner (one payment, one delivery fee — trips.total, not
-// duplicated per leg). A single-store order keeps using fetchOrder exactly
-// as before this existed.
+// combined trip (api/trips.ts's fetchTrip) instead of a single order.
+//
+// One combined card now, not one per store leg (each leg used to get its
+// own OrderInfoCard/DeliveryRiderCard/OrderItemsCard/TrackingTimeline,
+// which is real internal accuracy the customer doesn't actually need to
+// see — a customer who ordered from two stores in one trip cares "where's
+// my stuff", not "which of the two stores is currently packed vs still
+// placed"). The store names each leg came from still show up top, in
+// plain text — real, not hidden, just not the whole screen's structure.
+//
+// Status/ETA/rider/timeline are all driven by the REPRESENTATIVE leg —
+// the one furthest behind (lowest stage in the real placed/packed/
+// out_for_delivery/delivered order, backend/src/lib/orderStateMachine.ts).
+// That's a real, honest choice, not an average or a guess: a rider doing
+// a multi-stop pickup can't be "out for delivery" for the trip as a whole
+// until every store's leg is at least that far along, so whichever leg is
+// least advanced is genuinely what's gating the whole trip right now.
+// Items are the real union of every leg's own order_items — nothing
+// invented, just combined into one list instead of N separate ones.
 
 import { ArrowLeft01Icon, CustomerService01Icon, Store01Icon } from '@hugeicons/core-free-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -27,10 +40,12 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { fetchOrder } from '../../api/orders';
+import { fetchOrder, type ApiOrder } from '../../api/orders';
 import { fetchTrip } from '../../api/trips';
+import { joinStoreNames, representativeLeg } from '../../utils/tripLegs';
 import { DeliveryRiderCard } from './components/DeliveryRiderCard';
 import { OrderInfoCard } from './components/OrderInfoCard';
+import { OrderItemsCard } from './components/OrderItemsCard';
 import { TrackingTimeline } from './components/TrackingTimeline';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -69,16 +84,16 @@ export function TrackOrderScreen({ navigation, route }: Props) {
   const legs = trip?.orders ?? [];
 
   return (
-    <View className="flex-1 bg-[#FAFAFA]">
-      <View className="flex-row items-center bg-white px-2 pb-2 pt-safe-offset-2">
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
+    <View className="flex-1 bg-[#F1F2F4]">
+      <View className="flex-row items-center bg-[#F1F2F4] px-4 pb-2 pt-safe-offset-2">
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
-        <Text className="flex-1 text-center text-xl font-semibold text-ink">Track Order</Text>
+        <Text className="flex-1 text-center text-[17px] font-semibold text-ink">Track Order</Text>
         {/* No support screen exists yet — wire this to a real destination
             once one does, same no-op ProfileScreen's own Support tile uses
             today. */}
-        <Pressable onPress={() => {}} hitSlop={12} className="h-11 w-11 items-center justify-center">
+        <Pressable onPress={() => {}} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={CustomerService01Icon} size={22} color={colors.ink} />
         </Pressable>
       </View>
@@ -88,57 +103,69 @@ export function TrackOrderScreen({ navigation, route }: Props) {
           <ActivityIndicator color={colors.ink} />
         </View>
       ) : isTrip ? (
-        <ScrollView className="flex-1" contentContainerClassName="items-center gap-5 px-5 pb-8 pt-4">
-          {/* One combined banner — one payment, one delivery fee for the
-              whole trip (trip.total/trip.delivery_fee, never duplicated
-              per leg — backend/src/lib/trips.ts's own calcTripTotal), even
-              though each store below tracks its own real progress
-              independently. */}
-          <View className="w-full gap-1 rounded-3xl bg-lime-soft p-5">
-            <Text className="text-xs font-bold uppercase tracking-wide text-lime-deep">
-              {legs.length}-store trip · one delivery
-            </Text>
-            <Text className="text-2xl font-semibold text-ink">₹{trip!.total.toFixed(0)}</Text>
-            <Text className="text-sm font-medium text-ink/50">
-              Includes one ₹{trip!.delivery_fee.toFixed(0)} delivery fee for every store below.
-            </Text>
-          </View>
+        (() => {
+          const leg = representativeLeg(legs);
+          const storeNames = legs.map((l) => l.stores?.name ?? 'Store');
+          // Real union of every leg's own order_items, combined into the
+          // one items card — leg's other fields (id, placed_at, etc.)
+          // ride along unchanged since OrderItemsCard only ever reads
+          // order.order_items.
+          const combinedOrder: ApiOrder = { ...leg, order_items: legs.flatMap((l) => l.order_items) };
 
-          {legs.map((leg, index) => (
-            <View key={leg.id} className="w-full gap-3">
-              <View className="flex-row items-center gap-2 px-1">
-                <AppIcon icon={Store01Icon} size={15} color={colors.ink} />
-                <Text className="text-[13px] font-bold text-ink" numberOfLines={1}>
-                  Stop {index + 1} of {legs.length} · {leg.stores?.name ?? 'Store'}
+          return (
+            <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
+              {/* One combined banner — one payment, one delivery fee for
+                  the whole trip (trip.total/trip.delivery_fee, never
+                  duplicated per leg — backend/src/lib/trips.ts's own
+                  calcTripTotal). Store names sit right here, up top, in
+                  plain text — real transparency about this being a
+                  multi-store trip, without turning the rest of the screen
+                  into N separate per-store sections. */}
+              <View className="w-full gap-2 rounded-3xl bg-lime-soft p-5">
+                {/* Translucent chip, not a solid one — this row is a label
+                    sitting on top of the banner, not another block of
+                    equal visual weight to the price below it. */}
+                <View className="flex-row items-center gap-1.5 self-start rounded-full bg-white/40 px-2.5 py-1">
+                  <AppIcon icon={Store01Icon} size={12} color={colors.ink + '99'} />
+                  <Text className="text-[11px] font-bold uppercase tracking-wide text-lime-deep" numberOfLines={1}>
+                    From {joinStoreNames(storeNames)}
+                  </Text>
+                </View>
+                <Text className="text-2xl font-semibold text-ink">₹{trip!.total.toFixed(0)}</Text>
+                <Text className="text-sm font-medium text-ink/50">
+                  {legs.length}-store trip · one delivery · ₹{trip!.delivery_fee.toFixed(0)} delivery fee
                 </Text>
               </View>
 
               <OrderInfoCard order={leg} />
               <DeliveryRiderCard order={leg} />
+              <OrderItemsCard order={combinedOrder} />
 
               <View className="w-full rounded-3xl bg-white p-5">
                 <TrackingTimeline order={leg} />
               </View>
-            </View>
-          ))}
 
-          <Text className="px-6 text-center text-sm font-medium text-gray-500">
-            {legs.every((leg) => leg.status === 'delivered')
-              ? "Thanks for shopping, we'll be here when you need us again."
-              : "We'll keep every store above updated as your trip moves along."}
-          </Text>
-        </ScrollView>
+              <Text className="mt-4 mb-6 px-6 text-center text-sm font-medium text-gray-500">
+                {legs.every((l) => l.status === 'delivered')
+                  ? "Thanks for shopping, we'll be here when you need us again."
+                  : "We'll keep this updated as your trip moves along."}
+              </Text>
+            </ScrollView>
+          );
+        })()
       ) : (
-        <ScrollView className="flex-1" contentContainerClassName="items-center gap-5 px-5 pb-8 pt-4">
+        <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
           <OrderInfoCard order={order!} />
 
           <DeliveryRiderCard order={order!} />
+
+          <OrderItemsCard order={order!} />
 
           <View className="w-full rounded-3xl bg-white p-5">
             <TrackingTimeline order={order!} />
           </View>
 
-          <Text className="px-6 text-center text-sm font-medium text-gray-500">
+          <Text className="mt-4 mb-6 px-6 text-center text-[13.5px] font-medium text-gray-500">
             {order!.status === 'delivered'
               ? "Thanks for shopping, we'll be here when you need us again."
               : "We'll keep this updated as your order moves along."}
