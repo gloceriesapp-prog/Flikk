@@ -102,7 +102,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     }
     const deliverySettings = await getDeliverySettings();
     const deliveryFee = calcDeliveryFee(itemTotal, deliverySettings);
-    const total = calcOrderTotal(itemTotal, deliveryFee, discountAmount);
+    const total = calcOrderTotal(itemTotal, deliveryFee, discountAmount, deliverySettings.handlingFee);
 
     // Supabase JS has no multi-statement transaction API; this is executed as a
     // Postgres function (create_order) to keep order + order_items atomic.

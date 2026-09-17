@@ -1,12 +1,12 @@
-// Server-authoritative delivery fee — the single delivery_settings row
-// (migrations/029_delivery_settings.sql), same one apps/admin's Settings
-// page edits and GET /delivery-settings (routes/deliverySettings.ts)
-// serves to the customer app for display. Fetched fresh per order/trip
-// creation (a settings change should take effect on the very next order,
-// not after some cache TTL) rather than trusting any fee the client sends
-// — same "never trust the client for money" rule routes/orders.ts and
-// routes/trips.ts already follow for everything else (item prices, promo
-// discounts).
+// Server-authoritative delivery + handling fees — the single
+// delivery_settings row (migrations/029/030), same one apps/admin's
+// Settings page edits and GET /delivery-settings (routes/
+// deliverySettings.ts) serves to the customer app for display. Fetched
+// fresh per order/trip creation (a settings change should take effect on
+// the very next order, not after some cache TTL) rather than trusting any
+// fee the client sends — same "never trust the client for money" rule
+// routes/orders.ts and routes/trips.ts already follow for everything else
+// (item prices, promo discounts).
 
 import { supabase } from '../db/supabase.js';
 
@@ -14,6 +14,7 @@ export interface DeliverySettings {
   flatDeliveryFee: number;
   freeDeliveryEnabled: boolean;
   freeDeliveryThreshold: number;
+  handlingFee: number;
 }
 
 export async function getDeliverySettings(): Promise<DeliverySettings> {
@@ -29,6 +30,7 @@ export async function getDeliverySettings(): Promise<DeliverySettings> {
     flatDeliveryFee: Number(data.flat_delivery_fee),
     freeDeliveryEnabled: data.free_delivery_enabled,
     freeDeliveryThreshold: Number(data.free_delivery_threshold),
+    handlingFee: Number(data.handling_fee),
   };
 }
 

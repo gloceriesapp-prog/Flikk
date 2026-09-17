@@ -101,7 +101,7 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       promoCodeId = promoResult.promoCodeId;
       discountAmount = promoResult.discountAmount;
     }
-    const total = calcOrderTotal(itemTotal, deliveryFee, discountAmount);
+    const total = calcOrderTotal(itemTotal, deliveryFee, discountAmount, deliverySettings.handlingFee);
 
     const { data: trip, error: rpcErr } = await supabase.rpc('create_trip_orders', {
       p_customer_id: req.user!.id,

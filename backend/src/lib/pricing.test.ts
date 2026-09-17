@@ -27,6 +27,14 @@ describe('pricing', () => {
     expect(calcOrderTotal(100, 25)).toBe(125);
   });
 
+  it('adds handling fee for order total when provided', () => {
+    expect(calcOrderTotal(100, 25, 0, 5)).toBe(130);
+  });
+
+  it('subtracts discount after adding delivery + handling fee', () => {
+    expect(calcOrderTotal(100, 25, 10, 5)).toBe(120);
+  });
+
   it('computes net payout as gross minus commission', () => {
     expect(calcNetPayout(1000, 150)).toBe(850);
   });
