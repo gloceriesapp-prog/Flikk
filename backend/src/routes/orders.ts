@@ -16,6 +16,7 @@ import { sendPushNotification } from '../lib/pushNotifications.js';
 import { lookupPromoForCheckout } from './promos.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
 import { rankRepeatPurchases, reorderByRank } from '../lib/buyItAgain.js';
+import { calcDeliveryFee, getDeliverySettings } from '../lib/deliverySettings.js';
 
 // Only these three transitions are ones the customer didn't just cause
 // themselves (they placed the order) or won't see reflected in the receipt
@@ -32,7 +33,6 @@ const CUSTOMER_STATUS_PUSH_COPY: Partial<Record<OrderStatus, { title: string; bo
 export const ordersRouter = Router();
 
 const COMMISSION_RATE = 0.15; // mid-band of PRD's 12-18%; store-specific rates are a later refinement
-const DELIVERY_FEE = 25;
 
 interface CreateOrderBody {
   store_id: string;
@@ -100,7 +100,9 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       promoCodeId = promoResult.promoCodeId;
       discountAmount = promoResult.discountAmount;
     }
-    const total = calcOrderTotal(itemTotal, DELIVERY_FEE, discountAmount);
+    const deliverySettings = await getDeliverySettings();
+    const deliveryFee = calcDeliveryFee(itemTotal, deliverySettings);
+    const total = calcOrderTotal(itemTotal, deliveryFee, discountAmount);
 
     // Supabase JS has no multi-statement transaction API; this is executed as a
     // Postgres function (create_order) to keep order + order_items atomic.
@@ -109,7 +111,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       p_store_id: body.store_id,
       p_address_id: addressId,
       p_item_total: itemTotal,
-      p_delivery_fee: DELIVERY_FEE,
+      p_delivery_fee: deliveryFee,
       p_commission_amount: commissionAmount,
       p_total: total,
       p_items: body.items.map((i) => ({
@@ -351,18 +353,30 @@ ordersRouter.patch(
             const { data: existingPayout } = await supabase.from('rider_earnings').select('id').in('order_id', siblingIds).limit(1);
             if (!existingPayout || existingPayout.length === 0) {
               const { data: trip } = await supabase.from('trips').select('delivery_fee').eq('id', order.trip_id).single();
+              // trip.delivery_fee is this trip's OWN stored fee (captured
+              // at creation, same historical-value principle as the
+              // single-store path above) — `?? 0` only guards a trip
+              // lookup that somehow found no row, never an actual payout
+              // amount in practice.
               await supabase.from('rider_earnings').insert({
                 rider_id: req.user!.id,
                 order_id: order.id,
-                amount: trip?.delivery_fee ?? DELIVERY_FEE,
+                amount: trip?.delivery_fee ?? 0,
               });
             }
           }
         } else {
+          // This order's OWN stored delivery_fee (captured at order-
+          // creation time, orders.delivery_fee) — not a live re-fetch of
+          // today's rate. If a delivery-fee change happens between this
+          // order being placed and delivered, the rider is still paid
+          // whatever this specific order actually charged, same principle
+          // as order_items.unit_price_at_order never drifting with a
+          // product's current price.
           await supabase.from('rider_earnings').insert({
             rider_id: req.user!.id,
             order_id: order.id,
-            amount: DELIVERY_FEE,
+            amount: updated.delivery_fee,
           });
         }
       }
