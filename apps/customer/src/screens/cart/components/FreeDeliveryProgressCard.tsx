@@ -1,13 +1,15 @@
 // Sits right below YouMayAlsoLikeRow, above BillDetailsCard — a progress
-// bar toward FREE_DELIVERY_THRESHOLD (same constant BillDetailsCard reads
-// to actually waive CART_DELIVERY_FEE, so this card's claim and the real
-// fee waiver can't drift apart). Below threshold: "Add ₹X more" with a
-// partial-fill bar; at/above it: unlocked state, full bar, tick icon.
+// bar toward the real freeDeliveryThreshold (useDeliverySettings, same
+// admin-editable setting BillDetailsCard reads to actually waive the fee,
+// so this card's claim and the real waiver can't drift apart). Below
+// threshold: "Add ₹X more" with a partial-fill bar; at/above it: unlocked
+// state, full bar, tick icon. Currently unused (hidden per an explicit
+// ask, CartScreen.tsx's own note) — kept compiling, not deleted.
 
 import { CheckmarkCircle02Icon, DeliveryTruck01Icon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
-import { FREE_DELIVERY_THRESHOLD } from '../../../store/useCartStore';
+import { DEFAULT_DELIVERY_SETTINGS, useDeliverySettings } from '../../../api/deliverySettings';
 
 const ACCENT = '#155DFC';
 const SUCCESS = '#2E9E77';
@@ -17,9 +19,11 @@ interface Props {
 }
 
 export function FreeDeliveryProgressCard({ itemTotal }: Props) {
-  const isUnlocked = itemTotal >= FREE_DELIVERY_THRESHOLD;
-  const remaining = FREE_DELIVERY_THRESHOLD - itemTotal;
-  const progress = Math.min(1, itemTotal / FREE_DELIVERY_THRESHOLD);
+  const { data: deliverySettings = DEFAULT_DELIVERY_SETTINGS } = useDeliverySettings();
+  const { freeDeliveryThreshold } = deliverySettings;
+  const isUnlocked = itemTotal >= freeDeliveryThreshold;
+  const remaining = freeDeliveryThreshold - itemTotal;
+  const progress = Math.min(1, itemTotal / freeDeliveryThreshold);
   const tint = isUnlocked ? SUCCESS : ACCENT;
 
   return (

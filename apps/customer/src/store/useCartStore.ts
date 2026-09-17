@@ -1,7 +1,13 @@
-// In-memory cart for the current session only — no persistence (POST
-// /orders or POST /trips, called from CheckoutScreen, is what actually
-// persists an order once checkout completes; the cart itself is just the
-// pre-order draft). Every "ADD" button across the app (ProductCard,
+// Persisted on-device (zustand persist + AsyncStorage) — same pattern
+// useLikedStoresStore.ts/useShoppingListStore.ts already use, per an
+// explicit ask ("close the app... cart should be as it is, not clear") and
+// the same behavior Blinkit/Zepto/Swiggy Instamart all follow: the cart is
+// a local draft that survives app restarts and only ever empties on a real
+// action (checkout succeeding, or the customer clearing it themselves) —
+// never as a side effect of the process being killed. POST /orders or POST
+// /trips (CheckoutScreen) is what actually persists an ORDER once checkout
+// completes; this is still just the pre-order draft, now durable rather
+// than in-memory-only. Every "ADD" button across the app (ProductCard,
 // CategoryProductCard) calls addItem with the same shape, so the cart
 // never needs to know which screen a product was added from.
 //
@@ -18,7 +24,9 @@
 // one multi-stop pickup instead of the customer being blocked from buying
 // from two stores at once.
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export interface CartItem {
   id: string;
@@ -73,55 +81,64 @@ interface CartState {
   clear: () => void;
 }
 
-export const useCartStore = create<CartState>((set) => ({
-  items: [],
-  appliedPromo: null,
+export const useCartStore = create<CartState>()(
+  persist(
+    (set) => ({
+      items: [],
+      appliedPromo: null,
 
-  addItem: (product) => {
-    // A product with no real store id (any feed that hasn't been wired to
-    // the real backend) can never be part of a real order — refusing the
-    // add outright keeps it from ever reaching checkout, same guard this
-    // store has always had, unrelated to the multi-store change above.
-    if (!product.storeId) return;
+      addItem: (product) => {
+        // A product with no real store id (any feed that hasn't been wired
+        // to the real backend) can never be part of a real order —
+        // refusing the add outright keeps it from ever reaching checkout,
+        // same guard this store has always had, unrelated to the
+        // multi-store change above.
+        if (!product.storeId) return;
 
-    set((state) => {
-      const existing = state.items.find((item) => item.id === product.id);
-      if (existing) {
-        return {
-          items: state.items.map((item) =>
-            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
-          ),
+        set((state) => {
+          const existing = state.items.find((item) => item.id === product.id);
+          if (existing) {
+            return {
+              items: state.items.map((item) =>
+                item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+              ),
+              appliedPromo: null,
+            };
+          }
+          return { items: [...state.items, { ...product, quantity: 1 }], appliedPromo: null };
+        });
+      },
+
+      incrementItem: (id) =>
+        set((state) => ({
+          items: state.items.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item)),
           appliedPromo: null,
-        };
-      }
-      return { items: [...state.items, { ...product, quantity: 1 }], appliedPromo: null };
-    });
-  },
+        })),
 
-  incrementItem: (id) =>
-    set((state) => ({
-      items: state.items.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item)),
-      appliedPromo: null,
-    })),
+      decrementItem: (id) =>
+        set((state) => ({
+          items: state.items
+            .map((item) => (item.id === id ? { ...item, quantity: item.quantity - 1 } : item))
+            .filter((item) => item.quantity > 0),
+          appliedPromo: null,
+        })),
 
-  decrementItem: (id) =>
-    set((state) => ({
-      items: state.items
-        .map((item) => (item.id === id ? { ...item, quantity: item.quantity - 1 } : item))
-        .filter((item) => item.quantity > 0),
-      appliedPromo: null,
-    })),
+      removeItem: (id) =>
+        set((state) => ({
+          items: state.items.filter((item) => item.id !== id),
+          appliedPromo: null,
+        })),
 
-  removeItem: (id) =>
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== id),
-      appliedPromo: null,
-    })),
+      setAppliedPromo: (promo) => set({ appliedPromo: promo }),
 
-  setAppliedPromo: (promo) => set({ appliedPromo: promo }),
-
-  clear: () => set({ items: [], appliedPromo: null }),
-}));
+      clear: () => set({ items: [], appliedPromo: null }),
+    }),
+    {
+      name: 'flikk-cart',
+      storage: createJSONStorage(() => AsyncStorage),
+    },
+  ),
+);
 
 export function selectCartTotalQuantity(state: CartState): number {
   return state.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -178,21 +195,32 @@ export function selectCartStoreCount(state: CartState): number {
   return new Set(state.items.map((item) => item.storeId)).size;
 }
 
-// Flat placeholder fees — no pricing-rules backend exists yet to compute
-// real ones. Shared here (not duplicated per-screen) so CartScreen and
-// CheckoutScreen can't quote two different totals for the same cart. Only
-// ONE of these is ever charged per checkout regardless of how many stores
-// are in the cart — same "one delivery fee per trip, not per store" rule
-// backend/src/lib/trips.ts's own calcTripTotal enforces server-side.
-export const CART_DELIVERY_FEE = 25;
-export const CART_HANDLING_FEE = 3;
+// Platform/handling fee — no pricing-rules backend exists yet to compute a
+// real one, and it isn't part of this admin-configurable delivery-settings
+// feature (only the delivery fee/free-delivery threshold are, per an
+// explicit ask). Shared here (not duplicated per-screen) so every screen
+// quotes the same handling fee for the same cart.
+export const CART_HANDLING_FEE = 5;
 
-// Real free-delivery threshold — BillDetailsCard and FreeDeliveryProgressCard
-// both waive/show CART_DELIVERY_FEE off this same constant once itemTotal
-// crosses it, so the two can't quote different thresholds.
-export const FREE_DELIVERY_THRESHOLD = 199;
-
-export function selectCartGrandTotal(state: CartState): number {
-  const discount = state.appliedPromo?.discountAmount ?? 0;
-  return Math.max(selectCartTotalPrice(state) + CART_DELIVERY_FEE + CART_HANDLING_FEE - discount, 0);
+// The delivery fee itself is NO LONGER a hardcoded constant — it's a real,
+// admin-editable setting (api/deliverySettings.ts's own useDeliverySettings,
+// backed by public.delivery_settings) that the backend independently
+// re-derives server-side too (backend/src/lib/deliverySettings.ts), so the
+// amount actually charged can never drift from what's admin-configured.
+//
+// Plain function of primitives, not a `(state: CartState) => ...` zustand
+// selector (same reasoning groupCartItemsByStore's own note documents) —
+// this also needs deliverySettings, which doesn't live in CartState at
+// all, so it could never have been a selector in the first place. Call
+// sites read `itemTotal`/`discountAmount` off their own existing
+// selectors and pass real fetched settings through (CheckoutScreen,
+// BillDetailsCard).
+export function calculateCartGrandTotal(
+  itemTotal: number,
+  discountAmount: number,
+  deliverySettings: { flatDeliveryFee: number; freeDeliveryEnabled: boolean; freeDeliveryThreshold: number },
+): number {
+  const isDeliveryFree = deliverySettings.freeDeliveryEnabled && itemTotal >= deliverySettings.freeDeliveryThreshold;
+  const deliveryFee = isDeliveryFree ? 0 : deliverySettings.flatDeliveryFee;
+  return Math.max(itemTotal + deliveryFee + CART_HANDLING_FEE - discountAmount, 0);
 }

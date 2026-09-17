@@ -1,13 +1,16 @@
 // Floating pill shown to the left of CartBar (same row, same glass
 // convention) whenever the cart has items AND delivery is still locked
 // ("Shop for ₹X more" with a scooter icon). Once selectCartTotalPrice
-// crosses FREE_DELIVERY_THRESHOLD this renders nothing — BottomNavBar.tsx
-// shows a one-shot FreeDeliveryUnlockBanner at the moment of crossing, then
-// drops back to a plain centered CartBar with no left pill at all, matching
-// the reference (delivery unlocked isn't an ongoing state worth a permanent
-// pill, just a moment). Display/incentive only — see
-// FREE_DELIVERY_THRESHOLD's own note, this doesn't change what checkout
-// actually charges.
+// crosses the real freeDeliveryThreshold this renders nothing —
+// BottomNavBar.tsx shows a one-shot FreeDeliveryUnlockBanner at the moment
+// of crossing, then drops back to a plain centered CartBar with no left
+// pill at all, matching the reference (delivery unlocked isn't an ongoing
+// state worth a permanent pill, just a moment). Renders nothing at all
+// while free delivery is disabled (useDeliverySettings, api/
+// deliverySettings.ts) — same admin toggle BillDetailsCard reads, so this
+// promo pill can't advertise something checkout won't actually honor.
+// Display/incentive only either way — this doesn't change what checkout
+// actually charges, that's computed independently in useCartStore.ts.
 //
 // Light glass (not CartBar's dark glass) with a lime-soft wash, so the two
 // pills read as a matched pair without being identical while both are
@@ -24,14 +27,16 @@ import { Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
-import { FREE_DELIVERY_THRESHOLD, selectCartTotalPrice, useCartStore } from '../../store/useCartStore';
+import { DEFAULT_DELIVERY_SETTINGS, useDeliverySettings } from '../../api/deliverySettings';
+import { selectCartTotalPrice, useCartStore } from '../../store/useCartStore';
 
 export function FreeDeliveryBar() {
   const totalPrice = useCartStore(selectCartTotalPrice);
   const itemCount = useCartStore((state) => state.items.length);
+  const { data: deliverySettings = DEFAULT_DELIVERY_SETTINGS } = useDeliverySettings();
 
-  const remaining = FREE_DELIVERY_THRESHOLD - totalPrice;
-  if (itemCount === 0 || remaining <= 0) return null;
+  const remaining = deliverySettings.freeDeliveryThreshold - totalPrice;
+  if (!deliverySettings.freeDeliveryEnabled || itemCount === 0 || remaining <= 0) return null;
 
   return (
     // Shadow lives on this outer, non-clipping wrapper — same reason as

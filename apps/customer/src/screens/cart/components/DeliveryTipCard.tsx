@@ -20,10 +20,15 @@
 import { Tick02Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
+import { AppImage as Image } from '../../../components/AppImage';
 
 export const TIP_PRESETS = [20, 30, 50] as const;
 const POPULAR_TIP_AMOUNT = 20;
 const TIP_ACCENT = '#155DFC';
+// Real uploaded asset (admin's Storage bucket), not a local bundled image —
+// same "Images" bucket convention DealsSection.tsx's own hardcoded deal
+// creative already uses.
+const RIDER_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/app-images/rider.png';
 
 export type TipSelection = (typeof TIP_PRESETS)[number] | 'other' | null;
 
@@ -36,11 +41,14 @@ export function DeliveryTipCard({ selectedTip, onSelectTip }: Props) {
   return (
     <View className="overflow-hidden rounded-3xl bg-white shadow-sm shadow-black/5">
       <View className="gap-3 px-5 pt-5 pb-4">
-        <View className="gap-0.5">
-          <Text className="text-[15px] font-semibold text-ink">Thank your rider</Text>
-          <Text className="text-[11.5px] leading-[16px] text-ink/50 font-medium">
-            100% of your tip goes straight to them.
-          </Text>
+        <View className="flex-row items-start gap-3">
+          <View className="flex-1 gap-0.5">
+            <Text className="text-[15.5px] font-semibold text-ink mb-1.5">Say thanks with a tip</Text>
+            <Text className="text-[12.5px] leading-[16px] text-ink/50 font-medium">
+              Your rider came all this way, in the heat, just to bring your order safely to your door. A small tip means a lot to them.
+            </Text>
+          </View>
+          <Image source={{ uri: RIDER_IMAGE_URI }} className="h-20 w-20" resizeMode="contain" />
         </View>
 
         <View className="flex-row items-stretch gap-2">
@@ -59,15 +67,15 @@ export function DeliveryTipCard({ selectedTip, onSelectTip }: Props) {
               >
                 <View className="flex-1 items-center justify-center px-2 py-2">
                   <View className="flex-row items-center gap-1">
-                    <Text className="text-[12px] font-semibold" style={{ color: isSelected ? TIP_ACCENT : '#101C10' }}>
+                    <Text className="text-[12.5px] font-semibold" style={{ color: isSelected ? TIP_ACCENT : '#101C10' }}>
                       ₹{amount}
                     </Text>
                     {isSelected ? <AppIcon icon={Tick02Icon} size={10} color={TIP_ACCENT} /> : null}
                   </View>
                 </View>
                 {isPopular ? (
-                  <View className="w-full items-center py-0.5" style={{ backgroundColor: TIP_ACCENT }}>
-                    <Text className="text-[9px] font-semibold uppercase tracking-wide text-white" numberOfLines={1}>
+                  <View className="w-full items-center text-center py-0.5" style={{ backgroundColor: TIP_ACCENT }}>
+                    <Text className="text-[10px] font-semibold r text-white" numberOfLines={1}>
                       Popular
                     </Text>
                   </View>

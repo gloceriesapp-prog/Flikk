@@ -21,14 +21,21 @@
 //
 // itemTotal/originalItemTotal/tip inputs and the toPay math are
 // unchanged from the previous version of this card — CheckoutScreen's
-// own selectCartGrandTotal deliberately doesn't know about tips or the
-// free-delivery waiver, so this card keeps computing its own total
-// rather than risk the two silently diverging.
+// own grand-total calc deliberately doesn't know about tips, so this card
+// keeps computing its own total rather than risk the two silently
+// diverging.
+//
+// Delivery fee/free-delivery threshold now come from the real,
+// admin-editable useDeliverySettings() (api/deliverySettings.ts) instead
+// of hardcoded constants — falls back to DEFAULT_DELIVERY_SETTINGS (free
+// delivery off, flat ₹25, matching the migration's own seeded row) while
+// the fetch is in flight, so this card never shows a blank/zero fee.
 
-import { DiscountTag01Icon, Motorbike01Icon, ReceiptIndianRupeeIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
+import { DiscountTag01Icon, HandHeartIcon, Motorbike01Icon, ReceiptIndianRupeeIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
-import { CART_DELIVERY_FEE, CART_HANDLING_FEE, FREE_DELIVERY_THRESHOLD } from '../../../store/useCartStore';
+import { DEFAULT_DELIVERY_SETTINGS, useDeliverySettings } from '../../../api/deliverySettings';
+import { CART_HANDLING_FEE } from '../../../store/useCartStore';
 import type { TipSelection } from './DeliveryTipCard';
 
 const ACCENT = '#155DFC';
@@ -56,12 +63,12 @@ function RowIcon({ icon }: { icon: typeof Motorbike01Icon }) {
 }
 
 function RowLabel({ children }: { children: string }) {
-  return <Text className="text-[13px] font-medium text-ink/75">{children}</Text>;
+  return <Text className="text-[13.5px] font-medium text-ink/75">{children}</Text>;
 }
 
 function ScallopEdge() {
   return (
-    <View className="h-3.5 flex-row items-center justify-between px-3" style={{ backgroundColor: '#EFF4FF' }}>
+    <View className="h-3.5 flex-row items-center justify-between px-3" style={{ backgroundColor: '#dbeafe' }}>
       {Array.from({ length: SCALLOP_DOT_COUNT }).map((_, i) => (
         <View key={i} className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: PAGE_BG, marginTop: -7 }} />
       ))}
@@ -70,45 +77,47 @@ function ScallopEdge() {
 }
 
 export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, onAddTip, discountAmount = 0 }: Props) {
-  const isDeliveryFree = itemTotal >= FREE_DELIVERY_THRESHOLD;
+  const { data: deliverySettings = DEFAULT_DELIVERY_SETTINGS } = useDeliverySettings();
+  const { flatDeliveryFee, freeDeliveryEnabled, freeDeliveryThreshold } = deliverySettings;
+  const isDeliveryFree = freeDeliveryEnabled && itemTotal >= freeDeliveryThreshold;
   const tipAmount = typeof tip === 'number' ? tip : 0;
-  const deliveryFee = isDeliveryFree ? 0 : CART_DELIVERY_FEE;
+  const deliveryFee = isDeliveryFree ? 0 : flatDeliveryFee;
   const toPay = Math.max(itemTotal + CART_HANDLING_FEE + tipAmount + deliveryFee - discountAmount, 0);
   const originalToPay = originalItemTotal
-    ? (originalItemTotal > itemTotal ? originalItemTotal : itemTotal) + CART_HANDLING_FEE + tipAmount + CART_DELIVERY_FEE
+    ? (originalItemTotal > itemTotal ? originalItemTotal : itemTotal) + CART_HANDLING_FEE + tipAmount + flatDeliveryFee
     : isDeliveryFree
-      ? itemTotal + CART_HANDLING_FEE + tipAmount + CART_DELIVERY_FEE
+      ? itemTotal + CART_HANDLING_FEE + tipAmount + flatDeliveryFee
       : null;
 
   // Real savings only — item-level discount (originalItemTotal vs
   // itemTotal) plus the delivery fee actually waived, nothing else.
   const itemSavings = originalItemTotal && originalItemTotal > itemTotal ? originalItemTotal - itemTotal : 0;
-  const deliverySavings = isDeliveryFree ? CART_DELIVERY_FEE : 0;
+  const deliverySavings = isDeliveryFree ? flatDeliveryFee : 0;
   const totalSavings = itemSavings + deliverySavings;
 
   return (
     <View className="overflow-hidden rounded-3xl bg-white shadow-sm shadow-black/5">
       <View className="gap-4 px-5 pt-5 pb-4">
-        <Text className="text-base font-semibold text-ink">Bill details</Text>
+        <Text className="text-[15.5px] font-semibold text-ink">Bill details</Text>
 
         <View className="gap-3">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <RowIcon icon={ReceiptIndianRupeeIcon} />
-              <Text className="text-[13px] font-medium text-ink/75">
-                Cart total <Text className="text-[11px] text-ink/40">({itemCount} {itemCount === 1 ? 'item' : 'items'})</Text>
+              <Text className="text-[13.5px] font-medium text-ink/75">
+                Cart total <Text className="text-[11.5px] text-ink/40">({itemCount} {itemCount === 1 ? 'item' : 'items'})</Text>
               </Text>
               {itemSavings > 0 && (
                 <View className="rounded-full bg-blue-50 px-1.5 py-0.5">
-                  <Text className="text-[10px] font-semibold" style={{ color: ACCENT }}>
+                  <Text className="text-[11px] font-semibold" style={{ color: ACCENT }}>
                     Saved ₹{itemSavings}
                   </Text>
                 </View>
               )}
             </View>
             <View className="flex-row items-center gap-1.5">
-              {itemSavings > 0 && <Text className="text-xs text-ink/35 line-through font-medium">₹{originalItemTotal}</Text>}
-              <Text className="text-[13px] font-medium tabular-nums text-ink">₹{itemTotal}</Text>
+              {itemSavings > 0 && <Text className="text-[11.5px] text-ink/35 line-through font-medium">₹{originalItemTotal}</Text>}
+              <Text className="text-[13.5px] font-semibold tabular-nums text-ink">₹{itemTotal}</Text>
             </View>
           </View>
 
@@ -119,22 +128,22 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
             </View>
             {isDeliveryFree ? (
               <View className="flex-row items-center gap-1.5">
-                <Text className="text-xs text-ink/35 line-through">₹{CART_DELIVERY_FEE}</Text>
-                <Text className="text-[13px] font-semibold" style={{ color: ACCENT }}>
+                <Text className="text-[11.5px] text-ink/35 line-through">₹{flatDeliveryFee}</Text>
+                <Text className="text-[13.5px] font-semibold" style={{ color: ACCENT }}>
                   FREE
                 </Text>
               </View>
             ) : (
-              <Text className="text-[13px] font-medium tabular-nums text-ink">₹{CART_DELIVERY_FEE}</Text>
+              <Text className="text-[13.5px] font-medium tabular-nums text-ink">₹{flatDeliveryFee}</Text>
             )}
           </View>
 
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <RowIcon icon={Wallet01Icon} />
-              <RowLabel>Packing fee</RowLabel>
+              <RowLabel>Platform fee</RowLabel>
             </View>
-            <Text className="text-[13px] font-medium tabular-nums text-ink">₹{CART_HANDLING_FEE}</Text>
+            <Text className="text-[13.5px] font-semibold tabular-nums text-ink">₹{CART_HANDLING_FEE}</Text>
           </View>
 
           {discountAmount > 0 && (
@@ -148,7 +157,10 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
           )}
 
           <View className="flex-row items-center justify-between">
-            <Text className="text-[13px] font-medium text-ink/75">Tip for your rider</Text>
+            <View className="flex-row items-center gap-2">
+              <RowIcon icon={HandHeartIcon} />
+              <Text className="text-[13px] font-medium text-ink/75">Tip for your rider</Text>
+            </View>
             {tip === null ? (
               <Pressable onPress={onAddTip} hitSlop={6}>
                 <Text className="text-[13px] font-medium" style={{ color: ACCENT }}>
@@ -164,10 +176,10 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
         </View>
 
         <View className="flex-row items-center justify-between border-t border-gray-100 pt-3.5">
-          <Text className="text-[15px] font-semibold text-ink">Total payable</Text>
+          <Text className="text-[15.5px] font-semibold text-ink">Total payable</Text>
           <View className="flex-row items-center gap-1.5">
             {originalToPay && originalToPay > toPay && <Text className="text-xs text-ink/35 line-through font-semibold">₹{originalToPay}</Text>}
-            <Text className="text-lg font-semibold tabular-nums text-ink">₹{toPay}</Text>
+            <Text className="text-[15.5px] font-bold tabular-nums text-ink">₹{toPay}</Text>
           </View>
         </View>
       </View>
@@ -175,12 +187,12 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
       {totalSavings > 0 && (
         <>
           <ScallopEdge />
-          <View className="gap-0.5 px-5 pb-3.5 pt-2" style={{ backgroundColor: '#EFF4FF' }}>
+          <View className="gap-0.5 px-5 pb-3.5 pt-2" style={{ backgroundColor: '#dbeafe' }}>
             <View className="flex-row items-center justify-between">
-              <Text className="text-[13px] font-semibold" style={{ color: ACCENT }}>
+              <Text className="text-[15px] font-semibold" style={{ color: ACCENT }}>
                 You saved
               </Text>
-              <Text className="text-base font-semibold" style={{ color: ACCENT }}>
+              <Text className="text-[15px] font-semibold" style={{ color: ACCENT }}>
                 ₹{totalSavings}
               </Text>
             </View>

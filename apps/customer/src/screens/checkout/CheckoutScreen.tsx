@@ -47,7 +47,8 @@ import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
 import { pollOrderPaid } from '../../payments/pollOrderPaid';
 import type { UpiApp } from '../../payments/upiApps';
 import { detectInstalledUpiApps, openUpiApp } from '../../payments/upiIntent';
-import { selectCartGrandTotal, selectCartStoreCount, useCartStore } from '../../store/useCartStore';
+import { calculateCartGrandTotal, selectCartStoreCount, selectCartTotalPrice, useCartStore } from '../../store/useCartStore';
+import { DEFAULT_DELIVERY_SETTINGS, useDeliverySettings } from '../../api/deliverySettings';
 import { useLocationStore } from '../../store/useLocationStore';
 import { isOutsideOperatingHours, REOPEN_TIME_LABEL } from '../../utils/operatingHours';
 import { CheckoutHeader } from './components/CheckoutHeader';
@@ -68,12 +69,18 @@ export function CheckoutScreen({ navigation }: Props) {
   // been made trip-aware yet); a multi-store checkout still pays fine via
   // COD or Razorpay's own Standard Checkout (online), just not that grid.
   const isMultiStore = storeCount > 1;
-  const grandTotal = useCartStore(selectCartGrandTotal);
+  const itemTotal = useCartStore(selectCartTotalPrice);
   // Cart-level coupon (PromoCodeCard, useCartStore.appliedPromo) — the
   // code string is all POST /orders / POST /trips need; the discount
   // itself is always recomputed there from scratch (routes/promos.ts's
   // own note), never trusted from this earlier client-side apply.
-  const promoCode = useCartStore((state) => state.appliedPromo?.code);
+  const appliedPromo = useCartStore((state) => state.appliedPromo);
+  const promoCode = appliedPromo?.code;
+  // Real, admin-editable delivery fee (api/deliverySettings.ts) — falls
+  // back to the same default the migration seeds while the fetch is in
+  // flight, never a blank/zero total.
+  const { data: deliverySettings = DEFAULT_DELIVERY_SETTINGS } = useDeliverySettings();
+  const grandTotal = calculateCartGrandTotal(itemTotal, appliedPromo?.discountAmount ?? 0, deliverySettings);
   const clear = useCartStore((state) => state.clear);
   const recipientName = useLocationStore((state) => state.recipientName);
 

@@ -25,7 +25,7 @@
 import { Text, View } from 'react-native';
 import { BarcodeSvg } from '../../../components/BarcodeSvg';
 import { colors } from '../../../theme/tokens';
-import { CART_DELIVERY_FEE, CART_HANDLING_FEE, type CartItem } from '../../../store/useCartStore';
+import { CART_HANDLING_FEE, type CartItem } from '../../../store/useCartStore';
 import { estimateDeliveryTime, formatEta } from '../../../utils/estimateDelivery';
 
 interface Props {
@@ -118,9 +118,15 @@ export function ReceiptCard({
         ))}
       </View>
 
+      {/* Delivery fee derived from the real charged `total` (total -
+          itemTotal - handling), not a live/hardcoded constant — this order
+          was placed at whatever the delivery fee actually was at the time,
+          which can differ from today's admin-set rate. Deriving it from
+          the real total this receipt already shows is always correct,
+          with no separate historical-fee fetch needed. */}
       <View className="mt-3 gap-2 border-t border-gray-200 pt-3">
         <FeeRow label="Item total" value={itemTotal} />
-        <FeeRow label="Delivery fee" value={CART_DELIVERY_FEE} />
+        <FeeRow label="Delivery fee" value={Math.max(total - itemTotal - CART_HANDLING_FEE, 0)} />
         <FeeRow label="Handling fee" value={CART_HANDLING_FEE} />
       </View>
 

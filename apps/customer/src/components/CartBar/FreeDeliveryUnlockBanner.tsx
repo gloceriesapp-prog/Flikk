@@ -22,7 +22,7 @@ import { Text, View } from 'react-native';
 import { AppImage as Image } from '../AppImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme/tokens';
-import { CART_DELIVERY_FEE } from '../../store/useCartStore';
+import { DEFAULT_DELIVERY_SETTINGS, useDeliverySettings } from '../../api/deliverySettings';
 
 const VISIBLE_DURATION_MS = 2200;
 const BIKE_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/app-images/bike-bg.png';
@@ -32,6 +32,7 @@ interface Props {
 }
 
 export function FreeDeliveryUnlockBanner({ onFinish }: Props) {
+  const { data: deliverySettings = DEFAULT_DELIVERY_SETTINGS } = useDeliverySettings();
   useEffect(() => {
     const timer = setTimeout(onFinish, VISIBLE_DURATION_MS);
     return () => clearTimeout(timer);
@@ -56,7 +57,7 @@ export function FreeDeliveryUnlockBanner({ onFinish }: Props) {
 
           <View className="flex-1 items-center gap-0 pr-8">
             <Text className="text-[13px] font-medium text-ink">Free delivery unlocked</Text>
-            <Text className="text-[13px] font-semibold text-ink">₹{CART_DELIVERY_FEE} Saved</Text>
+            <Text className="text-[13px] font-semibold text-ink">₹{deliverySettings.flatDeliveryFee} Saved</Text>
           </View>
         </View>
       </LinearGradient>

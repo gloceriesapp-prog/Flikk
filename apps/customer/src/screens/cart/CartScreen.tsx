@@ -18,8 +18,8 @@
 // read it.
 
 import { useMemo, useState } from 'react';
-import { ArrowLeft01Icon, MoreVerticalIcon, PackageIcon, ShoppingBasket03Icon, Timer02Icon } from '@hugeicons/core-free-icons';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { ArrowLeft01Icon, Delete02Icon, MoreVerticalIcon, PackageIcon, ShoppingBasket03Icon, Timer02Icon } from '@hugeicons/core-free-icons';
+import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -35,7 +35,8 @@ import { CartItemRow } from './components/CartItemRow';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
 import { CartDeliveryInfoBar } from './components/CartDeliveryInfoBar';
 import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
-import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
+// import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
+import { ForgotToAddSection } from './components/ForgotToAddSection';
 import { PromoCodeCard } from './components/PromoCodeCard';
 import { BillDetailsCard } from './components/BillDetailsCard';
 import { CancellationNoteCard } from './components/CancellationNoteCard';
@@ -55,14 +56,23 @@ export function CartScreen({ navigation }: Props) {
   // groupCartItemsByStore's own note on why this can't be a plain zustand
   // selector.
   const storeGroups = useMemo(() => groupCartItemsByStore(items), [items]);
+  // ForgotToAddSection's own exclusion list — memoized off `items` for the
+  // same reference-stability reason as storeGroups above.
+  const cartItemIds = useMemo(() => items.map((item) => item.id), [items]);
   const appliedPromo = useCartStore((state) => state.appliedPromo);
   const clearCart = useCartStore((state) => state.clear);
 
+  // Dropdown menu under the header's "..." button — per an explicit ask,
+  // replacing the OS Alert.alert confirmation that used to fire directly
+  // on tapping the icon. The dropdown itself (a deliberate menu the
+  // customer opens, then picks an option from) is the confirmation step
+  // now; selecting "Clear cart" acts immediately, no second popup on top
+  // of it.
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   function handleClearCart() {
-    Alert.alert('Clear your cart?', 'Every item you\'ve added will be removed.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear cart', style: 'destructive', onPress: clearCart },
-    ]);
+    setIsMenuOpen(false);
+    clearCart();
   }
 
   const [tip, setTip] = useState<TipSelection>(null);
@@ -159,7 +169,7 @@ export function CartScreen({ navigation }: Props) {
             <Text className="text-[17px] font-semibold text-ink">Your Cart</Text>
             {items.length > 0 ? (
               savings > 0 ? (
-                <Text className="text-[12.5px] font-semibold text-success">
+                <Text className="text-[13.5px] font-semibold text-success">
                   Saved ₹{savings.toFixed(0)} ({savingsPercent}% off)
                 </Text>
               ) : (
@@ -170,7 +180,7 @@ export function CartScreen({ navigation }: Props) {
             ) : null}
           </View>
           {items.length > 0 ? (
-            <Pressable onPress={handleClearCart} hitSlop={12} className="h-11 w-11 items-center justify-center">
+            <Pressable onPress={() => setIsMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center">
               <AppIcon icon={MoreVerticalIcon} size={22} color={colors.ink} />
             </Pressable>
           ) : (
@@ -180,6 +190,28 @@ export function CartScreen({ navigation }: Props) {
           )}
         </View>
       </View>
+
+      {/* Dropdown menu, not an OS Alert — transparent Modal is this app's
+          own established lightweight-overlay pattern (ProductDetailSheet.tsx),
+          reused here for a much smaller anchored card instead of a full
+          sheet. The backdrop Pressable closes it on an outside tap; the
+          menu card itself sits just under the "..." button, right-aligned
+          to match where that button actually is. */}
+      <Modal visible={isMenuOpen} transparent animationType="fade" onRequestClose={() => setIsMenuOpen(false)}>
+        <Pressable className="flex-1" onPress={() => setIsMenuOpen(false)}>
+          <View className="items-end px-2 pt-safe" style={{ paddingTop: 112 }}>
+            <View className="w-44 overflow-hidden rounded-2xl border border-ink bg-white shadow-lg shadow-black/20">
+              <Pressable
+                onPress={handleClearCart}
+                className="flex-row items-center gap-2.5 px-4 py-3.5 active:bg-gray-50"
+              >
+                <AppIcon icon={Delete02Icon} size={18} color={colors.danger} />
+                <Text className="text-[14.5px] font-semibold text-danger">Clear cart</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
 
       {items.length === 0 ? (
         <View className="flex-1 items-center justify-center gap-1 px-10">
@@ -214,10 +246,10 @@ export function CartScreen({ navigation }: Props) {
                       inserted for no reason. */}
                   {storeGroups.length > 1 && (
                     <View className="mb-2 flex-row items-center justify-between">
-                      <Text className="text-[13px] font-semibold text-ink" numberOfLines={1}>
+                      <Text className="text-[13.5px] font-semibold text-ink tracking-tight" numberOfLines={1}>
                         From {group.storeName ?? 'this store'}
                       </Text>
-                      <Text className="text-[13px] font-medium text-ink/50">₹{group.itemTotal.toFixed(0)}</Text>
+                      <Text className="text-[13.5px] font-medium text-ink/50">₹{group.itemTotal.toFixed(0)}</Text>
                     </View>
                   )}
 
@@ -234,7 +266,8 @@ export function CartScreen({ navigation }: Props) {
             </View>
 
             <DeliveryTipCard selectedTip={tip} onSelectTip={setTip} />
-            <FreeDeliveryProgressCard itemTotal={itemTotal} />
+            {/* Hidden per an explicit ask — not deleted. <FreeDeliveryProgressCard itemTotal={itemTotal} /> */}
+            <ForgotToAddSection cartItemIds={cartItemIds} />
             <PromoCodeCard itemTotal={itemTotal} appliedPromo={appliedPromo} />
             <BillDetailsCard
               itemTotal={itemTotal}
