@@ -195,18 +195,13 @@ export function selectCartStoreCount(state: CartState): number {
   return new Set(state.items.map((item) => item.storeId)).size;
 }
 
-// Platform/handling fee — no pricing-rules backend exists yet to compute a
-// real one, and it isn't part of this admin-configurable delivery-settings
-// feature (only the delivery fee/free-delivery threshold are, per an
-// explicit ask). Shared here (not duplicated per-screen) so every screen
-// quotes the same handling fee for the same cart.
-export const CART_HANDLING_FEE = 5;
-
-// The delivery fee itself is NO LONGER a hardcoded constant — it's a real,
-// admin-editable setting (api/deliverySettings.ts's own useDeliverySettings,
-// backed by public.delivery_settings) that the backend independently
-// re-derives server-side too (backend/src/lib/deliverySettings.ts), so the
-// amount actually charged can never drift from what's admin-configured.
+// Delivery fee AND handling fee are both real, admin-editable settings now
+// (api/deliverySettings.ts's own useDeliverySettings, backed by
+// public.delivery_settings) — no more hardcoded CART_HANDLING_FEE/
+// CART_DELIVERY_FEE constants here. The backend independently re-derives
+// both server-side too (backend/src/lib/deliverySettings.ts,
+// calcOrderTotal's own handlingFee param), so the amount actually charged
+// can never drift from what's admin-configured.
 //
 // Plain function of primitives, not a `(state: CartState) => ...` zustand
 // selector (same reasoning groupCartItemsByStore's own note documents) —
@@ -218,9 +213,9 @@ export const CART_HANDLING_FEE = 5;
 export function calculateCartGrandTotal(
   itemTotal: number,
   discountAmount: number,
-  deliverySettings: { flatDeliveryFee: number; freeDeliveryEnabled: boolean; freeDeliveryThreshold: number },
+  deliverySettings: { flatDeliveryFee: number; freeDeliveryEnabled: boolean; freeDeliveryThreshold: number; handlingFee: number },
 ): number {
   const isDeliveryFree = deliverySettings.freeDeliveryEnabled && itemTotal >= deliverySettings.freeDeliveryThreshold;
   const deliveryFee = isDeliveryFree ? 0 : deliverySettings.flatDeliveryFee;
-  return Math.max(itemTotal + deliveryFee + CART_HANDLING_FEE - discountAmount, 0);
+  return Math.max(itemTotal + deliveryFee + deliverySettings.handlingFee - discountAmount, 0);
 }

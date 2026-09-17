@@ -25,7 +25,7 @@
 import { Text, View } from 'react-native';
 import { BarcodeSvg } from '../../../components/BarcodeSvg';
 import { colors } from '../../../theme/tokens';
-import { CART_HANDLING_FEE, type CartItem } from '../../../store/useCartStore';
+import type { CartItem } from '../../../store/useCartStore';
 import { estimateDeliveryTime, formatEta } from '../../../utils/estimateDelivery';
 
 interface Props {
@@ -118,16 +118,18 @@ export function ReceiptCard({
         ))}
       </View>
 
-      {/* Delivery fee derived from the real charged `total` (total -
-          itemTotal - handling), not a live/hardcoded constant — this order
-          was placed at whatever the delivery fee actually was at the time,
-          which can differ from today's admin-set rate. Deriving it from
-          the real total this receipt already shows is always correct,
-          with no separate historical-fee fetch needed. */}
+      {/* One combined "Delivery & handling" line, derived from the real
+          charged `total` (total - itemTotal) — both fees are admin-
+          editable now (backend/src/lib/deliverySettings.ts), so there's no
+          longer a fixed handling-fee constant to split them apart with,
+          and no per-order breakdown is stored server-side to read one
+          back from either. This order was placed at whatever the real
+          fees were at the time; deriving the combined figure from the
+          real total this receipt already shows is always correct, with
+          no separate historical-fee fetch needed. */}
       <View className="mt-3 gap-2 border-t border-gray-200 pt-3">
         <FeeRow label="Item total" value={itemTotal} />
-        <FeeRow label="Delivery fee" value={Math.max(total - itemTotal - CART_HANDLING_FEE, 0)} />
-        <FeeRow label="Handling fee" value={CART_HANDLING_FEE} />
+        <FeeRow label="Delivery & handling" value={Math.max(total - itemTotal, 0)} />
       </View>
 
       <View className="mt-5 w-full items-center border-t border-dashed border-gray-300 pt-5">

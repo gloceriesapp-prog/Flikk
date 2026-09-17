@@ -25,17 +25,17 @@
 // keeps computing its own total rather than risk the two silently
 // diverging.
 //
-// Delivery fee/free-delivery threshold now come from the real,
-// admin-editable useDeliverySettings() (api/deliverySettings.ts) instead
-// of hardcoded constants — falls back to DEFAULT_DELIVERY_SETTINGS (free
-// delivery off, flat ₹25, matching the migration's own seeded row) while
-// the fetch is in flight, so this card never shows a blank/zero fee.
+// Delivery fee/free-delivery threshold/handling fee all come from the
+// real, admin-editable useDeliverySettings() (api/deliverySettings.ts)
+// instead of hardcoded constants — falls back to DEFAULT_DELIVERY_SETTINGS
+// (free delivery off, flat ₹25 delivery + ₹5 handling, matching the
+// migration's own seeded row) while the fetch is in flight, so this card
+// never shows a blank/zero fee.
 
 import { DiscountTag01Icon, HandHeartIcon, Motorbike01Icon, ReceiptIndianRupeeIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { DEFAULT_DELIVERY_SETTINGS, useDeliverySettings } from '../../../api/deliverySettings';
-import { CART_HANDLING_FEE } from '../../../store/useCartStore';
 import type { TipSelection } from './DeliveryTipCard';
 
 const ACCENT = '#155DFC';
@@ -78,15 +78,15 @@ function ScallopEdge() {
 
 export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, onAddTip, discountAmount = 0 }: Props) {
   const { data: deliverySettings = DEFAULT_DELIVERY_SETTINGS } = useDeliverySettings();
-  const { flatDeliveryFee, freeDeliveryEnabled, freeDeliveryThreshold } = deliverySettings;
+  const { flatDeliveryFee, freeDeliveryEnabled, freeDeliveryThreshold, handlingFee } = deliverySettings;
   const isDeliveryFree = freeDeliveryEnabled && itemTotal >= freeDeliveryThreshold;
   const tipAmount = typeof tip === 'number' ? tip : 0;
   const deliveryFee = isDeliveryFree ? 0 : flatDeliveryFee;
-  const toPay = Math.max(itemTotal + CART_HANDLING_FEE + tipAmount + deliveryFee - discountAmount, 0);
+  const toPay = Math.max(itemTotal + handlingFee + tipAmount + deliveryFee - discountAmount, 0);
   const originalToPay = originalItemTotal
-    ? (originalItemTotal > itemTotal ? originalItemTotal : itemTotal) + CART_HANDLING_FEE + tipAmount + flatDeliveryFee
+    ? (originalItemTotal > itemTotal ? originalItemTotal : itemTotal) + handlingFee + tipAmount + flatDeliveryFee
     : isDeliveryFree
-      ? itemTotal + CART_HANDLING_FEE + tipAmount + flatDeliveryFee
+      ? itemTotal + handlingFee + tipAmount + flatDeliveryFee
       : null;
 
   // Real savings only — item-level discount (originalItemTotal vs
@@ -143,7 +143,7 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
               <RowIcon icon={Wallet01Icon} />
               <RowLabel>Platform fee</RowLabel>
             </View>
-            <Text className="text-[13.5px] font-semibold tabular-nums text-ink">₹{CART_HANDLING_FEE}</Text>
+            <Text className="text-[13.5px] font-semibold tabular-nums text-ink">₹{handlingFee}</Text>
           </View>
 
           {discountAmount > 0 && (
@@ -176,10 +176,10 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
         </View>
 
         <View className="flex-row items-center justify-between border-t border-gray-100 pt-3.5">
-          <Text className="text-[15.5px] font-semibold text-ink">Total payable</Text>
+          <Text className="text-[15px] font-semibold text-ink">Total payable</Text>
           <View className="flex-row items-center gap-1.5">
             {originalToPay && originalToPay > toPay && <Text className="text-xs text-ink/35 line-through font-semibold">₹{originalToPay}</Text>}
-            <Text className="text-[15.5px] font-bold tabular-nums text-ink">₹{toPay}</Text>
+            <Text className="text-[15px] font-bold tabular-nums text-ink">₹{toPay}</Text>
           </View>
         </View>
       </View>

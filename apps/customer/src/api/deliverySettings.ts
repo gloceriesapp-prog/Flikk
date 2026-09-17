@@ -12,19 +12,22 @@ export interface DeliverySettings {
   flatDeliveryFee: number;
   freeDeliveryEnabled: boolean;
   freeDeliveryThreshold: number;
+  handlingFee: number;
 }
 
 export function fetchDeliverySettings(): Promise<DeliverySettings> {
   return apiRequest('/delivery-settings', { auth: false });
 }
 
-// Free delivery OFF, flat ₹25 — matches the migration's own seeded row
-// (029_delivery_settings.sql) exactly, so a cold cache/failed fetch reads
-// the same as the real default rather than some other guessed number.
+// Free delivery OFF, flat ₹25 delivery + ₹5 handling — matches the
+// migration's own seeded row (029/030_delivery_settings*.sql) exactly, so
+// a cold cache/failed fetch reads the same as the real default rather
+// than some other guessed number.
 export const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
   flatDeliveryFee: 25,
   freeDeliveryEnabled: false,
   freeDeliveryThreshold: 199,
+  handlingFee: 5,
 };
 
 // Shared by every screen/component that needs the real delivery fee
