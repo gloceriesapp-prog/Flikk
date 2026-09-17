@@ -1,12 +1,16 @@
 'use client';
 
-// Founder account + notification preferences. No real auth backing this
-// yet (admin has no login flow built) — this is the settings surface for
-// once one exists, same "believable shape from day one" convention as
-// every other screen's mock data.
+// Founder account + notification preferences (still mock — admin has no
+// login flow built yet, same "believable shape from day one" convention
+// as every other screen's mock data) + Delivery (real, backed by
+// public.delivery_settings via app/api/delivery-settings/route.ts —
+// apps/customer's own BillDetailsCard/CheckoutScreen read this exact same
+// row, so a change here takes effect for every customer immediately, no
+// app release needed).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import clsx from 'clsx';
+import { fetchDeliverySettings, type DeliverySettings } from '@/lib/supabase/deliverySettings';
 
 const NOTIFICATION_PREFS = [
   { key: 'unassignedOrder', label: 'Order unassigned too long', description: 'Alert when a packed order has no rider after 20 minutes.' },
@@ -14,12 +18,79 @@ const NOTIFICATION_PREFS = [
   { key: 'payoutReady', label: 'Weekly payout ready', description: 'Alert when a new settlement cycle is ready to review.' },
 ] as const;
 
+function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className={clsx('relative h-6 w-11 shrink-0 rounded-full transition-colors', checked ? 'bg-ink' : 'bg-accent')}
+    >
+      <span
+        className={clsx(
+          'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
+          checked ? 'translate-x-[22px]' : 'translate-x-0.5'
+        )}
+      />
+    </button>
+  );
+}
+
 export default function SettingsPage() {
   const [prefs, setPrefs] = useState<Record<string, boolean>>({
     unassignedOrder: true,
     newApplication: true,
     payoutReady: false,
   });
+
+  // Delivery — the one real (non-mock) section on this page. `draft` is
+  // what the two inputs/toggle edit; `saved` is what's actually live,
+  // so "Save changes" only enables once draft genuinely differs from it.
+  const [saved, setSaved] = useState<DeliverySettings | null>(null);
+  const [draft, setDraft] = useState<{ flatDeliveryFee: string; freeDeliveryEnabled: boolean; freeDeliveryThreshold: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDeliverySettings().then((settings) => {
+      setSaved(settings);
+      setDraft({
+        flatDeliveryFee: String(settings.flatDeliveryFee),
+        freeDeliveryEnabled: settings.freeDeliveryEnabled,
+        freeDeliveryThreshold: String(settings.freeDeliveryThreshold),
+      });
+    });
+  }, []);
+
+  const isDirty =
+    draft !== null &&
+    saved !== null &&
+    (Number(draft.flatDeliveryFee) !== saved.flatDeliveryFee ||
+      draft.freeDeliveryEnabled !== saved.freeDeliveryEnabled ||
+      Number(draft.freeDeliveryThreshold) !== saved.freeDeliveryThreshold);
+
+  async function handleSaveDelivery() {
+    if (!draft || isSaving) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch('/api/delivery-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flatDeliveryFee: Number(draft.flatDeliveryFee),
+          freeDeliveryEnabled: draft.freeDeliveryEnabled,
+          freeDeliveryThreshold: Number(draft.freeDeliveryThreshold),
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Could not save delivery settings.');
+      setSaved(body as DeliverySettings);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save delivery settings.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -48,24 +119,82 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-ink">{pref.label}</p>
                 <p className="text-xs text-muted">{pref.description}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setPrefs((p) => ({ ...p, [pref.key]: !p[pref.key] }))}
-                className={clsx(
-                  'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-                  prefs[pref.key] ? 'bg-ink' : 'bg-accent'
-                )}
-              >
-                <span
-                  className={clsx(
-                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
-                    prefs[pref.key] ? 'translate-x-[22px]' : 'translate-x-0.5'
-                  )}
-                />
-              </button>
+              <ToggleSwitch checked={prefs[pref.key]} onChange={() => setPrefs((p) => ({ ...p, [pref.key]: !p[pref.key] }))} />
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+        <h3 className="mb-1 text-sm font-semibold text-ink">Delivery</h3>
+        <p className="mb-4 text-xs text-muted">
+          Applies to every customer order right now. Free delivery is off deliberately — a flat fee only, until it&apos;s
+          switched on here.
+        </p>
+
+        {!draft ? (
+          <p className="text-sm text-muted">Loading…</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-ink">Flat delivery fee</p>
+                <p className="text-xs text-muted">Charged on every order unless free delivery below is on and the order qualifies.</p>
+              </div>
+              <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                <span className="text-sm text-muted">₹</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={draft.flatDeliveryFee}
+                  onChange={(e) => setDraft({ ...draft, flatDeliveryFee: e.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+              <div>
+                <p className="text-sm font-medium text-ink">Free delivery</p>
+                <p className="text-xs text-muted">Waive the fee once an order&apos;s item total crosses the threshold below.</p>
+              </div>
+              <ToggleSwitch
+                checked={draft.freeDeliveryEnabled}
+                onChange={() => setDraft({ ...draft, freeDeliveryEnabled: !draft.freeDeliveryEnabled })}
+              />
+            </div>
+
+            {draft.freeDeliveryEnabled && (
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-medium text-ink">Free-delivery threshold</p>
+                <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                  <span className="text-sm text-muted">₹</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={draft.freeDeliveryThreshold}
+                    onChange={(e) => setDraft({ ...draft, freeDeliveryThreshold: e.target.value })}
+                    className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {saveError && <p className="text-xs font-medium text-red-600">{saveError}</p>}
+
+            <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
+              {isDirty && !isSaving && <span className="text-xs text-muted">Unsaved changes</span>}
+              <button
+                type="button"
+                disabled={!isDirty || isSaving}
+                onClick={handleSaveDelivery}
+                className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {isSaving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
