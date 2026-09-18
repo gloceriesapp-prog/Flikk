@@ -43,12 +43,14 @@ export function AppNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
-      // TEMP: 'ErrorPage' forced as the root route for design iteration —
-      // opens straight to it on launch instead of the real
-      // LocationPermission/Home flow, so it's reachable with zero
-      // navigation. Revert to `hasLocation ? 'Home' : 'LocationPermission'`
-      // once the design work here is done.
-      initialRouteName="ErrorPage"
+      // Real entry logic: no saved location -> LocationPermission flow
+      // first; location already set -> straight to Home. Home.tsx's own
+      // isServiceable check branches to UnavailableZoneScreen inline from
+      // there (not a separate route to land on), and ErrorBoundary (App.tsx)
+      // wraps this whole navigator, catching an uncaught render error from
+      // ANY screen and swapping in ErrorFallback regardless of which
+      // route was showing — not just this one.
+      initialRouteName={hasLocation ? 'Home' : 'LocationPermission'}
     >
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
       <Stack.Screen name="SelectLocation" component={SelectLocationScreen} />
