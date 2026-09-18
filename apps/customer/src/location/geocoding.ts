@@ -69,6 +69,12 @@ export interface ReverseGeocodeResult {
   // of it later, since expo-location already hands back city as its own
   // field.
   city: string;
+  // The confirm card's bold headline — a real named place (building/POI/
+  // neighborhood), not a naive addressLabel.split(',')[0] (backend/src/
+  // routes/location.ts's own note on why that hack gave wrong titles).
+  // Google's path builds this from address_components' priority chain;
+  // the on-device fallback below does the same with what it has.
+  shortName: string;
 }
 
 // Coordinates -> human-readable label, used to prefill the confirm screen and
@@ -83,7 +89,7 @@ export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocod
 
   const results = await Location.reverseGeocodeAsync(coords);
   const first = results[0];
-  if (!first) return { addressLabel: 'Selected location', city: '' };
+  if (!first) return { addressLabel: 'Selected location', city: '', shortName: 'Selected location' };
 
   // Android's own system geocoder (what this call resolves to there) can
   // hand back a bare Plus Code as `name` for a rural point with nothing
@@ -93,19 +99,21 @@ export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocod
   // reached whenever the server key isn't configured (as it currently
   // isn't) or that call fails, so it needs the same guard independently.
   const isPlusCode = first.name ? /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}/.test(first.name) : false;
-  const parts = [isPlusCode ? null : first.name, first.street, first.district, first.city].filter(Boolean);
+  const namedTitle = isPlusCode ? null : first.name;
+  const parts = [namedTitle, first.street, first.district, first.city].filter(Boolean);
   const addressLabel = parts.length > 0 ? parts.join(', ') : 'Selected location';
   const city = first.city ?? first.district ?? first.subregion ?? '';
-  return { addressLabel, city };
+  const shortName = namedTitle ?? first.street ?? first.district ?? city ?? addressLabel;
+  return { addressLabel, city, shortName };
 }
 
 async function reverseGeocodeViaGoogle(coords: Coordinates): Promise<ReverseGeocodeResult | null> {
   try {
     const res = await fetch(`${API_URL}/location/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`);
     if (!res.ok) return null;
-    const data = (await res.json()) as { addressLabel: string | null; city?: string };
+    const data = (await res.json()) as { addressLabel: string | null; shortName?: string; city?: string };
     if (!data.addressLabel) return null;
-    return { addressLabel: data.addressLabel, city: data.city ?? '' };
+    return { addressLabel: data.addressLabel, city: data.city ?? '', shortName: data.shortName ?? data.addressLabel };
   } catch {
     return null;
   }
@@ -132,6 +140,27 @@ export async function searchPlaces(query: string): Promise<string[]> {
     if (!res.ok) return [];
     const data = (await res.json()) as { labels?: string[] };
     return data.labels ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export interface NearbyPlace {
+  name: string;
+}
+
+// Real nearby landmarks around a settled pin — backend/src/routes/
+// location.ts's own /nearby proxy (Google Places Nearby Search). Called
+// alongside reverseGeocode once the map stops moving, never on every
+// drag frame — same onRegionChangeComplete-only convention that call
+// already follows. Never throws; an empty array just means no chip row
+// renders, not an error state.
+export async function fetchNearbyPlaces(coords: Coordinates): Promise<NearbyPlace[]> {
+  try {
+    const res = await fetch(`${API_URL}/location/nearby?lat=${coords.latitude}&lng=${coords.longitude}`);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { places?: { name: string }[] };
+    return (data.places ?? []).map((p) => ({ name: p.name }));
   } catch {
     return [];
   }

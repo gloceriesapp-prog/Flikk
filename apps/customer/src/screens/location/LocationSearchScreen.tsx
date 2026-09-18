@@ -19,8 +19,9 @@
 
 import { ArrowLeft01Icon, GpsSignal01Icon, Search01Icon } from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import MapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps';
@@ -31,6 +32,7 @@ import { AppImage as Image } from '../../components/AppImage';
 import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import {
   distanceKm,
+  fetchNearbyPlaces,
   formatDistance,
   geocodeAddress,
   getCurrentCoordinates,
@@ -38,6 +40,7 @@ import {
   reverseGeocode,
   searchPlaces,
   type Coordinates,
+  type NearbyPlace,
 } from '../../location/geocoding';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -81,16 +84,28 @@ const DEFAULT_CENTER = { latitude: 13.2167, longitude: 74.7469 };
 // explicit ask/reference (same Google-Maps-pin-drop look). The source
 // asset is a square canvas with the actual teardrop drawn inside it with
 // transparent padding around it, not edge-to-edge — PIN_TIP_RATIO is
-// where the tip sits within that square (eyeballed off the asset),
-// needed because the true selected coordinate is the pin's TIP, not its
-// visual center, so the image box has to be anchored by that point
-// rather than centered the way a plain circle marker was.
+// where the tip sits within that square, needed because the true
+// selected coordinate is the pin's TIP, not its visual center, so the
+// image box has to be anchored by that point rather than centered the
+// way a plain circle marker was. Measured directly off the real 512x512
+// PNG (lowest opaque pixel row / image height), not eyeballed — the
+// previous 0.87 guess was off by ~3.5px at this PIN_SIZE, which is
+// exactly the "pin isn't exactly on my location" the eyeball estimate
+// caused. Re-measure this if the asset URL below is ever swapped for a
+// visually different pin.
 const PIN_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/gps.png';
 const PIN_SIZE = 64;
-const PIN_TIP_RATIO = 0.87;
+const PIN_TIP_RATIO = 0.926;
 // Small pin icon inside the confirm card's address row — a different asset
 // from PIN_IMAGE_URI above (that one's the actual draggable map marker).
 const CARD_PIN_ICON_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/map-pin.png';
+
+// app.config.js's own note: true only once IOS_GOOGLE_MAPS_API_KEY is set
+// AND a fresh native build has shipped (this is baked in at build time, not
+// something that can flip at runtime without a rebuild). Read once at
+// module scope, not per-render — it never changes for the life of the app.
+const HAS_IOS_GOOGLE_MAPS = Constants.expoConfig?.extra?.hasIosGoogleMaps === true;
+const USES_GOOGLE_MAPS = Platform.OS === 'android' || HAS_IOS_GOOGLE_MAPS;
 
 export function LocationSearchScreen({ navigation, route }: Props) {
   const { intent, ...startingPoint } = route.params ?? {};
@@ -126,8 +141,20 @@ export function LocationSearchScreen({ navigation, route }: Props) {
     longitude: startingPoint.longitude ?? DEFAULT_CENTER.longitude,
   });
   const [addressLabel, setAddressLabel] = useState(startingPoint.addressLabel ?? '');
+  // Bold headline on the confirm card — real named-place components via
+  // reverseGeocode's own shortName (geocoding.ts's note on why this isn't
+  // addressLabel.split(',')[0] anymore). No shortName arrives through
+  // navigation params (callers only ever have a plain label), so this
+  // starts as a reasonable guess from whatever addressLabel came in and
+  // gets replaced with the real thing the moment the map settles and
+  // reverse-geocodes (handleRegionSettled below).
+  const [shortName, setShortName] = useState(startingPoint.addressLabel?.split(',')[0]?.trim() ?? '');
   const [city, setCity] = useState(startingPoint.city ?? '');
   const [resolving, setResolving] = useState(!startingPoint.addressLabel);
+  // Real nearby landmarks (fetchNearbyPlaces -> backend's Places Nearby
+  // Search proxy) — chips under the confirm card, tap one to make it the
+  // headline. Refetched every time the pin settles, same as shortName.
+  const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentCoords, setCurrentCoords] = useState<Coordinates | null>(null);
@@ -142,6 +169,15 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // handing MapView an explicit pixel height, not just flex:1, is the
   // standard workaround.
   const [mapAreaHeight, setMapAreaHeight] = useState(0);
+  // Real crash this guards against, not a defensive-programming guess:
+  // react-native-maps on Android can throw a native NullPointerException
+  // in MapView.applyBaseMapPadding when `mapPadding` is pushed to the
+  // native view before its underlying GoogleMap object exists yet — that
+  // object isn't ready until the SDK's own onMapReady fires, but this
+  // component was passing a real mapPadding value from the very first
+  // render (before ready). mapPadding stays undefined until onMapReady
+  // sets this true; the pin/mapPadding math below is otherwise unchanged.
+  const [mapReady, setMapReady] = useState(false);
   // Measured so the "current location" pill can sit just above the
   // floating card instead of a guessed fixed offset — the card's own
   // height varies (the distance-warning chip only sometimes renders).
@@ -164,6 +200,14 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // not state — it updates many times a second and is only ever read once,
   // on tap, not rendered from.
   const liveUserLocation = useRef<Coordinates | null>(null);
+  // Guards the one-time auto-recenter below — the pin should already be
+  // exactly on the user's real position by default (per an explicit ask),
+  // not just after they manually tap "Use my current location". Fires at
+  // most once per screen visit, and only when the screen opened via a real
+  // GPS fix in the first place (see the effect below) — never yanks the
+  // map away from a location the user got to by searching or picking a
+  // saved address.
+  const hasAutoRecenteredRef = useRef(false);
   // Live place-name suggestions as the user types — searchPlaces
   // (geocoding.ts, backend's Mappls autosuggest proxy) was already built
   // server-side but never actually wired into this screen's search bar,
@@ -247,15 +291,25 @@ export function LocationSearchScreen({ navigation, route }: Props) {
     const next = { latitude: region.latitude, longitude: region.longitude };
     setCenter(next);
     setResolving(true);
+    // Not cleared to [] here — the chip row keeps showing the PREVIOUS
+    // settle's results until the new fetch resolves, instead of blanking
+    // then repopulating on every single drag-settle (the actual "blink"
+    // this was asked to fix). The chip row's own fixed-height wrapper
+    // below means this never affects layout either way.
     try {
       const resolved = await reverseGeocode(next);
       setAddressLabel(resolved.addressLabel);
+      setShortName(resolved.shortName);
       setCity(resolved.city);
     } catch {
       // keep the previous label — a failed reverse-geocode shouldn't block confirming
     } finally {
       setResolving(false);
     }
+    // Independent of reverseGeocode above — a failed/empty nearby-places
+    // fetch just means no chip row renders, never blocks the address
+    // itself from resolving.
+    fetchNearbyPlaces(next).then(setNearbyPlaces);
   }
 
   async function resolveAndGoTo(label: string) {
@@ -272,6 +326,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       // reverse-geocodes the real pin position — onRegionChangeComplete
       // overwrites it right after.
       setAddressLabel(label);
+      setShortName(label.split(',')[0]?.trim() ?? label);
       addRecentSearch({ label, ...coords });
     } catch {
       setError('Search failed. Please try again.');
@@ -347,16 +402,17 @@ export function LocationSearchScreen({ navigation, route }: Props) {
         <MapView
           ref={mapRef}
           style={mapAreaHeight > 0 ? { width: '100%', height: mapAreaHeight } : { flex: 1 }}
-          // Android only — react-native-maps falls back to Apple Maps on
-          // iOS regardless (no iOS Google Maps key configured, see
-          // app.config.js's own note), and customMapStyle has no effect
-          // there either way. This is a deliberate cross-platform split,
-          // not a gap: Apple Maps needs no key/setup at all on iOS, and
-          // react-native-maps' API (showsUserLocation, region events,
-          // etc.) is identical either way — nothing else in this screen's
-          // logic differs by platform.
-          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-          customMapStyle={Platform.OS === 'android' ? GRAYSCALE_MAP_STYLE : undefined}
+          // USES_GOOGLE_MAPS is always true on Android; on iOS it flips to
+          // true automatically once IOS_GOOGLE_MAPS_API_KEY is set and a
+          // fresh native build ships (app.config.js's own note + this
+          // file's own HAS_IOS_GOOGLE_MAPS constant above) — no further
+          // edit needed here when that happens. Until then, iOS falls back
+          // to Apple Maps: no JSON-styling API exists there at all (a real
+          // platform ceiling, not a gap), so mapType="mutedStandard" below
+          // is the closest free approximation.
+          provider={USES_GOOGLE_MAPS ? PROVIDER_GOOGLE : undefined}
+          customMapStyle={USES_GOOGLE_MAPS ? GRAYSCALE_MAP_STYLE : undefined}
+          mapType={USES_GOOGLE_MAPS ? 'standard' : 'mutedStandard'}
           // Reserves the floating card's own footprint so Google's
           // mandatory attribution logo (bottom-left, can't be hidden or
           // recolored — it's a fixed overlay the SDK draws itself, not
@@ -365,7 +421,8 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // the correct react-native-maps API for this — it insets where
           // the SDK positions its own built-in UI (logo, compass), not
           // just a visual crop.
-          mapPadding={{ top: 0, right: 0, bottom: bottomPadding, left: 0 }}
+          mapPadding={mapReady ? { top: 0, right: 0, bottom: bottomPadding, left: 0 } : undefined}
+          onMapReady={() => setMapReady(true)}
           // initialCamera, not initialRegion — a Region has no pitch/zoom
           // concept at all, only a lat/lng delta "span", which is exactly
           // why the 3D buildings weren't showing regardless of how tight
@@ -385,7 +442,22 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // continuously — not just once on mount.
           onUserLocationChange={(e) => {
             const coordinate = e.nativeEvent.coordinate;
-            if (coordinate) liveUserLocation.current = { latitude: coordinate.latitude, longitude: coordinate.longitude };
+            if (!coordinate) return;
+            const live = { latitude: coordinate.latitude, longitude: coordinate.longitude };
+            liveUserLocation.current = live;
+            // One-time auto-recenter onto the blue dot's own live fix —
+            // only when this screen opened via a real GPS-based flow
+            // (startingPoint.latitude set, e.g. LocationPermissionScreen)
+            // and only once, the first time the blue dot reports in. Same
+            // coordinate source handleGoToCurrentLocation already prefers
+            // (this file's own liveUserLocation note above on why it's
+            // more reliable than the one-off fetch startingPoint came
+            // from), just applied automatically instead of waiting for a
+            // manual tap.
+            if (!hasAutoRecenteredRef.current && startingPoint.latitude != null) {
+              hasAutoRecenteredRef.current = true;
+              mapRef.current?.animateToRegion({ ...live, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
+            }
           }}
           // The real "my location" blue dot — GPS-anchored to the actual
           // device position, native to the map (not a custom marker), so
@@ -541,10 +613,10 @@ export function LocationSearchScreen({ navigation, route }: Props) {
         >
           <Pressable
             onPress={handleGoToCurrentLocation}
-            className="flex-row items-center gap-2 rounded-full bg-white px-4 py-3 shadow-sm shadow-black/15"
+            className="flex-row items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-sm shadow-black/15"
           >
             <AppIcon icon={GpsSignal01Icon} size={18} color={BUTTON_ACCENT} />
-            <Text className="text-sm font-bold" style={{ color: BUTTON_ACCENT }}>
+            <Text className="text-sm font-semibold" style={{ color: BUTTON_ACCENT }}>
               Use my current location
             </Text>
           </Pressable>
@@ -593,27 +665,37 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                   <Image source={{ uri: CARD_PIN_ICON_URI }} style={{ width: 28, height: 28 }} resizeMode="contain" />
                 </View>
                 <View className="flex-1">
-                  {resolving ? (
-                    <Text className="text-[15px] text-ink/50">Locating…</Text>
-                  ) : (
-                    <>
-                      <Text className="text-[16px] font-bold text-ink" numberOfLines={1}>
-                        {addressLabel.split(',')[0] || 'Move the pin to your location'}
-                      </Text>
-                      {/* Only rendered when there's real content — Google's
-                          reverse-geocode sometimes returns just a single
-                          short place name with no city either (sparse rural
-                          data, this file's own note on Plus-Code fallbacks
-                          elsewhere), and an empty subtitle line still took
-                          up its own row, reading as "the address is broken"
-                          rather than "there's just nothing more to show". */}
-                      {(addressLabel.split(',').slice(1).join(',').trim() || city) ? (
-                        <Text className="text-[13px] text-ink/45" numberOfLines={1}>
-                          {addressLabel.split(',').slice(1).join(',').trim() || city}
-                        </Text>
-                      ) : null}
-                    </>
-                  )}
+                  {/* Text stays mounted through a resolve — previously this
+                      swapped the whole block out for a plain "Locating…"
+                      Text while resolving was true, which fired on every
+                      single drag-settle and is exactly the visible
+                      title/subtitle "blink" this was asked to fix. The
+                      previous settle's real text now stays on screen
+                      un-swapped while the next one resolves; the small
+                      spinner below is the only thing that comes and goes. */}
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-[16px] font-bold text-ink" numberOfLines={1}>
+                      {shortName || 'Move the pin to your location'}
+                    </Text>
+                    {resolving ? <ActivityIndicator size="small" color={colors.ink} /> : null}
+                  </View>
+                  {/* Full address below — geocoding.ts's own
+                      reverseGeocode result, not a slice of it (shortName
+                      above already carries the headline; this line
+                      shows the complete real address, same as Blinkit/
+                      Instamart's own confirm card). Only rendered when
+                      there's real content — Google's reverse-geocode
+                      sometimes returns just a single short place name
+                      with no more to add (sparse rural data, this
+                      file's own note on Plus-Code fallbacks elsewhere),
+                      and an empty subtitle line still took up its own
+                      row, reading as "the address is broken" rather
+                      than "there's just nothing more to show". */}
+                  {(addressLabel && addressLabel !== shortName) || city ? (
+                    <Text className="text-[13px] text-ink/45" numberOfLines={2}>
+                      {addressLabel && addressLabel !== shortName ? addressLabel : city}
+                    </Text>
+                  ) : null}
                 </View>
                 <Pressable
                   onPress={() => searchInputRef.current?.focus()}
@@ -630,6 +712,44 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                 <Text className="mt-2.5 text-[12.5px] font-medium text-red-600">
                   This pin is {formatDistance(distanceFromCurrent)} from your current location
                 </Text>
+              ) : null}
+            </View>
+
+            {/* Real nearby landmarks (fetchNearbyPlaces) — a customer who
+                knows their area by landmark, not street name, taps one to
+                make it the confirm card's own headline instead of the
+                plain reverse-geocoded address above.
+                Fixed-height wrapper, ALWAYS mounted (not conditionally
+                rendered on nearbyPlaces.length) — this whole floating
+                panel's height is measured once via onLayout below
+                (cardHeight) and feeds straight into the MapView's
+                mapPadding/pin-anchor math above. Mounting/unmounting this
+                row on every settle changed that measured height each
+                time, which re-triggered mapPadding and visibly shoved the
+                pin up/down on every drag — a fixed height here means the
+                panel's total height never changes, chips or not. FlatList
+                over a plain ScrollView for the same reason any horizontal
+                chip list should use one — cheaper re-renders as the data
+                array actually changes underneath it. */}
+            <View style={{ height: 40 }} className="justify-center">
+              {nearbyPlaces.length > 0 ? (
+                <FlatList
+                  horizontal
+                  data={nearbyPlaces}
+                  keyExtractor={(place) => place.name}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8 }}
+                  renderItem={({ item: place }) => (
+                    <Pressable
+                      onPress={() => setShortName(place.name)}
+                      className="rounded-full border border-mist bg-white/80 px-3.5 py-2"
+                    >
+                      <Text className="text-[12.5px] font-semibold text-ink/70" numberOfLines={1}>
+                        Near {place.name}
+                      </Text>
+                    </Pressable>
+                  )}
+                />
               ) : null}
             </View>
 

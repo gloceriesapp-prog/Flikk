@@ -20,13 +20,13 @@ module.exports = {
     userInterfaceStyle: 'light',
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.flikk.rider',
+      bundleIdentifier: 'com.gloceries.rider',
       infoPlist: {
         NSLocationWhenInUseUsageDescription: 'Flikk uses your location to show your live position to the customer while delivering their order.',
       },
     },
     android: {
-      package: 'com.flikk.rider',
+      package: 'com.gloceries.rider',
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
         foregroundImage: './assets/android-icon-foreground.png',

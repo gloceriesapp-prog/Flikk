@@ -57,7 +57,7 @@ export function LocationSelector({ onPress, isClosed = false }: Props) {
         <Text className="text-lg font-semibold text-white" numberOfLines={1}>
           {isClosed ? 'Closed for now' : label}
         </Text>
-        {!isClosed && <AppIcon icon={ChevronDownIcon} size={16} color={colors.ink} strokeWidth={2.2} />}
+        {!isClosed && <AppIcon icon={ChevronDownIcon} size={16} color='#FFFFFF' strokeWidth={2.2} />}
       </View>
     </Pressable>
   );

@@ -21,7 +21,7 @@ module.exports = {
       },
     },
     android: {
-      package: 'com.flikk.partner',
+      package: 'com.gloceries.partner',
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
         foregroundImage: './assets/android-icon-foreground.png',

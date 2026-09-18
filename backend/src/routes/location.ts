@@ -158,7 +158,92 @@ locationRouter.get('/reverse-geocode', async (req, res, next) => {
     const fallbackLabel = [neighborhood, city].filter(Boolean).join(', ');
     const addressLabel = isPlusCode && fallbackLabel ? fallbackLabel : best.formatted_address;
 
-    res.json({ addressLabel, city });
+    // The confirm card's bold headline (LocationSearchScreen.tsx) — real
+    // named-place components, not a naive addressLabel.split(',')[0]
+    // (that just grabs whatever text precedes Google's first comma, which
+    // is often a house number or Plus Code, not a recognizable place name
+    // — the actual bug behind "not exact name" reports). point_of_interest
+    // leads (a real landmark search, e.g. a mall/temple, should headline
+    // with ITS name) — but premise/subpremise is deliberately excluded
+    // from this chain even though it's real, named-component data:
+    // Google's own premise value for a residential point is usually a
+    // bare plot number ("67/1"), which reads worse as a bold headline
+    // than the neighborhood it sits in. Blinkit/Instamart/this app's own
+    // reference screenshots all headline with the neighborhood/village
+    // name ("kurkalu", "Yenna Gudde"), never a plot number.
+    const shortName =
+      pickComponent(best.address_components, 'point_of_interest') ??
+      neighborhood ??
+      pickComponent(best.address_components, 'sublocality_level_1', 'sublocality') ??
+      city ??
+      addressLabel;
+
+    res.json({ addressLabel, shortName, city });
+  } catch (err) {
+    next(err);
+  }
+});
+
+interface GooglePlaceResult {
+  name?: string;
+  vicinity?: string;
+  types?: string[];
+  geometry?: { location?: { lat: number; lng: number } };
+}
+
+interface GoogleNearbyResponse {
+  status: string;
+  results?: GooglePlaceResult[];
+}
+
+// Real nearby landmarks (a mall/temple/school within ~200m) — same key as
+// /reverse-geocode above (server-side, IP-restricted), but this hits
+// Places Nearby Search, a different Google API than Geocoding. If this
+// starts returning REQUEST_DENIED, the fix is enabling "Places API" for
+// this key in Google Cloud Console, not touching this code — Geocoding
+// API being enabled doesn't imply Places API is.
+//
+// Shown as tappable chips under LocationSearchScreen.tsx's confirm card
+// once the pin settles — "is this near XYZ Mall?" is a more confident
+// confirmation than a bare address for a customer who knows their area by
+// landmarks, not street names (common in this app's own semi-rural launch
+// zone, CLAUDE.md). Never blocks confirming the plain reverse-geocoded
+// address — this is a suggestion layer on top, not a requirement.
+locationRouter.get('/nearby', async (req, res, next) => {
+  try {
+    if (!env.googleGeocodingApiKey) return res.json({ places: [] });
+
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return res.json({ places: [] });
+
+    const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json');
+    url.searchParams.set('location', `${lat},${lng}`);
+    url.searchParams.set('rankby', 'distance');
+    url.searchParams.set('key', env.googleGeocodingApiKey);
+
+    const googleRes = await fetch(url);
+    if (!googleRes.ok) return res.json({ places: [] });
+
+    const data = (await googleRes.json()) as GoogleNearbyResponse;
+    if (data.status !== 'OK') return res.json({ places: [] });
+
+    // route/street_address/locality entries aren't landmarks a customer
+    // would recognize their pin by — filtered out in favor of real named
+    // establishments/points of interest, closest-first (rankby=distance
+    // above already orders these), capped at 5 so the chip row stays a
+    // single scannable line.
+    const EXCLUDED_TYPES = new Set(['route', 'street_address', 'locality', 'political', 'plus_code']);
+    const places = (data.results ?? [])
+      .filter((place) => place.name && !(place.types ?? []).every((type) => EXCLUDED_TYPES.has(type)))
+      .slice(0, 5)
+      .map((place) => ({
+        name: place.name,
+        latitude: place.geometry?.location?.lat ?? null,
+        longitude: place.geometry?.location?.lng ?? null,
+      }));
+
+    res.json({ places });
   } catch (err) {
     next(err);
   }
