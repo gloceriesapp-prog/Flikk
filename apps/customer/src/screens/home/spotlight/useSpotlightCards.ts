@@ -82,10 +82,10 @@ export function useSpotlightCards(): SpotlightCardsResult {
       });
     }
     if (catalog.length > 0) {
-      cards.push({ key: 'trending-area', title: 'Trending near your area', products: catalog, ctaLabel: 'See all' });
+      cards.push({ key: 'trending-area', title: 'Trending at [Store Name]', products: catalog, ctaLabel: 'See all' });
     }
     if (deals.length > 0) {
-      cards.push({ key: 'best-deals', title: 'Best Deals', products: deals, ctaLabel: 'Grab deals' });
+      cards.push({ key: 'best-deals', title: 'Deals Youll Love', products: deals, ctaLabel: 'Grab deals' });
     }
     if (reversedCatalog.length > 0) {
       cards.push({

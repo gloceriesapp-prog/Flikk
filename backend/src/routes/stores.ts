@@ -60,12 +60,16 @@ storesRouter.get('/', async (req, res, next) => {
       if (zoneError) throw zoneError;
       zoneId = zone.id;
     }
-    const { data, error } = await supabase
-      .from('stores')
-      .select('*')
-      .eq('zone_id', zoneId)
-      .eq('is_active', true)
-      .order('name');
+    // Deliberately NOT filtered to is_active — same real decision GET
+    // /stores/nearest below already documents and this route used to
+    // contradict: a closed store is still a real store a customer can
+    // browse (see product pages, add to a scheduled order, etc.), not one
+    // that should vanish from the Store tab's own listing the moment it
+    // closes for the night. apps/customer's useAllStores.ts already maps
+    // is_active straight through as `isOpen`, and StoreCard/StoreTileCard
+    // already render a real "Closed" badge from it — this filter was the
+    // only thing standing between that existing UI and actually showing.
+    const { data, error } = await supabase.from('stores').select('*').eq('zone_id', zoneId).order('name');
     if (error) throw error;
     res.json(data);
   } catch (err) {

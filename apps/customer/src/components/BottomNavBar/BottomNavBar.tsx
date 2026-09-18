@@ -20,11 +20,12 @@
 //
 // All four tabs have real screens now.
 //
-// A detached circular button sits to the pill's right again — per an
-// explicit reference image (a solid colored circle badge next to the nav
-// pill, own icon, no label). No onPress yet — same "UI exists, flow not
-// wired" convention as ProductCardView's own bookmark heart, since there's
-// no real destination for this to open yet.
+// The detached circle button that used to sit to the pill's right is gone
+// — per an explicit ask. The pill itself keeps its existing width/inset
+// exactly as it was (still narrower than a full left:20/right:20 span,
+// SIDE_BUTTON_SIZE/SIDE_BUTTON_GAP below are unchanged and still feed
+// that same inset math) rather than widening to fill the space the
+// button left behind — that resize wasn't asked for.
 //
 // `hidden` (optional SharedValue<number>, 0..1) — the nav pill + side
 // button + fade gradient animate away (slide down + fade) as this goes
@@ -35,25 +36,32 @@
 // (Purchase/Categories/Store) fall back to a local always-0 value, so the
 // pill just never hides there — no behavior change for them.
 
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { SaleTag01Icon } from '@hugeicons/core-free-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppIcon } from '../AppIcon';
 import { CartBar } from '../CartBar/CartBar';
 import { BottomNavBarItem } from './BottomNavBarItem';
 import { BOTTOM_NAV_TABS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
 
-// Circle button's own fixed size + gap from the pill — the pill's own
-// right inset (below) is widened by exactly this much so the two never
-// overlap.
+// Leftover from the now-removed side circle button — kept only so
+// PILL_INSET's math (below) still lands on the exact same pill WIDTH the
+// asymmetric left:20/right:20+SIDE_BUTTON_SIZE+SIDE_BUTTON_GAP layout used
+// to produce, just centered instead of shifted left. Not sizing anything
+// visible anymore.
 const SIDE_BUTTON_SIZE = 52;
 const SIDE_BUTTON_GAP = 12;
+// Equal left/right inset that centers the pill while preserving its exact
+// former width — the old layout's total horizontal inset was
+// 20 (left) + (20 + SIDE_BUTTON_SIZE + SIDE_BUTTON_GAP) (right); splitting
+// that same total evenly across both sides keeps the pill exactly as wide
+// as it already was, just centered on screen instead of shifted left to
+// leave room for a button that no longer exists.
+const PILL_INSET = 32;
 // The pill's own real height (icon + label + vertical padding) — used to
 // vertically CENTER the circle button against it, not bottom-align the
 // two (see that Pressable's own comment). Same 73 the CartBar row's own
@@ -141,18 +149,19 @@ export function BottomNavBar({ hidden }: Props) {
           pill's own blur is what should visually separate it from the
           content now, not a page-wide overlay. */}
 
-      {/* Right inset makes room for the circle button beside it (its own
-          size + gap, this file's own constants above). shadowOffset
-          {0,0} + a real shadowRadius (not a directional offset) is what
-          gives an even halo on every side rather than just below it —
-          per an explicit ask for a shadow "for all the side". elevation
-          is Android's own equivalent (no offset/radius split there, one
-          number controls the whole halo). */}
+      {/* Equal left/right (PILL_INSET, both sides) centers the pill on
+          screen — per an explicit ask, same overall width as before, just
+          no longer shifted left to leave room for the removed circle
+          button. shadowOffset {0,0} + a real shadowRadius (not a
+          directional offset) is what gives an even halo on every side
+          rather than just below it — per an explicit ask for a shadow
+          "for all the side". elevation is Android's own equivalent (no
+          offset/radius split there, one number controls the whole halo). */}
       <View
         style={{
           position: 'absolute',
-          left: 20,
-          right: 20 + SIDE_BUTTON_SIZE + SIDE_BUTTON_GAP,
+          left: PILL_INSET,
+          right: PILL_INSET,
           bottom: insets.bottom + PILL_BOTTOM_OFFSET,
           shadowColor: '#000000',
           shadowOffset: { width: 0, height: 0 },
@@ -180,7 +189,7 @@ export function BottomNavBar({ hidden }: Props) {
             isInteractive
             style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.08)' }}
           >
-            <View className="flex-row items-center justify-around px-2 py-2.5">
+            <View className="flex-row items-center justify-around px-1 py-1.5">
               {BOTTOM_NAV_TABS.map((tab) => (
                 <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
               ))}
@@ -221,29 +230,6 @@ export function BottomNavBar({ hidden }: Props) {
         )}
       </View>
 
-      {/* Detached circle, vertically CENTERED against the pill, not
-          bottom-aligned with it — the pill is ~73px tall (PILL_HEIGHT,
-          the same number cartBarAnimatedStyle's own comment below already
-          uses) and this circle is only SIDE_BUTTON_SIZE (52), so sharing
-          the same `bottom` value as the pill left the circle sitting
-          noticeably lower than the pill's own visual center (the
-          misalignment in the reference screenshot). Solid coral
-          (CLAUDE.md's CTA color, the one accent never used as the base
-          pill/tab color) so it reads as its own separate action, not a
-          5th tab. */}
-      <Pressable
-        hitSlop={4}
-        className="items-center justify-center rounded-full bg-coral shadow-md shadow-black/20"
-        style={{
-          position: 'absolute',
-          right: 20,
-          bottom: insets.bottom + PILL_BOTTOM_OFFSET + (PILL_HEIGHT - SIDE_BUTTON_SIZE) / 2,
-          width: SIDE_BUTTON_SIZE,
-          height: SIDE_BUTTON_SIZE,
-        }}
-      >
-        <AppIcon icon={SaleTag01Icon} size={22} color="#FFFFFF" />
-      </Pressable>
       </Animated.View>
 
       {/* Sits right above the pill — insets.bottom + PILL_BOTTOM_OFFSET +

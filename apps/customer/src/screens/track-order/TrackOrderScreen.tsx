@@ -35,7 +35,7 @@
 // invented, just combined into one list instead of N separate ones.
 
 import { useState } from 'react';
-import { ArrowLeft01Icon, CustomerService01Icon, Store01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, CustomerService01Icon } from '@hugeicons/core-free-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -43,7 +43,7 @@ import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { cancelOrder, fetchOrder, type ApiOrder } from '../../api/orders';
 import { fetchTrip } from '../../api/trips';
-import { joinStoreNames, representativeLeg } from '../../utils/tripLegs';
+import { representativeLeg } from '../../utils/tripLegs';
 import { CancelOrderCard } from './components/CancelOrderCard';
 import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryRiderCard } from './components/DeliveryRiderCard';
@@ -146,7 +146,6 @@ export function TrackOrderScreen({ navigation, route }: Props) {
       ) : isTrip ? (
         (() => {
           const leg = representativeLeg(legs);
-          const storeNames = legs.map((l) => l.stores?.name ?? 'Store');
           // Real union of every leg's own order_items, combined into the
           // one items card — leg's other fields (id, placed_at, etc.)
           // ride along unchanged since OrderItemsCard only ever reads
@@ -155,29 +154,6 @@ export function TrackOrderScreen({ navigation, route }: Props) {
 
           return (
             <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
-              {/* One combined banner — one payment, one delivery fee for
-                  the whole trip (trip.total/trip.delivery_fee, never
-                  duplicated per leg — backend/src/lib/trips.ts's own
-                  calcTripTotal). Store names sit right here, up top, in
-                  plain text — real transparency about this being a
-                  multi-store trip, without turning the rest of the screen
-                  into N separate per-store sections. */}
-              <View className="w-full gap-2 rounded-3xl bg-lime-soft p-5">
-                {/* Translucent chip, not a solid one — this row is a label
-                    sitting on top of the banner, not another block of
-                    equal visual weight to the price below it. */}
-                <View className="flex-row items-center gap-1.5 self-start rounded-full bg-white/40 px-2.5 py-1">
-                  <AppIcon icon={Store01Icon} size={12} color={colors.ink + '99'} />
-                  <Text className="text-[11px] font-bold uppercase tracking-wide text-lime-deep" numberOfLines={1}>
-                    From {joinStoreNames(storeNames)}
-                  </Text>
-                </View>
-                <Text className="text-2xl font-semibold text-ink">₹{trip!.total.toFixed(0)}</Text>
-                <Text className="text-sm font-medium text-ink/50">
-                  {legs.length}-store trip · one delivery · ₹{trip!.delivery_fee.toFixed(0)} delivery fee
-                </Text>
-              </View>
-
               <OrderInfoCard order={leg} />
 
               {/* Right below the estimate card, same placement/mutual-
