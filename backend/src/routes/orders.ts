@@ -17,6 +17,7 @@ import { lookupPromoForCheckout } from './promos.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
 import { rankRepeatPurchases, reorderByRank } from '../lib/buyItAgain.js';
 import { calcDeliveryFee, getDeliverySettings } from '../lib/deliverySettings.js';
+import { refundPayment } from '../payments/refundPayment.js';
 
 // Only these three transitions are ones the customer didn't just cause
 // themselves (they placed the order) or won't see reflected in the receipt
@@ -270,10 +271,18 @@ ordersRouter.get('/:id', requireAuth, async (req: AuthedRequest, res, next) => {
     // second real lookup, not a fabricated join. Only present once a rider
     // is actually assigned (out_for_delivery onward); TrackOrderScreen's
     // own rider card renders nothing without it, never a placeholder.
-    let rider: { name: string; phone: string } | null = null;
+    // deliveries is a real count (every order this rider has ever actually
+    // delivered, across every store/trip — riders has no such column of
+    // its own) — DeliveryRiderCard.tsx used to show a hardcoded fabricated
+    // number here regardless of which real rider was assigned; this is
+    // what replaces it with the truth.
+    let rider: { name: string; phone: string; deliveries: number } | null = null;
     if (data.rider_id) {
-      const { data: riderRow } = await supabase.from('riders').select('name, phone').eq('user_id', data.rider_id).single();
-      rider = riderRow ?? null;
+      const [{ data: riderRow }, { count: deliveries }] = await Promise.all([
+        supabase.from('riders').select('name, phone').eq('user_id', data.rider_id).single(),
+        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('rider_id', data.rider_id).eq('status', 'delivered'),
+      ]);
+      rider = riderRow ? { ...riderRow, deliveries: deliveries ?? 0 } : null;
     }
 
     res.json({ ...data, riders: rider });
@@ -292,17 +301,21 @@ interface StatusBody {
 }
 
 // PATCH /orders/:id/status — state machine + role-ownership enforced here, not client-side.
+// 'customer' added alongside the other three roles specifically for the
+// cancelled transition — orderStateMachine.ts's own canRoleTransition
+// still only allows a customer to reach 'cancelled', never any other
+// status, so this doesn't open packed/out_for_delivery/delivered to them.
 ordersRouter.patch(
   '/:id/status',
   requireAuth,
-  requireRole('store_owner', 'rider', 'admin'),
+  requireRole('customer', 'store_owner', 'rider', 'admin'),
   requireApproved,
   async (req: AuthedRequest, res, next) => {
     try {
       const { status: to, reason } = req.body as StatusBody;
       const { data: order, error } = await supabase
         .from('orders')
-        .select('id, status, store_id, rider_id, trip_id')
+        .select('id, status, store_id, rider_id, customer_id, trip_id, total, razorpay_payment_id')
         .eq('id', req.params.id)
         .single();
       if (error || !order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
@@ -321,11 +334,30 @@ ordersRouter.patch(
       if (req.user!.role === 'rider' && order.rider_id !== req.user!.id) {
         throw new AppError(403, 'FORBIDDEN', 'Not your assignment.');
       }
+      if (req.user!.role === 'customer' && order.customer_id !== req.user!.id) {
+        throw new AppError(403, 'FORBIDDEN', 'Not your order.');
+      }
 
       const tsCol = timestampColumnFor(to);
       const update: Record<string, unknown> = { status: to };
       if (tsCol) update[tsCol] = new Date().toISOString();
       if (to === 'cancelled' && reason) update.cancel_reason = reason;
+
+      // Refund BEFORE the status write, not after — if the Razorpay call
+      // itself threw an unexpected error (refundPayment.ts already
+      // swallows Razorpay's own failure responses into refund_status:
+      // 'failed', so this only fires on something more fundamental), the
+      // order should stay in its real pre-cancel state rather than
+      // showing "cancelled" with no refund attempt ever having been made.
+      // COD orders (razorpay_payment_id null) skip this entirely —
+      // refund_status stays the column's own 'none' default, correctly
+      // meaning "nothing was ever charged, nothing to refund".
+      if (to === 'cancelled' && order.razorpay_payment_id) {
+        const refund = await refundPayment(order.razorpay_payment_id, order.total);
+        update.refund_status = refund.status;
+        update.razorpay_refund_id = refund.razorpayRefundId;
+        if (refund.status === 'completed') update.refunded_at = new Date().toISOString();
+      }
 
       const { data: updated, error: updateErr } = await supabase
         .from('orders')

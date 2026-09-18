@@ -168,7 +168,28 @@ tripsRouter.get('/:id', requireAuth, requireRole('customer'), async (req: Authed
       .order('placed_at', { ascending: true });
     if (ordersErr) throw ordersErr;
 
-    res.json({ ...trip, orders: orders ?? [] });
+    // Same real riders.user_id lookup routes/orders.ts's own GET /:id
+    // makes — one rider does the whole trip's multi-stop pickup (this
+    // file's own header note), so every leg shares the identical
+    // rider_id; fetched once here and attached to every leg rather than
+    // once per leg. Only present once a rider is actually assigned
+    // (out_for_delivery onward) — same "never a placeholder" rule.
+    const ridersById = new Map<string, { name: string; phone: string; deliveries: number }>();
+    const riderIds = [...new Set((orders ?? []).map((o) => o.rider_id).filter((id): id is string => !!id))];
+    if (riderIds.length > 0) {
+      await Promise.all(
+        riderIds.map(async (riderId) => {
+          const [{ data: riderRow }, { count: deliveries }] = await Promise.all([
+            supabase.from('riders').select('name, phone').eq('user_id', riderId).single(),
+            supabase.from('orders').select('id', { count: 'exact', head: true }).eq('rider_id', riderId).eq('status', 'delivered'),
+          ]);
+          if (riderRow) ridersById.set(riderId, { ...riderRow, deliveries: deliveries ?? 0 });
+        }),
+      );
+    }
+    const ordersWithRiders = (orders ?? []).map((o) => ({ ...o, riders: o.rider_id ? (ridersById.get(o.rider_id) ?? null) : null }));
+
+    res.json({ ...trip, orders: ordersWithRiders });
   } catch (err) {
     next(err);
   }

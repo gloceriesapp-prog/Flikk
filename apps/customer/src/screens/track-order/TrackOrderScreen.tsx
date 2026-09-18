@@ -34,15 +34,18 @@
 // Items are the real union of every leg's own order_items — nothing
 // invented, just combined into one list instead of N separate ones.
 
+import { useState } from 'react';
 import { ArrowLeft01Icon, CustomerService01Icon, Store01Icon } from '@hugeicons/core-free-icons';
-import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { fetchOrder, type ApiOrder } from '../../api/orders';
+import { cancelOrder, fetchOrder, type ApiOrder } from '../../api/orders';
 import { fetchTrip } from '../../api/trips';
 import { joinStoreNames, representativeLeg } from '../../utils/tripLegs';
+import { CancelOrderCard } from './components/CancelOrderCard';
+import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryRiderCard } from './components/DeliveryRiderCard';
 import { OrderInfoCard } from './components/OrderInfoCard';
 import { OrderItemsCard } from './components/OrderItemsCard';
@@ -55,6 +58,17 @@ const POLL_INTERVAL_MS = 8000;
 
 function isTerminal(status?: string): boolean {
   return status === 'delivered' || status === 'cancelled';
+}
+
+// Mirrors backend/src/lib/orderStateMachine.ts's own isValidTransition —
+// 'cancelled' is only reachable from 'placed' or 'packed', i.e. before the
+// rider has picked the order up from the store ('out_for_delivery', set
+// the instant a rider marks pickup). This is UI-only convenience so the
+// button doesn't even render for an order that would just get rejected —
+// the backend re-checks this exact same rule regardless, it's the real
+// source of truth, not this function.
+function isCancellable(status: string): boolean {
+  return status === 'placed' || status === 'packed';
 }
 
 export function TrackOrderScreen({ navigation, route }: Props) {
@@ -83,6 +97,33 @@ export function TrackOrderScreen({ navigation, route }: Props) {
   const isLoading = isTrip ? isTripLoading : isOrderLoading;
   const legs = trip?.orders ?? [];
 
+  // A multi-store trip is N real separate orders sharing one payment
+  // (CLAUDE.md) — "cancel the whole trip" here means cancelling every
+  // still-cancellable leg, each through the exact same real per-order
+  // endpoint (and each leg's own real refund, since every leg shares the
+  // same razorpay_payment_id but Razorpay supports multiple partial
+  // refunds against one payment — backend/src/payments/refundPayment.ts's
+  // own note). Not a separate "cancel trip" endpoint — there's nothing a
+  // trip-level cancel needs to do that isn't just "do this to every leg".
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const cancelMutation = useMutation({
+    mutationFn: async (reason: string) => {
+      if (isTrip) {
+        await Promise.all(legs.map((leg) => cancelOrder(leg.id, reason)));
+      } else {
+        await cancelOrder(orderId, reason);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: isTrip ? ['trip', orderId] : ['order', orderId] });
+      setIsCancelModalOpen(false);
+    },
+    onError: () => {
+      Alert.alert('Could not cancel', 'Please check your connection and try again.');
+    },
+  });
+
   return (
     <View className="flex-1 bg-[#F1F2F4]">
       <View className="flex-row items-center bg-[#F1F2F4] px-4 pb-2 pt-safe-offset-2">
@@ -93,7 +134,7 @@ export function TrackOrderScreen({ navigation, route }: Props) {
         {/* No support screen exists yet — wire this to a real destination
             once one does, same no-op ProfileScreen's own Support tile uses
             today. */}
-        <Pressable onPress={() => {}} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
+        <Pressable onPress={() => { }} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={CustomerService01Icon} size={22} color={colors.ink} />
         </Pressable>
       </View>
@@ -138,6 +179,17 @@ export function TrackOrderScreen({ navigation, route }: Props) {
               </View>
 
               <OrderInfoCard order={leg} />
+
+              {/* Right below the estimate card, same placement/mutual-
+                  exclusivity reasoning as the single-order branch below —
+                  only when EVERY leg is still cancellable, since once even
+                  one store's leg has moved past pickup, "cancel the whole
+                  trip" stops being one clean action and this deliberately
+                  doesn't try to guess a partial-cancel UX for that. */}
+              {legs.length > 0 && legs.every((l) => isCancellable(l.status)) ? (
+                <CancelOrderCard onPress={() => setIsCancelModalOpen(true)} />
+              ) : null}
+
               <DeliveryRiderCard order={leg} />
               <OrderItemsCard order={combinedOrder} />
 
@@ -145,7 +197,7 @@ export function TrackOrderScreen({ navigation, route }: Props) {
                 <TrackingTimeline order={leg} />
               </View>
 
-              <Text className="mt-4 mb-6 px-6 text-center text-sm font-medium text-gray-500">
+              <Text className="mt-4 text-center text-sm font-medium text-gray-500">
                 {legs.every((l) => l.status === 'delivered')
                   ? "Thanks for shopping, we'll be here when you need us again."
                   : "We'll keep this updated as your trip moves along."}
@@ -157,6 +209,15 @@ export function TrackOrderScreen({ navigation, route }: Props) {
         <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
           <OrderInfoCard order={order!} />
 
+          {/* Right below the estimate card, per an explicit ask — and
+              naturally mutually exclusive with DeliveryRiderCard just
+              below: isCancellable is true for exactly 'placed'/'packed',
+              DeliveryRiderCard now only renders for 'out_for_delivery'
+              (that component's own note on the fix), so exactly one of
+              the two ever shows, never both, with no shared state needed
+              to coordinate it. */}
+          {isCancellable(order!.status) ? <CancelOrderCard onPress={() => setIsCancelModalOpen(true)} /> : null}
+
           <DeliveryRiderCard order={order!} />
 
           <OrderItemsCard order={order!} />
@@ -165,13 +226,22 @@ export function TrackOrderScreen({ navigation, route }: Props) {
             <TrackingTimeline order={order!} />
           </View>
 
-          <Text className="mt-4 mb-6 px-6 text-center text-[13.5px] font-medium text-gray-500">
+          <Text className="mt-4 text-center text-[13.5px] font-medium text-gray-500">
             {order!.status === 'delivered'
               ? "Thanks for shopping, we'll be here when you need us again."
               : "We'll keep this updated as your order moves along."}
           </Text>
         </ScrollView>
       )}
+
+      {order || trip ? (
+        <CancelOrderModal
+          visible={isCancelModalOpen}
+          onDismiss={() => setIsCancelModalOpen(false)}
+          onConfirm={(reason) => cancelMutation.mutate(reason)}
+          confirming={cancelMutation.isPending}
+        />
+      ) : null}
     </View>
   );
 }

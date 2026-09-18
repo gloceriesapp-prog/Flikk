@@ -64,7 +64,10 @@ const TONE = {
 } as const;
 
 export function OrderInfoCard({ order }: Props) {
-  const [isReasonOpen, setIsReasonOpen] = useState(false);
+  // Cancelled starts expanded — a customer who just cancelled (or is
+  // checking back on a cancelled order) shouldn't need to tap the info
+  // icon just to see whether their refund actually went through.
+  const [isReasonOpen, setIsReasonOpen] = useState(order.status === 'cancelled');
   // Date.now() can't be called directly in render (React's purity rule —
   // an impure read during render can produce unstable results). This
   // isn't a live countdown (no live GPS, CLAUDE.md), so a 30s-granularity
@@ -95,13 +98,29 @@ export function OrderInfoCard({ order }: Props) {
   const tone = isCancelled ? 'danger' : isDelayed ? 'delay' : 'success';
   const reasonTitle = isCancelled ? 'Order cancelled' : isDelayed ? 'Why the delay?' : isDelivered ? 'Delivered' : 'On track';
   const reasonMessage = isCancelled
-    ? 'This order was cancelled and is no longer being prepared or delivered.'
+    ? (order.cancel_reason ?? 'This order was cancelled and is no longer being prepared or delivered.')
     : isDelivered
       ? 'This order has already been delivered.'
       : isDelayed
         ? pickDelayReason(order.id)
         : 'Your order is on track — no delays reported right now.';
   const { icon: toneIcon, bg: toneBg, fg: toneFg } = TONE[tone];
+
+  // COD (razorpay_payment_id null) never gets a refund line — nothing was
+  // ever charged, so refund_status correctly stays the column's own
+  // 'none' default and there's nothing honest to say here. An online
+  // payment always shows SOME line once cancelled — 'processing' is the
+  // real, honest default the instant a customer taps cancel (Razorpay's
+  // own refund object is asynchronous for most methods, backend/src/
+  // payments/refundPayment.ts's own note), not a placeholder.
+  const refundLine =
+    isCancelled && order.razorpay_payment_id
+      ? order.refund_status === 'completed'
+        ? `₹${order.total.toFixed(0)} has been refunded to your original payment method.`
+        : order.refund_status === 'failed'
+          ? 'We could not process your refund automatically — please contact support.'
+          : `Refund of ₹${order.total.toFixed(0)} is on its way — usually settles within a few business days.`
+      : null;
 
   return (
     <>
@@ -127,11 +146,19 @@ export function OrderInfoCard({ order }: Props) {
         <View className="w-full rounded-3xl bg-white p-5">
           <View className="flex-row items-center justify-between">
             <Text className="text-[15px] font-semibold text-ink">{reasonTitle}</Text>
-            <View className={`h-8 w-8 items-center justify-center rounded-full ${toneBg}`}>
-              <AppIcon icon={toneIcon} size={16} color={toneFg} />
+            <View className={`h-8 w-8 items-center justify-center rounded-full`}>
+              <AppIcon icon={toneIcon} size={20} color="#000000" />
             </View>
           </View>
-          <Text className="mt-1.5 text-[14.5px] font-medium leading-5 text-ink/80">{reasonMessage}</Text>
+          <Text className="mt-1.5 text-[14.5px] font-medium leading-5 text-ink/70">{reasonMessage}</Text>
+          {refundLine ? (
+            <Text
+              className="mt-2.5 text-[13.5px] font-semibold leading-5"
+              style={{ color: order.refund_status === 'failed' ? colors.danger : colors.success }}
+            >
+              {refundLine}
+            </Text>
+          ) : null}
         </View>
       )}
     </>

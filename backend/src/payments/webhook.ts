@@ -36,6 +36,28 @@ export async function handleWebhook(req: Request, res: Response, next: NextFunct
       }
     }
 
+    // A cancelled order's refund (routes/orders.ts's PATCH /:id/status,
+    // refundPayment.ts) — the initial Razorpay call already stores
+    // refund_status: 'processing' + the real razorpay_refund_id at
+    // cancel time; most refunds settle asynchronously days later, and
+    // this event (not that initial response) is Razorpay's own final
+    // word on whether it actually completed. Matched by razorpay_refund_id
+    // (unique per refund, already stored) rather than payment_id, since a
+    // single payment can have multiple partial refunds across a multi-
+    // store trip's own separate order legs (refundPayment.ts's own note).
+    if (event.event === 'refund.processed' || event.event === 'refund.failed') {
+      const refundId = event.payload.refund.entity.id;
+      const finalStatus = event.event === 'refund.processed' ? 'completed' : 'failed';
+      if (refundId) {
+        const update =
+          finalStatus === 'completed'
+            ? { refund_status: finalStatus, refunded_at: new Date().toISOString() }
+            : { refund_status: finalStatus };
+        const { error } = await supabase.from('orders').update(update).eq('razorpay_refund_id', refundId).eq('refund_status', 'processing');
+        if (error) throw error;
+      }
+    }
+
     // Weekly store payout confirmation (jobs/weeklyPayouts.ts's own note
     // has the full flow) — releasePendingPayouts marks a row 'processing'
     // the instant RazorpayX *accepts* the payout call, but that's not the

@@ -51,6 +51,17 @@ export interface ApiOrder {
   discount_amount: number;
   promo_code_id: string | null;
   razorpay_payment_id: string | null;
+  // Real cancellation/refund state (backend/migrations/013_order_cancel_
+  // reason.sql, 033_order_refunds.sql) — cancel_reason is whatever the
+  // canceller (customer/store owner/rider) actually picked/typed;
+  // refund_status is always meaningful, never a separate null-check
+  // ('none' covers both "not cancelled" and "cancelled COD order, nothing
+  // was ever charged" — see that migration's own note). razorpay_refund_id/
+  // refunded_at are only set once a real online-payment refund exists.
+  cancel_reason: string | null;
+  refund_status: 'none' | 'processing' | 'completed' | 'failed';
+  razorpay_refund_id: string | null;
+  refunded_at: string | null;
   placed_at: string;
   packed_at: string | null;
   picked_up_at: string | null;
@@ -61,7 +72,10 @@ export interface ApiOrder {
   // riders FK to auto-embed) — absent on GET /orders's list response, and
   // null on the single-order response until a rider is actually assigned,
   // never a placeholder name/phone.
-  riders?: { name: string; phone: string } | null;
+  // deliveries is a real count (backend's own note: every order this
+  // rider has ever actually delivered) — not a per-rider column that
+  // exists on `riders`, computed fresh on each fetch.
+  riders?: { name: string; phone: string; deliveries: number } | null;
   // Only present on POST /orders's own response (backend's own note there)
   // — a redundant top-level copy of stores.avg_prep_minutes, since
   // CheckoutScreen needs it the instant an order is created and hasn't
@@ -94,6 +108,17 @@ export function fetchMyOrders(): Promise<ApiOrder[]> {
 
 export function fetchOrder(orderId: string): Promise<ApiOrder> {
   return apiRequest(`/orders/${orderId}`);
+}
+
+// PATCH /orders/:id/status { status: 'cancelled', reason } — same real
+// state-machine endpoint apps/rider's own CancelOrderModal already calls,
+// now also reachable by the customer who placed the order
+// (orderStateMachine.ts's own TRANSITION_OWNER.cancelled note on why).
+// The backend rejects this outright once the order has moved past
+// 'packed' (rider has picked it up) — see that file's own
+// isValidTransition, not re-checked here so the two can never disagree.
+export function cancelOrder(orderId: string, reason: string): Promise<ApiOrder> {
+  return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: { status: 'cancelled', reason } });
 }
 
 // GET /orders/buy-it-again — real repeat-purchase products (every product

@@ -40,12 +40,15 @@ interface Props {
   order: ApiOrder;
 }
 
-// rating/deliveries live only here, not on the real order.riders shape —
-// riders has no such columns (backend/migrations/001_init.sql). The row
-// they feed only renders while this dummy fallback is in use; once a real
-// rider is assigned it disappears until those columns actually exist —
-// showing a specific number for a real person would be a fabricated claim
-// about them, not a harmless placeholder.
+// name/phone/deliveries are always real once a rider is actually assigned
+// (routes/orders.ts's own GET /:id note — deliveries is a real COUNT
+// query, not a stored column). rating stays fabricated on purpose per an
+// explicit ask — riders has no rating column at all
+// (backend/migrations/001_init.sql), and this is the one field this card
+// still shows without a real number behind it. DUMMY_RIDER only backs
+// fields that genuinely have no real source yet (rating) plus a last-
+// resort fallback for the vanishingly rare case the riders lookup itself
+// comes back empty despite rider_id being set.
 const DUMMY_RIDER = { name: 'Ravi Kumar', phone: '+919876543210', rating: 4.9, deliveries: 2819 };
 const RIDER_AVATAR_URI = 'https://i.pinimg.com/736x/d0/21/cc/d021cc669f8688a757199873421035f3.jpg';
 
@@ -64,10 +67,21 @@ function ActionButton({ icon, label, onPress }: { icon: Parameters<typeof AppIco
 
 export function DeliveryRiderCard({ order }: Props) {
   const [avatarUri, setAvatarUri] = useState(RIDER_AVATAR_URI);
-  const isDummy = !order.riders;
   const rider = order.riders ?? DUMMY_RIDER;
+  const isRealRider = !!order.riders;
 
-  if (order.status === 'delivered' || order.status === 'cancelled') return null;
+  // Real fix, not just the header comment's claim finally matching the
+  // code — this used to also render (with DUMMY_RIDER's fabricated "picked
+  // up your order... headed your way" line) while the order was still
+  // 'placed'/'packed', i.e. before a rider had even been assigned, let
+  // alone picked anything up. Only 'out_for_delivery' is the real
+  // "rider has it" state (backend/src/lib/orderStateMachine.ts's own
+  // timestampColumnFor('out_for_delivery') -> 'picked_up_at') — this is
+  // also what makes this card and TrackOrderScreen's own Cancel button
+  // mutually exclusive for free: isCancellable there is true for exactly
+  // 'placed'/'packed', the two statuses this card now excludes alongside
+  // 'delivered'/'cancelled'.
+  if (order.status !== 'out_for_delivery') return null;
 
   const storeName = order.stores?.name ?? 'The store';
 
@@ -85,15 +99,16 @@ export function DeliveryRiderCard({ order }: Props) {
         />
         <View>
           <Text className="text-[14px] font-medium text-ink">{rider.name}</Text>
-          {isDummy ? (
-            <View className="mt-0.5 flex-row items-center gap-1">
-              <AppIcon icon={StarIcon} size={13} color={colors.gold} fill={colors.gold} />
-              <Text className="text-[12.5px] font-medium text-ink/60">{DUMMY_RIDER.rating}</Text>
-              <Text className="text-[12.5px] font-medium text-ink/60"> · {DUMMY_RIDER.deliveries.toLocaleString('en-IN')} deliveries</Text>
-            </View>
-          ) : (
-            <Text className="text-sm font-medium text-ink/40">{rider.phone}</Text>
-          )}
+          {/* Rating stays DUMMY_RIDER's fabricated value on purpose (riders
+              has no real rating column, this file's own note on why) —
+              deliveries is the real count once a real rider is assigned,
+              DUMMY_RIDER.deliveries only as the emergency fallback. */}
+          <View className="mt-0.5 flex-row items-center gap-1">
+            <AppIcon icon={StarIcon} size={13} color={colors.gold} fill={colors.gold} />
+            <Text className="text-[12.5px] font-medium text-ink/60">{DUMMY_RIDER.rating}</Text>
+            <Text className="text-[12.5px] font-medium text-ink/60"> · {rider.deliveries.toLocaleString('en-IN')} deliveries</Text>
+          </View>
+          {isRealRider ? <Text className="mt-0.5 text-[12.5px] font-medium text-ink/40">{rider.phone}</Text> : null}
         </View>
       </View>
 

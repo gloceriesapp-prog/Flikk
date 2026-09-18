@@ -1,6 +1,8 @@
 import compression from 'compression';
 import express from 'express';
+import { pinoHttp } from 'pino-http';
 import { env } from './config/env.js';
+import { logger } from './lib/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { shortCache } from './middleware/shortCache.js';
 import { authRouter } from './routes/auth.js';
@@ -33,6 +35,13 @@ const app = express();
 // Smaller responses -> more requests/sec per instance under load. Safe
 // everywhere — gzip is transparent to every client already talking JSON.
 app.use(compression());
+
+// Every request logged with method/path/status/duration — real, live
+// visibility into what's actually hitting this server, not just the
+// scattered console.error calls each route already had for its own
+// failure paths. /health-style noise isn't filtered since there's no
+// dedicated health endpoint yet (the root route below doubles as one).
+app.use(pinoHttp({ logger }));
 
 // Only web clients (apps/partner-dashboard, apps/admin) hit CORS at all —
 // the three RN apps talk to this backend natively, no browser involved.
@@ -116,7 +125,7 @@ app.use('/location', locationRouter);
 app.use(errorHandler);
 
 app.listen(env.port, () => {
-  console.log(`Flikk backend listening on :${env.port}`);
+  logger.info(`Flikk backend listening on :${env.port}`);
 });
 
 // Weekly store payout release — every Monday 9 AM IST. node-cron runs
@@ -128,7 +137,7 @@ app.listen(env.port, () => {
 cron.schedule(
   '0 9 * * 1',
   () => {
-    void runWeeklyPayoutJob().catch((err) => console.error('[weeklyPayouts] job failed', err));
+    void runWeeklyPayoutJob().catch((err) => logger.error({ err }, '[weeklyPayouts] job failed'));
   },
   { timezone: 'Asia/Kolkata' },
 );
