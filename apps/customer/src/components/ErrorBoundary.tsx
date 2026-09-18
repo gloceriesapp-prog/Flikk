@@ -15,8 +15,7 @@
 // way, which is strictly better than what existed before.
 
 import { Component, type ReactNode } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { colors } from '../theme/tokens';
+import { ErrorFallback } from './ErrorFallback';
 
 interface Props {
   children: ReactNode;
@@ -24,57 +23,30 @@ interface Props {
 
 interface State {
   error: Error | null;
-  componentStack: string | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, componentStack: null };
+  state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
   componentDidCatch(error: Error, errorInfo: { componentStack?: string | null }) {
-    // Full trace to Metro/device logs — LogBox's own overlay crops the
-    // component stack to whatever fits on screen, this doesn't.
-    // eslint-disable-next-line no-console
+    // Full trace to Metro/device logs — never rendered on screen (the
+    // customer-facing fallback below is text-only), but still the real
+    // record of what happened for whoever's debugging the build.
     console.error('[ErrorBoundary] caught render error:\n', error, '\ncomponentStack:', errorInfo.componentStack);
-    this.setState({ componentStack: errorInfo.componentStack ?? null });
   }
 
   reset = () => {
-    this.setState({ error: null, componentStack: null });
+    this.setState({ error: null });
   };
 
   render() {
-    const { error, componentStack } = this.state;
+    const { error } = this.state;
     if (!error) return this.props.children;
 
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.mist, padding: 24, justifyContent: 'center' }}>
-        <Text style={{ color: colors.ink, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>Something went wrong</Text>
-        <Text style={{ color: colors.ink, opacity: 0.6, fontSize: 14, marginBottom: 24 }}>
-          Sorry about that — you can try again, or close and reopen the app if it keeps happening.
-        </Text>
-
-        <Pressable
-          onPress={this.reset}
-          style={{ backgroundColor: colors.coral, borderRadius: 16, paddingVertical: 14, alignItems: 'center', marginBottom: 16 }}
-        >
-          <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Try again</Text>
-        </Pressable>
-
-        {/* Raw error only in dev — a customer never needs to see a stack
-            trace, but a developer testing a build absolutely does. */}
-        {__DEV__ ? (
-          <ScrollView style={{ maxHeight: 240, borderRadius: 12, backgroundColor: colors.ink, padding: 12 }}>
-            <Text style={{ color: colors.coral, fontWeight: '700', fontSize: 13, marginBottom: 8 }}>{error.message}</Text>
-            <Text style={{ color: '#FFFFFF', fontFamily: 'Courier', fontSize: 11 }}>
-              {componentStack ?? 'No component stack available.'}
-            </Text>
-          </ScrollView>
-        ) : null}
-      </View>
-    );
+    return <ErrorFallback onReset={this.reset} />;
   }
 }

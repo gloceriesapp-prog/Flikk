@@ -15,6 +15,7 @@ import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
 import { CategoryDetailScreen } from '../screens/category-detail/CategoryDetailScreen';
 import { CheckoutScreen } from '../screens/checkout/CheckoutScreen';
 import { ComingSoonScreen } from '../screens/coming-soon/ComingSoonScreen';
+import { ErrorScreen } from '../screens/error/ErrorScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
@@ -42,12 +43,12 @@ export function AppNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
-      // TEMP: 'UnavailableZone' forced as the root route for design
-      // iteration — opens straight to it on launch instead of the real
+      // TEMP: 'ErrorPage' forced as the root route for design iteration —
+      // opens straight to it on launch instead of the real
       // LocationPermission/Home flow, so it's reachable with zero
       // navigation. Revert to `hasLocation ? 'Home' : 'LocationPermission'`
       // once the design work here is done.
-      initialRouteName="UnavailableZone"
+      initialRouteName="ErrorPage"
     >
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
       <Stack.Screen name="SelectLocation" component={SelectLocationScreen} />
@@ -82,6 +83,7 @@ export function AppNavigator() {
       <Stack.Screen name="Referral" component={ReferralScreen} />
       <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
       <Stack.Screen name="UnavailableZone" component={UnavailableZoneScreen} />
+      <Stack.Screen name="ErrorPage" component={ErrorScreen} />
     </Stack.Navigator>
   );
 }

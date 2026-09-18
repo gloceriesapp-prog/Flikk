@@ -61,7 +61,7 @@ export function UnavailableZoneScreen() {
                 Not deliverable here
               </Text>
               <View className="flex-row items-center gap-1">
-                <Text className="text-[18px] font-bold text-ink" numberOfLines={1}>
+                <Text className="text-[18px] font-medium text-ink" numberOfLines={1}>
                   {addressLabel}
                 </Text>
                 <AppIcon icon={ChevronDownIcon} size={17} color={colors.ink} strokeWidth={2.2} />
@@ -81,7 +81,7 @@ export function UnavailableZoneScreen() {
                 ✦ Coming Soon
               </Text>
             </View>
-            <Text className="text-center text-[24px] font-semibold leading-8 text-ink">We&apos;re on our way to you.</Text>
+            <Text className="text-center text-[24px] font-semibold leading-8 text-ink/90">We&apos;re on our way to you.</Text>
             <Text className="text-center text-[15px] font-medium leading-6 text-ink/60">
               Gloceries isn&apos;t in your area just yet, but you can help us get there faster.
             </Text>
@@ -115,7 +115,7 @@ export function UnavailableZoneScreen() {
           ) : (
             <AppIcon icon={voted ? CheckmarkCircle02Icon : ThumbsUpIcon} size={19} color="#FFFFFF" />
           )}
-          <Text className="text-[15px] font-semibold tracking-tight text-white">
+          <Text className="text-[15px] font-medium tracking-tight text-white">
             {voted ? "Thanks! We'll get to you soon" : 'Upvote, bring the app to your area'}
           </Text>
         </Pressable>

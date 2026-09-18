@@ -109,4 +109,7 @@ export type AppStackParamList = {
   // be the stack's initialRouteName without faking a real unserviceable
   // location.
   UnavailableZone: undefined;
+  // TEMP root for design iteration on ErrorScreen.tsx — see
+  // AppNavigator.tsx's own note.
+  ErrorPage: undefined;
 };
