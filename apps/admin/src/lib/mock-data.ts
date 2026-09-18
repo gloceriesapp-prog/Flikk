@@ -4,7 +4,7 @@
 // endpoints later (specs/04-admin-dashboard/api.md) is a data-source swap,
 // not a redesign. Single zone throughout (Kaup/outer Udupi) — CLAUDE.md.
 
-import type { ActiveRider, AppDownloadStats, Application, Order, ProductPerformance, ZoneRequest } from './types';
+import type { ActiveRider, AppDownloadStats, Application, Order, ProductPerformance } from './types';
 
 export const ZONE_NAME = 'Kaup, Udupi';
 
@@ -173,19 +173,6 @@ export const PLACEHOLDER_ACTIVE_RIDERS: ActiveRider[] = [
 export const SETTLEMENT_CADENCE_LABEL = 'Weekly · every Monday';
 export const AUTO_RELEASE_ENABLED = false;
 
-// "We want Flikk here" — places a customer has searched/entered in the
-// customer app that fall outside the active zone (see ZoneRequest's own
-// note in lib/types.ts). Real collection doesn't exist yet — this is
-// what the admin view looks like once it does, sorted by demand.
-export const PLACEHOLDER_ZONE_REQUESTS: ZoneRequest[] = [
-  { id: 'zr1', placeName: 'Manipal', district: 'Udupi', upvotes: 214, firstRequestedAt: '3 Nov 2025' },
-  { id: 'zr2', placeName: 'Brahmavar', district: 'Udupi', upvotes: 132, firstRequestedAt: '11 Nov 2025' },
-  { id: 'zr3', placeName: 'Padubidri', district: 'Udupi', upvotes: 96, firstRequestedAt: '18 Nov 2025' },
-  { id: 'zr4', placeName: 'Karkala', district: 'Udupi', upvotes: 71, firstRequestedAt: '25 Nov 2025' },
-  { id: 'zr5', placeName: 'Santhekatte', district: 'Udupi', upvotes: 48, firstRequestedAt: '2 Dec 2025' },
-  { id: 'zr6', placeName: 'Kundapura', district: 'Udupi', upvotes: 39, firstRequestedAt: '6 Dec 2025' },
-  { id: 'zr7', placeName: 'Yellapur', district: 'Udupi', upvotes: 12, firstRequestedAt: '14 Dec 2025' },
-];
 
 // Peak order hours — Top Performing Stores' own heatmap strip. Aggregated
 // by 2-hour band across the store day (8 AM-10 PM, matching PLACEHOLDER_

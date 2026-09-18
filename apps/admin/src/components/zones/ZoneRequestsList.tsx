@@ -21,7 +21,8 @@ export function ZoneRequestsList({ requests }: { requests: ZoneRequest[] }) {
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-ink">{request.placeName}</p>
             <p className="text-xs text-muted">
-              {request.district} · requested since {request.firstRequestedAt}
+              {request.district ? `${request.district} · ` : ''}requested since{' '}
+              {new Date(request.firstRequestedAt).toLocaleDateString()}
             </p>
             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-accent">
               <div className="h-full rounded-full bg-ink" style={{ width: `${(request.upvotes / topVotes) * 100}%` }} />

@@ -6,8 +6,15 @@
 // CLAUDE.md). Those sections all assume a real nearby store to browse;
 // with none in range there's nothing for them to show, so this replaces
 // them rather than rendering next to them.
+//
+// The upvote button here shares useAreaUpvote with the floating
+// UpvoteAreaBar pill (same real POST /area-upvotes) — this panel's own copy
+// always promised one ("Upvote below...") but never actually rendered it.
 
-import { Text, View } from 'react-native';
+import { CheckmarkCircle02Icon, ThumbsUpIcon } from '@hugeicons/core-free-icons';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { AppIcon } from '../../../components/AppIcon';
+import { useAreaUpvote } from '../../../hooks/useAreaUpvote';
 
 // Reddish panel, no rounding on either edge — flush with the header above
 // and CategorySections below, per an explicit ask (any rounding here read
@@ -16,6 +23,8 @@ import { Text, View } from 'react-native';
 const PANEL_BG = '#F7DEDC';
 
 export function UnavailableZoneSection() {
+  const { voted, submitting, upvote } = useAreaUpvote();
+
   return (
     <View className="items-center gap-4 px-5 py-12" style={{ backgroundColor: PANEL_BG }}>
       <View className="items-left gap-1.5">
@@ -24,6 +33,18 @@ export function UnavailableZoneSection() {
          Gloceries app isn&apos;t in your area just yet. Upvote below and we&apos;ll prioritise expanding here next.
         </Text>
       </View>
+      <Pressable
+        onPress={upvote}
+        disabled={voted || submitting}
+        className="w-full flex-row items-center justify-center gap-2 rounded-full bg-ink px-6 py-3.5"
+      >
+        {submitting ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <AppIcon icon={voted ? CheckmarkCircle02Icon : ThumbsUpIcon} size={18} color="#FFFFFF" />
+        )}
+        <Text className="text-[14px] font-medium text-white">{voted ? "Thanks! We'll get to you soon" : 'Upvote this area'}</Text>
+      </Pressable>
     </View>
   );
 }

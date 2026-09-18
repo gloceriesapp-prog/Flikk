@@ -60,7 +60,6 @@ import { SpotlightHeaderBleed } from '../spotlight/SpotlightHeaderBleed';
 // import { gradientForTabName } from '../data/categoryHeaderGradients';
 import { TopRatedStoresSection } from '../top-rated-stores/TopRatedStoresSection';
 import { TrendingSection } from '../trending/TrendingSection';
-import { UnavailableZoneSection } from '../unavailable-zone/UnavailableZoneSection';
 import { useNearestStore } from '../useNearestStore';
 import { useDealsProducts } from './useDealsProducts';
 
@@ -76,10 +75,10 @@ export function AllTabSections({ onSelectCategory }: Props) {
   // store-scoped section on this screen (just this one for now, see this
   // file's own header note) reads the SAME resolved store, so they can't
   // end up disagreeing about which store an order here would go to.
-  // isServiceable now comes from this same call — see useNearestStore.ts's
-  // own note on why a real 12km-radius nearest-store result replaced the
-  // old hardcoded-zone-circle check.
-  const { storeId, isServiceable } = useNearestStore();
+  // HomeScreen.tsx renders UnavailableZoneScreen instead of this whole
+  // component when isServiceable is false — this only ever mounts in the
+  // serviceable case, so storeId here is always a real nearby store.
+  const { storeId } = useNearestStore();
   const { data: dealsProducts = [] } = useDealsProducts(storeId);
   // Only needed by the hidden Seasonal+Festival panel below.
   // const panelGradient = gradientForTabName('all');
@@ -91,9 +90,7 @@ export function AllTabSections({ onSelectCategory }: Props) {
     // breathing room from BottomNavBar + CartBar as every other tab's
     // last row.
     <View className="pb-32">
-      {isServiceable ? (
-        <>
-          {/* One shared panel — SeasonalSection's own banner/tiles and
+      {/* One shared panel — SeasonalSection's own banner/tiles and
               FestivalPicksSection's product row read as one continuous
               section (same background, one rounded bottom edge), per an
               explicit ask, rather than two separately-backed blocks stacked
@@ -139,11 +136,7 @@ export function AllTabSections({ onSelectCategory }: Props) {
           {/* Momentum signal, right after MostBought — see that section's
               own note on why its data source is temporary. */}
           {/* <TrendingSection /> */}
-          {/* <StoreTypesSection /> */}
-        </>
-      ) : (
-        <UnavailableZoneSection />
-      )}
+      {/* <StoreTypesSection /> */}
       <CategorySections />
       {/* Trust signal, right before DealsSection — reassurance ->
           purchase nudge, per the agreed Home section order. */}

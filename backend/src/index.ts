@@ -24,6 +24,7 @@ import { reviewsRouter } from './routes/reviews.js';
 import { wishlistRouter } from './routes/wishlist.js';
 import { referralsRouter } from './routes/referrals.js';
 import { deliverySettingsRouter } from './routes/deliverySettings.js';
+import { areaUpvotesRouter } from './routes/areaUpvotes.js';
 import cron from 'node-cron';
 import { runWeeklyPayoutJob } from './jobs/weeklyPayouts.js';
 
@@ -99,6 +100,7 @@ app.use('/reviews', reviewsRouter);
 app.use('/wishlist', wishlistRouter);
 app.use('/referrals', referralsRouter);
 app.use('/delivery-settings', shortCache(), deliverySettingsRouter);
+app.use('/area-upvotes', areaUpvotesRouter);
 // Mounted before partnerRouter — its two routes (/store-application,
 // /store-photo) must be reachable without partnerRouter's router-wide
 // requireRole('store_owner')/requireApproved gate (see that file's own

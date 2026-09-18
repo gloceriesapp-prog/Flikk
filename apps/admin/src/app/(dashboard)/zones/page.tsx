@@ -13,21 +13,18 @@
 // Real data now: app/api/zones (service role) for the zone roster + store/
 // rider counts, lib/supabase/stores.ts + app/api/orders (both already
 // real, shared with Stores/Orders pages) for the store-performance
-// breakdown. Zone Requests stays a labeled placeholder — no real
-// collection pipeline exists (would mean a new customer-app feature, out
-// of this fix's scope), so an honest "not collected yet" beats a
-// fabricated number here.
+// breakdown, app/api/area-upvotes (customer app's real area_upvotes table)
+// for Zone Requests — no longer a placeholder.
 
 import { useCallback, useEffect, useState } from 'react';
 import { Lock, MapPin } from 'lucide-react';
 import clsx from 'clsx';
 import { StorePerformanceList } from '@/components/zones/StorePerformanceList';
 import { ZoneRequestsList } from '@/components/zones/ZoneRequestsList';
-import { PLACEHOLDER_ZONE_REQUESTS } from '@/lib/mock-data';
 import { storeRevenueShares } from '@/lib/revenue';
 import { fetchStores } from '@/lib/supabase/stores';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
-import type { Order, Store, Zone } from '@/lib/types';
+import type { Order, Store, Zone, ZoneRequest } from '@/lib/types';
 
 const TABS = ['Zones', 'Zone Requests'] as const;
 
@@ -36,17 +33,25 @@ export default function ZonesPage() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [zoneRequests, setZoneRequests] = useState<ZoneRequest[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoadError(null);
     try {
-      const [zonesRes, ordersRes, storesData] = await Promise.all([fetch('/api/zones'), fetch('/api/orders'), fetchStores()]);
+      const [zonesRes, ordersRes, storesData, requestsRes] = await Promise.all([
+        fetch('/api/zones'),
+        fetch('/api/orders'),
+        fetchStores(),
+        fetch('/api/area-upvotes'),
+      ]);
       if (!zonesRes.ok) throw new Error((await zonesRes.json()).error ?? 'Could not load zones.');
       if (!ordersRes.ok) throw new Error((await ordersRes.json()).error ?? 'Could not load orders.');
+      if (!requestsRes.ok) throw new Error((await requestsRes.json()).error ?? 'Could not load zone requests.');
       setZones(await zonesRes.json());
       setOrders(await ordersRes.json());
       setStores(storesData);
+      setZoneRequests(await requestsRes.json());
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load zones.');
     }
@@ -88,7 +93,7 @@ export default function ZonesPage() {
                   tab === t ? 'bg-white/20 text-white' : 'bg-accent text-ink-soft',
                 )}
               >
-                {PLACEHOLDER_ZONE_REQUESTS.length}
+                {zoneRequests.length}
               </span>
             )}
           </button>
@@ -153,7 +158,7 @@ export default function ZonesPage() {
               Upvoted from the customer app — a demand signal, not an activation control.
             </p>
           </div>
-          <ZoneRequestsList requests={PLACEHOLDER_ZONE_REQUESTS} />
+          <ZoneRequestsList requests={zoneRequests} />
         </div>
       )}
     </div>

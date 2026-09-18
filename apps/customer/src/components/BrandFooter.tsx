@@ -16,7 +16,7 @@
 // own list of rows (Profile). Same underlying content either way — no
 // screen hand-rolls its own copy of this anymore.
 
-import { HeartIcon } from '@hugeicons/core-free-icons';
+import { HeartIcon, Linkedin01Icon, NewTwitterIcon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
 import { AppIcon } from './AppIcon';
 import { colors } from '../theme/tokens';
@@ -26,9 +26,26 @@ const APP_VERSION = packageJson.version;
 
 interface Props {
   variant?: 'large' | 'compact';
+  // TODO: no real Flikk LinkedIn/Twitter page exists yet — icons render as
+  // disabled (no onPress) rather than linking to a fabricated URL. Wire up
+  // + enable once real handles exist.
+  showSocialLinks?: boolean;
 }
 
-export function BrandFooter({ variant = 'large' }: Props) {
+function SocialLinksRow() {
+  return (
+    <View className="mt-4 flex-row items-center gap-3">
+      <View className="h-9 w-9 items-center justify-center rounded-full bg-ink/5">
+        <AppIcon icon={Linkedin01Icon} size={16} color={`${colors.ink}80`} />
+      </View>
+      <View className="h-9 w-9 items-center justify-center rounded-full bg-ink/5">
+        <AppIcon icon={NewTwitterIcon} size={16} color={`${colors.ink}80`} />
+      </View>
+    </View>
+  );
+}
+
+export function BrandFooter({ variant = 'large', showSocialLinks = false }: Props) {
   if (variant === 'compact') {
     return (
       <View className="items-center gap-1.5 pb-4 pt-5">
@@ -63,6 +80,7 @@ export function BrandFooter({ variant = 'large' }: Props) {
         <AppIcon icon={HeartIcon} size={14} color={colors.danger} fill={colors.danger} />
         <Text className="text-sm font-medium text-ink/50">in Udupi (Tulunadu), India</Text>
       </View>
+      {showSocialLinks && <SocialLinksRow />}
     </View>
   );
 }

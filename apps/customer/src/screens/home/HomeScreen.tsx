@@ -31,8 +31,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { UpvoteAreaBar } from '../../components/BottomNavBar/UpvoteAreaBar';
 import { HomeHeader } from './components/HomeHeader';
+import { UnavailableZoneScreen } from './unavailable-zone/UnavailableZoneScreen';
 import { COLLAPSE_DISTANCE } from './components/CollapsibleHeaderTop';
 import { BakeryTab } from './bakery/BakeryTab';
 import { FishProductGrid } from './fish/FishProductGrid';
@@ -162,6 +162,15 @@ export function HomeScreen({ navigation }: Props) {
     prevScrollY.value = y;
   });
 
+  // No real store in range at all — the whole browsing UI below (header,
+  // category tabs, every section) assumes one exists. Full-screen swap
+  // instead of a section-level swap (this used to only replace AllTabSections'
+  // own content while every other tab still rendered a normal, empty-store
+  // Home underneath) — see UnavailableZoneScreen.tsx's own note.
+  if (!isServiceable) {
+    return <UnavailableZoneScreen />;
+  }
+
   return (
     // BottomNavBar is a sibling of the ScrollView, not inside its scrollable
     // content — that's what keeps it floating fixed in place while the page
@@ -208,11 +217,7 @@ export function HomeScreen({ navigation }: Props) {
           // same onSelectCategory/selectedCategoryId state, not two
           // competing selections.
           showCategoryTabs={true}
-          // Outside the serviceable zone, closed-hours messaging ("Opens
-          // 6:00 AM tomorrow") would compete with UnavailableZoneSection's
-          // own explanation below — force the header back to its normal
-          // open-state look here regardless of the real clock.
-          isClosed={isServiceable && isClosed}
+          isClosed={isClosed}
         />
 
         <Animated.View style={contentFadeStyle}>
@@ -250,7 +255,7 @@ export function HomeScreen({ navigation }: Props) {
         </Animated.View>
       </Animated.ScrollView>
 
-      {isServiceable ? <BottomNavBar hidden={navHidden} /> : <UpvoteAreaBar />}
+      <BottomNavBar hidden={navHidden} />
     </View>
   );
 }

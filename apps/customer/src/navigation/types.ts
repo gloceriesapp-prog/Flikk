@@ -99,4 +99,14 @@ export type AppStackParamList = {
   // routes/referrals.ts own note on why: that would be a loyalty/rewards
   // mechanic, explicitly out of scope until MVP validates).
   Referral: undefined;
+  // Generic "not built yet" destination — see ComingSoonScreen.tsx's own
+  // note. Both params optional so `navigation.navigate('ComingSoon')` with
+  // no args still works, falling back to that screen's own generic copy.
+  ComingSoon: { title?: string; subtitle?: string } | undefined;
+  // TEMP root for design iteration on UnavailableZoneScreen.tsx — see
+  // AppNavigator.tsx's own note. Same screen HomeScreen.tsx renders inline
+  // when isServiceable is false; registered as a real route only so it can
+  // be the stack's initialRouteName without faking a real unserviceable
+  // location.
+  UnavailableZone: undefined;
 };

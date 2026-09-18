@@ -181,8 +181,16 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
           </Pressable>
           <ProfileMenuRow icon={Location05Icon} label="Address Book" onPress={() => navigation.navigate('AddressList')} />
-          <ProfileMenuRow icon={CreditCardIcon} label="Payment Methods" onPress={() => {}} />
-          <ProfileMenuRow icon={Notification03Icon} label="Notifications" onPress={() => {}} />
+          <ProfileMenuRow
+            icon={CreditCardIcon}
+            label="Payment Methods"
+            onPress={() => navigation.navigate('ComingSoon', { title: 'Payment Methods' })}
+          />
+          <ProfileMenuRow
+            icon={Notification03Icon}
+            label="Notifications"
+            onPress={() => navigation.navigate('ComingSoon', { title: 'Notifications' })}
+          />
           <ProfileMenuRow icon={Share08Icon} label="Share Flikk" onPress={handleShare} />
           {/* Invite Friends — real tracking (ReferralScreen -> backend's
               routes/referrals.ts), no credit/discount on either side (that
@@ -195,13 +203,25 @@ export function ProfileScreen({ navigation }: Props) {
               Never funnels a low score toward the public store listing —
               same gate every major app (Zomato/Swiggy included) uses. */}
           <ProfileMenuRow icon={StarIcon} label="Rate Flikk" onPress={() => setIsRateModalOpen(true)} />
-          <ProfileMenuRow icon={CustomerService01Icon} label="Help & Support" onPress={() => {}} />
+          <ProfileMenuRow
+            icon={CustomerService01Icon}
+            label="Help & Support"
+            onPress={() => navigation.navigate('ComingSoon', { title: 'Help & Support' })}
+          />
           {/* Account privacy — added per the reference's own row (real ask:
-              a place that says how a customer's data is handled). No
-              privacy-policy screen exists yet, same no-op category as the
-              rows above it until one does. */}
-          <ProfileMenuRow icon={LockIcon} label="Account Privacy" onPress={() => {}} />
-          <ProfileMenuRow icon={InformationCircleIcon} label="About Flikk" onPress={() => {}} />
+              a place that says how a customer's data is handled). No real
+              privacy-policy content exists yet, so this opens the same
+              generic ComingSoon screen as the rows above it until it does. */}
+          <ProfileMenuRow
+            icon={LockIcon}
+            label="Account Privacy"
+            onPress={() => navigation.navigate('ComingSoon', { title: 'Account Privacy' })}
+          />
+          <ProfileMenuRow
+            icon={InformationCircleIcon}
+            label="About Flikk"
+            onPress={() => navigation.navigate('ComingSoon', { title: 'About Flikk' })}
+          />
           {/* Logout lives inside this same card now, right after About
               Flikk — same row width/spacing as everything above it, not a
               separately-boxed full-width pill. */}

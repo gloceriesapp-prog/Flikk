@@ -14,6 +14,7 @@ import { CartScreen } from '../screens/cart/CartScreen';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
 import { CategoryDetailScreen } from '../screens/category-detail/CategoryDetailScreen';
 import { CheckoutScreen } from '../screens/checkout/CheckoutScreen';
+import { ComingSoonScreen } from '../screens/coming-soon/ComingSoonScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
@@ -28,6 +29,7 @@ import { StoreDetailScreen } from '../screens/store-detail/StoreDetailScreen';
 import { StoreListScreen } from '../screens/store-list/StoreListScreen';
 import { ShoppingListScreen } from '../screens/shopping-list/ShoppingListScreen';
 import { TrackOrderScreen } from '../screens/track-order/TrackOrderScreen';
+import { UnavailableZoneScreen } from '../screens/home/unavailable-zone/UnavailableZoneScreen';
 import { WishlistScreen } from '../screens/wishlist/WishlistScreen';
 import { useLocationStore } from '../store/useLocationStore';
 import type { AppStackParamList } from './types';
@@ -40,7 +42,12 @@ export function AppNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
-      initialRouteName={hasLocation ? 'Home' : 'LocationPermission'}
+      // TEMP: 'UnavailableZone' forced as the root route for design
+      // iteration — opens straight to it on launch instead of the real
+      // LocationPermission/Home flow, so it's reachable with zero
+      // navigation. Revert to `hasLocation ? 'Home' : 'LocationPermission'`
+      // once the design work here is done.
+      initialRouteName="UnavailableZone"
     >
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
       <Stack.Screen name="SelectLocation" component={SelectLocationScreen} />
@@ -73,6 +80,8 @@ export function AppNavigator() {
       <Stack.Screen name="Wishlist" component={WishlistScreen} />
       <Stack.Screen name="ShoppingList" component={ShoppingListScreen} />
       <Stack.Screen name="Referral" component={ReferralScreen} />
+      <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
+      <Stack.Screen name="UnavailableZone" component={UnavailableZoneScreen} />
     </Stack.Navigator>
   );
 }
