@@ -5,11 +5,17 @@
 // (specs/00-foundation/repo-structure.md).
 //
 // Source files: apps/font/Aeonik Soft Pro/ (repo-root font vault) — copied
-// into assets/fonts/ below, same as every sibling app copies its own font
-// vault in rather than requiring across app boundaries. All 8 non-italic
-// weights the vault ships (Thin/Air/Light/Regular/Medium/SemiBold/Bold/
-// Black) — italics dropped entirely, per an explicit ask; nothing in this
-// app currently sets fontStyle: 'italic' so there's no gap to fill.
+// into assets/fonts/ below. The vault ships 8 non-italic weights (Thin/
+// Air/Light/Regular/Medium/SemiBold/Bold/Black); only 5 are ever actually
+// referenced anywhere in this app's className/fontFamily usage (confirmed
+// via a real grep across src/ — zero hits for font-thin/font-extralight/
+// font-light). App.tsx's useFonts() blocks the ENTIRE app's first render
+// until every file listed in AEONIK_FONT_FILES finishes loading — keeping
+// three genuinely unused ~40KB OTF files in that list was pure dead
+// weight on every cold start for weights nothing on screen ever uses.
+// AEONIK itself still names all 8 (harmless — just string constants) in
+// case a future screen wants Thin/Air/Light; add its file back to
+// AEONIK_FONT_FILES the day something actually sets that className.
 
 export const AEONIK = {
   thin: 'AeonikSoftPro-Thin',
@@ -23,9 +29,6 @@ export const AEONIK = {
 } as const;
 
 export const AEONIK_FONT_FILES = {
-  [AEONIK.thin]: require('../../assets/fonts/AeonikSoftPro-Thin.otf'),
-  [AEONIK.air]: require('../../assets/fonts/AeonikSoftPro-Air.otf'),
-  [AEONIK.light]: require('../../assets/fonts/AeonikSoftPro-Light.otf'),
   [AEONIK.regular]: require('../../assets/fonts/AeonikSoftPro-Regular.otf'),
   [AEONIK.medium]: require('../../assets/fonts/AeonikSoftPro-Medium.otf'),
   [AEONIK.semiBold]: require('../../assets/fonts/AeonikSoftPro-SemiBold.otf'),

@@ -71,6 +71,7 @@ import { DEFAULT_DELIVERY_SETTINGS, useDeliverySettings } from '../../api/delive
 import { useLocationStore } from '../../store/useLocationStore';
 import { isOutsideOperatingHours, REOPEN_TIME_LABEL } from '../../utils/operatingHours';
 import { CheckoutHeader } from './components/CheckoutHeader';
+import { DeliveryAddressCard } from './components/DeliveryAddressCard';
 import { paymentMethodLabel, PaymentMethodList, type PaymentMethod } from './components/PaymentMethodList';
 import { TotalAmountCard } from './components/TotalAmountCard';
 // RewardPointsBanner hidden — no real points ledger behind it yet
@@ -396,7 +397,9 @@ export function CheckoutScreen({ navigation }: Props) {
           screen ready if a future input ever needs the same
           scroll-above-keyboard behavior AddressFormScreen's own note
           documents. */}
-      <KeyboardAwareScrollView className="flex-1" contentContainerClassName="px-5 pb-8 pt-4" bottomOffset={40}>
+      <KeyboardAwareScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-8 pt-4" bottomOffset={40}>
+        <DeliveryAddressCard address={selectedAddress} onChange={() => navigation.navigate('LocationSearch', { intent: 'address-book' })} />
+
         <TotalAmountCard items={items} totalPrice={grandTotal} />
 
         <PaymentMethodList

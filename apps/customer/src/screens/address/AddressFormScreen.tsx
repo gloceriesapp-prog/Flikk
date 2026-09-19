@@ -25,9 +25,10 @@ import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboa
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { createAddress } from '../../api/addresses';
+import { createAddress, setDefaultAddress } from '../../api/addresses';
 import { fetchAccountInfo } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import type { AppStackParamList } from '../../navigation/types';
@@ -44,6 +45,7 @@ const ACCENT = '#1447E6';
 export function AddressFormScreen({ route, navigation }: Props) {
   const { latitude, longitude, addressLabel, city } = route.params;
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
   const [building, setBuilding] = useState('');
   // Not prefilled from addressLabel — LocationDetailsCard's own pin-preview
@@ -107,7 +109,7 @@ export function AddressFormScreen({ route, navigation }: Props) {
     setError(null);
     setSaving(true);
     try {
-      await createAddress({
+      const created = await createAddress({
         label: savedLabel,
         line1,
         landmark: landmark.trim() || undefined,
@@ -117,6 +119,22 @@ export function AddressFormScreen({ route, navigation }: Props) {
         latitude,
         longitude,
       });
+      // Real setDefaultAddress call, not just relying on "a first address
+      // becomes the account's default automatically" (that only ever
+      // covers someone's very first address ever) — this screen is
+      // reached from Checkout's own "Change" affordance just as often as
+      // from the plain address book, and picking a new location there
+      // means "deliver here", not "add a second address and keep using
+      // the old default". Without this, Checkout's own selectedAddress
+      // (is_default ?? first) would keep showing the OLD address after
+      // "Change" appeared to succeed.
+      await setDefaultAddress(created.id);
+      // Real invalidation, not left to chance — Checkout's own useQuery
+      // (['addresses']) is a still-mounted screen underneath this one
+      // (navigate('Checkout') below brings it back into focus rather than
+      // remounting it), so it would otherwise keep serving its stale
+      // cached list and never see this new address at all.
+      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
       // Modal is a native overlay, not scoped to this screen's place in
       // the stack — navigating away without closing it first left it
       // floating on top of Checkout (navigate('Checkout') brings an
