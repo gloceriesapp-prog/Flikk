@@ -31,26 +31,39 @@ interface UpiIntentResponse {
 
 export async function createUpiIntent(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
-    const { orderId } = req.body as OrderIdBody;
-    if (!orderId) {
-      throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'orderId is required.');
+    const { orderId, tripId } = req.body as OrderIdBody;
+    if (!orderId && !tripId) {
+      throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'orderId or tripId is required.');
     }
 
-    const { data: order, error } = await supabase
-      .from('orders')
-      .select('id, customer_id, total')
-      .eq('id', orderId)
-      .single();
-    if (error || !order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
-    if (order.customer_id !== req.user!.id) throw new AppError(403, 'FORBIDDEN', 'Not your order.');
+    // Exactly one of these runs — same real fork createRazorpayOrder.ts/
+    // verifyPayment.ts already make for the Standard Checkout path. A
+    // multi-store trip pays once for every leg combined (trips.total),
+    // never per-leg — the UPI-app grid was single-store-only until now
+    // purely because this endpoint didn't know how to read a trip's own
+    // total, not because splitting the payment itself needs different
+    // logic (it never did: order_items.unit_price_at_order-style historical
+    // amounts already live per-leg on each real orders row regardless of
+    // how the one combined payment was collected).
+    const table = tripId ? 'trips' : 'orders';
+    const id = (tripId ?? orderId)!;
+    const { data: record, error } = await supabase.from(table).select('id, customer_id, total').eq('id', id).single();
+    if (error || !record) throw new AppError(404, tripId ? 'TRIP_NOT_FOUND' : 'ORDER_NOT_FOUND', `${tripId ? 'Trip' : 'Order'} not found.`);
+    if (record.customer_id !== req.user!.id) throw new AppError(403, 'FORBIDDEN', tripId ? 'Not your trip.' : 'Not your order.');
 
     const { data: customer } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
 
+    // notes key differs (flikk_order_id vs flikk_trip_id) so webhook.ts's
+    // own payment.captured handler knows which table to write
+    // razorpay_payment_id onto — a trip's own payment also cascades from
+    // there onto every child order, same as verifyPayment.ts's already-
+    // established Standard Checkout cascade.
+    const notes: Record<string, string> = tripId ? { flikk_trip_id: record.id } : { flikk_order_id: record.id };
     const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(order.total * 100),
+      amount: Math.round(record.total * 100),
       currency: 'INR',
-      receipt: order.id,
-      notes: { flikk_order_id: order.id },
+      receipt: record.id,
+      notes,
     });
 
     const upiRes = await fetch('https://api.razorpay.com/v1/payments/create/upi', {
@@ -68,11 +81,11 @@ export async function createUpiIntent(req: AuthedRequest, res: Response, next: N
         method: 'upi',
         upi: { flow: 'intent' },
         // Set explicitly here too, not assumed inherited from the order —
-        // the payment.captured webhook (webhook.ts) reads
-        // payload.payment.entity.notes.flikk_order_id specifically, and
-        // Razorpay's own docs don't guarantee order notes propagate onto
-        // a payment created against it.
-        notes: { flikk_order_id: order.id },
+        // the payment.captured webhook (webhook.ts) reads this same key
+        // off the PAYMENT's own notes specifically, and Razorpay's own
+        // docs don't guarantee order notes propagate onto a payment
+        // created against it.
+        notes,
       }),
     });
     const upiData = (await upiRes.json()) as UpiIntentResponse;

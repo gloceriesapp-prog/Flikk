@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Banknote, Bike, Boxes, LayoutGrid, Map, Package, PartyPopper, Settings, Tag, UserCheck, Store, Home } from 'lucide-react';
+import { Banknote, Bike, Boxes, LayoutGrid, Map, Package, PartyPopper, RotateCcw, Settings, Tag, UserCheck, Store, Home } from 'lucide-react';
 
 // Grouped sidebar sections, same "Menu" / "Insights" split as the
 // reference — Menu is the day-to-day operational stuff (what needs
@@ -24,6 +24,7 @@ export const MENU_ITEMS: NavItem[] = [
 export const INSIGHTS_ITEMS: NavItem[] = [
   { href: '/orders', label: 'Orders', icon: Package },
   { href: '/revenue', label: 'Revenue', icon: Banknote },
+  { href: '/refunds', label: 'Refunds', icon: RotateCcw },
   { href: '/zones', label: 'Zones', icon: Map },
 ];
 

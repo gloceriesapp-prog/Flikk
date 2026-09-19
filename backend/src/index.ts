@@ -29,6 +29,7 @@ import { deliverySettingsRouter } from './routes/deliverySettings.js';
 import { areaUpvotesRouter } from './routes/areaUpvotes.js';
 import cron from 'node-cron';
 import { runWeeklyPayoutJob } from './jobs/weeklyPayouts.js';
+import { expireUnpaidOrders } from './jobs/expireUnpaidOrders.js';
 
 const app = express();
 
@@ -141,3 +142,11 @@ cron.schedule(
   },
   { timezone: 'Asia/Kolkata' },
 );
+
+// Stale unpaid order cleanup — every 5 minutes. jobs/expireUnpaidOrders.ts's
+// own header note has the full reasoning; timezone doesn't matter here
+// (comparing real UTC instants against placed_at, not IST calendar days
+// the way weeklyPayouts.ts's own schedule needs to).
+cron.schedule('*/5 * * * *', () => {
+  void expireUnpaidOrders().catch((err) => logger.error({ err }, '[expireUnpaidOrders] job failed'));
+});

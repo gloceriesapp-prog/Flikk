@@ -56,6 +56,12 @@ interface CreateOrderBody {
   // scratch even if the client already called POST /promos/validate; the
   // discount actually applied is never trusted from that earlier call.
   promo_code?: string;
+  // 'cod' | 'online' — real distinction jobs/expireUnpaidOrders.ts needs
+  // to tell a legitimate Cash-on-Delivery order apart from an abandoned
+  // online-payment attempt (both look identical via razorpay_payment_id
+  // alone: null either way). Defaults to 'cod' server-side (migration
+  // 034's own default) if the client ever omits it.
+  payment_method?: 'cod' | 'online';
 }
 
 // POST /orders — all-or-nothing: validate stock, lock prices, single-store only,
@@ -122,6 +128,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       })),
       p_promo_code_id: promoCodeId,
       p_discount_amount: discountAmount,
+      p_payment_method: body.payment_method ?? 'cod',
     });
     if (rpcErr) throw new AppError(500, 'ORDER_CREATE_FAILED', rpcErr.message);
 

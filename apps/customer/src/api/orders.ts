@@ -27,6 +27,13 @@ export interface CreateOrderInput {
   // Cart-level coupon (api/promos.ts) — re-validated server-side, never
   // trusted from the client's own earlier POST /promos/validate call.
   promo_code?: string;
+  // 'cod' | 'online' — CheckoutScreen.tsx already knows which by the time
+  // it calls this (a payment method must be selected before Pay is
+  // reachable at all). Lets backend/src/jobs/expireUnpaidOrders.ts tell a
+  // real Cash-on-Delivery order apart from an abandoned online-payment
+  // attempt — both otherwise look identical (razorpay_payment_id null
+  // either way).
+  payment_method?: 'cod' | 'online';
 }
 
 export interface ApiOrderItem {
@@ -51,6 +58,9 @@ export interface ApiOrder {
   discount_amount: number;
   promo_code_id: string | null;
   razorpay_payment_id: string | null;
+  // Real orders.payment_method (migration 034) — 'cod' for every order
+  // created before this column existed (its own default).
+  payment_method: 'cod' | 'online';
   // Real cancellation/refund state (backend/migrations/013_order_cancel_
   // reason.sql, 033_order_refunds.sql) — cancel_reason is whatever the
   // canceller (customer/store owner/rider) actually picked/typed;

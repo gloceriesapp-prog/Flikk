@@ -24,6 +24,33 @@ export interface RefundResult {
   razorpayRefundId: string | null;
 }
 
+// Real idempotency guard, not a defensive-programming guess: if a
+// previous call to this function actually reached Razorpay and created a
+// refund, but the response never made it back here (a network blip, a
+// process restart mid-request, a caller retrying after a timeout that
+// wasn't actually a failure), calling payments.refund() again would
+// create a SECOND real refund against the same payment — real money moved
+// twice for one cancellation. Checking what Razorpay itself already knows
+// about this payment's refunds first, and treating "already covered" as
+// success instead of refunding again, is what actually closes that gap —
+// not just hoping a retry never happens.
+async function findExistingRefund(razorpayPaymentId: string, amountPaise: number): Promise<RefundResult | null> {
+  const existing = await razorpay.payments.fetchMultipleRefund(razorpayPaymentId);
+  const alreadyRefundedPaise = existing.items.reduce((sum, r) => sum + (r.amount ?? 0), 0);
+  if (alreadyRefundedPaise < amountPaise) return null;
+
+  // Prefer a 'processed' refund's own id if one exists among the matches,
+  // otherwise fall back to whichever one pushed the running total over
+  // the requested amount — either way this is real, already-Razorpay-
+  // confirmed data, never a guess.
+  const processed = existing.items.find((r) => r.status === 'processed');
+  const match = processed ?? existing.items[existing.items.length - 1];
+  return {
+    status: match?.status === 'processed' ? 'completed' : match?.status === 'failed' ? 'failed' : 'processing',
+    razorpayRefundId: match?.id ?? null,
+  };
+}
+
 // Razorpay's own refund object status is 'pending' (UPI/most methods —
 // settles within days, confirmed later by the refund.processed webhook)
 // or occasionally 'processed' immediately in the same response (some
@@ -33,10 +60,12 @@ export interface RefundResult {
 // asynchronously — this function's return value is only ever the FIRST
 // data point, not the final word.
 export async function refundPayment(razorpayPaymentId: string, amountRupees: number): Promise<RefundResult> {
+  const amountPaise = Math.round(amountRupees * 100);
   try {
-    const refund = await razorpay.payments.refund(razorpayPaymentId, {
-      amount: Math.round(amountRupees * 100),
-    });
+    const existing = await findExistingRefund(razorpayPaymentId, amountPaise);
+    if (existing) return existing;
+
+    const refund = await razorpay.payments.refund(razorpayPaymentId, { amount: amountPaise });
     // Razorpay's own refund.status is 'pending' | 'processed' | 'failed'.
     // A same-request 'failed' is rare (usually surfaces via the async
     // webhook instead) but mapped explicitly rather than falling into

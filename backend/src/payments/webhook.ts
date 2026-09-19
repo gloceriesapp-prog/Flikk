@@ -28,11 +28,26 @@ export async function handleWebhook(req: Request, res: Response, next: NextFunct
 
     const event = req.body;
     if (event.event === 'payment.captured') {
-      const orderId = event.payload.payment.entity.notes?.flikk_order_id;
+      const notes = event.payload.payment.entity.notes ?? {};
+      const orderId: string | undefined = notes.flikk_order_id;
+      const tripId: string | undefined = notes.flikk_trip_id;
       const paymentId = event.payload.payment.entity.id;
+
       if (orderId) {
         const { error } = await supabase.from('orders').update({ razorpay_payment_id: paymentId }).eq('id', orderId);
         if (error) throw error;
+      } else if (tripId) {
+        // Same real cascade verifyPayment.ts's own Standard Checkout path
+        // already does for a trip — every child order needs its own
+        // razorpay_payment_id written too, since every real reader
+        // (TrackOrderScreen, Purchase, admin/partner order views) checks
+        // an orders row's own payment_id, none of them know trips exist.
+        // This is the UPI Intent flow's own async counterpart to that —
+        // createUpiIntent.ts's own note on why the notes key differs.
+        const { error: tripErr } = await supabase.from('trips').update({ razorpay_payment_id: paymentId }).eq('id', tripId);
+        if (tripErr) throw tripErr;
+        const { error: cascadeErr } = await supabase.from('orders').update({ razorpay_payment_id: paymentId }).eq('trip_id', tripId);
+        if (cascadeErr) throw cascadeErr;
       }
     }
 

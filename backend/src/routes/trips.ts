@@ -47,6 +47,11 @@ interface CreateTripBody extends AddressInput {
   // Same promo contract as POST /orders (routes/orders.ts's own note) —
   // one code against the whole trip's item_total, re-validated here.
   promo_code?: string;
+  // Same real distinction routes/orders.ts's own note documents — one
+  // payment method for the whole trip, cascaded onto every leg's own
+  // orders row (migrations/034_order_payment_method.sql's own
+  // create_trip_orders update).
+  payment_method?: 'cod' | 'online';
 }
 
 tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
@@ -117,6 +122,7 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       })),
       p_promo_code_id: promoCodeId,
       p_discount_amount: discountAmount,
+      p_payment_method: body.payment_method ?? 'cod',
     });
     if (rpcErr) throw new AppError(500, 'TRIP_CREATE_FAILED', rpcErr.message);
 

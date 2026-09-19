@@ -35,9 +35,15 @@ export interface UpiIntentPayment {
 // Razorpay's own bundled Checkout SDK), this returns a raw deep link the
 // app launches itself at a specific installed UPI app — no Razorpay
 // branding, same mechanism Blinkit/Instamart use for their own UPI-app
-// grid (payments/upiIntent.ts).
-export function createUpiIntentPayment(orderId: string): Promise<UpiIntentPayment> {
-  return apiRequest('/payments/create-upi-intent', { method: 'POST', body: { orderId } });
+// grid (payments/upiIntent.ts). Same orderId/tripId fork as
+// createRazorpayOrder above — a multi-store trip pays once for the whole
+// trip via this exact same grid now, not just Standard Checkout; each
+// leg still gets its own real item_total/commission_amount for payout
+// purposes regardless of how the one combined payment was collected
+// (backend's own note on why splitting the charge itself was never
+// actually necessary).
+export function createUpiIntentPayment(id: { orderId: string } | { tripId: string }): Promise<UpiIntentPayment> {
+  return apiRequest('/payments/create-upi-intent', { method: 'POST', body: id });
 }
 
 export type VerifyPaymentInput = ({ orderId: string; tripId?: undefined } | { tripId: string; orderId?: undefined }) & {

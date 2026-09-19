@@ -17,6 +17,9 @@ export interface CreateTripInput {
   items: CreateTripItem[];
   // Cart-level coupon (api/promos.ts) — same contract as CreateOrderInput.
   promo_code?: string;
+  // Same real distinction api/orders.ts's own CreateOrderInput documents —
+  // one payment method for the whole trip's one combined payment.
+  payment_method?: 'cod' | 'online';
 }
 
 export interface ApiTrip {

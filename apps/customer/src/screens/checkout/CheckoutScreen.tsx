@@ -31,10 +31,16 @@
 // third path alongside cod/online: POST /payments/create-upi-intent mints
 // a real `upi://pay?...` link, payments/upiIntent.ts launches it directly
 // at that specific installed app (no Razorpay-branded screen), then
-// payments/pollOrderPaid.ts watches the order row for the webhook to mark
-// it paid — that webhook (backend/src/routes/payments.ts) is the only
-// thing that can ever actually mark an order paid, same as the 'online'
-// path's POST /payments/verify below.
+// payments/pollOrderPaid.ts watches the order (or trip, for a multi-store
+// checkout — same one-combined-payment model Standard Checkout already
+// uses) row for the webhook to mark it paid — that webhook
+// (backend/src/payments/webhook.ts) is the only thing that can ever
+// actually mark an order paid, same as the 'online' path's POST
+// /payments/verify below. Splitting one trip payment across N stores was
+// never actually a payment-collection problem: each store already has
+// its own real orders row with its own item_total/commission_amount
+// (CLAUDE.md's single-store-per-order schema), regardless of which single
+// payment flow collected the combined amount.
 import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -69,10 +75,13 @@ export function CheckoutScreen({ navigation }: Props) {
   // >1 store means checkout goes through POST /trips (one payment, one
   // delivery fee, one real order per store — useCartStore's own header
   // note) instead of the plain single-store POST /orders. The S2S UPI
-  // Intent quick-pick grid stays single-store-only for now (that path's
-  // webhook keys off a single flikk_order_id — createUpiIntent.ts hasn't
-  // been made trip-aware yet); a multi-store checkout still pays fine via
-  // COD or Razorpay's own Standard Checkout (online), just not that grid.
+  // Intent quick-pick grid is trip-aware too (createUpiIntent.ts/
+  // webhook.ts/pollOrderPaid.ts's own notes) — one combined payment for
+  // the whole trip, same as Standard Checkout already did; each store
+  // still gets its own real item_total/commission_amount for payout
+  // purposes off its own orders row regardless of which payment path
+  // collected the money (CLAUDE.md: single-store-per-order at the schema
+  // level even though the cart/payment fans out across stores).
   const isMultiStore = storeCount > 1;
   const itemTotal = useCartStore(selectCartTotalPrice);
   // Cart-level coupon (PromoCodeCard, useCartStore.appliedPromo) — the
@@ -172,6 +181,14 @@ export function CheckoutScreen({ navigation }: Props) {
     }
     setIsPlacingOrder(true);
     try {
+      // Every non-cod method (a specific UPI app, the sample row, card —
+      // Razorpay's own Standard Checkout already covers netbanking/
+      // wallets inside itself, no separate method for those) all end up
+      // actually charging through Razorpay one way or another — this is
+      // the one real fork that matters for jobs/expireUnpaidOrders.ts's
+      // own cleanup, not each method's own separate label.
+      const intendedPaymentMethod: 'cod' | 'online' = paymentMethod === 'cod' ? 'cod' : 'online';
+
       // Exactly one of these two calls runs — a single-store cart keeps
       // using the plain, unaffected POST /orders path; a cart spanning
       // more than one store goes through POST /trips instead (one
@@ -182,12 +199,14 @@ export function CheckoutScreen({ navigation }: Props) {
             address_id: selectedAddress.id,
             items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
             promo_code: promoCode,
+            payment_method: intendedPaymentMethod,
           })
         : await createOrder({
             store_id: items[0]!.storeId,
             address_id: selectedAddress.id,
             items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
             promo_code: promoCode,
+            payment_method: intendedPaymentMethod,
           });
 
       const orderSummary = isMultiStore
@@ -241,9 +260,6 @@ export function CheckoutScreen({ navigation }: Props) {
         });
       }
 
-      // isMultiStore never reaches here — PaymentMethodList is handed an
-      // empty upiApps list in that case (this screen's own note above), so
-      // paymentMethod can never actually be an 'upi_app:' value for a trip.
       if (paymentMethod.startsWith('upi_app:')) {
         const app = upiApps.find((a) => a.id === paymentMethod.slice('upi_app:'.length));
         // Can't happen from the UI (PaymentMethodList only ever emits an
@@ -252,9 +268,11 @@ export function CheckoutScreen({ navigation }: Props) {
         // payment path.
         if (!app) throw new Error('Unknown UPI app selected.');
 
+        const intentTarget = isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id };
+
         let upiLink: string;
         try {
-          upiLink = (await createUpiIntentPayment(paymentRecord.id)).upiLink;
+          upiLink = (await createUpiIntentPayment(intentTarget)).upiLink;
         } catch {
           // The S2S UPI Intent API (backend's own note, payments/
           // createUpiIntent.ts) needs to be explicitly enabled on the
@@ -278,7 +296,7 @@ export function CheckoutScreen({ navigation }: Props) {
         // inside the app, or the poll below times out, it just stays
         // that way, same as every other path here that doesn't complete.
         setIsAwaitingUpiConfirmation(true);
-        const paid = await pollOrderPaid(paymentRecord.id);
+        const paid = await pollOrderPaid(intentTarget);
         setIsAwaitingUpiConfirmation(false);
 
         if (!paid) {
@@ -293,12 +311,12 @@ export function CheckoutScreen({ navigation }: Props) {
         return;
       }
 
-      // 'online' and 'upi_id' both land here — order row already exists
-      // (unpaid) at this point; a cancelled or failed checkout below just
-      // leaves it that way, same as every other path here. 'upi_id' is
-      // sample UI only (PaymentMethodList's own note) with no real VPA
-      // verification yet, so it goes through the exact same Razorpay
-      // Standard Checkout as 'online' until that gets wired up for real.
+      // 'online', 'card', and 'upi_sample' all land here —
+      // order row already exists (unpaid) at this point; a cancelled or
+      // failed checkout below just leaves it that way, same as every
+      // other path here. All of these go through Razorpay's own Standard
+      // Checkout (PaymentMethodList's own note on why there's no separate
+      // "type a UPI ID" path — UPI Collect is retired industry-wide).
       await payViaRazorpayCheckout();
       goToReceipt(orderSummary, paymentMethodLabel(paymentMethod, upiApps));
     } catch (err) {
@@ -317,13 +335,13 @@ export function CheckoutScreen({ navigation }: Props) {
       {/* Only the header above stays fixed — TotalAmountCard used to sit
           outside this scroll view (visually "stuck" under the header,
           per an explicit ask that it shouldn't be) and now scrolls away
-          with everything else instead. KeyboardAwareScrollView, not a
-          plain ScrollView — same fix as AddressFormScreen's own note: a
-          plain ScrollView never scrolls a specific focused field into
-          view, only "Pay via UPI ID"'s own text input sits low enough on
-          this screen to get covered by the keyboard once focused. This
-          auto-scrolls it above the keyboard instead, and keeps the rest
-          of the list freely scrollable either way. */}
+          with everything else instead. KeyboardAwareScrollView left in
+          place even though the one text input that needed it ("Pay via
+          UPI ID", since removed — PaymentMethodList.tsx's own note) is
+          gone — harmless no-op without a focused field, and keeps this
+          screen ready if a future input ever needs the same
+          scroll-above-keyboard behavior AddressFormScreen's own note
+          documents. */}
       <KeyboardAwareScrollView className="flex-1" contentContainerClassName="px-5 pb-8 pt-4" bottomOffset={40}>
         <TotalAmountCard items={items} totalPrice={grandTotal} />
 
@@ -333,11 +351,9 @@ export function CheckoutScreen({ navigation }: Props) {
           onPay={handlePay}
           totalPrice={grandTotal}
           isPlacingOrder={isPlacingOrder || isAwaitingUpiConfirmation}
-          // Empty, not the real detected list, for a multi-store cart —
-          // the S2S UPI Intent quick-pick grid isn't trip-aware yet
-          // (this screen's own note on isMultiStore); COD and Razorpay's
-          // own Standard Checkout ('online') still both work fine.
-          upiApps={isMultiStore ? [] : upiApps}
+          // Real detected list regardless of cart size now — the UPI-app
+          // grid is trip-aware (this screen's own note on isMultiStore).
+          upiApps={upiApps}
         />
       </KeyboardAwareScrollView>
     </View>
