@@ -19,6 +19,12 @@ export interface StoreDraft {
   storeName: string;
   category: string;
   district: string | null;
+  // The full reverse-geocoded address (LocationPinScreen's own
+  // reverseGeocodeAddress) — used to just build that screen's own confirm
+  // card, then discarded; now carried all the way through to
+  // stores.address_line so a real address shows in StoreProfileHeader
+  // instead of just the district.
+  addressLine: string | null;
   coordinates: import('../location/geocoding').Coordinates | null;
   photoUrl: string | null;
   gstNumber: string;
@@ -27,7 +33,10 @@ export interface StoreDraft {
 }
 
 export type AuthStackParamList = {
-  Welcome: undefined;
+  // Welcome is no longer a route in this stack — RootNavigator.tsx renders
+  // it directly as a fixed-duration splash gate (matching apps/customer's
+  // own WelcomeScreen/RootNavigator pattern), before either stack ever
+  // mounts. Login is this stack's real first screen now.
   Login: undefined;
   // devMode flags that requestOtp fell back to the local dev stand-in
   // (backend unreachable — see api/devAuthFallback.ts) so this screen can
@@ -54,7 +63,11 @@ export type AuthStackParamList = {
   // is enough for this whole wizard.
   LocationPin: {
     initialCoordinates: import('../location/geocoding').Coordinates | null;
-    onConfirm: (coordinates: import('../location/geocoding').Coordinates, district: string) => void;
+    // addressLine is the real reverse-geocoded full address this screen
+    // already computes for its own confirm card (reverseGeocodeAddress) —
+    // now threaded onward instead of discarded, so StoreProfileHeader can
+    // show a real address, not just district.
+    onConfirm: (coordinates: import('../location/geocoding').Coordinates, district: string, addressLine: string | null) => void;
   };
 };
 

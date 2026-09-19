@@ -22,6 +22,7 @@ interface StoreRow {
   category: string;
   is_active: boolean;
   district: string | null;
+  address_line: string | null;
   photo_url: string | null;
   phone: string | null;
   open_time: string | null;
@@ -45,6 +46,7 @@ function fromRow(row: StoreRow): StoreProfile {
     category: row.category,
     isOpen: row.is_active,
     district: row.district ?? '',
+    addressLine: row.address_line,
     photoUrl: row.photo_url,
     hasUnreadNotifications: false,
     openTime: row.open_time ?? '',

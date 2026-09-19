@@ -27,7 +27,7 @@ export interface OrderLineItem {
   imageUrl: string | null;
 }
 
-// Flikk's cut, shown to the store owner as a transparent breakdown on
+// Gloceries' cut, shown to the store owner as a transparent breakdown on
 // OrderDetailScreen (order total → platform fee → net payout) rather than
 // making them take the total on faith. Store-wide flat rate for now — no
 // per-store negotiated rate exists yet.

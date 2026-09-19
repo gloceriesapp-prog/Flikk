@@ -77,6 +77,7 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         storeName: draft.storeName,
         category: draft.category,
         district: draft.district ?? 'Udupi',
+        addressLine: draft.addressLine || undefined,
         gstNumber: draft.gstNumber || undefined,
         photoUrl: draft.photoUrl || undefined,
         ownerName: draft.ownerName || undefined,

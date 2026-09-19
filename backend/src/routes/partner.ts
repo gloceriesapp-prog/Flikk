@@ -47,7 +47,7 @@ function maskAccountNumber(full: string | null): string | null {
 }
 
 const STORE_SELECT =
-  'id, name, category, is_active, district, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number';
+  'id, name, category, is_active, district, address_line, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number';
 
 function toStoreResponse(data: Record<string, unknown>, phone: string | null) {
   const { payout_bank_account_number, ...rest } = data;
@@ -67,8 +67,20 @@ partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
 partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { name, category, is_active, district, open_time, close_time, avg_prep_minutes, photo_url, owner_name, gst_number, shop_establishment_number } =
-      req.body as Record<string, unknown>;
+    const {
+      name,
+      category,
+      is_active,
+      district,
+      address_line,
+      open_time,
+      close_time,
+      avg_prep_minutes,
+      photo_url,
+      owner_name,
+      gst_number,
+      shop_establishment_number,
+    } = req.body as Record<string, unknown>;
     // Deliberately NOT accepting payout_upi_id/payout_upi_verified_name/
     // payout_method/payout_bank_* here — every payout-destination field
     // is only ever written by POST /verify-payout, which requires a real
@@ -80,6 +92,7 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     if (category !== undefined) patch.category = category;
     if (is_active !== undefined) patch.is_active = is_active;
     if (district !== undefined) patch.district = district;
+    if (address_line !== undefined) patch.address_line = address_line;
     if (open_time !== undefined) patch.open_time = open_time;
     if (close_time !== undefined) patch.close_time = close_time;
     if (avg_prep_minutes !== undefined) patch.avg_prep_minutes = avg_prep_minutes;

@@ -60,6 +60,7 @@ export interface StoreApplication {
   storeName: string;
   category: string;
   district: string;
+  addressLine?: string;
   gstNumber?: string;
   photoUrl?: string;
   ownerName?: string;
@@ -150,6 +151,7 @@ export interface StoreDraftPatch {
   storeName?: string;
   category?: string;
   district?: string;
+  addressLine?: string;
   lat?: number;
   lng?: number;
   photoUrl?: string;
@@ -162,6 +164,7 @@ export interface SavedStoreDraft {
   store_name: string | null;
   category: string | null;
   district: string | null;
+  address_line: string | null;
   lat: number | null;
   lng: number | null;
   photo_url: string | null;

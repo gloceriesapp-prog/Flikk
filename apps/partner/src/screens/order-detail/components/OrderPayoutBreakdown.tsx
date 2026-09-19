@@ -1,6 +1,6 @@
 // Transparent payout breakdown — order total → platform fee → what the
 // store actually receives. Sits below "Order details" so the store owner
-// sees exactly what the customer paid and what Flikk kept, not just a net
+// sees exactly what the customer paid and what Gloceries kept, not just a net
 // figure they have to trust blind.
 
 import { Text, View } from 'react-native';

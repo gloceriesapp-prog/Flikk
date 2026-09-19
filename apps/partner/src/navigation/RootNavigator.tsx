@@ -2,8 +2,17 @@
 // "becomes a RootNavigator reading useAuthStore" App.tsx has been
 // pointing at since before any of this existed:
 //
-// 1. Not hydrated yet (checking SecureStore) → spinner, nothing else.
-// 2. No session → AuthNavigator, starting at Welcome.
+// 1. Not hydrated yet (checking SecureStore), OR the fixed WELCOME_
+//    DURATION_MS splash timer hasn't elapsed yet → WelcomeScreen, a real
+//    timed brand gate shown on EVERY cold open regardless of how fast
+//    hydration itself resolves — same pattern apps/customer's own
+//    RootNavigator.tsx/WelcomeScreen.tsx already establish, not a
+//    loading spinner with a logo slapped on. Whichever finishes last —
+//    the timer or hydration/status-check — is what actually reveals the
+//    real stack.
+// 2. No session → AuthNavigator, starting at Login (no separate tappable
+//    "Get Started" step anymore — per an explicit ask to drop it, this
+//    screen's own timed gate above already IS the brand moment).
 // 3. Session, no store, wizard not submitted yet → AuthNavigator again,
 //    dropped straight onto Store Setup — a returning owner who closed the
 //    app mid-registration shouldn't replay Welcome/Login/OTP.
@@ -26,18 +35,21 @@
 // stale local flag would show the wrong screen).
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { checkAccountStatus } from '../api/auth';
 import { ApiError } from '../api/client';
 import { registerPushToken } from '../features/push-notifications/registerPushToken';
 import { WaitingApprovalScreen } from '../screens/onboarding/WaitingApprovalScreen';
+import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { useAuthStore } from '../store/useAuthStore';
-import { colors } from '../theme/tokens';
 import { navigationRef } from './navigationRef';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
+
+// Same fixed duration apps/customer's own RootNavigator.tsx uses — shown
+// on every cold open, always, not just the first ever launch.
+const WELCOME_DURATION_MS = 2000;
 
 export function RootNavigator() {
   const {
@@ -54,10 +66,16 @@ export function RootNavigator() {
     clear,
   } = useAuthStore();
   const [statusChecked, setStatusChecked] = useState(false);
+  const [welcomeElapsed, setWelcomeElapsed] = useState(false);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    const id = setTimeout(() => setWelcomeElapsed(true), WELCOME_DURATION_MS);
+    return () => clearTimeout(id);
+  }, []);
 
   // Registered once per fresh login (accessToken change), same as the
   // status recheck below — a pending owner still gets their token saved
@@ -111,14 +129,10 @@ export function RootNavigator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated, accessToken]);
 
-  const isLoading = !isHydrated || (!!accessToken && !statusChecked);
+  const isLoading = !isHydrated || !welcomeElapsed || (!!accessToken && !statusChecked);
 
   if (isLoading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator color={colors.ink} />
-      </View>
-    );
+    return <WelcomeScreen />;
   }
 
   return (

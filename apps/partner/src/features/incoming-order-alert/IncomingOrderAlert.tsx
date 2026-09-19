@@ -92,7 +92,7 @@ export function IncomingOrderAlert() {
 
               <View className="flex-row">
                 <OrderInfoRow icon={Clock01Icon} label="Time" value={activeOrder.placedAtTime} />
-                {/* Static — every Flikk order is a delivery, per
+                {/* Static — every Gloceries order is a delivery, per
                     CLAUDE.md scope (no pickup mode exists). */}
                 <OrderInfoRow icon={DeliveryTruck01Icon} label="Type" value="Delivery" />
               </View>

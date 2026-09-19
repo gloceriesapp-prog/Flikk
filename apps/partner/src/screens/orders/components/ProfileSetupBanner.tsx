@@ -40,14 +40,14 @@ export function ProfileSetupBanner({ profile, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      className="mx-5 mb-3 flex-row items-center gap-3 rounded-2xl border px-4 py-3.5"
+      className="mx-5 mb-3 flex-row items-center gap-3 rounded-2xl bg-[#FDF2E9] px-4 py-3.5"
       style={({ pressed }) => ({ borderColor: `${ACCENT}30`, backgroundColor: `${ACCENT}0D`, opacity: pressed ? 0.8 : 1 })}
     >
       <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: `${ACCENT}1A` }}>
         <AppIcon icon={AlertCircleIcon} size={17} color={ACCENT} />
       </View>
       <View className="flex-1">
-        <Text className="text-[14px] font-bold" style={{ color: ACCENT }}>
+        <Text className="text-[14px] font-semibold" style={{ color: ACCENT }}>
           Finish setting up your store
         </Text>
         <Text className="mt-0.5 text-[12.5px] font-medium" style={{ color: `${ACCENT}CC` }}>

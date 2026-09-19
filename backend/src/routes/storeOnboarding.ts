@@ -34,10 +34,11 @@ const PHOTO_BUCKET = 'store-images';
 // this one row.
 storeOnboardingRouter.post('/store-application', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { storeName, category, district, gstNumber, photoUrl, ownerName, shopLicenseNumber } = req.body as {
+    const { storeName, category, district, addressLine, gstNumber, photoUrl, ownerName, shopLicenseNumber } = req.body as {
       storeName?: string;
       category?: string;
       district?: string;
+      addressLine?: string;
       gstNumber?: string;
       photoUrl?: string;
       ownerName?: string;
@@ -53,6 +54,7 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
         store_name: storeName,
         category,
         district,
+        address_line: addressLine || null,
         gst_number: gstNumber || null,
         photo_url: photoUrl || null,
         owner_name: ownerName || null,
@@ -91,7 +93,7 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
   try {
     const { data, error } = await supabase
       .from('store_onboarding_drafts')
-      .select('store_name, category, district, lat, lng, photo_url, gst_number, owner_name, shop_establishment_number, submitted_at')
+      .select('store_name, category, district, address_line, lat, lng, photo_url, gst_number, owner_name, shop_establishment_number, submitted_at')
       .eq('user_id', req.user!.id)
       .maybeSingle();
     if (error) throw error;
@@ -104,10 +106,11 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
 
 storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { storeName, category, district, lat, lng, photoUrl, gstNumber, ownerName, shopLicenseNumber } = req.body as {
+    const { storeName, category, district, addressLine, lat, lng, photoUrl, gstNumber, ownerName, shopLicenseNumber } = req.body as {
       storeName?: string;
       category?: string;
       district?: string;
+      addressLine?: string;
       lat?: number;
       lng?: number;
       photoUrl?: string;
@@ -123,6 +126,7 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
     if (storeName !== undefined) patch.store_name = storeName;
     if (category !== undefined) patch.category = category;
     if (district !== undefined) patch.district = district;
+    if (addressLine !== undefined) patch.address_line = addressLine;
     if (lat !== undefined) patch.lat = lat;
     if (lng !== undefined) patch.lng = lng;
     if (photoUrl !== undefined) patch.photo_url = photoUrl;

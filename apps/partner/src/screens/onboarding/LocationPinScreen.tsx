@@ -175,7 +175,7 @@ export function LocationPinScreen({ navigation, route }: Props) {
     if (!region) return;
     const coords: Coordinates = { latitude: region.latitude, longitude: region.longitude };
     const district = (await reverseGeocodeDistrict(coords)) ?? 'Udupi';
-    onConfirm(coords, district);
+    onConfirm(coords, district, addressLabel);
     navigation.goBack();
   }
 

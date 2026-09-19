@@ -49,14 +49,14 @@ export function LoginScreen({ navigation }: Props) {
     <DismissKeyboardView>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white pb-safe pt-safe">
         <View className="gap-5 px-6 pt-6">
-          <Text className="text-2xl font-bold text-ink">Store owner login</Text>
+          <Text className="text-2xl font-semibold text-ink">Store owner login</Text>
           <PhoneInput value={phone} onChangeText={setPhone} autoFocus />
           {error && <Text className="text-[13px] font-medium text-danger">{error}</Text>}
         </View>
 
         <View className="mt-auto gap-4 px-6 pb-4">
           <PrimaryButton label="Continue" onPress={handleContinue} disabled={!canContinue} loading={loading} />
-          <Text className="text-center text-xs font-medium text-ink/50">
+          <Text className="text-center text-[12px] font-medium text-ink/50">
             By continuing, you agree to our <Text className="font-semibold text-ink/70">Terms of Service</Text> and{' '}
             <Text className="font-semibold text-ink/70">Privacy Policy</Text>
           </Text>

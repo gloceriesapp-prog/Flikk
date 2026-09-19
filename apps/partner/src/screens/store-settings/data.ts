@@ -17,9 +17,12 @@ export interface StoreProfile {
   storeName: string;
   category: string;
   isOpen: boolean;
-  // District only, not a full street address — see StoreProfileHeader.tsx's
-  // own note on why. A full address belongs here once one is needed.
   district: string;
+  // The real reverse-geocoded full address (stores.address_line, captured
+  // during onboarding's LocationPinScreen) — null for any store approved
+  // before this field existed. StoreProfileHeader falls back to district
+  // when this is null, never shows a blank line.
+  addressLine: string | null;
   // Real storefront photo (stores.photo_url, set during onboarding) — null
   // until one's uploaded, StoreProfileHeader/StoreSettingsScreen fall back
   // to a seeded placeholder keyed by `id`, never a fake name.
@@ -97,6 +100,7 @@ export const EMPTY_STORE_PROFILE: StoreProfile = {
   category: '',
   isOpen: false,
   district: '',
+  addressLine: null,
   photoUrl: null,
   hasUnreadNotifications: false,
   openTime: '',

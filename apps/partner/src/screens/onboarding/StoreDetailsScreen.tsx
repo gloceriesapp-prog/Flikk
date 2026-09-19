@@ -29,6 +29,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [district, setDistrict] = useState(draft.district);
+  const [addressLine, setAddressLine] = useState(draft.addressLine);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(draft.coordinates);
   const [gstNumber, setGstNumber] = useState(draft.gstNumber);
   const [shopLicenseNumber, setShopLicenseNumber] = useState(draft.shopLicenseNumber);
@@ -83,9 +84,10 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
   function handleOpenLocationPin(seedCoordinates: Coordinates | null = coordinates) {
     navigation.navigate('LocationPin', {
       initialCoordinates: seedCoordinates,
-      onConfirm: (nextCoordinates, nextDistrict) => {
+      onConfirm: (nextCoordinates, nextDistrict, nextAddressLine) => {
         setCoordinates(nextCoordinates);
         setDistrict(nextDistrict);
+        setAddressLine(nextAddressLine);
       },
     });
   }
@@ -98,6 +100,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
     // Best-effort, same reasoning as handlePickPhoto's own note above.
     saveStoreDraft({
       district: district ?? undefined,
+      addressLine: addressLine ?? undefined,
       lat: coordinates?.latitude,
       lng: coordinates?.longitude,
       gstNumber: trimmedGst,
@@ -105,7 +108,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
     }).catch(() => {});
 
     navigation.navigate('StoreReview', {
-      draft: { ...draft, photoUrl, district, coordinates, gstNumber: trimmedGst, shopLicenseNumber: trimmedShopLicense },
+      draft: { ...draft, photoUrl, district, addressLine, coordinates, gstNumber: trimmedGst, shopLicenseNumber: trimmedShopLicense },
     });
   }
 

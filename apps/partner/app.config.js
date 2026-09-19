@@ -15,9 +15,9 @@ module.exports = {
     ios: {
       supportsTablet: true,
       infoPlist: {
-        NSLocationWhenInUseUsageDescription: "Flikk uses your location to fill in your store's city automatically.",
-        NSPhotoLibraryUsageDescription: 'Flikk needs access to your photos to set your storefront picture.',
-        NSCameraUsageDescription: 'Flikk needs camera access to take a photo of your storefront.',
+        NSLocationWhenInUseUsageDescription: "Gloceries uses your location to fill in your store's city automatically.",
+        NSPhotoLibraryUsageDescription: 'Gloceries needs access to your photos to set your storefront picture.',
+        NSCameraUsageDescription: 'Gloceries needs camera access to take a photo of your storefront.',
       },
     },
     android: {
@@ -49,8 +49,8 @@ module.exports = {
       [
         'expo-image-picker',
         {
-          photosPermission: 'Flikk needs access to your photos to set your storefront picture.',
-          cameraPermission: 'Flikk needs camera access to take a photo of your storefront.',
+          photosPermission: 'Gloceries needs access to your photos to set your storefront picture.',
+          cameraPermission: 'Gloceries needs camera access to take a photo of your storefront.',
         },
       ],
     ],
