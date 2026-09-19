@@ -1,95 +1,187 @@
-// Placeholder payouts (P5) — same no-auth caveat as ../orders/data.ts.
-// Purely a display shape for `payouts` (specs/00-foundation/data-model.md);
-// per specs/02-partner-app/screens.md this screen must never compute a
-// payout figure itself — every number here (including the gross/commission
-// split and the per-order lines) stands in for a server-computed value the
-// real `GET /partner/payouts` would return, mirroring that table's own
-// `gross_amount` / `commission_deducted` / `net_payout` columns so a real
-// fetch is a data swap, not a shape change.
+// Real payout display shapes — GET /partner/payouts (api/payouts.ts) is
+// the only source of every figure here (gross/commission/net), computed
+// server-side by jobs/weeklyPayouts.ts from that store's actually
+// delivered orders for the week. This file only ever reshapes that real
+// response for display (real date labels, a real next-settlement date),
+// it never invents or re-derives a payout figure itself.
 
-// Mirrors payouts.status (migration 012) — 'processing' (Razorpay accepted
-// the payout, awaiting the bank's final confirmation) and 'blocked' (no
-// verified payout destination on file yet) are real states a row can be
-// in now that weeklyPayouts.ts actually releases these, not just the
-// original 'pending'/'paid'.
-export type PayoutStatus = 'pending' | 'processing' | 'paid' | 'blocked' | 'failed';
+import { colors } from '../../theme/tokens';
+import type { ApiPayout, ApiPayoutOrder, PayoutStatus } from '../../api/payouts';
+import { formatPayoutDateLabel, nextPayoutDate } from '../../utils/nextPayoutDate';
 
-// One order's contribution to a settlement — what a shop owner checks a
-// weekly total against order by order, the same way they'd check a bank
-// statement line by line. `amount` is that order's net contribution
-// (after commission), so the full list always sums to exactly
-// `WeeklyPayout.netAmount` — the whole point is that the total is provably
-// built from real orders, not a number to take on faith.
-export interface PayoutOrderLine {
-  orderId: string;
-  dayLabel: string;
-  amount: number;
-}
+export type { PayoutStatus };
 
 export interface WeeklyPayout {
+  id: string;
   weekLabel: string;
   orderCount: number;
   grossAmount: number;
   commissionAmount: number;
   netAmount: number;
   status: PayoutStatus;
-  // Only the current (pending) week has one — a paid week has nothing left
-  // to settle.
+  paidAt: string | null;
+  // Only set for a week that hasn't actually landed yet (pending/
+  // processing/blocked/failed) — a paid week has nothing left to settle.
   nextSettlementLabel?: string;
-  orders: PayoutOrderLine[];
+  // True only for SAMPLE_PAYOUTS below — never set on anything built from
+  // a real GET /partner/payouts row. Every consumer that renders a
+  // WeeklyPayout checks this before treating its numbers as real money,
+  // so a brand-new store (zero delivered orders, zero real payouts yet)
+  // still has something to look at instead of a blank screen, without
+  // ever being mistakable for an actual balance.
+  isSample?: boolean;
 }
 
-const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-// Splits netAmount evenly across orderCount lines, remainder distributed to
-// the first few so the sum is always exact — real per-order amounts once
-// `GET /partner/payouts` exists, this just needs to add up correctly.
-function buildOrderLines(startId: number, orderCount: number, netAmount: number): PayoutOrderLine[] {
-  const base = Math.floor(netAmount / orderCount);
-  const remainder = netAmount - base * orderCount;
-  return Array.from({ length: orderCount }, (_, i) => ({
-    orderId: `#OD${startId - i}`,
-    dayLabel: WEEKDAY_LABELS[i % 7],
-    amount: base + (i < remainder ? 1 : 0),
-  }));
+// "YYYY-MM-DD" (a plain Postgres `date`, no time/timezone component) is
+// parsed as UTC midnight by `new Date(...)` — fine here since this only
+// ever feeds a date-only display label, never a real instant comparison.
+function formatDateOnly(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
-export const PLACEHOLDER_PAYOUTS: WeeklyPayout[] = [
-  {
-    weekLabel: 'This week (11–17 Aug)',
-    orderCount: 18,
-    grossAmount: 2432,
-    commissionAmount: 292,
-    netAmount: 2140,
-    status: 'pending',
-    nextSettlementLabel: 'Mon, 18 Aug',
-    orders: buildOrderLines(48213, 18, 2140),
-  },
-  {
-    weekLabel: '4–10 Aug',
-    orderCount: 24,
-    grossAmount: 3500,
-    commissionAmount: 420,
-    netAmount: 3080,
-    status: 'paid',
-    orders: buildOrderLines(48185, 24, 3080),
-  },
-  {
-    weekLabel: '28 Jul–3 Aug',
-    orderCount: 21,
-    grossAmount: 2972,
-    commissionAmount: 357,
-    netAmount: 2615,
-    status: 'paid',
-    orders: buildOrderLines(48151, 21, 2615),
-  },
-  {
-    weekLabel: '21–27 Jul',
-    orderCount: 16,
-    grossAmount: 2182,
-    commissionAmount: 262,
-    netAmount: 1920,
-    status: 'paid',
-    orders: buildOrderLines(48120, 16, 1920),
-  },
-];
+function weekLabel(weekStart: string, weekEnd: string): string {
+  // week_end is exclusive (weeklyPayouts.ts's own note) — the real last
+  // day this settlement covers is the day before it, not week_end itself.
+  const lastDay = new Date(`${weekEnd}T00:00:00Z`);
+  lastDay.setUTCDate(lastDay.getUTCDate() - 1);
+  const endLabel = lastDay.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  return `${formatDateOnly(weekStart)} – ${endLabel}`;
+}
+
+const UNSETTLED_STATUSES: PayoutStatus[] = ['pending', 'processing', 'blocked', 'failed'];
+
+export function toWeeklyPayout(row: ApiPayout): WeeklyPayout {
+  return {
+    id: row.id,
+    weekLabel: weekLabel(row.week_start, row.week_end),
+    orderCount: row.order_count,
+    grossAmount: row.gross_amount,
+    commissionAmount: row.commission_deducted,
+    netAmount: row.net_payout,
+    status: row.status,
+    paidAt: row.paid_at,
+    nextSettlementLabel: UNSETTLED_STATUSES.includes(row.status) ? formatPayoutDateLabel(nextPayoutDate()) : undefined,
+  };
+}
+
+// Sample data — shown only while a store has zero real payouts yet
+// (PayoutsScreen's own fallback, gated on the real GET /partner/payouts
+// response actually being empty). Dates are computed relative to `now`
+// (real weeks-ago math, real nextPayoutDate()), never hardcoded strings
+// like "11–17 Aug" that go stale and eventually read as a real-but-wrong
+// date — the whole reason the original placeholder version of this file
+// was a problem. The money figures themselves ARE made up (there are no
+// real orders yet to sum), which is exactly what `isSample: true` on
+// every row exists to flag to the UI.
+function sampleWeekLabel(weeksAgo: number, now: Date): string {
+  const end = new Date(now);
+  end.setUTCDate(end.getUTCDate() - weeksAgo * 7);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - 6);
+  const fmt = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+export function buildSamplePayouts(now: Date = new Date()): WeeklyPayout[] {
+  return [
+    {
+      id: 'sample-current',
+      weekLabel: sampleWeekLabel(0, now),
+      orderCount: 18,
+      grossAmount: 2432,
+      commissionAmount: 292,
+      netAmount: 2140,
+      status: 'pending',
+      paidAt: null,
+      nextSettlementLabel: formatPayoutDateLabel(nextPayoutDate(now)),
+      isSample: true,
+    },
+    {
+      id: 'sample-1',
+      weekLabel: sampleWeekLabel(1, now),
+      orderCount: 24,
+      grossAmount: 3500,
+      commissionAmount: 420,
+      netAmount: 3080,
+      status: 'paid',
+      paidAt: null,
+      isSample: true,
+    },
+    {
+      id: 'sample-2',
+      weekLabel: sampleWeekLabel(2, now),
+      orderCount: 21,
+      grossAmount: 2972,
+      commissionAmount: 357,
+      netAmount: 2615,
+      status: 'paid',
+      paidAt: null,
+      isSample: true,
+    },
+    {
+      id: 'sample-3',
+      weekLabel: sampleWeekLabel(3, now),
+      orderCount: 16,
+      grossAmount: 2182,
+      commissionAmount: 262,
+      netAmount: 1920,
+      status: 'paid',
+      paidAt: null,
+      isSample: true,
+    },
+  ];
+}
+
+// Sample order-by-order breakdown for a SAMPLE payout only (id starting
+// "sample-") — PayoutOrderHistoryScreen checks that prefix and renders
+// this instead of calling the real GET /partner/payouts/:id/orders, which
+// would 404 on a fake id. Splits evenly across a fake order count, same
+// spirit as the original placeholder version's own buildOrderLines, kept
+// ONLY for this sample path now rather than as the real data source.
+export function buildSamplePayoutOrders(totals: { orderCount: number; grossAmount: number; commissionAmount: number }): ApiPayoutOrder[] {
+  const { orderCount: count, grossAmount, commissionAmount } = totals;
+  const baseGross = Math.floor(grossAmount / count);
+  const baseCommission = Math.floor(commissionAmount / count);
+  const today = new Date();
+  return Array.from({ length: count }, (_, i) => {
+    const deliveredAt = new Date(today);
+    deliveredAt.setUTCDate(deliveredAt.getUTCDate() - (i % 7));
+    const gross = baseGross + (i < grossAmount % count ? 1 : 0);
+    const commission = baseCommission + (i < commissionAmount % count ? 1 : 0);
+    return {
+      orderNumber: `SAMPLE-${1000 + i}`,
+      deliveredAt: deliveredAt.toISOString(),
+      grossAmount: gross,
+      commissionAmount: commission,
+      netAmount: gross - commission,
+    };
+  });
+}
+
+export interface PayoutStatusPresentation {
+  label: string;
+  color: string;
+  bgClassName: string;
+}
+
+// One real mapping used by both the hero card and every history row —
+// 'processing' and 'pending' both read as "on its way" (gold, same as
+// before this status existed), but 'blocked'/'failed' get their own
+// honest red state now instead of silently reading as "Paid" the way an
+// earlier version's isPending-only check would have shown them (anything
+// not 'pending' fell through to "Paid", which is exactly wrong for a
+// payout that failed or has no verified payout destination on file).
+export function payoutStatusPresentation(status: PayoutStatus): PayoutStatusPresentation {
+  switch (status) {
+    case 'paid':
+      return { label: 'Paid', color: colors.limeDeep, bgClassName: 'bg-lime-soft' };
+    case 'pending':
+      return { label: 'Pending', color: colors.gold, bgClassName: 'bg-gold/15' };
+    case 'processing':
+      return { label: 'Processing', color: colors.gold, bgClassName: 'bg-gold/15' };
+    case 'blocked':
+      return { label: 'Action needed', color: colors.danger, bgClassName: 'bg-danger/15' };
+    case 'failed':
+      return { label: 'Failed', color: colors.danger, bgClassName: 'bg-danger/15' };
+  }
+}

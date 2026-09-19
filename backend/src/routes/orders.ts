@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
-import { calcCommission, calcItemTotal, calcOrderTotal } from '../lib/pricing.js';
+import { calcCommission, calcItemTotal, calcOrderTotal, COMMISSION_RATE } from '../lib/pricing.js';
 import { CartValidationError, validateCart } from '../lib/orderValidation.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
 import {
@@ -32,8 +32,6 @@ const CUSTOMER_STATUS_PUSH_COPY: Partial<Record<OrderStatus, { title: string; bo
 };
 
 export const ordersRouter = Router();
-
-const COMMISSION_RATE = 0.15; // mid-band of PRD's 12-18%; store-specific rates are a later refinement
 
 interface CreateOrderBody {
   store_id: string;

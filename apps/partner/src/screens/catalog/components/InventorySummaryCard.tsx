@@ -18,7 +18,7 @@ interface Props {
 
 export function InventorySummaryCard({ listedCount, lastUpdatedLabel, onPressAddProduct }: Props) {
   return (
-    <View className="mx-5 gap-4 rounded-3xl bg-gray-100 p-4">
+    <View className="mx-5 gap-4 rounded-3xl bg-white p-4 shadow-sm shadow-black/5">
       <View className="flex-row items-center gap-2">
         <AppIcon icon={Package01Icon} size={16} color={colors.ink} />
         <Text className="text-base font-medium text-ink/70">Product Listed</Text>

@@ -15,7 +15,7 @@
 // store owner opens dozens of times a day — worth more polish per pixel
 // than a screen they visit once.
 
-import { Location04Icon, Notification01Icon, Settings02Icon, Store01Icon, User02Icon } from '@hugeicons/core-free-icons';
+import { User02Icon } from '@hugeicons/core-free-icons';
 import { Image, Pressable, Switch, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../../../components/AppIcon';
@@ -67,7 +67,7 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressSettings, onP
               (file header note); the label next to it is what actually
               names the state, since a bare Switch alone doesn't say
               Open vs Closed the way the pill it replaced used to. */}
-          <View className="flex-row items-center gap-1.5 rounded-full bg-gray-100 py-1 pl-3 pr-1">
+          <View className="flex-row items-center gap-1.5 rounded-full bg-white py-1 pl-3 pr-1">
             <Text className={`text-[13px] font-medium ${profile.isOpen ? 'text-lime-deep' : 'text-ink/50'}`}>
               {profile.isOpen ? 'Open' : 'Closed'}
             </Text>
@@ -88,7 +88,7 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressSettings, onP
           <Pressable
             onPress={onPressSettings}
             hitSlop={10}
-            className="h-11 w-11 items-center justify-center rounded-full bg-gray-100"
+            className="h-11 w-11 items-center justify-center rounded-full bg-white"
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
             <AppIcon icon={User02Icon} size={19} color={colors.ink} />
@@ -97,7 +97,7 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressSettings, onP
           {/* <Pressable
             onPress={onPressNotifications}
             hitSlop={10}
-            className="h-11 w-11 items-center justify-center rounded-full bg-gray-100"
+            className="h-11 w-11 items-center justify-center rounded-full bg-white"
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
             <AppIcon icon={Notification01Icon} size={19} color={colors.ink} />

@@ -16,7 +16,7 @@ export function InventoryHeader({ onPressSearch }: Props) {
   return (
     <View className="flex-row items-center justify-between px-5 pb-4 pt-3">
       <Text className="text-2xl font-medium text-ink">Inventory</Text>
-      <Pressable onPress={onPressSearch} className="h-11 w-11 items-center justify-center rounded-full bg-gray-100">
+      <Pressable onPress={onPressSearch} className="h-11 w-11 items-center justify-center rounded-full bg-white">
         <AppIcon icon={Search01Icon} size={19} color={colors.ink} />
       </Pressable>
     </View>

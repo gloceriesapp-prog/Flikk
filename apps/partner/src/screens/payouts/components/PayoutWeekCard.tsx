@@ -15,8 +15,7 @@
 import { CheckmarkCircle02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
-import type { WeeklyPayout } from '../data';
+import { payoutStatusPresentation, type WeeklyPayout } from '../data';
 import { PayoutOrdersLink } from './PayoutOrdersLink';
 
 interface Props {
@@ -24,14 +23,14 @@ interface Props {
 }
 
 export function PayoutWeekCard({ payout }: Props) {
-  const isPending = payout.status === 'pending';
-  const accentColor = isPending ? colors.gold : colors.limeDeep;
+  const { label, color, bgClassName } = payoutStatusPresentation(payout.status);
+  const isPaid = payout.status === 'paid';
 
   return (
     <View className="gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-black/5">
       <View className="flex-row items-center gap-3">
-        <View className={`h-12 w-12 items-center justify-center rounded-full ${isPending ? 'bg-gold/15' : 'bg-lime-soft'}`}>
-          <AppIcon icon={isPending ? Clock01Icon : CheckmarkCircle02Icon} size={20} color={accentColor} />
+        <View className={`h-12 w-12 items-center justify-center rounded-full ${bgClassName}`}>
+          <AppIcon icon={isPaid ? CheckmarkCircle02Icon : Clock01Icon} size={20} color={color} />
         </View>
 
         <View className="flex-1 gap-0.5">
@@ -45,10 +44,10 @@ export function PayoutWeekCard({ payout }: Props) {
           <Text className="text-base font-semibold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
             ₹{payout.netAmount.toLocaleString('en-IN')}
           </Text>
-          <View className={`flex-row items-center gap-1 rounded-full px-2 py-0.5 ${isPending ? 'bg-gold/15' : 'bg-lime-soft'}`}>
-            <View className="h-1 w-1 rounded-full" style={{ backgroundColor: accentColor }} />
-            <Text className="text-[10px] font-semibold" style={{ color: accentColor }}>
-              {isPending ? 'Pending' : 'Paid'}
+          <View className={`flex-row items-center gap-1 rounded-full px-2 py-0.5 ${bgClassName}`}>
+            <View className="h-1 w-1 rounded-full" style={{ backgroundColor: color }} />
+            <Text className="text-[10px] font-semibold" style={{ color }}>
+              {label}
             </Text>
           </View>
         </View>

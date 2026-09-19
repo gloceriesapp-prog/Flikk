@@ -91,9 +91,20 @@ export type AppStackParamList = {
   // reached from "View all orders" on either payout card. A weekly
   // settlement's order count only grows, so this list belongs on its own
   // screen, not inline on the card (see PayoutOrdersLink.tsx's own note).
-  // weekLabel doubles as the id — already unique across
-  // PLACEHOLDER_PAYOUTS, same as its use as a list `key` elsewhere.
-  PayoutOrderHistory: { weekLabel: string };
+  // payoutId is the real payouts.id used to fetch the real order-by-order
+  // breakdown (GET /partner/payouts/:id/orders) — weekLabel is display-
+  // only, carried along so the header can render instantly without
+  // waiting on that fetch. isSample/sampleTotals thread through only for
+  // screens/payouts/data.ts's own sample fallback (a brand-new store with
+  // zero real payouts yet) — that payoutId is a fake "sample-*" string
+  // GET /partner/payouts/:id/orders would 404 on, so this screen builds
+  // its sample order breakdown from these numbers instead of fetching.
+  PayoutOrderHistory: {
+    payoutId: string;
+    weekLabel: string;
+    isSample?: boolean;
+    sampleTotals?: { orderCount: number; grossAmount: number; commissionAmount: number };
+  };
   // Store settings (P6) — reached from StoreProfileHeader's gear icon.
   // No params; reads/writes the shared ../store/useStoreProfileStore.ts.
   StoreSettings: undefined;

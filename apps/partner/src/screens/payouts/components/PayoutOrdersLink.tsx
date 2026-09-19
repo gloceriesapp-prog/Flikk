@@ -26,12 +26,21 @@ export function PayoutOrdersLink({ payout, variant = 'light' }: Props) {
 
   return (
     <Pressable
-      onPress={() => navigation.navigate('PayoutOrderHistory', { weekLabel: payout.weekLabel })}
+      onPress={() =>
+        navigation.navigate('PayoutOrderHistory', {
+          payoutId: payout.id,
+          weekLabel: payout.weekLabel,
+          isSample: payout.isSample,
+          sampleTotals: payout.isSample
+            ? { orderCount: payout.orderCount, grossAmount: payout.grossAmount, commissionAmount: payout.commissionAmount }
+            : undefined,
+        })
+      }
       className={`flex-row items-center justify-between ${isDark ? 'border-t border-white/10 pt-4' : 'border-t border-black/5 pt-3'}`}
       style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
     >
       <Text className={`text-sm font-medium ${isDark ? 'text-white/60' : 'text-ink/60'}`}>
-        {payout.orders.length} orders in this settlement
+        {payout.orderCount} orders in this settlement
       </Text>
       <View className="flex-row items-center gap-1">
         <Text className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-ink'}`}>View all</Text>

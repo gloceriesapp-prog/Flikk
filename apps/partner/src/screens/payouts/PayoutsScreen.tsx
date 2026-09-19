@@ -1,15 +1,23 @@
-// Payouts (P5) — read-only. No `GET /partner/payouts` call yet, same
-// no-auth caveat as ../orders/OrdersScreen.tsx. This screen must never
-// compute a payout figure client-side — see data.ts.
+// Payouts (P5) — read-only, backed by real GET /partner/payouts (api/
+// payouts.ts). This screen must never compute a payout figure client-side
+// — see data.ts's own note; every gross/commission/net number here comes
+// straight from jobs/weeklyPayouts.ts's own server-side computation.
+//
+// Page background is the same flat gray apps/customer's own checkout flow
+// uses (CheckoutScreen.tsx's `#F1F2F4`) — cards stay solid white on top of
+// it, same contrast relationship as that screen, per an explicit ask to
+// match it here too.
 
 import { useState } from 'react';
-import { Pressable, Text, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, ScrollView, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import { HeadphonesIcon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { PLACEHOLDER_PAYOUTS } from './data';
+import { fetchPayouts } from '../../api/payouts';
+import { buildSamplePayouts, toWeeklyPayout } from './data';
 import { CurrentWeekPayoutCard } from './components/CurrentWeekPayoutCard';
 import { PayoutStatusFilter, type PayoutStatusFilterValue } from './components/PayoutStatusFilter';
 import { PayoutWeekCard } from './components/PayoutWeekCard';
@@ -17,16 +25,32 @@ import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Payouts'>;
 
+const PAGE_BG = '#F1F2F4';
+
 export function PayoutsScreen(_props: Props) {
   const [statusFilter, setStatusFilter] = useState<PayoutStatusFilterValue>('all');
-  const currentWeek = PLACEHOLDER_PAYOUTS[0];
-  const history = PLACEHOLDER_PAYOUTS.slice(1);
-  const paidCount = PLACEHOLDER_PAYOUTS.filter((p) => p.status === 'paid').length;
-  const pendingCount = PLACEHOLDER_PAYOUTS.filter((p) => p.status === 'pending').length;
-  const visibleHistory = history.filter((payout) => statusFilter === 'all' || payout.status === statusFilter);
+  const { data: rows, isLoading } = useQuery({ queryKey: ['payouts'], queryFn: fetchPayouts });
+  const realPayouts = (rows ?? []).map(toWeeklyPayout);
+  // A brand-new store (zero delivered orders, zero real payouts yet) has
+  // nothing real to show — falls back to sample data (data.ts's own
+  // buildSamplePayouts, every row flagged isSample: true) so the balance
+  // card and history stay a permanent, always-visible fixture of this
+  // screen instead of disappearing until the first real settlement
+  // exists. Only kicks in once loading is actually done and the real
+  // fetch genuinely came back empty — never shown alongside real rows.
+  const payouts = !isLoading && realPayouts.length === 0 ? buildSamplePayouts() : realPayouts;
+
+  // The most recent row that hasn't actually landed yet is the hero card
+  // (pending/processing/blocked/failed all still mean "not paid out") —
+  // everything else, paid or not, is history below it.
+  const currentWeek = payouts.find((p) => p.status !== 'paid') ?? payouts[0];
+  const history = payouts.filter((p) => p.id !== currentWeek?.id);
+  const paidCount = payouts.filter((p) => p.status === 'paid').length;
+  const pendingCount = payouts.filter((p) => p.status !== 'paid').length;
+  const visibleHistory = history.filter((payout) => statusFilter === 'all' || (statusFilter === 'paid') === (payout.status === 'paid'));
 
   return (
-    <View className="flex-1 bg-white pt-safe">
+    <View className="flex-1 pt-safe" style={{ backgroundColor: PAGE_BG }}>
       {/* One line, not an eyebrow + separate title — settlement already
           happens automatically every week by default, so the header
           doesn't need to explain that twice ("Payouts" / "Weekly
@@ -41,43 +65,61 @@ export function PayoutsScreen(_props: Props) {
             bell on the Orders screen. */}
         <Pressable
           onPress={() => {}}
-          className="h-11 w-11 items-center justify-center rounded-full bg-gray-100"
+          className="h-11 w-11 items-center justify-center rounded-full bg-white"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
           <AppIcon icon={HeadphonesIcon} size={19} color={colors.ink} />
         </Pressable>
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-28">
-        {currentWeek && <CurrentWeekPayoutCard payout={currentWeek} />}
-
-        <View className="mt-3 gap-3">
-        
-          <PayoutStatusFilter
-            options={[
-              { value: 'all', label: 'All', count: PLACEHOLDER_PAYOUTS.length },
-              { value: 'paid', label: 'Paid', count: paidCount },
-              { value: 'pending', label: 'Pending', count: pendingCount },
-            ]}
-            selected={statusFilter}
-            onSelect={setStatusFilter}
-          />
-          <Text className="text-base font-semibold text-ink/60">Transaction History</Text>
+      {isLoading ? (
+        <View className="flex-1 items-center justify-center pb-28">
+          <ActivityIndicator color={colors.ink} />
         </View>
+      ) : (
+        <ScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-28">
+          {/* Real vs sample is never ambiguous — a plain banner, not a
+              per-card watermark, since every row on screen right now is
+              sample together (data.ts's own gate: sample data only ever
+              renders when the real fetch came back completely empty, so
+              it's an all-or-nothing state, not a mix). */}
+          {currentWeek?.isSample && (
+            <View className="flex-row items-center gap-2 rounded-2xl bg-gold/15 px-4 py-3">
+              <Text className="text-xs font-semibold text-ink/70">
+                Sample data — real settlements will replace this once your first delivered order completes a full week.
+              </Text>
+            </View>
+          )}
 
-        {visibleHistory.length > 0 ? (
-          visibleHistory.map((payout) => <PayoutWeekCard key={payout.weekLabel} payout={payout} />)
-        ) : (
-          <View className="items-center gap-1 py-10">
-            <Text className="text-sm font-semibold text-ink">No settlements here</Text>
-            <Text className="text-center text-xs text-ink/50">
-              {statusFilter === 'pending'
-                ? 'Nothing pending in your past settlements — only this week is still on its way.'
-                : 'No paid settlements yet.'}
-            </Text>
+          {currentWeek && <CurrentWeekPayoutCard payout={currentWeek} />}
+
+          <View className="mt-3 gap-3">
+            <PayoutStatusFilter
+              options={[
+                { value: 'all', label: 'All', count: history.length },
+                { value: 'paid', label: 'Paid', count: paidCount },
+                { value: 'pending', label: 'Pending', count: pendingCount },
+              ]}
+              selected={statusFilter}
+              onSelect={setStatusFilter}
+            />
+            <Text className="text-base font-semibold text-ink/60">Transaction History</Text>
           </View>
-        )}
-      </ScrollView>
+
+          {visibleHistory.length > 0 ? (
+            visibleHistory.map((payout) => <PayoutWeekCard key={payout.id} payout={payout} />)
+          ) : (
+            <View className="items-center gap-1 py-10">
+              <Text className="text-sm font-semibold text-ink">No settlements here</Text>
+              <Text className="text-center text-xs text-ink/50">
+                {statusFilter === 'pending'
+                  ? 'Nothing pending in your past settlements — only this week is still on its way.'
+                  : 'No paid settlements yet.'}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
 
       <BottomNavBar />
     </View>

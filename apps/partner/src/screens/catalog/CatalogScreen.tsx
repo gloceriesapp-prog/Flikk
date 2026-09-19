@@ -23,6 +23,12 @@ import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Catalog'>;
 
+// Same flat gray Payouts/Orders already use (PayoutsScreen.tsx/
+// OrdersScreen.tsx's own PAGE_BG, itself matching apps/customer's
+// checkout flow, CheckoutScreen.tsx's `#F1F2F4`) — cards stay solid white
+// on top of it, per an explicit ask to match it here too.
+const PAGE_BG = '#F1F2F4';
+
 export function CatalogScreen({ navigation }: Props) {
   const products = useCatalogStore((state) => state.products);
   const loadProducts = useCatalogStore((state) => state.loadProducts);
@@ -40,7 +46,7 @@ export function CatalogScreen({ navigation }: Props) {
   });
 
   return (
-    <View className="flex-1 bg-white pt-safe">
+    <View className="flex-1 pt-safe" style={{ backgroundColor: PAGE_BG }}>
       <InventoryHeader onPressSearch={() => {}} />
 
       <InventorySummaryCard
@@ -69,8 +75,8 @@ export function CatalogScreen({ navigation }: Props) {
           />
         ) : (
           <View className="items-center gap-1 px-10 pt-16">
-            <Text className="text-base font-semibold text-ink">No items here</Text>
-            <Text className="text-center text-sm text-ink/50">
+            <Text className="text-[15px] font-semibold text-ink">No items here</Text>
+            <Text className="text-center text-[13px] text-ink/50 font-medium">
               {stockFilter === 'out_of_stock' ? 'Nothing is marked out of stock right now.' : 'Nothing is in stock right now.'}
             </Text>
           </View>

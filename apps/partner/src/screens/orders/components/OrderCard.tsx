@@ -70,7 +70,7 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
   const isUrgent = isPending && remainingMs <= URGENT_THRESHOLD_MS;
 
   return (
-    <View className="gap-3 rounded-3xl bg-[#F9FAFB] p-4 shadow-sm shadow-black/5">
+    <View className="gap-3 rounded-3xl bg-white p-4 shadow-sm shadow-black/5">
       <View className="flex-row items-center gap-3">
         <ItemAvatarStack items={order.items} />
 
@@ -111,7 +111,7 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
 
         {isPending && (
           <View
-            className={`flex-row items-center gap-1.5 rounded-xl px-4 py-2 ${isUrgent ? 'bg-danger/10' : 'bg-white'}`}
+            className={`flex-row items-center gap-1.5 rounded-xl px-4 py-2 ${isUrgent ? 'bg-danger/10' : 'bg-gray-50'}`}
           >
             <AppIcon icon={Clock01Icon} size={13} color={isUrgent ? colors.danger : colors.limeDeep} />
             <Text
@@ -124,7 +124,7 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
         )}
 
         {!isPlaced && badge && (
-          <View className="flex-row items-center gap-1.5 rounded-xl bg-white px-4 py-2">
+          <View className="flex-row items-center gap-1.5 rounded-xl bg-gray-50 px-4 py-2">
             <AppIcon icon={badge.icon} size={14} color={badge.color} />
             <Text className="text-xs font-medium text-ink/60">{badge.label}</Text>
           </View>

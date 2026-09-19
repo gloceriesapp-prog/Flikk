@@ -27,12 +27,6 @@ export interface OrderLineItem {
   imageUrl: string | null;
 }
 
-// Gloceries' cut, shown to the store owner as a transparent breakdown on
-// OrderDetailScreen (order total → platform fee → net payout) rather than
-// making them take the total on faith. Store-wide flat rate for now — no
-// per-store negotiated rate exists yet.
-export const PLATFORM_COMMISSION_PERCENT = 12;
-
 export interface PartnerOrder {
   // Real orders.id (UUID) — what PATCH /orders/:id/status and every
   // action callback (markPacked, rejectOrder, acknowledgeOrder) actually
@@ -44,6 +38,16 @@ export interface PartnerOrder {
   customerName: string;
   items: OrderLineItem[];
   total: number;
+  // Real orders.item_total/commission_amount (api/orders.ts's ApiOrder,
+  // backend's own COMMISSION_RATE) — netPayout = itemTotal - commissionAmount,
+  // never order.total - commission: delivery fee is never store revenue,
+  // so commission is only ever taken off the item total, matching exactly
+  // how backend/src/routes/orders.ts itself computes commission_amount at
+  // order-creation time (calcCommission(itemTotal, COMMISSION_RATE), never
+  // against the full order total).
+  itemTotal: number;
+  commissionAmount: number;
+  netPayout: number;
   status: PartnerOrderStatus;
   placedAtLabel: string;
   // Clock time the order was placed — shown alongside orderCount in
@@ -96,6 +100,14 @@ export type { StoreProfile } from '../store-settings/data';
 
 import type { ApiOrder } from '../../api/orders';
 
+// Same rounding backend/src/lib/pricing.ts's own round2 does — item_total
+// and commission_amount are each already 2dp from the server, but a plain
+// JS subtraction of two such values can still land on something like
+// 123.99999999999997 depending on the exact inputs.
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60_000);
@@ -127,6 +139,9 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
       imageUrl: item.products?.image_url ?? null,
     })),
     total: order.total,
+    itemTotal: order.item_total,
+    commissionAmount: order.commission_amount,
+    netPayout: round2(order.item_total - order.commission_amount),
     // 'delivered'/'cancelled' orders are filtered out before this ever
     // runs (useOrdersStore's own loadOrders) — this screen's queue has no
     // use for either, same as the placeholder data it replaces.

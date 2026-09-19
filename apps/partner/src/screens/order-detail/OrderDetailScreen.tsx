@@ -20,7 +20,6 @@ import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { ApiError } from '../../api/client';
 import { useOrdersStore } from '../../store/useOrdersStore';
-import { PLATFORM_COMMISSION_PERCENT } from '../orders/data';
 import type { AppStackParamList } from '../../navigation/types';
 import { OrderDetailItemRow } from './components/OrderDetailItemRow';
 import { OrderDetailSectionHeader } from './components/OrderDetailSectionHeader';
@@ -61,8 +60,12 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   }
 
   const isPlaced = order.status === 'placed';
-  const commissionAmount = Math.round((order.total * PLATFORM_COMMISSION_PERCENT) / 100);
-  const netPayout = order.total - commissionAmount;
+  // Real orders.item_total/commission_amount (screens/orders/data.ts's own
+  // mapApiOrder) — never recomputed here. commissionPercent is DERIVED
+  // from those two real numbers (not a hardcoded label) so it can never
+  // silently drift from backend/src/lib/pricing.ts's own COMMISSION_RATE
+  // the way this screen's old local 12%-flat guess already had.
+  const commissionPercent = order.itemTotal > 0 ? Math.round((order.commissionAmount / order.itemTotal) * 100) : 0;
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -125,10 +128,10 @@ export function OrderDetailScreen({ route, navigation }: Props) {
         </View>
 
         <OrderPayoutBreakdown
-          orderTotal={order.total}
-          commissionPercent={PLATFORM_COMMISSION_PERCENT}
-          commissionAmount={commissionAmount}
-          netPayout={netPayout}
+          orderTotal={order.itemTotal}
+          commissionPercent={commissionPercent}
+          commissionAmount={order.commissionAmount}
+          netPayout={order.netPayout}
         />
       </ScrollView>
 

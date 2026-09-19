@@ -22,7 +22,7 @@ interface StatBoxProps {
 
 function StatBox({ label, value }: StatBoxProps) {
   return (
-    <View className="flex-1 gap-0.5 rounded-2xl bg-[#F7F8FA] px-4 py-3.5 shadow-sm shadow-black/5">
+    <View className="flex-1 gap-0.5 rounded-2xl bg-white px-4 py-3.5 ">
       <Text className="text-sm font-medium tracking-tight text-ink/60" numberOfLines={1}>
         {label}
       </Text>

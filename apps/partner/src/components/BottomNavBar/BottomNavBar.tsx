@@ -17,6 +17,13 @@ import { BottomNavBarItem } from './BottomNavBarItem';
 import { BOTTOM_NAV_TABS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
 
+// Same vertical offset apps/customer's own BottomNavBar.tsx uses for its
+// pill (PILL_BOTTOM_OFFSET) — this bar used to float `insets.bottom + 4`
+// (noticeably higher off the bottom edge than customer's own alignment);
+// matching customer's real number here is a pure position change, nothing
+// else about this bar (glass, color, sizing) is touched.
+const PILL_BOTTOM_OFFSET = -10;
+
 export function BottomNavBar() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -27,7 +34,7 @@ export function BottomNavBar() {
     // overflow:hidden to clip its rounded corners, which would also clip
     // the shadow if they shared one layer.
     <View
-      style={{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + 4 }}
+      style={{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + PILL_BOTTOM_OFFSET }}
       className="shadow-lg shadow-black/30"
     >
       {/* BlurView isn't one of NativeWind's auto-patched components — a

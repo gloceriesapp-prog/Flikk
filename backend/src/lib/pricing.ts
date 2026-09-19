@@ -2,6 +2,19 @@
 // All amounts in rupees, 2dp. Never derive a total from live product prices —
 // callers pass in unit_price_at_order values already locked at order-creation time.
 
+// The one real commission rate, defined exactly once — routes/orders.ts
+// and routes/trips.ts each used to hardcode their own local
+// `COMMISSION_RATE` constant with an explicit comment admitting they were
+// "kept in sync manually," and apps/partner's own OrderDetailScreen.tsx
+// had a THIRD, different value (12%) baked into its own client-side
+// recompute of the payout breakdown — three independent numbers standing
+// in for what should always be one fact. Both routes now import this
+// instead of declaring their own, and the partner app reads the real
+// orders.commission_amount the backend actually computed with it (never
+// recomputing a payout figure client-side, same rule screens/payouts/
+// data.ts already established for the Payouts tab).
+export const COMMISSION_RATE = 0.06;
+
 export interface CartLine {
   unitPrice: number;
   quantity: number;

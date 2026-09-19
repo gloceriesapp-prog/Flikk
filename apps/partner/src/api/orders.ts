@@ -19,6 +19,15 @@ export interface ApiOrder {
   order_number: string;
   status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
   total: number;
+  // Real orders.item_total/commission_amount — backend/src/lib/pricing.ts's
+  // own COMMISSION_RATE (6%) applied server-side at order-creation time,
+  // already selected by GET /partner/orders's `select('*', ...)` but never
+  // typed/used here until now. This app must never recompute a payout
+  // figure client-side (screens/orders/data.ts's own note on the bug this
+  // fixes — OrderDetailScreen used to guess a different, wrong commission
+  // percent locally).
+  item_total: number;
+  commission_amount: number;
   razorpay_payment_id: string | null;
   placed_at: string;
   packed_at: string | null;

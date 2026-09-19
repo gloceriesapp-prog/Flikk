@@ -25,7 +25,19 @@ import { useOrderExpiryWatcher } from './src/features/order-expiry/useOrderExpir
 
 void SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+// staleTime: 60s — every useQuery call (Payouts, PayoutOrderHistory) was
+// refetching on every single mount (default staleTime is 0, "always
+// stale"), same real bug apps/customer/App.tsx's own QueryClient already
+// had fixed — a payout settlement or its order breakdown barely changes
+// minute to minute, so this only skips the redundant automatic refetch
+// for data that's still fresh, not anything that needs to be live.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+    },
+  },
+});
 
 export default function App() {
   // Loading the weights here registers them with the OS by font-family

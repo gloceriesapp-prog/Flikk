@@ -323,7 +323,78 @@ partnerRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
     const storeId = await ownStoreId(req.user!.id);
     const { data, error } = await supabase.from('payouts').select('*').eq('store_id', storeId).order('week_start', { ascending: false });
     if (error) throw error;
-    res.json(data);
+
+    // Real per-row order count — an N+1 count query per payout, fine at
+    // this scale (one row per store per week; even a full year of history
+    // is 52 rows). The Payouts list card shows "X orders" next to each
+    // settlement (same real number GET /payouts/:id/orders would return
+    // the full breakdown for), not something worth a second round trip
+    // from the client just to get a count.
+    const withOrderCounts = await Promise.all(
+      (data ?? []).map(async (payout) => {
+        const { count } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('store_id', storeId)
+          .eq('status', 'delivered')
+          .gte('delivered_at', `${payout.week_start}T00:00:00+05:30`)
+          .lt('delivered_at', `${payout.week_end}T00:00:00+05:30`);
+        return { ...payout, order_count: count ?? 0 };
+      }),
+    );
+
+    res.json(withOrderCounts);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Real order-by-order commission breakdown for one settlement — every
+// figure on payouts (gross_amount/commission_deducted/net_payout) is
+// jobs/weeklyPayouts.ts's own SUM across exactly the delivered orders in
+// that store's week_start..week_end window; this re-runs the same real
+// query scoped to those same bounds instead of ever inventing a synthetic
+// split (data.ts's own former buildOrderLines placeholder divided the
+// total evenly across a fake order count — never what an owner actually
+// earned per order). Scoped to the caller's own store via ownStoreId, and
+// the payout row itself must also belong to that store — a store owner
+// guessing another store's payout id gets a 404, not someone else's
+// commission breakdown.
+partnerRouter.get('/payouts/:id/orders', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    const { data: payout, error: payoutErr } = await supabase
+      .from('payouts')
+      .select('id, store_id, week_start, week_end')
+      .eq('id', req.params.id)
+      .eq('store_id', storeId)
+      .single();
+    if (payoutErr || !payout) throw new AppError(404, 'PAYOUT_NOT_FOUND', 'No payout with that id for this store.');
+
+    // week_start/week_end are IST calendar dates (plain `date` columns,
+    // weeklyPayouts.ts's own note) — delivered_at is a real timestamptz,
+    // so the end bound must be exclusive of the NEXT day's start, not a
+    // same-day upper bound that would silently drop that day's own
+    // deliveries.
+    const { data: orders, error: ordersErr } = await supabase
+      .from('orders')
+      .select('order_number, item_total, commission_amount, delivered_at')
+      .eq('store_id', storeId)
+      .eq('status', 'delivered')
+      .gte('delivered_at', `${payout.week_start}T00:00:00+05:30`)
+      .lt('delivered_at', `${payout.week_end}T00:00:00+05:30`)
+      .order('delivered_at', { ascending: true });
+    if (ordersErr) throw ordersErr;
+
+    res.json(
+      (orders ?? []).map((o) => ({
+        orderNumber: o.order_number,
+        deliveredAt: o.delivered_at,
+        grossAmount: o.item_total,
+        commissionAmount: o.commission_amount,
+        netAmount: o.item_total - o.commission_amount,
+      })),
+    );
   } catch (err) {
     next(err);
   }

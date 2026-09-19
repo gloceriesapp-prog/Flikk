@@ -25,6 +25,13 @@ import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Orders'>;
 
+// Same flat gray apps/partner's own Payouts screen uses (PayoutsScreen.tsx
+// — itself matching apps/customer's checkout flow, CheckoutScreen.tsx's
+// `#F1F2F4`) — cards (OrderCard, TodayStatsCard) stay solid white on top
+// of it, same contrast relationship as those screens, per an explicit ask
+// to match it here too.
+const PAGE_BG = '#F1F2F4';
+
 // One entry per real order status this screen ever shows, in display
 // order — the section title is only rendered when the "All" filter is
 // active, so this table is the single place that owns both.
@@ -71,10 +78,11 @@ export function OrdersScreen({ navigation }: Props) {
   ).map((group) => ({ ...group, orders: orders.filter((order) => order.status === group.status) }));
 
   return (
-    <View className="flex-1 bg-white">
-      {/* Flat white — no gradient wash behind the header anymore. Stat
-          boxes still read as cards on their own (border + shadow), same
-          layout/spacing as before, just no colored backdrop under it. */}
+    <View className="flex-1" style={{ backgroundColor: PAGE_BG }}>
+      {/* Flat gray page, no gradient wash behind the header. Stat boxes
+          still read as cards on their own (solid white + shadow), same
+          layout/spacing as before, just a gray backdrop under everything
+          now instead of white. */}
       <StoreProfileHeader
         profile={profile}
         onToggleOpen={toggleOpen}
@@ -82,7 +90,7 @@ export function OrdersScreen({ navigation }: Props) {
         // No notifications backend yet (specs/05-platform/notifications.md)
         // — stubbed rather than silently doing nothing, same convention as
         // apps/customer's HomeSearchBar mic icon.
-        onPressNotifications={() => {}}
+        onPressNotifications={() => { }}
       />
 
       {profile.id.length > 0 && (
@@ -112,9 +120,13 @@ export function OrdersScreen({ navigation }: Props) {
       </View>
 
       {orders.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-10">
-          <Text className="text-base font-medium text-ink">No orders yet</Text>
-          <Text className="text-center text-sm text-ink/50 font-normal">New orders will show up here the moment they come in.</Text>
+        <View className="flex-1 items-center justify-center px-16">
+          <Text className="text-[15px] font-semibold text-ink">
+            Ready for your first order!
+          </Text>
+          <Text className="mt-1 text-center text-[13px] font-medium text-ink/50">
+            Once customers start ordering, you’ll see them pop up here in real time.
+          </Text>
         </View>
       ) : (
         <ScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-28">

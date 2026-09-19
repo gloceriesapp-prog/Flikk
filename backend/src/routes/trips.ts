@@ -16,7 +16,7 @@ import { AppError } from '../lib/errors.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { CartValidationError, validateMultiStoreCart } from '../lib/orderValidation.js';
 import { calcTripTotal, groupCartByStore } from '../lib/trips.js';
-import { calcOrderTotal } from '../lib/pricing.js';
+import { calcOrderTotal, COMMISSION_RATE } from '../lib/pricing.js';
 import { resolveAddressId, type AddressInput } from '../lib/resolveAddress.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
 import { lookupPromoForCheckout } from './promos.js';
@@ -24,12 +24,12 @@ import { getDeliverySettings } from '../lib/deliverySettings.js';
 
 export const tripsRouter = Router();
 
-// COMMISSION_RATE — same value POST /orders uses, kept in sync manually
-// for now (both files import from lib/pricing.ts for the actual math;
-// only this input constant is duplicated). Move to a shared config module
-// if a third caller ever needs it. The base delivery fee itself now comes
-// from lib/deliverySettings.ts (the same admin-editable row POST /orders
-// reads), not a hardcoded constant here.
+// COMMISSION_RATE now imported from lib/pricing.ts, the one real source
+// (that module's own header note) — this file used to declare its own
+// local copy, manually kept in sync with routes/orders.ts's own duplicate.
+// The base delivery fee itself comes from lib/deliverySettings.ts (the
+// same admin-editable row POST /orders reads), not a hardcoded constant
+// here.
 //
 // EXTRA_STOP_FEE — the multi-stop pickup surcharge (lib/trips.ts's own
 // calcTripTotal note): every store beyond the first in a trip adds this
@@ -39,7 +39,6 @@ export const tripsRouter = Router();
 // convention as the base fee itself (PRD Section 22) — not yet wired into
 // the admin settings table (only the base fee/free-delivery toggle are),
 // since nothing has asked for that yet.
-const COMMISSION_RATE = 0.15;
 const EXTRA_STOP_FEE = 15;
 
 interface CreateTripBody extends AddressInput {

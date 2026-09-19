@@ -43,10 +43,14 @@ describe('order state machine', () => {
   // founder-override. Still gated by isValidTransition to only
   // 'placed'/'packed' — none of the three can cancel an order that's
   // already out for delivery or delivered.
-  it('scopes cancelled to store_owner, admin, and rider only', () => {
+  it('scopes cancelled to store_owner, admin, rider, and customer', () => {
     expect(canRoleTransition('store_owner', 'cancelled')).toBe(true);
     expect(canRoleTransition('admin', 'cancelled')).toBe(true);
     expect(canRoleTransition('rider', 'cancelled')).toBe(true);
-    expect(canRoleTransition('customer', 'cancelled')).toBe(false);
+    // Customer cancellation (real UPI/Razorpay refund flow, routes/
+    // orders.ts's PATCH /:id/status) — added deliberately so a customer
+    // can back out of their own still-cancellable order, same isValidTransition
+    // gate below (placed/packed only) as every other role here.
+    expect(canRoleTransition('customer', 'cancelled')).toBe(true);
   });
 });
