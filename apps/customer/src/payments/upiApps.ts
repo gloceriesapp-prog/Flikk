@@ -23,6 +23,12 @@ export interface UpiApp {
   // (UpiAppsModule.kt). Undefined on iOS, where there's no equivalent way
   // to fetch another app's icon; falls back to a plain colored badge.
   iconUri?: string;
+  // Android only (UpiAppsModule.kt) — the exact activity that resolved
+  // the upi:// intent-filter for this app. openUpiApp needs this
+  // alongside androidPackage to set an explicit Intent.component; without
+  // it the launch intent stays generic and Android shows its own
+  // "Open with" chooser instead of jumping straight into this one app.
+  androidClassName?: string;
   // Custom URL scheme the app registers — iOS detection (Linking.
   // canOpenURL) and launch both use this; Android instead targets
   // androidPackage explicitly via an intent (payments/upiIntent.ts).

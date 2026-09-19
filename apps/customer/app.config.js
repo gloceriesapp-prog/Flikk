@@ -77,7 +77,9 @@ module.exports = {
       'expo-splash-screen',
       'expo-image',
       'expo-notifications',
+      'expo-video',
       './plugins/withUpiAppQueries',
+      './plugins/withUpiAppsModule',
     ],
     extra: {
       eas: {

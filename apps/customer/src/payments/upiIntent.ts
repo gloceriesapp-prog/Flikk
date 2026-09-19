@@ -28,6 +28,7 @@ import { UPI_APPS, type UpiApp } from './upiApps';
 interface NativeUpiApp {
   name: string;
   packageName: string;
+  className: string;
   icon: string; // base64 PNG, no data: prefix
 }
 
@@ -50,7 +51,7 @@ export async function detectInstalledUpiApps(): Promise<UpiApp[]> {
       const byPackage = new Map(detected.map((app) => [app.packageName, app]));
       return UPI_APPS.filter((known) => byPackage.has(known.androidPackage)).map((known) => {
         const native = byPackage.get(known.androidPackage)!;
-        return { ...known, iconUri: `data:image/png;base64,${native.icon}` };
+        return { ...known, iconUri: `data:image/png;base64,${native.icon}`, androidClassName: native.className };
       });
     } catch {
       return [];
@@ -77,10 +78,21 @@ export async function detectInstalledUpiApps(): Promise<UpiApp[]> {
 // disambiguation sheet. Razorpay's own docs explicitly warn against
 // rewriting the link for any platform — this never does, on either.
 export async function openUpiApp(app: UpiApp, upiLink: string): Promise<void> {
-  if (Platform.OS === 'android') {
+  // packageName alone does nothing here — expo-intent-launcher's own
+  // IntentLauncherModule.kt only sets Intent.component (component =
+  // ComponentName(packageName, className)) when className is ALSO given;
+  // without it the intent stays a plain generic ACTION_VIEW and Android
+  // resolves it against every matching app, showing its own "Open with"
+  // chooser instead of jumping straight into the one app actually tapped.
+  // androidClassName comes from detectInstalledUpiApps' own real
+  // PackageManager query (UpiAppsModule.kt) — always present together
+  // with iconUri for anything Android detected, since both are set in
+  // that same mapping step.
+  if (Platform.OS === 'android' && app.androidClassName) {
     await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
       data: upiLink,
       packageName: app.androidPackage,
+      className: app.androidClassName,
     });
     return;
   }

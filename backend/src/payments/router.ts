@@ -7,11 +7,13 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { createOrder } from './createOrder.js';
 import { createUpiIntent } from './createUpiIntent.js';
 import { verifyPayment } from './verifyPayment.js';
+import { verifyUpiId } from './verifyUpiId.js';
 import { handleWebhook } from './webhook.js';
 
 export const paymentsRouter = Router();
 
 paymentsRouter.post('/create-order', requireAuth, requireRole('customer'), createOrder);
 paymentsRouter.post('/create-upi-intent', requireAuth, requireRole('customer'), createUpiIntent);
+paymentsRouter.post('/verify-upi-id', requireAuth, requireRole('customer'), verifyUpiId);
 paymentsRouter.post('/verify', requireAuth, requireRole('customer'), verifyPayment);
 paymentsRouter.post('/webhook', handleWebhook);

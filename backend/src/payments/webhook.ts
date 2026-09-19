@@ -18,6 +18,39 @@ function verifySignature(rawBody: string, signature: string): boolean {
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
 }
 
+// Undoes the payment.failed handler's own cancellation, but ONLY when
+// this exact row is still sitting in the specific state that handler
+// left it in — Razorpay's own docs on this race: "you may occasionally
+// observe a payment.failed webhook followed by a payment.captured
+// webhook for the same transaction" (late authorisation, or a
+// user-initiated retry that still lands against the original attempt).
+// If Razorpay says the money WAS actually captured, that has to win —
+// leaving an order marked cancelled while the customer was genuinely
+// charged is worse than the rare harmless no-op this runs on every
+// ordinary captured event.
+//
+// Two guards, not one: `.eq('status', 'cancelled')` alone can't
+// distinguish this race from a customer's OWN real cancel-with-refund
+// (routes/orders.ts's PATCH /:id/status) also leaving status
+// 'cancelled' — reverting THAT one would resurrect an order the
+// customer already got refunded and moved on from. The second guard,
+// `.eq('refund_status', 'none')`, is what tells them apart: a real
+// customer cancel always sets refund_status away from 'none' the
+// instant it fires (refundPayment.ts only ever runs because a
+// razorpay_payment_id already existed there), while the payment.failed
+// path below never had a payment to refund in the first place, so
+// refund_status stays at its default. A webhook redelivery of the same
+// captured event (Razorpay retries on any non-2xx response) is also
+// safe here regardless — status won't be 'cancelled' anymore after the
+// first successful revert, so this is a no-op on the second delivery.
+async function revertFalseCancel(table: 'orders' | 'trips', id: string): Promise<void> {
+  const query = supabase.from(table).update(table === 'orders' ? { status: 'placed', cancel_reason: null } : { status: 'placed' });
+  const { error } = await (table === 'orders'
+    ? query.eq('id', id).eq('status', 'cancelled').eq('refund_status', 'none')
+    : query.eq('id', id).eq('status', 'cancelled'));
+  if (error) throw error;
+}
+
 export async function handleWebhook(req: Request, res: Response, next: NextFunction) {
   try {
     const signature = req.headers['x-razorpay-signature'] as string | undefined;
@@ -36,6 +69,7 @@ export async function handleWebhook(req: Request, res: Response, next: NextFunct
       if (orderId) {
         const { error } = await supabase.from('orders').update({ razorpay_payment_id: paymentId }).eq('id', orderId);
         if (error) throw error;
+        await revertFalseCancel('orders', orderId);
       } else if (tripId) {
         // Same real cascade verifyPayment.ts's own Standard Checkout path
         // already does for a trip — every child order needs its own
@@ -47,6 +81,55 @@ export async function handleWebhook(req: Request, res: Response, next: NextFunct
         const { error: tripErr } = await supabase.from('trips').update({ razorpay_payment_id: paymentId }).eq('id', tripId);
         if (tripErr) throw tripErr;
         const { error: cascadeErr } = await supabase.from('orders').update({ razorpay_payment_id: paymentId }).eq('trip_id', tripId);
+        if (cascadeErr) throw cascadeErr;
+        await revertFalseCancel('trips', tripId);
+        const { data: legs } = await supabase.from('orders').select('id').eq('trip_id', tripId);
+        for (const leg of legs ?? []) await revertFalseCancel('orders', leg.id);
+      }
+    }
+
+    // The fast-failure path for the UPI Intent flow — Razorpay fires this
+    // the moment a payment attempt is actually declined/cancelled inside
+    // the PSP app (customer backs out of GPay, insufficient balance,
+    // bank declines, etc.), which is almost always seconds after the
+    // attempt started, not the full 2-minute budget payments/
+    // pollOrderPaid.ts otherwise waits out. Cancelling the order/trip
+    // immediately here — instead of only ever detecting this once the
+    // customer happens to come back to the app and the next poll tick
+    // runs — is what lets PaymentProcessingScreen show "Payment Failed"
+    // right away instead of sitting on a spinner for up to 2 minutes for
+    // an outcome that was already known. `.eq('status', 'placed')` guards
+    // against a stale/duplicate failed event racing a payment that
+    // somehow already got marked paid or was independently cancelled —
+    // never downgrade a resolved order.
+    if (event.event === 'payment.failed') {
+      const notes = event.payload.payment.entity.notes ?? {};
+      const orderId: string | undefined = notes.flikk_order_id;
+      const tripId: string | undefined = notes.flikk_trip_id;
+      const reason: string = event.payload.payment.entity.error_description ?? 'Payment was declined or cancelled.';
+
+      if (orderId) {
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: 'cancelled', cancel_reason: reason })
+          .eq('id', orderId)
+          .eq('status', 'placed');
+        if (error) throw error;
+      } else if (tripId) {
+        // Same cascade shape as payment.captured above — every real
+        // reader (TrackOrderScreen, Purchase, admin/partner views) checks
+        // each leg's own orders row, not the trip row, for status.
+        const { error: tripErr } = await supabase
+          .from('trips')
+          .update({ status: 'cancelled' })
+          .eq('id', tripId)
+          .eq('status', 'placed');
+        if (tripErr) throw tripErr;
+        const { error: cascadeErr } = await supabase
+          .from('orders')
+          .update({ status: 'cancelled', cancel_reason: reason })
+          .eq('trip_id', tripId)
+          .eq('status', 'placed');
         if (cascadeErr) throw cascadeErr;
       }
     }

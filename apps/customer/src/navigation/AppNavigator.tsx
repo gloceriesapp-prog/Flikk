@@ -20,6 +20,7 @@ import { HomeScreen } from '../screens/home/HomeScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
 import { SelectLocationScreen } from '../screens/location/SelectLocationScreen';
+import { PaymentProcessingScreen } from '../screens/payment-processing/PaymentProcessingScreen';
 import { PaymentStatusScreen } from '../screens/payment-status/PaymentStatusScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { PurchaseScreen } from '../screens/purchase/PurchaseScreen';
@@ -77,7 +78,8 @@ export function AppNavigator() {
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="AddressList" component={AddressListScreen} />
       <Stack.Screen name="AddressForm" component={AddressFormScreen} />
-      <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} />
+      <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} options={{ gestureEnabled: false }} />
+      <Stack.Screen name="PaymentProcessing" component={PaymentProcessingScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="Receipt" component={ReceiptScreen} />
       <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} />

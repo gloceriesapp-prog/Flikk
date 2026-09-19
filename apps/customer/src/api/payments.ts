@@ -46,6 +46,25 @@ export function createUpiIntentPayment(id: { orderId: string } | { tripId: strin
   return apiRequest('/payments/create-upi-intent', { method: 'POST', body: id });
 }
 
+export interface VerifiedUpiId {
+  valid: true;
+  accountHolderName: string | null;
+}
+
+// POST /payments/verify-upi-id — a real RazorpayX Fund Account Validation
+// (a ~₹1 penny-drop) confirming the typed VPA is genuinely resolvable,
+// NOT a payment request itself. NPCI retired UPI Collect (backend's own
+// note, payments/verifyUpiId.ts) — there is no mechanism left, on any
+// provider, to push a request into the VPA's own app. This only ever
+// confirms identity before the customer is sent to complete the payment
+// themselves (PaymentMethodList.tsx's own note on what happens after a
+// successful verify). Throws (via apiRequest) on an unverifiable/invalid
+// VPA — never resolves to a fake "valid: false", so a caller can't
+// silently mistake a thrown network error for a real rejection.
+export function verifyUpiId(vpa: string): Promise<VerifiedUpiId> {
+  return apiRequest('/payments/verify-upi-id', { method: 'POST', body: { vpa } });
+}
+
 export type VerifyPaymentInput = ({ orderId: string; tripId?: undefined } | { tripId: string; orderId?: undefined }) & {
   razorpay_order_id: string;
   razorpay_payment_id: string;

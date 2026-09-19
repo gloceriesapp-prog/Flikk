@@ -50,12 +50,14 @@ export function ReceiptScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="items-center gap-5 px-4 pb-6 pt-3">
-        <SuccessSeal size={72} color={colors.success} />
+      <ScrollView className="flex-1" contentContainerClassName="items-center gap-5 px-4 pb-6 pt-4">
+        <SuccessSeal size={76} color={colors.success} />
 
-        <View className="items-center gap-0">
-          <Text className="text-xl font-semibold text-ink">Order Confirmed!</Text>
-          <Text className="text-center text-base text-ink/50 font-medium">Thank you for shopping with Gloceries.</Text>
+        <View className="items-center gap-1.5">
+          <Text className="text-[23px] font-extrabold tracking-tight text-ink">Payment Successful</Text>
+          <Text className="max-w-[280px] text-center text-[14.5px] font-medium leading-5 text-ink/55">
+            Your order is confirmed and on its way to the store. Thank you for shopping with Gloceries.
+          </Text>
         </View>
 
         <ReceiptCard

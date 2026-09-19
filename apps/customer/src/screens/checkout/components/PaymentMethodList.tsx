@@ -23,41 +23,51 @@
 // then resolve here but fail to find a match in CheckoutScreen's own
 // list, which is exactly the "Unknown UPI app selected" bug this fixes.
 //
-// No "Pay via UPI ID" (type-a-VPA) section — that was always sample UI
-// with no real backend behind it, and the mechanism it would have needed
-// (UPI Collect) is retired industry-wide (NPCI, backend/src/payments/
-// verifyPayoutAccount.ts's own note). The real UPI-app grid above (Intent
-// flow) is the only working UPI path left, per an explicit decision not
-// to build a dead-end feature.
+// "Pay via UPI ID" (type-a-VPA) is real, but not what it looks like at a
+// glance — NPCI retired UPI Collect industry-wide (backend/src/payments/
+// verifyPayoutAccount.ts's own note), so there is no mechanism left, on
+// any provider, to push a payment request into that VPA's own app
+// automatically. Typing a VPA here and tapping Verify calls POST
+// /payments/verify-upi-id, a real RazorpayX Fund Account Validation (a
+// genuine ~₹1 penny-drop, not a regex guess) that confirms the ID
+// actually resolves to a real account and surfaces its real registered
+// name — this is an identity check, not a payment. Only once that
+// succeeds does Pay Now appear, and tapping it does exactly what an
+// app-grid tap does (payments/upiIntent.ts's own createUpiIntentPayment +
+// PaymentProcessingScreen), except the launch targets no specific
+// package (openUpiId in CheckoutScreen.tsx) since a typed VPA doesn't
+// say which installed app owns it — the OS's own UPI chooser (or direct
+// launch if only one app matches) is the honest behavior here, not a bug
+// the way it was for a specific app-grid tap.
+//
+// No fake "Google Pay" preview row either when nothing's detected
+// installed — that used to render this app's own real UPI_APPS[0] entry
+// as a fake selectable row even on a device with no UPI apps at all,
+// which both mislabeled a phone with no UPI apps AND, if tapped, silently
+// fell through to Standard Checkout under a Google Pay label it never
+// actually used. A device with nothing detected gets a real empty-state
+// message instead, pointing at Card below (Razorpay's own Standard
+// Checkout, which bundles UPI/netbanking/wallets in its own picker) —
+// the only path that's actually guaranteed to work there.
 
-import { Image, Pressable, Text, View, ActivityIndicator } from 'react-native';
-import { CreditCardIcon, Tick01Icon } from '@hugeicons/core-free-icons';
+import { useState } from 'react';
+import { Image, Pressable, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { CreditCardIcon, Tick01Icon, CheckmarkCircle02Icon, Alert02Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage } from '../../../components/AppImage';
 import { colors } from '../../../theme/tokens';
-import { UPI_APPS, type UpiApp } from '../../../payments/upiApps';
+import { verifyUpiId } from '../../../api/payments';
+import type { UpiApp } from '../../../payments/upiApps';
 
 const CASH_ICON_URL = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/icons/Cash.png';
 
-// UI-preview only, not a real detected app — shown whenever nothing real
-// came back from detectInstalledUpiApps (payments/upiIntent.ts), e.g. a
-// simulator/dev build with no UPI apps installed, purely so this section's
-// look can be reviewed. Selecting it behaves exactly like 'card' below
-// (falls through to the generic checkout path) — it is never treated as
-// a real `upi_app:` id, so it can never hit
-// createUpiIntentPayment's real-app-id lookup in CheckoutScreen.
-// This app's own real Google Pay entry (payments/upiApps.ts, used for real
-// detection on-device) — reused here as-is, same id/color/scheme, purely
-// to render a preview row when nothing was actually detected installed.
-const SAMPLE_GOOGLE_PAY = UPI_APPS.find((app) => app.id === 'gpay')!;
-
-export type PaymentMethod = 'cod' | 'online' | 'card' | 'upi_sample' | `upi_app:${string}`;
+export type PaymentMethod = 'cod' | 'online' | 'card' | 'upi_id' | `upi_app:${string}`;
 
 export function paymentMethodLabel(method: PaymentMethod, upiApps: UpiApp[]): string {
   if (method === 'cod') return 'Cash on Delivery';
   if (method === 'online') return 'Online Payment';
   if (method === 'card') return 'Card';
-  if (method === 'upi_sample') return SAMPLE_GOOGLE_PAY.name;
+  if (method === 'upi_id') return 'UPI ID';
   const appId = method.slice('upi_app:'.length);
   return upiApps.find((a) => a.id === appId)?.name ?? 'UPI';
 }
@@ -159,23 +169,63 @@ export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlaci
 
   const codSelected = method === 'cod';
   const cardSelected = method === 'card';
-  const upiSampleSelected = method === 'upi_sample';
+  const upiIdSelected = method === 'upi_id';
   const selectedUpiAppId = method?.startsWith('upi_app:') ? method.slice('upi_app:'.length) : null;
+
+  // Entirely local — CheckoutScreen only ever needs to know method ===
+  // 'upi_id' AND that this state is 'verified' before Pay Now can fire
+  // (the onPay prop is gated below, so a stale/expired verification can't
+  // reach handlePay). Reset whenever the typed VPA changes, since a
+  // verification result belongs to the exact string it was run against,
+  // not to whatever's in the box now.
+  const [vpaInput, setVpaInput] = useState('');
+  const [verification, setVerification] = useState<
+    { status: 'idle' } | { status: 'verifying' } | { status: 'verified'; accountHolderName: string | null } | { status: 'error'; message: string }
+  >({ status: 'idle' });
+
+  function onChangeVpa(text: string) {
+    setVpaInput(text);
+    if (verification.status !== 'idle') setVerification({ status: 'idle' });
+    if (upiIdSelected) onSelect(null);
+  }
+
+  async function handleVerify() {
+    setVerification({ status: 'verifying' });
+    try {
+      const result = await verifyUpiId(vpaInput.trim());
+      setVerification({ status: 'verified', accountHolderName: result.accountHolderName });
+      onSelect('upi_id');
+    } catch (err) {
+      setVerification({ status: 'error', message: err instanceof Error ? err.message : 'Could not verify this UPI ID.' });
+    }
+  }
 
   return (
     <View className="mt-6 gap-6">
-      <View>
-        <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Recommended</Text>
-        <View className="bg-white p-4" style={{ borderRadius: 12 }}>
-          {upiApps.length > 0 ? (
-            upiApps.map((app, index) => {
+      {upiApps.length > 0 ? (
+        <View>
+          <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Recommended</Text>
+          <View className="bg-white p-4" style={{ borderRadius: 12 }}>
+            {upiApps.map((app, index) => {
               const isSelected = selectedUpiAppId === app.id;
               const isLast = index === upiApps.length - 1;
               return (
                 <View key={app.id} className={isLast ? '' : 'mb-3 border-b border-dashed border-gray-100 pb-3'}>
                   <Pressable onPress={() => toggle(`upi_app:${app.id}`)} className="flex-row items-center gap-3">
                     <UpiAppBadge app={app} />
-                    <Text className="flex-1 text-[15px] font-medium text-ink">{app.name}</Text>
+                    <View className="flex-1 flex-row items-center gap-2">
+                      <Text className="text-[15px] font-medium text-ink">{app.name}</Text>
+                      {/* Detection order (payments/upiApps.ts's UPI_APPS list)
+                          is already priority-ranked by real-world UPI-app
+                          market share in India — the first entry that's
+                          actually installed on this device is the one worth
+                          calling out, not an arbitrary/alphabetical pick. */}
+                      {index === 0 ? (
+                        <View className="rounded-full bg-blue-50 px-2 py-0.5">
+                          <Text className="text-[10.5px] font-semibold uppercase tracking-wide text-[#155dfc]">Recommended</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <RadioCheck selected={isSelected} />
                   </Pressable>
 
@@ -188,22 +238,81 @@ export function PaymentMethodList({ method, onSelect, onPay, totalPrice, isPlaci
                   ) : null}
                 </View>
               );
-            })
-          ) : (
-            // Nothing real detected on this device (payments/upiIntent.ts)
-            // — a preview row so this section's look can still be checked,
-            // using this app's own real Google Pay entry (UPI_APPS above).
-            // Not wired to a real UPI-app launch; selecting it just falls
-            // through to the same generic checkout path as 'card' below.
-            <Pressable onPress={() => toggle('upi_sample')} className="flex-row items-center gap-3">
-              <UpiAppBadge app={SAMPLE_GOOGLE_PAY} />
-              <Text className="flex-1 text-[15px] font-medium text-ink">{SAMPLE_GOOGLE_PAY.name}</Text>
-              <RadioCheck selected={upiSampleSelected} />
-            </Pressable>
-          )}
+            })}
+          </View>
+        </View>
+      ) : (
+        // Nothing real detected on this device (payments/upiIntent.ts) —
+        // no UPI app to launch via Intent, so there's genuinely nothing
+        // to list here. Card below still pays via UPI (Razorpay's own
+        // Standard Checkout bundles a UPI picker/QR inside itself), so
+        // this points there instead of faking a selectable UPI row that
+        // doesn't correspond to anything installed.
+        <View className="rounded-xl bg-gray-50 px-4 py-3">
+          <Text className="text-[13.5px] font-medium text-ink/60">
+            No UPI apps detected on this device. Use Card below to pay via UPI, netbanking, or card.
+          </Text>
+        </View>
+      )}
 
-          {upiSampleSelected ? (
-            <PayButton label={isPlacingOrder ? 'Placing order…' : `Pay Now · ₹${totalPrice}`} loading={isPlacingOrder} onPress={onPay} />
+      <View>
+        <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Pay via UPI ID</Text>
+        <View className="bg-white p-4" style={{ borderRadius: 12 }}>
+          <View className="flex-row items-center gap-2">
+            <TextInput
+              value={vpaInput}
+              onChangeText={onChangeVpa}
+              placeholder="yourname@bank"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={verification.status !== 'verifying'}
+              className="flex-1 rounded-xl border border-gray-200 px-3.5 py-3 text-[14.5px] font-medium text-ink"
+            />
+            {verification.status === 'verified' ? (
+              <View className="h-11 w-11 items-center justify-center rounded-xl bg-success/10">
+                <AppIcon icon={CheckmarkCircle02Icon} size={20} color={colors.success} />
+              </View>
+            ) : (
+              <Pressable
+                onPress={handleVerify}
+                disabled={vpaInput.trim().length < 3 || verification.status === 'verifying'}
+                className="items-center justify-center rounded-xl px-4 py-3"
+                style={{ backgroundColor: vpaInput.trim().length < 3 ? '#93b4fb' : BRAND_ACCENT }}
+              >
+                {verification.status === 'verifying' ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text className="text-[13.5px] font-semibold text-white">Verify</Text>
+                )}
+              </Pressable>
+            )}
+          </View>
+
+          {verification.status === 'verified' ? (
+            <Text className="mt-2 text-[12.5px] font-medium text-success">
+              Verified{verification.accountHolderName ? ` · ${verification.accountHolderName}` : ''}
+            </Text>
+          ) : null}
+          {verification.status === 'error' ? (
+            <View className="mt-2 flex-row items-start gap-1.5">
+              <AppIcon icon={Alert02Icon} size={14} color={colors.danger} />
+              <Text className="flex-1 text-[12.5px] font-medium text-danger">{verification.message}</Text>
+            </View>
+          ) : null}
+          {verification.status === 'idle' ? (
+            <Text className="mt-2 text-[12px] font-medium text-ink/40">
+              We verify this is a real UPI ID first — you will still complete the payment yourself in your UPI app, same as tapping an
+              app above.
+            </Text>
+          ) : null}
+
+          {upiIdSelected && verification.status === 'verified' ? (
+            <PayButton
+              label={isPlacingOrder ? 'Placing order…' : `Pay Now · ₹${totalPrice}`}
+              loading={isPlacingOrder}
+              onPress={onPay}
+            />
           ) : null}
         </View>
       </View>

@@ -30,7 +30,8 @@
 // A tapped UPI app (PaymentMethodList's own grid, `upi_app:<id>`) takes a
 // third path alongside cod/online: POST /payments/create-upi-intent mints
 // a real `upi://pay?...` link, payments/upiIntent.ts launches it directly
-// at that specific installed app (no Razorpay-branded screen), then
+// at that specific installed app (no Razorpay-branded screen), then this
+// screen hands off to PaymentProcessingScreen, which owns the real wait —
 // payments/pollOrderPaid.ts watches the order (or trip, for a multi-store
 // checkout — same one-combined-payment model Standard Checkout already
 // uses) row for the webhook to mark it paid — that webhook
@@ -41,8 +42,20 @@
 // its own real orders row with its own item_total/commission_amount
 // (CLAUDE.md's single-store-per-order schema), regardless of which single
 // payment flow collected the combined amount.
+//
+// 'upi_id' (PaymentMethodList's own typed-VPA row) takes a fourth path —
+// only reachable after that row's own real verify-upi-id call already
+// confirmed the typed VPA resolves to a real account (a genuine RazorpayX
+// penny-drop, not a format guess). Verifying it doesn't let this skip
+// anything: NPCI retired UPI Collect (payments/verifyUpiId.ts's own
+// note), so there's still no way to push a request into that VPA's own
+// app — this mints the exact same S2S UPI Intent link the app-grid does,
+// then opens it with no specific package targeted (Linking.openURL,
+// same as openUpiApp's own iOS branch), letting the OS pick the one
+// installed app that owns the verified VPA, or show its own chooser if
+// more than one could. Same PaymentProcessingScreen hand-off either way.
 import { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Linking, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -51,7 +64,6 @@ import { createTrip } from '../../api/trips';
 import { fetchAddresses } from '../../api/addresses';
 import { createRazorpayOrder, createUpiIntentPayment, verifyPayment } from '../../api/payments';
 import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
-import { pollOrderPaid } from '../../payments/pollOrderPaid';
 import type { UpiApp } from '../../payments/upiApps';
 import { detectInstalledUpiApps, openUpiApp } from '../../payments/upiIntent';
 import { calculateCartGrandTotal, selectCartStoreCount, selectCartTotalPrice, useCartStore } from '../../store/useCartStore';
@@ -107,7 +119,6 @@ export function CheckoutScreen({ navigation }: Props) {
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [isAwaitingUpiConfirmation, setIsAwaitingUpiConfirmation] = useState(false);
   // The single source of truth for "which UPI apps are on this device" —
   // PaymentMethodList renders from this exact list, and handlePay below
   // looks the tapped app up in this exact list. Detecting independently
@@ -290,40 +301,83 @@ export function CheckoutScreen({ navigation }: Props) {
           return;
         }
 
-        await openUpiApp(app, upiLink);
+        // Deliberately NOT awaited — on Android, expo-intent-launcher's
+        // startActivityAsync runs the launched app via
+        // startActivityForResult, so its promise only resolves once THAT
+        // activity finishes (the customer backs out of / cancels GPay).
+        // Awaiting it here used to block this whole function until then,
+        // which is exactly why PaymentProcessing never showed until the
+        // customer cancelled — this screen needs to be up and polling
+        // BEFORE the app switch, not after it returns. Nothing here reads
+        // this promise's result anyway; payments/pollOrderPaid.ts's real
+        // webhook-backed poll is the only thing that decides the outcome.
+        openUpiApp(app, upiLink).catch(() => {});
 
-        // Order already exists (unpaid) — if the customer never confirms
-        // inside the app, or the poll below times out, it just stays
-        // that way, same as every other path here that doesn't complete.
-        setIsAwaitingUpiConfirmation(true);
-        const paid = await pollOrderPaid(intentTarget);
-        setIsAwaitingUpiConfirmation(false);
-
-        if (!paid) {
-          Alert.alert(
-            'Still waiting for payment',
-            `We haven't heard back from ${app.name} yet. If you completed the payment, it'll confirm shortly — otherwise you can try again.`,
-          );
-          return;
-        }
-
-        goToReceipt(orderSummary, app.name);
+        // Order already exists (unpaid) at this point — PaymentProcessingScreen
+        // owns everything from here: the real wait for webhook confirmation
+        // (payments/pollOrderPaid.ts), the countdown, and the hand-off to
+        // either Receipt (confirmed paid) or PaymentStatus (timeout). Cart
+        // stays uncleared until that screen confirms success, not here.
+        navigation.navigate('PaymentProcessing', {
+          target: intentTarget,
+          appName: app.name,
+          amount: grandTotal,
+          order: orderSummary,
+          items,
+          deliveryAddress: selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address',
+          isTrip: isMultiStore,
+        });
         return;
       }
 
-      // 'online', 'card', and 'upi_sample' all land here —
-      // order row already exists (unpaid) at this point; a cancelled or
-      // failed checkout below just leaves it that way, same as every
-      // other path here. All of these go through Razorpay's own Standard
-      // Checkout (PaymentMethodList's own note on why there's no separate
-      // "type a UPI ID" path — UPI Collect is retired industry-wide).
+      if (paymentMethod === 'upi_id') {
+        // Reaching here at all means PaymentMethodList's own verify-upi-id
+        // call already succeeded — this branch never runs the Fund
+        // Account Validation itself, that already happened before Pay Now
+        // was even shown. No package/component targeted (unlike the
+        // upi_app branch above) — a typed VPA doesn't say which installed
+        // app owns it, so Linking.openURL here lets the OS resolve it:
+        // opens directly if exactly one app matches, its own native
+        // chooser if several do. That's the honest behavior for this
+        // specific case, not the bug the upi_app branch had to fix.
+        const intentTarget = isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id };
+
+        let upiLink: string;
+        try {
+          upiLink = (await createUpiIntentPayment(intentTarget)).upiLink;
+        } catch {
+          // Same real account-activation gate the upi_app branch's own
+          // note documents — falls back to Standard Checkout rather than
+          // dead-ending on something outside this code's control.
+          await payViaRazorpayCheckout();
+          goToReceipt(orderSummary, paymentMethodLabel('online', upiApps));
+          return;
+        }
+
+        await Linking.openURL(upiLink);
+
+        navigation.navigate('PaymentProcessing', {
+          target: intentTarget,
+          appName: 'your UPI app',
+          amount: grandTotal,
+          order: orderSummary,
+          items,
+          deliveryAddress: selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address',
+          isTrip: isMultiStore,
+        });
+        return;
+      }
+
+      // 'online' and 'card' both land here — order row already exists
+      // (unpaid) at this point; a cancelled or failed checkout below just
+      // leaves it that way, same as every other path here. Both go
+      // through Razorpay's own Standard Checkout.
       await payViaRazorpayCheckout();
       goToReceipt(orderSummary, paymentMethodLabel(paymentMethod, upiApps));
     } catch (err) {
       Alert.alert('Could not place order', err instanceof Error ? err.message : 'Please try again.');
     } finally {
       setIsPlacingOrder(false);
-      setIsAwaitingUpiConfirmation(false);
     }
   }
 
@@ -350,7 +404,7 @@ export function CheckoutScreen({ navigation }: Props) {
           onSelect={setPaymentMethod}
           onPay={handlePay}
           totalPrice={grandTotal}
-          isPlacingOrder={isPlacingOrder || isAwaitingUpiConfirmation}
+          isPlacingOrder={isPlacingOrder}
           // Real detected list regardless of cart size now — the UPI-app
           // grid is trip-aware (this screen's own note on isMultiStore).
           upiApps={upiApps}

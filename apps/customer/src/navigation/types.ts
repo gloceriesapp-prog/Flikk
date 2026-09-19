@@ -50,12 +50,44 @@ export type AppStackParamList = {
   StoreDetail: { storeId: string; storeName: string };
   Cart: undefined;
   Checkout: undefined;
-  // Failure only — a successful payment goes straight to Receipt instead
-  // (CheckoutScreen.tsx's own handlePay/runOnlineCheckout already show a
-  // real "Payment not completed" alert with a retry option inline, so
-  // nothing navigates here yet). Kept ready for a fuller dedicated failure
-  // screen later.
+  // Real failure/timeout destination for the UPI Intent flow (below) — a
+  // Standard Checkout (card/online) failure is still handled inline on
+  // Checkout itself (Razorpay's own SDK already shows the failure inside
+  // its bundled UI before ever returning control here), so only the async
+  // UPI-app path — which has no such built-in UI — routes here.
   PaymentStatus: { amount: number };
+  // The real waiting room for the UPI Intent flow (CheckoutScreen's own
+  // handlePay, payments/pollOrderPaid.ts) — launching a UPI app and
+  // getting control back only means the customer finished interacting
+  // with it, never that the payment settled (backend/src/payments/
+  // webhook.ts is the only real source of truth). This screen owns that
+  // wait: a live countdown matching pollOrderPaid's own real timeout
+  // budget, replacing itself with Receipt on confirmed success or
+  // PaymentStatus on timeout — never both, and never Receipt on anything
+  // but a confirmed webhook.
+  //
+  // Everything Receipt needs is threaded straight through as params
+  // (same shape CheckoutScreen's own goToReceipt already assembles for
+  // every other payment path) since this screen — not CheckoutScreen —
+  // is what actually navigates to Receipt for this one path, and the
+  // cart must stay uncleared until payment is actually confirmed (a
+  // timeout leaves the order sitting unpaid, same as before this screen
+  // existed — jobs/expireUnpaidOrders.ts cleans it up backend-side; the
+  // customer's cart itself should still be there to retry with).
+  PaymentProcessing: {
+    target: { orderId: string } | { tripId: string };
+    appName: string;
+    amount: number;
+    order: {
+      orderId: string;
+      orderNumber: string;
+      placedAt: string;
+      avgPrepMinutes: number | null;
+    };
+    items: CartItem[];
+    deliveryAddress: string;
+    isTrip?: boolean;
+  };
   // orderId is the real backend orders.id (UUID, from POST /orders) —
   // used only for navigation (TrackOrder's own real lookup), never shown.
   // orderNumber is the real, human-facing orders.order_number ("FLK-100042",

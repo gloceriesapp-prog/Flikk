@@ -1,31 +1,30 @@
-// Floating pill nav — sits close to the screen edge. Real iOS 26 Liquid
-// Glass (GlassView, expo-glass-effect) when isLiquidGlassAvailable() —
-// native specular highlight + refraction, not an approximation — with the
-// existing BlurView tint="dark" pill as the fallback everywhere that native
-// module isn't there (Android, older iOS, Expo Go without the dev build).
-// GlassView.tsx itself already no-ops to a plain untinted View on non-iOS,
-// so this component decides which glass implementation to mount rather than
-// relying on that no-op alone — otherwise Android would silently lose the
-// pill's glass look entirely instead of falling back to BlurView.
-//
-// tint="dark" alone on the BlurView fallback, no extra black wash on top —
-// not tint="systemThickMaterialDark" + a heavy wash — that enum value is
-// iOS-only and silently falls back to a flat opaque tint wherever the
-// native blur backend isn't available, reading as a solid black bar instead
-// of glass; "dark" is the cross-platform tint (same one CartBar.tsx and
-// ProductDetailSheet's backdrop use). An extra bg-black wash on top used to
-// sit here too, but on top of an already-dark tint (and wherever the blur
-// itself doesn't render, e.g. Expo Go) it stacked into a solid black pill
-// instead of reading as glass — dropped per an explicit ask.
+// Two genuinely different containers by platform now, per an explicit
+// ask — iOS: a floating rounded pill with insets on both sides, real iOS
+// 26 Liquid Glass (GlassView, expo-glass-effect) when
+// isLiquidGlassAvailable(), falling back to a light BlurView tint
+// wherever that native module isn't there (older iOS, Expo Go without
+// the dev build). Android: a flat, solid-white, full-device-width bar
+// flush with the bottom edge — no glass/blur attempt at all there
+// anymore (Android's BlurView backend was never a real blur to begin
+// with, just a flat tint — see the iOS branch's own note below for the
+// history). GlassView.tsx itself already no-ops to a plain untinted View
+// on non-iOS, so this component decides which container to mount rather
+// than relying on that no-op alone.
 //
 // All four tabs have real screens now.
 //
 // The detached circle button that used to sit to the pill's right is gone
-// — per an explicit ask. The pill itself keeps its existing width/inset
-// exactly as it was (still narrower than a full left:20/right:20 span,
-// SIDE_BUTTON_SIZE/SIDE_BUTTON_GAP below are unchanged and still feed
-// that same inset math) rather than widening to fill the space the
-// button left behind — that resize wasn't asked for.
+// — per an explicit ask. The pill itself keeps its existing width exactly
+// as it was (still narrower than a full left:20/right:20 span, PILL_INSET
+// below preserves that same width) rather than widening to fill the space
+// the button left behind — that resize wasn't asked for.
+//
+// Android gets its own real bar, not the iOS pill — per an explicit ask
+// to keep iOS exactly as-is (rounded floating glass pill, insets on both
+// sides) while Android renders a flat, solid-white, full-device-width bar
+// flush with the bottom edge instead. Same tab content/handlers/active-
+// tab logic either way, just a different container: BOTTOM_NAV_CONTAINER
+// below picks which one actually renders.
 //
 // `hidden` (optional SharedValue<number>, 0..1) — the nav pill + side
 // button + fade gradient animate away (slide down + fade) as this goes
@@ -36,7 +35,7 @@
 // (Purchase/Categories/Store) fall back to a local always-0 value, so the
 // pill just never hides there — no behavior change for them.
 
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -48,19 +47,12 @@ import { BottomNavBarItem } from './BottomNavBarItem';
 import { BOTTOM_NAV_TABS } from './data';
 import type { AppStackParamList } from '../../navigation/types';
 
-// Leftover from the now-removed side circle button — kept only so
-// PILL_INSET's math (below) still lands on the exact same pill WIDTH the
-// asymmetric left:20/right:20+SIDE_BUTTON_SIZE+SIDE_BUTTON_GAP layout used
-// to produce, just centered instead of shifted left. Not sizing anything
-// visible anymore.
-const SIDE_BUTTON_SIZE = 52;
-const SIDE_BUTTON_GAP = 12;
 // Equal left/right inset that centers the pill while preserving its exact
 // former width — the old layout's total horizontal inset was
-// 20 (left) + (20 + SIDE_BUTTON_SIZE + SIDE_BUTTON_GAP) (right); splitting
-// that same total evenly across both sides keeps the pill exactly as wide
-// as it already was, just centered on screen instead of shifted left to
-// leave room for a button that no longer exists.
+// 20 (left) + (20 + old side-button size + gap) (right); splitting that
+// same total evenly across both sides keeps the pill exactly as wide as it
+// already was, just centered on screen instead of shifted left to leave
+// room for the removed side circle button.
 const PILL_INSET = 32;
 // The pill's own real height (icon + label + vertical padding) — used to
 // vertically CENTER the circle button against it, not bottom-align the
@@ -80,6 +72,17 @@ const PILL_BOTTOM_OFFSET = -10;
 // silently renders flat instead of real glass despite the check passing.
 // Checking both is what actually gates on "will this render as glass".
 const USE_LIQUID_GLASS = isLiquidGlassAvailable() && isGlassEffectAPIAvailable();
+
+const IS_ANDROID = Platform.OS === 'android';
+// Android's own bar sits flush at the real bottom edge (paddingBottom:
+// insets.bottom absorbs the safe area itself, no floating gap) rather
+// than the iOS pill's "float PILL_BOTTOM_OFFSET above insets.bottom"
+// trick — so the content box's own top edge is exactly insets.bottom +
+// PILL_HEIGHT above the screen bottom on Android, vs. insets.bottom +
+// PILL_BOTTOM_OFFSET + PILL_HEIGHT on iOS. CartBar's own resting position
+// (below) needs whichever one actually matches, hence 0 here instead of
+// PILL_BOTTOM_OFFSET on Android.
+const NAV_BOTTOM_OFFSET = IS_ANDROID ? 0 : PILL_BOTTOM_OFFSET;
 
 // This component is mounted fresh inside every screen that renders it
 // (HomeScreen, PurchaseScreen, CategoriesScreen, StoreListScreen each render
@@ -149,93 +152,113 @@ export function BottomNavBar({ hidden }: Props) {
           pill's own blur is what should visually separate it from the
           content now, not a page-wide overlay. */}
 
-      {/* Equal left/right (PILL_INSET, both sides) centers the pill on
-          screen — per an explicit ask, same overall width as before, just
-          no longer shifted left to leave room for the removed circle
-          button. shadowOffset {0,0} + a real shadowRadius (not a
-          directional offset) is what gives an even halo on every side
-          rather than just below it — per an explicit ask for a shadow
-          "for all the side". elevation is Android's own equivalent (no
-          offset/radius split there, one number controls the whole halo). */}
-      <View
-        style={{
-          position: 'absolute',
-          left: PILL_INSET,
-          right: PILL_INSET,
-          bottom: insets.bottom + PILL_BOTTOM_OFFSET,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.18,
-          shadowRadius: 16,
-          elevation: 12,
-        }}
-      >
-        {USE_LIQUID_GLASS ? (
-          // Real glass/blur materials work by refracting/blurring whatever
-          // sits BEHIND them — with nothing there (a plain page background,
-          // no scrolled content underneath), a fully-untinted GlassView has
-          // nothing to refract and reads as literally invisible instead of
-          // a pill. A light baseline tintColor + a hairline border is what
-          // keeps the pill visibly present on its own, while colorScheme
-          // ="light" + glassEffectStyle="regular" still let real content
-          // scrolling behind it show through and refract on top of that
-          // baseline — same idea BlurView's own wash+border fallback below
-          // already uses, just via the native tint instead of a manual
-          // overlay View.
-          <GlassView
-            glassEffectStyle="regular"
-            colorScheme="light"
-            // tintColor="rgba(255, 255, 255, 0.95)"
-            isInteractive
-            style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.08)' }}
-          >
-            <View className="flex-row items-center justify-around px-1 py-1.5">
-              {BOTTOM_NAV_TABS.map((tab) => (
-                <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
-              ))}
-            </View>
-          </GlassView>
-        ) : (
-          // BlurView isn't one of NativeWind's auto-patched components — a
-          // className here is silently ignored, same as LinearGradient
-          // elsewhere in this app. Positioning/rounding must go through
-          // style.
-          // Android's default BlurView backend doesn't do a real blur at
-          // all (it's a flat semi-opaque tint) — that's the actual root
-          // cause of "can't see the liquid glass when I scroll": there was
-          // never anything behind the pill actually blurring, on Android.
-          // experimentalBlurMethod="dimezisBlurView" switches to expo-blur's
-          // real native blur implementation there, same visual family as
-          // iOS's own backdrop blur. Wash dropped (0.55 -> 0.3) now that
-          // there's a genuine blur underneath it to show through — the old
-          // higher wash was hiding whatever little blur Android's flat-tint
-          // fallback did produce.
-          <BlurView
-            intensity={100}
-            tint="light"
-            experimentalBlurMethod="dimezisBlurView"
-            style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }}
-          >
-            {/* Light wash, not the old dark one — BottomNavBarItem.tsx's
-                icons/text are ink/black now, so the fallback pill needs to
-                stay light too, same reasoning as the GlassView branch's own
-                colorScheme="light" change. */}
-            <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.3)' }} />
-            <View className="flex-row items-center justify-around px-2 py-2.5">
-              {BOTTOM_NAV_TABS.map((tab) => (
-                <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
-              ))}
-            </View>
-          </BlurView>
-        )}
-      </View>
+      {IS_ANDROID ? (
+        // Real solid bar, not a glass/blur pill — per an explicit ask,
+        // Android gets its own full-device-width white bar flush with the
+        // bottom edge instead of the iOS floating pill. left:0/right:0 (no
+        // PILL_INSET), no borderRadius, paddingBottom: insets.bottom
+        // absorbs the safe area itself rather than floating PILL_BOTTOM_
+        // OFFSET above it — same "elevation only" shadow convention the
+        // iOS branch's own comment already documents for Android.
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#FFFFFF',
+            paddingBottom: insets.bottom,
+            elevation: 12,
+          }}
+        >
+          <View className="flex-row items-center justify-around px-2 py-2.5">
+            {BOTTOM_NAV_TABS.map((tab) => (
+              <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
+            ))}
+          </View>
+        </View>
+      ) : (
+        // Equal left/right (PILL_INSET, both sides) centers the pill on
+        // screen — per an explicit ask, same overall width as before, just
+        // no longer shifted left to leave room for the removed circle
+        // button. shadowOffset {0,0} + a real shadowRadius (not a
+        // directional offset) is what gives an even halo on every side
+        // rather than just below it — per an explicit ask for a shadow
+        // "for all the side".
+        <View
+          style={{
+            position: 'absolute',
+            left: PILL_INSET,
+            right: PILL_INSET,
+            bottom: insets.bottom + PILL_BOTTOM_OFFSET,
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.18,
+            shadowRadius: 16,
+          }}
+        >
+          {USE_LIQUID_GLASS ? (
+            // Real glass/blur materials work by refracting/blurring whatever
+            // sits BEHIND them — with nothing there (a plain page background,
+            // no scrolled content underneath), a fully-untinted GlassView has
+            // nothing to refract and reads as literally invisible instead of
+            // a pill. A light baseline tintColor + a hairline border is what
+            // keeps the pill visibly present on its own, while colorScheme
+            // ="light" + glassEffectStyle="regular" still let real content
+            // scrolling behind it show through and refract on top of that
+            // baseline — same idea BlurView's own wash+border fallback below
+            // already uses, just via the native tint instead of a manual
+            // overlay View.
+            <GlassView
+              glassEffectStyle="regular"
+              colorScheme="light"
+              // tintColor="rgba(255, 255, 255, 0.95)"
+              isInteractive
+              style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.08)' }}
+            >
+              <View className="flex-row items-center justify-around px-1 py-1.5">
+                {BOTTOM_NAV_TABS.map((tab) => (
+                  <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
+                ))}
+              </View>
+            </GlassView>
+          ) : (
+            // BlurView isn't one of NativeWind's auto-patched components — a
+            // className here is silently ignored, same as LinearGradient
+            // elsewhere in this app. Positioning/rounding must go through
+            // style. This branch is iOS-only in practice now (USE_LIQUID_GLASS
+            // is false only on very old iOS/Expo Go there) — Android has its
+            // own real bar above instead of ever reaching this BlurView
+            // fallback.
+            <BlurView
+              intensity={100}
+              tint="light"
+              style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }}
+            >
+              {/* Light wash, not the old dark one — BottomNavBarItem.tsx's
+                  icons/text are ink/black now, so the fallback pill needs to
+                  stay light too, same reasoning as the GlassView branch's own
+                  colorScheme="light" change. */}
+              <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+              <View className="flex-row items-center justify-around px-2 py-2.5">
+                {BOTTOM_NAV_TABS.map((tab) => (
+                  <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
+                ))}
+              </View>
+            </BlurView>
+          )}
+        </View>
+      )}
 
       </Animated.View>
 
-      {/* Sits right above the pill — insets.bottom + PILL_BOTTOM_OFFSET +
+      {/* Sits right above the nav bar — insets.bottom + NAV_BOTTOM_OFFSET +
           PILL_HEIGHT + 4 (that last 4 is the gap between the two rows,
           trimmed down from 10 — was reading as too much empty space) —
-          while the pill is visible. When the pill hides
+          while it's visible. NAV_BOTTOM_OFFSET (this file's own note on
+          why it differs from PILL_BOTTOM_OFFSET on Android) is what keeps
+          this lined up correctly against whichever container actually
+          rendered above. When the pill hides
           (navAnimatedStyle above), this row has nothing left to sit above,
           so cartBarAnimatedStyle slides it down by that same ~73px to
           rest near the real screen edge instead of floating in the gap
@@ -250,7 +273,7 @@ export function BottomNavBar({ hidden }: Props) {
           self-nulls when the cart's empty. */}
       <Animated.View
         pointerEvents="box-none"
-        style={[{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + PILL_BOTTOM_OFFSET + PILL_HEIGHT + 4 }, cartBarAnimatedStyle]}
+        style={[{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + NAV_BOTTOM_OFFSET + PILL_HEIGHT + 4 }, cartBarAnimatedStyle]}
         className="flex-row items-center justify-center"
       >
         <CartBar />
