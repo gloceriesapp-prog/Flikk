@@ -28,6 +28,7 @@ import {
   Logout01Icon,
   Store01Icon,
   TagsIcon,
+  Tick02Icon,
 } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,6 +37,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { BrandFooter } from '../../components/BrandFooter';
 import { colors } from '../../theme/tokens';
 import { getAvatarImageUri } from '../../theme/placeholderImage';
 import { uploadStorePhoto } from '../../api/auth';
@@ -52,6 +54,12 @@ import { StoreCategoryPicker } from './components/StoreCategoryPicker';
 import { TimeDigitsInput } from './components/TimeDigitsInput';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'StoreSettings'>;
+
+// Same flat gray Payouts/Orders/Catalog already use (PayoutsScreen.tsx's
+// own PAGE_BG, itself matching apps/customer's checkout flow,
+// CheckoutScreen.tsx's `#F1F2F4`) — cards stay solid white on top of it,
+// per an explicit ask to match it here too.
+const PAGE_BG = '#F1F2F4';
 
 export function StoreSettingsScreen({ navigation }: Props) {
   const profile = useStoreProfileStore((state) => state.profile);
@@ -155,16 +163,27 @@ export function StoreSettingsScreen({ navigation }: Props) {
     // gotcha: a Touchable ancestor competes with a nested ScrollView for
     // the touch responder on every scroll gesture, not just genuine taps).
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-        <View className="relative flex-row items-center px-5 py-3">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: PAGE_BG }} edges={['top']}>
+        {/* Tick02Icon on the right is the real Save now — replaces the
+            fixed bottom "Save changes" bar entirely (per an explicit ask),
+            same handleSave call, just triggered from the header instead of
+            a bar that sat below the scroll content. */}
+        <View className="relative flex-row items-center justify-between px-5 py-3">
           <Pressable
             onPress={() => navigation.goBack()}
-            className="h-10 w-10 items-center justify-center rounded-full bg-gray-100"
+            className="h-10 w-10 items-center justify-center rounded-full bg-white"
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
             <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
           </Pressable>
           <Text className="absolute left-0 right-0 text-center text-[20px] font-semibold text-ink">Store settings</Text>
+          <Pressable
+            onPress={handleSave}
+            className="h-10 w-10 items-center justify-center rounded-full bg-white"
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          >
+            <AppIcon icon={Tick02Icon} size={18} color={colors.success} />
+          </Pressable>
         </View>
 
         <ScrollView
@@ -180,7 +199,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
             <Pressable
               onPress={handlePickPhoto}
               disabled={uploadingPhoto}
-              className="h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-black/5 bg-gray-100 shadow-sm shadow-black/10"
+              className="h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-black/5 bg-white shadow-sm shadow-black/10"
               style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
               <Image source={{ uri: profile.photoUrl ?? getAvatarImageUri(profile.id || 'partner-store') }} className="h-full w-full" />
@@ -303,7 +322,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
             Verification persists it server-side the instant it succeeds. */}
           <PayoutAccountCard />
 
-          <View className="gap-4 rounded-3xl bg-[#F9FAFB] p-4 shadow-sm shadow-black/5">
+          <View className="gap-4 rounded-3xl bg-white p-4 shadow-sm shadow-black/5">
             <SettingsLinkRow icon={InformationCircleIcon} label="Help & support" onPress={() => { }} />
             {/* No confirmation dialog — RootNavigator swaps to the auth
               stack the instant accessToken clears, same "store update
@@ -322,17 +341,9 @@ export function StoreSettingsScreen({ navigation }: Props) {
               <Text className="text-[15px] font-semibold text-ink/40">v{appVersion}</Text>
             </View>
           </View>
-        </ScrollView>
 
-        <View className="px-5 pb-4 pt-2">
-          <Pressable
-            onPress={handleSave}
-            className="items-center justify-center rounded-full bg-ink py-4 shadow-lg shadow-black/20"
-            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-          >
-            <Text className="text-[17px] font-semibold text-white">Save changes</Text>
-          </Pressable>
-        </View>
+          <BrandFooter />
+        </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

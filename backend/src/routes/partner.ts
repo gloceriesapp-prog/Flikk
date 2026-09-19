@@ -17,6 +17,7 @@ import { toProductRow, validateProductInput, type ProductInput } from '../lib/pr
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
 import { toWebp } from '../utils/image.js';
+import { round2 } from '../lib/pricing.js';
 
 export const partnerRouter = Router();
 partnerRouter.use(requireAuth, requireRole('store_owner'), requireApproved);
@@ -192,6 +193,77 @@ partnerRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
       accountType: result.accountType,
       nameMatchScore: result.nameMatchScore,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// India Standard Time is a fixed +5:30 offset, no DST — same safe-to-
+// hardcode reasoning jobs/weeklyPayouts.ts's own IST_OFFSET_MS already
+// documents. A separate local copy here (not imported from that file) is
+// deliberate — this is a single-day boundary, not a week, and the two
+// have no real logic in common beyond both needing this same fixed
+// offset.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+function todayIstRange(now: Date = new Date()): { start: Date; end: Date } {
+  const istNow = new Date(now.getTime() + IST_OFFSET_MS);
+  const istMidnight = Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate());
+  return {
+    start: new Date(istMidnight - IST_OFFSET_MS),
+    end: new Date(istMidnight + 24 * 60 * 60 * 1000 - IST_OFFSET_MS),
+  };
+}
+
+// Real, server-computed daily stats for OrdersScreen's own top-of-screen
+// cards (TodayStatsCard) — these used to be derived client-side from
+// whatever useOrdersStore's queue happened to hold (every non-delivered/
+// non-cancelled order ever, no date scoping at all), which is why "Orders
+// today" and "Today's earning" never actually meant "today." Real IST
+// calendar-day boundaries here, same fixed-offset math weeklyPayouts.ts's
+// own previousWeekRange already established for its own weekly boundary.
+//
+// ordersToday/pendingToday are scoped by placed_at (today's real order
+// volume, and how many of those still need action) — earningToday is
+// scoped by delivered_at instead, and only ever includes orders that
+// actually reached 'delivered': a cancelled order never gets there at
+// all, and neither does one whose payment is still pending, so this
+// can't double-count a sale that never happened or later got refunded.
+// The figure itself is net of commission (item_total - commission_amount),
+// the same real money the store actually keeps — matching exactly what
+// accumulates into GET /partner/payouts, not the gross customer-paid
+// total (which includes the platform's own cut and the delivery fee,
+// neither of which the store ever receives).
+partnerRouter.get('/stats/today', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    const { start, end } = todayIstRange();
+
+    const { data: placedToday, error: placedErr } = await supabase
+      .from('orders')
+      .select('status')
+      .eq('store_id', storeId)
+      .gte('placed_at', start.toISOString())
+      .lt('placed_at', end.toISOString());
+    if (placedErr) throw placedErr;
+
+    const ordersToday = placedToday?.length ?? 0;
+    const pendingToday = (placedToday ?? []).filter((o) =>
+      ['placed', 'packed', 'out_for_delivery'].includes(o.status),
+    ).length;
+
+    const { data: deliveredToday, error: deliveredErr } = await supabase
+      .from('orders')
+      .select('item_total, commission_amount')
+      .eq('store_id', storeId)
+      .eq('status', 'delivered')
+      .gte('delivered_at', start.toISOString())
+      .lt('delivered_at', end.toISOString());
+    if (deliveredErr) throw deliveredErr;
+
+    const earningToday = round2((deliveredToday ?? []).reduce((sum, o) => sum + (o.item_total - o.commission_amount), 0));
+
+    res.json({ ordersToday, pendingToday, earningToday });
   } catch (err) {
     next(err);
   }

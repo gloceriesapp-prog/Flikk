@@ -10,11 +10,14 @@
 
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
+import { fetchTodayStats } from '../../api/stats';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { useStoreProfileStore } from '../../store/useStoreProfileStore';
+import { msUntilNextIstMidnight } from '../../utils/nextIstMidnight';
 import type { PartnerOrderStatus } from './data';
 import { OrderCard } from './components/OrderCard';
 import { OrderStatusFilter, type OrderStatusFilterValue } from './components/OrderStatusFilter';
@@ -59,6 +62,31 @@ export function OrdersScreen({ navigation }: Props) {
     void loadOrders();
   }, [loadProfile, loadOrders]);
 
+  // Real IST-calendar-day-scoped stats (api/stats.ts, GET /partner/stats/
+  // today) — replaces the old client-side derivation from useOrdersStore's
+  // queue, which had no date scoping at all (see TodayStatsCard.tsx's own
+  // former header note on that bug).
+  const queryClient = useQueryClient();
+  const { data: todayStats } = useQuery({ queryKey: ['stats-today'], queryFn: fetchTodayStats });
+
+  // Real day-boundary refresh, not a periodic poll — schedules exactly at
+  // the next real IST midnight (utils/nextIstMidnight.ts) and reschedules
+  // itself for the following day each time it fires, so a store owner who
+  // leaves this screen open across midnight sees today's numbers reset to
+  // the new day on their own instead of showing yesterday's stats until
+  // the next manual reload.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    function scheduleMidnightRefresh() {
+      timer = setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ['stats-today'] });
+        scheduleMidnightRefresh();
+      }, msUntilNextIstMidnight());
+    }
+    scheduleMidnightRefresh();
+    return () => clearTimeout(timer);
+  }, [queryClient]);
+
   // OrderCard's own onMarkPacked expects a plain (orderId) => void — this
   // wraps the store's real, throwing action so a failed PATCH surfaces as
   // an alert instead of an unhandled rejection (same "never bare `void
@@ -69,9 +97,6 @@ export function OrdersScreen({ navigation }: Props) {
       Alert.alert('Could not update order', err instanceof ApiError ? err.message : 'Please try again.');
     });
   }
-
-  const newOrderCount = orders.filter((order) => order.status === 'placed').length;
-  const earningTotal = orders.reduce((sum, order) => sum + order.total, 0);
 
   const visibleGroups = STATUS_GROUPS.filter(
     (group) => statusFilter === 'all' || statusFilter === group.filterValue
@@ -98,7 +123,11 @@ export function OrdersScreen({ navigation }: Props) {
       )}
 
       <View className="pb-1">
-        <TodayStatsCard orderCount={orders.length} pendingCount={newOrderCount} earningTotal={earningTotal} />
+        <TodayStatsCard
+          orderCount={todayStats?.ordersToday ?? 0}
+          pendingCount={todayStats?.pendingToday ?? 0}
+          earningTotal={todayStats?.earningToday ?? 0}
+        />
       </View>
 
       <View className="py-3">
