@@ -13,25 +13,29 @@
 // __DEV__ in HomeScreen.tsx/EarningsScreen.tsx), never this store's real
 // order source.
 //
-// Two real backend limitations this works around rather than pretends
-// don't exist:
-// 1. No presence/availability system — isOnline is a purely local UI
-//    concept (goOnline/goOffline never call the backend). Going offline
-//    doesn't tell admin anything; it only suppresses this app's own
-//    incoming-order interrupt for orders that arrive while offline (they
-//    still land quietly in the queue, per CLAUDE.md's manual-dispatch
-//    scope — the founder still has to actually reach the rider some other
-//    way to know they're free). Syncing itself always runs while a
-//    session exists, independent of this toggle, so an already-active
-//    delivery never goes stale just because the rider flips offline
-//    mid-drop.
-// 2. No accept/reject concept server-side — admin's PATCH /admin/orders/
-//    :id/assign-rider already commits the assignment before this app ever
-//    sees it. "Accept" here just acknowledges it locally (moves it into
-//    activeOrders); "Decline"/an expired accept window can't actually
-//    unassign anything — it only stops re-alerting on it locally
-//    (dismissedIds, in-memory only). The order stays real and assigned
-//    either way; there's no reassignment pool to return it to yet.
+// Real backend limitation this still works around rather than pretends
+// doesn't exist:
+// - No accept/reject concept for an ADMIN-assigned order specifically —
+//   admin's own PATCH /admin/orders/:id/assign-rider still commits that
+//   assignment before this app ever sees it (a manual override path that
+//   coexists with automated dispatch below, same atomic
+//   `rider_id is null` guard either way). "Accept" here just acknowledges
+//   it locally (moves it into activeOrders); "Decline"/an expired accept
+//   window can't actually unassign anything — it only stops re-alerting on
+//   it locally (dismissedIds, in-memory only). The order stays real and
+//   assigned either way; there's no reassignment pool to return it to yet.
+//
+// Presence/location IS real now (automated rider dispatch, explicit
+// CLAUDE.md scope override — see that file's own Scope discipline
+// section): goOnline/goOffline call PATCH /rider/status
+// (backend/src/routes/rider.ts), and while online a periodic ping
+// (LOCATION_PING_INTERVAL_MS) reports the rider's live position, which is
+// what lib/riderDispatch.ts's own nearby_online_riders RPC actually reads
+// when a store packs an order. `nearbyOffers`/startOffersPoll below are
+// the rider's own "available pickups near me" list backed by GET
+// /rider/dispatch-offers, separate from activeOrders — an offer only
+// becomes a real assignment (and shows up via the existing GET
+// /assignments poll) once acceptOffer wins the atomic accept race.
 //
 // Status step order mirrors backend/src/lib/orderStateMachine.ts's own
 // stages (placed -> packed -> out_for_delivery -> delivered) but split
@@ -44,8 +48,10 @@
 
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import { acceptDispatchOffer, fetchDispatchOffers, updateRiderStatus, type AcceptDispatchOfferResult, type DispatchOffer } from '../api/dispatch';
 import { fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders';
 import { generateMockOrder, generateMockRating, generateMockTip, type RiderOrder } from '../data/mockOrders';
+import { getCurrentCoordinates } from '../location/riderLocation';
 import { startOfWeek } from '../utils/earnings';
 
 export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'picked_up', 'arrived_at_customer', 'delivered'];
@@ -66,6 +72,12 @@ const POLL_INTERVAL_MS = 12_000;
 const HISTORY_KEY = 'flikk_rider_order_history';
 const MAX_HISTORY = 200;
 
+// How often, while online, to report a fresh position + refresh the
+// nearby-offers list. Balanced accuracy (getCurrentCoordinates), not
+// continuous high-accuracy tracking — this only needs to be fresh enough
+// for a 3-8km dispatch radius, not turn-by-turn precision.
+const LOCATION_PING_INTERVAL_MS = 45_000;
+
 async function persistHistory(orders: RiderOrder[]): Promise<void> {
   await SecureStore.setItemAsync(HISTORY_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY)));
 }
@@ -79,6 +91,11 @@ interface RiderOrdersState {
   completedOrders: RiderOrder[];
   cancelledOrders: RiderOrder[];
   isHistoryHydrated: boolean;
+  // Real, currently-open dispatch offers within range of wherever
+  // goOnline's own location loop last reported — see this file's own
+  // header note. Cleared the moment the rider goes offline.
+  nearbyOffers: DispatchOffer[];
+  acceptOffer: (orderId: string) => Promise<AcceptDispatchOfferResult>;
   // In-memory only, on purpose (this file's own header note #2) — an
   // order dismissed this session shouldn't keep re-interrupting, but a
   // fresh app launch is a legitimate reason to see a still-unacknowledged
@@ -104,6 +121,14 @@ interface RiderOrdersState {
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let autoDeclineTimer: ReturnType<typeof setTimeout> | null = null;
+let locationPingTimer: ReturnType<typeof setInterval> | null = null;
+
+function stopLocationPing() {
+  if (locationPingTimer) {
+    clearInterval(locationPingTimer);
+    locationPingTimer = null;
+  }
+}
 
 function clearAutoDeclineTimer() {
   if (autoDeclineTimer) {
@@ -122,6 +147,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
   cancelledOrders: [],
   isHistoryHydrated: false,
   dismissedIds: new Set(),
+  nearbyOffers: [],
 
   hydrateHistory: async () => {
     const raw = await SecureStore.getItemAsync(HISTORY_KEY);
@@ -225,10 +251,43 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
 
   goOnline: () => {
     set((state) => ({ isOnline: true, onlineSince: state.isOnline ? state.onlineSince : Date.now() }));
+
+    // One real ping-and-refresh loop covers both jobs: report this
+    // rider's current position (what nearby_online_riders reads) and pull
+    // a fresh nearbyOffers list from it (what nearby_dispatch_offers
+    // reads) — no reason to sample GPS twice for two purposes that both
+    // need the exact same fix.
+    async function pingAndRefresh() {
+      const coords = await getCurrentCoordinates().catch(() => null);
+      if (!coords) return; // permission denied / no fix yet — try again next tick
+      await updateRiderStatus({ status: 'online', lat: coords.latitude, lng: coords.longitude }).catch(() => {});
+      const offers = await fetchDispatchOffers(coords.latitude, coords.longitude).catch(() => null);
+      if (offers) set({ nearbyOffers: offers });
+    }
+
+    stopLocationPing();
+    void pingAndRefresh();
+    locationPingTimer = setInterval(() => void pingAndRefresh(), LOCATION_PING_INTERVAL_MS);
   },
 
   goOffline: () => {
-    set({ isOnline: false, onlineSince: null });
+    set({ isOnline: false, onlineSince: null, nearbyOffers: [] });
+    stopLocationPing();
+    void updateRiderStatus({ status: 'offline' }).catch(() => {});
+  },
+
+  acceptOffer: async (orderId) => {
+    const result = await acceptDispatchOffer(orderId);
+    if (result.ok) {
+      // Optimistic removal — the next GET /assignments poll (already
+      // running via startSync) picks this up into activeOrders on its own
+      // within POLL_INTERVAL_MS; no need to duplicate that fetch here.
+      set((state) => ({ nearbyOffers: state.nearbyOffers.filter((o) => o.orderId !== orderId) }));
+    } else if (result.alreadyTaken) {
+      // Lost the race — this offer is gone regardless of who got it.
+      set((state) => ({ nearbyOffers: state.nearbyOffers.filter((o) => o.orderId !== orderId) }));
+    }
+    return result;
   },
 
   acceptIncomingOrder: () => {

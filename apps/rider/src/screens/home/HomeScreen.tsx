@@ -18,6 +18,7 @@ import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ActiveDeliveryCard } from './components/ActiveDeliveryCard';
 import { DeliveryHistoryRow } from './components/DeliveryHistoryRow';
+import { DispatchOfferCard } from './components/DispatchOfferCard';
 import { FilterChipRow, type DeliveryFilter } from './components/FilterChipRow';
 import { HomeGreeting } from './components/HomeGreeting';
 import { LastRatingCallout } from './components/LastRatingCallout';
@@ -34,6 +35,8 @@ export function HomeScreen() {
   const onlineSince = useRiderOrdersStore((s) => s.onlineSince);
   const goOnline = useRiderOrdersStore((s) => s.goOnline);
   const goOffline = useRiderOrdersStore((s) => s.goOffline);
+  const nearbyOffers = useRiderOrdersStore((s) => s.nearbyOffers);
+  const acceptOffer = useRiderOrdersStore((s) => s.acceptOffer);
   const activeOrders = useRiderOrdersStore((s) => s.activeOrders);
   const completedOrders = useRiderOrdersStore((s) => s.completedOrders);
   const cancelledOrders = useRiderOrdersStore((s) => s.cancelledOrders);
@@ -76,6 +79,19 @@ export function HomeScreen() {
       </View>
 
       {/* {completedOrders[0] ? <LastRatingCallout order={completedOrders[0]} /> : null} */}
+
+      {/* Real, currently-open dispatch offers within range — automated
+          rider dispatch, explicit CLAUDE.md scope override. Only ever
+          populated while online (useRiderOrdersStore's own goOnline
+          starts the location-ping-and-refresh loop that fills this). */}
+      {isOnline && nearbyOffers.length > 0 ? (
+        <View className="gap-2">
+          <Text className="px-1 text-xs font-bold uppercase tracking-wide text-ink/40">Pickups near you</Text>
+          {nearbyOffers.map((offer) => (
+            <DispatchOfferCard key={offer.orderId} offer={offer} onAccept={acceptOffer} />
+          ))}
+        </View>
+      ) : null}
 
       <View className="gap-3">
         <FilterChipRow

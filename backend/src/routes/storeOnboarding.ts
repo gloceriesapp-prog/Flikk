@@ -19,44 +19,58 @@ export const storeOnboardingRouter = Router();
 // Same bucket admin's own Add Store form uploads to (apps/admin/src/
 // app/api/upload/route.ts's ALLOWED_BUCKETS) — one real Storage bucket for
 // every storefront photo regardless of which surface uploaded it, not a
-// second one. 'store-photos' (the old value here) was never actually
-// created in Supabase — every onboarding photo upload was silently
-// failing against a bucket that didn't exist.
+// second one.
 const PHOTO_BUCKET = 'store-images';
+
+interface OnboardingFields {
+  storeName?: string;
+  category?: string;
+  phone?: string;
+  district?: string;
+  addressLine?: string;
+  manualAddress?: string;
+  gstNumber?: string;
+  photoUrl?: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  shopLicenseNumber?: string;
+  fssaiNumber?: string;
+  panNumber?: string;
+  udyamNumber?: string;
+  openTime?: string;
+  closeTime?: string;
+}
 
 // Submitting no longer writes a real `stores` row — it only marks the
 // draft as "ready for review" (submitted_at). The real store row (and the
 // role flip to store_owner) is created later, by admin's own approve
-// action (apps/admin/src/app/api/approvals/stores/[userId]/route.ts) —
-// per an explicit ask: a founder rejecting an application should never
-// leave a half-real store sitting in the main `stores` table. Until
-// approved, this applicant is still just a 'customer' role with a pending
-// draft; nothing in the real product data model knows they applied except
-// this one row.
+// action (apps/admin/src/app/api/approvals/stores/[userId]/route.ts).
 storeOnboardingRouter.post('/store-application', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { storeName, category, district, addressLine, gstNumber, photoUrl, ownerName, shopLicenseNumber, fssaiNumber, panNumber } =
-      req.body as {
-        storeName?: string;
-        category?: string;
-        district?: string;
-        addressLine?: string;
-        gstNumber?: string;
-        photoUrl?: string;
-        ownerName?: string;
-        shopLicenseNumber?: string;
-        fssaiNumber?: string;
-        panNumber?: string;
-      };
+    const {
+      storeName,
+      category,
+      phone,
+      district,
+      addressLine,
+      manualAddress,
+      gstNumber,
+      photoUrl,
+      ownerName,
+      ownerEmail,
+      shopLicenseNumber,
+      fssaiNumber,
+      panNumber,
+      udyamNumber,
+      openTime,
+      closeTime,
+    } = req.body as OnboardingFields;
     if (!storeName || !category || !district) {
       throw new AppError(400, 'MISSING_FIELDS', 'storeName, category and district are required.');
     }
     // PAN is the one compulsory document at submit time — real per an
     // explicit ask (tax/payout compliance applies to every store
-    // regardless of category), unlike FSSAI which genuinely doesn't apply
-    // to every STORE_CATEGORIES entry (Hardware, Paint Shop, Steel &
-    // Vessels aren't food businesses at all). FSSAI/GST/shop-license stay
-    // optional here, same as before.
+    // regardless of category). GST/Udyam/FSSAI/shop-license stay optional.
     if (!panNumber || !isValidPanFormat(panNumber)) {
       throw new AppError(400, 'INVALID_PAN_FORMAT', 'A valid PAN (e.g. ABCDE1234F) is required to submit your application.');
     }
@@ -69,14 +83,19 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
         user_id: req.user!.id,
         store_name: storeName,
         category,
+        phone: phone || null,
         district,
         address_line: addressLine || null,
+        manual_address: manualAddress || null,
         gst_number: gstNumber || null,
         photo_url: photoUrl || null,
         owner_name: ownerName || null,
         shop_establishment_number: shopLicenseNumber || null,
         fssai_number: fssaiNumber || null,
         pan_number: panNumber.trim().toUpperCase(),
+        udyam_number: udyamNumber || null,
+        open_time: openTime || null,
+        close_time: closeTime || null,
         // Clears out any reason from a previous rejection — a fresh
         // submission means a fresh review, not the old verdict still
         // hanging around next to it.
@@ -87,6 +106,13 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
       { onConflict: 'user_id' },
     );
     if (error) throw error;
+
+    // Owner's own optional email — a real users.email column, a separate
+    // table from the draft above, so this is its own update rather than
+    // one more field in that same upsert.
+    if (ownerEmail) {
+      await supabase.from('users').update({ email: ownerEmail }).eq('id', req.user!.id);
+    }
 
     // Resubmitting after a rejection is a fresh review, not a continuation
     // of the old one — clear is_rejected so GET /auth/me stops reporting
@@ -99,26 +125,29 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
   }
 });
 
-// Store Setup's own "resume where you left off" — every step (StoreSetup/
-// StoreDetails screens) PUTs whatever fields it just collected, merged
-// onto whatever's already saved; RootNavigator's own AuthNavigator drops a
-// returning has_store:false session at StoreSetupScreen, which GETs this
-// on mount to decide which step to actually resume at instead of always
-// restarting from a blank Step 1. requireAuth only, same reasoning as
-// /store-application: this exists specifically for someone who hasn't
-// finished becoming a store_owner yet.
+// Store Setup's own "resume where you left off" — every step PATCHes
+// whatever fields it just collected, merged onto whatever's already
+// saved; OnboardingIntroScreen's own "Get Started" tap GETs this to decide
+// which real step to resume at instead of always restarting from a blank
+// first step.
 storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     const { data, error } = await supabase
       .from('store_onboarding_drafts')
       .select(
-        'store_name, category, district, address_line, lat, lng, photo_url, gst_number, owner_name, shop_establishment_number, fssai_number, pan_number, submitted_at',
+        'store_name, category, phone, district, address_line, manual_address, lat, lng, photo_url, gst_number, owner_name, shop_establishment_number, fssai_number, pan_number, udyam_number, open_time, close_time, submitted_at',
       )
       .eq('user_id', req.user!.id)
       .maybeSingle();
     if (error) throw error;
 
-    res.json(data ?? null);
+    let ownerEmail: string | null = null;
+    if (data) {
+      const { data: user } = await supabase.from('users').select('email').eq('id', req.user!.id).single();
+      ownerEmail = user?.email ?? null;
+    }
+
+    res.json(data ? { ...data, owner_email: ownerEmail } : null);
   } catch (err) {
     next(err);
   }
@@ -126,26 +155,30 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
 
 storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { storeName, category, district, addressLine, lat, lng, photoUrl, gstNumber, ownerName, shopLicenseNumber, fssaiNumber, panNumber } =
-      req.body as {
-        storeName?: string;
-        category?: string;
-        district?: string;
-        addressLine?: string;
-        lat?: number;
-        lng?: number;
-        photoUrl?: string;
-        gstNumber?: string;
-        ownerName?: string;
-        shopLicenseNumber?: string;
-        fssaiNumber?: string;
-        panNumber?: string;
-      };
+    const {
+      storeName,
+      category,
+      phone,
+      district,
+      addressLine,
+      manualAddress,
+      lat,
+      lng,
+      photoUrl,
+      gstNumber,
+      ownerName,
+      ownerEmail,
+      shopLicenseNumber,
+      fssaiNumber,
+      panNumber,
+      udyamNumber,
+      openTime,
+      closeTime,
+    } = req.body as OnboardingFields & { lat?: number; lng?: number };
 
     // Same real format guard as final submit (POST /store-application) and
-    // Store Settings' own PATCH /store — a Step 2 auto-save shouldn't let
-    // an obviously malformed number sit in the draft either, even before
-    // the owner reaches Review.
+    // Store Settings' own PATCH /store — a Step-by-step autosave shouldn't
+    // let an obviously malformed number sit in the draft either.
     if (typeof fssaiNumber === 'string' && fssaiNumber.trim() && !isValidFssaiFormat(fssaiNumber)) {
       throw new AppError(400, 'INVALID_FSSAI_FORMAT', 'FSSAI license number must be exactly 14 digits.');
     }
@@ -154,13 +187,15 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
     }
 
     // Partial upsert — only fields the caller actually sent overwrite the
-    // existing row; a Step 2 PUT (photo/location/GST) must never blank out
-    // Step 1's storeName/category/ownerName that a separate PUT already saved.
+    // existing row; one step's own PATCH must never blank out an earlier
+    // step's already-saved fields.
     const patch: Record<string, unknown> = { user_id: req.user!.id, updated_at: new Date().toISOString() };
     if (storeName !== undefined) patch.store_name = storeName;
     if (category !== undefined) patch.category = category;
+    if (phone !== undefined) patch.phone = phone;
     if (district !== undefined) patch.district = district;
     if (addressLine !== undefined) patch.address_line = addressLine;
+    if (manualAddress !== undefined) patch.manual_address = manualAddress;
     if (lat !== undefined) patch.lat = lat;
     if (lng !== undefined) patch.lng = lng;
     if (photoUrl !== undefined) patch.photo_url = photoUrl;
@@ -169,9 +204,16 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
     if (shopLicenseNumber !== undefined) patch.shop_establishment_number = shopLicenseNumber;
     if (fssaiNumber !== undefined) patch.fssai_number = fssaiNumber;
     if (panNumber !== undefined) patch.pan_number = typeof panNumber === 'string' ? panNumber.trim().toUpperCase() : panNumber;
+    if (udyamNumber !== undefined) patch.udyam_number = udyamNumber;
+    if (openTime !== undefined) patch.open_time = openTime;
+    if (closeTime !== undefined) patch.close_time = closeTime;
 
     const { error } = await supabase.from('store_onboarding_drafts').upsert(patch, { onConflict: 'user_id' });
     if (error) throw error;
+
+    if (ownerEmail !== undefined) {
+      await supabase.from('users').update({ email: ownerEmail || null }).eq('id', req.user!.id);
+    }
 
     res.status(200).json({ ok: true });
   } catch (err) {
@@ -180,11 +222,8 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
 });
 
 // Storefront photo upload — base64 in, public Supabase Storage URL out.
-// requireAuth only, same reasoning as above: the owner uploading their
-// storefront photo during signup isn't role='store_owner' yet. Re-encoded
-// to webp (utils/image.ts's toWebp) before it reaches Storage — same
-// normalization the product-photo route and admin's own upload route do,
-// so every storefront photo is webp regardless of source format.
+// Still used by StoreSettingsScreen post-approval even though onboarding
+// itself no longer collects a photo (StoreDraft's own note on why).
 storeOnboardingRouter.post('/store-photo', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     const { base64 } = req.body as { base64?: string };

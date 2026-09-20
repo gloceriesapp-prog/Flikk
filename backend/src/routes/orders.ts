@@ -19,6 +19,7 @@ import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
 import { rankRepeatPurchases, reorderByRank } from '../lib/buyItAgain.js';
 import { calcDeliveryFee, getDeliverySettings } from '../lib/deliverySettings.js';
 import { refundPayment } from '../payments/refundPayment.js';
+import { triggerDispatch } from '../lib/riderDispatch.js';
 
 // Only these three transitions are ones the customer didn't just cause
 // themselves (they placed the order) or won't see reflected in the receipt
@@ -372,6 +373,17 @@ ordersRouter.patch(
         .select()
         .single();
       if (updateErr) throw updateErr;
+
+      // Real automated dispatch — fires the moment a store packs an order,
+      // never blocks this response (fire-and-forget, same convention this
+      // handler's own push-notification call below already uses).
+      // lib/riderDispatch.ts's own note has the full broadcast + atomic-
+      // accept-wins design.
+      if (to === 'packed') {
+        void triggerDispatch({ id: updated.id, store_id: updated.store_id }).catch((err) =>
+          console.error('[riderDispatch] triggerDispatch failed for order', updated.id, err),
+        );
+      }
 
       if (to === 'delivered') {
         // rider_earnings write-on-delivery. See specs/03-rider-app/flows.md.

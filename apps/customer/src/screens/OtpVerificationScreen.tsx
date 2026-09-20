@@ -27,6 +27,7 @@ import { OtpBoxInput } from '../components/OtpBoxInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useAuthStore } from '../store/useAuthStore';
 import { colors } from '../theme/tokens';
+import { roleMismatchMessage } from '../utils/roleGuard';
 import type { AuthStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
@@ -73,7 +74,17 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
       setError(null);
       setLoading(true);
       try {
-        const { access_token, refresh_token } = await verifyOtp(phone, otp);
+        const { access_token, refresh_token, role } = await verifyOtp(phone, otp);
+        // One phone number, one role — checked BEFORE setSession ever
+        // persists anything, so a mismatched account (already an approved
+        // Partner/Rider elsewhere) never gets into a half-working logged-in
+        // state on this app (utils/roleGuard.ts's own note).
+        const mismatch = roleMismatchMessage(role);
+        if (mismatch) {
+          setError(mismatch);
+          setCode('');
+          return;
+        }
         await setSession(access_token, refresh_token);
         // RootNavigator swaps to the app shell automatically once accessToken is set
       } catch (err) {

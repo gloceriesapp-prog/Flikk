@@ -72,6 +72,10 @@ export async function devVerifyOtp(phone: string, code: string): Promise<VerifyO
     is_approved: account.isApproved,
     has_store: account.hasStore,
     application_submitted: account.applicationSubmitted,
+    // Mirrors the real backend rule (auth.ts's own note): role only ever
+    // flips to store_owner once a real store exists, same as the
+    // simulated "admin approve" below does for hasStore.
+    role: account.hasStore ? 'store_owner' : 'customer',
   };
 }
 

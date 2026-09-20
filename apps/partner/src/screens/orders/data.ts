@@ -205,6 +205,44 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
   ];
 }
 
+// Dev-only — fires the exact real "new order" path (useOrdersStore's own
+// simulateIncomingOrder injects this into `orders` AND newlyArrivedOrderIds
+// together, which is the one condition useIncomingOrderAlert.ts's effect
+// actually watches for) so previewing the full-screen alert + its sound
+// means testing the real production trigger, not a separate mock screen
+// that could quietly drift from what a genuine incoming order does.
+// 'sample-' id prefix reuses the same short-circuit markPacked/rejectOrder
+// already have for sample data — tapping Accept/Reject on this never hits
+// the real backend with a fake id.
+let simulatedOrderCounter = 0;
+
+export function buildSimulatedIncomingOrder(now: number = Date.now()): PartnerOrder {
+  simulatedOrderCounter += 1;
+  const orderNumber = `FLK-${100050 + simulatedOrderCounter}`;
+  return {
+    id: `sample-sim-${now}-${simulatedOrderCounter}`,
+    orderNumber,
+    customerName: 'Test Customer',
+    items: [
+      { name: 'Toor Dal', quantity: 1, unit: '1 kg', price: 145, imageUrl: null },
+      { name: 'Amul Milk', quantity: 2, unit: '500 ml', price: 56, imageUrl: null },
+    ],
+    total: 231,
+    itemTotal: 201,
+    commissionAmount: 12.06,
+    netPayout: 188.94,
+    status: 'placed',
+    placedAtLabel: 'Just now',
+    placedAtTime: new Date(now).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    orderCount: 1,
+    paymentMode: 'cod',
+    deliveryAddress: ['12, Bunts Hostel Road', 'Near Kapu Junction'],
+    customerPhone: '+919900099999',
+    placedAtTimestamp: now,
+    isSample: true,
+  };
+}
+
 // Same rounding backend/src/lib/pricing.ts's own round2 does — item_total
 // and commission_amount are each already 2dp from the server, but a plain
 // JS subtraction of two such values can still land on something like

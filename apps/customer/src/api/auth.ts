@@ -3,12 +3,21 @@
 // specs/00-foundation/auth-and-roles.md. No customer-specific auth logic.
 
 import { apiRequest } from './client';
+import type { AccountRole } from '../utils/roleGuard';
 
 export function requestOtp(phone: string): Promise<{ ok: true }> {
   return apiRequest('/auth/otp/request', { method: 'POST', body: { phone }, auth: false });
 }
 
-export function verifyOtp(phone: string, code: string): Promise<{ access_token: string; refresh_token: string }> {
+export interface VerifyOtpResult {
+  access_token: string;
+  refresh_token: string;
+  // One phone number, one role (utils/roleGuard.ts's own note) — checked
+  // by OtpVerificationScreen.tsx before ever persisting this session.
+  role: AccountRole;
+}
+
+export function verifyOtp(phone: string, code: string): Promise<VerifyOtpResult> {
   return apiRequest('/auth/otp/verify', { method: 'POST', body: { phone, code }, auth: false });
 }
 

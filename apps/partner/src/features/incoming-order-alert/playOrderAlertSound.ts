@@ -20,8 +20,21 @@
 // needs to be heard. App.tsx calls primeOrderAlertSound() once on launch
 // so both the audio session and the file itself have had time to warm up
 // well before any real order arrives.
+//
+// Volume: `player.volume = 1` is only the app's own gain — the real
+// ceiling on how loud this can get is the phone's own hardware media
+// volume, which no app can play sound above by design (both iOS and
+// Android deliberately block apps from silently blasting audio out past
+// whatever the user set). react-native-volume-manager is what actually
+// moves that ceiling: `boostToMaxVolume` pushes the device's real media
+// volume to 100% right before playing (no native volume-change toast —
+// showUI: false), then `scheduleVolumeRestore` puts it back to whatever
+// the shop owner had it at, a few seconds after the alert's had time to
+// play through. This needs a real native dev build, not Expo Go — see
+// this package's own README ("Expo Go is not supported").
 
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import { VolumeManager } from 'react-native-volume-manager';
 
 const SOUND_URL = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/voice-sound/orders-received.mp3';
 
@@ -46,6 +59,50 @@ async function ensureAudioMode(): Promise<void> {
 // restarts it from the top instead of overlapping two instances.
 let player: AudioPlayer | null = null;
 
+// Long enough to cover the alert clip playing through at least once —
+// restoring right after calling .play() would put the shop owner's
+// original volume back before they'd actually heard it. Re-armed on every
+// new alert (see playOrderAlertSound below), so back-to-back orders keep
+// the device at max volume continuously rather than dipping between them.
+const VOLUME_RESTORE_DELAY_MS = 8000;
+
+// The device's real volume before this module touched it — null means
+// "nothing to restore" (either never boosted yet, or already restored).
+// Kept as module state, not per-call, so a second order arriving mid-alert
+// doesn't overwrite this with the already-boosted (1.0) value.
+let volumeBeforeBoost: number | null = null;
+let restoreTimeout: ReturnType<typeof setTimeout> | null = null;
+
+async function boostToMaxVolume(): Promise<void> {
+  try {
+    if (volumeBeforeBoost === null) {
+      const { volume } = await VolumeManager.getVolume();
+      volumeBeforeBoost = volume;
+    }
+    // showUI: false, playSound: false — this is a silent volume change,
+    // not a user-initiated one; showing Android's native volume HUD (or
+    // playing its own confirmation tone) over an incoming-order alert
+    // would be its own distraction.
+    await VolumeManager.setVolume(1, { type: 'music', showUI: false, playSound: false });
+  } catch {
+    // Best-effort — this needs a real native dev build and a physical
+    // device (the package's own README: no Expo Go, no iOS simulator).
+    // A failure here must never block the alert sound itself, which still
+    // plays at whatever volume the OS already has set.
+  }
+}
+
+function scheduleVolumeRestore(): void {
+  if (restoreTimeout) clearTimeout(restoreTimeout);
+  restoreTimeout = setTimeout(() => {
+    restoreTimeout = null;
+    if (volumeBeforeBoost === null) return;
+    const restoreTo = volumeBeforeBoost;
+    volumeBeforeBoost = null;
+    VolumeManager.setVolume(restoreTo, { type: 'music', showUI: false, playSound: false }).catch(() => {});
+  }, VOLUME_RESTORE_DELAY_MS);
+}
+
 // Call once, fire-and-forget, at app launch — see file header. Safe to
 // call more than once (ensureAudioMode/createAudioPlayer both no-op past
 // the first real call), so there's no harm if it's ever invoked twice.
@@ -56,18 +113,20 @@ export async function primeOrderAlertSound(): Promise<void> {
 
 export async function playOrderAlertSound(): Promise<void> {
   await ensureAudioMode();
+  // Fire-and-forget on purpose — boosting the device volume must never
+  // delay the sound itself from starting. A failed/slow volume boost
+  // still leaves the alert playing at whatever volume was already set.
+  void boostToMaxVolume();
 
   if (!player) {
     player = createAudioPlayer({ uri: SOUND_URL });
   } else {
     player.seekTo(0);
   }
-  // Max app-level gain — this is the ceiling this code controls. The
-  // actual loudness a shop owner hears is still capped by the device's
-  // hardware media volume; no app API can push sound out above that
-  // (iOS/Android both block apps from silently cranking the system
-  // volume, for obvious reasons) — turning the phone's own volume up is
-  // the only way past this ceiling.
+  // Max app-level gain — the ceiling this code alone controls.
+  // boostToMaxVolume above is what actually raises the device's own
+  // hardware volume past wherever the shop owner had it.
   player.volume = 1;
   player.play();
+  scheduleVolumeRestore();
 }

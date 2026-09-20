@@ -28,6 +28,11 @@ export interface VerifyOtpResponse {
   is_approved: boolean;
   has_store: boolean;
   application_submitted: boolean;
+  // One phone number, one role — real across all 4 apps (they share one
+  // users table). Never mutated by verifying OTP; only a real admin
+  // approval changes it. Each app's own OTP screen checks this against
+  // the role(s) that app allows before ever persisting the session.
+  role: 'customer' | 'store_owner' | 'rider' | 'admin';
 }
 
 export interface RefreshResponse {

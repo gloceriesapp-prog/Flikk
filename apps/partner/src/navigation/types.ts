@@ -8,34 +8,58 @@
 // renders one or the other, never both at once, same split as
 // apps/customer/src/navigation/{RootNavigator,AuthNavigator}.tsx.
 
-// The 3-step Store Setup wizard's accumulating state — each step fills in
-// more of it and passes the whole thing forward as a route param (this
-// stack is never deep-linked, so a plain threaded object is the smaller
-// diff than a store slice for a one-shot 3-screen handoff). photoUrl is
-// only ever a *hosted* URL (StoreDetailsScreen uploads immediately after
-// picking, see uploadStorePhoto) — StoreReviewScreen never deals with a
-// local file URI.
+// The onboarding wizard's accumulating state — each step fills in more of
+// it and passes the whole thing forward as a route param (this stack is
+// never deep-linked, so a plain threaded object is the smaller diff than a
+// store slice). Rebuilt as a real 6-step flow (Intro → Store Details →
+// Store Location → Owner Details → Business Documents → Store Hours →
+// Review), one focused topic per screen, replacing the older 3-step
+// version that had crammed photo/location/four documents into one screen.
+//
+// Photo is deliberately no longer collected during onboarding — dropped
+// per an explicit ask to keep the wizard lightweight; a store owner adds
+// one anytime afterward via StoreSettingsScreen, same as changing it later
+// always worked. FSSAI/Shop & Establishment license are still real,
+// storable fields (kept here and on the backend, still editable in
+// StoreSettingsScreen post-approval) but are no longer collected in the
+// wizard itself — only PAN/GST/Udyam are, per the new Business Documents
+// step's own explicit field list.
 export interface StoreDraft {
   storeName: string;
   category: string;
+  // Store's own contact number — a real, separate field from the
+  // account's own OTP-verified login phone (Owner Details step shows that
+  // one read-only). A shop's landline/alternate number, not assumed to be
+  // the same as whoever's holding the phone during onboarding.
+  phone: string;
   district: string | null;
   // The full reverse-geocoded address (LocationPinScreen's own
-  // reverseGeocodeAddress) — used to just build that screen's own confirm
-  // card, then discarded; now carried all the way through to
-  // stores.address_line so a real address shows in StoreProfileHeader
-  // instead of just the district.
+  // reverseGeocodeAddress) — carried through to stores.address_line so a
+  // real address shows in StoreProfileHeader instead of just the district.
   addressLine: string | null;
+  // A genuinely different field from addressLine above — the shop owner's
+  // own typed description, never derived from the map pin.
+  manualAddress: string;
   coordinates: import('../location/geocoding').Coordinates | null;
   photoUrl: string | null;
   gstNumber: string;
   ownerName: string;
+  // Owner's own optional contact email — a real users.email column,
+  // distinct from Supabase Auth's own internal email field (this app
+  // never uses email/password auth).
+  ownerEmail: string;
   shopLicenseNumber: string;
-  // FSSAI stays optional (doesn't apply to every STORE_CATEGORIES entry —
-  // Hardware/Paint Shop/Steel & Vessels aren't food businesses); PAN is
-  // the one compulsory document, enforced by StoreReviewScreen's own
-  // canSubmit gate and POST /store-application server-side.
   fssaiNumber: string;
   panNumber: string;
+  // Udyam/business registration number — optional, same "add later if you
+  // don't have one" treatment as GST (Business Documents step's own copy).
+  udyamNumber: string;
+  // "9:00 AM" / "9:00 PM" — same free-text shape StoreProfile's own
+  // openTime/closeTime always used (TimeDigitsInput.tsx), now collected
+  // during onboarding instead of left entirely to Store Settings
+  // afterward.
+  openTime: string;
+  closeTime: string;
 }
 
 export type AuthStackParamList = {
@@ -50,23 +74,37 @@ export type AuthStackParamList = {
   // arrive" a mystery.
   OtpVerification: { phone: string; devMode: boolean };
   // Only reached when the verify response says has_store: false — an
-  // existing, already-onboarded owner skips straight past this. Step 1/3:
-  // name + category only, starts a fresh StoreDraft. `draft` is only set
-  // when reached via an "Edit" tap from StoreReviewScreen — its presence
-  // is what skips the cold-start "resume where you left off" fetch below
-  // (see StoreSetupScreen.tsx's own note), so editing never gets hijacked
-  // by that auto-forward-to-Review logic.
-  StoreSetup: { draft?: StoreDraft } | undefined;
-  // Step 2/3: photo + location + optional GST — appends to the draft
-  // step 1 started.
+  // existing, already-onboarded owner skips straight past this. Screen 1
+  // of the wizard: no fields, just "Get Started" — that tap is what
+  // fetches the saved draft and decides which real step to resume at
+  // (OnboardingIntroScreen.tsx's own note), not a cold-start effect the
+  // way the old StoreSetupScreen did it. `draft` is only set when reached
+  // via an "Edit" tap from StoreReviewScreen.
+  OnboardingIntro: { draft?: StoreDraft } | undefined;
+  // Store name, category, store's own contact phone — no address/photo
+  // here anymore, each now has its own dedicated step.
   StoreDetails: { draft: StoreDraft };
-  // Step 3/3: read-only summary + the actual submit — no field entry here,
-  // just confirming what steps 1-2 collected.
+  // Dedicated "mark your store on the map" step — wraps the same real
+  // map-pin flow LocationPin already is (reused, not reinvented), just as
+  // its own linear wizard step instead of a sub-action buried inside
+  // Store Details.
+  StoreLocation: { draft: StoreDraft };
+  // Owner's own full name, their real OTP-verified login phone (read-only
+  // display), optional email.
+  OwnerDetails: { draft: StoreDraft };
+  // PAN (required) / GST (optional) / Udyam (optional) — no FSSAI/shop
+  // license here anymore, see StoreDraft's own note on why.
+  BusinessDocuments: { draft: StoreDraft };
+  // Regular opening/closing hours — same free-text "9:00 AM"/"9:00 PM"
+  // shape Store Settings already uses.
+  StoreHours: { draft: StoreDraft };
+  // Final step: read-only summary + the actual submit — no field entry
+  // here, just confirming what every earlier step collected.
   StoreReview: { draft: StoreDraft };
-  // Full-screen draggable-pin confirm step reached from StoreDetails'
-  // "Enable location" button. onConfirm is a plain callback, not a
-  // serialized param — see StoreDraft's own note on why a threaded object
-  // is enough for this whole wizard.
+  // Full-screen draggable-pin confirm step reached from StoreLocation.
+  // onConfirm is a plain callback, not a serialized param — see
+  // StoreDraft's own note on why a threaded object is enough for this
+  // whole wizard.
   LocationPin: {
     initialCoordinates: import('../location/geocoding').Coordinates | null;
     // addressLine is the real reverse-geocoded full address this screen

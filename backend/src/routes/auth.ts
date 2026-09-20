@@ -29,12 +29,12 @@ authRouter.post('/otp/verify', async (req, res, next) => {
     // Same lazy-provisioning as requireAuth (see that file's own note) —
     // verify is the very first authenticated call for a brand-new phone
     // number, so no public.users row exists yet either.
-    let { data: userRow } = await supabase.from('users').select('is_approved').eq('id', userId).single();
+    let { data: userRow } = await supabase.from('users').select('is_approved, role').eq('id', userId).single();
     if (!userRow) {
       const { data: created } = await supabase
         .from('users')
         .insert({ id: userId, phone, role: 'customer' })
-        .select('is_approved')
+        .select('is_approved, role')
         .single();
       userRow = created;
     }
@@ -63,6 +63,16 @@ authRouter.post('/otp/verify', async (req, res, next) => {
       is_approved: userRow?.is_approved ?? false,
       has_store: (count ?? 0) > 0,
       application_submitted: !!draft?.submitted_at,
+      // One phone number, one role — real across all 4 apps since they
+      // share this one users table (specs/00-foundation/auth-and-roles.md).
+      // Every app's own OTP screen uses this to reject a number that's
+      // already committed to a DIFFERENT role with a clear, honest message
+      // instead of letting it into a broken half-working session — see
+      // each app's own isRoleAllowedForThisApp check next to its
+      // handleVerify. Never mutated here: role only ever changes via a
+      // real admin approval (apps/admin's own approve routes), same as
+      // before this field was ever surfaced.
+      role: userRow?.role ?? 'customer',
     });
   } catch (err) {
     next(err);

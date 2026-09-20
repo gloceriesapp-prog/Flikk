@@ -35,6 +35,7 @@
 // stale local flag would show the wrong screen).
 
 import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { checkAccountStatus } from '../api/auth';
@@ -43,6 +44,7 @@ import { registerPushToken } from '../features/push-notifications/registerPushTo
 import { WaitingApprovalScreen } from '../screens/onboarding/WaitingApprovalScreen';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { useAuthStore } from '../store/useAuthStore';
+import { colors } from '../theme/tokens';
 import { navigationRef } from './navigationRef';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
@@ -129,10 +131,31 @@ export function RootNavigator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated, accessToken]);
 
-  const isLoading = !isHydrated || !welcomeElapsed || (!!accessToken && !statusChecked);
+  // Cold-start gate only — hydration + the fixed splash timer. This must
+  // NEVER also cover "just logged in, checking account status": accessToken
+  // changes every time OtpVerificationScreen calls setSession (a completely
+  // normal mid-session event, not a fresh app launch), and statusChecked
+  // resets to false on that same change (the effect above's own note on
+  // why) — folding that into this same condition was the actual bug behind
+  // "tapping Continue on OTP takes me back to the Welcome screen." Welcome
+  // is a real branded splash meant for app open, not something that should
+  // flash on every login.
+  const isColdStart = !isHydrated || !welcomeElapsed;
 
-  if (isLoading) {
+  if (isColdStart) {
     return <WelcomeScreen />;
+  }
+
+  // Past cold start, but a fresh login's own status check hasn't resolved
+  // yet — a plain, unbranded spinner, not WelcomeScreen again.
+  const isCheckingLoginStatus = !!accessToken && !statusChecked;
+
+  if (isCheckingLoginStatus) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator color={colors.ink} />
+      </View>
+    );
   }
 
   return (
@@ -141,14 +164,14 @@ export function RootNavigator() {
         // Keyed by accessToken so a session clear (missing/expired token —
         // see api/client.ts's own note on the exact bug this fixes) always
         // gets a genuinely fresh AuthNavigator instance. Without this key,
-        // this branch and the StoreSetup one below are the *same*
+        // this branch and the OnboardingIntro one below are the *same*
         // component type at the *same* tree position — React reuses the
         // existing instance across a re-render instead of remounting it,
         // and React Navigation's `initialRouteName` prop only applies on a
         // navigator's first mount. So a session that goes from "has token,
-        // dropped on StoreSetup, user has since navigated to Step 2" to
-        // "token cleared" silently left the user stuck on Step 2 — same
-        // screen, now with no token, instead of actually bouncing to
+        // dropped on OnboardingIntro, user has since navigated deeper" to
+        // "token cleared" silently left the user stuck deep in the wizard —
+        // same screen, now with no token, instead of actually bouncing to
         // Welcome. A distinct key per accessToken value forces the remount
         // React Navigation's own reset needs.
         <AuthNavigator key="anon" />
@@ -157,7 +180,7 @@ export function RootNavigator() {
       ) : applicationSubmitted ? (
         <WaitingApprovalGate />
       ) : (
-        <AuthNavigator key={accessToken} initialRouteName="StoreSetup" />
+        <AuthNavigator key={accessToken} initialRouteName="OnboardingIntro" />
       )}
     </NavigationContainer>
   );

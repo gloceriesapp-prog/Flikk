@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
+import { DevSimulateOrderButton } from '../../features/incoming-order-alert/DevSimulateOrderButton';
 import { fetchTodayStats } from '../../api/stats';
 import { useChangeStoreLocation } from '../../hooks/useChangeStoreLocation';
 import { useOrdersStore } from '../../store/useOrdersStore';
@@ -121,6 +122,8 @@ export function OrdersScreen({ navigation }: Props) {
         // apps/customer's HomeSearchBar mic icon.
         onPressNotifications={() => { }}
       />
+
+      <DevSimulateOrderButton />
 
       {profile.id.length > 0 && (
         <ProfileSetupBanner profile={profile} onPress={() => navigation.navigate('StoreSettings')} />

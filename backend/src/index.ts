@@ -30,6 +30,7 @@ import { areaUpvotesRouter } from './routes/areaUpvotes.js';
 import cron from 'node-cron';
 import { runWeeklyPayoutJob } from './jobs/weeklyPayouts.js';
 import { expireUnpaidOrders } from './jobs/expireUnpaidOrders.js';
+import { expandDispatchOrRebroadcast } from './lib/riderDispatch.js';
 
 const app = express();
 
@@ -149,4 +150,14 @@ cron.schedule(
 // the way weeklyPayouts.ts's own schedule needs to).
 cron.schedule('*/5 * * * *', () => {
   void expireUnpaidOrders().catch((err) => logger.error({ err }, '[expireUnpaidOrders] job failed'));
+});
+
+// Rider-dispatch fallback — every minute, widen the search radius for any
+// 'packed' order still unassigned after DISPATCH_OFFER_WINDOW_MS
+// (lib/riderDispatch.ts's own note). Once every radius step is exhausted,
+// the order just sits there with rider_id still null — already visible in
+// admin's own manual assign-rider queue the whole time, which is the real
+// fallback, not a separate notification channel this job needs to own.
+cron.schedule('*/1 * * * *', () => {
+  void expandDispatchOrRebroadcast().catch((err) => logger.error({ err }, '[riderDispatch] expand job failed'));
 });

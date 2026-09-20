@@ -13,6 +13,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors } from '../../theme/tokens';
 import { verifyOtp } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
+import { roleMismatchMessage } from '../../utils/roleGuard';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
@@ -27,6 +28,16 @@ export function OtpVerificationScreen({ navigation, route }: Props) {
     setLoading(true);
     try {
       const result = await verifyOtp(phone, code);
+      // One phone number, one role — checked BEFORE setSession ever
+      // persists anything, so an already-approved Partner account never
+      // gets a half-working session on this app (utils/roleGuard.ts's own
+      // note). 'customer' still passes through here — AccountStatusScreen
+      // is what tells that case apart from an actual approved rider.
+      const mismatch = roleMismatchMessage(result.role);
+      if (mismatch) {
+        Alert.alert('Could not sign in', mismatch);
+        return;
+      }
       await setSession(result.accessToken, result.refreshToken, result.phone);
       // No further navigation needed — RootNavigator swaps to AppNavigator
       // the instant useAuthStore.accessToken becomes non-null.

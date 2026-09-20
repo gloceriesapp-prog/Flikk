@@ -35,7 +35,7 @@
 
 import { create } from 'zustand';
 import { fetchOrders, updateOrderStatus, type ApiOrder } from '../api/orders';
-import { buildSampleOrders, mapApiOrder, type PartnerOrder } from '../screens/orders/data';
+import { buildSampleOrders, buildSimulatedIncomingOrder, mapApiOrder, type PartnerOrder } from '../screens/orders/data';
 
 // India-only single-zone app (CLAUDE.md) — 'Asia/Kolkata' explicitly, not
 // the device's own timezone, so this reads the real IST calendar day
@@ -74,6 +74,14 @@ interface OrdersState {
   rejectOrder: (orderId: string) => Promise<void>;
   clearNewlyArrived: (orderId: string) => void;
   clearJustDelivered: (orderId: string) => void;
+  // Dev-only — injects one fake order into `orders` AND
+  // newlyArrivedOrderIds in the same update, which is the exact condition
+  // useIncomingOrderAlert.ts's effect watches for. Fires the real
+  // production alert (full-screen modal + sound) instead of a separate
+  // mock, so previewing it can never quietly drift from what a genuine
+  // incoming order actually triggers. See DevSimulateOrderButton.tsx for
+  // the one place this gets called from.
+  simulateIncomingOrder: () => void;
 }
 
 export const useOrdersStore = create<OrdersState>((set) => ({
@@ -191,5 +199,15 @@ export const useOrdersStore = create<OrdersState>((set) => ({
       const justDeliveredOrderIds = new Set(state.justDeliveredOrderIds);
       justDeliveredOrderIds.delete(orderId);
       return { justDeliveredOrderIds };
+    }),
+
+  simulateIncomingOrder: () =>
+    set((state) => {
+      const order = buildSimulatedIncomingOrder();
+      return {
+        orders: [order, ...state.orders],
+        baselineEstablished: true,
+        newlyArrivedOrderIds: new Set(state.newlyArrivedOrderIds).add(order.id),
+      };
     }),
 }));

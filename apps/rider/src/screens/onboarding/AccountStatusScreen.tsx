@@ -1,12 +1,16 @@
 // Shown whenever a logged-in session isn't yet a usable rider account —
 // two distinct real states, not one:
 //
-// 1. Not a rider at all (role !== 'rider') — there is no self-serve
-//    "become a rider" flow anywhere in the backend yet (api/auth.ts's own
-//    note): a phone number only ever becomes role='rider' via a manual DB
-//    change. A phone that verifies OTP successfully but was never granted
-//    that role would otherwise 403 forever on every real order call with
-//    no explanation — this tells them plainly instead.
+// 1. Not a rider at all (role !== 'rider', which by this point only ever
+//    means role === 'customer' — an already-approved store_owner/admin
+//    account is caught earlier, at OTP-verify time itself, by this app's
+//    own utils/roleGuard.ts, so it never even reaches a real session
+//    here). There is no self-serve "become a rider" flow anywhere in the
+//    backend yet (api/auth.ts's own note): a phone number only ever
+//    becomes role='rider' via a manual DB change. A phone that verifies
+//    OTP successfully but was never granted that role would otherwise
+//    403 forever on every real order call with no explanation — this
+//    tells them plainly instead.
 // 2. A real rider account, not yet admin-approved (is_approved === false)
 //    — same shape as apps/partner's WaitingApprovalScreen, polling GET
 //    /auth/me until admin's existing PATCH /admin/riders/pending/:userId

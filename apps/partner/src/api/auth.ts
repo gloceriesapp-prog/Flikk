@@ -59,11 +59,18 @@ export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpR
 export interface StoreApplication {
   storeName: string;
   category: string;
+  // Store's own contact phone — distinct from the account's own
+  // OTP-verified login phone (Owner Details step shows that one read-only).
+  phone?: string;
   district: string;
   addressLine?: string;
+  manualAddress?: string;
   gstNumber?: string;
   photoUrl?: string;
   ownerName?: string;
+  // Owner's own optional contact email — writes to users.email, a separate
+  // table from the draft (backend's storeOnboarding.ts's own note).
+  ownerEmail?: string;
   shopLicenseNumber?: string;
   // PAN is compulsory server-side (POST /store-application 400s without a
   // valid one) — kept optional in this type only so a partially-filled
@@ -71,6 +78,9 @@ export interface StoreApplication {
   // canSubmit gate is what actually enforces it before this ever fires.
   fssaiNumber?: string;
   panNumber?: string;
+  udyamNumber?: string;
+  openTime?: string;
+  closeTime?: string;
 }
 
 // Partner-only endpoint (Store Setup submission) — not part of the shared
@@ -156,31 +166,43 @@ export async function checkAccountStatus(): Promise<AccountStatus> {
 export interface StoreDraftPatch {
   storeName?: string;
   category?: string;
+  phone?: string;
   district?: string;
   addressLine?: string;
+  manualAddress?: string;
   lat?: number;
   lng?: number;
   photoUrl?: string;
   gstNumber?: string;
   ownerName?: string;
+  ownerEmail?: string;
   shopLicenseNumber?: string;
   fssaiNumber?: string;
   panNumber?: string;
+  udyamNumber?: string;
+  openTime?: string;
+  closeTime?: string;
 }
 
 export interface SavedStoreDraft {
   store_name: string | null;
   category: string | null;
+  phone: string | null;
   district: string | null;
   address_line: string | null;
+  manual_address: string | null;
   lat: number | null;
   lng: number | null;
   photo_url: string | null;
   gst_number: string | null;
   owner_name: string | null;
+  owner_email: string | null;
   shop_establishment_number: string | null;
   fssai_number: string | null;
   pan_number: string | null;
+  udyam_number: string | null;
+  open_time: string | null;
+  close_time: string | null;
 }
 
 export async function fetchStoreDraft(): Promise<SavedStoreDraft | null> {

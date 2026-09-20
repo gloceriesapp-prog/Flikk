@@ -21,6 +21,20 @@ export async function requestLocationPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
+// One-shot fix, not a watch — used by useRiderOrdersStore's own goOnline/
+// periodic-ping loop (automated dispatch, CLAUDE.md scope override) to
+// report the rider's current position to PATCH /rider/status. A
+// continuous watchRiderLocation subscription would be wasteful for
+// something only sampled every ~45s while online; this is the same
+// one-shot pattern apps/customer's own geocoding.ts uses for "confirm a
+// pin once."
+export async function getCurrentCoordinates(): Promise<Coordinates | null> {
+  const granted = await requestLocationPermission();
+  if (!granted) return null;
+  const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+  return { latitude: position.coords.latitude, longitude: position.coords.longitude };
+}
+
 // Fires `onUpdate` with every new fix until the caller cancels — returns
 // the subscription's own remove() rather than a bespoke wrapper, so a
 // component's cleanup effect is just `return () => sub?.remove()`.

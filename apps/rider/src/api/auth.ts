@@ -15,11 +15,15 @@
 // forever on every backend/src/routes/rider.ts call.
 
 import { apiRequest } from './client';
+import type { AccountRole } from '../store/useAuthStore';
 
 export interface VerifyOtpResult {
   accessToken: string;
   refreshToken: string;
   phone: string;
+  // One phone number, one role (utils/roleGuard.ts's own note) — checked
+  // by OtpVerificationScreen.tsx before ever persisting this session.
+  role: AccountRole;
 }
 
 export async function requestOtp(phone: string): Promise<{ ok: true }> {
@@ -27,15 +31,15 @@ export async function requestOtp(phone: string): Promise<{ ok: true }> {
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpResult> {
-  const { access_token, refresh_token } = await apiRequest<{ access_token: string; refresh_token: string }>(
+  const { access_token, refresh_token, role } = await apiRequest<{ access_token: string; refresh_token: string; role: AccountRole }>(
     '/auth/otp/verify',
     { method: 'POST', body: { phone, code }, auth: false },
   );
-  return { accessToken: access_token, refreshToken: refresh_token, phone };
+  return { accessToken: access_token, refreshToken: refresh_token, phone, role };
 }
 
 export interface AccountStatus {
-  role: 'customer' | 'store_owner' | 'rider' | 'admin';
+  role: AccountRole;
   is_approved: boolean;
 }
 
