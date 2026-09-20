@@ -61,8 +61,8 @@ export function CurrentWeekPayoutCard({ payout }: Props) {
         <Text className="text-[42px] font-medium text-white" style={{ fontVariant: ['tabular-nums'] }}>
           ₹{payout.netAmount.toLocaleString('en-IN')}
         </Text>
-        <Text className="text-sm font-medium text-white/50">
-          You&apos;ll receive this amount · {payout.orderCount} orders
+        <Text className="text-[14px] font-medium text-white/50">
+          Total payout across {payout.orderCount} completed {payout.orderCount === 1 ? 'order' : 'orders'}
         </Text>
       </View>
 
@@ -70,11 +70,11 @@ export function CurrentWeekPayoutCard({ payout }: Props) {
         <View className="gap-2 border-t border-white/10 pt-4">
           <View className="flex-row items-center gap-2">
             <AppIcon icon={CalendarCheckIn01Icon} size={14} color={`${colors.lime}CC`} />
-            <Text className="text-sm font-medium text-white/50">
+            <Text className="text-[14px] font-medium text-white/50">
               Settles automatically on <Text className="font-semibold text-white/80">{payout.nextSettlementLabel}</Text>
             </Text>
           </View>
-          <Text className="text-sm font-medium text-white/50">
+          <Text className="text-[14px] font-medium text-white/50">
             In <Text className="font-semibold text-white/80" style={{ fontVariant: ['tabular-nums'] }}>{countdownLabel}</Text>
           </Text>
         </View>

@@ -23,6 +23,9 @@ interface StoreRow {
   is_active: boolean;
   district: string | null;
   address_line: string | null;
+  manual_address: string | null;
+  lat: number | null;
+  lng: number | null;
   photo_url: string | null;
   phone: string | null;
   open_time: string | null;
@@ -47,6 +50,9 @@ function fromRow(row: StoreRow): StoreProfile {
     isOpen: row.is_active,
     district: row.district ?? '',
     addressLine: row.address_line,
+    manualAddress: row.manual_address ?? '',
+    lat: row.lat,
+    lng: row.lng,
     photoUrl: row.photo_url,
     hasUnreadNotifications: false,
     openTime: row.open_time ?? '',
@@ -120,6 +126,10 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
         name: patch.storeName,
         category: patch.category,
         district: patch.district,
+        address_line: patch.addressLine,
+        manual_address: patch.manualAddress,
+        lat: patch.lat,
+        lng: patch.lng,
         open_time: patch.openTime,
         close_time: patch.closeTime,
         avg_prep_minutes: patch.avgPrepMinutes,

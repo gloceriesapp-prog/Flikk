@@ -23,7 +23,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, CheckmarkCircle02Icon, HugeiconsIcon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
@@ -58,19 +58,19 @@ export function PayoutOrderHistoryScreen({ route, navigation }: Props) {
           className="h-10 w-10 items-center justify-center rounded-full bg-gray-100"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
-          <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
+          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
-        <Text className="absolute left-0 right-0 text-center text-lg font-semibold text-ink">Settlement orders</Text>
+        <Text className="absolute left-0 right-0 text-center text-[17px] font-semibold text-ink">Settlement orders</Text>
       </View>
 
       <View className="gap-1 px-5 pb-4 pt-1">
-        <Text className="text-sm font-medium text-ink/50">{weekLabel}</Text>
-        <Text className="text-2xl font-semibold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
+        <Text className="text-[14px] font-medium text-ink/60">{weekLabel}</Text>
+        <Text className="text-3xl font-semibold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
           ₹{netTotal.toLocaleString('en-IN')}
         </Text>
         <View className="mt-1 flex-row items-center gap-1.5">
-          <AppIcon icon={CheckmarkCircle02Icon} size={13} color={colors.limeDeep} />
-          <Text className="text-xs font-medium text-ink/50">{(orders ?? []).length} orders add up to this payout</Text>
+          <AppIcon icon={HugeiconsIcon} size={13} color={colors.ink} />
+          <Text className="text-[14px] font-medium text-ink/60">{(orders ?? []).length} orders add up to this payout</Text>
         </View>
       </View>
 

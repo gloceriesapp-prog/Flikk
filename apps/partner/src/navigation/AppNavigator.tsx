@@ -20,6 +20,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AddProductScreen } from '../screens/catalog/AddProductScreen';
 import { CatalogScreen } from '../screens/catalog/CatalogScreen';
+import { LocationPinScreen } from '../screens/onboarding/LocationPinScreen';
 import { OrderDetailScreen } from '../screens/order-detail/OrderDetailScreen';
 import { OrdersScreen } from '../screens/orders/OrdersScreen';
 import { PayoutOrderHistoryScreen } from '../screens/payout-detail/PayoutOrderHistoryScreen';
@@ -48,6 +49,12 @@ export function AppNavigator() {
       <Stack.Screen name="AddProduct" component={AddProductScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="PayoutOrderHistory" component={PayoutOrderHistoryScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="StoreSettings" component={StoreSettingsScreen} options={{ presentation: 'card' }} />
+      {/* Same real map-pin screen onboarding's own AuthNavigator already
+          registers — StoreSettingsScreen's "Change on map" is the one
+          post-approval way to reach it, updating the store's real
+          lat/lng/address_line instead of only ever being set once at
+          signup. */}
+      <Stack.Screen name="LocationPin" component={LocationPinScreen} options={{ presentation: 'fullScreenModal' }} />
     </Stack.Navigator>
   );
 }

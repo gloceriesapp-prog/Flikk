@@ -12,7 +12,7 @@
 // every tap stops reading as a summary row. No other action on this card —
 // payouts are read-only by design, see data.ts.
 
-import { CheckmarkCircle02Icon, Clock01Icon } from '@hugeicons/core-free-icons';
+import { CheckmarkCircle02Icon, Clock01Icon, TickDouble01Icon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { payoutStatusPresentation, type WeeklyPayout } from '../data';
@@ -30,23 +30,25 @@ export function PayoutWeekCard({ payout }: Props) {
     <View className="gap-3 rounded-2xl bg-white p-4 shadow-sm shadow-black/5">
       <View className="flex-row items-center gap-3">
         <View className={`h-12 w-12 items-center justify-center rounded-full ${bgClassName}`}>
-          <AppIcon icon={isPaid ? CheckmarkCircle02Icon : Clock01Icon} size={20} color={color} />
+          <AppIcon icon={isPaid ? TickDouble01Icon : Clock01Icon} size={20} color={color} />
         </View>
 
         <View className="flex-1 gap-0.5">
-          <Text className="text-base font-semibold text-ink" numberOfLines={1}>
+          <Text className="text-[14px] font-semibold text-ink" numberOfLines={1}>
             {payout.weekLabel}
           </Text>
-          <Text className="text-xs font-medium text-ink/50">{payout.orderCount} orders settled</Text>
+          <Text className="text-[12px] font-medium text-ink/50">
+            {payout.orderCount} {payout.orderCount === 1 ? 'order' : 'orders'} • Settled
+          </Text>
         </View>
 
         <View className="items-end gap-1.5">
-          <Text className="text-base font-semibold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
+          <Text className="text-[14px] font-semibold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
             ₹{payout.netAmount.toLocaleString('en-IN')}
           </Text>
           <View className={`flex-row items-center gap-1 rounded-full px-2 py-0.5 ${bgClassName}`}>
             <View className="h-1 w-1 rounded-full" style={{ backgroundColor: color }} />
-            <Text className="text-[10px] font-semibold" style={{ color }}>
+            <Text className="text-[12px] font-semibold" style={{ color }}>
               {label}
             </Text>
           </View>

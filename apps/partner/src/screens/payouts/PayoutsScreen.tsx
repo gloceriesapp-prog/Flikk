@@ -64,7 +64,7 @@ export function PayoutsScreen(_props: Props) {
             silently doing nothing, same convention as the notification
             bell on the Orders screen. */}
         <Pressable
-          onPress={() => {}}
+          onPress={() => { }}
           className="h-11 w-11 items-center justify-center rounded-full bg-white"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
@@ -110,11 +110,13 @@ export function PayoutsScreen(_props: Props) {
             visibleHistory.map((payout) => <PayoutWeekCard key={payout.id} payout={payout} />)
           ) : (
             <View className="items-center gap-1 py-10">
-              <Text className="text-sm font-semibold text-ink">No settlements here</Text>
-              <Text className="text-center text-xs text-ink/50">
+              <Text className="text-[14px] font-semibold text-ink/80">
+                {statusFilter === 'pending' ? 'No pending payouts' : 'No paid payouts'}
+              </Text>
+              <Text className="text-center text-[12px] font-medium text-ink/50">
                 {statusFilter === 'pending'
-                  ? 'Nothing pending in your past settlements — only this week is still on its way.'
-                  : 'No paid settlements yet.'}
+                  ? 'Only this week’s payout is currently in progress.'
+                  : 'Your completed payouts will appear here.'}
               </Text>
             </View>
           )}

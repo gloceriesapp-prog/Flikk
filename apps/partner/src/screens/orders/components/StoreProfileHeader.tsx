@@ -1,7 +1,11 @@
 // Top-of-Home identity row — avatar (ringed, not a bare circle — the one
 // deliberate "this app has taste" detail on the screen a store owner opens
 // every single time), the store's own name as the title, then the real
-// full address on its own line below it. A real native Switch (Open/
+// full address on its own line below it, now a real tappable row (not
+// static text) — tapping it opens the same real map-pin screen
+// (useChangeStoreLocation.ts, LocationPinScreen) StoreSettingsScreen's own
+// "Change" button already uses, per an explicit ask to reuse that same
+// flow here instead of a second copy of it. A real native Switch (Open/
 // Closed), Settings, and the notification bell sit as a row of controls
 // on the right — the switch to the LEFT of Settings, per an explicit ask.
 // Flat white, no gradient backdrop (see OrdersScreen.tsx).
@@ -15,7 +19,7 @@
 // store owner opens dozens of times a day — worth more polish per pixel
 // than a screen they visit once.
 
-import { User02Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, User02Icon } from '@hugeicons/core-free-icons';
 import { Image, Pressable, Switch, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../../../components/AppIcon';
@@ -26,11 +30,12 @@ import type { StoreProfile } from '../data';
 interface Props {
   profile: StoreProfile;
   onToggleOpen: () => void;
+  onPressLocation: () => void;
   onPressSettings: () => void;
   onPressNotifications: () => void;
 }
 
-export function StoreProfileHeader({ profile, onToggleOpen, onPressSettings, onPressNotifications }: Props) {
+export function StoreProfileHeader({ profile, onToggleOpen, onPressLocation, onPressSettings, onPressNotifications }: Props) {
   return (
     <View className="pt-safe">
       <View className="flex-row items-center justify-between px-5 pb-5 pt-3">
@@ -49,15 +54,17 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressSettings, onP
                 back to district for any store approved before this field
                 existed, and to a real "Loading…" label before GET
                 /partner/store (useStoreProfileStore.loadProfile) resolves
-                at all, never silent empty text next to an orphaned pin. */}
-            <View className="flex-row items-center gap-1">
-              <Text className="text-sm font-medium text-ink/70">
-                Located at:
-              </Text>
+                at all, never silent empty text next to an orphaned pin.
+                Now a real Pressable — tapping it opens the same map-pin
+                screen "Change on map" in Settings already does, per an
+                explicit ask to reach it straight from here too. */}
+            <Pressable onPress={onPressLocation} hitSlop={4} className="flex-row items-center gap-1">
+              <Text className="text-sm font-medium text-ink/70">Located at:</Text>
               <Text className="flex-1 text-sm font-medium text-ink/50" numberOfLines={1}>
                 {profile.addressLine || profile.district || 'Loading…'}
               </Text>
-            </View>
+              <AppIcon icon={ArrowRight01Icon} size={12} color={`${colors.ink}60`} />
+            </Pressable>
           </View>
         </View>
 

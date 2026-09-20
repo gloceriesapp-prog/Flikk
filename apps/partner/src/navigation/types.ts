@@ -108,4 +108,14 @@ export type AppStackParamList = {
   // Store settings (P6) — reached from StoreProfileHeader's gear icon.
   // No params; reads/writes the shared ../store/useStoreProfileStore.ts.
   StoreSettings: undefined;
+  // Same real map-pin screen onboarding's own AuthStackParamList already
+  // registers (LocationPinScreen) — registered again here so
+  // StoreSettingsScreen's own "Change on map" can reach it post-approval;
+  // AppNavigator and AuthNavigator are two separate navigators/stacks, a
+  // route only exists in whichever one(s) actually declare it. Same
+  // shape, same onConfirm contract either way.
+  LocationPin: {
+    initialCoordinates: import('../location/geocoding').Coordinates | null;
+    onConfirm: (coordinates: import('../location/geocoding').Coordinates, district: string, addressLine: string | null) => void;
+  };
 };

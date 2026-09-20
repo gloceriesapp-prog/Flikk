@@ -22,8 +22,8 @@ import {
   Call02Icon,
   CheckmarkCircle02Icon,
   Clock01Icon,
+  Edit02Icon,
   File01Icon,
-  ImageAdd01Icon,
   InformationCircleIcon,
   Logout01Icon,
   Store01Icon,
@@ -37,6 +37,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { useChangeStoreLocation } from '../../hooks/useChangeStoreLocation';
 import { BrandFooter } from '../../components/BrandFooter';
 import { colors } from '../../theme/tokens';
 import { getAvatarImageUri } from '../../theme/placeholderImage';
@@ -71,6 +72,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
   const [openTime, setOpenTime] = useState(profile.openTime);
   const [closeTime, setCloseTime] = useState(profile.closeTime);
   const [avgPrepMinutes, setAvgPrepMinutes] = useState(profile.avgPrepMinutes);
+  const [manualAddress, setManualAddress] = useState(profile.manualAddress);
   const [ownerName, setOwnerName] = useState(profile.ownerName);
   const [gstNumber, setGstNumber] = useState(profile.gstNumber);
   const [shopLicenseNumber, setShopLicenseNumber] = useState(profile.shopLicenseNumber);
@@ -93,6 +95,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
     setOpenTime(profile.openTime);
     setCloseTime(profile.closeTime);
     setAvgPrepMinutes(profile.avgPrepMinutes);
+    setManualAddress(profile.manualAddress);
     setOwnerName(profile.ownerName);
     setGstNumber(profile.gstNumber);
     setShopLicenseNumber(profile.shopLicenseNumber);
@@ -146,12 +149,18 @@ export function StoreSettingsScreen({ navigation }: Props) {
       openTime,
       closeTime,
       avgPrepMinutes,
+      manualAddress: manualAddress.trim(),
       ownerName: ownerName.trim(),
       gstNumber: gstNumber.trim(),
       shopLicenseNumber: shopLicenseNumber.trim(),
     });
     navigation.goBack();
   }
+
+  // Shared with StoreProfileHeader's own tappable address row
+  // (useChangeStoreLocation.ts) — same real map pin, same instant-apply
+  // onConfirm, one real implementation instead of two copies.
+  const changeStoreLocation = useChangeStoreLocation();
 
   return (
     // Keyboard was covering the "Save changes" bar below (name TextInput
@@ -174,15 +183,15 @@ export function StoreSettingsScreen({ navigation }: Props) {
             className="h-10 w-10 items-center justify-center rounded-full bg-white"
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
-            <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
+            <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
           </Pressable>
-          <Text className="absolute left-0 right-0 text-center text-[20px] font-semibold text-ink">Store settings</Text>
+          <Text className="absolute left-0 right-0 text-center text-[17px] font-semibold text-ink">Store settings</Text>
           <Pressable
             onPress={handleSave}
-            className="h-10 w-10 items-center justify-center rounded-full bg-white"
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-60"
+            hitSlop={8}
           >
-            <AppIcon icon={Tick02Icon} size={18} color={colors.success} />
+            <AppIcon icon={Tick02Icon} size={22} color={colors.ink} />
           </Pressable>
         </View>
 
@@ -194,20 +203,33 @@ export function StoreSettingsScreen({ navigation }: Props) {
         >
           {/* Photo + name sit outside a SettingsCard, up top — this is the
             identity a customer sees on the storefront listing, worth
-            more visual weight than a form row buried in a card. */}
-          <View className="items-center gap-3 py-2">
+            more visual weight than a form row buried in a card. One
+            horizontal white pill (avatar left, name inline beside it),
+            not a stacked centered avatar-over-name layout — per an
+            explicit reference sketch. */}
+          <View className="flex-row items-center gap-4 rounded-[32px] border border-black/10 bg-white p-3 shadow-sm shadow-black/5">
+            {/* Avatar Container */}
             <Pressable
               onPress={handlePickPhoto}
               disabled={uploadingPhoto}
-              className="h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-black/5 bg-white shadow-sm shadow-black/10"
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              className="relative h-16 w-16"
+              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
             >
-              <Image source={{ uri: profile.photoUrl ?? getAvatarImageUri(profile.id || 'partner-store') }} className="h-full w-full" />
-              <View className="absolute bottom-0 h-7 w-full items-center justify-center bg-black/40">
+              {/* Full Round Image View */}
+              <View className="h-full w-full overflow-hidden rounded-full bg-slate-100">
+                <Image
+                  source={{ uri: profile.photoUrl ?? getAvatarImageUri(profile.id || 'partner-store') }}
+                  className="h-full w-full"
+                  resizeMode="cover"
+                />
+              </View>
+
+              {/* Bottom-Right Floating Camera/Plus Badge */}
+              <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full  bg-white">
                 {uploadingPhoto ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={colors.ink} />
                 ) : (
-                  <AppIcon icon={ImageAdd01Icon} size={14} color="#FFFFFF" />
+                  <AppIcon icon={Edit02Icon} size={13} color={colors.ink} />
                 )}
               </View>
             </Pressable>
@@ -215,8 +237,9 @@ export function StoreSettingsScreen({ navigation }: Props) {
             <TextInput
               value={name}
               onChangeText={setName}
-              className="text-center text-2xl font-bold text-ink"
+              className="flex-1 text-[17px] font-semibold text-ink"
               placeholder="Store name"
+              placeholderTextColor="#9AA5A3"
             />
           </View>
 
@@ -242,9 +265,8 @@ export function StoreSettingsScreen({ navigation }: Props) {
               — this card is the schedule a shop owner sets once, that's
               the moment-to-moment toggle for "right now." Said explicitly
               so the two don't read as duplicates of each other. */}
-            <Text className="text-[13px] font-medium text-ink/40">
-              The live Open/Closed switch on the Orders tab controls whether you&apos;re taking orders right now — these
-              hours are just your usual schedule.
+            <Text className="text-[13px] font-medium leading-relaxed text-ink/50">
+              <Text className="font-semibold text-ink/70">Regular hours only.</Text> Toggle live status anytime on the <Text className="font-semibold text-ink/70">Orders</Text> tab to pause or take orders.
             </Text>
           </SettingsCard>
 
@@ -253,9 +275,42 @@ export function StoreSettingsScreen({ navigation }: Props) {
               <Text className="text-[15px] font-medium text-ink/70">City</Text>
               <Text className="text-[15px] font-semibold text-ink">{profile.district}</Text>
             </View>
-            <Text className="text-[13px] font-medium text-ink/40">
-              Set automatically from the Orders tab&apos;s location prompt, not editable here.
-            </Text>
+
+            {/* Real live address — stores.address_line, the actual
+                reverse-geocoded text from the map pin (LocationPinScreen),
+                never a fake placeholder. Falls back to district for any
+                store approved before this field existed. "Change on map"
+                is the one way to update the real pin after approval —
+                applies instantly (useChangeStoreLocation.ts's own note), not
+                gated behind Save. */}
+            <View className="gap-1.5">
+              <Text className="text-[13px] font-medium text-ink/40">Live location (from map)</Text>
+              <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-black/10 bg-white px-4 py-3">
+                <Text className="flex-1 text-[14px] font-semibold text-ink" numberOfLines={2}>
+                  {profile.addressLine || profile.district || 'Not set yet'}
+                </Text>
+                <Pressable onPress={changeStoreLocation} hitSlop={8}>
+                  <Text className="text-[13px] font-bold text-ink">Change</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* A genuinely separate field — the owner's own typed
+                description (e.g. "Near Bus Stand, opposite Xyz store"),
+                never derived from the map pin above. Saved through the
+                normal Save button, same as every other text field on this
+                screen. */}
+            <View className="gap-1.5">
+              <Text className="text-[13px] font-medium text-ink/40">Address (shown to riders)</Text>
+              <TextInput
+                value={manualAddress}
+                onChangeText={setManualAddress}
+                placeholder="e.g. Near Bus Stand, opposite Xyz store"
+                placeholderTextColor="#9AA5A3"
+                multiline
+                className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[15px] font-semibold text-ink"
+              />
+            </View>
           </SettingsCard>
 
           <SettingsCard icon={Call02Icon} title="Account">

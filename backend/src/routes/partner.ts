@@ -18,6 +18,7 @@ import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '.
 import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
 import { toWebp } from '../utils/image.js';
 import { round2 } from '../lib/pricing.js';
+import { reverseGeocode } from '../lib/reverseGeocode.js';
 
 export const partnerRouter = Router();
 partnerRouter.use(requireAuth, requireRole('store_owner'), requireApproved);
@@ -48,7 +49,7 @@ function maskAccountNumber(full: string | null): string | null {
 }
 
 const STORE_SELECT =
-  'id, name, category, is_active, district, address_line, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number';
+  'id, name, category, is_active, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number';
 
 function toStoreResponse(data: Record<string, unknown>, phone: string | null) {
   const { payout_bank_account_number, ...rest } = data;
@@ -59,6 +60,25 @@ partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
   try {
     const { data, error } = await supabase.from('stores').select(STORE_SELECT).eq('owner_user_id', req.user!.id).single();
     if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
+
+    // Real backfill, not a fake fallback — a store that was pinned
+    // (lat/lng real, captured during onboarding's LocationPinScreen) but
+    // has no address_line yet (approved before that column existed, or
+    // the draft->store copy predates it) gets a genuine one computed here
+    // from its own real coordinates via the same accurate Google
+    // Geocoding lookup /location/reverse-geocode already uses — this was
+    // the actual bug behind "Located at" showing only the coarse district
+    // ("Kapu") instead of a real street-level address. Persisted back
+    // onto the row so this only ever runs once per store, not on every
+    // single GET /store call.
+    if (!data.address_line && data.lat != null && data.lng != null) {
+      const geocoded = await reverseGeocode(data.lat, data.lng);
+      if (geocoded.addressLabel) {
+        data.address_line = geocoded.addressLabel;
+        await supabase.from('stores').update({ address_line: geocoded.addressLabel }).eq('id', data.id);
+      }
+    }
+
     res.json(toStoreResponse(data, await ownerPhone(req.user!.id)));
   } catch (err) {
     next(err);
@@ -74,6 +94,9 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
       is_active,
       district,
       address_line,
+      manual_address,
+      lat,
+      lng,
       open_time,
       close_time,
       avg_prep_minutes,
@@ -94,6 +117,17 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     if (is_active !== undefined) patch.is_active = is_active;
     if (district !== undefined) patch.district = district;
     if (address_line !== undefined) patch.address_line = address_line;
+    // manual_address is the shop owner's own typed description (e.g. "Near
+    // Bus Stand, opposite Xyz store") — a genuinely different field from
+    // address_line, which is always the real reverse-geocoded text from
+    // the map pin (LocationPinScreen). Never derived from one another.
+    if (manual_address !== undefined) patch.manual_address = manual_address;
+    // lat/lng only ever arrive together, from StoreSettingsScreen's own
+    // "Change on map" flow (LocationPinScreen, same real pin-drag +
+    // reverse-geocode onboarding already used) — the one place after
+    // approval a store owner can update their store's actual location.
+    if (lat !== undefined) patch.lat = lat;
+    if (lng !== undefined) patch.lng = lng;
     if (open_time !== undefined) patch.open_time = open_time;
     if (close_time !== undefined) patch.close_time = close_time;
     if (avg_prep_minutes !== undefined) patch.avg_prep_minutes = avg_prep_minutes;

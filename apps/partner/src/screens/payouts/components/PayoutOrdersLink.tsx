@@ -39,11 +39,11 @@ export function PayoutOrdersLink({ payout, variant = 'light' }: Props) {
       className={`flex-row items-center justify-between ${isDark ? 'border-t border-white/10 pt-4' : 'border-t border-black/5 pt-3'}`}
       style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
     >
-      <Text className={`text-sm font-medium ${isDark ? 'text-white/60' : 'text-ink/60'}`}>
-        {payout.orderCount} orders in this settlement
+      <Text className={`text-[13.5px] font-medium ${isDark ? 'text-white/60' : 'text-ink/60'}`}>
+        View all {payout.orderCount} {payout.orderCount === 1 ? 'order' : 'orders'}
       </Text>
       <View className="flex-row items-center gap-1">
-        <Text className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-ink'}`}>View all</Text>
+        <Text className={`text-[13.5px] font-semibold ${isDark ? 'text-white' : 'text-ink'}`}>View all</Text>
         <AppIcon icon={ArrowRight01Icon} size={13} color={isDark ? '#FFFFFF' : colors.ink} />
       </View>
     </Pressable>

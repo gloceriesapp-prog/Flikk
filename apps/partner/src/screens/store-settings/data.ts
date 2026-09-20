@@ -23,6 +23,19 @@ export interface StoreProfile {
   // before this field existed. StoreProfileHeader falls back to district
   // when this is null, never shows a blank line.
   addressLine: string | null;
+  // A genuinely different field from addressLine above — the shop
+  // owner's own typed description (e.g. "Near Bus Stand, opposite Xyz
+  // store"), never derived from the map pin. Editable directly in
+  // StoreSettingsScreen's Location card, saved through the normal Save
+  // button (unlike addressLine/lat/lng below, which apply instantly the
+  // moment the map confirms a new pin).
+  manualAddress: string;
+  // Real stores.lat/lng — the exact pin position "Change on map" sets
+  // (LocationPinScreen, same real reverse-geocode + drag-to-confirm flow
+  // onboarding already uses). null for any store approved before this
+  // was ever pinned.
+  lat: number | null;
+  lng: number | null;
   // Real storefront photo (stores.photo_url, set during onboarding) — null
   // until one's uploaded, StoreProfileHeader/StoreSettingsScreen fall back
   // to a seeded placeholder keyed by `id`, never a fake name.
@@ -101,6 +114,9 @@ export const EMPTY_STORE_PROFILE: StoreProfile = {
   isOpen: false,
   district: '',
   addressLine: null,
+  manualAddress: '',
+  lat: null,
+  lng: null,
   photoUrl: null,
   hasUnreadNotifications: false,
   openTime: '',

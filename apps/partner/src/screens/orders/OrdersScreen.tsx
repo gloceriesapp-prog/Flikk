@@ -15,6 +15,7 @@ import { ApiError } from '../../api/client';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { fetchTodayStats } from '../../api/stats';
+import { useChangeStoreLocation } from '../../hooks/useChangeStoreLocation';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { useStoreProfileStore } from '../../store/useStoreProfileStore';
 import { msUntilNextIstMidnight } from '../../utils/nextIstMidnight';
@@ -56,6 +57,7 @@ export function OrdersScreen({ navigation }: Props) {
   const profile = useStoreProfileStore((state) => state.profile);
   const toggleOpen = useStoreProfileStore((state) => state.toggleOpen);
   const loadProfile = useStoreProfileStore((state) => state.loadProfile);
+  const changeStoreLocation = useChangeStoreLocation();
 
   useEffect(() => {
     void loadProfile();
@@ -111,6 +113,7 @@ export function OrdersScreen({ navigation }: Props) {
       <StoreProfileHeader
         profile={profile}
         onToggleOpen={toggleOpen}
+        onPressLocation={changeStoreLocation}
         onPressSettings={() => navigation.navigate('StoreSettings')}
         // No notifications backend yet (specs/05-platform/notifications.md)
         // — stubbed rather than silently doing nothing, same convention as
