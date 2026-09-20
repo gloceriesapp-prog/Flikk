@@ -20,6 +20,7 @@ interface Props {
 const STATUS_BADGE: Partial<Record<PartnerOrderStatus, { label: string; icon: IconSvgElement; color: string }>> = {
   packed: { label: 'Awaiting pickup', icon: CheckmarkCircle02Icon, color: colors.limeDeep },
   out_for_delivery: { label: 'Out for delivery', icon: DeliveryTruck01Icon, color: colors.gold },
+  delivered: { label: 'Delivered', icon: CheckmarkCircle02Icon, color: colors.success },
 };
 
 // Three-tier urgency on the 10-minute accept window (ORDER_ACCEPT_WINDOW_MS)
@@ -89,7 +90,20 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
   }, [isPending, elapsedMinutes, order.id, rejectOrder]);
 
   return (
-    <View className="gap-3 rounded-3xl bg-white p-4 shadow-sm shadow-black/5">
+    // Whole card opens the order detail screen — but only once accepted.
+    // A still-pending card's only real action is the Accept Order button;
+    // making the rest of the card tappable too would let a store owner
+    // accidentally jump to the detail screen before ever deciding to
+    // accept. The Accept/Mark Packed/View Order Pressables below are
+    // nested inside this one; RN's touch-responder system gives the
+    // innermost Pressable priority, so tapping one of those still only
+    // fires its own action and never also navigates.
+    <Pressable
+      onPress={isPending ? undefined : onViewOrder}
+      disabled={isPending}
+      className="gap-3 rounded-3xl bg-white p-4 shadow-sm shadow-black/5"
+      style={({ pressed }) => ({ opacity: pressed && !isPending ? 0.97 : 1 })}
+    >
       <View className="flex-row items-center gap-3">
         <ItemAvatarStack items={order.items} />
 
@@ -120,7 +134,7 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
         {itemsLabel}
       </Text>
 
-      <View className="flex-row items-center justify-between border-t border-black/5 pt-3">
+      <View className="flex-row items-center justify-between border-t border-black/5 pt-4">
         <View className="flex-row items-center gap-1.5">
           <AppIcon icon={Time03Icon} size={13} color={`${colors.ink}90`} />
           {/* Dynamic Time Elapsed Label */}
@@ -139,45 +153,61 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
         )}
 
         {!isPlaced && badge && (
-          <View className="flex-row items-center gap-1.5 rounded-xl bg-gray-50 px-4 py-2">
+          <View className="flex-row items-center gap-1.5">
             <AppIcon icon={badge.icon} size={14} color={badge.color} />
-            <Text className="text-xs font-medium text-ink/60">{badge.label}</Text>
+            <Text className="text-[13px] font-medium text-ink/70">{badge.label}</Text>
           </View>
         )}
       </View>
 
       <View className="flex-row gap-2.5">
         {isPending ? (
+          // Real green (success token) — distinct from the black/coral
+          // actions below it, so accepting reads as its own unmistakable
+          // state, not just "a button of some color".
           <Pressable
             onPress={() => onAcknowledge(order.id)}
-            className="w-full flex-row items-center justify-center gap-1.5 rounded-xl bg-lime-deep py-3.5"
+            className="w-full flex-row items-center justify-center gap-1.5 rounded-xl bg-[#00a63e] py-3.5"
             style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
           >
             <Text className="text-[14px] font-medium text-white">Accept Order</Text>
           </Pressable>
         ) : (
           <>
+            {/* Narrower, plain outline — secondary now that Mark Packed is
+                the button a store owner actually needs to reach for next. */}
             <Pressable
               onPress={onViewOrder}
-              className={`flex-row items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white py-3 ${isAccepted ? 'flex-1' : 'w-full'
+              className={`flex-row items-center justify-center gap-1.5 rounded-xl bg-[#F1F2F4] py-3.5 ${isPlaced && isAccepted ? 'flex-[0.8]' : 'w-full'
                 }`}
             >
-              <Text className="text-sm font-medium text-black">View Order</Text>
+              <Text className="text-[14px] font-medium text-black">View Order</Text>
               <AppIcon icon={ArrowRight01Icon} size={13} color={colors.ink} />
             </Pressable>
 
-            {isAccepted && (
+            {isPlaced && isAccepted && (
+              // Explicit isPlaced guard, not just isAccepted — a stale
+              // local acknowledgedOrderIds entry (set before this order's
+              // last poll refresh) must never resurrect Mark Packed on an
+              // order that's already moved past 'placed' server-side
+              // (packed/out_for_delivery/delivered).
+              // Coral — this app's own reserved CTA color (CLAUDE.md design
+              // tokens: coral is CTA-only, never brand/lime), used here
+              // deliberately so the next real action never blends into the
+              // black/gray/white chrome around it and gets missed. Wider
+              // than View Order (flex-[1.6] vs 0.8) since this is the
+              // button that actually needs pressing next.
               <Pressable
                 onPress={() => onMarkPacked(order.id)}
-                className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-ink py-3"
+                className="flex-[1.6] flex-row items-center justify-center gap-1.5 rounded-xl bg-[#f54900] py-3.5"
               >
-                <AppIcon icon={CheckmarkCircle02Icon} size={14} color="#FFFFFF" />
-                <Text className="text-sm font-medium text-white">Mark Packed</Text>
+                {/* <AppIcon icon={CheckmarkCircle02Icon} size={14} color="#FFFFFF" /> */}
+                <Text className="text-[14px] font-medium text-white">Mark Packed</Text>
               </Pressable>
             )}
           </>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }

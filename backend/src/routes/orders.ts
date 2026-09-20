@@ -3,7 +3,8 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
-import { calcCommission, calcItemTotal, calcOrderTotal, COMMISSION_RATE } from '../lib/pricing.js';
+import { calcCommission, calcItemTotal, calcOrderTotal, COMMISSION_RATE, round2 } from '../lib/pricing.js';
+import { formatPayoutDateLabel, nextPayoutDate } from '../lib/payoutSchedule.js';
 import { CartValidationError, validateCart } from '../lib/orderValidation.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
 import {
@@ -423,6 +424,26 @@ ordersRouter.patch(
             amount: updated.delivery_fee,
           });
         }
+
+        // Real earning-transparency push — the store's revenue is never
+        // written to any ledger before this exact moment (weeklyPayouts.ts's
+        // own computeWeeklyPayouts scopes strictly to delivered orders, not
+        // accepted/packed ones), so 'delivered' is the one truthful point
+        // to tell the owner "you earned this." Tells them the real amount
+        // AND the real next settlement date up front — the two things a
+        // store owner actually needs to not wonder "where did my money go"
+        // when it doesn't show up in Payouts immediately.
+        const netEarned = round2(updated.item_total - updated.commission_amount);
+        const { data: storeRow } = await supabase
+          .from('stores')
+          .select('users!owner_user_id(expo_push_token)')
+          .eq('id', order.store_id)
+          .single();
+        void sendPushNotification(
+          storeRow?.users?.[0]?.expo_push_token,
+          `₹${netEarned} earned`,
+          `Order delivered — added to your balance, paid out on ${formatPayoutDateLabel(nextPayoutDate())}.`,
+        );
       }
 
       // Realtime propagation is automatic via Supabase's replication on this

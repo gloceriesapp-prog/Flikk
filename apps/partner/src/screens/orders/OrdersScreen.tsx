@@ -43,6 +43,7 @@ const STATUS_GROUPS: { status: PartnerOrderStatus; filterValue: OrderStatusFilte
   { status: 'placed', filterValue: 'placed', sectionTitle: 'New Orders' },
   { status: 'packed', filterValue: 'packed', sectionTitle: 'Packed' },
   { status: 'out_for_delivery', filterValue: 'out_for_delivery', sectionTitle: 'Out for Delivery' },
+  { status: 'delivered', filterValue: 'delivered', sectionTitle: 'Delivered' },
 ];
 
 export function OrdersScreen({ navigation }: Props) {
@@ -143,9 +144,9 @@ export function OrdersScreen({ navigation }: Props) {
 
       <View className="py-3">
         <OrderStatusFilter
-          // New Orders → Packed → Out for Delivery → All, in that order —
-          // pending-action states lead, the catch-all trails. Same
-          // priority as the default selection above.
+          // New Orders → Packed → Out for Delivery → Delivered → All, in
+          // that order — pending-action states lead, the finished/catch-all
+          // states trail. Same priority as the default selection above.
           options={[
             ...STATUS_GROUPS.map((group) => ({
               value: group.filterValue,

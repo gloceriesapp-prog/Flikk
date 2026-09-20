@@ -22,6 +22,8 @@ import { IncomingOrderAlert } from './src/features/incoming-order-alert/Incoming
 import { primeOrderAlertSound } from './src/features/incoming-order-alert/playOrderAlertSound';
 import { OrderReminderBanner } from './src/features/order-expiry/components/OrderReminderBanner';
 import { useOrderExpiryWatcher } from './src/features/order-expiry/useOrderExpiryWatcher';
+import { DeliveryEarnedBanner } from './src/features/delivery-earned-alert/DeliveryEarnedBanner';
+import { useDeliveryEarnedWatcher } from './src/features/delivery-earned-alert/useDeliveryEarnedWatcher';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -61,6 +63,10 @@ export default function App() {
   // before a store is real and approved even though this keeps ticking in
   // the background regardless.
   useOrderExpiryWatcher();
+  // Same "hooks can't be conditional, visible effects are" split as
+  // useOrderExpiryWatcher above — the watcher keeps running regardless,
+  // DeliveryEarnedBanner below is what's actually gated by hasFullAccess.
+  useDeliveryEarnedWatcher();
 
   // Warms up the alert sound's audio session + buffers the file itself
   // well before any real order arrives — see playOrderAlertSound.ts's own
@@ -90,6 +96,7 @@ export default function App() {
                 own note. */}
             <IncomingOrderAlert />
             <OrderReminderBanner />
+            <DeliveryEarnedBanner />
           </>
         )}
         <StatusBar style="dark" />

@@ -34,13 +34,38 @@
 // treating every still-unacknowledged order as if it just arrived.
 
 import { create } from 'zustand';
-import { fetchOrders, updateOrderStatus } from '../api/orders';
+import { fetchOrders, updateOrderStatus, type ApiOrder } from '../api/orders';
 import { buildSampleOrders, mapApiOrder, type PartnerOrder } from '../screens/orders/data';
+
+// India-only single-zone app (CLAUDE.md) — 'Asia/Kolkata' explicitly, not
+// the device's own timezone, so this reads the real IST calendar day
+// regardless of what timezone a phone happens to be set to.
+const IST_TIME_ZONE = 'Asia/Kolkata';
+
+function isSameIstDay(isoA: string, isoB: string): boolean {
+  const opts: Intl.DateTimeFormatOptions = { timeZone: IST_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' };
+  return new Date(isoA).toLocaleDateString('en-CA', opts) === new Date(isoB).toLocaleDateString('en-CA', opts);
+}
+
+// A delivered order has nothing left for a store owner to act on, but
+// still-showing today's completed deliveries is real, wanted confirmation
+// ("did that order actually land"), not noise — scoped to today only so
+// this queue never grows into the store's entire delivery history.
+function isDeliveredToday(row: ApiOrder, now: Date = new Date()): boolean {
+  return row.status === 'delivered' && !!row.delivered_at && isSameIstDay(row.delivered_at, now.toISOString());
+}
 
 interface OrdersState {
   orders: PartnerOrder[];
   acknowledgedOrderIds: Set<string>;
   newlyArrivedOrderIds: Set<string>;
+  // Same "genuinely changed since the last poll, not just currently in
+  // this state" reasoning as newlyArrivedOrderIds — an order that reaches
+  // 'delivered' between two loadOrders() calls lands here exactly once,
+  // which is what features/delivery-earned-alert/ watches to show the
+  // "you earned ₹X" banner. Never re-added for an order that was already
+  // delivered on a previous poll.
+  justDeliveredOrderIds: Set<string>;
   baselineEstablished: boolean;
   loadOrders: () => Promise<void>;
   // Local UI flag only — see file header. Not a status transition.
@@ -48,20 +73,27 @@ interface OrdersState {
   markPacked: (orderId: string) => Promise<void>;
   rejectOrder: (orderId: string) => Promise<void>;
   clearNewlyArrived: (orderId: string) => void;
+  clearJustDelivered: (orderId: string) => void;
 }
 
 export const useOrdersStore = create<OrdersState>((set) => ({
   orders: [],
   acknowledgedOrderIds: new Set(),
   newlyArrivedOrderIds: new Set(),
+  justDeliveredOrderIds: new Set(),
   baselineEstablished: false,
 
   loadOrders: async () => {
     const rows = await fetchOrders();
-    // Queue-relevant statuses only — delivered/cancelled have nothing left
-    // for a store owner to act on, same scope as the placeholder data this
-    // replaced.
-    const active = rows.filter((row) => row.status === 'placed' || row.status === 'packed' || row.status === 'out_for_delivery');
+    // Queue-relevant statuses — 'cancelled' has nothing left for a store
+    // owner to act on or care about, so it's the only status excluded
+    // outright. 'delivered' is included but only for today (isDeliveredToday
+    // above) — a completed delivery from last week has no place cluttering
+    // today's queue, but today's own completed orders are real, wanted
+    // confirmation the order actually landed.
+    const active = rows.filter(
+      (row) => row.status === 'placed' || row.status === 'packed' || row.status === 'out_for_delivery' || isDeliveredToday(row),
+    );
     const mapped = active.map((row) => mapApiOrder(row, rows));
 
     // Dev/preview fallback — a genuinely empty queue shows 3 sample orders
@@ -85,14 +117,29 @@ export const useOrdersStore = create<OrdersState>((set) => ({
 
     set((state) => {
       const previousIds = new Set(state.orders.map((o) => o.id));
+      const previousStatusById = new Map(state.orders.map((o) => [o.id, o.status]));
       const genuinelyNew = state.baselineEstablished
         ? mapped.filter((o) => o.status === 'placed' && !previousIds.has(o.id)).map((o) => o.id)
+        : [];
+      // Was present before with a real, DIFFERENT status — not "just
+      // appeared as delivered" (that's a stale/late poll catching up, not
+      // a fresh transition worth interrupting the owner about) and not on
+      // the very first load (baselineEstablished false — a store owner
+      // opening the app to 3 already-delivered orders from earlier today
+      // shouldn't get 3 "you earned" banners just because this was the
+      // first fetch, same reasoning as genuinelyNew above).
+      const genuinelyJustDelivered = state.baselineEstablished
+        ? mapped
+            .filter((o) => o.status === 'delivered' && previousStatusById.has(o.id) && previousStatusById.get(o.id) !== 'delivered')
+            .map((o) => o.id)
         : [];
 
       return {
         orders: mapped,
         baselineEstablished: true,
         newlyArrivedOrderIds: genuinelyNew.length > 0 ? new Set([...state.newlyArrivedOrderIds, ...genuinelyNew]) : state.newlyArrivedOrderIds,
+        justDeliveredOrderIds:
+          genuinelyJustDelivered.length > 0 ? new Set([...state.justDeliveredOrderIds, ...genuinelyJustDelivered]) : state.justDeliveredOrderIds,
       };
     });
   },
@@ -137,5 +184,12 @@ export const useOrdersStore = create<OrdersState>((set) => ({
       const newlyArrivedOrderIds = new Set(state.newlyArrivedOrderIds);
       newlyArrivedOrderIds.delete(orderId);
       return { newlyArrivedOrderIds };
+    }),
+
+  clearJustDelivered: (orderId) =>
+    set((state) => {
+      const justDeliveredOrderIds = new Set(state.justDeliveredOrderIds);
+      justDeliveredOrderIds.delete(orderId);
+      return { justDeliveredOrderIds };
     }),
 }));

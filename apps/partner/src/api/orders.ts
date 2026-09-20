@@ -31,6 +31,7 @@ export interface ApiOrder {
   razorpay_payment_id: string | null;
   placed_at: string;
   packed_at: string | null;
+  delivered_at: string | null;
   order_items: ApiOrderItem[];
   users: { name: string | null; phone: string } | null;
   addresses: { line1: string; landmark: string | null } | null;

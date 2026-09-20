@@ -1,14 +1,14 @@
 // Horizontal pill filter above the order list, same shape as the
 // reference (dark filled pill = active, white outlined = inactive, a
 // count badge on each). Labels are full plain words ("New Orders", not
-// "New") rather than the reference's terse fragments. 'out_for_delivery'
-// is included and read-only — see ../data.ts's own note on why this app
-// can display that status even though it can't transition an order into
-// it or out of it.
+// "New") rather than the reference's terse fragments. 'out_for_delivery'/
+// 'delivered' are included and read-only — see ../data.ts's own note on
+// why this app can display those statuses even though it can't transition
+// an order into or out of either.
 
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-export type OrderStatusFilterValue = 'all' | 'placed' | 'packed' | 'out_for_delivery';
+export type OrderStatusFilterValue = 'all' | 'placed' | 'packed' | 'out_for_delivery' | 'delivered';
 
 interface FilterOption {
   value: OrderStatusFilterValue;

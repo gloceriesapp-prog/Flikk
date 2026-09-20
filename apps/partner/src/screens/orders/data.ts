@@ -4,15 +4,18 @@
 // intentionally mirrors that endpoint's shape (orders + order_items) so
 // swapping this for a real fetch is a data change, not a redesign.
 //
-// 'out_for_delivery' is shown here read-only — the real endpoint queries
-// `orders` scoped only by `store_id`, with no status filter, so a store
-// owner can already see an order that's out for delivery, they just can't
-// act on it. Per specs/02-partner-app/screens.md, "partner app triggers no
-// status transition other than `packed`" — that's a restriction on writes,
-// not on what this screen may display. 'delivered' still isn't shown: once
-// delivered, an order has nothing left for a store owner to track.
+// 'out_for_delivery'/'delivered' are shown here read-only — the real
+// endpoint queries `orders` scoped only by `store_id`, with no status
+// filter, so a store owner can already see an order in either state, they
+// just can't act on it. Per specs/02-partner-app/screens.md, "partner app
+// triggers no status transition other than `packed`" — that's a
+// restriction on writes, not on what this screen may display.
+// 'delivered' orders ARE shown now (useOrdersStore's own loadOrders scopes
+// them to today only, see that file's own note on why) — a store owner
+// still wants confirmation an order actually completed, not just that it
+// left for delivery.
 
-export type PartnerOrderStatus = 'placed' | 'packed' | 'out_for_delivery';
+export type PartnerOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered';
 
 export interface OrderLineItem {
   name: string;
@@ -104,9 +107,9 @@ export type { StoreProfile } from '../store-settings/data';
 
 import type { ApiOrder } from '../../api/orders';
 
-// Dev/preview-only queue — three orders covering the states OrderCard
-// actually renders differently (placed/packed/out_for_delivery, cod/
-// prepaid, single-item/multi-item, with/without a product photo) so the UI
+// Dev/preview-only queue — four orders covering the states OrderCard
+// actually renders differently (placed/packed/out_for_delivery/delivered,
+// cod/prepaid, single-item/multi-item, with/without a product photo) so the UI
 // can be checked without a real store's order history. Same "isSample:
 // true, shown only when the real fetch is empty" gate as payouts' own
 // buildSamplePayouts (screens/payouts/data.ts) — never mixed with real
@@ -180,6 +183,25 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
       placedAtTimestamp: now - 8 * 60_000, // 8 mins elapsed
       isSample: true,
     },
+    {
+      id: 'sample-order-4',
+      orderNumber: 'FLK-100037',
+      customerName: 'Divya Rao',
+      items: [{ name: 'Aashirvaad Atta', quantity: 1, unit: '5 kg', price: 285, imageUrl: null }],
+      total: 315,
+      itemTotal: 285,
+      commissionAmount: 17.1,
+      netPayout: 267.9,
+      status: 'delivered',
+      placedAtLabel: '55 min ago',
+      placedAtTime: new Date(now - 55 * 60_000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      orderCount: 4,
+      paymentMode: 'prepaid',
+      deliveryAddress: ['Hotel Sea Rock Road', 'Near Kaup Beach'],
+      customerPhone: '+919900044455',
+      placedAtTimestamp: now - 55 * 60_000,
+      isSample: true,
+    },
   ];
 }
 
@@ -227,9 +249,11 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     itemTotal: order.item_total,
     commissionAmount: order.commission_amount,
     netPayout: round2(order.item_total - order.commission_amount),
-    // 'delivered'/'cancelled' orders are filtered out before this ever
-    // runs (useOrdersStore's own loadOrders) — this screen's queue has no
-    // use for either, same as the placeholder data it replaces.
+    // 'cancelled' orders are filtered out before this ever runs
+    // (useOrdersStore's own loadOrders) — this screen's queue has no use
+    // for them. 'delivered' orders DO reach here now, but only today's
+    // (same file's own note on why), so the cast below is always one of
+    // the four real PartnerOrderStatus values.
     status: order.status as PartnerOrderStatus,
     placedAtLabel: formatRelativeTime(order.placed_at),
     placedAtTime: new Date(order.placed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
