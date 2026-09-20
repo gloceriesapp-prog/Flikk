@@ -65,6 +65,12 @@ export interface StoreApplication {
   photoUrl?: string;
   ownerName?: string;
   shopLicenseNumber?: string;
+  // PAN is compulsory server-side (POST /store-application 400s without a
+  // valid one) — kept optional in this type only so a partially-filled
+  // in-progress draft still type-checks; StoreReviewScreen's own
+  // canSubmit gate is what actually enforces it before this ever fires.
+  fssaiNumber?: string;
+  panNumber?: string;
 }
 
 // Partner-only endpoint (Store Setup submission) — not part of the shared
@@ -158,6 +164,8 @@ export interface StoreDraftPatch {
   gstNumber?: string;
   ownerName?: string;
   shopLicenseNumber?: string;
+  fssaiNumber?: string;
+  panNumber?: string;
 }
 
 export interface SavedStoreDraft {
@@ -171,6 +179,8 @@ export interface SavedStoreDraft {
   gst_number: string | null;
   owner_name: string | null;
   shop_establishment_number: string | null;
+  fssai_number: string | null;
+  pan_number: string | null;
 }
 
 export async function fetchStoreDraft(): Promise<SavedStoreDraft | null> {

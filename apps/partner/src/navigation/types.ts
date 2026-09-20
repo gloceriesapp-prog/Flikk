@@ -30,6 +30,12 @@ export interface StoreDraft {
   gstNumber: string;
   ownerName: string;
   shopLicenseNumber: string;
+  // FSSAI stays optional (doesn't apply to every STORE_CATEGORIES entry —
+  // Hardware/Paint Shop/Steel & Vessels aren't food businesses); PAN is
+  // the one compulsory document, enforced by StoreReviewScreen's own
+  // canSubmit gate and POST /store-application server-side.
+  fssaiNumber: string;
+  panNumber: string;
 }
 
 export type AuthStackParamList = {

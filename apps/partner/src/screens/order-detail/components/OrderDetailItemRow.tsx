@@ -14,16 +14,16 @@ interface Props {
 export function OrderDetailItemRow({ item }: Props) {
   return (
     <View className="flex-row items-center gap-3 py-2.5">
-      <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-14 w-14 rounded-2xl bg-white" resizeMode="cover" />
+      <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-14 w-14 rounded-2xl bg-gray-50" resizeMode="cover" />
 
       <View className="flex-1">
-        <Text className="text-lg font-medium leading-5 text-ink" numberOfLines={2}>
+        <Text className="text-[15px] font-medium leading-5 text-ink" numberOfLines={2}>
           {item.quantity}x {item.name}
         </Text>
-        <Text className="text-base font-medium text-ink/60">{item.unit}</Text>
+        <Text className="text-[14px] font-medium text-ink/60">{item.unit}</Text>
       </View>
 
-      <Text className="text-lg font-semibold text-ink">₹{item.price}</Text>
+      <Text className="text-[15px] font-semibold text-ink">₹{item.price}</Text>
     </View>
   );
 }

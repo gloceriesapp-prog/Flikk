@@ -12,6 +12,7 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { toWebp } from '../utils/image.js';
+import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
 
 export const storeOnboardingRouter = Router();
 
@@ -34,18 +35,33 @@ const PHOTO_BUCKET = 'store-images';
 // this one row.
 storeOnboardingRouter.post('/store-application', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { storeName, category, district, addressLine, gstNumber, photoUrl, ownerName, shopLicenseNumber } = req.body as {
-      storeName?: string;
-      category?: string;
-      district?: string;
-      addressLine?: string;
-      gstNumber?: string;
-      photoUrl?: string;
-      ownerName?: string;
-      shopLicenseNumber?: string;
-    };
+    const { storeName, category, district, addressLine, gstNumber, photoUrl, ownerName, shopLicenseNumber, fssaiNumber, panNumber } =
+      req.body as {
+        storeName?: string;
+        category?: string;
+        district?: string;
+        addressLine?: string;
+        gstNumber?: string;
+        photoUrl?: string;
+        ownerName?: string;
+        shopLicenseNumber?: string;
+        fssaiNumber?: string;
+        panNumber?: string;
+      };
     if (!storeName || !category || !district) {
       throw new AppError(400, 'MISSING_FIELDS', 'storeName, category and district are required.');
+    }
+    // PAN is the one compulsory document at submit time — real per an
+    // explicit ask (tax/payout compliance applies to every store
+    // regardless of category), unlike FSSAI which genuinely doesn't apply
+    // to every STORE_CATEGORIES entry (Hardware, Paint Shop, Steel &
+    // Vessels aren't food businesses at all). FSSAI/GST/shop-license stay
+    // optional here, same as before.
+    if (!panNumber || !isValidPanFormat(panNumber)) {
+      throw new AppError(400, 'INVALID_PAN_FORMAT', 'A valid PAN (e.g. ABCDE1234F) is required to submit your application.');
+    }
+    if (fssaiNumber && !isValidFssaiFormat(fssaiNumber)) {
+      throw new AppError(400, 'INVALID_FSSAI_FORMAT', 'FSSAI license number must be exactly 14 digits.');
     }
 
     const { error } = await supabase.from('store_onboarding_drafts').upsert(
@@ -59,6 +75,8 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
         photo_url: photoUrl || null,
         owner_name: ownerName || null,
         shop_establishment_number: shopLicenseNumber || null,
+        fssai_number: fssaiNumber || null,
+        pan_number: panNumber.trim().toUpperCase(),
         // Clears out any reason from a previous rejection — a fresh
         // submission means a fresh review, not the old verdict still
         // hanging around next to it.
@@ -93,7 +111,9 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
   try {
     const { data, error } = await supabase
       .from('store_onboarding_drafts')
-      .select('store_name, category, district, address_line, lat, lng, photo_url, gst_number, owner_name, shop_establishment_number, submitted_at')
+      .select(
+        'store_name, category, district, address_line, lat, lng, photo_url, gst_number, owner_name, shop_establishment_number, fssai_number, pan_number, submitted_at',
+      )
       .eq('user_id', req.user!.id)
       .maybeSingle();
     if (error) throw error;
@@ -106,18 +126,32 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
 
 storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { storeName, category, district, addressLine, lat, lng, photoUrl, gstNumber, ownerName, shopLicenseNumber } = req.body as {
-      storeName?: string;
-      category?: string;
-      district?: string;
-      addressLine?: string;
-      lat?: number;
-      lng?: number;
-      photoUrl?: string;
-      gstNumber?: string;
-      ownerName?: string;
-      shopLicenseNumber?: string;
-    };
+    const { storeName, category, district, addressLine, lat, lng, photoUrl, gstNumber, ownerName, shopLicenseNumber, fssaiNumber, panNumber } =
+      req.body as {
+        storeName?: string;
+        category?: string;
+        district?: string;
+        addressLine?: string;
+        lat?: number;
+        lng?: number;
+        photoUrl?: string;
+        gstNumber?: string;
+        ownerName?: string;
+        shopLicenseNumber?: string;
+        fssaiNumber?: string;
+        panNumber?: string;
+      };
+
+    // Same real format guard as final submit (POST /store-application) and
+    // Store Settings' own PATCH /store — a Step 2 auto-save shouldn't let
+    // an obviously malformed number sit in the draft either, even before
+    // the owner reaches Review.
+    if (typeof fssaiNumber === 'string' && fssaiNumber.trim() && !isValidFssaiFormat(fssaiNumber)) {
+      throw new AppError(400, 'INVALID_FSSAI_FORMAT', 'FSSAI license number must be exactly 14 digits.');
+    }
+    if (typeof panNumber === 'string' && panNumber.trim() && !isValidPanFormat(panNumber)) {
+      throw new AppError(400, 'INVALID_PAN_FORMAT', 'PAN must be in the format ABCDE1234F.');
+    }
 
     // Partial upsert — only fields the caller actually sent overwrite the
     // existing row; a Step 2 PUT (photo/location/GST) must never blank out
@@ -133,6 +167,8 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
     if (gstNumber !== undefined) patch.gst_number = gstNumber;
     if (ownerName !== undefined) patch.owner_name = ownerName;
     if (shopLicenseNumber !== undefined) patch.shop_establishment_number = shopLicenseNumber;
+    if (fssaiNumber !== undefined) patch.fssai_number = fssaiNumber;
+    if (panNumber !== undefined) patch.pan_number = typeof panNumber === 'string' ? panNumber.trim().toUpperCase() : panNumber;
 
     const { error } = await supabase.from('store_onboarding_drafts').upsert(patch, { onConflict: 'user_id' });
     if (error) throw error;

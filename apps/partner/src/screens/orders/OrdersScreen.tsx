@@ -133,6 +133,14 @@ export function OrdersScreen({ navigation }: Props) {
         />
       </View>
 
+      {orders.length > 0 && orders[0].isSample && (
+        <View className="mx-5 mt-2 flex-row items-center gap-2 rounded-2xl bg-gold/15 px-4 py-3">
+          <Text className="flex-1 text-xs font-semibold text-ink/70">
+            Sample data — these disappear the moment a real order comes in.
+          </Text>
+        </View>
+      )}
+
       <View className="py-3">
         <OrderStatusFilter
           // New Orders → Packed → Out for Delivery → All, in that order —

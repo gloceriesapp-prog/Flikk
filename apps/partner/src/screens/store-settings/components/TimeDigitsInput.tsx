@@ -62,9 +62,9 @@ export function TimeDigitsInput({ value, onChangeText, suffix }: Props) {
         keyboardType="number-pad"
         placeholder={suffix === 'AM' ? '9:00' : '9:00'}
         placeholderTextColor="#9AA5A3"
-        className="rounded-2xl border border-black/10 bg-white py-3 pl-4 pr-12 text-[15px] font-semibold text-ink"
+        className="rounded-2xl border border-black/10 bg-white py-3 pl-4 pr-12 text-[14px] font-medium text-ink"
       />
-      <Text className="absolute right-4 text-[13px] font-bold text-ink/40">{suffix}</Text>
+      <Text className="absolute right-4 text-[13px] font-semibold text-ink/50">{suffix}</Text>
     </View>
   );
 }

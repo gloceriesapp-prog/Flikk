@@ -72,6 +72,8 @@ export function StoreSetupScreen({ navigation, route }: Props) {
           gstNumber: draft.gst_number ?? '',
           ownerName: draft.owner_name ?? '',
           shopLicenseNumber: draft.shop_establishment_number ?? '',
+          fssaiNumber: draft.fssai_number ?? '',
+          panNumber: draft.pan_number ?? '',
         };
 
         // Step 2 also done (district set) -> skip straight to Review;
@@ -128,6 +130,8 @@ export function StoreSetupScreen({ navigation, route }: Props) {
         gstNumber: editDraft?.gstNumber ?? '',
         ownerName: trimmedOwnerName,
         shopLicenseNumber: editDraft?.shopLicenseNumber ?? '',
+        fssaiNumber: editDraft?.fssaiNumber ?? '',
+        panNumber: editDraft?.panNumber ?? '',
       },
     });
   }

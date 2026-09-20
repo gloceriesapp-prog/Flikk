@@ -19,6 +19,7 @@ import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verify
 import { toWebp } from '../utils/image.js';
 import { round2 } from '../lib/pricing.js';
 import { reverseGeocode } from '../lib/reverseGeocode.js';
+import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
 
 export const partnerRouter = Router();
 partnerRouter.use(requireAuth, requireRole('store_owner'), requireApproved);
@@ -49,7 +50,21 @@ function maskAccountNumber(full: string | null): string | null {
 }
 
 const STORE_SELECT =
-  'id, name, category, is_active, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number';
+  'id, name, category, is_active, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number';
+
+// Business documents are write-once from the owner's side — real, not
+// just a disabled input client-side (a raw PATCH call could otherwise
+// still slip a change through). Once a document field holds a real
+// value, only the exact same value is accepted again (a no-op re-save);
+// a genuinely different value 400s. An empty field stays settable for
+// the first time — this only locks a value that's already there.
+function assertNotLocked(field: string, current: string | null, incoming: unknown, normalize: (v: string) => string = (v) => v.trim()) {
+  if (incoming === undefined || typeof current !== 'string' || current.trim().length === 0) return;
+  const incomingValue = typeof incoming === 'string' ? normalize(incoming) : '';
+  if (incomingValue !== current.trim()) {
+    throw new AppError(400, 'DOCUMENT_LOCKED', `${field} is already on file and can't be changed here.`);
+  }
+}
 
 function toStoreResponse(data: Record<string, unknown>, phone: string | null) {
   const { payout_bank_account_number, ...rest } = data;
@@ -104,7 +119,34 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
       owner_name,
       gst_number,
       shop_establishment_number,
+      fssai_number,
+      pan_number,
     } = req.body as Record<string, unknown>;
+
+    // Reject rather than silently save an obviously malformed number —
+    // both are optional-to-omit (undefined skips the field entirely, same
+    // as every other field here), but a NON-empty value that doesn't
+    // match the real official format is a typo worth catching now, not a
+    // value blindly stored and only questioned later.
+    if (typeof fssai_number === 'string' && fssai_number.trim() && !isValidFssaiFormat(fssai_number)) {
+      throw new AppError(400, 'INVALID_FSSAI_FORMAT', 'FSSAI license number must be exactly 14 digits.');
+    }
+    if (typeof pan_number === 'string' && pan_number.trim() && !isValidPanFormat(pan_number)) {
+      throw new AppError(400, 'INVALID_PAN_FORMAT', 'PAN must be in the format ABCDE1234F.');
+    }
+
+    // Enforced by assertNotLocked below (module-level, see its own note).
+    const { data: currentDoc, error: currentDocError } = await supabase
+      .from('stores')
+      .select('gst_number, shop_establishment_number, fssai_number, pan_number')
+      .eq('id', storeId)
+      .single();
+    if (currentDocError || !currentDoc) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
+
+    assertNotLocked('GST number', currentDoc.gst_number, gst_number);
+    assertNotLocked('Shop & Establishment license', currentDoc.shop_establishment_number, shop_establishment_number);
+    assertNotLocked('FSSAI license number', currentDoc.fssai_number, fssai_number);
+    assertNotLocked('PAN', currentDoc.pan_number, pan_number, (v) => v.trim().toUpperCase());
     // Deliberately NOT accepting payout_upi_id/payout_upi_verified_name/
     // payout_method/payout_bank_* here — every payout-destination field
     // is only ever written by POST /verify-payout, which requires a real
@@ -135,6 +177,8 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     if (owner_name !== undefined) patch.owner_name = owner_name;
     if (gst_number !== undefined) patch.gst_number = gst_number;
     if (shop_establishment_number !== undefined) patch.shop_establishment_number = shop_establishment_number;
+    if (fssai_number !== undefined) patch.fssai_number = typeof fssai_number === 'string' ? fssai_number.trim() : fssai_number;
+    if (pan_number !== undefined) patch.pan_number = typeof pan_number === 'string' ? pan_number.trim().toUpperCase() : pan_number;
 
     const { data, error } = await supabase.from('stores').update(patch).eq('id', storeId).select(STORE_SELECT).single();
     if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');

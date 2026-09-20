@@ -13,7 +13,7 @@
 // back — same best-effort tolerance as this app's draft autosaves.
 
 import { create } from 'zustand';
-import { apiRequest } from '../api/client';
+import { apiRequest, ApiError } from '../api/client';
 import { EMPTY_STORE_PROFILE, type StoreProfile } from '../screens/store-settings/data';
 
 interface StoreRow {
@@ -40,6 +40,8 @@ interface StoreRow {
   owner_name: string | null;
   gst_number: string | null;
   shop_establishment_number: string | null;
+  fssai_number: string | null;
+  pan_number: string | null;
 }
 
 function fromRow(row: StoreRow): StoreProfile {
@@ -73,13 +75,23 @@ function fromRow(row: StoreRow): StoreProfile {
     ownerName: row.owner_name ?? '',
     gstNumber: row.gst_number ?? '',
     shopLicenseNumber: row.shop_establishment_number ?? '',
+    fssaiNumber: row.fssai_number ?? '',
+    panNumber: row.pan_number ?? '',
   };
 }
+
+// updateProfile's PATCH can genuinely fail now (server-side FSSAI/PAN
+// format validation, see backend/src/routes/partner.ts) — callers that
+// need to show the owner why a save didn't take (StoreSettingsScreen's
+// Save button) can await this and read `ok`/`error`; fire-and-forget
+// callers (photo upload, the Open/Closed toggle) can just ignore it since
+// it never rejects.
+export type ProfileSaveResult = { ok: true } | { ok: false; error: string };
 
 interface StoreProfileState {
   profile: StoreProfile;
   loadProfile: () => Promise<void>;
-  updateProfile: (patch: Partial<StoreProfile>) => void;
+  updateProfile: (patch: Partial<StoreProfile>) => Promise<ProfileSaveResult>;
   toggleOpen: () => void;
   // Applies a real, already-bank-verified result (POST
   // /partner/verify-payout already persisted it server-side the moment
@@ -116,29 +128,37 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
     }
   },
 
-  updateProfile: (patch) => {
+  updateProfile: async (patch) => {
     set((state) => ({ profile: { ...state.profile, ...patch } }));
     const { id } = get().profile;
-    if (!id) return;
-    apiRequest('/partner/store', {
-      method: 'PATCH',
-      body: {
-        name: patch.storeName,
-        category: patch.category,
-        district: patch.district,
-        address_line: patch.addressLine,
-        manual_address: patch.manualAddress,
-        lat: patch.lat,
-        lng: patch.lng,
-        open_time: patch.openTime,
-        close_time: patch.closeTime,
-        avg_prep_minutes: patch.avgPrepMinutes,
-        photo_url: patch.photoUrl,
-        owner_name: patch.ownerName,
-        gst_number: patch.gstNumber,
-        shop_establishment_number: patch.shopLicenseNumber,
-      },
-    }).catch(() => {});
+    if (!id) return { ok: true };
+    try {
+      await apiRequest('/partner/store', {
+        method: 'PATCH',
+        body: {
+          name: patch.storeName,
+          category: patch.category,
+          district: patch.district,
+          address_line: patch.addressLine,
+          manual_address: patch.manualAddress,
+          lat: patch.lat,
+          lng: patch.lng,
+          open_time: patch.openTime,
+          close_time: patch.closeTime,
+          avg_prep_minutes: patch.avgPrepMinutes,
+          photo_url: patch.photoUrl,
+          owner_name: patch.ownerName,
+          gst_number: patch.gstNumber,
+          shop_establishment_number: patch.shopLicenseNumber,
+          fssai_number: patch.fssaiNumber,
+          pan_number: patch.panNumber,
+        },
+      });
+      return { ok: true };
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Could not save changes. Check your connection and try again.';
+      return { ok: false, error: message };
+    }
   },
 
   toggleOpen: () => {

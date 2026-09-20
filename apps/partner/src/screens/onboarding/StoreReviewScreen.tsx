@@ -38,6 +38,7 @@ import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatPhone } from '../../utils/formatPhone';
+import { isValidPanFormat } from '../../utils/documentValidation';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'StoreReview'>;
@@ -82,6 +83,8 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         photoUrl: draft.photoUrl || undefined,
         ownerName: draft.ownerName || undefined,
         shopLicenseNumber: draft.shopLicenseNumber || undefined,
+        fssaiNumber: draft.fssaiNumber || undefined,
+        panNumber: draft.panNumber || undefined,
       });
       setApplicationSubmitted(true);
     } catch (err) {
@@ -146,6 +149,8 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         <Row label="Owner name" value={draft.ownerName} onEdit={() => navigation.navigate('StoreSetup', { draft })} />
         <Row label="Category" value={draft.category} onEdit={() => navigation.navigate('StoreSetup', { draft })} />
         <Row label="Phone number" value={phone ? formatPhone(phone) : ''} />
+        <Row label="PAN" value={draft.panNumber} onEdit={() => navigation.navigate('StoreDetails', { draft })} />
+        <Row label="FSSAI license number" value={draft.fssaiNumber} onEdit={() => navigation.navigate('StoreDetails', { draft })} />
         <Row label="GSTIN" value={draft.gstNumber} onEdit={() => navigation.navigate('StoreDetails', { draft })} />
         <Row
           label="Shop & Establishment license"
@@ -157,7 +162,13 @@ export function StoreReviewScreen({ navigation, route }: Props) {
       </ScrollView>
 
       <View className="px-6 pb-4 pt-2">
-        <PrimaryButton label="Submit for review" onPress={handleSubmit} loading={loading} trailingIcon={ArrowRight01Icon} />
+        <PrimaryButton
+          label="Submit for review"
+          onPress={handleSubmit}
+          loading={loading}
+          disabled={!isValidPanFormat(draft.panNumber)}
+          trailingIcon={ArrowRight01Icon}
+        />
       </View>
     </View>
   );

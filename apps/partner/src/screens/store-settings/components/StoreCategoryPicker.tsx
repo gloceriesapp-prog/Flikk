@@ -43,10 +43,10 @@ export function StoreCategoryPicker({ selected, onSelect }: Props) {
     return (
       <View className="flex-row items-center justify-between">
         <View className="rounded-full bg-ink px-4 py-2">
-          <Text className="text-[15px] font-semibold text-white">{selected}</Text>
+          <Text className="text-[13px] font-semibold text-white">{selected}</Text>
         </View>
         <Pressable onPress={() => setExpanded(true)} hitSlop={8}>
-          <Text className="text-[14px] font-bold" style={{ color: ACCENT }}>
+          <Text className="text-[13px] font-semibold" style={{ color: ACCENT }}>
             Change
           </Text>
         </Pressable>

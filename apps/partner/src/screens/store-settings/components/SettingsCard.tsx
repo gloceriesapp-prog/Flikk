@@ -18,10 +18,15 @@ interface Props {
 
 export function SettingsCard({ icon, title, children }: Props) {
   return (
-    <View className="gap-3.5 rounded-3xl bg-white p-4 shadow-sm shadow-black/5">
+    <View className="gap-3.5 rounded-[16px] bg-white p-4">
       <View className="flex-row items-center gap-2.5">
         <AppIcon icon={icon} size={18} color={colors.ink} />
-        <Text className="text-[16px] font-bold text-ink/85">{title}</Text>
+        <View className="flex-row items-center gap-1">
+          <Text className="text-[15px] font-semibold text-ink/85">{title}</Text>
+          <Text className="text-[16px] font-bold text-red-500 leading-none mt-[2px]">
+            *
+          </Text>
+        </View>
       </View>
       <View className="gap-3.5 border-t border-black/5 pt-3.5">{children}</View>
     </View>

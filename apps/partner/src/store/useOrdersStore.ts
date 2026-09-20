@@ -35,7 +35,7 @@
 
 import { create } from 'zustand';
 import { fetchOrders, updateOrderStatus } from '../api/orders';
-import { mapApiOrder, type PartnerOrder } from '../screens/orders/data';
+import { buildSampleOrders, mapApiOrder, type PartnerOrder } from '../screens/orders/data';
 
 interface OrdersState {
   orders: PartnerOrder[];
@@ -64,6 +64,25 @@ export const useOrdersStore = create<OrdersState>((set) => ({
     const active = rows.filter((row) => row.status === 'placed' || row.status === 'packed' || row.status === 'out_for_delivery');
     const mapped = active.map((row) => mapApiOrder(row, rows));
 
+    // Dev/preview fallback — a genuinely empty queue shows 3 sample orders
+    // (data.ts's own buildSampleOrders, each flagged isSample: true) so the
+    // UI can be checked without needing a real order first. Never mixed
+    // with real rows. markPacked/rejectOrder below both short-circuit for
+    // these ids instead of hitting the real backend.
+    //
+    // Generated exactly once, not on every call — this is polled every 10s
+    // (useOrderPolling.ts's own POLL_INTERVAL_MS) and buildSampleOrders()
+    // stamps placedAtTimestamp from Date.now() at call time; regenerating
+    // it on every poll kept resetting that timestamp to "now", which reset
+    // OrderCard's 10-minute accept countdown back to 10:00 every ~10
+    // seconds instead of letting it actually count down. Sample orders
+    // already on screen keep their original timestamps across every
+    // subsequent poll while the real queue stays empty.
+    if (mapped.length === 0) {
+      set((state) => (state.orders.length > 0 && state.orders[0].isSample ? state : { orders: buildSampleOrders(), baselineEstablished: true }));
+      return;
+    }
+
     set((state) => {
       const previousIds = new Set(state.orders.map((o) => o.id));
       const genuinelyNew = state.baselineEstablished
@@ -82,6 +101,12 @@ export const useOrdersStore = create<OrdersState>((set) => ({
     set((state) => ({ acknowledgedOrderIds: new Set(state.acknowledgedOrderIds).add(orderId) })),
 
   markPacked: async (orderId) => {
+    // Sample orders (data.ts's buildSampleOrders) aren't real orders.id
+    // UUIDs — never real network calls, local-only state change instead.
+    if (orderId.startsWith('sample-')) {
+      set((state) => ({ orders: state.orders.map((order) => (order.id === orderId ? { ...order, status: 'packed' } : order)) }));
+      return;
+    }
     await updateOrderStatus(orderId, 'packed');
     set((state) => ({
       orders: state.orders.map((order) => (order.id === orderId ? { ...order, status: 'packed' } : order)),
@@ -89,6 +114,10 @@ export const useOrdersStore = create<OrdersState>((set) => ({
   },
 
   rejectOrder: async (orderId) => {
+    if (orderId.startsWith('sample-')) {
+      set((state) => ({ orders: state.orders.filter((order) => order.id !== orderId) }));
+      return;
+    }
     await updateOrderStatus(orderId, 'cancelled');
     set((state) => {
       const acknowledgedOrderIds = new Set(state.acknowledgedOrderIds);

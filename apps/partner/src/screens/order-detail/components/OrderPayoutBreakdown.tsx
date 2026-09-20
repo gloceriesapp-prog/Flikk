@@ -22,22 +22,22 @@ interface Props {
 
 export function OrderPayoutBreakdown({ orderTotal, commissionPercent, commissionAmount, netPayout }: Props) {
   return (
-    <View className="gap-2.5 rounded-3xl bg-[#F9FAFB] p-4">
-      <Text className="mb-0.5 text-base font-medium text-ink/80">Payout breakdown</Text>
+    <View className="gap-2.5 rounded-3xl bg-white p-4">
+      <Text className="mb-0.5 text-[15px] font-medium text-ink/80">Payout breakdown</Text>
 
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-medium text-ink/60">Order total</Text>
-        <Text className="text-sm font-semibold text-ink">₹{orderTotal.toLocaleString('en-IN')}</Text>
+        <Text className="text-[13.5px] font-medium text-ink/60">Order total</Text>
+        <Text className="text-[13.5px] font-semibold text-ink">₹{orderTotal.toLocaleString('en-IN')}</Text>
       </View>
 
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-medium text-ink/60">Commission ({commissionPercent}%)</Text>
-        <Text className="text-sm font-semibold text-danger">−₹{commissionAmount.toLocaleString('en-IN')}</Text>
+        <Text className="text-[13.5px] font-medium text-ink/60">Commission ({commissionPercent}%)</Text>
+        <Text className="text-[13.5px] font-semibold text-danger">−₹{commissionAmount.toLocaleString('en-IN')}</Text>
       </View>
 
       <View className="mt-1 flex-row items-center justify-between border-t border-black/5 pt-2.5">
-        <Text className="text-lg font-medium text-ink">You&apos;ll receive</Text>
-        <Text className="text-lg font-semibold text-lime-deep">₹{netPayout.toLocaleString('en-IN')}</Text>
+        <Text className="text-[15px] font-medium text-ink">You&apos;ll receive</Text>
+        <Text className="text-[15px] font-semibold text-lime-deep">₹{netPayout.toLocaleString('en-IN')}</Text>
       </View>
     </View>
   );

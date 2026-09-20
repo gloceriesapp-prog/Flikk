@@ -84,6 +84,12 @@ export interface StoreProfile {
   ownerName: string;
   gstNumber: string;
   shopLicenseNumber: string;
+  // Mirrors stores.fssai_number/pan_number — format-validated (regex only,
+  // not government-database or Razorpay verified, see
+  // utils/documentValidation.ts's own note on why) both client- and
+  // server-side (routes/partner.ts's PATCH /store).
+  fssaiNumber: string;
+  panNumber: string;
 }
 
 // One list, not a free-text field — same "pick from a fixed set, not
@@ -132,4 +138,6 @@ export const EMPTY_STORE_PROFILE: StoreProfile = {
   ownerName: '',
   gstNumber: '',
   shopLicenseNumber: '',
+  fssaiNumber: '',
+  panNumber: '',
 };

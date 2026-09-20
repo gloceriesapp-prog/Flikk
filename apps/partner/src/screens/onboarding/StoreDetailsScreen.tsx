@@ -16,6 +16,7 @@ import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import type { Coordinates } from '../../location/geocoding';
 import { colors } from '../../theme/tokens';
+import { isValidFssaiFormat, isValidPanFormat } from '../../utils/documentValidation';
 import { StoreLocationCard } from './components/StoreLocationCard';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -33,8 +34,14 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
   const [coordinates, setCoordinates] = useState<Coordinates | null>(draft.coordinates);
   const [gstNumber, setGstNumber] = useState(draft.gstNumber);
   const [shopLicenseNumber, setShopLicenseNumber] = useState(draft.shopLicenseNumber);
+  const [fssaiNumber, setFssaiNumber] = useState(draft.fssaiNumber);
+  const [panNumber, setPanNumber] = useState(draft.panNumber);
 
-  const canContinue = district !== null;
+  // PAN is the one compulsory document — real per an explicit ask, applies
+  // to every store regardless of category (tax/payout compliance).
+  // FSSAI/GST/shop-license stay optional, same as before.
+  const panValid = isValidPanFormat(panNumber);
+  const canContinue = district !== null && panValid;
 
   async function handlePickPhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -96,6 +103,8 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
     if (!canContinue) return;
     const trimmedGst = gstNumber.trim();
     const trimmedShopLicense = shopLicenseNumber.trim();
+    const trimmedFssai = fssaiNumber.trim();
+    const trimmedPan = panNumber.trim().toUpperCase();
 
     // Best-effort, same reasoning as handlePickPhoto's own note above.
     saveStoreDraft({
@@ -105,10 +114,22 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
       lng: coordinates?.longitude,
       gstNumber: trimmedGst,
       shopLicenseNumber: trimmedShopLicense,
+      fssaiNumber: trimmedFssai,
+      panNumber: trimmedPan,
     }).catch(() => {});
 
     navigation.navigate('StoreReview', {
-      draft: { ...draft, photoUrl, district, addressLine, coordinates, gstNumber: trimmedGst, shopLicenseNumber: trimmedShopLicense },
+      draft: {
+        ...draft,
+        photoUrl,
+        district,
+        addressLine,
+        coordinates,
+        gstNumber: trimmedGst,
+        shopLicenseNumber: trimmedShopLicense,
+        fssaiNumber: trimmedFssai,
+        panNumber: trimmedPan,
+      },
     });
   }
 
@@ -152,6 +173,45 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
               onUseCurrentLocation={() => handleOpenLocationPin()}
               onSelectPlace={(place) => handleOpenLocationPin(place)}
             />
+          </View>
+
+          <View className="gap-1.5">
+            <View className="flex-row items-center gap-1">
+              <Text className="text-[15px] font-medium text-ink/60">PAN number</Text>
+              <Text className="text-[16px] font-bold text-danger leading-none mt-[1px]">*</Text>
+            </View>
+            <TextInput
+              value={panNumber}
+              onChangeText={setPanNumber}
+              placeholder="e.g. ABCDE1234F"
+              placeholderTextColor="#9AA5A3"
+              autoCapitalize="characters"
+              maxLength={10}
+              className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-[15px] font-medium text-ink"
+            />
+            {panNumber.length > 0 && !panValid && (
+              <Text className="text-[13px] font-medium text-danger">Format should be ABCDE1234F.</Text>
+            )}
+            <Text className="text-[13px] font-medium text-ink/40">
+              Required for payout tax compliance. Stored securely, never shared — we check the format only, not against a
+              government database.
+            </Text>
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-[15px] font-medium text-ink/60">FSSAI license number (optional)</Text>
+            <TextInput
+              value={fssaiNumber}
+              onChangeText={setFssaiNumber}
+              placeholder="14-digit license or registration no."
+              placeholderTextColor="#9AA5A3"
+              keyboardType="number-pad"
+              maxLength={14}
+              className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-[15px] font-medium text-ink"
+            />
+            {fssaiNumber.length > 0 && !isValidFssaiFormat(fssaiNumber) && (
+              <Text className="text-[13px] font-medium text-danger">Must be exactly 14 digits.</Text>
+            )}
           </View>
 
           <View className="gap-1.5">

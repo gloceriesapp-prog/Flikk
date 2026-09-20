@@ -100,12 +100,12 @@ export function PayoutAccountCard() {
               </Text>
               <View className="flex-row items-center gap-1 rounded-full bg-success/10 px-2 py-0.5">
                 <AppIcon icon={CheckmarkCircle02Icon} size={11} color={colors.success} />
-                <Text className="text-[11px] font-bold text-success">Verified</Text>
+                <Text className="text-[11px] font-semibold text-success">Verified</Text>
               </View>
             </View>
           </View>
           <Pressable onPress={() => setEditing(true)} hitSlop={10}>
-            <Text className="text-[13px] font-bold" style={{ color: ACCENT }}>
+            <Text className="text-[13px] font-semibold" style={{ color: ACCENT }}>
               Change
             </Text>
           </Pressable>
@@ -147,7 +147,7 @@ export function PayoutAccountCard() {
               className="flex-1 items-center rounded-xl py-2"
               style={{ backgroundColor: active ? '#FFFFFF' : 'transparent' }}
             >
-              <Text className="text-[13px] font-bold" style={{ color: active ? ACCENT : `${colors.ink}70` }}>
+              <Text className="text-[13px] font-semibold" style={{ color: active ? ACCENT : `${colors.ink}70` }}>
                 {option === 'upi' ? 'UPI' : 'Bank account'}
               </Text>
             </Pressable>
@@ -157,8 +157,8 @@ export function PayoutAccountCard() {
 
       {method === 'upi' ? (
         <View className="gap-1.5">
-          <Text className="text-[13px] font-medium text-ink/40">UPI ID</Text>
-          <View className="flex-row items-center overflow-hidden rounded-2xl border border-black/10 bg-white pr-2">
+          <Text className="text-[13px] font-medium text-ink/50">UPI ID</Text>
+          <View className="flex-row items-center overflow-hidden rounded-xl border border-black/10 bg-white pr-1.5">
             <TextInput
               value={vpaInput}
               onChangeText={setVpaInput}
@@ -167,7 +167,7 @@ export function PayoutAccountCard() {
               autoCapitalize="none"
               autoCorrect={false}
               editable={!verifying}
-              className="flex-1 px-4 py-3 text-[15px] font-semibold text-ink"
+              className="flex-1 pl-4 pr-2 py-3 text-[14px] font-medium text-ink"
             />
             <VerifyPill onPress={handleVerify} disabled={verifying || !canVerifyUpi} verifying={verifying} />
           </View>
@@ -175,18 +175,18 @@ export function PayoutAccountCard() {
       ) : (
         <View className="gap-3">
           <View className="gap-1.5">
-            <Text className="text-[13px] font-medium text-ink/40">Account holder name</Text>
+            <Text className="text-[13px] font-medium text-ink/50">Account holder name</Text>
             <TextInput
               value={accountHolderName}
               onChangeText={setAccountHolderName}
               placeholder="As it appears on the bank account"
               placeholderTextColor="#9AA5A3"
               editable={!verifying}
-              className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[15px] font-semibold text-ink"
+              className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[14px] font-medium text-ink"
             />
           </View>
           <View className="gap-1.5">
-            <Text className="text-[13px] font-medium text-ink/40">Account number</Text>
+            <Text className="text-[13px] font-medium text-ink/50">Account number</Text>
             <TextInput
               value={accountNumber}
               onChangeText={setAccountNumber}
@@ -194,11 +194,11 @@ export function PayoutAccountCard() {
               placeholderTextColor="#9AA5A3"
               keyboardType="number-pad"
               editable={!verifying}
-              className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[15px] font-semibold text-ink"
+              className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[14px] font-medium text-ink"
             />
           </View>
           <View className="gap-1.5">
-            <Text className="text-[13px] font-medium text-ink/40">IFSC code</Text>
+            <Text className="text-[13px] font-medium text-ink/50">IFSC code</Text>
             <TextInput
               value={ifsc}
               onChangeText={(text) => setIfsc(text.toUpperCase())}
@@ -208,7 +208,7 @@ export function PayoutAccountCard() {
               autoCorrect={false}
               maxLength={11}
               editable={!verifying}
-              className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[15px] font-semibold text-ink"
+              className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[14px] font-medium text-ink"
             />
           </View>
 
@@ -222,10 +222,9 @@ export function PayoutAccountCard() {
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <>
-                <Text className="text-[14px] font-bold" style={{ color: canVerifyBank ? '#FFFFFF' : '#9AA5A3' }}>
+                <Text className="text-[14px] font-semibold" style={{ color: canVerifyBank ? '#FFFFFF' : '#9AA5A3' }}>
                   Verify
                 </Text>
-                <AppIcon icon={ArrowRight01Icon} size={14} color={canVerifyBank ? '#FFFFFF' : '#9AA5A3'} />
               </>
             )}
           </Pressable>
@@ -234,9 +233,8 @@ export function PayoutAccountCard() {
 
       {error && <Text className="text-[13px] font-medium text-danger">{error}</Text>}
 
-      <Text className="text-[13px] font-medium text-ink/40">
-        We verify every payout destination with a real ₹1 check before saving it — your weekly payout only ever goes
-        to a confirmed account.
+      <Text className="text-[13px] font-medium leading-normal text-ink/50">
+        Every account is verified with a<Text className="font-semibold text-ink/70"> ₹1 test deposit </Text>before saving to ensure your weekly payouts arrive safely.
       </Text>
     </SettingsCard>
   );
@@ -247,17 +245,17 @@ function VerifyPill({ onPress, disabled, verifying }: { onPress: () => void; dis
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      className="flex-row items-center gap-1 rounded-full px-3 py-1.5"
+      className="flex-row items-center gap-1 rounded-lg px-4 py-2.5"
       style={{ backgroundColor: disabled && !verifying ? '#E5E7EB' : `${ACCENT}14` }}
     >
       {verifying ? (
         <ActivityIndicator size="small" color={ACCENT} />
       ) : (
         <>
-          <Text className="text-[13px] font-bold" style={{ color: disabled ? '#9AA5A3' : ACCENT }}>
+          <Text className="text-[13px] font-semibold" style={{ color: disabled ? '#9AA5A3' : ACCENT }}>
             Verify
           </Text>
-          <AppIcon icon={ArrowRight01Icon} size={13} color={disabled ? '#9AA5A3' : ACCENT} />
+
         </>
       )}
     </Pressable>

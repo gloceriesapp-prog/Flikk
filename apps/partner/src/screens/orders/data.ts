@@ -79,6 +79,10 @@ export interface PartnerOrder {
   // placedAtTime ("12:40 pm" has no date and drifts stale by the next
   // day). A real fetch populates this from orders.placed_at.
   placedAtTimestamp: number;
+  // Only ever true for buildSampleOrders()'s own rows — never set on a
+  // mapApiOrder() result. Lets OrdersScreen show a plain banner instead of
+  // silently mixing fake orders into what looks like a real queue.
+  isSample?: boolean;
 }
 
 // StoreProfile's canonical shape/data now lives in
@@ -100,6 +104,85 @@ export type { StoreProfile } from '../store-settings/data';
 
 import type { ApiOrder } from '../../api/orders';
 
+// Dev/preview-only queue — three orders covering the states OrderCard
+// actually renders differently (placed/packed/out_for_delivery, cod/
+// prepaid, single-item/multi-item, with/without a product photo) so the UI
+// can be checked without a real store's order history. Same "isSample:
+// true, shown only when the real fetch is empty" gate as payouts' own
+// buildSamplePayouts (screens/payouts/data.ts) — never mixed with real
+// rows, never persisted anywhere. useOrdersStore.loadOrders() only calls
+// this once (keeps the same placedAtTimestamp across every later poll) —
+// see that file's own note on why regenerating it every poll broke the
+// countdown.
+export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
+  return [
+    {
+      id: 'sample-order-1',
+      orderNumber: 'FLK-100042',
+      customerName: 'Ramesh Shetty',
+      items: [
+        { name: 'Toor Dal', quantity: 1, unit: '1 kg', price: 145, imageUrl: null },
+        { name: 'Sunflower Oil', quantity: 2, unit: '1 L', price: 320, imageUrl: null },
+        { name: 'Amul Milk', quantity: 4, unit: '500 ml', price: 112, imageUrl: null },
+      ],
+      total: 607,
+      itemTotal: 577,
+      commissionAmount: 34.62,
+      netPayout: 542.38,
+      status: 'placed',
+      placedAtLabel: 'Just now',
+      placedAtTime: new Date(now).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      orderCount: 7,
+      paymentMode: 'cod',
+      deliveryAddress: ['12, Bunts Hostel Road', 'Near Kapu Junction'],
+      customerPhone: '+919900011122',
+      placedAtTimestamp: now, // 0 mins elapsed (Just now)
+      isSample: true,
+    },
+    {
+      id: 'sample-order-2',
+      orderNumber: 'FLK-100041',
+      customerName: 'Anitha Poojary',
+      items: [{ name: 'Basmati Rice', quantity: 1, unit: '5 kg', price: 460, imageUrl: null }],
+      total: 490,
+      itemTotal: 460,
+      commissionAmount: 27.6,
+      netPayout: 432.4,
+      status: 'packed',
+      placedAtLabel: '4 min ago',
+      placedAtTime: new Date(now - 4 * 60_000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      orderCount: 2,
+      paymentMode: 'prepaid',
+      deliveryAddress: ['4th Cross, Malpe Road', ''],
+      customerPhone: '+919900022233',
+      placedAtTimestamp: now - 4 * 60_000, // 4 mins elapsed
+      isSample: true,
+    },
+    {
+      id: 'sample-order-3',
+      orderNumber: 'FLK-100039',
+      customerName: 'Prakash Kamath',
+      items: [
+        { name: 'Colgate Toothpaste', quantity: 1, unit: '150 g', price: 89, imageUrl: null },
+        { name: 'Lifebuoy Soap', quantity: 3, unit: '125 g', price: 105, imageUrl: null },
+      ],
+      total: 224,
+      itemTotal: 194,
+      commissionAmount: 11.64,
+      netPayout: 182.36,
+      status: 'out_for_delivery',
+      placedAtLabel: '8 min ago',
+      placedAtTime: new Date(now - 8 * 60_000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      orderCount: 1,
+      paymentMode: 'cod',
+      deliveryAddress: ['Shanthi Nagar, 2nd Main', 'Opposite water tank'],
+      customerPhone: '+919900033344',
+      placedAtTimestamp: now - 8 * 60_000, // 8 mins elapsed
+      isSample: true,
+    },
+  ];
+}
+
 // Same rounding backend/src/lib/pricing.ts's own round2 does — item_total
 // and commission_amount are each already 2dp from the server, but a plain
 // JS subtraction of two such values can still land on something like
@@ -111,8 +194,10 @@ function round2(n: number): number {
 function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60_000);
+
   if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes <= 10) return `${minutes} min ago`;
+
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} hr ago`;
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });

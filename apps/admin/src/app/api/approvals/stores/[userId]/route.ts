@@ -65,7 +65,9 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
 
     const { data: draft, error: draftError } = await supabaseAdmin
       .from('store_onboarding_drafts')
-      .select('store_name, category, district, address_line, photo_url, gst_number, lat, lng, owner_name, shop_establishment_number')
+      .select(
+        'store_name, category, district, address_line, photo_url, gst_number, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number',
+      )
       .eq('user_id', userId)
       .not('submitted_at', 'is', null)
       .single();
@@ -93,6 +95,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
       lng: draft.lng,
       owner_name: draft.owner_name,
       shop_establishment_number: draft.shop_establishment_number,
+      fssai_number: draft.fssai_number,
+      pan_number: draft.pan_number,
     });
     if (storeError) throw storeError;
 

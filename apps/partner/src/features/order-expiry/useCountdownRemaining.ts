@@ -1,21 +1,26 @@
-// Live remaining-ms-until-deadline, re-computed once a second. Generic —
-// anything that needs to show a shrinking clock against a fixed deadline
-// (right now, just OrderCard's grace-window badge) can use this instead of
-// each rolling its own setInterval.
+// Live remaining-ms-until-deadline, re-computed against real system time (Date.now()).
+// Guarantees zero clock drift across component re-renders or app reloads.
 
 import { useEffect, useState } from 'react';
 
 export function useCountdownRemaining(deadlineMs: number): number {
-  // Computed fresh on every mount/deadline change via the initializer, not
-  // a synchronous setState in the effect below — the effect's only job is
-  // scheduling the recurring tick, not producing the first value too.
-  const [remaining, setRemaining] = useState(() => Math.max(0, deadlineMs - Date.now()));
+  const getRemaining = () => Math.max(0, deadlineMs - Date.now());
+
+  const [remaining, setRemaining] = useState(getRemaining);
 
   useEffect(() => {
+    // Sync state immediately when deadlineMs changes
+    setRemaining(getRemaining());
+
     if (deadlineMs <= Date.now()) return;
 
     const interval = setInterval(() => {
-      setRemaining(Math.max(0, deadlineMs - Date.now()));
+      const nextRemaining = Math.max(0, deadlineMs - Date.now());
+      setRemaining(nextRemaining);
+
+      if (nextRemaining <= 0) {
+        clearInterval(interval);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
