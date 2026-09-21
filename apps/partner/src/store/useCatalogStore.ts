@@ -12,15 +12,15 @@
 // see partner.ts's own note — CatalogScreen/ProductRow show a badge for
 // anything that isn't 'approved' yet.
 //
-// updateProduct stays local-only (no PATCH /partner/products/:id call) —
-// per-variant stock toggling here has no column to write to
-// (product_variants has no per-size stock flag, only the product-level
-// stock_status this store's own fromRow collapses variants against on
-// read) — editing an existing product's real persistence is a separate,
-// not-yet-asked-for pass, tracked as a known gap rather than half-wired.
+// updateProduct/deleteProduct are backed by real PATCH/DELETE
+// /partner/products/:id (backend/src/routes/partner.ts) — per-variant
+// stock toggling still rolls up to the one product-level stock_status
+// column (no per-size stock flag on product_variants), same rollup
+// summarizeVariants below already does for the row-summary fields.
 
 import { create } from 'zustand';
 import { apiRequest } from '../api/client';
+import { deleteProductApi, updateProductApi } from '../api/catalog';
 import {
   isDuplicateProductName,
   parseVariantLabel,
@@ -90,7 +90,14 @@ interface CatalogState {
   products: PartnerProduct[];
   loaded: boolean;
   loadProducts: () => Promise<void>;
-  updateProduct: (productId: string, name: string, variants: ProductVariant[]) => void;
+  // Throws (with a real message) on failure — ProductDetailScreen surfaces
+  // it, same convention as addProduct below.
+  updateProduct: (productId: string, name: string, variants: ProductVariant[]) => Promise<void>;
+  // Throws PRODUCT_HAS_ORDERS (409, backend's own note) if this product has
+  // ever been ordered — order_items.product_id can't be orphaned, so a
+  // product with real order history can only be marked out of stock, not
+  // deleted. ProductDetailScreen surfaces that message as-is.
+  deleteProduct: (productId: string) => Promise<void>;
   // Throws (with a real message) on failure — the add-product screen
   // surfaces it, same convention as this app's other write calls.
   // Returns false without calling the backend when `name` is already
@@ -112,12 +119,26 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
     }
   },
 
-  updateProduct: (productId, name, variants) =>
-    set((state) => ({
-      products: state.products.map((product) =>
-        product.id === productId ? { ...product, name, variants, ...summarizeVariants(variants) } : product
-      ),
-    })),
+  updateProduct: async (productId, name, variants) => {
+    const existing = get().products.find((p) => p.id === productId);
+    if (!existing) return;
+
+    const { isInStock } = summarizeVariants(variants);
+    const row = await updateProductApi(productId, {
+      name: name.trim(),
+      category: existing.category,
+      imageUrl: existing.imageUrl,
+      stockStatus: isInStock ? 'in_stock' : 'out_of_stock',
+      variants: variants.map((v) => parseVariantLabel(v.label, v.price, v.originalPrice)),
+    });
+    const updated = fromRow(row as ProductRow);
+    set((state) => ({ products: state.products.map((p) => (p.id === productId ? updated : p)) }));
+  },
+
+  deleteProduct: async (productId) => {
+    await deleteProductApi(productId);
+    set((state) => ({ products: state.products.filter((p) => p.id !== productId) }));
+  },
 
   addProduct: async ({ name, category, imageUrl, variants }) => {
     if (isDuplicateProductName(get().products, name)) return false;

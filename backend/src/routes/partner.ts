@@ -468,6 +468,38 @@ partnerRouter.patch('/products/:id', async (req: AuthedRequest, res, next) => {
   }
 });
 
+partnerRouter.delete('/products/:id', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    // scoped by store_id, same guard as PATCH above — a store owner cannot
+    // delete another store's product even with a guessed product id.
+    const { data, error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('store_id', storeId)
+      .select('id')
+      .maybeSingle();
+    if (error) {
+      // order_items.product_id has no cascade/set-null (confdeltype 'a' —
+      // restrict), deliberately: unit_price_at_order is denormalized so a
+      // past order's own record never changes, but that only holds if the
+      // product row it points to still exists. A product that's ever been
+      // ordered can't be hard-deleted without losing that history — the
+      // real fix is marking it out of stock instead, not deleting it.
+      if (error.code === '23503') {
+        throw new AppError(409, 'PRODUCT_HAS_ORDERS', 'This product has past orders and can’t be deleted — mark it out of stock instead.');
+      }
+      throw error;
+    }
+    if (!data) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Not found for this store.');
+
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 partnerRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);

@@ -21,11 +21,12 @@
 // owners off a fixed list is what makes size-matching possible at all.
 
 import { useState } from 'react';
-import { ArrowLeft01Icon, Edit02Icon, ShoppingBasketAdd01Icon } from '@hugeicons/core-free-icons';
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ArrowLeft01Icon, Delete02Icon, Edit02Icon, ShoppingBasketAdd01Icon } from '@hugeicons/core-free-icons';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ApiError } from '../../api/client';
 import { AppIcon } from '../../components/AppIcon';
 import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { colors } from '../../theme/tokens';
@@ -42,10 +43,13 @@ type Props = NativeStackScreenProps<AppStackParamList, 'ProductDetail'>;
 export function ProductDetailScreen({ route, navigation }: Props) {
   const product = useCatalogStore((state) => state.products.find((p) => p.id === route.params.productId));
   const updateProduct = useCatalogStore((state) => state.updateProduct);
+  const deleteProduct = useCatalogStore((state) => state.deleteProduct);
 
   const [name, setName] = useState(product?.name ?? '');
   const [draft, setDraft] = useState<ProductVariant[]>(product?.variants ?? []);
   const [sizePickerOpen, setSizePickerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (!product) {
     navigation.navigate('Catalog');
@@ -106,10 +110,38 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     setDraft((prev) => prev.filter((v) => v.id !== variantId));
   }
 
-  function handleSave() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    updateProduct(currentProduct.id, name.trim() || currentProduct.name, draft);
-    navigation.navigate('Catalog');
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await updateProduct(currentProduct.id, name.trim() || currentProduct.name, draft);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      navigation.navigate('Catalog');
+    } catch (err) {
+      Alert.alert('Could not save changes', err instanceof ApiError ? err.message : 'Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleDelete() {
+    Alert.alert('Delete product?', `"${currentProduct.name}" will be removed from your catalog.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            await deleteProduct(currentProduct.id);
+            navigation.navigate('Catalog');
+          } catch (err) {
+            Alert.alert('Could not delete product', err instanceof ApiError ? err.message : 'Please try again.');
+          } finally {
+            setDeleting(false);
+          }
+        },
+      },
+    ]);
   }
 
   return (
@@ -135,6 +167,15 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         <Text className="absolute left-0 right-0 text-center text-xl font-medium tracking-tight text-ink">
           Manage product
         </Text>
+
+        <Pressable
+          onPress={handleDelete}
+          disabled={deleting}
+          className="absolute right-5 h-10 w-10 items-center justify-center rounded-full bg-gray-100"
+          style={({ pressed }) => ({ opacity: pressed || deleting ? 0.6 : 1 })}
+        >
+          {deleting ? <ActivityIndicator size="small" color={colors.ink} /> : <AppIcon icon={Delete02Icon} size={18} color="#D64545" />}
+        </Pressable>
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="gap-5 px-5 pb-6" keyboardShouldPersistTaps="handled">
@@ -210,10 +251,11 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       <View className="px-5 pb-9 pt-3">
         <Pressable
           onPress={handleSave}
+          disabled={saving}
           className="items-center justify-center rounded-full bg-black py-4 shadow-lg shadow-black/30"
-          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] })}
+          style={({ pressed }) => ({ opacity: pressed || saving ? 0.85 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] })}
         >
-          <Text className="text-lg font-medium tracking-tight text-white">Save changes</Text>
+          {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text className="text-lg font-medium tracking-tight text-white">Save changes</Text>}
         </Pressable>
       </View>
     </SafeAreaView>
