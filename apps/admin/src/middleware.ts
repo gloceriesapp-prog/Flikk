@@ -55,11 +55,19 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() over getUser(): getUser() hits Supabase's /auth/v1/user
+  // endpoint on EVERY request — every page load, API call, and client-side
+  // navigation — so each sidebar click waited on a network round-trip,
+  // which is what made navigation feel sluggish. getClaims() verifies the
+  // JWT's signature (locally against the project's JWKS when asymmetric
+  // signing keys are enabled) and reads the same email/session, so the gate
+  // is just as real without the per-navigation network hop. The
+  // createServerClient above still refreshes the session cookie via its
+  // own cookie handlers, so sessions don't silently expire.
+  const { data } = await supabase.auth.getClaims();
+  const email = data?.claims?.email as string | undefined;
 
-  if (!user || !isAllowedAdminEmail(user.email)) {
+  if (!data?.claims || !isAllowedAdminEmail(email)) {
     if (pathname.startsWith('/api')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -68,11 +76,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Never cache a founder-facing response — this is a live ops dashboard,
-  // so every page and every /api read must reflect the current database,
-  // not a browser/proxy-cached copy. One place, applied to every gated
-  // response, instead of a per-route directive on 50+ handlers.
-  response.headers.set('Cache-Control', 'no-store, must-revalidate');
+  // Never cache the DATA responses — every /api read must reflect the
+  // current database, not a browser/proxy-cached copy. Scoped to /api only
+  // on purpose: putting no-store on page/RSC navigation responses too
+  // disables Next's own router prefetch/cache and the browser bfcache,
+  // which makes every sidebar click do a full cold roundtrip and feel
+  // "stuck" instead of the smooth client-side transition Next gives for
+  // free. Pages stay fast; their data (fetched from these /api routes) is
+  // still always fresh.
+  if (pathname.startsWith('/api')) {
+    response.headers.set('Cache-Control', 'no-store, must-revalidate');
+  }
 
   return response;
 }
