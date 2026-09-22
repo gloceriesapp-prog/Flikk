@@ -28,7 +28,8 @@ export default function ProductCarousel({ products }: Props) {
 
   const handleScroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
-      const scrollAmount = direction === "left" ? -280 : 280;
+      // Reduced scroll amount to match the smaller card sizes
+      const scrollAmount = direction === "left" ? -310 : 310;
       scrollContainerRef.current.scrollBy({
         left: scrollAmount,
         behavior: "smooth",
@@ -38,7 +39,8 @@ export default function ProductCarousel({ products }: Props) {
 
   return (
     <section className="w-full bg-white pb-16 pt-2">
-      <div className="max-w-[980px] mx-auto px-6 flex flex-col gap-5">
+      {/* Container max-width increased to 1280px to align with Hero & Navbar grids */}
+      <div className="max-w-[1280px] mx-auto px-6 flex flex-col gap-5">
         {/* Section Header: Title & Controls */}
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl sm:text-2xl font-extrabold text-[#0F172A] tracking-tight">
@@ -85,10 +87,11 @@ export default function ProductCarousel({ products }: Props) {
           {products.map((prod) => (
             <div
               key={prod.id}
-              className="w-[140px] sm:w-[152px] shrink-0 snap-start flex flex-col group cursor-pointer"
+              // Card width scaled down for a tighter, denser carousel layout
+              className="w-[140px] sm:w-[155px] shrink-0 snap-start flex flex-col group cursor-pointer"
             >
               {/* Product Image Container with Floating (+) Button (No Hover Lift) */}
-              <div className="w-full h-[140px] sm:h-[152px] rounded-2xl bg-[#F8FAFC] border border-slate-200/70 p-3 relative flex items-center justify-center overflow-hidden transition-colors duration-200">
+              <div className="w-full h-[140px] sm:h-[155px] rounded-[16px] bg-[#F8FAFC] border border-slate-200/70 p-3 relative flex items-center justify-center overflow-hidden transition-colors duration-200 group-hover:border-slate-300">
                 {/* Real Product Image — fill (not fixed width/height) is
                     what actually makes this work for real product photos:
                     the old mock data was one fixed-size placeholder image
@@ -104,48 +107,48 @@ export default function ProductCarousel({ products }: Props) {
                   src={prod.image}
                   alt={prod.name}
                   fill
-                  sizes="(max-width: 640px) 140px, 152px"
+                  sizes="(max-width: 640px) 140px, 155px"
                   className="object-contain p-2"
                 />
 
-                {/* Floating (+) ADD Button */}
+                {/* Floating (+) ADD Button - slightly scaled down */}
                 <button
                   type="button"
                   aria-label={`Add ${prod.name}`}
-                  className="absolute top-2.5 right-2.5 w-7 h-7 rounded-xl bg-white hover:bg-[#0052FF] text-[#0052FF] hover:text-white border border-[#0052FF] flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer active:scale-95 z-10"
+                  className="absolute top-2 right-2 w-7 h-7 bg-white hover:bg-[#0052FF] text-[#0052FF] hover:text-white border border-[#0052FF] rounded-lg flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer active:scale-95 z-10"
                 >
                   <HugeiconsIcon icon={Add01Icon} className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Product Info */}
-              <div className="flex flex-col pt-2.5 px-0.5">
+              {/* Product Info - Typography scaled down to match smaller card */}
+              <div className="flex flex-col pt-3 px-1">
                 {/* Product Name */}
-                <h3 className="text-xs sm:text-[14px] font-extrabold text-[#0F172A] leading-snug tracking-tight line-clamp-2 min-h-[36px] transition-colors">
+                <h3 className="text-[12px] sm:text-[14px] font-extrabold text-[#0F172A] leading-snug tracking-tight line-clamp-2 min-h-[36px] transition-colors">
                   {prod.name}
                 </h3>
 
                 {/* Quantity */}
-                <span className="text-xs font-medium text-slate-400 mt-0.5">
+                <span className="text-[11px] sm:text-[12px] font-medium text-slate-400 mt-1">
                   {prod.quantity}
                 </span>
 
                 {/* Discount Tag */}
                 {prod.discount ? (
-                  <span className="text-xs font-extrabold text-emerald-600 tracking-tight mt-1">
+                  <span className="text-[11px] sm:text-[12px] font-extrabold text-emerald-600 tracking-tight mt-1">
                     {prod.discount}
                   </span>
                 ) : (
-                  <div className="h-[17px] mt-1" />
+                  <div className="h-[16px] sm:h-[18px] mt-1" />
                 )}
 
                 {/* Price Row */}
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-base font-extrabold text-slate-900">
+                <div className="flex items-baseline gap-1.5 mt-1.5">
+                  <span className="text-[15px] sm:text-[17px] font-extrabold text-slate-900 tracking-tight">
                     ₹{prod.price}
                   </span>
                   {prod.originalPrice && (
-                    <span className="text-sm font-semibold text-slate-400 line-through">
+                    <span className="text-[12px] sm:text-[13px] font-semibold text-slate-400 line-through">
                       ₹{prod.originalPrice}
                     </span>
                   )}

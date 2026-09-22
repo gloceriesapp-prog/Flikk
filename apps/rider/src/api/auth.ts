@@ -41,6 +41,17 @@ export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpR
 export interface AccountStatus {
   role: AccountRole;
   is_approved: boolean;
+  // Real "applied but not yet approved" signal — role stays 'customer'
+  // until admin approves (migrations/042_rider_onboarding.sql's own
+  // note), so this is what RootNavigator actually branches the onboarding
+  // wizard vs. the waiting screen on, not role itself.
+  has_rider_profile: boolean;
+  rider_application_submitted: boolean;
+  // Approved rider hasn't added bank details yet — RootNavigator's own
+  // post-approval gate (BankDetailsScreen) branches on this, not role.
+  rider_payout_configured: boolean;
+  is_rejected: boolean;
+  rejection_reason: string | null;
 }
 
 // Polled by a waiting/gate screen the same way apps/partner's own

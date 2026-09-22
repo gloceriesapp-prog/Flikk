@@ -13,9 +13,15 @@
 // materialized. GET /api/approvals/stores fetches both and maps each
 // through its own function below into the one shared Application shape.
 //
-// Rider applications don't have this draft/real split — a rider row is
-// just `users` with role='rider', is_approved/is_rejected are real columns
-// on it directly, no separate table.
+// Rider applications now follow the exact same draft/real split as stores
+// (migrations/042_rider_onboarding.sql) — a *pending* (or rejected) rider
+// only exists as a rider_onboarding_drafts row (role stays 'customer' the
+// whole time, no real `riders` row yet); an *approved* one is the real
+// `riders` row created at approval, draft deleted. aadhaarPhotoUrl/
+// dlPhotoUrl are object PATHS on the private rider-documents bucket —
+// GET /api/approvals/riders signs them into short-lived URLs before this
+// mapping ever sees them, so mapRiderDraft/mapApprovedRider just pass the
+// (already-signed) string through.
 
 import { ZONE_NAME } from '../mock-data';
 import type { Application } from '../types';
@@ -42,13 +48,40 @@ export interface ApiApprovedStore {
   users: { phone: string } | null;
 }
 
-export interface ApiRiderApplication {
-  id: string;
-  name: string | null;
-  phone: string;
-  is_approved: boolean;
-  is_rejected: boolean;
+export interface ApiRiderDraft {
+  user_id: string;
+  full_name: string | null;
+  date_of_birth: string | null;
+  home_address: string | null;
+  aadhaar_number: string | null;
+  aadhaar_photo_url: string | null;
+  dl_number: string | null;
+  dl_photo_url: string | null;
+  vehicle_type: 'bicycle' | 'scooter' | 'motorcycle' | null;
+  vehicle_number: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  emergency_contact_relationship: string | null;
+  submitted_at: string;
+  users: { phone: string; is_rejected: boolean } | null;
+}
+
+export interface ApiApprovedRider {
+  user_id: string;
+  name: string;
+  date_of_birth: string | null;
+  home_address: string | null;
+  aadhaar_number: string | null;
+  aadhaar_photo_url: string | null;
+  dl_number: string | null;
+  dl_photo_url: string | null;
+  vehicle_type: 'bicycle' | 'scooter' | 'motorcycle' | null;
+  vehicle_number: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  emergency_contact_relationship: string | null;
   created_at: string;
+  users: { phone: string } | null;
 }
 
 export function mapStoreDraft(row: ApiStoreDraft): Application {
@@ -83,15 +116,50 @@ export function mapApprovedStore(row: ApiApprovedStore): Application {
   };
 }
 
-export function mapRiderApplication(row: ApiRiderApplication): Application {
+export function mapRiderDraft(row: ApiRiderDraft): Application {
   return {
-    id: row.id,
+    id: row.user_id,
     kind: 'rider',
-    name: row.name ?? 'Unnamed rider',
+    name: row.full_name ?? 'Unnamed rider',
+    category: null,
+    zone: ZONE_NAME,
+    submittedAt: new Date(row.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+    status: row.users?.is_rejected ? 'rejected' : 'pending',
+    phone: row.users?.phone ?? '',
+    dateOfBirth: row.date_of_birth ?? undefined,
+    homeAddress: row.home_address ?? undefined,
+    aadhaarNumber: row.aadhaar_number ?? undefined,
+    aadhaarPhotoUrl: row.aadhaar_photo_url ?? undefined,
+    dlNumber: row.dl_number ?? undefined,
+    dlPhotoUrl: row.dl_photo_url ?? undefined,
+    vehicleType: row.vehicle_type ?? undefined,
+    vehicleNumber: row.vehicle_number ?? undefined,
+    emergencyContactName: row.emergency_contact_name ?? undefined,
+    emergencyContactPhone: row.emergency_contact_phone ?? undefined,
+    emergencyContactRelationship: row.emergency_contact_relationship ?? undefined,
+  };
+}
+
+export function mapApprovedRider(row: ApiApprovedRider): Application {
+  return {
+    id: row.user_id,
+    kind: 'rider',
+    name: row.name,
     category: null,
     zone: ZONE_NAME,
     submittedAt: new Date(row.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-    status: row.is_approved ? 'approved' : row.is_rejected ? 'rejected' : 'pending',
-    phone: row.phone,
+    status: 'approved',
+    phone: row.users?.phone ?? '',
+    dateOfBirth: row.date_of_birth ?? undefined,
+    homeAddress: row.home_address ?? undefined,
+    aadhaarNumber: row.aadhaar_number ?? undefined,
+    aadhaarPhotoUrl: row.aadhaar_photo_url ?? undefined,
+    dlNumber: row.dl_number ?? undefined,
+    dlPhotoUrl: row.dl_photo_url ?? undefined,
+    vehicleType: row.vehicle_type ?? undefined,
+    vehicleNumber: row.vehicle_number ?? undefined,
+    emergencyContactName: row.emergency_contact_name ?? undefined,
+    emergencyContactPhone: row.emergency_contact_phone ?? undefined,
+    emergencyContactRelationship: row.emergency_contact_relationship ?? undefined,
   };
 }

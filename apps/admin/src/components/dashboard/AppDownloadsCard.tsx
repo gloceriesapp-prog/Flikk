@@ -1,15 +1,18 @@
 // Customer-app installs — split Android/iOS (AppDownloadStats' own note in
 // lib/types.ts on why not combined), each with its own icon so the two
-// numbers read as distinct platforms at a glance, not one blob split by a
-// slash. "Live" here means "last synced" — no App Store Connect / Play
-// Console API is wired yet, so this is the same last-synced convention as
-// SystemStatus, not a real-time socket.
+// numbers read as distinct platforms at a glance. "Live" here means "last
+// synced" — no App Store Connect / Play Console API is wired yet.
+//
+// Compact by design — same size class as the Order completion card next to
+// it, not a full detail panel. Used to carry a per-platform crash-status
+// block, but that was fabricated data (no crash-reporting integration
+// exists) rather than a real simplification target — dropped instead of
+// kept as a fake "issue found" row.
 
-import { AlertTriangle, Apple, CheckCircle2, PlayCircle, TrendingUp } from 'lucide-react';
-import clsx from 'clsx';
+import { Apple, PlayCircle, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { formatNumber } from '@/lib/format';
-import type { AppDownloadStats, AppPlatformStatus } from '@/lib/types';
+import type { AppDownloadStats } from '@/lib/types';
 
 const PLATFORM_ROWS = {
   android: { icon: PlayCircle, label: 'Android' },
@@ -49,38 +52,6 @@ export function AppDownloadsCard({ stats }: { stats: AppDownloadStats }) {
           );
         })}
       </div>
-
-      {/* Build health per platform — no crash-reporting integration
-          (Sentry/Crashlytics) exists yet, same not-real-time caveat as
-          the download counts above. An "issue" row carries the actual
-          message, not a generic "problem detected" — that's the whole
-          point of surfacing it here. */}
-      <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
-        {order.map((platform) => {
-          const { label } = PLATFORM_ROWS[platform];
-          const status = platform === 'android' ? stats.androidStatus : stats.iosStatus;
-          return <PlatformStatusRow key={platform} label={label} status={status} />;
-        })}
-      </div>
     </Card>
-  );
-}
-
-function PlatformStatusRow({ label, status }: { label: string; status: AppPlatformStatus }) {
-  const isOk = status.health === 'operational';
-  return (
-    <div className={clsx('flex items-start gap-2.5 rounded-2xl px-3.5 py-2.5', isOk ? 'bg-green-50' : 'bg-red-50')}>
-      {isOk ? (
-        <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-success" />
-      ) : (
-        <AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />
-      )}
-      <div className="min-w-0">
-        <p className={clsx('text-xs font-semibold', isOk ? 'text-success' : 'text-danger')}>
-          {label} {isOk ? 'working fine' : 'issue found'}
-        </p>
-        <p className="text-[11px] text-ink-soft">{status.message}</p>
-      </div>
-    </div>
   );
 }

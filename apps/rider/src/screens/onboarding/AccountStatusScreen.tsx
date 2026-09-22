@@ -22,6 +22,7 @@
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { AlertCircleIcon, Clock01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
@@ -32,6 +33,7 @@ const POLL_INTERVAL_MS = 10_000;
 
 export function AccountStatusScreen() {
   const role = useAuthStore((s) => s.role);
+  const applicationSubmitted = useAuthStore((s) => s.applicationSubmitted);
   const setAccountStatus = useAuthStore((s) => s.setAccountStatus);
   const clear = useAuthStore((s) => s.clear);
   const [checking, setChecking] = useState(false);
@@ -42,8 +44,18 @@ export function AccountStatusScreen() {
     async function poll() {
       setChecking(true);
       try {
-        const { role: freshRole, is_approved } = await fetchAccountStatus();
-        if (!cancelled) setAccountStatus(freshRole, is_approved);
+        const { role: freshRole, is_approved, rider_application_submitted, is_rejected, rider_payout_configured, rejection_reason } =
+          await fetchAccountStatus();
+        if (!cancelled) {
+          setAccountStatus({
+            role: freshRole,
+            isApproved: is_approved,
+            applicationSubmitted: rider_application_submitted,
+            isRejected: is_rejected,
+            payoutConfigured: rider_payout_configured,
+            rejectionReason: rejection_reason,
+          });
+        }
       } catch {
         // Silent — a failed poll just tries again next interval.
       } finally {
@@ -60,9 +72,16 @@ export function AccountStatusScreen() {
     };
   }, [setAccountStatus]);
 
-  if (role !== null && role !== 'rider') {
+  // A submitted applicant is still role='customer' until a founder approves
+  // (migrations/042_rider_onboarding.sql) — so role alone can't mean "not a
+  // rider" here. Only show the not-registered message when there's genuinely
+  // no application on file; a real pending applicant always sees "under
+  // review". RootNavigator only ever mounts this screen for a submitted,
+  // not-yet-approved, not-rejected session anyway.
+  if (!applicationSubmitted && role !== null && role !== 'rider') {
     return (
       <View className="flex-1 items-center justify-center gap-6 bg-white px-8 pb-safe pt-safe">
+        <StatusBar style="dark" />
         <View className="h-20 w-20 items-center justify-center rounded-full bg-danger/10">
           <AppIcon icon={AlertCircleIcon} size={32} color={colors.danger} />
         </View>
@@ -81,6 +100,7 @@ export function AccountStatusScreen() {
 
   return (
     <View className="flex-1 items-center justify-center gap-6 bg-white px-8 pb-safe pt-safe">
+      <StatusBar style="dark" />
       <View className="h-20 w-20 items-center justify-center rounded-full bg-gold/15">
         <AppIcon icon={Clock01Icon} size={32} color={colors.gold} />
       </View>

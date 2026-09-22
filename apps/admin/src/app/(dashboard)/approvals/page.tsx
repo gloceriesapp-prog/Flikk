@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { ApplicationRow } from '@/components/approvals/ApplicationRow';
+import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import type { Application } from '@/lib/types';
 
 const TABS = [
@@ -38,6 +39,20 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     Promise.resolve().then(load);
+  }, [load]);
+
+  // Live-refresh the instant a store/rider submits (or an approval/rejection
+  // lands) — the SSE stream fires on writes to the onboarding-draft/users
+  // tables, so a new application shows up here without a manual refresh.
+  useAdminRealtime(load);
+
+  // Polling fallback — realtime only fires when the supabase_realtime
+  // publication includes the draft tables (migrations/043) AND Realtime is
+  // enabled on the Supabase project. If either isn't set up yet, this still
+  // keeps the list current every 10s so the page always updates on its own.
+  useEffect(() => {
+    const id = setInterval(load, 10_000);
+    return () => clearInterval(id);
   }, [load]);
 
   const applications = tab === 'store' ? stores : riders;

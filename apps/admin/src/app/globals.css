@@ -3,12 +3,15 @@
 /* Admin's own palette — deliberately not customer/partner's lime/coral
    system (specs/00-foundation/design-system.md's tokens are scoped to
    those two apps only). This is a founder-only internal tool, styled after
-   the clean neutral dashboard reference: near-black for nav/CTAs, soft
-   off-white canvas, white cards, thin borders — no brand color needed. */
+   the clean neutral dashboard reference: near-black for nav/CTAs, thin
+   borders — no brand color needed. Canvas and card are both pure white per
+   an explicit ask (sidebar, top nav, and every page body all use bg-canvas,
+   so this one token flips the whole app instead of a per-file hunt); cards
+   read as distinct from the page purely via border-border, not shading.  */
 @theme {
   --color-ink: #101214;
   --color-ink-soft: #4b5058;
-  --color-canvas: #f5f5f3;
+  --color-canvas: #ffffff;
   --color-card: #ffffff;
   --color-border: #e7e8ec;
   --color-muted: #8a8f98;

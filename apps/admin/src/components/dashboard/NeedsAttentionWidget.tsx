@@ -1,24 +1,47 @@
+'use client';
+
 // Home snapshot's own addition, not in the original A1-A4 spec — "orders
 // stuck too long / no rider yet" is exactly the kind of thing a founder
 // needs surfaced without hunting for it across the Orders and Riders
-// screens separately. Full-width now that it's the only card in this row
-// — rows lay out left-to-right instead of a cramped vertical stack, and
-// wait time gets a real urgency scale (amber past the threshold, red past
-// double it) instead of one flat warning color for every row.
+// screens separately. Full-width, wait time gets a real urgency scale
+// (amber past the threshold, red past double it) instead of one flat
+// warning color for every row.
+//
+// Real data now — app/api/orders (already real, shared with Orders/Riders
+// pages), same shape/minutesSinceStatusChange this app's own Order type
+// already computes server-side. Was PLACEHOLDER_ORDERS before: a fixed
+// fake list that never matched what the real Orders page showed.
 
+import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';
-import { ATTENTION_THRESHOLD_MINUTES, PLACEHOLDER_ORDERS } from '@/lib/mock-data';
+import { ATTENTION_THRESHOLD_MINUTES } from '@/lib/mock-data';
+import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
+import type { Order } from '@/lib/types';
 
 export function NeedsAttentionWidget() {
-  const flagged = PLACEHOLDER_ORDERS.filter(
-    (o) =>
-      (o.status === 'placed' || o.status === 'packed') &&
-      !o.riderId &&
-      o.minutesSinceStatusChange >= ATTENTION_THRESHOLD_MINUTES,
-  ).sort((a, b) => b.minutesSinceStatusChange - a.minutesSinceStatusChange);
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  const loadOrders = useCallback(async () => {
+    const res = await fetch('/api/orders');
+    if (res.ok) setOrders(await res.json());
+  }, []);
+
+  useEffect(() => {
+    Promise.resolve().then(loadOrders);
+  }, [loadOrders]);
+  useAdminRealtime(loadOrders);
+
+  const flagged = orders
+    .filter(
+      (o) =>
+        (o.status === 'placed' || o.status === 'packed') &&
+        !o.riderId &&
+        o.minutesSinceStatusChange >= ATTENTION_THRESHOLD_MINUTES,
+    )
+    .sort((a, b) => b.minutesSinceStatusChange - a.minutesSinceStatusChange);
 
   return (
     <Card
@@ -58,7 +81,7 @@ export function NeedsAttentionWidget() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-ink">{order.storeName}</p>
                   <p className={clsx('text-xs font-medium', critical ? 'text-danger' : 'text-amber-700')}>
-                    {order.id} · waiting {order.minutesSinceStatusChange} min
+                    {order.id.slice(0, 8).toUpperCase()} · waiting {order.minutesSinceStatusChange} min
                   </p>
                 </div>
 

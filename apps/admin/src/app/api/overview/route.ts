@@ -11,6 +11,11 @@
 // "approved and enabled", not "has the app open right now"). Reported
 // here as activeRiders and labelled honestly on the client rather than
 // faked as a live presence count.
+//
+// topStores: ranked by all-time order count (not revenue) — daily/total
+// order counts come from one all-orders fetch, rating is stores.rating
+// itself (real, recomputed on every review — backend/src/routes/
+// reviews.ts). Top 5 only, per Top Performing Stores' own table redesign.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
@@ -30,20 +35,22 @@ export async function GET() {
     const todayStart = istMidnightUtcIso(0);
     const yesterdayStart = istMidnightUtcIso(1);
     const weekStart = istMidnightUtcIso(7);
-    const monthStart = istMidnightUtcIso(30);
 
-    const [todayOrdersRes, yesterdayOrdersRes, pendingRes, activeStoresRes, activeRidersRes, weekOrdersRes, monthOrdersRes, storesRes] = await Promise.all([
+    const [todayOrdersRes, yesterdayOrdersRes, pendingRes, activeStoresRes, activeRidersRes, weekOrdersRes, allOrdersRes, storesRes] = await Promise.all([
       supabaseAdmin.from('orders').select('id', { count: 'exact', head: true }).gte('placed_at', todayStart),
       supabaseAdmin.from('orders').select('id', { count: 'exact', head: true }).gte('placed_at', yesterdayStart).lt('placed_at', todayStart),
       supabaseAdmin.from('orders').select('id', { count: 'exact', head: true }).in('status', ['placed', 'packed']),
       supabaseAdmin.from('stores').select('id', { count: 'exact', head: true }).eq('is_active', true),
       supabaseAdmin.from('riders').select('id', { count: 'exact', head: true }).eq('is_active', true),
       supabaseAdmin.from('orders').select('status, placed_at, delivered_at').gte('placed_at', weekStart),
-      supabaseAdmin.from('orders').select('store_id, total, status').gte('placed_at', monthStart).eq('status', 'delivered'),
-      supabaseAdmin.from('stores').select('id, name, district'),
+      // Every order, all time, store_id + placed_at only — Top Performing
+      // Stores' own "Total orders" (all-time) and "Daily order" (placed
+      // today) columns both derive from this one fetch, no per-store RPC.
+      supabaseAdmin.from('orders').select('store_id, placed_at'),
+      supabaseAdmin.from('stores').select('id, name, district, rating'),
     ]);
 
-    for (const res of [todayOrdersRes, yesterdayOrdersRes, pendingRes, activeStoresRes, activeRidersRes, weekOrdersRes, monthOrdersRes, storesRes]) {
+    for (const res of [todayOrdersRes, yesterdayOrdersRes, pendingRes, activeStoresRes, activeRidersRes, weekOrdersRes, allOrdersRes, storesRes]) {
       if (res.error) throw res.error;
     }
 
@@ -62,17 +69,26 @@ export async function GET() {
     const avgDeliveryMinutes = deliveryDurations.length > 0 ? Math.round(deliveryDurations.reduce((a, b) => a + b, 0) / deliveryDurations.length) : 0;
 
     const storeById = new Map((storesRes.data ?? []).map((s) => [s.id, s]));
-    const revenueByStore = new Map<string, { orders: number; revenue: number }>();
-    for (const order of monthOrdersRes.data ?? []) {
-      const entry = revenueByStore.get(order.store_id) ?? { orders: 0, revenue: 0 };
-      entry.orders += 1;
-      entry.revenue += Number(order.total);
-      revenueByStore.set(order.store_id, entry);
+    const ordersByStore = new Map<string, { dailyOrders: number; totalOrders: number }>();
+    for (const order of allOrdersRes.data ?? []) {
+      const entry = ordersByStore.get(order.store_id) ?? { dailyOrders: 0, totalOrders: 0 };
+      entry.totalOrders += 1;
+      if (new Date(order.placed_at).getTime() >= new Date(todayStart).getTime()) entry.dailyOrders += 1;
+      ordersByStore.set(order.store_id, entry);
     }
-    const topStores = [...revenueByStore.entries()]
-      .map(([storeId, stats]) => ({ storeId, name: storeById.get(storeId)?.name ?? 'Unknown store', district: storeById.get(storeId)?.district ?? '', ...stats }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 4);
+    // Ranked by all-time order volume — "performing" here means the store
+    // that's actually moved the most orders, not a revenue figure the new
+    // table no longer shows. Top 5 only, per an explicit ask.
+    const topStores = [...ordersByStore.entries()]
+      .map(([storeId, stats]) => ({
+        storeId,
+        name: storeById.get(storeId)?.name ?? 'Unknown store',
+        district: storeById.get(storeId)?.district ?? '',
+        rating: storeById.get(storeId)?.rating ?? null,
+        ...stats,
+      }))
+      .sort((a, b) => b.totalOrders - a.totalOrders)
+      .slice(0, 5);
 
     return NextResponse.json({
       totalOrdersToday: todayCount,

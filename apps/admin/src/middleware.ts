@@ -68,6 +68,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Never cache a founder-facing response — this is a live ops dashboard,
+  // so every page and every /api read must reflect the current database,
+  // not a browser/proxy-cached copy. One place, applied to every gated
+  // response, instead of a per-route directive on 50+ handlers.
+  response.headers.set('Cache-Control', 'no-store, must-revalidate');
+
   return response;
 }
 

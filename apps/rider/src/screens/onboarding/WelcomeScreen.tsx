@@ -1,38 +1,27 @@
-// Brand entry screen — first thing a rider sees, before Login. Same shape
-// as the other two apps' own Welcome screens: a mark, a short line on
-// what this app is for, one CTA into the phone-entry flow.
+// The one screen shown on every cold app open, always, before Login or the
+// real app shell — RootNavigator's own timed gate renders this directly
+// (not part of AuthStackParamList, no longer a tappable "Get started"
+// screen) for a fixed 2s, then routes to AppNavigator/AccountStatusScreen
+// (a session already exists) or AuthNavigator's Login (brand-new device).
+// Same shape and same brand blue as apps/customer's own WelcomeScreen —
+// flat color, one icon, one word, centered, nothing tappable;
+// RootNavigator's own timer is what moves it along, not a button here.
 
-import { ArrowRight01Icon, DeliveryTruck01Icon } from '@hugeicons/core-free-icons';
-import { Pressable, Text, View } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { DeliveryTruck01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
-import { colors } from '../../theme/tokens';
-import type { AuthStackParamList } from '../../navigation/types';
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
+// Same blue apps/customer's own WelcomeScreen uses — one brand blue
+// shared across the splash moment, not a rider-only tone invented here.
+const BLUE = '#2457F5';
 
-export function WelcomeScreen({ navigation }: Props) {
+export function WelcomeScreen() {
   return (
-    <View className="flex-1 justify-between bg-ink px-6 pb-safe-offset-6 pt-safe-offset-10">
-      <View className="flex-1 items-center justify-center gap-5">
-        <View className="h-20 w-20 items-center justify-center rounded-full bg-lime">
-          <AppIcon icon={DeliveryTruck01Icon} size={34} color={colors.ink} strokeWidth={2} />
-        </View>
-        <View className="items-center gap-2">
-          <Text className="text-3xl font-bold text-white">Flikk Rider</Text>
-          <Text className="max-w-[260px] text-center text-[15px] leading-5 text-white/60">
-            Real orders from real local stores in Kaup — pick up, deliver, get paid.
-          </Text>
-        </View>
-      </View>
-
-      <Pressable
-        onPress={() => navigation.navigate('Login')}
-        className="h-[52px] flex-row items-center justify-center gap-1.5 rounded-full bg-lime"
-      >
-        <Text className="text-base font-semibold text-ink">Get started</Text>
-        <AppIcon icon={ArrowRight01Icon} size={16} color={colors.ink} strokeWidth={2.2} />
-      </Pressable>
+    <View className="flex-1 items-center justify-center" style={{ backgroundColor: BLUE }}>
+      <StatusBar style="light" />
+      <AppIcon icon={DeliveryTruck01Icon} size={56} color="#fff" strokeWidth={1.6} />
+      <Text className="mt-4 text-[28px] font-semibold tracking-tight text-white">Gloceries Rider</Text>
     </View>
   );
 }

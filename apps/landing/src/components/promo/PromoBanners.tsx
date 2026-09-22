@@ -69,7 +69,6 @@ export default function PromoBanners() {
   const [totalSlides, setTotalSlides] = useState(2);
   const carouselRef = useRef<HTMLDivElement>(null);
 
-  // Measure actual scrollable slides dynamically
   const updateSlideCount = () => {
     if (carouselRef.current) {
       const container = carouselRef.current;
@@ -93,7 +92,6 @@ export default function PromoBanners() {
     return () => window.removeEventListener("resize", updateSlideCount);
   }, []);
 
-  // Auto-slide horizontally every 3.5 seconds across actual slide count
   useEffect(() => {
     if (totalSlides <= 1) return;
     const timer = setInterval(() => {
@@ -150,26 +148,27 @@ export default function PromoBanners() {
 
   return (
     <section className="w-full bg-white pb-12 pt-2">
-      <div className="max-w-[980px] mx-auto px-6 flex flex-col items-center gap-4">
-        {/* Horizontal Auto-Scrolling Promo Cards Container */}
+      <div className="max-w-[1280px] mx-auto px-6 flex flex-col items-center gap-4">
+        
+        {/* Horizontal Track for Mobile -> 4-Column Grid for Desktop */}
         <div
           ref={carouselRef}
           onScroll={handleScroll}
-          className="flex items-center gap-4 sm:gap-4.5 w-full overflow-x-auto scrollbar-none snap-x snap-mandatory scroll-smooth py-1"
+          className="flex lg:grid lg:grid-cols-4 items-stretch gap-4 lg:gap-5 w-full overflow-x-auto lg:overflow-visible scrollbar-none snap-x snap-mandatory scroll-smooth py-1"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {PROMO_CARDS.map((card) => (
             <div
               key={card.id}
-              className={`w-[270px] sm:w-[295px] md:w-[296px] shrink-0 snap-start h-[240px] sm:h-[250px] rounded-3xl p-5 sm:p-5.5 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br ${card.bgGradient} select-none transition-opacity duration-300`}
+              className={`w-[270px] sm:w-[300px] lg:w-auto shrink-0 snap-start h-[210px] sm:h-[220px] lg:h-[240px] rounded-[22px] p-4 lg:p-5 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br ${card.bgGradient} select-none transition-opacity duration-300`}
             >
-              {/* Top Right Powered By Tag if applicable */}
+              {/* Top Right Powered By Tag */}
               {card.poweredBy && (
-                <div className="absolute top-3.5 right-3.5 z-20 bg-white/95 backdrop-blur-md px-2 py-0.5 rounded-xl shadow-xs border border-amber-100/80 flex flex-col items-end">
-                  <span className="text-[8px] font-medium text-slate-400 leading-none">
+                <div className="absolute top-3 right-3 lg:top-4 lg:right-4 z-20 bg-white/95 backdrop-blur-md px-2 py-1 rounded-xl shadow-xs border border-amber-100/80 flex flex-col items-end">
+                  <span className="text-[7px] lg:text-[8px] font-medium text-slate-400 leading-none">
                     Powered by
                   </span>
-                  <span className="text-[10px] font-bold text-slate-800 tracking-tight leading-none mt-0.5">
+                  <span className="text-[9px] lg:text-[10px] font-bold text-slate-800 tracking-tight leading-none mt-0.5">
                     {card.poweredBy}
                   </span>
                 </div>
@@ -177,30 +176,30 @@ export default function PromoBanners() {
 
               {/* Top Text Content */}
               <div
-                className={`flex flex-col gap-1 relative z-10 ${
-                  card.poweredBy ? "max-w-[155px] sm:max-w-[165px]" : "max-w-[195px] sm:max-w-[205px]"
+                className={`flex flex-col gap-1 lg:gap-1.5 relative z-10 ${
+                  card.poweredBy ? "max-w-[140px] lg:max-w-[155px]" : "max-w-[180px] lg:max-w-[200px]"
                 }`}
               >
                 <span
-                  className={`text-lg sm:text-[21px] font-extrabold ${card.titleColor} leading-tight tracking-tight drop-shadow-xs`}
+                  className={`text-[17px] lg:text-[19px] font-extrabold ${card.titleColor} leading-tight tracking-tight drop-shadow-xs`}
                 >
                   {card.title}
                 </span>
                 <span
-                  className={`text-[11px] sm:text-xs font-semibold ${card.subtitleColor} leading-snug line-clamp-2`}
+                  className={`text-[11px] lg:text-[12px] font-semibold ${card.subtitleColor} leading-snug line-clamp-3 lg:line-clamp-2`}
                 >
                   {card.subtitle}
                 </span>
               </div>
 
-              {/* Product Image Right Bottom */}
-              <div className="absolute right-0 bottom-0 w-[155px] sm:w-[170px] h-[135px] sm:h-[145px] overflow-hidden pointer-events-none z-0">
+              {/* Product Image Right Bottom - Reduced sizing */}
+              <div className="absolute right-0 bottom-0 w-[140px] lg:w-[150px] h-[120px] lg:h-[130px] overflow-hidden pointer-events-none z-0">
                 <Image
                   src={card.image}
                   alt={card.alt}
                   fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover object-bottom rounded-tl-3xl opacity-90"
+                  sizes="(max-width: 1024px) 150px, 15vw"
+                  className="object-cover object-bottom rounded-tl-[24px] opacity-90"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-black/5" />
               </div>
@@ -208,9 +207,9 @@ export default function PromoBanners() {
           ))}
         </div>
 
-        {/* Dynamic Carousel Pagination Indicators matching actual scroll positions */}
+        {/* Dynamic Carousel Pagination - Hidden on Desktop since grid fits all */}
         {totalSlides > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-2">
+          <div className="flex lg:hidden items-center justify-center gap-2 mt-2">
             {Array.from({ length: totalSlides }).map((_, idx) => (
               <button
                 key={`dot-${idx}`}

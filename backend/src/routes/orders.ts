@@ -3,7 +3,8 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
-import { calcCommission, calcItemTotal, calcOrderTotal, COMMISSION_RATE, round2 } from '../lib/pricing.js';
+import { calcCommission, calcItemTotal, calcOrderTotal, round2 } from '../lib/pricing.js';
+import { getCommissionRate } from '../lib/platformSettings.js';
 import { formatPayoutDateLabel, nextPayoutDate } from '../lib/payoutSchedule.js';
 import { CartValidationError, validateCart } from '../lib/orderValidation.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
@@ -98,7 +99,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       quantity: i.quantity,
     }));
     const itemTotal = calcItemTotal(lines);
-    const commissionAmount = calcCommission(itemTotal, COMMISSION_RATE);
+    const commissionAmount = calcCommission(itemTotal, await getCommissionRate());
 
     let promoCodeId: string | null = null;
     let discountAmount = 0;
@@ -129,6 +130,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       p_promo_code_id: promoCodeId,
       p_discount_amount: discountAmount,
       p_payment_method: body.payment_method ?? 'cod',
+      p_handling_fee: deliverySettings.handlingFee,
     });
     if (rpcErr) throw new AppError(500, 'ORDER_CREATE_FAILED', rpcErr.message);
 

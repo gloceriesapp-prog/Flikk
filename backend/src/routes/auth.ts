@@ -18,6 +18,49 @@ authRouter.post('/otp/request', async (req, res, next) => {
   }
 });
 
+// Partner web dashboard's own pre-flight gate, called before POST
+// /otp/request — signInWithOtp above auto-creates a brand-new Supabase auth
+// user (and sends a real SMS) for ANY phone, registered or not, so the
+// dashboard's login can't tell "not a partner" apart from "partner, wrong
+// step" by waiting until after an OTP round-trip. This checks the phone
+// against public.users directly (no auth — there's no session yet) and
+// only lets the caller move on to the real OTP send once it's confirmed to
+// belong to an applied-or-approved store owner. "Registered" here means
+// the same thing apps/partner's own onboarding treats as real: role
+// already flipped to store_owner (approved), or a submitted application
+// still pending review — an abandoned, never-submitted draft doesn't
+// count, same as it doesn't unlock anything in the mobile app either.
+authRouter.post('/otp/partner-check', async (req, res, next) => {
+  try {
+    const { phone } = req.body as { phone?: string };
+    if (!phone) throw new AppError(400, 'INVALID_PHONE', 'phone is required.');
+
+    const NOT_REGISTERED = new AppError(
+      404,
+      'PARTNER_NOT_REGISTERED',
+      "This number isn't registered on the Gloceries Partner app yet. Download the Partner app and apply with your store to get access here.",
+    );
+
+    const { data: user } = await supabase.from('users').select('id, role').eq('phone', phone).maybeSingle();
+    if (!user) throw NOT_REGISTERED;
+    if (user.role === 'store_owner') {
+      res.status(200).json({ registered: true });
+      return;
+    }
+
+    const { data: draft } = await supabase
+      .from('store_onboarding_drafts')
+      .select('submitted_at')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!draft?.submitted_at) throw NOT_REGISTERED;
+
+    res.status(200).json({ registered: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 authRouter.post('/otp/verify', async (req, res, next) => {
   try {
     const { phone, code } = req.body as { phone?: string; code?: string };
@@ -129,6 +172,28 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       .eq('user_id', req.user!.id)
       .maybeSingle();
 
+    // Rider onboarding now follows the exact same real pattern store
+    // onboarding does (migrations/042_rider_onboarding.sql's own note) —
+    // role only ever flips to 'rider' at admin approval, so
+    // has_rider_profile/rider_application_submitted are the same real
+    // "applied but not yet a real riders row" signal has_store/
+    // application_submitted already are for stores.
+    const [{ count: riderCount }, { data: riderDraft }, { data: riderPayout }] = await Promise.all([
+      supabase.from('riders').select('id', { count: 'exact', head: true }).eq('user_id', req.user!.id),
+      supabase.from('rider_onboarding_drafts').select('submitted_at, rejection_reason').eq('user_id', req.user!.id).maybeSingle(),
+      // Post-approval payout gate — apps/rider's RootNavigator drops a
+      // just-approved rider onto BankDetailsScreen (the "You're approved!
+      // One last thing" step) until this is set, then straight to Home. A
+      // row only exists at all once approved, so a null here for a real
+      // rider means "approved but hasn't added bank details yet".
+      supabase.from('riders').select('payout_bank_account_number').eq('user_id', req.user!.id).maybeSingle(),
+    ]);
+
+    // A user only ever has one real application in flight (store OR
+    // rider — the one-phone-one-role rule), so whichever draft actually
+    // has a submission is the one whose rejection state is real.
+    const activeDraft = draft?.submitted_at ? draft : riderDraft?.submitted_at ? riderDraft : null;
+
     res.json({
       // Already resolved by requireAuth's own users.role lookup — no extra
       // query. apps/rider's own RootNavigator needs this alongside
@@ -140,13 +205,17 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       is_approved: req.user!.isApproved,
       has_store: (count ?? 0) > 0,
       application_submitted: !!draft?.submitted_at,
+      has_rider_profile: (riderCount ?? 0) > 0,
+      rider_application_submitted: !!riderDraft?.submitted_at,
+      rider_payout_configured: !!riderPayout?.payout_bank_account_number,
       // Only a real, current rejection — a fresh resubmission's own PATCH
-      // /store-draft doesn't clear is_rejected on the user row by itself,
-      // so this also requires a submitted application still be on file;
-      // without that a rejected-then-resubmitted owner would keep seeing
-      // the old rejected state even after fixing and resubmitting.
-      is_rejected: !!user.is_rejected && !!draft?.submitted_at,
-      rejection_reason: draft?.rejection_reason ?? null,
+      // /store-draft (or /rider-draft) doesn't clear is_rejected on the
+      // user row by itself, so this also requires a submitted application
+      // still be on file; without that a rejected-then-resubmitted
+      // applicant would keep seeing the old rejected state even after
+      // fixing and resubmitting.
+      is_rejected: !!user.is_rejected && !!activeDraft,
+      rejection_reason: activeDraft?.rejection_reason ?? null,
       phone: user.phone,
       name: user.name,
       birthday: user.birthday,

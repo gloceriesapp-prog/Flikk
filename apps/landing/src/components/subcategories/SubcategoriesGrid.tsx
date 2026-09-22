@@ -83,12 +83,22 @@ const SUBCATEGORIES: SubcategoryItem[] = [
     name: "Paan Corner",
     image: DEFAULT_SUBCATEGORY_IMAGE,
   },
+  {
+    id: "sub-15",
+    name: "Meat & Seafood",
+    image: DEFAULT_SUBCATEGORY_IMAGE,
+  },
+  {
+    id: "sub-16",
+    name: "Personal Care",
+    image: DEFAULT_SUBCATEGORY_IMAGE,
+  },
 ];
 
 export default function SubcategoriesGrid() {
   return (
     <section className="w-full bg-white pb-14 pt-2">
-      <div className="max-w-[980px] mx-auto px-6 flex flex-col gap-6">
+      <div className="max-w-[1280px] mx-auto px-6 flex flex-col gap-5 lg:gap-6">
         {/* Section Header */}
         <div className="flex flex-col gap-0.5">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight">
@@ -99,26 +109,26 @@ export default function SubcategoriesGrid() {
           </p>
         </div>
 
-        {/* Subcategories Grid: Tight 7 columns desktop (2 balanced rows of 7) */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-x-2 sm:gap-x-3.5 gap-y-5.5 w-full">
+        {/* Subcategories Grid: Updated to 8 columns on large screens */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-2 sm:gap-x-4 lg:gap-x-6 gap-y-5 lg:gap-y-8 w-full">
           {SUBCATEGORIES.map((item) => (
             <div
               key={item.id}
-              className="flex flex-col items-center cursor-pointer"
+              className="flex flex-col items-center cursor-pointer group"
             >
-              {/* Soft Light Blue Card Image Box (No Hover Lift) */}
-              <div className="w-[96px] sm:w-[106px] h-[96px] sm:h-[106px] rounded-[22px] bg-[#EEF5FF] flex items-center justify-center p-2.5 relative overflow-hidden border border-[#E0EDFF] transition-colors">
+              {/* Soft Light Blue Card Image Box */}
+              <div className="w-[90px] sm:w-[105px] lg:w-[115px] h-[90px] sm:h-[105px] lg:h-[115px] rounded-[20px] bg-[#EEF5FF] flex items-center justify-center p-2 sm:p-3 relative overflow-hidden border border-[#E0EDFF] transition-colors group-hover:border-[#0052FF]/20 group-hover:shadow-[0_4px_20px_-8px_rgba(0,82,255,0.15)]">
                 <Image
                   src={item.image}
                   alt={item.name}
                   width={80}
                   height={80}
-                  className="w-full h-full object-contain p-1"
+                  className="w-full h-full object-contain p-1 group-hover:scale-110 transition-transform duration-300"
                 />
               </div>
 
               {/* Centered Label Text */}
-              <span className="text-xs sm:text-[13px] font-extrabold text-[#0F172A] leading-tight text-center mt-2.5 max-w-[102px] line-clamp-2">
+              <span className="text-[12px] sm:text-[13px] lg:text-[14px] font-extrabold text-[#0F172A] leading-tight text-center mt-2 lg:mt-3 max-w-[100px] lg:max-w-[120px] line-clamp-2">
                 {item.name}
               </span>
             </div>

@@ -34,6 +34,7 @@ export default function RevenuePage() {
   const [trend, setTrend] = useState<RevenuePoint[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [balance, setBalance] = useState<BalanceSummary | null>(null);
+  const [commissionRate, setCommissionRate] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [releasing, setReleasing] = useState(false);
   const [justReleased, setJustReleased] = useState(false);
@@ -41,11 +42,12 @@ export default function RevenuePage() {
   const loadData = useCallback(async () => {
     setLoadError(null);
     try {
-      const [payoutsRes, trendRes, ordersRes, balanceRes] = await Promise.all([
+      const [payoutsRes, trendRes, ordersRes, balanceRes, settingsRes] = await Promise.all([
         fetch('/api/payouts'),
         fetch('/api/revenue-trend'),
         fetch('/api/orders'),
         fetch('/api/balance'),
+        fetch('/api/platform-settings'),
       ]);
       if (!payoutsRes.ok) throw new Error((await payoutsRes.json()).error ?? 'Could not load payouts.');
       if (!trendRes.ok) throw new Error((await trendRes.json()).error ?? 'Could not load revenue trend.');
@@ -54,6 +56,7 @@ export default function RevenuePage() {
       setTrend(await trendRes.json());
       setOrders(await ordersRes.json());
       if (balanceRes.ok) setBalance(await balanceRes.json());
+      if (settingsRes.ok) setCommissionRate((await settingsRes.json()).commissionRate);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load revenue data.');
     }
@@ -64,10 +67,18 @@ export default function RevenuePage() {
   }, [loadData]);
   useAdminRealtime(loadData);
 
-  const totalRevenue = trend.reduce((sum, p) => sum + p.commission, 0);
+  // Real total earnings = commission (from stores) + platform/handling fee
+  // (from customers) — both are money Flikk actually keeps, neither is
+  // ever paid to a store or a rider. app/api/revenue-trend's own note has
+  // the full reasoning.
+  const totalCommission = trend.reduce((sum, p) => sum + p.commission, 0);
+  const totalPlatformFee = trend.reduce((sum, p) => sum + p.platformFee, 0);
+  const totalRevenue = totalCommission + totalPlatformFee;
   const latest = trend[trend.length - 1];
   const prior = trend[trend.length - 2];
-  const weekOverWeekPct = latest && prior && prior.commission > 0 ? Math.round(((latest.commission - prior.commission) / prior.commission) * 100) : 0;
+  const latestTotal = latest ? latest.commission + latest.platformFee : 0;
+  const priorTotal = prior ? prior.commission + prior.platformFee : 0;
+  const weekOverWeekPct = priorTotal > 0 ? Math.round(((latestTotal - priorTotal) / priorTotal) * 100) : 0;
 
   const ordersByRecency = [...orders].reverse();
 
@@ -103,9 +114,12 @@ export default function RevenuePage() {
 
       <RevenueBalanceCard
         totalRevenue={totalRevenue}
-        thisWeek={latest?.commission ?? 0}
+        totalCommission={totalCommission}
+        totalPlatformFee={totalPlatformFee}
+        thisWeek={latestTotal}
         weekOverWeekPct={weekOverWeekPct}
         wallet={balance}
+        commissionRate={commissionRate}
       />
 
       <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1">

@@ -12,23 +12,34 @@ interface Props {
   disabled?: boolean;
   loading?: boolean;
   trailingIcon?: IconSvgElement;
+  // 'ink' (default) for the main app; 'blue' for the rider onboarding flow,
+  // which uses one brand blue (#1447E6) across every Next/CTA.
+  tone?: 'ink' | 'blue';
 }
 
-export function PrimaryButton({ label, onPress, disabled, loading, trailingIcon }: Props) {
+// Per-tone solid / disabled fills — one place so a tone is a single word
+// at the call site, not a re-typed hex.
+const TONE_BG: Record<'ink' | 'blue', { solid: string; disabled: string }> = {
+  ink: { solid: 'bg-ink', disabled: 'bg-ink/40' },
+  blue: { solid: 'bg-[#1447E6]', disabled: 'bg-[#1447E6]/40' },
+};
+
+export function PrimaryButton({ label, onPress, disabled, loading, trailingIcon, tone = 'ink' }: Props) {
   const isDisabled = disabled || loading;
+  const bg = TONE_BG[tone];
 
   return (
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      className={`h-[52px] flex-row items-center justify-center gap-1.5 rounded-full ${isDisabled ? 'bg-ink/40' : 'bg-ink'}`}
+      className={`h-[54px] flex-row items-center justify-center gap-1.5 rounded-full ${isDisabled ? bg.disabled : bg.solid}`}
       style={({ pressed }) => ({ opacity: pressed && !isDisabled ? 0.85 : 1 })}
     >
       {loading ? (
         <ActivityIndicator color="#FFFFFF" />
       ) : (
         <>
-          <Text className="text-base font-medium text-white">{label}</Text>
+          <Text className="text-[15px] font-medium text-white">{label}</Text>
           {trailingIcon && (
             <View>
               <AppIcon icon={trailingIcon} size={16} color="#FFFFFF" strokeWidth={2.2} />

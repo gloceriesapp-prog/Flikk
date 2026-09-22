@@ -16,18 +16,20 @@ import { AppError } from '../lib/errors.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { CartValidationError, validateMultiStoreCart } from '../lib/orderValidation.js';
 import { calcTripTotal, groupCartByStore } from '../lib/trips.js';
-import { calcOrderTotal, COMMISSION_RATE } from '../lib/pricing.js';
+import { calcOrderTotal } from '../lib/pricing.js';
 import { resolveAddressId, type AddressInput } from '../lib/resolveAddress.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
 import { lookupPromoForCheckout } from './promos.js';
 import { getDeliverySettings } from '../lib/deliverySettings.js';
+import { getCommissionRate } from '../lib/platformSettings.js';
 
 export const tripsRouter = Router();
 
-// COMMISSION_RATE now imported from lib/pricing.ts, the one real source
-// (that module's own header note) — this file used to declare its own
-// local copy, manually kept in sync with routes/orders.ts's own duplicate.
-// The base delivery fee itself comes from lib/deliverySettings.ts (the
+// Commission rate now read live from platform_settings (lib/
+// platformSettings.ts's own getCommissionRate) instead of a hardcoded
+// constant — this file used to import lib/pricing.ts's own COMMISSION_RATE
+// constant, which itself used to be a manually-duplicated local copy
+// before that. The base delivery fee itself comes from lib/deliverySettings.ts (the
 // same admin-editable row POST /orders reads), not a hardcoded constant
 // here.
 //
@@ -78,7 +80,7 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       throw validationErr;
     }
 
-    const legs = groupCartByStore(body.items, products ?? [], COMMISSION_RATE);
+    const legs = groupCartByStore(body.items, products ?? [], await getCommissionRate());
     if (legs.length <= 1) {
       // Not an error a real customer can hit through the app (the cart
       // itself decides which endpoint to call based on how many distinct
@@ -122,6 +124,7 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       p_promo_code_id: promoCodeId,
       p_discount_amount: discountAmount,
       p_payment_method: body.payment_method ?? 'cod',
+      p_handling_fee: deliverySettings.handlingFee,
     });
     if (rpcErr) throw new AppError(500, 'TRIP_CREATE_FAILED', rpcErr.message);
 

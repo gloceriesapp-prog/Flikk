@@ -36,7 +36,7 @@ export default async function Home() {
         <AppDownloadBanner />
       </main>
       <Footer />
-      <StickyBottomDock />
+      {/* <StickyBottomDock /> */}
     </div>
   );
 }

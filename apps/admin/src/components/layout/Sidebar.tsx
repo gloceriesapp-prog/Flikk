@@ -5,29 +5,80 @@
 // a white active-pill, and a bottom Help Center/Settings/profile stack.
 // Collapse is a real toggled state (icon-only rail), not just cosmetic.
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronsUpDown, HelpCircle, PanelLeftClose, PanelLeftOpen, Search, Settings } from 'lucide-react';
 import clsx from 'clsx';
 import { INSIGHTS_ITEMS, MENU_ITEMS, type NavItem } from '@/lib/nav';
-import { PLACEHOLDER_APPLICATIONS } from '@/lib/mock-data';
+import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
+import type { Application } from '@/lib/types';
 
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const pendingCount = PLACEHOLDER_APPLICATIONS.filter((a) => a.status === 'pending').length;
+  // "Needs attention" counts, keyed by nav href — a red badge next to any
+  // item with a non-zero count. Real numbers from the same endpoints each
+  // page reads, refreshed live via the realtime stream + polling below.
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  const loadCounts = useCallback(async () => {
+    try {
+      const [storesRes, ridersRes, ordersRes, refundsRes] = await Promise.all([
+        fetch('/api/approvals/stores'),
+        fetch('/api/approvals/riders'),
+        fetch('/api/orders'),
+        fetch('/api/refunds'),
+      ]);
+      const next: Record<string, number> = {};
+
+      if (storesRes.ok && ridersRes.ok) {
+        const stores = (await storesRes.json()) as Application[];
+        const riders = (await ridersRes.json()) as Application[];
+        next['/approvals'] = [...stores, ...riders].filter((a) => a.status === 'pending').length;
+      }
+      if (ordersRes.ok) {
+        const orders = (await ordersRes.json()) as { status: string }[];
+        // Anything not yet finished — the live queue the founder may need
+        // to act on (matches Overview's "pending orders" idea).
+        next['/orders'] = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
+      }
+      if (refundsRes.ok) {
+        const refunds = (await refundsRes.json()) as { refundStatus: string }[];
+        next['/refunds'] = refunds.filter((r) => r.refundStatus === 'pending').length;
+      }
+
+      // Merge, don't replace — a request that failed this round keeps its
+      // last known count instead of dropping to nothing.
+      setCounts((prev) => ({ ...prev, ...next }));
+    } catch {
+      // Best-effort — a failed fetch just leaves the badges at their last
+      // known counts.
+    }
+  }, []);
+
+  useEffect(() => {
+    Promise.resolve().then(loadCounts);
+  }, [loadCounts]);
+  useAdminRealtime(loadCounts);
+  // Polling fallback for envs where Supabase Realtime isn't wired yet
+  // (same reason the Approvals page polls) — badges still stay current.
+  useEffect(() => {
+    const id = setInterval(loadCounts, 15_000);
+    return () => clearInterval(id);
+  }, [loadCounts]);
 
   function renderItem(item: NavItem) {
     const isActive = pathname.startsWith(item.href);
     const Icon = item.icon;
+    const count = counts[item.href] ?? 0;
     return (
       <Link
         key={item.href}
         href={item.href}
         title={collapsed ? item.label : undefined}
         className={clsx(
-          'flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+          'relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
           collapsed && 'justify-center px-0',
           isActive ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:bg-card/60 hover:text-ink'
         )}
@@ -36,18 +87,21 @@ export function Sidebar() {
         {!collapsed && (
           <span className="flex flex-1 items-center justify-between">
             {item.label}
-            {item.href === '/approvals' && pendingCount > 0 && (
+            {count > 0 && (
               <span
                 className={clsx(
                   'rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
                   isActive ? 'bg-ink text-white' : 'bg-danger/10 text-danger'
                 )}
               >
-                {pendingCount}
+                {count}
               </span>
             )}
           </span>
         )}
+        {/* Collapsed rail: a tiny red dot instead of the number, so an item
+            needing attention is still visible without room for the count. */}
+        {collapsed && count > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-danger" />}
       </Link>
     );
   }

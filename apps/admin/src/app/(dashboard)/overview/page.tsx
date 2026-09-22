@@ -16,9 +16,11 @@
 // "Riders online" from the original reference isn't real (no rider
 // presence/heartbeat exists yet) — labelled "Active riders" here instead
 // of a fabricated live count. App downloads stays PLACEHOLDER_APP_DOWNLOADS
-// (App Store/Play Store Connect API, out of scope for this pass) and Live
-// Delivery / Needs Attention stay their own existing mock state — not
-// touched here, not claimed as real.
+// (App Store/Play Store Connect API, out of scope for this pass) and
+// Needs Attention stays its own existing mock state — not touched here,
+// not claimed as real. The old Live Delivery card (a mock rider map) was
+// removed and replaced with LiveTrafficCard — real order-placement volume
+// over the last hour, see that component's own note.
 
 import { useCallback, useEffect, useState } from 'react';
 import { Bike, Clock, PackageSearch, Store, Timer } from 'lucide-react';
@@ -28,7 +30,7 @@ import { BalanceSummaryCard, type BalanceSummary } from '@/components/dashboard/
 import { TopStoresCard, type TopStoreRow } from '@/components/dashboard/TopStoresCard';
 import { CompletionGauge } from '@/components/dashboard/CompletionGauge';
 import { AppDownloadsCard } from '@/components/dashboard/AppDownloadsCard';
-import { DeliveryTrackingCard } from '@/components/dashboard/DeliveryTrackingCard';
+import { LiveTrafficCard } from '@/components/dashboard/LiveTrafficCard';
 import { NeedsAttentionWidget } from '@/components/dashboard/NeedsAttentionWidget';
 import { OrdersTable } from '@/components/dashboard/OrdersTable';
 import { SystemStatusBadge } from '@/components/dashboard/SystemStatusBadge';
@@ -98,6 +100,9 @@ export default function OverviewPage() {
         <StatCard icon={Timer} value={stats ? `${stats.avgDeliveryMinutes} min` : '—'} label="Avg. time to deliver" />
       </div>
 
+      {/* Row 1 — Balance gets more room (it's the only one with real
+          action content: the Withdraw button + payout-account row),
+          Order completion / App downloads stay compact single-stat cards. */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr_1fr]">
         <BalanceSummaryCard balance={balance} />
 
@@ -105,13 +110,14 @@ export default function OverviewPage() {
           <CompletionGauge completionRate={stats?.completionRate ?? 0} />
         </Card>
 
-        <div className="min-w-0 lg:row-span-2">
-          <DeliveryTrackingCard />
-        </div>
+        <AppDownloadsCard stats={PLACEHOLDER_APP_DOWNLOADS} />
+      </div>
 
+      {/* Row 2 — two wide cards, side by side. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <TopStoresCard topStores={stats?.topStores ?? []} />
 
-        <AppDownloadsCard stats={PLACEHOLDER_APP_DOWNLOADS} />
+        <LiveTrafficCard />
       </div>
 
       <NeedsAttentionWidget />

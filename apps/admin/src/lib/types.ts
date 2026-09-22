@@ -57,6 +57,21 @@ export interface Application {
   // Drug Control authority, tied to a registered pharmacist), never
   // lumped in with general kirana document requirements.
   drugLicenseNumber?: string;
+  // Rider-only fields — undefined for store applications. aadhaarPhotoUrl/
+  // dlPhotoUrl are short-lived SIGNED urls (rider-documents is a private
+  // bucket, migrations/042_rider_onboarding.sql's own note) generated
+  // fresh by GET /api/approvals/riders on every read, never stored as-is.
+  dateOfBirth?: string;
+  homeAddress?: string;
+  aadhaarNumber?: string;
+  aadhaarPhotoUrl?: string;
+  dlNumber?: string;
+  dlPhotoUrl?: string;
+  vehicleType?: 'bicycle' | 'scooter' | 'motorcycle';
+  vehicleNumber?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
 }
 
 // A3 — an active rider available for manual assignment. No suggested-rider
@@ -165,6 +180,11 @@ export interface ZoneRequest {
 export interface RevenuePoint {
   label: string;
   commission: number;
+  // The handling/platform fee charged to customers — real money Flikk
+  // keeps (never paid to a store or a rider), distinct from commission
+  // (which comes from stores). app/api/revenue-trend's own note has the
+  // full reasoning.
+  platformFee: number;
 }
 
 // The founder's own take-home balance — platform commission earned, not
@@ -203,38 +223,11 @@ export interface WalletBalance {
 // platform rather than combined: a founder watching for install friction
 // on one store specifically (e.g. Android install drop-off, iOS review
 // delay) needs the two numbers separate, not folded into one total.
-// Per-platform build health — no crash-reporting integration (Sentry/
-// Crashlytics) is wired up yet, same "not real-time" caveat as the
-// download counts themselves. `issue` carries an actual, specific message
-// rather than a generic "problem" — a founder acting on this needs to
-// know what broke, not just that something did.
-export type AppPlatformHealth = 'operational' | 'issue';
-
-export interface AppPlatformStatus {
-  health: AppPlatformHealth;
-  message: string;
-}
-
 export interface AppDownloadStats {
   android: number;
   ios: number;
   changePctThisWeek: number;
   lastSyncedAt: string;
-  androidStatus: AppPlatformStatus;
-  iosStatus: AppPlatformStatus;
-}
-
-// "How people use the product" — Overview's usage/performance widget.
-// completionRate (the gauge's own value) is a real derived number —
-// delivered orders ÷ every order that reached a terminal-or-active state,
-// excluding ones still freshly placed with no outcome yet. avgDeliveryMins
-// and repeatCustomerRate are the two supporting numbers a founder would
-// actually ask "so is the product working well?" — completion rate alone
-// doesn't say whether people come back or how fast delivery actually is.
-export interface ProductPerformance {
-  completionRate: number; // 0-100, drives the gauge
-  avgDeliveryMinutes: number;
-  repeatCustomerRate: number; // 0-100
 }
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';

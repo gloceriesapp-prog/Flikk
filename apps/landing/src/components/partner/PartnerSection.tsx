@@ -21,13 +21,16 @@ const STORE_IMAGE_URL =
 export default function PartnerSection() {
   return (
     <section className="w-full bg-white pb-14 pt-4">
-      <div className="max-w-[980px] mx-auto px-6">
+      {/* Container max-width increased to 1080px to align with other sections */}
+      <div className="max-w-[1080px] mx-auto px-6">
         {/* Dual Partner Grid: Store Owners & Delivery Partners */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
           {/* Card 1: Merchant / Store Owner CTA */}
-          <div className="rounded-3xl bg-gradient-to-br from-[#F7FEE7] via-[#D9F99D] to-[#10B981]/30 text-slate-950 p-7 sm:p-8 flex flex-col justify-between relative overflow-hidden transition-all min-h-[380px] shadow-xs">
+          {/* Increased desktop padding and min-height to balance the wider card */}
+          <div className="rounded-3xl bg-gradient-to-br from-[#F7FEE7] via-[#D9F99D] to-[#10B981]/30 text-slate-950 p-7 sm:p-8 md:p-10 flex flex-col justify-between relative overflow-hidden transition-all min-h-[380px] md:min-h-[400px] shadow-xs">
             {/* Absolute Bottom-Right Store Background Image */}
-            <div className="absolute -bottom-3 -right-3 sm:-bottom-5 sm:-right-5 w-52 sm:w-64 md:w-72 pointer-events-none select-none z-0 opacity-40 sm:opacity-45">
+            {/* Added lg:w-80 to scale up the image for the wider card */}
+            <div className="absolute -bottom-3 -right-3 sm:-bottom-5 sm:-right-5 w-52 sm:w-64 md:w-72 lg:w-80 pointer-events-none select-none z-0 opacity-40 sm:opacity-45">
               <Image
                 src={STORE_IMAGE_URL}
                 alt="Flikk Merchant Store"
@@ -46,12 +49,13 @@ export default function PartnerSection() {
 
               {/* Title & Description */}
               <div className="flex flex-col gap-2">
-                <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 leading-tight">
+                <h3 className="text-2xl sm:text-3xl lg:text-[32px] font-black tracking-tight text-slate-950 leading-tight">
                   Own a Store?
                   <br />
                   <span className="text-[#15803D]">Grow Your Business Online.</span>
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-900 font-medium leading-relaxed max-w-[340px]">
+                {/* Increased max-width of paragraph slightly */}
+                <p className="text-xs sm:text-sm text-slate-900 font-medium leading-relaxed max-w-[380px]">
                   List your kirana, supermarket or bakery on Flikk. Reach thousands of customers in Mangalore with fast local delivery.
                 </p>
               </div>
@@ -82,9 +86,11 @@ export default function PartnerSection() {
           </div>
 
           {/* Card 2: Delivery Partner CTA */}
-          <div className="rounded-3xl bg-gradient-to-br from-[#FEF3C7] via-[#FDE047]/90 to-[#F59E0B]/20 text-slate-950 p-7 sm:p-8 flex flex-col justify-between relative overflow-hidden transition-all min-h-[380px] shadow-xs">
+          {/* Increased desktop padding and min-height to balance the wider card */}
+          <div className="rounded-3xl bg-gradient-to-br from-[#FEF3C7] via-[#FDE047]/90 to-[#F59E0B]/20 text-slate-950 p-7 sm:p-8 md:p-10 flex flex-col justify-between relative overflow-hidden transition-all min-h-[380px] md:min-h-[400px] shadow-xs">
             {/* Absolute Bottom-Right Delivery Bike Background Image */}
-            <div className="absolute -bottom-3 -right-3 sm:-bottom-5 sm:-right-5 w-52 sm:w-64 md:w-72 pointer-events-none select-none z-0 opacity-40 sm:opacity-45">
+            {/* Added lg:w-80 to scale up the image for the wider card */}
+            <div className="absolute -bottom-3 -right-3 sm:-bottom-5 sm:-right-5 w-52 sm:w-64 md:w-72 lg:w-80 pointer-events-none select-none z-0 opacity-40 sm:opacity-45">
               <Image
                 src={BIKE_IMAGE_URL}
                 alt="Flikk Delivery Partner Bike"
@@ -103,12 +109,13 @@ export default function PartnerSection() {
 
               {/* Title & Description */}
               <div className="flex flex-col gap-2">
-                <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 leading-tight">
+                <h3 className="text-2xl sm:text-3xl lg:text-[32px] font-black tracking-tight text-slate-950 leading-tight">
                   Deliver & Earn
                   <br />
                   <span className="text-[#B45309]">On Your Own Schedule.</span>
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-900 font-medium leading-relaxed max-w-[340px]">
+                {/* Increased max-width of paragraph slightly */}
+                <p className="text-xs sm:text-sm text-slate-900 font-medium leading-relaxed max-w-[380px]">
                   Join the Flikk rider fleet in Mangalore. Enjoy flexible working hours, weekly payouts, and attractive per-delivery incentives.
                 </p>
               </div>

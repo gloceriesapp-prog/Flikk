@@ -3,8 +3,16 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
+import { verifyPayoutAccount } from '../payments/verifyPayoutAccount.js';
 
 export const riderRouter = Router();
+
+// Same last-4-visible masking convention routes/partner.ts's own
+// maskAccountNumber already established.
+function maskAccountNumber(full: string | null): string | null {
+  if (!full) return null;
+  return `XXXXXXXX${full.slice(-4)}`;
+}
 riderRouter.use(requireAuth, requireRole('rider'), requireApproved);
 
 // Real presence + location — riders.status/current_lat/current_lng
@@ -170,6 +178,65 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
       .order('paid_at', { ascending: false });
     if (error) throw error;
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Real RazorpayX Fund Account Validation, post-approval payout setup —
+// same underlying lib routes/partner.ts's own POST /verify-payout uses
+// (verifyPayoutAccount.ts is method-agnostic, genuinely shared as-is).
+// Bank account only, no UPI option — per the real onboarding spec this
+// mirrors (Post-approval page only ever asks for account holder name,
+// account number, IFSC).
+riderRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
+  try {
+    const { accountNumber, ifsc, accountHolderName } = req.body as {
+      accountNumber?: string;
+      ifsc?: string;
+      accountHolderName?: string;
+    };
+    if (!accountNumber?.trim() || !ifsc?.trim() || !accountHolderName?.trim()) {
+      throw new AppError(400, 'MISSING_FIELDS', 'accountNumber, ifsc and accountHolderName are required.');
+    }
+
+    const { data: rider } = await supabase
+      .from('riders')
+      .select('id, razorpay_contact_id')
+      .eq('user_id', req.user!.id)
+      .single();
+    if (!rider) throw new AppError(404, 'RIDER_NOT_FOUND', 'No rider profile for this account.');
+
+    const { data: user } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
+
+    const { result, contactId, fundAccountId } = await verifyPayoutAccount(
+      { method: 'bank_account', accountNumber: accountNumber.trim(), ifsc: ifsc.trim().toUpperCase(), accountHolderName: accountHolderName.trim() },
+      accountHolderName.trim(),
+      user?.phone ?? null,
+      rider.razorpay_contact_id,
+    );
+
+    await supabase
+      .from('riders')
+      .update({
+        payout_method: 'bank_account',
+        payout_account_holder_name: result.registeredName ?? accountHolderName.trim(),
+        payout_bank_name: result.bankName,
+        payout_bank_account_number: accountNumber.trim(),
+        payout_bank_ifsc: result.bankIfsc ?? ifsc.trim().toUpperCase(),
+        razorpay_contact_id: contactId,
+        razorpay_fund_account_id: fundAccountId,
+      })
+      .eq('id', rider.id);
+
+    res.json({
+      maskedAccountNumber: maskAccountNumber(accountNumber.trim()),
+      ifsc: result.bankIfsc ?? ifsc.trim().toUpperCase(),
+      accountHolderName: result.registeredName,
+      accountStatus: result.accountStatus,
+      bankName: result.bankName,
+      nameMatchScore: result.nameMatchScore,
+    });
   } catch (err) {
     next(err);
   }

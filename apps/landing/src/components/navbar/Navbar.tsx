@@ -125,7 +125,8 @@ export default function Navbar() {
       {/* Top Announcement Banner */}
       <AnnouncementBanner />
 
-      <div className="max-w-[980px] mx-auto px-6 py-4 flex items-center justify-between gap-4 sm:gap-6 bg-white">
+      {/* Increased max-width to 1280px to align with the rest of the page layout */}
+      <div className="max-w-[1280px] mx-auto px-6 py-4 flex items-center justify-between gap-4 sm:gap-6 bg-white">
         {/* Left Brand Logo & Location Pill */}
         <div className="flex items-center gap-3 shrink-0">
           <a
@@ -133,22 +134,10 @@ export default function Navbar() {
             className="flex items-center gap-2 cursor-pointer select-none group"
             aria-label="Flikk Home"
           >
-            {/* <Image
-              src={LOGO_IMAGE_URL}
-              alt="Flikk Logo"
-              width={48}
-              height={48}
-              priority
-              style={{ width: "auto", height: "42px" }}
-              className="object-contain group-hover:scale-105 transition-transform shrink-0"
-            /> */}
             <div className="flex flex-col leading-[0.95]">
               <span className="text-[30px] sm:text-[34px] font-black text-[#000000] tracking-tight">
                 gloceries <span className="text-[#155dfc] h-2 w-2 rounded-full inline-block bg-[#155dfc]"></span>
               </span>
-              {/* <span className="text-[20px] font-black text-[#00000] tracking-tight">
-                Now in Mangalore <HugeiconsIcon icon={FavouriteIcon} className="w-4 h-4 text-red-500 fill-red-500 inline" />
-              </span> */}
             </div>
           </a>
 
@@ -159,18 +148,13 @@ export default function Navbar() {
             type="button"
             onClick={() => setIsLocationModalOpen(true)}
             aria-label="Change delivery location"
-            className="flex items-center gap-1.5 px-3  cursor-pointer transition-colors text-left group"
+            className="flex items-center gap-1.5 px-3 cursor-pointer transition-colors text-left group"
           >
-            {/* <HugeiconsIcon icon={Location01Icon} className="w-4 h-4 text-[#0052FF] shrink-0" /> */}
             <div className="flex flex-col leading-tight">
               <span className="flex items-center gap-2">
                 <span className="text-[20px] font-semibold text-black tracking-tight">
                   Your location
                 </span>
-                {/* Real check against this page's own committed launch
-                    area (SERVICEABLE_AREA_KEYWORDS above), not decorative —
-                    a customer picking an address outside it should know
-                    before they browse, not after trying to check out. */}
                 {isLocationServiceable(userLocation) ? (
                   <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
                     Available

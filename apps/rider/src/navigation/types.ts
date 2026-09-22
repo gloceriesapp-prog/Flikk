@@ -3,10 +3,46 @@
 // AppStackParamList (real session) — RootNavigator renders one or the
 // other, never both, same split as the other two RN apps.
 
+// The onboarding wizard's accumulating state — each step fills in more of
+// it and passes the whole thing forward as a route param, same threaded-
+// object pattern apps/partner's own StoreDraft uses (this stack is never
+// deep-linked, so a plain param object is a smaller diff than a store
+// slice). Photo fields hold the real private-bucket object PATH returned
+// by uploadRiderDocumentPhoto, never a raw base64 or public URL.
+export interface RiderDraft {
+  fullName: string;
+  dateOfBirth: string; // "YYYY-MM-DD", or '' until entered
+  // Structured home address — collected as separate fields (industry
+  // standard), composed into one canonical string for the backend's single
+  // home_address column at save time (utils/address.ts). Landmark is the
+  // only optional part.
+  houseNumber: string;
+  street: string;
+  landmark: string;
+  city: string;
+  district: string;
+  state: string;
+  pincode: string;
+  aadhaarNumber: string;
+  aadhaarPhotoUrl: string | null;
+  dlNumber: string;
+  dlPhotoUrl: string | null;
+  vehicleType: 'bicycle' | 'scooter' | 'motorcycle' | null;
+  vehicleNumber: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelationship: string;
+}
+
 export type AuthStackParamList = {
-  Welcome: undefined;
   Login: undefined;
   OtpVerification: { phone: string };
+  OnboardingIntro: { draft?: RiderDraft } | undefined;
+  PersonalDetails: { draft: RiderDraft };
+  IdentityVerification: { draft: RiderDraft };
+  VehicleDetails: { draft: RiderDraft };
+  EmergencyContact: { draft: RiderDraft };
+  ReviewSubmit: { draft: RiderDraft };
 };
 
 // Real @react-navigation/bottom-tabs, not a flat stack with a per-screen

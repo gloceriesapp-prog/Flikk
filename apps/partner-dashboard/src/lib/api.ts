@@ -100,8 +100,15 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!res.ok) {
-    const message = (json as { error?: string } | null)?.error ?? `Request failed (${res.status}).`;
-    const code = (json as { code?: string } | null)?.code ?? 'REQUEST_FAILED';
+    // Backend's errorHandler (backend/src/middleware/errorHandler.ts) sends
+    // { error: { code, message } } — same shape @flikk/shared's client
+    // parses for the mobile apps. This used to read the old flat
+    // { error: string, code: string } shape, which meant every real error
+    // here rendered as the literal string "[object Object]" instead of the
+    // actual message.
+    const body = json as { error?: { code?: string; message?: string } } | null;
+    const message = body?.error?.message ?? `Request failed (${res.status}).`;
+    const code = body?.error?.code ?? 'REQUEST_FAILED';
     throw new ApiError(res.status, code, message);
   }
 

@@ -11,6 +11,7 @@ import { categoriesRouter } from './routes/categories.js';
 import { categorySectionsRouter } from './routes/categorySections.js';
 import { homeTabsRouter } from './routes/homeTabs.js';
 import { homeFestivalSectionRouter } from './routes/homeFestivalSection.js';
+import { homeSeasonalSectionRouter } from './routes/homeSeasonalSection.js';
 import { storesRouter } from './routes/stores.js';
 import { ordersRouter } from './routes/orders.js';
 import { tripsRouter } from './routes/trips.js';
@@ -21,6 +22,7 @@ import { adminRouter } from './routes/admin.js';
 import { paymentsRouter } from './payments/router.js';
 import { locationRouter } from './routes/location.js';
 import { storeOnboardingRouter } from './routes/storeOnboarding.js';
+import { riderOnboardingRouter } from './routes/riderOnboarding.js';
 import { promosRouter } from './routes/promos.js';
 import { reviewsRouter } from './routes/reviews.js';
 import { wishlistRouter } from './routes/wishlist.js';
@@ -102,6 +104,7 @@ app.use('/categories', shortCache(), categoriesRouter);
 app.use('/category-sections', shortCache(), categorySectionsRouter);
 app.use('/home-tabs', shortCache(), homeTabsRouter);
 app.use('/home/festival-section', shortCache(), homeFestivalSectionRouter);
+app.use('/home/seasonal-section', shortCache(), homeSeasonalSectionRouter);
 app.use('/stores', shortCache(), storesRouter);
 app.use('/orders', ordersRouter);
 app.use('/trips', tripsRouter);
@@ -119,6 +122,14 @@ app.use('/area-upvotes', areaUpvotesRouter);
 // path this router doesn't itself define.
 app.use('/partner', storeOnboardingRouter);
 app.use('/partner', partnerRouter);
+// Mounted before riderRouter for the same reason storeOnboardingRouter is
+// mounted before partnerRouter above: riderRouter applies a router-wide
+// requireRole('rider')/requireApproved gate, which a brand-new applicant
+// (still role='customer') can never satisfy. The onboarding routes
+// (/application, /draft, /document-photo) each guard with requireAuth only
+// and must be reachable first; Express falls through to the gated
+// riderRouter for any /rider/* path this router doesn't itself define.
+app.use('/rider', riderOnboardingRouter);
 app.use('/rider', riderRouter);
 app.use('/admin', adminRouter);
 app.use('/payments', paymentsRouter);

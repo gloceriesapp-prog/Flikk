@@ -13,7 +13,13 @@
 // orders.commission_amount the backend actually computed with it (never
 // recomputing a payout figure client-side, same rule screens/payouts/
 // data.ts already established for the Payouts tab).
-export const COMMISSION_RATE = 0.06;
+//
+// This is now only the fallback value — the real, admin-editable rate
+// lives in the platform_settings singleton (migrations/039), read via
+// lib/platformSettings.ts's own getCommissionRate() at checkout time. Kept
+// here (not deleted) so this "money math" file stays pure/DB-free and
+// still has a real, sane default if that row is ever somehow missing.
+export const DEFAULT_COMMISSION_RATE = 0.06;
 
 export interface CartLine {
   unitPrice: number;

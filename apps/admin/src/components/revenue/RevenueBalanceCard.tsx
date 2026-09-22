@@ -12,14 +12,28 @@ import type { BalanceSummary } from '@/components/dashboard/BalanceSummaryCard';
 
 export function RevenueBalanceCard({
   totalRevenue,
+  totalCommission,
+  totalPlatformFee,
   thisWeek,
   weekOverWeekPct,
   wallet,
+  commissionRate,
 }: {
   totalRevenue: number;
+  // Two real, separate income sources rolled into totalRevenue above —
+  // shown as their own line so "how much did we earn" and "from what"
+  // read together. Commission comes from stores (item_total x rate);
+  // platform fee comes from customers (the handling fee every checkout
+  // already charges) — neither is ever paid to a store or a rider.
+  totalCommission: number;
+  totalPlatformFee: number;
   thisWeek: number;
   weekOverWeekPct: number;
   wallet: BalanceSummary | null;
+  // Real, admin-editable rate (Settings -> Platform fees) — shown right
+  // next to the number it produces so "how much did we earn" and "why"
+  // read together, not as two disconnected screens.
+  commissionRate: number | null;
 }) {
   const isUp = weekOverWeekPct >= 0;
 
@@ -31,8 +45,19 @@ export function RevenueBalanceCard({
             <Wallet size={18} className="text-ink" />
           </div>
           <div>
-            <p className="text-sm text-muted">Total commission, all-time</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted">Total earned, all-time</p>
+              {commissionRate !== null && (
+                <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-ink-soft">
+                  {(commissionRate * 100).toFixed(1)}% commission
+                </span>
+              )}
+            </div>
             <p className="text-4xl font-medium tabular-nums text-ink">{formatCurrency(totalRevenue)}</p>
+            <p className="mt-1 text-xs text-muted">
+              {formatCurrency(totalCommission)} commission (stores) + {formatCurrency(totalPlatformFee)} platform fee
+              (customers)
+            </p>
           </div>
         </div>
 
