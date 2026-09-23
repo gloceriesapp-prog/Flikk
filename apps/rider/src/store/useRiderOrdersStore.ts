@@ -53,6 +53,8 @@ import { fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders
 import { generateMockOrder, generateMockRating, generateMockTip, type RiderOrder } from '../data/mockOrders';
 import { getCurrentCoordinates } from '../location/riderLocation';
 import { startOfWeek } from '../utils/earnings';
+import { todayKey } from '../utils/date';
+import { carryOverActiveMs } from '../utils/activeTime';
 
 export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'picked_up', 'arrived_at_customer', 'delivered'];
 
@@ -72,6 +74,13 @@ const POLL_INTERVAL_MS = 12_000;
 const HISTORY_KEY = 'flikk_rider_order_history';
 const MAX_HISTORY = 200;
 
+// Active-time-today accumulator (frozen ms + the UTC day it belongs to).
+// Persisted so a restart mid-day keeps today's total; a stored date that
+// isn't todayKey() is yesterday's total and gets dropped on load (the
+// midnight refresh). Live current session is added on top at read time
+// (useActiveMsToday), so this only holds *completed* session time.
+const ACTIVE_MS_KEY = 'flikk_rider_active_ms_today';
+
 // How often, while online, to report a fresh position + refresh the
 // nearby-offers list. Balanced accuracy (getCurrentCoordinates), not
 // continuous high-accuracy tracking — this only needs to be fresh enough
@@ -85,6 +94,12 @@ async function persistHistory(orders: RiderOrder[]): Promise<void> {
 interface RiderOrdersState {
   isOnline: boolean;
   onlineSince: number | null;
+  // Time spent online earlier today that's already been "banked" (each
+  // goOffline adds that session's ms here). The live current session is
+  // NOT in here — read the running total via useActiveMsToday. Resets to 0
+  // at midnight (see activeMsDate).
+  activeMsToday: number;
+  activeMsDate: string; // UTC day (todayKey()) activeMsToday belongs to
   incomingOrder: RiderOrder | null;
   incomingOrderExpiresAt: number | null;
   activeOrders: RiderOrder[];
@@ -140,6 +155,8 @@ function clearAutoDeclineTimer() {
 export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
   isOnline: false,
   onlineSince: null,
+  activeMsToday: 0,
+  activeMsDate: '',
   incomingOrder: null,
   incomingOrderExpiresAt: null,
   activeOrders: [],
@@ -150,8 +167,24 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
   nearbyOffers: [],
 
   hydrateHistory: async () => {
-    const raw = await SecureStore.getItemAsync(HISTORY_KEY);
-    set({ completedOrders: raw ? (JSON.parse(raw) as RiderOrder[]) : [], isHistoryHydrated: true });
+    const [rawHistory, rawActive] = await Promise.all([
+      SecureStore.getItemAsync(HISTORY_KEY),
+      SecureStore.getItemAsync(ACTIVE_MS_KEY),
+    ]);
+    // Only carry the stored active-time forward if it's still the same UTC
+    // day; a stale date is yesterday's shift → today starts at 0.
+    let activeMsToday = 0;
+    let activeMsDate = todayKey();
+    if (rawActive) {
+      const parsed = JSON.parse(rawActive) as { ms: number; date: string };
+      if (parsed.date === activeMsDate) activeMsToday = parsed.ms;
+    }
+    set({
+      completedOrders: rawHistory ? (JSON.parse(rawHistory) as RiderOrder[]) : [],
+      isHistoryHydrated: true,
+      activeMsToday,
+      activeMsDate,
+    });
   },
 
   startSync: () => {
@@ -250,7 +283,19 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
   },
 
   goOnline: () => {
-    set((state) => ({ isOnline: true, onlineSince: state.isOnline ? state.onlineSince : Date.now() }));
+    set((state) => {
+      // Already online → don't restart the session clock. Fresh online →
+      // stamp onlineSince, and if the banked total is from an earlier day,
+      // reset it now (midnight refresh) before this shift adds to it.
+      if (state.isOnline) return state;
+      const today = todayKey();
+      return {
+        isOnline: true,
+        onlineSince: Date.now(),
+        activeMsToday: carryOverActiveMs(state.activeMsToday, state.activeMsDate, today),
+        activeMsDate: today,
+      };
+    });
 
     // One real ping-and-refresh loop covers both jobs: report this
     // rider's current position (what nearby_online_riders reads) and pull
@@ -271,7 +316,18 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
   },
 
   goOffline: () => {
-    set({ isOnline: false, onlineSince: null, nearbyOffers: [] });
+    set((state) => {
+      // Bank this session's elapsed time into today's total, then freeze
+      // (onlineSince cleared → useActiveMsToday adds nothing live). Persist
+      // so a restart keeps it. ponytail: a shift spanning midnight banks the
+      // whole session into the new day rather than splitting at 00:00 — a
+      // daily active-time readout doesn't need boundary-exact accounting.
+      const today = todayKey();
+      const sessionMs = state.onlineSince ? Date.now() - state.onlineSince : 0;
+      const activeMsToday = carryOverActiveMs(state.activeMsToday, state.activeMsDate, today) + sessionMs;
+      void SecureStore.setItemAsync(ACTIVE_MS_KEY, JSON.stringify({ ms: activeMsToday, date: today }));
+      return { isOnline: false, onlineSince: null, nearbyOffers: [], activeMsToday, activeMsDate: today };
+    });
     stopLocationPing();
     void updateRiderStatus({ status: 'offline' }).catch(() => {});
   },

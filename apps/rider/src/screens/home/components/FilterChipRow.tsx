@@ -16,26 +16,26 @@ interface Props {
 }
 
 const FILTERS: { id: DeliveryFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
   { id: 'active', label: 'Active' },
-  { id: 'completed', label: 'Completed' },
+  { id: 'completed', label: 'Delivered' },
   { id: 'cancelled', label: 'Cancelled' },
+  { id: 'all', label: 'All' },
 ];
 
 export function FilterChipRow({ value, onChange, counts }: Props) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-1">
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2.5 px-1">
       {FILTERS.map((filter) => {
         const isActive = filter.id === value;
         return (
           <Pressable
             key={filter.id}
             onPress={() => onChange(filter.id)}
-            className={`flex-row items-center gap-1.5 rounded-full px-4 py-2 ${isActive ? 'bg-ink' : 'bg-white border border-gray-100'}`}
+            className={`flex-row items-center gap-2 rounded-full px-5 py-2.5 ${isActive ? 'bg-ink' : 'bg-white border border-gray-200'}`}
           >
-            <Text className={`text-[13px] font-semibold ${isActive ? 'text-white' : 'text-ink/60'}`}>{filter.label}</Text>
+            <Text className={`text-[14px] font-semibold ${isActive ? 'text-white' : 'text-ink/60'}`}>{filter.label}</Text>
             <Text
-              className={`text-[11px] font-semibold ${isActive ? 'text-white/70' : 'text-ink/35'}`}
+              className={`text-[12px] font-bold ${isActive ? 'text-white/80' : 'text-ink/40'}`}
               style={{ fontVariant: ['tabular-nums'] }}
             >
               {counts[filter.id]}

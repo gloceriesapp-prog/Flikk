@@ -104,59 +104,42 @@ export default function CategoryGrid() {
           </div>
         </div>
 
-        {/* 
-          Horizontal Scrollable Track (Mobile/Tablet) 
-          Switches to a 4-column Grid on Desktop (lg)
-          Increased desktop gap (lg:gap-8) forces columns narrower
+        {/*
+          Horizontal scroll on mobile/tablet, 3-column grid on desktop.
+          Only the first 3 categories render — wide banner cards.
         */}
         <div
           ref={scrollContainerRef}
-          className="flex lg:grid lg:grid-cols-4 items-stretch gap-4 lg:gap-8 overflow-x-auto lg:overflow-visible scrollbar-none snap-x snap-mandatory py-4 lg:py-0 px-1 lg:px-0 scroll-smooth"
+          className="flex lg:grid lg:grid-cols-3 items-stretch gap-4 lg:gap-6 overflow-x-auto lg:overflow-visible scrollbar-none snap-x snap-mandatory py-4 lg:py-0 px-1 lg:px-0 scroll-smooth"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {CATEGORIES.map((cat) => (
+          {CATEGORIES.slice(0, 3).map((cat) => (
             <div
               key={cat.id}
-              // Reduced widths and heights overall
-              className={`w-[260px] sm:w-[290px] lg:w-auto shrink-0 snap-start h-[210px] sm:h-[230px] rounded-[20px] p-4 sm:p-5 flex flex-col relative overflow-hidden bg-gradient-to-br ${cat.bgGradient} select-none cursor-pointer group`}
+              className={`w-[300px] sm:w-[380px] lg:w-auto shrink-0 snap-start h-[240px] sm:h-[260px] rounded-[24px] p-6 flex flex-col relative overflow-hidden bg-gradient-to-br ${cat.bgGradient} select-none cursor-pointer group`}
             >
-              {/* Top Right Powered By Tag if applicable */}
-              {cat.poweredBy && (
-                <div className="absolute top-3 right-3 z-20 bg-white/95 backdrop-blur-md px-2 py-1 rounded-full flex flex-col items-end">
-                  <span className="text-[7px] font-medium text-slate-400 leading-none">
-                    Powered by
-                  </span>
-                  <span className="text-[9px] font-bold text-slate-800 tracking-tight leading-none mt-0.5">
-                    {cat.poweredBy}
-                  </span>
-                </div>
-              )}
-
-              {/* Text Content - Scaled down fonts */}
-              <div
-                className={`flex flex-col gap-1 relative z-10 ${
-                  cat.poweredBy ? "max-w-[140px] sm:max-w-[65%]" : "max-w-[180px] sm:max-w-[75%]"
-                }`}
-              >
+              {/* Title + CTA */}
+              <div className="flex flex-col relative z-10 max-w-[58%] h-full">
                 <span
-                  className={`text-[18px] sm:text-[20px] font-bold ${cat.titleColor} leading-tight tracking-tight`}
+                  className={`text-[22px] sm:text-[26px] font-bold ${cat.titleColor} leading-tight tracking-tight`}
                 >
                   {cat.title}
                 </span>
-                <span
-                  className={`text-[12px] font-medium ${cat.subtitleColor} leading-snug line-clamp-3`}
+                <button
+                  type="button"
+                  className="mt-auto w-fit rounded-lg bg-white px-5 py-2 text-[14px] font-semibold text-slate-900 shadow-sm hover:bg-white/90 active:scale-95 transition-all"
                 >
-                  {cat.subtitle}
-                </span>
+                  Order Now
+                </button>
               </div>
 
-              {/* Product Image Right Bottom - Scaled down image box */}
-              <div className="absolute right-0 bottom-0 w-[140px] sm:w-[160px] lg:w-[150px] xl:w-[160px] h-[120px] sm:h-[140px] overflow-hidden pointer-events-none z-0 rounded-tl-[20px]">
+              {/* Product image, right side */}
+              <div className="absolute right-0 bottom-0 w-[150px] sm:w-[190px] h-[180px] sm:h-[210px] overflow-hidden pointer-events-none z-0 rounded-tl-[24px]">
                 <Image
                   src={cat.image}
                   alt={cat.title}
                   fill
-                  sizes="(max-width: 1024px) 160px, 20vw"
+                  sizes="(max-width: 1024px) 190px, 15vw"
                   className="object-cover object-left-top group-hover:scale-105 transition-transform duration-500"
                 />
               </div>

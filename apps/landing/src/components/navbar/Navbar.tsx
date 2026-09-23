@@ -13,6 +13,8 @@ import {
   FireIcon,
   FlashIcon,
   Cancel01Icon,
+  TrendingUpIcon,
+  AutoConversationsIcon,
 } from "@hugeicons/core-free-icons";
 
 // Real launch area this landing page already commits to elsewhere
@@ -152,16 +154,16 @@ export default function Navbar() {
                   Your location
                 </span>
                 {isLocationServiceable(userLocation) ? (
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
                     Available
                   </span>
                 ) : (
-                  <span className="text-[10px] font-medium  tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                  <span className="text-[11px] font-medium uppercase  tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
                     Coming Soon
                   </span>
                 )}
               </span>
-              <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1 group-hover:text-[#0052FF] transition-colors">
+              <span className="text-sm font-medium text-slate-800 flex items-center gap-1 group-hover:text-[#0052FF] transition-colors">
                 {userLocation}
                 <HugeiconsIcon icon={ArrowDown01Icon} className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#0052FF] transition-colors" />
               </span>
@@ -172,11 +174,10 @@ export default function Navbar() {
         {/* Center Search Bar with Interactive Dropdown */}
         <div className="flex-1 max-w-[460px] relative" ref={searchRef}>
           <div
-            className={`flex items-center bg-[#F1F3F6] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0052FF]/20 focus-within:border-[#0052FF] border rounded-xl px-5 h-[54px] transition-all ${
-              isSearchFocused
+            className={`flex items-center bg-[#F1F3F6] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0052FF]/20 focus-within:border-[#0052FF] border rounded-xl px-5 h-[54px] transition-all ${isSearchFocused
                 ? "border-[#0052FF] bg-white ring-2 ring-[#0052FF]/20 shadow-md"
                 : "border-transparent"
-            }`}
+              }`}
           >
             <input
               type="text"
@@ -193,11 +194,8 @@ export default function Navbar() {
           {isSearchFocused && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl p-4 shadow-2xl border border-slate-200/80 ring-1 ring-black/5 z-50 animate-in fade-in duration-200">
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
-                <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <HugeiconsIcon icon={FireIcon} className="w-3.5 h-3.5 text-amber-500" /> Popular Searches
-                </span>
-                <span className="text-[10px] font-bold text-[#0052FF] bg-blue-50 px-2 py-0.5 rounded-full">
-                  Fast Local Delivery
+                <span className="text-[15px] font-medium text-black/60 tracking-tight flex items-center gap-1.5">
+                  <HugeiconsIcon icon={AutoConversationsIcon} className="w-3.5 h-3.5" /> Popular Searches
                 </span>
               </div>
 
@@ -215,11 +213,11 @@ export default function Navbar() {
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <HugeiconsIcon icon={Search01Icon} className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0052FF] transition-colors shrink-0" />
-                      <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-[#0052FF] transition-colors whitespace-nowrap truncate">
+                      <span className="text-[12px] sm:text-[15px] tracking-tight font-medium text-slate-800 group-hover:text-[#0052FF] transition-colors whitespace-nowrap truncate">
                         {item.term}
                       </span>
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 group-hover:bg-blue-50 group-hover:text-[#0052FF] px-2 py-0.5 rounded-md transition-colors shrink-0">
+                    <span className="text-[11px] sm:text-[12px] font-medium text-slate-400 bg-slate-100 group-hover:bg-blue-50 group-hover:text-[#0052FF] px-2 py-0.5 rounded-md transition-colors shrink-0">
                       {item.category}
                     </span>
                   </button>
@@ -229,14 +227,13 @@ export default function Navbar() {
               {/* Order via App Banner inside Dropdown */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50/60 rounded-xl p-3 border border-blue-100 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <HugeiconsIcon icon={FlashIcon} className="w-4 h-4 text-[#0052FF] shrink-0 fill-current" />
                   <div className="flex flex-col">
-                    <span className="text-xs font-black text-slate-900 leading-tight">
-                      Order on Gloceries App
+                    <span className="text-xs font-semibold text-slate-900 leading-tight">
+                      Download Gloceries for everyday essentials <br /> delivered to your door.
                     </span>
-                    <span className="text-[10px] font-medium text-slate-600">
+                    {/* <span className="text-[10px] font-medium text-slate-600">
                       Live tracking & fast doorstep delivery
-                    </span>
+                    </span> */}
                   </div>
                 </div>
                 <button
@@ -245,7 +242,7 @@ export default function Navbar() {
                     setIsSearchFocused(false);
                     setIsDropdownOpen(true);
                   }}
-                  className="bg-[#0052FF] hover:bg-[#0040E0] text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shrink-0 transition-colors"
+                  className="bg-[#0052FF] hover:bg-[#0040E0] text-white text-[12px] font-medium px-3 py-1.5 rounded-lg shrink-0 transition-colors"
                 >
                   Get App
                 </button>
@@ -259,16 +256,15 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() => setIsDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-2 bg-gradient-to-r from-[#0052FF] to-[#0040E0] hover:from-[#0048E5] hover:to-[#0036C7] active:scale-[0.98] text-white px-5 sm:px-6 py-3.5 rounded-xl font-extrabold text-sm sm:text-base shadow-md hover:shadow-lg transition-all cursor-pointer group shrink-0"
+            className="flex items-center gap-2 bg-gradient-to-r from-[#0052FF] to-[#0040E0] hover:from-[#0048E5] hover:to-[#0036C7] active:scale-[0.98] text-white px-5 sm:px-6 py-3.5 rounded-xl font-semibold text-sm sm:text-base shadow-md hover:shadow-lg transition-all cursor-pointer group shrink-0"
           >
             <HugeiconsIcon icon={ShoppingBag01Icon} className="w-5 h-5 text-white shrink-0 group-hover:scale-110 transition-transform" />
             <span className="hidden xs:inline">Order on Gloceries App</span>
             <span className="xs:hidden">Get App</span>
             <HugeiconsIcon
               icon={ArrowDown01Icon}
-              className={`w-3.5 h-3.5 text-white/80 transition-transform duration-200 ${
-                isDropdownOpen ? "rotate-180" : ""
-              }`}
+              className={`w-3.5 h-3.5 text-white/80 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""
+                }`}
             />
           </button>
 
@@ -277,7 +273,7 @@ export default function Navbar() {
             <div className="absolute right-0 top-full mt-2.5 w-80 rounded-2xl bg-white p-4 shadow-2xl border border-slate-100 ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-200 z-50">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex flex-col">
-                  <span className="text-xs font-extrabold text-slate-900">
+                  <span className="text-[13px] font-semibold text-slate-900">
                     {modalSearchTerm
                       ? `Order "${modalSearchTerm}"`
                       : "Order on Gloceries Mobile App"}
