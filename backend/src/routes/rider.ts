@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
-import { verifyPayoutAccount } from '../payments/verifyPayoutAccount.js';
+import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
 
 export const riderRouter = Router();
 
@@ -12,6 +12,14 @@ export const riderRouter = Router();
 function maskAccountNumber(full: string | null): string | null {
   if (!full) return null;
   return `XXXXXXXX${full.slice(-4)}`;
+}
+
+// Aadhaar is 12 digits — show only the last 4, same last-4-visible spirit
+// as maskAccountNumber. DL number is not masked (it's not a financial/PII
+// secret the same way; the rider sees their own for confirmation).
+function maskAadhaar(full: string | null): string | null {
+  if (!full) return null;
+  return `XXXX XXXX ${full.replace(/\s/g, '').slice(-4)}`;
 }
 riderRouter.use(requireAuth, requireRole('rider'), requireApproved);
 
@@ -183,55 +191,133 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
   }
 });
 
-// Real RazorpayX Fund Account Validation, post-approval payout setup —
-// same underlying lib routes/partner.ts's own POST /verify-payout uses
-// (verifyPayoutAccount.ts is method-agnostic, genuinely shared as-is).
-// Bank account only, no UPI option — per the real onboarding spec this
-// mirrors (Post-approval page only ever asks for account holder name,
-// account number, IFSC).
+// The single sync source for the rider app's own profile screen. Post-
+// approval the onboarding draft is deleted (admin's approve route copies
+// draft -> riders then DROPs it), so the `riders` row is the ONLY place the
+// onboarding details still live — GET /rider/draft returns null by then.
+// Aadhaar + bank account masked server-side (last-4); DL/UPI/vehicle shown
+// as entered. phone + created_at come off the users row / riders.created_at.
+riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data: rider, error } = await supabase
+      .from('riders')
+      .select(
+        'rider_code, name, date_of_birth, photo_url, home_address, aadhaar_number, dl_number, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, payout_account_holder_name, created_at',
+      )
+      .eq('user_id', req.user!.id)
+      .single();
+    if (error || !rider) throw new AppError(404, 'RIDER_NOT_FOUND', 'No rider profile for this account.');
+
+    const { data: user } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
+
+    // photo_url is an object PATH on the PRIVATE rider-documents bucket
+    // (same as aadhaar/dl photos) — sign a short-lived URL so the app can
+    // render it without the bucket ever being public. Null path -> null url.
+    let photoUrl: string | null = null;
+    if (rider.photo_url) {
+      const { data: signed } = await supabase.storage.from('rider-documents').createSignedUrl(rider.photo_url, 60 * 60);
+      photoUrl = signed?.signedUrl ?? null;
+    }
+
+    res.json({
+      riderCode: rider.rider_code,
+      name: rider.name,
+      phone: user?.phone ?? null,
+      photoUrl,
+      dateOfBirth: rider.date_of_birth,
+      homeAddress: rider.home_address,
+      aadhaarMasked: maskAadhaar(rider.aadhaar_number),
+      dlNumber: rider.dl_number,
+      vehicleType: rider.vehicle_type,
+      vehicleNumber: rider.vehicle_number,
+      emergencyContactName: rider.emergency_contact_name,
+      emergencyContactPhone: rider.emergency_contact_phone,
+      emergencyContactRelationship: rider.emergency_contact_relationship,
+      memberSince: rider.created_at,
+      payout: {
+        method: rider.payout_method,
+        upiId: rider.payout_upi_id,
+        upiVerifiedName: rider.payout_upi_verified_name,
+        bankName: rider.payout_bank_name,
+        maskedAccountNumber: maskAccountNumber(rider.payout_bank_account_number),
+        ifsc: rider.payout_bank_ifsc,
+        accountHolderName: rider.payout_account_holder_name,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+// same underlying lib + exact same two-method (bank_account | upi) shape as
+// routes/partner.ts's own POST /verify-payout (verifyPayoutAccount.ts is
+// method-agnostic, genuinely shared). Verifying one method clears the
+// other's saved fields — a rider only ever has one active payout
+// destination at a time (payout_method).
 riderRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
   try {
-    const { accountNumber, ifsc, accountHolderName } = req.body as {
-      accountNumber?: string;
-      ifsc?: string;
-      accountHolderName?: string;
-    };
-    if (!accountNumber?.trim() || !ifsc?.trim() || !accountHolderName?.trim()) {
-      throw new AppError(400, 'MISSING_FIELDS', 'accountNumber, ifsc and accountHolderName are required.');
+    const body = req.body as { method?: 'upi' | 'bank_account'; vpa?: string; accountNumber?: string; ifsc?: string; accountHolderName?: string };
+
+    let input: PayoutAccountInput;
+    if (body.method === 'upi') {
+      if (!body.vpa?.trim()) throw new AppError(400, 'MISSING_FIELDS', 'UPI ID is required.');
+      input = { method: 'upi', vpa: body.vpa.trim() };
+    } else if (body.method === 'bank_account') {
+      if (!body.accountNumber?.trim() || !body.ifsc?.trim() || !body.accountHolderName?.trim()) {
+        throw new AppError(400, 'MISSING_FIELDS', 'accountNumber, ifsc and accountHolderName are required.');
+      }
+      input = {
+        method: 'bank_account',
+        accountNumber: body.accountNumber.trim(),
+        ifsc: body.ifsc.trim().toUpperCase(),
+        accountHolderName: body.accountHolderName.trim(),
+      };
+    } else {
+      throw new AppError(400, 'INVALID_METHOD', 'method must be "upi" or "bank_account".');
     }
 
     const { data: rider } = await supabase
       .from('riders')
-      .select('id, razorpay_contact_id')
+      .select('id, name, razorpay_contact_id')
       .eq('user_id', req.user!.id)
       .single();
     if (!rider) throw new AppError(404, 'RIDER_NOT_FOUND', 'No rider profile for this account.');
 
     const { data: user } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
 
-    const { result, contactId, fundAccountId } = await verifyPayoutAccount(
-      { method: 'bank_account', accountNumber: accountNumber.trim(), ifsc: ifsc.trim().toUpperCase(), accountHolderName: accountHolderName.trim() },
-      accountHolderName.trim(),
-      user?.phone ?? null,
-      rider.razorpay_contact_id,
-    );
+    const accountHolder = input.method === 'bank_account' ? input.accountHolderName : (rider.name ?? '');
+    const { result, contactId, fundAccountId } = await verifyPayoutAccount(input, accountHolder, user?.phone ?? null, rider.razorpay_contact_id);
 
-    await supabase
-      .from('riders')
-      .update({
-        payout_method: 'bank_account',
-        payout_account_holder_name: result.registeredName ?? accountHolderName.trim(),
-        payout_bank_name: result.bankName,
-        payout_bank_account_number: accountNumber.trim(),
-        payout_bank_ifsc: result.bankIfsc ?? ifsc.trim().toUpperCase(),
-        razorpay_contact_id: contactId,
-        razorpay_fund_account_id: fundAccountId,
-      })
-      .eq('id', rider.id);
+    const patch: Record<string, unknown> =
+      input.method === 'upi'
+        ? {
+            payout_method: 'upi',
+            payout_upi_id: input.vpa,
+            payout_upi_verified_name: result.registeredName,
+            payout_account_holder_name: result.registeredName ?? rider.name,
+            payout_bank_name: result.bankName,
+            payout_bank_account_number: null,
+            payout_bank_ifsc: null,
+            razorpay_contact_id: contactId,
+            razorpay_fund_account_id: fundAccountId,
+          }
+        : {
+            payout_method: 'bank_account',
+            payout_upi_id: null,
+            payout_upi_verified_name: null,
+            payout_account_holder_name: result.registeredName ?? input.accountHolderName,
+            payout_bank_name: result.bankName,
+            payout_bank_account_number: input.accountNumber,
+            payout_bank_ifsc: result.bankIfsc ?? input.ifsc,
+            razorpay_contact_id: contactId,
+            razorpay_fund_account_id: fundAccountId,
+          };
+    await supabase.from('riders').update(patch).eq('id', rider.id);
 
     res.json({
-      maskedAccountNumber: maskAccountNumber(accountNumber.trim()),
-      ifsc: result.bankIfsc ?? ifsc.trim().toUpperCase(),
+      method: input.method,
+      vpa: input.method === 'upi' ? input.vpa : null,
+      maskedAccountNumber: input.method === 'bank_account' ? maskAccountNumber(input.accountNumber) : null,
+      ifsc: input.method === 'bank_account' ? (result.bankIfsc ?? input.ifsc) : null,
       accountHolderName: result.registeredName,
       accountStatus: result.accountStatus,
       bankName: result.bankName,

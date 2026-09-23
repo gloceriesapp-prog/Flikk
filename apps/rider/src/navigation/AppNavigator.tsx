@@ -6,6 +6,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
 import { OrderDetailScreen } from '../screens/orders/OrderDetailScreen';
+import { RiderDocumentsScreen } from '../screens/profile/RiderDocumentsScreen';
 import type { AppStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -21,6 +22,7 @@ export function AppNavigator() {
           slide-to-confirm screen. Back navigation still works via
           OrderDetailScreen's own back-arrow button. */}
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ presentation: 'card', gestureEnabled: false }} />
+      <Stack.Screen name="RiderDocuments" component={RiderDocumentsScreen} options={{ presentation: 'card' }} />
     </Stack.Navigator>
   );
 }

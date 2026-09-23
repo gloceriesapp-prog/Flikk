@@ -22,7 +22,7 @@ export default function AppDownloadBanner() {
               </span>
               {/* Scaled up the headline text for larger screens */}
               <h2 className="text-2xl sm:text-3xl md:text-[36px] lg:text-[44px] font-extrabold text-[#0F172A] leading-[1.15] tracking-tight">
-                For better experience, download the Flikk app now
+                For better experience, download the Gloceries app now
               </h2>
             </div>
 
@@ -114,7 +114,7 @@ export default function AppDownloadBanner() {
 
                 {/* Search Bar inside phone */}
                 <div className="w-full bg-slate-100 rounded-xl px-3 py-2 flex items-center justify-between text-slate-400 text-[11px] lg:text-[12px]">
-                  <span>Search "ice cream"</span>
+                  <span>Search &quot;ice cream&quot;</span>
                   <HugeiconsIcon icon={Search01Icon} className="w-3.5 h-3.5 text-slate-400" />
                 </div>
 

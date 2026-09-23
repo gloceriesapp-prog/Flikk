@@ -12,6 +12,9 @@
 export interface RiderDraft {
   fullName: string;
   dateOfBirth: string; // "YYYY-MM-DD", or '' until entered
+  // Optional face photo for the Profile avatar — private-bucket object PATH
+  // like aadhaar/dl, never gates submission.
+  profilePhotoUrl: string | null;
   // Structured home address — collected as separate fields (industry
   // standard), composed into one canonical string for the backend's single
   // home_address column at save time (utils/address.ts). Landmark is the
@@ -64,4 +67,5 @@ export type AppTabParamList = {
 export type AppStackParamList = {
   Tabs: undefined;
   OrderDetail: { orderId: string };
+  RiderDocuments: undefined;
 };

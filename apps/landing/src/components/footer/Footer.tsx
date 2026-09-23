@@ -22,10 +22,10 @@ const CATEGORIES_LIST = [
 ];
 
 const FLIKK_ECOSYSTEM = [
-  "About Flikk",
+  "About Gloceries",
   "Partner Kiranas",
   "Rider Fleet",
-  "Flikk Merchants",
+  "Gloceries Merchants",
   "Silicon Coast Tech",
 ];
 
@@ -186,17 +186,17 @@ export default function Footer() {
           </span>
         </div>
 
-        <div className="pt-5 border-t border-[#999C9E]/15 flex flex-col gap-2 text-xs sm:text-sm font-medium text-[#999C9E] leading-relaxed relative z-10 hidden">
+        <div className="pt-5 border-t border-[#999C9E]/15 flex flex-col gap-2 text-xs sm:text-sm font-medium text-[#999C9E] leading-relaxed relative z-10">
           <p>
-            “Flikk” is owned & managed by &quot;Flikk Commerce Private Limited&quot; and is not related, linked or interconnected in whatsoever manner or nature, to “GROFFR.COM” which is a real estate services business operated by “Redstone Consultancy Services Private Limited”.
+            “Gloceries” is a technology platform owned &amp; managed by &quot;Gloceries Commerce Private Limited&quot; that connects customers with independent local kirana &amp; pharmacy stores. Gloceries does not own inventory or sell products directly — all goods are sold by the respective partner stores. Prices, availability &amp; delivery times may vary by store and location.
           </p>
         </div>
 
         {/* Changed leading-[0.75] to leading-none and added pb-4 lg:pb-8 */}
         <div className="w-full flex items-center justify-center relative select-none mt-4 lg:mt-8 z-0 pb-4 lg:pb-8">
-          <h1 className="text-[16.5vw] sm:text-[18vw] lg:text-[230px] xl:text-[255px] font-black text-white/90 leading-none tracking-tighter uppercase w-full text-center drop-shadow-sm">
+          <div aria-hidden="true" className="text-[16.5vw] sm:text-[18vw] lg:text-[220px] xl:text-[235px] font-medium text-white/90 leading-none tracking-tighter uppercase w-full text-center drop-shadow-sm">
             Gloceries
-          </h1>
+          </div>
         </div>
       </div>
 
@@ -228,13 +228,13 @@ export default function Footer() {
                 <h3 className="text-lg sm:text-xl font-black tracking-tight text-white">
                   {activeModal === "feedback"
                     ? "Share Your Feedback"
-                    : "Request Flikk in Your City"}
+                    : "Request Gloceries in Your City"}
                 </h3>
               </div>
               <p className="text-xs text-[#999C9E] leading-relaxed">
                 {activeModal === "feedback"
-                  ? "Direct line to the Flikk team. Tell us how we can make your delivery experience 10x better!"
-                  : "Want Flikk in your city? Tell us where you live - we’ll work quickly to launch in your neighborhood!"}
+                  ? "Direct line to the Gloceries team. Tell us how we can make your delivery experience 10x better!"
+                  : "Want Gloceries in your city? Tell us where you live - we’ll work quickly to launch in your neighborhood!"}
               </p>
             </div>
 
@@ -246,7 +246,7 @@ export default function Footer() {
                 <h4 className="text-lg font-black text-white">Request Received!</h4>
                 <p className="text-xs text-[#999C9E] max-w-[320px] leading-relaxed">
                   {activeModal === "request_store"
-                    ? "Thank you! We're prioritizing expansions based on demand and will notify you as soon as Flikk launches in your city!"
+                    ? "Thank you! We're prioritizing expansions based on demand and will notify you as soon as Gloceries launches in your city!"
                     : "Thank you for your feedback! Our team reads every submission."}
                 </p>
                 <button
@@ -316,7 +316,7 @@ export default function Footer() {
                         name="feedback"
                         rows={3}
                         required
-                        placeholder="What feature, store, or improvement would make Flikk 10x better for you?"
+                        placeholder="What feature, store, or improvement would make Gloceries 10x better for you?"
                         value={formData.feedback}
                         onChange={handleInputChange}
                         className="bg-[#111111] border border-white/12 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#0052FF] focus:bg-[#161618] transition-all resize-none"

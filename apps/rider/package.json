@@ -23,6 +23,7 @@
     "expo-secure-store": "~57.0.1",
     "expo-splash-screen": "~57.0.7",
     "expo-status-bar": "~57.0.1",
+    "expo-video": "~57.0.4",
     "nativewind": "^4.2.6",
     "react": "19.2.3",
     "react-hook-form": "^7.85.0",

@@ -1,0 +1,67 @@
+# Gloceries — Full Reference
+
+> Gloceries is a hyperlocal grocery-delivery app that connects customers to real local kirana and grocery stores near them, delivered by local riders. It is an asset-light marketplace — no owned inventory, no dark stores — built for coastal Karnataka and every zone it expands into. Honest pricing, no hidden fees, fast local delivery.
+
+Website: https://gloceries.com
+Region: Coastal Karnataka, India
+Languages: English (Kannada planned)
+
+## What Gloceries is
+Gloceries is a grocery-delivery marketplace connecting shoppers to the grocery stores, kirana shops, supermarkets and bakeries already operating in their neighbourhood. Unlike instant-delivery apps that run "dark stores" (hidden warehouses stocking their own inventory), Gloceries delivers from real local shops. A local rider picks up your order and brings it to your door. This keeps prices honest, delivery fast, and money in the local economy.
+
+The customer app is available on Android and iOS. Store owners and delivery riders have their own apps.
+
+## Who it serves
+- Shoppers who want groceries delivered from trusted local stores rather than a faceless warehouse.
+- Local store owners (kirana, supermarket, bakery) who want to sell online and reach nearby customers without building their own delivery.
+- Delivery riders who want flexible local work with weekly payouts.
+
+## Areas served
+Live now: Mangalore.
+Launching across coastal Karnataka: Udupi, Manipal, Surathkal, Kaup, Kundapura, Mulki, Bantwal, Puttur, Karkala and more. Customers in a not-yet-live area can request their city inside the app; Gloceries prioritises expansion by demand.
+
+## How it works
+1. Open the Gloceries app and set your delivery location.
+2. Browse stores near you. Add items from one or more local shops — a single cart can span multiple stores.
+3. Check out with one payment (UPI-first) and one delivery fee for the whole order.
+4. A local store packs your order; a nearby rider picks it up and delivers to your door.
+5. Track your order through four stages: placed, packed, out for delivery, delivered.
+
+## What you can order
+Fresh fruits and vegetables, kirana and staples (atta, dal, rice, oil, spices), dairy and eggs, bakery and sweets, ice cream, chips and snacks, cold drinks and beverages, and everyday household essentials — all from local stores.
+
+## For store partners
+Kirana shops, supermarkets and bakeries can list their store on Gloceries, manage their catalogue and incoming orders from the partner app, and reach thousands of nearby customers with fast local delivery. Learn more: https://gloceries.com/partner
+
+## Get the app
+- Android (Google Play): https://play.google.com/store/apps/details?id=com.gloceries.customer
+- iOS (App Store): https://apps.apple.com/app/gloceries/id000000000
+
+## Frequently asked questions
+
+Q: What is Gloceries?
+A: Gloceries is a hyperlocal grocery delivery app that connects you to real local kirana and grocery stores near you. Order groceries from shops in your neighbourhood and a local rider delivers them to your door.
+
+Q: How is Gloceries different from Blinkit, Zepto or Instamart?
+A: Those apps run dark stores — hidden warehouses stocking their own inventory. Gloceries does the opposite: it delivers from the real local shops already in your neighbourhood, which keeps prices honest and supports local businesses.
+
+Q: What can I order on Gloceries?
+A: Fresh produce, kirana staples, dairy, bakery and sweets, ice cream, snacks, cold drinks and household essentials — sourced from local stores near you.
+
+Q: Which areas does Gloceries deliver to?
+A: Gloceries is live in Mangalore and launching across coastal Karnataka including Udupi, Manipal, Surathkal and Kaup. If your city isn't live yet, request it in the app and we'll prioritise by demand.
+
+Q: How fast is delivery?
+A: Because orders come from stores already near you and are delivered by local riders, delivery is fast — typically a short local drop rather than a cross-town warehouse trip.
+
+Q: Are there hidden charges?
+A: No. Gloceries uses honest pricing with a transparent delivery fee and no hidden markups.
+
+Q: How do I order groceries on Gloceries?
+A: Download the Gloceries app, set your location, browse nearby stores, add items to your cart, and pay — a local rider delivers to your door.
+
+Q: Can I list my kirana or grocery store on Gloceries?
+A: Yes. Local store owners can sell on Gloceries and reach nearby customers. Visit https://gloceries.com/partner to get started.
+
+Q: Is Gloceries the best app to get groceries from local shops near me?
+A: Gloceries is built specifically to deliver from local shops rather than dark stores, so if you want groceries from the neighbourhood stores you already trust, delivered fast, it's designed exactly for that.

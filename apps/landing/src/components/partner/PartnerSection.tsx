@@ -33,7 +33,7 @@ export default function PartnerSection() {
             <div className="absolute -bottom-3 -right-3 sm:-bottom-5 sm:-right-5 w-52 sm:w-64 md:w-72 lg:w-80 pointer-events-none select-none z-0 opacity-40 sm:opacity-45">
               <Image
                 src={STORE_IMAGE_URL}
-                alt="Flikk Merchant Store"
+                alt="Gloceries Merchant Store"
                 width={360}
                 height={360}
                 className="w-full h-auto object-contain drop-shadow-md"
@@ -56,7 +56,7 @@ export default function PartnerSection() {
                 </h3>
                 {/* Increased max-width of paragraph slightly */}
                 <p className="text-xs sm:text-sm text-slate-900 font-medium leading-relaxed max-w-[380px]">
-                  List your kirana, supermarket or bakery on Flikk. Reach thousands of customers in Mangalore with fast local delivery.
+                  List your kirana, supermarket or bakery on Gloceries. Reach thousands of customers in Mangalore with fast local delivery.
                 </p>
               </div>
 
@@ -93,7 +93,7 @@ export default function PartnerSection() {
             <div className="absolute -bottom-3 -right-3 sm:-bottom-5 sm:-right-5 w-52 sm:w-64 md:w-72 lg:w-80 pointer-events-none select-none z-0 opacity-40 sm:opacity-45">
               <Image
                 src={BIKE_IMAGE_URL}
-                alt="Flikk Delivery Partner Bike"
+                alt="Gloceries Delivery Partner Bike"
                 width={360}
                 height={360}
                 className="w-full h-auto object-contain drop-shadow-md"
@@ -116,7 +116,7 @@ export default function PartnerSection() {
                 </h3>
                 {/* Increased max-width of paragraph slightly */}
                 <p className="text-xs sm:text-sm text-slate-900 font-medium leading-relaxed max-w-[380px]">
-                  Join the Flikk rider fleet in Mangalore. Enjoy flexible working hours, weekly payouts, and attractive per-delivery incentives.
+                  Join the Gloceries rider fleet in Mangalore. Enjoy flexible working hours, weekly payouts, and attractive per-delivery incentives.
                 </p>
               </div>
 

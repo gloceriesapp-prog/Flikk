@@ -1,40 +1,8 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: "Gilroy";
-  src: url("/fonts/Gilroy-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Gilroy";
-  src: url("/fonts/Gilroy-Medium.ttf") format("truetype");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Gilroy";
-  src: url("/fonts/Gilroy-Semibold.ttf") format("truetype");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Gilroy";
-  src: url("/fonts/Gilroy-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 @theme {
-  --font-sans: var(--font-gilroy), "Gilroy", sans-serif;
-  --font-gilroy: var(--font-gilroy), "Gilroy", sans-serif;
+  --font-sans: var(--font-lexend), "Lexend", sans-serif;
+  --font-lexend: var(--font-lexend), "Lexend", sans-serif;
 }
 
 @utility font-regular {
@@ -57,7 +25,7 @@
   *,
   ::before,
   ::after {
-    font-family: var(--font-gilroy), "Gilroy", sans-serif !important;
+    font-family: var(--font-lexend), "Lexend", sans-serif !important;
   }
 
   html {
@@ -66,7 +34,7 @@
 
   html,
   body {
-    font-family: var(--font-gilroy), "Gilroy", sans-serif !important;
+    font-family: var(--font-lexend), "Lexend", sans-serif !important;
     background-color: #ffffff !important;
     color: #0f172a;
   }

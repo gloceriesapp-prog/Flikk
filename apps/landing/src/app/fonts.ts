@@ -1,28 +1,10 @@
-import localFont from "next/font/local";
+import { Lexend } from "next/font/google";
 
-export const gilroy = localFont({
-  src: [
-    {
-      path: "../fonts/Gilroy-Regular.ttf",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../fonts/Gilroy-Medium.ttf",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "../fonts/Gilroy-Semibold.ttf",
-      weight: "600",
-      style: "normal",
-    },
-    {
-      path: "../fonts/Gilroy-Bold.ttf",
-      weight: "700",
-      style: "normal",
-    },
-  ],
-  variable: "--font-gilroy",
+// Lexend, loaded via next/font (self-hosted at build, zero layout shift, no
+// render-blocking @import). Variable font — the full 100–900 weight range is
+// available through the one --font-lexend variable, so no per-weight entries.
+export const lexend = Lexend({
+  subsets: ["latin"],
+  variable: "--font-lexend",
   display: "swap",
 });

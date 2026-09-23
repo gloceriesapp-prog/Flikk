@@ -29,7 +29,7 @@ const STORE_SELECT = 'owner_user_id, name, category, district, photo_url, gst_nu
 const RIDER_DRAFT_SELECT =
   'user_id, full_name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, submitted_at, users!user_id(phone, is_rejected)';
 const RIDER_SELECT =
-  'user_id, name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, created_at, users!user_id(phone)';
+  'user_id, rider_code, name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, users!user_id(phone)';
 
 const DOCUMENTS_BUCKET = 'rider-documents';
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
@@ -112,6 +112,11 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
               {application.kind === 'store' ? application.category : 'Rider application'} · Submitted{' '}
               {application.submittedAt}
             </p>
+            {application.riderCode && (
+              <span className="mt-1.5 inline-block rounded-full bg-accent px-2.5 py-1 font-mono text-xs font-semibold text-ink-soft">
+                ID: {application.riderCode}
+              </span>
+            )}
           </div>
         </div>
 

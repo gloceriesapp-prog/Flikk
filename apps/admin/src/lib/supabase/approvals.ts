@@ -68,6 +68,7 @@ export interface ApiRiderDraft {
 
 export interface ApiApprovedRider {
   user_id: string;
+  rider_code?: string | null;
   name: string;
   date_of_birth: string | null;
   home_address: string | null;
@@ -80,7 +81,11 @@ export interface ApiApprovedRider {
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   emergency_contact_relationship: string | null;
-  created_at: string;
+  // Optional: the riders table only gains created_at once migration 044 is
+  // applied. The select omits it (selecting a missing column errors the
+  // whole query and hides pending drafts too), and the mapper below just
+  // shows a blank date when it isn't present.
+  created_at?: string | null;
   users: { phone: string } | null;
 }
 
@@ -145,9 +150,10 @@ export function mapApprovedRider(row: ApiApprovedRider): Application {
     id: row.user_id,
     kind: 'rider',
     name: row.name,
+    riderCode: row.rider_code ?? undefined,
     category: null,
     zone: ZONE_NAME,
-    submittedAt: new Date(row.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+    submittedAt: row.created_at ? new Date(row.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '',
     status: 'approved',
     phone: row.users?.phone ?? '',
     dateOfBirth: row.date_of_birth ?? undefined,

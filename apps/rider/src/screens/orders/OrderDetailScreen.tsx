@@ -19,7 +19,7 @@
 // to fire itself.
 
 import { useState } from 'react';
-import { ArrowLeft01Icon, Call02Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, Call02Icon, Navigation03Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
 import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -29,6 +29,7 @@ import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import { DeliveryOtpModal } from './components/DeliveryOtpModal';
 import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryMapView } from './components/DeliveryMapView';
+import { openNavigation } from '../../location/openNavigation';
 import type { AppStackParamList } from '../../navigation/types';
 import type { RiderOrder } from '../../data/mockOrders';
 
@@ -230,6 +231,14 @@ export function OrderDetailScreen({ route, navigation }: Props) {
                 {isAtCustomer ? NEXT_ACTION_LABEL.arrived_at_customer : NEXT_ACTION_LABEL.picked_up}
               </Text>
             </Pressable>
+            {/* Hand off to the rider's real maps app for turn-by-turn to the
+                customer — the in-app map above is only "am I close?" context. */}
+            <Pressable
+              onPress={() => void openNavigation(order.customerCoords, order.customerName)}
+              className="h-[56px] w-[56px] items-center justify-center rounded-2xl border border-gray-200"
+            >
+              <AppIcon icon={Navigation03Icon} size={20} color={colors.ink} />
+            </Pressable>
             <Pressable
               onPress={() => void Linking.openURL(`tel:${order.customerPhone}`)}
               className="h-[56px] w-[56px] items-center justify-center rounded-2xl border border-gray-200"
@@ -315,6 +324,19 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             </View>
           </View>
         </View>
+
+        {/* Navigate to the pickup store — real turn-by-turn in the rider's own
+            maps app. Only while still heading to the store (assigned); once
+            picked up, the drop-leg map's own Navigate button takes over. */}
+        {order.status === 'assigned' && (
+          <Pressable
+            onPress={() => void openNavigation(order.storeCoords, order.storeName)}
+            className="flex-row items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white py-3.5"
+          >
+            <AppIcon icon={Navigation03Icon} size={18} color={colors.ink} />
+            <Text className="text-[14px] font-bold text-ink">Navigate to store</Text>
+          </Pressable>
+        )}
 
         <View className="gap-2.5 rounded-2xl bg-white px-4 py-3.5">
           <View className="flex-row items-center justify-between">

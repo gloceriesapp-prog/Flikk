@@ -1,0 +1,27 @@
+# Gloceries
+
+> Gloceries is a hyperlocal grocery-delivery app that connects you to real local kirana and grocery stores near you — not dark stores. Order everyday groceries, fresh produce, dairy, snacks and household staples from shops in your neighbourhood, delivered fast by a local rider. Honest pricing, no hidden fees.
+
+Website: https://gloceries.com
+
+## What Gloceries is
+- Hyperlocal grocery delivery marketplace for coastal Karnataka (launching in Mangalore, expanding to Udupi, Manipal, Surathkal, Kaup and beyond).
+- Delivers from existing local kirana shops, supermarkets and bakeries — no owned inventory, no dark warehouses. Money stays in the local economy.
+- Available on Android and iOS.
+
+## How it works
+1. Open the Gloceries app and set your delivery location.
+2. Browse nearby stores and add groceries from one or more shops to a single cart.
+3. Pay once (UPI-first). A local rider picks up and delivers to your door with 4-stage order tracking.
+
+## Get the app
+- Android: https://play.google.com/store/apps/details?id=com.gloceries.customer
+- iOS: https://apps.apple.com/app/gloceries/id000000000
+
+## FAQ
+- What is Gloceries? A hyperlocal grocery delivery app connecting you to local stores near you, delivered by local riders.
+- How is Gloceries different from Blinkit or Zepto? Those run dark stores stocking their own inventory; Gloceries delivers from the real local shops already in your neighbourhood, keeping prices honest.
+- What can I order? Fresh produce, kirana staples, dairy, bakery, ice cream, snacks, beverages and household essentials from local stores.
+- Which areas does Gloceries serve? Live in Mangalore now; launching across coastal Karnataka including Udupi, Manipal, Surathkal and Kaup. Request your city in the app.
+- Are there hidden charges? No. Honest pricing with transparent delivery fees and no hidden markups.
+- Can I list my store on Gloceries? Yes — kirana shops, supermarkets and bakeries can sell on Gloceries and reach nearby customers. See https://gloceries.com/partner

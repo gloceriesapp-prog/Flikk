@@ -63,7 +63,14 @@ export function OnboardingScaffold({ step, totalSteps = WIZARD_TOTAL_STEPS, titl
             subheading live INSIDE the scroll view so they scroll away with
             the fields on a small screen instead of eating fixed vertical
             space. */}
-        <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pb-6 pt-7" keyboardShouldPersistTaps="handled">
+        {/* When there's no top bar (e.g. the post-approval bank screen),
+            the title would otherwise sit under the status bar / notch — so
+            pad from the safe area instead of the small top-bar gap. */}
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName={`gap-6 px-6 pb-6 ${showTopBar ? 'pt-7' : 'pt-safe-offset-8'}`}
+          keyboardShouldPersistTaps="handled"
+        >
           <View>
             <Text className="text-4xl font-medium leading-[42px] tracking-tight text-ink">{title}</Text>
             <Text className="mt-3 text-[16px] font-medium leading-[22px] text-ink/55">{subheading}</Text>

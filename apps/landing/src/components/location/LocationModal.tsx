@@ -126,7 +126,7 @@ export default function LocationModal({
               Change Location
             </h2>
             <p className="text-xs font-semibold text-slate-500 mt-0.5">
-              Check whether Flikk is available in your area
+              Check whether Gloceries is available in your area
             </p>
           </div>
 
@@ -228,7 +228,7 @@ export default function LocationModal({
                     className="w-full text-left px-4 py-2.5 text-xs font-extrabold text-[#008738] hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
                   >
                     <HugeiconsIcon icon={Location01Icon} className="w-3.5 h-3.5" />
-                    Deliver to "{searchQuery}"
+                    Deliver to &quot;{searchQuery}&quot;
                   </button>
                 )}
               </div>

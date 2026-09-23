@@ -183,10 +183,10 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       supabase.from('rider_onboarding_drafts').select('submitted_at, rejection_reason').eq('user_id', req.user!.id).maybeSingle(),
       // Post-approval payout gate — apps/rider's RootNavigator drops a
       // just-approved rider onto BankDetailsScreen (the "You're approved!
-      // One last thing" step) until this is set, then straight to Home. A
-      // row only exists at all once approved, so a null here for a real
-      // rider means "approved but hasn't added bank details yet".
-      supabase.from('riders').select('payout_bank_account_number').eq('user_id', req.user!.id).maybeSingle(),
+      // One last thing" step) until this is set, then straight to Home.
+      // payout_method is set for EITHER destination (bank_account or upi),
+      // so a null means "approved but hasn't added any payout method yet".
+      supabase.from('riders').select('payout_method').eq('user_id', req.user!.id).maybeSingle(),
     ]);
 
     // A user only ever has one real application in flight (store OR
@@ -207,7 +207,7 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       application_submitted: !!draft?.submitted_at,
       has_rider_profile: (riderCount ?? 0) > 0,
       rider_application_submitted: !!riderDraft?.submitted_at,
-      rider_payout_configured: !!riderPayout?.payout_bank_account_number,
+      rider_payout_configured: !!riderPayout?.payout_method,
       // Only a real, current rejection — a fresh resubmission's own PATCH
       // /store-draft (or /rider-draft) doesn't clear is_rejected on the
       // user row by itself, so this also requires a submitted application

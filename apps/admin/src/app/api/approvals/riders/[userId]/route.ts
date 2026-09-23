@@ -48,7 +48,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
     const { data: draft, error: draftError } = await supabaseAdmin
       .from('rider_onboarding_drafts')
       .select(
-        'full_name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship',
+        'full_name, date_of_birth, photo_url, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship',
       )
       .eq('user_id', userId)
       .not('submitted_at', 'is', null)
@@ -63,6 +63,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
       name: draft.full_name,
       phone: applicant.phone,
       date_of_birth: draft.date_of_birth,
+      photo_url: draft.photo_url,
       home_address: draft.home_address,
       aadhaar_number: draft.aadhaar_number,
       aadhaar_photo_url: draft.aadhaar_photo_url,

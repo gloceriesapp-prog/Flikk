@@ -28,7 +28,7 @@ export default function StickyBottomDock() {
           <div className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md p-1 flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
             <Image
               src={LOGO_IMAGE_URL}
-              alt="Flikk Icon"
+              alt="Gloceries Icon"
               width={26}
               height={26}
               className="object-contain"
@@ -37,7 +37,7 @@ export default function StickyBottomDock() {
           <div className="flex flex-col">
             {/* Text bumped up slightly to maintain proportion */}
             <span className="text-[13px] sm:text-[15px] font-extrabold text-white leading-tight flex items-center gap-1.5">
-              <span>Order faster on Flikk App</span>
+              <span>Order faster on Gloceries App</span>
             </span>
             <span className="text-[11px] sm:text-[12px] font-medium text-slate-300/80 hidden xs:inline">
               Live tracking & exclusive app discounts

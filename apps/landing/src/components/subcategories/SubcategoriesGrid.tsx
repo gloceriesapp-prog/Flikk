@@ -101,12 +101,9 @@ export default function SubcategoriesGrid() {
       <div className="max-w-[1280px] mx-auto px-6 flex flex-col gap-5 lg:gap-6">
         {/* Section Header */}
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight">
-            Everyday Essentials & Snacks
+          <h2 className="text-2xl sm:text-[30px] font-semibold text-[#0F172A] tracking-tight">
+           Shop by Category
           </h2>
-          <p className="text-xs sm:text-sm font-semibold text-slate-500">
-            Browse top-searched local items and daily kitchen staples across Flikk
-          </p>
         </div>
 
         {/* Subcategories Grid: Updated to 8 columns on large screens */}
@@ -128,7 +125,7 @@ export default function SubcategoriesGrid() {
               </div>
 
               {/* Centered Label Text */}
-              <span className="text-[12px] sm:text-[13px] lg:text-[14px] font-extrabold text-[#0F172A] leading-tight text-center mt-2 lg:mt-3 max-w-[100px] lg:max-w-[120px] line-clamp-2">
+              <span className="text-[14px] sm:text-[16px] font-medium text-[#0F172A] leading-snug tracking-tight line-clamp-2 transition-colors text-center mt-2 lg:mt-3 max-w-[100px] lg:max-w-[120px]">
                 {item.name}
               </span>
             </div>

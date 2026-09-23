@@ -94,13 +94,31 @@ export async function verifyPayoutAccount(
   ownerName: string,
   ownerPhone: string | null,
   existingContactId: string | null,
-): Promise<{ result: PayoutVerificationResult; contactId: string; fundAccountId: string }> {
+): Promise<{ result: PayoutVerificationResult; contactId: string | null; fundAccountId: string | null }> {
+  // RazorpayX not set up on this server yet (env unset — see this project's
+  // pending Razorpay ticket). Instead of blocking payout setup entirely,
+  // accept the caller's already-format-validated details as-is with no
+  // penny-drop: no Contact/Fund Account is created (both ids null), and
+  // registeredName stays null so a null payout_upi_verified_name /
+  // payout_account_holder_name is the real "saved but not yet
+  // penny-drop-verified" signal. The moment RAZORPAYX_ACCOUNT_NUMBER is set
+  // this branch is skipped and real validation runs — no code change, and a
+  // re-verify of the same account upgrades it. ponytail: trusts client-side
+  // format checks (UPI regex, IFSC shape) until real validation is live.
   if (!env.razorpayxAccountNumber) {
-    throw new AppError(
-      503,
-      'RAZORPAYX_NOT_CONFIGURED',
-      "Real payout verification needs a RazorpayX current account, which isn't set up on this server yet.",
-    );
+    return {
+      contactId: existingContactId,
+      fundAccountId: null,
+      result: {
+        registeredName: null,
+        accountStatus: 'unverified',
+        bankName: null,
+        accountType: null,
+        maskedAccountNumber: input.method === 'bank_account' ? input.accountNumber : null,
+        bankIfsc: input.method === 'bank_account' ? input.ifsc : null,
+        nameMatchScore: null,
+      },
+    };
   }
 
   const contactId =

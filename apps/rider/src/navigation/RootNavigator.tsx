@@ -70,6 +70,14 @@ export function RootNavigator() {
   useEffect(() => {
     if (!isHydrated || !accessToken) return;
     let cancelled = false;
+
+    // Hard cap: never let a hung/slow /auth/me strand the app on the
+    // loading spinner. After this, routing proceeds on whatever we know
+    // (the persisted status, or defaults) instead of spinning forever.
+    const timeout = setTimeout(() => {
+      if (!cancelled) setStatusChecked(true);
+    }, 6000);
+
     fetchAccountStatus()
       .then(({ role: freshRole, is_approved, rider_application_submitted, is_rejected, rider_payout_configured, rejection_reason }) => {
         if (!cancelled) {
@@ -92,10 +100,14 @@ export function RootNavigator() {
         if (err instanceof ApiError && err.status === 401) void clearSession();
       })
       .finally(() => {
-        if (!cancelled) setStatusChecked(true);
+        if (!cancelled) {
+          clearTimeout(timeout);
+          setStatusChecked(true);
+        }
       });
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
     };
     // Deliberately only re-runs on a fresh login, not on every
     // role/isApproved/applicationSubmitted write — those are this effect's
@@ -110,13 +122,17 @@ export function RootNavigator() {
   const isApprovedRider = role === 'rider' && isApproved;
   const isUsableRider = isApprovedRider && payoutConfigured;
 
-  // Registered once a real, approved rider account exists — a pending or
-  // not-yet-a-rider session has no assignments to be pushed about, and
-  // registering before role/isApproved actually resolve would be racing
-  // the status check above for no benefit.
+  // Registered as soon as there's ANY authenticated session — pending
+  // applicant included, deliberately. The "You're approved!"/rejection push
+  // (admin's approvals/riders route) is aimed exactly at a rider whose app
+  // is closed on the waiting screen, so their token must already be on file
+  // BEFORE approval — same reason backend's POST /auth/push-token is
+  // requireAuth, not requireApproved. Gating this on isUsableRider meant a
+  // fresh applicant never had a token, so the approval push silently no-op'd.
+  // Best-effort + idempotent (see registerPushToken.ts), safe to re-run.
   useEffect(() => {
-    if (isUsableRider) void registerPushToken();
-  }, [isUsableRider]);
+    if (accessToken) void registerPushToken();
+  }, [accessToken]);
 
   // Real order sync only ever runs for a real, approved rider — polling
   // GET /rider/assignments before that would just 403 every 12s for no
@@ -139,7 +155,14 @@ export function RootNavigator() {
   // see this file's own header note on why conflating them into one
   // isLoading boolean was the actual "splash re-shows on every login" bug.
   const isColdStart = !isHydrated || !welcomeElapsed;
-  const isCheckingLoginStatus = !!accessToken && !statusChecked;
+  // Only block on the first /auth/me when we have a session but NOTHING
+  // known about it yet (a fresh login, or a first-ever launch). If hydrate
+  // restored a status from SecureStore (a rider who already submitted, was
+  // approved, etc.), render that gate immediately — e.g. straight back to
+  // the "waiting for approval" screen after an app close/reload — and let
+  // the /auth/me refresh below refine it in the background.
+  const hasKnownStatus = role !== null || applicationSubmitted || isRejected || payoutConfigured;
+  const isCheckingLoginStatus = !!accessToken && !statusChecked && !hasKnownStatus;
 
   if (isColdStart) {
     return <WelcomeScreen />;

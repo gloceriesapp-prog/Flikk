@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Image from "next/image";
 import AnnouncementBanner from "./AnnouncementBanner";
 import LocationModal from "../location/LocationModal";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -11,16 +10,10 @@ import {
   ShoppingBag01Icon,
   LinkSquare02Icon,
   QrCodeIcon,
-  SparklesIcon,
-  Location01Icon,
   FireIcon,
   FlashIcon,
   Cancel01Icon,
-  FavouriteIcon,
 } from "@hugeicons/core-free-icons";
-
-const LOGO_IMAGE_URL =
-  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/All_Right-removebg-preview.png";
 
 // Real launch area this landing page already commits to elsewhere
 // (AnnouncementBanner's own "Fast Local Delivery in Mangalore", and 7 of
@@ -72,6 +65,9 @@ export default function Navbar() {
     if (typeof window !== "undefined") {
       const savedLoc = localStorage.getItem("flikk_user_location");
       if (savedLoc && savedLoc.trim() !== "") {
+        // Hydrating client-only persisted state from localStorage (unavailable
+        // during SSR) — a legitimate external-system sync, not a render cascade.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setUserLocation(savedLoc);
         setIsLocationModalOpen(false);
         setIsFirstVisit(false);
@@ -132,10 +128,10 @@ export default function Navbar() {
           <a
             href="#"
             className="flex items-center gap-2 cursor-pointer select-none group"
-            aria-label="Flikk Home"
+            aria-label="Gloceries Home"
           >
             <div className="flex flex-col leading-[0.95]">
-              <span className="text-[30px] sm:text-[34px] font-black text-[#000000] tracking-tight">
+              <span className="text-[30px] sm:text-[34px] font-semibold text-[#000000] tracking-tight">
                 gloceries <span className="text-[#155dfc] h-2 w-2 rounded-full inline-block bg-[#155dfc]"></span>
               </span>
             </div>
@@ -152,15 +148,15 @@ export default function Navbar() {
           >
             <div className="flex flex-col leading-tight">
               <span className="flex items-center gap-2">
-                <span className="text-[20px] font-semibold text-black tracking-tight">
+                <span className="text-[20px] font-medium text-black tracking-tight">
                   Your location
                 </span>
                 {isLocationServiceable(userLocation) ? (
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
                     Available
                   </span>
                 ) : (
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                  <span className="text-[10px] font-medium  tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
                     Coming Soon
                   </span>
                 )}
@@ -236,7 +232,7 @@ export default function Navbar() {
                   <HugeiconsIcon icon={FlashIcon} className="w-4 h-4 text-[#0052FF] shrink-0 fill-current" />
                   <div className="flex flex-col">
                     <span className="text-xs font-black text-slate-900 leading-tight">
-                      Order on Flikk App
+                      Order on Gloceries App
                     </span>
                     <span className="text-[10px] font-medium text-slate-600">
                       Live tracking & fast doorstep delivery
@@ -258,7 +254,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Right CTA Button: 🛒 Order on Flikk App */}
+        {/* Right CTA Button: 🛒 Order on Gloceries App */}
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
@@ -266,7 +262,7 @@ export default function Navbar() {
             className="flex items-center gap-2 bg-gradient-to-r from-[#0052FF] to-[#0040E0] hover:from-[#0048E5] hover:to-[#0036C7] active:scale-[0.98] text-white px-5 sm:px-6 py-3.5 rounded-xl font-extrabold text-sm sm:text-base shadow-md hover:shadow-lg transition-all cursor-pointer group shrink-0"
           >
             <HugeiconsIcon icon={ShoppingBag01Icon} className="w-5 h-5 text-white shrink-0 group-hover:scale-110 transition-transform" />
-            <span className="hidden xs:inline">Order on Flikk App</span>
+            <span className="hidden xs:inline">Order on Gloceries App</span>
             <span className="xs:hidden">Get App</span>
             <HugeiconsIcon
               icon={ArrowDown01Icon}
@@ -284,7 +280,7 @@ export default function Navbar() {
                   <span className="text-xs font-extrabold text-slate-900">
                     {modalSearchTerm
                       ? `Order "${modalSearchTerm}"`
-                      : "Order on Flikk Mobile App"}
+                      : "Order on Gloceries Mobile App"}
                   </span>
                   <span className="text-[10px] font-semibold text-[#0052FF]">
                     ⚡ Fast Local Delivery in Mangalore

@@ -55,19 +55,17 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // getClaims() over getUser(): getUser() hits Supabase's /auth/v1/user
-  // endpoint on EVERY request — every page load, API call, and client-side
-  // navigation — so each sidebar click waited on a network round-trip,
-  // which is what made navigation feel sluggish. getClaims() verifies the
-  // JWT's signature (locally against the project's JWKS when asymmetric
-  // signing keys are enabled) and reads the same email/session, so the gate
-  // is just as real without the per-navigation network hop. The
-  // createServerClient above still refreshes the session cookie via its
-  // own cookie handlers, so sessions don't silently expire.
-  const { data } = await supabase.auth.getClaims();
-  const email = data?.claims?.email as string | undefined;
+  // getUser() validates the session against Supabase on every request and
+  // triggers the cookie refresh above — the proven, secure gate. (An
+  // earlier getClaims() swap for speed broke auth in this project's JWT
+  // setup — claims/email didn't populate, so every page redirected to
+  // /login and every /api returned 401, which read as "no content / backend
+  // not syncing". Reverted: correctness over the micro-optimization.)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!data?.claims || !isAllowedAdminEmail(email)) {
+  if (!user || !isAllowedAdminEmail(user.email)) {
     if (pathname.startsWith('/api')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

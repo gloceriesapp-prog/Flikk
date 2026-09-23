@@ -1,0 +1,11 @@
+-- riders had no created_at (001_init.sql created it without one), yet the
+-- admin approvals API selects riders.created_at to show an approved rider's
+-- date — so that query threw "column riders.created_at does not exist",
+-- which (because the approvals route runs the drafts + riders reads in one
+-- Promise.all and rethrows any error) made the WHOLE rider-approvals
+-- endpoint fail. Net effect: a real submitted application sat in
+-- rider_onboarding_drafts but never appeared in the admin Approvals list.
+--
+-- Give riders the same created_at every other core table already has.
+-- Existing rows backfill to now(); harmless since it's only a display date.
+alter table riders add column if not exists created_at timestamptz not null default now();

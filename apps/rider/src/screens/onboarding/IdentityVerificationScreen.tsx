@@ -94,14 +94,14 @@ export function IdentityVerificationScreen({ navigation, route }: Props) {
   );
 }
 
-function PhotoUploadCard({
+export function PhotoUploadCard({
   label,
   kind,
   path,
   onUploaded,
 }: {
   label: string;
-  kind: 'aadhaar' | 'dl';
+  kind: 'aadhaar' | 'dl' | 'profile';
   path: string | null;
   onUploaded: (path: string) => void;
 }) {

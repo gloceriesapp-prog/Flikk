@@ -48,16 +48,24 @@ export async function GET() {
       supabaseAdmin
         .from('riders')
         .select(
-          'user_id, name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, created_at, users!user_id(phone)',
+          'user_id, rider_code, name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, users!user_id(phone)',
         )
         .not('user_id', 'is', null),
     ]);
-    if (draftsRes.error) throw draftsRes.error;
-    if (ridersRes.error) throw ridersRes.error;
+
+    // Decoupled on purpose: a failure on ONE side must never hide the other.
+    // Pending applications live only in rider_onboarding_drafts, so an issue
+    // reading the approved `riders` table (a missing column, etc.) must not
+    // blank out the pending list a founder is waiting to act on — and vice
+    // versa. Only fail the whole request if BOTH reads error.
+    if (draftsRes.error && ridersRes.error) throw draftsRes.error;
+
+    const draftRows = draftsRes.error ? [] : (draftsRes.data as unknown as ApiRiderDraft[]);
+    const riderRows = ridersRes.error ? [] : (ridersRes.data as unknown as ApiApprovedRider[]);
 
     const [signedDrafts, signedRiders] = await Promise.all([
-      Promise.all((draftsRes.data as unknown as ApiRiderDraft[]).map(signPhotoUrls)),
-      Promise.all((ridersRes.data as unknown as ApiApprovedRider[]).map(signPhotoUrls)),
+      Promise.all(draftRows.map(signPhotoUrls)),
+      Promise.all(riderRows.map(signPhotoUrls)),
     ]);
 
     const applications = [...signedDrafts.map(mapRiderDraft), ...signedRiders.map(mapApprovedRider)];

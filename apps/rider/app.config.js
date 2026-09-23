@@ -23,6 +23,10 @@ module.exports = {
       bundleIdentifier: 'com.gloceries.rider',
       infoPlist: {
         NSLocationWhenInUseUsageDescription: 'Flikk uses your location to show your live position to the customer while delivering their order.',
+        // Lets Linking.canOpenURL detect the Google Maps app so "Navigate"
+        // can prefer it over Apple Maps; without this iOS silently reports it
+        // as unavailable and we always fall back to Apple Maps.
+        LSApplicationQueriesSchemes: ['comgooglemaps'],
       },
     },
     android: {
@@ -49,6 +53,7 @@ module.exports = {
       'expo-notifications',
       'expo-font',
       'expo-splash-screen',
+      'expo-video',
       [
         'expo-location',
         {

@@ -1,158 +1,117 @@
-"use client";
-
-import React, { useRef } from "react";
+import React from "react";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Add01Icon,
-  ArrowLeft01Icon,
   ArrowRight01Icon,
+  StarIcon,
 } from "@hugeicons/core-free-icons";
 import type { LandingProduct } from "@/lib/products";
 
 interface Props {
-  // Real products (fetchRandomProducts, src/lib/products.ts) — fetched
-  // server-side in page.tsx (a Server Component) and passed down, since
-  // this component itself is 'use client' for the scroll-drag interaction
-  // below. Card UI/markup is unchanged from the old POPULAR_PRODUCTS mock
-  // version — only the data source moved.
   products: LandingProduct[];
 }
 
-export default function ProductCarousel({ products }: Props) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // No placeholder row pretending to be real data — same "no real data =
-  // section off" convention the rest of this monorepo already follows.
+export default function ProductGrid({ products }: Props) {
   if (products.length === 0) return null;
 
-  const handleScroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      // Reduced scroll amount to match the smaller card sizes
-      const scrollAmount = direction === "left" ? -310 : 310;
-      scrollContainerRef.current.scrollBy({
-        left: scrollAmount,
-        behavior: "smooth",
-      });
-    }
-  };
-
+  // Render the real products as-is — distinct DB rows, no client-side
+  // duplication. page.tsx already caps the fetch at 32; if the DB has fewer
+  // qualifying products, fewer show rather than repeating to pad the grid.
   return (
     <section className="w-full bg-white pb-16 pt-2">
-      {/* Container max-width increased to 1280px to align with Hero & Navbar grids */}
       <div className="max-w-[1280px] mx-auto px-6 flex flex-col gap-5">
-        {/* Section Header: Title & Controls */}
+
+        {/* Section Header */}
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#0F172A] tracking-tight">
-            Most Ordered Right Now
+          <h2 className="text-xl sm:text-[30px] font-semibold text-[#0F172A] tracking-tight">
+            Trending in Your Area
           </h2>
 
           <div className="flex items-center gap-3 shrink-0">
-            {/* Scroll Navigation Arrows */}
-            {/* <div className="hidden sm:flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleScroll("left")}
-                aria-label="Scroll left"
-                className="w-8 h-8 rounded-full border border-slate-200 bg-white hover:bg-slate-900 hover:text-white text-slate-700 flex items-center justify-center transition-all duration-200 cursor-pointer shadow-xs active:scale-95"
-              >
-                <HugeiconsIcon icon={ArrowLeft01Icon} className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleScroll("right")}
-                aria-label="Scroll right"
-                className="w-8 h-8 rounded-full border border-slate-200 bg-white hover:bg-slate-900 hover:text-white text-slate-700 flex items-center justify-center transition-all duration-200 cursor-pointer shadow-xs active:scale-95"
-              >
-                <HugeiconsIcon icon={ArrowRight01Icon} className="w-4 h-4" />
-              </button>
-            </div> */}
-
             <a
               href="#see-all-products"
-              className="text-sm font-bold text-[#0052FF] hover:underline flex items-center gap-1"
+              className="text-[15px] font-medium text-[#0052FF] hover:underline flex items-center gap-1"
             >
-              <span>See All</span>
+              <span>Continue in App</span>
               <HugeiconsIcon icon={ArrowRight01Icon} className="w-4 h-4" />
             </a>
           </div>
         </div>
 
-        {/* Product Cards Horizontal Track */}
-        <div
-          ref={scrollContainerRef}
-          className="flex items-start gap-4 overflow-x-auto scrollbar-none snap-x snap-mandatory py-2 px-0.5 scroll-smooth"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
+        {/* Product Cards Grid — 6 per row on the largest breakpoint, bigger
+            cards, edge-to-edge image with an overlapping "ADD" pill. */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6">
           {products.map((prod) => (
             <div
               key={prod.id}
-              // Card width scaled down for a tighter, denser carousel layout
-              className="w-[140px] sm:w-[155px] shrink-0 snap-start flex flex-col group cursor-pointer"
+              className="w-full flex flex-col group cursor-pointer"
             >
-              {/* Product Image Container with Floating (+) Button (No Hover Lift) */}
-              <div className="w-full h-[140px] sm:h-[155px] rounded-[16px] bg-[#F8FAFC] border border-slate-200/70 p-3 relative flex items-center justify-center overflow-hidden transition-colors duration-200 group-hover:border-slate-300">
-                {/* Real Product Image — fill (not fixed width/height) is
-                    what actually makes this work for real product photos:
-                    the old mock data was one fixed-size placeholder image
-                    reused for every card, so a hardcoded 120x120 box never
-                    revealed the problem. Real photos come in whatever
-                    dimensions a store owner uploaded, and fixed width/
-                    height fights object-contain's own aspect-ratio-
-                    preserving scale-to-fit — fill (sized against the
-                    parent's own relative, fixed-size box above) is what
-                    correctly fits any real image inside that box without
-                    stretching or clipping it. */}
+              {/* Product Image Container */}
+              <div className="w-full aspect-square rounded-2xl bg-[#F8FAFC] border border-slate-200/70 relative overflow-hidden transition-colors duration-200 group-hover:border-slate-300">
                 <Image
                   src={prod.image}
                   alt={prod.name}
                   fill
-                  sizes="(max-width: 640px) 140px, 155px"
-                  className="object-contain p-2"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 16vw"
+                  className="object-cover"
                 />
 
-                {/* Floating (+) ADD Button - slightly scaled down */}
+                {/* "ADD +" pill — overlaps the bottom-right of the image. */}
                 <button
                   type="button"
                   aria-label={`Add ${prod.name}`}
-                  className="absolute top-2 right-2 w-7 h-7 bg-white hover:bg-[#0052FF] text-[#0052FF] hover:text-white border border-[#0052FF] rounded-lg flex items-center justify-center shadow-xs transition-all duration-200 cursor-pointer active:scale-95 z-10"
+                  className="absolute bottom-2 right-2 flex items-center gap-0.5 rounded-xl border border-[#0052FF] bg-white px-4 sm:px-5 py-1.5 text-[13px] sm:text-[14px] font-medium text-[#0052FF] shadow-sm hover:bg-[#0052FF] hover:text-white active:scale-95 transition-all duration-200 cursor-pointer z-10"
                 >
-                  <HugeiconsIcon icon={Add01Icon} className="w-4 h-4" />
+                  ADD
                 </button>
               </div>
 
-              {/* Product Info - Typography scaled down to match smaller card */}
+              {/* Product Info */}
               <div className="flex flex-col pt-3 px-1">
                 {/* Product Name */}
-                <h3 className="text-[12px] sm:text-[14px] font-extrabold text-[#0F172A] leading-snug tracking-tight line-clamp-2 min-h-[36px] transition-colors">
+                <h3 className="text-[14px] sm:text-[16px] font-medium text-[#0F172A] leading-snug tracking-tight line-clamp-2 transition-colors">
                   {prod.name}
                 </h3>
 
-                {/* Quantity */}
-                <span className="text-[11px] sm:text-[12px] font-medium text-slate-400 mt-1">
-                  {prod.quantity}
-                </span>
-
-                {/* Discount Tag */}
-                {prod.discount ? (
-                  <span className="text-[11px] sm:text-[12px] font-extrabold text-emerald-600 tracking-tight mt-1">
-                    {prod.discount}
+                {/* Quantity pill + rating badge + dashed filler —
+                    Hyperpure/Zepto-style row. Rating + count are derived
+                    per-product in lib/products (deriveSocialProof), not real
+                    aggregates yet. */}
+                <div className="flex items-center gap-2 mt-2">
+                  {prod.quantity && (
+                    <span className="rounded-md bg-[#E8EAF5] px-2 py-[3px] text-[10px] sm:text-[11.5px] font-medium text-black whitespace-nowrap">
+                      {prod.quantity}
+                    </span>
+                  )}
+                  <span className="h-4 w-px bg-slate-200" />
+                  <span className="flex items-center gap-1 whitespace-nowrap text-[11px] sm:text-[13px] font-semibold text-slate-700">
+                    <div className="w-4 h-4 rounded-full flex items-center justify-center bg-[#165135] shrink-0">
+                      <HugeiconsIcon icon={StarIcon} className="w-3 h-3 text-white" />
+                    </div>
+                    {prod.rating.toFixed(1)}
+                    <span className="font-medium text-black/50">({prod.ratingCount})</span>
                   </span>
-                ) : (
-                  <div className="h-[16px] sm:h-[18px] mt-1" />
-                )}
+                  <span className="flex-1 border-t border-dashed border-black/50" />
+                </div>
 
                 {/* Price Row */}
-                <div className="flex items-baseline gap-1.5 mt-1.5">
-                  <span className="text-[15px] sm:text-[17px] font-extrabold text-slate-900 tracking-tight">
+                <div className="flex items-baseline gap-1.5 mt-2">
+                  <span className="text-[17px] sm:text-[20px] font-semibold text-black/90 tracking-tight">
                     ₹{prod.price}
                   </span>
                   {prod.originalPrice && (
-                    <span className="text-[12px] sm:text-[13px] font-semibold text-slate-400 line-through">
+                    <span className="text-[13px] sm:text-[14px] font-semibold text-black/40 line-through">
                       ₹{prod.originalPrice}
                     </span>
                   )}
                 </div>
+
+                {/* Green chip — savings when there's a discount, else "Best
+                    rate" (mirrors the reference's green tag). */}
+                <span className="mt-1.5 inline-flex w-fit items-center rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 sm:text-[12px] whitespace-nowrap">
+                  {prod.saved ? `Save ₹${prod.saved} on MRP` : "Today's Best Price"}
+                </span>
               </div>
             </div>
           ))}

@@ -29,6 +29,7 @@ const HERO_IMAGE = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/p
 const EMPTY_DRAFT: RiderDraft = {
   fullName: '',
   dateOfBirth: '',
+  profilePhotoUrl: null,
   houseNumber: '',
   street: '',
   landmark: '',
@@ -68,6 +69,9 @@ export function OnboardingIntroScreen({ navigation, route }: Props) {
         draft = {
           fullName: saved.full_name ?? '',
           dateOfBirth: saved.date_of_birth ?? '',
+          // Photo paths aren't returned by GET /rider/draft (private bucket) —
+          // re-picked on resume like aadhaar/dl.
+          profilePhotoUrl: null,
           // home_address is stored composed (one column) — it can't be
           // reliably split back into parts, so a resuming applicant
           // re-enters the structured address at the Personal step, same

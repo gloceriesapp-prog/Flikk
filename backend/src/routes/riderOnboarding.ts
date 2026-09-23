@@ -25,6 +25,9 @@ const MIN_RIDER_AGE_YEARS = 18;
 interface RiderOnboardingFields {
   fullName?: string;
   dateOfBirth?: string; // "YYYY-MM-DD"
+  // Optional face photo for the rider's own Profile avatar — not a
+  // verification field, so never checked in validateSubmission.
+  profilePhotoUrl?: string;
   homeAddress?: string;
   aadhaarNumber?: string;
   aadhaarPhotoUrl?: string;
@@ -81,6 +84,7 @@ riderOnboardingRouter.post('/application', requireAuth, async (req: AuthedReques
         user_id: req.user!.id,
         full_name: body.fullName.trim(),
         date_of_birth: body.dateOfBirth,
+        photo_url: body.profilePhotoUrl ?? null,
         home_address: body.homeAddress.trim(),
         aadhaar_number: body.aadhaarNumber.trim(),
         aadhaar_photo_url: body.aadhaarPhotoUrl,
@@ -135,6 +139,7 @@ riderOnboardingRouter.patch('/draft', requireAuth, async (req: AuthedRequest, re
     const patch: Record<string, unknown> = { user_id: req.user!.id, updated_at: new Date().toISOString() };
     if (body.fullName !== undefined) patch.full_name = body.fullName;
     if (body.dateOfBirth !== undefined) patch.date_of_birth = body.dateOfBirth;
+    if (body.profilePhotoUrl !== undefined) patch.photo_url = body.profilePhotoUrl;
     if (body.homeAddress !== undefined) patch.home_address = body.homeAddress;
     if (body.aadhaarNumber !== undefined) patch.aadhaar_number = body.aadhaarNumber;
     if (body.aadhaarPhotoUrl !== undefined) patch.aadhaar_photo_url = body.aadhaarPhotoUrl;
@@ -162,9 +167,11 @@ riderOnboardingRouter.patch('/draft', requireAuth, async (req: AuthedRequest, re
 // approvals API signs a short-lived URL from this path on read.
 riderOnboardingRouter.post('/document-photo', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { base64, kind } = req.body as { base64?: string; kind?: 'aadhaar' | 'dl' };
+    const { base64, kind } = req.body as { base64?: string; kind?: 'aadhaar' | 'dl' | 'profile' };
     if (!base64) throw new AppError(400, 'MISSING_FIELDS', 'base64 is required.');
-    if (kind !== 'aadhaar' && kind !== 'dl') throw new AppError(400, 'INVALID_KIND', 'kind must be "aadhaar" or "dl".');
+    if (kind !== 'aadhaar' && kind !== 'dl' && kind !== 'profile') {
+      throw new AppError(400, 'INVALID_KIND', 'kind must be "aadhaar", "dl" or "profile".');
+    }
 
     const path = `${req.user!.id}/${kind}-${randomUUID()}.jpg`;
     const { error } = await supabase.storage.from(DOCUMENTS_BUCKET).upload(path, Buffer.from(base64, 'base64'), {

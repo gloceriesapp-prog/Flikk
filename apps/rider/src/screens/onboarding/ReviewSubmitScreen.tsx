@@ -62,6 +62,7 @@ export function ReviewSubmitScreen({ navigation, route }: Props) {
       await submitRiderApplication({
         fullName: draft.fullName,
         dateOfBirth: draft.dateOfBirth,
+        profilePhotoUrl: draft.profilePhotoUrl ?? undefined,
         homeAddress: composeAddress(draft),
         aadhaarNumber: draft.aadhaarNumber,
         aadhaarPhotoUrl: draft.aadhaarPhotoUrl!,
@@ -112,6 +113,7 @@ export function ReviewSubmitScreen({ navigation, route }: Props) {
 
         <SectionLabel label="Personal" />
         <Row label="Full name" value={draft.fullName} onEdit={() => navigation.navigate('PersonalDetails', { draft })} />
+        <Row label="Profile photo" value={draft.profilePhotoUrl ? 'Added' : 'Not added'} onEdit={() => navigation.navigate('PersonalDetails', { draft })} />
         <Row label="Date of birth" value={dobDisplay} onEdit={() => navigation.navigate('PersonalDetails', { draft })} />
         <Row label="Home address" value={isAddressComplete(draft) ? composeAddress(draft) : ''} onEdit={() => navigation.navigate('PersonalDetails', { draft })} />
 

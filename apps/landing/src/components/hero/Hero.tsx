@@ -35,13 +35,13 @@ export default function Hero() {
                 <HugeiconsIcon icon={SparklesIcon} className="w-3.5 h-3.5 text-[#A8D93A]" /> Your Everyday Shopping
               </span>
               {/* Scaled down typography from 56px to 46px */}
-              <span className="text-3xl sm:text-4xl md:text-[42px] lg:text-[46px] font-semibold text-white leading-[1.1] tracking-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-[42px] lg:text-[46px] font-semibold text-white leading-[1.1] tracking-tight">
                 Everything You Need.
                 <br />
                 <span className="bg-gradient-to-r from-white to-[#BFD4FF] bg-clip-text text-transparent">
                   From Stores You Love.
                 </span>
-              </span>
+              </h1>
             </div>
 
             {/* Action Buttons: Google Play & App Store - Reduced padding and text size */}
@@ -111,7 +111,7 @@ export default function Hero() {
             <div className="relative z-10 flex items-end justify-center -mb-1 mt-auto">
               <Image
                 src={MOCKUP_IMAGE_URL}
-                alt="Flikk Hand Holding iPhone App Mockup"
+                alt="Gloceries grocery delivery app — order from local stores near you"
                 width={360}
                 height={360}
                 priority

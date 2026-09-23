@@ -39,7 +39,7 @@ function StarValue({ value }: { value: string }) {
 export function PerformanceRow({ stats }: Props) {
   return (
     <View className="flex-row gap-2">
-      <View className="flex-1 gap-1 rounded-2xl border border-gray-100 bg-white px-2.5 py-3 shadow-sm shadow-black/5">
+      <View className="flex-1 gap-1 rounded-2xl border border-gray-100 px-2.5 py-3">
         <Text className="text-[11px] font-medium text-ink/45">Performance</Text>
         <StarValue value={stats.performanceScore.toFixed(2)} />
         <Text className="text-[11px] font-bold" style={{ color: LABEL_COLOR[stats.performanceLabel] }}>
@@ -47,7 +47,7 @@ export function PerformanceRow({ stats }: Props) {
         </Text>
       </View>
 
-      <View className="flex-1 gap-1 rounded-2xl border border-gray-100 bg-white px-2.5 py-3 shadow-sm shadow-black/5">
+      <View className="flex-1 gap-1 rounded-2xl border border-gray-100 px-2.5 py-3">
         <Text className="text-[11px] font-medium text-ink/45">Completion</Text>
         <Text className="text-[19px] font-extrabold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
           {stats.completionRate}%
@@ -55,7 +55,7 @@ export function PerformanceRow({ stats }: Props) {
         <Text className="text-[11px] font-medium text-ink/40">{stats.totalAttempted} orders</Text>
       </View>
 
-      <View className="flex-1 gap-1 rounded-2xl border border-gray-100 bg-white px-2.5 py-3 shadow-sm shadow-black/5">
+      <View className="flex-1 gap-1 rounded-2xl border border-gray-100 px-2.5 py-3">
         <Text className="text-[11px] font-medium text-ink/45">Rating</Text>
         <StarValue value={stats.averageRating.toFixed(2)} />
         <Text className="text-[11px] font-medium text-ink/40">{stats.ratingCount} reviews</Text>

@@ -19,6 +19,7 @@ import { composeAddress, isAddressComplete, isValidPincode } from '../../utils/a
 import { composeDob, isAtLeast18, splitDob } from '../../utils/dob';
 import type { AuthStackParamList } from '../../navigation/types';
 import { FieldCard, OnboardingScaffold } from './components/OnboardingScaffold';
+import { PhotoUploadCard } from './IdentityVerificationScreen';
 import { StateSelect } from './components/StateSelect';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'PersonalDetails'>;
@@ -31,6 +32,7 @@ export function PersonalDetailsScreen({ navigation, route }: Props) {
   const initial = splitDob(draft.dateOfBirth);
 
   const [fullName, setFullName] = useState(draft.fullName);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(draft.profilePhotoUrl);
   const [day, setDay] = useState(initial.day);
   const [month, setMonth] = useState(initial.month);
   const [year, setYear] = useState(initial.year);
@@ -59,6 +61,7 @@ export function PersonalDetailsScreen({ navigation, route }: Props) {
       ...draft,
       fullName: fullName.trim(),
       dateOfBirth: dob,
+      profilePhotoUrl,
       houseNumber: houseNumber.trim(),
       street: street.trim(),
       landmark: landmark.trim(),
@@ -72,6 +75,7 @@ export function PersonalDetailsScreen({ navigation, route }: Props) {
       await saveRiderDraft({
         fullName: next.fullName,
         dateOfBirth: next.dateOfBirth,
+        profilePhotoUrl: next.profilePhotoUrl ?? undefined,
         homeAddress: composeAddress(addressParts),
       });
     } catch {
@@ -99,6 +103,8 @@ export function PersonalDetailsScreen({ navigation, route }: Props) {
           className={INPUT_CLASS}
         />
       </FieldCard>
+
+      <PhotoUploadCard label="Profile photo (optional)" kind="profile" path={profilePhotoUrl} onUploaded={setProfilePhotoUrl} />
 
       <FieldCard label="Phone number">
         <View className="flex-row items-center justify-between rounded-2xl bg-[#EEF0F2] px-5 py-4">

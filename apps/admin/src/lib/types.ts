@@ -61,6 +61,9 @@ export interface Application {
   // dlPhotoUrl are short-lived SIGNED urls (rider-documents is a private
   // bucket, migrations/042_rider_onboarding.sql's own note) generated
   // fresh by GET /api/approvals/riders on every read, never stored as-is.
+  // riderCode is the stable human ID ("GL078456"), assigned only once the
+  // rider is approved (the real `riders` row) — undefined for pending drafts.
+  riderCode?: string;
   dateOfBirth?: string;
   homeAddress?: string;
   aadhaarNumber?: string;
