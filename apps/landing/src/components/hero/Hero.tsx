@@ -5,30 +5,25 @@ import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SparklesIcon } from "@hugeicons/core-free-icons";
 
-const MOCKUP_IMAGE_URL =
-  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/Mockuuups%20Free%20iPhone%20Hand%20Mockup.png";
+const HERO_IMAGE_URL =
+  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/landing-hero.png";
 
 export default function Hero() {
   return (
     <section className="w-full bg-white">
       {/* Kept at 1280px to maintain grid alignment with other sections */}
       <div className="max-w-[1280px] mx-auto px-6">
-        <div className="relative flex flex-col md:flex-row items-stretch justify-between w-full rounded-3xl overflow-hidden bg-[linear-gradient(135deg,#060B18_0%,#0B1743_38%,#123A8C_72%,#1E4DE8_100%)]">
+        <div className="relative flex flex-col md:flex-row items-stretch justify-between w-full rounded-3xl overflow-hidden bg-[linear-gradient(135deg,#060B18_0%,#0B1743_38%,#123A8C_72%,#1E4DE8_100%)] ring-1 ring-white/10 shadow-[0_30px_80px_-30px_rgba(11,23,67,0.7)]">
           {/* Aurora glow blobs — Scaled down slightly to match new height */}
           <div className="pointer-events-none absolute -top-20 -left-16 h-[360px] w-[360px] rounded-full bg-[#3B6BFF] opacity-30 blur-[100px]" />
           <div className="pointer-events-none absolute -bottom-24 right-[8%] h-[320px] w-[320px] rounded-full bg-[#A8D93A] opacity-[0.18] blur-[100px]" />
           <div className="pointer-events-none absolute top-1/3 right-1/4 h-[220px] w-[220px] rounded-full bg-[#7C4DFF] opacity-20 blur-[90px]" />
-          
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.07]"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(115deg, rgba(255,255,255,0.6) 0px, rgba(255,255,255,0.6) 1px, transparent 1px, transparent 64px)",
-            }}
-          />
+
+          {/* Soft top highlight for a premium sheen */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white/10 to-transparent" />
 
           {/* Left Column: Text & Buttons - Reduced padding */}
-          <div className="relative z-10 flex flex-col justify-center gap-5 w-full md:w-[55%] p-6 md:px-10 md:py-8 lg:px-12 lg:py-10">
+          <div className="relative z-10 flex flex-col justify-center gap-5 w-full md:w-[52%] p-6 md:px-10 md:py-8 lg:px-12 lg:py-10">
             {/* Text Headline */}
             <div className="flex flex-col gap-2">
               <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-white bg-white/10 backdrop-blur-sm border border-white/15 w-fit px-3 py-1 rounded-full mb-1">
@@ -105,19 +100,17 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Right Column: Image Container - Reduced min-height */}
-          <div className="relative z-10 w-full md:w-[45%] pt-6 px-6 sm:px-8 pb-0 flex items-end justify-center overflow-hidden min-h-[240px]">
-            <div className="pointer-events-none absolute bottom-0 left-1/2 h-[120px] w-[220px] -translate-x-1/2 rounded-[50%] bg-white/25 blur-3xl" />
-            <div className="relative z-10 flex items-end justify-center -mb-1 mt-auto">
+          {/* Right Column: Premium landscape hero graphic */}
+          <div className="relative z-10 w-full md:w-[48%] px-4 sm:px-6 py-6 md:py-8 flex items-center justify-center overflow-hidden min-h-[260px]">
+            <div className="relative z-10 flex w-full items-center justify-center">
               <Image
-                src={MOCKUP_IMAGE_URL}
+                src={HERO_IMAGE_URL}
                 alt="Gloceries grocery delivery app — order from local stores near you"
-                width={360}
-                height={360}
+                width={627}
+                height={398}
                 priority
                 style={{ width: "100%", height: "auto" }}
-                // Reduced max-width from 400px to 340px
-                className="max-w-[280px] sm:max-w-[340px] object-contain align-bottom block"
+                className="w-full max-w-[640px] object-contain block"
               />
             </div>
           </div>

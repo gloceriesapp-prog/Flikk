@@ -27,3 +27,15 @@ export function distanceKm(a: Coordinates, b: Coordinates): number {
   const d = 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
   return Number(d.toFixed(1));
 }
+
+// Rough travel-time estimate from a straight-line distance — shown as the
+// "Est." leg/trip time on a dispatch offer, never a promised ETA. Same
+// straight-line caveat as distanceKm above: no routed directions, so this
+// is "roughly this many minutes," not what a nav app would count down.
+// ponytail: flat 18 km/h urban two-wheeler assumption + 1min handling floor,
+// swap for a Directions-API duration if/when real routing lands.
+const AVG_URBAN_KMH = 18;
+
+export function etaMinutes(km: number): number {
+  return Math.max(1, Math.round((km / AVG_URBAN_KMH) * 60));
+}

@@ -61,16 +61,13 @@ const NEARBY_STORES: StoreItem[] = [
 
 export default function NearbyStores() {
   return (
-    <section className="w-full bg-white py-8">
+    <section className="w-full bg-white pt-8 pb-14 sm:pb-16">
       <div className="max-w-[1280px] mx-auto px-6 flex flex-col gap-6">
         {/* Section Header */}
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">
+          <h2 className="text-xl sm:text-[30px] font-semibold text-[#0F172A] tracking-tight">
             Shop on stores you love
           </h2>
-          <p className="text-xs sm:text-base font-medium text-slate-500">
-            Handpicked top-rated local spots near you in Mangalore
-          </p>
         </div>
 
         {/* 
@@ -85,11 +82,10 @@ export default function NearbyStores() {
           {NEARBY_STORES.map((store) => (
             <div
               key={store.id}
-              // Reduced mobile width from 285/320px to 260/280px
-              className="w-[260px] sm:w-[280px] lg:w-auto shrink-0 snap-start flex flex-col gap-2.5 group cursor-pointer"
+              className="w-[260px] sm:w-[280px] lg:w-auto shrink-0 snap-start flex flex-col rounded-2xl border border-slate-200/70 bg-white overflow-hidden group cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
             >
-              {/* Scaled down height via aspect-[16/11] (previously 4/3) and tightened border radius */}
-              <div className="w-full aspect-[16/11] relative rounded-[16px] overflow-hidden bg-slate-100 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.1)]">
+              {/* Image with rating + distance overlays */}
+              <div className="w-full aspect-[16/10] relative bg-slate-100 overflow-hidden">
                 <Image
                   src={store.image}
                   alt={store.name}
@@ -97,47 +93,38 @@ export default function NearbyStores() {
                   sizes="(max-width: 1024px) 280px, 25vw"
                   className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                <div className="absolute bottom-2.5 left-2.5 bg-[#24963F] text-white text-[12px] font-bold px-2 py-0.5 rounded-md flex items-center gap-0.5 shadow-sm">
+                  {store.rating}
+                  <span className="text-[10px] leading-none mb-[1px]">★</span>
+                </div>
+                <div className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur text-[#1C1C1C] text-[11px] font-semibold px-2 py-0.5 rounded-md shadow-sm">
+                  {store.distance}
+                </div>
               </div>
 
-              {/* Text Info Block - Scaled down all typography */}
-              <div className="flex flex-col gap-0.5 px-0.5">
-                {/* Title & Rating */}
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-[16px] sm:text-[17px] font-semibold text-[#1C1C1C] tracking-tight truncate leading-tight mt-0.5">
-                    {store.name}
-                  </h3>
-                  <div className="bg-[#24963F] text-white text-[11px] sm:text-[12px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shrink-0 mt-0.5">
-                    {store.rating}
-                    <span className="text-[9px] sm:text-[10px] leading-none mb-[1px]">★</span>
+              {/* Info block — footer pinned to bottom for equal-height cards */}
+              <div className="flex flex-col flex-1 p-3.5">
+                <h3 className="text-[16px] font-semibold text-[#1C1C1C] tracking-tight truncate leading-tight">
+                  {store.name}
+                </h3>
+                <p className="text-[13px] text-[#696969] truncate mt-0.5">
+                  {store.category}
+                </p>
+
+                <div className="mt-auto pt-2.5 flex flex-col gap-1 border-t border-dashed border-slate-200">
+                  <div className="flex items-center justify-between gap-3 text-[13px]">
+                    <span className="text-[#696969] truncate">{store.location}</span>
+                    <span className="text-[#1C1C1C] font-semibold shrink-0">
+                      {store.priceEstimate}
+                    </span>
                   </div>
+                  {store.closingInfo && (
+                    <p className="text-[12px] font-medium text-[#D9534F] truncate">
+                      {store.closingInfo}
+                    </p>
+                  )}
                 </div>
-
-                {/* Category & Price Estimate */}
-                <div className="flex items-center justify-between gap-3 mt-0.5 text-[13px] sm:text-[14px]">
-                  <span className="text-[#696969] truncate">
-                    {store.category}
-                  </span>
-                  <span className="text-[#696969] shrink-0">
-                    {store.priceEstimate}
-                  </span>
-                </div>
-
-                {/* Location & Distance */}
-                <div className="flex items-center justify-between gap-3 text-[13px] sm:text-[14px]">
-                  <span className="text-[#696969] truncate">
-                    {store.location}
-                  </span>
-                  <span className="text-[#1C1C1C] font-medium shrink-0 text-[12px] sm:text-[13px]">
-                    {store.distance}
-                  </span>
-                </div>
-
-                {/* Optional Closing Status */}
-                {store.closingInfo && (
-                  <div className="mt-0.5 text-[12px] sm:text-[13px] text-[#D9534F]">
-                    {store.closingInfo}
-                  </div>
-                )}
               </div>
             </div>
           ))}

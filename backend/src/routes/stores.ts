@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
-import { distanceKm } from '../utils/geo.js';
+import { distanceKm, isWithinReach } from '../utils/geo.js';
 
 export const storesRouter = Router();
 
@@ -19,8 +19,53 @@ const NEAREST_MAX_LIMIT = 20;
 // rather than re-checked by every caller. Overridable via `max_distance_km`
 // (bounded to MAX_ALLOWED_DISTANCE_KM) for ops/testing — never wider than
 // what the business actually delivers to.
-const DEFAULT_MAX_DISTANCE_KM = 12;
+// Fallback delivery reach for a store with no delivery_radius_km of its own
+// (migration 048). 12km = deliberately wide startup reach (maximize coverage
+// with one launch store). A store can override this per-row from admin's
+// StoreDetailForm. MAX_ALLOWED_DISTANCE_KM is the hard ceiling any explicit
+// ops/testing override is clamped to.
+const DEFAULT_RADIUS_KM = 12;
 const MAX_ALLOWED_DISTANCE_KM = 50;
+
+// Shared by GET /stores/nearest and GET /serviceability: rank every store in
+// the (active) zone by real haversine distance, keep those within reach.
+// Reach is per-store (stores.delivery_radius_km) falling back to
+// DEFAULT_RADIUS_KM; an explicit maxOverrideKm can only tighten it. NOT
+// filtered on is_active — a store closed for the night is still "in your
+// area" (see the long note on /nearest below). Empty = no store coverage.
+async function storesInRange(
+  lat: number,
+  lng: number,
+  zoneId: string | undefined,
+  maxOverrideKm: number | null,
+) {
+  let resolvedZoneId = zoneId;
+  if (!resolvedZoneId) {
+    const { data: zone, error: zoneError } = await supabase
+      .from('zones').select('id').eq('is_active', true).limit(1).single();
+    if (zoneError) throw zoneError;
+    resolvedZoneId = zone.id;
+  }
+
+  const { data, error } = await supabase
+    .from('stores')
+    .select('*')
+    .eq('zone_id', resolvedZoneId)
+    .not('lat', 'is', null)
+    .not('lng', 'is', null);
+  if (error) throw error;
+
+  const customer = { latitude: lat, longitude: lng };
+  return data
+    .map((store) => ({
+      ...store,
+      distance_km: distanceKm(customer, { latitude: store.lat, longitude: store.lng }),
+    }))
+    .filter((store) =>
+      isWithinReach(store.distance_km, store.delivery_radius_km, DEFAULT_RADIUS_KM, maxOverrideKm),
+    )
+    .sort((a, b) => a.distance_km - b.distance_km);
+}
 
 // Shared by every cross-store product feed below — store name/active flag
 // (so a deactivated store's stock can be filtered out) plus the full
@@ -110,9 +155,9 @@ storesRouter.get('/', async (req, res, next) => {
 // mixed into a "nearest" list with no actual distance behind it. They still
 // show up fine in the plain GET / list above.
 //
-// The DEFAULT_MAX_DISTANCE_KM cutoff (above) is applied AFTER ranking but
-// BEFORE slicing to `limit` — a store outside the radius must never occupy
-// one of the `limit` slots just because fewer than `limit` real stores are
+// The per-store radius cutoff (delivery_radius_km, or DEFAULT_RADIUS_KM) is
+// applied AFTER ranking but BEFORE slicing to `limit` — a store outside its
+// radius must never occupy one of the `limit` slots just because fewer than `limit` real stores are
 // in range; it should be excluded entirely, not returned as a false
 // "nearest" result. An empty response here is the real, server-computed
 // signal that a customer has no store coverage at all (this endpoint is
@@ -133,33 +178,40 @@ storesRouter.get('/nearest', async (req, res, next) => {
       : NEAREST_DEFAULT_LIMIT;
 
     const requestedMaxDistanceKm = Number(req.query.max_distance_km);
-    const maxDistanceKm = Number.isFinite(requestedMaxDistanceKm)
+    const maxOverrideKm = Number.isFinite(requestedMaxDistanceKm)
       ? Math.min(Math.max(0.1, requestedMaxDistanceKm), MAX_ALLOWED_DISTANCE_KM)
-      : DEFAULT_MAX_DISTANCE_KM;
+      : null;
 
-    let zoneId = req.query.zone_id as string | undefined;
-    if (!zoneId) {
-      const { data: zone, error: zoneError } = await supabase.from('zones').select('id').eq('is_active', true).limit(1).single();
-      if (zoneError) throw zoneError;
-      zoneId = zone.id;
-    }
-
-    const { data, error } = await supabase
-      .from('stores')
-      .select('*')
-      .eq('zone_id', zoneId)
-      .not('lat', 'is', null)
-      .not('lng', 'is', null);
-    if (error) throw error;
-
-    const customer = { latitude: lat, longitude: lng };
-    const ranked = data
-      .map((store) => ({ ...store, distance_km: distanceKm(customer, { latitude: store.lat, longitude: store.lng }) }))
-      .filter((store) => store.distance_km <= maxDistanceKm)
-      .sort((a, b) => a.distance_km - b.distance_km)
-      .slice(0, limit);
+    const zoneId = req.query.zone_id as string | undefined;
+    const ranked = (await storesInRange(lat, lng, zoneId, maxOverrideKm)).slice(0, limit);
 
     res.json(ranked);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Public serviceability check (no auth) — landing's Navbar/LocationModal badge
+// (apps/landing) and any pre-signup "do we deliver here?" gate. Same reach
+// logic as /nearest: serviceable iff ≥1 store in the active zone is within its
+// delivery radius of the given coords. Returns just the boolean + nearest
+// distance, never store rows (this is unauthenticated). Out-of-area visitors
+// get captured via POST /area-upvotes for demand.
+storesRouter.get('/serviceability', async (req, res, next) => {
+  try {
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new AppError(400, 'MISSING_COORDINATES', 'lat and lng query params are required.');
+    }
+
+    const zoneId = req.query.zone_id as string | undefined;
+    const inRange = await storesInRange(lat, lng, zoneId, null);
+
+    res.json({
+      serviceable: inRange.length > 0,
+      nearestDistanceKm: inRange.length > 0 ? Number(inRange[0].distance_km.toFixed(2)) : null,
+    });
   } catch (err) {
     next(err);
   }

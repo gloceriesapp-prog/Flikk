@@ -4,6 +4,8 @@
 // "available pickups near me" list, and the atomic accept-race itself.
 
 import { apiRequest, ApiError } from './client';
+import { distanceKm } from '../utils/geo';
+import type { Coordinates } from '../data/mockOrders';
 
 const DELIVERY_FEE = 25;
 
@@ -17,7 +19,9 @@ interface RawDispatchOffer {
   delivery_fee: number;
   trip_id: string | null;
   trips: { delivery_fee: number } | null;
-  stores: { name: string } | null;
+  stores: { name: string; lat: number | null; lng: number | null } | null;
+  addresses: { line1: string; landmark: string | null; latitude: number | null; longitude: number | null } | null;
+  order_items: { quantity: number }[] | null;
   distance_m: number | null;
 }
 
@@ -26,10 +30,35 @@ export interface DispatchOffer {
   orderNumber: string;
   storeName: string;
   payout: number;
-  distanceKm: number;
+  // Rider → store (from the RPC's own distance_m). storeToDropKm is the
+  // store → customer leg (straight-line from the two coords). totalKm is
+  // the sum — the whole job the rider signs up for, what the offer's
+  // "total distance" tile shows.
+  pickupKm: number;
+  storeToDropKm: number;
+  totalKm: number;
+  // Human label for the drop end of the route (landmark or address line),
+  // e.g. "Manipal" — not the customer's name (privacy pre-acceptance).
+  dropLabel: string;
+  itemCount: number;
+  // Only present when BOTH ends have real coords — the offer card guards
+  // its map/route preview on this so a phantom {0,0} never renders as
+  // null-island (see plan blocker on addresses.latitude/longitude).
+  storeCoords: Coordinates | null;
+  dropCoords: Coordinates | null;
+}
+
+function coordsOf(lat: number | null | undefined, lng: number | null | undefined): Coordinates | null {
+  return lat != null && lng != null && (lat !== 0 || lng !== 0) ? { latitude: lat, longitude: lng } : null;
 }
 
 function toDispatchOffer(row: RawDispatchOffer): DispatchOffer {
+  const storeCoords = coordsOf(row.stores?.lat, row.stores?.lng);
+  const dropCoords = coordsOf(row.addresses?.latitude, row.addresses?.longitude);
+  const pickupKm = row.distance_m != null ? Math.round((row.distance_m / 1000) * 10) / 10 : 0;
+  const storeToDropKm = storeCoords && dropCoords ? distanceKm(storeCoords, dropCoords) : 0;
+  const itemCount = (row.order_items ?? []).reduce((sum, oi) => sum + oi.quantity, 0);
+
   return {
     orderId: row.id,
     orderNumber: `FLK-${row.id.slice(0, 6).toUpperCase()}`,
@@ -38,7 +67,13 @@ function toDispatchOffer(row: RawDispatchOffer): DispatchOffer {
     // a trip leg pays the trip's own combined fee, never the flat
     // single-store DELIVERY_FEE.
     payout: row.trips?.delivery_fee ?? row.delivery_fee ?? DELIVERY_FEE,
-    distanceKm: row.distance_m != null ? Math.round((row.distance_m / 1000) * 10) / 10 : 0,
+    pickupKm,
+    storeToDropKm,
+    totalKm: Math.round((pickupKm + storeToDropKm) * 10) / 10,
+    dropLabel: row.addresses?.landmark || row.addresses?.line1 || 'Drop location',
+    itemCount,
+    storeCoords,
+    dropCoords,
   };
 }
 

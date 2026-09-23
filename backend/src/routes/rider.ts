@@ -89,10 +89,15 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
 
     // Same trip-aware payout shape as GET /assignments — a trip leg's real
     // payout is the trip's own combined delivery_fee (base + EXTRA_STOP_FEE
-    // per store beyond the first), never the flat single-store fee.
+    // per store beyond the first), never the flat single-store fee. Store
+    // + drop coords, drop label and item count are the same joins
+    // /assignments already pulls — the rider app's offer card renders a
+    // pickup→drop preview from them (no new migration, real order data).
     const { data: orders, error: ordersErr } = await supabase
       .from('orders')
-      .select('id, order_number, delivery_fee, trip_id, trips(delivery_fee), stores(name, lat, lng)')
+      .select(
+        'id, order_number, delivery_fee, trip_id, trips(delivery_fee), stores(name, lat, lng), addresses(line1, landmark, latitude, longitude), order_items(quantity)'
+      )
       .in('id', orderIds);
     if (ordersErr) throw ordersErr;
 
@@ -166,7 +171,7 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
         // the real trip-level payout (base fee + multi-stop surcharge,
         // routes/trips.ts's EXTRA_STOP_FEE) instead of assuming every
         // order pays the flat single-store DELIVERY_FEE.
-        '*, order_items(*, products(name, unit)), stores(name, lat, lng, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude), trips(delivery_fee)',
+        '*, order_items(*, products(name, unit)), stores(name, phone, lat, lng, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude), trips(delivery_fee)',
       )
       .eq('rider_id', req.user!.id)
       .order('placed_at', { ascending: false });

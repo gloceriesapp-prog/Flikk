@@ -43,7 +43,7 @@ interface RawAssignment {
   // embed) — the real combined multi-stop payout for this leg's trip.
   trips: { delivery_fee: number } | null;
   order_items: RawOrderItem[];
-  stores: { name: string; lat: number | null; lng: number | null; zones: { name: string } | null } | null;
+  stores: { name: string; phone: string | null; lat: number | null; lng: number | null; zones: { name: string } | null } | null;
   users: { name: string | null; phone: string } | null;
   addresses: { line1: string; landmark: string | null; latitude: number | null; longitude: number | null } | null;
 }
@@ -107,6 +107,7 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     orderNumber: `FLK-${row.id.slice(0, 6).toUpperCase()}`,
     storeName: row.stores?.name ?? 'Store',
     storeAddress: row.stores?.zones?.name ?? '',
+    storePhone: row.stores?.phone ?? undefined,
     // Unused by any current screen (grep confirms) — falls back to the
     // real customer location rather than 0,0 so it's at least "somewhere
     // in the right zone" if a future screen ever renders it.

@@ -23,3 +23,19 @@ export function distanceKm(a: Coordinates, b: Coordinates): number {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
+
+// Whether a store this far from the customer is in delivery reach. Reach is the
+// store's own radius (delivery_radius_km) or the global fallback when it has
+// none; an explicit ops/testing override can only tighten it, never widen past
+// the store's real reach. Pure so GET /stores/nearest and /serviceability share
+// one cutoff rule (backend/src/routes/stores.ts).
+export function isWithinReach(
+  distanceKmValue: number,
+  storeRadiusKm: number | null | undefined,
+  defaultRadiusKm: number,
+  maxOverrideKm: number | null,
+): boolean {
+  const radius = storeRadiusKm ?? defaultRadiusKm;
+  const cutoff = maxOverrideKm == null ? radius : Math.min(radius, maxOverrideKm);
+  return distanceKmValue <= cutoff;
+}

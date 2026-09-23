@@ -9,10 +9,15 @@ import {
   Target02Icon,
 } from "@hugeicons/core-free-icons";
 
+import { geocode } from "@/lib/serviceability";
+
 interface LocationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectLocation: (location: string) => void;
+  onSelectLocation: (
+    location: string,
+    coords?: { lat: number; lng: number },
+  ) => void;
   currentLocation?: string;
   isFirstVisit?: boolean;
 }
@@ -75,7 +80,7 @@ export default function LocationModal({
               const formattedLoc = suburb ? `${suburb}, ${city}` : city;
 
               setIsLocating(false);
-              onSelectLocation(formattedLoc);
+              onSelectLocation(formattedLoc, { lat: latitude, lng: longitude });
               onClose();
               return;
             }
@@ -100,10 +105,11 @@ export default function LocationModal({
     }
   };
 
-  const handleConfirmTypedLocation = (locationToSet?: string) => {
+  const handleConfirmTypedLocation = async (locationToSet?: string) => {
     const target = locationToSet || searchQuery.trim();
     if (target) {
-      onSelectLocation(target);
+      const coords = await geocode(target);
+      onSelectLocation(target, coords ?? undefined);
       onClose();
     }
   };

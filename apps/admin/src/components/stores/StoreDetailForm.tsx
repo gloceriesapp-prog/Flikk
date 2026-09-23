@@ -26,6 +26,9 @@ export function StoreDetailForm({ store }: { store: Store }) {
   // mid-keystroke. Parsed to numbers (or null if blank) only on save.
   const [lat, setLat] = useState(store.lat?.toString() ?? '');
   const [lng, setLng] = useState(store.lng?.toString() ?? '');
+  // Same string-while-typing rationale as lat/lng. Blank = clear the override
+  // (backend falls back to DEFAULT_RADIUS_KM = 12).
+  const [radius, setRadius] = useState(store.deliveryRadiusKm?.toString() ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,10 +41,14 @@ export function StoreDetailForm({ store }: { store: Store }) {
       if ((parsedLat !== null && Number.isNaN(parsedLat)) || (parsedLng !== null && Number.isNaN(parsedLng))) {
         throw new Error('Latitude/longitude must be numbers.');
       }
+      const parsedRadius = radius.trim() === '' ? null : Number(radius);
+      if (parsedRadius !== null && (Number.isNaN(parsedRadius) || parsedRadius <= 0)) {
+        throw new Error('Delivery radius must be a positive number of km.');
+      }
       const res = await fetch(`/api/stores/${store.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, phone, openTime, closeTime, isActive, lat: parsedLat, lng: parsedLng }),
+        body: JSON.stringify({ category, phone, openTime, closeTime, isActive, lat: parsedLat, lng: parsedLng, deliveryRadiusKm: parsedRadius }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -150,6 +157,21 @@ export function StoreDetailForm({ store }: { store: Store }) {
               className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-muted">Delivery radius (km)</label>
+          <p className="mb-2 text-xs text-muted">
+            How far this store delivers from its pin. A customer outside every store&apos;s radius sees
+            &quot;Coming soon&quot; instead of a store list. Leave blank to use the default 12&nbsp;km.
+          </p>
+          <input
+            value={radius}
+            onChange={(e) => setRadius(e.target.value)}
+            placeholder="Default 12"
+            inputMode="decimal"
+            className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none sm:max-w-[12rem]"
+          />
         </div>
 
         <div className="border-t border-border pt-5">

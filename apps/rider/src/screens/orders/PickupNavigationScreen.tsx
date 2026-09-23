@@ -1,0 +1,157 @@
+// Full-screen store-pickup navigation — shown when a rider taps an
+// 'assigned' active card. Same strategy as Swiggy/Blinkit/Uber: the in-app
+// map is CONTEXT ONLY ("am I close to the store?") — rider's real live GPS
+// dot + a fixed store pin + a straight connector line (DeliveryMapView, no
+// Directions API). Actual turn-by-turn hands OFF to the rider's own maps
+// app via openNavigation (the "Go to pickup" banner + arrow). This is a
+// deliberate scope extension past CLAUDE.md's "rider map = final leg only"
+// line — a pickup-leg map, requested explicitly.
+//
+// "I've arrived" is CORAL, not the lime the mockup showed: CLAUDE.md makes
+// coral the one and only CTA color (lime is reserved for online/active
+// state), so the primary action here follows that rule over the mockup.
+// Tapping it pushes PickupVerification (QR + check-items gate) — that
+// screen owns the real assigned→picked_up write, not this one.
+//
+// Needs a native dev build to render the map (react-native-maps isn't in
+// Expo Go SDK 52+, DeliveryMapView's own note).
+
+import { useState } from 'react';
+import { Alert, Linking, Pressable, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ArrowLeft01Icon, ArrowRight01Icon, Call02Icon, Navigation03Icon, Store01Icon } from '@hugeicons/core-free-icons';
+import { AppIcon } from '../../components/AppIcon';
+import { colors } from '../../theme/tokens';
+import { DeliveryMapView } from './components/DeliveryMapView';
+import { openNavigation } from '../../location/openNavigation';
+import { distanceKm, etaMinutes } from '../../utils/geo';
+import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
+import type { Coordinates } from '../../location/riderLocation';
+import type { AppStackParamList } from '../../navigation/types';
+
+type Props = NativeStackScreenProps<AppStackParamList, 'PickupNavigation'>;
+
+export function PickupNavigationScreen({ route, navigation }: Props) {
+  const { orderId } = route.params;
+  const order = useRiderOrdersStore((s) => s.activeOrders.find((o) => o.id === orderId));
+  const insets = useSafeAreaInsets();
+  // Live rider position, fed by DeliveryMapView's own GPS watch via
+  // onRiderMove — no second location watcher opened here.
+  const [riderCoords, setRiderCoords] = useState<Coordinates | null>(null);
+
+  if (!order) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white px-6">
+        <Text className="text-center text-base font-semibold text-ink">This order is no longer active.</Text>
+        <Pressable onPress={() => navigation.goBack()} className="mt-4">
+          <Text className="text-[14px] font-bold text-ink/60">Go back</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // rider→store straight-line distance/ETA — null until the first GPS fix
+  // lands (shows "Locating…" until then rather than a bogus 0.0 km).
+  const km = riderCoords ? distanceKm(riderCoords, order.storeCoords) : null;
+  const eta = km != null ? etaMinutes(km) : null;
+  const legText = km != null ? `${km} km · ${eta} min` : 'Locating…';
+
+  const callStore = () => {
+    if (order.storePhone) {
+      Linking.openURL(`tel:${order.storePhone}`);
+    } else {
+      Alert.alert('No store number', `We don't have a phone number for ${order.storeName} on file.`);
+    }
+  };
+
+  return (
+    <View className="flex-1 bg-ink">
+      <DeliveryMapView
+        destination={order.storeCoords}
+        destinationKind="store"
+        fullScreen
+        onRiderMove={setRiderCoords}
+      />
+
+      {/* Back arrow — floats over the map, safe-area aware. */}
+      <Pressable
+        onPress={() => navigation.goBack()}
+        style={{ top: insets.top + 12 }}
+        className="absolute left-4 h-11 w-11 items-center justify-center rounded-full bg-white shadow-md shadow-black/20"
+      >
+        <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+      </Pressable>
+
+      {/* Distance/ETA pill — dark, top-left next to back, with a nav arrow.
+          The at-a-glance "am I close?" the in-app map is here for. */}
+      <View
+        style={{ top: insets.top + 12 }}
+        className="absolute left-20 flex-row items-center gap-2 rounded-full bg-ink px-4 py-2.5 shadow-md shadow-black/20"
+      >
+        <AppIcon icon={Navigation03Icon} size={16} color={colors.lime} />
+        <Text className="text-[14px] font-bold text-white tabular-nums">{legText}</Text>
+      </View>
+
+      {/* Bottom sheet — dark green. Heading-to-store: nav hand-off + store
+          card + "I've arrived" → the PickupVerification screen (QR + item
+          checklist), which owns the real assigned→picked_up write. */}
+      <View
+        style={{ paddingBottom: insets.bottom + 16 }}
+        className="absolute inset-x-0 bottom-0 gap-3.5 rounded-t-3xl bg-ink px-5 pt-5"
+      >
+        {/* "Go to pickup" → the Swiggy-style hand-off: taps out to the
+            rider's real maps app for turn-by-turn. The in-app map above is
+            context; THIS is the actual navigation. */}
+        <Pressable
+          onPress={() => openNavigation(order.storeCoords, order.storeName)}
+          className="flex-row items-center justify-between"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        >
+          <View>
+            <Text className="text-[11px] font-bold uppercase tracking-wide text-white/40">Pickup</Text>
+            <Text className="text-[20px] font-bold text-white">Go to pickup</Text>
+          </View>
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
+            <AppIcon icon={ArrowRight01Icon} size={22} color={colors.lime} />
+          </View>
+        </Pressable>
+
+        {/* Store info card — white, lifts off the dark sheet. */}
+        <View className="flex-row items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
+          <View className="h-11 w-11 items-center justify-center rounded-full bg-lime-soft">
+            <AppIcon icon={Store01Icon} size={22} color={colors.limeDeep} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[15px] font-bold text-ink" numberOfLines={1}>{order.storeName}</Text>
+            <Text className="text-[12.5px] text-ink/50" numberOfLines={1}>{order.storeAddress || 'Grocery Store'}</Text>
+          </View>
+          <Text className="text-[12.5px] font-semibold text-ink/60 tabular-nums">{legText}</Text>
+        </View>
+
+        {/* Actions — outline "Call store" + coral "I've arrived" (coral per
+            CLAUDE.md, not the mockup's lime). Arrive → PickupVerification
+            (QR + check-items gate before the real pickup write). */}
+        <View className="flex-row gap-3">
+          <Pressable
+            onPress={callStore}
+            className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-white/25"
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+          >
+            <AppIcon icon={Call02Icon} size={18} color="#FFFFFF" />
+            <Text className="text-[15px] font-bold text-white">Call store</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('PickupVerification', { orderId })}
+            className="h-14 flex-1 items-center justify-center rounded-2xl"
+            style={({ pressed }) => ({ backgroundColor: colors.coral, opacity: pressed ? 0.85 : 1 })}
+          >
+            <Text className="text-[15px] font-bold text-white">I've arrived</Text>
+          </Pressable>
+        </View>
+
+        <Text className="text-center text-[12px] text-white/35">Drive safe · Follow traffic rules</Text>
+      </View>
+    </View>
+  );
+}

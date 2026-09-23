@@ -34,10 +34,11 @@ export interface StoreRow {
   drug_license_number: string | null;
   lat: number | null;
   lng: number | null;
+  delivery_radius_km: number | null;
 }
 
 export const STORE_SELECT =
-  'id, name, category, district, is_active, created_at, phone, open_time, close_time, owner_name, address_line, city, state, country, photo_url, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_name, bank_account_last4, turnover_exceeds_gst_threshold, gst_number, drug_license_number, lat, lng';
+  'id, name, category, district, is_active, created_at, phone, open_time, close_time, owner_name, address_line, city, state, country, photo_url, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_name, bank_account_last4, turnover_exceeds_gst_threshold, gst_number, drug_license_number, lat, lng, delivery_radius_km';
 
 export function mapRowToStore(row: StoreRow): Store {
   return {
@@ -68,6 +69,7 @@ export function mapRowToStore(row: StoreRow): Store {
     drugLicenseNumber: row.drug_license_number ?? undefined,
     lat: row.lat ?? undefined,
     lng: row.lng ?? undefined,
+    deliveryRadiusKm: row.delivery_radius_km ?? undefined,
   };
 }
 

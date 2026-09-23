@@ -74,14 +74,9 @@ export default function CategoryGrid() {
       <div className="max-w-[1280px] mx-auto px-6 flex flex-col gap-6">
         {/* Section Header: Title + Scroll Controls */}
         <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-col gap-0.5">
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">
-              What are you looking for?
-            </h2>
-            <p className="text-sm sm:text-base font-medium text-slate-500">
-              Explore everyday shopping categories with fast local store delivery
-            </p>
-          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">
+            Shop by Occasion
+          </h2>
 
           {/* Scroll Navigation Arrows */}
           <div className="hidden sm:flex lg:hidden items-center gap-2.5 shrink-0">
@@ -105,18 +100,18 @@ export default function CategoryGrid() {
         </div>
 
         {/*
-          Horizontal scroll on mobile/tablet, 3-column grid on desktop.
-          Only the first 3 categories render — wide banner cards.
+          Two fixed-width banner cards, left-aligned (not stretched full width).
+          Horizontal scroll on mobile.
         */}
         <div
           ref={scrollContainerRef}
-          className="flex lg:grid lg:grid-cols-3 items-stretch gap-4 lg:gap-6 overflow-x-auto lg:overflow-visible scrollbar-none snap-x snap-mandatory py-4 lg:py-0 px-1 lg:px-0 scroll-smooth"
+          className="flex items-stretch gap-4 lg:gap-6 overflow-x-auto lg:overflow-visible scrollbar-none snap-x snap-mandatory py-4 lg:py-0 px-1 lg:px-0 scroll-smooth"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {CATEGORIES.slice(0, 3).map((cat) => (
+          {CATEGORIES.slice(0, 2).map((cat) => (
             <div
               key={cat.id}
-              className={`w-[300px] sm:w-[380px] lg:w-auto shrink-0 snap-start h-[240px] sm:h-[260px] rounded-[24px] p-6 flex flex-col relative overflow-hidden bg-gradient-to-br ${cat.bgGradient} select-none cursor-pointer group`}
+              className={`w-[300px] sm:w-[380px] lg:w-[460px] shrink-0 snap-start h-[240px] sm:h-[260px] rounded-[24px] p-6 flex flex-col relative overflow-hidden bg-gradient-to-br ${cat.bgGradient} select-none cursor-pointer group`}
             >
               {/* Title + CTA */}
               <div className="flex flex-col relative z-10 max-w-[58%] h-full">

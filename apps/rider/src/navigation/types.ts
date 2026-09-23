@@ -66,6 +66,17 @@ export type AppTabParamList = {
 
 export type AppStackParamList = {
   Tabs: undefined;
+  // Full-screen store-pickup nav (map + external maps hand-off) — shown
+  // when a rider taps an 'assigned' active card, before pickup is confirmed.
+  // OrderDetail owns everything from pickup-confirm onward.
+  PickupNavigation: { orderId: string };
+  // Pickup verification (QR placeholder + item checklist) — reached from the
+  // pickup-nav "I've arrived" button. Owns the real assigned→picked_up write.
+  PickupVerification: { orderId: string };
+  // Full-screen drop-leg nav (map + external maps hand-off) — the customer
+  // twin of PickupNavigation, shown once the order is picked_up. Advances to
+  // arrived_at_customer, then OrderDetail owns the OTP-verified delivery.
+  DeliveryNavigation: { orderId: string };
   OrderDetail: { orderId: string };
   RiderDocuments: undefined;
 };

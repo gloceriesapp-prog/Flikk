@@ -25,6 +25,10 @@ export interface RiderOrder {
   orderNumber: string;
   storeName: string;
   storeAddress: string;
+  // Real stores.phone (backend /assignments select) — the pickup nav
+  // screen's "Call store" dials this; undefined when the store row has no
+  // number, in which case the button falls back to an Alert.
+  storePhone?: string;
   storeCoords: Coordinates;
   customerName: string;
   customerAddress: string;

@@ -17,18 +17,13 @@ import {
   AutoConversationsIcon,
 } from "@hugeicons/core-free-icons";
 
-// Real launch area this landing page already commits to elsewhere
-// (AnnouncementBanner's own "Fast Local Delivery in Mangalore", and 7 of
-// LocationModal's own 8 suggested addresses) — not a guess invented for
-// this badge. "Manipal, Udupi" (the modal's one non-Mangalore suggestion)
-// deliberately stays "Coming Soon": it's listed as a heads-up for what's
-// next, not a place real delivery already runs.
-const SERVICEABLE_AREA_KEYWORDS = ["mangalore"];
+import { checkServiceability } from "@/lib/serviceability";
 
-function isLocationServiceable(location: string): boolean {
-  const needle = location.toLowerCase();
-  return SERVICEABLE_AREA_KEYWORDS.some((area) => needle.includes(area));
-}
+// Availability is answered by the backend (GET /stores/serviceability), the
+// same source the customer app's own gate uses — not a hardcoded keyword list.
+// A location is "Available" iff a real store covers its coords within that
+// store's delivery radius. Coords come from LocationModal (GPS detect, or
+// Nominatim-geocoded typed location).
 
 const SEARCH_PLACEHOLDERS = [
   'Search for "Ice Cream"',
@@ -58,6 +53,8 @@ export default function Navbar() {
   const [userLocation, setUserLocation] = useState<string>("Kodialbail, Mangalore");
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
+  // null = not yet resolved (hide badge); true/false = real backend answer.
+  const [isServiceable, setIsServiceable] = useState<boolean | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -73,6 +70,21 @@ export default function Navbar() {
         setUserLocation(savedLoc);
         setIsLocationModalOpen(false);
         setIsFirstVisit(false);
+        // Re-check serviceability from persisted coords so the badge is right
+        // on refresh, not just right after picking a location.
+        const savedCoords = localStorage.getItem("flikk_user_coords");
+        if (savedCoords) {
+          try {
+            const { lat, lng } = JSON.parse(savedCoords);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              checkServiceability(lat, lng).then((r) => {
+                if (r) setIsServiceable(r.serviceable);
+              });
+            }
+          } catch {
+            /* corrupt coords — leave badge unresolved */
+          }
+        }
       } else {
         setIsFirstVisit(true);
         const timeout = setTimeout(() => {
@@ -83,11 +95,29 @@ export default function Navbar() {
     }
   }, []);
 
-  const handleSelectLocation = (newLoc: string) => {
+  const handleSelectLocation = (
+    newLoc: string,
+    coords?: { lat: number; lng: number },
+  ) => {
     setUserLocation(newLoc);
     setIsFirstVisit(false);
     if (typeof window !== "undefined") {
       localStorage.setItem("flikk_user_location", newLoc);
+    }
+    if (coords) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("flikk_user_coords", JSON.stringify(coords));
+      }
+      setIsServiceable(null);
+      checkServiceability(coords.lat, coords.lng).then((r) => {
+        if (r) setIsServiceable(r.serviceable);
+      });
+    } else {
+      // No coords (geocode failed / fallback) — can't verify, so don't assert.
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("flikk_user_coords");
+      }
+      setIsServiceable(null);
     }
   };
 
@@ -153,11 +183,12 @@ export default function Navbar() {
                 <span className="text-[20px] font-medium text-black tracking-tight">
                   Your location
                 </span>
-                {isLocationServiceable(userLocation) ? (
+                {isServiceable === true && (
                   <span className="text-[11px] font-medium uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
                     Available
                   </span>
-                ) : (
+                )}
+                {isServiceable === false && (
                   <span className="text-[11px] font-medium uppercase  tracking-wide text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
                     Coming Soon
                   </span>

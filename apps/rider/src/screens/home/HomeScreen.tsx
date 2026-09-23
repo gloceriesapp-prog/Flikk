@@ -23,7 +23,7 @@ import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ActiveDeliveryCard } from './components/ActiveDeliveryCard';
 import { DeliveryHistoryRow } from './components/DeliveryHistoryRow';
-import { DispatchOfferCard } from './components/DispatchOfferCard';
+import { DispatchOfferCard, DispatchOfferSheet } from './components/DispatchOffer';
 import { FilterChipRow, type DeliveryFilter } from './components/FilterChipRow';
 import { RiderHomeHeader } from './components/RiderHomeHeader';
 import { SearchingForOrders } from './components/SearchingForOrders';
@@ -33,6 +33,26 @@ import { MaintenanceBanner } from './components/MaintenanceBanner';
 import { useActiveMsToday } from '../../hooks/useActiveMsToday';
 import { formatDurationShort, isToday, todayLabel } from '../../utils/date';
 import type { AppStackParamList, AppTabParamList } from '../../navigation/types';
+import type { AcceptDispatchOfferResult, DispatchOffer } from '../../api/dispatch';
+import type { RiderOrder } from '../../data/mockOrders';
+
+// ponytail: __DEV__-only sample offer for the "Test" button below — lets us
+// pop the full-screen new-order UI without a live dispatch. coords null →
+// static map preview skipped, so it renders in Expo Go too. Delete the const,
+// the Test button, and the modal render before shipping.
+const DEMO_OFFER: DispatchOffer = {
+  orderId: 'demo-1',
+  orderNumber: 'FLK-24817',
+  storeName: 'Sri Ganesh Kirana',
+  payout: 35,
+  pickupKm: 1.4,
+  storeToDropKm: 2.7,
+  totalKm: 4.1,
+  dropLabel: 'Near Kaup Beach Rd',
+  itemCount: 6,
+  storeCoords: { latitude: 13.2167, longitude: 74.7469 },
+  dropCoords: { latitude: 13.2231, longitude: 74.7512 },
+};
 
 // Same page + earnings card as OfflineHomeScreen (one visual language across
 // shift states); online adds the things that only make sense on-shift —
@@ -65,6 +85,73 @@ export function HomeScreen() {
   const todayTips = todayOrders.reduce((sum, order) => sum + (order.tip ?? 0), 0);
   const activeMs = useActiveMsToday();
   const [filter, setFilter] = useState<DeliveryFilter>('active');
+  // ponytail: __DEV__-only, drives the "Test" button's full-screen offer popup.
+  const [demoOffer, setDemoOffer] = useState<DispatchOffer | null>(null);
+
+  // ponytail: __DEV__-only. demo-1 has no backend row, so the real acceptOffer
+  // always 409s ("someone else got there first"). This fakes a WON accept so
+  // the accept→active premium card can be previewed without a live packed
+  // order. Delete with DEMO_OFFER + the Test button before shipping.
+  const acceptDemoOffer = async (): Promise<AcceptDispatchOfferResult> => {
+    if (!demoOffer) return { ok: false, alreadyTaken: false, message: 'no offer' };
+    const o = demoOffer;
+    const active: RiderOrder = {
+      id: o.orderId,
+      orderNumber: o.orderNumber,
+      status: 'assigned',
+      storeName: o.storeName,
+      storeAddress: 'Kaup Market Rd',
+      storeCoords: o.storeCoords ?? { latitude: 13.2167, longitude: 74.7469 },
+      customerName: 'Deepak Shetty',
+      customerAddress: o.dropLabel,
+      customerCoords: o.dropCoords ?? { latitude: 13.2231, longitude: 74.7512 },
+      customerPhone: '+919000000000',
+      itemCount: o.itemCount,
+      items: [{ name: 'Demo items', quantity: o.itemCount }],
+      distanceKm: o.totalKm,
+      payout: o.payout,
+      baseFare: 15,
+      distanceFare: Math.max(0, o.payout - 15),
+      surge: 0,
+      placedAt: new Date().toISOString(),
+    };
+    useRiderOrdersStore.setState((s) => ({ activeOrders: [active, ...s.activeOrders] }));
+    setFilter('active');
+    setDemoOffer(null);
+    return { ok: true };
+  };
+
+  // ponytail: __DEV__-only. Seeds a picked_up demo order and jumps straight to
+  // DeliveryNavigation so the drop-nav UI can be iterated on without walking
+  // the whole accept→pickup→verify flow every reload. Delete with the button
+  // below before shipping.
+  const openDemoDelivery = () => {
+    const id = 'demo-del-1';
+    const active: RiderOrder = {
+      id,
+      orderNumber: 'FLK-24999',
+      status: 'picked_up',
+      storeName: 'Sri Ganesh Kirana',
+      storeAddress: 'Kaup Market Rd',
+      storeCoords: { latitude: 13.2167, longitude: 74.7469 },
+      customerName: 'Asha Kamath',
+      customerAddress: 'Near City Centre, Manipal',
+      customerCoords: { latitude: 13.3524, longitude: 74.7868 },
+      customerPhone: '+919000000000',
+      itemCount: 6,
+      items: [{ name: 'Demo items', quantity: 6 }],
+      distanceKm: 4.1,
+      payout: 35,
+      baseFare: 15,
+      distanceFare: 20,
+      surge: 0,
+      placedAt: new Date().toISOString(),
+    };
+    useRiderOrdersStore.setState((s) => ({
+      activeOrders: [active, ...s.activeOrders.filter((o) => o.id !== id)],
+    }));
+    navigation.navigate('DeliveryNavigation', { orderId: id });
+  };
 
   const showActive = filter === 'all' || filter === 'active';
   const showCompleted = filter === 'all' || filter === 'completed';
@@ -89,6 +176,34 @@ export function HomeScreen() {
       {/* Same header as the offline home — only the pill flips to "Online"
           (→ goOffline). */}
       <RiderHomeHeader isOnline={isOnline} />
+
+      {/* ponytail: __DEV__-only test trigger for the full-screen new-order
+          popup. Remove with DEMO_OFFER + the modal render before shipping. */}
+      {__DEV__ ? (
+        <Pressable
+          onPress={() => setDemoOffer(DEMO_OFFER)}
+          className="items-center justify-center rounded-full border border-dashed py-3"
+          style={{ borderColor: colors.lime }}
+        >
+          <Text className="text-[14px] font-bold" style={{ color: colors.limeDeep }}>
+            🧪 Test: New Order Popup
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {/* ponytail: __DEV__-only jump straight to the drop-nav UI with dummy
+          data. Remove with openDemoDelivery before shipping. */}
+      {__DEV__ ? (
+        <Pressable
+          onPress={openDemoDelivery}
+          className="items-center justify-center rounded-full border border-dashed py-3"
+          style={{ borderColor: colors.coral }}
+        >
+          <Text className="text-[14px] font-bold" style={{ color: colors.coral }}>
+            🧪 Test: Delivery Nav UI
+          </Text>
+        </Pressable>
+      ) : null}
 
       {/* Today's earnings hero — identical card to the offline home, with a
           third column for on-shift Tips. Tap → Earnings tab. */}
@@ -185,7 +300,29 @@ export function HomeScreen() {
             {showActive && activeOrders.length > 0 ? (
               <View className="gap-2.5">
                 {activeOrders.map((order) => (
-                  <ActiveDeliveryCard key={order.id} order={order} onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })} />
+                  <ActiveDeliveryCard
+                    key={order.id}
+                    order={order}
+                    onPress={() => {
+                      // 'assigned' → full-screen store-pickup nav (pickup leg).
+                      // 'picked_up' with the whole trip picked up → the drop
+                      // nav (customer map + maps hand-off). A picked_up leg
+                      // that still has siblings awaiting pickup, or the OTP
+                      // leg (arrived_at_customer), → OrderDetail.
+                      if (order.status === 'assigned') {
+                        navigation.navigate('PickupNavigation', { orderId: order.id });
+                        return;
+                      }
+                      const hasUnpickedSibling =
+                        !!order.tripId &&
+                        activeOrders.some((o) => o.tripId === order.tripId && o.id !== order.id && o.status === 'assigned');
+                      if (order.status === 'picked_up' && !hasUnpickedSibling) {
+                        navigation.navigate('DeliveryNavigation', { orderId: order.id });
+                      } else {
+                        navigation.navigate('OrderDetail', { orderId: order.id });
+                      }
+                    }}
+                  />
                 ))}
               </View>
             ) : null}
@@ -210,6 +347,10 @@ export function HomeScreen() {
           </View>
         )}
       </View>
+
+      {/* ponytail: __DEV__-only — the Test button's premium white bottom sheet.
+          Remove with DEMO_OFFER + the Test button before shipping. */}
+      <DispatchOfferSheet offer={demoOffer} onAccept={acceptDemoOffer} onClose={() => setDemoOffer(null)} windowSeconds={30 * 60} />
     </ScrollView>
   );
 }

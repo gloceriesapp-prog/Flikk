@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dispatch Offer</title>
+<style>
+  :root {
+    --lime: #A8D93A; --ink: #101C10; --blue: #3B82F6; --coral: #FF6B4A;
+    --mist: #F6FAF0; --page: #F1F2F4;
+    --card-fill: #FFFFFF0D; --card-fill2: #FFFFFF08;
+  }
+  :root:not([data-theme="light"]) { color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { } }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; justify-content: center; padding: 24px 16px;
+    min-height: 100vh; font-variant-numeric: tabular-nums;
+  }
+  .phone { width: 100%; max-width: 380px; }
+  .label { font-size: 12px; font-weight: 700; color: #101C10; opacity: .5; margin: 4px 0 12px; text-transform: none; }
+
+  .card {
+    background: var(--ink); border-radius: 24px; padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+    box-shadow: 0 12px 30px rgba(16,28,16,.18);
+  }
+
+  /* header */
+  .header { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .ring { width: 56px; height: 56px; position: relative; display: grid; place-items: center; }
+  .ring svg { position: absolute; transform: rotate(-90deg); }
+  .ring .secs { font-size: 15px; font-weight: 800; color: var(--lime); }
+  .title { font-size: 17px; font-weight: 800; color: #fff; }
+  .ordno { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.4); }
+
+  /* route */
+  .route { background: var(--card-fill); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .stop { display: flex; align-items: center; gap: 12px; }
+  .pin { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
+  .pin svg { width: 16px; height: 16px; }
+  .stop .txt { flex: 1; min-width: 0; }
+  .stop .name { font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stop .sub { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.5); }
+  .connector { width: 1px; height: 12px; background: #FFFFFF22; margin-left: 17px; }
+
+  /* tiles */
+  .tiles { display: flex; gap: 10px; }
+  .tile { flex: 1; background: var(--card-fill); border-radius: 16px; padding: 12px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .tile svg { width: 18px; height: 18px; }
+  .tile .val { font-size: 15px; font-weight: 700; color: #fff; }
+  .tile .cap { font-size: 11px; font-weight: 500; color: rgba(255,255,255,.45); }
+
+  /* meta */
+  .meta { display: flex; justify-content: center; gap: 16px; }
+  .meta .item { display: flex; align-items: center; gap: 6px; }
+  .meta svg { width: 14px; height: 14px; }
+  .meta span { font-size: 13px; font-weight: 500; color: rgba(255,255,255,.7); }
+
+  /* map preview */
+  .map { height: 128px; border-radius: 16px; overflow: hidden; background: var(--mist); position: relative; }
+  .map svg { width: 100%; height: 100%; display: block; }
+
+  /* buttons */
+  .actions { display: flex; flex-direction: column; gap: 10px; }
+  .accept { height: 56px; border-radius: 999px; background: var(--lime); border: none; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+  .accept svg { width: 18px; height: 18px; }
+  .accept span { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .decline { height: 48px; border-radius: 999px; background: transparent; border: 1px solid #FFFFFF33; color: rgba(255,255,255,.8); font-size: 15px; font-weight: 700; cursor: pointer; }
+  .icon-stroke { stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="label">Pickups near you</div>
+  <div class="card">
+    <!-- header -->
+    <div class="header">
+      <div class="ring">
+        <svg width="56" height="56">
+          <circle cx="28" cy="28" r="26" stroke="#FFFFFF22" stroke-width="4" fill="none"/>
+          <circle cx="28" cy="28" r="26" stroke="#A8D93A" stroke-width="4" fill="none"
+            stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="41"/>
+        </svg>
+        <div class="secs">22s</div>
+      </div>
+      <div class="title">New Delivery Order</div>
+      <div class="ordno">FLK-24817</div>
+    </div>
+
+    <!-- route -->
+    <div class="route">
+      <div class="stop">
+        <div class="pin" style="background:#A8D93A">
+          <svg viewBox="0 0 24 24"><path class="icon-stroke" stroke="#fff" d="M4 9l1-4h14l1 4M4 9v10h16V9M4 9h16M9 19v-5h6v5"/></svg>
+        </div>
+        <div class="txt">
+          <div class="name">Sri Ganesh Kirana</div>
+          <div class="sub">Pickup · 1.4 km (5 min)</div>
+        </div>
+      </div>
+      <div class="connector"></div>
+      <div class="stop">
+        <div class="pin" style="background:#3B82F6">
+          <svg viewBox="0 0 24 24"><path class="icon-stroke" stroke="#fff" d="M12 21s7-5.5 7-11a7 7 0 10-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5" stroke="#fff" fill="none" stroke-width="2"/></svg>
+        </div>
+        <div class="txt">
+          <div class="name">Near Kaup Beach Rd</div>
+          <div class="sub">Drop · 2.7 km (9 min)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- tiles -->
+    <div class="tiles">
+      <div class="tile">
+        <svg viewBox="0 0 24 24"><path class="icon-stroke" stroke="#FFFFFFB3" d="M6 19a2 2 0 100-4 2 2 0 000 4zM18 9a2 2 0 100-4 2 2 0 000 4zM8 17h6a3 3 0 003-3V9M8 17a3 3 0 01-3-3V9"/></svg>
+        <div class="val">4.1 km</div>
+        <div class="cap">Total distance</div>
+      </div>
+      <div class="tile">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" class="icon-stroke" stroke="#FFFFFFB3"/><path class="icon-stroke" stroke="#FFFFFFB3" d="M12 7v5l3 2"/></svg>
+        <div class="val">14 min</div>
+        <div class="cap">Est. time</div>
+      </div>
+      <div class="tile">
+        <svg viewBox="0 0 24 24"><path class="icon-stroke" stroke="#FFFFFFB3" d="M9 3h6l-1 3H10zM7 6h10l2 13a2 2 0 01-2 2H7a2 2 0 01-2-2z"/><path class="icon-stroke" stroke="#FFFFFFB3" d="M12 11v5M10 13h4"/></svg>
+        <div class="val">₹35</div>
+        <div class="cap">Est. earning</div>
+      </div>
+    </div>
+
+    <!-- meta -->
+    <div class="meta">
+      <div class="item">
+        <svg viewBox="0 0 24 24"><path class="icon-stroke" stroke="#FFFFFF99" d="M12 2l8 4v8l-8 4-8-4V6zM4 6l8 4 8-4M12 10v8"/></svg>
+        <span>6 items</span>
+      </div>
+      <div class="item">
+        <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" class="icon-stroke" stroke="#FFFFFF99"/><path class="icon-stroke" stroke="#FFFFFF99" d="M3 10h18"/></svg>
+        <span>Cashless payment</span>
+      </div>
+    </div>
+
+    <!-- map preview -->
+    <div class="map">
+      <svg viewBox="0 0 340 128" preserveAspectRatio="xMidYMid slice">
+        <rect width="340" height="128" fill="#E8EEE0"/>
+        <path d="M0 40 H340 M0 88 H340 M90 0 V128 M230 0 V128" stroke="#D3DCC6" stroke-width="2"/>
+        <line x1="80" y1="88" x2="250" y2="40" stroke="#3B82F6" stroke-width="3" stroke-dasharray="8 6"/>
+        <circle cx="80" cy="88" r="14" fill="#A8D93A" stroke="#fff" stroke-width="2"/>
+        <circle cx="250" cy="40" r="14" fill="#3B82F6" stroke="#fff" stroke-width="2"/>
+      </svg>
+    </div>
+
+    <!-- actions -->
+    <div class="actions">
+      <button class="accept">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" class="icon-stroke" stroke="#101C10"/><path class="icon-stroke" stroke="#101C10" d="M8 12l3 3 5-6"/></svg>
+        <span>ACCEPT</span>
+      </button>
+      <button class="decline">DECLINE</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

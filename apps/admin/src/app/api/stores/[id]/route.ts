@@ -15,6 +15,7 @@ interface StoreUpdateInput {
   isActive?: boolean;
   lat?: number | null;
   lng?: number | null;
+  deliveryRadiusKm?: number | null;
 }
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/stores/[id]'>) {
@@ -30,6 +31,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/stores/[id
     if (body.isActive !== undefined) patch.is_active = body.isActive;
     if (body.lat !== undefined) patch.lat = body.lat;
     if (body.lng !== undefined) patch.lng = body.lng;
+    if (body.deliveryRadiusKm !== undefined) patch.delivery_radius_km = body.deliveryRadiusKm;
 
     const { data, error } = await supabaseAdmin.from('stores').update(patch).eq('id', id).select(STORE_SELECT).single();
     if (error) throw error;

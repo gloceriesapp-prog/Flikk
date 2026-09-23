@@ -150,6 +150,11 @@ export interface Store {
   // hand instead of hand-writing a SQL UPDATE.
   lat?: number;
   lng?: number;
+  // Max delivery distance (km) from this store's pin — the cutoff GET
+  // /stores/nearest and /serviceability compare haversine distance against.
+  // Undefined = use backend's global DEFAULT_RADIUS_KM (12). Founder overrides
+  // per store here (migration 048).
+  deliveryRadiusKm?: number;
 }
 
 export type NewStoreInput = Omit<Store, 'id' | 'zone' | 'isActive' | 'joinedAt'>;

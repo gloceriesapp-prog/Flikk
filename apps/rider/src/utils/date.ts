@@ -36,6 +36,18 @@ export function todayLabel(): string {
   return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 
+// "9:05 PM" — clock time of an ISO instant, hand-formatted (Hermes has no
+// full ICU, so no Intl locale strings). Used on the delivery history card
+// to show when a drop was completed.
+export function formatTimeShort(iso: string): string {
+  const d = new Date(iso);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+}
+
 // "0m" / "45m" / "2h 15m" — how long the rider has been online this
 // session (Home's "Online for" card). Minutes only below an hour, same
 // "don't show a unit that's always zero" logic as

@@ -251,6 +251,16 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
         nextActive.push({ ...order, status: effectiveStatus });
       }
 
+      // ponytail: __DEV__ demo orders (id 'demo-…', from the Test button's
+      // acceptDemoOffer) have no server row, so this poll would drop them on
+      // the next cycle. Pin them so the accept→active preview survives. Real
+      // assignments never use this prefix. Delete with the Test button.
+      if (__DEV__) {
+        for (const o of state.activeOrders) {
+          if (o.id.startsWith('demo-') && !nextActive.some((n) => n.id === o.id)) nextActive.push(o);
+        }
+      }
+
       set({
         activeOrders: nextActive,
         completedOrders: newlyDelivered.length ? [...newlyDelivered, ...state.completedOrders] : state.completedOrders,

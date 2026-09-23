@@ -29,7 +29,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Location01Icon, Navigation03Icon } from '@hugeicons/core-free-icons';
+import { Location01Icon, Navigation03Icon, Store01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { GRAYSCALE_MAP_STYLE } from '../../../location/mapStyle';
@@ -42,18 +42,26 @@ const DELTA = 0.01;
 const FOLLOW_ZOOM = 17;
 
 interface Props {
-  customerCoords: Coordinates;
+  // The fixed point the rider is heading to — a store (pickup leg) or the
+  // customer (drop leg). destinationKind only changes the pin's look/tint,
+  // not the follow-camera behaviour.
+  destination: Coordinates;
+  destinationKind?: 'store' | 'customer';
   // Card view (default): h-64 rounded corners, embedded in a scroll list.
   // Full-screen: absolute-fills its parent, edge to edge — the Uber-style
-  // "map is the screen" layout, with the rest of OrderDetailScreen's
-  // arrived_at_customer UI floating on top of it.
+  // "map is the screen" layout, with the rest of the screen's UI floating
+  // on top of it.
   fullScreen?: boolean;
+  // Fired on every real GPS fix so a parent can show live distance/ETA to
+  // the destination without opening a second location watcher.
+  onRiderMove?: (coords: Coordinates) => void;
 }
 
-export function DeliveryMapView({ customerCoords, fullScreen }: Props) {
+export function DeliveryMapView({ destination, destinationKind = 'customer', fullScreen, onRiderMove }: Props) {
   const mapRef = useRef<MapView>(null);
   const [riderCoords, setRiderCoords] = useState<Coordinates | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const isStore = destinationKind === 'store';
 
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
@@ -62,6 +70,7 @@ export function DeliveryMapView({ customerCoords, fullScreen }: Props) {
     watchRiderLocation((coords) => {
       if (cancelled) return;
       setRiderCoords(coords);
+      onRiderMove?.(coords);
     }).then((sub) => {
       if (cancelled) {
         sub?.remove();
@@ -75,6 +84,9 @@ export function DeliveryMapView({ customerCoords, fullScreen }: Props) {
       cancelled = true;
       subscription?.remove();
     };
+    // onRiderMove intentionally excluded — a parent passing an inline fn
+    // must not tear down and re-open the GPS watcher on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Every fix (not just the first) smoothly re-centers + re-rotates the
@@ -111,21 +123,27 @@ export function DeliveryMapView({ customerCoords, fullScreen }: Props) {
         style={{ flex: 1 }}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         customMapStyle={Platform.OS === 'android' ? GRAYSCALE_MAP_STYLE : undefined}
-        initialRegion={{ ...(riderCoords ?? customerCoords), latitudeDelta: DELTA, longitudeDelta: DELTA }}
+        initialRegion={{ ...(riderCoords ?? destination), latitudeDelta: DELTA, longitudeDelta: DELTA }}
       >
         {riderCoords ? (
           <Polyline
-            coordinates={[riderCoords, customerCoords]}
-            strokeColor={colors.coral}
+            coordinates={[riderCoords, destination]}
+            strokeColor={isStore ? colors.limeDeep : colors.coral}
             strokeWidth={3}
             lineDashPattern={[8, 6]}
           />
         ) : null}
 
-        <Marker coordinate={customerCoords} anchor={{ x: 0.5, y: 0.5 }}>
-          <View className="h-8 w-8 items-center justify-center rounded-full border-[3px] border-white bg-coral shadow-sm shadow-black/20">
-            <AppIcon icon={Location01Icon} size={14} color="#FFFFFF" />
-          </View>
+        <Marker coordinate={destination} anchor={{ x: 0.5, y: 0.5 }}>
+          {isStore ? (
+            <View className="h-8 w-8 items-center justify-center rounded-full border-[3px] border-white bg-lime-deep shadow-sm shadow-black/20">
+              <AppIcon icon={Store01Icon} size={14} color="#FFFFFF" />
+            </View>
+          ) : (
+            <View className="h-8 w-8 items-center justify-center rounded-full border-[3px] border-white bg-coral shadow-sm shadow-black/20">
+              <AppIcon icon={Location01Icon} size={14} color="#FFFFFF" />
+            </View>
+          )}
         </Marker>
 
         {riderCoords ? (

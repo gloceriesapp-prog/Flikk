@@ -49,16 +49,16 @@ const NEXT_ACTION_LABEL: Record<Exclude<RiderOrder['status'], 'delivered' | 'can
 
 export function OrderDetailScreen({ route, navigation }: Props) {
   const { orderId } = route.params;
-  const order = useRiderOrdersStore((s) => s.activeOrders.find((o) => o.id === orderId));
+  // Select the stable-ref activeOrders array and derive order/siblings from
+  // it — a selector that returns a fresh .find()/.filter() result every
+  // render makes zustand's useSyncExternalStore loop ("getSnapshot should be
+  // cached" → max update depth). Deriving below is plain render-time work.
+  const activeOrders = useRiderOrdersStore((s) => s.activeOrders);
+  const order = activeOrders.find((o) => o.id === orderId);
   // Every other active leg of the same multi-store trip (backend's own
   // trip_id — RiderOrder.tripId's note) — same customer/drop address,
-  // different store each. Empty for the common single-store order. Kept
-  // as a hook call before the early `if (!order)` return below (order can
-  // be undefined on that render), same rule every other hook in this
-  // component already follows.
-  const siblingLegs = useRiderOrdersStore((s) =>
-    order?.tripId ? s.activeOrders.filter((o) => o.tripId === order.tripId && o.id !== order.id) : [],
-  );
+  // different store each. Empty for the common single-store order.
+  const siblingLegs = order?.tripId ? activeOrders.filter((o) => o.tripId === order.tripId && o.id !== order.id) : [];
   const advanceOrderStatus = useRiderOrdersStore((s) => s.advanceOrderStatus);
   const cancelOrder = useRiderOrdersStore((s) => s.cancelOrder);
   const [otpVisible, setOtpVisible] = useState(false);
@@ -140,7 +140,12 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   // regardless of what THIS one leg's own status says.
   const allLegsPickedUp = unpickedSiblings.length === 0;
 
-  if ((order.status === 'picked_up' || isAtCustomer) && allLegsPickedUp) {
+  // Only the final OTP-verify leg (arrived_at_customer) renders the inline
+  // map now — the picked_up "heading to the drop" map moved to its own
+  // DeliveryNavigationScreen (the customer twin of PickupNavigation). This
+  // screen is still reachable while picked_up (its chevron/back), so the
+  // scroll branch below handles that case with a "Continue to customer" bar.
+  if (isAtCustomer && allLegsPickedUp) {
     // Full-screen, Uber-style navigating view: the map IS the screen the
     // instant the rider's got the order — no intermediate route-card/fare
     // list screen to tap through first. Shared by picked_up (heading to
@@ -155,7 +160,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
 
     return (
       <View className="flex-1 bg-white">
-        <DeliveryMapView customerCoords={order.customerCoords} fullScreen />
+        <DeliveryMapView destination={order.customerCoords} destinationKind="customer" fullScreen />
 
         <View className="absolute inset-x-4 top-safe-offset-4 flex-row items-center justify-between">
           <Pressable
@@ -405,10 +410,20 @@ export function OrderDetailScreen({ route, navigation }: Props) {
       <View className="border-t border-mist bg-white px-5 pb-safe-offset-4 pt-4">
         {order.status === 'assigned' ? (
           // Still 'assigned' only now — picked_up-and-done legs fall
-          // through to either the full-screen map above (every leg
-          // collected) or the "waiting" state below (siblings still
+          // through to the "Continue to customer" bar below (every leg
+          // collected → drop nav) or the "waiting" state (siblings still
           // pending), never back to this slide button a second time.
           <SlideToConfirmButton label={NEXT_ACTION_LABEL.assigned} successLabel="Heading to customer" onConfirm={handlePrimaryAction} />
+        ) : allLegsPickedUp ? (
+          // Whole trip picked up — the real next step is the drop-leg map
+          // (DeliveryNavigation). Coral CTA per CLAUDE.md.
+          <Pressable
+            onPress={() => navigation.navigate('DeliveryNavigation', { orderId })}
+            className="h-14 items-center justify-center rounded-2xl"
+            style={({ pressed }) => ({ backgroundColor: colors.coral, opacity: pressed ? 0.85 : 1 })}
+          >
+            <Text className="text-[15px] font-bold text-white">Continue to customer</Text>
+          </Pressable>
         ) : (
           // Picked up here, but a sibling store isn't ready yet — nothing
           // to confirm at THIS screen right now; the rider's real next

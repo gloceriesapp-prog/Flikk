@@ -6,6 +6,9 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
 import { OrderDetailScreen } from '../screens/orders/OrderDetailScreen';
+import { PickupNavigationScreen } from '../screens/orders/PickupNavigationScreen';
+import { PickupVerificationScreen } from '../screens/orders/PickupVerificationScreen';
+import { DeliveryNavigationScreen } from '../screens/orders/DeliveryNavigationScreen';
 import { RiderDocumentsScreen } from '../screens/profile/RiderDocumentsScreen';
 import type { AppStackParamList } from './types';
 
@@ -15,6 +18,9 @@ export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Tabs">
       <Stack.Screen name="Tabs" component={TabNavigator} />
+      <Stack.Screen name="PickupNavigation" component={PickupNavigationScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="PickupVerification" component={PickupVerificationScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="DeliveryNavigation" component={DeliveryNavigationScreen} options={{ presentation: 'card' }} />
       {/* gestureEnabled off — OrderDetailScreen's SlideToConfirmButton is a
           horizontal drag too, and it was fighting iOS's edge-swipe-back
           gesture (dragging the knob dragged the whole screen back along
