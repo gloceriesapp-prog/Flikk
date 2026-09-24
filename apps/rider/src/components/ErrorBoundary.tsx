@@ -8,7 +8,7 @@
 // case the terminal isn't handy.
 
 import { Component, type ReactNode } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text } from 'react-native';
 
 interface Props {
   children: ReactNode;
@@ -42,6 +42,14 @@ export class ErrorBoundary extends Component<Props, State> {
           <Text style={{ color: '#FFFFFF', fontFamily: 'Courier', fontSize: 12 }}>
             {this.state.componentStack ?? 'No component stack available.'}
           </Text>
+          {/* Reset so a transient error (e.g. a Fast Refresh context blip in
+              dev) is recoverable without a full app kill. */}
+          <Pressable
+            onPress={() => this.setState({ error: null, componentStack: null })}
+            style={{ marginTop: 24, alignSelf: 'flex-start', backgroundColor: '#FF6B4A', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 }}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Try again</Text>
+          </Pressable>
         </ScrollView>
       );
     }

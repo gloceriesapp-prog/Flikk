@@ -1,16 +1,15 @@
-// Rider account screen — restyled to the mockups' Swiggy-style layout: a
-// tinted header (name/phone left, avatar right, Help pill), a vehicle card,
-// an app-version card, three quick-action tiles, a Documents status row,
-// then one menu list of rows (icon · label · value · chevron). White page,
-// border-only cards.
+// Rider account screen — white (#fbfbfb) page, border-only rounded-16 cards.
+// Top bar: back (white circle + shadow) left, "Profile" centered, Help right.
+// Below: name/phone + avatar, a vehicle card, an app-version card, the
+// performance row, a Documents status row, then one menu list of rows (icon ·
+// label · value · chevron). No brand-green surfaces — neutral gray + ink only.
 //
 // Real data: GET /rider/profile (name / phone / riderCode / vehicle / docs
-// / payout). Rows wire to real actions where a feature exists — Support
-// (tel/mail), Emergency SOS (rider's emergency contact), Wallet (Earnings
-// tab), Documents (masked summary). Language / Preferred radius / Shift &
-// availability / Insurance / Settings have NO backend yet: they surface
-// honest info/"coming soon" alerts, never fabricated status values
-// (Insurance especially never claims "Active").
+// / payout). Every row wires to a real action — Support (tel/mail),
+// Emergency SOS (rider's emergency contact), Shift & availability (points to
+// Home's online toggle), Wallet (Earnings tab), Payout method, Documents.
+// Placeholder "coming soon" rows (Language / Radius / Insurance / Settings)
+// were removed — they'll return as real features, not fake status.
 
 import { Alert, ActivityIndicator, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useState } from 'react';
@@ -21,18 +20,13 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Alert02Icon,
-  ArrowRight01Icon,
-  Call02Icon,
+  ArrowLeft01Icon,
   Clock01Icon,
   CustomerService01Icon,
-  GlobalIcon,
-  GpsSignal01Icon,
   IdentityCardIcon,
   Logout01Icon,
   MessageQuestionIcon,
   Motorbike01Icon,
-  Settings01Icon,
-  Shield01Icon,
   ShieldCheckIcon,
   SmartPhone01Icon,
   UserIcon,
@@ -56,7 +50,6 @@ type ProfileNav = CompositeNavigationProp<
   NativeStackNavigationProp<AppStackParamList>
 >;
 
-const HEADER_BG = colors.limeSoft; // on-brand tinted header (not Swiggy blue)
 const CARD_BORDER = '#EAECEE';
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -81,6 +74,13 @@ export function ProfileScreen() {
   const displayPhone = profile?.phone ?? '—';
   const initial = displayName.charAt(0).toUpperCase();
 
+  // Profile is a tab root — a back arrow there usually has nowhere to pop, so
+  // fall back to the Home tab rather than dead-tap.
+  function goBack() {
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('Home');
+  }
+
   function callSupport() {
     void Linking.openURL(`tel:${SUPPORT_PHONE}`);
   }
@@ -103,10 +103,6 @@ export function ProfileScreen() {
     }
   }
 
-  function comingSoon(feature: string) {
-    Alert.alert(feature, `${feature} isn't available yet — it's coming in a future update.`);
-  }
-
   function handleLogout() {
     Alert.alert('Log out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
@@ -127,45 +123,59 @@ export function ProfileScreen() {
 
   if (isLoading && !profile) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator color={colors.limeDeep} />
+      <View className="flex-1 items-center justify-center bg-[#fbfbfb]">
+        <ActivityIndicator color={colors.ink} />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <ScrollView contentContainerClassName="pb-10" showsVerticalScrollIndicator={false}>
-        {/* Tinted header — name/phone left, avatar right, Help pill (img #25). */}
-        <View className="px-5 pb-6 pt-safe-offset-3" style={{ backgroundColor: HEADER_BG }}>
-          <View className="flex-row items-start justify-between">
-            <Text className="text-[20px] font-bold text-ink">Profile</Text>
+    <View className="flex-1 bg-[#fbfafa]">
+      <ScrollView contentContainerClassName="pb-28" showsVerticalScrollIndicator={false}>
+        <View className="px-5 pb-6 pt-safe-offset-3">
+          {/* Top bar — back · Profile centered · Support. Flat #F1F1F4 circles
+              to match the menu-row icon chips. */}
+          <View className="flex-row items-center">
+            <Pressable
+              onPress={goBack}
+              hitSlop={8}
+              className="h-11 w-11 items-center justify-center rounded-full bg-[#F1F1F4]"
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            >
+              <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+            </Pressable>
+            <Text className="flex-1 text-center text-[18px] font-semibold text-ink">Profile</Text>
             <Pressable
               onPress={callSupport}
-              className="rounded-full border border-lime-deep/40 bg-white px-4 py-1.5"
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              hitSlop={8}
+              className="h-11 w-11 items-center justify-center rounded-full bg-[#F1F1F4]"
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             >
-              <Text className="text-[13px] font-bold" style={{ color: colors.limeDeep }}>Help</Text>
+              <AppIcon icon={CustomerService01Icon} size={22} color={colors.ink} />
             </Pressable>
           </View>
 
-          <View className="mt-5 flex-row items-center justify-between">
-            <View className="flex-1 pr-4">
-              <Text className="text-[24px] font-extrabold text-ink" numberOfLines={1}>{displayName}</Text>
-              <Text className="mt-1 text-[15px] font-semibold text-ink/70" style={{ fontVariant: ['tabular-nums'] }}>{displayPhone}</Text>
-              {profile?.riderCode && (
-                <View className="mt-2 self-start rounded-full bg-white/70 px-3 py-1">
-                  <Text className="text-[12px] font-bold text-ink/55">ID · {profile.riderCode}</Text>
-                </View>
-              )}
-            </View>
-            <View className="h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white">
+          {/* Centered identity — avatar, then name, phone, id stacked below. */}
+          <View className="mt-6 items-center">
+            <View
+              className="h-[92px] w-[92px] items-center justify-center overflow-hidden rounded-full border bg-white"
+              style={{ borderColor: CARD_BORDER }}
+            >
               {profile?.photoUrl ? (
                 <Image source={{ uri: profile.photoUrl }} className="h-full w-full" resizeMode="cover" />
               ) : displayName !== 'Rider' ? (
-                <Text className="text-[28px] font-extrabold" style={{ color: colors.limeDeep }}>{initial}</Text>
+                <Text className="text-[36px] font-medium text-ink">{initial}</Text>
               ) : (
-                <AppIcon icon={UserIcon} size={34} color={colors.limeDeep} />
+                <AppIcon icon={UserIcon} size={44} color={colors.ink} />
+              )}
+            </View>
+            <Text className="mt-4 text-[22px] font-semibold text-ink" numberOfLines={1}>{displayName}</Text>
+            <View className="mt-1 flex-row items-center gap-2">
+              <Text className="text-[15px] font-semibold text-ink/70" style={{ fontVariant: ['tabular-nums'] }}>{displayPhone}</Text>
+              {profile?.riderCode && (
+                <View className="rounded-full border px-3 py-1" style={{ borderColor: CARD_BORDER }}>
+                  <Text className="text-[12px] font-bold text-ink/55">ID · {profile.riderCode}</Text>
+                </View>
               )}
             </View>
           </View>
@@ -183,35 +193,25 @@ export function ProfileScreen() {
           <PerformanceRow stats={stats} />
 
           {/* Documents status row → dedicated read-only page. */}
-          <View className="rounded-2xl border px-2" style={{ borderColor: CARD_BORDER }}>
-            <MenuRow icon={ShieldCheckIcon} label="Documents" value="View" onPress={() => navigation.navigate('RiderDocuments')} last />
+          <View>
+            <MenuRow icon={ShieldCheckIcon} label="Documents" onPress={() => navigation.navigate('RiderDocuments')} />
           </View>
 
-          {/* Menu list — wireframe order. Real actions where they exist;
-              honest "coming soon" for features with no backend yet. */}
-          <View className="rounded-2xl border px-2" style={{ borderColor: CARD_BORDER }}>
-            <MenuRow icon={GlobalIcon} label="Language" value="English" onPress={() => comingSoon('More languages')} />
-            <MenuRow icon={GpsSignal01Icon} label="Preferred radius" value="Auto" onPress={() => comingSoon('Radius control')} />
+          {/* Menu list — every row is a real wired action. */}
+          <View>
             <MenuRow icon={Clock01Icon} label="Shift & availability" onPress={() => Alert.alert('Availability', 'Go online or offline from the Home screen.')} />
             <MenuRow icon={CustomerService01Icon} label="Support" onPress={callSupport} />
             <MenuRow icon={Alert02Icon} label="Emergency SOS" danger onPress={emergencySos} />
-            <MenuRow icon={Shield01Icon} label="Insurance" onPress={() => comingSoon('Rider insurance')} />
             <MenuRow icon={Wallet01Icon} label="Wallet & payouts" onPress={() => navigation.navigate('Earnings')} />
             <MenuRow icon={IdentityCardIcon} label="Payout method" onPress={() => setEditingPayout(true)} />
-            <MenuRow icon={Settings01Icon} label="Settings" onPress={() => comingSoon('Settings')} />
-            <MenuRow icon={MessageQuestionIcon} label="Report a problem" onPress={reportProblem} last />
+            <MenuRow icon={MessageQuestionIcon} label="Report a problem" onPress={reportProblem} />
+            <MenuRow icon={Logout01Icon} label="Log out" danger onPress={handleLogout} />
           </View>
 
-          <Pressable
-            onPress={handleLogout}
-            className="mt-1 flex-row items-center justify-center gap-2 rounded-2xl border py-3.5"
-            style={({ pressed }) => ({ borderColor: CARD_BORDER, opacity: pressed ? 0.6 : 1 })}
-          >
-            <AppIcon icon={Logout01Icon} size={18} color={colors.danger} />
-            <Text className="text-[15px] font-bold" style={{ color: colors.danger }}>Log out</Text>
-          </Pressable>
-
-          <Text className="mt-3 text-center text-[12px] font-medium text-ink/35">Flikk Rider · v{APP_VERSION}</Text>
+          <View className="mt-6 items-center gap-1">
+            <Text className="text-[13px] font-semibold text-ink/40" style={{ fontVariant: ['tabular-nums'] }}>v{APP_VERSION}</Text>
+            <Text className="text-[12px] font-medium text-ink/35">Made with ❤️ in Udupi</Text>
+          </View>
         </View>
       </ScrollView>
 
@@ -222,13 +222,13 @@ export function ProfileScreen() {
 
 function InfoCard({ icon, label, value }: { icon: IconSvgElement; label: string; value: string }) {
   return (
-    <View className="flex-row items-center gap-3 rounded-2xl border px-4 py-3.5" style={{ borderColor: CARD_BORDER }}>
-      <View className="h-11 w-11 items-center justify-center rounded-full bg-lime-soft">
-        <AppIcon icon={icon} size={20} color={colors.limeDeep} />
+    <View className="flex-row items-center gap-3 rounded-[16px] border px-4 py-3.5" style={{ borderColor: CARD_BORDER }}>
+      <View className="h-11 w-11 items-center justify-center">
+        <AppIcon icon={icon} size={20} color={colors.ink} />
       </View>
       <View className="flex-1">
-        <Text className="text-[12px] font-semibold text-ink/45">{label}</Text>
-        <Text className="mt-0.5 text-[15px] font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>{value}</Text>
+        <Text className="text-[14px] font-medium text-ink/60">{label}</Text>
+        <Text className="mt-0.5 text-[15px] font-semibold text-ink/80" style={{ fontVariant: ['tabular-nums'] }}>{value}</Text>
       </View>
     </View>
   );
@@ -237,32 +237,22 @@ function InfoCard({ icon, label, value }: { icon: IconSvgElement; label: string;
 function MenuRow({
   icon,
   label,
-  value,
   danger,
   onPress,
-  last,
 }: {
   icon: IconSvgElement;
   label: string;
-  value?: string;
   danger?: boolean;
   onPress: () => void;
-  last?: boolean;
 }) {
   const tint = danger ? colors.danger : colors.ink;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-      <View className={`flex-row items-center gap-3 px-2 py-3.5 ${last ? '' : 'border-b border-black/5'}`}>
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-[#F4F5F6]">
+      <View className="flex-row items-center gap-3 py-2.5">
+        <View className="h-9 w-9 items-center justify-center rounded-full bg-[#F1F1F4]">
           <AppIcon icon={icon} size={17} color={tint} />
         </View>
-        <Text className="text-[14px] font-semibold" style={{ color: tint }}>{label}</Text>
-        {value ? (
-          <Text className="ml-auto text-[13px] font-medium text-ink/50" style={{ fontVariant: ['tabular-nums'] }}>{value}</Text>
-        ) : (
-          <View className="ml-auto" />
-        )}
-        <AppIcon icon={ArrowRight01Icon} size={16} color={`${colors.ink}55`} />
+        <Text className="text-[15px] font-semibold" style={{ color: danger ? colors.danger : `${colors.ink}CC` }}>{label}</Text>
       </View>
     </Pressable>
   );

@@ -4,6 +4,7 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
+import { fetchRoute } from '../lib/routeDirections.js';
 
 export const riderRouter = Router();
 
@@ -20,6 +21,15 @@ function maskAccountNumber(full: string | null): string | null {
 function maskAadhaar(full: string | null): string | null {
   if (!full) return null;
   return `XXXX XXXX ${full.replace(/\s/g, '').slice(-4)}`;
+}
+
+// Object paths on the PRIVATE rider-documents bucket -> short-lived signed
+// URLs. Only the rider's own service-role read can mint these (bucket is
+// never public). Null path -> null url so the app renders a placeholder.
+async function signRiderDoc(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  const { data } = await supabase.storage.from('rider-documents').createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? null;
 }
 riderRouter.use(requireAuth, requireRole('rider'), requireApproved);
 
@@ -106,6 +116,38 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
       .sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0));
 
     res.json(withDistance);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Road-following route line for the rider's in-app delivery map (DeliveryMap
+// View's <Polyline>) — origin=rider's live GPS, destination=store or customer
+// pin. Proxied server-side because the Directions REST call needs the
+// IP-restricted GOOGLE_GEOCODING_API_KEY, not the app's Maps-SDK key. Returns
+// { polyline: [], durationMin: null, distanceKm: null } (never 500s) when
+// routing is unavailable so the map falls back to its straight connector +
+// flat-speed ETA — a routed line and its real driving ETA are an enhancement,
+// not a gate.
+riderRouter.get('/route', async (req: AuthedRequest, res, next) => {
+  try {
+    const originLat = Number(req.query.origin_lat);
+    const originLng = Number(req.query.origin_lng);
+    const destLat = Number(req.query.dest_lat);
+    const destLng = Number(req.query.dest_lng);
+    if (![originLat, originLng, destLat, destLng].every(Number.isFinite)) {
+      throw new AppError(400, 'MISSING_LOCATION', 'origin_lat, origin_lng, dest_lat and dest_lng query params are required.');
+    }
+
+    const route = await fetchRoute({ latitude: originLat, longitude: originLng }, { latitude: destLat, longitude: destLng });
+    res.json({
+      polyline: route?.points ?? [],
+      // Real Google driving ETA — minutes (>=1) and km (one decimal). null
+      // when routing is unavailable; the app then keeps its straight-line
+      // distance/avg-speed estimate.
+      durationMin: route?.durationSec != null ? Math.max(1, Math.round(route.durationSec / 60)) : null,
+      distanceKm: route?.distanceM != null ? Math.round(route.distanceM / 100) / 10 : null,
+    });
   } catch (err) {
     next(err);
   }
@@ -207,7 +249,7 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
     const { data: rider, error } = await supabase
       .from('riders')
       .select(
-        'rider_code, name, date_of_birth, photo_url, home_address, aadhaar_number, dl_number, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, payout_account_holder_name, created_at',
+        'rider_code, name, date_of_birth, photo_url, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, payout_account_holder_name, created_at',
       )
       .eq('user_id', req.user!.id)
       .single();
@@ -215,14 +257,15 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
 
     const { data: user } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
 
-    // photo_url is an object PATH on the PRIVATE rider-documents bucket
-    // (same as aadhaar/dl photos) — sign a short-lived URL so the app can
-    // render it without the bucket ever being public. Null path -> null url.
-    let photoUrl: string | null = null;
-    if (rider.photo_url) {
-      const { data: signed } = await supabase.storage.from('rider-documents').createSignedUrl(rider.photo_url, 60 * 60);
-      photoUrl = signed?.signedUrl ?? null;
-    }
+    // photo_url, aadhaar_photo_url, dl_photo_url are all object PATHs on the
+    // PRIVATE rider-documents bucket — sign short-lived URLs so the app can
+    // render them without the bucket ever being public. Same pattern admin's
+    // approvals route already uses (signPhotoUrls). Null path -> null url.
+    const [photoUrl, aadhaarPhotoUrl, dlPhotoUrl] = await Promise.all([
+      signRiderDoc(rider.photo_url),
+      signRiderDoc(rider.aadhaar_photo_url),
+      signRiderDoc(rider.dl_photo_url),
+    ]);
 
     res.json({
       riderCode: rider.rider_code,
@@ -232,7 +275,9 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
       dateOfBirth: rider.date_of_birth,
       homeAddress: rider.home_address,
       aadhaarMasked: maskAadhaar(rider.aadhaar_number),
+      aadhaarPhotoUrl,
       dlNumber: rider.dl_number,
+      dlPhotoUrl,
       vehicleType: rider.vehicle_type,
       vehicleNumber: rider.vehicle_number,
       emergencyContactName: rider.emergency_contact_name,

@@ -20,8 +20,10 @@ import { useState } from 'react';
 import { Alert, Linking, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useIsFocused } from '@react-navigation/native';
 import { ArrowLeft01Icon, ArrowRight01Icon, Call02Icon, Navigation03Icon, Store01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
+import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors } from '../../theme/tokens';
 import { DeliveryMapView } from './components/DeliveryMapView';
 import { openNavigation } from '../../location/openNavigation';
@@ -36,6 +38,15 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
   const { orderId } = route.params;
   const order = useRiderOrdersStore((s) => s.activeOrders.find((o) => o.id === orderId));
   const insets = useSafeAreaInsets();
+  // The slide button locks green ("Arrived at store") once slid and stays
+  // locked as long as it's mounted. We reach PickupVerification with
+  // navigation.navigate (not replace), so THIS screen stays mounted
+  // underneath — hitting back would show that stale locked slide with no way
+  // to re-slide. Re-arm it by remounting on every refocus: isFocused flips
+  // false when Verification covers us and true again on back, and the changed
+  // key gives a fresh, un-slid button. (Kept in the screen, not the button —
+  // the generic slider knows nothing about navigation focus.)
+  const isFocused = useIsFocused();
   // Live rider position, fed by DeliveryMapView's own GPS watch via
   // onRiderMove — no second location watcher opened here.
   const [riderCoords, setRiderCoords] = useState<Coordinates | null>(null);
@@ -87,18 +98,18 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
           The at-a-glance "am I close?" the in-app map is here for. */}
       <View
         style={{ top: insets.top + 12 }}
-        className="absolute left-20 flex-row items-center gap-2 rounded-full bg-ink px-4 py-2.5 shadow-md shadow-black/20"
+        className="absolute left-[68px] h-11 flex-row items-center gap-2 rounded-full bg-white px-4 shadow-md shadow-black/20"
       >
-        <AppIcon icon={Navigation03Icon} size={16} color={colors.lime} />
-        <Text className="text-[14px] font-bold text-white tabular-nums">{legText}</Text>
+        <AppIcon icon={Navigation03Icon} size={18} color={colors.ink} />
+        <Text className="text-[15px] font-semibold text-ink tabular-nums">{legText}</Text>
       </View>
 
       {/* Bottom sheet — dark green. Heading-to-store: nav hand-off + store
           card + "I've arrived" → the PickupVerification screen (QR + item
           checklist), which owns the real assigned→picked_up write. */}
       <View
-        style={{ paddingBottom: insets.bottom + 16 }}
-        className="absolute inset-x-0 bottom-0 gap-3.5 rounded-t-3xl bg-ink px-5 pt-5"
+        style={{ paddingBottom: insets.bottom + 28 }}
+        className="absolute inset-x-0 bottom-0 gap-5 rounded-t-3xl bg-white px-5 pt-9 shadow-2xl shadow-black/25"
       >
         {/* "Go to pickup" → the Swiggy-style hand-off: taps out to the
             rider's real maps app for turn-by-turn. The in-app map above is
@@ -109,18 +120,18 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
           style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
           <View>
-            <Text className="text-[11px] font-bold uppercase tracking-wide text-white/40">Pickup</Text>
-            <Text className="text-[20px] font-bold text-white">Go to pickup</Text>
+            <Text className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Pickup</Text>
+            <Text className="text-[22px] font-semibold text-ink">Go to pickup</Text>
           </View>
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
-            <AppIcon icon={ArrowRight01Icon} size={22} color={colors.lime} />
+          <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F1F2F4]">
+            <AppIcon icon={ArrowRight01Icon} size={22} color={colors.ink} />
           </View>
         </Pressable>
 
-        {/* Store info card — white, lifts off the dark sheet. */}
-        <View className="flex-row items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-lime-soft">
-            <AppIcon icon={Store01Icon} size={22} color={colors.limeDeep} />
+        {/* Store info card — tinted surface, lifts off the white sheet. */}
+        <View className="flex-row items-center gap-3 rounded-2xl bg-[#F1F2F4] px-4 py-4">
+          <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F7F7FA]">
+            <AppIcon icon={Store01Icon} size={22} color={colors.ink} />
           </View>
           <View className="flex-1">
             <Text className="text-[15px] font-bold text-ink" numberOfLines={1}>{order.storeName}</Text>
@@ -129,28 +140,29 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
           <Text className="text-[12.5px] font-semibold text-ink/60 tabular-nums">{legText}</Text>
         </View>
 
-        {/* Actions — outline "Call store" + coral "I've arrived" (coral per
-            CLAUDE.md, not the mockup's lime). Arrive → PickupVerification
-            (QR + check-items gate before the real pickup write). */}
-        <View className="flex-row gap-3">
+        {/* Actions — "Call store" (secondary) then slide-to-confirm arrival.
+            Arriving is now a deliberate swipe, not a tap: it opens the
+            PickupVerification gate (QR + check-items) that owns the real
+            assigned→picked_up write. Slide instead of the mockup's tap
+            button matches the drop-leg's own gesture language. */}
+        <View className="gap-3">
           <Pressable
             onPress={callStore}
-            className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-white/25"
+            className="h-14 flex-row items-center justify-center gap-2 rounded-2xl bg-[#F1F2F4]"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            <AppIcon icon={Call02Icon} size={18} color="#FFFFFF" />
-            <Text className="text-[15px] font-bold text-white">Call store</Text>
+            <AppIcon icon={Call02Icon} size={18} color={colors.ink} />
+            <Text className="text-[15px] font-semibold text-ink">Call store</Text>
           </Pressable>
-          <Pressable
-            onPress={() => navigation.navigate('PickupVerification', { orderId })}
-            className="h-14 flex-1 items-center justify-center rounded-2xl"
-            style={({ pressed }) => ({ backgroundColor: colors.coral, opacity: pressed ? 0.85 : 1 })}
-          >
-            <Text className="text-[15px] font-bold text-white">I've arrived</Text>
-          </Pressable>
+          <SlideToConfirmButton
+            key={isFocused ? 'focused' : 'blurred'}
+            label="Slide when you arrive"
+            successLabel="Arrived at store"
+            onConfirm={() => navigation.navigate('PickupVerification', { orderId })}
+          />
         </View>
 
-        <Text className="text-center text-[12px] text-white/35">Drive safe · Follow traffic rules</Text>
+        <Text className="text-center text-[13px] font-medium text-ink/40">Ride safe · Wear your helmet · Follow traffic rules</Text>
       </View>
     </View>
   );

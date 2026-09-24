@@ -6,12 +6,15 @@
 // their fixed address, since nothing in this build has the customer's
 // device broadcasting anything.
 //
-// The line between the two pins is a straight great-circle connector
-// (Polyline drawn directly between riderCoords/customerCoords), not a
-// real road-following route — an actual routed line needs a Directions
-// API call (Google Directions / Apple MapKit directions), which is real
-// added cost and complexity, not a UI change. Deliberately skipped for
-// now — this straight line gets most of the "Google Maps look" for free.
+// The line between the two pins follows the real road route (GET /rider/route
+// → Google Directions, proxied server-side). It's fetched ONCE from the first
+// GPS fix to the destination — not re-routed on every 3s tick, which would
+// burn Directions quota for a line that barely changes. Until that response
+// lands (and if routing is unavailable — no key, quota, offline) the map draws
+// the straight great-circle connector between the two pins as a fallback, so
+// the line is always present, just road-shaped once the route arrives. Real
+// turn-by-turn still hands OFF to the rider's maps app (openNavigation); this
+// in-app line is "am I roughly on track / how far," not voice nav.
 //
 // Camera behaviour is Uber-driver-app "nav mode", not a static both-pins
 // overview: once a fix lands, the camera follows the rider tightly zoomed
@@ -34,6 +37,7 @@ import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { GRAYSCALE_MAP_STYLE } from '../../../location/mapStyle';
 import { watchRiderLocation, type Coordinates } from '../../../location/riderLocation';
+import { fetchRoute } from '../../../api/directions';
 
 const DELTA = 0.01;
 // Tight nav-mode zoom once the rider's own position is known — Google Maps
@@ -55,11 +59,17 @@ interface Props {
   // Fired on every real GPS fix so a parent can show live distance/ETA to
   // the destination without opening a second location watcher.
   onRiderMove?: (coords: Coordinates) => void;
+  // Fired once when the road route lands, with Google's real driving ETA —
+  // lets a parent show a true "12 min away" instead of a flat-speed guess.
+  // null values mean routing was unavailable (parent keeps its own estimate).
+  onRouteInfo?: (info: { durationMin: number | null; distanceKm: number | null }) => void;
 }
 
-export function DeliveryMapView({ destination, destinationKind = 'customer', fullScreen, onRiderMove }: Props) {
+export function DeliveryMapView({ destination, destinationKind = 'customer', fullScreen, onRiderMove, onRouteInfo }: Props) {
   const mapRef = useRef<MapView>(null);
   const [riderCoords, setRiderCoords] = useState<Coordinates | null>(null);
+  const [routeCoords, setRouteCoords] = useState<Coordinates[] | null>(null);
+  const routeFetchedRef = useRef(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const isStore = destinationKind === 'store';
 
@@ -107,6 +117,31 @@ export function DeliveryMapView({ destination, destinationKind = 'customer', ful
     );
   }, [riderCoords]);
 
+  // Fetch the road route ONCE, from the first fix to the destination. Guarded
+  // by a ref so the 3s GPS ticks don't re-hit Directions. On any failure the
+  // straight fallback line below just stays — routeCoords stays null — and
+  // onRouteInfo fires with nulls so the parent keeps its own flat-speed ETA.
+  useEffect(() => {
+    if (!riderCoords || routeFetchedRef.current) return;
+    routeFetchedRef.current = true;
+    let cancelled = false;
+    fetchRoute(riderCoords, destination)
+      .then((route) => {
+        if (cancelled) return;
+        if (route.polyline.length > 0) setRouteCoords(route.polyline);
+        onRouteInfo?.({ durationMin: route.durationMin, distanceKm: route.distanceKm });
+      })
+      .catch(() => {
+        if (!cancelled) onRouteInfo?.({ durationMin: null, distanceKm: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // onRouteInfo intentionally excluded — an inline fn from the parent must
+    // not re-trigger the one-shot route fetch on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [riderCoords, destination]);
+
   if (permissionDenied) {
     return (
       <View className={fullScreen ? 'absolute inset-0 items-center justify-center gap-1 bg-mist px-6' : 'h-64 items-center justify-center gap-1 rounded-2xl bg-mist px-6'}>
@@ -127,10 +162,10 @@ export function DeliveryMapView({ destination, destinationKind = 'customer', ful
       >
         {riderCoords ? (
           <Polyline
-            coordinates={[riderCoords, destination]}
+            coordinates={routeCoords ?? [riderCoords, destination]}
             strokeColor={isStore ? colors.limeDeep : colors.coral}
             strokeWidth={3}
-            lineDashPattern={[8, 6]}
+            lineDashPattern={routeCoords ? undefined : [8, 6]}
           />
         ) : null}
 

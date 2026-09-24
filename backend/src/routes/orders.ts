@@ -15,6 +15,7 @@ import {
   type OrderStatus,
 } from '../lib/orderStateMachine.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
+import { generateDeliveryOtp, isDeliveryOtpValid } from '../lib/deliveryOtp.js';
 import { lookupPromoForCheckout } from './promos.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
 import { rankRepeatPurchases, reorderByRank } from '../lib/buyItAgain.js';
@@ -307,6 +308,11 @@ interface StatusBody {
   // already collect a real reason from the person cancelling; this is
   // where it lands instead of being silently discarded.
   reason?: string;
+  // Only meaningful (and only ever required) alongside status: 'delivered' —
+  // the code the customer read off their own order, entered by the rider at
+  // the door. Verified against orders.delivery_otp, then that column is
+  // nulled so the code can't be reused (lib/deliveryOtp.ts).
+  otp?: string;
 }
 
 // PATCH /orders/:id/status — state machine + role-ownership enforced here, not client-side.
@@ -321,10 +327,10 @@ ordersRouter.patch(
   requireApproved,
   async (req: AuthedRequest, res, next) => {
     try {
-      const { status: to, reason } = req.body as StatusBody;
+      const { status: to, reason, otp } = req.body as StatusBody;
       const { data: order, error } = await supabase
         .from('orders')
-        .select('id, status, store_id, rider_id, customer_id, trip_id, total, razorpay_payment_id')
+        .select('id, status, store_id, rider_id, customer_id, trip_id, total, razorpay_payment_id, delivery_otp')
         .eq('id', req.params.id)
         .single();
       if (error || !order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
@@ -351,6 +357,40 @@ ordersRouter.patch(
       const update: Record<string, unknown> = { status: to };
       if (tsCol) update[tsCol] = new Date().toISOString();
       if (to === 'cancelled' && reason) update.cancel_reason = reason;
+
+      // Delivery OTP issued the moment the rider marks pickup
+      // (out_for_delivery) — the customer sees it on their own order well
+      // before the rider reaches the door. One shared code per trip: a
+      // multi-store trip fires one PATCH per leg, so reuse a sibling leg's
+      // already-issued code rather than minting N different codes for one
+      // drop (the rider verifies every leg with the same number).
+      if (to === 'out_for_delivery') {
+        let code = generateDeliveryOtp();
+        if (order.trip_id) {
+          const { data: siblings } = await supabase
+            .from('orders')
+            .select('delivery_otp')
+            .eq('trip_id', order.trip_id)
+            .not('delivery_otp', 'is', null)
+            .limit(1);
+          const shared = siblings?.[0]?.delivery_otp;
+          if (shared) code = shared;
+        }
+        update.delivery_otp = code;
+      }
+
+      // Delivery is gated on the real code — the rider must send the OTP the
+      // customer read out, matching orders.delivery_otp. On success the
+      // column is nulled in this same write so the code is single-use
+      // ("expired once used"). A null stored code (order that never went
+      // out_for_delivery, or predates the feature) can't be satisfied by
+      // anything, so delivery stays blocked rather than silently open.
+      if (to === 'delivered') {
+        if (!isDeliveryOtpValid(order.delivery_otp, otp)) {
+          throw new AppError(400, 'INVALID_OTP', 'The delivery code is incorrect. Ask the customer for the code shown on their order.');
+        }
+        update.delivery_otp = null;
+      }
 
       // Refund BEFORE the status write, not after — if the Razorpay call
       // itself threw an unexpected error (refundPayment.ts already

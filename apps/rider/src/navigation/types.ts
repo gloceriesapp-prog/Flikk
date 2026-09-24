@@ -75,8 +75,17 @@ export type AppStackParamList = {
   PickupVerification: { orderId: string };
   // Full-screen drop-leg nav (map + external maps hand-off) — the customer
   // twin of PickupNavigation, shown once the order is picked_up. Advances to
-  // arrived_at_customer, then OrderDetail owns the OTP-verified delivery.
+  // arrived_at_customer, then DeliveryProof owns the OTP-verified delivery.
   DeliveryNavigation: { orderId: string };
+  // Delivery-proof step — reached from DeliveryNavigation's "I've arrived"
+  // slide (order is now arrived_at_customer). Single 4-digit OTP box that
+  // auto-validates (no button); a correct code fires the delivered write and
+  // replaces to DeliveryComplete.
+  DeliveryProof: { orderId: string };
+  // Delivery-complete celebration — tick animation + the earnings receipt for
+  // the just-finished delivery (base/distance/incentive + today's total),
+  // then "Get next order" back to the tabs. Terminal step of the drop flow.
+  DeliveryComplete: { orderId: string };
   OrderDetail: { orderId: string };
   RiderDocuments: undefined;
 };

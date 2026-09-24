@@ -20,16 +20,13 @@
 // EarningsScreen) — the reference image's ₹1750/Mon-Sun numbers were only
 // ever a visual sample, never hardcoded here.
 //
-// The top pill shows tips and/or a cosmetic incentive bonus for the
-// selected week — see incentiveEarned's own note on why that half is
-// mock-only.
+// The top pill shows customer tips for the selected week when there are any.
 
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowRight01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
-import { INCENTIVE_BONUS, INCENTIVE_TARGET } from '../../../data/appConfig';
 import type { WeeklyActivityDay } from '../../../utils/earnings';
 
 const BAR_AREA_HEIGHT = 110;
@@ -44,20 +41,11 @@ const COLUMN_COUNT = 7;
 interface Props {
   weeklyActivity: WeeklyActivityDay[];
   tipsThisWeek: number;
-  weekTotal: number;
 }
 
-export function WeeklyActivityChartCard({ weeklyActivity, tipsThisWeek, weekTotal }: Props) {
+export function WeeklyActivityChartCard({ weeklyActivity, tipsThisWeek }: Props) {
   const maxValue = Math.max(...weeklyActivity.map((day) => day.total), 1);
   const todayIndex = weeklyActivity.findIndex((day) => day.isToday);
-  // Cosmetic-only, same as Home's own (removed) IncentiveProgressCard —
-  // CLAUDE.md flags loyalty/incentive programs as out of scope until the
-  // MVP validates; INCENTIVE_TARGET/INCENTIVE_BONUS (data/appConfig.ts)
-  // are a static mock tier, not a real bonus-payout ledger. Shown only
-  // once the selected week's real earnings clear the mock target — a
-  // rider mid-week who hasn't hit it yet sees no incentive line at all,
-  // not a ₹0 one.
-  const incentiveEarned = weekTotal >= INCENTIVE_TARGET ? INCENTIVE_BONUS : 0;
   const [selectedIndex, setSelectedIndex] = useState<number | null>(todayIndex >= 0 ? todayIndex : null);
 
   // Resets the selection back to "today's tooltip by default" whenever a
@@ -83,28 +71,16 @@ export function WeeklyActivityChartCard({ weeklyActivity, tipsThisWeek, weekTota
   // the card has margin.
   return (
     <View style={{ backgroundColor: '#F8F8F8' }} className="w-full gap-5 py-5">
-      {tipsThisWeek > 0 || incentiveEarned > 0 ? (
+      {/* {tipsThisWeek > 0 ? (
         <View className="items-center px-5">
           <View className="flex-row items-center gap-2 rounded-full bg-success/15 px-3.5 py-2">
             <AppIcon icon={CheckmarkCircle02Icon} size={15} color={colors.success} />
-            {tipsThisWeek > 0 ? (
-              <>
-                <Text className="text-[12.5px] font-semibold text-success">Includes customer tips</Text>
-                <View className="h-3.5 w-px bg-success/30" />
-                <Text className="text-[12.5px] font-semibold text-success">₹{tipsThisWeek}</Text>
-              </>
-            ) : null}
-            {tipsThisWeek > 0 && incentiveEarned > 0 ? <View className="h-3.5 w-px bg-success/30" /> : null}
-            {incentiveEarned > 0 ? (
-              <>
-                <Text className="text-[12.5px] font-semibold text-success">Incentive</Text>
-                <View className="h-3.5 w-px bg-success/30" />
-                <Text className="text-[12.5px] font-semibold text-success">₹{incentiveEarned}</Text>
-              </>
-            ) : null}
+            <Text className="text-[12.5px] font-semibold text-success">Includes customer tips</Text>
+            <View className="h-3.5 w-px bg-success/30" />
+            <Text className="text-[12.5px] font-semibold text-success">₹{tipsThisWeek}</Text>
           </View>
         </View>
-      ) : null}
+      ) : null} */}
 
       <View style={{ width: '100%', height: GRID_HEIGHT, marginTop: 44 }}>
         {/* Grid overlay — pointerEvents none so it never intercepts taps

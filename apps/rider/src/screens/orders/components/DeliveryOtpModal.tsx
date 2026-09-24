@@ -1,11 +1,10 @@
-// Real UX for "confirm the handoff," even though there's no backend to
-// actually check the code against yet — same "any code of the right shape
-// works" mock rule as the auth flow (api/auth.ts's own note), applied
-// here to the delivery-proof step instead of login. A real backend
-// integration would generate this code server-side and check it here;
-// until then, any 4-digit code the rider enters marks it delivered — the
-// point right now is the real interaction shape, not a fake security
-// check.
+// Real delivery-proof step: the customer sees a 4-digit code on their own
+// order once it's out_for_delivery (customer app's DeliveryRiderCard, backed
+// by orders.delivery_otp), reads it out at the door, the rider enters it
+// here. onConfirm hands the code up to OrderDetailScreen, which sends it to
+// the backend (PATCH /orders/:id/status) — a wrong code is a real 400 that
+// keeps this modal open for a retry, a correct one completes delivery and
+// the code is single-use server-side (backend/src/lib/deliveryOtp.ts).
 //
 // 4 digits, not OtpBoxInput's own 6 — delivery-proof codes are shorter
 // than login OTPs in every real rider app (Swiggy/Blinkit both use 4), so
@@ -19,21 +18,26 @@ import { PrimaryButton } from '../../../components/PrimaryButton';
 interface Props {
   visible: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  // Receives the entered 4-digit code — the caller verifies it against the
+  // backend and, on failure, leaves this modal open so the rider can retry.
+  onConfirm: (code: string) => void;
+  // True while the delivered PATCH is in flight (caller-owned) — disables the
+  // button so a double-tap can't fire two delivery writes.
+  submitting?: boolean;
 }
 
-export function DeliveryOtpModal({ visible, onCancel, onConfirm }: Props) {
+export function DeliveryOtpModal({ visible, onCancel, onConfirm, submitting }: Props) {
   const [code, setCode] = useState('');
 
-  function handleConfirm() {
-    onConfirm();
+  function handleCancel() {
     setCode('');
+    onCancel();
   }
 
   const digits = code.padEnd(4, ' ').split('');
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleCancel}>
       <View className="flex-1 justify-end bg-black/50">
         <View className="gap-5 rounded-t-3xl bg-white px-6 pb-safe-offset-6 pt-6">
           <View className="h-1.5 w-12 self-center rounded-full bg-gray-200" />
@@ -62,8 +66,8 @@ export function DeliveryOtpModal({ visible, onCancel, onConfirm }: Props) {
           </Pressable>
 
           <View className="gap-3">
-            <PrimaryButton label="Confirm & complete" onPress={handleConfirm} disabled={code.length !== 4} />
-            <Pressable onPress={onCancel} className="items-center py-2">
+            <PrimaryButton label="Confirm & complete" onPress={() => onConfirm(code)} disabled={code.length !== 4 || !!submitting} />
+            <Pressable onPress={handleCancel} className="items-center py-2">
               <Text className="text-[14px] font-semibold text-ink/50">Cancel</Text>
             </Pressable>
           </View>

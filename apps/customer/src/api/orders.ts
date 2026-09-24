@@ -76,6 +76,11 @@ export interface ApiOrder {
   packed_at: string | null;
   picked_up_at: string | null;
   delivered_at: string | null;
+  // Real orders.delivery_otp (backend/migrations/049_delivery_otp.sql) — a
+  // 4-digit code the customer reads out to the rider at the door. Only set
+  // while the order is out_for_delivery (issued at pickup, nulled the instant
+  // the rider verifies it on delivery), null every other state.
+  delivery_otp: string | null;
   order_items: ApiOrderItem[];
   stores: { name: string; avg_prep_minutes: number | null } | null;
   // Only on GET /orders/:id (its own second lookup, no direct orders->

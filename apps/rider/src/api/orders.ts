@@ -52,8 +52,8 @@ export function fetchAssignments(): Promise<RawAssignment[]> {
   return apiRequest('/rider/assignments');
 }
 
-export function updateOrderStatus(orderId: string, status: BackendOrderStatus, reason?: string): Promise<void> {
-  return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: { status, reason } });
+export function updateOrderStatus(orderId: string, status: BackendOrderStatus, reason?: string, otp?: string): Promise<void> {
+  return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: { status, reason, otp } });
 }
 
 // packed/out_for_delivery are the only statuses a rider ever actually acts

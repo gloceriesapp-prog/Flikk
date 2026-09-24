@@ -52,11 +52,37 @@ import { acceptDispatchOffer, fetchDispatchOffers, updateRiderStatus, type Accep
 import { fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders';
 import { generateMockOrder, generateMockRating, generateMockTip, type RiderOrder } from '../data/mockOrders';
 import { getCurrentCoordinates } from '../location/riderLocation';
+import { startBackgroundLocation, stopBackgroundLocation } from '../location/backgroundLocation';
 import { startOfWeek } from '../utils/earnings';
 import { todayKey } from '../utils/date';
 import { carryOverActiveMs } from '../utils/activeTime';
 
 export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'picked_up', 'arrived_at_customer', 'delivered'];
+
+// Sample/preview orders live only on-device (mockOrders' generateMockOrder →
+// 'mock-…', the __DEV__ Test button → 'demo-…'). They have no backend row, so
+// any real PATCH /orders/:id/status 404s ("order not found"). advanceOrderStatus/
+// cancelOrder skip the network write for these and just move local state — the
+// whole sample flow (pickup → arrive → deliver) works without a backend.
+// ponytail: drop this once every order in the app is a real assignment.
+const isLocalOrder = (id: string) => /^(mock|demo|sample)[-]/.test(id);
+
+// Render invariant: any RiderOrder array put into state must be unique by id
+// (two rows with one id crash the list renderers with duplicate React keys).
+// Write paths already dedupe, but persisted blobs can predate that guard — a
+// HISTORY_KEY written with 'demo-1' twice by an older build survives on disk
+// and no write-path guard ever cleans it. Dedupe on the way IN (hydrate), so
+// old bad data heals regardless of which writer/version produced it. First
+// occurrence wins (persisted order is newest-first). ponytail: one guard at
+// the read choke point beats trusting every historical writer.
+const dedupById = (orders: RiderOrder[]): RiderOrder[] => {
+  const seen = new Set<string>();
+  return orders.filter((o) => {
+    if (seen.has(o.id)) return false;
+    seen.add(o.id);
+    return true;
+  });
+};
 
 // Real rider apps give ~15-30s to accept before auto-reassigning — kept as
 // a local UX device (see this file's own header note on why there's
@@ -73,6 +99,14 @@ const POLL_INTERVAL_MS = 12_000;
 
 const HISTORY_KEY = 'flikk_rider_order_history';
 const MAX_HISTORY = 200;
+
+// Everything below persists to SecureStore so a cold launch restores the
+// rider's real state before the first server poll returns (12s away) —
+// online/offline, the order in hand, and the cancelled list, alongside the
+// delivered history that was already persisted.
+const ONLINE_KEY = 'flikk_rider_is_online';
+const CANCELLED_KEY = 'flikk_rider_cancelled';
+const ACTIVE_ORDERS_KEY = 'flikk_rider_active_orders';
 
 // Active-time-today accumulator (frozen ms + the UTC day it belongs to).
 // Persisted so a restart mid-day keeps today's total; a stored date that
@@ -91,6 +125,18 @@ async function persistHistory(orders: RiderOrder[]): Promise<void> {
   await SecureStore.setItemAsync(HISTORY_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY)));
 }
 
+async function persistCancelled(orders: RiderOrder[]): Promise<void> {
+  await SecureStore.setItemAsync(CANCELLED_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY)));
+}
+
+async function persistActive(orders: RiderOrder[]): Promise<void> {
+  // Only real assignments survive a restart. Demo/sample orders have no
+  // backend row, so they'd flash on launch then vanish on the first poll
+  // (the reconcile rebuilds activeOrders from server rows) — don't store them.
+  const real = orders.filter((o) => !isLocalOrder(o.id));
+  await SecureStore.setItemAsync(ACTIVE_ORDERS_KEY, JSON.stringify(real.slice(0, MAX_HISTORY)));
+}
+
 interface RiderOrdersState {
   isOnline: boolean;
   onlineSince: number | null;
@@ -106,6 +152,11 @@ interface RiderOrdersState {
   completedOrders: RiderOrder[];
   cancelledOrders: RiderOrder[];
   isHistoryHydrated: boolean;
+  // True only between hydrate and the auth-gated resume in RootNavigator:
+  // the rider was online when the app last closed, so once we know there's a
+  // usable authed rider we call goOnline() to restart the presence loops.
+  // Cleared by goOnline (and consumed once) so it never re-fires.
+  resumeOnline: boolean;
   // Real, currently-open dispatch offers within range of wherever
   // goOnline's own location loop last reported — see this file's own
   // header note. Cleared the moment the rider goes offline.
@@ -123,7 +174,7 @@ interface RiderOrdersState {
   goOffline: () => void;
   acceptIncomingOrder: () => void;
   declineIncomingOrder: () => void;
-  advanceOrderStatus: (orderId: string) => Promise<void>;
+  advanceOrderStatus: (orderId: string, otp?: string) => Promise<void>;
   cancelOrder: (orderId: string, reason: string) => Promise<void>;
   // Demo/preview aid only — seeds one order into each of active/completed/
   // cancelled so every list layout on Home/Orders/Earnings can be seen
@@ -163,13 +214,17 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
   completedOrders: [],
   cancelledOrders: [],
   isHistoryHydrated: false,
+  resumeOnline: false,
   dismissedIds: new Set(),
   nearbyOffers: [],
 
   hydrateHistory: async () => {
-    const [rawHistory, rawActive] = await Promise.all([
+    const [rawHistory, rawActive, rawCancelled, rawActiveOrders, rawOnline] = await Promise.all([
       SecureStore.getItemAsync(HISTORY_KEY),
       SecureStore.getItemAsync(ACTIVE_MS_KEY),
+      SecureStore.getItemAsync(CANCELLED_KEY),
+      SecureStore.getItemAsync(ACTIVE_ORDERS_KEY),
+      SecureStore.getItemAsync(ONLINE_KEY),
     ]);
     // Only carry the stored active-time forward if it's still the same UTC
     // day; a stale date is yesterday's shift → today starts at 0.
@@ -180,8 +235,13 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
       if (parsed.date === activeMsDate) activeMsToday = parsed.ms;
     }
     set({
-      completedOrders: rawHistory ? (JSON.parse(rawHistory) as RiderOrder[]) : [],
+      completedOrders: rawHistory ? dedupById(JSON.parse(rawHistory) as RiderOrder[]) : [],
+      cancelledOrders: rawCancelled ? dedupById(JSON.parse(rawCancelled) as RiderOrder[]) : [],
+      // Restored for an instant cold-launch view; the 12s poll reconcile
+      // rebuilds this from server rows and drops anything stale.
+      activeOrders: rawActiveOrders ? dedupById(JSON.parse(rawActiveOrders) as RiderOrder[]) : [],
       isHistoryHydrated: true,
+      resumeOnline: rawOnline === 'true',
       activeMsToday,
       activeMsDate,
     });
@@ -299,9 +359,14 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
       // reset it now (midnight refresh) before this shift adds to it.
       if (state.isOnline) return state;
       const today = todayKey();
+      // Persist so a reopen resumes online (read back as resumeOnline in
+      // hydrate). Clear resumeOnline here so the one-shot boot resume can't
+      // re-fire.
+      void SecureStore.setItemAsync(ONLINE_KEY, 'true');
       return {
         isOnline: true,
         onlineSince: Date.now(),
+        resumeOnline: false,
         activeMsToday: carryOverActiveMs(state.activeMsToday, state.activeMsDate, today),
         activeMsDate: today,
       };
@@ -323,6 +388,10 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     stopLocationPing();
     void pingAndRefresh();
     locationPingTimer = setInterval(() => void pingAndRefresh(), LOCATION_PING_INTERVAL_MS);
+    // Keeps presence alive once the OS suspends this JS runtime — the
+    // foreground loop above only ticks while the app is open. Best-effort:
+    // no-ops if the rider declined the "Always" location grant.
+    void startBackgroundLocation();
   },
 
   goOffline: () => {
@@ -336,9 +405,11 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
       const sessionMs = state.onlineSince ? Date.now() - state.onlineSince : 0;
       const activeMsToday = carryOverActiveMs(state.activeMsToday, state.activeMsDate, today) + sessionMs;
       void SecureStore.setItemAsync(ACTIVE_MS_KEY, JSON.stringify({ ms: activeMsToday, date: today }));
-      return { isOnline: false, onlineSince: null, nearbyOffers: [], activeMsToday, activeMsDate: today };
+      void SecureStore.setItemAsync(ONLINE_KEY, 'false');
+      return { isOnline: false, onlineSince: null, resumeOnline: false, nearbyOffers: [], activeMsToday, activeMsDate: today };
     });
     stopLocationPing();
+    void stopBackgroundLocation();
     void updateRiderStatus({ status: 'offline' }).catch(() => {});
   },
 
@@ -363,7 +434,10 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     set((state) => ({
       incomingOrder: null,
       incomingOrderExpiresAt: null,
-      activeOrders: [...state.activeOrders, order],
+      // Dedup by id — a concurrent sync poll could already have landed this
+      // same assignment in activeOrders, and two rows with one id crash the
+      // list renderers with duplicate React keys.
+      activeOrders: [...state.activeOrders.filter((o) => o.id !== order.id), order],
     }));
   },
 
@@ -377,14 +451,15 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     }));
   },
 
-  advanceOrderStatus: async (orderId) => {
+  advanceOrderStatus: async (orderId, otp) => {
     const order = get().activeOrders.find((o) => o.id === orderId);
     if (!order) return;
 
     if (order.status === 'assigned') {
       // Real transition: packed -> out_for_delivery. Backend also stamps
       // picked_up_at here (orderStateMachine.ts's timestampColumnFor).
-      await updateOrderStatus(orderId, 'out_for_delivery');
+      // Sample orders have no backend row — skip the PATCH, move local only.
+      if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'out_for_delivery');
       set((state) => ({
         activeOrders: state.activeOrders.map((o) => (o.id === orderId ? { ...o, status: 'picked_up' } : o)),
       }));
@@ -401,9 +476,12 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     }
 
     if (order.status === 'arrived_at_customer') {
-      // Real transition: out_for_delivery -> delivered. This is also what
-      // makes backend write the real rider_earnings row (routes/orders.ts).
-      await updateOrderStatus(orderId, 'delivered');
+      // Real transition: out_for_delivery -> delivered, gated on the OTP the
+      // customer read off their own order. A wrong/missing code is a real 400
+      // from the backend (routes/orders.ts) — it throws here so the caller
+      // can keep the OTP modal open, and no local state moves to delivered.
+      // Sample orders have no backend row / real OTP — skip the PATCH.
+      if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'delivered', undefined, otp);
       const delivered: RiderOrder = {
         ...order,
         status: 'delivered',
@@ -416,7 +494,11 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
       };
       set((state) => ({
         activeOrders: state.activeOrders.filter((o) => o.id !== orderId),
-        completedOrders: [delivered, ...state.completedOrders],
+        // Dedupe by id: local/demo orders reuse a fixed id (e.g. 'demo-1')
+        // across test cycles, so the same id can be delivered more than once —
+        // an un-deduped prepend leaves two rows sharing a React key. Latest
+        // delivery wins (same guard the refresh poll's newlyDelivered path has).
+        completedOrders: [delivered, ...state.completedOrders.filter((o) => o.id !== delivered.id)],
       }));
       void persistHistory(get().completedOrders);
     }
@@ -430,14 +512,15 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     // from the backend — thrown straight through, not swallowed, so the
     // screen that called this can Alert the real reason instead of
     // silently pretending it worked.
-    await updateOrderStatus(orderId, 'cancelled', reason);
+    if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'cancelled', reason);
 
     set((state) => {
       const order = state.activeOrders.find((o) => o.id === orderId);
       if (!order) return state;
       return {
         activeOrders: state.activeOrders.filter((o) => o.id !== orderId),
-        cancelledOrders: [{ ...order, status: 'cancelled', cancelReason: reason }, ...state.cancelledOrders],
+        // Same id-reuse dedupe as the delivered path above.
+        cancelledOrders: [{ ...order, status: 'cancelled', cancelReason: reason }, ...state.cancelledOrders.filter((o) => o.id !== orderId)],
       };
     });
   },
@@ -499,3 +582,13 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     void persistHistory(get().completedOrders);
   },
 }));
+
+// Persist the in-hand and cancelled lists whenever they change, from any
+// mutation path — one place instead of a persist call at every mutation.
+// Ref-equality: each mutation replaces the array, so unrelated ticks
+// (nearbyOffers, timers, online flag) never trigger a write. completedOrders
+// keeps its own explicit persist (write only on newlyDelivered).
+useRiderOrdersStore.subscribe((state, prev) => {
+  if (state.activeOrders !== prev.activeOrders) void persistActive(state.activeOrders);
+  if (state.cancelledOrders !== prev.cancelledOrders) void persistCancelled(state.cancelledOrders);
+});

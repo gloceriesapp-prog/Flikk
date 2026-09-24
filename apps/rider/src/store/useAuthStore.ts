@@ -15,8 +15,11 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
-const ACCESS_TOKEN_KEY = 'flikk_rider_access_token';
-const REFRESH_TOKEN_KEY = 'flikk_rider_refresh_token';
+// Exported so the headless background-location task (location/
+// backgroundLocation.ts) reads the same keys — a relaunched task has an
+// empty in-memory store, so it pulls the token straight from SecureStore.
+export const ACCESS_TOKEN_KEY = 'flikk_rider_access_token';
+export const REFRESH_TOKEN_KEY = 'flikk_rider_refresh_token';
 const PHONE_KEY = 'flikk_rider_phone';
 // One JSON blob for the whole status snapshot — simpler than five keys,
 // and it's written/read as a unit anyway.

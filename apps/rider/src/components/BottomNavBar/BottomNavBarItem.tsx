@@ -1,12 +1,12 @@
-// Same white-on-dark-glass treatment as apps/partner's own
-// BottomNavBar/BottomNavBarItem.tsx, with the customer app's active-tab
-// logic: the highlight is a fixed-size rounded box wrapping BOTH icon and
-// label (not just a circle behind the icon), so the whole active tab lights
-// up as one pill — customer/BottomNavBarItem.tsx's own recipe, in this
-// nav's dark palette (white/15 highlight, white icon+label when active).
+// Same active-tab recipe as apps/customer's own BottomNavBarItem.tsx: the
+// highlight is a fixed-size rounded box wrapping BOTH icon and label (not
+// just a circle behind the icon), so the whole active tab lights up as one
+// pill. Light palette to match the liquid-glass bar — ink icon+label when
+// active on a black/10 highlight, muted ink when not.
 
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../AppIcon';
+import { IconlyHome, IconlyOrders } from '../icons/iconly';
 import type { NavTab } from './data';
 
 interface Props {
@@ -16,13 +16,21 @@ interface Props {
 }
 
 export function BottomNavBarItem({ tab, isActive, onPress }: Props) {
+  const color = isActive ? '#101C10' : '#101C1099';
   return (
     <Pressable onPress={onPress} className="items-center px-0">
       <View
-        className={`h-[52px] w-[68px] items-center justify-center gap-1 rounded-full ${isActive ? 'bg-white/15' : 'bg-transparent'}`}
+        className={`h-[54px] w-[78px] items-center justify-center gap-1 rounded-full ${isActive ? 'bg-black/10' : 'bg-transparent'}`}
       >
-        <AppIcon icon={tab.icon} size={20} color={isActive ? '#FFFFFF' : '#FFFFFF99'} />
-        <Text className={`text-[11px] ${isActive ? 'font-bold text-white' : 'text-white/60'}`}>{tab.label}</Text>
+        {/* Home/Orders have real filled/outline glyphs; other tabs stroke-render via AppIcon. */}
+        {tab.id === 'Home' ? (
+          <IconlyHome size={20} color={color} active={isActive} />
+        ) : tab.id === 'Orders' ? (
+          <IconlyOrders size={20} color={color} active={isActive} />
+        ) : (
+          <AppIcon icon={tab.icon} size={20} color={color} />
+        )}
+        <Text className={`text-[11px] ${isActive ? 'font-bold text-ink' : 'text-ink/60'}`}>{tab.label}</Text>
       </View>
     </Pressable>
   );

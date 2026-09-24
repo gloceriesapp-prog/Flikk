@@ -1,8 +1,8 @@
 // Just the week-navigation row — coral left arrow (always active), gray
 // right arrow (disabled at offset 0, since no future earnings exist to
 // page into). The big balance + label used to live in this same
-// component; that's WeeklyBalanceCard.tsx now, a separate file per the
-// explicit ask to split it out — this file owns only navigation.
+// component; the summary figure is now EarningsSummaryCard.tsx (its
+// Today/Week toggle) — this file owns only navigation.
 
 import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
@@ -38,11 +38,11 @@ export function EarningsWeekHeader({ weekLabel, canGoNext, onPrev, onNext }: Pro
 
   return (
     <View style={{ paddingTop: insets.top + 16 }} className="flex-row items-center bg-[#F8F8F8] px-5 pb-5">
-      <Pressable onPress={onPrev} hitSlop={8} style={circleStyle} className="h-9 w-9 rounded-full bg-gray-200">
+      {/* <Pressable onPress={onPrev} hitSlop={8} style={circleStyle} className="h-9 w-9 rounded-full bg-gray-200">
         <AppIcon icon={ArrowLeft01Icon} size={16} color={canGoNext ? colors.ink : `${colors.ink}40`} />
-      </Pressable>
-      <Text className="flex-1 text-center text-[15px] font-semibold text-ink">{weekLabel}</Text>
-      <Pressable
+      </Pressable> */}
+      <Text className="flex-1 text-center text-[17px] font-semibold text-ink">{weekLabel}</Text>
+      {/* <Pressable
         onPress={onNext}
         disabled={!canGoNext}
         hitSlop={8}
@@ -50,7 +50,7 @@ export function EarningsWeekHeader({ weekLabel, canGoNext, onPrev, onNext }: Pro
         className={`h-9 w-9 rounded-full ${canGoNext ? 'bg-mist' : 'bg-gray-200'}`}
       >
         <AppIcon icon={ArrowRight01Icon} size={16} color={canGoNext ? colors.ink : `${colors.ink}40`} />
-      </Pressable>
+      </Pressable> */}
     </View>
   );
 }

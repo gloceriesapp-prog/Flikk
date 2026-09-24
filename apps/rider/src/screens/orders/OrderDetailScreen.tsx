@@ -63,6 +63,10 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   const cancelOrder = useRiderOrdersStore((s) => s.cancelOrder);
   const [otpVisible, setOtpVisible] = useState(false);
   const [cancelVisible, setCancelVisible] = useState(false);
+  // Real Google-Directions driving ETA once the routed line lands; null until
+  // then (and when routing is unavailable), where the flat distance/avg-speed
+  // estimate below fills in.
+  const [routeEtaMin, setRouteEtaMin] = useState<number | null>(null);
 
   if (!order) {
     // Already delivered/removed from activeOrders elsewhere (e.g. after
@@ -113,10 +117,16 @@ export function OrderDetailScreen({ route, navigation }: Props) {
     }
   }
 
-  async function handleConfirmDelivery() {
-    setOtpVisible(false);
+  // code is the 4-digit delivery OTP the rider read off the customer's own
+  // order — the backend gates every leg's delivered write on it matching
+  // orders.delivery_otp (all legs of a trip share one code). Don't close the
+  // modal until the awaited PATCH actually succeeds: a wrong code is a real
+  // 400 (INVALID_OTP) that must leave the modal open so the rider can retry,
+  // not dismiss it and strand them on an undelivered order.
+  async function handleConfirmDelivery(code: string) {
     try {
-      await Promise.all(tripLegIds.map((id) => advanceOrderStatus(id)));
+      await Promise.all(tripLegIds.map((id) => advanceOrderStatus(id, code)));
+      setOtpVisible(false);
       navigation.goBack();
     } catch (err) {
       Alert.alert('Could not confirm delivery', err instanceof Error ? err.message : 'Please try again.');
@@ -152,15 +162,20 @@ export function OrderDetailScreen({ route, navigation }: Props) {
     // customer) and arrived_at_customer (final leg) — same file, same map,
     // only the bottom action differs (advance to arrived_at_customer vs.
     // verify OTP).
-    // ponytail: ETA is a flat distance/avg-speed estimate (no routing API
-    // call yet), upgrade to a real Directions-API duration when that
-    // integration lands alongside the routed polyline (see
-    // DeliveryMapView.tsx's own note on the straight-line connector).
-    const etaMinutes = Math.max(1, Math.round((order.distanceKm / 20) * 60));
+    // Real routed ETA (routeEtaMin, from DeliveryMapView's onRouteInfo) when
+    // Directions answered; otherwise a flat distance/avg-speed estimate.
+    // ponytail: 20 km/h avg-speed fallback is a guess, fine while it's only
+    // the no-route case — the routed number is the real one.
+    const etaMinutes = routeEtaMin ?? Math.max(1, Math.round((order.distanceKm / 20) * 60));
 
     return (
       <View className="flex-1 bg-white">
-        <DeliveryMapView destination={order.customerCoords} destinationKind="customer" fullScreen />
+        <DeliveryMapView
+          destination={order.customerCoords}
+          destinationKind="customer"
+          fullScreen
+          onRouteInfo={(info) => setRouteEtaMin(info.durationMin)}
+        />
 
         <View className="absolute inset-x-4 top-safe-offset-4 flex-row items-center justify-between">
           <Pressable

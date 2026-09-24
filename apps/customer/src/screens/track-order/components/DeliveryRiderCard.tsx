@@ -91,6 +91,20 @@ export function DeliveryRiderCard({ order }: Props) {
         {rider.name} picked up your order from {storeName} and is headed your way.
       </Text>
 
+      {/* Delivery code — the real orders.delivery_otp (api/orders.ts), only
+          non-null while out_for_delivery. Read it out to the rider at the
+          door; they enter it to complete delivery. tabular-nums + wide
+          tracking so the four digits read cleanly at a glance. */}
+      {order.delivery_otp ? (
+        <View className="mt-4 flex-row items-center justify-between rounded-2xl bg-lime-soft px-4 py-3">
+          <View>
+            <Text className="text-[12.5px] font-semibold uppercase tracking-wide text-lime-deep">Delivery code</Text>
+            <Text className="mt-0.5 text-[13px] font-medium text-ink/60">Share with your rider at the door</Text>
+          </View>
+          <Text className="text-[28px] font-bold tabular-nums tracking-[6px] text-ink">{order.delivery_otp}</Text>
+        </View>
+      ) : null}
+
       <View className="mt-4 flex-row items-center gap-3">
         <Image
           source={{ uri: avatarUri }}

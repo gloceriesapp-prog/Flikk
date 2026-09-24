@@ -30,9 +30,13 @@ interface Props {
   label: string;
   successLabel: string;
   onConfirm: () => void;
+  // Gated slide — the knob won't grab and the track dims until the caller's
+  // own precondition is met (e.g. all pickup checks ticked). Kept as a prop
+  // so the gate lives with the caller's state, not duplicated in here.
+  disabled?: boolean;
 }
 
-export function SlideToConfirmButton({ label, successLabel, onConfirm }: Props) {
+export function SlideToConfirmButton({ label, successLabel, onConfirm, disabled = false }: Props) {
   const [trackWidth, setTrackWidth] = useState(0);
   // translateX drives the knob's transform (native driver — smooth 60fps
   // drag). fillWidth mirrors the same distance into the green fill's
@@ -61,8 +65,8 @@ export function SlideToConfirmButton({ label, successLabel, onConfirm }: Props) 
       // recreating the responder on every layout/animation frame.
       // eslint-disable-next-line react-hooks/refs
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 2,
+        onStartShouldSetPanResponder: () => !disabled,
+        onMoveShouldSetPanResponder: (_, gesture) => !disabled && Math.abs(gesture.dx) > 2,
         onPanResponderMove: (_, gesture) => {
           if (confirmedRef.current) return;
           const dragged = Math.min(Math.max(gesture.dx, 0), maxTranslateRef.current);
@@ -88,7 +92,7 @@ export function SlideToConfirmButton({ label, successLabel, onConfirm }: Props) 
           }
         },
       }),
-    [fillWidth, onConfirm, successProgress, translateX]
+    [disabled, fillWidth, onConfirm, successProgress, translateX]
   );
 
   const idleOpacity = successProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
@@ -96,6 +100,7 @@ export function SlideToConfirmButton({ label, successLabel, onConfirm }: Props) 
   return (
     <View
       onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+      style={{ opacity: disabled ? 0.4 : 1 }}
       className="h-[64px] w-full justify-center overflow-hidden rounded-full bg-ink"
     >
       {/* Green "confirm" fill — grows in from the left as the knob drags,

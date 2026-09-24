@@ -61,6 +61,7 @@ export function RootNavigator() {
   const startSync = useRiderOrdersStore((s) => s.startSync);
   const stopSync = useRiderOrdersStore((s) => s.stopSync);
   const isHistoryHydrated = useRiderOrdersStore((s) => s.isHistoryHydrated);
+  const goOnline = useRiderOrdersStore((s) => s.goOnline);
   const [statusChecked, setStatusChecked] = useState(false);
 
   useEffect(() => {
@@ -145,10 +146,15 @@ export function RootNavigator() {
   useEffect(() => {
     if (accessToken && isUsableRider && isHistoryHydrated) {
       startSync();
+      // Resume the presence/location loops if the rider was online when the
+      // app last closed — gated on a usable authed rider so a logged-out
+      // session never pings. goOnline reads+clears resumeOnline itself and
+      // early-returns if already online, so this is safe to call each run.
+      if (useRiderOrdersStore.getState().resumeOnline) goOnline();
       return () => stopSync();
     }
     stopSync();
-  }, [accessToken, isUsableRider, isHistoryHydrated, startSync, stopSync]);
+  }, [accessToken, isUsableRider, isHistoryHydrated, startSync, stopSync, goOnline]);
 
   // Cold start (SecureStore hydration + the fixed splash timer) vs.
   // checking a fresh login's real status — genuinely different moments,

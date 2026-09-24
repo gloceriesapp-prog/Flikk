@@ -1,14 +1,13 @@
 // Rider Documents — a read-only page listing everything the rider submitted
 // at onboarding and that admin approved: profile photo, personal details,
-// identity (masked Aadhaar + DL), vehicle, emergency contact, and payout
-// destination. All from GET /rider/profile (useRiderProfile) — the same
-// masked shape the profile screen uses, no new endpoint.
+// identity (masked Aadhaar + DL, plus the actual scan images), vehicle,
+// emergency contact, and payout destination. All from GET /rider/profile
+// (useRiderProfile) — the same masked shape the profile screen uses.
 //
-// The raw Aadhaar/DL scan images live in the PRIVATE rider-documents bucket
-// and aren't signed by /rider/profile (only the profile photo is), so this
-// page shows the on-file numbers/status, not the ID images themselves.
-// ponytail: numbers-only; add signed aadhaar/dl image URLs to /rider/profile
-// if the actual scans ever need to render here.
+// The raw Aadhaar/DL scan images live in the PRIVATE rider-documents bucket;
+// /rider/profile signs short-lived URLs for them (aadhaarPhotoUrl/dlPhotoUrl),
+// same as the profile photo. Null url (no scan on file) -> the image row is
+// simply omitted, numbers still show.
 
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
@@ -85,7 +84,9 @@ export function RiderDocumentsScreen() {
 
         <Section title="Identity">
           <Field label="Aadhaar number" value={profile?.aadhaarMasked} verified />
-          <Field label="Driving licence" value={profile?.dlNumber} verified last />
+          <DocImage label="Aadhaar scan" uri={profile?.aadhaarPhotoUrl} />
+          <Field label="Driving licence" value={profile?.dlNumber} verified />
+          <DocImage label="Licence scan" uri={profile?.dlPhotoUrl} last />
         </Section>
 
         <Section title="Vehicle">
@@ -129,6 +130,18 @@ function Field({ label, value, verified, last }: { label: string; value?: string
         </Text>
         {verified && value ? <AppIcon icon={CheckmarkCircle02Icon} size={15} color={colors.success} /> : null}
       </View>
+    </View>
+  );
+}
+
+// The actual ID scan (signed URL). Omitted entirely when no scan is on file
+// (uri null) — the number Field above already stands on its own.
+function DocImage({ label, uri, last }: { label: string; uri?: string | null; last?: boolean }) {
+  if (!uri) return null;
+  return (
+    <View className={`gap-2 py-3 ${last ? '' : 'border-b border-black/5'}`}>
+      <Text className="text-[13px] font-medium text-ink/45">{label}</Text>
+      <Image source={{ uri }} className="h-44 w-full rounded-xl bg-black/5" resizeMode="cover" />
     </View>
   );
 }

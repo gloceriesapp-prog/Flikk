@@ -115,7 +115,7 @@ export function HomeScreen() {
       surge: 0,
       placedAt: new Date().toISOString(),
     };
-    useRiderOrdersStore.setState((s) => ({ activeOrders: [active, ...s.activeOrders] }));
+    useRiderOrdersStore.setState((s) => ({ activeOrders: [active, ...s.activeOrders.filter((o) => o.id !== active.id)] }));
     setFilter('active');
     setDemoOffer(null);
     return { ok: true };

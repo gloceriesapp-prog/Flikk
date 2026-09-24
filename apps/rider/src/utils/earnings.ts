@@ -54,6 +54,15 @@ export function getWeekRange(offset: number): WeekRange {
   };
 }
 
+// Human-readable label for the week the header has paged to — "This week",
+// "Last week", "N weeks ago". Replaces the raw "21 Sep - 27 Sep" date range
+// (offset is never positive; no future earnings exist).
+export function relativeWeekLabel(offset: number): string {
+  if (offset === 0) return 'This week';
+  if (offset === -1) return 'Last week';
+  return `${-offset} weeks ago`;
+}
+
 function ordersInWeek(completedOrders: RiderOrder[], week: WeekRange): RiderOrder[] {
   const exclusiveEnd = new Date(week.end);
   exclusiveEnd.setDate(exclusiveEnd.getDate() + 1);
@@ -72,6 +81,55 @@ export function sumEarningsForWeek(completedOrders: RiderOrder[], week: WeekRang
 
 export function sumTipsForWeek(completedOrders: RiderOrder[], week: WeekRange): number {
   return ordersInWeek(completedOrders, week).reduce((sum, order) => sum + (order.tip ?? 0), 0);
+}
+
+// Itemized earnings breakup for the summary card (dark "Total Earnings"
+// card at the top of the tab). payout already splits into baseFare +
+// distanceFare + surge (mockOrders' own note), tip is the customer's money
+// on top — map those straight onto the card's rows. Incentives = surge
+// (the amber "extra money" bucket). deductions has no field in the data
+// model yet (orders carry no penalty/adjustment column), so it's always 0
+// today and the card hides the row until it's nonzero.
+// ponytail: wire deductions to a real orders penalty/adjustment field when
+// the backend has one — the card already renders it the moment it's > 0.
+export interface EarningsBreakdown {
+  base: number;
+  distance: number;
+  incentives: number;
+  tips: number;
+  deductions: number;
+  total: number;
+  count: number;
+}
+
+function breakdownForOrders(orders: RiderOrder[]): EarningsBreakdown {
+  const b = orders.reduce(
+    (acc, o) => {
+      acc.base += o.baseFare;
+      acc.distance += o.distanceFare;
+      acc.incentives += o.surge;
+      acc.tips += o.tip ?? 0;
+      acc.count += 1;
+      return acc;
+    },
+    { base: 0, distance: 0, incentives: 0, tips: 0, deductions: 0, total: 0, count: 0 },
+  );
+  b.total = b.base + b.distance + b.incentives + b.tips - b.deductions;
+  return b;
+}
+
+export function breakdownForWeek(completedOrders: RiderOrder[], week: WeekRange): EarningsBreakdown {
+  return breakdownForOrders(ordersInWeek(completedOrders, week));
+}
+
+// Today = deliveries whose deliveredAt falls on the real current calendar
+// day (local). Independent of the week the header has paged to — the
+// summary card's "Today" tab always means today, not "the selected week's
+// today," so paging back a week and switching to Today still shows today.
+export function breakdownForToday(completedOrders: RiderOrder[]): EarningsBreakdown {
+  const now = new Date();
+  const today = completedOrders.filter((o) => o.deliveredAt && new Date(o.deliveredAt).toDateString() === now.toDateString());
+  return breakdownForOrders(today);
 }
 
 export interface WeeklyActivityDay {

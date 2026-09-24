@@ -2,12 +2,9 @@
 // real assigned→picked_up write. Rider confirms they have the right items in
 // good condition for the right customer before we PATCH out_for_delivery.
 //
-// QR/barcode scan is a PRESENTATIONAL placeholder only: real scanning needs
-// expo-camera + a native dev build + backend-issued order QR codes, none of
-// which exist yet. The 3-item checklist IS the real verification gate — all
-// three must be checked before "Verify & pick up" enables.
-// ponytail: QR card is decorative; wire expo-camera + backend QR issuance
-// when order labels actually carry a code.
+// The 3-item checklist IS the real verification gate — all three must be
+// checked before "Verify & pick up" enables. (QR/barcode scan will come back
+// as a real expo-camera flow against backend-issued order codes; not now.)
 //
 // CTA is CORAL not the mockup's lime — CLAUDE.md makes coral the one and only
 // CTA color (lime is reserved for active/online state). Same deviation the
@@ -21,13 +18,12 @@ import {
   Alert02Icon,
   ArrowLeft01Icon,
   CheckmarkCircle02Icon,
-  MoreHorizontalIcon,
-  QrCode01Icon,
-  ShoppingBag03Icon,
+  CustomerService01Icon,
   Store01Icon,
 } from '@hugeicons/core-free-icons';
 import { Linking } from 'react-native';
 import { AppIcon } from '../../components/AppIcon';
+import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import type { AppStackParamList } from '../../navigation/types';
@@ -42,6 +38,34 @@ const CHECKS = [
   { key: 'name', label: 'Customer name matches' },
 ] as const;
 type CheckKey = (typeof CHECKS)[number]['key'];
+
+// Mock item names already carry their pack size inline ("Tomatoes 1kg",
+// "Amul Milk 500ml") — split the trailing unit off so the row can show the
+// product name bold with the pack size as a quieter subtitle. Emoji stands in
+// for a real product image (no catalog thumbnails on the mock — see header).
+// ponytail: emoji avatar + regex unit split are placeholders; swap for real
+// product image + unit fields when order_items carries them.
+const UNIT_RE = /\s+(\d+\s?(?:kg|g|l|ml)|\(dozen\)|\(6 pack\))$/i;
+function splitItem(name: string) {
+  const m = name.match(UNIT_RE);
+  return m ? { label: name.slice(0, m.index).trim(), unit: m[1].replace(/[()]/g, '') } : { label: name, unit: null };
+}
+function itemEmoji(name: string) {
+  const n = name.toLowerCase();
+  if (n.includes('tomato')) return '🍅';
+  if (n.includes('onion')) return '🧅';
+  if (n.includes('potato')) return '🥔';
+  if (n.includes('banana')) return '🍌';
+  if (n.includes('milk') || n.includes('curd')) return '🥛';
+  if (n.includes('egg')) return '🥚';
+  if (n.includes('bread')) return '🍞';
+  if (n.includes('oil')) return '🫗';
+  if (n.includes('rice') || n.includes('dal') || n.includes('salt')) return '🌾';
+  if (n.includes('noodles') || n.includes('maggi')) return '🍜';
+  if (n.includes('biscuit') || n.includes('parle')) return '🍪';
+  if (n.includes('chilli') || n.includes('tea')) return '🌶️';
+  return '🛒';
+}
 
 export function PickupVerificationScreen({ route, navigation }: Props) {
   const { orderId } = route.params;
@@ -108,18 +132,18 @@ export function PickupVerificationScreen({ route, navigation }: Props) {
   };
 
   return (
-    <View className="flex-1 bg-ink" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-[#F1F1F4]" style={{ paddingTop: insets.top }}>
       {/* Top bar — back, centered order number, overflow menu. */}
       <View className="flex-row items-center justify-between px-4 py-3">
         <Pressable
           onPress={() => navigation.goBack()}
-          className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
+          className="h-10 w-10 items-center justify-center rounded-full bg-white"
         >
-          <AppIcon icon={ArrowLeft01Icon} size={22} color="#FFFFFF" />
+          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
-        <Text className="text-[15px] font-bold text-white">Order #{order.orderNumber}</Text>
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-white/10">
-          <AppIcon icon={MoreHorizontalIcon} size={22} color="#FFFFFF" />
+        <Text className="text-[17px] font-semibold text-ink">Order #{order.orderNumber}</Text>
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-white">
+          <AppIcon icon={CustomerService01Icon} size={22} color={colors.ink} />
         </View>
       </View>
 
@@ -128,69 +152,84 @@ export function PickupVerificationScreen({ route, navigation }: Props) {
         contentContainerClassName="px-5 pt-2 gap-4"
         showsVerticalScrollIndicator={false}
       >
-        {/* QR/barcode card — presentational placeholder (see header note). */}
-        <View className="items-center gap-3 py-2">
-          <View className="h-52 w-52 items-center justify-center rounded-3xl bg-white">
-            <AppIcon icon={QrCode01Icon} size={120} color={colors.ink} />
+        {/* Items — the rider eyeballs the real cart against the bag. Real
+            order.items (name + qty); emoji stands in for a product image and
+            the pack size is split off the name (splitItem). Store + count
+            header sits on top so it's one card, not two. */}
+        <View className="gap-1 rounded-2xl bg-white p-4">
+          <View className="flex-row items-center justify-between pb-1">
+            <Text className="text-[11px] font-bold uppercase tracking-wide text-ink/40">
+              {order.itemCount} items
+            </Text>
+            <View className="flex-row items-center gap-1.5">
+              <AppIcon icon={Store01Icon} size={14} color={colors.ink} />
+              <Text className="max-w-[180px] text-[12px] font-semibold text-ink/60" numberOfLines={1}>
+                {order.storeName}
+              </Text>
+            </View>
           </View>
-          <Text className="text-[14px] font-semibold text-white/70">Scan QR / Barcode</Text>
+          {order.items.map((it, i) => {
+            const { label, unit } = splitItem(it.name);
+            return (
+              <View
+                key={`${it.name}-${i}`}
+                className={`flex-row items-center gap-3 py-2.5 ${i > 0 ? 'border-t border-ink/[0.06]' : ''}`}
+              >
+                <View className="h-11 w-11 items-center justify-center rounded-xl bg-[#F1F1F4]">
+                  <Text className="text-[22px]">{itemEmoji(it.name)}</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[15px] font-semibold text-ink" numberOfLines={1}>{label}</Text>
+                  {unit && <Text className="text-[12px] text-ink/45">{unit}</Text>}
+                </View>
+                <Text className="text-[14px] font-bold text-ink tabular-nums">×{it.quantity}</Text>
+              </View>
+            );
+          })}
         </View>
 
-        {/* Order info — real itemCount + store name only (no fake bag count). */}
-        <View className="gap-2.5 rounded-2xl bg-white/5 p-4">
-          <View className="flex-row items-center gap-3">
-            <AppIcon icon={ShoppingBag03Icon} size={20} color={colors.lime} />
-            <Text className="text-[15px] font-semibold text-white">{order.itemCount} items</Text>
-          </View>
-          <View className="h-px bg-white/10" />
-          <View className="flex-row items-center gap-3">
-            <AppIcon icon={Store01Icon} size={20} color={colors.lime} />
-            <Text className="text-[15px] font-semibold text-white" numberOfLines={1}>{order.storeName}</Text>
-          </View>
-        </View>
-
-        {/* Check items — the real gate. All 3 must toggle on. */}
-        <View className="gap-1 rounded-2xl bg-white/5 p-4">
-          <Text className="mb-1 text-[11px] font-bold uppercase tracking-wide text-white/40">Check items</Text>
+        {/* Check items — the real gate. All 3 must toggle on before pickup
+            enables (allChecked). Hint spells out the "tap all" rule. */}
+        <View className="gap-1 rounded-2xl bg-white p-4">
+          <Text className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Check items</Text>
+          <Text className="mb-1 text-[12px] text-ink/45">Tap all three to confirm before picking up.</Text>
           {CHECKS.map((c, i) => {
             const on = checked[c.key];
             return (
               <Pressable
                 key={c.key}
                 onPress={() => setChecked((prev) => ({ ...prev, [c.key]: !prev[c.key] }))}
-                className={`flex-row items-center gap-3 py-3 ${i > 0 ? 'border-t border-white/5' : ''}`}
+                className={`flex-row items-center gap-3 py-3 ${i > 0 ? 'border-t border-ink/10' : ''}`}
                 style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
               >
                 {on ? (
-                  <AppIcon icon={CheckmarkCircle02Icon} size={24} color={colors.lime} />
+                  <AppIcon icon={CheckmarkCircle02Icon} size={24} color={colors.ink} />
                 ) : (
-                  <View className="h-[22px] w-[22px] rounded-full border-2 border-white/25" />
+                  <View className="h-[22px] w-[22px] rounded-full border-2 border-ink/25" />
                 )}
-                <Text className={`text-[15px] font-semibold ${on ? 'text-white' : 'text-white/60'}`}>{c.label}</Text>
+                <Text className={`text-[15px] font-semibold ${on ? 'text-ink' : 'text-ink/50'}`}>{c.label}</Text>
               </Pressable>
             );
           })}
         </View>
       </ScrollView>
 
-      {/* Footer — coral "Verify & pick up" (dimmed until all checked) + the
-          item-issue escape hatch. */}
+      {/* Footer — slide-to-confirm "Verify & pick up" (gated until all three
+          checks are ticked, dimmed + un-grabbable until then) + the
+          item-issue escape hatch. A deliberate gesture, not a tap: same
+          reasoning OrderDetail's own pickup slide applies — this is the real
+          assigned→picked_up write, worth the friction. */}
       <View style={{ paddingBottom: insets.bottom + 16 }} className="gap-3 px-5 pt-3">
-        <Pressable
-          onPress={confirmPickup}
+        <SlideToConfirmButton
+          label={allChecked ? 'Slide to verify & pick up' : 'Tick all three to pick up'}
+          successLabel="Picked up"
           disabled={!allChecked || confirming}
-          className="h-14 items-center justify-center rounded-2xl"
-          style={({ pressed }) => ({
-            backgroundColor: colors.coral,
-            opacity: !allChecked ? 0.4 : pressed ? 0.85 : 1,
-          })}
-        >
-          <Text className="text-[16px] font-bold text-white">{confirming ? 'Confirming…' : 'Verify & pick up'}</Text>
-        </Pressable>
+          onConfirm={confirmPickup}
+        />
 
         <Pressable onPress={reportIssue} disabled={confirming} className="flex-row items-center justify-center gap-2 py-1">
           <AppIcon icon={Alert02Icon} size={16} color={colors.gold} />
-          <Text className="text-[13px] font-semibold text-white/55">Item missing / damaged?</Text>
+          <Text className="text-[13px] font-semibold text-ink/55">Item missing / damaged?</Text>
         </Pressable>
       </View>
     </View>

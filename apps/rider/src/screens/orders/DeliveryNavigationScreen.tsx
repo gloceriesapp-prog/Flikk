@@ -6,12 +6,11 @@
 // Directions API). Real turn-by-turn hands OFF to the rider's own maps app
 // via openNavigation (the "Go to drop" row + the Navigate deep-link).
 //
-// "I've arrived" is CORAL, not the lime the mockup showed — CLAUDE.md makes
-// coral the one and only CTA color (lime is reserved for online/active
-// state), same deviation the pickup screen's "I've arrived" already carries.
-// Tapping it advances picked_up→arrived_at_customer (local milestone, no
-// backend column between out_for_delivery and delivered) and hands off to
-// OrderDetail, which owns the final OTP-verified delivery write.
+// "I've arrived" is a slide-to-confirm (not a tap) — same gesture language as
+// the pickup screens' arrival slide. Sliding advances picked_up→
+// arrived_at_customer (local milestone, no backend column between
+// out_for_delivery and delivered) and pushes DeliveryProof, which owns the
+// final OTP-verified delivery write + the no-handover fallbacks.
 //
 // Needs a native dev build to render the map (react-native-maps isn't in
 // Expo Go SDK 52+, DeliveryMapView's own note).
@@ -24,11 +23,13 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
   Call02Icon,
+  InformationCircleIcon,
   Location01Icon,
-  Message01Icon,
+  MapPinIcon,
   Navigation03Icon,
 } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
+import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors } from '../../theme/tokens';
 import { DeliveryMapView } from './components/DeliveryMapView';
 import { openNavigation } from '../../location/openNavigation';
@@ -85,27 +86,20 @@ export function DeliveryNavigationScreen({ route, navigation }: Props) {
   // lands (shows "Locating…" until then rather than a bogus 0.0 km).
   const km = riderCoords ? distanceKm(riderCoords, order.customerCoords) : null;
   const eta = km != null ? etaMinutes(km) : null;
+  const legText = km != null ? `${km} km · ${eta} min` : 'Locating…';
 
   const callCustomer = () => Linking.openURL(`tel:${order.customerPhone}`);
 
-  // No in-app chat backend yet — masked calling is the real channel.
-  // ponytail: wire a real chat thread when support/messaging exists.
-  const chatCustomer = () =>
-    Alert.alert('Chat', 'In-app chat is coming soon. Call the customer for now.', [
-      { text: 'Close', style: 'cancel' },
-      { text: 'Call', onPress: callCustomer },
-    ]);
-
   // picked_up → arrived_at_customer for every trip leg together (local
-  // milestone, no PATCH). Throws surface as an Alert. On success hand off to
-  // OrderDetail for the OTP-verified delivery; replace so back doesn't dump
-  // the rider back on this nav screen mid-verify.
+  // milestone, no PATCH). Throws surface as an Alert. On success push
+  // DeliveryProof (the OTP + outcome step) — replace so back doesn't dump the
+  // rider back on this nav screen mid-verify.
   const arrived = async () => {
     if (arriving) return;
     setArriving(true);
     try {
       await Promise.all(tripLegs.map((leg) => advanceOrderStatus(leg.id)));
-      navigation.replace('OrderDetail', { orderId });
+      navigation.replace('DeliveryProof', { orderId });
     } catch (e) {
       setArriving(false);
       Alert.alert('Could not update this order', e instanceof Error ? e.message : 'Please try again.');
@@ -130,94 +124,99 @@ export function DeliveryNavigationScreen({ route, navigation }: Props) {
         <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
       </Pressable>
 
-      {/* ETA card — dark, two-line (mockup): big "ETA N min" over the km.
-          The at-a-glance "am I close?" the in-app map is here for. */}
+      {/* Distance/ETA pill — white, top-left next to back, with a nav arrow.
+          Same at-a-glance "am I close?" pill the pickup screen uses. */}
       <View
         style={{ top: insets.top + 12 }}
-        className="absolute left-20 rounded-2xl bg-ink px-4 py-2.5 shadow-md shadow-black/20"
+        className="absolute left-[68px] h-11 flex-row items-center gap-2 rounded-full bg-white px-4 shadow-md shadow-black/20"
       >
-        <View className="flex-row items-center gap-2">
-          <AppIcon icon={Navigation03Icon} size={15} color={colors.lime} />
-          <Text className="text-[15px] font-bold text-white">{eta != null ? `ETA ${eta} min` : 'Locating…'}</Text>
-        </View>
-        {km != null ? <Text className="mt-0.5 text-[13px] font-semibold text-white/60 tabular-nums">{km} km</Text> : null}
+        <AppIcon icon={Navigation03Icon} size={18} color={colors.ink} />
+        <Text className="text-[15px] font-semibold text-ink tabular-nums">{legText}</Text>
       </View>
 
-      {/* Bottom sheet — dark. Customer identity + Call/Chat + drop address +
-          "Go to drop" hand-off + coral "I've arrived". */}
+      {/* Bottom sheet — white, same language as the pickup screen. Drop
+          hand-off + customer card + Call + address/landmark/instruction
+          + slide "I've arrived" → DeliveryProof (OTP + outcome). */}
       <View
-        style={{ paddingBottom: insets.bottom + 16 }}
-        className="absolute inset-x-0 bottom-0 gap-3.5 rounded-t-3xl bg-ink px-5 pt-5"
+        style={{ paddingBottom: insets.bottom + 20 }}
+        className="absolute inset-x-0 bottom-0 gap-4 rounded-t-3xl bg-white px-5 pt-9 shadow-2xl shadow-black/25"
       >
-        {/* Customer row — avatar initials, name, masked tag; chevron opens
-            the full order detail (route, items, payout breakup). */}
-        <Pressable
-          onPress={() => navigation.navigate('OrderDetail', { orderId })}
-          className="flex-row items-center gap-3.5"
-          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-        >
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-lime-soft">
-            <Text className="text-[16px] font-bold text-lime-deep">{initials(order.customerName)}</Text>
-          </View>
-          <View className="flex-1">
-            <Text className="text-[17px] font-bold text-white">{order.customerName}</Text>
-            <Text className="text-[12.5px] text-white/45">Customer · Masked</Text>
-          </View>
-          <AppIcon icon={ArrowRight01Icon} size={22} color="#FFFFFF" />
-        </Pressable>
-
-        {/* Call + Chat — outline pills, side by side (mockup). */}
-        <View className="flex-row gap-3">
-          <Pressable
-            onPress={callCustomer}
-            className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-white/25"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <AppIcon icon={Call02Icon} size={17} color="#FFFFFF" />
-            <Text className="text-[14px] font-bold text-white">Call</Text>
-          </Pressable>
-          <Pressable
-            onPress={chatCustomer}
-            className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-white/25"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <AppIcon icon={Message01Icon} size={17} color="#FFFFFF" />
-            <Text className="text-[14px] font-bold text-white">Chat</Text>
-          </Pressable>
-        </View>
-
-        {/* Drop address — real customerAddress (no fabricated landmark note;
-            RiderOrder has no delivery-note field). */}
-        <View className="flex-row items-start gap-3 rounded-2xl bg-white/5 px-4 py-3">
-          <AppIcon icon={Location01Icon} size={20} color={colors.lime} />
-          <Text className="flex-1 text-[14px] font-semibold text-white/90">{order.customerAddress}</Text>
-        </View>
-
         {/* "Go to drop" → the Swiggy-style hand-off: taps out to the rider's
-            real maps app for turn-by-turn to the customer. The in-app map
-            above is context; THIS is the actual navigation. */}
+            real maps app for turn-by-turn. The in-app map above is context;
+            THIS is the actual navigation. */}
         <Pressable
           onPress={() => openNavigation(order.customerCoords, order.customerName)}
-          className="flex-row items-center justify-between rounded-2xl border border-white/15 px-4 py-3"
+          className="flex-row items-center justify-between"
           style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
-          <View className="flex-row items-center gap-2.5">
-            <AppIcon icon={Navigation03Icon} size={18} color={colors.lime} />
-            <Text className="text-[15px] font-bold text-white">Open in Google Maps</Text>
+          <View>
+            <Text className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Drop</Text>
+            <Text className="text-[22px] font-semibold text-ink">Go to drop</Text>
           </View>
-          <AppIcon icon={ArrowRight01Icon} size={20} color="#FFFFFF" />
+          <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F1F2F4]">
+            <AppIcon icon={Navigation03Icon} size={22} color={colors.ink} />
+          </View>
         </Pressable>
 
-        {/* Coral "I've arrived" (coral per CLAUDE.md, not the mockup's lime)
-            → advance to arrived_at_customer, then OrderDetail for OTP. */}
+        {/* Customer card — tinted surface, avatar initials + name + masked
+            tag; tap opens the full order detail (route, items, payout). */}
         <Pressable
-          onPress={arrived}
-          disabled={arriving}
-          className="h-14 items-center justify-center rounded-2xl"
-          style={({ pressed }) => ({ backgroundColor: colors.coral, opacity: arriving ? 0.6 : pressed ? 0.85 : 1 })}
+          onPress={() => navigation.navigate('OrderDetail', { orderId })}
+          className="flex-row items-center gap-3 rounded-2xl bg-[#F1F2F4] px-4 py-3.5"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
-          <Text className="text-[16px] font-bold text-white">{arriving ? 'Confirming…' : "I've arrived"}</Text>
+          <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F7F7FA]">
+            <Text className="text-[15px] font-bold text-ink">{initials(order.customerName)}</Text>
+          </View>
+          <View className="flex-1">
+            <Text className="text-[15px] font-bold text-ink" numberOfLines={1}>{order.customerName}</Text>
+            <Text className="text-[12.5px] text-ink/50">Customer · Masked</Text>
+          </View>
+          <AppIcon icon={ArrowRight01Icon} size={20} color={colors.ink} />
         </Pressable>
+
+        {/* Call — masked calling is the real customer channel. */}
+        <Pressable
+          onPress={callCustomer}
+          className="h-12 flex-row items-center justify-center gap-2 rounded-2xl bg-[#F1F2F4]"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        >
+          <AppIcon icon={Call02Icon} size={17} color={colors.ink} />
+          <Text className="text-[14px] font-semibold text-ink">Call</Text>
+        </Pressable>
+
+        {/* Drop address + optional landmark + delivery instruction — stacked
+            in one tinted card. Address is always real (customerAddress);
+            landmark and note render only when the backend actually carries
+            them (no dummy placeholder copy). */}
+        <View className="gap-3 rounded-2xl bg-[#F1F2F4] px-4 py-3.5">
+          <View className="flex-row items-start gap-3">
+            <AppIcon icon={Location01Icon} size={19} color={colors.ink} />
+            <Text className="flex-1 text-[14px] font-semibold text-ink">{order.customerAddress}</Text>
+          </View>
+          {order.landmark ? (
+            <View className="flex-row items-start gap-3">
+              <AppIcon icon={MapPinIcon} size={19} color={colors.ink} />
+              <Text className="flex-1 text-[13.5px] text-ink/60">{order.landmark}</Text>
+            </View>
+          ) : null}
+          {order.deliveryNote ? (
+            <View className="flex-row items-start gap-3">
+              <AppIcon icon={InformationCircleIcon} size={19} color={colors.ink} />
+              <Text className="flex-1 text-[13.5px] text-ink/60">{order.deliveryNote}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Slide "I've arrived" → advance every leg to arrived_at_customer,
+            then DeliveryProof (OTP + outcome). Slide, not tap, matches the
+            pickup screens' arrival gesture. */}
+        <SlideToConfirmButton
+          label={arriving ? 'Confirming…' : "Slide — I've arrived"}
+          successLabel="Arrived at drop"
+          onConfirm={arrived}
+          disabled={arriving}
+        />
       </View>
     </View>
   );

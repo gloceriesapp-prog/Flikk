@@ -23,6 +23,10 @@ module.exports = {
       bundleIdentifier: 'com.gloceries.rider',
       infoPlist: {
         NSLocationWhenInUseUsageDescription: 'Flikk uses your location to show your live position to the customer while delivering their order.',
+        // Background ("Always") grant — lets presence keep pinging dispatch
+        // when the app is backgrounded/killed mid-shift (backgroundLocation.ts).
+        NSLocationAlwaysAndWhenInUseUsageDescription: 'Flikk shares your location while you are online so you keep receiving delivery offers, even when the app is in the background.',
+        UIBackgroundModes: ['location'],
         // Lets Linking.canOpenURL detect the Google Maps app so "Navigate"
         // can prefer it over Apple Maps; without this iOS silently reports it
         // as unavailable and we always fall back to Apple Maps.
@@ -38,7 +42,7 @@ module.exports = {
         monochromeImage: './assets/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
-      permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
+      permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'ACCESS_BACKGROUND_LOCATION', 'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION'],
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_API_KEY,
@@ -58,6 +62,12 @@ module.exports = {
         'expo-location',
         {
           locationWhenInUsePermission: 'Flikk uses your location to show your live position to the customer while delivering their order.',
+          // Background presence pings while online (backgroundLocation.ts) —
+          // Android needs the foreground-service + background flags wired by
+          // the plugin, not just the manifest permission above.
+          locationAlwaysAndWhenInUsePermission: 'Flikk shares your location while you are online so you keep receiving delivery offers, even when the app is in the background.',
+          isAndroidBackgroundLocationEnabled: true,
+          isAndroidForegroundServiceEnabled: true,
         },
       ],
     ],
