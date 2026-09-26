@@ -1,41 +1,66 @@
-// Earnings tab — trimmed to exactly three sections per an explicit ask:
-// a week-navigation header, the selected week's balance, and that week's
-// daily activity chart. Everything that used to be below this (stat
-// tiles, the amber summary card, Withdraw Funds, the Transactions list)
-// was removed wholesale, not hidden — see git history if any of it's
-// needed again. bg-[#FAFAFA] matches apps/customer's own checkout screen
-// background, per the same ask.
+// Earnings tab — week-navigation header, the selected week's balance
+// (base + extra-stop split), that week's daily activity chart, and a
+// transactions list showing every settled order/trip that week with its
+// real base vs extra-stop breakdown.
+//
+// Data is server-derived (GET /rider/earnings via useRiderEarnings) — one
+// rider_earnings row per settled order or whole trip. No client-seeded
+// sample data here anymore; the screen renders loading/error/empty states
+// off the query instead. bg-[#F8F8F8] matches apps/customer's checkout bg.
 
 import { useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
-import { PrimaryButton } from '../../components/PrimaryButton';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { useActiveMsToday } from '../../hooks/useActiveMsToday';
-import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
-import { breakdownForToday, breakdownForWeek, getEarningsForWeek, getWeekRange, getWeeklyActivity, getWithdrawalForWeek, relativeWeekLabel, sumTipsForWeek } from '../../utils/earnings';
+import {
+  breakdownForToday,
+  breakdownForWeek,
+  getEarningsForWeek,
+  getWeekRange,
+  getWeeklyActivity,
+  relativeWeekLabel,
+} from '../../utils/earnings';
+import { useRiderEarnings } from './useRiderEarnings';
 import { EarningsSummaryCard, type EarningsPeriod } from './components/EarningsSummaryCard';
 import { EarningsWeekHeader } from './components/EarningsWeekHeader';
 import { WeeklyActivityChartCard } from './components/WeeklyActivityChartCard';
 import { WeeklyTransactionsCard } from './components/WeeklyTransactionsCard';
 
 export function EarningsScreen() {
-  const completedOrders = useRiderOrdersStore((s) => s.completedOrders);
-  const loadSampleWeek = useRiderOrdersStore((s) => s.loadSampleWeek);
+  const { data: earnings, isPending, isError, refetch } = useRiderEarnings();
   const [weekOffset, setWeekOffset] = useState(0);
   const [period, setPeriod] = useState<EarningsPeriod>('today');
   const activeMsToday = useActiveMsToday();
 
+  const rows = earnings ?? [];
   const selectedWeek = useMemo(() => getWeekRange(weekOffset), [weekOffset]);
-  const weeklyActivity = useMemo(() => getWeeklyActivity(completedOrders, selectedWeek), [completedOrders, selectedWeek]);
-  const tipsThisWeek = useMemo(() => sumTipsForWeek(completedOrders, selectedWeek), [completedOrders, selectedWeek]);
-  const weekEarnings = useMemo(() => getEarningsForWeek(completedOrders, selectedWeek), [completedOrders, selectedWeek]);
-  const weekWithdrawal = useMemo(() => getWithdrawalForWeek(completedOrders, selectedWeek), [completedOrders, selectedWeek]);
+  const weeklyActivity = useMemo(() => getWeeklyActivity(rows, selectedWeek), [rows, selectedWeek]);
+  const weekEarnings = useMemo(() => getEarningsForWeek(rows, selectedWeek), [rows, selectedWeek]);
 
   // Today = real current calendar day (independent of the paged week);
   // Week = whichever week the header has selected. See breakdownForToday's
   // own note on why Today isn't "the selected week's today."
-  const todayBreakdown = useMemo(() => breakdownForToday(completedOrders), [completedOrders]);
-  const weekBreakdown = useMemo(() => breakdownForWeek(completedOrders, selectedWeek), [completedOrders, selectedWeek]);
+  const todayBreakdown = useMemo(() => breakdownForToday(rows), [rows]);
+  const weekBreakdown = useMemo(() => breakdownForWeek(rows, selectedWeek), [rows, selectedWeek]);
   const summaryBreakdown = period === 'today' ? todayBreakdown : weekBreakdown;
+
+  if (isPending) {
+    return (
+      <View className="flex-1 items-center justify-center bg-[#F8F8F8]">
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View className="flex-1 items-center justify-center gap-1 bg-[#F8F8F8] px-8">
+        <Text className="text-center text-[15px] font-semibold text-ink">Couldn't load earnings</Text>
+        <Text onPress={() => refetch()} className="text-center text-[13px] font-semibold text-lime-deep">
+          Tap to retry
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-[#F8F8F8]">
@@ -59,26 +84,8 @@ export function EarningsScreen() {
             activeMs={period === 'today' ? activeMsToday : null}
           />
         </View>
-        <WeeklyActivityChartCard weeklyActivity={weeklyActivity} tipsThisWeek={tipsThisWeek} />
-
-        <WeeklyTransactionsCard earnings={weekEarnings} withdrawal={weekWithdrawal} />
-
-        {/* Preview/testing aid only — seeds a week's worth of varied
-            delivered orders (useRiderOrdersStore.loadSampleWeek's own
-            note) so the bar chart has something real to render. Only
-            offered for the current week (weekOffset === 0) — a past week
-            is real history, not something to fake data into. Deliberately
-            NOT gated on weekTotal === 0: if Home's own "Load sample data"
-            (or any earlier tap of this same button) already put a delivery
-            or two on the board, weekTotal stops being 0 and the button
-            would disappear with no way left to seed the rest of the
-            week's bars — exactly the "sample data isn't showing, and I
-            can't find the button to add it" bug this was hiding. */}
-        {weekOffset === 0 && __DEV__ ? (
-          <View className="px-5">
-            <PrimaryButton label="Load sample data" onPress={loadSampleWeek} />
-          </View>
-        ) : null}
+        <WeeklyActivityChartCard weeklyActivity={weeklyActivity} />
+        <WeeklyTransactionsCard earnings={weekEarnings} />
       </ScrollView>
     </View>
   );

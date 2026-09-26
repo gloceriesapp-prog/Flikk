@@ -19,7 +19,7 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 
-export type OrderStatusFilter = 'all' | 'on_the_way' | 'delivered' | 'cancelled';
+export type OrderStatusFilter = 'all' | 'on_the_way' | 'delivered' | 'cancelled' | 'failed';
 // 'all' | 'last_30_days' | a real calendar year (2026, 2025, ...).
 export type OrderTimeFilter = 'all' | 'last_30_days' | number;
 
@@ -28,6 +28,10 @@ const STATUS_OPTIONS: { value: OrderStatusFilter; label: string }[] = [
   { value: 'on_the_way', label: 'On the way' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'cancelled', label: 'Cancelled' },
+  // Failed = post-pickup delivery failure (terminal, off-happy-path) — sits
+  // beside Cancelled, never in an "on the way" bucket. PurchaseScreen's
+  // exact-match predicate (status === statusFilter) already routes it.
+  { value: 'failed', label: 'Delivery failed' },
 ];
 
 // currentYear down to accountCreatedYear, inclusive — a fresh account

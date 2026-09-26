@@ -24,7 +24,7 @@ export function PayoutsFilterBar({ filter, onFilterChange, counts }: Props) {
           onClick={() => onFilterChange(f)}
           className={clsx(
             'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors',
-            filter === f ? 'bg-neutral-900 text-white' : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50',
+            filter === f ? 'bg-neutral-900 text-white' : 'border border-hairline-strong bg-white text-neutral-600 hover:bg-neutral-50',
           )}
         >
           {f === 'all' ? 'All' : statusLabel(f)}

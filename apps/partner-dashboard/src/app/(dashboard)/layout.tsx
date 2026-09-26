@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { TopHeader } from '@/components/TopHeader';
+import { NewOrderAlert } from '@/components/NewOrderAlert';
+import { Toaster } from '@/components/ui/Toast';
 import { useSession } from '@/lib/useSession';
-import { fetchMyOrders, fetchMyStore, type Store } from '@/lib/partnerApi';
+import { fetchMyStore, type Store } from '@/lib/partnerApi';
 
 // Deterministic per-user placeholder avatar (DiceBear, seeded by phone so
 // it's stable across reloads for the same owner) — a real photo-upload
@@ -21,9 +23,8 @@ export default function DashboardLayout({ children }: LayoutProps<'/'>) {
   useEffect(() => {
     if (!me) return;
     fetchMyStore().then(setStore).catch(() => setStore(null));
-    fetchMyOrders()
-      .then((orders) => setNotificationCount(orders.filter((o) => o.status === 'placed').length))
-      .catch(() => setNotificationCount(0));
+    // Live 'placed' count is driven by <NewOrderAlert> below (it polls anyway),
+    // so there's no separate orders fetch here.
   }, [me]);
 
   // Settings (and now the Overview page's own online/offline toggle) each
@@ -39,20 +40,26 @@ export default function DashboardLayout({ children }: LayoutProps<'/'>) {
   }, []);
 
   if (isLoading || !me) {
-    return <div className="flex min-h-screen items-center justify-center bg-[#F5F5F3]" />;
+    return <div className="flex min-h-screen items-center justify-center bg-white" />;
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#F5F5F3]">
+    <div className="flex h-screen flex-col overflow-hidden bg-neutral-50">
       <div className="flex min-h-0 flex-1">
         <Sidebar storeName={store?.name ?? 'Your store'} ordersNeedingActionCount={notificationCount} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <TopHeader notificationCount={notificationCount} ownerName={me.name ?? 'Store owner'} avatarUrl={avatarUrlFor(me.phone)} />
-          <main className="flex-1 overflow-y-auto rounded-tl-2xl bg-white px-8 py-8">
-            <div className="mx-auto w-full max-w-6xl">{children}</div>
-          </main>
+          {/* Content panel — rounded, bordered, inset from the sidebar/edges so
+              it reads as a premium surface floating on the neutral-50 app bg. */}
+          <div className="m-1.5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-hairline bg-white lg:m-2">
+            <TopHeader notificationCount={notificationCount} ownerName={me.name ?? 'Store owner'} avatarUrl={avatarUrlFor(me.phone)} />
+            <main className="flex-1 overflow-y-auto px-5 py-5 lg:px-7 lg:py-6">
+              <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+            </main>
+          </div>
         </div>
       </div>
+      <NewOrderAlert onCountChange={setNotificationCount} />
+      <Toaster />
     </div>
   );
 }

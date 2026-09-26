@@ -24,6 +24,7 @@ import {
   Clock01Icon,
   CustomerService01Icon,
   IdentityCardIcon,
+  Invoice01Icon,
   Logout01Icon,
   MessageQuestionIcon,
   Motorbike01Icon,
@@ -203,6 +204,7 @@ export function ProfileScreen() {
             <MenuRow icon={CustomerService01Icon} label="Support" onPress={callSupport} />
             <MenuRow icon={Alert02Icon} label="Emergency SOS" danger onPress={emergencySos} />
             <MenuRow icon={Wallet01Icon} label="Wallet & payouts" onPress={() => navigation.navigate('Earnings')} />
+            <MenuRow icon={Invoice01Icon} label="Payout history" onPress={() => navigation.navigate('PayoutHistory')} />
             <MenuRow icon={IdentityCardIcon} label="Payout method" onPress={() => setEditingPayout(true)} />
             <MenuRow icon={MessageQuestionIcon} label="Report a problem" onPress={reportProblem} />
             <MenuRow icon={Logout01Icon} label="Log out" danger onPress={handleLogout} />

@@ -35,7 +35,7 @@ export interface PurchaseOrder {
   id: string; // display order_number (or a trip-derived label)
   orderId: string; // real UUID — TrackOrder navigation target (trip_id for a trip)
   isTrip: boolean;
-  status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
   storeId: string;
   storeName: string;
   items: OrderItemSummary[];
@@ -59,6 +59,7 @@ const STATUS_LABEL: Record<PurchaseOrder['status'], string> = {
   out_for_delivery: 'Out for Delivery',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
+  failed: 'Delivery Failed',
 };
 
 function formatRelativeDateTime(iso: string): string {
@@ -79,7 +80,7 @@ export function mapOrderGroup(group: ApiOrder[]): PurchaseOrder {
   const isTrip = group.length > 1;
   const leg = representativeLeg(group);
   const status = leg.status;
-  const deliveredOrCancelled = status === 'delivered' || status === 'cancelled';
+  const isTerminal = status === 'delivered' || status === 'cancelled' || status === 'failed';
   const timestamp = leg.delivered_at ?? leg.picked_up_at ?? leg.packed_at ?? leg.placed_at;
 
   return {
@@ -99,7 +100,7 @@ export function mapOrderGroup(group: ApiOrder[]): PurchaseOrder {
       })),
     ),
     statusLabel: STATUS_LABEL[status],
-    etaLabel: deliveredOrCancelled ? `${STATUS_LABEL[status]} at ${formatRelativeDateTime(timestamp)}` : 'Your order is on its way',
+    etaLabel: isTerminal ? `${STATUS_LABEL[status]} at ${formatRelativeDateTime(timestamp)}` : 'Your order is on its way',
     // PastOrderCard shows this next to statusLabel ("Delivered · <label>") —
     // the terminal-status timestamp (delivered/cancelled), not when the
     // order was placed, same as every real delivery app's own history list.

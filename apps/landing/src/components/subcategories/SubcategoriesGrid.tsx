@@ -2,6 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
+import { APP_DOWNLOAD_HREF } from "@/lib/links";
 
 interface SubcategoryItem {
   id: string;
@@ -109,8 +110,9 @@ export default function SubcategoriesGrid() {
         {/* Subcategories Grid: Updated to 8 columns on large screens */}
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-2 sm:gap-x-4 lg:gap-x-6 gap-y-5 lg:gap-y-8 w-full">
           {SUBCATEGORIES.map((item) => (
-            <div
+            <a
               key={item.id}
+              href={APP_DOWNLOAD_HREF}
               className="flex flex-col items-center cursor-pointer group"
             >
               {/* Soft Light Blue Card Image Box */}
@@ -128,7 +130,7 @@ export default function SubcategoriesGrid() {
               <span className="text-[14px] sm:text-[16px] font-medium text-[#0F172A] leading-snug tracking-tight line-clamp-2 transition-colors text-center mt-2 lg:mt-3 max-w-[100px] lg:max-w-[120px]">
                 {item.name}
               </span>
-            </div>
+            </a>
           ))}
         </div>
       </div>

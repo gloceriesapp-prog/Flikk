@@ -31,7 +31,7 @@ export function InventoryFilterBar({ filter, onFilterChange, search, onSearchCha
             onClick={() => onFilterChange(key)}
             className={clsx(
               'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors',
-              filter === key ? 'bg-neutral-900 text-white' : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50',
+              filter === key ? 'bg-neutral-900 text-white' : 'border border-hairline-strong bg-white text-neutral-600 hover:bg-neutral-50',
             )}
           >
             {label}
@@ -47,7 +47,7 @@ export function InventoryFilterBar({ filter, onFilterChange, search, onSearchCha
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search product or category"
-          className="w-72 rounded-full border border-neutral-200 bg-white py-2 pl-9 pr-4 text-sm text-neutral-800 outline-none placeholder:text-neutral-400 focus:border-neutral-300"
+          className="w-72 rounded-full border border-hairline-strong bg-white py-2 pl-9 pr-4 text-sm text-neutral-800 outline-none placeholder:text-neutral-400 focus:border-neutral-400"
         />
       </div>
     </div>

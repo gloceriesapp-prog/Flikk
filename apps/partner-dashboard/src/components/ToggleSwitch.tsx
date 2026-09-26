@@ -18,13 +18,13 @@ export function ToggleSwitch({ checked, onChange, disabled, onLabel = 'Online', 
       onClick={() => onChange(!checked)}
       className={clsx(
         'flex items-center gap-2.5 rounded-full border px-1.5 py-1.5 pr-3.5 transition-colors disabled:opacity-50',
-        checked ? 'border-emerald-200 bg-emerald-50' : 'border-neutral-200 bg-neutral-50',
+        checked ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50',
       )}
     >
       <span
         className={clsx(
           'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-          checked ? 'bg-emerald-500' : 'bg-neutral-300',
+          checked ? 'bg-emerald-500' : 'bg-red-500',
         )}
       >
         <span
@@ -34,7 +34,7 @@ export function ToggleSwitch({ checked, onChange, disabled, onLabel = 'Online', 
           )}
         />
       </span>
-      <span className={clsx('text-sm font-medium', checked ? 'text-emerald-700' : 'text-neutral-500')}>
+      <span className={clsx('text-sm font-medium', checked ? 'text-emerald-700' : 'text-red-600')}>
         {checked ? onLabel : offLabel}
       </span>
     </button>

@@ -67,7 +67,7 @@ export function OrderInfoCard({ order }: Props) {
   // Cancelled starts expanded — a customer who just cancelled (or is
   // checking back on a cancelled order) shouldn't need to tap the info
   // icon just to see whether their refund actually went through.
-  const [isReasonOpen, setIsReasonOpen] = useState(order.status === 'cancelled');
+  const [isReasonOpen, setIsReasonOpen] = useState(order.status === 'cancelled' || order.status === 'failed');
   // Date.now() can't be called directly in render (React's purity rule —
   // an impure read during render can produce unstable results). This
   // isn't a live countdown (no live GPS, CLAUDE.md), so a 30s-granularity
@@ -79,10 +79,11 @@ export function OrderInfoCard({ order }: Props) {
     return () => clearInterval(interval);
   }, []);
   const isCancelled = order.status === 'cancelled';
+  const isFailed = order.status === 'failed';
   const isDelivered = order.status === 'delivered';
-  const isActive = !isCancelled && !isDelivered;
+  const isActive = !isCancelled && !isFailed && !isDelivered;
 
-  const label = isCancelled ? 'Order Cancelled' : isDelivered ? 'Delivered At' : 'Estimated Time of Arrival';
+  const label = isCancelled ? 'Order Cancelled' : isFailed ? 'Delivery Failed' : isDelivered ? 'Delivered At' : 'Estimated Time of Arrival';
 
   let timeText = '—';
   let isDelayed = false;
@@ -95,15 +96,17 @@ export function OrderInfoCard({ order }: Props) {
     isDelayed = nowMs > etaWindowEnd.getTime();
   }
 
-  const tone = isCancelled ? 'danger' : isDelayed ? 'delay' : 'success';
-  const reasonTitle = isCancelled ? 'Order cancelled' : isDelayed ? 'Why the delay?' : isDelivered ? 'Delivered' : 'On track';
+  const tone = isCancelled || isFailed ? 'danger' : isDelayed ? 'delay' : 'success';
+  const reasonTitle = isCancelled ? 'Order cancelled' : isFailed ? 'Delivery failed' : isDelayed ? 'Why the delay?' : isDelivered ? 'Delivered' : 'On track';
   const reasonMessage = isCancelled
     ? (order.cancel_reason ?? 'This order was cancelled and is no longer being prepared or delivered.')
-    : isDelivered
-      ? 'This order has already been delivered.'
-      : isDelayed
-        ? pickDelayReason(order.id)
-        : 'Your order is on track — no delays reported right now.';
+    : isFailed
+      ? "This order couldn't be delivered. We're reviewing it for a refund — you don't need to do anything right now."
+      : isDelivered
+        ? 'This order has already been delivered.'
+        : isDelayed
+          ? pickDelayReason(order.id)
+          : 'Your order is on track — no delays reported right now.';
   const { icon: toneIcon, bg: toneBg, fg: toneFg } = TONE[tone];
 
   // COD (razorpay_payment_id null) never gets a refund line — nothing was
@@ -135,7 +138,7 @@ export function OrderInfoCard({ order }: Props) {
               </Text>
             </View>
           )}
-          <Text className={`text-[18px] font-semibold ${isCancelled ? 'text-danger' : 'text-ink'}`}>{timeText}</Text>
+          <Text className={`text-[18px] font-semibold ${isCancelled || isFailed ? 'text-danger' : 'text-ink'}`}>{timeText}</Text>
           <Pressable onPress={() => setIsReasonOpen((open) => !open)} hitSlop={10} className="h-6 w-6 items-center justify-center">
             <AppIcon icon={InformationCircleIcon} size={18} color={colors.ink + '80'} />
           </Pressable>

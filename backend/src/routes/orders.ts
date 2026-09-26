@@ -16,6 +16,8 @@ import {
 } from '../lib/orderStateMachine.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
 import { generateDeliveryOtp, isDeliveryOtpValid } from '../lib/deliveryOtp.js';
+import { isRiderCancelReasonCode } from '../lib/cancelReasons.js';
+import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.js';
 import { lookupPromoForCheckout } from './promos.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
 import { rankRepeatPurchases, reorderByRank } from '../lib/buyItAgain.js';
@@ -356,7 +358,43 @@ ordersRouter.patch(
       const tsCol = timestampColumnFor(to);
       const update: Record<string, unknown> = { status: to };
       if (tsCol) update[tsCol] = new Date().toISOString();
-      if (to === 'cancelled' && reason) update.cancel_reason = reason;
+      if (to === 'cancelled' && reason) {
+        // A rider cancels only pre-pickup and only from CancelOrderModal's
+        // fixed reason list, so their reason must be one of the known codes
+        // (lib/cancelReasons.ts — mirror of @flikk/shared). Scoped to riders
+        // deliberately: partner-reject and customer-cancel reasons on this
+        // same endpoint stay free text, so this check must not touch them.
+        if (req.user!.role === 'rider' && !isRiderCancelReasonCode(reason)) {
+          throw new AppError(400, 'INVALID_CANCEL_REASON', 'Unknown cancellation reason.');
+        }
+        update.cancel_reason = reason;
+      }
+
+      if (to === 'failed') {
+        // Post-pickup counterpart to cancel: a rider who's collected the
+        // parcel but can't complete the drop (customer unreachable, wrong
+        // address) marks the order failed. Reason is required and must be a
+        // known code — same rider-scoped validation the cancel block above
+        // applies, just against the drop-phase reason set. (Only a rider can
+        // reach 'failed' at all — orderStateMachine's TRANSITION_OWNER — so the
+        // role guard here is belt-and-suspenders, mirroring cancel for
+        // consistency.)
+        if (req.user!.role === 'rider' && !isRiderDeliveryFailureReasonCode(reason)) {
+          throw new AppError(400, 'INVALID_FAILURE_REASON', 'Unknown delivery-failure reason.');
+        }
+        // Mid-trip failure is a deliberate follow-up, not MVP: a trip is one
+        // customer drop fed by N store pickups (orders sharing a trip_id), so
+        // failing one leg raises real questions the MVP doesn't answer (refund
+        // which store? pay which legs?). Reject rather than half-handle it.
+        if (order.trip_id) {
+          throw new AppError(400, 'TRIP_FAILURE_UNSUPPORTED', 'Failing a multi-store trip order is not supported yet.');
+        }
+        // REUSE orders.cancel_reason — status ('failed' vs 'cancelled')
+        // disambiguates which flow stored it, so no new column/migration is
+        // needed for the reason itself (the status enum widening is migration
+        // 052; that constraint change was unavoidable).
+        update.cancel_reason = reason;
+      }
 
       // Delivery OTP issued the moment the rider marks pickup
       // (out_for_delivery) — the customer sees it on their own order well
@@ -443,26 +481,25 @@ ordersRouter.patch(
           const { data: siblings } = await supabase.from('orders').select('id, status').eq('trip_id', order.trip_id);
           const allDelivered = (siblings ?? []).every((s) => s.id === order.id || s.status === 'delivered');
           if (allDelivered) {
-            const siblingIds = (siblings ?? []).map((s) => s.id);
-            // Guard against paying twice if two legs' PATCH requests race
-            // each other into "all delivered" at once — ponytail: a tiny
-            // check-then-insert window remains (no DB-level uniqueness on
-            // trip payouts), upgrade to a unique constraint on trip_id if
-            // this ever shows up as a real double-pay in practice.
-            const { data: existingPayout } = await supabase.from('rider_earnings').select('id').in('order_id', siblingIds).limit(1);
-            if (!existingPayout || existingPayout.length === 0) {
-              const { data: trip } = await supabase.from('trips').select('delivery_fee').eq('id', order.trip_id).single();
-              // trip.delivery_fee is this trip's OWN stored fee (captured
-              // at creation, same historical-value principle as the
-              // single-store path above) — `?? 0` only guards a trip
-              // lookup that somehow found no row, never an actual payout
-              // amount in practice.
-              await supabase.from('rider_earnings').insert({
-                rider_id: req.user!.id,
-                order_id: order.id,
-                amount: trip?.delivery_fee ?? 0,
-              });
-            }
+            const { data: trip } = await supabase.from('trips').select('delivery_fee').eq('id', order.trip_id).single();
+            // trip.delivery_fee is this trip's OWN stored fee (captured
+            // at creation, same historical-value principle as the
+            // single-store path above) — `?? 0` only guards a trip
+            // lookup that somehow found no row, never an actual payout
+            // amount in practice.
+            //
+            // Double-pay is now guarded by the DB, not a check-then-insert:
+            // rider_earnings_trip_unique (migration 050) makes one earnings
+            // row per trip_id the hard rule, so two legs racing into "all
+            // delivered" at once can't both insert — the loser hits 23505
+            // and is a no-op. No TOCTOU window left.
+            const { error: earnErr } = await supabase.from('rider_earnings').insert({
+              rider_id: req.user!.id,
+              order_id: order.id,
+              trip_id: order.trip_id,
+              amount: trip?.delivery_fee ?? 0,
+            });
+            if (earnErr && earnErr.code !== '23505') throw earnErr;
           }
         } else {
           // This order's OWN stored delivery_fee (captured at order-
@@ -471,12 +508,14 @@ ordersRouter.patch(
           // order being placed and delivered, the rider is still paid
           // whatever this specific order actually charged, same principle
           // as order_items.unit_price_at_order never drifting with a
-          // product's current price.
-          await supabase.from('rider_earnings').insert({
+          // product's current price. rider_earnings_order_unique (migration
+          // 050) makes the re-insert on a retried PATCH a no-op (23505).
+          const { error: earnErr } = await supabase.from('rider_earnings').insert({
             rider_id: req.user!.id,
             order_id: order.id,
             amount: updated.delivery_fee,
           });
+          if (earnErr && earnErr.code !== '23505') throw earnErr;
         }
 
         // Real earning-transparency push — the store's revenue is never
@@ -498,6 +537,23 @@ ordersRouter.patch(
           `₹${netEarned} earned`,
           `Order delivered — added to your balance, paid out on ${formatPayoutDateLabel(nextPayoutDate())}.`,
         );
+      }
+
+      if (to === 'failed') {
+        // Rider is paid the FULL delivery fee on a failed drop — they did the
+        // ride and the pickup; the failure is on the customer/address side, not
+        // theirs. Same single-order payout + idempotency as the delivered
+        // else-branch above (rider_earnings_order_unique, migration 050, makes
+        // a retried PATCH a 23505 no-op). Trip legs never reach here — rejected
+        // as TRIP_FAILURE_UNSUPPORTED above — so this is always a single order,
+        // no trip-fee branch needed. No auto-refund and no store payout fire:
+        // the failed order surfaces in admin's refund queue for manual review.
+        const { error: earnErr } = await supabase.from('rider_earnings').insert({
+          rider_id: req.user!.id,
+          order_id: order.id,
+          amount: updated.delivery_fee,
+        });
+        if (earnErr && earnErr.code !== '23505') throw earnErr;
       }
 
       // Realtime propagation is automatic via Supabase's replication on this

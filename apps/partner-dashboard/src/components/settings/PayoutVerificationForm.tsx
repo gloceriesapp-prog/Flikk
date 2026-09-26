@@ -67,7 +67,7 @@ export function PayoutVerificationForm({ store, onVerified }: Props) {
           onClick={() => setMethod('upi')}
           className={clsx(
             'rounded-full px-3.5 py-1.5 text-sm font-medium',
-            method === 'upi' ? 'bg-neutral-900 text-white' : 'border border-neutral-200 text-neutral-600',
+            method === 'upi' ? 'bg-neutral-900 text-white' : 'border border-hairline-strong text-neutral-600',
           )}
         >
           UPI
@@ -77,7 +77,7 @@ export function PayoutVerificationForm({ store, onVerified }: Props) {
           onClick={() => setMethod('bank_account')}
           className={clsx(
             'rounded-full px-3.5 py-1.5 text-sm font-medium',
-            method === 'bank_account' ? 'bg-neutral-900 text-white' : 'border border-neutral-200 text-neutral-600',
+            method === 'bank_account' ? 'bg-neutral-900 text-white' : 'border border-hairline-strong text-neutral-600',
           )}
         >
           Bank account

@@ -6,10 +6,12 @@
 //
 // Accept hits the real atomic accept-race endpoint (api/dispatch.ts's
 // acceptDispatchOffer); losing that race is a normal outcome, not an error,
-// so the card shows an honest "someone else got it" state. Decline (or the
-// timer running out) just dismisses THIS card locally — the order may still
-// be open and resurface on the next dispatch poll; declining isn't a
-// server action.
+// so the card shows an honest "someone else got it" state. This inline card
+// is poll-authoritative: the offer stays acceptable as long as the server
+// returns it, so the countdown ring is decorative urgency only — when it
+// hits 0 the card STAYS and Accept stays live. Only an explicit rider
+// Decline (or the offer dropping out of the next dispatch poll) removes it;
+// declining isn't a server action.
 
 import { CheckmarkCircle02Icon, CreditCardIcon, PackageIcon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
@@ -22,10 +24,12 @@ import { OfferStatTiles } from './OfferStatTiles';
 import { OfferRoutePreview } from './OfferRoutePreview';
 import { useOfferDecision } from './useOfferDecision';
 
-// Local decide-window length. Not a server deadline (offers carry none) —
-// see OfferCountdownRing's note. Roughly tracks the backend's own 45s
-// rebroadcast window without pretending to be authoritative.
-const DECISION_WINDOW_S = 30;
+// Decide-window length in seconds — the arc denominator. Matches the
+// backend's real DISPATCH_OFFER_WINDOW_MS (45s) so the ring's full arc lines
+// up with the true server window; the ring counts down to offer.expiresAt
+// (the real per-offer deadline) when present. The __DEV__ Test popup passes a
+// long override so the UI can be inspected without auto-dismissing.
+const DECISION_WINDOW_S = 45;
 
 interface Props {
   offer: DispatchOffer;
@@ -57,9 +61,13 @@ export function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = DE
 
   return (
     <View className="gap-4 rounded-3xl p-5" style={{ backgroundColor: colors.ink }}>
-      {/* Header: countdown ring + "New Delivery Order" + order number */}
+      {/* Header: countdown ring + "New Delivery Order" + order number.
+          Ring expiry is a no-op here: this list is poll-authoritative, so a
+          past deadline must NOT decline/hide the card — the ring just stops
+          at 0 and Accept stays live. (The __DEV__ sheet, a modal, passes
+          handleDecline to auto-dismiss instead.) */}
       <View className="items-center gap-1.5">
-        <OfferCountdownRing windowSeconds={windowSeconds} onExpire={handleDecline} />
+        <OfferCountdownRing windowSeconds={windowSeconds} expiresAt={offer.expiresAt} onExpire={() => {}} />
         <Text className="text-[17px] font-extrabold text-white">New Delivery Order</Text>
         <Text className="text-[12px] font-medium text-white/40">{offer.orderNumber}</Text>
       </View>

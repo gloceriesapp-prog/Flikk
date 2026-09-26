@@ -60,6 +60,7 @@ export type AuthStackParamList = {
 export type AppTabParamList = {
   Home: undefined;
   Orders: undefined;
+  Notifications: undefined;
   Earnings: undefined;
   Profile: undefined;
 };
@@ -88,4 +89,7 @@ export type AppStackParamList = {
   DeliveryComplete: { orderId: string };
   OrderDetail: { orderId: string };
   RiderDocuments: undefined;
+  // Weekly payout history — the per-payout complement to the Earnings tab.
+  // Reached from Profile's "Payout history" row.
+  PayoutHistory: undefined;
 };

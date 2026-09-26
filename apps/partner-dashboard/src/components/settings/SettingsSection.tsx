@@ -12,7 +12,7 @@ export function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-6">
+    <div className="card-shadow rounded-xl border border-hairline bg-white p-6">
       <div className="mb-5">
         <p className="text-base font-semibold text-black">{title}</p>
         {description && <p className="mt-0.5 text-sm text-neutral-400">{description}</p>}

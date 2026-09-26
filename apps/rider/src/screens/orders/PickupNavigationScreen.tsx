@@ -24,7 +24,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { ArrowLeft01Icon, ArrowRight01Icon, Call02Icon, Navigation03Icon, Store01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
-import { colors } from '../../theme/tokens';
+import { colors, shadow } from '../../theme/tokens';
 import { DeliveryMapView } from './components/DeliveryMapView';
 import { openNavigation } from '../../location/openNavigation';
 import { distanceKm, etaMinutes } from '../../utils/geo';
@@ -88,8 +88,8 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
       {/* Back arrow — floats over the map, safe-area aware. */}
       <Pressable
         onPress={() => navigation.goBack()}
-        style={{ top: insets.top + 12 }}
-        className="absolute left-4 h-11 w-11 items-center justify-center rounded-full bg-white shadow-md shadow-black/20"
+        style={[{ top: insets.top + 12 }, shadow.chip]}
+        className="absolute left-4 h-11 w-11 items-center justify-center rounded-full bg-white"
       >
         <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
       </Pressable>
@@ -97,8 +97,8 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
       {/* Distance/ETA pill — dark, top-left next to back, with a nav arrow.
           The at-a-glance "am I close?" the in-app map is here for. */}
       <View
-        style={{ top: insets.top + 12 }}
-        className="absolute left-[68px] h-11 flex-row items-center gap-2 rounded-full bg-white px-4 shadow-md shadow-black/20"
+        style={[{ top: insets.top + 12 }, shadow.chip]}
+        className="absolute left-[68px] h-11 flex-row items-center gap-2 rounded-full bg-white px-4"
       >
         <AppIcon icon={Navigation03Icon} size={18} color={colors.ink} />
         <Text className="text-[15px] font-semibold text-ink tabular-nums">{legText}</Text>
@@ -108,8 +108,8 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
           card + "I've arrived" → the PickupVerification screen (QR + item
           checklist), which owns the real assigned→picked_up write. */}
       <View
-        style={{ paddingBottom: insets.bottom + 28 }}
-        className="absolute inset-x-0 bottom-0 gap-5 rounded-t-3xl bg-white px-5 pt-9 shadow-2xl shadow-black/25"
+        style={[{ paddingBottom: insets.bottom + 28 }, shadow.sheet]}
+        className="absolute inset-x-0 bottom-0 gap-5 rounded-t-3xl bg-white px-5 pt-9"
       >
         {/* "Go to pickup" → the Swiggy-style hand-off: taps out to the
             rider's real maps app for turn-by-turn. The in-app map above is

@@ -149,8 +149,11 @@ export function RootNavigator() {
       // Resume the presence/location loops if the rider was online when the
       // app last closed — gated on a usable authed rider so a logged-out
       // session never pings. goOnline reads+clears resumeOnline itself and
-      // early-returns if already online, so this is safe to call each run.
-      if (useRiderOrdersStore.getState().resumeOnline) goOnline();
+      // early-returns if already online, so this is safe to call each run. No
+      // alert on a silent boot resume: if location was revoked between
+      // sessions goOnline just no-ops and the rider stays offline until they
+      // tap Go online themselves (which then surfaces the settings prompt).
+      if (useRiderOrdersStore.getState().resumeOnline) void goOnline();
       return () => stopSync();
     }
     stopSync();

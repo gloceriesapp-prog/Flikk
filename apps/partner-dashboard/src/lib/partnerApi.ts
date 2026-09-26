@@ -26,6 +26,10 @@ export interface Store {
   owner_name: string | null;
   gst_number: string | null;
   shop_establishment_number: string | null;
+  // KYC identifiers — PATCH /partner/store validates format (isValidFssai/
+  // isValidPanFormat) server-side before writing. Real columns, same store row.
+  fssai_number: string | null;
+  pan_number: string | null;
   phone: string | null;
 }
 
@@ -207,4 +211,29 @@ export interface Payout {
 
 export function fetchMyPayouts(): Promise<Payout[]> {
   return apiRequest('/partner/payouts');
+}
+
+// GET /partner/reviews is RLS-scoped to the caller's own store. owner_reply/
+// owner_replied_at (migration 053) hold the store owner's public response —
+// null until they reply. Written via replyToReview (PATCH), never by the
+// customer.
+export interface PartnerReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  owner_reply: string | null;
+  owner_replied_at: string | null;
+  users: { name: string | null } | null;
+  orders: { order_number: string } | null;
+}
+
+export function fetchMyReviews(): Promise<PartnerReview[]> {
+  return apiRequest('/partner/reviews');
+}
+
+// Reply-only — the backend allowlist ignores everything but `reply`, and
+// scopes the write to the caller's own store. Empty string clears the reply.
+export function replyToReview(id: string, reply: string): Promise<PartnerReview> {
+  return apiRequest(`/partner/reviews/${id}`, { method: 'PATCH', body: { reply } });
 }

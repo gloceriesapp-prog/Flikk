@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   Map,
   Package,
+  PackageX,
   PartyPopper,
   RotateCcw,
   Settings,
@@ -47,6 +48,7 @@ export const INSIGHTS_ITEMS: NavItem[] = [
   { href: '/revenue', label: 'Revenue', icon: Banknote },
   { href: '/rider-payouts', label: 'Rider Payouts', icon: Bike },
   { href: '/refunds', label: 'Refunds', icon: RotateCcw },
+  { href: '/failed-deliveries', label: 'Failed Deliveries', icon: PackageX },
   { href: '/reviews', label: 'Reviews', icon: Star },
   { href: '/zones', label: 'Zones', icon: Map },
 ];

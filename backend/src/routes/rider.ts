@@ -5,6 +5,8 @@ import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
 import { fetchRoute } from '../lib/routeDirections.js';
+import { EXTRA_STOP_FEE } from './trips.js';
+import { splitEarning } from '../lib/earningsBreakdown.js';
 
 export const riderRouter = Router();
 
@@ -106,7 +108,12 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
     const { data: orders, error: ordersErr } = await supabase
       .from('orders')
       .select(
-        'id, order_number, delivery_fee, trip_id, trips(delivery_fee), stores(name, lat, lng), addresses(line1, landmark, latitude, longitude), order_items(quantity)'
+        // dispatch_broadcast_at — when this offer was (re)broadcast; the
+        // client derives the real per-offer countdown deadline from it
+        // (that timestamp + DISPATCH_OFFER_WINDOW_MS), instead of a
+        // mount-seeded guess. Set on every broadcast/rebroadcast in
+        // lib/riderDispatch.ts.
+        'id, order_number, delivery_fee, trip_id, dispatch_broadcast_at, trips(delivery_fee), stores(name, lat, lng), addresses(line1, landmark, latitude, longitude), order_items(quantity)'
       )
       .in('id', orderIds);
     if (ordersErr) throw ordersErr;
@@ -224,15 +231,110 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
   }
 });
 
+// The rider app's Earnings tab, server-derived. Each rider_earnings row is
+// either one single-store order (trip_id null) or one whole trip (trip_id
+// set). The base vs extra-stop split of the combined amount isn't persisted,
+// so it's recomputed here from EXTRA_STOP_FEE and the trip's leg count
+// (splitEarning). Sorted by deliveredAt DESC — paid_at is null until the
+// weekly payout settles, so it can't order the list. Service client bypasses
+// RLS like every other handler here; the .eq('rider_id', ...) filter is the
+// scoping — do not remove it.
 riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
   try {
     const { data, error } = await supabase
       .from('rider_earnings')
-      .select('*')
-      .eq('rider_id', req.user!.id)
-      .order('paid_at', { ascending: false });
+      .select('id, amount, paid_at, order_id, trip_id, orders(order_number, delivered_at, stores(name)), trips(delivery_fee)')
+      .eq('rider_id', req.user!.id);
     if (error) throw error;
-    res.json(data);
+
+    const rows = (data ?? []) as unknown as {
+      id: string;
+      amount: number | string;
+      paid_at: string | null;
+      order_id: string;
+      trip_id: string | null;
+      orders: { order_number: string | null; delivered_at: string | null; stores: { name: string | null } | null } | null;
+      trips: { delivery_fee: number | string } | null;
+    }[];
+
+    // Leg count per trip — a per-row embedded aggregate is awkward in
+    // PostgREST, so one extra query counts every order sharing each trip_id
+    // in JS. Single-order earnings (trip_id null) always have stopCount 1.
+    const tripIds = [...new Set(rows.map((r) => r.trip_id).filter((id): id is string => id !== null))];
+    const stopCountByTrip = new Map<string, number>();
+    if (tripIds.length > 0) {
+      const { data: legs, error: legsErr } = await supabase.from('orders').select('trip_id').in('trip_id', tripIds);
+      if (legsErr) throw legsErr;
+      for (const leg of (legs ?? []) as { trip_id: string | null }[]) {
+        if (leg.trip_id) stopCountByTrip.set(leg.trip_id, (stopCountByTrip.get(leg.trip_id) ?? 0) + 1);
+      }
+    }
+
+    const earnings = rows
+      .map((row) => {
+        const amount = Number(row.amount);
+        const stopCount = row.trip_id ? stopCountByTrip.get(row.trip_id) ?? 1 : 1;
+        const { base, extraStop } = splitEarning(amount, stopCount, EXTRA_STOP_FEE);
+        return {
+          id: row.id,
+          amount,
+          status: row.paid_at ? ('paid' as const) : ('pending' as const),
+          paidAt: row.paid_at,
+          deliveredAt: row.orders?.delivered_at ?? null,
+          orderNumber: row.orders?.order_number ?? null,
+          storeName: row.orders?.stores?.name ?? null,
+          isTrip: !!row.trip_id,
+          stopCount,
+          baseFee: base,
+          extraStopFee: extraStop,
+        };
+      })
+      .sort((a, b) => (b.deliveredAt ?? '').localeCompare(a.deliveredAt ?? ''));
+
+    res.json(earnings);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The rider app's weekly payout history — one row per rider_payouts record
+// (migration 050): the money that actually settled to the rider's bank each
+// week, the per-WEEKLY-PAYOUT complement to GET /earnings's per-delivery view.
+// Service client bypasses RLS like every sibling handler; the
+// .eq('rider_id', ...) filter is the scoping — a rider must never read another
+// rider's payouts, so do not remove it. Newest week first. razorpay_payout_id
+// is surfaced only as a reference the rider can quote to support; no other
+// internal columns (created_at, failure internals) leak.
+riderRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('rider_payouts')
+      .select('id, week_start, week_end, amount, status, paid_at, razorpay_payout_id')
+      .eq('rider_id', req.user!.id)
+      .order('week_start', { ascending: false });
+    if (error) throw error;
+
+    const rows = (data ?? []) as unknown as {
+      id: string;
+      week_start: string;
+      week_end: string;
+      amount: number | string;
+      status: 'pending' | 'processing' | 'paid' | 'failed' | 'blocked';
+      paid_at: string | null;
+      razorpay_payout_id: string | null;
+    }[];
+
+    const payouts = rows.map((p) => ({
+      id: p.id,
+      weekStart: p.week_start,
+      weekEnd: p.week_end,
+      amount: Number(p.amount),
+      status: p.status,
+      paidAt: p.paid_at,
+      razorpayPayoutId: p.razorpay_payout_id,
+    }));
+
+    res.json(payouts);
   } catch (err) {
     next(err);
   }

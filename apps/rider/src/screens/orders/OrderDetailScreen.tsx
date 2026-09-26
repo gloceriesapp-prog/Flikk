@@ -24,10 +24,11 @@ import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
-import { colors } from '../../theme/tokens';
+import { colors, shadow } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import { DeliveryOtpModal } from './components/DeliveryOtpModal';
 import { CancelOrderModal } from './components/CancelOrderModal';
+import { DeliveryFailureModal } from './components/DeliveryFailureModal';
 import { DeliveryMapView } from './components/DeliveryMapView';
 import { openNavigation } from '../../location/openNavigation';
 import type { AppStackParamList } from '../../navigation/types';
@@ -61,8 +62,10 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   const siblingLegs = order?.tripId ? activeOrders.filter((o) => o.tripId === order.tripId && o.id !== order.id) : [];
   const advanceOrderStatus = useRiderOrdersStore((s) => s.advanceOrderStatus);
   const cancelOrder = useRiderOrdersStore((s) => s.cancelOrder);
+  const failOrder = useRiderOrdersStore((s) => s.failOrder);
   const [otpVisible, setOtpVisible] = useState(false);
   const [cancelVisible, setCancelVisible] = useState(false);
+  const [failureVisible, setFailureVisible] = useState(false);
   // Real Google-Directions driving ETA once the routed line lands; null until
   // then (and when routing is unavailable), where the flat distance/avg-speed
   // estimate below fills in.
@@ -143,6 +146,26 @@ export function OrderDetailScreen({ route, navigation }: Props) {
     }
   }
 
+  // Post-pickup counterpart to cancel: rider couldn't complete the drop
+  // (customer unreachable/refused/bad address). Backend moves the order to
+  // terminal 'failed' and pays the rider the full fee; refund is a manual
+  // admin review, not fired here. failOrder drops it from the active list.
+  async function handleConfirmFailure(reason: string) {
+    setFailureVisible(false);
+    try {
+      await failOrder(order!.id, reason);
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Could not mark this delivery failed', err instanceof Error ? err.message : 'Please try again.');
+    }
+  }
+
+  // Delivery-failed only applies post-pickup (there's a parcel in hand) and
+  // only to a single-store order — a multi-store trip leg failing isn't
+  // supported yet (backend rejects TRIP_FAILURE_UNSUPPORTED), so the action
+  // stays hidden for trips rather than offering a tap that always errors.
+  const canFail = !order.tripId && (order.status === 'picked_up' || order.status === 'arrived_at_customer');
+
   const isAtCustomer = order.status === 'arrived_at_customer';
   // The full-screen "heading to customer" map only makes sense once every
   // store in the trip has actually been visited — a rider who's picked up
@@ -181,7 +204,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           <Pressable
             onPress={() => navigation.goBack()}
             hitSlop={10}
-            className="h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm shadow-black/20"
+            style={shadow.chip}
+            className="h-10 w-10 items-center justify-center rounded-full bg-white"
           >
             <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
           </Pressable>
@@ -189,13 +213,13 @@ export function OrderDetailScreen({ route, navigation }: Props) {
               underneath, on a green surface (brand lime, not white) so it
               reads as the "good news" ETA callout at a glance instead of
               blending into every other white pill on screen. */}
-          <View className="items-center rounded-2xl bg-lime px-4 py-2 shadow-sm shadow-black/20">
+          <View style={shadow.chip} className="items-center rounded-2xl bg-lime px-4 py-2">
             <Text className="text-[24px] font-extrabold leading-none text-ink">{etaMinutes}</Text>
             <Text className="text-[11px] font-bold text-ink/70">min{etaMinutes === 1 ? '' : 's'} away</Text>
           </View>
         </View>
 
-        <View className="absolute inset-x-4 bottom-safe-offset-4 gap-5 rounded-[28px] bg-white px-5 py-6 shadow-xl shadow-black/25">
+        <View style={shadow.sheet} className="absolute inset-x-4 bottom-safe-offset-4 gap-5 rounded-[28px] bg-white px-5 py-6">
           <View className="flex-row items-center gap-3.5">
             <View className="h-14 w-14 items-center justify-center rounded-full bg-lime-soft">
               <Text className="text-[18px] font-bold text-lime-deep">
@@ -266,9 +290,16 @@ export function OrderDetailScreen({ route, navigation }: Props) {
               <AppIcon icon={Call02Icon} size={20} color={colors.ink} />
             </Pressable>
           </View>
+
+          {canFail && (
+            <Pressable onPress={() => setFailureVisible(true)} className="items-center py-1">
+              <Text className="text-[13px] font-semibold text-danger">Delivery failed</Text>
+            </Pressable>
+          )}
         </View>
 
         <DeliveryOtpModal visible={otpVisible} onCancel={() => setOtpVisible(false)} onConfirm={handleConfirmDelivery} />
+        <DeliveryFailureModal visible={failureVisible} onCancel={() => setFailureVisible(false)} onConfirm={handleConfirmFailure} />
       </View>
     );
   }
@@ -420,6 +451,15 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             <Text className="text-[13px] font-semibold text-danger">Cancel this delivery</Text>
           </Pressable>
         )}
+
+        {/* Post-pickup: can no longer cancel, but a drop that can't be
+            completed (customer unreachable/refused/wrong address) needs an
+            exit — this is that exit. Single-store orders only (canFail). */}
+        {canFail && (
+          <Pressable onPress={() => setFailureVisible(true)} className="items-center py-2">
+            <Text className="text-[13px] font-semibold text-danger">Delivery failed</Text>
+          </Pressable>
+        )}
       </ScrollView>
 
       <View className="border-t border-mist bg-white px-5 pb-safe-offset-4 pt-4">
@@ -452,6 +492,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
 
       <DeliveryOtpModal visible={otpVisible} onCancel={() => setOtpVisible(false)} onConfirm={handleConfirmDelivery} />
       <CancelOrderModal visible={cancelVisible} onCancel={() => setCancelVisible(false)} onConfirm={handleConfirmCancel} />
+      <DeliveryFailureModal visible={failureVisible} onCancel={() => setFailureVisible(false)} onConfirm={handleConfirmFailure} />
     </View>
   );
 }

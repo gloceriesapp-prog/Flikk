@@ -22,7 +22,7 @@ import type { OrderItemLine, RiderOrder } from '../data/mockOrders';
 // number at this scale.
 const DELIVERY_FEE = 25;
 
-type BackendOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+type BackendOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
 
 interface RawOrderItem {
   quantity: number;
@@ -74,6 +74,12 @@ function toLocalStatus(status: BackendOrderStatus): RiderOrder['status'] | null 
       return 'delivered';
     case 'cancelled':
       return 'cancelled';
+    // A failed (post-pickup) order is terminal and paid server-side — it has
+    // no place in the rider's ACTIVE list, so drop it here (returns null). The
+    // rider app has no separate "failed" list surface yet; see failOrder in
+    // useRiderOrdersStore.ts (optimistic removal on the action itself).
+    case 'failed':
+      return null;
     default:
       return null;
   }

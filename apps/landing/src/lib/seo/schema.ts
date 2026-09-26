@@ -27,6 +27,7 @@ export const organizationSchema = (): Json => ({
     contactType: "customer support",
     areaServed: SITE.country,
     availableLanguage: ["en", "kn", "hi"],
+    ...(SITE.supportPhone ? { telephone: SITE.supportPhone } : {}),
   },
 });
 
@@ -68,6 +69,7 @@ export const localBusinessSchema = (area: Area): Json => ({
   description: `Grocery, fresh produce, dairy and daily essentials delivery from local stores in ${area.area}, ${area.city}.`,
   parentOrganization: { "@id": abs("/#organization") },
   priceRange: "₹₹",
+  ...(SITE.supportPhone ? { telephone: SITE.supportPhone } : {}),
   areaServed: {
     "@type": "City",
     name: area.city,

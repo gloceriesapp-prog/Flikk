@@ -8,10 +8,9 @@
 // Backed by real data now: api/orders.ts's fetchAssignments polls
 // backend/src/routes/rider.ts's GET /assignments (real orders, real RLS,
 // real rider_id = this account), not data/mockOrders.ts's fake generator.
-// That file still exists and is still used, but only by loadSampleData/
-// loadSampleWeek — explicitly dev-only preview seeders now (gated behind
-// __DEV__ in HomeScreen.tsx/EarningsScreen.tsx), never this store's real
-// order source.
+// That file still exists and is still used, but only by loadSampleData —
+// an explicitly dev-only preview seeder now (gated behind __DEV__ in
+// HomeScreen.tsx), never this store's real order source.
 //
 // Real backend limitation this still works around rather than pretends
 // doesn't exist:
@@ -51,9 +50,8 @@ import { create } from 'zustand';
 import { acceptDispatchOffer, fetchDispatchOffers, updateRiderStatus, type AcceptDispatchOfferResult, type DispatchOffer } from '../api/dispatch';
 import { fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders';
 import { generateMockOrder, generateMockRating, generateMockTip, type RiderOrder } from '../data/mockOrders';
-import { getCurrentCoordinates } from '../location/riderLocation';
+import { getCurrentCoordinates, requestLocationPermission } from '../location/riderLocation';
 import { startBackgroundLocation, stopBackgroundLocation } from '../location/backgroundLocation';
-import { startOfWeek } from '../utils/earnings';
 import { todayKey } from '../utils/date';
 import { carryOverActiveMs } from '../utils/activeTime';
 
@@ -170,19 +168,24 @@ interface RiderOrdersState {
   hydrateHistory: () => Promise<void>;
   startSync: () => void;
   stopSync: () => void;
-  goOnline: () => void;
+  goOnline: () => Promise<boolean>;
   goOffline: () => void;
   acceptIncomingOrder: () => void;
   declineIncomingOrder: () => void;
   advanceOrderStatus: (orderId: string, otp?: string) => Promise<void>;
   cancelOrder: (orderId: string, reason: string) => Promise<void>;
+  // Post-pickup delivery failure — the terminal counterpart to cancelOrder
+  // (which is pre-pickup only). Backend pays the rider the full fee and moves
+  // the order to 'failed'; locally it just leaves the active list (the rider
+  // has no failed-orders surface, and the server drops 'failed' from the
+  // assignments feed — api/orders.ts's toLocalStatus).
+  failOrder: (orderId: string, reason: string) => Promise<void>;
   // Demo/preview aid only — seeds one order into each of active/completed/
   // cancelled so every list layout on Home/Orders/Earnings can be seen
   // without waiting on a real assignment. Not a real data source; gated
   // behind __DEV__ at the call site (HomeScreen.tsx), never shown to a
   // real rider in a production build.
   loadSampleData: () => void;
-  loadSampleWeek: () => void;
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -352,7 +355,16 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     clearAutoDeclineTimer();
   },
 
-  goOnline: () => {
+  goOnline: async () => {
+    // Presence dispatch is pointless without location: pingAndRefresh below
+    // no-ops forever with no GPS fix, so an ungated goOnline flips the rider
+    // to "online" while nearby_online_riders never sees them — a silent dead
+    // state, no offers, no signal why. Gate the whole thing on the foreground
+    // grant here (the one place every caller routes through) and return
+    // whether we actually went online, so a tap can surface the denial.
+    const granted = await requestLocationPermission();
+    if (!granted) return false;
+
     set((state) => {
       // Already online → don't restart the session clock. Fresh online →
       // stamp onlineSince, and if the banked total is from an earlier day,
@@ -392,6 +404,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     // foreground loop above only ticks while the app is open. Best-effort:
     // no-ops if the rider declined the "Always" location grant.
     void startBackgroundLocation();
+    return true;
   },
 
   goOffline: () => {
@@ -525,6 +538,21 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     });
   },
 
+  failOrder: async (orderId, reason) => {
+    // Real transition out_for_delivery -> failed (this app's 'picked_up' /
+    // 'arrived_at_customer'). A rejection (not picked up yet, trip leg —
+    // TRIP_FAILURE_UNSUPPORTED, not this rider's order) is a real 400/403/409
+    // from the backend, thrown straight through so the caller can Alert it
+    // rather than silently pretend the drop was closed out. reason is a code
+    // from RIDER_DELIVERY_FAILURE_REASONS (@flikk/shared), validated server-side.
+    if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'failed', reason);
+
+    // Terminal + paid server-side — just leave the active list. No local
+    // failed/cancelled bucket to add it to (mirrors how the assignments poll
+    // drops a server-reported 'failed' order entirely, api/orders.ts).
+    set((state) => ({ activeOrders: state.activeOrders.filter((o) => o.id !== orderId) }));
+  },
+
   loadSampleData: () => {
     const active: RiderOrder = { ...generateMockOrder(), status: 'picked_up' };
 
@@ -552,33 +580,6 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
       cancelledOrders: [cancelled, ...state.cancelledOrders],
     }));
 
-    void persistHistory(get().completedOrders);
-  },
-
-  loadSampleWeek: () => {
-    const weekStart = startOfWeek(new Date());
-    const ORDERS_PER_DAY = [18, 4, 0, 3, 15, 0, 2];
-
-    const sampleOrders: RiderOrder[] = [];
-    ORDERS_PER_DAY.forEach((orderCount, dayOffset) => {
-      const day = new Date(weekStart);
-      day.setDate(day.getDate() + dayOffset);
-
-      for (let i = 0; i < orderCount; i += 1) {
-        const deliveredAt = new Date(day);
-        deliveredAt.setHours(9 + i * 3, 15, 0, 0);
-
-        sampleOrders.push({
-          ...generateMockOrder(),
-          status: 'delivered',
-          deliveredAt: deliveredAt.toISOString(),
-          customerRating: generateMockRating(),
-          tip: generateMockTip(),
-        });
-      }
-    });
-
-    set((state) => ({ completedOrders: [...sampleOrders, ...state.completedOrders] }));
     void persistHistory(get().completedOrders);
   },
 }));

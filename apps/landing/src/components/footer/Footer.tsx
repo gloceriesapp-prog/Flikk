@@ -1,40 +1,48 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FavouriteIcon, ShoppingBag01Icon } from "@hugeicons/core-free-icons";
+import { AREAS } from "@/lib/seo/areas";
 
-const CATEGORIES_LIST = [
-  "Fresh Produce",
-  "Kirana & Staples",
-  "Bakery & Sweets",
-  "Ice Creams",
-  "Seafood & Meat",
-  "Organic Pantry",
+// Footer doubles as the HTML sitemap: real crawlable <a href> to every
+// routed page. The delivery-area column is the SEO engine — it internal-
+// links all /delivery/<slug> pages so Google discovers + ranks every zone
+// (active or "launching soon") from any page the footer renders on.
+type FooterLink = { label: string; href: string };
+
+const COMPANY: FooterLink[] = [
+  { label: "About Gloceries", href: "/about" },
+  { label: "Partner with us", href: "/partner" },
+  { label: "Become a rider", href: "/partner#rider" },
 ];
 
-const ECOSYSTEM = [
-  "About Gloceries",
-  "Partner Kiranas",
-  "Rider Fleet",
-  "Gloceries Merchants",
-  "Silicon Coast Tech",
+// Every zone → a crawlable <a href>. Live zones drop into the app home with
+// the zone preselected (`/?area=<slug>` → home renders the location strip);
+// soon zones keep their own /delivery/<slug> SEO page (the ones that most need
+// ranking). Sitemap still lists every /delivery/<slug>, so discovery holds.
+const LIVE_AREAS: FooterLink[] = AREAS.filter((a) => a.active).map((a) => ({
+  label: `Delivery in ${a.area}`,
+  href: `/?area=${a.slug}`,
+}));
+const SOON_AREAS: FooterLink[] = AREAS.filter((a) => !a.active).map((a) => ({
+  label: `Delivery in ${a.area}`,
+  href: `/delivery/${a.slug}`,
+}));
+
+// ponytail: /terms + /privacy pages don't exist yet — stub routes needed
+// before launch, footer legal links are table-stakes for an e-commerce site.
+const LEGAL: FooterLink[] = [
+  { label: "Terms of Service", href: "/terms" },
+  { label: "Privacy Policy", href: "/privacy" },
 ];
 
-const LEGAL = [
-  "Fast Local Delivery",
-  "Zero Hidden Fees",
-  "Quality Guarantee",
-  "Terms of Service",
-  "Privacy Policy",
-];
-
-function LinkColumn({ title, items }: { title: string; items: string[] }) {
+function LinkColumn({ title, items }: { title: string; items: FooterLink[] }) {
   return (
     <div className="flex flex-col gap-5">
       <h4 className="text-lg font-semibold text-[#878787]">{title}</h4>
-      <ul className="flex flex-col gap-3 text-[#101C10] font-medium text-sm">
+      <ul className="flex flex-col gap-3 text-[#FFFFFF] font-medium text-sm">
         {items.map((item) => (
-          <li key={item}>
-            <a href="#" className="hover:text-[#0052FF] transition-all inline-block">
-              {item}
+          <li key={item.href}>
+            <a href={item.href} className="hover:text-white/80 transition-all inline-block">
+              {item.label}
             </a>
           </li>
         ))}
@@ -45,18 +53,48 @@ function LinkColumn({ title, items }: { title: string; items: string[] }) {
 
 export default function Footer() {
   return (
-    <footer className="w-full bg-[#F6FAF0] px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
-      <div className="max-w-[1280px] mx-auto bg-white text-[#101C10] rounded-[2rem] border border-slate-200/70 shadow-xl shadow-slate-900/5 pt-16 lg:pt-20 pb-0 px-6 sm:px-10 lg:px-16 flex flex-col gap-14 lg:gap-20 overflow-hidden relative">
+    <footer className="w-full bg-[#212121] text-white pt-16 pb-0 border-t border-slate-800 overflow-hidden relative">
+      <div className="max-w-[1280px] mx-auto px-6 flex flex-col gap-12 lg:gap-16">
 
         <div className="flex flex-col lg:flex-row justify-between gap-12 lg:gap-8 w-full z-10 relative">
 
-          {/* Link columns — col 1: Ecosystem + Legal stacked, col 2: Category */}
+          {/* Link columns / HTML sitemap — Company + Legal stacked, Delivery Areas own column */}
           <div className="grid grid-cols-2 gap-8 sm:gap-12 lg:w-2/5">
             <div className="flex flex-col gap-10">
-              <LinkColumn title="Ecosystem" items={ECOSYSTEM} />
+              <LinkColumn title="Company" items={COMPANY} />
               <LinkColumn title="Legal" items={LEGAL} />
             </div>
-            <LinkColumn title="Category" items={CATEGORIES_LIST} />
+            <div className="flex flex-col gap-5">
+              <h4 className="text-lg font-semibold text-[#878787]">Delivery Areas</h4>
+              <ul className="flex flex-col gap-3 text-sm font-medium">
+                {/* Live zones — orderable today */}
+                {LIVE_AREAS.map((item) => (
+                  <li key={item.href}>
+                    <a
+                      href={item.href}
+                      className="text-white hover:text-white/80 transition-all inline-flex items-center gap-2"
+                    >
+                      {item.label}
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#A8D93A]" />
+                    </a>
+                  </li>
+                ))}
+                {/* Coming soon — dimmed, still crawlable (SEO) */}
+                {SOON_AREAS.map((item) => (
+                  <li key={item.href}>
+                    <a
+                      href={item.href}
+                      className="text-[#878787] hover:text-white/70 transition-all inline-flex items-center gap-2"
+                    >
+                      {item.label}
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#878787]/70 border border-[#878787]/30 rounded px-1.5 py-0.5">
+                        Soon
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           {/* Right — socials (left) + brand & app badges (right) */}
@@ -66,17 +104,17 @@ export default function Footer() {
             <div className="flex flex-col gap-5 shrink-0">
               <h4 className="text-lg font-semibold text-[#878787]">Follow us on</h4>
               <div className="flex items-center gap-4">
-                <a href="#" aria-label="LinkedIn" className="w-11 h-11 rounded-full bg-slate-100 hover:bg-[#0052FF] flex items-center justify-center text-slate-600 hover:text-white transition-all">
+                <a href="#" aria-label="LinkedIn" className="w-11 h-11 rounded-full bg-[#2E2E2E] hover:bg-[#0052FF] flex items-center justify-center text-slate-300 hover:text-white transition-all">
                   <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                     <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
                   </svg>
                 </a>
-                <a href="#" aria-label="Instagram" className="w-11 h-11 rounded-full bg-slate-100 hover:bg-[#0052FF] flex items-center justify-center text-slate-600 hover:text-white transition-all">
+                <a href="#" aria-label="Instagram" className="w-11 h-11 rounded-full bg-[#2E2E2E] hover:bg-[#0052FF] flex items-center justify-center text-slate-300 hover:text-white transition-all">
                   <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                     <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
                   </svg>
                 </a>
-                <a href="#" aria-label="YouTube" className="w-11 h-11 rounded-full bg-slate-100 hover:bg-[#0052FF] flex items-center justify-center text-slate-600 hover:text-white transition-all">
+                <a href="#" aria-label="YouTube" className="w-11 h-11 rounded-full bg-[#2E2E2E] hover:bg-[#0052FF] flex items-center justify-center text-slate-300 hover:text-white transition-all">
                   <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                   </svg>
@@ -92,7 +130,7 @@ export default function Footer() {
                   <HugeiconsIcon icon={ShoppingBag01Icon} className="w-8 h-8 text-white" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-3xl font-semibold tracking-tight text-[#101C10] inline-flex items-baseline gap-1">
+                  <span className="text-3xl font-semibold tracking-tight text-white inline-flex items-baseline gap-1">
                     gloceries<span className="inline-block w-2 h-2 bg-[#155dfc] rounded-full"></span>
                   </span>
                 </div>
@@ -141,9 +179,9 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm font-semibold text-[#101C10] relative z-10">
+        <div className="pt-6 border-t border-[#878787]/15 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm font-semibold text-[#FFFFFF] relative z-10">
           <span>© 2026 Gloceries. All rights reserved.</span>
-          <span className="inline-flex items-center gap-1.5 text-[#101C10] font-semibold">
+          <span className="inline-flex items-center gap-1.5 text-[#FFFFF] font-semibold">
             Made in Udupi <HugeiconsIcon icon={FavouriteIcon} className="w-4 h-4 text-red-500 fill-red-500 inline" /> India&apos;s Silicon Coast
           </span>
         </div>
@@ -156,7 +194,7 @@ export default function Footer() {
 
         {/* Changed leading-[0.75] to leading-none and added pb-4 lg:pb-8 */}
         <div className="w-full flex items-center justify-center relative select-none mt-4 lg:mt-8 z-0 pb-4 lg:pb-8">
-          <div aria-hidden="true" className="text-[16.5vw] sm:text-[18vw] lg:text-[220px] xl:text-[235px] font-medium text-[#101C10]/[0.055] leading-none tracking-tighter uppercase w-full text-center">
+          <div aria-hidden="true" className="text-[16.5vw] sm:text-[18vw] lg:text-[220px] xl:text-[235px] font-medium text-white/90 leading-none tracking-tighter uppercase w-full text-center drop-shadow-sm">
             Gloceries
           </div>
         </div>

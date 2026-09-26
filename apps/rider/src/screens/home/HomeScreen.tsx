@@ -52,6 +52,7 @@ const DEMO_OFFER: DispatchOffer = {
   itemCount: 6,
   storeCoords: { latitude: 13.2167, longitude: 74.7469 },
   dropCoords: { latitude: 13.2231, longitude: 74.7512 },
+  expiresAt: null, // no server deadline for a demo offer → ring uses its windowSeconds fallback
 };
 
 // Same page + earnings card as OfflineHomeScreen (one visual language across

@@ -48,7 +48,11 @@ export interface ApiOrder {
   id: string;
   order_number: string;
   store_id: string;
-  status: OrderStatus | 'cancelled';
+  // 'failed' is a terminal post-pickup delivery failure (backend
+  // orderStateMachine.ts, same status apps/rider's BackendOrderStatus knows)
+  // — not a stage on the linear timeline, so it's unioned here alongside
+  // 'cancelled' rather than added to OrderStatus/ORDER_STAGES.
+  status: OrderStatus | 'cancelled' | 'failed';
   item_total: number;
   delivery_fee: number;
   commission_amount: number;

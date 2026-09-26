@@ -13,95 +13,77 @@ export default function Hero() {
     <section className="w-full bg-white">
       {/* Kept at 1280px to maintain grid alignment with other sections */}
       <div className="max-w-[1280px] mx-auto px-6">
-        <div className="relative flex flex-col md:flex-row items-stretch justify-between w-full rounded-3xl overflow-hidden bg-[linear-gradient(135deg,#060B18_0%,#0B1743_38%,#123A8C_72%,#1E4DE8_100%)] ring-1 ring-white/10 shadow-[0_30px_80px_-30px_rgba(11,23,67,0.7)]">
-          {/* Aurora glow blobs — Scaled down slightly to match new height */}
-          <div className="pointer-events-none absolute -top-20 -left-16 h-[360px] w-[360px] rounded-full bg-[#3B6BFF] opacity-30 blur-[100px]" />
-          <div className="pointer-events-none absolute -bottom-24 right-[8%] h-[320px] w-[320px] rounded-full bg-[#A8D93A] opacity-[0.18] blur-[100px]" />
-          <div className="pointer-events-none absolute top-1/3 right-1/4 h-[220px] w-[220px] rounded-full bg-[#7C4DFF] opacity-20 blur-[90px]" />
+        <div className="relative flex flex-col md:flex-row items-stretch justify-between w-full rounded-3xl overflow-hidden bg-[#2F7D34] ring-1 ring-white/10">
+          {/* Top-center spotlight sheen */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_-10%,rgba(255,255,255,0.16),transparent_60%)]" />
+
+          {/* Fresh-produce glow blobs — lime, leaf green + warm citrus hint */}
+          <div className="pointer-events-none absolute -top-20 -left-16 h-[360px] w-[360px] rounded-full bg-[#A8D93A] opacity-40 blur-[100px]" />
+          <div className="pointer-events-none absolute -bottom-24 right-[8%] h-[320px] w-[320px] rounded-full bg-[#7CB518] opacity-[0.35] blur-[100px]" />
+          <div className="pointer-events-none absolute top-1/3 right-1/4 h-[240px] w-[240px] rounded-full bg-[#2E9E77] opacity-30 blur-[90px]" />
+          <div className="pointer-events-none absolute bottom-0 left-1/3 h-[220px] w-[220px] rounded-full bg-[#FFB020] opacity-[0.16] blur-[100px]" />
 
           {/* Soft top highlight for a premium sheen */}
           <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white/10 to-transparent" />
 
-          {/* Left Column: Text & Buttons - Reduced padding */}
-          <div className="relative z-10 flex flex-col justify-center gap-5 w-full md:w-[52%] p-6 md:px-10 md:py-8 lg:px-12 lg:py-10">
-            {/* Text Headline */}
-            <div className="flex flex-col gap-2">
-              <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-white bg-white/10 backdrop-blur-sm border border-white/15 w-fit px-3 py-1 rounded-full mb-1">
-                <HugeiconsIcon icon={SparklesIcon} className="w-3.5 h-3.5 text-[#A8D93A]" /> Your Everyday Shopping
+          {/* Left Column: local-first value message + category strip */}
+          <div className="relative z-10 flex flex-col justify-center gap-4 w-full md:w-[52%] p-6 md:px-10 md:py-5 lg:px-12 lg:py-6">
+            <div className="flex flex-col gap-2.5">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-white bg-white/10 backdrop-blur-sm border border-white/15 w-fit px-3 py-1 rounded-full">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#A8D93A]" />
+                Now live in Kaup &amp; Udupi
               </span>
-              {/* Scaled down typography from 56px to 46px */}
               <h1 className="text-3xl sm:text-4xl md:text-[42px] lg:text-[46px] font-semibold text-white leading-[1.1] tracking-tight">
-                Everything You Need.
+                Everything local,
                 <br />
-                <span className="bg-gradient-to-r from-white to-[#BFD4FF] bg-clip-text text-transparent">
-                  From Stores You Love.
+                <span className="bg-gradient-to-r from-white to-[#DDEBAF] bg-clip-text text-transparent">
+                  delivered in minutes.
                 </span>
               </h1>
+              <p className="text-sm sm:text-[15px] text-white/85 leading-relaxed max-w-[440px]">
+                One cart across every neighbourhood shop you already trust.
+              </p>
             </div>
 
-            {/* Action Buttons: Google Play & App Store - Reduced padding and text size */}
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full mt-1">
-              <a
-                href="#download-android"
-                className="flex-1 md:flex-initial w-full sm:w-auto bg-white border border-white/0 text-[#0F172A] px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)] hover:shadow-[0_10px_28px_-8px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2.5 group cursor-pointer"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="w-5 h-5 shrink-0 group-hover:scale-105 transition-transform"
-                  xmlns="http://www.w3.org/2000/svg"
+            {/* Category strip — the multi-category story is the differentiator,
+                so surface the real verticals instead of abstract feature pills. */}
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { icon: "🥦", label: "Grocery" },
+                { icon: "💊", label: "Pharmacy" },
+                { icon: "🥐", label: "Bakery" },
+                { icon: "🥛", label: "Dairy" },
+                { icon: "🧴", label: "Essentials" },
+              ].map((c) => (
+                <span
+                  key={c.label}
+                  className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-white bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-1.5 rounded-full"
                 >
-                  <path
-                    fill="#4285F4"
-                    d="M3.609 1.814L13.792 12 3.61 22.186a2.36 2.36 0 0 1-.61-1.614V3.428c0-.624.225-1.205.609-1.614z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M17.153 8.639L13.792 12l3.361 3.361 4.542-2.555c.784-.441.784-1.171 0-1.612l-4.542-2.555z"
-                  />
-                  <path
-                    fill="#FBBC04"
-                    d="M3.609 1.814L13.792 12 17.153 8.639 5.378 1.989A2.296 2.296 0 0 0 3.609 1.814z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M17.153 15.361L13.792 12 3.609 22.186c.535-.068 1.128-.27 1.769-.631l11.775-6.194z"
-                  />
-                </svg>
-                <div className="flex flex-col text-left leading-tight">
-                  <span className="text-[11px] font-medium tracking-tight opacity-70">
-                    Get it on
-                  </span>
-                  <span className="text-sm sm:text-[15px] font-semibold tracking-tight -mt-0.5">
-                    Google Play
-                  </span>
-                </div>
-              </a>
+                  <span>{c.icon}</span>
+                  {c.label}
+                </span>
+              ))}
+              <span className="text-[13px] font-semibold text-white/70 px-1">
+                &amp; more
+              </span>
+            </div>
 
-              <a
-                href="#download-ios"
-                className="flex-1 md:flex-initial w-full sm:w-auto bg-white border border-white/0 text-[#0F172A] px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)] hover:shadow-[0_10px_28px_-8px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2.5 group cursor-pointer"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="w-5 h-5 fill-current shrink-0 group-hover:scale-105 transition-transform"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.12-1.95.99-3.09-1 .04-2.17.67-2.88 1.5-.64.74-1.2 1.91-1.05 3.05 1.11.09 2.25-.56 2.94-1.46z" />
-                </svg>
-                <div className="flex flex-col text-left leading-tight">
-                  <span className="text-[11px] font-medium tracking-tight opacity-70">
-                    Download on the
-                  </span>
-                  <span className="text-sm sm:text-[15px] font-bold tracking-tight -mt-0.5">
-                    App Store
-                  </span>
-                </div>
-              </a>
+            {/* Single trust stat — ETA carries more weight standing alone than as one chip among many. */}
+            <div className="inline-flex w-fit items-center gap-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 px-4 py-2.5">
+              <span className="text-2xl">⚡</span>
+              <div className="flex flex-col leading-tight">
+                <span className="text-lg font-bold text-white tracking-tight tabular-nums">
+                  ~30 min
+                </span>
+                <span className="text-[11px] font-medium text-white/70 -mt-0.5">
+                  avg delivery in your area
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Right Column: Premium landscape hero graphic */}
-          <div className="relative z-10 w-full md:w-[48%] px-4 sm:px-6 py-6 md:py-8 flex items-center justify-center overflow-hidden min-h-[260px]">
+          <div className="relative z-10 w-full md:w-[48%] px-4 sm:px-6 py-3 md:py-4 flex items-center justify-center overflow-hidden min-h-[160px]">
             <div className="relative z-10 flex w-full items-center justify-center">
               <Image
                 src={HERO_IMAGE_URL}
@@ -109,8 +91,8 @@ export default function Hero() {
                 width={627}
                 height={398}
                 priority
-                style={{ width: "100%", height: "auto" }}
-                className="w-full max-w-[640px] object-contain block"
+                style={{ width: "auto", height: "100%" }}
+                className="max-h-[240px] w-auto max-w-full object-contain block"
               />
             </div>
           </div>

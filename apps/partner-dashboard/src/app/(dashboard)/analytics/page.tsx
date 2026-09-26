@@ -10,7 +10,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Ban, ListOrdered, Receipt, Wallet } from 'lucide-react';
 import { fetchMyOrders, type PartnerOrder } from '@/lib/partnerApi';
-import { StatCard } from '@/components/StatCard';
+import { SectionCard } from '@/components/ui/Card';
+import { StatTile } from '@/components/ui/StatTile';
 import { formatInr } from '@/lib/format';
 
 const DAYS_WINDOW = 14;
@@ -68,66 +69,53 @@ export default function AnalyticsPage() {
   if (isLoading) return <p className="text-sm text-neutral-400">Loading…</p>;
 
   return (
-    <div className="flex flex-col gap-8">
-      <p className="text-sm text-neutral-500">Last {DAYS_WINDOW} days, computed from your orders</p>
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline md:grid-cols-4 md:divide-y-0">
+          <StatTile label="Total revenue" value={formatInr(totalRevenue)} sublabel="all-time" icon={Wallet} />
+          <StatTile label="Orders" value={String(delivered.length)} sublabel="all-time, excl. cancelled" icon={ListOrdered} />
+          <StatTile label="Avg. order value" value={formatInr(avgOrderValue)} icon={Receipt} />
+          <StatTile label="Cancelled" value={String(cancelledCount)} icon={Ban} />
+        </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Total revenue" value={formatInr(totalRevenue)} hint="all-time" icon={Wallet} iconClassName="bg-emerald-50 text-emerald-600" />
-        <StatCard
-          label="Orders"
-          value={String(delivered.length)}
-          hint="all-time, excl. cancelled"
-          icon={ListOrdered}
-          iconClassName="bg-blue-50 text-blue-600"
-        />
-        <StatCard label="Avg. order value" value={formatInr(avgOrderValue)} icon={Receipt} iconClassName="bg-violet-50 text-violet-600" />
-        <StatCard label="Cancelled" value={String(cancelledCount)} icon={Ban} iconClassName="bg-red-50 text-red-600" />
-      </div>
-
-      <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-        <p className="mb-4 text-sm font-semibold text-neutral-900">Revenue, last {DAYS_WINDOW} days</p>
+      <SectionCard title={`Revenue, last ${DAYS_WINDOW} days`}>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={dailySeries}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={1} />
-            <YAxis tick={{ fontSize: 12 }} width={48} />
+            <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#a3a3a3' }} tickLine={false} axisLine={false} interval={1} />
+            <YAxis tick={{ fontSize: 12, fill: '#a3a3a3' }} tickLine={false} axisLine={false} width={48} />
             <Tooltip formatter={(v) => formatInr(Number(v))} />
-            <Line type="monotone" dataKey="revenue" stroke="#171717" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
-      </div>
+      </SectionCard>
 
-      <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-        <p className="mb-4 text-sm font-semibold text-neutral-900">Order volume, last {DAYS_WINDOW} days</p>
+      <SectionCard title={`Order volume, last ${DAYS_WINDOW} days`}>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={dailySeries}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={1} />
-            <YAxis tick={{ fontSize: 12 }} width={32} allowDecimals={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#a3a3a3' }} tickLine={false} axisLine={false} interval={1} />
+            <YAxis tick={{ fontSize: 12, fill: '#a3a3a3' }} tickLine={false} axisLine={false} width={32} allowDecimals={false} />
             <Tooltip />
-            <Bar dataKey="orders" fill="#a3a3a3" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="orders" fill="#d4d4d4" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </SectionCard>
 
-      <div className="rounded-2xl border border-neutral-200 bg-white">
-        <div className="border-b border-neutral-100 px-5 py-4">
-          <p className="text-sm font-semibold text-neutral-900">Top products by revenue</p>
-        </div>
+      <SectionCard title="Top products by revenue" bodyClassName="">
         {topProducts.length === 0 ? (
           <p className="px-5 py-6 text-sm text-neutral-400">No sales yet.</p>
         ) : (
-          <ul className="divide-y divide-neutral-100">
+          <ul className="divide-y divide-hairline">
             {topProducts.map((p) => (
-              <li key={p.name} className="flex items-center justify-between px-5 py-3.5 text-sm">
-                <span className="text-neutral-700">{p.name}</span>
-                <span className="text-neutral-400">{p.units} sold</span>
-                <span className="font-medium text-neutral-900">{formatInr(p.revenue)}</span>
+              <li key={p.name} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-5 py-3 text-sm">
+                <span className="truncate text-neutral-700">{p.name}</span>
+                <span className="text-neutral-400 tabular-nums">{p.units} sold</span>
+                <span className="tnum w-24 text-right font-semibold text-neutral-900">{formatInr(p.revenue)}</span>
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

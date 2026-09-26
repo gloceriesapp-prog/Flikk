@@ -54,7 +54,8 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-  icons: { icon: "/favicon.ico", apple: "/favicon.ico" },
+  // Icon auto-wired from src/app/icon.svg (Next file convention) — no manual
+  // icons entry, so the tab icon can never point at a missing /favicon.ico.
   manifest: "/manifest.webmanifest",
   verification: {
     // IDs live in env, never committed (see .env.example). Undefined =

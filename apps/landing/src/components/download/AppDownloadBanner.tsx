@@ -6,24 +6,20 @@ import { SparklesIcon, FlashIcon, Search01Icon } from "@hugeicons/core-free-icon
 
 export default function AppDownloadBanner() {
   return (
-    <section id="app-download-banner" className="w-full bg-white pb-0 overflow-hidden">
-      {/* Increased max-width to 1280px to align with hero, promo, and category sections */}
-      <div className="max-w-[1280px] mx-auto px-6">
-        {/* Banner Card Container - Added extra padding (lg:px-20) for the expanded width */}
-        <div className="w-full bg-[#F2F4F8] rounded-t-3xl pt-8 sm:pt-10 px-8 sm:px-12 md:px-16 lg:px-20 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
-          
+    <section id="app-download-banner" className="w-full bg-[#F2F4F8] pb-0 overflow-hidden">
+      {/* Full-bleed gray bg; content constrained to 1280px to match sibling sections */}
+      <div className="max-w-[1280px] mx-auto px-6 pt-10 sm:pt-12 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
+
           {/* Left Text & Download Buttons Content */}
-          {/* Increased max-width (lg:max-w-[640px]) to balance the wider container */}
-          <div className="flex flex-col gap-6 max-w-[520px] lg:max-w-[640px] z-10 py-2">
+          <div className="flex flex-col gap-5 max-w-[540px] z-10 py-2">
             {/* Headline */}
             <div className="flex flex-col gap-3">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0052FF] bg-blue-50 w-fit px-3 py-1 rounded-full uppercase tracking-wider">
+              {/* <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0052FF] bg-blue-50 w-fit px-3 py-1 rounded-full uppercase tracking-wider">
                 <HugeiconsIcon icon={SparklesIcon} className="w-3 h-3" /> Get Fast Local Delivery
+              </span> */}
+              <span className="text-2xl sm:text-3xl md:text-[34px] lg:text-[38px] font-semibold text-[#0F172A] leading-[1.15] tracking-tight">
+                Shop faster on the go. Get the app today!
               </span>
-              {/* Scaled up the headline text for larger screens */}
-              <h2 className="text-2xl sm:text-3xl md:text-[36px] lg:text-[44px] font-extrabold text-[#0F172A] leading-[1.15] tracking-tight">
-                For better experience, download the Gloceries app now
-              </h2>
             </div>
 
             {/* Store Download Buttons Row */}
@@ -92,7 +88,7 @@ export default function AppDownloadBanner() {
           {/* Right Smartphone Screen Mockup Visual */}
           <div className="relative z-10 flex items-end justify-center md:justify-end mb-0 pt-4 md:pt-0 self-end">
             {/* Phone Outer Chassis Frame */}
-            <div className="w-[230px] sm:w-[260px] md:w-[280px] lg:w-[320px] h-[310px] sm:h-[350px] md:h-[380px] lg:h-[420px] bg-slate-900 rounded-t-[36px] p-2.5 pb-0 border-4 border-b-0 border-slate-800 relative overflow-hidden">
+            <div className="w-[220px] sm:w-[240px] md:w-[260px] lg:w-[290px] h-[260px] sm:h-[280px] md:h-[300px] lg:h-[330px] bg-slate-900 rounded-t-[36px] p-2.5 pb-0 border-4 border-b-0 border-slate-800 relative overflow-hidden">
               {/* Top Speaker Notch */}
               <div className="w-16 h-3.5 bg-slate-900 rounded-b-xl mx-auto absolute top-0 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center">
                 <div className="w-6 h-1 bg-slate-700 rounded-full" />
@@ -153,7 +149,6 @@ export default function AppDownloadBanner() {
               </div>
             </div>
           </div>
-        </div>
       </div>
     </section>
   );

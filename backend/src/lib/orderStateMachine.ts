@@ -24,15 +24,22 @@
 // the exact, already-enforced cutoff a customer-facing cancel button must
 // respect, not a separate rule to reimplement in the UI.
 
-export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+// 'failed' is the POST-pickup counterpart to 'cancelled': a terminal state a
+// rider reaches from out_for_delivery when the drop itself can't be completed
+// (customer unreachable, wrong address). It is deliberately NOT reachable from
+// placed/packed — that pre-pickup escape hatch is 'cancelled'. See
+// routes/orders.ts for the reason-code requirement and the rider payout on
+// failure (the rider still did the ride, so they're paid the full fee).
+export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
 export type Role = 'customer' | 'store_owner' | 'rider' | 'admin';
 
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   placed: ['packed', 'cancelled'],
   packed: ['out_for_delivery', 'cancelled'],
-  out_for_delivery: ['delivered'],
+  out_for_delivery: ['delivered', 'failed'],
   delivered: [],
   cancelled: [],
+  failed: [],
 };
 
 const TRANSITION_OWNER: Record<OrderStatus, Role[]> = {
@@ -41,6 +48,9 @@ const TRANSITION_OWNER: Record<OrderStatus, Role[]> = {
   out_for_delivery: ['rider'],
   delivered: ['rider'],
   cancelled: ['store_owner', 'admin', 'rider', 'customer'],
+  // Only the rider on the drop can declare a delivery failed — they're the
+  // one at the door. Admin's manual escape hatch stays 'cancelled'.
+  failed: ['rider'],
 };
 
 export function isValidTransition(from: OrderStatus, to: OrderStatus): boolean {

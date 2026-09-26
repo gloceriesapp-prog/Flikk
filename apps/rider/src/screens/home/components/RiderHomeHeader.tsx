@@ -8,7 +8,7 @@
 // changes it with the button. One component = one fix point, same
 // consistency rule CLAUDE.md sets for the three RN apps.
 
-import { Image, Pressable, Text, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -38,6 +38,24 @@ export function RiderHomeHeader({ isOnline }: { isOnline: boolean }) {
   const name = profile?.name?.trim() || 'Rider';
   const first = name.split(' ')[0];
   const initial = first.charAt(0).toUpperCase();
+
+  // Going online needs location — the store now refuses (returns false) when
+  // the grant is missing rather than flipping to a silent "online" state that
+  // dispatch can't see. On refusal, point the rider at Settings (the OS won't
+  // re-prompt after a hard denial, so a plain retry can't fix it).
+  const handleGoOnline = async () => {
+    const online = await goOnline();
+    if (!online) {
+      Alert.alert(
+        'Location needed to go online',
+        'Flikk shares your location while online so you receive delivery offers nearby. Enable location access to go online.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open settings', onPress: () => void Linking.openSettings() },
+        ]
+      );
+    }
+  };
 
   return (
     <View className="flex-row items-center justify-between">
@@ -73,7 +91,7 @@ export function RiderHomeHeader({ isOnline }: { isOnline: boolean }) {
           </Pressable>
         ) : (
           <Pressable
-            onPress={goOnline}
+            onPress={handleGoOnline}
             hitSlop={8}
             className="h-11 items-center justify-center rounded-full px-4 bg-[#00a63e]"
             style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}

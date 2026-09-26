@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { supabase, supabaseAuth } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
+import { normalizePhone, phoneVariants } from '../lib/phone.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 
 export const authRouter = Router();
@@ -9,8 +10,8 @@ export const authRouter = Router();
 authRouter.post('/otp/request', async (req, res, next) => {
   try {
     const { phone } = req.body as { phone?: string };
-    if (!phone) throw new AppError(400, 'INVALID_PHONE', 'phone is required.');
-    const { error } = await supabaseAuth.auth.signInWithOtp({ phone });
+    const canonical = normalizePhone(phone); // +91… — throws on a bad number
+    const { error } = await supabaseAuth.auth.signInWithOtp({ phone: canonical });
     if (error) throw new AppError(400, 'OTP_SEND_FAILED', error.message);
     res.status(200).json({ ok: true });
   } catch (err) {
@@ -33,7 +34,7 @@ authRouter.post('/otp/request', async (req, res, next) => {
 authRouter.post('/otp/partner-check', async (req, res, next) => {
   try {
     const { phone } = req.body as { phone?: string };
-    if (!phone) throw new AppError(400, 'INVALID_PHONE', 'phone is required.');
+    const canonical = normalizePhone(phone);
 
     const NOT_REGISTERED = new AppError(
       404,
@@ -41,17 +42,29 @@ authRouter.post('/otp/partner-check', async (req, res, next) => {
       "This number isn't registered on the Gloceries Partner app yet. Download the Partner app and apply with your store to get access here.",
     );
 
-    const { data: user } = await supabase.from('users').select('id, role').eq('phone', phone).maybeSingle();
-    if (!user) throw NOT_REGISTERED;
-    if (user.role === 'store_owner') {
+    // Match any legacy phone shape for this number (pre-normalization rows
+    // may be stored as `+91…`, `91…`, or bare). If the same number exists in
+    // more than one role (e.g. a stray customer row alongside the real
+    // store_owner one), store_owner wins — that's the identity the dashboard
+    // is asking about.
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, role')
+      .in('phone', phoneVariants(canonical));
+    if (!users || users.length === 0) throw NOT_REGISTERED;
+    if (users.some((u) => u.role === 'store_owner')) {
       res.status(200).json({ registered: true });
       return;
     }
 
+    // No approved owner row yet — count as registered only if one of these
+    // identities has a submitted (not merely started) store application.
     const { data: draft } = await supabase
       .from('store_onboarding_drafts')
       .select('submitted_at')
-      .eq('user_id', user.id)
+      .in('user_id', users.map((u) => u.id))
+      .not('submitted_at', 'is', null)
+      .limit(1)
       .maybeSingle();
     if (!draft?.submitted_at) throw NOT_REGISTERED;
 
@@ -64,8 +77,9 @@ authRouter.post('/otp/partner-check', async (req, res, next) => {
 authRouter.post('/otp/verify', async (req, res, next) => {
   try {
     const { phone, code } = req.body as { phone?: string; code?: string };
-    if (!phone || !code) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
-    const { data, error } = await supabaseAuth.auth.verifyOtp({ phone, token: code, type: 'sms' });
+    if (!code) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
+    const canonical = normalizePhone(phone);
+    const { data, error } = await supabaseAuth.auth.verifyOtp({ phone: canonical, token: code, type: 'sms' });
     if (error || !data.session) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
 
     const userId = data.session.user.id;
@@ -76,7 +90,7 @@ authRouter.post('/otp/verify', async (req, res, next) => {
     if (!userRow) {
       const { data: created } = await supabase
         .from('users')
-        .insert({ id: userId, phone, role: 'customer' })
+        .insert({ id: userId, phone: canonical, role: 'customer' })
         .select('is_approved, role')
         .single();
       userRow = created;

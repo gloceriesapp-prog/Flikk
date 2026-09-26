@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Calendar, HandCoins, Wallet } from 'lucide-react';
 import { fetchMyPayouts, fetchMyStore, type Payout, type Store } from '@/lib/partnerApi';
 import { DEMO_PAYOUTS } from '@/lib/demoPayouts';
-import { StatCard } from '@/components/StatCard';
+import { Card } from '@/components/ui/Card';
+import { StatTile } from '@/components/ui/StatTile';
 import { formatInr, formatDate } from '@/lib/format';
 import { PayoutDestinationCard } from '@/components/payouts/PayoutDestinationCard';
 import { PayoutsFilterBar, PAYOUT_FILTERS, type PayoutFilter } from '@/components/payouts/PayoutsFilterBar';
@@ -55,34 +56,19 @@ export default function PayoutsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-black">Payouts</h1>
-        <p className="mt-1 text-sm text-neutral-400">Your weekly settlements, and where they land.</p>
-      </div>
-
       {store && <PayoutDestinationCard store={store} />}
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Lifetime paid" value={formatInr(lifetimePaid)} icon={Wallet} iconClassName="bg-emerald-50 text-emerald-600" />
-        <StatCard label="Pending" value={formatInr(pendingAmount)} icon={HandCoins} iconClassName="bg-amber-50 text-amber-600" />
-        <StatCard
-          label="Next payout"
-          value={nextPayout ? formatDate(nextPayout.week_end) : '—'}
-          icon={Calendar}
-          iconClassName="bg-blue-50 text-blue-600"
-        />
-        <StatCard
-          label="Needs attention"
-          value={String(needsAttention)}
-          icon={AlertCircle}
-          iconClassName={needsAttention > 0 ? 'bg-red-50 text-red-600' : 'bg-neutral-100 text-neutral-600'}
-        />
-      </div>
+      <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline md:grid-cols-4 md:divide-y-0">
+          <StatTile label="Lifetime paid" value={formatInr(lifetimePaid)} icon={Wallet} />
+          <StatTile label="Pending" value={formatInr(pendingAmount)} icon={HandCoins} />
+          <StatTile label="Next payout" value={nextPayout ? formatDate(nextPayout.week_end) : '—'} icon={Calendar} />
+          <StatTile label="Needs attention" value={String(needsAttention)} icon={AlertCircle} sublabel={needsAttention > 0 ? 'Blocked or failed' : 'All clear'} />
+        </div>
 
       <PayoutsFilterBar filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {isLoading ? (
-        <div className="rounded-2xl border border-neutral-200 bg-white py-20 text-center text-sm text-neutral-400">Loading payouts…</div>
+        <Card className="py-20 text-center text-sm text-neutral-400">Loading payouts…</Card>
       ) : (
         <PayoutsTable payouts={filtered} />
       )}

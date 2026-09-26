@@ -1,16 +1,14 @@
 import { useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ArrowLeft01Icon, More03Icon } from '@hugeicons/core-free-icons'; // Added More03Icon
+import { More03Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'DeliveryProof'>;
-
-const DEMO_OTP = '1234';
 
 export function DeliveryProofScreen({ route, navigation }: Props) {
   const { orderId } = route.params;
@@ -46,9 +44,13 @@ export function DeliveryProofScreen({ route, navigation }: Props) {
 
   const digits = code.padEnd(4, ' ').split('');
 
-  // The one delivery-complete path — advance every trip leg, then celebrate.
-  // ponytail: manual-accept reuses DEMO_OTP so the demo passes; a real
-  // no-PIN override needs a backend endpoint that marks delivered without OTP.
+  // The one delivery-complete path — send the code the customer read off
+  // their own order straight to the backend for every trip leg, then
+  // celebrate. The backend gates each leg's delivered write on it matching
+  // orders.delivery_otp (single-use, lib/deliveryOtp.ts); a wrong/missing
+  // code is a real 400 that throws here, so we surface the retry state and
+  // no leg moves to delivered. No client-side check — the code the rider
+  // types is verified server-side, never against a constant.
   const completeDelivery = async (otp: string) => {
     setSubmitting(true);
     try {
@@ -61,34 +63,11 @@ export function DeliveryProofScreen({ route, navigation }: Props) {
     }
   };
 
-  const validate = async (next: string) => {
-    if (submitting) return;
-    if (next !== DEMO_OTP) {
-      setError(true);
-      setCode('');
-      return;
-    }
-    await completeDelivery(next);
-  };
-
-  // "Customer can't find their PIN?" — confirm, then complete without a code.
-  const manualAccept = () => {
-    if (submitting) return;
-    Alert.alert(
-      'Complete without PIN?',
-      `Only do this if ${order.customerName} genuinely can't find their PIN. The delivery will be marked complete.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Complete delivery', style: 'destructive', onPress: () => void completeDelivery(DEMO_OTP) },
-      ],
-    );
-  };
-
   const onChange = (text: string) => {
     const next = text.replace(/[^0-9]/g, '').slice(0, 4);
     setError(false);
     setCode(next);
-    if (next.length === 4) void validate(next);
+    if (next.length === 4) void completeDelivery(next);
   };
 
   return (
@@ -141,17 +120,6 @@ export function DeliveryProofScreen({ route, navigation }: Props) {
                 Completing delivery…
               </Text>
             ) : null}
-
-            {/* "Can't find PIN" → manual accept (confirmed override). */}
-            <Pressable
-              className="px-4 py-2"
-              disabled={submitting}
-              onPress={manualAccept}
-            >
-              <Text className="text-[14px] font-semibold text-ink/60 underline">
-                Customer can't find their PIN?
-              </Text>
-            </Pressable>
           </View>
         </View>
 

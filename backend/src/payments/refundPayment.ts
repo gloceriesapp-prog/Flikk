@@ -34,21 +34,39 @@ export interface RefundResult {
 // about this payment's refunds first, and treating "already covered" as
 // success instead of refunding again, is what actually closes that gap —
 // not just hoping a retry never happens.
-async function findExistingRefund(razorpayPaymentId: string, amountPaise: number): Promise<RefundResult | null> {
-  const existing = await razorpay.payments.fetchMultipleRefund(razorpayPaymentId);
-  const alreadyRefundedPaise = existing.items.reduce((sum, r) => sum + (r.amount ?? 0), 0);
+// Pure decision, split out so the money logic is unit-testable without a
+// network call (refundPayment.resolve.test.ts). See the header note above for
+// why the idempotency check exists at all.
+//
+// The load-bearing rule: EXCLUDE status:'failed' items. A failed Razorpay
+// refund still carries its requested `amount` but moved no money, so summing
+// it made a re-cancel (or the admin Retry mirror) wrongly conclude "already
+// refunded" and skip creating a real one — the customer stayed unpaid.
+// Keep in sync with apps/admin/src/lib/razorpay/refund.ts.
+interface RefundItem {
+  id: string;
+  amount?: number;
+  status: string;
+}
+
+export function resolveExistingRefund(items: RefundItem[], amountPaise: number): RefundResult | null {
+  const settled = items.filter((r) => r.status !== 'failed');
+  const alreadyRefundedPaise = settled.reduce((sum, r) => sum + (r.amount ?? 0), 0);
   if (alreadyRefundedPaise < amountPaise) return null;
 
-  // Prefer a 'processed' refund's own id if one exists among the matches,
-  // otherwise fall back to whichever one pushed the running total over
-  // the requested amount — either way this is real, already-Razorpay-
-  // confirmed data, never a guess.
-  const processed = existing.items.find((r) => r.status === 'processed');
-  const match = processed ?? existing.items[existing.items.length - 1];
+  // settled is non-empty here (sum >= amountPaise > 0) and never holds a
+  // failed item, so match.status is only ever 'processed' | 'pending'.
+  const processed = settled.find((r) => r.status === 'processed');
+  const match = processed ?? settled[settled.length - 1];
   return {
-    status: match?.status === 'processed' ? 'completed' : match?.status === 'failed' ? 'failed' : 'processing',
+    status: match?.status === 'processed' ? 'completed' : 'processing',
     razorpayRefundId: match?.id ?? null,
   };
+}
+
+async function findExistingRefund(razorpayPaymentId: string, amountPaise: number): Promise<RefundResult | null> {
+  const existing = await razorpay.payments.fetchMultipleRefund(razorpayPaymentId);
+  return resolveExistingRefund(existing.items as RefundItem[], amountPaise);
 }
 
 // Razorpay's own refund object status is 'pending' (UPI/most methods —

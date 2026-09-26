@@ -31,6 +31,7 @@ import { deliverySettingsRouter } from './routes/deliverySettings.js';
 import { areaUpvotesRouter } from './routes/areaUpvotes.js';
 import cron from 'node-cron';
 import { runWeeklyPayoutJob } from './jobs/weeklyPayouts.js';
+import { runWeeklyRiderPayoutJob } from './jobs/weeklyRiderPayouts.js';
 import { expireUnpaidOrders } from './jobs/expireUnpaidOrders.js';
 import { expandDispatchOrRebroadcast } from './lib/riderDispatch.js';
 
@@ -155,7 +156,21 @@ cron.schedule(
   { timezone: 'Asia/Kolkata' },
 );
 
-// Stale unpaid order cleanup — every 5 minutes. jobs/expireUnpaidOrders.ts's
+// Weekly rider payout release — Monday 9:30 AM IST, 30 min after the store
+// run so the two batches don't hit RazorpayX at the same instant. Same
+// crash-safety as the store job: a missed run's still-'pending' rows are
+// swept by the next Monday (rider_payouts_rider_week_unique + unpaid-earning
+// sweep in computeWeeklyRiderPayouts). Inert until RAZORPAYX_ACCOUNT_NUMBER
+// is set — until then release marks rows 'failed' and money waits, but
+// compute still records what's owed.
+cron.schedule(
+  '30 9 * * 1',
+  () => {
+    void runWeeklyRiderPayoutJob().catch((err) => logger.error({ err }, '[weeklyRiderPayouts] job failed'));
+  },
+  { timezone: 'Asia/Kolkata' },
+);
+// jobs/expireUnpaidOrders.ts's
 // own header note has the full reasoning; timezone doesn't matter here
 // (comparing real UTC instants against placed_at, not IST calendar days
 // the way weeklyPayouts.ts's own schedule needs to).

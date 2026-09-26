@@ -9,6 +9,13 @@ import type { Coordinates } from '../data/mockOrders';
 
 const DELIVERY_FEE = 25;
 
+// Hand-synced mirror of backend/src/lib/riderDispatch.ts's own
+// DISPATCH_OFFER_WINDOW_MS — how long an offer stays open before the cron
+// rebroadcasts/expands it. Same "keep it in sync by hand until a shared
+// package exists" convention as DELIVERY_FEE in api/orders.ts. Used to turn
+// the server's dispatch_broadcast_at into a real countdown deadline.
+export const DISPATCH_OFFER_WINDOW_MS = 45_000;
+
 export function updateRiderStatus(patch: { status?: 'online' | 'offline'; lat?: number; lng?: number }): Promise<void> {
   return apiRequest('/rider/status', { method: 'PATCH', body: patch });
 }
@@ -22,6 +29,7 @@ interface RawDispatchOffer {
   stores: { name: string; lat: number | null; lng: number | null } | null;
   addresses: { line1: string; landmark: string | null; latitude: number | null; longitude: number | null } | null;
   order_items: { quantity: number }[] | null;
+  dispatch_broadcast_at: string | null;
   distance_m: number | null;
 }
 
@@ -46,6 +54,10 @@ export interface DispatchOffer {
   // null-island (see plan blocker on addresses.latitude/longitude).
   storeCoords: Coordinates | null;
   dropCoords: Coordinates | null;
+  // Real per-offer countdown deadline (epoch ms): dispatch_broadcast_at +
+  // DISPATCH_OFFER_WINDOW_MS. null when the server didn't send a broadcast
+  // timestamp — the ring then falls back to its mount-seeded window.
+  expiresAt: number | null;
 }
 
 function coordsOf(lat: number | null | undefined, lng: number | null | undefined): Coordinates | null {
@@ -74,6 +86,7 @@ function toDispatchOffer(row: RawDispatchOffer): DispatchOffer {
     itemCount,
     storeCoords,
     dropCoords,
+    expiresAt: row.dispatch_broadcast_at ? Date.parse(row.dispatch_broadcast_at) + DISPATCH_OFFER_WINDOW_MS : null,
   };
 }
 

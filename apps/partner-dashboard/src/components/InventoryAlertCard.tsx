@@ -67,7 +67,9 @@ export function InventoryAlertCard({ topSelling, outOfStock }: Props) {
         </div>
       </div>
 
-      <div className="mt-4 flex-1 overflow-y-auto">
+      {/* Show ~4 rows, scroll the rest — capped so a long list doesn't stretch
+          the card to match its taller Recent-orders sibling. */}
+      <div className="mt-4 max-h-[248px] flex-1 overflow-y-auto">
         {rows.length === 0 ? (
           <p className="pt-6 text-center text-sm text-neutral-400">No inventory signals yet.</p>
         ) : (

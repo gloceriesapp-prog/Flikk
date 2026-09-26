@@ -9,6 +9,12 @@
 // client) to actually render — it isn't bundled in plain Expo Go as of SDK
 // 52+ (same note apps/customer's own LocationSearchScreen.tsx carries).
 // DeliveryMapScreen won't show a live map inside plain Expo Go.
+//
+// IOS_GOOGLE_MAPS_API_KEY is optional (same pattern as apps/customer); once
+// it's set, a fresh native build switches iOS to real Google Maps + the same
+// grayscale style Android uses. Until then iOS falls back to Apple Maps.
+
+const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
 
 module.exports = {
   expo: {
@@ -32,6 +38,9 @@ module.exports = {
         // as unavailable and we always fall back to Apple Maps.
         LSApplicationQueriesSchemes: ['comgooglemaps'],
       },
+      // Undefined when the key is unset is a valid, supported state — Expo
+      // just skips Google Maps setup on iOS then (Apple Maps fallback).
+      config: iosGoogleMapsApiKey ? { googleMapsApiKey: iosGoogleMapsApiKey } : undefined,
     },
     android: {
       package: 'com.gloceries.rider',
@@ -71,5 +80,13 @@ module.exports = {
         },
       ],
     ],
+    extra: {
+      // A boolean, never the key itself — DeliveryMapView reads this (via
+      // expo-constants) to decide whether iOS gets real Google Maps + the
+      // same grayscale style Android already uses, or falls back to Apple
+      // Maps. Flips automatically the next time this key is set + a fresh
+      // native build ships — no code change needed there.
+      hasIosGoogleMaps: Boolean(iosGoogleMapsApiKey),
+    },
   },
 };

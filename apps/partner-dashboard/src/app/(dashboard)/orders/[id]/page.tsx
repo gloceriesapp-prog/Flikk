@@ -13,6 +13,7 @@ import { formatInr, formatDateTime, statusColor, statusLabel } from '@/lib/forma
 import { paymentStatus } from '@/lib/orderPayment';
 import { avatarColorFor, initialsFor } from '@/lib/avatar';
 import { OrderTimeline } from '@/components/orders/OrderTimeline';
+import { Card } from '@/components/ui/Card';
 
 // No single-order endpoint exists on /partner — fetchMyOrders() is the same
 // list the Orders table already uses, so the detail page re-fetches that
@@ -118,7 +119,7 @@ export default function OrderDetailPage() {
 
       {actionError && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{actionError}</div>}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-5">
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
         <div>
           <p className="text-xs font-medium tracking-wide text-neutral-400 uppercase">Order</p>
           <p className="mt-0.5 font-mono text-sm text-neutral-700">#{order.id.slice(0, 8)}</p>
@@ -127,18 +128,18 @@ export default function OrderDetailPage() {
         <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm font-semibold whitespace-nowrap ${statusColor(order.status)}`}>
           {statusLabel(order.status)}
         </span>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+          <Card className="p-5">
             <p className="text-base font-semibold text-black">Items</p>
-            <ul className="mt-4 flex flex-col divide-y divide-neutral-100">
+            <ul className="mt-4 flex flex-col divide-y divide-hairline">
               {order.order_items.map((item) => (
                 <li key={item.id} className="flex items-center gap-3 py-3">
                   {item.products?.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.products.image_url} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-neutral-100 object-cover" />
+                    <img src={item.products.image_url} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-hairline object-cover" />
                   ) : (
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-xs font-semibold text-neutral-400">
                       {item.quantity}×
@@ -155,7 +156,7 @@ export default function OrderDetailPage() {
               ))}
             </ul>
 
-            <div className="mt-2 flex flex-col gap-2 border-t border-neutral-100 pt-4 text-sm">
+            <div className="mt-2 flex flex-col gap-2 border-t border-hairline pt-4 text-sm">
               <div className="flex justify-between text-neutral-500">
                 <span>Item total</span>
                 <span>{formatInr(order.item_total)}</span>
@@ -168,14 +169,14 @@ export default function OrderDetailPage() {
                 <span>Platform commission</span>
                 <span>-{formatInr(order.commission_amount)}</span>
               </div>
-              <div className="flex justify-between border-t border-neutral-100 pt-2 text-base font-semibold text-neutral-900">
+              <div className="flex justify-between border-t border-hairline pt-2 text-base font-semibold text-neutral-900">
                 <span>Total</span>
                 <span>{formatInr(order.total)}</span>
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+          <Card className="p-5">
             <p className="text-base font-semibold text-black">Delivery address</p>
             <div className="mt-3 flex items-start gap-2.5 text-sm text-neutral-600">
               <MapPin size={16} className="mt-0.5 shrink-0 text-neutral-400" />
@@ -184,11 +185,11 @@ export default function OrderDetailPage() {
                 {order.addresses?.landmark && <p className="text-neutral-400">Near {order.addresses.landmark}</p>}
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+          <Card className="p-5">
             <p className="text-base font-semibold text-black">Customer</p>
             <div className="mt-3 flex items-center gap-3">
               <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${avatarColorFor(customerName)}`}>
@@ -203,13 +204,13 @@ export default function OrderDetailPage() {
                 )}
               </div>
             </div>
-            <div className="mt-4 flex items-center justify-between border-t border-neutral-100 pt-4 text-sm">
+            <div className="mt-4 flex items-center justify-between border-t border-hairline pt-4 text-sm">
               <span className="text-neutral-500">Payment</span>
               <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${payment.className}`}>{payment.label}</span>
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+          <Card className="p-5">
             <p className="mb-4 text-base font-semibold text-black">Order timeline</p>
             <OrderTimeline
               cancelled={order.status === 'cancelled'}
@@ -220,7 +221,7 @@ export default function OrderDetailPage() {
                 { key: 'delivered', label: 'Delivered', at: order.delivered_at },
               ]}
             />
-          </div>
+          </Card>
         </div>
       </div>
     </div>

@@ -57,7 +57,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'TrackOrder'>;
 const POLL_INTERVAL_MS = 8000;
 
 function isTerminal(status?: string): boolean {
-  return status === 'delivered' || status === 'cancelled';
+  return status === 'delivered' || status === 'cancelled' || status === 'failed';
 }
 
 // Mirrors backend/src/lib/orderStateMachine.ts's own isValidTransition —
@@ -176,7 +176,9 @@ export function TrackOrderScreen({ navigation, route }: Props) {
               <Text className="mt-4 text-center text-sm font-medium text-gray-500">
                 {legs.every((l) => l.status === 'delivered')
                   ? "Thanks for shopping, we'll be here when you need us again."
-                  : "We'll keep this updated as your trip moves along."}
+                  : legs.some((l) => l.status === 'failed')
+                    ? "Part of this trip couldn't be delivered — see the details above."
+                    : "We'll keep this updated as your trip moves along."}
               </Text>
             </ScrollView>
           );
@@ -205,7 +207,9 @@ export function TrackOrderScreen({ navigation, route }: Props) {
           <Text className="mt-4 text-center text-[13.5px] font-medium text-gray-500">
             {order!.status === 'delivered'
               ? "Thanks for shopping, we'll be here when you need us again."
-              : "We'll keep this updated as your order moves along."}
+              : order!.status === 'failed'
+                ? "This order couldn't be delivered — see the details above."
+                : "We'll keep this updated as your order moves along."}
           </Text>
         </ScrollView>
       )}

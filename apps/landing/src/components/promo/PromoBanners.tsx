@@ -30,17 +30,6 @@ const PROMO_CARDS: PromoCard[] = [
     poweredBy: "festive corner",
   },
   {
-    id: "paan-corner",
-    title: "Paan & Mints Corner",
-    subtitle: "Get smoking accessories, mouth fresheners & mints delivered instantly",
-    bgGradient: "from-[#EAE3D9] via-[#E2D8C9] to-[#D5C9B8]",
-    borderColor: "border-slate-200/60",
-    titleColor: "text-slate-900",
-    subtitleColor: "text-slate-700",
-    image: "/images/paan_corner_banner.jpg",
-    alt: "Paan Corner Mints & Accessories",
-  },
-  {
     id: "hygiene-care",
     title: "Girls, Be Prepared Anytime",
     subtitle: "Range of feminine hygiene, skincare & hair removal products",
@@ -148,19 +137,21 @@ export default function PromoBanners() {
 
   return (
     <section className="w-full bg-white pb-12 pt-2">
+      {/* Same 1280 max-width + px-6 as the sections above so the promo row
+          starts at the exact left edge of the hero/experience grid. */}
       <div className="max-w-[1280px] mx-auto px-6 flex flex-col items-center gap-4">
-        
-        {/* Horizontal Track for Mobile -> 4-Column Grid for Desktop */}
+
+        {/* Horizontal Track for Mobile -> 3-Column Grid for Desktop */}
         <div
           ref={carouselRef}
           onScroll={handleScroll}
-          className="flex lg:grid lg:grid-cols-4 items-stretch gap-4 lg:gap-5 w-full overflow-x-auto lg:overflow-visible scrollbar-none snap-x snap-mandatory scroll-smooth py-1"
+          className="flex lg:grid lg:grid-cols-3 items-stretch gap-4 lg:gap-6 w-full overflow-x-auto lg:overflow-visible scrollbar-none snap-x snap-mandatory scroll-smooth py-1"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {PROMO_CARDS.map((card) => (
             <div
               key={card.id}
-              className={`w-[270px] sm:w-[300px] lg:w-auto shrink-0 snap-start h-[210px] sm:h-[220px] lg:h-[240px] rounded-[22px] p-4 lg:p-5 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br ${card.bgGradient} select-none transition-opacity duration-300`}
+              className={`w-[300px] sm:w-[340px] lg:w-auto shrink-0 snap-start h-[220px] sm:h-[230px] lg:h-[250px] rounded-[26px] p-5 lg:p-6 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br ${card.bgGradient} select-none`}
             >
               {/* Top Right Powered By Tag */}
               {card.poweredBy && (
@@ -176,30 +167,41 @@ export default function PromoBanners() {
 
               {/* Top Text Content */}
               <div
-                className={`flex flex-col gap-1 lg:gap-1.5 relative z-10 ${
-                  card.poweredBy ? "max-w-[140px] lg:max-w-[155px]" : "max-w-[180px] lg:max-w-[200px]"
+                className={`flex flex-col gap-1.5 lg:gap-2 relative z-10 ${
+                  card.poweredBy ? "max-w-[160px] lg:max-w-[210px]" : "max-w-[190px] lg:max-w-[240px]"
                 }`}
               >
                 <span
-                  className={`text-[17px] lg:text-[19px] font-extrabold ${card.titleColor} leading-tight tracking-tight drop-shadow-xs`}
+                  className={`text-[19px] lg:text-[23px] font-semibold ${card.titleColor} leading-tight tracking-tight drop-shadow-xs`}
                 >
                   {card.title}
                 </span>
                 <span
-                  className={`text-[11px] lg:text-[12px] font-semibold ${card.subtitleColor} leading-snug line-clamp-3 lg:line-clamp-2`}
+                  className={`text-[12px] lg:text-[13px] font-medium ${card.subtitleColor} leading-snug line-clamp-3 lg:line-clamp-2`}
                 >
                   {card.subtitle}
                 </span>
               </div>
 
-              {/* Product Image Right Bottom - Reduced sizing */}
-              <div className="absolute right-0 bottom-0 w-[140px] lg:w-[150px] h-[120px] lg:h-[130px] overflow-hidden pointer-events-none z-0">
+              {/* CTA pill — premium, gives the wider card an anchored action */}
+              <a
+                href="#download-android"
+                className="relative z-10 w-fit inline-flex items-center gap-1.5 bg-white text-slate-900 text-[12px] lg:text-[13px] font-bold px-4 py-2 rounded-full"
+              >
+                Order Now
+                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current" aria-hidden="true">
+                  <path d="M13.5 4.5L21 12l-7.5 7.5-1.4-1.4 5.1-5.1H3v-2h14.2l-5.1-5.1z" />
+                </svg>
+              </a>
+
+              {/* Product Image Right Bottom */}
+              <div className="absolute right-0 bottom-0 w-[170px] lg:w-[210px] h-[150px] lg:h-[180px] overflow-hidden pointer-events-none z-0">
                 <Image
                   src={card.image}
                   alt={card.alt}
                   fill
-                  sizes="(max-width: 1024px) 150px, 15vw"
-                  className="object-cover object-bottom rounded-tl-[24px] opacity-90"
+                  sizes="(max-width: 1024px) 200px, 18vw"
+                  className="object-cover object-bottom rounded-tl-[28px] opacity-90"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-black/5" />
               </div>

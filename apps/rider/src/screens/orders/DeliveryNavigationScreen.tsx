@@ -30,7 +30,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
-import { colors } from '../../theme/tokens';
+import { colors, shadow } from '../../theme/tokens';
 import { DeliveryMapView } from './components/DeliveryMapView';
 import { openNavigation } from '../../location/openNavigation';
 import { distanceKm, etaMinutes } from '../../utils/geo';
@@ -118,8 +118,8 @@ export function DeliveryNavigationScreen({ route, navigation }: Props) {
       {/* Back arrow — floats over the map, safe-area aware. */}
       <Pressable
         onPress={() => navigation.goBack()}
-        style={{ top: insets.top + 12 }}
-        className="absolute left-4 h-11 w-11 items-center justify-center rounded-full bg-white shadow-md shadow-black/20"
+        style={[{ top: insets.top + 12 }, shadow.chip]}
+        className="absolute left-4 h-11 w-11 items-center justify-center rounded-full bg-white"
       >
         <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
       </Pressable>
@@ -127,8 +127,8 @@ export function DeliveryNavigationScreen({ route, navigation }: Props) {
       {/* Distance/ETA pill — white, top-left next to back, with a nav arrow.
           Same at-a-glance "am I close?" pill the pickup screen uses. */}
       <View
-        style={{ top: insets.top + 12 }}
-        className="absolute left-[68px] h-11 flex-row items-center gap-2 rounded-full bg-white px-4 shadow-md shadow-black/20"
+        style={[{ top: insets.top + 12 }, shadow.chip]}
+        className="absolute left-[68px] h-11 flex-row items-center gap-2 rounded-full bg-white px-4"
       >
         <AppIcon icon={Navigation03Icon} size={18} color={colors.ink} />
         <Text className="text-[15px] font-semibold text-ink tabular-nums">{legText}</Text>
@@ -138,8 +138,8 @@ export function DeliveryNavigationScreen({ route, navigation }: Props) {
           hand-off + customer card + Call + address/landmark/instruction
           + slide "I've arrived" → DeliveryProof (OTP + outcome). */}
       <View
-        style={{ paddingBottom: insets.bottom + 20 }}
-        className="absolute inset-x-0 bottom-0 gap-4 rounded-t-3xl bg-white px-5 pt-9 shadow-2xl shadow-black/25"
+        style={[{ paddingBottom: insets.bottom + 20 }, shadow.sheet]}
+        className="absolute inset-x-0 bottom-0 gap-4 rounded-t-3xl bg-white px-5 pt-9"
       >
         {/* "Go to drop" → the Swiggy-style hand-off: taps out to the rider's
             real maps app for turn-by-turn. The in-app map above is context;

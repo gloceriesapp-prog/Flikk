@@ -6,7 +6,7 @@
 
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../AppIcon';
-import { IconlyHome, IconlyOrders } from '../icons/iconly';
+import { IconlyBankCard, IconlyHome, IconlyNotification, IconlyOrders } from '../icons/iconly';
 import type { NavTab } from './data';
 
 interface Props {
@@ -22,15 +22,19 @@ export function BottomNavBarItem({ tab, isActive, onPress }: Props) {
       <View
         className={`h-[54px] w-[78px] items-center justify-center gap-1 rounded-full ${isActive ? 'bg-black/10' : 'bg-transparent'}`}
       >
-        {/* Home/Orders have real filled/outline glyphs; other tabs stroke-render via AppIcon. */}
+        {/* Home/Orders/Notifications have real filled/outline glyphs; other tabs stroke-render via AppIcon. */}
         {tab.id === 'Home' ? (
           <IconlyHome size={20} color={color} active={isActive} />
         ) : tab.id === 'Orders' ? (
           <IconlyOrders size={20} color={color} active={isActive} />
+        ) : tab.id === 'Notifications' ? (
+          <IconlyNotification size={20} color={color} active={isActive} />
+        ) : tab.id === 'Earnings' ? (
+          <IconlyBankCard size={20} color={color} active={isActive} />
         ) : (
           <AppIcon icon={tab.icon} size={20} color={color} />
         )}
-        <Text className={`text-[11px] ${isActive ? 'font-bold text-ink' : 'text-ink/60'}`}>{tab.label}</Text>
+        <Text className={`text-[11px] font-medium ${isActive ? 'text-ink' : 'text-ink/60'}`}>{tab.label}</Text>
       </View>
     </Pressable>
   );

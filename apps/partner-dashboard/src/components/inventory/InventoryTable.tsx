@@ -73,7 +73,7 @@ interface Props {
 export function InventoryTable({ products, onEdit }: Props) {
   if (products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-neutral-200 bg-white py-20">
+      <div className="flex flex-col items-center justify-center gap-1.5 card-shadow rounded-xl border border-hairline bg-white py-20">
         <p className="text-sm font-medium text-neutral-700">No products match this view.</p>
         <p className="text-sm text-neutral-400">Try a different filter or search term.</p>
       </div>
@@ -81,30 +81,32 @@ export function InventoryTable({ products, onEdit }: Props) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-      <div
-        className="grid gap-3 border-b border-neutral-100 bg-neutral-50 px-5 py-3 text-xs font-semibold tracking-wide text-neutral-400 uppercase"
-        style={{ gridTemplateColumns: COLUMNS }}
-      >
-        <span>Product</span>
-        <span>Category</span>
-        <span>Sizes & price</span>
-        <span>Stock</span>
-        <span>Approval</span>
-        <span />
-      </div>
+    <div className="overflow-x-auto rounded-xl border border-hairline">
+      <div className="min-w-[820px]">
+        {/* Header */}
+        <div
+          className="grid items-center border-b border-hairline bg-neutral-50 text-[13px] font-medium text-neutral-500"
+          style={{ gridTemplateColumns: COLUMNS }}
+        >
+          <span className="border-r border-hairline px-4 py-3">Product</span>
+          <span className="border-r border-hairline px-4 py-3">Category</span>
+          <span className="border-r border-hairline px-4 py-3">Sizes & price</span>
+          <span className="border-r border-hairline px-4 py-3">Stock</span>
+          <span className="border-r border-hairline px-4 py-3">Approval</span>
+          <span className="px-4 py-3" />
+        </div>
 
-      <div>
+        {/* Rows */}
         {products.map((product) => (
           <div
             key={product.id}
-            className="grid items-center gap-3 border-b border-neutral-100 px-5 py-[18px] last:border-b-0"
+            className="grid items-stretch border-b border-hairline transition-colors last:border-b-0 hover:bg-neutral-50/70"
             style={{ gridTemplateColumns: COLUMNS }}
           >
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3 border-r border-hairline px-4 py-3.5">
               {product.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.image_url} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-neutral-100 object-cover" />
+                <img src={product.image_url} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-hairline object-cover" />
               ) : (
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-300">
                   <Package size={18} />
@@ -119,27 +121,37 @@ export function InventoryTable({ products, onEdit }: Props) {
               </div>
             </div>
 
-            <span className="truncate text-sm text-neutral-500">{product.category}</span>
-
-            <VariantPrices product={product} />
-
-            <span
-              className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
-                product.is_in_stock ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
-              }`}
-            >
-              {product.is_in_stock ? 'In stock' : 'Out of stock'}
+            <span className="flex items-center truncate border-r border-hairline px-4 py-3.5 text-sm text-neutral-500">
+              {product.category}
             </span>
 
-            <ApprovalBadge status={product.approval_status} />
+            <div className="flex items-center border-r border-hairline px-4 py-3.5">
+              <VariantPrices product={product} />
+            </div>
 
-            <button
-              type="button"
-              onClick={() => onEdit(product)}
-              className="flex items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-neutral-900"
-            >
-              <Pencil size={14} /> Edit
-            </button>
+            <div className="flex items-center border-r border-hairline px-4 py-3.5">
+              <span
+                className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
+                  product.is_in_stock ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                }`}
+              >
+                {product.is_in_stock ? 'In stock' : 'Out of stock'}
+              </span>
+            </div>
+
+            <div className="flex items-center border-r border-hairline px-4 py-3.5">
+              <ApprovalBadge status={product.approval_status} />
+            </div>
+
+            <div className="flex items-center px-4 py-3.5">
+              <button
+                type="button"
+                onClick={() => onEdit(product)}
+                className="flex items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-neutral-900"
+              >
+                <Pencil size={14} /> Edit
+              </button>
+            </div>
           </div>
         ))}
       </div>

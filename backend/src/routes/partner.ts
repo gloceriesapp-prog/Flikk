@@ -362,6 +362,55 @@ partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
   }
 });
 
+// Store-owner read of every review left for their own store (RLS
+// reviews_store_owner_read, migration 020) — the customer app already
+// writes these (POST /reviews); this is the partner-side counterpart the
+// store owner sees. owner_reply/owner_replied_at (migration 053) let the
+// owner respond — written only via PATCH below, never here.
+partnerRouter.get('/reviews', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('id, rating, comment, created_at, owner_reply, owner_replied_at, users!customer_id(name), orders!order_id(order_number)')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Owner reply to one review. Reply-only allowlist (never rating/comment —
+// those are the customer's) and the .eq('store_id', storeId) on the UPDATE
+// itself scopes it to the caller's own store, so an owner can't reply to
+// another store's review even by guessing an id. Empty/blank body clears
+// the reply (owner_replied_at follows).
+partnerRouter.patch('/reviews/:id', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    const { reply } = req.body as { reply?: string };
+    const trimmed = typeof reply === 'string' ? reply.trim() : '';
+    if (trimmed.length > 1000) throw new AppError(400, 'REPLY_TOO_LONG', 'Reply must be 1000 characters or fewer.');
+    const clearing = trimmed.length === 0;
+    const { data, error } = await supabase
+      .from('reviews')
+      .update({
+        owner_reply: clearing ? null : trimmed,
+        owner_replied_at: clearing ? null : new Date().toISOString(),
+      })
+      .eq('id', req.params.id)
+      .eq('store_id', storeId)
+      .select('id, rating, comment, created_at, owner_reply, owner_replied_at, users!customer_id(name), orders!order_id(order_number)')
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Product photo upload — base64 in, public Storage URL out. Same
 // bucket/pattern as admin's own upload route (apps/admin/src/app/api/
 // upload — 'product-images'), so a photo uploaded from either app renders

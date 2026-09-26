@@ -23,11 +23,13 @@ function formatTime(iso: string): string {
 }
 
 export function TrackingTimeline({ order }: Props) {
-  // 'cancelled' has no stage index of its own (it isn't a step on this
-  // linear timeline) — every stage after the point of cancellation just
-  // stays 'pending', same as "hasn't happened", which is honest: it
-  // genuinely won't.
-  const currentIndex = order.status === 'cancelled' ? -1 : ORDER_STAGES.findIndex((stage) => stage.status === order.status);
+  // Neither 'cancelled' nor 'failed' has a stage index of its own (neither
+  // is a step on this linear timeline) — every stage stays 'pending', which
+  // is honest: the remaining steps genuinely won't happen.
+  const currentIndex =
+    order.status === 'cancelled' || order.status === 'failed'
+      ? -1
+      : ORDER_STAGES.findIndex((stage) => stage.status === order.status);
 
   return (
     <View className="w-full">
@@ -35,6 +37,10 @@ export function TrackingTimeline({ order }: Props) {
 
       {order.status === 'cancelled' && (
         <Text className="mb-4 text-sm font-medium text-danger">This order was cancelled.</Text>
+      )}
+
+      {order.status === 'failed' && (
+        <Text className="mb-4 text-sm font-medium text-danger">This delivery failed and couldn&apos;t be completed.</Text>
       )}
 
       {ORDER_STAGES.map((stage, index) => {

@@ -31,6 +31,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
+import Constants from 'expo-constants';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Location01Icon, Navigation03Icon, Store01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
@@ -44,6 +45,16 @@ const DELTA = 0.01;
 // zoom-level units, ~17 is "see your own street," the same level Uber's
 // driver app sits at while navigating.
 const FOLLOW_ZOOM = 17;
+
+// Same provider-selection logic apps/customer's LocationSearchScreen uses:
+// Android always gets Google Maps; iOS only once IOS_GOOGLE_MAPS_API_KEY is
+// set AND a fresh native build ships (app.config.js bakes this boolean into
+// extra at build time). Read once at module scope — it never changes for the
+// life of the app. When false (iOS, no key) the map falls back to Apple Maps,
+// which ignores customMapStyle, so mapType 'mutedStandard' is the closest
+// free approximation of the grayscale look.
+const HAS_IOS_GOOGLE_MAPS = Constants.expoConfig?.extra?.hasIosGoogleMaps === true;
+const USES_GOOGLE_MAPS = Platform.OS === 'android' || HAS_IOS_GOOGLE_MAPS;
 
 interface Props {
   // The fixed point the rider is heading to — a store (pickup leg) or the
@@ -156,8 +167,9 @@ export function DeliveryMapView({ destination, destinationKind = 'customer', ful
       <MapView
         ref={mapRef}
         style={{ flex: 1 }}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-        customMapStyle={Platform.OS === 'android' ? GRAYSCALE_MAP_STYLE : undefined}
+        provider={USES_GOOGLE_MAPS ? PROVIDER_GOOGLE : undefined}
+        customMapStyle={USES_GOOGLE_MAPS ? GRAYSCALE_MAP_STYLE : undefined}
+        mapType={USES_GOOGLE_MAPS ? 'standard' : 'mutedStandard'}
         initialRegion={{ ...(riderCoords ?? destination), latitudeDelta: DELTA, longitudeDelta: DELTA }}
       >
         {riderCoords ? (

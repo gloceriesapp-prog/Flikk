@@ -4,6 +4,7 @@ import React, { useRef } from "react";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { APP_DOWNLOAD_HREF } from "@/lib/links";
 
 interface CategoryItem {
   id: string;
@@ -109,8 +110,9 @@ export default function CategoryGrid() {
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {CATEGORIES.slice(0, 2).map((cat) => (
-            <div
+            <a
               key={cat.id}
+              href={APP_DOWNLOAD_HREF}
               className={`w-[300px] sm:w-[380px] lg:w-[460px] shrink-0 snap-start h-[240px] sm:h-[260px] rounded-[24px] p-6 flex flex-col relative overflow-hidden bg-gradient-to-br ${cat.bgGradient} select-none cursor-pointer group`}
             >
               {/* Title + CTA */}
@@ -120,12 +122,9 @@ export default function CategoryGrid() {
                 >
                   {cat.title}
                 </span>
-                <button
-                  type="button"
-                  className="mt-auto w-fit rounded-lg bg-white px-5 py-2 text-[14px] font-semibold text-slate-900 shadow-sm hover:bg-white/90 active:scale-95 transition-all"
-                >
+                <span className="mt-auto w-fit rounded-lg bg-white px-5 py-2 text-[14px] font-semibold text-slate-900 shadow-sm group-hover:bg-white/90 group-active:scale-95 transition-all">
                   Order Now
-                </button>
+                </span>
               </div>
 
               {/* Product image, right side */}
@@ -138,7 +137,7 @@ export default function CategoryGrid() {
                   className="object-cover object-left-top group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-            </div>
+            </a>
           ))}
         </div>
       </div>

@@ -37,6 +37,32 @@ function authHeader(): string {
   return `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString('base64')}`;
 }
 
+// Pure decision, split out so the money logic is unit-testable without a
+// network call (refund.check.mts). Given Razorpay's own refund records for a
+// payment and the requested paise: is this payment ALREADY refunded for at
+// least that amount? null → a new refund still has to be created.
+//
+// The load-bearing rule: EXCLUDE status:'failed' items. A failed Razorpay
+// refund still carries its requested `amount` but moved no money, so summing
+// it made a Retry (or a re-cancel on the backend mirror) wrongly conclude
+// "already refunded" and skip creating a real one — the customer stayed
+// unpaid. Dropping failed items from the sum is what makes Retry actually
+// retry. Keep in sync with backend/src/payments/refundPayment.ts.
+export function resolveExistingRefund(items: RazorpayRefund[], amountPaise: number): RefundResult | null {
+  const settled = items.filter((r) => r.status !== 'failed');
+  const alreadyRefundedPaise = settled.reduce((sum, r) => sum + r.amount, 0);
+  if (alreadyRefundedPaise < amountPaise) return null;
+
+  // settled is non-empty here (sum >= amountPaise > 0) and never holds a
+  // failed item, so match.status is only ever 'processed' | 'pending'.
+  const processed = settled.find((r) => r.status === 'processed');
+  const match = processed ?? settled[settled.length - 1];
+  return {
+    status: match?.status === 'processed' ? 'completed' : 'processing',
+    razorpayRefundId: match?.id ?? null,
+  };
+}
+
 async function findExistingRefund(razorpayPaymentId: string, amountPaise: number): Promise<RefundResult | null> {
   const res = await fetch(`${RAZORPAY_BASE}/payments/${razorpayPaymentId}/refunds`, {
     headers: { Authorization: authHeader() },
@@ -44,15 +70,7 @@ async function findExistingRefund(razorpayPaymentId: string, amountPaise: number
   if (!res.ok) throw new Error(`Razorpay fetch-refunds failed (${res.status}).`);
 
   const data = (await res.json()) as { items: RazorpayRefund[] };
-  const alreadyRefundedPaise = data.items.reduce((sum, r) => sum + r.amount, 0);
-  if (alreadyRefundedPaise < amountPaise) return null;
-
-  const processed = data.items.find((r) => r.status === 'processed');
-  const match = processed ?? data.items[data.items.length - 1];
-  return {
-    status: match?.status === 'processed' ? 'completed' : match?.status === 'failed' ? 'failed' : 'processing',
-    razorpayRefundId: match?.id ?? null,
-  };
+  return resolveExistingRefund(data.items, amountPaise);
 }
 
 // Real retry for an order whose refund_status is 'failed' — a founder

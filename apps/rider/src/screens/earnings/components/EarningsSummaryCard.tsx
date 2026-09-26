@@ -3,10 +3,11 @@
 // hands down (breakdownForToday vs breakdownForWeek) — the card itself is
 // dumb, it just renders whatever breakdown + period it's given.
 //
-// Rows map straight onto real order fields (utils/earnings.ts's own note):
-// Base earnings = baseFare, Distance pay = distanceFare, Incentives = surge,
-// Tips = customer tip. Deductions has no data-model field yet, so it's 0
-// and the row is hidden until it's > 0 (see below).
+// Rows map straight onto the only real server-derived dimensions
+// (utils/earnings.ts's own note): Base pay = the per-order/trip base
+// delivery fee, Extra-stop pay = the multi-stop surcharge summed across
+// trips. Extra-stop hides until it's > 0 (a rider with no multi-stop trips
+// that period has nothing to show there).
 //
 // Footer: Active hours is only tracked for TODAY (useActiveMsToday — no
 // weekly history exists), so the parent passes activeMs only in Today mode
@@ -15,16 +16,7 @@
 // just breakdown.count).
 
 import { Pressable, Text, View } from 'react-native';
-import {
-  ChartBarLineIcon,
-  Clock01Icon,
-  Coins01Icon,
-  GiftIcon,
-  MinusSignCircleIcon,
-  PackageIcon,
-  Route02Icon,
-  Wallet01Icon,
-} from '@hugeicons/core-free-icons';
+import { Clock01Icon, PackageIcon, Route02Icon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { formatDurationShort } from '../../../utils/date';
@@ -44,11 +36,13 @@ interface Props {
 const rupee = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 export function EarningsSummaryCard({ period, onPeriodChange, breakdown, activeMs }: Props) {
+  // Only the base row is always shown; extra-stop is appended when the
+  // period actually contains a multi-stop trip (its surcharge > 0).
   const rows = [
-    { key: 'base', label: 'Base earnings', icon: Wallet01Icon, value: breakdown.base },
-    { key: 'distance', label: 'Distance pay', icon: Route02Icon, value: breakdown.distance },
-    { key: 'incentives', label: 'Incentives', icon: Coins01Icon, value: breakdown.incentives },
-    { key: 'tips', label: 'Tips', icon: GiftIcon, value: breakdown.tips },
+    { key: 'base', label: 'Base pay', icon: Wallet01Icon, value: breakdown.base },
+    ...(breakdown.extraStop > 0
+      ? [{ key: 'extraStop', label: 'Extra-stop pay', icon: Route02Icon, value: breakdown.extraStop }]
+      : []),
   ];
 
   return (
@@ -91,19 +85,6 @@ export function EarningsSummaryCard({ period, onPeriodChange, breakdown, activeM
             <Text className="text-[15px] font-semibold text-ink tabular-nums">{rupee(r.value)}</Text>
           </View>
         ))}
-
-        {/* Deductions — hidden until there's a real deduction to show. */}
-        {breakdown.deductions > 0 ? (
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3">
-              <AppIcon icon={MinusSignCircleIcon} size={18} color={colors.danger} />
-              <Text className="text-[14px] font-medium text-ink/70">Deductions</Text>
-            </View>
-            <Text className="text-[15px] font-semibold tabular-nums" style={{ color: colors.danger }}>
-              -{rupee(breakdown.deductions)}
-            </Text>
-          </View>
-        ) : null}
       </View>
 
       <View className="h-px bg-black/[0.08]" />

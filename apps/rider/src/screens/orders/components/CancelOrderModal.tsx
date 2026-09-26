@@ -1,36 +1,35 @@
-// Lets a rider bail on an assigned order (bike breakdown, wrong address,
-// store closed) instead of being stuck sitting on it — a rider with no
-// way out of a broken order is a guaranteed rage-quit / 1-star review.
-// Reason is required and picked from a fixed list, not free text — a
-// closed set is enough for a future support/dispute view to reason about,
-// and it's faster to tap than to type standing in a doorway.
+// Lets a rider bail on an assigned order (bike breakdown, store closed,
+// store won't hand over) instead of being stuck sitting on it — a rider with
+// no way out of a broken order is a guaranteed rage-quit / 1-star review.
+// Reason is required and picked from a fixed list, not free text — a closed
+// set is enough for a future support/dispute view to reason about, and it's
+// faster to tap than to type standing in a doorway.
+//
+// The list is the shared, pickup-phase reason set (@flikk/shared) — cancel
+// only ever shows pre-pickup, so old drop-phase options ("customer
+// unreachable", "wrong address") were removed: they can't apply here. We
+// store the CODE (stable) and show the LABEL; the backend validates the code
+// against its own mirror of this list.
 
 import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
+import { RIDER_CANCEL_REASONS } from '@flikk/shared';
 import { PrimaryButton } from '../../../components/PrimaryButton';
-
-const CANCEL_REASONS = [
-  'Vehicle breakdown',
-  'Store is closed',
-  'Wrong / unreachable address',
-  'Customer unreachable',
-  'Unsafe to continue',
-  'Other',
-];
 
 interface Props {
   visible: boolean;
   onCancel: () => void;
-  onConfirm: (reason: string) => void;
+  // Receives the reason CODE (e.g. 'store_closed'), not the display label.
+  onConfirm: (reasonCode: string) => void;
 }
 
 export function CancelOrderModal({ visible, onCancel, onConfirm }: Props) {
-  const [reason, setReason] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null);
 
   function handleConfirm() {
-    if (!reason) return;
-    onConfirm(reason);
-    setReason(null);
+    if (!code) return;
+    onConfirm(code);
+    setCode(null);
   }
 
   return (
@@ -44,19 +43,19 @@ export function CancelOrderModal({ visible, onCancel, onConfirm }: Props) {
           </View>
 
           <View className="gap-2">
-            {CANCEL_REASONS.map((option) => (
+            {RIDER_CANCEL_REASONS.map((option) => (
               <Pressable
-                key={option}
-                onPress={() => setReason(option)}
-                className={`rounded-2xl border px-4 py-3.5 ${reason === option ? 'border-danger bg-danger/5' : 'border-gray-200'}`}
+                key={option.code}
+                onPress={() => setCode(option.code)}
+                className={`rounded-2xl border px-4 py-3.5 ${code === option.code ? 'border-danger bg-danger/5' : 'border-gray-200'}`}
               >
-                <Text className={`text-[14px] font-semibold ${reason === option ? 'text-danger' : 'text-ink'}`}>{option}</Text>
+                <Text className={`text-[14px] font-semibold ${code === option.code ? 'text-danger' : 'text-ink'}`}>{option.label}</Text>
               </Pressable>
             ))}
           </View>
 
           <View className="gap-3">
-            <PrimaryButton label="Confirm cancellation" onPress={handleConfirm} disabled={!reason} />
+            <PrimaryButton label="Confirm cancellation" onPress={handleConfirm} disabled={!code} />
             <Pressable onPress={onCancel} className="items-center py-2">
               <Text className="text-[14px] font-semibold text-ink/50">Never mind, keep this order</Text>
             </Pressable>

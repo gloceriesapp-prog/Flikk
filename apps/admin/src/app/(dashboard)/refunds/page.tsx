@@ -19,6 +19,25 @@ const STATUS_STYLE: Record<RefundOrder['refundStatus'], string> = {
   completed: 'bg-green-50 text-success',
 };
 
+// Rider cancels store a stable CODE (backend/src/lib/cancelReasons.ts —
+// itself mirrored from @flikk/shared, which admin isn't a member of), so map
+// it to a readable label here. Partner/customer cancels are still free text,
+// which falls through unchanged.
+const CANCEL_REASON_LABELS: Record<string, string> = {
+  store_closed: 'Store is closed',
+  store_out_of_stock: 'Store out of items',
+  store_refused_handover: 'Store refused to hand over',
+  long_wait_at_store: 'Waiting too long at store',
+  vehicle_breakdown: 'Vehicle breakdown',
+  unsafe_conditions: 'Unsafe to continue',
+  other: 'Other',
+};
+
+function cancelReasonLabel(reason: string | null): string {
+  if (!reason) return '—';
+  return CANCEL_REASON_LABELS[reason] ?? reason;
+}
+
 export default function RefundsPage() {
   const [refunds, setRefunds] = useState<RefundOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +118,7 @@ export default function RefundsPage() {
                 <tr key={refund.id} className="border-t border-border">
                   <td className="px-4 py-3 font-medium text-ink">{refund.orderNumber}</td>
                   <td className="px-4 py-3 tabular-nums text-ink">₹{refund.total.toFixed(0)}</td>
-                  <td className="max-w-xs truncate px-4 py-3 text-muted">{refund.cancelReason ?? '—'}</td>
+                  <td className="max-w-xs truncate px-4 py-3 text-muted">{cancelReasonLabel(refund.cancelReason)}</td>
                   <td className="px-4 py-3">
                     <span className={clsx('rounded-full px-2.5 py-1 text-xs font-semibold capitalize', STATUS_STYLE[refund.refundStatus])}>
                       {refund.refundStatus}

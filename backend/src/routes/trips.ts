@@ -40,8 +40,10 @@ export const tripsRouter = Router();
 // rider's payout amount). A founder-set number, same "flat ₹20-30" PRD
 // convention as the base fee itself (PRD Section 22) — not yet wired into
 // the admin settings table (only the base fee/free-delivery toggle are),
-// since nothing has asked for that yet.
-const EXTRA_STOP_FEE = 15;
+// since nothing has asked for that yet. Exported so GET /rider/earnings can
+// recompute the base vs extra-stop split of a settled trip earning (the
+// split isn't persisted, only the combined amount is).
+export const EXTRA_STOP_FEE = 15;
 
 interface CreateTripBody extends AddressInput {
   items: { product_id: string; quantity: number }[];

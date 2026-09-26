@@ -16,17 +16,12 @@
 // day). A day with ₹0 has nothing worth showing a tooltip for, so tapping
 // one just clears the tooltip instead.
 //
-// weeklyActivity is real data from the caller (useRiderOrdersStore via
+// weeklyActivity is real data from the caller (useRiderEarnings via
 // EarningsScreen) — the reference image's ₹1750/Mon-Sun numbers were only
 // ever a visual sample, never hardcoded here.
-//
-// The top pill shows customer tips for the selected week when there are any.
 
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ArrowRight01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
-import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
 import type { WeeklyActivityDay } from '../../../utils/earnings';
 
 const BAR_AREA_HEIGHT = 110;
@@ -40,10 +35,9 @@ const COLUMN_COUNT = 7;
 
 interface Props {
   weeklyActivity: WeeklyActivityDay[];
-  tipsThisWeek: number;
 }
 
-export function WeeklyActivityChartCard({ weeklyActivity, tipsThisWeek }: Props) {
+export function WeeklyActivityChartCard({ weeklyActivity }: Props) {
   const maxValue = Math.max(...weeklyActivity.map((day) => day.total), 1);
   const todayIndex = weeklyActivity.findIndex((day) => day.isToday);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(todayIndex >= 0 ? todayIndex : null);
@@ -71,17 +65,6 @@ export function WeeklyActivityChartCard({ weeklyActivity, tipsThisWeek }: Props)
   // the card has margin.
   return (
     <View style={{ backgroundColor: '#F8F8F8' }} className="w-full gap-5 py-5">
-      {/* {tipsThisWeek > 0 ? (
-        <View className="items-center px-5">
-          <View className="flex-row items-center gap-2 rounded-full bg-success/15 px-3.5 py-2">
-            <AppIcon icon={CheckmarkCircle02Icon} size={15} color={colors.success} />
-            <Text className="text-[12.5px] font-semibold text-success">Includes customer tips</Text>
-            <View className="h-3.5 w-px bg-success/30" />
-            <Text className="text-[12.5px] font-semibold text-success">₹{tipsThisWeek}</Text>
-          </View>
-        </View>
-      ) : null} */}
-
       <View style={{ width: '100%', height: GRID_HEIGHT, marginTop: 44 }}>
         {/* Grid overlay — pointerEvents none so it never intercepts taps
             meant for the bars/tooltip above it. 6 vertical lines at each

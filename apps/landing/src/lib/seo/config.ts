@@ -17,6 +17,11 @@ export const SITE = {
     "Gloceries is a hyperlocal grocery delivery app that connects you to real local kirana and grocery stores near you, delivering fresh produce, groceries, dairy, meat and daily essentials to your door in minutes.",
   locale: "en_IN",
   twitter: "@gloceries",
+  // Public support number for schema (Organization contactPoint +
+  // LocalBusiness telephone) and NAP consistency with Google Business Profile.
+  // Env-backed so no number is committed; schema omits `telephone` until set.
+  // E.164 format, e.g. "+919876543210". Set NEXT_PUBLIC_SUPPORT_PHONE in .env.
+  supportPhone: process.env.NEXT_PUBLIC_SUPPORT_PHONE ?? "",
   // Brand logo (reused from the Navbar's hosted asset) — used as
   // Organization logo, LocalBusiness image, and manifest icon.
   logo: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/All_Right-removebg-preview.png",

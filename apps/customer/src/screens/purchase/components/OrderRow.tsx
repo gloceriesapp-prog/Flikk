@@ -32,6 +32,7 @@ interface Props {
 
 function statusFor(order: PurchaseOrder) {
   if (order.status === 'cancelled') return { color: colors.danger, headline: 'Cancelled' };
+  if (order.status === 'failed') return { color: colors.danger, headline: 'Delivery failed' };
   if (order.status === 'delivered') return { color: colors.success, headline: 'Delivered' };
   return { color: colors.success, headline: 'On the way' };
 }
@@ -39,7 +40,7 @@ function statusFor(order: PurchaseOrder) {
 export function OrderRow({ order, onPress }: Props) {
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const status = statusFor(order);
-  const isFinished = order.status === 'delivered' || order.status === 'cancelled';
+  const isFinished = order.status === 'delivered' || order.status === 'cancelled' || order.status === 'failed';
 
   // Live orders show a real forward-looking ETA; a finished order instead
   // shows when it actually finished — order.etaLabel already carries that

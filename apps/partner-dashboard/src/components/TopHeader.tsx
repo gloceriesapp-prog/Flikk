@@ -5,15 +5,16 @@
 // icons on the right. The store's own name/accept-orders status lives in
 // the Overview page's welcome banner instead (a store owner opens the
 // dashboard, not the header chrome, to check "am I visible to customers").
-// Support/Message/Notification are UI-only for now (no backend behind
-// them yet) — same "UI exists, flow not wired" convention the rest of
-// this codebase already uses rather than fabricating a fake destination.
+// Support links to the real /help page; Notifications links to /orders
+// (the badge counts placed orders needing action — that IS where the owner
+// acts on them). No Messages icon: there's no messaging backend, and an
+// inert button is worse than none — reinstate it only when a real inbox exists.
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CustomerService01Icon, Message01Icon, Notification03Icon } from '@hugeicons/core-free-icons';
+import { CustomerService01Icon, Notification03Icon } from '@hugeicons/core-free-icons';
 import { ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { clearTokens } from '@/lib/authStorage';
 
@@ -23,7 +24,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/inventory': 'Inventory',
   '/payouts': 'Payouts',
   '/analytics': 'Analytics',
+  '/reviews': 'Reviews',
   '/settings': 'Settings',
+  '/help': 'Help & support',
 };
 
 interface Props {
@@ -54,40 +57,37 @@ export function TopHeader({ notificationCount, ownerName, avatarUrl }: Props) {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-neutral-200 bg-[#F7F8FA] px-8">
-      <p className="text-[15px]">
-        <span className="text-neutral-400">Dashboard</span>
-        <span className="mx-2 text-neutral-300">/</span>
-        <span className="font-bold text-black">{title}</span>
-      </p>
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-hairline bg-white px-5 lg:px-7">
+      {/* Left: page name only — no "Dashboard /" breadcrumb prefix. */}
+      <p className="text-xl font-semibold tracking-tight text-neutral-900">{title}</p>
 
-      <div className="flex items-center gap-1">
-        <button type="button" title="Support" className="flex h-9 w-9 items-center justify-center rounded-lg text-black/60 hover:bg-black/5">
+      {/* Right: Support, Alert, Manage profile — each a bordered box. */}
+      <div className="flex items-center gap-2.5">
+        <Link
+          href="/help"
+          title="Support"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-hairline bg-white text-black/60 hover:bg-neutral-50"
+        >
           <HugeiconsIcon icon={CustomerService01Icon} size={19} />
-        </button>
-        <button type="button" title="Messages" className="flex h-9 w-9 items-center justify-center rounded-lg text-black/60 hover:bg-black/5">
-          <HugeiconsIcon icon={Message01Icon} size={19} />
-        </button>
-        <button
-          type="button"
-          title="Notifications"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-black/60 hover:bg-black/5"
+        </Link>
+        <Link
+          href="/orders"
+          title="Alerts"
+          className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-hairline bg-white text-black/60 hover:bg-neutral-50"
         >
           <HugeiconsIcon icon={Notification03Icon} size={19} />
           {notificationCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+            <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
               {notificationCount > 9 ? '9+' : notificationCount}
             </span>
           )}
-        </button>
-
-        <div className="mx-2 h-6 w-px bg-neutral-200" />
+        </Link>
 
         <div ref={menuRef} className="relative">
           <button
             type="button"
             onClick={() => setIsMenuOpen((v) => !v)}
-            className="flex items-center gap-2.5 rounded-lg px-1.5 py-1 hover:bg-black/5"
+            className="flex items-center gap-2.5 rounded-lg border border-hairline bg-white px-1.5 py-1 hover:bg-neutral-50"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={avatarUrl} alt={ownerName} className="h-8 w-8 rounded-full border border-neutral-200 object-cover" />

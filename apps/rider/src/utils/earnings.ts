@@ -1,27 +1,16 @@
-// Pure math for the Earnings tab — kept separate from the components, same
-// split as utils/performance.ts, so the actual money logic has one place
-// to live and reason about instead of being buried inside JSX. Every
-// figure here is derived from real order data (data/mockOrders.ts's own
-// mock generators), not random display numbers.
+// Pure math for the Earnings tab — kept separate from the components so the
+// money logic has one place to live and reason about instead of being buried
+// inside JSX. Operates on server-derived RiderEarning[] (api/earnings.ts):
+// each row is one settled order or one whole trip, with a real base vs
+// extra-stop split the backend recomputed. No fabricated dimensions
+// (distance/surge/tip don't exist server-side).
 //
-// Trimmed down to just what the current screen needs (week navigation,
-// weekly balance, weekly activity chart) — the earlier stat-tile/
-// transactions-history version of this file (availableBalance,
-// payoutHistory, buildTransactions, etc.) was removed wholesale along
-// with the screens that read it; see git history if any of that's needed
-// again.
+// Week boundaries are Monday-to-Monday pay periods (payouts run every
+// Monday), and every figure buckets on deliveredAt.
 
-import type { RiderOrder } from '../data/mockOrders';
+import type { RiderEarning } from '../api/earnings';
 
-function orderTotal(order: RiderOrder): number {
-  return order.payout + (order.tip ?? 0);
-}
-
-// Monday 00:00 local time of the week `date` falls in — payouts run every
-// Monday, so a "week" here means a Monday-to-Monday pay period, not a
-// rolling 7 days. Exported so useRiderOrdersStore's loadSampleWeek can
-// spread its mock deliveries across the same real week boundaries this
-// screen uses, instead of duplicating the Monday-backtrack math there.
+// Monday 00:00 local time of the week `date` falls in. Exported for reuse.
 export function startOfWeek(date: Date): Date {
   const start = new Date(date);
   const day = start.getDay(); // 0 = Sunday
@@ -39,8 +28,7 @@ export interface WeekRange {
 }
 
 // `offset` counts Monday-to-Monday pay periods back from the current one
-// — lets EarningsWeekHeader page backward through history instead of only
-// ever showing "this week."
+// — lets EarningsWeekHeader page backward through history.
 export function getWeekRange(offset: number): WeekRange {
   const start = startOfWeek(new Date());
   start.setDate(start.getDate() + offset * 7);
@@ -54,82 +42,57 @@ export function getWeekRange(offset: number): WeekRange {
   };
 }
 
-// Human-readable label for the week the header has paged to — "This week",
-// "Last week", "N weeks ago". Replaces the raw "21 Sep - 27 Sep" date range
-// (offset is never positive; no future earnings exist).
+// "This week", "Last week", "N weeks ago" (offset is never positive).
 export function relativeWeekLabel(offset: number): string {
   if (offset === 0) return 'This week';
   if (offset === -1) return 'Last week';
   return `${-offset} weeks ago`;
 }
 
-function ordersInWeek(completedOrders: RiderOrder[], week: WeekRange): RiderOrder[] {
+function earningsInWeek(earnings: RiderEarning[], week: WeekRange): RiderEarning[] {
   const exclusiveEnd = new Date(week.end);
   exclusiveEnd.setDate(exclusiveEnd.getDate() + 1);
   exclusiveEnd.setHours(0, 0, 0, 0);
 
-  return completedOrders.filter((order) => {
-    if (!order.deliveredAt) return false;
-    const d = new Date(order.deliveredAt);
+  return earnings.filter((e) => {
+    if (!e.deliveredAt) return false;
+    const d = new Date(e.deliveredAt);
     return d >= week.start && d < exclusiveEnd;
   });
 }
 
-export function sumEarningsForWeek(completedOrders: RiderOrder[], week: WeekRange): number {
-  return ordersInWeek(completedOrders, week).reduce((sum, order) => sum + orderTotal(order), 0);
-}
-
-export function sumTipsForWeek(completedOrders: RiderOrder[], week: WeekRange): number {
-  return ordersInWeek(completedOrders, week).reduce((sum, order) => sum + (order.tip ?? 0), 0);
-}
-
-// Itemized earnings breakup for the summary card (dark "Total Earnings"
-// card at the top of the tab). payout already splits into baseFare +
-// distanceFare + surge (mockOrders' own note), tip is the customer's money
-// on top — map those straight onto the card's rows. Incentives = surge
-// (the amber "extra money" bucket). deductions has no field in the data
-// model yet (orders carry no penalty/adjustment column), so it's always 0
-// today and the card hides the row until it's nonzero.
-// ponytail: wire deductions to a real orders penalty/adjustment field when
-// the backend has one — the card already renders it the moment it's > 0.
+// Total earned, split into base pay + extra-stop surcharge, and a count.
+// These are the only real dimensions the backend exposes.
 export interface EarningsBreakdown {
-  base: number;
-  distance: number;
-  incentives: number;
-  tips: number;
-  deductions: number;
   total: number;
+  base: number;
+  extraStop: number;
   count: number;
 }
 
-function breakdownForOrders(orders: RiderOrder[]): EarningsBreakdown {
-  const b = orders.reduce(
-    (acc, o) => {
-      acc.base += o.baseFare;
-      acc.distance += o.distanceFare;
-      acc.incentives += o.surge;
-      acc.tips += o.tip ?? 0;
+function breakdownForEarnings(earnings: RiderEarning[]): EarningsBreakdown {
+  return earnings.reduce<EarningsBreakdown>(
+    (acc, e) => {
+      acc.total += e.amount;
+      acc.base += e.baseFee;
+      acc.extraStop += e.extraStopFee;
       acc.count += 1;
       return acc;
     },
-    { base: 0, distance: 0, incentives: 0, tips: 0, deductions: 0, total: 0, count: 0 },
+    { total: 0, base: 0, extraStop: 0, count: 0 },
   );
-  b.total = b.base + b.distance + b.incentives + b.tips - b.deductions;
-  return b;
 }
 
-export function breakdownForWeek(completedOrders: RiderOrder[], week: WeekRange): EarningsBreakdown {
-  return breakdownForOrders(ordersInWeek(completedOrders, week));
+export function breakdownForWeek(earnings: RiderEarning[], week: WeekRange): EarningsBreakdown {
+  return breakdownForEarnings(earningsInWeek(earnings, week));
 }
 
-// Today = deliveries whose deliveredAt falls on the real current calendar
-// day (local). Independent of the week the header has paged to — the
-// summary card's "Today" tab always means today, not "the selected week's
-// today," so paging back a week and switching to Today still shows today.
-export function breakdownForToday(completedOrders: RiderOrder[]): EarningsBreakdown {
+// Today = earnings whose deliveredAt falls on the real current calendar day
+// (local), independent of the week the header has paged to.
+export function breakdownForToday(earnings: RiderEarning[]): EarningsBreakdown {
   const now = new Date();
-  const today = completedOrders.filter((o) => o.deliveredAt && new Date(o.deliveredAt).toDateString() === now.toDateString());
-  return breakdownForOrders(today);
+  const today = earnings.filter((e) => e.deliveredAt && new Date(e.deliveredAt).toDateString() === now.toDateString());
+  return breakdownForEarnings(today);
 }
 
 export interface WeeklyActivityDay {
@@ -140,13 +103,11 @@ export interface WeeklyActivityDay {
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-// Per-day breakdown for whichever week is currently selected (not always
-// "this week") — isToday only ever true when the real current date falls
-// inside the selected week, so paging to a past week correctly shows no
-// "Today" bar/tooltip.
-export function getWeeklyActivity(completedOrders: RiderOrder[], week: WeekRange): WeeklyActivityDay[] {
+// Per-day totals for the selected week's bar chart. isToday is only true when
+// the real current date falls inside the selected week.
+export function getWeeklyActivity(earnings: RiderEarning[], week: WeekRange): WeeklyActivityDay[] {
   const now = new Date();
-  const orders = ordersInWeek(completedOrders, week);
+  const inWeek = earningsInWeek(earnings, week);
 
   return Array.from({ length: 7 }, (_, index) => {
     const day = new Date(week.start);
@@ -154,59 +115,48 @@ export function getWeeklyActivity(completedOrders: RiderOrder[], week: WeekRange
     const dayEnd = new Date(day);
     dayEnd.setDate(dayEnd.getDate() + 1);
 
-    const total = orders
-      .filter((order) => {
-        const d = new Date(order.deliveredAt!);
+    const total = inWeek
+      .filter((e) => {
+        const d = new Date(e.deliveredAt!);
         return d >= day && d < dayEnd;
       })
-      .reduce((sum, order) => sum + orderTotal(order), 0);
+      .reduce((sum, e) => sum + e.amount, 0);
 
     return { label: WEEKDAY_LABELS[index], total, isToday: day.toDateString() === now.toDateString() };
   });
 }
 
+// One transaction row per earning in the selected week — the headline
+// per-order breakdown the Transactions card renders (base + extra-stop).
 export interface WeekTransaction {
   id: string;
-  title: string;
-  subtitle: string;
-  date: string; // ISO
-  amount: number; // always positive — "All" only ever lists money received
+  title: string; // store name, or "N-stop trip" for a multi-store trip
+  subtitle: string; // order number
+  date: string; // ISO (deliveredAt)
+  amount: number;
+  base: number;
+  extraStop: number;
+  isTrip: boolean;
+  status: 'paid' | 'pending';
 }
 
-// One row per delivery in the selected week — this is what the "All"
-// tab reads (user's own framing: "all means where all i got money").
-export function getEarningsForWeek(completedOrders: RiderOrder[], week: WeekRange): WeekTransaction[] {
-  return ordersInWeek(completedOrders, week)
-    .map((order) => ({
-      id: order.id,
-      title: order.storeName,
-      subtitle: order.orderNumber,
-      date: order.deliveredAt!,
-      amount: orderTotal(order),
+function transactionTitle(e: RiderEarning): string {
+  if (e.isTrip) return `${e.stopCount}-stop trip`;
+  return e.storeName ?? 'Delivery';
+}
+
+export function getEarningsForWeek(earnings: RiderEarning[], week: WeekRange): WeekTransaction[] {
+  return earningsInWeek(earnings, week)
+    .map((e) => ({
+      id: e.id,
+      title: transactionTitle(e),
+      subtitle: e.orderNumber ?? '',
+      date: e.deliveredAt!,
+      amount: e.amount,
+      base: e.baseFee,
+      extraStop: e.extraStopFee,
+      isTrip: e.isTrip,
+      status: e.status,
     }))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-}
-
-// Payouts run automatically every Monday — there is never a rider-
-// initiated withdrawal, so "Withdraw" (user's own framing: "from where we
-// have took money") lists past pay periods that have actually been paid
-// out already, not a fake ledger. The current week (offset === 0) hasn't
-// been paid yet — nothing to show there until it's over. A past week with
-// ₹0 earned genuinely has no payout, so that returns nothing too.
-export function getWithdrawalForWeek(completedOrders: RiderOrder[], week: WeekRange): WeekTransaction | null {
-  if (week.offset >= 0) return null;
-
-  const total = sumEarningsForWeek(completedOrders, week);
-  if (total <= 0) return null;
-
-  const payoutDate = new Date(week.end);
-  payoutDate.setDate(payoutDate.getDate() + 1); // paid out the Monday right after this week ends
-
-  return {
-    id: `payout-${week.start.getTime()}`,
-    title: 'Weekly payout',
-    subtitle: `To your linked bank account · ${week.label}`,
-    date: payoutDate.toISOString(),
-    amount: total,
-  };
 }

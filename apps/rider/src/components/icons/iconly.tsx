@@ -10,7 +10,7 @@
 // uniform.
 
 import { memo } from 'react';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { G, Path } from 'react-native-svg';
 
 export interface IconlyIconProps {
   size?: number;
@@ -75,6 +75,65 @@ export const IconlyOrders = memo(function IconlyOrders({ size = 24, color = '#10
       />
       <Path d="M5.98816 21.3128C5.98816 22.0268 6.56916 22.6078 7.28416 22.6078C7.99816 22.6078 8.57816 22.0268 8.57816 21.3128C8.57816 20.5998 7.99816 20.0188 7.28416 20.0188C6.56916 20.0188 5.98816 20.5998 5.98816 21.3128Z" fill={color} />
       <Path d="M16.3203 21.3128C16.3203 22.0268 16.9013 22.6078 17.6153 22.6078C18.3293 22.6078 18.9103 22.0268 18.9103 21.3128C18.9103 20.5998 18.3293 20.0188 17.6153 20.0188C16.9013 20.0188 16.3203 20.5998 16.3203 21.3128Z" fill={color} />
+    </Svg>
+  );
+});
+
+// IconlyNotification (Iconly "Notification" bell) — bold solid glyph when
+// active, hairline outline when not. Both draw in a 24×24 box so the icon
+// sits identically centered in the tab whether active or not.
+export const IconlyNotification = memo(function IconlyNotification({ size = 24, color = '#101C10', active = false }: IconlyIconProps) {
+  if (active) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <G transform="translate(3.5, 2)" fill={color} fillRule="nonzero">
+          <Path d="M6.46318036,17.2279111 C6.96309266,17.1221591 10.009278,17.1221591 10.5091903,17.2279111 C10.9365507,17.326613 11.3986963,17.5572531 11.3986963,18.0608342 C11.3738498,18.5402433 11.092587,18.9652657 10.7039871,19.2351852 C10.2000994,19.6279784 9.60875183,19.8767475 8.99057001,19.9663849 C8.64868167,20.0107 8.3127565,20.0117072 7.9827945,19.9663849 C7.36361882,19.8767475 6.77227127,19.6279784 6.26937738,19.234178 C5.87978369,18.9652657 5.5985209,18.5402433 5.57367436,18.0608342 C5.57367436,17.5572531 6.03581994,17.326613 6.46318036,17.2279111 Z M8.5452207,-1.77635684e-15 C10.6253727,-1.77635684e-15 12.7502485,0.987018886 14.0124525,2.62466451 C14.8313943,3.67916326 15.207074,4.73265484 15.207074,6.37030046 L15.207074,6.37030046 L15.207074,6.79633004 C15.207074,8.05226122 15.5390237,8.79252538 16.2695118,9.64559171 C16.8230927,10.2740609 17,11.0807977 17,11.9560216 C17,12.8302384 16.712774,13.66014 16.1373283,14.3339314 C15.3839813,15.1416754 14.3215434,15.6573425 13.2372406,15.7469799 C11.6659456,15.8809324 10.0936568,15.9937346 8.50049693,15.9937346 C6.90634317,15.9937346 5.33504823,15.9262547 3.76375329,15.7469799 C2.67845659,15.6573425 1.61601871,15.1416754 0.863665595,14.3339314 C0.288219819,13.66014 0,12.8302384 0,11.9560216 C0,11.0807977 0.177901198,10.2740609 0.730488161,9.64559171 C1.48383514,8.79252538 1.79391991,8.05226122 1.79391991,6.79633004 L1.79391991,6.79633004 L1.79391991,6.37030046 C1.79391991,4.68833971 2.21332944,3.58851866 3.07699503,2.51186235 C4.36106402,0.94169659 6.41935107,0 8.45577317,0 L8.5452207,-1.77635684e-15 Z" />
+        </G>
+      </Svg>
+    );
+  }
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M5.31885 7.94511C5.31885 11.5054 3.5 11.3188 3.5 14.2205C3.75295 17.1352 6.36177 17.8476 12 17.8476C17.6392 17.8476 20.2481 17.1242 20.5 14.2205C20.5 11.3188 18.6812 11.5054 18.6812 7.94511C18.6812 5.16414 16.0452 2 12 2C9.89339 2 8.16898 2.8581 7 4.07331"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M14.3889 20.8572C13.0247 22.3719 10.8967 22.3899 9.51953 20.8572"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+});
+
+// IconlyBankCard (Iconly "Wallet"/card) — bold filled when active, hairline
+// outline when not. Used for the Earnings tab.
+export const IconlyBankCard = memo(function IconlyBankCard({ size = 24, color = '#101C10', active = false }: IconlyIconProps) {
+  if (active) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 25 25" fill="none">
+        <Path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M14.352 16.2306H19.327V14.7306H14.352V16.2306ZM10.126 16.2306H12.374V14.7306H10.126V16.2306ZM2.5 19.6686H22V10.6716H2.5V19.6686Z"
+          fill={color}
+        />
+        <Path fillRule="evenodd" clipRule="evenodd" d="M2.5 9.17164H22V4.60864H2.5V9.17164Z" fill={color} />
+      </Svg>
+    );
+  }
+  return (
+    <Svg width={size} height={size} viewBox="0 0 25 24" fill="none">
+      <Path d="M21.45 19.03V4.96997H2.95001V19.03H21.45Z" stroke={color} strokeWidth={1.5} strokeLinecap="square" />
+      <Path d="M3.01874 9.78296L21.4499 9.78296" stroke={color} strokeWidth={1.5} strokeLinecap="square" />
+      <Path d="M15.0521 15.342H18.5271" stroke={color} strokeWidth={1.5} strokeLinecap="square" />
+      <Path d="M10.8255 15.342H11.5735" stroke={color} strokeWidth={1.5} strokeLinecap="square" />
     </Svg>
   );
 });
