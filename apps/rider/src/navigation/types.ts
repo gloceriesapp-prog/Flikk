@@ -89,6 +89,9 @@ export type AppStackParamList = {
   DeliveryComplete: { orderId: string };
   OrderDetail: { orderId: string };
   RiderDocuments: undefined;
+  // Weekly working-hours schedule + the auto-online master switch. Reached
+  // from Profile's "Working hours" row.
+  Availability: undefined;
   // Weekly payout history — the per-payout complement to the Earnings tab.
   // Reached from Profile's "Payout history" row.
   PayoutHistory: undefined;

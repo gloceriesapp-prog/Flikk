@@ -9,8 +9,8 @@
 // count as placed volume under Orders.
 
 import { useMemo, useState } from 'react';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { TrendingDown, TrendingUp } from 'lucide-react';
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Calendar, ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
 import type { PartnerOrder } from '@/lib/partnerApi';
 import { formatInr, formatInrCompact } from '@/lib/format';
 
@@ -86,16 +86,22 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: { paylo
   if (!active || !payload?.length) return null;
   const b = payload[0].payload;
   return (
-    <div className="rounded-xl bg-[#101C10] px-3.5 py-2.5 text-white shadow-lg">
-      <p className="text-[11px] text-neutral-400">{b.label}</p>
-      <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold">
-        <span className="h-2 w-2 rounded-full" style={{ background: SALES_COLOR }} />
-        {formatInr(b.sales)}
-      </p>
-      <p className="flex items-center gap-1.5 text-[13px] text-neutral-300">
-        <span className="h-2 w-2 rounded-full" style={{ background: ORDERS_COLOR }} />
-        {b.orders} {b.orders === 1 ? 'order' : 'orders'}
-      </p>
+    <div className="min-w-[180px] rounded-xl border border-hairline bg-white px-3.5 py-3 shadow-lg">
+      <p className="text-[12px] font-medium text-neutral-500">{b.label}</p>
+      <div className="mt-2 flex items-center justify-between gap-6">
+        <span className="flex items-center gap-2 text-[13px] text-neutral-600">
+          <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: SALES_COLOR }} />
+          Sales
+        </span>
+        <span className="text-[13px] font-semibold text-neutral-900 tnum">{formatInr(b.sales)}</span>
+      </div>
+      <div className="mt-1.5 flex items-center justify-between gap-6">
+        <span className="flex items-center gap-2 text-[13px] text-neutral-600">
+          <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: ORDERS_COLOR }} />
+          Orders
+        </span>
+        <span className="text-[13px] font-semibold text-neutral-900 tnum">{b.orders}</span>
+      </div>
     </div>
   );
 }
@@ -137,62 +143,55 @@ export function SalesReportChart({ orders }: { orders: PartnerOrder[] }) {
     <div className="flex flex-col">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xl text-black font-medium">Sales revenue </p>
-          <p className="mt-2 text-4xl leading-none font-semibold tracking-tight text-black tabular-nums">{formatInr(total)}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className={`flex items-center gap-1 text-[13px] font-semibold ${up ? 'text-emerald-600' : 'text-red-600'}`}>
-              {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-              {formatInr(Math.abs(deltaAbs))}
+          <span className="text-xl font-semibold text-black tracking-tight">Sales Performance</span>
+          <div className="mt-2 flex flex-wrap items-end gap-3">
+            <p className="text-5xl leading-none font-bold tracking-tight text-black tnum">
+              {formatInr(total)}
+            </p>
+            <span className={`mb-0.5 flex items-center gap-0.5 text-[13px] font-semibold ${up ? 'text-emerald-600' : 'text-red-600'}`}>
+              {up ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+              {up ? '+' : '−'}{Math.abs(deltaPct).toFixed(1)}%
             </span>
-            <span className={`text-[13px] font-medium ${up ? 'text-emerald-600' : 'text-red-600'}`}>
-              ({up ? '+' : '−'}{Math.abs(deltaPct).toFixed(1)}%)
+          </div>
+        
+        </div>
+
+        <div className="flex flex-col items-end gap-3">
+          {/* Timeframe as the image's calendar dropdown chip — same real options,
+              just a select instead of the old pill row below the header. */}
+          <div className="relative">
+            <select
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value as Timeframe)}
+              className="appearance-none rounded-full border border-hairline bg-neutral-50 py-2 pl-9 pr-8 text-[13px] font-medium text-neutral-700 outline-none transition-colors hover:bg-neutral-100"
+            >
+              {TIMEFRAMES.map((t) => (
+                <option key={t.key} value={t.key}>{t.label}</option>
+              ))}
+            </select>
+            <Calendar size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500" />
+          </div>
+
+          {/* Two-series legend — only the two REAL series exist (sales ₹, orders
+              count); no invented Earning/Profit line. */}
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1.5 text-[13px] font-medium text-neutral-600">
+              <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: SALES_COLOR }} />
+              Sales
             </span>
-            <span className="text-[13px] text-neutral-400">· {orderTotal} {orderTotal === 1 ? 'order' : 'orders'} vs previous period</span>
+            <span className="flex items-center gap-1.5 text-[13px] font-medium text-neutral-600">
+              <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: ORDERS_COLOR }} />
+              Orders
+            </span>
           </div>
         </div>
-
-        {/* Two-series legend, in place of the old metric dropdown. */}
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 text-[13px] font-medium text-neutral-600">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: SALES_COLOR }} />
-            Sales
-          </span>
-          <span className="flex items-center gap-1.5 text-[13px] font-medium text-neutral-600">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: ORDERS_COLOR }} />
-            Orders
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-4 flex w-fit items-center gap-1 rounded-full bg-neutral-100 p-1">
-        {TIMEFRAMES.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTimeframe(t.key)}
-            className={`rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
-              timeframe === t.key ? 'bg-white text-black shadow-sm' : 'text-neutral-500 hover:text-black'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
       </div>
 
       <ResponsiveContainer width="100%" height={220} className="mt-5">
-        <AreaChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
-          <defs>
-            <linearGradient id="salesReportFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={SALES_COLOR} stopOpacity={0.22} />
-              <stop offset="100%" stopColor={SALES_COLOR} stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="ordersReportFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={ORDERS_COLOR} stopOpacity={0.16} />
-              <stop offset="100%" stopColor={ORDERS_COLOR} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#a3a3a3' }} tickMargin={10} minTickGap={16} />
+        <LineChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+          <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="#EFEFEF" />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#a3a3a3' }} tickMargin={12} minTickGap={16} />
           <YAxis
             yAxisId="sales"
             tickFormatter={(v: number) => formatInrCompact(v)}
@@ -210,10 +209,26 @@ export function SalesReportChart({ orders }: { orders: PartnerOrder[] }) {
             width={32}
             tick={{ fontSize: 12, fill: '#a3a3a3' }}
           />
-          <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#e5e5e5', strokeWidth: 1 }} />
-          <Area yAxisId="orders" type="monotone" dataKey="orders" stroke={ORDERS_COLOR} strokeWidth={2} fill="url(#ordersReportFill)" />
-          <Area yAxisId="sales" type="monotone" dataKey="sales" stroke={SALES_COLOR} strokeWidth={2.5} fill="url(#salesReportFill)" />
-        </AreaChart>
+          <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#e5e5e5', strokeWidth: 1, strokeDasharray: '4 4' }} />
+          <Line
+            yAxisId="orders"
+            type="monotone"
+            dataKey="orders"
+            stroke={ORDERS_COLOR}
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }}
+          />
+          <Line
+            yAxisId="sales"
+            type="monotone"
+            dataKey="sales"
+            stroke={SALES_COLOR}
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }}
+          />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );

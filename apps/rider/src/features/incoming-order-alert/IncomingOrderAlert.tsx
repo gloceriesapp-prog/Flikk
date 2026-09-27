@@ -8,12 +8,17 @@
 //
 // Three layers make sure this can't be silently missed:
 // 1. Repeating vibration (native Vibration API, no dep) while the modal
-//    is up — stops the instant accept/decline/timeout clears the order.
+//    is up — stops the instant accept/dismiss/timeout clears the order.
 // 2. An OS local notification (notifyIncomingOrder.ts) — reaches the
 //    rider even if the app is backgrounded, which the modal alone can't.
 // 3. A countdown ring (CountdownRing.tsx) tied to the store's own
 //    incomingOrderExpiresAt — matches ACCEPT_WINDOW_SECONDS, so the ring
 //    and the store's own auto-decline timer never drift apart.
+//
+// The secondary button is labelled "Dismiss", not "Decline": the order is
+// already assigned to this rider server-side and declineIncomingOrder only
+// clears the local interrupt (see that fn's note) — there's no real
+// rejection/reassignment, so honest copy is "Dismiss".
 
 import { useEffect } from 'react';
 import { Modal, Pressable, Text, Vibration, View } from 'react-native';
@@ -86,7 +91,7 @@ export function IncomingOrderAlert() {
 
             <View className="flex-row gap-3">
               <Pressable onPress={declineIncomingOrder} className="flex-1 items-center rounded-2xl border border-gray-200 py-4">
-                <Text className="text-base font-semibold text-ink">Decline</Text>
+                <Text className="text-base font-semibold text-ink">Dismiss</Text>
               </Pressable>
               <Pressable onPress={acceptIncomingOrder} className="flex-1 items-center rounded-2xl bg-lime-deep py-4">
                 <Text className="text-base font-semibold text-ink">Accept</Text>

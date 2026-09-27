@@ -9,7 +9,7 @@ import {
   Target02Icon,
 } from "@hugeicons/core-free-icons";
 
-import { geocode } from "@/lib/serviceability";
+import { geocode, checkServiceability } from "@/lib/serviceability";
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -43,6 +43,9 @@ export default function LocationModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  // Set to the resolved name when it's outside the service area — keeps the
+  // modal open and expands it into the "not here yet" panel instead of closing.
+  const [unavailableLoc, setUnavailableLoc] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -50,7 +53,27 @@ export default function LocationModal({
     s.toLowerCase().includes(searchQuery.toLowerCase().trim())
   );
 
+  // Single exit point once a location has coords: check serviceability, and
+  // only close on a covered area. Uncovered → persist it (badge shows "Coming
+  // Soon") but keep the modal open showing the panel. No coords (geocode/GPS
+  // failed) → can't verify, so proceed as before.
+  const finalize = async (loc: string, coords?: { lat: number; lng: number }) => {
+    if (coords) {
+      const r = await checkServiceability(coords.lat, coords.lng);
+      if (r && !r.serviceable) {
+        onSelectLocation(loc, coords);
+        setUnavailableLoc(loc);
+        setIsLocating(false);
+        return;
+      }
+    }
+    onSelectLocation(loc, coords);
+    setIsLocating(false);
+    onClose();
+  };
+
   const handleDetectLocation = () => {
+    setUnavailableLoc(null);
     setIsLocating(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -79,9 +102,7 @@ export default function LocationModal({
                 "Mangalore";
               const formattedLoc = suburb ? `${suburb}, ${city}` : city;
 
-              setIsLocating(false);
-              onSelectLocation(formattedLoc, { lat: latitude, lng: longitude });
-              onClose();
+              await finalize(formattedLoc, { lat: latitude, lng: longitude });
               return;
             }
           } catch (err) {
@@ -108,9 +129,10 @@ export default function LocationModal({
   const handleConfirmTypedLocation = async (locationToSet?: string) => {
     const target = locationToSet || searchQuery.trim();
     if (target) {
+      setUnavailableLoc(null);
+      setIsLocating(true);
       const coords = await geocode(target);
-      onSelectLocation(target, coords ?? undefined);
-      onClose();
+      await finalize(target, coords ?? undefined);
     }
   };
 
@@ -128,10 +150,10 @@ export default function LocationModal({
         {/* Top Header & Subtitle */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col">
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 tracking-tight">
               Change Location
             </h2>
-            <p className="text-xs font-semibold text-slate-500 mt-0.5">
+            <p className="text-xs font-medium text-slate-500 mt-0.5">
               Check whether Gloceries is available in your area
             </p>
           </div>
@@ -156,7 +178,7 @@ export default function LocationModal({
             type="button"
             onClick={handleDetectLocation}
             disabled={isLocating}
-            className="bg-[#008738] hover:bg-[#00732f] active:scale-[0.99] text-white px-4 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-75"
+            className="bg-[#008738] hover:bg-[#00732f] active:scale-[0.99] text-white px-4 py-3 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-75"
           >
             <HugeiconsIcon
               icon={Target02Icon}
@@ -167,14 +189,14 @@ export default function LocationModal({
 
           {/* OR Pill Divider */}
           <div className="hidden sm:flex items-center justify-center">
-            <span className="w-8 h-8 rounded-full border border-slate-200 text-[11px] font-bold text-slate-400 flex items-center justify-center bg-white shrink-0 shadow-2xs">
+            <span className="w-8 h-8 rounded-full border border-gray-200 text-[11px] font-medium text-slate-400 flex items-center justify-center bg-white shrink-0 shadow-2xs">
               OR
             </span>
           </div>
 
           {/* Search delivery location input */}
           <div className="flex-1 relative">
-            <div className="flex items-center bg-white border border-slate-300 focus-within:border-[#008738] focus-within:ring-2 focus-within:ring-[#008738]/20 rounded-xl px-3.5 h-[44px] transition-all">
+            <div className="flex items-center bg-white border border-slate-300 focus-within:border-[#008738] rounded-xl px-3.5 h-[44px] transition-all">
               <HugeiconsIcon
                 icon={Search01Icon}
                 className="w-4 h-4 text-slate-400 shrink-0 mr-2"
@@ -193,7 +215,7 @@ export default function LocationModal({
                   }
                 }}
                 placeholder="search delivery location"
-                className="w-full bg-transparent outline-none text-xs sm:text-sm font-semibold text-slate-800 placeholder:text-slate-400"
+                className="w-full bg-transparent outline-none text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400"
               />
               {searchQuery.trim() !== "" && (
                 <button
@@ -241,6 +263,25 @@ export default function LocationModal({
             )}
           </div>
         </div>
+
+        {/* Out-of-area panel — shown only when a resolved location isn't covered.
+            Action row above stays live so the user can retry another spot. */}
+        {unavailableLoc && (
+          <div className="flex flex-col items-center text-center gap-3 border-t border-slate-100 pt-6 pb-2 animate-in fade-in duration-200">
+            <span className="w-16 h-16 rounded-full bg-[#EEF7DC] flex items-center justify-center">
+              <HugeiconsIcon icon={Location01Icon} className="w-7 h-7 text-[#7CB518]" />
+            </span>
+            <h3 className="text-lg font-semibold text-slate-900 tracking-tight">
+              Not in your lane yet
+            </h3>
+            <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-[380px]">
+              Gloceries hasn&apos;t reached{" "}
+              <span className="text-slate-700 font-semibold">{unavailableLoc}</span>{" "}
+              yet. We&apos;re rolling out across coastal Karnataka — pick a nearby
+              area above, or check back soon.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

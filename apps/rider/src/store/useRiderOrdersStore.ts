@@ -455,6 +455,10 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
   },
 
   declineIncomingOrder: () => {
+    // Local-only dismiss: adds the id to dismissedIds so it stops
+    // re-alerting. The order stays assigned to this rider server-side —
+    // nothing is unassigned or reassigned. The UI labels this honestly as
+    // "Dismiss" (not "Decline") for that reason; name kept for callers.
     const order = get().incomingOrder;
     clearAutoDeclineTimer();
     set((state) => ({

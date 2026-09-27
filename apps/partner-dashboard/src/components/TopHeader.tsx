@@ -1,44 +1,43 @@
 'use client';
 
-// Shared top bar across every (dashboard) page — a breadcrumb on the left
-// ("Dashboard / Orders" etc., derived from the route) and status/utility
-// icons on the right. The store's own name/accept-orders status lives in
-// the Overview page's welcome banner instead (a store owner opens the
-// dashboard, not the header chrome, to check "am I visible to customers").
-// Support links to the real /help page; Notifications links to /orders
-// (the badge counts placed orders needing action — that IS where the owner
-// acts on them). No Messages icon: there's no messaging backend, and an
-// inert button is worse than none — reinstate it only when a real inbox exists.
+// The one top navbar for every (dashboard) page — brand on the left, the
+// full nav (moved here out of the old sidebar) as a centered pill row, and
+// utility icons + profile dropdown on the right. Active route is a lime pill
+// (ink text — white fails AA on lime, CLAUDE.md). Support links to /help;
+// the bell links to /orders (badge = placed orders needing action); Settings
+// + logout live in the avatar dropdown. No Messages icon: no inbox backend.
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { CustomerService01Icon, Notification03Icon } from '@hugeicons/core-free-icons';
+import clsx from 'clsx';
 import { ChevronDown, LogOut, UserRound } from 'lucide-react';
+import { NotificationIcon } from '@/components/icons';
 import { clearTokens } from '@/lib/authStorage';
 
-const PAGE_TITLES: Record<string, string> = {
-  '/': 'Overview',
-  '/orders': 'Orders',
-  '/inventory': 'Inventory',
-  '/payouts': 'Payouts',
-  '/analytics': 'Analytics',
-  '/reviews': 'Reviews',
-  '/settings': 'Settings',
-  '/help': 'Help & support',
-};
+type NavItem = { href: string; label: string };
+
+// Flattened from the old sidebar's Main menu + Tools groups. Help + Settings
+// intentionally stay off the pill row (avatar dropdown carries Settings).
+const NAV_ITEMS: NavItem[] = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/orders', label: 'Orders' },
+  { href: '/inventory', label: 'Inventory' },
+  { href: '/payouts', label: 'Payouts' },
+  { href: '/analytics', label: 'Analytics' },
+  { href: '/reviews', label: 'Reviews' },
+];
 
 interface Props {
+  storeName: string;
   notificationCount: number;
   ownerName: string;
   avatarUrl: string;
 }
 
-export function TopHeader({ notificationCount, ownerName, avatarUrl }: Props) {
+export function TopHeader({ storeName, notificationCount, ownerName, avatarUrl }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const title = PAGE_TITLES[pathname] ?? 'Overview';
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -57,27 +56,57 @@ export function TopHeader({ notificationCount, ownerName, avatarUrl }: Props) {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-hairline bg-white px-5 lg:px-7">
-      {/* Left: page name only — no "Dashboard /" breadcrumb prefix. */}
-      <p className="text-xl font-semibold tracking-tight text-neutral-900">{title}</p>
+    <header className="flex h-16 shrink-0 items-center gap-4 bg-[#fbfafa] px-4 lg:px-6">
+      {/* Left: brand tile + store name */}
+      <Link href="/" className="flex shrink-0 items-center">
+        <span className="text-xl font-semibold text-black tracking-tight">
+          Groceries Partner
+        </span>
+      </Link>
 
-      {/* Right: Support, Alert, Manage profile — each a bordered box. */}
-      <div className="flex items-center gap-2.5">
-        <Link
-          href="/help"
-          title="Support"
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-hairline bg-white text-black/60 hover:bg-neutral-50"
-        >
-          <HugeiconsIcon icon={CustomerService01Icon} size={19} />
-        </Link>
+      {/* Center: nav grouped inside one floating rounded pill container.
+          Text-only items; active route is a lime pill (ink text — white
+          fails AA on lime). Scrolls horizontally on narrow screens. */}
+      <nav className="flex flex-1 justify-center">
+        <div className="flex items-center gap-1 overflow-x-auto rounded-full border border-hairline bg-white p-1.5">
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.href;
+            // Red dot on Orders = unacknowledged placed orders. Being on the
+            // /orders page IS the acknowledgement, so the dot clears there and
+            // returns only if a new placed order arrives while you're elsewhere.
+            const showDot = item.href === '/orders' && notificationCount > 0 && pathname !== '/orders';
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={clsx(
+                  'relative flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                  isActive ? 'bg-[#A8D93A] text-[#101C10]' : 'text-black/60 hover:bg-black/[0.04] hover:text-black',
+                )}
+              >
+                {item.label}
+                {showDot && (
+                  <span
+                    aria-label={`${notificationCount} new ${notificationCount === 1 ? 'order' : 'orders'}`}
+                    className="absolute top-1 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"
+                  />
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Right: bell and profile in two separate white capsules. */}
+      <div className="flex shrink-0 items-center gap-2.5">
         <Link
           href="/orders"
           title="Alerts"
-          className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-hairline bg-white text-black/60 hover:bg-neutral-50"
+          className="relative flex h-11 w-11 items-center justify-center rounded-full border border-hairline bg-white text-black/70 shadow-sm hover:bg-neutral-50"
         >
-          <HugeiconsIcon icon={Notification03Icon} size={19} />
+          <NotificationIcon size={20} />
           {notificationCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+            <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
               {notificationCount > 9 ? '9+' : notificationCount}
             </span>
           )}
@@ -87,12 +116,15 @@ export function TopHeader({ notificationCount, ownerName, avatarUrl }: Props) {
           <button
             type="button"
             onClick={() => setIsMenuOpen((v) => !v)}
-            className="flex items-center gap-2.5 rounded-lg border border-hairline bg-white px-1.5 py-1 hover:bg-neutral-50"
+            className="flex items-center gap-2.5 rounded-full border border-hairline bg-white py-1 pl-1 pr-2.5 shadow-sm hover:bg-neutral-50"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={avatarUrl} alt={ownerName} className="h-8 w-8 rounded-full border border-neutral-200 object-cover" />
-            <span className="text-sm font-medium text-black">{ownerName}</span>
-            <ChevronDown size={14} className={`text-black/40 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+            <img src={avatarUrl} alt={ownerName} className="h-9 w-9 rounded-full border border-neutral-200 object-cover" />
+            <div className="hidden text-left leading-tight sm:block">
+              <p className="text-sm font-semibold text-black">{ownerName}</p>
+              <p className="text-xs text-black/50">Partner</p>
+            </div>
+            <ChevronDown size={15} className={`text-black/40 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isMenuOpen && (

@@ -21,7 +21,7 @@ import {
   Package,
   XCircle,
 } from 'lucide-react';
-import { ToggleSwitch } from '@/components/ToggleSwitch';
+import { WelcomeBanner } from '@/components/WelcomeBanner';
 import { SalesReportChart } from '@/components/SalesReportChart';
 import { OrderAlertsPanel } from '@/components/OrderAlertsPanel';
 import { InventoryAlertCard } from '@/components/InventoryAlertCard';
@@ -41,7 +41,10 @@ const DUMMY_PREVIEW_ITEM_COUNT = 3;
 
 // Column widths for the Recent orders bordered-grid table (Order/Customer/
 // Items/Amount/Payment/Status) — same bordered-grid pattern as OrdersTable.
-const RECENT_COLUMNS = '1.2fr 1.4fr 1.2fr 0.9fr 1fr 1fr';
+// Each row is its own grid, so every track is minmax(0,…): without the 0 min,
+// a bare `fr` track sizes to its content (a 3-avatar Items cell vs a 1-avatar
+// one) and the columns drift out of line between header and rows.
+const RECENT_COLUMNS = 'minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,1fr) minmax(0,1fr)';
 
 // DEMO DATA — this store has zero real orders, so every stat on this page
 // would render as 0/—/empty. Shown ONLY when orders.length === 0, purely so
@@ -75,7 +78,7 @@ export default function OverviewPage() {
   const [products, setProducts] = useState<PartnerProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTogglingActive, setIsTogglingActive] = useState(false);
-  const [isAccepting, setIsAccepting] = useState(false);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
   function reloadOrders() {
     return fetchMyOrders().then(setOrders);
@@ -107,14 +110,14 @@ export default function OverviewPage() {
     }
   }
 
-  async function handleAcceptPreview(orderId: string) {
-    if (isAccepting) return;
-    setIsAccepting(true);
+  async function handleAcceptOrder(orderId: string) {
+    if (acceptingId) return;
+    setAcceptingId(orderId);
     try {
       await updateOrderStatus(orderId, 'packed');
       await reloadOrders();
     } finally {
-      setIsAccepting(false);
+      setAcceptingId(null);
     }
   }
 
@@ -180,7 +183,7 @@ export default function OverviewPage() {
   const displayRecentOrders = isDemo ? DEMO_ORDERS.slice(0, 4) : recentOrders;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {store && (
         <WelcomeBanner
           storeName={store.name}
@@ -190,20 +193,24 @@ export default function OverviewPage() {
         />
       )}
 
-      <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
+      <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
         <StatTile label="Total products" value={String(displayTotalProducts)} icon={Boxes} sublabel={`${displayInStock} in stock`} />
         <StatTile label="Completed orders" value={String(displayCompleted)} icon={CheckCircle2} deltaPercent={displayCompletedTrend} />
         <StatTile label="Cancelled" value={String(displayCancelled)} icon={XCircle} deltaPercent={displayCancelledTrend} invertTone />
         <StatTile label="Active orders" value={String(displayActive)} icon={ListChecks} deltaPercent={displayActiveTrend} />
-        <StatTile label="Pending" value={String(displayPending)} icon={Package} deltaPercent={displayPendingTrend} invertTone sublabel="To pack" />
+        <StatTile label="Pending" value={String(displayPending)} icon={Package} deltaPercent={displayPendingTrend} invertTone />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <Card className="p-5">
           <SalesReportChart orders={displayChartOrders} />
         </Card>
-        <Card className="p-5">
-          <OrderAlertsPanel orders={displayChartOrders} />
+        <Card className="overflow-hidden p-0">
+          <OrderAlertsPanel
+            orders={displayChartOrders}
+            onAccept={isDemo ? undefined : handleAcceptOrder}
+            acceptingId={acceptingId}
+          />
         </Card>
       </div>
 
@@ -220,11 +227,11 @@ export default function OverviewPage() {
             <span className="text-sm text-neutral-600">{previewOrder.order_items.length} items</span>
             <button
               type="button"
-              onClick={() => handleAcceptPreview(previewOrder.id)}
-              disabled={isAccepting}
+              onClick={() => handleAcceptOrder(previewOrder.id)}
+              disabled={acceptingId !== null}
               className="rounded-full bg-black px-4 py-1.5 text-xs font-medium text-white disabled:opacity-40"
             >
-              {isAccepting ? 'Accepting…' : 'Accept'}
+              {acceptingId === previewOrder.id ? 'Accepting…' : 'Accept'}
             </button>
           </div>
         ) : (
@@ -242,7 +249,7 @@ export default function OverviewPage() {
         )}
       </SectionCard>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <SectionCard
           title="Recent orders"
           action={

@@ -1,0 +1,249 @@
+<title>Orders Dashboard</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #F7F8F7;
+    --surface: #FFFFFF;
+    --hairline: #ECECEC;
+    --hairline-strong: #E2E2E2;
+    --ink: #101C10;
+    --text: #1A1A1A;
+    --muted: #737373;
+    --faint: #A3A3A3;
+    --emerald: #059669;
+    --emerald-soft: #ECFDF5;
+    --amber: #D97706;
+    --amber-500: #F59E0B;
+    --amber-soft: #FFFBEB;
+    --amber-border: #FDE68A;
+    --amber-ink: #78350F;
+    --indigo: #4F46E5;
+    --blue-soft: #EFF6FF;
+    --blue-ink: #2563EB;
+    --red: #DC2626;
+    --red-soft: #FEF2F2;
+    --orange: #F97316;
+    color-scheme: light;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #0E100E; --surface: #171A17; --hairline: #262A26; --hairline-strong: #333833;
+      --text: #ECECEC; --muted: #9A9A9A; --faint: #6B6B6B;
+      --emerald-soft: #052E22; --amber-soft: #2A1D05; --amber-border: #4A3410; --amber-ink: #FDE68A;
+      --blue-soft: #0B1B33; --red-soft: #2A0E0E;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E100E; --surface: #171A17; --hairline: #262A26; --hairline-strong: #333833;
+    --text: #ECECEC; --muted: #9A9A9A; --faint: #6B6B6B;
+    --emerald-soft: #052E22; --amber-soft: #2A1D05; --amber-border: #4A3410; --amber-ink: #FDE68A;
+    --blue-soft: #0B1B33; --red-soft: #2A0E0E;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-block: 28px; padding-inline: 16px; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+  .sub { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
+  .badge-demo { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--hairline-strong); border-radius: 999px; padding: 3px 9px; }
+
+  /* Stat row */
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--hairline); border-radius: 14px; overflow: hidden; background: var(--surface); margin-top: 22px; }
+  .stat { padding: 16px 18px; border-right: 1px solid var(--hairline); }
+  .stat:last-child { border-right: 0; }
+  .stat .label { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12.5px; font-weight: 500; }
+  .stat .val { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: 8px; }
+  .stat .foot { font-size: 12px; color: var(--faint); margin-top: 3px; }
+  .dot { width: 6px; height: 6px; border-radius: 999px; display: inline-block; }
+
+  /* Alert banner */
+  .alert { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+    background: var(--amber-soft); border: 1px solid var(--amber-border); border-radius: 14px; padding: 13px 16px; margin-top: 16px; font-family: inherit; }
+  .alert:hover { filter: brightness(0.99); }
+  .alert .ring { width: 36px; height: 36px; border-radius: 999px; background: var(--amber-500); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
+  .alert .t { font-size: 14px; font-weight: 600; color: var(--amber-ink); }
+  .alert .d { font-size: 13px; color: var(--amber); }
+  .alert .go { margin-left: auto; font-size: 13px; font-weight: 500; color: var(--amber); white-space: nowrap; }
+
+  /* Table */
+  .tablewrap { margin-top: 22px; border: 1px solid var(--hairline); border-radius: 14px; overflow-x: auto; background: var(--surface); }
+  .grid { min-width: 860px; }
+  .row { display: grid; grid-template-columns: 1fr 1.6fr 1.15fr 1.2fr 1fr 0.9fr 1.5fr; }
+  .head { background: color-mix(in srgb, var(--bg) 60%, var(--surface)); border-bottom: 1px solid var(--hairline); font-size: 13px; font-weight: 500; color: var(--muted); }
+  .head > span { padding: 12px 16px; border-right: 1px solid var(--hairline); }
+  .head > span:last-child { border-right: 0; }
+  .trow { border-bottom: 1px solid var(--hairline); align-items: stretch; }
+  .trow:last-child { border-bottom: 0; }
+  .trow:hover { background: color-mix(in srgb, var(--bg) 45%, var(--surface)); }
+  .cell { padding: 14px 16px; border-right: 1px solid var(--hairline); display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+  .cell.act { border-right: 0; flex-direction: row; align-items: center; gap: 8px; }
+  .oid { font-size: 15px; font-weight: 600; }
+  .cust { display: flex; align-items: center; gap: 11px; }
+  .av { width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; flex-shrink: 0; }
+  .cust .nm { font-size: 14px; font-weight: 500; }
+  .cust .ph { font-size: 12px; color: var(--faint); }
+  .loc { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .date .d1 { font-size: 13px; font-weight: 500; }
+  .date .d2 { font-size: 12px; color: var(--faint); }
+  .amt { font-size: 15px; font-weight: 600; }
+  .pay { font-size: 12px; font-weight: 500; }
+  .pay.paid { color: var(--emerald); }
+  .pay.due { color: var(--amber); }
+
+  /* Status chip */
+  .chip { display: inline-flex; align-items: center; gap: 6px; width: fit-content; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .chip.placed { background: var(--amber-soft); color: var(--amber); }
+  .chip.packed, .chip.transit { background: var(--blue-soft); color: var(--blue-ink); }
+  .chip.delivered { background: var(--emerald-soft); color: var(--emerald); }
+  .chip.cancelled { background: var(--red-soft); color: var(--red); }
+
+  /* Action buttons */
+  .btn { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; font-size: 12px; font-weight: 600; padding: 7px 13px; cursor: pointer; border: 1px solid transparent; font-family: inherit; }
+  .btn.accept { background: var(--emerald); color: #fff; }
+  .btn.reject { background: transparent; border-color: var(--hairline-strong); color: var(--muted); }
+  .btn.reject:hover { border-color: #FCA5A5; background: var(--red-soft); color: var(--red); }
+  .await { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: var(--indigo); }
+  .viewlink { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--faint); text-decoration: none; }
+  .viewlink:hover { color: var(--text); }
+  .spin { animation: spin 0.9s linear infinite; transform-origin: center; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stat { border-bottom: 1px solid var(--hairline); }
+  }
+</style>
+
+<div class="wrap">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <div>
+      <h1>Orders</h1>
+      <p class="sub">Sri Ganesh Kirana · Kaup zone</p>
+    </div>
+    <span class="badge-demo">Sample data</span>
+  </div>
+
+  <!-- Stat row -->
+  <div class="stats tnum">
+    <div class="stat"><span class="label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/></svg>Total orders</span><div class="val">7</div><div class="foot">this week</div></div>
+    <div class="stat"><span class="label"><span class="dot" style="background:var(--amber-500)"></span>Pending</span><div class="val">2</div><div class="foot">To pack</div></div>
+    <div class="stat"><span class="label"><span class="dot" style="background:var(--blue-ink)"></span>In transit</span><div class="val">2</div><div class="foot">packed + on route</div></div>
+    <div class="stat"><span class="label"><span class="dot" style="background:var(--emerald)"></span>Delivered</span><div class="val">2</div><div class="foot">completed</div></div>
+    <div class="stat"><span class="label"><span class="dot" style="background:var(--red)"></span>Failed</span><div class="val">1</div><div class="foot">cancelled</div></div>
+  </div>
+
+  <!-- New-order alert -->
+  <button class="alert">
+    <span class="ring"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+    <div>
+      <div class="t">2 new orders to review</div>
+      <div class="d">Accept to start packing, or reject to cancel and refund.</div>
+    </div>
+    <span class="go">View →</span>
+  </button>
+
+  <!-- Table -->
+  <div class="tablewrap">
+    <div class="grid">
+      <div class="row head">
+        <span>Order ID</span><span>Customer</span><span>Status</span><span>Location</span><span>Date</span><span>Amount</span><span>Action</span>
+      </div>
+
+      <!-- placed -->
+      <div class="row trow">
+        <div class="cell oid">#FLK-2091</div>
+        <div class="cell"><div class="cust"><span class="av" style="background:#7C3AED">RK</span><div><div class="nm">Ramesh Kamath</div><div class="ph">+91 98860 12345</div></div></div></div>
+        <div class="cell"><span class="chip placed">Placed</span></div>
+        <div class="cell"><span class="loc">Near Kaup lighthouse</span></div>
+        <div class="cell date"><div class="d1">26 Sep 2026</div><div class="d2">05:31 PM</div></div>
+        <div class="cell"><div class="amt">₹486</div><div class="pay due">Payment due</div></div>
+        <div class="cell act">
+          <button class="btn accept"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>Accept</button>
+          <button class="btn reject"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>Reject</button>
+        </div>
+      </div>
+
+      <!-- placed 2 -->
+      <div class="row trow">
+        <div class="cell oid">#FLK-2090</div>
+        <div class="cell"><div class="cust"><span class="av" style="background:#0891B2">SN</span><div><div class="nm">Sunita Nayak</div><div class="ph">+91 90084 55217</div></div></div></div>
+        <div class="cell"><span class="chip placed">Placed</span></div>
+        <div class="cell"><span class="loc">Santhekatte, Udupi</span></div>
+        <div class="cell date"><div class="d1">26 Sep 2026</div><div class="d2">05:12 PM</div></div>
+        <div class="cell"><div class="amt">₹1,240</div><div class="pay paid">Paid</div></div>
+        <div class="cell act">
+          <button class="btn accept"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>Accept</button>
+          <button class="btn reject"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>Reject</button>
+        </div>
+      </div>
+
+      <!-- packed -> awaiting rider -->
+      <div class="row trow">
+        <div class="cell oid">#FLK-2089</div>
+        <div class="cell"><div class="cust"><span class="av" style="background:#DB2777">AP</span><div><div class="nm">Anil Prabhu</div><div class="ph">+91 99725 88104</div></div></div></div>
+        <div class="cell"><span class="chip packed">Packed</span></div>
+        <div class="cell"><span class="loc">Kemmannu junction</span></div>
+        <div class="cell date"><div class="d1">26 Sep 2026</div><div class="d2">04:47 PM</div></div>
+        <div class="cell"><div class="amt">₹735</div><div class="pay paid">Paid</div></div>
+        <div class="cell act">
+          <span class="await"><svg class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.2-8.5"/></svg>Awaiting rider</span>
+        </div>
+      </div>
+
+      <!-- out_for_delivery -->
+      <div class="row trow">
+        <div class="cell oid">#FLK-2087</div>
+        <div class="cell"><div class="cust"><span class="av" style="background:#059669">LS</span><div><div class="nm">Lakshmi Shetty</div><div class="ph">+91 98450 33019</div></div></div></div>
+        <div class="cell"><span class="chip transit">Out for delivery</span></div>
+        <div class="cell"><span class="loc">Padu, Malpe road</span></div>
+        <div class="cell date"><div class="d1">26 Sep 2026</div><div class="d2">03:58 PM</div></div>
+        <div class="cell"><div class="amt">₹512</div><div class="pay paid">Paid</div></div>
+        <div class="cell act">
+          <span class="await"><svg class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.2-8.5"/></svg>On the way</span>
+        </div>
+      </div>
+
+      <!-- delivered -->
+      <div class="row trow">
+        <div class="cell oid">#FLK-2084</div>
+        <div class="cell"><div class="cust"><span class="av" style="background:#4F46E5">GH</span><div><div class="nm">Ganesh Hegde</div><div class="ph">+91 90356 71220</div></div></div></div>
+        <div class="cell"><span class="chip delivered">Delivered</span></div>
+        <div class="cell"><span class="loc">Ellur cross</span></div>
+        <div class="cell date"><div class="d1">26 Sep 2026</div><div class="d2">01:22 PM</div></div>
+        <div class="cell"><div class="amt">₹298</div><div class="pay paid">Paid</div></div>
+        <div class="cell act"><a class="viewlink" href="#"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>View</a></div>
+      </div>
+
+      <!-- delivered 2 -->
+      <div class="row trow">
+        <div class="cell oid">#FLK-2081</div>
+        <div class="cell"><div class="cust"><span class="av" style="background:#B45309">MD</span><div><div class="nm">Meena D'Souza</div><div class="ph">+91 99860 40157</div></div></div></div>
+        <div class="cell"><span class="chip delivered">Delivered</span></div>
+        <div class="cell"><span class="loc">Kaup beach road</span></div>
+        <div class="cell date"><div class="d1">25 Sep 2026</div><div class="d2">07:40 PM</div></div>
+        <div class="cell"><div class="amt">₹864</div><div class="pay paid">Paid</div></div>
+        <div class="cell act"><a class="viewlink" href="#"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>View</a></div>
+      </div>
+
+      <!-- cancelled -->
+      <div class="row trow">
+        <div class="cell oid">#FLK-2078</div>
+        <div class="cell"><div class="cust"><span class="av" style="background:#6B7280">VR</span><div><div class="nm">Vikram Rao</div><div class="ph">+91 90190 22874</div></div></div></div>
+        <div class="cell"><span class="chip cancelled">Cancelled</span></div>
+        <div class="cell"><span class="loc">Uliyaragoli</span></div>
+        <div class="cell date"><div class="d1">25 Sep 2026</div><div class="d2">11:05 AM</div></div>
+        <div class="cell"><div class="amt">₹410</div><div class="pay due">Refunded</div></div>
+        <div class="cell act"><a class="viewlink" href="#"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>View</a></div>
+      </div>
+
+    </div>
+  </div>
+</div>

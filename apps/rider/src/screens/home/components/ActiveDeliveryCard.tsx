@@ -15,14 +15,18 @@ import { colors } from '../../../theme/tokens';
 import { openNavigation } from '../../../location/openNavigation';
 import type { RiderOrder } from '../../../data/mockOrders';
 
-// Status pill copy + tint. delivered/cancelled never reach the active list, but
-// the map stays total so the type is exhaustive (no `any`, no default case).
-const STATUS: Record<RiderOrder['status'], { label: string; tint: string; bg: string }> = {
-  assigned: { label: 'Pick up order', tint: colors.limeDeep, bg: colors.limeSoft },
-  picked_up: { label: 'Delivering', tint: '#B47D0A', bg: '#FDF3D9' },
-  arrived_at_customer: { label: 'At customer', tint: colors.success, bg: '#E3F4EC' },
-  delivered: { label: 'Delivered', tint: colors.ink, bg: colors.mist },
-  cancelled: { label: 'Cancelled', tint: colors.danger, bg: '#FBE5E5' },
+// Status pill copy + NativeWind class per status (pill bg / text / dot). Class
+// strings live here literally so NativeWind's content scan compiles them even
+// though they're interpolated into className. delivered/cancelled never reach
+// the active list, but the map stays total so the type is exhaustive (no `any`,
+// no default case). Non-brand tints (amber picked_up, soft greens/reds) use
+// arbitrary hex; brand tints use the named tokens from tailwind.config.js.
+const STATUS: Record<RiderOrder['status'], { label: string; pill: string; text: string; dot: string }> = {
+  assigned: { label: 'Pick up order', pill: 'bg-lime-soft', text: 'text-lime-deep', dot: 'bg-lime-deep' },
+  picked_up: { label: 'Delivering', pill: 'bg-[#FDF3D9]', text: 'text-[#B47D0A]', dot: 'bg-[#B47D0A]' },
+  arrived_at_customer: { label: 'At customer', pill: 'bg-[#E3F4EC]', text: 'text-success', dot: 'bg-success' },
+  delivered: { label: 'Delivered', pill: 'bg-mist', text: 'text-ink', dot: 'bg-ink' },
+  cancelled: { label: 'Cancelled', pill: 'bg-[#FBE5E5]', text: 'text-danger', dot: 'bg-danger' },
 };
 
 interface Props {
@@ -37,7 +41,6 @@ export function ActiveDeliveryCard({ order, onPress }: Props) {
   const goingToStore = order.status === 'assigned';
   const navTarget = goingToStore ? order.storeCoords : order.customerCoords;
   const navLabel = goingToStore ? order.storeName : order.customerName;
-  const navText = goingToStore ? 'Navigate to store' : 'Navigate to customer';
 
   return (
     <Pressable
@@ -46,41 +49,41 @@ export function ActiveDeliveryCard({ order, onPress }: Props) {
     >
       <View className="gap-3.5 p-4">
         <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-1.5 rounded-full px-3 py-1" style={{ backgroundColor: status.bg }}>
-            <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status.tint }} />
-            <Text className="text-[11px] font-bold" style={{ color: status.tint }}>
+          <View className={`flex-row items-center gap-1.5 rounded-full px-3 py-1 ${status.pill}`}>
+            <View className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+            <Text className={`text-[13px] font-semibold ${status.text}`}>
               {status.label}
             </Text>
           </View>
-          <Text className="text-[12px] font-semibold text-ink/40">{order.orderNumber}</Text>
+          <Text className="text-[13px] font-semibold text-ink/40">Order ID: {order.orderNumber}</Text>
         </View>
 
         {/* Route: store (lime) → dashed connector → customer (coral pin). */}
         <View className="flex-row gap-3">
-          <View className="items-center py-1" style={{ width: 28 }}>
-            <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: colors.limeSoft }}>
+          <View className="w-7 items-center py-1">
+            <View className="h-7 w-7 items-center justify-center rounded-full bg-lime-soft">
               <AppIcon icon={Store01Icon} size={15} color={colors.limeDeep} />
             </View>
-            <View style={{ flex: 1, width: 0, borderLeftWidth: 2, borderStyle: 'dashed', borderColor: '#D9DEDD', marginVertical: 3 }} />
-            <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: '#FFE9E3' }}>
+            <View className="w-0 flex-1 border-l-2 border-dashed border-[#D9DEDD] my-[3px]" />
+            <View className="h-7 w-7 items-center justify-center rounded-full bg-[#FFE9E3]">
               <AppIcon icon={MapPinIcon} size={15} color={colors.coral} />
             </View>
           </View>
           <View className="flex-1 justify-between gap-3">
             <View>
-              <Text className="text-[14px] font-bold text-ink" numberOfLines={1}>
+              <Text className="text-[14px] font-semibold text-ink" numberOfLines={1}>
                 {order.storeName}
               </Text>
-              <Text className="mt-0.5 text-[12px] text-ink/45" numberOfLines={1}>
+              <Text className="mt-0.5 text-[13px] text-ink/45 font-medium" numberOfLines={1}>
                 {order.storeAddress}
               </Text>
             </View>
             <View>
-              <Text className="text-[14px] font-bold text-ink" numberOfLines={1}>
+              <Text className="text-[14px] font-semibold text-ink" numberOfLines={1}>
                 {order.customerName}
               </Text>
-              <Text className="mt-0.5 text-[12px] text-ink/45" numberOfLines={1}>
-                {order.customerAddress}
+              <Text className="mt-0.5 text-[12px] text-ink/45 font-medium" numberOfLines={1}>
+                {order.landmark ? `${order.customerAddress} · ${order.landmark}` : order.customerAddress}
               </Text>
             </View>
           </View>
@@ -101,15 +104,16 @@ export function ActiveDeliveryCard({ order, onPress }: Props) {
       </View>
 
       {/* Navigate CTA — coral is the only CTA color (CLAUDE.md). Own Pressable
-          so the tap opens maps instead of bubbling to the card's OrderDetail. */}
-      <Pressable
+          so the tap opens maps instead of bubbling to the card's OrderDetail.
+          Pure NativeWind: arbitrary coral + active: variant for the pressed
+          state, no style prop (a style FUNCTION can't merge with className and
+          was dropping the bg). Icon-only, compact. */}
+      {/* <Pressable
         onPress={() => void openNavigation(navTarget, navLabel)}
-        className="h-12 flex-row items-center justify-center gap-2"
-        style={({ pressed }) => ({ backgroundColor: pressed ? '#E8543A' : colors.coral })}
+        className="h-11 flex-row items-center justify-center bg-[#FF6B4A] active:bg-[#E8543A]"
       >
-        <AppIcon icon={Navigation03Icon} size={17} color="#FFFFFF" />
-        <Text className="text-[14px] font-bold text-white">{navText}</Text>
-      </Pressable>
+        <AppIcon icon={Navigation03Icon} size={18} color="#000000" />
+      </Pressable> */}
     </Pressable>
   );
 }

@@ -1,0 +1,33 @@
+// Centralized icon set — custom SVG icons used across the partner dashboard,
+// so a glyph is defined once and reused everywhere. Icons inherit color via
+// `currentColor` (set text color on the parent) and take an optional size.
+
+interface IconProps {
+  size?: number;
+  className?: string;
+}
+
+export function NotificationIcon({ size = 24, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M6.06222 8.93778C6.06222 5.52036 8.83258 2.75 12.25 2.75C15.6674 2.75 18.4378 5.52036 18.4378 8.93777V13.5184L20.0504 17.8572H4.44958L6.06222 13.5184V8.93778Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M15.4177 17.8574V18.0834C15.4177 19.8323 13.9999 21.2501 12.251 21.2501C10.5021 21.2501 9.08435 19.8323 9.08435 18.0834V17.8574"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}

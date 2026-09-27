@@ -7,6 +7,9 @@ import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verify
 import { fetchRoute } from '../lib/routeDirections.js';
 import { EXTRA_STOP_FEE } from './trips.js';
 import { splitEarning } from '../lib/earningsBreakdown.js';
+import { createNotification } from '../lib/notifications.js';
+import { validateAvailability } from '../lib/riderSchedule.js';
+import { computeRiderStats } from '../lib/riderStats.js';
 
 export const riderRouter = Router();
 
@@ -63,6 +66,56 @@ riderRouter.patch('/status', async (req: AuthedRequest, res, next) => {
     }
 
     const { error } = await supabase.from('riders').update(patch).eq('user_id', req.user!.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The rider's own recurring weekly working-hours (migration 055's
+// `availability` JSONB + `auto_online` flag). This is presence *intent* only —
+// deliberately NOT a dispatch gate (lib/riderDispatch.ts still keys off
+// riders.status alone), so nothing here changes who receives a pickup. The app
+// reads it to render the availability editor and to decide whether to
+// auto-toggle status='online' inside a window (auto_online). '[]' = never
+// configured, returned as-is.
+riderRouter.get('/availability', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('riders')
+      .select('availability, auto_online')
+      .eq('user_id', req.user!.id)
+      .single();
+    if (error || !data) throw new AppError(404, 'RIDER_NOT_FOUND', 'No rider profile for this account.');
+    res.json({ availability: data.availability ?? [], autoOnline: data.auto_online });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Replace the caller's whole weekly schedule. validateAvailability enforces the
+// exactly-7-days-0..6 / HH:MM / end>start contract before anything is written —
+// a malformed body is a 400 INVALID_SCHEDULE, never a partial write. The
+// normalized (ascending-sorted) array is what's stored.
+riderRouter.patch('/availability', async (req: AuthedRequest, res, next) => {
+  try {
+    const { availability, autoOnline } = req.body as { availability?: unknown; autoOnline?: unknown };
+    if (typeof autoOnline !== 'boolean') {
+      throw new AppError(400, 'INVALID_SCHEDULE', 'autoOnline must be a boolean.');
+    }
+
+    let normalized;
+    try {
+      normalized = validateAvailability(availability);
+    } catch (validationErr) {
+      throw new AppError(400, 'INVALID_SCHEDULE', (validationErr as Error).message);
+    }
+
+    const { error } = await supabase
+      .from('riders')
+      .update({ availability: normalized, auto_online: autoOnline })
+      .eq('user_id', req.user!.id);
     if (error) throw error;
     res.json({ ok: true });
   } catch (err) {
@@ -193,6 +246,21 @@ riderRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) => 
       await supabase.from('orders').update({ rider_id: req.user!.id }).eq('trip_id', data.trip_id).is('rider_id', null);
     }
 
+    // Persist the win to the rider's own feed (migration 054) — the durable
+    // record behind the moment, readable from GET /rider/notifications long
+    // after any push banner is gone. Best-effort, void: a feed hiccup must
+    // never undo an accept that already atomically won above. The accept
+    // select only pulls id/trip_id (not the store), and copy isn't worth an
+    // extra round-trip, so the body stays generic per CLAUDE.md's no-DB-for-
+    // copy rule; orderId still links the row to the real order.
+    void createNotification({
+      userId: req.user!.id,
+      title: 'Pickup confirmed',
+      body: 'Your pickup is confirmed. Head to the store to collect the order.',
+      type: 'assignment',
+      orderId: data.id,
+    });
+
     res.json({ ok: true, orderId: data.id });
   } catch (err) {
     next(err);
@@ -220,7 +288,7 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
         // the real trip-level payout (base fee + multi-stop surcharge,
         // routes/trips.ts's EXTRA_STOP_FEE) instead of assuming every
         // order pays the flat single-store DELIVERY_FEE.
-        '*, order_items(*, products(name, unit)), stores(name, phone, lat, lng, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude), trips(delivery_fee)',
+        '*, order_items(*, products(name, unit)), stores(name, phone, lat, lng, manual_address, address_line, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude, delivery_instructions), trips(delivery_fee)',
       )
       .eq('rider_id', req.user!.id)
       .order('placed_at', { ascending: false });
@@ -475,6 +543,111 @@ riderRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
       bankName: result.bankName,
       nameMatchScore: result.nameMatchScore,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The rider app's in-app notifications feed (migration 054) — the durable
+// record behind the fire-and-forget pushes (assignment on accept here, admin
+// assign, onboarding decisions). Newest first, the caller's own rows only
+// (.eq('user_id', ...) is the scoping — service client bypasses RLS like
+// every sibling handler, do not remove it). Capped at 50: a feed this small
+// never needs paging at MVP volume. unreadCount is derived off the same 50
+// rows the client already renders — no separate count round-trip.
+riderRouter.get('/notifications', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id, title, body, type, order_id, read_at, created_at')
+      .eq('user_id', req.user!.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+
+    const rows = (data ?? []) as {
+      id: string;
+      title: string;
+      body: string;
+      type: string;
+      order_id: string | null;
+      read_at: string | null;
+      created_at: string;
+    }[];
+
+    const notifications = rows.map((n) => ({
+      id: n.id,
+      title: n.title,
+      body: n.body,
+      type: n.type,
+      orderId: n.order_id,
+      readAt: n.read_at,
+      createdAt: n.created_at,
+    }));
+    const unreadCount = notifications.filter((n) => n.readAt === null).length;
+
+    res.json({ notifications, unreadCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Mark the caller's notifications read. Default (no body) marks ALL of their
+// unread rows — the lazy-correct behaviour behind a "you opened the feed"
+// tap. Optional { ids } narrows it to specific rows for a future swipe-one
+// UI. Either way `read_at IS NULL` keeps it idempotent (already-read rows
+// aren't re-stamped) and .eq('user_id', ...) keeps a rider from touching
+// anyone else's rows.
+riderRouter.patch('/notifications/read', async (req: AuthedRequest, res, next) => {
+  try {
+    const { ids } = req.body as { ids?: string[] };
+    let query = supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', req.user!.id)
+      .is('read_at', null);
+    if (Array.isArray(ids) && ids.length > 0) query = query.in('id', ids);
+
+    const { error } = await query;
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The rider app's profile-header stats — REAL, DB-derived, replacing the mock
+// client math in apps/rider's utils/performance.ts. orders.rider_id references
+// users.id (001_init.sql:62; POST /orders/:id/accept above writes req.user!.id
+// into it), so both queries scope on req.user!.id directly — no riders-row-id
+// indirection. computeRiderStats (lib/riderStats.ts) does the pure math; this
+// handler only gathers the raw counts + ratings. Service client bypasses RLS
+// like every sibling handler; the .eq('rider_id'/'orders.rider_id', ...) filter
+// is the scoping — do not remove it.
+riderRouter.get('/stats', async (req: AuthedRequest, res, next) => {
+  try {
+    // Orders tally: 'delivered' → deliveries, 'failed' → rider-attributable
+    // non-completion (migration 052). 'cancelled' is a customer/store cancel,
+    // never the rider's fault, so it's excluded from attempted entirely.
+    const { data: orders, error: ordersErr } = await supabase.from('orders').select('status').eq('rider_id', req.user!.id);
+    if (ordersErr) throw ordersErr;
+
+    const deliveredCount = (orders ?? []).filter((o) => o.status === 'delivered').length;
+    const failedCount = (orders ?? []).filter((o) => o.status === 'failed').length;
+
+    // Reviews on orders this rider delivered. reviews.order_id FKs orders(id)
+    // (migration 020) — the single reviews→orders FK, so the `orders` embed is
+    // unambiguous. inner join + filter on the embedded orders.rider_id keeps
+    // only reviews whose order was delivered by this rider.
+    const { data: reviews, error: reviewsErr } = await supabase
+      .from('reviews')
+      .select('rating, orders!inner(rider_id)')
+      .eq('orders.rider_id', req.user!.id);
+    if (reviewsErr) throw reviewsErr;
+
+    const ratings = (reviews ?? []).map((r) => Number(r.rating));
+
+    res.json(computeRiderStats({ deliveredCount, failedCount, ratings }));
   } catch (err) {
     next(err);
   }

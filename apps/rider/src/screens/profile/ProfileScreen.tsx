@@ -36,12 +36,13 @@ import {
 import type { IconSvgElement } from '@hugeicons/react-native';
 import { AppIcon } from '../../components/AppIcon';
 import { PerformanceRow } from '../../components/PerformanceRow';
-import { computePerformanceStats } from '../../utils/performance';
 import { colors } from '../../theme/tokens';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from '../../data/support';
 import { useRiderProfile } from './useRiderProfile';
+import { useRiderStats } from './useRiderStats';
+import type { RiderStats } from '../../api/stats';
 import { EditPayoutModal } from './EditPayoutModal';
 import type { RiderProfile } from '../../api/profile';
 import type { AppStackParamList, AppTabParamList } from '../../navigation/types';
@@ -54,6 +55,17 @@ type ProfileNav = CompositeNavigationProp<
 const CARD_BORDER = '#EAECEE';
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
+// Shown while GET /rider/stats loads — a brand-new rider's honest baseline
+// (0 deliveries, nothing attempted so 100% completion, default 5.00 rating),
+// so the row renders at its final size with no layout jump.
+const STATS_PLACEHOLDER: RiderStats = {
+  deliveries: 0,
+  completionRate: 100,
+  totalAttempted: 0,
+  averageRating: 5,
+  ratingCount: 0,
+};
+
 const VEHICLE_LABEL: Record<NonNullable<RiderProfile['vehicleType']>, string> = {
   bicycle: 'Bicycle',
   scooter: 'Scooter',
@@ -63,13 +75,10 @@ const VEHICLE_LABEL: Record<NonNullable<RiderProfile['vehicleType']>, string> = 
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNav>();
   const goOffline = useRiderOrdersStore((s) => s.goOffline);
-  const completedOrders = useRiderOrdersStore((s) => s.completedOrders);
-  const cancelledOrders = useRiderOrdersStore((s) => s.cancelledOrders);
   const clear = useAuthStore((s) => s.clear);
   const { data: profile, isLoading } = useRiderProfile();
+  const { data: stats } = useRiderStats();
   const [editingPayout, setEditingPayout] = useState(false);
-
-  const stats = computePerformanceStats(completedOrders, cancelledOrders);
 
   const displayName = profile?.name?.trim() || 'Rider';
   const displayPhone = profile?.phone ?? '—';
@@ -189,9 +198,9 @@ export function ProfileScreen() {
           {/* App version — honest: no fake "update available", real version. */}
           <InfoCard icon={SmartPhone01Icon} label="App version" value={`v${APP_VERSION} · Up to date`} />
 
-          {/* Trust-signal metrics — real values (Performance / Completion /
-              Rating), same computePerformanceStats source as Home. */}
-          <PerformanceRow stats={stats} />
+          {/* Trust-signal metrics — real values (Deliveries / Completion /
+              Rating) from GET /rider/stats; placeholder baseline while loading. */}
+          <PerformanceRow stats={stats ?? STATS_PLACEHOLDER} />
 
           {/* Documents status row → dedicated read-only page. */}
           <View>
@@ -200,7 +209,7 @@ export function ProfileScreen() {
 
           {/* Menu list — every row is a real wired action. */}
           <View>
-            <MenuRow icon={Clock01Icon} label="Shift & availability" onPress={() => Alert.alert('Availability', 'Go online or offline from the Home screen.')} />
+            <MenuRow icon={Clock01Icon} label="Working hours" onPress={() => navigation.navigate('Availability')} />
             <MenuRow icon={CustomerService01Icon} label="Support" onPress={callSupport} />
             <MenuRow icon={Alert02Icon} label="Emergency SOS" danger onPress={emergencySos} />
             <MenuRow icon={Wallet01Icon} label="Wallet & payouts" onPress={() => navigation.navigate('Earnings')} />

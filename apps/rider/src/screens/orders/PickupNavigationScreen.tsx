@@ -64,9 +64,23 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
 
   // rider→store straight-line distance/ETA — null until the first GPS fix
   // lands (shows "Locating…" until then rather than a bogus 0.0 km).
-  const km = riderCoords ? distanceKm(riderCoords, order.storeCoords) : null;
-  const eta = km != null ? etaMinutes(km) : null;
-  const legText = km != null ? `${km} km · ${eta} min` : 'Locating…';
+  const km = riderCoords
+    ? distanceKm(riderCoords, order.storeCoords)
+    : null;
+
+  const eta = km != null
+    ? etaMinutes(km)
+    : null;
+
+  const distanceText = km != null
+    ? `${km} km`
+    : '—';
+
+  const durationText = eta != null
+    ? `${eta} min`
+    : 'Locating…';
+
+  const hasRouteInfo = km != null && eta != null;
 
   const callStore = () => {
     if (order.storePhone) {
@@ -98,10 +112,31 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
           The at-a-glance "am I close?" the in-app map is here for. */}
       <View
         style={[{ top: insets.top + 12 }, shadow.chip]}
-        className="absolute left-[68px] h-11 flex-row items-center gap-2 rounded-full bg-white px-4"
+        className="absolute left-[68px] h-11 flex-row items-center rounded-full bg-white px-4"
       >
-        <AppIcon icon={Navigation03Icon} size={18} color={colors.ink} />
-        <Text className="text-[15px] font-semibold text-ink tabular-nums">{legText}</Text>
+        <AppIcon
+          icon={Navigation03Icon}
+          size={18}
+          color={colors.ink}
+        />
+
+        {hasRouteInfo ? (
+          <View className="ml-2 flex-row items-center">
+            <Text className="text-[14px] font-semibold text-ink tabular-nums">
+              {distanceText}
+            </Text>
+
+            <View className="mx-2 h-1 w-1 rounded-full bg-ink/30" />
+
+            <Text className="text-[14px] font-semibold text-ink/60 tabular-nums">
+              {durationText}
+            </Text>
+          </View>
+        ) : (
+          <Text className="ml-2 text-[14px] font-medium text-ink/50">
+            Locating…
+          </Text>
+        )}
       </View>
 
       {/* Bottom sheet — dark green. Heading-to-store: nav hand-off + store
@@ -120,24 +155,69 @@ export function PickupNavigationScreen({ route, navigation }: Props) {
           style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
           <View>
-            <Text className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Pickup</Text>
-            <Text className="text-[22px] font-semibold text-ink">Go to pickup</Text>
+            <Text className="text-[22px] font-semibold text-ink">  Pick up from store</Text>
           </View>
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F1F2F4]">
-            <AppIcon icon={ArrowRight01Icon} size={22} color={colors.ink} />
+          <View className="h-11 flex-row items-center justify-center gap-1 rounded-full bg-[#F1F2F4] px-4">
+            <Text className="text-[16px] font-semibold text-ink">
+              Map
+            </Text>
+
+            <AppIcon
+              icon={ArrowRight01Icon}
+              size={20}
+              color={colors.ink}
+            />
           </View>
         </Pressable>
 
         {/* Store info card — tinted surface, lifts off the white sheet. */}
-        <View className="flex-row items-center gap-3 rounded-2xl bg-[#F1F2F4] px-4 py-4">
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F7F7FA]">
-            <AppIcon icon={Store01Icon} size={22} color={colors.ink} />
+        <View className="rounded-2xl bg-[#F1F2F4] px-4 py-4">
+          {/* Top Row */}
+          <View className="flex-row items-center">
+            {/* Store Icon */}
+            <View className="h-11 w-11 items-center justify-center rounded-full bg-white">
+              <AppIcon
+                icon={Store01Icon}
+                size={22}
+                color={colors.ink}
+              />
+            </View>
+
+            {/* Store Name */}
+            <View className="ml-3 flex-1">
+              <Text
+                className="text-[15px] font-semibold text-ink"
+                numberOfLines={1}
+              >
+                {order.storeName}
+              </Text>
+
+              <Text className="mt-0.5 text-[12px] font-medium text-ink/45">
+                Pickup location
+              </Text>
+            </View>
+
+            {/* Distance + ETA */}
+            <View className="items-end">
+              <Text className="text-[14px] font-semibold text-ink tabular-nums">
+                {distanceText}
+              </Text>
+
+              <Text className="mt-0.5 text-[12px] font-medium text-ink/50 tabular-nums">
+                {durationText}
+              </Text>
+            </View>
           </View>
-          <View className="flex-1">
-            <Text className="text-[15px] font-bold text-ink" numberOfLines={1}>{order.storeName}</Text>
-            <Text className="text-[12.5px] text-ink/50" numberOfLines={1}>{order.storeAddress || 'Grocery Store'}</Text>
+
+          {/* Address */}
+          <View className="mt-3 border-t border-black/5 pt-3">
+            <Text
+              className="text-[13px] font-medium leading-5 text-ink/60"
+              numberOfLines={2}
+            >
+              {order.storeAddress || 'Store address unavailable'}
+            </Text>
           </View>
-          <Text className="text-[12.5px] font-semibold text-ink/60 tabular-nums">{legText}</Text>
         </View>
 
         {/* Actions — "Call store" (secondary) then slide-to-confirm arrival.

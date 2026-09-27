@@ -13,7 +13,7 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { replaceProductVariants } from '../db/productVariants.js';
 import { AppError, asValidationError } from '../lib/errors.js';
-import { toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
+import { resolveEditImage, toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
 import { toWebp } from '../utils/image.js';
@@ -494,9 +494,25 @@ partnerRouter.patch('/products/:id', async (req: AuthedRequest, res, next) => {
 
     // scoped by store_id so a store owner cannot edit another store's product
     // even with a guessed product id
+    const { data: current, error: fetchError } = await supabase
+      .from('products')
+      .select('image_url, approval_status')
+      .eq('id', req.params.id)
+      .eq('store_id', storeId)
+      .single();
+    if (fetchError || !current) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Not found for this store.');
+
+    // An approved product is LIVE — a new photo can't overwrite image_url
+    // without admin consent, so it's queued in pending_image_url instead
+    // (see resolveEditImage). Every other field updates live as normal.
+    const row = toProductRow(input);
+    const imageCols = resolveEditImage(current.image_url, current.approval_status, input.imageUrl);
+    delete (row as { image_url?: string | null }).image_url;
+    Object.assign(row, imageCols);
+
     const { data: product, error } = await supabase
       .from('products')
-      .update(toProductRow(input))
+      .update(row)
       .eq('id', req.params.id)
       .eq('store_id', storeId)
       .select()

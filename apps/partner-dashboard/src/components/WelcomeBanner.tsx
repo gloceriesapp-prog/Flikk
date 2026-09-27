@@ -35,11 +35,11 @@ export function WelcomeBanner({ storeName, isActive, onToggle, toggling }: Props
   }, []);
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-hairline bg-white p-5 card-shadow sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <p className="truncate text-lg font-semibold text-neutral-900 font-display">
+        <span className=" text-2xl font-semibold text-neutral-900 ">
           {now ? greeting(now.getHours()) : 'Welcome back'}, {storeName}
-        </p>
+        </span>
         <p className="mt-0.5 text-sm text-neutral-500 tnum">
           {now ? (
             <>

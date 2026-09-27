@@ -1,28 +1,19 @@
-// Performance / Completion / Rating — the three trust-signal numbers real
+// Deliveries / Completion / Rating — the three trust-signal numbers real
 // rider apps surface (Swiggy/Rapido-style). Lives in shared components/
-// (not screens/home or screens/profile) — currently only rendered on
-// ProfileScreen (a checked-occasionally trust signal, not something a
-// rider needs mid-shift on Home — Home's own note on why it moved out of
-// there), but nothing here is Profile-specific. All derived from
-// utils/performance.ts's computePerformanceStats, which is the one place
-// the actual scoring math lives — this component only renders it. Same
-// card shell as screens/home/components/StatCard.tsx (border/shadow/
-// radius) for visual consistency, not a one-off card style.
+// (not screens/profile) though currently only ProfileScreen renders it.
+// Values are now REAL server data from GET /rider/stats (api/stats.ts) —
+// not the old mock-derived utils/performance.ts scoring. Same card shell as
+// screens/home/components/StatCard.tsx (border/shadow/radius) for visual
+// consistency, not a one-off card style.
 
 import { StarIcon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
 import { AppIcon } from './AppIcon';
 import { colors } from '../theme/tokens';
-import type { PerformanceStats } from '../utils/performance';
-
-const LABEL_COLOR: Record<PerformanceStats['performanceLabel'], string> = {
-  Excellent: colors.success,
-  Good: colors.limeDeep,
-  'Needs work': colors.danger,
-};
+import type { RiderStats } from '../api/stats';
 
 interface Props {
-  stats: PerformanceStats;
+  stats: RiderStats;
 }
 
 function StarValue({ value }: { value: string }) {
@@ -40,11 +31,11 @@ export function PerformanceRow({ stats }: Props) {
   return (
     <View className="flex-row gap-2">
       <View className="flex-1 gap-1 rounded-2xl border border-gray-100 px-2.5 py-3">
-        <Text className="text-[11px] font-medium text-ink/45">Performance</Text>
-        <StarValue value={stats.performanceScore.toFixed(2)} />
-        <Text className="text-[11px] font-bold" style={{ color: LABEL_COLOR[stats.performanceLabel] }}>
-          {stats.performanceLabel}
+        <Text className="text-[11px] font-medium text-ink/45">Deliveries</Text>
+        <Text className="text-[19px] font-extrabold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
+          {stats.deliveries}
         </Text>
+        <Text className="text-[11px] font-medium text-ink/40">Lifetime</Text>
       </View>
 
       <View className="flex-1 gap-1 rounded-2xl border border-gray-100 px-2.5 py-3">

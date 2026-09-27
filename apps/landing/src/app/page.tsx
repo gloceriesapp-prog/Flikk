@@ -41,7 +41,7 @@ export default async function Home({
         <ExperienceBanner />
         <PromoBanners />
         <NearbyStores />
-        <CategoryGrid />
+        {/* <CategoryGrid /> */}
         <SubcategoriesGrid />
         <ProductCarousel products={products} />
         <AppDownloadBanner />

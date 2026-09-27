@@ -18,6 +18,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { sendPushNotification } from '@/lib/pushNotification';
+import { createNotification } from '@/lib/notification';
 
 const DEFAULT_REJECTION_REASON =
   "We couldn't verify your documents this time. Please double-check your details and photos, then resubmit your application.";
@@ -41,6 +42,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
       await supabaseAdmin.from('rider_onboarding_drafts').update({ rejection_reason: rejectionReason }).eq('user_id', userId);
 
       await sendPushNotification(user.expo_push_token, 'Your application needs another look', rejectionReason);
+      void createNotification({ userId, title: 'Your application needs another look', body: rejectionReason, type: 'rejection' });
 
       return NextResponse.json({ ok: true });
     }
@@ -88,6 +90,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
     await supabaseAdmin.from('rider_onboarding_drafts').delete().eq('user_id', userId);
 
     await sendPushNotification(user.expo_push_token, "You're approved! 🎉", "You're all set to start taking deliveries on Flikk.");
+    void createNotification({ userId, title: "You're approved! 🎉", body: "You're all set to start taking deliveries on Flikk.", type: 'approval' });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

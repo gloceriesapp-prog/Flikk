@@ -9,10 +9,10 @@ export default function AreaStrip({ area }: { area: string }) {
   return (
     <section className="w-full bg-white pt-6 sm:pt-8">
       <div className="max-w-[1280px] mx-auto px-6 text-center">
-        <p className="text-[11px] font-bold tracking-wider uppercase text-[#0052FF] mb-1.5">
+        <p className="text-[15px] font-medium tracking-tight text-[#0052FF] uppercase mb-1.5">
           Now delivering here
         </p>
-        <h2 className="text-2xl sm:text-3xl md:text-[34px] font-semibold text-[#0F172A] leading-[1.15] tracking-tight">
+        <h2 className="text-2xl sm:text-3xl md:text-[34px] font-medium text-[#0F172A] leading-[1.15] tracking-tight">
           Built for {area}.{" "}
           <span className="text-[#0052FF]">Delivered in minutes.</span>
         </h2>

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Download } from 'lucide-react';
+import { ChevronDown, Download, Search } from 'lucide-react';
 import type { OrderStatus } from '@/lib/partnerApi';
 import { statusLabel } from '@/lib/format';
 
@@ -22,6 +22,8 @@ interface Props {
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
   onExport: () => void;
+  search: string;
+  onSearchChange: (value: string) => void;
 }
 
 // One labelled native <select> styled as a rounded pill. Native is the
@@ -55,10 +57,25 @@ function SelectField({
   );
 }
 
-export function OrdersFilterBar({ filter, onFilterChange, dateRange, onDateRangeChange, onExport }: Props) {
+export function OrdersFilterBar({ filter, onFilterChange, dateRange, onDateRangeChange, onExport, search, onSearchChange }: Props) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className="grid flex-1 grid-cols-2 gap-4 sm:max-w-md sm:grid-cols-2">
+      <div className="flex flex-1 flex-wrap items-end gap-4">
+        {/* Search moved here from the page header — sits left of the filters. */}
+        <label className="flex flex-1 flex-col gap-2 sm:max-w-xs">
+          <span className="text-[13px] text-neutral-400">Search</span>
+          <div className="relative">
+            <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search order ID, customer, phone…"
+              className="w-full rounded-full border border-neutral-200 bg-white py-2.5 pl-11 pr-4 text-sm text-neutral-800 outline-none placeholder:text-neutral-400 focus:border-neutral-300"
+            />
+          </div>
+        </label>
+
         <SelectField label="Status" value={filter} onChange={(v) => onFilterChange(v as OrderStatus | 'all')}>
           {ORDER_FILTERS.map((f) => (
             <option key={f} value={f}>

@@ -35,12 +35,16 @@ export interface ProductRow {
   description: string | null;
   sub_category_id: string | null;
   approval_status: 'pending' | 'approved' | 'rejected';
+  // A partner-submitted photo awaiting founder review — the product stays
+  // live on its OLD image_url until admin approves/rejects this via
+  // app/api/products/[id]/image-review. Null = nothing pending.
+  pending_image_url: string | null;
   stores: { name: string; district: string } | null;
   product_variants: ProductVariantRow[];
 }
 
 export const PRODUCT_SELECT =
-  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default)';
+  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default)';
 
 function mapVariants(rows: ProductVariantRow[]): ProductVariant[] {
   // is_default first, then insertion order for the rest — mirrors how
@@ -79,6 +83,7 @@ export function mapRowToProduct(row: ProductRow): Product {
     description: row.description ?? undefined,
     subCategoryId: row.sub_category_id ?? undefined,
     approvalStatus: row.approval_status,
+    pendingImageUrl: row.pending_image_url,
     // Falls back to a single variant built from the product row's own
     // denormalized price/unit if product_variants is somehow empty (a
     // product written before this table existed) — Edit should never show

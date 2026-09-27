@@ -12,10 +12,28 @@
 // customer/partner/rider apps, same pattern as Orders/Overview.
 
 import { useCallback, useEffect, useState } from 'react';
+import clsx from 'clsx';
 import { Phone } from 'lucide-react';
 import { AssignRiderRow } from '@/components/dispatch/AssignRiderRow';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import type { ActiveRider, Order } from '@/lib/types';
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const PRESENCE_LABELS: Record<ActiveRider['presence'], string> = {
+  offline: 'Offline',
+  online: 'Online',
+  on_delivery: 'On delivery',
+};
+
+// Compact "Mon 09:00–18:00 · Tue 10:00–14:00" summary of a rider's configured
+// week — enabled days only, shown as a tooltip so the row stays uncluttered.
+function hoursSummary(availability: ActiveRider['availability']): string {
+  return availability
+    .filter((d) => d.enabled)
+    .sort((a, b) => a.day - b.day)
+    .map((d) => `${DAY_LABELS[d.day] ?? d.day} ${d.start}–${d.end}`)
+    .join(' · ');
+}
 
 export default function RidersPage() {
   const [riders, setRiders] = useState<ActiveRider[]>([]);
@@ -55,28 +73,45 @@ export default function RidersPage() {
         <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
           <h3 className="mb-3 text-sm font-semibold text-ink">Active riders</h3>
           <div className="flex flex-col gap-3">
-            {riders.map((rider) => (
-              <div key={rider.id} className="flex items-center gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
-                <div className="relative">
-                  <div className="h-10 w-10 rounded-full bg-accent" />
-                  <span
-                    className={
-                      rider.isOnline
-                        ? 'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-success'
-                        : 'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-muted'
-                    }
-                  />
+            {riders.map((rider) => {
+              const hours = hoursSummary(rider.availability);
+              return (
+                <div key={rider.id} className="flex items-center gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
+                  <div className="relative">
+                    <div className="h-10 w-10 rounded-full bg-accent" />
+                    <span
+                      className={
+                        rider.isOnline
+                          ? 'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-success'
+                          : 'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-muted'
+                      }
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-ink">{rider.name}</p>
+                    <p className="flex items-center gap-1 text-xs text-muted">
+                      <Phone size={11} />
+                      {rider.phone}
+                    </p>
+                    {/* presence (riders.status) is the REAL live signal — distinct from
+                        the account-active dot above (isOnline / riders.is_active). */}
+                    <p className="mt-0.5 text-[11px] text-muted">{PRESENCE_LABELS[rider.presence]}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span
+                      title={hours || undefined}
+                      className={clsx(
+                        'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                        rider.onScheduleNow ? 'bg-green-50 text-success' : 'bg-accent text-muted',
+                      )}
+                    >
+                      {rider.onScheduleNow ? 'On schedule' : 'Off schedule'}
+                    </span>
+                    <span className="text-xs font-semibold text-ink-soft">{rider.activeOrders} active</span>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-ink">{rider.name}</p>
-                  <p className="flex items-center gap-1 text-xs text-muted">
-                    <Phone size={11} />
-                    {rider.phone}
-                  </p>
-                </div>
-                <span className="text-xs font-semibold text-ink-soft">{rider.activeOrders} active</span>
-              </div>
-            ))}
+              );
+            })}
             {riders.length === 0 && <p className="py-8 text-center text-sm text-muted">No riders onboarded yet.</p>}
           </div>
         </div>

@@ -58,7 +58,7 @@ export default function PayoutsPage() {
     <div className="flex flex-col gap-6">
       {store && <PayoutDestinationCard store={store} />}
 
-      <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline md:grid-cols-4 md:divide-y-0">
+      <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white md:grid-cols-4 md:divide-y-0">
           <StatTile label="Lifetime paid" value={formatInr(lifetimePaid)} icon={Wallet} />
           <StatTile label="Pending" value={formatInr(pendingAmount)} icon={HandCoins} />
           <StatTile label="Next payout" value={nextPayout ? formatDate(nextPayout.week_end) : '—'} icon={Calendar} />

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, Clock, Search, ShoppingBag, Truck } from 'lucide-react';
-import { fetchMyOrders, type OrderStatus, type PartnerOrder } from '@/lib/partnerApi';
+import { AlertCircle, Bell, Check, CheckCircle2, ChevronDown, Clock, ShoppingBag, Truck, X } from 'lucide-react';
+import { fetchMyOrders, updateOrderStatus, type OrderStatus, type PartnerOrder } from '@/lib/partnerApi';
 import { DEMO_ORDERS } from '@/lib/demoOrders';
 import { OrdersFilterBar, ORDER_FILTERS, type DateRange } from '@/components/orders/OrdersFilterBar';
 import { OrdersTable } from '@/components/orders/OrdersTable';
@@ -13,6 +13,13 @@ const RANGE_MS: Record<Exclude<DateRange, 'all' | 'today'>, number> = {
   '7d': 7 * 86400e3,
   '30d': 30 * 86400e3,
 };
+
+// DEMO DATA — the demo orders are all placed this month, so the real
+// month-over-month trend() has no prior month to compare and returns
+// undefined, hiding every delta pill. These stand in only while isDemo, so
+// the "vs last month" pills render like the rest of the dashboard; the real
+// trends replace them the instant a real order lands. Delete with DEMO_ORDERS.
+const DEMO_TRENDS = { total: 6.2, pending: 12.5, inTransit: 4.1, delivered: 8.3, failed: 2.1 };
 
 function inRange(iso: string, range: DateRange): boolean {
   if (range === 'all') return true;
@@ -47,6 +54,16 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [search, setSearch] = useState('');
+  // The order currently mid-mutation, so its row buttons show a busy state and
+  // every other row's actions lock out — no double-accept, no accept-while-rejecting.
+  const [actioningId, setActioningId] = useState<string | null>(null);
+  // Local, backend-free copy of the demo orders so Accept/Reject are clickable
+  // in demo mode (store has no real orders yet) — the flip lives only in state,
+  // never a PATCH. Replaced by real orders the instant one lands.
+  const [demoOrders, setDemoOrders] = useState<PartnerOrder[]>(DEMO_ORDERS);
+  // New-order banner expand: down-chevron reveals the placed orders with
+  // inline Accept/Reject, so the owner acts without leaving the banner.
+  const [alertOpen, setAlertOpen] = useState(false);
 
   useEffect(() => {
     fetchMyOrders()
@@ -57,7 +74,49 @@ export default function OrdersPage() {
   // DEMO DATA — same isDemo convention as the Overview page: shown only while
   // the store has zero real orders, replaced the instant a real one lands.
   const isDemo = !isLoading && orders.length === 0;
-  const sourceOrders = isDemo ? DEMO_ORDERS : orders;
+  const sourceOrders = isDemo ? demoOrders : orders;
+
+  // Accept = the sole owner-side transition the backend allows (placed→packed);
+  // Reject = cancel it. Both are real PATCH /orders/:id/status calls, then a
+  // refetch so the row's status (and every stat/trend derived from it) is the
+  // server's truth, not an optimistic guess. Undefined in demo mode → the table
+  // renders the buttons disabled, so no fake write ever fires.
+  async function mutate(id: string, status: OrderStatus, reason?: string) {
+    if (actioningId) return;
+    setActioningId(id);
+    try {
+      await updateOrderStatus(id, status, reason);
+      setOrders(await fetchMyOrders());
+    } finally {
+      setActioningId(null);
+    }
+  }
+  const handleAccept = (id: string) => mutate(id, 'packed');
+  const handleReject = (id: string) => {
+    if (window.confirm('Reject this order? This cancels it for the customer and refunds their payment. This cannot be undone.')) {
+      mutate(id, 'cancelled');
+    }
+  };
+
+  // Demo-only staged lifecycle (no backend, no confirm): Accept stages the
+  // order (still 'placed', now in acceptedIds → row shows Mark packed), Mark
+  // packed flips it to 'packed' and dispatch begins, then it auto-advances
+  // out_for_delivery → delivered on timers so the owner sees the whole arc.
+  // View the "All" filter to watch it move past the placed stage.
+  const [acceptedIds, setAcceptedIds] = useState<Set<string>>(new Set());
+  const demoAccept = (id: string) => setAcceptedIds((s) => new Set(s).add(id));
+  const demoReject = (id: string) => {
+    setAcceptedIds((s) => { const n = new Set(s); n.delete(id); return n; });
+    setDemoOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: 'cancelled' } : o)));
+  };
+  const demoMarkPacked = (id: string) => {
+    setAcceptedIds((s) => { const n = new Set(s); n.delete(id); return n; });
+    const set = (status: OrderStatus) =>
+      setDemoOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
+    set('packed');
+    setTimeout(() => set('out_for_delivery'), 2600);
+    setTimeout(() => set('delivered'), 5200);
+  };
 
   const sorted = useMemo(
     () => [...sourceOrders].sort((a, b) => +new Date(b.placed_at) - +new Date(a.placed_at)),
@@ -113,29 +172,81 @@ export default function OrdersPage() {
   }, [sorted, filter, dateRange, search]);
 
   const inTransitCount = counts.packed + counts.out_for_delivery;
+  const placedOrders = sorted.filter((o) => o.status === 'placed');
+  const onAccept = isDemo ? demoAccept : handleAccept;
+  const onReject = isDemo ? demoReject : handleReject;
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <div className="relative w-full sm:w-96">
-          <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search order ID, customer, phone…"
-            className="w-full rounded-full border border-hairline-strong bg-white py-2.5 pl-11 pr-4 text-sm text-neutral-800 outline-none placeholder:text-neutral-400 focus:border-neutral-400"
-          />
-        </div>
+      <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
+        <StatTile label="Total orders" value={String(sorted.length)} icon={ShoppingBag} deltaPercent={isDemo ? DEMO_TRENDS.total : trends.total} />
+        <StatTile label="Pending" value={String(counts.placed)} icon={Clock} deltaPercent={isDemo ? DEMO_TRENDS.pending : trends.pending} invertTone />
+        <StatTile label="In transit" value={String(inTransitCount)} icon={Truck} deltaPercent={isDemo ? DEMO_TRENDS.inTransit : trends.inTransit} />
+        <StatTile label="Delivered" value={String(counts.delivered)} icon={CheckCircle2} deltaPercent={isDemo ? DEMO_TRENDS.delivered : trends.delivered} />
+        <StatTile label="Failed" value={String(counts.cancelled)} icon={AlertCircle} deltaPercent={isDemo ? DEMO_TRENDS.failed : trends.failed} invertTone />
       </div>
 
-      <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
-        <StatTile label="Total orders" value={String(sorted.length)} icon={ShoppingBag} deltaPercent={trends.total} />
-        <StatTile label="Pending" value={String(counts.placed)} icon={Clock} deltaPercent={trends.pending} sublabel="To pack" invertTone />
-        <StatTile label="In transit" value={String(inTransitCount)} icon={Truck} deltaPercent={trends.inTransit} />
-        <StatTile label="Delivered" value={String(counts.delivered)} icon={CheckCircle2} deltaPercent={trends.delivered} />
-        <StatTile label="Failed" value={String(counts.cancelled)} icon={AlertCircle} deltaPercent={trends.failed} invertTone />
-      </div>
+      {/* New-order alert — green success surface. The right-end chevron toggles
+          an inline list of the placed orders with Accept/Reject, so they can be
+          actioned without scrolling to the table. */}
+      {counts.placed > 0 && (
+        <div className="overflow-hidden rounded-xl border border-emerald-200 bg-emerald-50">
+          <button
+            type="button"
+            onClick={() => setAlertOpen((v) => !v)}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-emerald-100/60"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <Bell size={16} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-emerald-900">
+                {counts.placed} new {counts.placed === 1 ? 'order' : 'orders'} to review
+              </p>
+              <p className="text-[13px] text-emerald-700">Accept to start packing, or reject to cancel and refund.</p>
+            </div>
+            <ChevronDown
+              size={20}
+              className={`ml-auto shrink-0 text-emerald-700 transition-transform ${alertOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {alertOpen && (
+            <ul className="divide-y divide-emerald-200 border-t border-emerald-200">
+              {placedOrders.map((o) => {
+                const name = o.addresses?.recipient_name ?? o.users?.name ?? 'Customer';
+                const busy = actioningId === o.id;
+                return (
+                  <li key={o.id} className="flex items-center gap-3 bg-white px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-neutral-900">
+                        {o.order_number} · {name}
+                      </p>
+                      <p className="text-xs text-neutral-500">{formatInr(o.total)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onAccept(o.id)}
+                      disabled={!!actioningId}
+                      className="flex items-center gap-1 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+                    >
+                      <Check size={14} /> {busy ? 'Accepting…' : 'Accept'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onReject(o.id)}
+                      disabled={!!actioningId}
+                      className="flex items-center gap-1 rounded-full border border-neutral-200 px-3.5 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                    >
+                      <X size={14} /> Reject
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
 
       <OrdersFilterBar
         filter={filter}
@@ -143,12 +254,21 @@ export default function OrdersPage() {
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
         onExport={() => exportCsv(filtered)}
+        search={search}
+        onSearchChange={setSearch}
       />
 
       {isLoading ? (
         <div className="py-20 text-center text-sm text-neutral-400">Loading orders…</div>
       ) : (
-        <OrdersTable orders={filtered} />
+        <OrdersTable
+          orders={filtered}
+          onAccept={onAccept}
+          onReject={onReject}
+          onMarkPacked={isDemo ? demoMarkPacked : undefined}
+          acceptedIds={isDemo ? acceptedIds : undefined}
+          actioningId={actioningId}
+        />
       )}
     </div>
   );

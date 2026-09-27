@@ -190,28 +190,58 @@ export function PickupVerificationScreen({ route, navigation }: Props) {
 
         {/* Check items — the real gate. All 3 must toggle on before pickup
             enables (allChecked). Hint spells out the "tap all" rule. */}
-        <View className="gap-1 rounded-2xl bg-white p-4">
-          <Text className="text-[11px] font-bold uppercase tracking-wide text-ink/40">Check items</Text>
-          <Text className="mb-1 text-[12px] text-ink/45">Tap all three to confirm before picking up.</Text>
-          {CHECKS.map((c, i) => {
-            const on = checked[c.key];
-            return (
-              <Pressable
-                key={c.key}
-                onPress={() => setChecked((prev) => ({ ...prev, [c.key]: !prev[c.key] }))}
-                className={`flex-row items-center gap-3 py-3 ${i > 0 ? 'border-t border-ink/10' : ''}`}
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-              >
-                {on ? (
-                  <AppIcon icon={CheckmarkCircle02Icon} size={24} color={colors.ink} />
-                ) : (
-                  <View className="h-[22px] w-[22px] rounded-full border-2 border-ink/25" />
-                )}
-                <Text className={`text-[15px] font-semibold ${on ? 'text-ink' : 'text-ink/50'}`}>{c.label}</Text>
-              </Pressable>
-            );
-          })}
+       <View className="gap-1 rounded-2xl bg-white p-4">
+  <Text className="mb-1 text-[15px] font-semibold text-ink">
+    Check the items and complete all three confirmations before pickup.
+  </Text>
+
+  {CHECKS.map((c, i) => {
+    const on = checked[c.key];
+
+    return (
+      <Pressable
+        key={c.key}
+        onPress={() =>
+          setChecked((prev) => ({
+            ...prev,
+            [c.key]: !prev[c.key],
+          }))
+        }
+        className={`flex-row items-center gap-3 py-3 ${
+          i > 0 ? 'border-t border-ink/10' : ''
+        }`}
+        style={({ pressed }) => ({
+          opacity: pressed ? 0.7 : 1,
+        })}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: on }}
+      >
+        {/* Square checkbox */}
+        <View
+          className={`h-[22px] w-[22px] items-center justify-center border-2 ${
+            on
+              ? 'border-ink bg-ink'
+              : 'border-ink/25 bg-transparent'
+          }`}
+        >
+          {on && (
+            <Text className="text-[14px] font-bold leading-[16px] text-white">
+              ✓
+            </Text>
+          )}
         </View>
+
+        <Text
+          className={`flex-1 text-[15px] font-medium ${
+            on ? 'text-ink' : 'text-ink/50'
+          }`}
+        >
+          {c.label}
+        </Text>
+      </Pressable>
+    );
+  })}
+</View>
       </ScrollView>
 
       {/* Footer — slide-to-confirm "Verify & pick up" (gated until all three

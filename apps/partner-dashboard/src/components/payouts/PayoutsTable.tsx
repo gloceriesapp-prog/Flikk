@@ -14,7 +14,7 @@ export function PayoutsTable({ payouts }: { payouts: Payout[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-hairline">
+    <div className="overflow-x-auto rounded-xl border border-hairline bg-white">
       <div className="min-w-[720px]">
         {/* Header */}
         <div

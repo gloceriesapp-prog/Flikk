@@ -12,12 +12,19 @@ import { DeliveryNavigationScreen } from '../screens/orders/DeliveryNavigationSc
 import { DeliveryProofScreen } from '../screens/orders/DeliveryProofScreen';
 import { DeliveryCompleteScreen } from '../screens/orders/DeliveryCompleteScreen';
 import { RiderDocumentsScreen } from '../screens/profile/RiderDocumentsScreen';
+import { AvailabilityScreen } from '../screens/profile/AvailabilityScreen';
 import { PayoutHistoryScreen } from '../screens/payouts/PayoutHistoryScreen';
+import { useAutoOnline } from '../hooks/useAutoOnline';
 import type { AppStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export function AppNavigator() {
+  // Drives auto-online from the rider's saved working-hours schedule — mounted
+  // once here so it runs for the whole authed session. Never auto-goes-offline,
+  // never forces a permission prompt (see the hook's own note).
+  useAutoOnline();
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Tabs">
       <Stack.Screen name="Tabs" component={TabNavigator} />
@@ -35,6 +42,7 @@ export function AppNavigator() {
       <Stack.Screen name="DeliveryComplete" component={DeliveryCompleteScreen} options={{ presentation: 'card', gestureEnabled: false }} />
       <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ presentation: 'card', gestureEnabled: false }} />
       <Stack.Screen name="RiderDocuments" component={RiderDocumentsScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="Availability" component={AvailabilityScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="PayoutHistory" component={PayoutHistoryScreen} options={{ presentation: 'card' }} />
     </Stack.Navigator>
   );

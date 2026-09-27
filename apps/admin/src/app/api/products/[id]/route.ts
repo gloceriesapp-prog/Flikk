@@ -17,7 +17,13 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[
     const input: Partial<ProductWriteInput> = body;
     validateProductInput(input);
 
-    const { error } = await supabaseAdmin.from('products').update(toProductRow(input)).eq('id', id);
+    // toProductRow always writes image_url, so the admin's chosen image
+    // supersedes any partner-submitted pending photo — clear it in the same
+    // update (see app/api/products/[id]/image-review for the review path).
+    const { error } = await supabaseAdmin
+      .from('products')
+      .update({ ...toProductRow(input), pending_image_url: null })
+      .eq('id', id);
     if (error) throw error;
 
     const { error: deleteError } = await supabaseAdmin.from('product_variants').delete().eq('product_id', id);

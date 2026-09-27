@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { PartnerProduct, ProductInput, StockStatus, UnitType, VariantInput } from '@/lib/partnerApi';
-import { uploadProductPhoto } from '@/lib/partnerApi';
+import { deriveStockStatus, uploadProductPhoto } from '@/lib/partnerApi';
 
 interface Props {
   initial?: PartnerProduct;
@@ -12,11 +12,14 @@ interface Props {
 }
 
 const UNIT_TYPES: UnitType[] = ['g', 'kg', 'ml', 'l', 'pc'];
-const STOCK_STATUSES: { value: StockStatus; label: string }[] = [
-  { value: 'in_stock', label: 'In stock' },
-  { value: 'low_stock', label: 'Low stock' },
-  { value: 'out_of_stock', label: 'Out of stock' },
-];
+// Derived-status readout shown under the quantity input — label + dot color
+// per state. Status itself is computed from quantity (deriveStockStatus),
+// never picked by hand, so the number and the label can't disagree.
+const STATUS_DISPLAY: Record<StockStatus, { label: string; text: string; dot: string }> = {
+  in_stock: { label: 'In stock', text: 'text-emerald-600', dot: 'bg-emerald-500' },
+  low_stock: { label: 'Low stock', text: 'text-amber-500', dot: 'bg-amber-400' },
+  out_of_stock: { label: 'Out of stock', text: 'text-red-600', dot: 'bg-red-500' },
+};
 
 // One row of the variants editor — a local id (not sent to the backend)
 // so React can key/remove rows before they have a real identity; string
@@ -53,7 +56,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
   const [category, setCategory] = useState(initial?.category ?? '');
   const [imageUrl, setImageUrl] = useState(initial?.image_url ?? '');
   const [isVeg, setIsVeg] = useState(initial?.is_veg ?? true);
-  const [stockStatus, setStockStatus] = useState<StockStatus>(initial?.stock_status ?? 'in_stock');
+  const [stockQuantity, setStockQuantity] = useState(initial?.stock_quantity != null ? String(initial.stock_quantity) : '');
   const [variants, setVariants] = useState<VariantRow[]>(() => variantRowsFromProduct(initial));
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,6 +93,12 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
     e.preventDefault();
     if (isSubmitting) return;
 
+    const quantity = Number(stockQuantity);
+    if (stockQuantity === '' || !Number.isInteger(quantity) || quantity < 0) {
+      setError('Enter the stock quantity as a whole number (0 or more).');
+      return;
+    }
+
     const parsedVariants: VariantInput[] = [];
     for (const v of variants) {
       const quantity = Number(v.quantity);
@@ -116,7 +125,8 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
       await onSubmit({
         name,
         category,
-        stockStatus,
+        stockQuantity: quantity,
+        stockStatus: deriveStockStatus(quantity),
         imageUrl: imageUrl || undefined,
         isVeg,
         variants: parsedVariants,
@@ -138,14 +148,25 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
       </Field>
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Stock status">
-          <select value={stockStatus} onChange={(e) => setStockStatus(e.target.value as StockStatus)} className="input">
-            {STOCK_STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+        <Field label="Stock quantity">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            required
+            placeholder="Units on hand"
+            value={stockQuantity}
+            onChange={(e) => setStockQuantity(e.target.value)}
+            className="input"
+          />
+          {stockQuantity !== '' && Number.isInteger(Number(stockQuantity)) && Number(stockQuantity) >= 0 ? (
+            <span className={`mt-1 inline-flex items-center gap-1.5 text-xs font-semibold ${STATUS_DISPLAY[deriveStockStatus(Number(stockQuantity))].text}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DISPLAY[deriveStockStatus(Number(stockQuantity))].dot}`} />
+              {STATUS_DISPLAY[deriveStockStatus(Number(stockQuantity))].label}
+            </span>
+          ) : (
+            <span className="mt-1 text-xs text-neutral-400">Status is set automatically from the quantity.</span>
+          )}
         </Field>
         <Field label="Veg / non-veg">
           <div className="flex h-[42px] items-center gap-4">
@@ -165,6 +186,27 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
           <input type="file" accept="image/*" onChange={handlePhoto} disabled={isUploading} className="text-sm text-neutral-500" />
         </div>
       </Field>
+
+      {/* A photo the owner already submitted for this approved product that
+          admin hasn't approved yet — the LIVE image (image_url, shown above)
+          is unchanged until they do. Only rendered when editing an existing
+          product that has one queued. When both exist we label them so the
+          owner can tell the current live photo from the one in review. */}
+      {initial?.pending_image_url && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          {initial.image_url && (
+            <div className="flex flex-col items-center gap-1">
+              <img src={initial.image_url} alt="" className="h-14 w-14 rounded-lg object-cover" />
+              <span className="text-[11px] font-medium text-neutral-500">Current</span>
+            </div>
+          )}
+          <div className="flex flex-col items-center gap-1">
+            <img src={initial.pending_image_url} alt="" className="h-14 w-14 rounded-lg border border-amber-300 object-cover" />
+            <span className="text-[11px] font-medium text-amber-600">In review</span>
+          </div>
+          <p className="text-xs font-medium text-amber-600">Awaiting admin approval — your live photo stays until it&apos;s approved.</p>
+        </div>
+      )}
 
       <div>
         <div className="mb-2 flex items-center justify-between">

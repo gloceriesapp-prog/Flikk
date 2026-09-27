@@ -86,7 +86,20 @@ export interface ActiveRider {
   phone: string;
   activeOrders: number;
   zone: string;
+  // Account-active bit (riders.is_active). NOT live presence — see `presence`
+  // below. AssignRiderRow filters the assignable list on this, unchanged.
   isOnline: boolean;
+  // The REAL live presence signal (riders.status), distinct from isOnline.
+  presence: 'offline' | 'online' | 'on_delivery';
+  // riders.auto_online — rider opted into going online automatically during
+  // their configured availability window.
+  autoOnline: boolean;
+  // Whether IST-now falls inside this rider's configured availability window
+  // (computed server-side via isWithinSchedule). False when never configured.
+  onScheduleNow: boolean;
+  // Weekly availability (riders.availability), day 0=Sun..6=Sat, 'HH:MM' IST,
+  // meaningful only when enabled. [] = never configured.
+  availability: { day: number; enabled: boolean; start: string; end: string }[];
 }
 
 // A4 — one store's payout for a settlement cycle. commissionRate matches
@@ -309,6 +322,11 @@ export interface Product {
   // Add/EditProductModal; always present on anything read back via
   // mapRowToProduct.
   approvalStatus?: 'pending' | 'approved' | 'rejected';
+  // A partner-submitted photo awaiting founder review (products.pending_image_url).
+  // The product keeps showing its live imageUrl until admin approves this on
+  // the Approvals screen's Products tab (app/api/products/[id]/image-review).
+  // null = nothing pending; undefined only for rows read before the column existed.
+  pendingImageUrl?: string | null;
 }
 
 export interface ProductVariant {

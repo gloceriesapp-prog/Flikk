@@ -68,16 +68,29 @@ export default function Hero() {
               </span>
             </div>
 
-            {/* Single trust stat — ETA carries more weight standing alone than as one chip among many. */}
-            <div className="inline-flex w-fit items-center gap-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 px-4 py-2.5">
-              <span className="text-2xl">⚡</span>
-              <div className="flex flex-col leading-tight">
-                <span className="text-lg font-bold text-white tracking-tight tabular-nums">
-                  ~30 min
-                </span>
-                <span className="text-[11px] font-medium text-white/70 -mt-0.5">
-                  avg delivery in your area
-                </span>
+            {/* Trust stats — ETA + local-shops promise, side by side for weight. */}
+            <div className="flex flex-wrap items-stretch gap-2.5">
+              <div className="inline-flex w-fit items-center gap-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 px-4 py-2.5">
+                <span className="text-2xl">⚡</span>
+                <div className="flex flex-col leading-tight">
+                  <span className="text-lg font-bold text-white tracking-tight tabular-nums">
+                    ~30 min
+                  </span>
+                  <span className="text-[11px] font-medium text-white/70 -mt-0.5">
+                    avg delivery in your area
+                  </span>
+                </div>
+              </div>
+              <div className="inline-flex w-fit items-center gap-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 px-4 py-2.5">
+                <span className="text-2xl">🏪</span>
+                <div className="flex flex-col leading-tight">
+                  <span className="text-lg font-bold text-white tracking-tight">
+                    Real shops
+                  </span>
+                  <span className="text-[11px] font-medium text-white/70 -mt-0.5">
+                    no dark stores, ever
+                  </span>
+                </div>
               </div>
             </div>
           </div>

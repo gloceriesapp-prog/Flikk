@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  deriveStockStatus,
   formatVariantUnit,
+  resolveEditImage,
   toProductRow,
   toVariantRows,
   validateProductInput,
@@ -126,6 +128,52 @@ describe('toProductRow', () => {
     const row = toProductRow(validInput({ imageUrl: '', localName: '   ' }));
     expect(row.image_url).toBeNull();
     expect(row.local_name).toBeNull();
+  });
+
+  it('omits stock_quantity entirely when unset, keeping the caller stockStatus', () => {
+    const row = toProductRow(validInput({ stockStatus: 'out_of_stock' }));
+    expect('stock_quantity' in row).toBe(false);
+    expect(row.stock_status).toBe('out_of_stock');
+  });
+
+  it('persists a real count and derives status from it, overriding the caller stockStatus', () => {
+    // Partner sends stockStatus in_stock but a count of 0 — the count wins.
+    const row = toProductRow(validInput({ stockStatus: 'in_stock', stockQuantity: 0 }));
+    expect(row.stock_quantity).toBe(0);
+    expect(row.stock_status).toBe('out_of_stock');
+  });
+
+  it('derives low_stock at the threshold and in_stock above it', () => {
+    expect(toProductRow(validInput({ stockQuantity: 10 })).stock_status).toBe('low_stock');
+    expect(toProductRow(validInput({ stockQuantity: 11 })).stock_status).toBe('in_stock');
+  });
+});
+
+describe('resolveEditImage', () => {
+  it('queues a new image on an approved (live) product without touching image_url', () => {
+    const cols = resolveEditImage('old.jpg', 'approved', 'new.jpg');
+    expect(cols.pending_image_url).toBe('new.jpg');
+    expect('image_url' in cols).toBe(false);
+  });
+
+  it('writes a new image straight to image_url on a not-yet-approved product', () => {
+    expect(resolveEditImage('old.jpg', 'pending', 'new.jpg')).toEqual({ image_url: 'new.jpg' });
+    expect(resolveEditImage('old.jpg', 'rejected', 'new.jpg')).toEqual({ image_url: 'new.jpg' });
+  });
+
+  it('is a no-op when the image is unchanged (after trim), even if approved', () => {
+    expect(resolveEditImage('same.jpg', 'approved', '  same.jpg  ')).toEqual({});
+    expect(resolveEditImage(null, 'approved', '   ')).toEqual({});
+  });
+});
+
+describe('deriveStockStatus', () => {
+  it('maps quantity to the three states across the threshold boundary', () => {
+    expect(deriveStockStatus(0)).toBe('out_of_stock');
+    expect(deriveStockStatus(-3)).toBe('out_of_stock');
+    expect(deriveStockStatus(1)).toBe('low_stock');
+    expect(deriveStockStatus(10)).toBe('low_stock');
+    expect(deriveStockStatus(11)).toBe('in_stock');
   });
 });
 

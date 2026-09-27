@@ -131,6 +131,16 @@ export interface ProductVariant {
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 export type UnitType = 'g' | 'kg' | 'ml' | 'l' | 'pc';
 
+// Real on-hand count is what the partner types; stock_status is DERIVED from
+// it so the number and the label can never disagree. Mirror of backend/src/
+// lib/products.ts deriveStockStatus — keep the threshold in sync.
+export const LOW_STOCK_THRESHOLD = 10;
+export function deriveStockStatus(quantity: number): StockStatus {
+  if (quantity <= 0) return 'out_of_stock';
+  if (quantity <= LOW_STOCK_THRESHOLD) return 'low_stock';
+  return 'in_stock';
+}
+
 export interface PartnerProduct {
   id: string;
   name: string;
@@ -140,6 +150,12 @@ export interface PartnerProduct {
   price: number;
   original_price: number | null;
   image_url: string | null;
+  // A new photo the partner submitted for an already-approved product,
+  // awaiting admin approval. The LIVE image customers see stays image_url
+  // until admin approves — this is only "under review". Null when there's
+  // nothing pending. fetchMyProducts returns the row as-is, so this flows
+  // through with no explicit mapping to add.
+  pending_image_url: string | null;
   is_veg: boolean;
   freshness_tag: string | null;
   // Kept in sync with stock_status by a DB trigger (backend/src/lib/
@@ -147,6 +163,10 @@ export interface PartnerProduct {
   // stock_status and this follows.
   is_in_stock: boolean;
   stock_status: StockStatus | null;
+  // Real on-hand count (migration adds it, default 0). Legacy rows never
+  // edited since the migration read 0 here while still flagged in_stock —
+  // InventoryTable's StockCell treats that pairing as "not really set".
+  stock_quantity: number | null;
   approval_status: 'pending' | 'approved' | 'rejected';
   product_variants: ProductVariant[];
 }
@@ -177,6 +197,10 @@ export interface ProductInput {
   name: string;
   category: string;
   stockStatus: StockStatus;
+  // Real on-hand count. Sent alongside stockStatus (which is derived from it
+  // client-side) — the backend re-derives from this when present, so it's
+  // the value that actually decides the stored status.
+  stockQuantity?: number;
   imageUrl?: string | null;
   localName?: string | null;
   isVeg?: boolean;

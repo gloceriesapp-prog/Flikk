@@ -152,7 +152,7 @@ export default function InventoryPage() {
       />
 
       {showStats && (
-        <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline md:grid-cols-4 md:divide-y-0">
+        <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white md:grid-cols-4 md:divide-y-0">
           <StatTile label="Total products" value={String(counts.all)} icon={Boxes} deltaPercent={INVENTORY_TRENDS.total} />
           <StatTile label="In stock" value={String(counts.in_stock)} icon={Package} deltaPercent={INVENTORY_TRENDS.inStock} />
           <StatTile label="Out of stock" value={String(counts.out_of_stock)} icon={PackageX} deltaPercent={INVENTORY_TRENDS.outOfStock} invertTone />
@@ -206,6 +206,7 @@ function applyInputToDemoProduct(product: PartnerProduct, input: ProductInput): 
     image_url: input.imageUrl ?? product.image_url,
     is_veg: input.isVeg ?? product.is_veg,
     stock_status: input.stockStatus,
+    stock_quantity: input.stockQuantity ?? product.stock_quantity,
     is_in_stock: input.stockStatus !== 'out_of_stock',
     price: defaultVariant.price,
     original_price: defaultVariant.originalPrice ?? null,

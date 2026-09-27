@@ -1,7 +1,8 @@
 import React from "react";
+import Image from "next/image";
 
-// Two-card promo band above the hero. Both cards share the light-blue bg.
-// Left: headline + app download buttons. Right: the "no-fees" value block.
+// Two-card promo band above the hero.
+// Left: headline + app download buttons. Right: full-bleed image with text overlaid.
 
 const CheckIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" fill="none" aria-hidden="true">
@@ -16,10 +17,7 @@ const CheckIcon = () => (
   </svg>
 );
 
-const FEATURES = ["₹0 Handling Fee", "₹0 Delivery Fee*", "₹0 Surge Fee"];
-
-const CARD_BG =
-  "bg-gradient-to-br from-[#EEF3FF] via-[#E3EDFF] to-[#D6E4FF] ring-1 ring-[#0052FF]/10";
+const FEATURES = ["No extra fees", "Verified shops", "Same store prices"];
 
 export default function ExperienceBanner() {
   return (
@@ -27,15 +25,36 @@ export default function ExperienceBanner() {
       <div className="max-w-[1280px] mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 items-stretch">
           {/* LEFT — headline + download buttons */}
-          <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#D9EAD9] via-[#CDE1CD] to-[#BED8C0] ring-1 ring-[#2E7D32]/15 p-6 sm:p-8 flex flex-col justify-center gap-5`}>
-            
-            <h2 className="text-3xl sm:text-4xl lg:text-[38px] font-semibold leading-[1.1] tracking-tight text-[#000000]">
-             All your local favorites at your door
-             
-              <span className="text-[#0052FF]"> in 30min</span>
-            </h2>
+          <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 flex flex-col justify-center gap-5">
 
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            {/* full-bleed background image */}
+            <Image
+              src="https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card1-landing.png"
+              alt=""
+              aria-hidden="true"
+              fill
+              sizes="(max-width: 1024px) 100vw, 640px"
+              priority={false}
+              className="pointer-events-none select-none object-cover z-0"
+            />
+
+            {/* Legibility stack: even deep-green veil guarantees min contrast everywhere,
+                then a stronger left-to-right ramp anchors the text column. */}
+            <div className="pointer-events-none absolute inset-0 z-0 bg-[#052B1F]/45" />
+            <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-[#052B1F]/90 via-[#0A402B]/60 to-transparent" />
+
+            <span className="relative z-10 inline-flex items-center gap-1.5 w-fit text-[12px] font-medium text-[#FFFFFF] bg-white/20 backdrop-blur-sm ring-1 ring-[#2E7D32]/15 px-3 py-1 rounded-full">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#2E7D32]" />
+              Now live in Kaup &amp; Udupi
+            </span>
+
+            <span className="relative z-10 text-2xl sm:text-3xl lg:text-[36px] font-semibold leading-[1.1] tracking-tight text-[#FFFFFF] drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)]">
+              All your local favorites <br /> at your door in 30min
+            </span>
+
+
+
+            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 w-full">
               <a
                 href="#download-android"
                 className="w-full sm:w-auto bg-white text-[#0F172A] px-5 py-2.5 rounded-2xl  flex items-center justify-center gap-2.5 group"
@@ -48,7 +67,7 @@ export default function ExperienceBanner() {
                 </svg>
                 <div className="flex flex-col text-left leading-tight">
                   <span className="text-[11px] font-medium tracking-tight opacity-70">Get it on</span>
-                  <span className="text-[15px] font-semibold tracking-tight -mt-0.5">Google Play</span>
+                  <span className="text-[15px] font-medium tracking-tight -mt-0.5">Google Play</span>
                 </div>
               </a>
 
@@ -61,51 +80,57 @@ export default function ExperienceBanner() {
                 </svg>
                 <div className="flex flex-col text-left leading-tight">
                   <span className="text-[11px] font-medium tracking-tight opacity-70">Download on the</span>
-                  <span className="text-[15px] font-bold tracking-tight -mt-0.5">App Store</span>
+                  <span className="text-[15px] font-medium tracking-tight -mt-0.5">App Store</span>
                 </div>
               </a>
             </div>
           </div>
 
-          {/* RIGHT — value block */}
-          <div className={`relative overflow-hidden rounded-3xl ${CARD_BG} p-6 sm:p-8`}>
-            <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-[#334155] uppercase">
-              The all-new{" "}
-              <span className="font-extrabold text-[#0052FF]">Gloceries</span>{" "}
-              experience
-            </h2>
+          {/* RIGHT — full-bleed image with text overlaid */}
+          <div className="relative overflow-hidden rounded-3xl min-h-[220px] sm:min-h-[280px] p-6 sm:p-8 flex flex-col justify-center gap-5">
+            <Image
+              src="https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card2-image.png"
+              alt=""
+              aria-hidden="true"
+              fill
+              sizes="(max-width: 1024px) 100vw, 640px"
+              className="pointer-events-none select-none object-cover z-0"
+            />
 
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="rounded-2xl bg-white/70 backdrop-blur-sm ring-1 ring-white/80 shadow-[0_8px_24px_-16px_rgba(0,82,255,0.4)] px-4 py-5 flex items-center gap-3">
-                <span className="text-2xl sm:text-3xl">🛍️</span>
-                <span className="text-xl sm:text-2xl font-extrabold text-[#0052FF] tracking-tight tabular-nums">
-                  ₹0 Fees
+            <span className="relative z-10 text-3xl sm:text-4xl lg:text-[38px] font-semibold leading-[1.1] tracking-tight text-[#000000]">
+              Direct from stores <br /> near you
+            </span>
+
+            <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="rounded-2xl bg-white/70 backdrop-blur-sm ring-1 ring-white/80 px-4 py-5 flex items-center gap-3">
+                <span className="text-2xl sm:text-3xl">🏪</span>
+                <span className="text-sm sm:text-base font-medium text-[#0F172A] leading-tight tracking-tight">
+                  Stores you
+                  <br />
+                  already trust
                 </span>
               </div>
-              <div className="rounded-2xl bg-white/70 backdrop-blur-sm ring-1 ring-white/80 shadow-[0_8px_24px_-16px_rgba(0,82,255,0.4)] px-4 py-5 flex items-center gap-3">
-                <span className="text-2xl sm:text-3xl">🏷️</span>
-                <span className="text-sm sm:text-base font-extrabold text-[#0F172A] leading-tight tracking-tight">
-                  Everyday
+              <div className="rounded-2xl bg-white/70 backdrop-blur-sm ring-1 ring-white/80 px-4 py-5 flex items-center gap-3">
+                <span className="text-2xl sm:text-3xl">🤝</span>
+                <span className="text-sm sm:text-base font-medium text-[#0F172A] leading-tight tracking-tight">
+                  Every order backs
                   <br />
-                  Low Prices*
+                  a local shopkeeper
                 </span>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <div className="relative z-10 flex flex-nowrap items-center gap-x-4 gap-y-2">
               {FEATURES.map((f) => (
                 <span
                   key={f}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-[#0F172A]"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0F172A] whitespace-nowrap"
                 >
                   <CheckIcon />
                   {f}
                 </span>
               ))}
             </div>
-            <p className="mt-3 text-[11px] font-medium text-[#64748B]">
-              *T&amp;C apply. Above a specific minimum order value.
-            </p>
           </div>
         </div>
       </div>
