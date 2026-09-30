@@ -13,6 +13,10 @@ import { AddressListScreen } from '../screens/address/AddressListScreen';
 import { CartScreen } from '../screens/cart/CartScreen';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
 import { CategoryDetailScreen } from '../screens/category-detail/CategoryDetailScreen';
+import { BreakfastEssentialsScreen } from '../screens/home/groceries/breakfast-essentials/BreakfastEssentialsScreen';
+import { KitchenEssentialsScreen } from '../screens/home/groceries/kitchen-essentials/KitchenEssentialsScreen';
+import { SnacksAndDrinksScreen } from '../screens/home/groceries/snacks-and-drinks/SnacksAndDrinksScreen';
+import { LocalBrandScreen } from '../screens/home/groceries/local-brands/LocalBrandScreen';
 import { CheckoutScreen } from '../screens/checkout/CheckoutScreen';
 import { ComingSoonScreen } from '../screens/coming-soon/ComingSoonScreen';
 import { ErrorScreen } from '../screens/error/ErrorScreen';
@@ -73,6 +77,10 @@ export function AppNavigator() {
       <Stack.Screen name="Purchase" component={PurchaseScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
+      <Stack.Screen name="BreakfastEssentials" component={BreakfastEssentialsScreen} />
+      <Stack.Screen name="KitchenEssentials" component={KitchenEssentialsScreen} />
+      <Stack.Screen name="SnacksAndDrinks" component={SnacksAndDrinksScreen} />
+      <Stack.Screen name="LocalPantryBrand" component={LocalBrandScreen} />
       <Stack.Screen name="StoreDetail" component={StoreDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />

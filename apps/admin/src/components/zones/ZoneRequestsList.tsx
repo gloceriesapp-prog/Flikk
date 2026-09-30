@@ -1,4 +1,4 @@
-// "Do you want Flikk in your place?" demand signal — a customer-app
+// "Do you want Gloceries in your place?" demand signal — a customer-app
 // upvote feed (ZoneRequest's own note in lib/types.ts on where this data
 // comes from), shown here sorted by upvote count so a founder can see
 // what to consider for a future zone at a glance, without it implying

@@ -3,9 +3,9 @@
 // Home/AllTabSections importing that same file, and ProfileScreen's own
 // hand-copied smaller variant with the version number added). Same slot/
 // convention as Instamart's own "instamart / Crafted with 💙 in Bengaluru,
-// India" block (reference), reworked for Flikk: a wordmark plus a tagline,
+// India" block (reference), reworked for Gloceries: a wordmark plus a tagline,
 // and a small hyperlocal callout underneath rather than a fabricated
-// "trending" claim — Flikk serves one zone (Kaup, outer Udupi, CLAUDE.md),
+// "trending" claim — Gloceries serves one zone (Kaup, outer Udupi, CLAUDE.md),
 // so leaning into that is more honest and more distinctive than inventing
 // a trend that isn't real.
 //
@@ -26,7 +26,7 @@ const APP_VERSION = packageJson.version;
 
 interface Props {
   variant?: 'large' | 'compact';
-  // TODO: no real Flikk LinkedIn/Twitter page exists yet — icons render as
+  // TODO: no real Gloceries LinkedIn/Twitter page exists yet — icons render as
   // disabled (no onPress) rather than linking to a fabricated URL. Wire up
   // + enable once real handles exist.
   showSocialLinks?: boolean;

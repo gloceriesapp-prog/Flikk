@@ -1,39 +1,23 @@
-// Single row inside CartScreen's items card (the white card itself, "N
-// items" header + dashed divider, lives in CartScreen.tsx — this is just one
-// row). One layout for every item — image | name/weight | stepper | price,
-// all one horizontal line, plus a "Save for later" row underneath the
-// weight that really adds/removes this item from the real account-backed
-// wishlist (api/wishlist.ts) — not local-only, the exact same store
-// ProductCardView's own heart icon and WishlistScreen already read.
-//
-// CartItem doesn't carry a full Product (no rating/localName — Cart never
-// needed those), so the Product handed to useWishlistStore.toggle is built
-// here from what CartItem actually has, with rating: 0/ratingCount: ''
-// for the rest — the exact same placeholder values api/products.ts's own
-// mapApiProduct already defaults every real product to (no rating system
-// exists yet, CLAUDE.md's own out-of-scope list), not a fabricated stand-in.
-//
-// Strikethrough original price only shows when the item has a real
-// discount (originalPrice set and higher than price).
-//
-// Thumbnail sits on a flat neutral gray (#F3F4F6), same tone the "Grab
-// these before you go" row's own image tiles use — deliberately NOT the
-// per-product bgColor pastel ProductCardView uses on Home (that read as
-// too colorful/inconsistent against this row's own gray-toned neutral
-// cards, per an explicit ask to drop it here).
-
-import { Add01Icon, Bookmark02Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
+import {
+  Add01Icon,
+  Bookmark02Icon,
+  MinusSignIcon,
+} from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
+import { RupeePrice } from '../../../components/RupeePrice';
+
 import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
-import { useCartStore, type CartItem } from '../../../store/useCartStore';
+import {
+  useCartStore,
+  type CartItem,
+} from '../../../store/useCartStore';
 import { useWishlistStore } from '../../../store/useWishlistStore';
 import type { Product } from '../../home/products/types';
 
-const IMAGE_TILE_BG = '#F3F4F6';
-
 const STEPPER_TINT = '#155DFC';
+const BLUE = '#155DFC';
 
 function cartItemToProduct(item: CartItem): Product {
   return {
@@ -57,74 +41,228 @@ interface Props {
 }
 
 export function CartItemRow({ item }: Props) {
-  const incrementItem = useCartStore((state) => state.incrementItem);
-  const decrementItem = useCartStore((state) => state.decrementItem);
-  const isSaved = useWishlistStore((state) => state.isWishlisted(item.id));
-  const toggleWishlist = useWishlistStore((state) => state.toggle);
+  const incrementItem = useCartStore(
+    (state) => state.incrementItem,
+  );
 
-  const lineTotal = item.price * item.quantity;
-  const hasDiscount = Boolean(item.originalPrice && item.originalPrice > item.price);
-  const originalLineTotal = hasDiscount ? item.originalPrice! * item.quantity : null;
+  const decrementItem = useCartStore(
+    (state) => state.decrementItem,
+  );
+
+  const isSaved = useWishlistStore(
+    (state) => state.isWishlisted(item.id),
+  );
+
+  const toggleWishlist = useWishlistStore(
+    (state) => state.toggle,
+  );
+
+  const lineTotal =
+    item.price * item.quantity;
+
+  const hasDiscount =
+    item.originalPrice != null &&
+    item.originalPrice > item.price;
+
+  const originalLineTotal = hasDiscount
+    ? item.originalPrice! * item.quantity
+    : null;
 
   return (
-    // items-start, not items-center — the "Save for later" row added below
-    // the weight makes the left text column taller than the 48px image, so
-    // centering the whole row against that taller block pushed the image
-    // down past the title's first line. Top-aligning here keeps image and
-    // title level regardless of how tall the text column grows; the
-    // stepper/price columns get their own self-center below so they still
-    // sit centered on the row overall, unaffected by this.
     <View className="flex-row items-start gap-3 py-3.5">
+
+      {/* IMAGE */}
       <View
-        className="relative h-16 w-16 overflow-hidden rounded-xl border border-gray-100"
-        style={{ backgroundColor: item.imageUrl ? IMAGE_TILE_BG : '#FFFFFF' }}
+        className={`
+    relative
+    h-[68px]
+    w-[68px]
+    overflow-hidden
+    rounded-2xl
+    border
+    border-gray-100
+    ${item.imageUrl
+            ? 'bg-[#F3F4F6]'
+            : 'bg-white'
+          }
+  `}
       >
         <Image
-          source={{ uri: item.imageUrl || PLACEHOLDER_IMAGE_URI }}
-          className={item.imageUrl ? 'h-full w-full p-2' : 'h-full w-full'}
-          resizeMode={item.imageUrl ? 'contain' : 'cover'}
+          source={{
+            uri: item.imageUrl || PLACEHOLDER_IMAGE_URI,
+          }}
+          className={
+            item.imageUrl
+              ? 'h-full w-full p-2'
+              : 'h-full w-full'
+          }
+          resizeMode={
+            item.imageUrl ? 'contain' : 'cover'
+          }
         />
       </View>
 
-      <View className="flex-1 gap-1">
-        <Text className="text-[13.5px] font-medium text-ink" numberOfLines={2}>
+
+      {/* PRODUCT INFO */}
+      <View className="min-w-0 flex-1 gap-1 pr-1">
+
+        <Text
+          numberOfLines={2}
+          className="
+            text-[14.5px]
+            font-semibold
+            leading-[19px]
+            text-ink
+          "
+        >
           {item.name}
         </Text>
-        <Text className="text-[12px] text-ink/50 font-medium">{item.weight}</Text>
 
-        <Pressable onPress={() => toggleWishlist(cartItemToProduct(item))} hitSlop={8} className="flex-row items-center gap-1 self-start">
-          <AppIcon icon={Bookmark02Icon} size={13} color={isSaved ? STEPPER_TINT : `${STEPPER_TINT}99`} fill={isSaved ? STEPPER_TINT : 'transparent'} />
-          <Text className="text-[11.5px] font-semibold" style={{ color: STEPPER_TINT }}>
-            {isSaved ? 'Saved for later' : 'Save for later'}
+        <Text
+          className="
+            text-[14px]
+            font-semibold
+            text-ink/50
+          "
+        >
+          {item.weight}
+        </Text>
+
+        {/* SAVE FOR LATER */}
+        <Pressable
+          onPress={() =>
+            toggleWishlist(
+              cartItemToProduct(item),
+            )
+          }
+          hitSlop={8}
+          className="
+            mt-0.5
+            flex-row
+            items-center
+            gap-1
+            self-start
+            active:opacity-60
+          "
+        >
+          <AppIcon
+            icon={Bookmark02Icon}
+            size={13}
+            color={
+              isSaved
+                ? STEPPER_TINT
+                : '#155DFC99'
+            }
+            fill={
+              isSaved
+                ? STEPPER_TINT
+                : 'transparent'
+            }
+          />
+
+          <Text className="text-[12px] font-semibold text-[#155DFC]">
+            {isSaved
+              ? 'Saved for later'
+              : 'Save for later'}
           </Text>
         </Pressable>
       </View>
 
-      <View className="flex-row items-center gap-1.5 self-center rounded-xl border border-[#155dfc] p-1 bg-white">
-        <Pressable
-          onPress={() => decrementItem(item.id)}
-          hitSlop={6}
-          className="h-6 w-6 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${STEPPER_TINT}0A` }}
-        >
-          <AppIcon icon={MinusSignIcon} size={12} color={STEPPER_TINT} />
-        </Pressable>
-        <Text className="min-w-[16px] text-center text-[13px] font-bold text-[#155dfc]">
-          {item.quantity}
-        </Text>
-        <Pressable
-          onPress={() => incrementItem(item.id)}
-          hitSlop={6}
-          className="h-6 w-6 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${STEPPER_TINT}0A` }}
-        >
-          <AppIcon icon={Add01Icon} size={12} color={STEPPER_TINT} />
-        </Pressable>
-      </View>
 
-      <View className="items-end gap-0.5 self-center">
-        {originalLineTotal && <Text className="text-xs text-ink/40 line-through font-semibold">₹{originalLineTotal}</Text>}
-        <Text className="text-[16px] font-semibold tabular-nums text-ink">₹{lineTotal}</Text>
+      {/* RIGHT SIDE */}
+      <View className="items-end gap-2">
+
+        {/* QUANTITY STEPPER */}
+       {/* STEPPER */}
+        <View
+          className="
+            flex-row
+            items-center
+            rounded-xl
+            border
+            border-[#155DFC]/25
+            bg-[#155DFC]/[0.04]
+            p-0.5
+          "
+        >
+          {/* MINUS */}
+          <Pressable
+            onPress={() =>
+              decrementItem(item.id)
+            }
+            hitSlop={8}
+            className="
+              h-7
+              w-7
+              items-center
+              justify-center
+              rounded-[10px]
+              active:bg-[#155DFC]/10
+            "
+          >
+            <AppIcon
+              icon={MinusSignIcon}
+              size={13}
+              color={BLUE}
+            />
+          </Pressable>
+
+          {/* QUANTITY */}
+          <Text
+            className="
+              min-w-[24px]
+              text-center
+              text-[13px]
+              font-bold
+              text-[#155DFC]
+            "
+          >
+            {item.quantity}
+          </Text>
+
+          {/* PLUS */}
+          <Pressable
+            onPress={() =>
+              incrementItem(item.id)
+            }
+            hitSlop={8}
+            className="
+              h-7
+              w-7
+              items-center
+              justify-center
+              rounded-[10px]
+              bg-[#155DFC]
+              active:bg-[#124FD8]
+            "
+          >
+            <AppIcon
+              icon={Add01Icon}
+              size={13}
+              color="#FFFFFF"
+            />
+          </Pressable>
+        </View>
+
+
+        {/* PRICE */}
+        <View className="items-end">
+
+          {/* CURRENT PRICE */}
+          <RupeePrice amount={lineTotal} size={16} />
+
+          {/* MRP */}
+          {originalLineTotal != null && (
+            <View className="mt-0.5 flex-row items-center gap-1">
+              <Text className="text-[10px] font-medium text-ink/40">
+                MRP
+              </Text>
+
+              <RupeePrice amount={originalLineTotal} size={11} strike color="#101C1066" />
+            </View>
+          )}
+        </View>
+
       </View>
     </View>
   );

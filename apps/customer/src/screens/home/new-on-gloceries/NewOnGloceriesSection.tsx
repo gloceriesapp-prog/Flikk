@@ -1,4 +1,4 @@
-// "New on Flikk" — Home's "All" tab, near the end (discovery-only, least
+// "New on Gloceries" — Home's "All" tab, near the end (discovery-only, least
 // urgent, per the agreed Home section order). Reuses StoreTileCard
 // (home/components/, shared with NearbyStoresSection/
 // TopRatedStoresSection) — this section owns nothing visually beyond its
@@ -11,20 +11,26 @@
 
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { StoreTileCard } from '../components/StoreTileCard';
-import { useNewOnFlikk } from './useNewOnFlikk';
+import { SectionTitle } from '../components/SectionTitle';
+import { useNewOnGloceries } from './useNewOnGloceries';
 import type { AppStackParamList } from '../../../navigation/types';
 
-export function NewOnFlikkSection() {
+interface Props {
+  title?: string;
+  subtitle?: string | null;
+}
+
+export function NewOnGloceriesSection({ title = 'New on Gloceries', subtitle }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const { data: stores = [] } = useNewOnFlikk();
+  const { data: stores = [] } = useNewOnGloceries();
 
   if (stores.length === 0) return null;
 
   return (
     <View className="pt-8">
-      <Text className="mb-4 px-5 text-[18.5px] font-semibold text-black/80">New on Flikk</Text>
+      <SectionTitle subtitle={subtitle}>{title}</SectionTitle>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 px-5">
         {stores.map((store) => (

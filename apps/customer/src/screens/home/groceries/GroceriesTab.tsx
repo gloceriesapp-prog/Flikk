@@ -1,42 +1,33 @@
-// Everything shown when the "Groceries" category tab is selected on Home —
-// a top banner slot (reserved, not built yet — see this component's own
-// note below), sub-category grid, then a promo poster. See HomeScreen.tsx
-// for how category selection routes here. Sub-category grid comes from
-// ../category-tab/ (GROCERY_SUBCATEGORIES is category-tile data — labels
-// and icons, not product cards, so it's unaffected by the product-card
-// dummy-data removal below). Poster is real admin data (Home Categories ->
-// "Groceries" tab's own "Ads & posters" section), image only — no
-// hardcoded dummy image anymore (GroceriesDealImage.tsx, its old fixed
-// "deal1.jpeg", is gone) and no text overlay; the section renders only
-// when a founder has actually added one.
-//
-// BrandSpotlightSection ("Snack Stash") and the "Straight from farms"
-// teaser row (FARM_PRODUCTS) are both gone — per an explicit ask to strip
-// every product-card dummy dataset out of the app. Neither had a real
-// backing feed (no "featured brand"/"farm produce" concept exists in the
-// schema), so removing the dummy data means removing the section, not
-// swapping in a fake-real substitute. Re-add once a real source exists
-// (e.g. an admin/partner-managed "featured" flag on real products).
-
+// Home’s Groceries tab: discovery, local shops and address-scoped food collections.
 import { View } from 'react-native';
-import { PosterBanner } from '../category-tab/components/PosterBanner';
 import { SubCategoryGrid } from '../category-tab/components/SubCategoryGrid';
-import type { RemoteHomeTabBanner } from '../data/useHomeTabs';
+import { BestSellersSection } from './best-sellers/BestSellersSection';
 import { GROCERY_SUBCATEGORIES } from './data';
+import type { RemoteHomeTabBanner } from '../data/useHomeTabs';
+import { GroceryPoster } from './poster/GroceryPoster';
+import { GroceryOffersSection } from './grocery-offers/GroceryOffersSection';
+import { ShopsYouKnowSection } from './shops-you-know/ShopsYouKnowSection';
+import { KitchenEssentialsSection } from './kitchen-essentials/KitchenEssentialsSection';
+import { BreakfastEssentialsSection } from './breakfast-essentials/BreakfastEssentialsSection';
+import { SnacksAndDrinksSection } from './snacks-and-drinks/SnacksAndDrinksSection';
+import { LocalBrandsSection } from './local-brands/LocalBrandsSection';
+import { PicklesSaucesSpreadsSection } from './pickles-sauces-spreads/PicklesSaucesSpreadsSection';
+import { BrandFooter } from '../../../components/BrandFooter';
 
-interface Props {
-  banner?: RemoteHomeTabBanner;
-}
-
-export function GroceriesTab({ banner }: Props) {
+export function GroceriesTab({ banner }: { banner?: RemoteHomeTabBanner }) {
   return (
-    <View className="pb-32">
-      {/* TODO: top banner — reserved slot, per an explicit "we will add it
-          later" ask. Nothing renders here yet on purpose; not the same
-          banner prop as PosterBanner below (that one's already real admin
-          data, further down the tab). */}
-      {banner && <PosterBanner imageUri={banner.imageUrl} />}
+    <View>
       <SubCategoryGrid items={GROCERY_SUBCATEGORIES} />
+      <BestSellersSection />
+      <GroceryPoster banner={banner} />
+      <GroceryOffersSection />
+      <ShopsYouKnowSection />
+      <KitchenEssentialsSection />
+      <BreakfastEssentialsSection />
+      <SnacksAndDrinksSection />
+      <LocalBrandsSection />
+      <PicklesSaucesSpreadsSection />
+      <BrandFooter />
     </View>
   );
 }

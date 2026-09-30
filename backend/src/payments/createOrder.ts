@@ -32,7 +32,7 @@ export async function createOrder(req: AuthedRequest, res: Response, next: NextF
       amount: Math.round(record.total * 100), // paise — trust the stored total, not the client-supplied amount
       currency: 'INR',
       receipt: record.id,
-      notes: tripId ? { flikk_trip_id: record.id } : { flikk_order_id: record.id },
+      notes: tripId ? { gloceries_trip_id: record.id } : { gloceries_order_id: record.id },
     });
 
     res.status(201).json({

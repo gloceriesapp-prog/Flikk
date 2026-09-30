@@ -2,14 +2,10 @@
 // specs/00-foundation/auth-and-roles.md. This screen only requests the OTP;
 // verification happens on the next screen.
 //
-// Redesigned again — back to a single full-bleed hero illustration up top
-// (the product-tile grid from the previous pass is gone), with a Skip
-// button floating over it, per an explicit ask matching a Zepto-style
-// reference. HERO_IMAGE_URI is a placeholder (order-alert.png, the last
-// real asset given) — the actual image requested was a Pinterest pin PAGE
-// url, not a direct image file, which can't be used as an <Image> source;
-// swap in the real i.pinimg.com/... link (Pinterest's own "copy image
-// address") once that's available.
+// Redesigned: a fixed-size hero image pinned to the top (fixed height, full
+// width, cover — no stretch, no measure-and-shrink animation), a Skip button
+// floating over it, then the sheet below (headline, phone row, Continue,
+// terms). HERO_IMAGE_URI points at the real customer-update.png asset.
 //
 // Skip now really works — useAuthStore's own continueAsGuest() sets
 // isGuest, which RootNavigator.tsx treats the same as a real accessToken
@@ -29,12 +25,10 @@
 // shape, see that file's own note), Continue, terms line below the
 // button.
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
-import { KeyboardAvoidingView, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { AppImage as Image } from '../components/AppImage';
-import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp } from '../api/auth';
@@ -47,37 +41,22 @@ import type { AuthStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 const PHONE_LENGTH = 10;
-// Placeholder — see this file's own header note on why the actual
-// requested Pinterest-pin URL can't be used directly.
-const HERO_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/login-image.png';
+// Hero pinned to the top at the image's OWN proportions: full device width,
+// height derived from the image's real width/height (aspectRatio), so it's
+// shown exactly as authored — no stretch, no crop. The real ratio comes from
+// expo-image's onLoad; HERO_FALLBACK_RATIO just reserves a sensible box for
+// the split-second before the image reports its size (avoids a layout jump).
+const HERO_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/app-images/app-cust.png';
+const HERO_FALLBACK_RATIO = 1; // width:height, replaced once the image loads
 
 export function LoginScreen({ navigation }: Props) {
   const continueAsGuest = useAuthStore((s) => s.continueAsGuest);
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // expo-image's Android backend doesn't always compute "cover" scaling
-  // correctly from pure position:absolute inset styling (StyleSheet.
-  // absoluteFill sets top/left/right/bottom: 0, but no explicit numeric
-  // width/height) — the hero rendered narrower than its container, with
-  // visible side margins, Android-only (iOS handled the same absoluteFill
-  // styling fine). Measuring the actual box and handing the Image explicit
-  // pixel dimensions instead of relying on inset-only sizing fixes it.
-  // Captured ONCE (measuredHero ref guards against the shrink animation
-  // below re-firing onLayout with a smaller size and corrupting this) —
-  // this is the image's real full-size dimensions, not whatever its
-  // current shrunk-for-keyboard height is.
-  const [heroSize, setHeroSize] = useState({ width: 0, height: 0 });
-  const measuredHero = useRef(false);
-  // Real keyboard height, animated — used to shrink the hero container by
-  // exactly that much as the keyboard opens (this app deliberately runs
-  // Android in 'pan' mode, see app.config.js's own note, so the OS never
-  // resizes the window itself; nothing shrinks the hero unless this does
-  // it manually). Sign convention isn't guaranteed, hence Math.abs below.
-  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
-  const heroAnimatedStyle = useAnimatedStyle(() => ({
-    height: heroSize.height > 0 ? Math.max(heroSize.height - Math.abs(keyboardHeight.value), 80) : undefined,
-  }));
+  // The image's true width:height, learned from expo-image's onLoad. Drives
+  // the hero box height so it renders at the image's own proportions.
+  const [heroRatio, setHeroRatio] = useState<number | null>(null);
 
   const canContinue = phone.length === PHONE_LENGTH && !loading;
 
@@ -121,119 +100,84 @@ export function LoginScreen({ navigation }: Props) {
     // either overshot — 'position' on the whole screen — or did nothing —
     // 'height' with no resize signal to react to).
     <View className="flex-1 bg-white">
-        {/* Dark icons — the actual hero photo's own top edge is light
-            (near-white), not dark, so "light" (white icons) was reading
-            as barely-visible white-on-white. Matching what the image
-            genuinely looks like, not what an earlier placeholder used to.
-            Wrapper bg switched from bg-ink to bg-white for the same
-            reason — no dark flash behind a light image while it loads. */}
-        <StatusBar style="dark" />
+      {/* Dark icons — the hero's top edge is light, so white icons would
+            vanish. */}
+      <StatusBar style="dark" />
 
-        {/* flex-1 only until the first real measurement lands (heroSize),
-            then heroAnimatedStyle's explicit height takes over — a plain
-            flex-1 box has no fixed height for the shrink animation above
-            to animate FROM, so the very first layout has to be measured
-            unshrunk before any keyboard interaction can happen. overflow
-            hidden clips the (fixed-size, never-resized) Image's bottom
-            edge as this container shrinks — cheaper and simpler than
-            re-sizing the Image itself every animation frame. */}
-        {/* Inline style, not className, for flex:1 here — Animated.View
-            (react-native-reanimated's own wrapped component, not a plain
-            host View) isn't NativeWind-patched the same way a bare View
-            is, same gotcha this file's own LinearGradient/BlurView usage
-            elsewhere works around. className="flex-1" was silently
-            ignored, which meant this container never actually sized
-            itself before the first measurement — heroSize came back
-            near-zero, and everything downstream (the shrink animation,
-            the Image's explicit dimensions) was built on that broken
-            base. */}
-        <Animated.View
-          style={[{ flex: heroSize.height === 0 ? 1 : undefined, overflow: 'hidden' }, heroSize.height > 0 && heroAnimatedStyle]}
-          onLayout={(e) => {
-            if (measuredHero.current) return;
-            measuredHero.current = true;
-            setHeroSize(e.nativeEvent.layout);
+      {/* Hero pinned to the top, rendered at the image's OWN proportions:
+            full width, height = width ÷ (image ratio). resizeMode "contain" so
+            the whole image shows with no stretch and no crop. */}
+      <View className="w-full overflow-hidden">
+        <Image
+          source={{ uri: HERO_IMAGE_URI }}
+          onLoad={(e) => {
+            const { width, height } = e.source;
+            if (width > 0 && height > 0) setHeroRatio(width / height);
+          }}
+          style={{ width: '100%', aspectRatio: heroRatio ?? HERO_FALLBACK_RATIO }}
+          resizeMode="contain"
+        />
+
+        {/* Skip — floats over the image, top-right. continueAsGuest() flips
+              RootNavigator to the app shell without a session. */}
+        <Pressable onPress={continueAsGuest} className="absolute right-5 top-safe-offset-4 rounded-full bg-[#FFFFFF] px-5 py-2.5">
+          <Text className="text-[15px] font-medium text-black">Skip</Text>
+        </Pressable>
+      </View>
+
+      {/* Android gets no behavior (pan mode pans to the focused field on its
+            own); iOS pads for the keyboard. flex-1 so the white sheet fills all
+            remaining height below the hero — no content-hugging card, the whole
+            lower screen is solid white. */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+        {/* White sheet lifts UP over the hero's bottom edge (-mt) with big
+              rounded top corners + a soft upward shadow, so the image reads as
+              tucked behind a card rather than butting into a flat panel. flex-1
+              stretches it to the bottom of the screen; pb-safe keeps content
+              clear of the home indicator. Later sibling than the hero, so it
+              draws on top of it. */}
+        <View
+          className="-mt-8 flex-1 gap-5 rounded-t-[34px] bg-white px-6 pb-safe-offset-6 pt-6"
+          style={{
+            shadowColor: '#000',
+            shadowOpacity: 0.08,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: -4 },
+            elevation: 16,
           }}
         >
-          {heroSize.width > 0 && (
-            <Image
-              source={{ uri: HERO_IMAGE_URI }}
-              style={{ position: 'absolute', top: 0, left: 0, width: heroSize.width, height: heroSize.height }}
-              resizeMode="cover"
-            />
-          )}
+          {/* Grab handle — pure polish, signals a sheet. */}
+          <View className="mb-1 h-1.5 w-12 self-center rounded-full bg-gray-200" />
 
-          {/* Top scrim — a soft white wash right under the notch/status
-              bar, dissolving to fully transparent by mid-fade so it reads
-              as depth (the image gently receding behind the status row)
-              rather than washing out the artwork. Kept deliberately light
-              (peak 0.3 alpha, not the bottom mask's near-opaque White) —
-              this one's pure polish, not solving a legibility problem
-              (StatusBar's already dark-on-light and reads fine on its
-              own). Same white-alpha-not-'transparent' rule as the bottom
-              mask. */}
-          <LinearGradient
-            colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0)']}
-            locations={[0, 1]}
-            pointerEvents="none"
-            style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 90 }}
-          />
-
-          {/* Bottom fade mask — the image used to end in a hard cut line
-              exactly where the white sheet starts, which read as two
-              unrelated layers stacked rather than one composed screen.
-              Fading the image's own bottom edge into white first lets it
-              dissolve into the sheet instead of butting against it.
-              White-alpha stops throughout, not the literal string
-              'transparent' — LinearGradient parses that as rgba(0,0,0,0)
-              (black, fully see-through), so a fade toward white would
-              cross through a muddy gray/black midtone instead of a clean
-              white dissolve (same fix BottomNavBar.tsx's own fade
-              gradient already documents). */}
-          <LinearGradient
-            colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.9)', '#FFFFFF']}
-            locations={[0, 0.45, 0.75, 1]}
-            pointerEvents="none"
-            style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 110 }}
-          />
-
-          {/* Skip — floats over the image, top-right, matching the
-              reference. Real now: continueAsGuest() flips RootNavigator
-              over to the app shell without a session (see this file's
-              own header note). */}
-          <Pressable onPress={continueAsGuest} className="absolute right-5 top-safe-offset-4 rounded-full bg-gray-200 px-5 py-2.5">
-            <Text className="text-[15px] font-medium text-black">Skip</Text>
-          </Pressable>
-        </Animated.View>
-
-        {/* Android gets no behavior here (undefined = no-op) — the hero's
-            own shrink animation above already makes room for the
-            keyboard; adding 'position' on top of that would shrink AND
-            translate, overshooting past the keyboard the same way the
-            earlier whole-screen 'position' attempt did. iOS still needs
-            'padding' since it has no equivalent manual shrink. */}
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View className="gap-5 bg-white px-6 pb-6 pt-7">
-            {/* Left-aligned headline — no lime accent word anymore, per an
+          {/* Left-aligned headline — no lime accent word anymore, per an
                 explicit ask to drop green from this screen entirely; the
                 whole line is just bold black now. */}
-            <Text className="text-2xl font-semibold leading-8 text-ink">Groceries to gadgets, done.</Text>
+          <Text className="text-[26px] font-semibold leading-8 text-ink">From local shops, to you</Text>
 
-            <PhoneInput value={phone} onChangeText={setPhone} autoFocus />
-            {error && <Text className="text-center text-[13px] text-danger">{error}</Text>}
+          {/* Subtitle right under the title, above the phone field — one
+                field serves both cases (new number signs up, known number logs
+                in), so "Log in or sign up" is honest, not two separate flows. */}
+          <Text className="-mt-4 text-[15px] font-medium text-ink/50">Log in or sign up</Text>
 
-            <PrimaryButton label="Continue" onPress={handleContinue} disabled={!canContinue} loading={loading} variant="blue" />
+          <PhoneInput value={phone} onChangeText={setPhone} autoFocus />
+          {error && <Text className="text-center text-[13px] text-danger">{error}</Text>}
 
-            {/* Terms line BELOW the button — this wireframe's own order,
+          <PrimaryButton label="Continue" onPress={handleContinue} disabled={!canContinue} loading={loading} variant="blue" />
+
+          {/* Terms line BELOW the button — this wireframe's own order,
                 flipped from an earlier pass that had it above. */}
-            <Text className="text-center text-xs text-ink/60">
-              By continuing, you agree to our{' '}
-              <Text className="font-semibold opacity-100">Terms of Service</Text> and{' '}
-              <Text className="font-semibold opacity-100">Privacy Policy</Text>
+          <Text className="text-center text-[11px] leading-5 text-ink/45 font-medium">
+            By continuing, you acknowledge our{' '}
+            <Text className="font-medium text-ink/75">
+              Terms
+            </Text>{' '}
+            and{' '}
+            <Text className="font-medium text-ink/75">
+              Privacy Policy
             </Text>
-          </View>
-          <View className="bg-white pb-safe" />
-        </KeyboardAvoidingView>
-      </View>
+          </Text>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }

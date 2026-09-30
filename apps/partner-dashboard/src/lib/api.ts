@@ -1,4 +1,4 @@
-// Thin fetch wrapper for the real Flikk backend — same /partner/* API the
+// Thin fetch wrapper for the real Gloceries backend — same /partner/* API the
 // mobile partner app already uses (backend/src/routes/partner.ts), same
 // bearer-token auth (backend/src/routes/auth.ts's phone OTP), just called
 // from a browser instead of React Native. Refresh-on-401 mirrors
@@ -101,7 +101,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   if (!res.ok) {
     // Backend's errorHandler (backend/src/middleware/errorHandler.ts) sends
-    // { error: { code, message } } — same shape @flikk/shared's client
+    // { error: { code, message } } — same shape @gloceries/shared's client
     // parses for the mobile apps. This used to read the old flat
     // { error: string, code: string } shape, which meant every real error
     // here rendered as the literal string "[object Object]" instead of the

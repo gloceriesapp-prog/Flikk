@@ -1,4 +1,4 @@
-import { ArrowRight01Icon, CheckmarkCircle02Icon, Clock01Icon, DeliveryTruck01Icon, Time03Icon } from '@hugeicons/core-free-icons';
+import { Alert02Icon, ArrowRight01Icon, CheckmarkCircle02Icon, Clock01Icon, DeliveryTruck01Icon, Time03Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { useEffect } from 'react';
 import type { IconSvgElement } from '@hugeicons/react-native';
@@ -21,6 +21,9 @@ const STATUS_BADGE: Partial<Record<PartnerOrderStatus, { label: string; icon: Ic
   packed: { label: 'Awaiting pickup', icon: CheckmarkCircle02Icon, color: colors.limeDeep },
   out_for_delivery: { label: 'Out for delivery', icon: DeliveryTruck01Icon, color: colors.gold },
   delivered: { label: 'Delivered', icon: CheckmarkCircle02Icon, color: colors.success },
+  // Danger token — the only terminal-negative state on a card. Rider
+  // couldn't complete the drop; stock left the shop and didn't land.
+  failed: { label: 'Delivery failed', icon: Alert02Icon, color: colors.danger },
 };
 
 // Three-tier urgency on the 10-minute accept window (ORDER_ACCEPT_WINDOW_MS)

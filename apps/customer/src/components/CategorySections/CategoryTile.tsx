@@ -24,7 +24,7 @@ export function CategoryTile({ category }: Props) {
           photo — a plain white tile read as flat/cheap; a warm-neutral gray
           reads closer to how Blinkit/Instamart's own category tiles look. */}
       <View
-        className="aspect-[4/5] items-center justify-center overflow-hidden rounded-2xl"
+        className="aspect-[4/4] items-center justify-center overflow-hidden rounded-2xl"
         style={{ backgroundColor: '#EEF6FD' }}
       >
         {/* Real category photo (admin's own Categories screen ->
@@ -39,7 +39,7 @@ export function CategoryTile({ category }: Props) {
           <Image source={{ uri: category.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="contain" />
         </View>
       </View>
-      <Text className="text-center text-sm font-semibold leading-4 text-black/80" numberOfLines={2}>
+      <Text className="text-center text-[13px] font-bold leading-4 text-black/80" numberOfLines={2}>
         {category.name}
       </Text>
     </Pressable>

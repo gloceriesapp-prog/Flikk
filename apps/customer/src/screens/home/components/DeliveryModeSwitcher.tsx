@@ -1,29 +1,20 @@
 // Right side of the header row, next to LocationSelector — one pill
 // (GlassView, real iOS 26 Liquid Glass via expo-glass-effect, falls back
 // to a plain translucent View on Android/web since the library's own
-// fallback is an unstyled View) holding three shortcuts: Liked products
-// (selected, solid-ink sub-box), Orders, Profile — replaces the earlier
-// delivery-mode icon set and the separate always-visible ProfileAvatarButton
-// circle (profile now lives inside this pill instead).
+// fallback is an unstyled View) holding just the Profile shortcut now.
+// Liked-products (heart) + Orders (clipboard) moved out to the search bar's
+// own right-edge glass pill (HomeSearchBar.tsx) per an explicit ask —
+// this top pill is profile-only.
 //
-// Heart navigates to WishlistScreen (screens/wishlist/), clipboard
-// navigates to ShoppingListScreen (screens/shopping-list/) — truck stays
-// UI-only (no destination screen yet). The person icon navigates to
-// ProfileScreen (screens/profile/), a real account + settings screen.
+// The person icon navigates to ProfileScreen (screens/profile/), a real
+// account + settings screen.
 //
-// colorScheme="dark" + white icons (not ink) — HomeHeader's background is
-// one of categoryHeaderGradients.ts's own dark gradients (deep charcoal/
-// aubergine for 'all', etc.), not a light pastel fill — an earlier version
-// of this comment claimed otherwise and the icon colors were picked to
-// match that stale claim, which is why clipboard/person were reading as
-// near-invisible dark-on-dark (real bug, not a design choice — ink at any
-// opacity disappears against a dark glass pill). White at reduced opacity
-// is the correct muted-but-visible treatment against a dark backdrop, same
-// convention BottomNavBar.tsx already uses for its own glass pill icons.
-// The Android/web fallback (GlassView renders a plain View there) got a
-// dark translucent background + a soft light border to match.
+// colorScheme follows `light`: the header is a light pastel gradient now
+// (categoryHeaderGradients.ts), so light glass + ink icon. The Android/web
+// fallback (GlassView renders a plain View there) gets a matching
+// translucent background + soft border.
 
-import { ClipboardListIcon, HeartIcon, UserIcon } from '@hugeicons/core-free-icons';
+import { UserIcon } from '@hugeicons/core-free-icons';
 import { GlassView } from 'expo-glass-effect';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -36,7 +27,6 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     borderRadius: 999,
     padding: 6,
     // The native blur layer under GlassView renders past its own
@@ -47,8 +37,10 @@ const styles = StyleSheet.create({
   },
 });
 
-export function DeliveryModeSwitcher() {
+export function DeliveryModeSwitcher({ light = false }: { light?: boolean }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+
+  const iconColor = light ? colors.ink : '#FFFFFFCC';
 
   return (
     // GlassView is a native module like LinearGradient elsewhere in this
@@ -57,28 +49,17 @@ export function DeliveryModeSwitcher() {
     <GlassView
       glassEffectStyle="regular"
       isInteractive
-      colorScheme="dark"
+      colorScheme={light ? 'light' : 'dark'}
       style={[
         styles.pill,
-        Platform.OS !== 'ios' && { backgroundColor: 'rgba(20,20,20,0.35)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
+        Platform.OS !== 'ios' &&
+          (light
+            ? { backgroundColor: 'rgba(255,255,255,0.45)', borderWidth: 1, borderColor: 'rgba(16,28,16,0.12)' }
+            : { backgroundColor: 'rgba(20,20,20,0.35)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }),
       ]}
     >
-      {/* Heart stays on a solid white sub-box (the "selected/primary"
-          treatment) regardless of light/dark pill — ink reads fine on
-          white either way, this one was never the contrast bug. */}
-      <Pressable
-        className="h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm shadow-black/10"
-        onPress={() => navigation.navigate('Wishlist')}
-      >
-        <AppIcon icon={HeartIcon} size={18} color={colors.ink} strokeWidth={1.8} />
-      </Pressable>
-
-      <Pressable hitSlop={6} className="px-0.5" onPress={() => navigation.navigate('ShoppingList')}>
-        <AppIcon icon={ClipboardListIcon} size={19} color="#FFFFFFCC" strokeWidth={1.8} />
-      </Pressable>
-
-      <Pressable hitSlop={6} className="pr-1" onPress={() => navigation.navigate('Profile')}>
-        <AppIcon icon={UserIcon} size={19} color="#FFFFFFCC" strokeWidth={1.8} />
+      <Pressable hitSlop={6} className="h-9 w-9 items-center justify-center" onPress={() => navigation.navigate('Profile')}>
+        <AppIcon icon={UserIcon} size={19} color={iconColor} strokeWidth={1.8} />
       </Pressable>
     </GlassView>
   );

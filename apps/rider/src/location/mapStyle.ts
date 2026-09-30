@@ -1,7 +1,7 @@
 // Google Maps JSON style — a flat, desaturated gray look, same family
 // apps/customer's own LocationSearchScreen uses (copied, not shared — see
 // specs/00-foundation/repo-structure.md), so the delivery map reads as one
-// consistent Flikk visual language instead of default Google Maps'
+// consistent Gloceries visual language instead of default Google Maps'
 // saturated greens/yellows/blues competing with the rider/customer pins.
 // `customMapStyle` only has any effect with `provider={PROVIDER_GOOGLE}`
 // (react-native-maps) — Apple Maps ignores it entirely, which is fine

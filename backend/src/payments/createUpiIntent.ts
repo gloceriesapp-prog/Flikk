@@ -53,12 +53,12 @@ export async function createUpiIntent(req: AuthedRequest, res: Response, next: N
 
     const { data: customer } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
 
-    // notes key differs (flikk_order_id vs flikk_trip_id) so webhook.ts's
+    // notes key differs (gloceries_order_id vs gloceries_trip_id) so webhook.ts's
     // own payment.captured handler knows which table to write
     // razorpay_payment_id onto — a trip's own payment also cascades from
     // there onto every child order, same as verifyPayment.ts's already-
     // established Standard Checkout cascade.
-    const notes: Record<string, string> = tripId ? { flikk_trip_id: record.id } : { flikk_order_id: record.id };
+    const notes: Record<string, string> = tripId ? { gloceries_trip_id: record.id } : { gloceries_order_id: record.id };
     const razorpayOrder = await razorpay.orders.create({
       amount: Math.round(record.total * 100),
       currency: 'INR',

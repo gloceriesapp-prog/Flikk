@@ -33,11 +33,20 @@ import { useLocationStore } from '../../../store/useLocationStore';
 interface Props {
   onPress: () => void;
   isClosed?: boolean;
+  // 'all' tab = light pastel header → dark text/icons; every other tab is a
+  // dark gradient → white text/icons (HomeHeader.tsx's own note).
+  light?: boolean;
 }
 
-export function LocationSelector({ onPress, isClosed = false }: Props) {
+export function LocationSelector({ onPress, isClosed = false, light = false }: Props) {
   const location = useLocationStore((s) => s.location);
   const label = location?.addressLabel || location?.city || 'Set your location';
+
+  // On the light pastel 'all' header, text/icons are near-black; on every
+  // dark-gradient tab they stay white.
+  const primaryText = light ? 'text-black' : 'text-white';
+  const iconColor = light ? '#101C10' : '#FFFFFF';
+  const navColor = light ? 'rgba(16,28,16,0.6)' : 'rgba(255,255,255,0.6)';
 
   return (
     <Pressable onPress={onPress} className="max-w-[230px]">
@@ -46,18 +55,18 @@ export function LocationSelector({ onPress, isClosed = false }: Props) {
             implies "this is your live delivery point" and the chevron
             implies "tap to pick a different one right now", neither of
             which reads right next to a closed-hours statement. */}
-        {!isClosed && (
-          <AppIcon icon={Navigation03Icon} size={12} color="rgba(255,255,255,0.6)" fill="rgba(255,255,255,0.6)" strokeWidth={0} />
-        )}
-        <Text className="text-base font-medium text-white/60">
-          {isClosed ? `Opens ${REOPEN_TIME_LABEL} tomorrow` : 'Delivering to'}
+        {/* {!isClosed && (
+          <AppIcon icon={Navigation03Icon} size={12} color={navColor} fill={navColor} strokeWidth={0} />
+        )} */}
+        <Text className={`text-2xl font-extrabold ${primaryText}`}>
+          {isClosed ? `Opens ${REOPEN_TIME_LABEL} tomorrow` : '20 minutes'}
         </Text>
       </View>
       <View className="flex-row items-center gap-1">
-        <Text className="text-lg font-semibold text-white" numberOfLines={1}>
+        <Text className={`text-lg font-semibold ${primaryText}`} numberOfLines={1}>
           {isClosed ? 'Closed for now' : label}
         </Text>
-        {!isClosed && <AppIcon icon={ChevronDownIcon} size={16} color='#FFFFFF' strokeWidth={2.2} />}
+        {!isClosed && <AppIcon icon={ChevronDownIcon} size={16} color={iconColor} strokeWidth={2.2} />}
       </View>
     </Pressable>
   );

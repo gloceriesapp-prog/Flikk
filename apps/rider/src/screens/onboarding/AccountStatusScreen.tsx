@@ -88,7 +88,7 @@ export function AccountStatusScreen() {
         <View className="items-center gap-2">
           <Text className="text-center text-xl font-bold text-ink">This number isn&apos;t registered as a rider</Text>
           <Text className="max-w-[300px] text-center text-sm font-medium text-ink/60">
-            Contact Flikk ops to get this phone number set up as a rider account, then come back and log in again.
+            Contact Gloceries ops to get this phone number set up as a rider account, then come back and log in again.
           </Text>
         </View>
         <Pressable onPress={() => void clear()} className="rounded-full bg-ink px-6 py-3.5">

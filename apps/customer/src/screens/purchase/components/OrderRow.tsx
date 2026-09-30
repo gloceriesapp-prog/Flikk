@@ -60,7 +60,7 @@ export function OrderRow({ order, onPress }: Props) {
   });
 
   return (
-    <View className="mb-3 rounded-2xl bg-[#F7F8FA] p-3.5">
+    <View className="mb-3 rounded-2xl bg-[#FFFFFF] p-3.5">
       {/* Row 1: photo stack + item count on the left, the status pill
           pinned to the right end of the SAME line. Row 2: "Arriving on…"
           on the left, the expand arrow pinned to the right end of THAT

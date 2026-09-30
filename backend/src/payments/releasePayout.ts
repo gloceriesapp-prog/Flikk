@@ -49,7 +49,7 @@ export async function releasePayout(
       purpose: 'payout',
       queue_if_low_balance: true,
       reference_id: referenceId,
-      narration: 'Flikk weekly settlement',
+      narration: 'Gloceries weekly settlement',
     }),
   });
   const data = (await res.json()) as RazorpayPayoutResponse;

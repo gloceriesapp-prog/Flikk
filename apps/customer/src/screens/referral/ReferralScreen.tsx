@@ -36,7 +36,7 @@ export function ReferralScreen({ navigation }: Props) {
   async function handleShare() {
     if (!codeData) return;
     await Share.share({
-      message: `Try Flikk — order from local kirana stores near you. Use my invite code ${codeData.code} when you sign up.`,
+      message: `Try Gloceries — order from local kirana stores near you. Use my invite code ${codeData.code} when you sign up.`,
     });
   }
 
@@ -73,7 +73,7 @@ export function ReferralScreen({ navigation }: Props) {
           <View className="h-14 w-14 items-center justify-center rounded-full bg-lime-soft">
             <AppIcon icon={UserAdd01Icon} size={24} color={colors.ink} strokeWidth={1.6} />
           </View>
-          <Text className="text-center text-base font-semibold text-ink">Share Flikk with a friend</Text>
+          <Text className="text-center text-base font-semibold text-ink">Share Gloceries with a friend</Text>
           <Text className="text-center text-sm text-ink/50">Send them your invite code below.</Text>
 
           {isCodeLoading ? (

@@ -20,7 +20,7 @@ const STATUS_STYLE: Record<RefundOrder['refundStatus'], string> = {
 };
 
 // Rider cancels store a stable CODE (backend/src/lib/cancelReasons.ts —
-// itself mirrored from @flikk/shared, which admin isn't a member of), so map
+// itself mirrored from @gloceries/shared, which admin isn't a member of), so map
 // it to a readable label here. Partner/customer cancels are still free text,
 // which falls through unchanged.
 const CANCEL_REASON_LABELS: Record<string, string> = {

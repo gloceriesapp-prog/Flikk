@@ -11,6 +11,8 @@ import { categoriesRouter } from './routes/categories.js';
 import { categorySectionsRouter } from './routes/categorySections.js';
 import { homeTabsRouter } from './routes/homeTabs.js';
 import { homeFestivalSectionRouter } from './routes/homeFestivalSection.js';
+import { homeFestivalGreetingRouter } from './routes/homeFestivalGreeting.js';
+import { homeSectionsRouter } from './routes/homeSections.js';
 import { homeSeasonalSectionRouter } from './routes/homeSeasonalSection.js';
 import { storesRouter } from './routes/stores.js';
 import { ordersRouter } from './routes/orders.js';
@@ -90,10 +92,10 @@ app.use(express.json({ limit: '10mb' }));
 // No root route existed at all — visiting the backend's own URL in a
 // browser (the natural "is it actually running?" check) just 404'd with
 // no way to tell a dead server from a wrong URL/port. Plain JSON, not a
-// health-check library — this only needs to answer "yes, this is Flikk's
+// health-check library — this only needs to answer "yes, this is Gloceries's
 // backend, it's up," not report on DB/dependency health.
 app.get('/', (_req, res) => {
-  res.json({ ok: true, service: 'flikk-backend', message: 'Flikk backend is running.' });
+  res.json({ ok: true, service: 'gloceries-backend', message: 'Gloceries backend is running.' });
 });
 
 app.use('/auth', authRouter);
@@ -105,6 +107,8 @@ app.use('/categories', shortCache(), categoriesRouter);
 app.use('/category-sections', shortCache(), categorySectionsRouter);
 app.use('/home-tabs', shortCache(), homeTabsRouter);
 app.use('/home/festival-section', shortCache(), homeFestivalSectionRouter);
+app.use('/home/festival-greeting', shortCache(), homeFestivalGreetingRouter);
+app.use('/home/sections', shortCache(), homeSectionsRouter);
 app.use('/home/seasonal-section', shortCache(), homeSeasonalSectionRouter);
 app.use('/stores', shortCache(), storesRouter);
 app.use('/orders', ordersRouter);
@@ -139,7 +143,7 @@ app.use('/location', locationRouter);
 app.use(errorHandler);
 
 app.listen(env.port, () => {
-  logger.info(`Flikk backend listening on :${env.port}`);
+  logger.info(`Gloceries backend listening on :${env.port}`);
 });
 
 // Weekly store payout release — every Monday 9 AM IST. node-cron runs

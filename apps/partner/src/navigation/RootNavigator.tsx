@@ -53,6 +53,14 @@ import { AppNavigator } from './AppNavigator';
 // on every cold open, always, not just the first ever launch.
 const WELCOME_DURATION_MS = 2000;
 
+// Dev-only: flip to true to jump straight into the onboarding wizard
+// (OnboardingIntro → StoreDetails → …) without a real token/no-store
+// account. OnboardingIntro's draft fetch fails silently and falls back to
+// an empty draft, so the whole flow is walkable with no backend. __DEV__
+// guards it out of any production build. Set back to false when done.
+// ponytail: a plain constant, not a settings toggle — it's a dev peek.
+const DEV_FORCE_ONBOARDING = false;
+
 export function RootNavigator() {
   const {
     accessToken,
@@ -160,7 +168,9 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer ref={navigationRef}>
-      {!accessToken ? (
+      {__DEV__ && DEV_FORCE_ONBOARDING ? (
+        <AuthNavigator key="dev-onboarding" initialRouteName="OnboardingIntro" />
+      ) : !accessToken ? (
         // Keyed by accessToken so a session clear (missing/expired token —
         // see api/client.ts's own note on the exact bug this fixes) always
         // gets a genuinely fresh AuthNavigator instance. Without this key,

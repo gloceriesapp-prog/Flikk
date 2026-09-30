@@ -17,8 +17,9 @@
 // rest on a full card. No right-edge fade overlay — per an explicit ask,
 // dropped (it read as an unwanted white wash rather than a subtle cue).
 
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { ProductCard } from './ProductCard';
+import { SectionTitle } from '../components/SectionTitle';
 import type { Product } from './types';
 
 const VISIBLE_PRODUCTS = 6;
@@ -28,19 +29,20 @@ const CARD_SNAP_INTERVAL = 128 + 12; // w-32 (128px) + this row's own gap-3 (12p
 interface Props {
   title: string;
   products: Product[];
+  subtitle?: string | null;
 }
 
-export function PromoListCard({ title, products }: Props) {
+export function PromoListCard({ title, products, subtitle }: Props) {
   const visibleProducts = products.slice(0, VISIBLE_PRODUCTS);
 
   return (
     <View>
-      <Text className="px-5 text-[17px] font-bold leading-6 tracking-tight text-black/80">{title}</Text>
+      <SectionTitle subtitle={subtitle}>{title}</SectionTitle>
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="items-start gap-3 px-5 pt-3"
+        contentContainerClassName="items-start gap-3 px-5"
         snapToInterval={CARD_SNAP_INTERVAL}
         snapToAlignment="start"
         decelerationRate="fast"

@@ -34,6 +34,7 @@
 
 import { DiscountTag01Icon, HandHeartIcon, Motorbike01Icon, ReceiptIndianRupeeIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
+import { RupeePrice } from '../../../components/RupeePrice';
 import { AppIcon } from '../../../components/AppIcon';
 import { DEFAULT_DELIVERY_SETTINGS, useDeliverySettings } from '../../../api/deliverySettings';
 import type { TipSelection } from './DeliveryTipCard';
@@ -116,8 +117,8 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
               )}
             </View>
             <View className="flex-row items-center gap-1.5">
-              {itemSavings > 0 && <Text className="text-[11.5px] text-ink/35 line-through font-medium">₹{originalItemTotal}</Text>}
-              <Text className="text-[13.5px] font-semibold tabular-nums text-ink">₹{itemTotal}</Text>
+              {itemSavings > 0 && <RupeePrice amount={originalItemTotal ?? 0} size={11.5} strike color="#101C1059" />}
+              <RupeePrice amount={itemTotal} size={13.5} />
             </View>
           </View>
 
@@ -128,13 +129,13 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
             </View>
             {isDeliveryFree ? (
               <View className="flex-row items-center gap-1.5">
-                <Text className="text-[11.5px] text-ink/35 line-through">₹{flatDeliveryFee}</Text>
+                <RupeePrice amount={flatDeliveryFee} size={11.5} strike color="#101C1059" />
                 <Text className="text-[13.5px] font-semibold" style={{ color: ACCENT }}>
                   FREE
                 </Text>
               </View>
             ) : (
-              <Text className="text-[13.5px] font-medium tabular-nums text-ink">₹{flatDeliveryFee}</Text>
+              <RupeePrice amount={flatDeliveryFee} size={13.5} />
             )}
           </View>
 
@@ -143,7 +144,7 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
               <RowIcon icon={Wallet01Icon} />
               <RowLabel>Platform fee</RowLabel>
             </View>
-            <Text className="text-[13.5px] font-semibold tabular-nums text-ink">₹{handlingFee}</Text>
+            <RupeePrice amount={handlingFee} size={13.5} />
           </View>
 
           {discountAmount > 0 && (
@@ -152,7 +153,7 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
                 <RowIcon icon={DiscountTag01Icon} />
                 <RowLabel>Promo discount</RowLabel>
               </View>
-              <Text className="text-[13px] font-semibold tabular-nums text-success">-₹{discountAmount}</Text>
+              <RupeePrice amount={discountAmount} size={13} color="#2E9E77" prefix="-" />
             </View>
           )}
 
@@ -170,7 +171,7 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
             ) : tip === 'other' ? (
               <Text className="text-[13px] font-semibold text-ink">—</Text>
             ) : (
-              <Text className="text-[13px] font-semibold tabular-nums text-ink">₹{tip}</Text>
+              <RupeePrice amount={tip} size={13} />
             )}
           </View>
         </View>
@@ -178,8 +179,8 @@ export function BillDetailsCard({ itemTotal, originalItemTotal, itemCount, tip, 
         <View className="flex-row items-center justify-between border-t border-gray-100 pt-3.5">
           <Text className="text-[15px] font-semibold text-ink">Total payable</Text>
           <View className="flex-row items-center gap-1.5">
-            {originalToPay && originalToPay > toPay && <Text className="text-xs text-ink/35 line-through font-semibold">₹{originalToPay}</Text>}
-            <Text className="text-[15px] font-bold tabular-nums text-ink">₹{toPay}</Text>
+            {originalToPay && originalToPay > toPay && <RupeePrice amount={originalToPay} size={12} strike color="#101C1059" />}
+            <RupeePrice amount={toPay} size={15} />
           </View>
         </View>
       </View>

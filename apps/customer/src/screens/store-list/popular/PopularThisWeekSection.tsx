@@ -7,17 +7,21 @@
 // list it's built from.
 
 import { ScrollView, Text, View } from 'react-native';
-import { useNearestStores } from '../nearest/useNearestStores';
+import { useAllStores } from '../all-stores/useAllStores';
 import { PopularStorePanel } from './PopularStorePanel';
 
 export function PopularThisWeekSection() {
-  const { data: stores = [] } = useNearestStores();
+  // Uses useAllStores (real zone stores, GET /stores) not useNearestStores —
+  // that one is disabled with no delivery location set, which hid this whole
+  // section. All-stores is location-independent so the row always shows real
+  // stores; each panel below fills with that store's real DB products.
+  const { data: stores = [] } = useAllStores();
 
   if (stores.length === 0) return null;
 
   return (
     <View className="pt-6">
-      <Text className="mb-4 px-5 text-[18px] font-semibold text-ink">Popular this week</Text>
+      <Text className="mb-4 px-5 text-[18px] font-bold text-ink/90 tracking-[-0.35px]">Popular this week</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3.5 px-5">
         {stores.map((store) => (
           <PopularStorePanel key={store.id} storeId={store.id} storeName={store.name} />

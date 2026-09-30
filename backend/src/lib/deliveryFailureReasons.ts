@@ -1,5 +1,5 @@
 // Mirror of packages/shared/src/orders/deliveryFailureReasons.ts. The backend
-// is NOT a workspace member of @flikk/shared (only the Expo apps are), so these
+// is NOT a workspace member of @gloceries/shared (only the Expo apps are), so these
 // codes are duplicated here rather than imported — the same manual-sync
 // exception CLAUDE.md's "copied, not shared" rule already covers (cf.
 // cancelReasons.ts). Keep the two lists identical (deliveryFailureReasons.test.ts

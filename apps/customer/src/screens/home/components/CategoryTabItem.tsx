@@ -1,14 +1,10 @@
-// One tab in CategoryTabs — per an explicit ask/reference, no background
-// capsule/scoop-cutout at all anymore (that was this component's entire
-// previous design: a white/peach pill behind the selected tab, SVG-drawn
-// corner "scoops" blending it into the header). Now it's just an icon +
-// label sitting directly on the header's own dark gradient, white by
-// default (readable against that dark bg) — the selected tab's only
-// distinguishing mark is a short underline bar beneath its label.
+// One tab in CategoryTabs — just an icon + label sitting directly on the
+// header, no card/capsule background. The selected tab's only distinguishing
+// mark is a short underline bar beneath its label.
 //
-// isFrosted (from HomeHeader, via CategoryTabs) flips icon/text/underline
-// to black once scrolled past the header's own frosted-blur threshold —
-// white against that light blur was unreadable.
+// isFrosted (from HomeHeader, via CategoryTabs) drives icon/text/underline
+// color: black on a light header / once scrolled past the frosted-blur
+// threshold, white otherwise.
 
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
@@ -27,12 +23,9 @@ export function CategoryTabItem({ category, isSelected, onPress, isFrosted = fal
   const mutedTextColorClass = isFrosted ? 'text-ink/60' : 'text-white/75';
 
   return (
-    // pt-2 only (no pb-2) — the underline below needs to sit flush against
-    // this item's own bottom edge, which is what makes it land exactly on
-    // CategoryTabs' own border-b divider instead of floating above it with
-    // a visible gap (per a reference screenshot: two separate lines with
-    // daylight between them, not the one clean line a reference image
-    // shows).
+    // pt-2 only (no pb-2) — the underline below sits flush against this
+    // item's own bottom edge so it lands exactly on CategoryTabs' own
+    // border-b divider instead of floating above it with a visible gap.
     <Pressable onPress={onPress} className="w-[76px] items-center gap-1.5 pt-2">
       <AppIcon icon={category.icon} size={22} color={iconColor} strokeWidth={isSelected ? 2 : 1.6} />
       <Text
@@ -43,7 +36,7 @@ export function CategoryTabItem({ category, isSelected, onPress, isFrosted = fal
         {category.label}
       </Text>
 
-      {/* Active-tab indicator — a short underline, not the old capsule. */}
+      {/* Active-tab indicator — a short underline. */}
       <View className={`h-[3px] w-8 rounded-full ${isSelected ? textColorClass.replace('text-', 'bg-') : 'bg-transparent'}`} />
     </Pressable>
   );

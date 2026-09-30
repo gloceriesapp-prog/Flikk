@@ -11,7 +11,7 @@
 // rest; a real reject call exists now (useOrdersStore.rejectOrder, PATCH
 // /orders/:id/status → cancelled) but this screen doesn't surface it.
 
-import { ArrowLeft01Icon, Cash01Icon, CheckmarkCircle02Icon, Copy01Icon, Mic01Icon, PrinterIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
+import { Alert02Icon, ArrowLeft01Icon, Cash01Icon, CheckmarkCircle02Icon, Copy01Icon, Mic01Icon, PrinterIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -37,6 +37,7 @@ const STATUS_BADGE_LABEL = {
   packed: 'Awaiting Rider',
   out_for_delivery: 'Out for delivery',
   delivered: 'Delivered',
+  failed: 'Delivery failed',
 } as const;
 
 const PAYMENT_MODE_LABEL = { prepaid: 'Paid via UPI', cod: 'Cash on delivery' } as const;
@@ -174,6 +175,14 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           <View className="h-[68px] w-full flex-row items-center justify-center gap-2 rounded-full bg-success/10">
             <AppIcon icon={CheckmarkCircle02Icon} size={18} color={colors.success} />
             <Text className="text-lg font-medium text-success">{STATUS_BADGE_LABEL[order.status]}</Text>
+          </View>
+        ) : order.status === 'failed' ? (
+          // Terminal-negative — danger pill mirroring the delivered one so
+          // the owner sees at a glance their stock left and didn't land.
+          // Nothing to act on here; the rider owns this transition.
+          <View className="h-[68px] w-full flex-row items-center justify-center gap-2 rounded-full bg-danger/10">
+            <AppIcon icon={Alert02Icon} size={18} color={colors.danger} />
+            <Text className="text-lg font-medium text-danger">{STATUS_BADGE_LABEL[order.status]}</Text>
           </View>
         ) : order.status === 'packed' ? (
           // Real waiting state — a rider hasn't been assigned/picked up

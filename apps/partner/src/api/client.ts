@@ -1,4 +1,4 @@
-// Thin instantiation of @flikk/shared's createApiClient — the actual
+// Thin instantiation of @gloceries/shared's createApiClient — the actual
 // fetch/error-shaping logic now lives in one place (packages/shared/src/
 // auth/client.ts) instead of being hand-copied per app; this file's only
 // job is supplying this app's own base URL and its own session-token
@@ -8,10 +8,10 @@
 // call site in this app (storeOnboarding calls, etc. — not just the OTP
 // endpoints) keeps working unchanged.
 
-import { createApiClient } from '@flikk/shared';
+import { createApiClient } from '@gloceries/shared';
 import { useAuthStore } from '../store/useAuthStore';
 
-export { ApiError } from '@flikk/shared';
+export { ApiError } from '@gloceries/shared';
 
 // Fallback only matters when EXPO_PUBLIC_API_URL is unset — backend/Express
 // listens on 4000, not 3000 (that's apps/admin's Next.js dev server). A
@@ -77,6 +77,11 @@ const client = createApiClient({
   baseUrl: API_URL,
   getAccessToken: () => useAuthStore.getState().accessToken,
   refresh: refreshAccessToken,
+  // Refresh couldn't recover a session that had a token — clear so
+  // RootNavigator bounces back to AuthNavigator instead of the shell staying
+  // up while every call 401s forever. Same recovery customer/rider have;
+  // partner had none before the shared factory grew this hook.
+  onSessionExpired: () => useAuthStore.getState().clear(),
 });
 
 export const apiRequest = client.apiRequest;

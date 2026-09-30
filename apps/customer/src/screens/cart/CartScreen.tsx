@@ -20,6 +20,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft01Icon, Delete02Icon, MoreVerticalIcon, PackageIcon, ShoppingBasket03Icon, Timer02Icon } from '@hugeicons/core-free-icons';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { RupeePrice } from '../../components/RupeePrice';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -157,7 +158,7 @@ export function CartScreen({ navigation }: Props) {
   const savingsPercent = originalItemTotal ? Math.round((savings / originalItemTotal) * 100) : 18;
 
   return (
-    <View className="flex-1 bg-[#F1F2F4]">
+    <View className="flex-1 bg-[#F2F2F7]">
       {/* App.tsx sets a global dark-icon StatusBar, but a screen further
           back in the stack (e.g. HomeScreen) can leave it set to "light" —
           expo-status-bar's style is a single global native call, not scoped
@@ -166,12 +167,12 @@ export function CartScreen({ navigation }: Props) {
           regardless of what the previous screen left it as. */}
       <StatusBar style="dark" />
 
-      <View className="bg-[#F1F2F4] pt-safe">
+      <View className="bg-[#F2F2F7] pt-safe">
         <View className="flex-row items-center px-4 pb-2 pt-2">
           <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
             <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
           </Pressable>
-          <Text className="flex-1 text-center text-[17px] font-semibold text-ink">Checkout</Text>
+          <Text className="flex-1 text-center text-[18px] font-bold text-ink">Checkout</Text>
           {items.length > 0 ? (
             <Pressable onPress={() => setIsMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
               <AppIcon icon={MoreVerticalIcon} size={22} color={colors.ink} />
@@ -233,8 +234,8 @@ export function CartScreen({ navigation }: Props) {
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2.5">
                   <View>
-                    <Text className="text-[16px] font-semibold text-ink">Delivery in {estimateCartEtaMinutes()} minutes</Text>
-                    <Text className="text-[12.5px] text-ink/45 font-medium">
+                    <Text className="text-[17px] font-bold text-ink">Delivery in {estimateCartEtaMinutes()} minutes</Text>
+                    <Text className="text-[12.5px] text-ink/45 font-medium mt-1">
                       {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}
                       {storeGroups.length > 1 ? ` from ${storeGroups.length} stores` : ' in this order'}
                     </Text>
@@ -251,10 +252,10 @@ export function CartScreen({ navigation }: Props) {
                       inserted for no reason. */}
                   {storeGroups.length > 1 && (
                     <View className="mb-2 flex-row items-center justify-between">
-                      <Text className="text-[13.5px] font-semibold text-ink tracking-tight" numberOfLines={1}>
+                      <Text className="text-[14.5px] font-semibold text-ink tracking-tight" numberOfLines={1}>
                         From {group.storeName ?? 'this store'}
                       </Text>
-                      <Text className="text-[13.5px] font-medium text-ink/50">₹{group.itemTotal.toFixed(0)}</Text>
+                      <RupeePrice amount={group.itemTotal.toFixed(0)} size={13.5} color="#101C1080" />
                     </View>
                   )}
 

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
-    "@flikk/shared": "*",
+    "@gloceries/shared": "*",
     "@hugeicons/core-free-icons": "^4.2.3",
     "@hugeicons/react-native": "^1.0.15",
     "@react-navigation/bottom-tabs": "^7.18.16",

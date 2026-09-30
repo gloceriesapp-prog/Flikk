@@ -21,7 +21,7 @@
 // ever stored, every session that outlived one hour hit a real 401 on its
 // next request and RootNavigator's own "a 401 means log out" effect
 // treated that as an actual logout, not an expired-but-recoverable
-// session. api/client.ts's `refresh` callback (wired into @flikk/shared's
+// session. api/client.ts's `refresh` callback (wired into @gloceries/shared's
 // createApiClient) uses setTokens below to keep both current, silently,
 // before a 401 ever reaches RootNavigator at all. The only way to actually
 // log out now is Settings' own Log out row (StoreSettingsScreen) calling
@@ -30,8 +30,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
-const TOKEN_KEY = 'flikk_partner_access_token';
-const REFRESH_TOKEN_KEY = 'flikk_partner_refresh_token';
+const TOKEN_KEY = 'gloceries_partner_access_token';
+const REFRESH_TOKEN_KEY = 'gloceries_partner_refresh_token';
 
 interface AuthState {
   accessToken: string | null;

@@ -1,6 +1,6 @@
-# Flikk — Master Strategy Analysis (source doc + fact-check)
+# Gloceries — Master Strategy Analysis (source doc + fact-check)
 
-> Saved as-is per request, with a fact-check section prepended. This document is **not** wired into CLAUDE.md/PRD-Flikk-Final.md as a source of truth — it's a market-strategy artifact, not an engineering spec. Where it conflicts with CLAUDE.md's actual scope decisions (e.g. app surfaces, out-of-scope list), CLAUDE.md wins.
+> Saved as-is per request, with a fact-check section prepended. This document is **not** wired into CLAUDE.md/PRD-Gloceries-Final.md as a source of truth — it's a market-strategy artifact, not an engineering spec. Where it conflicts with CLAUDE.md's actual scope decisions (e.g. app surfaces, out-of-scope list), CLAUDE.md wins.
 
 ---
 
@@ -35,7 +35,7 @@ If this feeds into real decisions (which city, how much to raise, what commissio
 
 ## FLİKK — MASTER MARKET, COMPETITOR, BUSINESS & GROWTH STRATEGY ANALYSIS
 
-**Short answer:** Flikk can become a major Indian consumer-commerce company **only if** it avoids a head-on quick-commerce war with Blinkit/Zepto/Instamart and instead builds a **local-store-first, density-led, value-oriented marketplace** that solves real problems for Tier-2/3 consumers and kirana merchants. The window exists because quick commerce is structurally weak on small baskets, regional products, merchant relationships, and non-metro economics. Flikk's wedge: **own the neighbourhood, not the dark store.**
+**Short answer:** Gloceries can become a major Indian consumer-commerce company **only if** it avoids a head-on quick-commerce war with Blinkit/Zepto/Instamart and instead builds a **local-store-first, density-led, value-oriented marketplace** that solves real problems for Tier-2/3 consumers and kirana merchants. The window exists because quick commerce is structurally weak on small baskets, regional products, merchant relationships, and non-metro economics. Gloceries's wedge: **own the neighbourhood, not the dark store.**
 
 ***
 
@@ -47,7 +47,7 @@ If this feeds into real decisions (which city, how much to raise, what commissio
 
 **INFERENCE:** A pure quick-commerce copycat model is capital-prohibitive and strategically suicidal against well-funded incumbents.
 
-**RECOMMENDATION:** Flikk should position as a **Hybrid Local Commerce + Fulfilment Platform** — specifically:
+**RECOMMENDATION:** Gloceries should position as a **Hybrid Local Commerce + Fulfilment Platform** — specifically:
 
 > **"Neighbourhood Commerce Network"** — a B2B2C infrastructure that digitises local stores, aggregates their inventory, and provides shared delivery/logistics while letting merchants retain customer relationships.
 
@@ -64,21 +64,21 @@ If this feeds into real decisions (which city, how much to raise, what commissio
 
 **Complete the sentence:**
 
-> "Customers should use Flikk instead of Blinkit/Zepto/Instamart/Amazon/WhatsApp/local shop because **Flikk gives them access to their trusted local stores' full assortment (including regional products, loose items, and credit relationships) with app-level convenience and shared delivery — at kirana prices, not quick-commerce premiums.**"
+> "Customers should use Gloceries instead of Blinkit/Zepto/Instamart/Amazon/WhatsApp/local shop because **Gloceries gives them access to their trusted local stores' full assortment (including regional products, loose items, and credit relationships) with app-level convenience and shared delivery — at kirana prices, not quick-commerce premiums.**"
 
 **STRUCTURAL REASON FLİKK COULD WIN:**
 
-Quick commerce is built for **speed + standardisation**. Kiranas win on **trust + customisation + credit**. Flikk bridges both without the capex burden.
+Quick commerce is built for **speed + standardisation**. Kiranas win on **trust + customisation + credit**. Gloceries bridges both without the capex burden.
 
 **FACT:** 44% of Tier-2 consumers prioritise savings over speed vs 27% in Tier-1. [economictimes.indiatimes](https://economictimes.indiatimes.com/industry/services/retail/indias-next-online-grocery-goldmine-lies-beyond-the-traditional-routes/articleshow/133288029.cms)
 
 **FACT:** Quick commerce delivery cost is ~₹45–48/order regardless of basket size. [inc42](https://inc42.com/features/zepto-revenue-engine-outrun-quick-commerce-costs/)
 
-**INFERENCE:** Flikk can undercut quick commerce on price by using merchant inventory + shared delivery, while offering better regional assortment.
+**INFERENCE:** Gloceries can undercut quick commerce on price by using merchant inventory + shared delivery, while offering better regional assortment.
 
 ***
 
-### Flikk's Potential Unfair Advantages (Ranked)
+### Gloceries's Potential Unfair Advantages (Ranked)
 
 | Rank | Advantage | Difficulty to Copy | Capital Required | Time Required | Network Effects | Customer Value | Merchant Value | Defensibility |
 |------|-----------|-------------------|------------------|---------------|-----------------|----------------|----------------|---------------|
@@ -93,7 +93,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 | 9 | **WhatsApp ordering integration** | Low | Low | 1 month | Weak | Medium | Medium | Low |
 | 10 | **Local brand marketplace** | Medium | Low | 6 months | Medium | High | High | Medium |
 
-**ONE ADVANTAGE TO BUILD AROUND:** #1 — Merchant software + logistics bundling. This creates a **two-sided lock-in**: merchants need Flikk for delivery + software; customers need Flikk for access to those merchants. Competitors can't copy without rebuilding the entire merchant network.
+**ONE ADVANTAGE TO BUILD AROUND:** #1 — Merchant software + logistics bundling. This creates a **two-sided lock-in**: merchants need Gloceries for delivery + software; customers need Gloceries for access to those merchants. Competitors can't copy without rebuilding the entire merchant network.
 
 ***
 
@@ -107,9 +107,9 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - Online grocery (all formats): ~2% of total grocery [linkedin](https://www.linkedin.com/posts/vaibhav-velhankar-0712_indianretail-quickcommerce-consumerbehaviour-activity-7492423549769646080-YbkN)
 - Kirana stores: 12–13 million nationwide [ndtvprofit](https://www.ndtvprofit.com/business/opinion-the-omnichannel-reality-why-competition-law-must-look-beyond-e-commerce-11926286)
 
-### TAM / SAM / SOM for Flikk
+### TAM / SAM / SOM for Gloceries
 
-**ASSUMPTION:** Flikk targets **Tier-2/3 cities first**, focusing on **value-conscious consumers** who still use kiranas but want app convenience.
+**ASSUMPTION:** Gloceries targets **Tier-2/3 cities first**, focusing on **value-conscious consumers** who still use kiranas but want app convenience.
 
 | Scenario | TAM (Total Addressable) | SAM (Serviceable) | SOM (Serviceable Obtainable, Year 3) |
 |----------|------------------------|-------------------|-------------------------------------|
@@ -120,15 +120,15 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 **ASSUMPTIONS:**
 - Tier-2/3 = 65% of new e-commerce shoppers [brandequity.economictimes.indiatimes](https://brandequity.economictimes.indiatimes.com/amp/news/marketing/disaggregating-influence-the-biggest-opportunity-isnt-in-the-metros/133531170)
 - 30–40% of Tier-2/3 households will adopt online grocery by 2030 [economictimes.indiatimes](https://economictimes.indiatimes.com/nri/invest/from-kirana-to-currency-small-towns-tier-2-tier-3-cities-forex-demand-dollars-india-consumption/articleshow/133292498.cms)
-- Flikk captures 1–2% of this by Year 3 via neighbourhood dominance
+- Gloceries captures 1–2% of this by Year 3 via neighbourhood dominance
 
-**HYPOTHESIS:** Flikk can achieve 5–10x lower CAC than quick commerce by leveraging merchant referrals + WhatsApp loops.
+**HYPOTHESIS:** Gloceries can achieve 5–10x lower CAC than quick commerce by leveraging merchant referrals + WhatsApp loops.
 
 ***
 
 ## 4. CUSTOMER SEGMENTATION
 
-### All Possible Flikk Customers
+### All Possible Gloceries Customers
 
 - **Age:** 18–65+
 - **Income:** ₹15k–₹1.5L/month household
@@ -159,7 +159,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 ### Top 10 Unmet Customer Needs (Ranked)
 
-| Rank | Problem | Blinkit | Zepto | Instamart | Kirana | Flikk Opportunity |
+| Rank | Problem | Blinkit | Zepto | Instamart | Kirana | Gloceries Opportunity |
 |------|---------|---------|-------|-----------|--------|-------------------|
 | 1 | **Regional/local products** | ❌ Poor | ❌ Poor | ❌ Poor | ✅ Excellent | ✅ Aggregate via merchants |
 | 2 | **Loose items (250g spices, etc.)** | ❌ No | ❌ No | ❌ No | ✅ Yes | ✅ Enable via merchants |
@@ -172,7 +172,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 | 9 | **Product discovery (local brands)** | ❌ Poor | ❌ Poor | ❌ Poor | ✅ Good | ✅ Curated local marketplace |
 | 10 | **Scheduled delivery** | ⚠️ Limited | ⚠️ Limited | ⚠️ Limited | ✅ Yes | ✅ Flexible slots |
 
-**Flikk can realistically solve:** #1, #2, #4, #5, #6, #7, #9, #10 better than quick commerce.
+**Gloceries can realistically solve:** #1, #2, #4, #5, #6, #7, #9, #10 better than quick commerce.
 
 ***
 
@@ -235,13 +235,13 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - Private labels
 - Non-grocery expansion
 
-**Flikk Should Copy:**
+**Gloceries Should Copy:**
 - ✅ Density-led expansion (neighbourhood-first)
 - ✅ Advertising/retail media (long-term)
 - ✅ Private labels (Year 2+)
 - ✅ 1P inventory for high-margin categories
 
-**Flikk Should NEVER Copy:**
+**Gloceries Should NEVER Copy:**
 - ❌ 10-minute delivery (economically suicidal at small scale)
 - ❌ Massive dark-store capex (₹20–40L/store setup) [linkedin](https://www.linkedin.com/posts/vansh-sharma22_darkstoreeconomics-activity-7496778189671936000-2JLc)
 - ❌ Metro-first strategy (oversaturated, high CAC)
@@ -260,7 +260,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **Faster dark-store payback** — ~8 months vs Blinkit's 9–12 months [linkedin](https://www.linkedin.com/posts/rishitalwar07_we-often-view-quick-commerce-as-a-pure-tech-activity-7491342388355911680-VuqH)
 - **Premium/gourmet focus** — imported foods, specialty beverages [linkedin](https://www.linkedin.com/posts/dominiquelocher_quickcommerce-retail-ecommerce-activity-7495732706077626368-fD0D)
 
-**Key Learnings for Flikk:**
+**Key Learnings for Gloceries:**
 - ✅ Speed is a feature, not a moat (Zepto's 10-min is copyable)
 - ✅ Density > geographic spread (cluster strategy)
 - ❌ Don't chase AOV with discounts (Zepto's ₹5,905 Cr FY26 loss) [linkedin](https://www.linkedin.com/posts/kunalbinjewar_zepto-quickcommerce-startups-activity-7493887343184146433-WO-x)
@@ -279,7 +279,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 **Aug 2026 Shift:** Moving to 1P inventory model for +₹4–5/order margin. [whalesbook](https://www.whalesbook.com/news/English/technology/Swiggy-Clears-495percent-Foreign-Ownership-Cap-to-Adopt-Inventory-Model/6a89585e84d2dd5c12e0b0d5)
 
-**Can Flikk Create Similar Ecosystem Advantage?**
+**Can Gloceries Create Similar Ecosystem Advantage?**
 
 **YES — but differently:**
 - Partner with **local services** (salons, pharmacies, tiffin services) for cross-sell
@@ -290,7 +290,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 ## 10. COMPETITOR WEAKNESS → FLİKK OPPORTUNITY MATRIX
 
-| Weakness | Customer Impact | Merchant Impact | Flikk Opportunity | Difficulty | Risk |
+| Weakness | Customer Impact | Merchant Impact | Gloceries Opportunity | Difficulty | Risk |
 |----------|-----------------|-----------------|-------------------|------------|------|
 | **No regional products** | Frustration, switch to kirana | Lost sales | Aggregate local brands via merchants | Medium | Low |
 | **High delivery fee (₹30–50)** | Small basket abandonment | N/A | Shared delivery at ₹20–30 | Low | Low |
@@ -316,19 +316,19 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **Zero delivery cost** — store helper delivers free [linkedin](https://www.linkedin.com/posts/divanshu-luthra-5760aa1b2_retail-quickcommerce-startups-activity-7495045390266871808-tZ9b)
 - **Regional products** — local brands, fresh produce [linkedin](https://www.linkedin.com/posts/sanjay-rameshlal-k-52272392_the-data-available-in-the-market-domain-and-activity-7497540594509029376-0QKg)
 
-### Why Would a Kirana Join Flikk?
+### Why Would a Kirana Join Gloceries?
 
 **Potential Benefits:**
 - **Additional sales** — access to app customers beyond walk-ins
 - **Digital storefront** — no need to build own app
 - **Delivery infrastructure** — shared riders, lower cost
-- **Customer acquisition** — Flikk marketing brings new users
+- **Customer acquisition** — Gloceries marketing brings new users
 - **Inventory tools** — analytics, demand prediction
 - **Digital payments** — UPI integration, reduced cash handling
 - **Loyalty programs** — retain customers via app
 - **Catalogue management** — easy product upload
 
-### Why Would a Kirana NOT Join Flikk?
+### Why Would a Kirana NOT Join Gloceries?
 
 **Objections:**
 - **Commission (15–25%)** — margin erosion [theshizz](https://theshizz.in/guides/d2c-spend-benchmarks-index)
@@ -338,7 +338,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **Delivery responsibility** — who handles complaints?
 - **Inventory management** — real-time sync challenges
 
-### Flikk's Merchant Value Proposition
+### Gloceries's Merchant Value Proposition
 
 > **"Keep your customers, get new ones. We handle delivery + app. You keep margins + relationships."**
 
@@ -357,11 +357,11 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 | Model | Flow | Pros | Cons |
 |-------|------|------|------|
-| **A: Customer → Flikk → Store → Rider** | Flikk takes order, store fulfils, Flikk rider delivers | Control over delivery, customer experience | Higher capex (riders) |
-| **B: Customer → Flikk → Store → Store delivery** | Store handles delivery | Zero rider capex | Inconsistent SLA, merchant burden |
-| **C: Hybrid** | Flikk riders for dense areas, store delivery for others | Flexibility, cost optimisation | Operational complexity |
+| **A: Customer → Gloceries → Store → Rider** | Gloceries takes order, store fulfils, Gloceries rider delivers | Control over delivery, customer experience | Higher capex (riders) |
+| **B: Customer → Gloceries → Store → Store delivery** | Store handles delivery | Zero rider capex | Inconsistent SLA, merchant burden |
+| **C: Hybrid** | Gloceries riders for dense areas, store delivery for others | Flexibility, cost optimisation | Operational complexity |
 
-**RECOMMENDATION:** **Model A (Flikk-managed delivery)** for first 12 months.
+**RECOMMENDATION:** **Model A (Gloceries-managed delivery)** for first 12 months.
 
 **Why:**
 - Ensures consistent 30–45 min SLA (not 10 min, but reliable)
@@ -377,7 +377,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 | Model | Capital | Gross Margin | Inventory Risk | Stock Accuracy | Delivery Speed | Scalability | Complexity | CX |
 |-------|---------|--------------|----------------|----------------|----------------|-------------|------------|-----|
-| **A: Flikk owns** | High | High (25–30%) | High | High | Fast | Medium | High | High |
+| **A: Gloceries owns** | High | High (25–30%) | High | High | Fast | Medium | High | High |
 | **B: Partner stores own** | Low | Medium (12–18%) | Low | Medium | Medium | High | Low | Medium |
 | **C: Dark stores** | Very High | High | Very High | High | Very Fast | Low | Very High | High |
 | **D: Hybrid** | Medium | Medium-High | Medium | High | Fast | High | Medium | High |
@@ -386,7 +386,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 **Why:**
 - **Zero inventory capex** — critical for capital-constrained startup
-- **Merchant lock-in** — they invest in catalogue, not Flikk
+- **Merchant lock-in** — they invest in catalogue, not Gloceries
 - **Regional assortment** — merchants source local products
 - **Lower risk** — no wastage, no dead stock
 - **Scalability** — onboard 100 stores faster than building 10 dark stores
@@ -403,7 +403,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 |-------|------------|-----|-------------|---------|
 | **Independent riders** | ₹35–40 | 30–45 min | High | Medium |
 | **Store delivery** | ₹0 (merchant cost) | 45–60 min | Medium | Low |
-| **Flikk-employed riders** | ₹45–50 | 20–30 min | Low | High |
+| **Gloceries-employed riders** | ₹45–50 | 20–30 min | Low | High |
 | **Gig riders (Dunzo-style)** | ₹40–45 | 30–45 min | High | Medium |
 | **Hybrid** | ₹30–40 (batched) | 30–45 min | High | High |
 
@@ -414,7 +414,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 **Why NOT 10 minutes:**
 - **FACT:** Delivery cost is ₹45–48/order regardless of speed. [inc42](https://inc42.com/features/zepto-revenue-engine-outrun-quick-commerce-costs/)
 - **FACT:** Dark stores need 1,000–1,500 orders/day to break even in Tier-1; Tier-2 will take longer. [logisticshub.substack](https://logisticshub.substack.com/p/tier-ii-and-tier-iii-india-the-new)
-- **INFERENCE:** 10-min promise requires 5–10x order density Flikk won't have initially.
+- **INFERENCE:** 10-min promise requires 5–10x order density Gloceries won't have initially.
 
 **PROMISE:** **"30–45 minutes, or scheduled slots."**
 
@@ -428,7 +428,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 |-----------|-----------|----------|
 | **Product cost** | 350 | 70% |
 | **Gross margin (merchant)** | 150 | 30% |
-| **Flikk commission (10%)** | 50 | 10% |
+| **Gloceries commission (10%)** | 50 | 10% |
 | **Delivery fee (customer pays)** | 30 | 6% |
 | **Payment cost (UPI)** | 2 | 0.4% |
 | **Rider cost** | 35 | 7% |
@@ -440,7 +440,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 **ASSUMPTIONS:**
 - AOV: ₹500 (Tier-2 realistic)
 - Commission: 10%
-- Delivery fee: ₹30 (customer bears 60%, Flikk subsidises ₹10–15)
+- Delivery fee: ₹30 (customer bears 60%, Gloceries subsidises ₹10–15)
 - Rider cost: ₹35 (shared, batched)
 - CAC: ₹200 (referral-heavy)
 - Order frequency: 3x/month
@@ -469,12 +469,12 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 | Model | Pros | Cons | Recommendation |
 |-------|------|------|----------------|
 | **Commission % (10–12%)** | Simple, scales with order value | Merchants hate % on high-margin items | ✅ **Primary model** |
-| **Fixed fee (₹10–15/order)** | Predictable for merchants | Flikk loses on high AOV | ⚠️ Hybrid with % |
+| **Fixed fee (₹10–15/order)** | Predictable for merchants | Gloceries loses on high AOV | ⚠️ Hybrid with % |
 | **Subscription (₹500–1,000/month)** | Recurring revenue | Hard to sell early | ❌ Later |
 | **Advertising (₹5k–10k/month)** | High margin | Needs scale | ⚠️ Year 2+ |
-| **Delivery fee pass-through** | Reduces Flikk burden | Customer friction | ✅ Customer pays 60% |
+| **Delivery fee pass-through** | Reduces Gloceries burden | Customer friction | ✅ Customer pays 60% |
 
-**RECOMMENDATION:** **10% commission + ₹30 delivery fee (customer pays ₹20, Flikk subsidises ₹10).**
+**RECOMMENDATION:** **10% commission + ₹30 delivery fee (customer pays ₹20, Gloceries subsidises ₹10).**
 
 **Why:**
 - Lower than Blinkit/Zepto (15–25%)
@@ -494,17 +494,17 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 | **Instamart** | MRP | 10–15% off | ₹30–50 | ₹99–149 | Yes |
 | **Kirana** | MRP (or below) | 5–10% (cash) | Free | None | No |
 
-### Flikk Pricing
+### Gloceries Pricing
 
 - **MRP matching** (no premium like quick commerce)
 - **No permanent discounts** — use **first-order offers** (₹50 off) + **referral credits** (₹30)
-- **Delivery fee:** ₹30 (₹20 customer, ₹10 Flikk subsidy)
+- **Delivery fee:** ₹30 (₹20 customer, ₹10 Gloceries subsidy)
 - **Min order:** ₹49 (lower than competitors)
 - **No surge pricing** — predictable for customers
 - **Membership (Year 2):** ₹99/month for free delivery on 5 orders
 
 **PERCEIVED VALUE WITHOUT BURNING CASH:**
-- **Regional products** (exclusive to Flikk)
+- **Regional products** (exclusive to Gloceries)
 - **Loose items** (can't get on Blinkit)
 - **Merchant ratings** (trust signal)
 - **Scheduled slots** (flexibility)
@@ -585,9 +585,9 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 ### Onboarding Process
 
 1. **Visit store** (founder + ops lead)
-2. **Demo app** (show competitor pricing, Flikk advantage)
+2. **Demo app** (show competitor pricing, Gloceries advantage)
 3. **Sign agreement** (10% commission, 30-day exit)
-4. **Catalogue upload** (Flikk team helps, 200–500 SKUs)
+4. **Catalogue upload** (Gloceries team helps, 200–500 SKUs)
 5. **Training** (order acceptance, packaging, handover)
 6. **Go live** (first order within 48 hours)
 
@@ -660,10 +660,10 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 | **2. WhatsApp group ordering** | Group admin gets free delivery | Very Low | Very High | Medium | High |
 | **3. Merchant referrals** | Store gets ₹500 for new store | Low | Medium | High | High |
 | **4. Apartment ambassador** | Free groceries for 10 orders/month | Medium | High | Medium | Medium |
-| **5. Local influencer unboxing** | Creator shows Flikk haul | Medium | Medium | High | Low |
+| **5. Local influencer unboxing** | Creator shows Gloceries haul | Medium | Medium | High | Low |
 | **6. "Share your cart"** | Send cart to family via WhatsApp | Very Low | High | High | Medium |
 | **7. Order tracking share** | "My order is 5 mins away" auto-share | Very Low | Medium | High | Low |
-| **8. Local brand exclusives** | "Only on Flikk" products | Low | Medium | Medium | High |
+| **8. Local brand exclusives** | "Only on Gloceries" products | Low | Medium | Medium | High |
 | **9. Review + reward** | ₹10 for 5-star review | Low | Low | High | Low |
 | **10. Festival gifting** | Send groceries to parents via app | Medium | High | Seasonal | Medium |
 
@@ -678,7 +678,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 ### Positioning
 
-> **"Flikk — Your neighbourhood, delivered."**
+> **"Gloceries — Your neighbourhood, delivered."**
 
 ### Personality
 
@@ -697,9 +697,9 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 ### Tagline Options
 
-- "Flikk it, get it."
+- "Gloceries it, get it."
 - "Local stores, one app."
-- "Your kirana, now on Flikk."
+- "Your kirana, now on Gloceries."
 
 ### Brand Promise
 
@@ -734,7 +734,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **AI recommendations** (based on order history)
 - **Voice ordering** (Kannada + English)
 - **Subscription** (₹99/month, free delivery)
-- **Private labels** (Flikk Essentials)
+- **Private labels** (Gloceries Essentials)
 
 ### Don't Build Yet
 
@@ -787,7 +787,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **Social influence:** "Everyone uses Blinkit"
 - **Brand familiarity:** Zomato ecosystem
 
-### Flikk's Psychological Advantage
+### Gloceries's Psychological Advantage
 
 > **"Same convenience as Blinkit, but with your trusted local stores + regional products + lower prices."**
 
@@ -840,7 +840,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **App UI** (competitors can copy in weeks)
 - **Push notifications** (table stakes)
 
-**RECOMMENDATION:** Focus on **demand prediction + delivery routing + merchant analytics** — these compound with data and are hard to copy without Flikk's merchant network.
+**RECOMMENDATION:** Focus on **demand prediction + delivery routing + merchant analytics** — these compound with data and are hard to copy without Gloceries's merchant network.
 
 ***
 
@@ -874,7 +874,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **AOV:** ₹500 (Year 1), ₹550 (Year 3), ₹600 (Year 5)
 - **Orders/day:** 100 (Year 1), 1,000 (Year 3), 10,000 (Year 5)
 - **Commission:** 10%
-- **Delivery fee:** ₹30 (₹20 customer, ₹10 Flikk subsidy)
+- **Delivery fee:** ₹30 (₹20 customer, ₹10 Gloceries subsidy)
 - **Contribution margin:** 4% (Year 1), 6% (Year 3), 8% (Year 5)
 
 ### Scenarios
@@ -905,7 +905,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 ## 31. FUNDING STRATEGY
 
-### Should Flikk Bootstrap or Raise?
+### Should Gloceries Bootstrap or Raise?
 
 **RECOMMENDATION:** **Bootstrap to 500 orders/day, then raise pre-seed/seed.**
 
@@ -920,7 +920,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **Order density** (orders/km²)
 - **Retention** (D30, D90)
 - **Unit economics** (contribution margin/order)
-- **Merchant NPS** (would they recommend Flikk?)
+- **Merchant NPS** (would they recommend Gloceries?)
 - **Geographic defensibility** (neighbourhood dominance)
 
 **Funding Stages:**
@@ -935,7 +935,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 ### Scenario 1: Blinkit Enters Same Area
 
 - **Response:** Drop commissions to 5%, offer free delivery for 3 months
-- **Flikk Vulnerability:** Lower brand recognition, smaller marketing budget
+- **Gloceries Vulnerability:** Lower brand recognition, smaller marketing budget
 - **Counterstrategy:** Double down on merchant relationships (exclusive deals), highlight regional products Blinkit doesn't have
 - **Pricing:** Match MRP, no discounts (Blinkit can't sustain 5% commission long-term)
 - **Merchant:** Offer 0% commission for 6 months if they stay exclusive
@@ -977,7 +977,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 ### Markets Competitors Ignore
 
-| Market | Why Ignored | Flikk Opportunity |
+| Market | Why Ignored | Gloceries Opportunity |
 |--------|-------------|-------------------|
 | **Tier-2 cities** | Low AOV, high delivery cost | First-mover, lower CAC |
 | **Tier-3 cities** | No dark-store density | Kirana-first model works |
@@ -1009,12 +1009,12 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 - **YES** — but they're shifting to 1P inventory (opposite of marketplace)
 
-**What Flikk Can Build That's Harder to Copy:**
+**What Gloceries Can Build That's Harder to Copy:**
 
 1. **Merchant network density** — 20 stores in 2 km (competitors need 20 dark stores, ₹4–8 Cr capex)
 2. **Local demand data** — neighbourhood-level, SKU-level (compounds over time)
 3. **Regional assortment** — 500+ local brands (hard to source at scale)
-4. **Community trust** — "Flikk supports local stores" messaging (emotional moat)
+4. **Community trust** — "Gloceries supports local stores" messaging (emotional moat)
 5. **Merchant software** — inventory, analytics, digital khata (switching cost)
 6. **Neighbourhood network effects** — more customers → more merchants → better delivery → more customers
 
@@ -1065,7 +1065,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **Merchant referrals:** 20 (each store brings 3–5 customers)
 
 **Mechanism:**
-1. Create WhatsApp message: "🎉 Flikk is live in Bejai! Get ₹50 off your first order. Download: [link]"
+1. Create WhatsApp message: "🎉 Gloceries is live in Bejai! Get ₹50 off your first order. Download: [link]"
 2. Post in 10 apartment groups (300–500 members each)
 3. Track signups via referral code "BEJAI50"
 
@@ -1116,7 +1116,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 1. **Visit store** (founder + ops)
 2. **Demo app** (show competitor pricing)
 3. **Sign agreement** (10% commission, 30-day exit)
-4. **Catalogue upload** (200–500 SKUs, Flikk team helps)
+4. **Catalogue upload** (200–500 SKUs, Gloceries team helps)
 5. **Training** (order acceptance, packaging)
 6. **Go live** (first order within 48 hours)
 
@@ -1128,7 +1128,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 ### Catalogue Setup
 
-- **Flikk team uploads** (takes photos, enters SKUs)
+- **Gloceries team uploads** (takes photos, enters SKUs)
 - **Merchant verifies** (prices, availability)
 - **Time:** 2–3 hours/store
 
@@ -1140,9 +1140,9 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 ### Delivery
 
-- **Flikk riders** (merchant just hands over packed order)
+- **Gloceries riders** (merchant just hands over packed order)
 - **SLA:** 30–45 minutes
-- **Packaging:** Merchant provides (Flikk gives guidelines)
+- **Packaging:** Merchant provides (Gloceries gives guidelines)
 
 ### Retention
 
@@ -1180,7 +1180,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 - **Social content:** Daily posts (user-generated content)
 - **Influencers:** 20 creators (20k–50k followers)
-- **Local campaigns:** "Flikk Neighbourhood Challenge" (most orders wins)
+- **Local campaigns:** "Gloceries Neighbourhood Challenge" (most orders wins)
 - **Referral:** Tiered (₹30 for 1 friend, ₹100 for 5 friends)
 - **Seasonal:** Republic Day (January), Valentine's (February)
 
@@ -1188,7 +1188,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 - **Social content:** City-specific (Mangalore → Udupi)
 - **Influencers:** 50 creators (pan-coastal)
-- **Local campaigns:** "Flikk Udupi Launch" (free delivery week)
+- **Local campaigns:** "Gloceries Udupi Launch" (free delivery week)
 - **Referral:** City-specific codes (UDUPI50)
 - **Seasonal:** Holi (March), Summer (April–May)
 
@@ -1197,12 +1197,12 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 - **Local discovery:** "Hidden gems in Mangalore"
 - **Grocery hacks:** "5 ways to save on monthly groceries"
 - **Funny relatable:** "When you order milk at 11 PM"
-- **Customer stories:** "How Flikk saved my dinner party"
+- **Customer stories:** "How Gloceries saved my dinner party"
 - **Merchant stories:** "30 years of serving Bejai"
 - **Local culture:** "Udupi cuisine essentials"
 - **Product education:** "How to pick fresh coconut"
 - **Offers:** "₹50 off on first order"
-- **Behind-the-scenes:** "Meet your Flikk rider"
+- **Behind-the-scenes:** "Meet your Gloceries rider"
 - **Rider stories:** "Delivering 100 orders/day"
 
 ***
@@ -1227,21 +1227,21 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 ### Example Content Formats
 
 **Instagram:**
-- **Reel:** "5 local Mangalore brands you can only get on Flikk" (30 sec)
+- **Reel:** "5 local Mangalore brands you can only get on Gloceries" (30 sec)
 - **Carousel:** "₹500 grocery haul vs ₹800 on Blinkit" (5 slides)
 - **Story:** "Order tracking — 5 mins away!" (user-generated)
 
 **YouTube Shorts:**
-- **Merchant story:** "30 years of serving Bejai — now on Flikk" (60 sec)
+- **Merchant story:** "30 years of serving Bejai — now on Gloceries" (60 sec)
 - **Grocery hack:** "How to store coconut for 2 weeks" (45 sec)
 
 **WhatsApp:**
 - **Broadcast:** "🎉 Weekend offer: ₹50 off on orders above ₹400!"
-- **Group message:** "Your neighbour Ramesh just ordered from Shetty Stores — join Flikk!"
+- **Group message:** "Your neighbour Ramesh just ordered from Shetty Stores — join Gloceries!"
 
 **LinkedIn:**
-- **Founder posts:** "Why we're building Flikk for Tier-2 India" (text + image)
-- **Merchant testimonials:** "How Flikk increased our sales by 20%" (case study)
+- **Founder posts:** "Why we're building Gloceries for Tier-2 India" (text + image)
+- **Merchant testimonials:** "How Gloceries increased our sales by 20%" (case study)
 
 ***
 
@@ -1389,7 +1389,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 2. **Retention over acquisition** — 40% D7 retention reduces CAC payback
 3. **Contribution margin positive per order** — ₹20+ from Day 1
 4. **Organic growth** — referrals (50% of new customers), WhatsApp loops
-5. **Merchant partnerships** — they promote Flikk to their customers
+5. **Merchant partnerships** — they promote Gloceries to their customers
 6. **Community acquisition** — apartment events, college fests (₹50–100 CAC)
 7. **Local brand** — "Support local stores" messaging (emotional, not discount-driven)
 8. **Operational efficiency** — batched delivery, 2–3 orders/rider trip
@@ -1402,7 +1402,7 @@ Quick commerce is built for **speed + standardisation**. Kiranas win on **trust 
 
 | Blinkit Strategy | Copy | Adapt | Avoid | Why |
 |------------------|------|-------|-------|-----|
-| **Dark stores** | ❌ | ⚠️ (later) | ✅ (now) | Capex-intensive, Flikk is marketplace |
+| **Dark stores** | ❌ | ⚠️ (later) | ✅ (now) | Capex-intensive, Gloceries is marketplace |
 | **10-minute delivery** | ❌ | ❌ | ✅ | Economically suicidal at small scale |
 | **Discounts** | ❌ | ⚠️ (first-order only) | ✅ (permanent) | Burns cash, no loyalty |
 | **Large assortment** | ❌ | ⚠️ (via merchants) | ✅ (own inventory) | Merchants provide assortment |
@@ -1471,7 +1471,7 @@ More stores
 | **3 years** | **Neighbourhood density (50 neighbourhoods)** | 2–3 km radius dominance, rider routing |
 | **5 years** | **Local demand data (SKU-level, neighbourhood-level)** | 5 years of order history, prediction models |
 | **5 years** | **Regional brand marketplace (500+ local brands)** | Sourcing relationships, exclusivity |
-| **5 years** | **Community trust ("Flikk = local")** | Emotional moat, "support local" narrative |
+| **5 years** | **Community trust ("Gloceries = local")** | Emotional moat, "support local" narrative |
 
 **LONG-TERM MOAT:** **Data + density + merchant software.** Competitors can copy one, but not all three without rebuilding the entire network.
 
@@ -1571,18 +1571,18 @@ More stores
 
 ## 50. FINAL INVESTOR VERDICT
 
-### Is Flikk Actually Worth Building?
+### Is Gloceries Actually Worth Building?
 
 **VERDICT: YES WITH CONDITIONS**
 
-**Top 5 Reasons Flikk Could Become Huge:**
+**Top 5 Reasons Gloceries Could Become Huge:**
 1. **Tier-2/3 first-mover** — Blinkit/Zepto weak outside metros [whalesbook](https://www.whalesbook.com/news/English/consumer-products/Indias-Online-Grocery-Market-Value-Focus-Over-Speed-to-Drive-Growth/6a82ae2b6ffbe1e6461f0e35)
 2. **Kirana digitisation** — 12M stores, 90% market share, low tech adoption [ndtvprofit](https://www.ndtvprofit.com/business/opinion-the-omnichannel-reality-why-competition-law-must-look-beyond-e-commerce-11926286)
 3. **Regional product moat** — local brands, loose items, credit (khata) [linkedin](https://www.linkedin.com/posts/divanshu-luthra-5760aa1b2_retail-quickcommerce-startups-activity-7495045390266871808-tZ9b)
 4. **Capital-efficient model** — marketplace, no dark stores, no inventory [linkedin](https://www.linkedin.com/posts/vansh-sharma22_darkstoreeconomics-activity-7496778189671936000-2JLc)
 5. **Community trust** — "support local" narrative, emotional moat [linkedin](https://www.linkedin.com/posts/divanshu-luthra-5760aa1b2_retail-quickcommerce-startups-activity-7495045390266871808-tZ9b)
 
-**Top 5 Reasons Flikk Could Fail:**
+**Top 5 Reasons Gloceries Could Fail:**
 1. **Unit economics** — CAC >₹300, AOV <₹400 = death spiral
 2. **Merchant churn** — if stores leave, assortment collapses
 3. **Competitor response** — Blinkit/Zepto enter Tier-2 with discounts
@@ -1620,9 +1620,9 @@ More stores
 | **TARGET CUSTOMER** | "28-year-old working professional in Mangalore, 3BHK apartment, ₹60k/month household, orders groceries 2–3x/week." |
 | **BEACHHEAD MARKET** | "Bejai neighbourhood, Mangalore (2 km radius, 3,000 households)." |
 | **CORE PROBLEM** | "Customers want app convenience + kirana trust + regional products. Quick commerce offers speed but no local assortment. Kiranas offer trust but no app." |
-| **CORE SOLUTION** | "Flikk aggregates local stores into one app, provides shared delivery, and lets merchants retain customer relationships." |
+| **CORE SOLUTION** | "Gloceries aggregates local stores into one app, provides shared delivery, and lets merchants retain customer relationships." |
 | **DIFFERENTIATION** | 1. Regional products (500+ local brands)<br>2. Merchant software (inventory, analytics, digital khata)<br>3. Neighbourhood density (20 stores in 2 km) |
-| **BUSINESS MODEL** | "Marketplace: 10% commission + ₹30 delivery fee (₹20 customer, ₹10 Flikk subsidy)." |
+| **BUSINESS MODEL** | "Marketplace: 10% commission + ₹30 delivery fee (₹20 customer, ₹10 Gloceries subsidy)." |
 | **UNIT ECONOMICS** | "AOV ₹500, ₹50 commission, ₹10 delivery subsidy, ₹35 rider cost, ₹20 contribution/order (4% margin)." |
 | **ACQUISITION ENGINE** | "WhatsApp referrals (50% of new customers), apartment communities (30%), micro-influencers (20%)." |
 | **RETENTION ENGINE** | "Weekly reorder push, loyalty points (₹1 = 1 point), personalised offers (₹20 off favourite store)." |
@@ -1665,4 +1665,4 @@ More stores
 
 ***
 
-**FINAL NOTE:** Flikk's success depends on **discipline** — resist the temptation to expand too fast, chase 10-minute hype, or burn cash on discounts. Win the neighbourhood, then the city, then the region. The kirana revolution is real — Flikk can lead it, but only if it stays true to its **local-first, density-led, capital-efficient** strategy.
+**FINAL NOTE:** Gloceries's success depends on **discipline** — resist the temptation to expand too fast, chase 10-minute hype, or burn cash on discounts. Win the neighbourhood, then the city, then the region. The kirana revolution is real — Gloceries can lead it, but only if it stays true to its **local-first, density-led, capital-efficient** strategy.

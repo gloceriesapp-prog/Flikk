@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { RupeePrice } from '../../../components/RupeePrice';
 import { ArrowDown01Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -31,7 +32,7 @@ export function TotalAmountCard({ items, totalPrice }: Props) {
           <Text className="text-[15px] font-semibold text-ink">Total Amount</Text>
           <AppIcon icon={ArrowDown01Icon} size={16} color={colors.ink} />
         </View>
-        <Text className="text-[15px] font-semibold text-ink">₹{totalPrice}</Text>
+        <RupeePrice amount={totalPrice} size={15} />
       </Pressable>
 
       <Modal visible={expanded} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setExpanded(false)}>
@@ -56,14 +57,14 @@ export function TotalAmountCard({ items, totalPrice }: Props) {
                       {item.weight ? ` · ${item.weight}` : ''}
                     </Text>
                   </View>
-                  <Text className="text-[14.5px] font-semibold text-ink">₹{item.price * item.quantity}</Text>
+                  <RupeePrice amount={item.price * item.quantity} size={14.5} />
                 </View>
               ))}
             </ScrollView>
 
             <View className="mt-3 flex-row items-center justify-between border-t border-mist pt-3">
               <Text className="text-[15px] font-semibold text-ink">Total</Text>
-              <Text className="text-[15px] font-semibold text-ink">₹{totalPrice}</Text>
+              <RupeePrice amount={totalPrice} size={15} />
             </View>
           </Pressable>
         </Pressable>

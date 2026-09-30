@@ -37,6 +37,11 @@ interface Props {
   selectedId: string;
   onSelect: (id: string) => void;
   isFrosted?: boolean;
+  // 'all' tab is a light pastel header — its divider must be dark-on-light
+  // (border-ink/10) instead of the white/20 that only shows on a dark
+  // gradient. Tab icons/text already flip via isFrosted (HomeHeader OR's
+  // isLightHeader into it), so only the divider needs this flag.
+  light?: boolean;
 }
 
 // Small breathing room past whichever edge is the real scroll target
@@ -45,7 +50,7 @@ interface Props {
 // container's own boundary.
 const EDGE_PADDING = 12;
 
-export function CategoryTabs({ selectedId, onSelect, isFrosted = false }: Props) {
+export function CategoryTabs({ selectedId, onSelect, isFrosted = false, light = false }: Props) {
   const { data: realTabs = [] } = useHomeTabs();
   const tabs: Category[] = [ALL_TAB, ...realTabs.map((t) => ({ id: t.id, label: t.name, icon: iconForTabName(t.name) }))];
 
@@ -97,12 +102,14 @@ export function CategoryTabs({ selectedId, onSelect, isFrosted = false }: Props)
   }
 
   return (
-    <View className="mt-2 border-b border-white/20" onLayout={handleContainerLayout}>
+    // border-b divider under the whole row; each tab's own short underline
+    // (CategoryTabItem) sits on top of it for the active tab.
+    <View className={`mt-2 border-b ${light ? 'border-ink/10' : 'border-white/20'}`} onLayout={handleContainerLayout}>
       <ScrollView
         ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="gap-0.5"
+        contentContainerClassName="gap-0.5 px-4"
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >

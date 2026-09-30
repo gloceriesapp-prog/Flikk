@@ -14,8 +14,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
-const LOCATION_KEY = 'flikk_customer_delivery_location';
-const RECIPIENT_NAME_KEY = 'flikk_customer_recipient_name';
+const LOCATION_KEY = 'gloceries_customer_delivery_location';
+const RECIPIENT_NAME_KEY = 'gloceries_customer_recipient_name';
 
 export interface DeliveryLocation {
   latitude: number;

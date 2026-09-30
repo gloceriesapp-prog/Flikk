@@ -1,18 +1,5 @@
-// Seller/regulatory info block — FSSAI license number + registered address, a
-// real requirement for Indian grocery/food listings. Own section (own file/
-// collapse state) below the main product info, but no longer its own
-// rounded-2xl/bg-white card — ProductDetailInfo.tsx supplies one shared
-// white background across every section now, this just adds its own
-// padding and lets the parent's divider above it do the separating.
-// Collapsible: starts collapsed with the address clipped to 2 lines and a
-// "Show more" toggle, matching the reference — this is compliance text
-// nobody reads by default, not a scannable field.
-
 import { useState } from 'react';
-import { ChevronDownIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
-import { AppIcon } from '../AppIcon';
-import { colors } from '../../theme/tokens';
 import type { Product } from '../../screens/home/products/types';
 
 interface Props {
@@ -22,30 +9,89 @@ interface Props {
 export function SellerDetailsCard({ sellerDetails }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const toggleSellerDetails = () => {
+    setIsExpanded((prev) => !prev);
+  };
+
   return (
-    <View className="gap-3 px-4 py-4">
-      <Pressable onPress={() => setIsExpanded((prev) => !prev)} className="flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-ink">Seller Details</Text>
-        <View style={{ transform: [{ rotate: isExpanded ? '180deg' : '0deg' }] }}>
-          <AppIcon icon={ChevronDownIcon} size={18} color={colors.ink} />
+    <View className="px-4">
+      {/* Header */}
+      <Pressable
+        onPress={toggleSellerDetails}
+        accessibilityRole="button"
+        accessibilityLabel="Seller details"
+        accessibilityState={{ expanded: isExpanded }}
+        hitSlop={8}
+        className="flex-row items-center justify-between py-4"
+      >
+        <View className="flex-1 pr-4">
+          <Text className="text-[16px] font-bold text-ink">
+            Seller Details
+          </Text>
+
+          {!isExpanded && (
+            <Text className="mt-0.5 text-[12px] leading-4 text-muted">
+              FSSAI licence & seller information
+            </Text>
+          )}
+        </View>
+
+        {/* Plus / Minus button */}
+        <View
+          className="
+            h-8 w-8
+            items-center justify-center
+            rounded-full
+            border border-gray-200
+            bg-gray-50
+          "
+        >
+          <Text className="text-[22px] font-normal leading-[24px] text-ink">
+            {isExpanded ? '−' : '+'}
+          </Text>
         </View>
       </Pressable>
 
-      <View className="gap-1.5">
-        <Text className="text-sm text-gray-600">
-          Seller Name: <Text className="text-muted">{sellerDetails.name}</Text>
-        </Text>
-        <Text className="text-sm text-gray-600">
-          FSSAI Number: <Text className="text-ink">{sellerDetails.fssaiNumber}</Text>
-        </Text>
-        <Text className="text-sm leading-5 text-ink/70" numberOfLines={isExpanded ? undefined : 2}>
-          Address: {sellerDetails.address}
-        </Text>
-      </View>
+      {/* Expanded Details */}
+      {isExpanded && (
+        <View className="pb-5">
+          {/* Seller Name */}
+          <View className="border-b border-gray-100 py-3">
+            <Text className="mb-1 text-[12px] font-medium uppercase tracking-wide text-muted">
+              Seller
+            </Text>
 
-      <Pressable onPress={() => setIsExpanded((prev) => !prev)}>
-        <Text className="text-sm font-semibold text-lime-deep">{isExpanded ? 'Show less' : 'Show more'} +</Text>
-      </Pressable>
+            <Text className="text-[14px] font-semibold leading-5 text-ink">
+              {sellerDetails.name}
+            </Text>
+          </View>
+
+          {/* FSSAI */}
+          <View className="border-b border-gray-100 py-3">
+            <Text className="mb-1 text-[12px] font-medium uppercase tracking-wide text-muted">
+              FSSAI Licence Number
+            </Text>
+
+            <Text
+              selectable
+              className="text-[14px] font-semibold leading-5 text-ink"
+            >
+              {sellerDetails.fssaiNumber}
+            </Text>
+          </View>
+
+          {/* Address */}
+          <View className="pt-3">
+            <Text className="mb-1 text-[12px] font-medium uppercase tracking-wide text-muted">
+              Registered Address
+            </Text>
+
+            <Text className="text-[14px] font-medium leading-[21px] text-ink/70">
+              {sellerDetails.address}
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }

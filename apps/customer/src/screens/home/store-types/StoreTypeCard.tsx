@@ -22,11 +22,11 @@ export function StoreTypeCard({ storeType, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-2 rounded-full px-4 py-2.5"
+      className="flex-row items-center gap-2 rounded-[16px] px-5 py-3"
       style={{ backgroundColor: '#f7f7f7' }}
     >
       <AppIcon icon={iconForStoreCategory(storeType.category)} size={18} color={colors.ink} />
-      <Text className="text-[13px] font-medium text-ink" numberOfLines={1}>
+      <Text className="text-[14px] font-semibold text-ink" numberOfLines={1}>
         {storeType.category}
       </Text>
     </Pressable>

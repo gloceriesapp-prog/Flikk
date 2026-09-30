@@ -10,7 +10,7 @@ const DEAL_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/obje
 
 export function DealsSection() {
   return (
-    <View className="px-5 pt-6">
+    <View className="px-5 pt-8">
       <View className="h-48 w-full overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-md shadow-black/15">
         <Image source={{ uri: DEAL_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
       </View>

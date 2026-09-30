@@ -102,7 +102,7 @@ export default function OverviewPage() {
     try {
       const updated = await updateMyStore({ is_active: nextActive });
       setStore(updated);
-      window.dispatchEvent(new CustomEvent('flikk:store-updated', { detail: updated }));
+      window.dispatchEvent(new CustomEvent('gloceries:store-updated', { detail: updated }));
     } catch {
       setStore(previous);
     } finally {

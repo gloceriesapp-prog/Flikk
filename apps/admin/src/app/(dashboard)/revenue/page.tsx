@@ -68,7 +68,7 @@ export default function RevenuePage() {
   useAdminRealtime(loadData);
 
   // Real total earnings = commission (from stores) + platform/handling fee
-  // (from customers) — both are money Flikk actually keeps, neither is
+  // (from customers) — both are money Gloceries actually keeps, neither is
   // ever paid to a store or a rider. app/api/revenue-trend's own note has
   // the full reasoning.
   const totalCommission = trend.reduce((sum, p) => sum + p.commission, 0);
@@ -106,7 +106,7 @@ export default function RevenuePage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-medium text-ink">Revenue</h1>
-          <p className="text-sm text-muted">How much Flikk earned, and what&apos;s owed back to stores.</p>
+          <p className="text-sm text-muted">How much Gloceries earned, and what&apos;s owed back to stores.</p>
         </div>
       </div>
 
@@ -153,7 +153,7 @@ export default function RevenuePage() {
           <div className="rounded-3xl border border-border bg-card p-5">
             <div className="mb-4">
               <h3 className="text-sm font-medium text-ink">Order transactions</h3>
-              <p className="text-xs text-muted">Every order, its total, and the commission Flikk earned from it.</p>
+              <p className="text-xs text-muted">Every order, its total, and the commission Gloceries earned from it.</p>
             </div>
             <OrderTransactionsTable orders={ordersByRecency} />
           </div>

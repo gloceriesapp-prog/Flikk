@@ -8,7 +8,7 @@
 
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-export type OrderStatusFilterValue = 'all' | 'placed' | 'packed' | 'out_for_delivery' | 'delivered';
+export type OrderStatusFilterValue = 'all' | 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'failed';
 
 interface FilterOption {
   value: OrderStatusFilterValue;

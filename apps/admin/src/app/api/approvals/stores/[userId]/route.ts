@@ -118,7 +118,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
     await sendPushNotification(
       user.expo_push_token,
       "You're approved! 🎉",
-      'Your store is live on Flikk — you can start receiving orders now.',
+      'Your store is live on Gloceries — you can start receiving orders now.',
     );
 
     return NextResponse.json({ ok: true });

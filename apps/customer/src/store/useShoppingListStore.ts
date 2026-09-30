@@ -47,7 +47,7 @@ export const useShoppingListStore = create<ShoppingListState>()(
       clearChecked: () => set((state) => ({ items: state.items.filter((item) => !item.isChecked) })),
     }),
     {
-      name: 'flikk-shopping-list',
+      name: 'gloceries-shopping-list',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

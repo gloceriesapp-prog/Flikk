@@ -1,34 +1,22 @@
-// Third redesign — bordered card per an explicit reference (rating badge
-// overlaying the photo, bookmark top-right, name/category/open-status
-// block, a divider, then a footer info row) replacing the previous flat
-// Google-Maps-listing shape entirely (no more 3-photo strip, no Shop now/
-// Share buttons — this card now only ever navigates to StoreDetail on tap,
-// same as everywhere else a store card appears in this app).
-//
-// No "Flat X% OFF" pill, unlike the reference — there is no per-store
-// discount concept anywhere in this schema (same reasoning
-// StorePromoBanner.tsx/NearestToYouSection.tsx's own header notes already
-// give): discounts live on individual products' original_price, never on
-// a store as a whole. Fabricating one here would be exactly the dummy
-// content this app has been deliberately stripped of elsewhere.
-//
-// No "price for two"/"Bookings available" either — both are restaurant-
-// booking concepts with no equivalent in a grocery-delivery schema. The
-// footer row is real instead: avg_prep_minutes (the same real prep-time
-// column TrackOrderScreen's own ETA math already uses), not a restaurant
-// reservation time.
+import {
+  ArrowRight01Icon,
+  Bookmark01Icon,
+  Clock01Icon,
+  Location01Icon,
+  StarIcon,
+} from '@hugeicons/core-free-icons';
 
-import { Bookmark01Icon, ArrowRight01Icon, Clock01Icon, Location01Icon, StarIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
-import { AppImage as Image } from '../../../components/AppImage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { useLikedStoresStore } from '../../../store/useLikedStoresStore';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
-import { colors } from '../../../theme/tokens';
 import { getStoreStatusText } from '../storeHours';
 import { getDeliveryMessage } from '../deliveryMessage';
+
 import type { AppStackParamList } from '../../../navigation/types';
 import type { RealStore } from '../all-stores/useAllStores';
 
@@ -36,111 +24,347 @@ interface Props {
   store: RealStore;
 }
 
-const PHOTO_SIZE = 108;
-
 export function StoreCard({ store }: Props) {
-  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const isLiked = useLikedStoresStore((state) => state.isLiked(store.id));
-  const toggleLiked = useLikedStoresStore((state) => state.toggle);
+  const navigation =
+    useNavigation<
+      NativeStackNavigationProp<AppStackParamList>
+    >();
+
+  const isLiked = useLikedStoresStore(
+    (state) => state.isLiked(store.id),
+  );
+
+  const toggleLiked = useLikedStoresStore(
+    (state) => state.toggle,
+  );
+
+  const status = getStoreStatusText(
+    store.isOpen,
+    store.openTime,
+    store.closeTime,
+  );
+
+  const isOpen = status.word === 'Open';
+
+  const address = [
+    store.addressLine,
+    store.district,
+    store.city,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   function goToStore() {
-    navigation.navigate('StoreDetail', { storeId: store.id, storeName: store.name });
+    navigation.navigate('StoreDetail', {
+      storeId: store.id,
+      storeName: store.name,
+    });
   }
 
-  const status = getStoreStatusText(store.isOpen, store.openTime, store.closeTime);
-
   return (
+  <View
+    className="
+      rounded-[28px]
+      bg-white
+      shadow-sm
+      shadow-black/[0.05]
+    "
+  >
     <Pressable
       onPress={goToStore}
-      className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm shadow-black/5"
+      className="
+        overflow-hidden
+        rounded-[28px]
+        bg-white
+     
+      "
     >
+      {/* MAIN AREA */}
       <View className="flex-row gap-3 p-3">
-        <View style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}>
+
+        {/* IMAGE */}
+        <View
+          className="
+            relative
+            h-[106px]
+            w-[106px]
+            shrink-0
+            overflow-hidden
+            rounded-2xl
+            bg-[#F7F7F7]
+          "
+        >
           <Image
-            source={{ uri: store.photoUrl || PLACEHOLDER_IMAGE_URI }}
-            style={{ flex: 1 }}
-            className="rounded-xl bg-mist"
+            source={{
+              uri:
+                store.photoUrl ||
+                PLACEHOLDER_IMAGE_URI,
+            }}
+            className="h-full w-full"
             contentFit="cover"
           />
-          {/* Real rating (store.rating), same overlay-on-photo treatment
-              NearestToYouSection.tsx's own cards use — no fabricated
-              review count riding along with it. */}
+
+          {/* RATING */}
           {store.rating !== undefined && (
-            <View className="absolute left-1.5 top-1.5 flex-row items-center gap-1 rounded-lg bg-success px-1.5 py-0.5">
-              <Text className="text-[12px] font-bold text-white">{store.rating.toFixed(1)}</Text>
-              <AppIcon icon={StarIcon} size={10} color="#FFFFFF" fill="#FFFFFF" strokeWidth={0} />
+            <View
+              className="
+                absolute
+                bottom-2
+                left-2
+                flex-row
+                items-center
+                gap-1
+                rounded-full
+                bg-white/95
+                px-2
+                py-1
+              "
+            >
+              <AppIcon
+                icon={StarIcon}
+                size={10}
+                color="#F59E0B"
+                fill="#F59E0B"
+                strokeWidth={0}
+              />
+
+              <Text className="text-[11.5px] font-semibold text-[#111111]">
+                {store.rating.toFixed(1)}
+              </Text>
             </View>
           )}
         </View>
 
-        <View className="flex-1 gap-1">
-          <View className="flex-row items-start justify-between gap-2">
-            {/* 2 lines, not 1 — a real store name (per the founder's own
-                Add Store form, no length cap there) was getting cut off
-                mid-word ("Ammanna Enterprises S...") on a single line at
-                this card's own column width. */}
-            <Text className="flex-1 text-[16px] font-semibold leading-5 text-ink" numberOfLines={2}>
-              {store.name}
+        {/* RIGHT CONTENT */}
+        <View className="min-w-0 flex-1">
+
+          {/* CATEGORY + SAVE */}
+          <View className="flex-row items-center justify-between">
+            <Text
+              numberOfLines={1}
+              className="
+                flex-1
+                pr-2
+                text-[11px]
+                font-semibold
+                uppercase
+                tracking-[0.4px]
+                text-black/40
+              "
+            >
+              {store.category}
             </Text>
-            <Pressable onPress={() => toggleLiked(store.id)} hitSlop={8}>
+
+            <Pressable
+              onPress={(event) => {
+                event.stopPropagation();
+                toggleLiked(store.id);
+              }}
+              hitSlop={8}
+              className="
+                h-8
+                w-8
+                items-center
+                justify-center
+                rounded-full
+                bg-[#F7F7F7]
+                active:scale-95
+              "
+            >
               <AppIcon
                 icon={Bookmark01Icon}
-                size={19}
-                color={isLiked ? colors.limeDeep : colors.ink}
-                fill={isLiked ? colors.limeDeep : undefined}
-                strokeWidth={isLiked ? 0 : 1.8}
+                size={17}
+                color={
+                  isLiked
+                    ? '#155DFC'
+                    : '#111111'
+                }
+                fill={
+                  isLiked
+                    ? '#155DFC'
+                    : undefined
+                }
+                strokeWidth={
+                  isLiked ? 0 : 1.8
+                }
               />
             </Pressable>
           </View>
 
-          <Text className="text-[12.5px] font-medium text-ink/50" numberOfLines={1}>
-            Category: {store.category}
+          {/* NAME */}
+          <Text
+            numberOfLines={2}
+            className="
+              -mt-0.5
+              pr-1
+              text-[16px]
+              font-semibold
+              leading-[20px]
+              tracking-[-0.3px]
+              text-[#111111]
+            "
+          >
+            {store.name}
           </Text>
 
-          {/* Full real address — stores.address_line + city + district
-              (useAllStores.ts's own real columns). A location-pin icon
-              in front, per an explicit ask, instead of bare text.
-              Falls back gracefully to whichever of the three a given
-              store actually has on file rather than showing an empty
-              line or a fabricated one. */}
-          {(store.addressLine || store.city || store.district) && (
-            <View className="flex-row items-start gap-1">
-              <View className="mt-0.5">
-                <AppIcon icon={Location01Icon} size={12} color={`${colors.ink}80`} strokeWidth={1.8} />
-              </View>
-              <Text className="flex-1 text-[12.5px] font-medium text-ink/50" numberOfLines={2}>
-                {[store.addressLine, store.district, store.city].filter(Boolean).join(', ')}
+          {/* ADDRESS */}
+          {address.length > 0 && (
+            <View className="mt-1.5 flex-row items-center gap-1.5">
+              <AppIcon
+                icon={Location01Icon}
+                size={12}
+                color="#8A8A8A"
+                strokeWidth={1.8}
+              />
+
+              <Text
+                numberOfLines={1}
+                className="
+                  flex-1
+                  text-[11.5px]
+                  font-semibold
+                  text-black/45
+                "
+              >
+                {address}
               </Text>
             </View>
           )}
 
-          {/* Real is_active/open_time/close_time — green while open, red
-              while closed. The suffix swaps from the plain clock time to
-              a real countdown ("Closing in 1h 30m"/"Opens in 45m",
-              storeHours.ts's own getStoreStatusText) once the gap is
-              inside the urgency window — gold, not plain black, so it
-              actually reads as time-sensitive. Recomputed per render, not
-              a live-ticking timer (this file's own note on why). */}
-          <Text className="text-[13px] font-medium">
-            <Text style={{ color: status.word === 'Open' ? colors.success : colors.danger }}>{status.word}</Text>
-            {status.suffix ? <Text style={{ color: status.urgent ? colors.gold : colors.ink }}>{status.suffix}</Text> : null}
-          </Text>
+          {/* STATUS */}
+          <View className="mt-2 flex-row items-center gap-1.5">
+            <View
+              className={`
+                h-1.5
+                w-1.5
+                rounded-full
+                ${
+                  isOpen
+                    ? 'bg-[#16A34A]'
+                    : 'bg-[#DC2626]'
+                }
+              `}
+            />
+
+            <Text
+              className={`
+                text-[12px]
+                font-semibold
+                ${
+                  isOpen
+                    ? 'text-[#15803D]'
+                    : 'text-[#DC2626]'
+                }
+              `}
+            >
+              {status.word}
+            </Text>
+
+            {status.suffix ? (
+              <>
+                <View className="h-1 w-1 rounded-full bg-black/15" />
+
+                <Text
+                  numberOfLines={1}
+                  className={`
+                    flex-1
+                    text-[11.5px]
+                    font-semibold
+                    ${
+                      status.urgent
+                        ? 'text-[#B7791F]'
+                        : 'text-black/40'
+                    }
+                  `}
+                >
+                  {status.suffix.trim()}
+                </Text>
+              </>
+            ) : null}
+          </View>
         </View>
       </View>
 
-      <View className="h-px bg-gray-100" />
+      {/* DELIVERY FOOTER */}
+      <View className="px-3 pb-3">
+        <View
+          className="
+            flex-row
+            items-center
+            rounded-2xl
+            bg-[#F7F7F7]
+            px-3
+            py-2.5
+          "
+        >
+          <View
+            className="
+              h-8
+              w-8
+              items-center
+              justify-center
+              rounded-full
+              bg-white
+            "
+          >
+            <AppIcon
+              icon={Clock01Icon}
+              size={14}
+              color="#155DFC"
+              strokeWidth={1.9}
+            />
+          </View>
 
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <View className="flex-row items-center gap-2">
-          <AppIcon icon={Clock01Icon} size={15} color={colors.ink} strokeWidth={1.8} />
-          {/* Varied, honest fallback lines instead of literally the same
-              "Delivery time varies" on every card with no real prep time
-              on file yet (deliveryMessage.ts's own note on why these are
-              never a fabricated number). */}
-          <Text className="text-[13px] font-medium text-ink/70">{getDeliveryMessage(store.id, store.avgPrepMinutes)}</Text>
+          <View className="ml-2.5 min-w-0 flex-1">
+            <Text
+              className="
+                text-[10px]
+                font-semibold
+                uppercase
+                tracking-[0.4px]
+                text-black/35
+              "
+            >
+              Delivery
+            </Text>
+
+            <Text
+              numberOfLines={1}
+              className="
+                mt-0.5
+                text-[12.5px]
+                font-semibold
+                text-[#111111]
+              "
+            >
+              {getDeliveryMessage(
+                store.id,
+                store.avgPrepMinutes,
+              )}
+            </Text>
+          </View>
+
+          <View
+            className="
+              ml-2
+              h-8
+              w-8
+              items-center
+              justify-center
+              rounded-full
+              bg-white
+            "
+          >
+            <AppIcon
+              icon={ArrowRight01Icon}
+              size={15}
+              color="#111111"
+              strokeWidth={2}
+            />
+          </View>
         </View>
-        <AppIcon icon={ArrowRight01Icon} size={16} color={`${colors.ink}80`} strokeWidth={2} />
       </View>
     </Pressable>
+    </View>
   );
 }

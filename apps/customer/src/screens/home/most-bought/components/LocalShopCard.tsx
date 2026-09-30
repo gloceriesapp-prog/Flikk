@@ -1,5 +1,5 @@
-// The card that actually differentiates Flikk from Instamart/Blinkit/
-// BigBasket — all three run on warehouses/dark stores; Flikk is a
+// The card that actually differentiates Gloceries from Instamart/Blinkit/
+// BigBasket — all three run on warehouses/dark stores; Gloceries is a
 // coordination layer on top of real kirana/pharmacy shops that already
 // exist in the neighbourhood (CLAUDE.md's own "what this is"). One real
 // store photo (useFeaturedStore.ts -> GET /stores, same hook

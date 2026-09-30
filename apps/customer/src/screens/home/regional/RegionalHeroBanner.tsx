@@ -1,26 +1,30 @@
-// Hero strip at the top of the Regional tab — sets the emotional tone
-// ("local pride") before any product row, per the strategy discussion
-// this tab came out of: regional/local products are this app's hardest-
-// to-copy advantage, so the tab that surfaces them should say so plainly
-// instead of opening straight into a product grid like every other tab.
-//
-// Deliberately text-only, no photo — no real "coastal Karnataka" hero
-// photography exists yet, and a stock/generic image would undercut the
-// exact authenticity this banner is trying to sell. Same warm terracotta
-// tone the earlier Ganesh Chaturthi card used for festive/local content,
-// not this app's usual blue/lavender palette — a deliberate visual cue
-// that this tab is a different kind of content, not another category.
+// Hero strip at the top of the Regional tab. Full-device-width regional.png
+// banner sitting on the SAME per-category gradient HomeHeader uses for the
+// Regional tab (categoryHeaderGradients.ts) — reused, not re-typed, so the
+// banner never drifts out of sync with the header above it. The one change:
+// its last stop is forced to pure white so the gradient melts into the white
+// page below the banner with no visible seam.
 
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { AppImage as Image } from '../../../components/AppImage';
+import { gradientForTabName } from '../data/categoryHeaderGradients';
+
+const REGIONAL = gradientForTabName('regional');
 
 export function RegionalHeroBanner() {
   return (
-    <View className="mx-5 mt-4 gap-1.5 rounded-3xl px-5 py-5" style={{ backgroundColor: '#6B2E44' }}>
-      <Text className="text-[19px] font-extrabold leading-6 text-white">Only here.</Text>
-      <Text className="text-[13.5px] leading-5 text-white/75">
-        Regional brands, loose spices, and everyday staples from your Kaup &amp; Udupi kirana stores — the stuff
-        quick-commerce apps don&apos;t carry.
-      </Text>
-    </View>
+    <LinearGradient
+      colors={[REGIONAL.colors[0], REGIONAL.colors[1], REGIONAL.colors[2], '#FFFFFF']}
+      locations={REGIONAL.stops}
+    >
+      <View className="px-5 pb-2 pt-4">
+        <Image
+          source={{ uri: 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/regional.png' }}
+          className="w-full aspect-[16/9]"
+          resizeMode="contain"
+        />
+      </View>
+    </LinearGradient>
   );
 }

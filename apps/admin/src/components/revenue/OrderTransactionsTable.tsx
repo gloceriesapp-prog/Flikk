@@ -1,5 +1,5 @@
 // Order-level money detail — every order, its full amount, and the slice
-// of that amount Flikk actually kept (order.commissionAmount, the real
+// of that amount Gloceries actually kept (order.commissionAmount, the real
 // orders.commission_amount column). Delivered orders count as earned;
 // anything still in flight is "pending" and cancelled orders earned
 // nothing, shown at ₹0 rather than hidden, so the table still reconciles

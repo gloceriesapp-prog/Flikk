@@ -85,7 +85,7 @@ export function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = DE
       {/* Stat tiles */}
       <OfferStatTiles totalKm={offer.totalKm} payout={offer.payout} />
 
-      {/* Meta line: item count + payment mode. Flikk is prepaid/UPI only
+      {/* Meta line: item count + payment mode. Gloceries is prepaid/UPI only
           (no COD in the schema), so every order is cashless — stated as the
           platform fact it is, not a per-order flag we don't store. */}
       <View className="flex-row items-center justify-center gap-4">

@@ -117,7 +117,7 @@ export function Sidebar() {
         {!collapsed && (
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-sm font-bold text-white">F</div>
-            <span className="text-sm font-semibold text-ink">Flikk Admin</span>
+            <span className="text-sm font-semibold text-ink">Gloceries Admin</span>
           </div>
         )}
         <button

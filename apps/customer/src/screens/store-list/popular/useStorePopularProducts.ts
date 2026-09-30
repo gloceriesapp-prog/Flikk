@@ -20,7 +20,11 @@ export function useStorePopularProducts(storeId: string) {
   return useQuery({
     queryKey: ['store-list', 'popular-products', storeId],
     queryFn: async () => {
-      const rows = await apiRequest<ApiProduct[]>(`/stores/${storeId}/products?deals=true`, { auth: false });
+      // Real products from this store (GET /stores/:id/products). Dropped the
+      // ?deals=true filter — stores with no discounted product on file showed
+      // an empty panel (whole card hidden). Now shows the store's real DB
+      // products regardless of discount, first MAX_ITEMS.
+      const rows = await apiRequest<ApiProduct[]>(`/stores/${storeId}/products`, { auth: false });
       return rows.map(mapApiProduct).slice(0, MAX_ITEMS);
     },
   });

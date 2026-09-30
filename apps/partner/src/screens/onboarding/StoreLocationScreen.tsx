@@ -5,22 +5,28 @@
 // (a live static map preview once a pin is set) and the real inline
 // "Use current location" permission flow, same sequence apps/customer's own
 // LocationPermissionScreen uses.
+//
+// Shares OnboardingScaffold's top bar (back + centered progress) and big
+// title so it reads as the same wizard as the form steps, but does NOT use
+// the scaffold's ScrollView body — a map wants to fill fixed space, not
+// scroll — so the chrome is composed here directly.
 
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import MapView, { Marker } from 'react-native-maps';
-import { ArrowRight01Icon, Location05Icon, PinLocation01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, ArrowRight01Icon, Location05Icon, PinLocation01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { saveStoreDraft } from '../../api/auth';
 import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { getCurrentCoordinates, requestLocationPermission, reverseGeocode, type Coordinates } from '../../location/geocoding';
 import { colors } from '../../theme/tokens';
+import { PAGE_BG, WizardProgress } from './components/OnboardingScaffold';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'StoreLocation'>;
 
-const PAGE_BG = '#F1F2F4';
 const PREVIEW_DELTA = 0.006;
 
 export function StoreLocationScreen({ navigation, route }: Props) {
@@ -79,16 +85,26 @@ export function StoreLocationScreen({ navigation, route }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-      <View className="px-6 pb-3 pt-safe-offset-4">
-        <Text className="text-[13px] font-bold uppercase tracking-wide text-ink/40">Step 2 of 5</Text>
-        <Text className="mt-1 text-[22px] font-semibold text-ink">Mark your store on the map</Text>
-        <Text className="mt-1 text-[14px] font-medium text-ink/55">This pin is what riders use to find your store.</Text>
+      <StatusBar style="dark" />
+
+      {/* Same top bar as OnboardingScaffold — back arrow + centered progress. */}
+      <View className="flex-row items-center px-5 pb-2 pt-safe-offset-2">
+        <Pressable onPress={() => navigation.goBack()} hitSlop={16} className="h-9 w-9 items-center justify-center">
+          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+        </Pressable>
+        <WizardProgress step={2} total={5} />
+        <View className="h-9 w-9" />
       </View>
 
-      <View className="flex-1 px-5">
+      <View className="px-6 pt-7">
+        <Text className="text-4xl font-medium leading-[42px] tracking-tight text-ink">Mark your store on the map</Text>
+        <Text className="mt-3 text-[16px] font-medium leading-[22px] text-ink/55">This pin is what riders use to find your store.</Text>
+      </View>
+
+      <View className="flex-1 px-6 pt-6">
         <Pressable
           onPress={handleOpenLocationPin}
-          className="overflow-hidden rounded-[20px] bg-white"
+          className="overflow-hidden rounded-[20px] bg-[#EEF0F2]"
           style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}
         >
           {coordinates ? (
@@ -119,7 +135,7 @@ export function StoreLocationScreen({ navigation, route }: Props) {
               </View>
             </View>
           ) : (
-            <View className="h-[260px] items-center justify-center gap-3 border border-dashed border-gray-300">
+            <View className="h-[260px] items-center justify-center gap-3">
               <View className="h-14 w-14 items-center justify-center rounded-full bg-lime-soft">
                 <AppIcon icon={PinLocation01Icon} size={24} color={colors.limeDeep} />
               </View>

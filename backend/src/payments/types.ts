@@ -1,7 +1,7 @@
 export interface OrderIdBody {
   // Our own `orders.id` (from POST /orders) — required so the webhook
   // (webhook.ts) can write razorpay_payment_id back to the right row via
-  // notes.flikk_order_id. Exactly one of orderId/tripId is set — never
+  // notes.gloceries_order_id. Exactly one of orderId/tripId is set — never
   // both — the caller (apps/customer's CheckoutScreen) already knows which
   // one it just created (POST /orders vs POST /trips, useCartStore's own
   // selectCartStoreCount).

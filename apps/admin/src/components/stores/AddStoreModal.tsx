@@ -1,7 +1,7 @@
 'use client';
 
 // Store onboarding — the real document set a kirana/pharmacy store needs
-// before it can legally list on Flikk:
+// before it can legally list on Gloceries:
 //   FSSAI license/registration — mandatory for any food/grocery business
 //   Shop & Establishment license — standard municipal registration
 //   GSTIN — only once turnover crosses ₹40L, so conditional not mandatory

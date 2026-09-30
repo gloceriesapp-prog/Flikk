@@ -115,13 +115,13 @@ export function StoreListScreen({ navigation }: Props) {
   });
 
   return (
-    <View className="flex-1 bg-[#FCFCFB]">
-      {/* Light (white) icons — correct against this screen's own dark
-          gradient header, same reasoning as HomeScreen.tsx's own header.
-          Re-asserted here so a screen that set "dark" (Categories/Purchase)
-          doesn't leave invisible dark icons behind on arrival — same fix
-          class as those screens' own note, opposite value. */}
-      <StatusBar style="light" />
+    <View className="flex-1 bg-[#F6F6F6]">
+      {/* Dark (black) status-bar icons — this screen's header is a light
+          blue gradient (#69A9D4→#D9EDF6), so the device clock/wifi read
+          against it only in black; light would wash out. A screen that set
+          "light" before must reset here on arrival, same fix class as the
+          other tabs' own note, opposite value. */}
+      <StatusBar style="dark" />
 
       {/* StoreHeader is item 0 inside this same ScrollView now (was a
           fixed sibling above it) with stickyHeaderIndices={[0]} — same

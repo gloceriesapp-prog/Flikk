@@ -56,7 +56,7 @@ function validateSubmission(input: RiderOnboardingFields): asserts input is Requ
   if (!input.fullName?.trim()) throw new AppError(400, 'MISSING_FIELDS', 'Full name is required.');
   if (!input.dateOfBirth) throw new AppError(400, 'MISSING_FIELDS', 'Date of birth is required.');
   if (!isAtLeastAge(input.dateOfBirth, MIN_RIDER_AGE_YEARS)) {
-    throw new AppError(400, 'UNDERAGE', `You must be at least ${MIN_RIDER_AGE_YEARS} to ride for Flikk.`);
+    throw new AppError(400, 'UNDERAGE', `You must be at least ${MIN_RIDER_AGE_YEARS} to ride for Gloceries.`);
   }
   if (!input.homeAddress?.trim()) throw new AppError(400, 'MISSING_FIELDS', 'Home address is required.');
   if (!input.aadhaarNumber?.trim()) throw new AppError(400, 'MISSING_FIELDS', 'Aadhaar number is required.');

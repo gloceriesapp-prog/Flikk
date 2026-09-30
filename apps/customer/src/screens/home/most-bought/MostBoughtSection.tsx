@@ -15,14 +15,19 @@ import { View } from 'react-native';
 import { useEverydayEssentials } from '../everyday-essentials/useEverydayEssentials';
 import { PromoListCard } from '../products/PromoListCard';
 
-export function MostBoughtSection() {
+interface Props {
+  title?: string;
+  subtitle?: string | null;
+}
+
+export function MostBoughtSection({ title = 'Most Bought Near You', subtitle }: Props) {
   const { data: catalog = [] } = useEverydayEssentials();
 
   if (catalog.length === 0) return null;
 
   return (
-    <View className="pt-12">
-      <PromoListCard title="Most Bought Near You" products={catalog} />
+    <View className="pt-8">
+      <PromoListCard title={title} subtitle={subtitle} products={catalog} />
     </View>
   );
 }

@@ -63,7 +63,7 @@ export function DocumentChecklist({ application }: { application: Application })
     },
     {
       label: 'Storefront photo',
-      why: "Ties into Flikk's real-photo trust strategy.",
+      why: "Ties into Gloceries's real-photo trust strategy.",
       status: application.photoUrl ? 'verified' : 'missing',
     },
   ];

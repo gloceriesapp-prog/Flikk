@@ -1,14 +1,14 @@
-# CLAUDE.md — Flikk
+# CLAUDE.md — Gloceries
 
 Instructions for Claude Code when working in this repo. Read this before making any architectural, scope, or dependency decision.
 
 ## What this is
 
-Flikk — asset-light hyperlocal delivery app connecting existing kirana/pharmacy stores to customers in underserved tier-2/3 pockets of coastal Karnataka (starting zone: Kaup/outer Udupi). No owned inventory, no dark stores — a software + logistics coordination layer on top of stores that already stock goods.
+Gloceries — asset-light hyperlocal delivery app connecting existing kirana/pharmacy stores to customers in underserved tier-2/3 pockets of coastal Karnataka (starting zone: Kaup/outer Udupi). No owned inventory, no dark stores — a software + logistics coordination layer on top of stores that already stock goods.
 
-**Source of truth:** [PRD-Flikk-Final.md](PRD-Flikk-Final.md) — architecture, schema, and scope decisions are derived from it, **except app-surface scope below, which supersedes the PRD** (see note).
+**Source of truth:** [PRD-Gloceries-Final.md](PRD-Gloceries-Final.md) — architecture, schema, and scope decisions are derived from it, **except app-surface scope below, which supersedes the PRD** (see note).
 
-Also in this repo: [BUILD-PLAN-Flikk.md](BUILD-PLAN-Flikk.md) (week-by-week build order — **stale as of the app-surface change below, needs a re-pass before it's trusted again**) and a [clickable screen prototype](https://claude.ai/code/artifact/5e469049-797c-41c8-ae8b-447bf1929f63) (customer-app screens only, still valid for that surface).
+Also in this repo: [BUILD-PLAN-Gloceries.md](BUILD-PLAN-Gloceries.md) (week-by-week build order — **stale as of the app-surface change below, needs a re-pass before it's trusted again**) and a [clickable screen prototype](https://claude.ai/code/artifact/5e469049-797c-41c8-ae8b-447bf1929f63) (customer-app screens only, still valid for that surface).
 
 ## Four app surfaces — not three, not one
 
@@ -21,7 +21,7 @@ This is the single most important structural fact about the project. Build four 
 | **Rider app** | Delivery riders — pickup/drop assignments | React Native (Expo) mobile app |
 | **Admin dashboard** | Founder only, internal ops | Next.js web — the only web surface in the product |
 
-> **Note on PRD divergence:** PRD-Flikk-Final.md Section 9 scopes the store partner as a web dashboard and puts a rider app entirely out of scope until v2. That was a deliberate solo-dev-speed tradeoff. This file overrides that: all three operational roles (customer, partner, rider) get native apps; only admin stays web. Treat this CLAUDE.md as authoritative on app-surface scope; treat the PRD as authoritative on everything else (schema, API shape, design tokens, business logic) until it's formally revised to match.
+> **Note on PRD divergence:** PRD-Gloceries-Final.md Section 9 scopes the store partner as a web dashboard and puts a rider app entirely out of scope until v2. That was a deliberate solo-dev-speed tradeoff. This file overrides that: all three operational roles (customer, partner, rider) get native apps; only admin stays web. Treat this CLAUDE.md as authoritative on app-surface scope; treat the PRD as authoritative on everything else (schema, API shape, design tokens, business logic) until it's formally revised to match.
 
 ## Tech stack — locked, do not re-litigate
 
@@ -57,7 +57,7 @@ One repo, four independently-runnable apps plus the shared backend. Don't reach 
   /rider         — Expo app
   /admin         — Next.js app
 /backend         — Node/Express API, shared by all four
-/PRD-Flikk-Final.md
+/PRD-Gloceries-Final.md
 /CLAUDE.md
 ```
 
@@ -89,17 +89,17 @@ Admin dashboard (Next.js) ───────────┤
                                       └─→ WhatsApp Business API / Twilio (notifications)
 ```
 
-Full detail — database schema and REST API surface: PRD-Flikk-Final.md Sections 15-18. Note the PRD's API table assumes a web partner dashboard; endpoints hold, but partner and rider endpoints now serve native app clients instead — same contracts, different consumer.
+Full detail — database schema and REST API surface: PRD-Gloceries-Final.md Sections 15-18. Note the PRD's API table assumes a web partner dashboard; endpoints hold, but partner and rider endpoints now serve native app clients instead — same contracts, different consumer.
 
 ## Database
 
-Schema per PRD-Flikk-Final.md Section 16 — `zones`, `users`, `addresses`, `stores`, `products`, `orders`, `order_items`, `riders`, `payouts`. `users.role` now meaningfully distinguishes four consumer types at the API auth layer (`customer` / `store_owner` / `rider` / `admin`), each hitting role-scoped endpoints from their respective app. Don't add speculative columns for out-of-scope features (no GPS coordinates on `orders` — that's v3, PRD Section 26). `order_items.unit_price_at_order` is deliberately denormalized — never derive an order's total from current product prices.
+Schema per PRD-Gloceries-Final.md Section 16 — `zones`, `users`, `addresses`, `stores`, `products`, `orders`, `order_items`, `riders`, `payouts`. `users.role` now meaningfully distinguishes four consumer types at the API auth layer (`customer` / `store_owner` / `rider` / `admin`), each hitting role-scoped endpoints from their respective app. Don't add speculative columns for out-of-scope features (no GPS coordinates on `orders` — that's v3, PRD Section 26). `order_items.unit_price_at_order` is deliberately denormalized — never derive an order's total from current product prices.
 
 Supabase Row-Level Security on every table: a customer reads only their own orders/addresses, a store owner reads/writes only their own store's data, a rider reads only assignments given to them. This is a security requirement, implemented alongside the table — not a follow-up task.
 
 ## Design system
 
-Full tokens and rationale in PRD-Flikk-Final.md Section 11 and the live prototype (customer-app screens). Quick reference — applies to customer and partner apps; rider app can be visually simpler (it's an operational tool checked between deliveries, not a browsing experience) but should still use these brand tokens for consistency, not a different palette:
+Full tokens and rationale in PRD-Gloceries-Final.md Section 11 and the live prototype (customer-app screens). Quick reference — applies to customer and partner apps; rider app can be visually simpler (it's an operational tool checked between deliveries, not a browsing experience) but should still use these brand tokens for consistency, not a different palette:
 
 ```
 --lime:      #A8D93A   brand — nav, active states, key highlights

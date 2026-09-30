@@ -14,7 +14,7 @@ interface StatCardProps {
 
 // The three ring-icon + big-number cards in the reference's header row
 // (Total Shipments / Pending Package / Delivery Shipments) — same shape,
-// just Flikk's own three top-line numbers.
+// just Gloceries's own three top-line numbers.
 export function StatCard({ icon: Icon, value, changePct, label }: StatCardProps) {
   const isUp = (changePct ?? 0) >= 0;
 

@@ -14,8 +14,8 @@ const ibmPlex = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Flikk Partner Dashboard",
-  description: "Manage your store's orders, inventory, and payouts on Flikk.",
+  title: "Gloceries Partner Dashboard",
+  description: "Manage your store's orders, inventory, and payouts on Gloceries.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -30,7 +30,7 @@ export function AllStoresSection({ stores }: Props) {
 
   return (
     <View className="px-5 pt-6">
-      <Text className="mb-4 text-xl font-bold text-ink">All stores</Text>
+      <Text className="mb-4 text-[18px] font-bold text-ink tracking-[-0.35px]">All stores</Text>
       <View className="gap-4">
         {stores.map((store) => (
           <StoreCard key={store.id} store={store} />

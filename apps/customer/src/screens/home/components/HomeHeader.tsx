@@ -71,7 +71,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { CollapsibleHeaderTop, COLLAPSE_DISTANCE } from './CollapsibleHeaderTop';
 import { HeaderBackgroundGradient } from './HeaderBackgroundGradient';
-import { HeaderRays } from './HeaderRays';
 import { HomeSearchBar } from './HomeSearchBar';
 import { CategoryTabs } from './CategoryTabs';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
@@ -115,6 +114,12 @@ export function HomeHeader({
   // gradient is a separate resolution now.
   const gradient = useActiveHeaderGradient(activeCategoryName, false);
 
+  // Every category gradient is now a light pastel (categoryHeaderGradients.ts),
+  // so the header's text/icons are always dark for legibility — not just on
+  // 'all'. Threaded down to CollapsibleHeaderTop (location + switcher) and
+  // OR'd into CategoryTabs' existing frosted (=dark-text) flip.
+  const isLightHeader = true;
+
   // Same [0, COLLAPSE_DISTANCE] scroll window CollapsibleHeaderTop already
   // uses for its own fold — the frosted state and the folded-away ETA row
   // finish transitioning at exactly the same scroll position, so nothing
@@ -150,12 +155,7 @@ export function HomeHeader({
           opacity animation, not a second copy of the gradient-positioning
           logic that file already owns. */}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, gradientStyle]}>
-        <HeaderBackgroundGradient colors={gradient.colors} locations={gradient.stops}>
-          {/* Hidden per an explicit ask ("white overlay like a spotlight")
-              — the diagonal light-ray decorative overlay. Not deleted,
-              just not rendered. <HeaderRays /> */}
-              <HeaderRays />
-        </HeaderBackgroundGradient>
+        <HeaderBackgroundGradient colors={gradient.colors} locations={gradient.stops} />
       </Animated.View>
 
       {/* Sits between the gradient and the real content below — blurs
@@ -177,7 +177,7 @@ export function HomeHeader({
             spacing itself, animated down to a small residual on scroll
             (see that component's own note on why). */}
         <View className="px-6">
-          <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} isClosed={isClosed} />
+          <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} isClosed={isClosed} light={isLightHeader} />
         </View>
 
         {/* pb-7 only when the tab row is hidden — with it shown, CategoryTabs'
@@ -190,7 +190,7 @@ export function HomeHeader({
         </View>
 
         {showCategoryTabs && (
-          <CategoryTabs selectedId={selectedCategoryId} onSelect={onSelectCategory} isFrosted={isFrosted} />
+          <CategoryTabs selectedId={selectedCategoryId} onSelect={onSelectCategory} isFrosted={isFrosted || isLightHeader} light={isLightHeader} />
         )}
       </View>
     </View>

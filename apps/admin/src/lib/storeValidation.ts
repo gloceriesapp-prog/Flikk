@@ -1,5 +1,5 @@
 // Store onboarding — the real document set a kirana/pharmacy store needs
-// before it can legally list on Flikk (see AddStoreModal's own note for the
+// before it can legally list on Gloceries (see AddStoreModal's own note for the
 // per-document rationale). Same "copy of the backend rule, not a second
 // invented one" caveat as lib/productValidation.ts — this dashboard writes
 // straight to Supabase with the service-role key (app/api/stores/*) since

@@ -18,12 +18,12 @@ import { create } from 'zustand';
 // Exported so the headless background-location task (location/
 // backgroundLocation.ts) reads the same keys — a relaunched task has an
 // empty in-memory store, so it pulls the token straight from SecureStore.
-export const ACCESS_TOKEN_KEY = 'flikk_rider_access_token';
-export const REFRESH_TOKEN_KEY = 'flikk_rider_refresh_token';
-const PHONE_KEY = 'flikk_rider_phone';
+export const ACCESS_TOKEN_KEY = 'gloceries_rider_access_token';
+export const REFRESH_TOKEN_KEY = 'gloceries_rider_refresh_token';
+const PHONE_KEY = 'gloceries_rider_phone';
 // One JSON blob for the whole status snapshot — simpler than five keys,
 // and it's written/read as a unit anyway.
-const STATUS_KEY = 'flikk_rider_account_status';
+const STATUS_KEY = 'gloceries_rider_account_status';
 
 export type AccountRole = 'customer' | 'store_owner' | 'rider' | 'admin';
 

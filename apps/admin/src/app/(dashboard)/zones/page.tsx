@@ -7,7 +7,7 @@
 // scope yet, so these render as disabled "coming later" cards, not
 // activatable toggles. Two tabs: "Zones" (what's live, and which store in
 // it is winning) and "Zone Requests" (customer-app demand signal for
-// where Flikk isn't yet — informational only, never an activation
+// where Gloceries isn't yet — informational only, never an activation
 // control).
 //
 // Real data now: app/api/zones (service role) for the zone roster + store/
@@ -69,7 +69,7 @@ export default function ZonesPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-medium text-ink">Zones</h1>
-        <p className="text-sm text-muted">Flikk launches single-zone — this is where a second zone activates later.</p>
+        <p className="text-sm text-muted">Gloceries launches single-zone — this is where a second zone activates later.</p>
       </div>
 
       {loadError && <p className="text-sm text-danger">{loadError}</p>}
@@ -153,7 +153,7 @@ export default function ZonesPage() {
       {tab === 'Zone Requests' && (
         <div className="rounded-3xl border border-border bg-card p-5">
           <div className="mb-4">
-            <h3 className="text-sm font-medium text-ink">Where customers are asking for Flikk</h3>
+            <h3 className="text-sm font-medium text-ink">Where customers are asking for Gloceries</h3>
             <p className="text-xs text-muted">
               Upvoted from the customer app — a demand signal, not an activation control.
             </p>

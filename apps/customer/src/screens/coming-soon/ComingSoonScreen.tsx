@@ -1,7 +1,7 @@
 // Generic "not built yet" screen — a real destination for the "UI exists,
 // flow not wired" tap targets already scattered across this app (e.g.
 // Profile's Payment Methods/Notifications/Help & Support/Account Privacy/
-// About Flikk rows). Those used to be no-op Pressables with nothing behind
+// About Gloceries rows). Those used to be no-op Pressables with nothing behind
 // them at all — tapping did nothing, no feedback, no sign the app even
 // registered the tap. This gives every one of them somewhere real to go
 // instead, with an honest "still building this" message rather than a

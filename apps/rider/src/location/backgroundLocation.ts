@@ -30,7 +30,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 // Must match the string TaskManager.defineTask registers under — the OS
 // relaunches into the task by this name.
-export const RIDER_LOCATION_TASK = 'flikk-rider-location';
+export const RIDER_LOCATION_TASK = 'gloceries-rider-location';
 
 // Same cadence as the foreground loop (useRiderOrdersStore's
 // LOCATION_PING_INTERVAL_MS) — fresh enough for a 3-8km dispatch radius,
@@ -122,7 +122,7 @@ export async function startBackgroundLocation(): Promise<void> {
     // background location — this is also the honest UX signal ("you're
     // sharing location because you're online"), not just a platform tax.
     foregroundService: {
-      notificationTitle: 'Flikk — you are online',
+      notificationTitle: 'Gloceries — you are online',
       notificationBody: 'Sharing your location so you can receive delivery offers. Go offline to stop.',
     },
   });

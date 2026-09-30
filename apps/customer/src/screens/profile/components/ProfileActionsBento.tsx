@@ -25,7 +25,7 @@ interface Props {
 
 function BorderedTile({ icon, label, onPress }: { icon: IconSvgElement; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} className="flex-1 items-center gap-2 rounded-[24px] bg-white py-3.5">
+    <Pressable onPress={onPress} className="flex-1 items-center gap-2 rounded-[24px] border border-[#EAEAEA] bg-white py-3.5">
       <View className="h-10 w-10 items-center justify-center rounded-full bg-gray-100">
         <AppIcon icon={icon} size={18} color={`${colors.ink}99`} strokeWidth={1.7} />
       </View>
@@ -39,7 +39,7 @@ export function ProfileActionsBento({ onMyOrders, onWishlist, onSupport, onRefun
     <View className="gap-2">
       <Pressable
         onPress={onMyOrders}
-        className="flex-row items-center gap-3 rounded-[24px] bg-white px-4 py-3.5"
+        className="flex-row items-center gap-3 rounded-[24px] bg-white border border-[#EAEAEA] px-4 py-3.5"
       >
         <View className="h-11 w-11 items-center justify-center rounded-full bg-gray-100">
           <AppIcon icon={PackageIcon} size={20} color={`${colors.ink}99`} strokeWidth={1.7} />
@@ -48,7 +48,7 @@ export function ProfileActionsBento({ onMyOrders, onWishlist, onSupport, onRefun
         <AppIcon icon={ArrowRight02Icon} size={16} color={`${colors.ink}80`} />
       </Pressable>
 
-      <View className="flex-row gap-2">
+      <View className="flex-row gap-2 ">
         <BorderedTile icon={HeartIcon} label="Wishlist" onPress={onWishlist} />
         <BorderedTile icon={CustomerService01Icon} label="Support" onPress={onSupport} />
         <BorderedTile icon={DeliveryReturn02Icon} label="My Refunds" onPress={onRefunds} />

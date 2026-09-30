@@ -23,7 +23,8 @@
 
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Add01Icon, AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
+import { RupeePrice } from '../../../components/RupeePrice';
+import { Add01Icon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
@@ -34,6 +35,8 @@ import type { Product } from '../../home/products/types';
 
 interface Props {
   product: Product;
+  allowAdd?: boolean;
+  onPress?: () => void;
 }
 
 function AddControl({ product }: { product: Product }) {
@@ -79,7 +82,7 @@ function AddControl({ product }: { product: Product }) {
   );
 }
 
-export function PopularProductRow({ product }: Props) {
+export function PopularProductRow({ product, allowAdd = true, onPress }: Props) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   return (
@@ -89,7 +92,7 @@ export function PopularProductRow({ product }: Props) {
           AddControl and the price readout sit outside it as their own
           non-nested touch targets (AddControl's own header note on why). */}
       <View className="flex-row items-center gap-3 px-4 py-3">
-        <Pressable onPress={() => setIsDetailOpen(true)} className="flex-1 flex-row items-center gap-3">
+        <Pressable onPress={onPress ?? (() => { if (allowAdd) setIsDetailOpen(true); })} className="flex-1 flex-row items-center gap-3">
           <Image
             source={{ uri: product.imageUrl || PLACEHOLDER_IMAGE_URI }}
             className="h-14 w-14 rounded-xl bg-mist"
@@ -109,7 +112,7 @@ export function PopularProductRow({ product }: Props) {
             unit (what to tap, what it costs), not two independent row
             sections that need the same breathing room as image-to-title. */}
         <View className="flex-row items-center gap-1">
-          <AddControl product={product} />
+          {allowAdd ? <AddControl product={product} /> : <Text className="text-[11px] font-medium text-ink/45">Closed</Text>}
 
           {/* Right-aligned again — price belongs flush at the row's true
               end, not tucked next to AddControl — but the box is now just
@@ -125,13 +128,9 @@ export function PopularProductRow({ product }: Props) {
               x position left/right instead of it staying in one line. */}
           <View className="items-end gap-0.5" style={{ width: 44 }}>
             {product.originalPrice && product.originalPrice > product.price ? (
-              <Text className="text-[12px] font-medium text-ink/40 line-through" numberOfLines={1}>
-                ₹{product.originalPrice}
-              </Text>
+              <RupeePrice amount={product.originalPrice} size={12} strike color="#101C1066" numberOfLines={1} />
             ) : null}
-            <Text className="text-[14.5px] font-semibold text-ink" numberOfLines={1}>
-              ₹{product.price}
-            </Text>
+            <RupeePrice amount={product.price} size={14.5} numberOfLines={1} />
           </View>
         </View>
       </View>

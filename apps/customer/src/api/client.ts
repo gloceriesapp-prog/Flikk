@@ -1,8 +1,16 @@
-// Thin fetch wrapper for the Flikk backend (specs/00-foundation/api-conventions.md).
-// Attaches the session token when present; never handles routing/auth-state,
-// that's the caller's/store's job.
+// Thin instantiation of @gloceries/shared's createApiClient — the actual
+// fetch/error-shaping/401-refresh/network-error logic now lives in one place
+// (packages/shared/src/auth/client.ts) instead of being hand-copied per app
+// (this file used to carry the whole thing). This file's only job is
+// supplying this app's own base URL, its session-token getter (useAuthStore),
+// its refresh callback, and — customer-specific — the guest-safe dead-session
+// recovery. Re-exports `apiRequest`/`ApiError` under their original names so
+// every existing call site in this app keeps working unchanged.
 
+import { createApiClient } from '@gloceries/shared';
 import { useAuthStore } from '../store/useAuthStore';
+
+export { ApiError } from '@gloceries/shared';
 
 // Fallback only matters when EXPO_PUBLIC_API_URL is unset (shouldn't
 // happen — .env.local always sets it) — backend/Express listens on 4000,
@@ -11,44 +19,14 @@ import { useAuthStore } from '../store/useAuthStore';
 // failing loudly.
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  body?: unknown;
-  auth?: boolean; // attach the stored session token — default true
-}
-
-async function send(path: string, method: string, body: unknown, token: string | null) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => null);
-  return { res, json };
-}
-
-// Plain fetch, not apiRequest — apiRequest is what calls this on a 401;
-// routing this through apiRequest itself would recurse the moment the
-// refresh call also came back 401. Not api/auth.ts's own refreshSession
-// either, to avoid a circular import (auth.ts imports apiRequest from this
-// file). See useAuthStore.ts's own note on why this exists at all — no
+// Plain fetch, not this file's own apiRequest — apiRequest is what calls this
+// on a 401 (via the shared client's `refresh` option below); routing it
+// through apiRequest itself would recurse the moment the refresh call also
+// came back 401. Not api/auth.ts's refreshSession either, to avoid a circular
+// import. See useAuthStore.ts's own note on why this exists at all — no
 // refresh token ever meant every session died the moment its 1hr access
-// token expired, surfacing as "Invalid or expired session" on whatever
-// screen happened to make the next authenticated call (checkout, most
-// visibly — items can sit in the cart a while before Pay now).
+// token expired, surfacing as "Invalid or expired session" on whatever screen
+// happened to make the next authenticated call (checkout, most visibly).
 async function doRefresh(): Promise<string | null> {
   const refreshToken = useAuthStore.getState().refreshToken;
   if (!refreshToken) return null;
@@ -72,16 +50,14 @@ async function doRefresh(): Promise<string | null> {
   }
 }
 
-// Supabase refresh tokens are single-use — redeeming one issues a new one
-// and invalidates the old. Multiple authenticated calls firing close
-// together on an expired access token (e.g. checkout's own order-create
-// immediately followed by the Razorpay-order-create call) can each
-// independently try to redeem the SAME stored refresh token in parallel;
-// only the first succeeds, the rest would reuse an already-consumed token
-// and get rejected. One shared in-flight promise makes every concurrent
-// 401 await and reuse the same real refresh instead of racing separate
-// ones (this exact race was a real bug on the partner app — see
-// apps/partner/src/api/client.ts's own note).
+// Supabase refresh tokens are single-use — redeeming one issues a new one and
+// invalidates the old. Multiple authenticated calls firing close together on
+// an expired access token (e.g. checkout's order-create immediately followed
+// by the Razorpay-order-create call) can each independently try to redeem the
+// SAME stored refresh token in parallel; only the first succeeds, the rest
+// reuse an already-consumed token and get rejected. One shared in-flight
+// promise makes every concurrent 401 await and reuse the same real refresh
+// instead of racing separate ones (this exact race was a real bug on partner).
 let inFlightRefresh: Promise<string | null> | null = null;
 
 function refreshAccessToken(): Promise<string | null> {
@@ -93,67 +69,16 @@ function refreshAccessToken(): Promise<string | null> {
   return inFlightRefresh;
 }
 
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, auth = true } = options;
-  const hadAccessToken = useAuthStore.getState().accessToken != null;
+const client = createApiClient({
+  baseUrl: API_URL,
+  getAccessToken: () => useAuthStore.getState().accessToken,
+  refresh: refreshAccessToken,
+  // Fires only when a request that HAD a token 401s and refresh couldn't
+  // recover it (shared's own `token &&` guard is the guest guard — a guest
+  // with no token never trips this, so a stray auth call doesn't bounce them
+  // to login). Clearing here is what makes RootNavigator naturally return to
+  // AuthNavigator instead of the shell staying up while every call 401s.
+  onSessionExpired: () => useAuthStore.getState().clear(),
+});
 
-  let res: Response;
-  let json: unknown;
-  try {
-    ({ res, json } = await send(path, method, body, auth ? useAuthStore.getState().accessToken : null));
-  } catch (err) {
-    // fetch() throws a raw, unlogged TypeError on network failure (host
-    // unreachable, DNS, timeout) — wrap it so callers get one consistent
-    // ApiError type instead of every screen needing its own fallback for
-    // "not actually a server error", and log it so a misconfigured
-    // EXPO_PUBLIC_API_URL is diagnosable instead of silently swallowed.
-    console.error(`[apiRequest] network error calling ${path}:`, err);
-    throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your internet connection and try again.');
-  }
-
-  // A real 401 doesn't automatically mean "session is dead" anymore — it
-  // might just mean the access token expired (short-lived, see backend's
-  // own note on POST /otp/verify). One silent refresh-and-retry before
-  // surfacing the error at all.
-  if (res.status === 401 && auth) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      try {
-        ({ res, json } = await send(path, method, body, newToken));
-      } catch (err) {
-        console.error(`[apiRequest] network error retrying ${path}:`, err);
-        throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your internet connection and try again.');
-      }
-    } else if (res.status === 401 && hadAccessToken) {
-      // Refresh genuinely couldn't recover this session — no refresh
-      // token stored at all (a session created before this fix existed,
-      // or one that's outlived its refresh token too) or the backend
-      // rejected it outright. Left uncleared, accessToken stays truthy
-      // forever: RootNavigator keeps showing the app shell and every
-      // future authenticated call fails with this exact same "Invalid or
-      // expired session" error, with no way back to login short of
-      // manually clearing app storage. Clearing here is what makes
-      // RootNavigator naturally bounce to AuthNavigator instead.
-      //
-      // hadAccessToken guard: a GUEST (isGuest: true, accessToken already
-      // null) calling an auth-required endpoint that forgot its own
-      // `enabled` gate (e.g. a stray useQuery with no guest check) will
-      // always 401 here too — but there's no real session to invalidate in
-      // that case, and clear() also resets isGuest to false, which
-      // RootNavigator reads as "log out" and instantly bounces the guest
-      // to the login screen for what should just be a failed optional
-      // fetch. Only a request that actually HAD a token worth losing
-      // should trigger this recovery path.
-      await useAuthStore.getState().clear();
-    }
-  }
-
-  if (!res.ok) {
-    const errorBody = json as { error?: { code?: string; message?: string } } | null;
-    const code = errorBody?.error?.code ?? 'UNKNOWN_ERROR';
-    const message = errorBody?.error?.message ?? 'Something went wrong. Please try again.';
-    throw new ApiError(res.status, code, message);
-  }
-
-  return json as T;
-}
+export const apiRequest = client.apiRequest;

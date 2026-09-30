@@ -23,11 +23,21 @@ const TOP_RATED_LIMIT = 6;
 export function useTopRatedStores() {
   const query = useAllStores();
 
+  // Rated stores first (rating desc), then unrated (newest first). Previously
+  // this FILTERED OUT every unrated store, so pre-launch — before any review
+  // exists — the whole "Top Rated" row was empty and the section vanished.
+  // Now it always shows real zone stores; the ★ badge (TopRatedStoresSection)
+  // only appears on stores that actually have a rating, and once reviews land
+  // this naturally becomes a true top-rated ordering again.
   const stores = useMemo(
     () =>
-      (query.data ?? [])
-        .filter((store) => store.rating != null)
-        .sort((a, b) => b.rating! - a.rating!)
+      [...(query.data ?? [])]
+        .sort((a, b) => {
+          if (a.rating != null && b.rating != null) return b.rating - a.rating;
+          if (a.rating != null) return -1;
+          if (b.rating != null) return 1;
+          return b.createdAt.localeCompare(a.createdAt);
+        })
         .slice(0, TOP_RATED_LIMIT),
     [query.data],
   );

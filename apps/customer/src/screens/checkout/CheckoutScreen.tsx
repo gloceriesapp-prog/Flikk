@@ -383,7 +383,7 @@ export function CheckoutScreen({ navigation }: Props) {
   }
 
   return (
-    <View className="flex-1 bg-[#F1F2F4]">
+    <View className="flex-1 bg-[#F2F2F7]">
       <CheckoutHeader onBack={() => navigation.goBack()} itemCount={items.length} total={grandTotal} />
       {/* <RewardPointsBanner totalPrice={grandTotal} /> */}
 

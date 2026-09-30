@@ -98,9 +98,19 @@ export const useOrdersStore = create<OrdersState>((set) => ({
     // outright. 'delivered' is included but only for today (isDeliveredToday
     // above) — a completed delivery from last week has no place cluttering
     // today's queue, but today's own completed orders are real, wanted
-    // confirmation the order actually landed.
+    // confirmation the order actually landed. 'failed' (rider couldn't
+    // complete the drop after pickup) is included unconditionally — the
+    // owner's stock left the shop and didn't get delivered, so they must
+    // see it regardless of the day.
+    // ponytail: 'failed' unscoped by date — failures are rare at MVP volume,
+    // so no flooding; add an isFailedToday guard like 'delivered' if it ever clutters.
     const active = rows.filter(
-      (row) => row.status === 'placed' || row.status === 'packed' || row.status === 'out_for_delivery' || isDeliveredToday(row),
+      (row) =>
+        row.status === 'placed' ||
+        row.status === 'packed' ||
+        row.status === 'out_for_delivery' ||
+        row.status === 'failed' ||
+        isDeliveredToday(row),
     );
     const mapped = active.map((row) => mapApiOrder(row, rows));
 

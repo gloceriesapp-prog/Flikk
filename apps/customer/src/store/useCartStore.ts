@@ -134,7 +134,7 @@ export const useCartStore = create<CartState>()(
       clear: () => set({ items: [], appliedPromo: null }),
     }),
     {
-      name: 'flikk-cart',
+      name: 'gloceries-cart',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

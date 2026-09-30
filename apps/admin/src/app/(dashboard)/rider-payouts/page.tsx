@@ -3,7 +3,7 @@
 // Rider payouts — real data (public.rider_earnings), previously zero
 // admin visibility. Distinct pool from store commission/Revenue: a
 // rider's earning is always that order's own delivery fee, never a share
-// of the commission Flikk keeps (app/api/rider-payouts' own note has the
+// of the commission Gloceries keeps (app/api/rider-payouts' own note has the
 // full reasoning). "Release" here is a real settlement mechanism (stamps
 // paid_at) — not a fake bank transfer; riders don't have a verified
 // payout destination yet, this is the same honest manual mechanism

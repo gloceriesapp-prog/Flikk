@@ -45,6 +45,10 @@ const STATUS_GROUPS: { status: PartnerOrderStatus; filterValue: OrderStatusFilte
   { status: 'packed', filterValue: 'packed', sectionTitle: 'Packed' },
   { status: 'out_for_delivery', filterValue: 'out_for_delivery', sectionTitle: 'Out for Delivery' },
   { status: 'delivered', filterValue: 'delivered', sectionTitle: 'Delivered' },
+  // Terminal-negative — rider couldn't complete the drop after pickup, the
+  // owner's stock left the shop and didn't land. Trails 'delivered' so the
+  // finished states sit together at the bottom.
+  { status: 'failed', filterValue: 'failed', sectionTitle: 'Failed' },
 ];
 
 export function OrdersScreen({ navigation }: Props) {

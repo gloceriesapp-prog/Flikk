@@ -11,10 +11,12 @@
 // exactly like opening that product directly, per an explicit ask ("add
 // next card... random items... card in right and left side").
 //
-// While floating (resting state, before scrolling grows it) the card pulls
-// in from all four edges — top, both sides (CARD_SIDE_MARGIN), and bottom
-// (CARD_BOTTOM_MARGIN, all four corners rounded) — so the blurred backdrop
-// shows all the way around it. Dragging the content (the ScrollView
+// While floating (resting state, before scrolling grows it) the card is
+// TOP-anchored — it opens just below the status bar and pulls in from both
+// sides (CARD_SIDE_MARGIN); the blurred backdrop shows as empty space BELOW
+// it (REST_BOTTOM_MARGIN_FRACTION), where the floating close (X) sits. All
+// four corners are rounded while floating. Dragging the content (the
+// ScrollView
 // holding the hero image + ProductDetailInfo) UP past GROW_TRIGGER_DISTANCE
 // crosses a threshold that animates every margin to 0 too (full screen);
 // scrolling back near the top crosses it the other way and animates back
@@ -56,9 +58,10 @@
 // Close/bookmark/share float in a fixed header layered on top of each
 // card's own Animated.ScrollView, so they stay pinned to that card's top
 // edge rather than scrolling away with the image. Footer stays outside the
-// ScrollView too, pinned to the card's bottom edge. The floating X lives
-// inside each Card too (not hoisted to a shared layer) — that's what lets
-// it track that specific card's own grow value with no cross-page state.
+// ScrollView too, pinned to the card's bottom edge. Close is the chevron-
+// down pill floating top-left over the hero (with bookmark + share top-
+// right); it tracks that specific card's own grow value with no cross-page
+// state.
 //
 // Backdrop is a real glassmorphism blur (BlurView, same convention as
 // BottomNavBar.tsx's own glass pill), rendered once behind the whole
@@ -71,8 +74,8 @@
 // with; the jank this file actually had was animation/gesture-thread work,
 // which is what the Reanimated/gesture-handler rewrite above addresses.
 
-import { Bookmark01Icon, Cancel01Icon, Share03Icon } from '@hugeicons/core-free-icons';
-import { useMemo, useRef, useState } from 'react';
+import { ArrowDown01Icon, Bookmark01Icon, Share03Icon, StarIcon } from '@hugeicons/core-free-icons';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -112,27 +115,18 @@ const GROW_ANIMATION_MS = 290;
 const GROW_EASING = Easing.out(Easing.cubic);
 const CARD_RADIUS = 38;
 const FOOTER_SPACER = 96;
-// Resting top margin as a fraction of screen height, not a fixed px — the
-// card should open sitting lower (roughly a quarter down the screen), with
-// the blurred backdrop actually visible above it. Fraction, not a
-// hardcoded px, so this scales correctly across small and large phones.
-const REST_MARGIN_FRACTION = 0.24;
-// Bottom margin + corner radius while floating — same animate-to-0-when-
-// grown treatment as the top/sides.
-const CARD_BOTTOM_MARGIN = 18;
+// Card is TOP-anchored at rest (per an explicit ask): it opens just below
+// the status bar, and the blurred backdrop is visible BELOW it instead of
+// above. Small fixed top gap (added to insets.top in the worklet); the
+// bottom space is a fraction of screen height so it scales across phones.
+const REST_BOTTOM_MARGIN = 8;
+const REST_TOP_MARGIN_FRACTION = 0.18;
 const CARD_BOTTOM_RADIUS = 28;
 // Footer's own bottom padding while floating — small fixed gap, not the
-// full safe-area inset, since the card's own CARD_BOTTOM_MARGIN already
-// clears the home indicator at rest. Animates up to the real insets.bottom
-// once grown (card is flush against the physical edge again then).
+// full safe-area inset, since the card's bottom margin already clears the
+// home indicator at rest. Animates up to the real insets.bottom once grown
+// (card is flush against the physical edge again then).
 const FOOTER_REST_PADDING = 22;
-// Floating close (X) button, centered above the card's own top edge, on
-// the backdrop itself. Tracks the card's top edge (cardMarginTop) so it
-// stays glued just above it as the card grows, and fades out once grown to
-// full screen — there's no backdrop left above the card at that point for
-// it to sit on.
-const CLOSE_BUTTON_SIZE = 36;
-const CLOSE_BUTTON_GAP = 12;
 // Drag-to-dismiss (the header row's own grab handle, not the ScrollView
 // content — dragging content itself is already spoken for by the grow/
 // shrink gesture above). Past DRAG_DISMISS_DISTANCE, or a fast enough
@@ -202,6 +196,27 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
   const pageWidth = screenWidth - 2 * PEEK_WIDTH - PAGE_GAP;
   const sideInset = (screenWidth - pageWidth) / 2;
   const initialScrollX = centerIndex * (pageWidth + PAGE_GAP);
+  const [activePageIndex, setActivePageIndex] =
+    useState(centerIndex);
+
+  useEffect(() => {
+    if (visible) {
+      setActivePageIndex(centerIndex);
+    }
+  }, [visible, centerIndex]);
+
+  const activePage =
+    pages[activePageIndex] ?? product;
+
+  const previousPage =
+    activePageIndex > 0
+      ? pages[activePageIndex - 1]
+      : undefined;
+
+  const nextPage =
+    activePageIndex < pages.length - 1
+      ? pages[activePageIndex + 1]
+      : undefined;
 
   // One grow shared value per page, created lazily and kept keyed by
   // product id (not array index) so it survives leftSibling/rightSibling
@@ -224,6 +239,15 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
     return value;
   }
   const pagerRef = useRef<ScrollView>(null);
+  const goToPage = (index: number) => {
+    pagerRef.current?.scrollTo({
+      x: index * (pageWidth + PAGE_GAP),
+      y: 0,
+      animated: true,
+    });
+
+    setActivePageIndex(index);
+  };
   // Only one page can be grown at a time; while any is, the pager itself
   // stops scrolling (a half-visible neighbor sliding under a fullscreen
   // card would look broken) and re-enables once that page shrinks back.
@@ -251,9 +275,127 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
             "dark" tint plus a low-opacity black wash on top is what actually
             reads as frosted glass rather than a solid black sheet on every
             platform. */}
-        <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
         <View className="absolute inset-0 bg-black/5" />
-        <Pressable className="absolute inset-0" onPress={onClose} />
+        <Pressable
+          className="absolute inset-0"
+          onPress={onClose}
+        />
+
+
+        {/* ADD THIS HERE */}
+        {grownProductId === null && pages.length > 1 && (
+          <View
+            pointerEvents="box-none"
+            className="
+      absolute
+      left-0
+      right-0
+      top-0
+      z-20
+      h-[18.5%]
+justify-end
+pb-0.5
+    "
+          >
+            <View className="flex-row items-end justify-center gap-3">
+
+              {/* LEFT */}
+              <View className="h-[58px] w-[58px]">
+                {previousPage && (
+                  <Pressable
+                    onPress={() =>
+                      goToPage(activePageIndex - 1)
+                    }
+                    className="
+              h-[58px]
+              w-[58px]
+              overflow-hidden
+              rounded-2xl
+              border
+              border-white/20
+              bg-white/10
+              opacity-60
+              active:scale-95
+            "
+                  >
+                    <Image
+                      source={{
+                        uri:
+                          previousPage.imageUrl ||
+                          PLACEHOLDER_IMAGE_URI,
+                      }}
+                      className="h-full w-full"
+                      resizeMode="cover"
+                    />
+                  </Pressable>
+                )}
+              </View>
+
+
+              {/* ACTIVE CENTER */}
+              <View
+                className="
+          h-[72px]
+          w-[72px]
+          overflow-hidden
+          rounded-2xl
+          border-2
+          border-white
+          bg-white
+        "
+              >
+                <Image
+                  source={{
+                    uri:
+                      activePage.imageUrl ||
+                      PLACEHOLDER_IMAGE_URI,
+                  }}
+                  className="h-full w-full"
+                  resizeMode="cover"
+                />
+              </View>
+
+
+              {/* RIGHT */}
+              <View className="h-[58px] w-[58px]">
+                {nextPage && (
+                  <Pressable
+                    onPress={() =>
+                      goToPage(activePageIndex + 1)
+                    }
+                    className="
+              h-[58px]
+              w-[58px]
+              overflow-hidden
+              rounded-2xl
+              border
+              border-white/20
+              bg-white/10
+              opacity-60
+              active:scale-95
+            "
+                  >
+                    <Image
+                      source={{
+                        uri:
+                          nextPage.imageUrl ||
+                          PLACEHOLDER_IMAGE_URI,
+                      }}
+                      className="h-full w-full"
+                      resizeMode="cover"
+                    />
+                  </Pressable>
+                )}
+              </View>
+
+            </View>
+          </View>
+        )}
+
+
+        {/* EXISTING PAGER CONTINUES */}
+
 
         {pages.length > 1 ? (
           <ScrollView
@@ -264,8 +406,27 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
             snapToAlignment="start"
             showsHorizontalScrollIndicator={false}
             scrollEnabled={grownProductId === null}
-            contentOffset={{ x: initialScrollX, y: 0 }}
-            contentContainerStyle={{ width: contentWidth, height: '100%' }}
+            contentOffset={{
+              x: initialScrollX,
+              y: 0,
+            }}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(
+                event.nativeEvent.contentOffset.x /
+                (pageWidth + PAGE_GAP),
+              );
+
+              const safeIndex = Math.max(
+                0,
+                Math.min(index, pages.length - 1),
+              );
+
+              setActivePageIndex(safeIndex);
+            }}
+            contentContainerStyle={{
+              width: contentWidth,
+              height: '100%',
+            }}
             style={{ flex: 1 }}
           >
             {pages.map((p, i) => {
@@ -322,7 +483,7 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
             })}
           </ScrollView>
         ) : (
-          <Card product={product} onClose={onClose} grow={getGrowValue(product.id)} onGrowChange={() => {}} />
+          <Card product={product} onClose={onClose} grow={getGrowValue(product.id)} onGrowChange={() => { }} />
         )}
       </View>
     </Modal>
@@ -495,22 +656,71 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
   });
 
   const cardAnimatedStyle = useAnimatedStyle(() => ({
-    marginTop: interpolate(grow.value, [0, 1], [screenHeight * REST_MARGIN_FRACTION, 0]),
-    marginBottom: interpolate(grow.value, [0, 1], [CARD_BOTTOM_MARGIN, 0]),
-    borderBottomLeftRadius: interpolate(grow.value, [0, 1], [CARD_BOTTOM_RADIUS, 0]),
-    borderBottomRightRadius: interpolate(grow.value, [0, 1], [CARD_BOTTOM_RADIUS, 0]),
+    // Keep exactly the same resting card height.
+    // We only move the large empty space from bottom -> top.
+    marginTop: interpolate(
+      grow.value,
+      [0, 1],
+      [
+        screenHeight * REST_TOP_MARGIN_FRACTION +
+        insets.top -
+        insets.bottom,
+        0,
+      ],
+    ),
+
+    marginBottom: interpolate(
+      grow.value,
+      [0, 1],
+      [insets.bottom + REST_BOTTOM_MARGIN, 0],
+    ),
+
+    borderBottomLeftRadius: interpolate(
+      grow.value,
+      [0, 1],
+      [CARD_BOTTOM_RADIUS, 0],
+    ),
+
+    borderBottomRightRadius: interpolate(
+      grow.value,
+      [0, 1],
+      [CARD_BOTTOM_RADIUS, 0],
+    ),
+
     transform: [{ translateY: dragY.value }],
   }));
 
-  const closeButtonStyle = useAnimatedStyle(() => ({
-    top: interpolate(grow.value, [0, 1], [screenHeight * REST_MARGIN_FRACTION - CLOSE_BUTTON_SIZE - CLOSE_BUTTON_GAP, -CLOSE_BUTTON_SIZE]),
-    opacity: interpolate(grow.value, [0, 1], [1, 0]),
-  }));
+ const scrollHeaderStyle = useAnimatedStyle(() => ({
+  opacity: grow.value,
 
-  const statusBarBlurStyle = useAnimatedStyle(() => ({
-    opacity: grow.value,
-  }));
+  transform: [
+    {
+      translateY: interpolate(
+        grow.value,
+        [0, 1],
+        [-8, 0],
+      ),
+    },
+  ],
+}));
 
+const headerTitleStyle = useAnimatedStyle(() => ({
+  opacity: interpolate(
+    grow.value,
+    [0, 0.45, 1],
+    [0, 0, 1],
+  ),
+
+  transform: [
+    {
+      translateY: interpolate(
+        grow.value,
+        [0, 1],
+        [4, 0],
+      ),
+    },
+  ],
+}));
   const headerRowStyle = useAnimatedStyle(() => ({
     top: interpolate(grow.value, [0, 1], [14, insets.top + 14]),
   }));
@@ -521,18 +731,6 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
 
   return (
     <View style={{ flex: 1 }} pointerEvents="box-none">
-      {/* Floating close (X), centered above this card's own top edge. */}
-      <Animated.View pointerEvents="box-none" style={[{ position: 'absolute', left: 0, right: 0 }, closeButtonStyle]} className="items-center">
-        <Pressable
-          onPress={onClose}
-          hitSlop={10}
-          style={{ height: CLOSE_BUTTON_SIZE, width: CLOSE_BUTTON_SIZE }}
-          className="items-center justify-center rounded-full bg-white/90 shadow-sm shadow-black/20"
-        >
-          <AppIcon icon={Cancel01Icon} size={16} color={colors.ink} strokeWidth={2} />
-        </Pressable>
-      </Animated.View>
-
       <Animated.View
         style={[
           {
@@ -553,24 +751,59 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
             which otherwise float directly on the scrolling hero image with
             nothing behind them once grown — per an explicit ask for a
             "premium" top treatment near the status bar. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top + 44, zIndex: 5 }, statusBarBlurStyle]}
-        >
-          <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
-          <View className="absolute inset-0 bg-white/10" />
-        </Animated.View>
+       {/* SOLID HEADER — ONLY APPEARS WHEN CARD GROWS */}
+<Animated.View
+  pointerEvents="none"
+  style={[
+    {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: insets.top + 64,
+
+      backgroundColor: '#FFFFFF',
+
+      borderBottomWidth: 1,
+      borderBottomColor: '#F0F1F3',
+
+      zIndex: 5,
+    },
+    scrollHeaderStyle,
+  ]}
+/>
 
         <GestureDetector gesture={panGesture}>
-          <Animated.View style={[{ position: 'absolute' }, headerRowStyle]} className="left-4 right-4 z-10 items-center gap-2.5">
-            <View pointerEvents="none" className="h-1 w-9 rounded-full bg-ink/15" />
-
+          <Animated.View style={[{ position: 'absolute' }, headerRowStyle]} className="left-4 right-4 z-10">
+            {/* Floating controls over the full-bleed hero (ref #106/#107):
+                close (chevron-down) top-left, bookmark + share top-right.
+                Translucent DARK pills + white icons rather than the ref's
+                light pills — the hero photo can be light (milk carton) or
+                dark (ice cream), and dark/25 stays legible on both where a
+                light pill would vanish on a white product.
+                ponytail: fixed tint; swap to a per-button BlurView glass pill
+                if a truly adaptive frost is wanted. */}
             <View className="w-full flex-row items-center justify-between">
-              <Text className="text-lg font-medium text-ink">Product Details</Text>
+              <Pressable onPress={onClose} hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-black/25">
+                <AppIcon icon={ArrowDown01Icon} size={20} color="#FFFFFF" strokeWidth={2} />
+              </Pressable>
 
-              <View className="flex-row gap-2">
-                <Pressable hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-white/90">
-                  <AppIcon icon={Share03Icon} size={18} color={colors.ink} />
+              <View className="flex-row gap-2.5">
+                <Pressable
+                  hitSlop={10}
+                  onPress={() => setIsBookmarked((v) => !v)}
+                  className="h-10 w-10 items-center justify-center rounded-full bg-black/25"
+                >
+                  <AppIcon
+                    icon={Bookmark01Icon}
+                    size={18}
+                    color="#FFFFFF"
+                    fill={isBookmarked ? '#FFFFFF' : undefined}
+                    strokeWidth={2}
+                  />
+                </Pressable>
+                <Pressable hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-black/25">
+                  <AppIcon icon={Share03Icon} size={18} color="#FFFFFF" strokeWidth={2} />
                 </Pressable>
               </View>
             </View>
@@ -584,25 +817,36 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
           scrollEventThrottle={16}
           contentContainerStyle={{ paddingBottom: FOOTER_SPACER }}
         >
-          <View className="relative h-80 w-full pt-14" style={{ backgroundColor: '#FAFAFA' }}>
-            {/* Same convention as ProductCardView.tsx: a real photo (imageUrl
-                set) is "contain" so it isn't cropped; the placeholder graphic
-                has a lot of baked-in transparent padding of its own, so
-                "contain"-ing THAT on top doubles up as a mostly-empty box —
-                "cover" fills the frame instead. */}
+          <View className="relative h-80 w-full" style={{ backgroundColor: '#FAFAFA' }}>
+            {/* Full-bleed hero (per an explicit ask, ref #107): image fills
+                the entire frame edge-to-edge — 'cover', not the old
+                'contain'. Real photos may crop slightly at the edges; that's
+                the intended tradeoff for the full-occupy look. Clipped to the
+                card's rounded top corners by the card's own overflow:hidden. */}
             <Image
               source={{ uri: product.imageUrl || PLACEHOLDER_IMAGE_URI }}
               className="h-full w-full"
-              resizeMode={product.imageUrl ? 'contain' : 'cover'}
+              resizeMode="cover"
             />
 
             {/* Dots are purely decorative — this product has only one real
                 photo (Product['imageUrl'], types.ts has no gallery array). */}
             <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-1.5">
-              <View className="h-1.5 w-1.5 rounded-full bg-ink" />
-              <View className="h-1.5 w-1.5 rounded-full bg-ink/25" />
-              <View className="h-1.5 w-1.5 rounded-full bg-ink/25" />
-              <View className="h-1.5 w-1.5 rounded-full bg-ink/25" />
+              <View className="h-1.5 w-1.5 rounded-full bg-white" />
+              <View className="h-1.5 w-1.5 rounded-full bg-white/50" />
+              <View className="h-1.5 w-1.5 rounded-full bg-white/50" />
+              <View className="h-1.5 w-1.5 rounded-full bg-white/50" />
+            </View>
+
+            {/* Rating badge, bottom-right on the hero (ref #107). Light pill
+                backing so it stays legible on both light and dark photos —
+                the reference floats bare text, but the catalog's photos vary
+                too much for that to read everywhere. */}
+            <View className="absolute bottom-2.5 right-3 flex-row items-center gap-1 rounded-full bg-white/85 px-2 py-1">
+              <AppIcon icon={StarIcon} size={12} color={colors.success} fill={colors.success} strokeWidth={0} />
+              <Text className="text-[12px] font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
+                {product.rating.toFixed(1)} ({product.ratingCount})
+              </Text>
             </View>
           </View>
 
@@ -614,6 +858,9 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
           />
         </Animated.ScrollView>
 
+        {/* Footer pinned INSIDE the card at its bottom edge (reverted to the
+            earlier in-card layout per an explicit ask). CartBar floats above
+            it; the footer itself is a frosted glass strip. */}
         <View className="absolute bottom-0 left-0 right-0">
           {cartTotalQuantity > 0 && (
             <View className="items-center pb-3">

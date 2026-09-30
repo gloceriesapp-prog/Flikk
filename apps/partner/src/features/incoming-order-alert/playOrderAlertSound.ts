@@ -34,7 +34,22 @@
 // this package's own README ("Expo Go is not supported").
 
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
-import { VolumeManager } from 'react-native-volume-manager';
+
+// react-native-volume-manager is a native module with NO Expo Go support —
+// a static import crashes at runtime ("doesn't seem to be linked") the moment
+// its native side is touched, which no try/catch around the calls can save.
+// Load it optionally instead: in Expo Go it's null and the device-volume boost
+// is silently skipped; the alert sound still plays via expo-audio (which works
+// in Expo Go). ponytail: no JS alternative can move system media volume in
+// managed Expo Go — the boost returns automatically in a native dev build.
+type VolumeManagerModule = typeof import('react-native-volume-manager').VolumeManager;
+let VolumeManager: VolumeManagerModule | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  VolumeManager = require('react-native-volume-manager').VolumeManager;
+} catch {
+  VolumeManager = null;
+}
 
 const SOUND_URL = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/voice-sound/orders-received.mp3';
 
@@ -74,6 +89,7 @@ let volumeBeforeBoost: number | null = null;
 let restoreTimeout: ReturnType<typeof setTimeout> | null = null;
 
 async function boostToMaxVolume(): Promise<void> {
+  if (!VolumeManager) return; // Expo Go / native module unavailable — sound plays anyway.
   try {
     if (volumeBeforeBoost === null) {
       const { volume } = await VolumeManager.getVolume();
@@ -99,7 +115,7 @@ function scheduleVolumeRestore(): void {
     if (volumeBeforeBoost === null) return;
     const restoreTo = volumeBeforeBoost;
     volumeBeforeBoost = null;
-    VolumeManager.setVolume(restoreTo, { type: 'music', showUI: false, playSound: false }).catch(() => {});
+    VolumeManager?.setVolume(restoreTo, { type: 'music', showUI: false, playSound: false }).catch(() => {});
   }, VOLUME_RESTORE_DELAY_MS);
 }
 

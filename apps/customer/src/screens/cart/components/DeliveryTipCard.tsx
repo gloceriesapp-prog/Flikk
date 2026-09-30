@@ -43,8 +43,8 @@ export function DeliveryTipCard({ selectedTip, onSelectTip }: Props) {
       <View className="gap-3 px-5 pt-5 pb-4">
         <View className="flex-row items-start gap-3">
           <View className="flex-1 gap-0.5">
-            <Text className="text-[15.5px] font-semibold text-ink mb-1.5">Say thanks with a tip</Text>
-            <Text className="text-[12.5px] leading-[16px] text-ink/50 font-medium">
+            <Text className="text-[15.5px] font-bold text-ink mb-1.5">Say thanks with a tip</Text>
+            <Text className="text-[13px] leading-[16px] text-ink/50 font-medium">
               Your rider came all this way, in the heat, just to bring your order safely to your door. A small tip means a lot to them.
             </Text>
           </View>

@@ -92,7 +92,7 @@ export function RateUsModal({ visible, onClose }: Props) {
         <View className="items-center rounded-t-[32px] bg-white px-6 pb-safe pt-7">
           {!hasSubmitted ? (
             <>
-              <Text className="text-[19px] font-bold text-ink">Enjoying Flikk?</Text>
+              <Text className="text-[19px] font-bold text-ink">Enjoying Gloceries?</Text>
               <Text className="mt-1 text-center text-[13px] font-normal text-ink/50">Tap a star to rate your experience</Text>
 
               <View className="mt-6 flex-row gap-2 pb-2">
@@ -107,7 +107,7 @@ export function RateUsModal({ visible, onClose }: Props) {
                 {rating >= 4 ? 'Thank you! 🎉' : 'Thanks for the feedback'}
               </Text>
               <Text className="mt-1 text-center text-[13px] font-normal text-ink/50">
-                {rating >= 4 ? "We're so glad you're loving Flikk." : "We'll use this to keep improving."}
+                {rating >= 4 ? "We're so glad you're loving Gloceries." : "We'll use this to keep improving."}
               </Text>
             </View>
           )}

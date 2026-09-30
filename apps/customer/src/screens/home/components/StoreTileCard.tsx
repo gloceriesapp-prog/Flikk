@@ -1,24 +1,16 @@
-// Generic store tile — fixed-width landscape rounded card, photo + name +
-// an optional one-line meta caption underneath (distance for "Shop Any
-// Store Nearby", a rating for "Top Rated Stores Near You", a "New" badge
-// for "New on Flikk"). One card, one look, reused by every Home row that's
-// fundamentally "a row of real stores" — same reasoning PromoListCard
-// (home/products/) consolidates every "title + product row" section
-// behind one component instead of each section keeping its own copy.
-//
-// Extracted from nearby-stores/components/NearbyStoreCard.tsx, which this
-// replaces — that component's own `distanceLabel` became this one's
-// generic `metaLabel`, computed by each section's own hook instead of
-// this card knowing anything about distance/rating/recency itself.
-//
-// Real photo (store.photoUrl, admin's Add Store form -> "store-images"
-// Storage bucket) when the store has one, otherwise the shared placeholder
-// image — no random per-id stock photo, same fix ProductCardView's own
-// note documents for products.
+import {
+  ArrowUpRight01Icon,
+} from '@hugeicons/core-free-icons';
 
-import { Pressable, Text, View } from 'react-native';
+import {
+  Pressable,
+  Text,
+  View,
+} from 'react-native';
+
 import { AppImage as Image } from '../../../components/AppImage';
-import { colors } from '../../../theme/tokens';
+import { AppIcon } from '../../../components/AppIcon';
+
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 
 export interface StoreTile {
@@ -27,10 +19,6 @@ export interface StoreTile {
   photoUrl?: string;
   isOpen: boolean;
   openTime?: string;
-  // One line of context under the name — what it means is entirely up to
-  // the caller (distance, rating, "New"); this card just renders it in the
-  // same slot/style every time, colored danger when the store is closed
-  // (matching the old distance-specific behavior) and muted ink otherwise.
   metaLabel?: string;
 }
 
@@ -39,36 +27,206 @@ interface Props {
   onPress: () => void;
 }
 
-export function StoreTileCard({ store, onPress }: Props) {
+export function StoreTileCard({
+  store,
+  onPress,
+}: Props) {
   return (
-    <Pressable onPress={onPress} className="w-36 gap-2">
-      <View className="h-28 w-36 overflow-hidden rounded-2xl border border-gray-100 bg-white">
-        <Image source={{ uri: store.photoUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
-        {/* Closed is still tappable/browsable (useNearbyStores.ts's own
-            note — the backend deliberately returns the true nearest store
-            either way, no silent substitution) — this badge just makes
-            that state visible instead of leaving someone to wonder why an
-            order doesn't go through. */}
-        {!store.isOpen && (
-          <View className="absolute inset-x-0 bottom-0 bg-ink/75 px-2 py-1">
-            <Text className="text-center text-[10px] font-semibold text-white" numberOfLines={1}>
-              {store.openTime ? `Closed · opens ${store.openTime}` : 'Closed'}
+    <Pressable
+      onPress={onPress}
+      className="
+        h-[196px]
+        w-[168px]
+        overflow-hidden
+        rounded-[28px]
+        border
+        border-black/[0.05]
+        bg-[#EEEEEE]
+        active:scale-[0.98]
+      "
+    >
+      {/* FULL BACKGROUND IMAGE */}
+      <Image
+        source={{
+          uri:
+            store.photoUrl ||
+            PLACEHOLDER_IMAGE_URI,
+        }}
+        className="
+          absolute
+          inset-0
+          h-full
+          w-full
+        "
+        resizeMode="cover"
+      />
+
+      {/* VERY LIGHT IMAGE SCRIM */}
+      <View
+        className="
+          absolute
+          inset-0
+          bg-black/[0.04]
+        "
+      />
+
+      {/* TOP CONTROLS */}
+      <View
+        className="
+          absolute
+          inset-x-0
+          top-0
+          flex-row
+          items-center
+          justify-between
+          p-2.5
+        "
+      >
+        {/* STATUS */}
+        <View
+          className={`
+            flex-row
+            items-center
+            gap-1.5
+            rounded-full
+            border
+            border-white/50
+            px-2.5
+            py-1.5
+            ${
+              store.isOpen
+                ? 'bg-white/90'
+                : 'bg-black/70'
+            }
+          `}
+        >
+          <View
+            className={`
+              h-1.5
+              w-1.5
+              rounded-full
+              ${
+                store.isOpen
+                  ? 'bg-[#22A05A]'
+                  : 'bg-white/80'
+              }
+            `}
+          />
+
+          <Text
+            className={`
+              text-[10px]
+              font-semibold
+              ${
+                store.isOpen
+                  ? 'text-[#1C1C1C]'
+                  : 'text-white'
+              }
+            `}
+          >
+            {store.isOpen
+              ? 'Open'
+              : 'Closed'}
+          </Text>
+        </View>
+
+        {/* OPEN BUTTON */}
+        <View
+          className="
+            h-8
+            w-8
+            items-center
+            justify-center
+            rounded-full
+            border
+            border-white/50
+            bg-white/90
+          "
+        >
+          <AppIcon
+            icon={ArrowUpRight01Icon}
+            size={14}
+            color="#1C1C1C"
+            strokeWidth={2}
+          />
+        </View>
+      </View>
+
+      {/* FLOATING STORE INFO */}
+      <View
+        className="
+          absolute
+          bottom-2.5
+          left-2.5
+          right-2.5
+          overflow-hidden
+          rounded-[19px]
+          border
+          border-white/60
+          bg-white/95
+          px-3
+          py-2.5
+        "
+      >
+        <Text
+          numberOfLines={1}
+          className="
+            text-[14px]
+            font-semibold
+            tracking-[-0.25px]
+            text-[#1C1C1C]
+          "
+        >
+          {store.name}
+        </Text>
+
+        {store.metaLabel && (
+          <View
+            className="
+              mt-1
+              flex-row
+              items-center
+              gap-1.5
+            "
+          >
+            <View
+              className="
+                h-1
+                w-1
+                rounded-full
+                bg-black/30
+              "
+            />
+
+            <Text
+              numberOfLines={1}
+              className="
+                flex-1
+                text-[11px]
+                font-medium
+                text-black/45
+              "
+            >
+              {store.metaLabel}
             </Text>
           </View>
         )}
+
+        {!store.isOpen &&
+          store.openTime && (
+            <Text
+              numberOfLines={1}
+              className="
+                mt-1
+                text-[10.5px]
+                font-medium
+                text-black/40
+              "
+            >
+              Opens {store.openTime}
+            </Text>
+          )}
       </View>
-      <Text className="text-base font-medium text-ink" numberOfLines={1}>
-        {store.name}
-      </Text>
-      {store.metaLabel && (
-        <Text
-          className="-mt-2 text-xs font-medium"
-          style={{ color: store.isOpen ? `${colors.ink}80` : colors.danger }}
-          numberOfLines={1}
-        >
-          {store.metaLabel}
-        </Text>
-      )}
     </Pressable>
   );
 }

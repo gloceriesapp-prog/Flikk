@@ -48,7 +48,7 @@ export function RiderHomeHeader({ isOnline }: { isOnline: boolean }) {
     if (!online) {
       Alert.alert(
         'Location needed to go online',
-        'Flikk shares your location while online so you receive delivery offers nearby. Enable location access to go online.',
+        'Gloceries shares your location while online so you receive delivery offers nearby. Enable location access to go online.',
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Open settings', onPress: () => void Linking.openSettings() },

@@ -20,7 +20,7 @@ module.exports = {
       supportsTablet: true,
       bundleIdentifier: 'com.gloceries.customer',
       infoPlist: {
-        NSLocationWhenInUseUsageDescription: 'Flikk uses your location to find stores near you and set your delivery address.',
+        NSLocationWhenInUseUsageDescription: 'Gloceries uses your location to find stores near you and set your delivery address.',
         LSApplicationQueriesSchemes: ['tez', 'phonepe', 'paytmmp', 'bhim', 'credpay', 'whatsapp'],
         ITSAppUsesNonExemptEncryption: false,
       },
@@ -62,14 +62,14 @@ module.exports = {
       [
         'expo-location',
         {
-          locationWhenInUsePermission: 'Flikk uses your location to find stores near you and set your delivery address.',
+          locationWhenInUsePermission: 'Gloceries uses your location to find stores near you and set your delivery address.',
         },
       ],
       [
         'expo-speech-recognition',
         {
-          microphonePermission: 'Flikk uses your microphone so you can search by voice.',
-          speechRecognitionPermission: 'Flikk uses speech recognition to turn what you say into a search.',
+          microphonePermission: 'Gloceries uses your microphone so you can search by voice.',
+          speechRecognitionPermission: 'Gloceries uses speech recognition to turn what you say into a search.',
           androidSpeechServicePackages: ['com.google.android.googlequicksearchbox'],
         },
       ],

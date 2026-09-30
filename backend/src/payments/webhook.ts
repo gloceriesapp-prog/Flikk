@@ -62,8 +62,8 @@ export async function handleWebhook(req: Request, res: Response, next: NextFunct
     const event = req.body;
     if (event.event === 'payment.captured') {
       const notes = event.payload.payment.entity.notes ?? {};
-      const orderId: string | undefined = notes.flikk_order_id;
-      const tripId: string | undefined = notes.flikk_trip_id;
+      const orderId: string | undefined = notes.gloceries_order_id;
+      const tripId: string | undefined = notes.gloceries_trip_id;
       const paymentId = event.payload.payment.entity.id;
 
       if (orderId) {
@@ -104,8 +104,8 @@ export async function handleWebhook(req: Request, res: Response, next: NextFunct
     // never downgrade a resolved order.
     if (event.event === 'payment.failed') {
       const notes = event.payload.payment.entity.notes ?? {};
-      const orderId: string | undefined = notes.flikk_order_id;
-      const tripId: string | undefined = notes.flikk_trip_id;
+      const orderId: string | undefined = notes.gloceries_order_id;
+      const tripId: string | undefined = notes.gloceries_trip_id;
       const reason: string = event.payload.payment.entity.error_description ?? 'Payment was declined or cancelled.';
 
       if (orderId) {

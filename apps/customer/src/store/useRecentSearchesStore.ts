@@ -33,7 +33,7 @@ export const useRecentSearchesStore = create<RecentSearchesState>()(
         })),
     }),
     {
-      name: 'flikk-recent-searches',
+      name: 'gloceries-recent-searches',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

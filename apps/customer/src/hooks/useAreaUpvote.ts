@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { submitAreaUpvote } from '../api/areaUpvotes';
 import { useLocationStore } from '../store/useLocationStore';
 
-const STORAGE_KEY_PREFIX = 'flikk_area_upvote_voted:';
+const STORAGE_KEY_PREFIX = 'gloceries_area_upvote_voted:';
 
 export function useAreaUpvote() {
   const location = useLocationStore((s) => s.location);

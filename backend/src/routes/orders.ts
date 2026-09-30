@@ -52,7 +52,7 @@ interface CreateOrderBody {
   // Instamart/Swiggy) all collect this, not just a location: the person
   // ordering isn't always the person receiving (family, gift, office
   // delivery), and a rider at a gate/apartment security desk needs a name
-  // to ask for, not just "the Flikk order." Phone doesn't get its own
+  // to ask for, not just "the Gloceries order." Phone doesn't get its own
   // field — the account's own verified phone already serves that role.
   address?: { label?: string; line1: string; landmark?: string; recipient_name: string };
   items: { product_id: string; quantity: number }[];
@@ -361,7 +361,7 @@ ordersRouter.patch(
       if (to === 'cancelled' && reason) {
         // A rider cancels only pre-pickup and only from CancelOrderModal's
         // fixed reason list, so their reason must be one of the known codes
-        // (lib/cancelReasons.ts — mirror of @flikk/shared). Scoped to riders
+        // (lib/cancelReasons.ts — mirror of @gloceries/shared). Scoped to riders
         // deliberately: partner-reject and customer-cancel reasons on this
         // same endpoint stay free text, so this check must not touch them.
         if (req.user!.role === 'rider' && !isRiderCancelReasonCode(reason)) {

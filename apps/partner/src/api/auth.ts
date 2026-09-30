@@ -1,6 +1,6 @@
 // Maps to POST /auth/otp/request, POST /auth/otp/verify, GET /auth/me, and
 // POST /auth/push-token — the actual HTTP contract for all four now lives
-// in one place (@flikk/shared's auth module, packages/shared/src/auth/
+// in one place (@gloceries/shared's auth module, packages/shared/src/auth/
 // otp.ts) instead of being hand-copied per app; this file wraps that
 // shared implementation with the two things that are genuinely specific to
 // this app: the devAuthFallback dev-mode stand-in below, and this app's
@@ -17,7 +17,7 @@
 // placeholder data. The fallback disappears on its own the moment a real
 // backend answers; nothing here needs to change when that happens.
 
-import { createAuthApi, type AccountStatus, type VerifyOtpResponse } from '@flikk/shared';
+import { createAuthApi, type AccountStatus, type VerifyOtpResponse } from '@gloceries/shared';
 import { apiRequest } from './client';
 import {
   devCheckAccountStatus,

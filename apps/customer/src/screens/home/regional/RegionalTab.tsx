@@ -3,7 +3,7 @@
 // case-insensitively against whatever an admin names this tab, same
 // convention every other rich tab there already uses).
 //
-// This tab exists to answer one question: "does Flikk actually carry the
+// This tab exists to answer one question: "does Gloceries actually carry the
 // local stuff, or is it just another quick-commerce app?" A hero strip
 // sets the tone; LocalStoreRow (name + one-line story, no price/ADD — not
 // a product card wearing a costume) is the trust/community-moat row.

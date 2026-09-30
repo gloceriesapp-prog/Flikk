@@ -1,11 +1,11 @@
-// Revenue page's earnings trend — real weekly totals of everything Flikk
+// Revenue page's earnings trend — real weekly totals of everything Gloceries
 // actually keeps: commission (from stores, orders.commission_amount) AND
 // the handling/platform fee (from customers, orders.handling_fee /
 // trips.handling_fee — migrations/041_order_handling_fee.sql). Both are
 // real money that's never paid out to a store or a rider (a store's own
 // payout is gross item_total minus commission only; a rider's own payout
 // is the delivery_fee only — neither pool ever includes the handling fee),
-// so both belong in "how much Flikk earned," not just commission alone.
+// so both belong in "how much Gloceries earned," not just commission alone.
 // Grouped by the Monday of each order's delivered_at week to match
 // payouts' own week_start convention.
 //

@@ -38,9 +38,11 @@ interface Props {
   product: Product;
   widthClassName?: string;
   showDiscountBadge?: boolean;
+  compact?: boolean;
+  onDark?: boolean;
 }
 
-export function ProductCard({ product, widthClassName, showDiscountBadge }: Props) {
+export function ProductCard({ product, widthClassName, showDiscountBadge, compact, onDark }: Props) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const needsSimilar = !product.relatedProducts;
@@ -55,6 +57,8 @@ export function ProductCard({ product, widthClassName, showDiscountBadge }: Prop
         product={product}
         widthClassName={widthClassName}
         showDiscountBadge={showDiscountBadge}
+        compact={compact}
+        onDark={onDark}
         onPress={() => setIsDetailOpen(true)}
       />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />

@@ -9,42 +9,36 @@
    component, which doesn't inherit defaultProps set on the raw RN Text. */
 @layer base {
   * {
-    font-family: 'AeonikSoftPro-Regular';
+    font-family: 'Gilroy-Medium';
   }
 }
 
 /* Tailwind's font-weight utilities (font-bold, font-semibold, etc.) only
-   set numeric fontWeight, which RN can't use to pick a different Aeonik
-   Soft Pro file — each weight is its own separate font file, not one
-   variable font. All 8 non-italic faces the vault ships map one-to-one
-   onto Tailwind's 9-step weight scale (extralight and black/extrabold
-   double up, since Aeonik has no separate face at exactly those steps) —
-   full coverage top to bottom, no capping partway up the scale the way
-   the previous Suisse Int'l setup had to (only 5 faces existed there). */
+   set numeric fontWeight, which RN can't use to pick a different Gilroy
+   file — each weight is its own separate font file. Gilroy ships the full
+   static range, so every step the app uses maps to its own real face, no
+   aliasing (steps lighter than medium fall back to Regular since the app
+   never uses them). */
 @layer utilities {
-  .font-thin {
-    font-family: 'AeonikSoftPro-Thin';
-  }
-  .font-extralight {
-    font-family: 'AeonikSoftPro-Air';
-  }
-  .font-light {
-    font-family: 'AeonikSoftPro-Light';
-  }
+  .font-thin,
+  .font-extralight,
+  .font-light,
   .font-normal {
-    font-family: 'AeonikSoftPro-Regular';
+    font-family: 'Gilroy-Regular';
   }
   .font-medium {
-    font-family: 'AeonikSoftPro-Medium';
+    font-family: 'Gilroy-Medium';
   }
   .font-semibold {
-    font-family: 'AeonikSoftPro-SemiBold';
+    font-family: 'Gilroy-SemiBold';
   }
   .font-bold {
-    font-family: 'AeonikSoftPro-Bold';
+    font-family: 'Gilroy-Bold';
   }
-  .font-extrabold,
+  .font-extrabold {
+    font-family: 'Gilroy-ExtraBold';
+  }
   .font-black {
-    font-family: 'AeonikSoftPro-Black';
+    font-family: 'Gilroy-Black';
   }
 }

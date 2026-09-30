@@ -41,7 +41,7 @@ export function StoreProfileForm({ store: initial, onSaved }: Props) {
   }
 
   return (
-    <SettingsSection title="Store profile" description="How your store is identified across Flikk.">
+    <SettingsSection title="Store profile" description="How your store is identified across Gloceries.">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Store name">

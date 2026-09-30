@@ -1,47 +1,21 @@
-// Thin fetch wrapper for the Flikk backend (specs/00-foundation/api-conventions.md).
-// Attaches the session token when present; never handles routing/auth-state,
-// that's the caller's/store's job. Same shape as apps/customer and
-// apps/partner's own client.ts, on purpose — a bug fixed once in the
-// shared pattern should be checkable across all three, not rediscovered
-// independently in each (CLAUDE.md's own consistency rule).
+// Thin instantiation of @gloceries/shared's createApiClient — the request/error/
+// 401-refresh/network-error logic lives in one place (packages/shared/src/
+// auth/client.ts), same as apps/customer and apps/partner. A bug fixed once
+// in the shared factory reaches all three, instead of being rediscovered
+// independently in each (CLAUDE.md's own consistency rule). This file only
+// supplies rider's base URL, token getter, refresh, and dead-session clear.
 
+import { createApiClient } from '@gloceries/shared';
 import { useAuthStore } from '../store/useAuthStore';
+
+export { ApiError } from '@gloceries/shared';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  body?: unknown;
-  auth?: boolean; // attach the stored session token — default true
-}
-
-async function send(path: string, method: string, body: unknown, token: string | null) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => null);
-  return { res, json };
-}
-
-// Plain fetch, not apiRequest — apiRequest is what calls this on a 401;
-// routing this through apiRequest itself would recurse the moment the
-// refresh call also came back 401. See apps/customer's own client.ts note
-// on why a refresh-token dance exists at all (Supabase access tokens are
+// Plain fetch, not apiRequest — apiRequest is what calls this on a 401 (via
+// the shared client's `refresh` option); routing it through apiRequest itself
+// would recurse the moment the refresh call also 401s. See apps/customer's
+// client.ts note on why the refresh dance exists (Supabase access tokens are
 // short-lived).
 async function doRefresh(): Promise<string | null> {
   const refreshToken = useAuthStore.getState().refreshToken;
@@ -77,41 +51,15 @@ function refreshAccessToken(): Promise<string | null> {
   return inFlightRefresh;
 }
 
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, auth = true } = options;
+const client = createApiClient({
+  baseUrl: API_URL,
+  getAccessToken: () => useAuthStore.getState().accessToken,
+  refresh: refreshAccessToken,
+  // Refresh couldn't recover a session that had a token — clear so
+  // RootNavigator bounces back to AuthNavigator instead of the shell staying
+  // up while every call 401s forever. (Rider has no guest mode; shared's
+  // own token guard is a harmless no-op difference from customer here.)
+  onSessionExpired: () => useAuthStore.getState().clear(),
+});
 
-  let res: Response;
-  let json: unknown;
-  try {
-    ({ res, json } = await send(path, method, body, auth ? useAuthStore.getState().accessToken : null));
-  } catch (err) {
-    console.error(`[apiRequest] network error calling ${path}:`, err);
-    throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your internet connection and try again.');
-  }
-
-  if (res.status === 401 && auth) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      try {
-        ({ res, json } = await send(path, method, body, newToken));
-      } catch (err) {
-        console.error(`[apiRequest] network error retrying ${path}:`, err);
-        throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your internet connection and try again.');
-      }
-    } else if (res.status === 401) {
-      // Refresh genuinely couldn't recover this session — clearing here is
-      // what makes RootNavigator naturally bounce back to AuthNavigator
-      // instead of the app shell staying up while every call 403s forever.
-      await useAuthStore.getState().clear();
-    }
-  }
-
-  if (!res.ok) {
-    const errorBody = json as { error?: { code?: string; message?: string } } | null;
-    const code = errorBody?.error?.code ?? 'UNKNOWN_ERROR';
-    const message = errorBody?.error?.message ?? 'Something went wrong. Please try again.';
-    throw new ApiError(res.status, code, message);
-  }
-
-  return json as T;
-}
+export const apiRequest = client.apiRequest;

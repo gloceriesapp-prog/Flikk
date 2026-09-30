@@ -95,23 +95,23 @@ const ACCEPT_WINDOW_MS = ACCEPT_WINDOW_SECONDS * 1000;
 // now, same tradeoff apps/partner's WaitingApprovalScreen makes.
 const POLL_INTERVAL_MS = 12_000;
 
-const HISTORY_KEY = 'flikk_rider_order_history';
+const HISTORY_KEY = 'gloceries_rider_order_history';
 const MAX_HISTORY = 200;
 
 // Everything below persists to SecureStore so a cold launch restores the
 // rider's real state before the first server poll returns (12s away) —
 // online/offline, the order in hand, and the cancelled list, alongside the
 // delivered history that was already persisted.
-const ONLINE_KEY = 'flikk_rider_is_online';
-const CANCELLED_KEY = 'flikk_rider_cancelled';
-const ACTIVE_ORDERS_KEY = 'flikk_rider_active_orders';
+const ONLINE_KEY = 'gloceries_rider_is_online';
+const CANCELLED_KEY = 'gloceries_rider_cancelled';
+const ACTIVE_ORDERS_KEY = 'gloceries_rider_active_orders';
 
 // Active-time-today accumulator (frozen ms + the UTC day it belongs to).
 // Persisted so a restart mid-day keeps today's total; a stored date that
 // isn't todayKey() is yesterday's total and gets dropped on load (the
 // midnight refresh). Live current session is added on top at read time
 // (useActiveMsToday), so this only holds *completed* session time.
-const ACTIVE_MS_KEY = 'flikk_rider_active_ms_today';
+const ACTIVE_MS_KEY = 'gloceries_rider_active_ms_today';
 
 // How often, while online, to report a fresh position + refresh the
 // nearby-offers list. Balanced accuracy (getCurrentCoordinates), not
@@ -548,7 +548,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     // TRIP_FAILURE_UNSUPPORTED, not this rider's order) is a real 400/403/409
     // from the backend, thrown straight through so the caller can Alert it
     // rather than silently pretend the drop was closed out. reason is a code
-    // from RIDER_DELIVERY_FAILURE_REASONS (@flikk/shared), validated server-side.
+    // from RIDER_DELIVERY_FAILURE_REASONS (@gloceries/shared), validated server-side.
     if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'failed', reason);
 
     // Terminal + paid server-side — just leave the active list. No local

@@ -41,12 +41,32 @@ const GRADIENT_BY_TAB_NAME: Record<string, CategoryHeaderGradient> = {
   // Same per-category hue identity, same dark-top starting point, just
   // the bottom stop lands on a deep, moody, still-saturated-but-dark
   // version of that hue instead of continuing to brighten toward it.
-  all: gradient(['#050F06', '#0F2915', '#1A4527', '#256B3D']),
-  groceries: gradient(['#150D05', '#2C1B0A', '#432A10', '#5A3916']),
-  fresh: gradient(['#07150A', '#102910', '#1B3F1A', '#265424']),
-  'meat & fish': gradient(['#020E15', '#062028', '#0B333F', '#114756']),
-  regional: gradient(['#160505', '#2C0D0D', '#441515', '#5C1F16']),
-  bakery: gradient(['#140811', '#2A121C', '#411D2A', '#582838']),
+  // Light pastel wash for 'all' per an explicit ask — cream -> blush ->
+  // lavender -> sky. Deliberately light (not the dark jewel-tones the other
+  // tabs use), so the header text/icons flip to dark on this tab only
+  // (HomeHeader threads an isLightHeader flag down for exactly this). Reads
+  // airy/premium rather than moody.
+  all: gradient([
+ '#8EB2FC',
+  '#A5C4FD',
+  '#BDD4FF',
+  '#D5E4FF',
+  ]),
+  groceries: gradient([
+    '#D2BA98', '#E2CDAF', '#F1E2CC', '#FCF7EF',
+  ]),
+  fresh: gradient([
+    '#A1C48C', '#BED7A7', '#DFECCB', '#F8FCF2',
+  ]),
+  'meat & fish': gradient([
+    '#8DB9C6', '#AED0D9', '#D8E9ED', '#F7FBFC',
+  ]),
+  regional: gradient([
+    '#D7926E', '#E6AF8F', '#F3D2BB', '#FFF7F0',
+  ]),
+  bakery: gradient([
+    '#D5A96F', '#E9C594', '#F5E0BD', '#FFFAF1',
+  ]),
 };
 
 export function gradientForTabName(name: string): CategoryHeaderGradient {

@@ -138,7 +138,7 @@ authRouter.post('/otp/verify', async (req, res, next) => {
 
 // Exchanges a still-valid refresh token for a new access/refresh pair —
 // called by an app's own api client the moment any authenticated request
-// comes back 401 (see @flikk/shared's createApiClient own `refresh`
+// comes back 401 (see @gloceries/shared's createApiClient own `refresh`
 // option), transparently, before ever treating that 401 as a real
 // logged-out session. No requireAuth — the refresh token itself is the
 // credential here, there's no access token left to check by the time this

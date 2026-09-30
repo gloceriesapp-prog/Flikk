@@ -5,14 +5,14 @@
 // from a fixed list, not free text: a closed set is enough for admin's manual
 // refund review to reason about, and faster to tap than to type at the door.
 //
-// The list is the shared drop-phase reason set (@flikk/shared) — the exact
+// The list is the shared drop-phase reason set (@gloceries/shared) — the exact
 // reasons CancelOrderModal omits (cancel can't apply once the parcel's in
 // hand). We store the CODE (stable) and show the LABEL; the backend validates
 // the code against its own mirror before moving the order to 'failed'.
 
 import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import { RIDER_DELIVERY_FAILURE_REASONS } from '@flikk/shared';
+import { RIDER_DELIVERY_FAILURE_REASONS } from '@gloceries/shared';
 import { PrimaryButton } from '../../../components/PrimaryButton';
 
 interface Props {

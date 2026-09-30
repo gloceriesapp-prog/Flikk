@@ -15,7 +15,11 @@
 // still wants confirmation an order actually completed, not just that it
 // left for delivery.
 
-export type PartnerOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered';
+// 'failed' = rider couldn't complete the drop after pickup (goods already
+// left the store) — terminal, shown read-only so the owner knows their
+// stock is stranded and can follow up. Distinct from 'cancelled' (dropped
+// before anything left the shop, filtered out entirely — useOrdersStore).
+export type PartnerOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'failed';
 
 export interface OrderLineItem {
   name: string;
@@ -289,9 +293,8 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     netPayout: round2(order.item_total - order.commission_amount),
     // 'cancelled' orders are filtered out before this ever runs
     // (useOrdersStore's own loadOrders) — this screen's queue has no use
-    // for them. 'delivered' orders DO reach here now, but only today's
-    // (same file's own note on why), so the cast below is always one of
-    // the four real PartnerOrderStatus values.
+    // for them. 'delivered' (today only) and 'failed' DO reach here — the
+    // cast below is always one of the five real PartnerOrderStatus values.
     status: order.status as PartnerOrderStatus,
     placedAtLabel: formatRelativeTime(order.placed_at),
     placedAtTime: new Date(order.placed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),

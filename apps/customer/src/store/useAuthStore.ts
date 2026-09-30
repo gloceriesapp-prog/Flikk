@@ -16,8 +16,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
-const TOKEN_KEY = 'flikk_customer_access_token';
-const REFRESH_TOKEN_KEY = 'flikk_customer_refresh_token';
+const TOKEN_KEY = 'gloceries_customer_access_token';
+const REFRESH_TOKEN_KEY = 'gloceries_customer_refresh_token';
 
 interface AuthState {
   accessToken: string | null;

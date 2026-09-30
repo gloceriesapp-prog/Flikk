@@ -3,7 +3,7 @@
 // isServiceable, from useNearestStore.ts's server-side 12km cutoff) — the
 // four tabs it'd otherwise show (Home/Categories/Store/Order Again) all
 // assume a browsable nearby store, which doesn't exist here. A single
-// centered black pill instead: upvote to say "bring Flikk here."
+// centered black pill instead: upvote to say "bring Gloceries here."
 //
 // Real, persisted vote (POST /area-upvotes, backend/migrations/
 // 032_area_upvotes.sql) via useAreaUpvote — shared with the inline button

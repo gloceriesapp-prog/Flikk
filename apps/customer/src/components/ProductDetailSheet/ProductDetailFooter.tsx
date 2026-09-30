@@ -1,10 +1,11 @@
-// Sticky bar — no price/weight shown, per an explicit ask (that lives in
-// ProductDetailInfo's own price row already, showing it twice was
-// redundant). Two states, both a single flat blue (#1447e6) bar per an
-// explicit reference image — no lime-deep stepper pill or separate basket
-// count anymore, one bar the whole time:
+// Floating footer island — now lives OUTSIDE the white card, in the blurred
+// bottom gap (ProductDetailSheet.tsx), so it reads as a premium detached CTA
+// (per an explicit ask, refs #108/#109). Two states:
 //
-// - Not in cart: one full-width "Add to Cart" row.
+// - Not in cart: price (+ struck original) on the LEFT, a content-width
+//   "Add to Cart" button on the RIGHT — the price now DOES show here (it
+//   floats outside the card, so it's the primary price the eye lands on;
+//   the in-card ProductDetailInfo row is the secondary one). Blue (#1447e6).
 // - In cart: the stepper (-/count/+) sits inside the SAME bar on the left,
 //   an "Added" label stays on the right (not "Add to Cart" again — the tap
 //   already happened) — matches the reference's "stepper left, label
@@ -18,6 +19,7 @@
 
 import { AddSquareIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
+import { RupeePrice } from '../RupeePrice';
 import { AppIcon } from '../AppIcon';
 import { useCartStore } from '../../store/useCartStore';
 import { addToCart } from '../../store/addToCart';
@@ -53,13 +55,23 @@ export function ProductDetailFooter({ product, selectedVariant }: Props) {
 
   if (quantity === 0) {
     return (
-      <View className="px-5 py-4">
+      <View className="flex-row items-center justify-between px-5 py-4">
+        <View>
+          <View className="flex-row items-end gap-2">
+            <RupeePrice amount={price} size={22} />
+            {originalPrice != null && originalPrice > price && (
+              <RupeePrice amount={originalPrice} size={14} strike color="#101C1066" style={{ paddingBottom: 2 }} />
+            )}
+          </View>
+          <Text className="text-[11px] font-medium text-ink/50">{weight}</Text>
+        </View>
+
         <Pressable
           onPress={() => addToCart({ id, name, weight, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })}
-          className="flex-row items-center justify-center rounded-2xl py-3.5"
+          className="flex-row items-center justify-center rounded-2xl px-9 py-3.5"
           style={{ backgroundColor: BAR_BLUE }}
         >
-          <Text className="text-base font-medium text-white">Add to Cart</Text>
+          <Text className="text-base font-semibold text-white">Add to Cart</Text>
         </Pressable>
       </View>
     );

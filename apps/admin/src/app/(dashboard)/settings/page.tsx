@@ -272,7 +272,7 @@ export default function SettingsPage() {
       <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
         <h3 className="mb-1 text-sm font-semibold text-ink">Platform fees</h3>
         <p className="mb-4 text-xs text-muted">
-          The cut Flikk takes from every store&apos;s order — was hardcoded, now applies to the very next checkout.
+          The cut Gloceries takes from every store&apos;s order — was hardcoded, now applies to the very next checkout.
         </p>
 
         {savedCommissionRate === null ? (

@@ -32,7 +32,7 @@ export const useLikedStoresStore = create<LikedStoresState>()(
         })),
     }),
     {
-      name: 'flikk-liked-stores',
+      name: 'gloceries-liked-stores',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

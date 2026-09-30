@@ -17,7 +17,12 @@ export interface ApiOrderItem {
 export interface ApiOrder {
   id: string;
   order_number: string;
-  status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  // 'failed' = rider couldn't complete the drop after pickup (goods already
+  // left the shop) — a real backend terminal status (migration 052,
+  // orderStateMachine.ts). Was missing here, so a failed order silently
+  // vanished from the store owner's queue; they got zero signal their stock
+  // is stranded with a rider. Now surfaced, same as 'cancelled' is skipped.
+  status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
   total: number;
   // Real orders.item_total/commission_amount — backend/src/lib/pricing.ts's
   // own COMMISSION_RATE (6%) applied server-side at order-creation time,

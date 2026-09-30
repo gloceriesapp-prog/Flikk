@@ -8,8 +8,8 @@
 // needs server-rendered pages that require the session before first
 // paint.
 
-const ACCESS_TOKEN_KEY = 'flikk_partner_access_token';
-const REFRESH_TOKEN_KEY = 'flikk_partner_refresh_token';
+const ACCESS_TOKEN_KEY = 'gloceries_partner_access_token';
+const REFRESH_TOKEN_KEY = 'gloceries_partner_refresh_token';
 
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;

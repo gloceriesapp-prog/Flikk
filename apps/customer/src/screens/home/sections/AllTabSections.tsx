@@ -1,155 +1,153 @@
-// Everything shown on the "All" category tab, below the header, in this
-// agreed order (personalized-to-you first, then browse/social-proof, then
-// deals/urgency, then long-tail filler, footer last):
+// Home "All" tab body — now ADMIN-DRIVEN. The order, on/off, title/subtitle
+// override, and optional bg color of every section come from GET /home/sections
+// (useHomeSections -> home_sections table, edited in admin's "Home Sections"
+// screen). This file no longer hardcodes the layout; it maps the admin config
+// over a code-level SECTION_REGISTRY (key -> how to render that section).
 //
-//   1. Seasonal + Festival panel (hero, brand/timely — currently hidden)
-//   2. Spotlight (header bleed) — 3 real cards, auto-advancing + draggable, background blended into the header's own bg (own note below)
-//   3. Quick Category Strip  — flat row, real categories (own note below)
-//   4. Buy It Again          — personalized, real order history
-//   5. Nearby Stores
-//   6. Most Bought
-//   7. Trending This Week    — momentum (TEMPORARY data source, see its own note)
-//   8. Category Sections
-//   9. Top Rated Stores Near You — trust signal, right before Deals
-//  10. Deals Section
-//  11. Today's Steal Deals
-//  12. Everyday Essentials
-//  13. New on Flikk          — discovery-only, least urgent
-//  14. Brand footer
+// Fail-safe: if the config fetch fails or returns nothing, we fall back to
+// FALLBACK_ORDER (the previous hardcoded order) with everything enabled — so
+// the Home screen never goes blank because the config call hiccuped. A section
+// key in the config with no registry entry is skipped; a registry section with
+// no config row only appears via the fallback (add a seed row in
+// migration 058 when you add a new code section).
 //
 // Only rendered when "all" is selected — see HomeScreen.tsx.
 //
-// Closed-hours (10:30 PM–6:00 AM IST, utils/operatingHours.ts) is
-// communicated entirely in the header now (HomeHeader's red gradient +
-// LocationSelector's "Closed for now"/"Opens 6:00 AM tomorrow" text) — the
-// ClosedForNightBanner this file used to prepend above SeasonalSection was
-// removed as redundant once the header already said the same thing. This
-// screen no longer needs to know the open/closed state at all.
-//
-// Store-scoping: useNearestStore resolves "my nearest store" ONCE here and
-// Today's Steal Deals (useDealsProducts) queries that one store's own
-// catalog — real inventory with real checkout consequences (single-store-
-// per-order, CLAUDE.md), not pooled across every partnered store the way
-// it used to be. Top Rated Stores/New on Flikk are zone-wide, not
-// nearest-store-scoped (they're both re-sorts of useAllStores' own GET
-// /stores, which already scopes to the one active zone — CLAUDE.md,
-// single zone at launch), so they render outside the isServiceable branch
-// below, same as CategorySections/DealsSection.
-//
-// CoastalKitchenPicksSection is gone entirely — per an explicit ask to
-// strip every product-card dummy dataset out of the app
-// (COASTAL_KITCHEN_PICKS_PRODUCTS was fully fabricated, shown
-// unconditionally).
+// Store-scoping unchanged: useNearestStore resolves the one nearest store here
+// and the deals feeds (useDealsProducts) query that store's own catalog.
+// Festival greeting keeps its OWN admin control (festival_greeting table via
+// useFestivalGreeting) for its copy/categories; home_sections only controls its
+// order / on-off / bg for the 'festival-greeting' key (its isActive flag still
+// gates it too, ANDed with the home_sections enabled flag).
 
 import { View } from 'react-native';
 import { CategorySections } from '../../../components/CategorySections/CategorySections';
 import { BrandFooter } from '../../../components/BrandFooter';
-import { BuyItAgainSection } from '../buy-it-again/BuyItAgainSection';
 import { DealsSection } from '../deals/DealsSection';
-import { TodaysOfferSection } from '../deals/TodaysOfferSection';
+import { PriceDropsSection } from '../deals/PriceDropsSection';
+import { DealsForYouSection } from '../deals/DealsForYouSection';
 import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
-// import { FestivalPicksSection } from '../festival-picks/FestivalPicksSection';
+import { FestivalGreetingSection } from '../festival-greeting/FestivalGreetingSection';
+import { FestivalScallopEdge } from '../festival-greeting/FestivalScallopEdge';
 import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
-import { NewOnFlikkSection } from '../new-on-flikk/NewOnFlikkSection';
+import { NewOnGloceriesSection } from '../new-on-gloceries/NewOnGloceriesSection';
 import { ProductSection } from '../products/ProductSection';
-import { QuickCategoryStrip } from '../quick-categories/QuickCategoryStrip';
-// import { SeasonalSection } from '../seasonal/SeasonalSection';
-import { SpotlightHeaderBleed } from '../spotlight/SpotlightHeaderBleed';
-// import { StoreTypesSection } from '../store-types/StoreTypesSection';
-// import { gradientForTabName } from '../data/categoryHeaderGradients';
 import { TopRatedStoresSection } from '../top-rated-stores/TopRatedStoresSection';
 import { TrendingSection } from '../trending/TrendingSection';
 import { useNearestStore } from '../useNearestStore';
+import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
+import { useFestivalProducts } from '../festival-greeting/useFestivalProducts';
+import { useFestivalGreeting } from '../festival-greeting/useFestivalGreeting';
 import { useDealsProducts } from './useDealsProducts';
+import { useHomeSections, type HomeSectionConfig } from '../useHomeSections';
+import type { Product } from '../products/types';
 
 interface Props {
-  // Passed straight through to QuickCategoryStrip — same setSelectedCategoryId
-  // HomeHeader's own CategoryTabs already drives, so tapping a tile here
-  // switches Home's real tab body, it doesn't open a second navigation stack.
   onSelectCategory: (id: string) => void;
 }
 
+// Everything a section renderer might need, resolved once per render.
+interface SectionCtx {
+  dealsProducts: Product[];
+  festivalProducts: Product[];
+  festivalGreeting: ReturnType<typeof useFestivalGreeting>['data'];
+  headerBottomColor: string;
+  onSelectCategory: (id: string) => void;
+}
+
+// key -> how to render that section. `cfg` carries the admin title/subtitle
+// overrides; `?? undefined` lets each component fall back to its own default
+// copy when admin left the field blank. Returning null renders nothing.
+const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, cfg: HomeSectionConfig) => React.ReactNode> = {
+  'festival-greeting': (ctx) =>
+    ctx.festivalGreeting?.isActive !== false ? (
+      <View style={{ marginTop: -2, backgroundColor: ctx.headerBottomColor }}>
+        <FestivalGreetingSection
+          products={ctx.festivalProducts}
+          title={ctx.festivalGreeting?.title}
+          tagline={ctx.festivalGreeting?.tagline}
+          categories={ctx.festivalGreeting?.categories}
+        />
+        <FestivalScallopEdge color={ctx.headerBottomColor} />
+      </View>
+    ) : null,
+  'nearby-stores': () => <NearbyStoresSection />,
+  'trending': (_ctx, cfg) => <TrendingSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
+  'most-bought': (_ctx, cfg) => <MostBoughtSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
+  'category-sections': () => <CategorySections />,
+  'deals-for-you': (ctx, cfg) => (
+    <DealsForYouSection products={ctx.dealsProducts} title={cfg.title ?? undefined} subtitle={cfg.subtitle} />
+  ),
+  'top-rated-stores': (_ctx, cfg) => <TopRatedStoresSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
+  'deals-section': () => <DealsSection />,
+  'todays-best-deals': (ctx, cfg) =>
+    ctx.dealsProducts.length > 0 ? (
+      <ProductSection title={cfg.title ?? 'Today’s Best Deals'} products={ctx.dealsProducts} showDiscountBadge />
+    ) : null,
+  'price-drops': (ctx, cfg) => (
+    <PriceDropsSection products={ctx.dealsProducts} title={cfg.title ?? undefined} subtitle={cfg.subtitle} />
+  ),
+  'everyday-essentials': (_ctx, cfg) => <EverydayEssentialsSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
+  'new-on-gloceries': (_ctx, cfg) => <NewOnGloceriesSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
+  'brand-footer': () => <BrandFooter />,
+};
+
+// Previous hardcoded order — used verbatim when the admin config is
+// unavailable, so Home is never blank on a failed/empty fetch.
+const FALLBACK_ORDER = [
+  'festival-greeting',
+  'nearby-stores',
+  'trending',
+  'most-bought',
+  'category-sections',
+  'deals-for-you',
+  'top-rated-stores',
+  'deals-section',
+  'todays-best-deals',
+  'price-drops',
+  'everyday-essentials',
+  'new-on-gloceries',
+  'brand-footer',
+];
+
 export function AllTabSections({ onSelectCategory }: Props) {
-  // Resolved once here, not inside useDealsProducts itself — every
-  // store-scoped section on this screen (just this one for now, see this
-  // file's own header note) reads the SAME resolved store, so they can't
-  // end up disagreeing about which store an order here would go to.
-  // HomeScreen.tsx renders UnavailableZoneScreen instead of this whole
-  // component when isServiceable is false — this only ever mounts in the
-  // serviceable case, so storeId here is always a real nearby store.
   const { storeId } = useNearestStore();
   const { data: dealsProducts = [] } = useDealsProducts(storeId);
-  // Only needed by the hidden Seasonal+Festival panel below.
-  // const panelGradient = gradientForTabName('all');
+  const { data: festivalProducts = [] } = useFestivalProducts();
+  const { data: festivalGreeting } = useFestivalGreeting();
+  const { data: sectionConfig } = useHomeSections();
+  const headerGradient = useActiveHeaderGradient('all', false);
+
+  const ctx: SectionCtx = {
+    dealsProducts,
+    festivalProducts,
+    festivalGreeting,
+    headerBottomColor: headerGradient.bottomColor,
+    onSelectCategory,
+  };
+
+  // Admin config when present (enabled only, ordered by sortIndex); otherwise
+  // the fallback order, everything on, no overrides.
+  const sections: HomeSectionConfig[] =
+    sectionConfig && sectionConfig.length > 0
+      ? [...sectionConfig].filter((s) => s.enabled).sort((a, b) => a.sortIndex - b.sortIndex)
+      : FALLBACK_ORDER.map((key, i) => ({ key, title: null, subtitle: null, enabled: true, sortIndex: i, bgColor: null }));
 
   return (
-    // pb-32 — same floating-CartBar clearance fix applied across every
-    // tab body (Groceries/Bakery/Fish/Protein/Regional/generic tile
-    // grid); "All" ends on CategoriesFooter, which needs the same
-    // breathing room from BottomNavBar + CartBar as every other tab's
-    // last row.
+    // pb-32 — floating-CartBar clearance, same as every tab body.
     <View className="pb-32">
-      {/* One shared panel — SeasonalSection's own banner/tiles and
-              FestivalPicksSection's product row read as one continuous
-              section (same background, one rounded bottom edge), per an
-              explicit ask, rather than two separately-backed blocks stacked
-              on top of each other. That background is HomeHeader's own
-              'all' gradient (LinearGradient, not a flat color) per a later
-              ask that the header and this panel read as the exact same
-              background rather than two different treatments. */}
-          {/* <LinearGradient colors={panelGradient.colors} locations={panelGradient.stops} className="overflow-hidden rounded-b-[32px]">
-            <SeasonalSection />
-            <FestivalPicksSection />
-          </LinearGradient> */}
-          {/* Directly below Seasonal, per an explicit ask — kept OUTSIDE
-              the LinearGradient panel above rather than spliced between
-              SeasonalSection and FestivalPicksSection, since that panel's
-              whole point (its own note above) is those two reading as one
-              continuous background; this card has its own distinct green
-              gradient and would break that. Still the very next thing on
-              screen after Seasonal/Festival either way. */}
-          {/* SpotlightHeaderBleed = SpotlightCarousel (3 real cards,
-              auto-advancing + still draggable) plus the background layer
-              that extends the header's own gradient down behind them,
-              fading to white (HeaderBackgroundGradient — the same one
-              file HomeHeader.tsx's own background renders through). See
-              that file's own note for the full logic. Sits right below
-              the header. */}
-          {/* Todays offer — static (no auto-advance), 4 real deal products,
-              same dealsProducts feed as Today's Steal Deals further down.
-              Sits above the spotlight per an explicit ask/reference sketch. */}
-          <TodaysOfferSection products={dealsProducts} />
-          <SpotlightHeaderBleed />
-          {/* Same real tabs (useHomeTabs) HomeHeader's own top CategoryTabs
-              row reads, minus "All" — tapping one switches that same top
-              tab bar's selection (onSelectCategory, threaded down from
-              HomeScreen), not a separate CategoryDetail screen. */}
-          {/* <QuickCategoryStrip onSelectCategory={onSelectCategory} /> */}
-          {/* Personalized-to-you first, before general browse/discovery
-              rows further down (agreed Home section order) — real repeat-
-              purchase data, off entirely for a guest or a customer with no
-              delivered order yet (BuyItAgainSection's own note). */}
-          <BuyItAgainSection />
-          <NearbyStoresSection />
-          {/* <MostBoughtSection /> */}
-          {/* Momentum signal, right after MostBought — see that section's
-              own note on why its data source is temporary. */}
-          {/* <TrendingSection /> */}
-      {/* <StoreTypesSection /> */}
-      <CategorySections />
-      {/* Trust signal, right before DealsSection — reassurance ->
-          purchase nudge, per the agreed Home section order. */}
-      <TopRatedStoresSection />
-      <DealsSection />
-      {dealsProducts.length > 0 && (
-        <ProductSection title="Today's Steal Deals" products={dealsProducts} showDiscountBadge />
-      )}
-      <EverydayEssentialsSection />
-      {/* Discovery-only, least urgent — near the very end, right before
-          the footer. */}
-      <NewOnFlikkSection />
-      <BrandFooter />
+      {sections.map((cfg) => {
+        const render = SECTION_REGISTRY[cfg.key];
+        if (!render) return null; // config key with no code section yet
+        const node = render(ctx, cfg);
+        if (!node) return null; // section chose to render nothing (no data etc.)
+        return (
+          <View key={cfg.key} style={cfg.bgColor ? { backgroundColor: cfg.bgColor } : undefined}>
+            {node}
+          </View>
+        );
+      })}
     </View>
   );
 }

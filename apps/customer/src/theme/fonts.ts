@@ -1,37 +1,33 @@
-// Single source of truth for Aeonik Soft Pro — every font-family name used
-// anywhere in this app, and the exact file map expo-font needs to load
-// them, live here. Same pattern as apps/rider's own Suisse Int'l setup and
-// apps/partner's Söhne setup — copied, not shared
+// Single source of truth for Gilroy — every font-family name used anywhere
+// in this app, and the exact file map expo-font needs to load them, live
+// here. Same copied-not-shared pattern as the other apps' font setups
 // (specs/00-foundation/repo-structure.md).
 //
-// Source files: apps/font/Aeonik Soft Pro/ (repo-root font vault) — copied
-// into assets/fonts/ below. The vault ships 8 non-italic weights (Thin/
-// Air/Light/Regular/Medium/SemiBold/Bold/Black); only 5 are ever actually
-// referenced anywhere in this app's className/fontFamily usage (confirmed
-// via a real grep across src/ — zero hits for font-thin/font-extralight/
-// font-light). App.tsx's useFonts() blocks the ENTIRE app's first render
-// until every file listed in AEONIK_FONT_FILES finishes loading — keeping
-// three genuinely unused ~40KB OTF files in that list was pure dead
-// weight on every cold start for weights nothing on screen ever uses.
-// AEONIK itself still names all 8 (harmless — just string constants) in
-// case a future screen wants Thin/Air/Light; add its file back to
-// AEONIK_FONT_FILES the day something actually sets that className.
+// Source files: apps/font/Gilroy-Font-Family/ (repo-root font vault), copied
+// into assets/fonts/ below. Gilroy ships the full static weight range, so —
+// unlike the prior Circular/Avenir/Satoshi setups — every Tailwind step the
+// app uses has its OWN real face, no aliasing: Regular/Medium/SemiBold/Bold/
+// ExtraBold/Black. App.tsx's useFonts() blocks first render until every file
+// in GILROY_FONT_FILES loads, so only the faces the app references are listed
+// (the vault's lighter weights + all italics are left unregistered — YAGNI).
+//
+// ponytail: only the 6 weights the app actually uses are registered. Add
+// Thin/Light/etc. here + in global.css the day a screen needs one.
 
-export const AEONIK = {
-  thin: 'AeonikSoftPro-Thin',
-  air: 'AeonikSoftPro-Air',
-  light: 'AeonikSoftPro-Light',
-  regular: 'AeonikSoftPro-Regular',
-  medium: 'AeonikSoftPro-Medium',
-  semiBold: 'AeonikSoftPro-SemiBold',
-  bold: 'AeonikSoftPro-Bold',
-  black: 'AeonikSoftPro-Black',
+export const GILROY = {
+  regular: 'Gilroy-Regular',
+  medium: 'Gilroy-Medium',
+  semibold: 'Gilroy-SemiBold',
+  bold: 'Gilroy-Bold',
+  extrabold: 'Gilroy-ExtraBold',
+  black: 'Gilroy-Black',
 } as const;
 
-export const AEONIK_FONT_FILES = {
-  [AEONIK.regular]: require('../../assets/fonts/AeonikSoftPro-Regular.otf'),
-  [AEONIK.medium]: require('../../assets/fonts/AeonikSoftPro-Medium.otf'),
-  [AEONIK.semiBold]: require('../../assets/fonts/AeonikSoftPro-SemiBold.otf'),
-  [AEONIK.bold]: require('../../assets/fonts/AeonikSoftPro-Bold.otf'),
-  [AEONIK.black]: require('../../assets/fonts/AeonikSoftPro-Black.otf'),
+export const GILROY_FONT_FILES = {
+  [GILROY.regular]: require('../../assets/fonts/Gilroy-Regular.ttf'),
+  [GILROY.medium]: require('../../assets/fonts/Gilroy-Medium.ttf'),
+  [GILROY.semibold]: require('../../assets/fonts/Gilroy-SemiBold.ttf'),
+  [GILROY.bold]: require('../../assets/fonts/Gilroy-Bold.ttf'),
+  [GILROY.extrabold]: require('../../assets/fonts/Gilroy-ExtraBold.ttf'),
+  [GILROY.black]: require('../../assets/fonts/Gilroy-Black.ttf'),
 } as const;

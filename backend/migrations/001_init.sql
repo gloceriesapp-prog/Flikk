@@ -1,4 +1,4 @@
--- Flikk v1 schema. Source: specs/00-foundation/data-model.md
+-- Gloceries v1 schema. Source: specs/00-foundation/data-model.md
 -- Every table gets RLS enabled here, alongside creation — not a follow-up migration.
 
 create extension if not exists "pgcrypto";

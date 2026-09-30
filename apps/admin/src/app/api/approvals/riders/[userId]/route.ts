@@ -89,8 +89,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
 
     await supabaseAdmin.from('rider_onboarding_drafts').delete().eq('user_id', userId);
 
-    await sendPushNotification(user.expo_push_token, "You're approved! 🎉", "You're all set to start taking deliveries on Flikk.");
-    void createNotification({ userId, title: "You're approved! 🎉", body: "You're all set to start taking deliveries on Flikk.", type: 'approval' });
+    await sendPushNotification(user.expo_push_token, "You're approved! 🎉", "You're all set to start taking deliveries on Gloceries.");
+    void createNotification({ userId, title: "You're approved! 🎉", body: "You're all set to start taking deliveries on Gloceries.", type: 'approval' });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

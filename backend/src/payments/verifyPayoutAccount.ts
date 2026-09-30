@@ -7,7 +7,7 @@
 // and took it with it; this heavier flow is the real replacement for
 // both UPI and bank account + IFSC now.
 //
-// Needs env.razorpayxAccountNumber (Flikk's own RazorpayX current
+// Needs env.razorpayxAccountNumber (Gloceries's own RazorpayX current
 // account, debited for the penny-drop) — throws a clear, specific error
 // if unset rather than a confusing downstream Razorpay 4xx, since that's
 // exactly the state this project is in right now (ticket pending).
@@ -125,7 +125,7 @@ export async function verifyPayoutAccount(
     existingContactId ??
     (
       await razorpayFetch<RazorpayContact>('/contacts', {
-        name: ownerName || 'Flikk store owner',
+        name: ownerName || 'Gloceries store owner',
         contact: ownerPhone ?? undefined,
         type: 'vendor',
       })
@@ -147,7 +147,7 @@ export async function verifyPayoutAccount(
     fund_account: { id: fundAccount.id },
     amount: 100, // ₹1 penny-drop, in paise
     currency: 'INR',
-    notes: { purpose: 'flikk_partner_payout_verification' },
+    notes: { purpose: 'gloceries_partner_payout_verification' },
   });
 
   let validation = created;

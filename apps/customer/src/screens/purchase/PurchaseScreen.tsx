@@ -50,7 +50,7 @@ import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Purchase'>;
 
-const FEATURE_IMAGE_URI = 'https://i.pinimg.com/1200x/a1/dc/37/a1dc376c96e834e7ae7baf401202b79a.jpg';
+const FEATURE_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/order-not-found.png';
 
 export function PurchaseScreen({ navigation }: Props) {
   const { data: fetchedOrders, isLoading, refetch } = useQuery({
@@ -161,7 +161,7 @@ export function PurchaseScreen({ navigation }: Props) {
   });
 
   return (
-    <View className="flex-1 bg-[#FFFFFF]">
+    <View className="flex-1 bg-[#F8F8F8]">
       {/* Plain background again — no gradient header (PurchaseHeader.tsx,
           deleted) to keep light icons legible against. */}
       <StatusBar style="dark" />
@@ -171,8 +171,8 @@ export function PurchaseScreen({ navigation }: Props) {
           briefly had, in favor of a simple section title. Not sticky —
           same reasoning as CategoriesScreen.tsx's own header removal. */}
       <View className="px-6 pb-1 pt-safe-offset-3 flex-row items-center justify-between">
-        <Text className="text-[20px] font-semibold text-ink">Purchase</Text>
-        <Pressable onPress={() => navigation.navigate('Search')} hitSlop={10} className="h-9 w-9 items-center justify-center">
+        <Text className="text-[20px] font-bold text-ink">Purchase</Text>
+        <Pressable onPress={() => navigation.navigate('Search')} hitSlop={10} className="h-10 w-10 items-center justify-center bg-[#FFFFFF] rounded-full">
           <AppIcon icon={Search01Icon} size={22} color={colors.ink} />
         </Pressable>
 
@@ -229,7 +229,7 @@ export function PurchaseScreen({ navigation }: Props) {
             {hasMoreOrders ? (
               <Pressable
                 onPress={() => setShowAllOrders(true)}
-                className="mb-1 items-center rounded-xl  bg-[#F8F8F6] py-3.5 "
+                className="mb-1 items-center rounded-xl  bg-[#FFFFFF] border border-[#E8E8E8] py-3.5 "
               >
                 <Text className="text-[14px] font-semibold text-ink">
                   View {sortedOrders.length - visibleOrders.length} more order{sortedOrders.length - visibleOrders.length === 1 ? '' : 's'}
@@ -264,9 +264,9 @@ export function PurchaseScreen({ navigation }: Props) {
           <View className="flex-grow justify-between">
             <View>
               <Image source={{ uri: FEATURE_IMAGE_URI }} className="mt-6 aspect-[4/5] w-3/5 self-center" resizeMode="cover" />
-              <Text className="mt-5 px-8 text-center text-lg font-bold text-ink">No orders yet.</Text>
+              <Text className="mt-5 px-8 text-center text-[17px] font-semibold text-ink">No orders yet.</Text>
               <Text className="mt-1 px-8 text-center text-sm font-medium text-ink/50">
-                They&apos;ll show up here once you place your first one.
+                Looks like you haven't placed orders yet.
               </Text>
             </View>
 

@@ -34,8 +34,8 @@ export default function DashboardLayout({ children }: LayoutProps<'/'>) {
     function onStoreUpdated(e: Event) {
       setStore((e as CustomEvent<Store>).detail);
     }
-    window.addEventListener('flikk:store-updated', onStoreUpdated);
-    return () => window.removeEventListener('flikk:store-updated', onStoreUpdated);
+    window.addEventListener('gloceries:store-updated', onStoreUpdated);
+    return () => window.removeEventListener('gloceries:store-updated', onStoreUpdated);
   }, []);
 
   if (isLoading || !me) {

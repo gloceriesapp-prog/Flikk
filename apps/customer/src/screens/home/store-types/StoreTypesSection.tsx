@@ -35,7 +35,7 @@ export function StoreTypesSection() {
 
   return (
     <View className="pt-6">
-      <Text className="mb-4 px-5 text-[17px] font-semibold text-ink">Shop by Store Type</Text>
+      <Text className="mb-4 px-5 text-[17px] font-bold text-ink/90">Shop by Store Type</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-5">
         <Pressable className="flex-row items-center gap-2 rounded-full bg-coral/10 px-4 py-2.5">

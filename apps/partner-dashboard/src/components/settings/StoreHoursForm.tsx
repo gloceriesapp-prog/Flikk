@@ -11,7 +11,7 @@ interface Props {
 }
 
 // Availability — whether the store accepts orders right now, and the
-// hours/prep-time customers see. Same 'flikk:store-updated' broadcast the
+// hours/prep-time customers see. Same 'gloceries:store-updated' broadcast the
 // Overview page's own online/offline toggle already uses, so a change made
 // here is reflected there (and in the sidebar) without a full reload.
 export function StoreHoursForm({ store: initial, onSaved }: Props) {
@@ -32,7 +32,7 @@ export function StoreHoursForm({ store: initial, onSaved }: Props) {
       });
       setStore(updated);
       onSaved(updated);
-      window.dispatchEvent(new CustomEvent('flikk:store-updated', { detail: updated }));
+      window.dispatchEvent(new CustomEvent('gloceries:store-updated', { detail: updated }));
       setSavedAt(Date.now());
     } finally {
       setIsSaving(false);

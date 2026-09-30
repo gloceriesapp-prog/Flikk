@@ -22,8 +22,6 @@ import { Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Animated, {
   Easing,
-  runOnJS,
-  useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -33,7 +31,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { HomeHeader } from './components/HomeHeader';
 import { UnavailableZoneScreen } from './unavailable-zone/UnavailableZoneScreen';
-import { COLLAPSE_DISTANCE } from './components/CollapsibleHeaderTop';
 import { BakeryTab } from './bakery/BakeryTab';
 import { FishProductGrid } from './fish/FishProductGrid';
 import { GroceriesTab } from './groceries/GroceriesTab';
@@ -117,22 +114,6 @@ export function HomeScreen({ navigation }: Props) {
   // components/CollapsibleHeaderTop.tsx for the actual interpolation.
   const scrollY = useSharedValue(0);
 
-  // OS status bar icon color — white over the full-color gradient at rest,
-  // real black once scrolled past the same point HomeHeader's own frosted/
-  // blurred state finishes coming in (COLLAPSE_DISTANCE). No background box
-  // behind the icons, just the icon color itself flipping — expo-status-
-  // bar's `style` is a plain string prop, not something a worklet can set
-  // directly, so useAnimatedReaction is what bridges scrollY (UI thread)
-  // into this JS-thread state, only calling setState on an actual crossing
-  // of the threshold rather than on every scroll frame.
-  const [statusBarStyle, setStatusBarStyle] = useState<'light' | 'dark'>('light');
-  useAnimatedReaction(
-    () => scrollY.value > COLLAPSE_DISTANCE,
-    (isScrolled, wasScrolled) => {
-      if (isScrolled !== wasScrolled) runOnJS(setStatusBarStyle)(isScrolled ? 'dark' : 'light');
-    },
-  );
-
   // BottomNavBar's own pill hide/show — 0 = visible, 1 = hidden.
   // Direction-based, not just "scrolled past N px": prevScrollY tracks the
   // last frame's offset so every scroll event can tell up from down, not
@@ -176,15 +157,12 @@ export function HomeScreen({ navigation }: Props) {
     // content — that's what keeps it floating fixed in place while the page
     // scrolls underneath it.
     <View className="flex-1 bg-white">
-      {/* HomeHeader is a dark gradient at rest (categoryHeaderGradients.ts)
-          — App.tsx's global StatusBar style="dark" (dark icons) is
-          invisible against it, so this overrides to "light" (white icons)
-          while Home is focused. Once scrolled past HomeHeader's own
-          frosted/blurred point, statusBarStyle flips to "dark" instead
-          (see that state's own note above) — the header's background
-          reads light enough there for black icons to stay legible
-          directly against it, no separate background treatment needed. */}
-      <StatusBar style={statusBarStyle} />
+      {/* Every category header is now a light pastel fill
+          (categoryHeaderGradients.ts), so the OS icons stay dark at rest on
+          every tab, not just 'all'. Once scrolled, the frosted/blurred
+          header reads light too, so dark icons stay correct throughout —
+          statusBarStyle's scroll-driven flip is no longer needed. */}
+      <StatusBar style="dark" />
       <Animated.ScrollView
         className="flex-1"
         contentContainerClassName="pb-28"

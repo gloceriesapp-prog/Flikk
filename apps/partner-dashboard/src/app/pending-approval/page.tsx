@@ -18,7 +18,7 @@ export default function PendingApprovalPage() {
         <p className="text-[26px] font-bold tracking-tight text-neutral-900">Almost there</p>
         <p className="mt-2 text-sm text-neutral-500">
           Your store application is still being reviewed, or hasn&apos;t been submitted yet. Finish onboarding and check
-          approval status from the Flikk Partner mobile app — this dashboard unlocks once your store is approved.
+          approval status from the Gloceries Partner mobile app — this dashboard unlocks once your store is approved.
         </p>
         <button
           type="button"

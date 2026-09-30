@@ -61,7 +61,7 @@ export default function Navbar() {
   // First-load location detection & instant restoration on refresh
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedLoc = localStorage.getItem("flikk_user_location");
+      const savedLoc = localStorage.getItem("gloceries_user_location");
       if (savedLoc && savedLoc.trim() !== "") {
         // Hydrating client-only persisted state from localStorage (unavailable
         // during SSR) — a legitimate external-system sync, not a render cascade.
@@ -71,7 +71,7 @@ export default function Navbar() {
         setIsFirstVisit(false);
         // Re-check serviceability from persisted coords so the badge is right
         // on refresh, not just right after picking a location.
-        const savedCoords = localStorage.getItem("flikk_user_coords");
+        const savedCoords = localStorage.getItem("gloceries_user_coords");
         if (savedCoords) {
           try {
             const { lat, lng } = JSON.parse(savedCoords);
@@ -101,11 +101,11 @@ export default function Navbar() {
     setUserLocation(newLoc);
     setIsFirstVisit(false);
     if (typeof window !== "undefined") {
-      localStorage.setItem("flikk_user_location", newLoc);
+      localStorage.setItem("gloceries_user_location", newLoc);
     }
     if (coords) {
       if (typeof window !== "undefined") {
-        localStorage.setItem("flikk_user_coords", JSON.stringify(coords));
+        localStorage.setItem("gloceries_user_coords", JSON.stringify(coords));
       }
       setIsServiceable(null);
       checkServiceability(coords.lat, coords.lng).then((r) => {
@@ -114,7 +114,7 @@ export default function Navbar() {
     } else {
       // No coords (geocode failed / fallback) — can't verify, so don't assert.
       if (typeof window !== "undefined") {
-        localStorage.removeItem("flikk_user_coords");
+        localStorage.removeItem("gloceries_user_coords");
       }
       setIsServiceable(null);
     }

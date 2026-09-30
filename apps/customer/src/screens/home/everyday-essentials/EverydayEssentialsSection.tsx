@@ -16,22 +16,28 @@
 // nothing when the catalog is empty, same convention AllTabSections.tsx
 // uses for the deals row.
 
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { ProductCard } from '../products/ProductCard';
+import { SectionTitle } from '../components/SectionTitle';
 import { useEverydayEssentials } from './useEverydayEssentials';
 
 const GRID_LIMIT = 9;
 const CARD_WIDTH = 'w-[31%]';
 
-export function EverydayEssentialsSection() {
+interface Props {
+  title?: string;
+  subtitle?: string | null;
+}
+
+export function EverydayEssentialsSection({ title = 'Everyday Essentials', subtitle }: Props) {
   const { data: products = [] } = useEverydayEssentials();
   const gridProducts = products.slice(0, GRID_LIMIT);
 
   if (gridProducts.length === 0) return null;
 
   return (
-    <View className="pt-6">
-      <Text className="mb-4 px-5 text-[17.5px] font-semibold text-ink">Today&apos;s Stock</Text>
+    <View className="pt-8">
+      <SectionTitle subtitle={subtitle}>{title}</SectionTitle>
 
       <View className="flex-row flex-wrap gap-x-2.5 gap-y-5 px-5">
         {gridProducts.map((product) => (

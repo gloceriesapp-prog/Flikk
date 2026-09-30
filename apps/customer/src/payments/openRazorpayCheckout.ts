@@ -51,7 +51,7 @@ export async function openRazorpayCheckout(input: OpenCheckoutInput): Promise<Ra
       amount: input.amountPaise,
       currency: 'INR',
       order_id: input.razorpayOrderId,
-      name: 'Flikk',
+      name: 'Gloceries',
       description: 'Order payment',
       prefill: {
         contact: input.contact ?? undefined,

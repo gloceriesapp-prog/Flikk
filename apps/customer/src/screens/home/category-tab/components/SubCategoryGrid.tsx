@@ -15,15 +15,16 @@ import type { SubCategory } from '../types';
 
 interface Props {
   title?: string;
+  titleClassName?: string;
   items: SubCategory[];
 }
 
 const GAP = 12;
 
-export function SubCategoryGrid({ title, items }: Props) {
+export function SubCategoryGrid({ title, titleClassName = 'mb-4 text-xl font-semibold text-ink', items }: Props) {
   return (
     <View className="px-5 pt-6">
-      {title && <Text className="mb-4 text-xl font-semibold text-ink">{title}</Text>}
+      {title && <Text className={titleClassName}>{title}</Text>}
       <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
         {items.map((category) => (
           <View key={category.id} style={{ width: '25%', paddingHorizontal: GAP / 2, paddingBottom: 20 }}>

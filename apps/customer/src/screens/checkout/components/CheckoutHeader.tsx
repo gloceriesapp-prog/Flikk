@@ -24,7 +24,7 @@ interface Props {
 
 export function CheckoutHeader({ onBack, itemCount, total }: Props) {
   return (
-    <View className="bg-[#F1F2F4] px-3 pb-1 pt-safe-offset-2">
+    <View className="bg-[#F2F2F7] px-3 pb-1 pt-safe-offset-2">
       <View className="relative flex-row items-center justify-between">
         <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />

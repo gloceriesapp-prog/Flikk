@@ -36,7 +36,7 @@ export async function verifyUpiId(req: AuthedRequest, res: Response, next: NextF
 
     const { data: customer } = await supabase.from('users').select('name, phone').eq('id', req.user!.id).single();
 
-    const { result } = await verifyPayoutAccount({ method: 'upi', vpa }, customer?.name ?? 'Flikk customer', customer?.phone ?? null, null);
+    const { result } = await verifyPayoutAccount({ method: 'upi', vpa }, customer?.name ?? 'Gloceries customer', customer?.phone ?? null, null);
 
     res.json({
       valid: true,

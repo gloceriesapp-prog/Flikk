@@ -1,29 +1,77 @@
-// The one screen shown on every cold app open, always, before Home or the
-// phone-entry screen — RootNavigator's own timed gate renders this
-// directly (not part of either the Auth or App stack) for a fixed 2s,
-// then routes to AppNavigator (a real session or guest mode already
-// exists) or AuthNavigator's Login (a brand-new device/session — the real
-// phone-number entry screen, no separate "Get Started" splash first).
-// Purely a brand moment: flat blue, one icon, one word, centered,
-// nothing tappable — RootNavigator's own timer is what moves it along,
-// not a button here.
-
 import { Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
-import { AppIcon } from '../components/AppIcon';
 
-// Same blue this app's auth-flow buttons already use (PrimaryButton's own
-// "blue" variant, LoginScreen/OtpVerificationScreen) — one brand blue,
-// not a second tone invented for this screen alone.
-const BLUE = '#2457F5';
+import { AppIcon } from '../components/AppIcon';
 
 export function WelcomeScreen() {
   return (
-    <View className="flex-1 items-center justify-center" style={{ backgroundColor: BLUE }}>
+    <View className="flex-1 bg-[#155DFC]">
       <StatusBar style="light" />
-      <AppIcon icon={ShoppingBasket03Icon} size={56} color="#fff" strokeWidth={1.6} />
-      <Text className="mt-4 text-[28px] font-semibold tracking-tight text-white">Gloceries</Text>
+
+      {/* FULL-SCREEN BACKGROUND ONLY */}
+      <LinearGradient
+        colors={[
+          '#0020C5',
+          '#155DFC',
+          '#2CA5FD',
+        ]}
+        locations={[0, 0.52, 1]}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
+        className="absolute inset-0"
+      />
+
+      {/* COMPACT BRAND CONTENT */}
+      <View className="flex-1 items-center justify-center">
+        <View className="items-center">
+          {/* ICON */}
+          <View
+            className="
+              h-[72px]
+              w-[72px]
+              items-center
+              justify-center
+              rounded-[22px]
+              bg-white/10
+            "
+          >
+            <AppIcon
+              icon={ShoppingBasket03Icon}
+              size={42}
+              color="#FFFFFF"
+              strokeWidth={1.7}
+            />
+          </View>
+
+          {/* BRAND */}
+          <Text
+            className="
+              mt-4
+              text-[27px]
+              font-bold
+              tracking-[-0.7px]
+              text-white
+            "
+          >
+            Gloceries
+          </Text>
+
+          {/* SMALL BRAND LINE */}
+        <Text
+  className="
+    mt-1.5
+    text-[16px]
+    font-medium
+    tracking-[0.2px]
+    text-white/65
+  "
+>
+  Shop local with Gloceries
+</Text>
+        </View>
+      </View>
     </View>
   );
 }

@@ -3,7 +3,7 @@
 // Matches the reference's Leads table exactly: List/Grid toggle,
 // Filter/Export/Add-record button trio, checkbox column, sortable column
 // headers, and numbered pagination with a per-page picker — same
-// component shape, Flikk's own OrderStatus values instead of lead-warmth
+// component shape, Gloceries's own OrderStatus values instead of lead-warmth
 // pills.
 //
 // Real data now (app/api/orders, service-role Supabase read — orders has

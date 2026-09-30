@@ -58,9 +58,12 @@ interface Props {
   scrollY: SharedValue<number>;
   onChangeLocation: () => void;
   isClosed?: boolean;
+  // 'all' tab renders a light pastel header — flip location + switcher to
+  // dark text/icons on it (HomeHeader.tsx's own note).
+  light?: boolean;
 }
 
-export function CollapsibleHeaderTop({ scrollY, onChangeLocation, isClosed = false }: Props) {
+export function CollapsibleHeaderTop({ scrollY, onChangeLocation, isClosed = false, light = false }: Props) {
   const animatedStyle = useAnimatedStyle(() => {
     const progress = interpolate(scrollY.value, [0, COLLAPSE_DISTANCE], [0, 1], Extrapolation.CLAMP);
     return {
@@ -74,8 +77,8 @@ export function CollapsibleHeaderTop({ scrollY, onChangeLocation, isClosed = fal
     <Animated.View style={animatedStyle} className="gap-1 overflow-hidden">
       {/* <EtaBadge minutes={PLACEHOLDER_ETA_MINUTES} /> */}
       <View className="flex-row items-center justify-between">
-        <LocationSelector onPress={onChangeLocation} isClosed={isClosed} />
-        <DeliveryModeSwitcher />
+        <LocationSelector onPress={onChangeLocation} isClosed={isClosed} light={light} />
+        <DeliveryModeSwitcher light={light} />
       </View>
     </Animated.View>
   );

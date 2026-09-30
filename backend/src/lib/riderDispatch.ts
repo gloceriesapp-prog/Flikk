@@ -12,7 +12,7 @@
 // without adding a new Postgres extension.
 
 import { supabase } from '../db/supabase.js';
-import { sendPushNotification } from './pushNotifications.js';
+import { sendPushNotifications } from './pushNotifications.js';
 
 // Expanding search — most orders should be picked up well within the
 // first, tightest radius; each step only fires if nobody accepted in time.
@@ -48,11 +48,15 @@ async function broadcastToRadius(orderId: string, lat: number, lng: number, stor
   const riderUserIds = (nearby as { rider_user_id: string }[]).map((r) => r.rider_user_id);
   const { data: riderUsers } = await supabase.from('users').select('expo_push_token').in('id', riderUserIds);
 
-  await Promise.all(
-    (riderUsers ?? []).map((u) =>
-      sendPushNotification(u.expo_push_token, 'New pickup available', `${storeName} — tap to accept before another rider does.`),
-    ),
-  );
+  // One batched push call for the whole radius, not one POST per rider —
+  // null/absent tokens dropped first (a rider on simulator or with denied
+  // permission has none; a single POST per rider would waste a no-op call
+  // on each). See pushNotifications.sendPushNotifications on the 100-cap.
+  const messages = (riderUsers ?? [])
+    .map((u) => u.expo_push_token)
+    .filter((token): token is string => !!token)
+    .map((to) => ({ to, title: 'New pickup available', body: `${storeName} — tap to accept before another rider does.` }));
+  await sendPushNotifications(messages);
   return riderUserIds.length;
 }
 
@@ -70,8 +74,18 @@ export async function triggerDispatch(order: { id: string; store_id: string }): 
   if (!store?.lat || !store?.lng) return;
 
   const radiusM = DISPATCH_RADIUS_STEPS_M[0]!;
-  await broadcastToRadius(order.id, store.lat, store.lng, store.name, radiusM);
+  // Stamp dispatch_broadcast_at BEFORE broadcasting, never after. That stamp
+  // is what makes the order both recoverable and pollable: nearby_dispatch_
+  // offers requires dispatch_broadcast_at IS NOT NULL, and so does the cron
+  // recovery query (expandDispatchOrRebroadcast below). broadcastToRadius
+  // can throw (the RPC / users lookup) and this is called fire-and-forget
+  // (routes/orders.ts `void triggerDispatch(...)`) — so if the stamp came
+  // after and the push threw, the order would be stranded forever: never in
+  // any rider's "pickups near you" list, never re-picked by the cron.
+  // Stamping first means even a fully-failed push still leaves a live,
+  // recoverable offer riders can poll and the cron can widen.
   await supabase.from('orders').update({ dispatch_radius_m: radiusM, dispatch_broadcast_at: new Date().toISOString() }).eq('id', order.id);
+  await broadcastToRadius(order.id, store.lat, store.lng, store.name, radiusM);
 }
 
 // The "nobody accepted in time" fallback — polled every minute (see
@@ -109,9 +123,18 @@ export async function expandDispatchOrRebroadcast(now: Date = new Date()): Promi
       continue;
     }
 
-    await broadcastToRadius(order.id, store.lat, store.lng, store.name, nextRadius);
-    await supabase.from('orders').update({ dispatch_radius_m: nextRadius, dispatch_broadcast_at: now.toISOString() }).eq('id', order.id);
-    expanded++;
+    // Same stamp-first ordering as triggerDispatch, plus a per-order guard:
+    // one order's broadcast throwing must not abort the rest of this tick's
+    // batch. The stamp already advanced dispatch_broadcast_at, so a thrown
+    // push just means the next cron tick retries it at the following radius
+    // — the order stays live and pollable throughout.
+    try {
+      await supabase.from('orders').update({ dispatch_radius_m: nextRadius, dispatch_broadcast_at: now.toISOString() }).eq('id', order.id);
+      await broadcastToRadius(order.id, store.lat, store.lng, store.name, nextRadius);
+      expanded++;
+    } catch {
+      // Swallowed per-order — see note above.
+    }
   }
 
   return { expanded, exhausted };

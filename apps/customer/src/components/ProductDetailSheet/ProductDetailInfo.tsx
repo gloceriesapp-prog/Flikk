@@ -26,6 +26,7 @@
 import { useState } from 'react';
 import { ChevronRightIcon, HeartIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
+import { RupeePrice } from '../RupeePrice';
 import { AppImage as Image } from '../AppImage';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
@@ -67,14 +68,14 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
   const displayOriginalPrice = selectedVariant?.originalPrice ?? originalPrice;
 
   return (
-    <View className="gap-3 bg-[#F1F1EF] px-3 pb-4 pt-3">
-      <View className="gap-3 rounded-2xl bg-white px-4 py-4">
+    <View className="gap-3 bg-[#f6f6f6] px-3 pb-4 pt-3">
+      <View className="gap-3 rounded-2xl bg-[#FFFFFF] px-4 py-4">
         <View className="flex-row items-start justify-between gap-3">
-          <Text className="flex-1 text-xl font-medium leading-7 text-ink">
+          <Text className="flex-1 text-xl font-semibold leading-7 text-ink">
             {name}
             {localName ? ` (${localName})` : ''}
           </Text>
-          <Pressable onPress={() => setIsLiked((prev) => !prev)} hitSlop={8} className="pt-0.5">
+          <Pressable onPress={() => setIsLiked((prev) => !prev)} hitSlop={8} className="pt-0">
             <AppIcon
               icon={HeartIcon}
               size={22}
@@ -97,7 +98,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
         ) : (
           <View className="flex-row flex-wrap gap-2">
             <View className="rounded-xl border border-lime-deep bg-lime-soft px-4 py-2">
-              <Text className="text-xs font-medium text-lime-deep">{weight}</Text>
+              <Text className="text-base font-semibold text-lime-deep">{weight}</Text>
             </View>
           </View>
         )}
@@ -107,10 +108,10 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
             below would just be the previous selection's price shown twice. */}
         {!hasRealVariants && (
           <View className="flex-row items-center gap-2">
-            <Text className="text-xl font-medium text-ink">₹{displayPrice}</Text>
+            <RupeePrice amount={displayPrice} size={20} />
             {displayOriginalPrice && displayOriginalPrice > displayPrice && (
               <>
-                <Text className="text-sm text-ink/40 line-through">₹{displayOriginalPrice}</Text>
+                <RupeePrice amount={displayOriginalPrice} size={14} strike color="#101C1066" />
                 <View className="rounded-full bg-lime-soft px-2 py-0.5">
                   <Text className="text-xs font-semibold text-lime-deep">
                     {Math.round((1 - displayPrice / displayOriginalPrice) * 100)}%
@@ -127,8 +128,8 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
             <Pressable className="flex-row items-center gap-3">
               <Image source={{ uri: product.storePhotoUrl || PLACEHOLDER_IMAGE_URI }} className="h-10 w-10 rounded-xl" resizeMode="cover" />
               <View className="flex-1">
-                <Text className="text-[15px] font-medium text-ink">{storeName}</Text>
-                <Text className="text-xs text-ink/50">Explore all products</Text>
+                <Text className="text-[15px] font-semibold text-ink">{storeName}</Text>
+                <Text className="text-[13px] text-ink/50 font-medium mt-0.5">Explore all products</Text>
               </View>
               <AppIcon icon={ChevronRightIcon} size={16} color={colors.ink} />
             </Pressable>

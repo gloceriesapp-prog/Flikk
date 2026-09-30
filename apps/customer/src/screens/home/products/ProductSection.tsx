@@ -9,8 +9,9 @@
 // card instead of them sitting next to each other. A fixed gap keeps
 // cards adjacent regardless of how many happen to be in the last row.
 
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { ProductCard } from './ProductCard';
+import { SectionTitle } from '../components/SectionTitle';
 import type { Product } from './types';
 
 // Same fixed width every fixed-width product card row in this app uses
@@ -29,9 +30,9 @@ interface Props {
 
 export function ProductSection({ title, products, showDiscountBadge = false }: Props) {
   return (
-    <View className="px-5 pt-6">
-      <Text className="mb-4 text-xl font-semibold text-ink">{title}</Text>
-      <View className="flex-row flex-wrap gap-x-2.5 gap-y-5">
+    <View className="pt-8">
+      <SectionTitle>{title}</SectionTitle>
+      <View className="flex-row flex-wrap gap-x-2.5 gap-y-5 px-5">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} showDiscountBadge={showDiscountBadge} widthClassName={CARD_WIDTH} />
         ))}

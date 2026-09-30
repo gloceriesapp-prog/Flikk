@@ -39,7 +39,9 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/promo-codes', label: 'Promo Codes', icon: Ticket },
   { href: '/categories', label: 'Categories', icon: Tag },
   { href: '/home-categories', label: 'Home Categories', icon: Home },
+  { href: '/home-sections', label: 'Home Sections', icon: LayoutGrid },
   { href: '/festival-section', label: 'Festival Section', icon: PartyPopper },
+  { href: '/festival-greeting', label: 'Festival Greeting', icon: PartyPopper },
   { href: '/seasonal-section', label: 'Seasonal Section', icon: ImageIcon },
 ];
 

@@ -23,6 +23,7 @@
 // card again the way it did before.
 
 import { Text, View } from 'react-native';
+import { RupeePrice } from '../../../components/RupeePrice';
 import { BarcodeSvg } from '../../../components/BarcodeSvg';
 import { colors } from '../../../theme/tokens';
 import type { CartItem } from '../../../store/useCartStore';
@@ -46,7 +47,7 @@ function FeeRow({ label, value }: { label: string; value: number }) {
   return (
     <View className="flex-row items-center justify-between">
       <Text className="text-sm font-medium text-ink/50">{label}</Text>
-      <Text className="text-sm font-semibold text-ink/70">₹{value}</Text>
+      <RupeePrice amount={value} size={14} color="#101C10B3" />
     </View>
   );
 }
@@ -104,7 +105,7 @@ export function ReceiptCard({
 
       <View className="mt-4 flex-row items-center justify-between border-t border-dashed border-gray-300 pt-4">
         <Text className="text-xl font-bold text-ink">Total Payment</Text>
-        <Text className="text-xl font-bold text-ink">₹{total}</Text>
+        <RupeePrice amount={total} size={20} />
       </View>
 
       <View className="mt-3 gap-2.5">
@@ -113,7 +114,7 @@ export function ReceiptCard({
             <Text className="flex-1 pr-3 text-base text-ink/70" numberOfLines={1}>
               {item.name} × {item.quantity}
             </Text>
-            <Text className="text-base font-semibold text-ink">₹{item.price * item.quantity}</Text>
+            <RupeePrice amount={item.price * item.quantity} size={16} />
           </View>
         ))}
       </View>

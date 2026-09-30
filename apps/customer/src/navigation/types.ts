@@ -47,6 +47,10 @@ export type AppStackParamList = {
   Purchase: undefined;
   Profile: undefined;
   CategoryDetail: { categoryId: string; label: string };
+  BreakfastEssentials: undefined;
+  KitchenEssentials: undefined;
+  SnacksAndDrinks: undefined;
+  LocalPantryBrand: { brandId: string };
   StoreDetail: { storeId: string; storeName: string };
   Cart: undefined;
   Checkout: undefined;

@@ -42,7 +42,12 @@ import { HeaderRays } from '../../home/components/HeaderRays';
 import { useIsOutsideOperatingHours } from '../../../utils/useOperatingHours';
 
 const STORE_HEADER_GRADIENT = {
-  colors: ['#04050F', '#0A0E2E', '#141B52', '#232E7A'] as const,
+  colors: [
+ '#69A9D4',
+  '#8FC2E1',
+  '#B4D8EB',
+  '#D9EDF6',
+  ] as const,
   stops: [0, 0.35, 0.68, 1] as const,
 };
 
@@ -91,14 +96,14 @@ export function StoreHeader({ onChangeLocation, onOpenSearch, scrollY }: Props) 
 
       <Animated.View style={[StyleSheet.absoluteFill, gradientStyle]}>
         <LinearGradient colors={STORE_HEADER_GRADIENT.colors} locations={STORE_HEADER_GRADIENT.stops} style={StyleSheet.absoluteFill} />
-        <HeaderRays />
+        {/* <HeaderRays /> */}
       </Animated.View>
 
       <View className="px-6 pb-5 pt-safe-offset-3">
         <Animated.View onLayout={onRowLayout} style={[{ overflow: 'hidden' }, rowStyle]}>
           <View className="flex-row items-center justify-between">
-            <LocationSelector onPress={onChangeLocation} isClosed={isClosed} />
-            <DeliveryModeSwitcher />
+            <LocationSelector onPress={onChangeLocation} isClosed={isClosed} light />
+            <DeliveryModeSwitcher light />
           </View>
         </Animated.View>
 

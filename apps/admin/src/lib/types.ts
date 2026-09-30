@@ -16,7 +16,7 @@ export interface Order {
   // snapshot's "needs attention" widget and Orders' own flag are computed,
   // not a separate field the backend sends.
   minutesSinceStatusChange: number;
-  // Real column (orders.commission_amount) — what Flikk actually earned
+  // Real column (orders.commission_amount) — what Gloceries actually earned
   // from this specific order, not an estimated rate applied after the
   // fact. 0 for a cancelled/non-delivered order (nothing earned yet).
   commissionAmount: number;
@@ -184,8 +184,8 @@ export interface Zone {
   riderCount: number;
 }
 
-// "We want Flikk here" — a demand signal collected from the customer app
-// (a place a customer searches/enters that Flikk doesn't cover yet, per
+// "We want Gloceries here" — a demand signal collected from the customer app
+// (a place a customer searches/enters that Gloceries doesn't cover yet, per
 // this screen's own note on where the data comes from), not a zone
 // itself. Purely informational for the founder deciding where a real
 // second zone (still out of scope per CLAUDE.md) should eventually go —
@@ -201,7 +201,7 @@ export interface ZoneRequest {
 export interface RevenuePoint {
   label: string;
   commission: number;
-  // The handling/platform fee charged to customers — real money Flikk
+  // The handling/platform fee charged to customers — real money Gloceries
   // keeps (never paid to a store or a rider), distinct from commission
   // (which comes from stores). app/api/revenue-trend's own note has the
   // full reasoning.

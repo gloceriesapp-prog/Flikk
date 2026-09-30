@@ -111,7 +111,7 @@ function SheetContent({
         <OfferStatTiles totalKm={offer.totalKm} payout={offer.payout} tone="onLight" />
       </View>
 
-      {/* Meta line: item count + payment mode. Flikk is prepaid/UPI only. */}
+      {/* Meta line: item count + payment mode. Gloceries is prepaid/UPI only. */}
       <View className="mt-4 flex-row items-center justify-center gap-4">
         <View className="flex-row items-center gap-1.5">
           <AppIcon icon={PackageIcon} size={14} color="#101C1099" />

@@ -19,8 +19,11 @@ const GAP = 12;
 
 export function CategorySectionGroup({ section }: Props) {
   return (
-    <View className="px-5 pt-6">
-      <Text className="mb-4 text-[17px] font-bold text-black/80">{section.name}</Text>
+    <View className="px-5 pt-8">
+      {/* Same visual spec as home/components/SectionTitle, kept inline (no
+          px-5) because this wrapper already owns the px-5 gutter the grid's
+          negative-margin math bleeds into. */}
+      <Text className="mb-4 text-xl font-bold tracking-tight text-ink">{section.name}</Text>
       <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
         {section.categories.map((item) => (
           <View key={item.id} style={{ width: '25%', paddingHorizontal: GAP / 2, paddingBottom: 20 }}>

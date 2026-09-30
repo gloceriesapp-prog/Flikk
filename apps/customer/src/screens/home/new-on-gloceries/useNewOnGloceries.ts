@@ -1,4 +1,4 @@
-// "New on Flikk" (NewOnFlikkSection.tsx) — discovery-only row, sits near
+// "New on Gloceries" (NewOnGloceriesSection.tsx) — discovery-only row, sits near
 // the end of Home's "All" tab, after Everyday Essentials.
 //
 // Reuses useAllStores (GET /stores, already fetches every active store in
@@ -11,16 +11,16 @@
 import { useMemo } from 'react';
 import { useAllStores } from '../../store-list/all-stores/useAllStores';
 
-const NEW_ON_FLIKK_LIMIT = 6;
+const NEW_ON_GLOCERIES_LIMIT = 6;
 
-export function useNewOnFlikk() {
+export function useNewOnGloceries() {
   const query = useAllStores();
 
   const stores = useMemo(
     () =>
       [...(query.data ?? [])]
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .slice(0, NEW_ON_FLIKK_LIMIT),
+        .slice(0, NEW_ON_GLOCERIES_LIMIT),
     [query.data],
   );
 

@@ -82,7 +82,7 @@ function LoginForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-8 shadow-sm">
-        <p className="text-2xl font-medium text-ink">Flikk Admin</p>
+        <p className="text-2xl font-medium text-ink">Gloceries Admin</p>
         <p className="mt-1 text-sm text-muted">Founder sign-in.</p>
 
         {error && <p className="mt-4 text-sm text-danger">{error}</p>}

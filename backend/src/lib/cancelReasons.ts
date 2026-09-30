@@ -1,5 +1,5 @@
 // Mirror of packages/shared/src/orders/cancelReasons.ts. The backend is NOT a
-// workspace member of @flikk/shared (only the Expo apps are — see that
+// workspace member of @gloceries/shared (only the Expo apps are — see that
 // package's index note), so these codes are duplicated here rather than
 // imported, the same manual-sync exception CLAUDE.md's "copied, not shared"
 // rule already covers (cf. DELIVERY_FEE in apps/rider). Keep the two lists

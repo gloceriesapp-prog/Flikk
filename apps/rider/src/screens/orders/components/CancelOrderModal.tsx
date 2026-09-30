@@ -5,7 +5,7 @@
 // set is enough for a future support/dispute view to reason about, and it's
 // faster to tap than to type standing in a doorway.
 //
-// The list is the shared, pickup-phase reason set (@flikk/shared) — cancel
+// The list is the shared, pickup-phase reason set (@gloceries/shared) — cancel
 // only ever shows pre-pickup, so old drop-phase options ("customer
 // unreachable", "wrong address") were removed: they can't apply here. We
 // store the CODE (stable) and show the LABEL; the backend validates the code
@@ -13,7 +13,7 @@
 
 import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import { RIDER_CANCEL_REASONS } from '@flikk/shared';
+import { RIDER_CANCEL_REASONS } from '@gloceries/shared';
 import { PrimaryButton } from '../../../components/PrimaryButton';
 
 interface Props {

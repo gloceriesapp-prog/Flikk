@@ -12,14 +12,19 @@ import { View } from 'react-native';
 import { PromoListCard } from '../products/PromoListCard';
 import { useTrendingThisWeek } from './useTrendingThisWeek';
 
-export function TrendingSection() {
+interface Props {
+  title?: string;
+  subtitle?: string | null;
+}
+
+export function TrendingSection({ title = 'Popular This Week', subtitle }: Props) {
   const { data: products = [] } = useTrendingThisWeek();
 
   if (products.length === 0) return null;
 
   return (
     <View className="pt-8">
-      <PromoListCard title="Trending This Week" products={products} />
+      <PromoListCard title={title} subtitle={subtitle} products={products} />
     </View>
   );
 }

@@ -34,7 +34,7 @@ export interface RealStore {
   closeTime?: string;
   latitude?: number;
   longitude?: number;
-  // Real stores.created_at — TopRatedStoresSection/NewOnFlikkSection's own
+  // Real stores.created_at — TopRatedStoresSection/NewOnGloceriesSection's own
   // client-side sort reads this (this hook already fetches every active
   // store in the zone; those two sections just re-sort/slice the same
   // list rather than adding a second store-list fetch each).

@@ -27,7 +27,7 @@ interface Props {
 export function SimilarProductsRow({ products }: Props) {
   return (
     <View className="gap-3 px-4 pb-4 pt-3">
-      <Text className="text-base font-semibold text-ink">Similar products</Text>
+      <Text className="text-[17px] font-bold text-ink">Similar products</Text>
       <View className="flex-row flex-wrap gap-x-3 gap-y-4">
         {products.slice(0, MAX_PRODUCTS).map((product) => (
           <ProductCardView key={product.id} product={product} widthClassName="w-[31%]" />

@@ -19,6 +19,7 @@
 // selected last.
 
 import { Pressable, Text, View } from 'react-native';
+import { RupeePrice } from '../RupeePrice';
 import { getPerUnitPriceLabel } from '../../utils/perUnitPrice';
 import type { Product } from '../../screens/home/products/types';
 
@@ -35,9 +36,9 @@ export function ProductVariantOptions({ variants, selectedId, onSelect }: Props)
 
   return (
     <View className="gap-2.5">
-      <Text className="text-xs font-medium text-ink/50">
+      {/* <Text className="text-[13px] font-semibold text-ink/50">
         Quantity: {variants.find((v) => v.id === selectedId)?.label}
-      </Text>
+      </Text> */}
 
       <View className="flex-row flex-wrap gap-3">
         {variants.map((variant) => {
@@ -52,22 +53,38 @@ export function ProductVariantOptions({ variants, selectedId, onSelect }: Props)
             <Pressable
               key={variant.id}
               onPress={() => onSelect(variant.id)}
-              className="w-[31%] gap-1.5 rounded-2xl border-2 bg-white p-2"
-              style={{ borderColor: isSelected ? '#2457F5' : '#E5E5E3' }}
+              className="w-[41%] gap-1.5 rounded-[16px] border p-3"
+              style={{
+                borderColor: isSelected ? '#2457F5' : '#DADADA',
+                backgroundColor: isSelected ? '#F3F6FF' : '#FFFFFF',
+              }}
             >
-              <Text className="text-[13px] font-semibold text-ink" numberOfLines={1}>
+              <Text
+                className="text-[14px] font-semibold text-ink"
+                numberOfLines={1}
+              >
                 {variant.label}
               </Text>
+
               {discountPercent !== null && discountPercent > 0 && (
-                <Text className="text-[11px] font-bold text-lime-deep">{discountPercent}% OFF</Text>
+                <Text className="text-[13px] font-bold text-[#155dfc]">
+                  Save {discountPercent}%
+                </Text>
               )}
+
               <View className="flex-row items-center gap-1">
-                <Text className="text-[13px] font-bold text-ink">₹{variant.price}</Text>
+                <RupeePrice amount={variant.price} size={18} />
+
                 {discountPercent !== null && (
-                  <Text className="text-[11px] text-ink/40 line-through">₹{variant.originalPrice}</Text>
+                  <RupeePrice amount={variant.originalPrice ?? 0} size={13} strike color="#101C1066" />
                 )}
               </View>
-              {perUnitLabel && <Text className="text-[10px] font-medium text-ink/40">{perUnitLabel}</Text>}
+
+              {/* {perUnitLabel && (
+      <Text className="text-[10px] font-medium text-ink/40">
+        {perUnitLabel}
+      </Text>
+    )} */}
             </Pressable>
           );
         })}

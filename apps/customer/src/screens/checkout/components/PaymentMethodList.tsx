@@ -4,7 +4,7 @@
 // bundled Checkout screen, which already includes netbanking/wallets/any
 // other UPI app inside its own UI — no separate "Netbanking" row here,
 // that would just duplicate what tapping Card already reaches. The UPI
-// grid is Flikk's own screen, own icons, own tap targets — no Razorpay/
+// grid is Gloceries's own screen, own icons, own tap targets — no Razorpay/
 // Cashfree branding shown at any point in it, same as Blinkit/Instamart's
 // own checkout. See payments/upiIntent.ts for how a tapped app is
 // actually launched.
