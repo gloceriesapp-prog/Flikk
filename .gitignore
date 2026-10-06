@@ -1,6 +1,7 @@
 docs/
 specs/
-claude.md.env
+claude.md
+.env
 .env.*
 !.env.example
 node_modules/
