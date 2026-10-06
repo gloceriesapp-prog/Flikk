@@ -11,6 +11,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../../api/client';
+import { useHomeContent } from '../content/useHomeContent';
+import { mergeManagedTabs } from '../content/mergeTabs';
+import type { HomeContentKey } from '../content/contracts';
 
 export interface RemoteHomeTabTile {
   id: string;
@@ -28,6 +31,8 @@ export interface RemoteHomeTab {
   name: string;
   tiles: RemoteHomeTabTile[];
   banners: RemoteHomeTabBanner[];
+  contentKey?: HomeContentKey;
+  label?: string;
 }
 
 interface ApiHomeTab {
@@ -39,7 +44,10 @@ interface ApiHomeTab {
 }
 
 export function useHomeTabs() {
-  return useQuery({
+  const content = useHomeContent();
+  const query = useQuery({
+    staleTime: 300_000,
+    gcTime: 30 * 60_000,
     queryKey: ['home-tabs'],
     queryFn: async () => {
       const rows = await apiRequest<ApiHomeTab[]>('/home-tabs', { auth: false });
@@ -53,4 +61,16 @@ export function useHomeTabs() {
       );
     },
   });
+  return {
+    ...query,
+    data: mergeManagedTabs(query.data ?? [], content.data),
+    // Dedicated category routes resolve IDs against both sources. A missing
+    // managed tab is not "removed" while its content config is still loading.
+    isResolvingTabs: query.isPending || content.isPending,
+    hasTabLoadError: query.isError || content.isError,
+    retryTabs: () => {
+      void query.refetch();
+      void content.refetch();
+    },
+  };
 }

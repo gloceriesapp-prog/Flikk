@@ -1,3 +1,4 @@
+import { validateApiUrl } from '../../../../packages/shared/config/api-url.cjs';
 // Thin instantiation of @gloceries/shared's createApiClient — the actual
 // fetch/error-shaping logic now lives in one place (packages/shared/src/
 // auth/client.ts) instead of being hand-copied per app; this file's only
@@ -18,7 +19,7 @@ export { ApiError } from '@gloceries/shared';
 // wrong fallback here silently points every request at the wrong server
 // instead of failing loudly — exactly what happened before .env got this
 // var added (see that file's own note).
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_URL = validateApiUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__);
 
 // Plain fetch, not this file's own apiRequest — apiRequest is what calls
 // this on a 401 (via the shared client's own `refresh` option below);

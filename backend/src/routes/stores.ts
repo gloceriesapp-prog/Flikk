@@ -1,10 +1,20 @@
+import { deliveryStores } from '../customer-experience/browse.js';
+import { publicStore } from '../stores/publicStore.js';
 // Customer-facing browse/catalog. Source: specs/01-customer-app/api.md
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
-import { distanceKm, isWithinReach } from '../utils/geo.js';
+import { nearbyStores, readCoordinates } from '../discovery/nearbyStores.js';
 
 export const storesRouter = Router();
+// Cross-store assortment is scoped once; missing pins yield no products.
+storesRouter.use(async (req, res, next) => {
+  try {
+    if (req.method === 'GET' && req.path.startsWith('/products/')) res.locals.deliveryStores = await deliveryStores(req.query);
+    next();
+  } catch (error) { next(error); }
+});
+
 
 const NEAREST_DEFAULT_LIMIT = 5;
 const NEAREST_MAX_LIMIT = 20;
@@ -24,48 +34,7 @@ const NEAREST_MAX_LIMIT = 20;
 // with one launch store). A store can override this per-row from admin's
 // StoreDetailForm. MAX_ALLOWED_DISTANCE_KM is the hard ceiling any explicit
 // ops/testing override is clamped to.
-const DEFAULT_RADIUS_KM = 12;
 const MAX_ALLOWED_DISTANCE_KM = 50;
-
-// Shared by GET /stores/nearest and GET /serviceability: rank every store in
-// the (active) zone by real haversine distance, keep those within reach.
-// Reach is per-store (stores.delivery_radius_km) falling back to
-// DEFAULT_RADIUS_KM; an explicit maxOverrideKm can only tighten it. NOT
-// filtered on is_active — a store closed for the night is still "in your
-// area" (see the long note on /nearest below). Empty = no store coverage.
-async function storesInRange(
-  lat: number,
-  lng: number,
-  zoneId: string | undefined,
-  maxOverrideKm: number | null,
-) {
-  let resolvedZoneId = zoneId;
-  if (!resolvedZoneId) {
-    const { data: zone, error: zoneError } = await supabase
-      .from('zones').select('id').eq('is_active', true).limit(1).single();
-    if (zoneError) throw zoneError;
-    resolvedZoneId = zone.id;
-  }
-
-  const { data, error } = await supabase
-    .from('stores')
-    .select('*')
-    .eq('zone_id', resolvedZoneId)
-    .not('lat', 'is', null)
-    .not('lng', 'is', null);
-  if (error) throw error;
-
-  const customer = { latitude: lat, longitude: lng };
-  return data
-    .map((store) => ({
-      ...store,
-      distance_km: distanceKm(customer, { latitude: store.lat, longitude: store.lng }),
-    }))
-    .filter((store) =>
-      isWithinReach(store.distance_km, store.delivery_radius_km, DEFAULT_RADIUS_KM, maxOverrideKm),
-    )
-    .sort((a, b) => a.distance_km - b.distance_km);
-}
 
 // Shared by every cross-store product feed below — store name/active flag
 // (so a deactivated store's stock can be filtered out) plus the full
@@ -82,95 +51,43 @@ async function storesInRange(
 // product and a fresh-catalog product map through the identical
 // mapApiProduct() on the client, not two subtly different row shapes.
 export const PRODUCT_WITH_VARIANTS_SELECT =
-  '*, stores!inner(name, is_active, fssai_number, address_line, city, district, photo_url), product_variants(*)';
+  '*, stores!inner(name, is_active, open_time, close_time, fssai_number, address_line, city, district, photo_url), product_variants(*)';
 
 // Every one of this file's customer-facing feeds also filters
-// .eq('approval_status', 'approved') — a store owner's own product
+// .eq('approval_status', 'approved')
+// Product submissions remain pending until approved by an admin.
 // (routes/partner.ts POST /products) starts 'pending' and only a founder's
 // approval in admin (apps/admin's Inventory) flips it, same gate store
 // onboarding already has. Admin's own product adds insert 'approved'
 // directly, so they show up here immediately.
 
+// Same default zone as browse routes, including when no nearby shop exists.
+// Cached by the /stores middleware; no database lookup per SSE connection.
+storesRouter.get('/inventory-scope', async (_req, res, next) => {
+  try {
+    const { data, error } = await supabase.from('zones').select('id').eq('is_active', true).limit(1);
+    if (error) throw error;
+    res.json({ zoneIds: (data ?? []).map(zone => zone.id) });
+  } catch (error) { next(error); }
+});
+
 storesRouter.get('/', async (req, res, next) => {
   try {
-    // zone_id is optional — single zone at launch (CLAUDE.md), so a caller
-    // that doesn't know one yet (e.g. Home's own "Shops Near You" row,
-    // which has no zone-picking UI to source it from) falls back to
-    // whichever zone is currently active instead of being required to pass
-    // an id it has no way to have. admin's own POST /api/stores resolves
-    // zone_id server-side the same way, for the same reason.
-    let zoneId = req.query.zone_id as string | undefined;
-    if (!zoneId) {
-      const { data: zone, error: zoneError } = await supabase.from('zones').select('id').eq('is_active', true).limit(1).single();
-      if (zoneError) throw zoneError;
-      zoneId = zone.id;
-    }
-    // Deliberately NOT filtered to is_active — same real decision GET
-    // /stores/nearest below already documents and this route used to
-    // contradict: a closed store is still a real store a customer can
-    // browse (see product pages, add to a scheduled order, etc.), not one
-    // that should vanish from the Store tab's own listing the moment it
-    // closes for the night. apps/customer's useAllStores.ts already maps
-    // is_active straight through as `isOpen`, and StoreCard/StoreTileCard
-    // already render a real "Closed" badge from it — this filter was the
-    // only thing standing between that existing UI and actually showing.
-    const { data, error } = await supabase.from('stores').select('*').eq('zone_id', zoneId).order('name');
-    if (error) throw error;
-    res.json(data);
+    if (req.query.lat === undefined && req.query.lng === undefined) return res.json([]);
+    const { lat, lng, zoneId } = readCoordinates(req.query);
+    const rows = await nearbyStores(lat, lng, zoneId, 20, null);
+    res.json(rows.map(publicStore));
   } catch (err) {
     next(err);
   }
 });
 
-// Nearest store(s) to a customer's saved delivery location — Home's
-// "Shops Near You" row and useNearestStore.ts's own single-store
-// resolution (apps/customer/src/screens/home). Computed server-side, not
-// on-device: the client sends its own lat/lng, this ranks every store in
-// the zone by real haversine distance and returns the closest `limit` of
-// them, each with a distance_km the client just formats (formatDistance,
-// geocoding.ts) — it never receives every store's raw coordinates to sort
-// itself. That's the whole point of doing it here: swapping this for
-// something smarter later (a real delivery-radius cutoff, actual routing
-// distance instead of straight-line) is a change to this one function, not
-// an app update. Mounted before /:id/products so Express doesn't try to
-// treat "nearest" as a store id, same convention /products/deals and
-// /products/catalog below already establish.
-//
-// Deliberately NOT filtered to is_active (a store's own real-time open/
-// closed toggle — apps/partner/src/store/useStoreProfileStore.ts PATCHes
-// it instantly when an owner flips it) — an earlier version of this route
-// did filter on it, which silently substituted a farther OPEN store
-// whenever the true nearest one happened to be closed, with nothing in the
-// response explaining why "nearest" jumped. The customer app now shows the
-// genuinely nearest store either way, with its real is_active/open_time/
-// close_time (already in the `select('*')` below) so the UI can render a
-// "Closed · opens at 9:00 AM" state and still let someone browse — same
-// pattern Blinkit/Zepto use, no dead end when everything's closed for the
-// night, no unexplained substitution.
-//
-// Stores with no lat/lng on file (migrations/005_stores_lat_lng.sql — any
-// store approved before it, until backfilled via admin's StoreDetailForm)
-// are excluded outright rather than sorted to the end — a customer asking
-// "what's nearest me" wants a real ranked answer, not an unranked store
-// mixed into a "nearest" list with no actual distance behind it. They still
-// show up fine in the plain GET / list above.
-//
-// The per-store radius cutoff (delivery_radius_km, or DEFAULT_RADIUS_KM) is
-// applied AFTER ranking but BEFORE slicing to `limit` — a store outside its
-// radius must never occupy one of the `limit` slots just because fewer than `limit` real stores are
-// in range; it should be excluded entirely, not returned as a false
-// "nearest" result. An empty response here is the real, server-computed
-// signal that a customer has no store coverage at all (this endpoint is
-// the single source apps/customer's own useNearestStore.ts resolves from,
-// and useIsServiceable.ts's own "coming soon" gate reads off it) — not a
-// client-side circular-zone guess.
+// Database spatial candidates + exact spherical ranking, including closed
+// stores. Delivery radius filters happen before LIMIT; unavailable coverage
+// is an empty list, never an unbounded application-side fallback.
 storesRouter.get('/nearest', async (req, res, next) => {
   try {
-    const lat = Number(req.query.lat);
-    const lng = Number(req.query.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      throw new AppError(400, 'MISSING_COORDINATES', 'lat and lng query params are required.');
-    }
+    const { lat, lng, zoneId } = readCoordinates(req.query);
 
     const requestedLimit = Number(req.query.limit);
     const limit = Number.isFinite(requestedLimit)
@@ -182,8 +99,7 @@ storesRouter.get('/nearest', async (req, res, next) => {
       ? Math.min(Math.max(0.1, requestedMaxDistanceKm), MAX_ALLOWED_DISTANCE_KM)
       : null;
 
-    const zoneId = req.query.zone_id as string | undefined;
-    const ranked = (await storesInRange(lat, lng, zoneId, maxOverrideKm)).slice(0, limit);
+    const ranked = await nearbyStores(lat, lng, zoneId, limit, maxOverrideKm);
 
     res.json(ranked);
   } catch (err) {
@@ -199,18 +115,13 @@ storesRouter.get('/nearest', async (req, res, next) => {
 // get captured via POST /area-upvotes for demand.
 storesRouter.get('/serviceability', async (req, res, next) => {
   try {
-    const lat = Number(req.query.lat);
-    const lng = Number(req.query.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      throw new AppError(400, 'MISSING_COORDINATES', 'lat and lng query params are required.');
-    }
+    const { lat, lng, zoneId } = readCoordinates(req.query);
 
-    const zoneId = req.query.zone_id as string | undefined;
-    const inRange = await storesInRange(lat, lng, zoneId, null);
+    const inRange = await nearbyStores(lat, lng, zoneId, 1, null);
 
     res.json({
       serviceable: inRange.length > 0,
-      nearestDistanceKm: inRange.length > 0 ? Number(inRange[0].distance_km.toFixed(2)) : null,
+      nearestDistanceKm: inRange.length > 0 ? Number(inRange[0]!.distance_km.toFixed(2)) : null,
     });
   } catch (err) {
     next(err);
@@ -223,16 +134,15 @@ storesRouter.get('/serviceability', async (req, res, next) => {
 // (CLAUDE.md), so no zone_id filter — every active store is already in the
 // one zone that exists. Only products with a real discount (original_price
 // set and above price, same convention lib/products.ts's toProductRow
-// already enforces on write) and not out of stock — a "deal" that's sold
-// out or isn't actually discounted doesn't belong on this shelf.
+// already enforces on write). Closed-shop and sold-out listings remain
+// browseable; cards and authoritative checkout enforce orderability.
 storesRouter.get('/products/deals', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
       .eq('approval_status', 'approved')
-      .eq('stores.is_active', true)
-      .neq('stock_status', 'out_of_stock')
+      .in('store_id', res.locals.deliveryStores ?? [])
       .not('original_price', 'is', null)
       .order('name')
       .limit(12);
@@ -254,8 +164,7 @@ storesRouter.get('/products/catalog', async (req, res, next) => {
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
       .eq('approval_status', 'approved')
-      .eq('stores.is_active', true)
-      .neq('stock_status', 'out_of_stock')
+      .in('store_id', res.locals.deliveryStores ?? [])
       .order('name')
       .limit(20);
     if (error) throw error;
@@ -285,8 +194,7 @@ storesRouter.get('/products/search', async (req, res, next) => {
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
       .eq('approval_status', 'approved')
-      .eq('stores.is_active', true)
-      .neq('stock_status', 'out_of_stock')
+      .in('store_id', res.locals.deliveryStores ?? [])
       .ilike('name', `%${escaped}%`)
       .order('name')
       .limit(30);
@@ -325,9 +233,8 @@ storesRouter.get('/products/similar', async (req, res, next) => {
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
       .eq('approval_status', 'approved')
-      .eq('stores.is_active', true)
+      .in('store_id', res.locals.deliveryStores ?? [])
       .eq('category', category)
-      .neq('stock_status', 'out_of_stock')
       .order('name')
       .limit(4);
     if (excludeId) query = query.neq('id', excludeId);
@@ -349,9 +256,8 @@ storesRouter.get('/products/similar', async (req, res, next) => {
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
       .eq('approval_status', 'approved')
-      .eq('stores.is_active', true)
+      .in('store_id', res.locals.deliveryStores ?? [])
       .eq('store_id', storeId)
-      .neq('stock_status', 'out_of_stock')
       .order('name')
       .limit(4);
     if (excludeId) fallbackQuery = fallbackQuery.neq('id', excludeId);
@@ -387,10 +293,14 @@ storesRouter.get('/:id/products', async (req, res, next) => {
       .select(PRODUCT_WITH_VARIANTS_SELECT)
       .eq('approval_status', 'approved')
       .eq('store_id', req.params.id)
-      .neq('stock_status', 'out_of_stock');
+      ;
     if (dealsOnly) query = query.not('original_price', 'is', null);
 
-    const { data, error } = await query.order('name');
+    // Legacy array contract is bounded; full browsing uses the paged route.
+    const rawLimit = req.query.limit;
+    if (rawLimit !== undefined && (typeof rawLimit !== 'string' || !/^\d+$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 60))
+      throw new AppError(400, 'INVALID_PAGE', 'Page size must be between 1 and 60.');
+    const { data, error } = await query.order('id').limit(rawLimit === undefined ? 30 : Number(rawLimit));
     if (error) throw error;
     res.json(data);
   } catch (err) {

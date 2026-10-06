@@ -15,6 +15,7 @@
 // actually in the DB.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Check, ChevronDown, Image as ImageIcon, IndianRupee, Pencil, Plus, Search, X } from 'lucide-react';
 import clsx from 'clsx';
 import { formatNumber } from '@/lib/format';
@@ -172,6 +173,7 @@ export default function InventoryPage() {
             {loading ? 'Loading…' : `${products.length} products listed across every store in the zone.`}
           </p>
         </div>
+        <Link href="/inventory-pack-stock" className="ml-auto rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-ink">Set available packs</Link>
         <button
           type="button"
           onClick={() => setAdding(true)}

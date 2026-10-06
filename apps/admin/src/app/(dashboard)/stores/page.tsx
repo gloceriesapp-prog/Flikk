@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import clsx from 'clsx';
-import { ChevronRight, Clock, MapPin, Plus, Search, Store as StoreIcon } from 'lucide-react';
+import { Pencil, Clock, MapPin, Plus, Search, Store as StoreIcon } from 'lucide-react';
 import type { NewStoreInput, Store } from '@/lib/types';
 import { fetchStores } from '@/lib/supabase/stores';
 import { AddStoreModal } from '@/components/stores/AddStoreModal';
@@ -41,7 +41,7 @@ export default function StoresPage() {
     Promise.resolve().then(loadData);
   }, [loadData]);
 
-  const filtered = stores.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const filtered = stores.filter((s) => [s.name, s.ownerName, s.phone, s.city, s.district].some(value => value.toLowerCase().includes(query.trim().toLowerCase())));
 
   async function handleAdd(newStore: NewStoreInput) {
     const res = await fetch('/api/stores', {
@@ -62,7 +62,7 @@ export default function StoresPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-ink">Stores</h1>
-          <p className="text-sm text-muted">{loading ? 'Loading…' : `${stores.length} active stores across the zone.`}</p>
+          <p className="text-sm text-muted">{loading ? 'Loading…' : `${stores.length} stores · ${stores.filter(store => store.isActive).length} active`}</p>
         </div>
         <button
           type="button"
@@ -88,7 +88,7 @@ export default function StoresPage() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search stores…"
+          placeholder="Search name, owner, phone or place…"
           className="w-full bg-transparent text-sm text-ink placeholder:text-muted focus:outline-none"
         />
       </div>
@@ -122,7 +122,7 @@ export default function StoresPage() {
                     store.isActive ? 'bg-green-50 text-success' : 'bg-red-50 text-danger'
                   )}
                 >
-                  {store.isActive ? 'Open' : 'Deactivated'}
+                  {store.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
               <p className="mt-0.5 truncate text-xs font-medium text-muted">{store.category}</p>
@@ -145,7 +145,7 @@ export default function StoresPage() {
               </div>
             </div>
 
-            <ChevronRight size={16} className="shrink-0 self-center text-muted" />
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-2 text-xs font-semibold text-ink-soft"><Pencil size={13} /><span className="hidden sm:inline">Edit store</span></span>
           </Link>
         ))}
         {!loading && filtered.length === 0 && (

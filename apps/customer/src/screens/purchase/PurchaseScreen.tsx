@@ -1,9 +1,12 @@
+import { purchaseHistoryOptions } from '../../features/purchases/historyQuery';
+import { PurchaseLoadingMessage } from './loading/PurchaseLoadingMessage';
+import { useAuthStore } from '../../store/useAuthStore';
 // "Purchase" tab (was "Order Again" in the bottom nav). Reached from
 // BottomNavBar — see src/components/BottomNavBar/data.ts. BottomNavBar
 // itself renders here too now (a sibling of the ScrollView, same pattern
 // HomeScreen.tsx uses — floats fixed in place while the page scrolls
 // underneath it), so the tab bar stays reachable from Purchase instead of
-// only from Home; the "Purchase" header above stays exactly as it was.
+// only from Home; Purchase History stays centered above the order search.
 //
 // Real order history now — GET /orders (api/orders.ts), not the old
 // LIVE_ORDER/PAST_ORDERS placeholder dataset. "Live" is any order not yet
@@ -16,7 +19,7 @@
 // card background/gradient, no per-row CTA button; the whole row is the
 // tap target for live orders (wired to TrackOrder), inert for past ones.
 //
-// Header redesign, same earlier ask: "Purchase" title stays centered,
+// Header: "Purchase History" stays centered without a global-search action.
 // PurchaseSearchBar (real search + Filter button) sits directly below it —
 // only once there's actually something to search/filter (hasAnyOrder),
 // not on the empty state. Search matches store name or any item name
@@ -28,68 +31,117 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFocused } from '@react-navigation/native';
+import { AppState, Pressable, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
-import { HeartIcon, Search01Icon } from '@hugeicons/core-free-icons';
 import { AppImage as Image } from '../../components/AppImage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AppIcon } from '../../components/AppIcon';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { BrandFooter } from '../../components/BrandFooter';
-import { colors } from '../../theme/tokens';
 import { fetchAccountInfo } from '../../api/auth';
-import { fetchMyOrders } from '../../api/orders';
+import { fetchOrderHistoryStatuses } from '../../api/orders';
 import { groupOrdersByTrip } from '../../utils/tripLegs';
 import { mapOrderGroup } from './data';
 import { OrderRow } from './components/OrderRow';
 import { OrderFilterSheet, type OrderStatusFilter, type OrderTimeFilter } from './components/OrderFilterSheet';
 import { PurchaseRecommendations } from './components/PurchaseRecommendations';
 import { PurchaseSearchBar } from './components/PurchaseSearchBar';
+import { COMPLETED_ORDER_PREVIEW_ID, createCompletedOrderPreview } from './preview/completedOrder';
+import { usePurchaseClock } from './usePurchaseClock';
+import { getPurchaseArrivalDeadline } from './orderArrival';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Purchase'>;
 
 const FEATURE_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/order-not-found.png';
+const ORDER_STATUS_REFRESH_MS = 8_000;
+
+function isLive(status: string): boolean {
+  return status === 'placed' || status === 'packed' || status === 'out_for_delivery';
+}
 
 export function PurchaseScreen({ navigation }: Props) {
-  const { data: fetchedOrders, isLoading, refetch } = useQuery({
-    queryKey: ['my-orders'],
-    // One card per trip, not one per real per-store order row — a
-    // multi-store checkout creates N real orders sharing one trip_id
-    // (backend/migrations/014_trips.sql), grouped here before mapping so
-    // Purchase's list shows exactly what the customer actually checked
-    // out with, once each.
-    queryFn: async () => groupOrdersByTrip(await fetchMyOrders()).map(mapOrderGroup),
+  const client = useQueryClient();
+  const customerId = useAuthStore(state => state.customerId);
+  const isFocused = useIsFocused();
+  const [isForeground, setIsForeground] = useState(AppState.currentState === 'active');
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => setIsForeground(state === 'active'));
+    return () => subscription.remove();
+  }, []);
+  const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('all');
+  const [filterReferenceTime] = useState(Date.now);
+  const [timeFilter, setTimeFilter] = useState<OrderTimeFilter>('all');
+  useEffect(() => { const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300); return () => clearTimeout(timer); }, [query]);
+  const historyParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (debouncedQuery) params.set('q', debouncedQuery);
+    if (statusFilter !== 'all') params.set('status', statusFilter === 'on_the_way' ? 'out_for_delivery' : statusFilter);
+    if (timeFilter === 'last_30_days') params.set('from', new Date(filterReferenceTime - 30 * 86400000).toISOString());
+    else if (typeof timeFilter === 'number') {
+      params.set('from', `${timeFilter}-01-01T00:00:00+05:30`);
+      params.set('until', `${timeFilter + 1}-01-01T00:00:00+05:30`);
+    }
+    return params;
+  }, [debouncedQuery, statusFilter, timeFilter, filterReferenceTime]);
+  const history = useInfiniteQuery(purchaseHistoryOptions(customerId, historyParams));
+  const rawOrders = useMemo(() => [...new Map((history.data?.pages.flatMap(page => page.items) ?? []).map(order => [order.id, order])).values()], [history.data]);
+  const liveIds = useMemo(() => rawOrders.filter(order => isLive(order.status)).map(order => order.id).sort(), [rawOrders]);
+  const live = useQuery({
+    queryKey: ['purchase-live', customerId, liveIds],
+    queryFn: () => fetchOrderHistoryStatuses(liveIds),
+    enabled: !!customerId && isFocused && isForeground && liveIds.length > 0,
+    refetchInterval: query => isFocused && isForeground && query.state.data?.some(row => isLive(row.status)) ? ORDER_STATUS_REFRESH_MS : false,
+    // The first history page already contains the same live snapshot.
+    initialData: () => rawOrders.filter(order => isLive(order.status)),
+    initialDataUpdatedAt: history.dataUpdatedAt,
+    staleTime: ORDER_STATUS_REFRESH_MS,
+    refetchOnMount: false,
+    refetchIntervalInBackground: false,
   });
+  const fetchedOrders = useMemo(() => {
+    const statuses = new Map((live.data ?? []).map(row => [row.id, row]));
+    return groupOrdersByTrip(rawOrders.map(order => {
+      const update = statuses.get(order.id);
+      return update && (update.live_revision ?? 0) >= (order.live_revision ?? 0) ? { ...order, ...update } : order;
+    })).map(mapOrderGroup);
+  }, [rawOrders, live.data]);
+  const refetch = history.refetch;
 
   // Real account creation date (GET /auth/me's created_at) — OrderFilterSheet's
   // own "Order time" year list runs from the current year down to this,
   // never a hardcoded lookback window a brand-new account couldn't have
   // orders spanning.
-  const { data: accountInfo } = useQuery({ queryKey: ['account-info'], queryFn: fetchAccountInfo });
+  const { data: accountInfo } = useQuery({ queryKey: ['account-info', customerId], queryFn: fetchAccountInfo });
   const accountCreatedYear = accountInfo ? new Date(accountInfo.created_at).getFullYear() : new Date().getFullYear();
 
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('all');
-  const [timeFilter, setTimeFilter] = useState<OrderTimeFilter>('all');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [showAllOrders, setShowAllOrders] = useState(false);
+  const [previewOrder] = useState(() => __DEV__ ? createCompletedOrderPreview() : null);
+  const waitingForFirstOrders = !history.isError && (history.isPending || (history.isFetching && rawOrders.length === 0));
+  const displayOrders = useMemo(() => previewOrder && history.data && !waitingForFirstOrders
+    ? [...(fetchedOrders ?? []), previewOrder]
+    : fetchedOrders ?? [], [fetchedOrders, previewOrder, history.data, waitingForFirstOrders]);
   const VISIBLE_ORDER_LIMIT = 5;
 
-  // Purchase is reached repeatedly across a session (Home tab bar, after
-  // checkout, etc.) — refetching on every focus keeps a live order's
-  // status current without needing a polling interval on a screen that
-  // isn't even open most of the time (TrackOrderScreen's own note on why
-  // it polls instead — it's the screen actually being watched).
+  // Refresh on entry; active orders also refresh while this screen is
+  // visible so packing changes to arriving after the rider marks pickup.
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => void refetch());
-    return unsubscribe;
-  }, [navigation, refetch]);
+    if (isFocused && isForeground && customerId) {
+      // Fresh cached results appear immediately; stale results remain visible
+      // while a deduplicated refresh runs. Do not force/cancel warmup reads.
+      void client.fetchInfiniteQuery(purchaseHistoryOptions(customerId, historyParams)).catch(() => {});
+    }
+  }, [isFocused, isForeground, client, customerId, historyParams]);
 
-  const isLive = (status: string) => status === 'placed' || status === 'packed' || status === 'out_for_delivery';
+  const arrivalDeadlines = useMemo(() => (fetchedOrders ?? [])
+    .map(getPurchaseArrivalDeadline)
+    .filter((deadline): deadline is number => deadline !== null), [fetchedOrders]);
+  const now = usePurchaseClock(arrivalDeadlines);
 
-  const hasAnyOrder = (fetchedOrders ?? []).length > 0;
+  const hasAnyOrder = displayOrders.length > 0 || debouncedQuery.length > 0 || statusFilter !== 'all' || timeFilter !== 'all';
 
   // Order status and order time are two independent filters (both can be
   // active at once, e.g. "Delivered" + "2025") — matches OrderFilterSheet's
@@ -112,8 +164,8 @@ export function PurchaseScreen({ navigation }: Props) {
   }
 
   const filteredOrders = useMemo(() => {
-    const trimmedQuery = query.trim().toLowerCase();
-    return (fetchedOrders ?? []).filter((order) => {
+    const trimmedQuery = debouncedQuery.toLowerCase();
+    return displayOrders.filter((order) => {
       if (!matchesStatusFilter(order.status)) return false;
       if (!matchesTimeFilter(order.placedAtIso)) return false;
       if (!trimmedQuery) return true;
@@ -123,7 +175,7 @@ export function PurchaseScreen({ navigation }: Props) {
       );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchedOrders, query, statusFilter, timeFilter]);
+  }, [displayOrders, debouncedQuery, statusFilter, timeFilter]);
 
   // One flat list now, not separate Live/Past sections — current
   // (not-yet-delivered) orders sorted to the top, done ones to the
@@ -136,8 +188,15 @@ export function PurchaseScreen({ navigation }: Props) {
     return new Date(b.placedAtIso).getTime() - new Date(a.placedAtIso).getTime();
   });
   const hasFilteredResults = sortedOrders.length > 0;
-  const visibleOrders = showAllOrders ? sortedOrders : sortedOrders.slice(0, VISIBLE_ORDER_LIMIT);
-  const hasMoreOrders = sortedOrders.length > visibleOrders.length;
+  const matchingPreview = sortedOrders.find((order) => order.orderId === COMPLETED_ORDER_PREVIEW_ID);
+  // Keep the requested sample visible even when live orders fill the
+  // collapsed list. View more still reveals every real order normally.
+  const visibleOrders = showAllOrders
+    ? sortedOrders
+    : matchingPreview
+      ? [...sortedOrders.filter((order) => order.orderId !== COMPLETED_ORDER_PREVIEW_ID).slice(0, VISIBLE_ORDER_LIMIT - 1), matchingPreview]
+      : sortedOrders.slice(0, VISIBLE_ORDER_LIMIT);
+  const hasMoreOrders = sortedOrders.length > visibleOrders.length || Boolean(history.hasNextPage);
 
   // Same direction-based hide/show BottomNavBar logic as StoreListScreen.tsx
   // (itself copied from HomeScreen.tsx) — direction-based, not a plain
@@ -161,22 +220,10 @@ export function PurchaseScreen({ navigation }: Props) {
   });
 
   return (
-    <View className="flex-1 bg-[#F8F8F8]">
+    <View className="flex-1 bg-[#F8F8F8] pt-safe">
       {/* Plain background again — no gradient header (PurchaseHeader.tsx,
           deleted) to keep light icons legible against. */}
       <StatusBar style="dark" />
-
-      {/* Plain left-aligned title + search bar — per an explicit ask to
-          drop the premium gradient/location-row header this screen
-          briefly had, in favor of a simple section title. Not sticky —
-          same reasoning as CategoriesScreen.tsx's own header removal. */}
-      <View className="px-6 pb-1 pt-safe-offset-3 flex-row items-center justify-between">
-        <Text className="text-[20px] font-bold text-ink">Purchase</Text>
-        <Pressable onPress={() => navigation.navigate('Search')} hitSlop={10} className="h-10 w-10 items-center justify-center bg-[#FFFFFF] rounded-full">
-          <AppIcon icon={Search01Icon} size={22} color={colors.ink} />
-        </Pressable>
-
-      </View>
 
       <Animated.ScrollView
         className="flex-1"
@@ -184,9 +231,18 @@ export function PurchaseScreen({ navigation }: Props) {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
+        stickyHeaderIndices={hasAnyOrder ? [1] : []}
       >
+        {/* Title scrolls away; only the following search row stays pinned
+            beneath the status bar, with an opaque surface behind it. */}
+        <View className="px-6 pb-1 pt-3">
+          <View className="h-10 items-center justify-center">
+            <Text accessibilityRole="header" className="text-center text-[20px] font-bold text-ink">Purchase History</Text>
+          </View>
+        </View>
         {hasAnyOrder && (
-          <View className="px-6 pt-3">
+          <View className="bg-[#F8F8F8] px-6 py-3">
             <PurchaseSearchBar
               value={query}
               onChangeText={(text) => {
@@ -199,9 +255,12 @@ export function PurchaseScreen({ navigation }: Props) {
           </View>
         )}
 
-        {isLoading ? (
-          <View className="flex-1 items-center justify-center py-24">
-            <ActivityIndicator color={colors.ink} />
+        {waitingForFirstOrders ? (
+          <PurchaseLoadingMessage />
+        ) : history.isError && !history.data ? (
+          <View className="items-center gap-3 py-16">
+            <Text className="text-ink">Couldn’t load your purchases.</Text>
+            <Pressable onPress={() => { void refetch(); }}><Text className="font-semibold text-[#155DFC]">Try again</Text></Pressable>
           </View>
         ) : hasAnyOrder && !hasFilteredResults ? (
           <View className="flex-1 items-center justify-center gap-1 px-10 py-24">
@@ -214,25 +273,29 @@ export function PurchaseScreen({ navigation }: Props) {
               <OrderRow
                 key={order.orderId}
                 order={order}
+                now={now}
+                previewOnly={order.orderId === COMPLETED_ORDER_PREVIEW_ID}
                 // Every order opens Track Order now, live or finished —
                 // the card itself no longer shows an items list inline
                 // (an explicit ask), so this is the only place left to
                 // see what was actually in a past order too, not just a
                 // live one. TrackOrderScreen's own timeline already reads
                 // fine for a terminal (delivered/cancelled) status.
-                onPress={() =>
-                  navigation.navigate('TrackOrder', { orderId: order.orderId, paymentMethodLabel: 'UPI', isTrip: order.isTrip })
-                }
+                onPress={() => {
+                  if (order.orderId === COMPLETED_ORDER_PREVIEW_ID) return;
+                  navigation.navigate('TrackOrder', { orderId: order.orderId, paymentMethodLabel: 'UPI', isTrip: order.isTrip });
+                }}
               />
             ))}
 
             {hasMoreOrders ? (
               <Pressable
-                onPress={() => setShowAllOrders(true)}
+                disabled={history.isFetchingNextPage}
+                onPress={() => { setShowAllOrders(true); if (showAllOrders || sortedOrders.length <= visibleOrders.length) void history.fetchNextPage(); }}
                 className="mb-1 items-center rounded-xl  bg-[#FFFFFF] border border-[#E8E8E8] py-3.5 "
               >
                 <Text className="text-[14px] font-semibold text-ink">
-                  View {sortedOrders.length - visibleOrders.length} more order{sortedOrders.length - visibleOrders.length === 1 ? '' : 's'}
+                  {history.isFetchingNextPage ? 'Loading…' : history.isFetchNextPageError ? 'Retry loading more' : 'View more orders'}
                 </Text>
               </Pressable>
             ) : (
@@ -266,7 +329,7 @@ export function PurchaseScreen({ navigation }: Props) {
               <Image source={{ uri: FEATURE_IMAGE_URI }} className="mt-6 aspect-[4/5] w-3/5 self-center" resizeMode="cover" />
               <Text className="mt-5 px-8 text-center text-[17px] font-semibold text-ink">No orders yet.</Text>
               <Text className="mt-1 px-8 text-center text-sm font-medium text-ink/50">
-                Looks like you haven't placed orders yet.
+                Looks like you haven&apos;t placed orders yet.
               </Text>
             </View>
 

@@ -1,3 +1,4 @@
+import { invalidatePurchaseHistory } from '../features/purchases/invalidateHistory';
 // Maps to POST /orders, GET /orders, GET /orders/:id (backend/src/routes/
 // orders.ts) — order creation (called from CheckoutScreen) and the real
 // order history/live-status reads backing the Purchase tab and
@@ -12,10 +13,14 @@ import type { OrderStatus } from '../screens/track-order/data';
 
 export interface CreateOrderItem {
   product_id: string;
+  variant_id?: string | null;
+  expected_unit_price?: number;
   quantity: number;
 }
 
 export interface CreateOrderInput {
+  attempt_id: string;
+  quote_token: string;
   store_id: string;
   // Real addresses.id now — CheckoutScreen always has one of these once a
   // customer has a saved address (api/addresses.ts), which the real
@@ -41,12 +46,32 @@ export interface ApiOrderItem {
   product_id: string;
   quantity: number;
   unit_price_at_order: number;
+  variant_id?: string | null;
+  unit_at_order?: string | null;
+  variant_mrp_at_order?: number | null;
+  // Checkout snapshot; absent/null for orders created before migration 060.
+  unit_mrp_at_order?: number | null;
   products: { name: string; image_url: string | null; unit: string } | null;
 }
 
+export interface OrderDeliveryAddress {
+  label: string;
+  line1: string;
+  landmark: string | null;
+  recipient_name: string;
+  recipient_phone: string | null;
+}
+
 export interface ApiOrder {
+  live_revision?: number;
+  rider_id?: string | null;
+  estimated_delivery_minutes?: number | null;
+  estimated_delivery_at?: string | null;
   id: string;
   order_number: string;
+  // Detail endpoints return the address linked to this order, rather
+  // than whichever address the customer currently has selected.
+  addresses?: OrderDeliveryAddress | null;
   store_id: string;
   // 'failed' is a terminal post-pickup delivery failure (backend
   // orderStateMachine.ts, same status apps/rider's BackendOrderStatus knows)
@@ -55,6 +80,7 @@ export interface ApiOrder {
   status: OrderStatus | 'cancelled' | 'failed';
   item_total: number;
   delivery_fee: number;
+  handling_fee?: number;
   commission_amount: number;
   total: number;
   // Real orders.discount_amount/promo_code_id (migrations/019_promo_codes.sql)
@@ -117,8 +143,10 @@ export interface ApiOrder {
   trips?: { total: number; delivery_fee: number } | null;
 }
 
-export function createOrder(input: CreateOrderInput): Promise<ApiOrder> {
-  return apiRequest('/orders', { method: 'POST', body: input });
+export async function createOrder(input: CreateOrderInput): Promise<ApiOrder> {
+  const result = await apiRequest<ApiOrder>('/orders', { method: 'POST', body: input });
+  invalidatePurchaseHistory();
+  return result;
 }
 
 export function fetchMyOrders(): Promise<ApiOrder[]> {
@@ -150,4 +178,20 @@ export function cancelOrder(orderId: string, reason: string): Promise<ApiOrder> 
 export async function fetchBuyItAgain(): Promise<Product[]> {
   const rows = await apiRequest<ApiProduct[]>('/orders/buy-it-again');
   return rows.map(mapApiProduct);
+}
+
+export interface OrderHistoryPage { items: ApiOrder[]; nextCursor: string | null }
+export function fetchOrderHistory(params: URLSearchParams, cursor?: string): Promise<OrderHistoryPage> {
+  const query = new URLSearchParams(params);
+  query.set('limit', '20');
+  if (cursor) query.set('cursor', cursor);
+  return apiRequest(`/orders/history?${query}`);
+}
+
+export type OrderHistoryStatus = Pick<ApiOrder, 'id' | 'status' | 'placed_at' | 'packed_at' | 'picked_up_at' | 'delivered_at' | 'estimated_delivery_minutes' | 'estimated_delivery_at' | 'live_revision'>;
+export async function fetchOrderHistoryStatuses(ids: string[]): Promise<OrderHistoryStatus[]> {
+  const rows: OrderHistoryStatus[] = [];
+  for (let offset = 0; offset < ids.length; offset += 100)
+    rows.push(...await apiRequest<OrderHistoryStatus[]>(`/orders/history-status?ids=${ids.slice(offset, offset + 100).join(',')}`));
+  return rows;
 }

@@ -57,6 +57,7 @@ export async function GET() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_onboarding_drafts' }, () => send('applications'))
         .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => send('applications'))
         .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => send('reviews'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'home_content' }, () => send('home-content'))
         .subscribe();
 
       // Keeps intermediary proxies/load balancers from closing an

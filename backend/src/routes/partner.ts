@@ -1,3 +1,5 @@
+import { storePublicImage } from '../media/publicImages.js';
+import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // Source: specs/02-partner-app/api.md — every query scoped to the caller's own store,
 // never trusting a store_id from the request body.
 //
@@ -8,7 +10,6 @@
 // so it stays invisible to shoppers until a founder approves it from
 // admin. This is the same "store owner writes, admin approval gates
 // visibility" shape as store onboarding itself (storeOnboarding.ts).
-import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { replaceProductVariants } from '../db/productVariants.js';
@@ -16,7 +17,7 @@ import { AppError, asValidationError } from '../lib/errors.js';
 import { resolveEditImage, toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
-import { toWebp } from '../utils/image.js';
+import { decodeImage, toWebp } from '../utils/image.js';
 import { round2 } from '../lib/pricing.js';
 import { reverseGeocode } from '../lib/reverseGeocode.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
@@ -350,13 +351,20 @@ partnerRouter.get('/stats/today', async (req: AuthedRequest, res, next) => {
 partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*, order_items(*, products(name, unit, image_url)), users!customer_id(name, phone), addresses(line1, landmark, recipient_name)')
-      .eq('store_id', storeId)
-      .order('placed_at', { ascending: false });
+    const page = readPage(req, `partner-orders:${storeId}:${req.query.view ?? "history"}`);
+    let query = supabase.from('orders')
+      .select('id, order_number, status, total, item_total, commission_amount, razorpay_payment_id, placed_at, packed_at, delivered_at, order_items(id, product_id, quantity, unit_price_at_order, unit_at_order, products(name, unit, image_url)), users!customer_id(name, phone), addresses(line1, landmark, recipient_name)')
+      .eq('store_id', storeId);
+    let queueFilter: string | undefined;
+    if (req.query.view === 'queue') {
+      const midnight = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) + 'T00:00:00+05:30').toISOString();
+      queueFilter = `status.in.(placed,packed,out_for_delivery),and(status.eq.failed,placed_at.gte.${midnight}),delivered_at.gte.${midnight}`;
+    }
+    if (page.cursor) queueFilter = queueFilter ? `and(or(${queueFilter}),or(${cursorFilter('placed_at', page.cursor)}))` : cursorFilter('placed_at', page.cursor);
+    if (queueFilter) query = query.or(queueFilter);
+    const { data, error } = await query.order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
-    res.json(data);
+    sendPage(res, data ?? [], page, 'placed_at');
   } catch (err) {
     next(err);
   }
@@ -370,13 +378,16 @@ partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
 partnerRouter.get('/reviews', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { data, error } = await supabase
+    const page = readPage(req, `partner-reviews:${storeId}`);
+    let query = supabase
       .from('reviews')
       .select('id, rating, comment, created_at, owner_reply, owner_replied_at, users!customer_id(name), orders!order_id(order_number)')
       .eq('store_id', storeId)
-      .order('created_at', { ascending: false });
+;
+    if (page.cursor) query = query.or(cursorFilter('created_at', page.cursor));
+    const { data, error } = await query.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
-    res.json(data);
+    sendPage(res, data ?? [], page, 'created_at');
   } catch (err) {
     next(err);
   }
@@ -411,11 +422,11 @@ partnerRouter.patch('/reviews/:id', async (req: AuthedRequest, res, next) => {
   }
 });
 
-// Product photo upload — base64 in, public Storage URL out. Same
+// Product photo upload — base64 in, public R2 URL out. Same
 // bucket/pattern as admin's own upload route (apps/admin/src/app/api/
 // upload — 'product-images'), so a photo uploaded from either app renders
 // identically wherever products.image_url is read. Re-encoded to webp
-// (utils/image.ts's toWebp) before it ever reaches Storage — same
+// (utils/image.ts's toWebp) before it ever reaches R2 — same
 // normalization admin's own upload route does, so every product photo is
 // webp regardless of which app uploaded it or what format the source
 // camera/gallery photo was in.
@@ -425,15 +436,9 @@ partnerRouter.post('/product-photo', async (req: AuthedRequest, res, next) => {
     if (!base64) throw new AppError(400, 'MISSING_FIELDS', 'base64 is required.');
 
     const storeId = await ownStoreId(req.user!.id);
-    const webpBuffer = await toWebp(Buffer.from(base64, 'base64'));
-    const path = `${storeId}/${randomUUID()}.webp`;
-    const { error: uploadErr } = await supabase.storage
-      .from('product-images')
-      .upload(path, webpBuffer, { contentType: 'image/webp' });
-    if (uploadErr) throw new AppError(500, 'UPLOAD_FAILED', uploadErr.message);
-
-    const { data } = supabase.storage.from('product-images').getPublicUrl(path);
-    res.status(201).json({ url: data.publicUrl });
+    const webpBuffer = await toWebp(decodeImage(base64));
+    const asset = await storePublicImage({ folder: 'products', bytes: webpBuffer, scope: storeId, uploadedBy: req.user!.id });
+    res.status(201).json(asset);
   } catch (err) {
     next(err);
   }
@@ -568,29 +573,19 @@ partnerRouter.delete('/products/:id', async (req: AuthedRequest, res, next) => {
 partnerRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { data, error } = await supabase.from('payouts').select('*').eq('store_id', storeId).order('week_start', { ascending: false });
+    const page = readPage(req, `partner-payouts:${storeId}`, 'date');
+    let query = supabase.from('payouts').select('id, store_id, week_start, week_end, gross_amount, commission_deducted, net_payout, status, razorpay_payout_id, paid_at').eq('store_id', storeId);
+    if (page.cursor) query = query.or(cursorFilter('week_start', page.cursor));
+    const { data, error } = await query.order('week_start', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
 
-    // Real per-row order count — an N+1 count query per payout, fine at
-    // this scale (one row per store per week; even a full year of history
-    // is 52 rows). The Payouts list card shows "X orders" next to each
-    // settlement (same real number GET /payouts/:id/orders would return
-    // the full breakdown for), not something worth a second round trip
-    // from the client just to get a count.
-    const withOrderCounts = await Promise.all(
-      (data ?? []).map(async (payout) => {
-        const { count } = await supabase
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .eq('store_id', storeId)
-          .eq('status', 'delivered')
-          .gte('delivered_at', `${payout.week_start}T00:00:00+05:30`)
-          .lt('delivered_at', `${payout.week_end}T00:00:00+05:30`);
-        return { ...payout, order_count: count ?? 0 };
-      }),
-    );
+    // One bounded RPC replaces one network count request per payout.
+    const { data: counts, error: countError } = await supabase.rpc('partner_payout_counts', { p_store: storeId, p_ids: (data ?? []).map(p => p.id) });
+    if (countError) throw countError;
+    const byId = new Map((counts ?? []).map((row: { id: string; order_count: number }) => [row.id, Number(row.order_count)]));
+    const withOrderCounts = (data ?? []).map(payout => ({ ...payout, order_count: byId.get(payout.id) ?? 0 }));
 
-    res.json(withOrderCounts);
+    sendPage(res, withOrderCounts, page, 'week_start');
   } catch (err) {
     next(err);
   }
@@ -612,7 +607,7 @@ partnerRouter.get('/payouts/:id/orders', async (req: AuthedRequest, res, next) =
     const storeId = await ownStoreId(req.user!.id);
     const { data: payout, error: payoutErr } = await supabase
       .from('payouts')
-      .select('id, store_id, week_start, week_end')
+      .select('id, store_id, week_start, week_end, net_payout')
       .eq('id', req.params.id)
       .eq('store_id', storeId)
       .single();
@@ -623,25 +618,27 @@ partnerRouter.get('/payouts/:id/orders', async (req: AuthedRequest, res, next) =
     // so the end bound must be exclusive of the NEXT day's start, not a
     // same-day upper bound that would silently drop that day's own
     // deliveries.
-    const { data: orders, error: ordersErr } = await supabase
+    const page = readPage(req, `payout-orders:${storeId}:${payout.id}`);
+    let query = supabase
       .from('orders')
-      .select('order_number, item_total, commission_amount, delivered_at')
+      .select('id, order_number, item_total, commission_amount, delivered_at')
       .eq('store_id', storeId)
       .eq('status', 'delivered')
       .gte('delivered_at', `${payout.week_start}T00:00:00+05:30`)
       .lt('delivered_at', `${payout.week_end}T00:00:00+05:30`)
-      .order('delivered_at', { ascending: true });
+;
+    if (page.cursor) query = query.or(cursorFilter('delivered_at', page.cursor));
+    const { data: orders, error: ordersErr } = await query.order('delivered_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (ordersErr) throw ordersErr;
 
-    res.json(
-      (orders ?? []).map((o) => ({
-        orderNumber: o.order_number,
-        deliveredAt: o.delivered_at,
-        grossAmount: o.item_total,
-        commissionAmount: o.commission_amount,
-        netAmount: o.item_total - o.commission_amount,
-      })),
-    );
+    const { data: counts, error: countError } = await supabase.rpc('partner_payout_counts', { p_store: storeId, p_ids: [payout.id] });
+    if (countError) throw countError;
+    sendPage(res, (orders ?? []).map(o => ({
+      id: o.id, orderNumber: o.order_number, deliveredAt: o.delivered_at,
+      grossAmount: o.item_total, commissionAmount: o.commission_amount,
+      netAmount: o.item_total - o.commission_amount,
+    })), page, 'deliveredAt', { summary: { netTotal: Number(payout.net_payout), orderCount: Number(counts?.[0]?.order_count ?? 0) } });
+
   } catch (err) {
     next(err);
   }

@@ -18,6 +18,7 @@ export interface Coordinates {
 export interface OrderItemLine {
   name: string;
   quantity: number;
+  unit?: string;
 }
 
 export interface RiderOrder {

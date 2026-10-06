@@ -283,7 +283,7 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     items: order.order_items.map((item) => ({
       name: item.products?.name ?? 'Item',
       quantity: item.quantity,
-      unit: item.products?.unit ?? '',
+      unit: item.unit_at_order ?? item.products?.unit ?? '',
       price: item.unit_price_at_order * item.quantity,
       imageUrl: item.products?.image_url ?? null,
     })),

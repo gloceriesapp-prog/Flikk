@@ -12,6 +12,8 @@ export interface CartProduct {
 
 export interface CartItem {
   product_id: string;
+  variant_id?: string | null;
+  expected_unit_price?: number;
   quantity: number;
 }
 
@@ -27,7 +29,7 @@ export class CartValidationError extends Error {
 // Throws on the first violation found, in the order api-conventions.md lists them:
 // existence -> single-store -> stock.
 export function validateCart(items: CartItem[], products: CartProduct[], storeId: string): void {
-  if (products.length !== items.length) {
+  if (products.length !== new Set(items.map((item) => item.product_id)).size) {
     throw new CartValidationError('PRODUCT_NOT_FOUND', 'One or more items no longer exist.');
   }
 
@@ -53,7 +55,7 @@ export function validateCart(items: CartItem[], products: CartProduct[], storeId
 // "a product that no longer exists" / "an out-of-stock product" caught the
 // same way on both the single-store and multi-store checkout paths.
 export function validateMultiStoreCart(items: CartItem[], products: CartProduct[]): void {
-  if (products.length !== items.length) {
+  if (products.length !== new Set(items.map((item) => item.product_id)).size) {
     throw new CartValidationError('PRODUCT_NOT_FOUND', 'One or more items no longer exist.');
   }
 

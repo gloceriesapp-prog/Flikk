@@ -4,8 +4,17 @@ function required(name: string): string {
   return value;
 }
 
+const port = Number(process.env.PORT ?? 3000);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error('PORT must be an integer between 1 and 65535.');
+}
+
 export const env = {
-  port: Number(process.env.PORT ?? 3000),
+  port,
+  // Production cannot silently fall back to stateless remote verification
+  // when the session-revocation RPC is absent or a JWT has no session ID.
+  forceRemoteAuth: process.env.AUTH_FORCE_REMOTE_VERIFICATION === 'true',
+  requireSessionContext: process.env.AUTH_REQUIRE_SESSION_CONTEXT === 'true' || process.env.NODE_ENV === 'production',
   supabaseUrl: required('SUPABASE_URL'),
   supabaseServiceRoleKey: required('SUPABASE_SERVICE_ROLE_KEY'),
   razorpayKeyId: required('RAZORPAY_KEY_ID'),

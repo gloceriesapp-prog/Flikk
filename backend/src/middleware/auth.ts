@@ -3,7 +3,8 @@
 // client-supplied claim/header/body field.
 
 import type { NextFunction, Request, Response } from 'express';
-import { supabase } from '../db/supabase.js';
+import { accountAdmission } from '../security/admission.js';
+import { authenticate } from '../auth/authenticate.js';
 import { AppError } from '../lib/errors.js';
 import type { Role } from '../lib/orderStateMachine.js';
 
@@ -16,38 +17,16 @@ export async function requireAuth(req: AuthedRequest, _res: Response, next: Next
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
   if (!token) return next(new AppError(401, 'UNAUTHENTICATED', 'Missing session token.'));
 
-  const { data: sessionUser, error: sessionErr } = await supabase.auth.getUser(token);
-  if (sessionErr || !sessionUser?.user) {
-    return next(new AppError(401, 'UNAUTHENTICATED', 'Invalid or expired session.'));
-  }
-
-  const { data: row, error: rowErr } = await supabase
-    .from('users')
-    .select('id, role, is_approved')
-    .eq('id', sessionUser.user.id)
-    .single();
-
-  if (rowErr || !row) {
-    // First authenticated request for a brand-new phone number — no
-    // public.users row exists yet (OTP verify only touches Supabase's own
-    // auth.users, never this table). 'customer' is the safe universal
-    // default (never gated on is_approved, see this table's own comment);
-    // a role-specific onboarding flow — e.g. POST /partner/store-application
-    // — upgrades it once the person actually completes that flow.
-    const { data: created, error: createErr } = await supabase
-      .from('users')
-      .insert({ id: sessionUser.user.id, phone: sessionUser.user.phone, role: 'customer' })
-      .select('id, role, is_approved')
-      .single();
-    if (createErr || !created) {
-      return next(new AppError(401, 'UNAUTHENTICATED', 'Could not provision user record.'));
+  try {
+    if (req.user) return next(); // Upload admission already verified this request.
+    req.user = await authenticate(token, !['GET', 'HEAD', 'OPTIONS'].includes(req.method));
+    const retry = accountAdmission(req.user.id);
+    if (retry) {
+      _res.set('Retry-After', String(retry));
+      throw new AppError(429, 'ACCOUNT_RATE_LIMITED', 'Please wait briefly and try again.');
     }
-    req.user = { id: created.id, role: created.role as Role, isApproved: created.is_approved };
-    return next();
-  }
-
-  req.user = { id: row.id, role: row.role as Role, isApproved: row.is_approved };
-  next();
+    next();
+  } catch (error) { next(error); }
 }
 
 export function requireRole(...roles: Role[]) {

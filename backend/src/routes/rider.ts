@@ -1,3 +1,4 @@
+import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // Source: specs/03-rider-app/api.md — assignments/earnings scoped to the caller only.
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
@@ -5,7 +6,7 @@ import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
 import { fetchRoute } from '../lib/routeDirections.js';
-import { EXTRA_STOP_FEE } from './trips.js';
+import { EXTRA_STOP_FEE } from '../lib/checkoutQuote.js';
 import { splitEarning } from '../lib/earningsBreakdown.js';
 import { createNotification } from '../lib/notifications.js';
 import { validateAvailability } from '../lib/riderSchedule.js';
@@ -277,7 +278,8 @@ riderRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) => 
 // pickup name + its own lat/lng (migration 005).
 riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
   try {
-    const { data, error } = await supabase
+    const page = readPage(req, `rider-assignments:${req.user!.id}:${req.query.view ?? 'history'}`);
+    let query = supabase
       .from('orders')
       .select(
         // stores has no street-address column at all (migration 005 only
@@ -288,12 +290,20 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
         // the real trip-level payout (base fee + multi-stop surcharge,
         // routes/trips.ts's EXTRA_STOP_FEE) instead of assuming every
         // order pays the flat single-store DELIVERY_FEE.
-        '*, order_items(*, products(name, unit)), stores(name, phone, lat, lng, manual_address, address_line, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude, delivery_instructions), trips(delivery_fee)',
+        'id, status, placed_at, delivered_at, cancel_reason, trip_id, order_items(quantity, unit_at_order, products(name, unit)), stores(name, phone, lat, lng, manual_address, address_line, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude, delivery_instructions), trips(delivery_fee)',
       )
       .eq('rider_id', req.user!.id)
-      .order('placed_at', { ascending: false });
+;
+    let syncFilter: string | undefined;
+    if (req.query.view === 'sync') {
+      const midnight = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) + 'T00:00:00+05:30').toISOString();
+      syncFilter = `status.in.(placed,packed,out_for_delivery),placed_at.gte.${midnight}`;
+    }
+    if (page.cursor) syncFilter = syncFilter ? `and(or(${syncFilter}),or(${cursorFilter('placed_at', page.cursor)}))` : cursorFilter('placed_at', page.cursor);
+    if (syncFilter) query = query.or(syncFilter);
+    const { data, error } = await query.order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
-    res.json(data);
+    sendPage(res, data ?? [], page, 'placed_at');
   } catch (err) {
     next(err);
   }
@@ -307,16 +317,37 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
 // weekly payout settles, so it can't order the list. Service client bypasses
 // RLS like every other handler here; the .eq('rider_id', ...) filter is the
 // scoping — do not remove it.
+riderRouter.get('/earnings-summary', async (req: AuthedRequest, res, next) => {
+  try {
+    const from = req.query.from; const until = req.query.until;
+    if (typeof from !== 'string' || typeof until !== 'string' || !Number.isFinite(Date.parse(from)) || !Number.isFinite(Date.parse(until)) || Date.parse(until) <= Date.parse(from) || Date.parse(until)-Date.parse(from)>32*86400000)
+      throw new AppError(400,'INVALID_PERIOD','Choose an earnings period of up to 32 days.');
+    const { data, error } = await supabase.rpc('rider_earning_totals',{p_rider:req.user!.id,p_from:from,p_until:until});
+    if (error) throw error;
+    res.json(data ?? []);
+  } catch(error) { next(error); }
+});
+
 riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
   try {
-    const { data, error } = await supabase
+    const from = req.query.from; const until = req.query.until;
+    if (from !== undefined || until !== undefined) {
+      if (typeof from !== 'string' || typeof until !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(from) || !/^\d{4}-\d{2}-\d{2}T/.test(until) || !Number.isFinite(Date.parse(from)) || !Number.isFinite(Date.parse(until)) || Date.parse(until) <= Date.parse(from) || Date.parse(until) - Date.parse(from) > 32 * 86400000)
+        throw new AppError(400, 'INVALID_PERIOD', 'Choose an earnings period of up to 32 days.');
+    }
+    const page = readPage(req, `rider-earnings:${req.user!.id}:${from ?? ''}:${until ?? ''}`);
+    let query = supabase
       .from('rider_earnings')
-      .select('id, amount, paid_at, order_id, trip_id, orders(order_number, delivered_at, stores(name)), trips(delivery_fee)')
-      .eq('rider_id', req.user!.id);
+      .select('id, earned_at, amount, paid_at, order_id, trip_id, orders(order_number, delivered_at, stores(name)), trips(delivery_fee)')
+      .eq('rider_id', req.user!.id).not('earned_at', 'is', null);
+    if (from && until) query = query.gte('earned_at', from).lt('earned_at', until);
+    if (page.cursor) query = query.or(cursorFilter('earned_at', page.cursor));
+    const { data, error } = await query.order('earned_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
 
     const rows = (data ?? []) as unknown as {
       id: string;
+      earned_at: string;
       amount: number | string;
       paid_at: string | null;
       order_id: string;
@@ -348,7 +379,7 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
           amount,
           status: row.paid_at ? ('paid' as const) : ('pending' as const),
           paidAt: row.paid_at,
-          deliveredAt: row.orders?.delivered_at ?? null,
+          deliveredAt: row.earned_at,
           orderNumber: row.orders?.order_number ?? null,
           storeName: row.orders?.stores?.name ?? null,
           isTrip: !!row.trip_id,
@@ -359,7 +390,7 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
       })
       .sort((a, b) => (b.deliveredAt ?? '').localeCompare(a.deliveredAt ?? ''));
 
-    res.json(earnings);
+    sendPage(res, earnings, page, 'deliveredAt');
   } catch (err) {
     next(err);
   }
@@ -375,11 +406,14 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
 // internal columns (created_at, failure internals) leak.
 riderRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
   try {
-    const { data, error } = await supabase
+    const page = readPage(req, `rider-payouts:${req.user!.id}`, 'date');
+    let query = supabase
       .from('rider_payouts')
       .select('id, week_start, week_end, amount, status, paid_at, razorpay_payout_id')
       .eq('rider_id', req.user!.id)
-      .order('week_start', { ascending: false });
+;
+    if (page.cursor) query = query.or(cursorFilter('week_start', page.cursor));
+    const { data, error } = await query.order('week_start', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
 
     const rows = (data ?? []) as unknown as {
@@ -402,7 +436,7 @@ riderRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
       razorpayPayoutId: p.razorpay_payout_id,
     }));
 
-    res.json(payouts);
+    sendPage(res, payouts, page, 'weekStart');
   } catch (err) {
     next(err);
   }

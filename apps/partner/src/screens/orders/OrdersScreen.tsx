@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 // Order queue (P2) — this app's home screen. Reached first on app open
 // (see AppNavigator.tsx's initialRouteName) and via push-notification tap
 // once notifications exist. "Mark Packed" (labeled "Accept Order" on the
@@ -8,7 +9,7 @@
 // useState — OrderDetailScreen (P3) needs to read and act on the same
 // orders. This screen just renders what the store holds.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
@@ -65,10 +66,10 @@ export function OrdersScreen({ navigation }: Props) {
   const loadProfile = useStoreProfileStore((state) => state.loadProfile);
   const changeStoreLocation = useChangeStoreLocation();
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     void loadProfile();
     void loadOrders();
-  }, [loadProfile, loadOrders]);
+  }, [loadProfile, loadOrders]));
 
   // Real IST-calendar-day-scoped stats (api/stats.ts, GET /partner/stats/
   // today) — replaces the old client-side derivation from useOrdersStore's

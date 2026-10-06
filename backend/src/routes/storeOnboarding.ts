@@ -1,3 +1,5 @@
+import { storePrivateDocument } from '../media/privateDocuments.js';
+import { storePublicImage } from '../media/publicImages.js';
 // Store Setup (partner app P1) — deliberately its own router, not part of
 // partnerRouter. partnerRouter.use(requireAuth, requireRole('store_owner'),
 // requireApproved) gates every route in it, but a person submitting their
@@ -7,20 +9,13 @@
 // any authenticated session can apply, and applying is what promotes the
 // caller to store_owner in the first place.
 import { Router } from 'express';
-import { randomUUID } from 'node:crypto';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
-import { toWebp } from '../utils/image.js';
+import { decodeImage, toWebp, normalizeImage } from '../utils/image.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
 
 export const storeOnboardingRouter = Router();
-
-// Same bucket admin's own Add Store form uploads to (apps/admin/src/
-// app/api/upload/route.ts's ALLOWED_BUCKETS) — one real Storage bucket for
-// every storefront photo regardless of which surface uploaded it, not a
-// second one.
-const PHOTO_BUCKET = 'store-images';
 
 interface OnboardingFields {
   storeName?: string;
@@ -221,7 +216,7 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
   }
 });
 
-// Storefront photo upload — base64 in, public Supabase Storage URL out.
+// Public storefront photos go to R2; verification documents stay private.
 // Still used by StoreSettingsScreen post-approval even though onboarding
 // itself no longer collects a photo (StoreDraft's own note on why).
 storeOnboardingRouter.post('/store-photo', requireAuth, async (req: AuthedRequest, res, next) => {
@@ -229,16 +224,23 @@ storeOnboardingRouter.post('/store-photo', requireAuth, async (req: AuthedReques
     const { base64 } = req.body as { base64?: string };
     if (!base64) throw new AppError(400, 'MISSING_FIELDS', 'base64 is required.');
 
-    const webpBuffer = await toWebp(Buffer.from(base64, 'base64'));
-    const path = `${req.user!.id}/${randomUUID()}.webp`;
-    const { error: uploadErr } = await supabase.storage
-      .from(PHOTO_BUCKET)
-      .upload(path, webpBuffer, { contentType: 'image/webp' });
-    if (uploadErr) throw new AppError(500, 'UPLOAD_FAILED', uploadErr.message);
-
-    const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-    res.status(201).json({ url: data.publicUrl });
+    const webpBuffer = await toWebp(decodeImage(base64));
+    const asset = await storePublicImage({ folder: 'stores', bytes: webpBuffer, scope: req.user!.id, uploadedBy: req.user!.id });
+    res.status(201).json(asset);
   } catch (err) {
     next(err);
   }
+});
+
+// Verification attachments never enter the public image pipeline.
+storeOnboardingRouter.post('/store-document-photo', requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    const { base64, kind } = req.body as { base64?: string; kind?: string };
+    if (!kind || !['pan', 'gst', 'fssai', 'shop-license', 'udyam'].includes(kind))
+      throw new AppError(400, 'INVALID_DOCUMENT_KIND', 'Choose a supported verification document.');
+    if (!base64) throw new AppError(400, 'MISSING_IMAGE', 'Choose a document photo.');
+    const document = await storePrivateDocument({ bucket: 'store-documents', ownerId: req.user!.id, kind,
+      bytes: await normalizeImage(decodeImage(base64), 'jpeg') });
+    res.status(201).json(document);
+  } catch (error) { next(error); }
 });

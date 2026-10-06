@@ -1,3 +1,4 @@
+import { validateCapturedPayment } from './validateCapturedPayment.js';
 // POST /payments/verify — real Razorpay Checkout SDK success callback
 // (apps/customer's payments/openRazorpayCheckout.ts, react-native-
 // razorpay) lands here — this is the one and only place a customer's own
@@ -11,6 +12,7 @@
 // bulletproof-by-construction reasoning webhook.ts uses for its own
 // signature. This is what actually closes out the "can this be scammed"
 // question POST /orders' own address-ownership check started answering.
+import { settleCheckoutPayment } from './settleCheckoutPayment.js';
 import crypto from 'node:crypto';
 import type { Response, NextFunction } from 'express';
 import { env } from '../config/env.js';
@@ -37,34 +39,16 @@ export async function verifyPayment(req: AuthedRequest, res: Response, next: Nex
 
     const table = tripId ? 'trips' : 'orders';
     const id = (tripId ?? orderId)!;
-    const { data: record, error } = await supabase.from(table).select('id, customer_id, razorpay_payment_id').eq('id', id).single();
+    const { data: record, error } = await supabase.from(table).select('id, customer_id, razorpay_payment_id, checkout_payment_rejected').eq('id', id).single();
     if (error || !record) throw new AppError(404, tripId ? 'TRIP_NOT_FOUND' : 'ORDER_NOT_FOUND', `${tripId ? 'Trip' : 'Order'} not found.`);
     if (record.customer_id !== req.user!.id) throw new AppError(403, 'FORBIDDEN', tripId ? 'Not your trip.' : 'Not your order.');
-    if (record.razorpay_payment_id) {
-      // Already paid (the webhook could theoretically have landed first)
-      // — idempotent no-op, not an error.
-      res.status(200).json({ ok: true });
-      return;
-    }
-
     if (!verifyCheckoutSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)) {
       throw new AppError(401, 'INVALID_SIGNATURE', 'Payment signature verification failed.');
     }
 
-    const { error: updateError } = await supabase.from(table).update({ razorpay_payment_id }).eq('id', id);
-    if (updateError) throw updateError;
-
-    // A trip's own child orders need the same razorpay_payment_id written
-    // onto each of them too — every existing reader (Purchase screen,
-    // TrackOrderScreen, admin/partner order views, the store-owner's own
-    // GET /orders/:id) checks a real `orders` row's own payment_id to know
-    // "is this paid", none of them know trips exist. Cascading here is
-    // what keeps that true without teaching every one of those readers
-    // about trips.
-    if (tripId) {
-      const { error: cascadeError } = await supabase.from('orders').update({ razorpay_payment_id }).eq('trip_id', tripId);
-      if (cascadeError) throw cascadeError;
-    }
+    await validateCapturedPayment({ orderId, tripId }, razorpay_payment_id, razorpay_order_id);
+    const accepted = await settleCheckoutPayment(tripId ? { tripId } : { orderId }, razorpay_payment_id);
+    if (!accepted) throw new AppError(409, 'PAYMENT_ORDER_EXPIRED', 'This order expired or was cancelled. Check Purchase history for your payment and refund status.');
 
     res.status(200).json({ ok: true });
   } catch (err) {

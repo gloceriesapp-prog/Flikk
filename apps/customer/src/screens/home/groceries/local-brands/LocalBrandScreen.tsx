@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { BrowseLoadingText, BROWSE_LOADING_COPY } from '../../loading/BrowseLoadingText';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../../../navigation/types';
@@ -37,7 +38,7 @@ export function LocalBrandScreen({ navigation, route }: Props) {
         </ScrollView>
       ) : (
         <View className="flex-1 items-center justify-center gap-4 px-6">
-          {!hasLocation ? <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center rounded-full bg-[#155DFC] px-5"><Text className="font-semibold text-white">Choose location</Text></Pressable> : isLoading ? <ActivityIndicator color="#155DFC" accessibilityLabel="Loading brand products" /> : isError ? <Pressable accessibilityRole="button" onPress={retry} className="min-h-11 justify-center rounded-full bg-[#155DFC] px-5"><Text className="font-semibold text-white">Try again</Text></Pressable> : <Text className="text-center text-sm text-ink/60">This brand has no available pantry products at your address right now.</Text>}
+          {!hasLocation ? <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center rounded-full bg-[#155DFC] px-5"><Text className="font-semibold text-white">Choose location</Text></Pressable> : isLoading ? <BrowseLoadingText message={BROWSE_LOADING_COPY.grocery} /> : isError ? <Pressable accessibilityRole="button" onPress={retry} className="min-h-11 justify-center rounded-full bg-[#155DFC] px-5"><Text className="font-semibold text-white">Try again</Text></Pressable> : <Text className="text-center text-sm text-ink/60">This brand has no available pantry products at your address right now.</Text>}
         </View>
       )}
     </View>

@@ -1,6 +1,8 @@
 // Central param-list definitions — one place to see every screen and what it needs.
 
 import type { CartItem } from '../store/useCartStore';
+import type { PaymentMethod } from '../payments/paymentMethod';
+import type { FestivalCollectionKey } from '../screens/home/festival/collections/useFestivalCollection';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -41,6 +43,8 @@ export type AppStackParamList = {
   // above. Reached from Checkout's own "Change" affordance.
   AddressList: undefined;
   Home: undefined;
+  HomeCategory: { tabId: string };
+  HomeContentCollection: { tabKey: 'grocery' | 'fresh' | 'regional'; sectionId: string; itemId?: string };
   Categories: undefined;
   Search: undefined;
   Store: undefined;
@@ -49,16 +53,25 @@ export type AppStackParamList = {
   CategoryDetail: { categoryId: string; label: string };
   BreakfastEssentials: undefined;
   KitchenEssentials: undefined;
+  FestivalCollection: { collection: FestivalCollectionKey };
   SnacksAndDrinks: undefined;
   LocalPantryBrand: { brandId: string };
+  FreshCategory: { categoryId: string };
+  EverydayVegetables: undefined;
+  FruitFavourites: undefined;
+  HomeGrownProduce: undefined;
+  RegionalCategory: { categoryId: string };
+  CoconutOilCollection: undefined;
   StoreDetail: { storeId: string; storeName: string };
-  Cart: undefined;
-  Checkout: undefined;
+  Cart: { selectedPaymentMethod?: PaymentMethod } | undefined;
+  PaymentMethod: { selectedMethod: PaymentMethod | null; source?: 'profile' };
   // Real failure/timeout destination for the UPI Intent flow (below) — a
   // Standard Checkout (card/online) failure is still handled inline on
   // Checkout itself (Razorpay's own SDK already shows the failure inside
   // its bundled UI before ever returning control here), so only the async
   // UPI-app path — which has no such built-in UI — routes here.
+  CheckoutAttemptRecovery: undefined;
+  PaymentRecovery: { target: import('../api/payments').PaymentTarget };
   PaymentStatus: { amount: number };
   // The real waiting room for the UPI Intent flow (CheckoutScreen's own
   // handlePay, payments/pollOrderPaid.ts) — launching a UPI app and
@@ -81,12 +94,15 @@ export type AppStackParamList = {
   PaymentProcessing: {
     target: { orderId: string } | { tripId: string };
     appName: string;
+    paymentMethod: PaymentMethod;
     amount: number;
     order: {
       orderId: string;
       orderNumber: string;
       placedAt: string;
       avgPrepMinutes: number | null;
+      estimatedDeliveryMinutes?: number | null;
+      estimatedDeliveryAt?: string | null;
     };
     items: CartItem[];
     deliveryAddress: string;
@@ -100,10 +116,8 @@ export type AppStackParamList = {
   // partner app and TrackOrderScreen show for the same order instead of a
   // locally-sliced fragment of the UUID that looked similar but wasn't the
   // same identifier at all.
-  // placedAt/avgPrepMinutes — real order.placed_at + the store's
-  // avg_prep_minutes (POST /orders's own response, backend's note) so
-  // ReceiptCard can show a real estimated-delivery time without a second
-  // fetch, same ETA math TrackOrderScreen uses (utils/estimateDelivery.ts).
+  // Receipts use the delivery snapshot returned at placement, shared
+  // with tracking. avgPrepMinutes remains legacy metadata only.
   Receipt: {
     orderId: string;
     orderNumber: string;
@@ -112,6 +126,8 @@ export type AppStackParamList = {
     paymentMethodLabel: string;
     placedAt: string;
     avgPrepMinutes: number | null;
+    estimatedDeliveryMinutes?: number | null;
+    estimatedDeliveryAt?: string | null;
     // Set when orderId is actually a real trips.id (a multi-store
     // checkout, CheckoutScreen's own isMultiStore branch) rather than a
     // real orders.id — TrackOrderScreen reads this to know whether to
@@ -129,6 +145,13 @@ export type AppStackParamList = {
     deliveryAddress: string;
   };
   TrackOrder: { orderId: string; paymentMethodLabel: string; isTrip?: boolean };
+  OrderSummary: { orderId: string; isTrip?: boolean };
+  Support: {target?:import('../features/customer-care/api').SupportTarget;category?:import('../features/customer-care/api').IssueCategory} | undefined;
+  Notifications: undefined;
+  AboutGloceries: undefined;
+  SupportTicket: {ticketId:string};
+  MyRefunds: undefined;
+  RefundDetail: {kind:'order'|'trip';refundId:string};
   Wishlist: undefined;
   ShoppingList: undefined;
   // Invite/referral tracking only — no credit/discount payout (backend's
@@ -138,6 +161,7 @@ export type AppStackParamList = {
   // Generic "not built yet" destination — see ComingSoonScreen.tsx's own
   // note. Both params optional so `navigation.navigate('ComingSoon')` with
   // no args still works, falling back to that screen's own generic copy.
+  AccountPrivacy: undefined;
   ComingSoon: { title?: string; subtitle?: string } | undefined;
   // TEMP root for design iteration on UnavailableZoneScreen.tsx — see
   // AppNavigator.tsx's own note. Same screen HomeScreen.tsx renders inline

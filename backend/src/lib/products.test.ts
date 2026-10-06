@@ -103,6 +103,22 @@ describe('formatVariantUnit', () => {
 });
 
 describe('toProductRow', () => {
+  it('ignores approval and ownership fields injected into a product payload', () => {
+    const input = {
+      ...validInput(),
+      approval_status: 'approved',
+      approved_by: 'attacker',
+      owner_user_id: 'attacker',
+      store_id: 'another-store',
+      role: 'admin',
+    };
+    const row = toProductRow(input);
+    expect(row.store_id).toBe(input.storeId);
+    for (const field of ['approval_status', 'approved_by', 'owner_user_id', 'role']) {
+      expect(row).not.toHaveProperty(field);
+    }
+  });
+
   it('denormalizes the default (first) variant onto the product row', () => {
     const row = toProductRow(validInput({ variants: [validVariant({ price: 15 }), validVariant({ unitType: 'kg', quantity: 1, price: 52 })] }));
     expect(row.price).toBe(15);

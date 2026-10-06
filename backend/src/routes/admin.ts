@@ -1,3 +1,4 @@
+import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // Source: specs/04-admin-dashboard/api.md — admin-only, no auto-assign/auto-approve logic.
 // A3's assignment only succeeds against packed, unassigned orders — enforced here, not just in UI.
 // Product routes are Inventory's own write path — admin-scoped (any store),
@@ -8,7 +9,7 @@ import { supabase } from '../db/supabase.js';
 import { replaceProductVariants } from '../db/productVariants.js';
 import { AppError, asValidationError } from '../lib/errors.js';
 import { toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
 import { createNotification } from '../lib/notifications.js';
 
@@ -120,11 +121,13 @@ adminRouter.patch('/riders/pending/:userId', async (req, res, next) => {
 adminRouter.get('/orders', async (req, res, next) => {
   try {
     const status = req.query.status as string | undefined;
-    let query = supabase.from('orders').select('*').order('placed_at', { ascending: false }).limit(100);
+    const page = readPage(req, `admin-orders:${(req as AuthedRequest).user!.id}:${status ?? ''}`);
+    let query = supabase.from('orders').select('id, order_number, customer_id, store_id, rider_id, trip_id, status, total, item_total, delivery_fee, handling_fee, discount_amount, commission_amount, payment_method, placed_at, packed_at, picked_up_at, delivered_at, cancel_reason, refund_status');
+    if (page.cursor) query = query.or(cursorFilter('placed_at', page.cursor));
     if (status) query = query.eq('status', status);
-    const { data, error } = await query;
+    const { data, error } = await query.order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
-    res.json(data);
+    sendPage(res, data ?? [], page, 'placed_at');
   } catch (err) {
     next(err);
   }
@@ -213,12 +216,34 @@ adminRouter.patch('/trips/:id/assign-rider', async (req, res, next) => {
   }
 });
 
-adminRouter.get('/payouts', async (_req, res, next) => {
+adminRouter.get('/payouts', async (req, res, next) => {
   try {
-    const { data, error } = await supabase.from('payouts').select('*').order('week_start', { ascending: false });
+    const page = readPage(req, `admin-payouts:${(req as AuthedRequest).user!.id}`, 'date');
+    let query = supabase.from('payouts').select('id, store_id, week_start, week_end, gross_amount, commission_deducted, net_payout, status, razorpay_payout_id, paid_at');
+    if (page.cursor) query = query.or(cursorFilter('week_start', page.cursor));
+    const { data, error } = await query.order('week_start', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
-    res.json(data);
+    sendPage(res, data ?? [], page, 'week_start');
   } catch (err) {
     next(err);
   }
+});
+
+// Support action: no code is returned here; only the order's customer can read it.
+adminRouter.post('/orders/:id/delivery-code/reissue',async(req:AuthedRequest,res,next)=>{
+  try {
+    const {error}=await supabase.rpc('reissue_delivery_code',{p_order:req.params.id,p_actor:req.user!.id});
+    if(error) throw new AppError(409,'CODE_REISSUE_UNAVAILABLE','A new code can only be issued for an active delivery.');
+    res.json({reissued:true});
+  } catch(error) {next(error);}
+});
+
+adminRouter.post('/trips/:id/failure-refund', async (req: AuthedRequest, res, next) => {
+  try {
+    const amount = req.body.amountPaise;
+    if (!Number.isSafeInteger(amount) || amount <= 0) throw new AppError(400, 'INVALID_REFUND', 'Enter an approved refund amount in paise.');
+    const { error } = await supabase.rpc('approve_failed_trip_refund', { p_trip: req.params.id, p_amount_paise: amount });
+    if (error) throw new AppError(409, 'REFUND_UNAVAILABLE', 'This trip cannot accept that refund amount.');
+    res.json({ queued: true });
+  } catch (error) { next(error); }
 });

@@ -87,6 +87,7 @@ export interface ProductRow {
   // Optional so an update that doesn't carry a count (admin.ts) omits the
   // column entirely rather than writing 0 over the store's real quantity.
   stock_quantity?: number;
+  stock_tracking_enabled?: boolean;
   image_url: string | null;
   // Partner-submitted image awaiting admin review. Only ever written by the
   // edit-image gate (resolveEditImage) — non-null means "the LIVE image_url
@@ -204,6 +205,7 @@ export function toProductRow(input: ProductInput): ProductRow {
   // column out of the write and trust the caller's explicit stockStatus.
   if (input.stockQuantity != null) {
     row.stock_quantity = input.stockQuantity;
+    row.stock_tracking_enabled = true;
     row.stock_status = deriveStockStatus(input.stockQuantity);
   }
 

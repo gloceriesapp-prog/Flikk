@@ -17,53 +17,43 @@
 // visit to a tab still pays that cost once; every visit after is instant
 // since the tree is already there, just hidden.
 
-import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import Animated, {
-  Easing,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { HomeHeader } from './components/HomeHeader';
 import { UnavailableZoneScreen } from './unavailable-zone/UnavailableZoneScreen';
-import { BakeryTab } from './bakery/BakeryTab';
-import { FishProductGrid } from './fish/FishProductGrid';
-import { GroceriesTab } from './groceries/GroceriesTab';
-import { ProteinTab } from './protein/ProteinTab';
-import { RegionalTab } from './regional/RegionalTab';
+import { HomeCategoryContent } from './category-page/HomeCategoryContent';
+import { useHomeBrowseScroll } from './category-page/useHomeBrowseScroll';
 import { AllTabSections } from './sections/AllTabSections';
-import { ALL_TAB } from './data/categoryTabs';
-import { useHomeTabs, type RemoteHomeTab } from './data/useHomeTabs';
-import { HomeTabTileGrid } from './hometab/HomeTabTileGrid';
+import { ALL_TAB, withHomeCategoryTabs } from './data/categoryTabs';
+import { useHomeTabs } from './data/useHomeTabs';
+import { homeTabBackground } from './data/homeTabBackground';
 import { useIsOutsideOperatingHours } from '../../utils/useOperatingHours';
 import { useNearestStore } from './useNearestStore';
+import { useWarmHomeBrowse } from './loading/useWarmHomeBrowse';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
 
-// Tab names that get a hand-built screen instead of the generic tile grid —
-// matched case-insensitively against whatever an admin names the tab in
-// Home Categories, so renaming "Meat & Fish" there still routes here.
-const RICH_SCREEN_BY_NAME: Record<string, 'groceries' | 'meat-fish' | 'bakery' | 'protein' | 'regional'> = {
-  groceries: 'groceries',
-  'meat & fish': 'meat-fish',
-  bakery: 'bakery',
-  protein: 'protein',
-  regional: 'regional',
-};
-
-function richScreenFor(tab: RemoteHomeTab) {
-  return RICH_SCREEN_BY_NAME[tab.name.trim().toLowerCase()];
-}
-
 export function HomeScreen({ navigation }: Props) {
-  const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_TAB.id);
-  const { data: realTabs = [] } = useHomeTabs();
+  const isFocused = useIsFocused();
+  const [preferredCategoryId, setSelectedCategoryId] = useState(ALL_TAB.id);
+  const { data: remoteTabs = [] } = useHomeTabs();
+  const realTabs = withHomeCategoryTabs(remoteTabs);
+  const selectedCategoryId = realTabs.some((tab) => tab.id === preferredCategoryId) ? preferredCategoryId : ALL_TAB.id;
+  const activeTabBackgroundColor = homeTabBackground(realTabs.find((tab) => tab.id === selectedCategoryId));
+  const openingCategory = useRef(false);
+  useFocusEffect(useCallback(() => { openingCategory.current = false; }, []));
+  const openCategory = useCallback((tabId: string) => {
+    // Ignore repeat taps while the native stack is opening a page. Home
+    // stays mounted underneath, preserving its scroll position on Back.
+    if (openingCategory.current || !realTabs.some((tab) => tab.id === tabId)) return;
+    openingCategory.current = true;
+    navigation.push('HomeCategory', { tabId });
+  }, [navigation, realTabs]);
   // Drives CollapsibleHeaderTop's LocationSelector text ("Closed for now"/
   // "Opens 6:00 AM tomorrow", 10:30 PM–6:00 AM IST, utils/operatingHours.ts)
   // — no longer a header background-color swap (removed per an explicit
@@ -74,7 +64,9 @@ export function HomeScreen({ navigation }: Props) {
   // read again here (same React Query cache key, so this is a cache hit,
   // not a second network request) rather than lifted/prop-drilled, since
   // BottomNavBar is a sibling of that content, not a descendant of it.
-  const { isServiceable } = useNearestStore();
+  const { isServiceable, serviceability, storeId, refetch: retryCoverage } = useNearestStore();
+
+  useWarmHomeBrowse(isServiceable);
 
   // Every tab id the user has actually opened at least once — content for
   // an id only mounts the first time it's selected, then stays mounted.
@@ -85,84 +77,35 @@ export function HomeScreen({ navigation }: Props) {
     );
   }, [selectedCategoryId]);
 
-  // Smooth crossfade on tab switch — this used to be an instant
-  // display:none/flex snap with zero transition (visitedIds' own note
-  // above explains why display-toggling, not unmount, is used at all;
-  // this is purely the missing polish on top of that), which is exactly
-  // the "not smooth/premium" moment on this screen. Snap opacity to 0
-  // the instant a new tab is picked, then animate it to 1 — the switch
-  // itself stays instantaneous (no delay before content underneath
-  // actually changes), only the new content's appearance is eased in, so
-  // tapping a tab still feels immediately responsive rather than
-  // sluggish. Native-driven (useAnimatedStyle/withTiming, not JS-thread
-  // Animated) so it stays smooth even if the JS thread is busy laying
-  // out the newly-visible tab's content underneath it.
-  const contentOpacity = useSharedValue(1);
-  useEffect(() => {
-    contentOpacity.value = 0;
-    contentOpacity.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
-  }, [selectedCategoryId, contentOpacity]);
-  const contentFadeStyle = useAnimatedStyle(() => ({ opacity: contentOpacity.value }));
-
   // Resolved once here (this component already has the real tab list)
   // rather than re-fetched inside HomeHeader.tsx — that component only
   // needs the name to look up its per-category gradient.
-  const activeCategoryName =
-    selectedCategoryId === ALL_TAB.id ? 'all' : (realTabs.find((t) => t.id === selectedCategoryId)?.name ?? 'all');
+  const activeTab = realTabs.find((t) => t.id === selectedCategoryId);
+  const activeCategoryName = selectedCategoryId === ALL_TAB.id ? 'all' : activeTab?.contentKey === 'grocery' ? 'groceries' : activeTab?.contentKey ?? activeTab?.name ?? 'all';
 
-  // Drives the collapsing ETA/location block in HomeHeader — see
-  // components/CollapsibleHeaderTop.tsx for the actual interpolation.
-  const scrollY = useSharedValue(0);
-
-  // BottomNavBar's own pill hide/show — 0 = visible, 1 = hidden.
-  // Direction-based, not just "scrolled past N px": prevScrollY tracks the
-  // last frame's offset so every scroll event can tell up from down, not
-  // just how far from the top the page is. SCROLL_HIDE_THRESHOLD ignores
-  // tiny sub-pixel jitter (momentum deceleration, a light finger twitch)
-  // that would otherwise flicker the nav in and out on every frame: only
-  // a real, deliberate scroll gesture in either direction actually flips
-  // it. Always forced visible near the very top (< 40px) regardless of
-  // direction — starting scrolled-down-hidden the instant the list
-  // barely moves would feel broken, not premium.
-  const prevScrollY = useSharedValue(0);
-  const navHidden = useSharedValue(0);
-  const SCROLL_HIDE_THRESHOLD = 6;
-
-  const scrollHandler = useAnimatedScrollHandler((event) => {
-    const y = event.contentOffset.y;
-    scrollY.value = y;
-
-    const delta = y - prevScrollY.value;
-    if (y < 40) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta > SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
-    } else if (delta < -SCROLL_HIDE_THRESHOLD) {
-      navHidden.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
-    }
-    prevScrollY.value = y;
-  });
+  const { scrollY, scrollHandler } = useHomeBrowseScroll();
 
   // No real store in range at all — the whole browsing UI below (header,
   // category tabs, every section) assumes one exists. Full-screen swap
   // instead of a section-level swap (this used to only replace AllTabSections'
   // own content while every other tab still rendered a normal, empty-store
   // Home underneath) — see UnavailableZoneScreen.tsx's own note.
+  if ((serviceability === 'checking' || serviceability === 'error') && !storeId) {
+    return <View className="flex-1 items-center justify-center gap-4 bg-white px-6">
+      <Text className="text-center text-lg font-bold text-ink">{serviceability === 'error' ? 'Couldn’t check nearby shops' : 'Finding shops for your address…'}</Text>
+      {serviceability === 'error' && <Pressable accessibilityRole="button" onPress={() => void retryCoverage()} className="rounded-xl bg-[#155DFC] px-6 py-3"><Text className="font-bold text-white">Retry</Text></Pressable>}
+    </View>;
+  }
   if (!isServiceable) {
     return <UnavailableZoneScreen />;
   }
 
   return (
-    // BottomNavBar is a sibling of the ScrollView, not inside its scrollable
-    // content — that's what keeps it floating fixed in place while the page
-    // scrolls underneath it.
+    // BottomNavBar lives in HomeNavigationShell, outside the screen surface,
+    // so it stays in place while Home/category pages transition underneath.
     <View className="flex-1 bg-white">
-      {/* Every category header is now a light pastel fill
-          (categoryHeaderGradients.ts), so the OS icons stay dark at rest on
-          every tab, not just 'all'. Once scrolled, the frosted/blurred
-          header reads light too, so dark icons stay correct throughout —
-          statusBarStyle's scroll-driven flip is no longer needed. */}
-      <StatusBar style="dark" />
+      {/* White status-bar text/icons on both Android and iOS. */}
+      {isFocused && <StatusBar style="light" />}
       <Animated.ScrollView
         className="flex-1"
         contentContainerClassName="pb-28"
@@ -186,38 +129,29 @@ export function HomeScreen({ navigation }: Props) {
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
           activeCategoryName={activeCategoryName}
+          activeTabBackgroundColor={activeTabBackgroundColor}
           scrollY={scrollY}
-          // Re-enabled per an explicit ask/reference (restyled white icons/
-          // text, no bg capsule, a horizontal divider — CategoryTabItem.tsx/
-          // CategoryTabs.tsx's own notes). QuickCategoryStrip further down
-          // the page (AllTabSections.tsx) still does the same job for
-          // anyone who's already scrolled past this — both drive the exact
-          // same onSelectCategory/selectedCategoryId state, not two
-          // competing selections.
-          showCategoryTabs={true}
+          // Header category row temporarily disabled. Restore this line
+          // to re-enable the original tab UI and selection logic:
+          // showCategoryTabs={true}
+          showCategoryTabs={false}
+          bottomSpacing={0}
           isClosed={isClosed}
         />
 
-        <Animated.View style={contentFadeStyle}>
+        <View>
           {visitedIds.has(ALL_TAB.id) && (
             <View style={{ display: selectedCategoryId === ALL_TAB.id ? 'flex' : 'none' }}>
-              <AllTabSections onSelectCategory={setSelectedCategoryId} />
+              <AllTabSections onSelectCategory={openCategory} />
             </View>
           )}
 
           {realTabs.map((tab) => {
-            if (!visitedIds.has(tab.id)) return null;
-            const richScreen = richScreenFor(tab);
-            const banner = tab.banners[0];
+            if (!visitedIds.has(tab.id) && tab.id !== selectedCategoryId) return null;
 
             return (
               <View key={tab.id} style={{ display: selectedCategoryId === tab.id ? 'flex' : 'none' }}>
-                {richScreen === 'groceries' && <GroceriesTab banner={banner} />}
-                {richScreen === 'meat-fish' && <FishProductGrid banner={banner} />}
-                {richScreen === 'bakery' && <BakeryTab banner={banner} />}
-                {richScreen === 'protein' && <ProteinTab banner={banner} />}
-                {richScreen === 'regional' && <RegionalTab />}
-                {!richScreen && <HomeTabTileGrid tab={tab} />}
+                <HomeCategoryContent tab={tab} />
               </View>
             );
           })}
@@ -226,14 +160,13 @@ export function HomeScreen({ navigation }: Props) {
             <View className="items-center justify-center gap-2 px-6 py-16">
               <Text className="text-base font-semibold text-ink">Store list goes here.</Text>
               <Text className="text-center text-sm text-ink/60">
-                Browse/discovery (PRD C4/C5) is the next piece of work.
+                Browse/discovery is the next piece of work.
               </Text>
             </View>
           )}
-        </Animated.View>
+        </View>
       </Animated.ScrollView>
 
-      <BottomNavBar hidden={navHidden} />
     </View>
   );
 }

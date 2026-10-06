@@ -36,7 +36,7 @@ export function PrimaryButton({ label, onPress, disabled, loading, variant = 'co
       {loading ? (
         <ActivityIndicator color="#FFFFFF" />
       ) : (
-        <Text className="text-base font-semibold text-white">{label}</Text>
+        <Text className="text-[15px] font-semibold text-white">{label}</Text>
       )}
     </Pressable>
   );

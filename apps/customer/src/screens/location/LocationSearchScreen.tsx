@@ -43,6 +43,7 @@ import {
   type NearbyPlace,
 } from '../../location/geocoding';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
+import { LocationRequestGate } from '../../location/requestGate';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLocationStore } from '../../store/useLocationStore';
 import { useRecentSearchesStore } from '../../store/useRecentSearchesStore';
@@ -212,6 +213,10 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // (geocoding.ts, backend's Mappls autosuggest proxy) was already built
   // server-side but never actually wired into this screen's search bar,
   // which is why no dropdown ever showed no matter what you typed.
+  const pinRequests = useRef(new LocationRequestGate());
+  const navigationRequests = useRef(new LocationRequestGate());
+  const hasMovedPin = useRef(false);
+  useEffect(() => () => { pinRequests.current.invalidate(); navigationRequests.current.invalidate(); }, []);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const setLocation = useLocationStore((s) => s.setLocation);
   const addRecentSearch = useRecentSearchesStore((s) => s.add);
@@ -246,14 +251,14 @@ export function LocationSearchScreen({ navigation, route }: Props) {
         if (!granted) return;
         return getCurrentCoordinates().then((coords) => {
           setCurrentCoords(coords);
-          if (startingPoint.latitude == null) {
+          if (startingPoint.latitude == null && !hasMovedPin.current) {
             setCenter(coords);
             mapRef.current?.animateToRegion({ ...coords, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
           }
         });
       })
       .catch(() => setHasLocationPermission(false));
-  }, []);
+  }, [startingPoint.latitude]);
 
   // Debounced (300ms) — firing a request on every keystroke would spam
   // the backend/Mappls for no benefit; a short pause after the user stops
@@ -262,14 +267,15 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // results from whatever was typed before it got cleared.
   useEffect(() => {
     const trimmed = query.trim();
+    let active = true;
     const timeout = setTimeout(() => {
       if (!trimmed) {
         setSuggestions([]);
         return;
       }
-      searchPlaces(trimmed).then(setSuggestions);
+      searchPlaces(trimmed).then(rows => { if (active) setSuggestions(rows); });
     }, 300);
-    return () => clearTimeout(timeout);
+    return () => { active = false; clearTimeout(timeout); };
   }, [query]);
 
   const distanceFromCurrent = currentCoords ? distanceKm(currentCoords, center) : null;
@@ -289,33 +295,29 @@ export function LocationSearchScreen({ navigation, route }: Props) {
 
   async function handleRegionSettled(region: Region) {
     const next = { latitude: region.latitude, longitude: region.longitude };
+    const ticket = pinRequests.current.begin();
     setCenter(next);
     setResolving(true);
-    // Not cleared to [] here — the chip row keeps showing the PREVIOUS
-    // settle's results until the new fetch resolves, instead of blanking
-    // then repopulating on every single drag-settle (the actual "blink"
-    // this was asked to fix). The chip row's own fixed-height wrapper
-    // below means this never affects layout either way.
+    // Never combine a new coordinate with an old address label.
+    setAddressLabel('Selected location'); setShortName('Selected location'); setCity('');
+    void fetchNearbyPlaces(next).then(places => { if (pinRequests.current.current(ticket)) setNearbyPlaces(places); });
     try {
       const resolved = await reverseGeocode(next);
-      setAddressLabel(resolved.addressLabel);
-      setShortName(resolved.shortName);
-      setCity(resolved.city);
+      if (!pinRequests.current.current(ticket)) return;
+      setAddressLabel(resolved.addressLabel); setShortName(resolved.shortName); setCity(resolved.city);
     } catch {
-      // keep the previous label — a failed reverse-geocode shouldn't block confirming
+      if (pinRequests.current.current(ticket)) setError('Couldn’t resolve this address. Confirm the pin and enter the address manually.');
     } finally {
-      setResolving(false);
+      if (pinRequests.current.current(ticket)) setResolving(false);
     }
-    // Independent of reverseGeocode above — a failed/empty nearby-places
-    // fetch just means no chip row renders, never blocks the address
-    // itself from resolving.
-    fetchNearbyPlaces(next).then(setNearbyPlaces);
   }
 
   async function resolveAndGoTo(label: string) {
+    const ticket = navigationRequests.current.begin();
     setError(null);
     try {
       const coords = await geocodeAddress(label);
+      if (!navigationRequests.current.current(ticket)) return;
       if (!coords) {
         setError("Couldn't find that location. Try a different search.");
         return;
@@ -329,7 +331,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       setShortName(label.split(',')[0]?.trim() ?? label);
       addRecentSearch({ label, ...coords });
     } catch {
-      setError('Search failed. Please try again.');
+      if (navigationRequests.current.current(ticket)) setError('Search failed. Please try again.');
     }
   }
 
@@ -348,6 +350,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   }
 
   async function handleGoToCurrentLocation() {
+    const ticket = navigationRequests.current.begin();
     setError(null);
     try {
       // Prefer the blue dot's own live-tracked coordinate over a fresh
@@ -356,9 +359,10 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       // only if the blue dot hasn't emitted a position yet (e.g. tapped
       // immediately on mount, before the first onUserLocationChange).
       const coords = liveUserLocation.current ?? (await getCurrentCoordinates());
+      if (!navigationRequests.current.current(ticket)) return;
       mapRef.current?.animateToRegion({ ...coords, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
     } catch {
-      setError('Could not get your location. Please try searching instead.');
+      if (navigationRequests.current.current(ticket)) setError('Could not get your location. Please try searching instead.');
     }
   }
 
@@ -436,6 +440,8 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // surrounding blocks, which is plenty for a pin-precision
           // confirm screen — nobody needs to zoom out to city-scale here.
           minZoomLevel={14}
+          onPanDrag={() => { hasMovedPin.current = true; navigationRequests.current.invalidate(); }}
+          onRegionChange={() => { pinRequests.current.invalidate(); setResolving(true); }}
           onRegionChangeComplete={handleRegionSettled}
           // Keeps liveUserLocation (handleGoToCurrentLocation's own note)
           // in sync with wherever the native blue dot actually is,

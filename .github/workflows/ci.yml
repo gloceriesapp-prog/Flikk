@@ -31,9 +31,81 @@ jobs:
           cache: pnpm
           cache-dependency-path: backend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - run: node scripts/migrations.mjs
       - run: pnpm run lint
       - run: pnpm exec tsc --noEmit -p tsconfig.json
       - run: pnpm test
+      - run: node --test ../packages/server-media/upload.test.cjs
 
-  # /apps/customer, /apps/partner, /apps/rider, /apps/admin jobs are added here
-  # once each is scaffolded — not before, per specs/00-foundation/repo-structure.md.
+  commerce-security:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        missing_delivery_otp: [false, true]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: flikk_checkout_tests
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d flikk_checkout_tests"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: flikk_checkout_tests
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify checkout and real API-role permissions
+        run: >-
+          psql -X -v ON_ERROR_STOP=1
+          -v missing_delivery_otp=${{ matrix.missing_delivery_otp }}
+          -f backend/tests/sql/checkout-eligibility.sql
+          -f backend/tests/sql/commerce-security.sql
+          -f backend/tests/sql/verify-commerce-security.sql
+          -f backend/tests/sql/order-safety.sql
+          -f backend/tests/sql/verify-order-safety.sql
+      - name: Verify concurrent delivery and refund claims
+        run: python3 backend/tests/sql/order-safety-concurrency.py
+      - name: Verify customer experience migrations and deletion permissions
+        run: psql -X -v ON_ERROR_STOP=1 -f backend/tests/sql/customer-experience.sql -f backend/tests/sql/checkout-address-snapshots.sql -f backend/tests/sql/backend-audit.sql
+
+      - name: Verify concurrent rating totals
+        run: python3 backend/tests/sql/reviews-concurrency.py
+      - name: Rebuild complete application schema from canonical migrations
+        if: matrix.missing_delivery_otp == false
+        run: |
+          createdb flikk_migrations_tests
+          PGDATABASE=flikk_migrations_tests node backend/scripts/verify-fresh-migrations.mjs
+          PGDATABASE=flikk_migrations_tests psql -X -v ON_ERROR_STOP=1 -f backend/tests/sql/security-patch.sql -f backend/tests/sql/browse-visibility.sql -f backend/tests/sql/media-storage.sql -f backend/tests/sql/promotional-deliveries.sql -f backend/tests/sql/verify-rpc-security.sql -f backend/tests/sql/verify-commerce-security.sql -f backend/tests/sql/verify-order-safety.sql
+
+  customer:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/customer
+    env:
+      EXPO_PUBLIC_API_URL: https://api.example.com
+      EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false'
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/customer/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Bundle both native platforms
+        run: npx expo export --platform ios --max-workers 2 --output-dir /tmp/customer-ios
+      - run: npx expo export --platform android --max-workers 2 --output-dir /tmp/customer-android

@@ -1,3 +1,8 @@
+const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
+const buildProfile = process.env.EAS_BUILD_PROFILE;
+const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
+validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
+
 // Dynamic config (not app.json) so the Google Maps Android key comes from
 // an env var, never hardcoded into a file that gets committed. Expo CLI
 // auto-loads .env/.env.local into process.env before evaluating this file

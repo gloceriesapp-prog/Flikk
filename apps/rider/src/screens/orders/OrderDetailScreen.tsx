@@ -128,7 +128,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   // not dismiss it and strand them on an undelivered order.
   async function handleConfirmDelivery(code: string) {
     try {
-      await Promise.all(tripLegIds.map((id) => advanceOrderStatus(id, code)));
+      await advanceOrderStatus(order!.id, code);
       setOtpVisible(false);
       navigation.goBack();
     } catch (err) {
@@ -410,7 +410,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             <Text className="text-[13px] font-semibold text-ink/70">Items</Text>
             {order.items.map((item) => (
               <View key={item.name} className="flex-row items-center justify-between">
-                <Text className="text-[13px] text-ink/60">{item.name}</Text>
+                <Text className="text-[13px] text-ink/60">{[item.name, item.unit].filter(Boolean).join(' · ')}</Text>
                 <Text className="text-[13px] font-semibold text-ink/60">×{item.quantity}</Text>
               </View>
             ))}

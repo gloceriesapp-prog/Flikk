@@ -1,3 +1,5 @@
+import { useProductAvailability } from '../products/useProductAvailability';
+import { cartLineId } from '../../../store/cartIdentity';
 import { useState } from 'react';
 
 import {
@@ -104,11 +106,13 @@ export function DealCard({
      CART
   ========================================================== */
 
+  const lineId = cartLineId(id, product.defaultVariantId);
+  const availability = useProductAvailability(product);
   const quantity = useCartStore(
     (state) =>
       state.items.find(
         (item) =>
-          item.id === id,
+          item.id === lineId,
       )?.quantity ?? 0,
   );
 
@@ -130,7 +134,10 @@ export function DealCard({
 
   function handleAdd() {
     addToCart({
-      id,
+      isAvailable: availability.isAvailable,
+      id: lineId,
+      productId: id,
+      variantId: product.defaultVariantId,
       name,
       weight,
       price,
@@ -390,7 +397,9 @@ export function DealCard({
     ADD / QUANTITY CONTROL
 ================================================== */}
 
-            {quantity === 0 ? (
+            {!availability.isAvailable ? (
+              <Text className="rounded-lg bg-[#FFF0EE] px-3 py-2 text-[11px] font-bold text-[#B42318]">{availability.label}</Text>
+            ) : quantity === 0 ? (
               <Pressable
                 onPress={(event) => {
                   event.stopPropagation();
@@ -442,7 +451,7 @@ export function DealCard({
                 <Pressable
                   onPress={(event) => {
                     event.stopPropagation();
-                    decrementItem(id);
+                    decrementItem(lineId);
                   }}
                   hitSlop={8}
                   className="
@@ -479,7 +488,7 @@ export function DealCard({
                 <Pressable
                   onPress={(event) => {
                     event.stopPropagation();
-                    incrementItem(id);
+                    incrementItem(lineId);
                   }}
                   hitSlop={8}
                   className="

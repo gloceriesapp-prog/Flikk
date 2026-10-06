@@ -46,16 +46,11 @@ export function TrackingTimeline({ order }: Props) {
       {ORDER_STAGES.map((stage, index) => {
         const state: StepState = index < currentIndex ? 'done' : index === currentIndex ? 'active' : 'pending';
         const realTimestamp = order[STAGE_TIMESTAMP[stage.status]];
-        // The final stage (Delivered) gets a real estimate while still
-        // pending, not a bare "Pending" label — the actual ask this
-        // component exists to answer ("when will it arrive"). Earlier
-        // pending stages (Packed, Out for Delivery) don't have their own
-        // estimate to show — only the store's avg_prep_minutes + a flat
-        // transit buffer feed the one overall ETA, not a per-stage one.
+        // Pending delivery uses the same recorded deadline as the arrival card.
         const timeLabel = realTimestamp
           ? formatTime(realTimestamp)
           : stage.status === 'delivered'
-            ? `Est. ${formatEta(estimateDeliveryTime(order.placed_at, order.stores?.avg_prep_minutes ?? order.avg_prep_minutes ?? null)).replace(/^Today, /, '')}`
+            ? `Est. ${formatEta(estimateDeliveryTime(order.placed_at, order.estimated_delivery_minutes, order.estimated_delivery_at)).replace(/^Today, /, '')}`
             : state === 'pending'
               ? 'Pending'
               : '';

@@ -8,25 +8,21 @@ import {
   ArrowDown01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  CheckmarkCircle02Icon,
   CreditCardIcon,
   CustomerService01Icon,
   InformationCircleIcon,
   Location05Icon,
   LockIcon,
   Logout03Icon,
-  Moon01Icon,
   Notification03Icon,
   Share08Icon,
   StarIcon,
-  Sun01Icon,
   UserAdd01Icon,
 } from '@hugeicons/core-free-icons';
 
 import { StatusBar } from 'expo-status-bar';
 
 import {
-  Modal,
   Pressable,
   ScrollView,
   Share,
@@ -54,10 +50,6 @@ type Props =
     AppStackParamList,
     'Profile'
   >;
-
-type AppearanceMode =
-  | 'Light'
-  | 'Dark';
 
 type ProfileIcon =
   ComponentProps<typeof AppIcon>['icon'];
@@ -272,23 +264,12 @@ export function ProfileScreen({
     setIsRateModalOpen,
   ] = useState(false);
 
-  const [
-    appearance,
-    setAppearance,
-  ] =
-    useState<AppearanceMode>(
-      'Light',
-    );
-
-  const [
-    isAppearanceSheetOpen,
-    setIsAppearanceSheetOpen,
-  ] = useState(false);
-
   async function handleLogout() {
     setIsLoggingOut(true);
 
-    await clearSession();
+    try { await clearSession(); }
+    catch { /* RootNavigator displays the persistent sign-out retry gate. */ }
+    finally { setIsLoggingOut(false); }
   }
 
   function handleShare() {
@@ -407,24 +388,12 @@ export function ProfileScreen({
               'Wishlist',
             )
           }
-          onSupport={() => { }}
-          onRefunds={() => { }}
+          onSupport={() => navigation.navigate('Support')}
+          onRefunds={() => navigation.navigate('MyRefunds')}
         />
 
         {/* PREFERENCES */}
         <SectionCard title="Preferences">
-          <MenuRow
-            icon={Sun01Icon}
-            label="Appearance"
-            trailingText={appearance}
-            selector
-            onPress={() =>
-              setIsAppearanceSheetOpen(
-                true,
-              )
-            }
-          />
-
           <MenuRow
             icon={Location05Icon}
             label="Address Book"
@@ -438,30 +407,14 @@ export function ProfileScreen({
           <MenuRow
             icon={CreditCardIcon}
             label="Payment Methods"
-            onPress={() =>
-              navigation.navigate(
-                'ComingSoon',
-                {
-                  title:
-                    'Payment Methods',
-                },
-              )
-            }
+            onPress={() => navigation.navigate('PaymentMethod', { selectedMethod: null, source: 'profile' })}
           />
 
           <MenuRow
             icon={Notification03Icon}
             label="Notifications"
             showDivider={false}
-            onPress={() =>
-              navigation.navigate(
-                'ComingSoon',
-                {
-                  title:
-                    'Notifications',
-                },
-              )
-            }
+            onPress={() => navigation.navigate('Notifications')}
           />
         </SectionCard>
 
@@ -496,43 +449,19 @@ export function ProfileScreen({
           <MenuRow
             icon={CustomerService01Icon}
             label="Help & Support"
-            onPress={() =>
-              navigation.navigate(
-                'ComingSoon',
-                {
-                  title:
-                    'Help & Support',
-                },
-              )
-            }
+            onPress={() => navigation.navigate('Support')}
           />
 
           <MenuRow
             icon={LockIcon}
             label="Account Privacy"
-            onPress={() =>
-              navigation.navigate(
-                'ComingSoon',
-                {
-                  title:
-                    'Account Privacy',
-                },
-              )
-            }
+            onPress={() => navigation.navigate('AccountPrivacy')}
           />
 
           <MenuRow
             icon={InformationCircleIcon}
             label="About Gloceries"
-            onPress={() =>
-              navigation.navigate(
-                'ComingSoon',
-                {
-                  title:
-                    'About Gloceries',
-                },
-              )
-            }
+            onPress={() => navigation.navigate('AboutGloceries')}
           />
 
           {/* LOGOUT — SAME CARD, SAME NEUTRAL STYLE */}
@@ -563,177 +492,7 @@ export function ProfileScreen({
         }
       />
 
-      {/* APPEARANCE SHEET */}
-      <Modal
-        visible={isAppearanceSheetOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() =>
-          setIsAppearanceSheetOpen(
-            false,
-          )
-        }
-      >
-        <Pressable
-          className="
-            flex-1
-            justify-end
-            bg-black/25
-          "
-          onPress={() =>
-            setIsAppearanceSheetOpen(
-              false,
-            )
-          }
-        >
-          <Pressable
-            onPress={(event) =>
-              event.stopPropagation()
-            }
-            className="
-              rounded-t-[32px]
-              bg-white
-              px-5
-              pb-safe
-              pt-3
-            "
-          >
-            {/* HANDLE */}
-            <View className="items-center">
-              <View
-                className="
-                  h-1
-                  w-10
-                  rounded-full
-                  bg-black/10
-                "
-              />
-            </View>
 
-            {/* TITLE */}
-            <View
-              className="
-                pb-4
-                pt-4
-              "
-            >
-              <Text
-                className="
-                  text-[19px]
-                  font-semibold
-                  tracking-[-0.35px]
-                  text-[#1C1C1C]
-                "
-              >
-                Appearance
-              </Text>
-
-              <Text
-                className="
-                  mt-1
-                  text-[12.5px]
-                  font-semibold
-                  text-black/40
-                "
-              >
-                Choose your preferred appearance
-              </Text>
-            </View>
-
-            {/* OPTIONS */}
-            <View className="gap-2 pb-5">
-              {(
-                [
-                  'Light',
-                  'Dark',
-                ] as const
-              ).map((mode) => {
-                const selected =
-                  appearance === mode;
-
-                return (
-                  <Pressable
-                    key={mode}
-                    onPress={() => {
-                      setAppearance(mode);
-                      setIsAppearanceSheetOpen(
-                        false,
-                      );
-                    }}
-                    className={`
-                      flex-row
-                      items-center
-                      rounded-[20px]
-                      border
-                      px-4
-                      py-3.5
-                      ${selected
-                        ? 'border-[#DDE5FF] bg-[#F5F7FF]'
-                        : 'border-[#ECECEC] bg-[#FAFAFA]'
-                      }
-                    `}
-                  >
-                    <View
-                      className={`
-                        h-10
-                        w-10
-                        items-center
-                        justify-center
-                        rounded-[14px]
-                        ${selected
-                          ? 'bg-white'
-                          : 'bg-[#F2F2F2]'
-                        }
-                      `}
-                    >
-                      <AppIcon
-                        icon={
-                          mode === 'Light'
-                            ? Sun01Icon
-                            : Moon01Icon
-                        }
-                        size={17}
-                        color={
-                          selected
-                            ? '#155DFC'
-                            : '#555555'
-                        }
-                        strokeWidth={1.8}
-                      />
-                    </View>
-
-                    <Text
-                      className={`
-                        ml-3.5
-                        flex-1
-                        text-[14.5px]
-                        font-semibold
-                        ${selected
-                          ? 'text-[#155DFC]'
-                          : 'text-[#1C1C1C]'
-                        }
-                      `}
-                    >
-                      {mode}
-                    </Text>
-
-                    {selected && (
-                      <AppIcon
-                        icon={
-                          CheckmarkCircle02Icon
-                        }
-                        size={21}
-                        color="#155DFC"
-                        strokeWidth={1.8}
-                      />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }

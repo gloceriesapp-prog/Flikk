@@ -39,9 +39,14 @@ export async function PATCH(request: Request) {
       throw new Error('Commission rate must be a number between 0 and 1 (e.g. 0.06 for 6%).');
     }
 
+    const { data: settings, error: readError } = await supabaseAdmin
+      .from('platform_settings').select('id').single();
+    if (readError) throw readError;
+
     const { data, error } = await supabaseAdmin
       .from('platform_settings')
       .update({ commission_rate: commissionRate, updated_at: new Date().toISOString() })
+      .eq('id', settings.id)
       .select('id, commission_rate')
       .single();
     if (error) throw error;

@@ -87,7 +87,8 @@ function Header() {
 }
 
 export function PayoutHistoryScreen() {
-  const { data: payouts, isPending, isError, refetch } = useRiderPayouts();
+  const query = useRiderPayouts();
+  const { data: payouts, isPending, isError, refetch } = query;
 
   if (isPending) {
     return (
@@ -100,7 +101,7 @@ export function PayoutHistoryScreen() {
     );
   }
 
-  if (isError) {
+  if (isError && payouts.length === 0) {
     return (
       <View className="flex-1 bg-white">
         <Header />
@@ -135,6 +136,7 @@ export function PayoutHistoryScreen() {
         {payouts.map((p) => (
           <PayoutRow key={p.id} payout={p} />
         ))}
+        {query.hasNextPage && <Text onPress={() => { if (!query.isFetchingNextPage) void query.fetchNextPage(); }} className="py-4 text-center font-semibold text-lime-deep">{query.isFetchingNextPage ? 'Loading…' : query.isFetchNextPageError ? 'Retry loading more' : 'Load more payouts'}</Text>}
       </ScrollView>
     </View>
   );

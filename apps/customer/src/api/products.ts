@@ -19,13 +19,21 @@ export interface ApiVariant {
   price: number;
   original_price: number | null;
   is_default: boolean;
+  stock_quantity?: number | null;
 }
 
 export interface ApiProduct {
+  is_in_stock?: boolean;
+  stock_status?: string;
+  approval_status?: string;
+  stock_quantity?: number | null;
+  stock_tracking_enabled?: boolean;
   id: string;
   name: string;
+  unit?: string;
   local_name: string | null;
   category: string;
+  sub_category_id?: string | null;
   description: string | null;
   price: number;
   original_price: number | null;
@@ -43,6 +51,9 @@ export interface ApiProduct {
   // SellerDetailsCard needs, real columns a founder fills in on admin's Add
   // Store form (storeValidation.ts), not invented for this feed.
   stores: {
+    is_active?: boolean;
+    open_time?: string | null;
+    close_time?: string | null;
     name: string;
     fssai_number: string | null;
     address_line: string | null;
@@ -57,47 +68,42 @@ function formatVariant(variant: ApiVariant): string {
   return `${variant.quantity} ${UNIT_LABEL[variant.unit_type]}`;
 }
 
-// TEMPORARY preview-only — same convention as store-detail's own
-// dummyStoreCategories.ts: no real product on file yet has more than one
-// product_variants row (a founder hasn't entered multi-size pricing via
-// admin's Inventory screen for any real product), so ProductVariantOptions'
-// card grid has never actually had real data to render. This synthesizes a
-// second size from a real product's own real price/weight ONLY when the
-// backend returned 0-1 real variants, purely so the UI can be previewed
-// end-to-end. Delete this whole function (and its one call site below)
-// once real multi-size products exist — real variants always win over it.
-function withPreviewVariants(realVariants: ApiVariant[], basePrice: number, baseOriginalPrice: number | null): ApiVariant[] {
-  if (realVariants.length > 1) return realVariants;
-  const base = realVariants[0];
-  const bulkPrice = Math.round(basePrice * 2.7);
-  const bulkOriginal = baseOriginalPrice ? Math.round(baseOriginalPrice * 2.7) : null;
-  return [
-    base ?? { id: 'preview-base', unit_type: 'g', quantity: 500, price: basePrice, original_price: baseOriginalPrice, is_default: true },
-    { id: 'preview-bulk', unit_type: base?.unit_type ?? 'g', quantity: (base?.quantity ?? 500) * 3, price: bulkPrice, original_price: bulkOriginal, is_default: false },
-  ];
+// Unconfirmed legacy inventory is different from confirmed depletion.
+// Match backend eligibility; never invent a count or enable untracked stock.
+function inventoryIssue(row: ApiProduct, variant?: ApiVariant): Product['unavailableReason'] {
+  if (row.approval_status != null && row.approval_status !== 'approved') return 'product_unavailable';
+  if (row.is_in_stock === false || row.stock_status === 'out_of_stock') return 'out_of_stock';
+  if (row.stock_tracking_enabled === false || (row.stock_tracking_enabled && row.stock_quantity == null)) return 'stock_unconfirmed';
+  if (row.stock_tracking_enabled && row.stock_quantity! <= 0) return 'out_of_stock';
+  if (variant?.stock_quantity === 0) return 'out_of_stock';
+  if (variant && row.product_variants.length > 1 && variant.stock_quantity == null) return 'stock_unconfirmed';
+  return undefined;
 }
 
+// Only database variants are purchasable; no inferred pack sizes or prices.
 export function mapApiProduct(row: ApiProduct): Product {
-  const variants = withPreviewVariants(
-    [...row.product_variants].sort((a, b) => Number(b.is_default) - Number(a.is_default)),
-    row.price,
-    row.original_price,
-  );
-  const defaultVariant = variants[0];
+  const variants = [...row.product_variants].sort((a, b) => Number(b.is_default) - Number(a.is_default));
+  const defaultVariant = variants.find(v => v.stock_quantity !== 0 && !(variants.length > 1 && v.stock_quantity == null)) ?? variants[0];
   const store = row.stores;
+  const unavailableReason = inventoryIssue(row, defaultVariant);
 
   return {
+    storeOpening: store ? { isActive: store.is_active !== false, openTime: store.open_time, closeTime: store.close_time } : undefined,
+    availableQuantity: defaultVariant?.stock_quantity ?? (row.stock_tracking_enabled ? row.stock_quantity : undefined) ?? undefined,
     id: row.id,
     name: row.name,
     localName: row.local_name ?? '',
-    weight: defaultVariant ? formatVariant(defaultVariant) : '',
-    price: row.price,
-    originalPrice: row.original_price ?? undefined,
+    weight: defaultVariant ? formatVariant(defaultVariant) : (row.unit ?? ''),
+    price: defaultVariant?.price ?? row.price,
+    originalPrice: (defaultVariant ? defaultVariant.original_price : row.original_price) ?? undefined,
+    defaultVariantId: defaultVariant?.id,
     // Not tracked on real products yet — no rating system exists
     // (CLAUDE.md's own out-of-scope list has no room for one either), so
     // these stay unused placeholders; ProductCardView never renders them.
     rating: 0,
     ratingCount: '',
+    isAvailable: unavailableReason === undefined,
+    unavailableReason,
     imageSeed: row.id,
     imageUrl: row.image_url ?? undefined,
     bgColor: row.bg_color ?? undefined,
@@ -110,7 +116,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     // Product object identical to how it looked before this field existed.
     variants:
       variants.length > 1
-        ? variants.map((v) => ({ id: v.id, label: formatVariant(v), price: v.price, originalPrice: v.original_price ?? undefined }))
+        ? variants.map((v) => ({ isAvailable: inventoryIssue(row, v) === undefined, unavailableReason: inventoryIssue(row, v), id: v.id, label: formatVariant(v), price: v.price, originalPrice: v.original_price ?? undefined }))
         : undefined,
     description: row.description ?? undefined,
     categoryLabel: row.category,

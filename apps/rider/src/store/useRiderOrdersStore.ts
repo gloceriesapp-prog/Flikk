@@ -499,24 +499,20 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
       // can keep the OTP modal open, and no local state moves to delivered.
       // Sample orders have no backend row / real OTP — skip the PATCH.
       if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'delivered', undefined, otp);
-      const delivered: RiderOrder = {
-        ...order,
-        status: 'delivered',
-        deliveredAt: new Date().toISOString(),
-        // No backend concept for either yet (this file's own header note
-        // on the flat, tip-less real earnings model) — left genuinely
-        // absent rather than fabricated, same as api/orders.ts's mapper.
-        customerRating: undefined,
-        tip: undefined,
-      };
-      set((state) => ({
-        activeOrders: state.activeOrders.filter((o) => o.id !== orderId),
-        // Dedupe by id: local/demo orders reuse a fixed id (e.g. 'demo-1')
-        // across test cycles, so the same id can be delivered more than once —
-        // an un-deduped prepend leaves two rows sharing a React key. Latest
-        // delivery wins (same guard the refresh poll's newlyDelivered path has).
-        completedOrders: [delivered, ...state.completedOrders.filter((o) => o.id !== delivered.id)],
-      }));
+      // The server verifies one shared proof and commits every active trip leg.
+      const completedIds = new Set(get().activeOrders.filter(o =>
+        o.id === orderId || (!!order.tripId && o.tripId === order.tripId)
+      ).map(o => o.id));
+      set((state) => {
+        const delivered = state.activeOrders.filter(o => completedIds.has(o.id)).map(o => ({
+          ...o, status: 'delivered' as const, deliveredAt: new Date().toISOString(),
+          customerRating: undefined, tip: undefined,
+        }));
+        return {
+          activeOrders: state.activeOrders.filter(o => !completedIds.has(o.id)),
+          completedOrders: [...delivered, ...state.completedOrders.filter(o => !completedIds.has(o.id))],
+        };
+      });
       void persistHistory(get().completedOrders);
     }
   },

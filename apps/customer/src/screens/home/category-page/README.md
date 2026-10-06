@@ -1,0 +1,9 @@
+# Home category pages
+
+Quick categories in All pushes `HomeCategory` with only the real Home tab ID. The page resolves its current configuration through `useHomeTabs`; labels, visibility, banners and managed content remain live. No layout or inventory is serialized into navigation params. Loading and errors consider both the Home tabs endpoint and the managed content configuration. Missing/disabled categories offer a return to Home.
+
+`HomeCategoryContent` is the shared dispatcher for the old in-place Home tabs and the dedicated page. It mounts the existing Grocery, Fresh, Regional, Festival, Fish, Bakery and Protein components unchanged, with the same generic tile-grid fallback for other admin categories. Managed content identity takes precedence over the display name. Aliases use the same designed template.
+
+Dedicated category pages hide HomeHeader entirely and show only a safe-area-aware back arrow above the original category content. Home's own header is unchanged and temporarily sets `showCategoryTabs={false}` with the former true setting commented for easy restoration. The header category component and its selection/centering logic are retained.
+
+`HomeNavigationShell` owns one persistent BottomNavBar outside the native-stack screen surface. Home and category pages no longer render their own bars, so page transitions move only content. The shell shares navigation progress through HomeNavigationProgressContext and hides its bar on unrelated routes, which retain their existing navigation UI. `useHomeBrowseScroll` drives the shared bar only from user scrolling on the focused page; initial layout events and background momentum cannot reset it. Home stays mounted below the native-stack page, preserving its scroll position when returning. A focus-reset tap guard on Home prevents repeated quick-category taps from stacking duplicate pages.

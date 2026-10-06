@@ -76,13 +76,13 @@ export function useSpotlightCards(): SpotlightCardsResult {
     if (storeProducts.length > 0 && nearestStoreName) {
       cards.push({
         key: 'trending-store',
-        title: `Trending in ${nearestStoreName}`,
+        title: `Picks from ${nearestStoreName}`,
         products: storeProducts,
         ctaLabel: 'Visit store',
       });
     }
     if (catalog.length > 0) {
-      cards.push({ key: 'trending-area', title: 'Trending at [Store Name]', products: catalog, ctaLabel: 'See all' });
+      cards.push({ key: 'trending-area', title: 'Available near you', products: catalog, ctaLabel: 'See all' });
     }
     if (deals.length > 0) {
       cards.push({ key: 'best-deals', title: 'Deals Youll Love', products: deals, ctaLabel: 'Grab deals' });
@@ -90,7 +90,7 @@ export function useSpotlightCards(): SpotlightCardsResult {
     if (reversedCatalog.length > 0) {
       cards.push({
         key: 'most-bought',
-        title: 'Most bought near you',
+        title: 'More to explore',
         products: reversedCatalog,
         ctaLabel: 'Shop more',
       });

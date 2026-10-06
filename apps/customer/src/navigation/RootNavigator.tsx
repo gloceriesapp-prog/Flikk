@@ -19,21 +19,30 @@
 // AppNavigator picks its initial route (LocationPermission vs. Home) off that
 // store synchronously on mount, so it needs to already be hydrated by then.
 
+import { useDeliverySettingsSync } from '../api/deliverySettings';
 import { useEffect, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLocationStore } from '../store/useLocationStore';
+import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
-import { registerPushToken } from '../features/push-notifications/registerPushToken';
+import { useNotifications } from '../features/notifications/useNotifications';
+import { notificationNavigation, flushOrderNotification } from '../features/notifications/navigation';
 
-const WELCOME_DURATION_MS = 2000;
+const WELCOME_DURATION_MS = 5000;
 
 export function RootNavigator() {
-  const { accessToken, isGuest, isHydrated: authHydrated, hydrate: hydrateAuth } = useAuthStore();
-  const { isHydrated: locationHydrated, hydrate: hydrateLocation } = useLocationStore();
+  useDeliverySettingsSync();
+  useNotifications();
+  const { accessToken, customerId, isGuest, isHydrated: authHydrated, hydrationError: authError, hydrate: hydrateAuth } = useAuthStore();
+  const { isHydrated: locationHydrated, hydrationError: locationError, hydrate: hydrateLocation } = useLocationStore();
+  const [cartReady, setCartReady] = useState(false);
+  const [cartError, setCartError] = useState(false);
+  const [cartRetry, setCartRetry] = useState(0);
   const [welcomeElapsed, setWelcomeElapsed] = useState(false);
 
   useEffect(() => {
@@ -46,16 +55,17 @@ export function RootNavigator() {
     return () => clearTimeout(id);
   }, []);
 
-  const isHydrated = authHydrated && locationHydrated && welcomeElapsed;
-
-  // Registered once per fresh login (accessToken change) — a guest browsing
-  // without an account has no order to be notified about, so this only
-  // fires for a real session. Backend's POST /auth/push-token is what
-  // orders.ts's PATCH /:id/status pushes order-status updates through.
   useEffect(() => {
-    if (!authHydrated || !accessToken) return;
-    void registerPushToken();
-  }, [authHydrated, accessToken]);
+    if (!authHydrated || authError) return;
+    let mounted = true;
+    const stop = useCartStore.persist.onFinishHydration(() => { if (mounted) setCartReady(true); });
+    Promise.resolve(useCartStore.persist.rehydrate()).then(() => {
+      if (mounted && !useCartStore.persist.hasHydrated()) { setCartError(true); setCartReady(true); }
+    }).catch(() => { if (mounted) { setCartError(true); setCartReady(true); } });
+    return () => { mounted = false; stop(); };
+  }, [authHydrated, authError, cartRetry]);
+
+  const isHydrated = authHydrated && locationHydrated && welcomeElapsed && (cartReady || !!authError);
 
   // Wishlist is account-backed now (useWishlistStore's own note) — loaded
   // once per fresh login same as the push-token registration above, and
@@ -75,8 +85,18 @@ export function RootNavigator() {
     return <WelcomeScreen />;
   }
 
+  if (authError || locationError || cartError) {
+    return <View className="flex-1 items-center justify-center gap-5 bg-white px-8">
+      <Text className="text-center text-xl font-bold text-ink">Let’s try that again</Text>
+      <Text className="text-center text-base text-ink/60">{authError || locationError || 'Couldn’t restore your saved cart. Please retry.'}</Text>
+      <Pressable accessibilityRole="button" onPress={() => { void hydrateAuth(); void hydrateLocation(); setCartReady(false); setCartError(false); setCartRetry(v => v + 1); }} className="rounded-xl bg-[#155DFC] px-7 py-3">
+        <Text className="font-bold text-white">Retry startup</Text>
+      </Pressable>
+    </View>;
+  }
+
   return (
-    <NavigationContainer>
+    <NavigationContainer key={customerId ?? 'guest'} ref={notificationNavigation} onReady={() => void flushOrderNotification()}>
       {accessToken || isGuest ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

@@ -96,9 +96,9 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
             onSelect={(id) => onSelectVariant?.(id)}
           />
         ) : (
-          <View className="flex-row flex-wrap gap-2">
-            <View className="rounded-xl border border-lime-deep bg-lime-soft px-4 py-2">
-              <Text className="text-base font-semibold text-lime-deep">{weight}</Text>
+          <View className="flex-row flex-wrap gap-1">
+            <View className="rounded-xl">
+              <Text className="text-[14px] font-bold text-ink">{weight}</Text>
             </View>
           </View>
         )}

@@ -9,7 +9,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, LogOut, Plus, Settings } from 'lucide-react';
+import { Bell, LogOut, Plus, Save, Settings } from 'lucide-react';
 import { ALL_NAV_ITEMS, QUICK_ACTION_LABEL } from '@/lib/nav';
 
 const TEAM_AVATAR_COLORS = ['bg-rose-200', 'bg-amber-200', 'bg-sky-200'];
@@ -17,6 +17,7 @@ const TEAM_AVATAR_COLORS = ['bg-rose-200', 'bg-amber-200', 'bg-sky-200'];
 export function TopNav() {
   const pathname = usePathname();
   const current = ALL_NAV_ITEMS.find((item) => pathname.startsWith(item.href));
+  const editingStore = /^\/stores\/[^/]+$/.test(pathname);
   const quickActionLabel = current ? QUICK_ACTION_LABEL[current.href] : undefined;
 
   return (
@@ -67,13 +68,14 @@ export function TopNav() {
           </button>
         </form>
 
-        {quickActionLabel && (
+        {(quickActionLabel || editingStore) && (
           <button
-            type="button"
+            type={pathname === '/settings' || editingStore ? 'submit' : 'button'}
+            form={editingStore ? 'store-detail-form' : pathname === '/settings' ? 'settings-form' : undefined}
             className="flex items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
           >
-            <Plus size={15} />
-            {quickActionLabel}
+            {editingStore ? <Save size={15} /> : <Plus size={15} />}
+            {editingStore ? 'Save store' : quickActionLabel}
           </button>
         )}
       </div>

@@ -27,3 +27,13 @@ export interface RiderEarning {
 export async function fetchRiderEarnings(): Promise<RiderEarning[]> {
   return apiRequest<RiderEarning[]>('/rider/earnings');
 }
+
+export interface EarningDay { day: string; total: number; base: number; extra: number; orders: number }
+export function fetchRiderEarningPage(from: string, until: string, cursor?: string): Promise<{ items: RiderEarning[]; nextCursor: string | null }> {
+  const params = new URLSearchParams({ page: '1', from, until });
+  if (cursor) params.set('cursor', cursor);
+  return apiRequest(`/rider/earnings?${params}`);
+}
+export function fetchRiderEarningSummary(from: string, until: string): Promise<EarningDay[]> {
+  return apiRequest(`/rider/earnings-summary?${new URLSearchParams({ from, until })}`);
+}

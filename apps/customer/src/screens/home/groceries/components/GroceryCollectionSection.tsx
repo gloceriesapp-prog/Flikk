@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { BrowseLoadingText, BROWSE_LOADING_COPY } from '../../loading/BrowseLoadingText';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../../../navigation/types';
@@ -13,17 +14,18 @@ import { SeeAllProductsButton } from './SeeAllProductsButton';
 interface Props {
   title: string;
   groups: RegExp[];
+  maxProducts?: number;
   previewCount?: number;
   onViewMore?: () => void;
   previewProducts?: Product[];
 }
 
-export function GroceryCollectionSection({ title, groups, previewCount, onViewMore, previewProducts = [] }: Props) {
+export function GroceryCollectionSection({ title, groups, maxProducts = 8, previewCount, onViewMore, previewProducts = [] }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const { availableProducts, hasLocation, isLoading, isError, retry } = useNearbyGroceryInventory();
-  const realProducts = selectBalancedProducts(availableProducts, groups, previewCount ?? 8).map(mapApiProduct);
-  const previewOnly = realProducts.length === 0 && previewProducts.length > 0;
-  const products = previewOnly ? previewProducts.slice(0, previewCount ?? 8) : realProducts;
+  const { visibleProducts, hasLocation, isLoading, isError, retry } = useNearbyGroceryInventory();
+  const realProducts = selectBalancedProducts(visibleProducts, groups, previewCount ?? maxProducts).map(mapApiProduct);
+  const previewOnly = __DEV__ && process.env.EXPO_PUBLIC_ENABLE_DESIGN_PREVIEWS === 'true' && realProducts.length === 0 && previewProducts.length > 0;
+  const products = previewOnly ? previewProducts.slice(0, previewCount ?? maxProducts) : realProducts;
 
   return (
     <View className="pt-8">
@@ -67,8 +69,7 @@ export function GroceryCollectionSection({ title, groups, previewCount, onViewMo
             </>
           ) : isLoading ? (
             <>
-              <ActivityIndicator accessibilityLabel={`Loading ${title}`} color="#155DFC" />
-              <Text className="text-center text-sm text-ink/60">Checking nearby shelves…</Text>
+              <BrowseLoadingText message={BROWSE_LOADING_COPY.grocery} />
             </>
           ) : isError ? (
             <>
@@ -78,7 +79,7 @@ export function GroceryCollectionSection({ title, groups, previewCount, onViewMo
               </Pressable>
             </>
           ) : (
-            <Text className="text-center text-sm text-ink/60">No {title.toLowerCase()} available from nearby open shops right now.</Text>
+            <Text className="text-center text-sm text-ink/60">No {title.toLowerCase()} available from nearby shops right now.</Text>
           )}
         </View>
       )}

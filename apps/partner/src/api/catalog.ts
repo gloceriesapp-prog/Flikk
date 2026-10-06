@@ -1,9 +1,6 @@
-// Product-photo upload — same base64-in/public-URL-out shape as
-// api/auth.ts's uploadStorePhoto, just a different endpoint/bucket
-// (backend's POST /partner/product-photo -> 'product-images', see that
-// route's own note). Kept out of auth.ts since this has nothing to do with
-// login/session — a separate file per real concern, same split this app
-// already has between auth.ts and devAuthFallback.ts.
+// Public photo uploads go through the authenticated backend to R2.
+// The returned verified HTTPS URL is persisted on the product record;
+// the mobile app never receives storage credentials.
 
 import { apiRequest } from './client';
 import type { BackendVariantInput } from '../screens/catalog/data';

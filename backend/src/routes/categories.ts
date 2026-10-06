@@ -1,3 +1,4 @@
+import { deliveryStores } from '../customer-experience/browse.js';
 // Customer-facing category browse — real rows a founder manages via
 // admin's own Categories screen (apps/admin/src/app/(dashboard)/categories),
 // not the static CATEGORY_SECTIONS mock apps/customer used to render.
@@ -13,7 +14,7 @@ categoriesRouter.get('/', async (req, res, next) => {
       .select('id, name, image_url, sort_order')
       .eq('is_active', true)
       .order('sort_order')
-      .order('name');
+      .order('name').limit(60);
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -35,7 +36,7 @@ categoriesRouter.get('/:id/subcategories', async (req, res, next) => {
       .eq('category_id', req.params.id)
       .eq('is_active', true)
       .order('sort_order')
-      .order('name');
+      .order('name').limit(60);
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -53,13 +54,12 @@ categoriesRouter.get('/:id/products', async (req, res, next) => {
     const { data, error } = await supabase
       .from('products')
       .select(
-        '*, stores!inner(name, is_active, fssai_number, address_line, city, district, photo_url), product_variants(*), sub_categories!inner(category_id)',
+        '*, stores!inner(name, is_active, open_time, close_time, fssai_number, address_line, city, district, photo_url), product_variants(*), sub_categories!inner(category_id)',
       )
       .eq('sub_categories.category_id', req.params.id)
-      .eq('stores.is_active', true)
       .eq('approval_status', 'approved')
-      .neq('stock_status', 'out_of_stock')
-      .order('name');
+      .in('store_id', await deliveryStores(req.query))
+      .order('name').limit(60);
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -80,12 +80,11 @@ categoriesRouter.get('/subcategories/:id/products', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('*, stores!inner(name, is_active, fssai_number, address_line, city, district, photo_url), product_variants(*)')
+      .select('*, stores!inner(name, is_active, open_time, close_time, fssai_number, address_line, city, district, photo_url), product_variants(*)')
       .eq('sub_category_id', req.params.id)
-      .eq('stores.is_active', true)
       .eq('approval_status', 'approved')
-      .neq('stock_status', 'out_of_stock')
-      .order('name');
+      .in('store_id', await deliveryStores(req.query))
+      .order('name').limit(60);
     if (error) throw error;
     res.json(data);
   } catch (err) {

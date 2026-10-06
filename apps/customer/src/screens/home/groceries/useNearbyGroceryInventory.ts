@@ -1,30 +1,25 @@
 import { useQueries } from '@tanstack/react-query';
-import { apiRequest } from '../../../api/client';
-import type { ApiProduct } from '../../../api/products';
 import { useLocationStore } from '../../../store/useLocationStore';
 import { useNearbyStores } from '../nearby-stores/useNearbyStores';
+import { inventoryPreviewQuery } from '../loading/inventoryQuery';
 
 // Shared by the local-shop previews and grocery collections. Coordinates key
 // the nearby-store query; per-store stock is fetched once through query cache.
-export function useNearbyGroceryInventory() {
+export function useNearbyGroceryInventory(tabKey?: 'grocery' | 'fresh' | 'regional') {
   const location = useLocationStore((state) => state.location);
   const nearby = useNearbyStores();
   const candidates = nearby.data.slice(0, 5);
   const queries = useQueries({
-    queries: candidates.map((store) => ({
-      queryKey: ['home', 'groceries', 'store-inventory', store.id],
-      queryFn: () => apiRequest<ApiProduct[]>(`/stores/${store.id}/products`, { auth: false }),
-      staleTime: 60_000,
-    })),
+    queries: candidates.map((store) => inventoryPreviewQuery(store.id, tabKey)),
   });
   const inventory = candidates.map((store, index) => ({ store, products: queries[index].data ?? [] }));
 
   return {
     hasLocation: location !== null,
     inventory,
-    // Closed shops remain browseable in shop previews, but their items must
-    // not be presented as currently orderable in the shopping collections.
-    availableProducts: inventory.filter(({ store }) => store.isOpen).flatMap(({ products }) => products),
+    // Browsing includes closed shops and sold-out stock. Cards and checkout
+    // enforce availability separately; closure must not empty a collection.
+    visibleProducts: inventory.flatMap(({ store, products }) => products.map((product) => ({ ...product, stores: product.stores ? { ...product.stores, is_active: product.stores.is_active ?? store.isOpen } : product.stores }))),
     isLoading: Boolean(location) && (nearby.isPending || queries.some((query) => query.isPending)),
     isError: nearby.isError || queries.some((query) => query.isError),
     retry: () => {

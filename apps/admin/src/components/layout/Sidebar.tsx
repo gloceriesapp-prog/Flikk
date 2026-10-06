@@ -69,7 +69,7 @@ export function Sidebar() {
   }, [loadCounts]);
 
   function renderItem(item: NavItem) {
-    const isActive = pathname.startsWith(item.href);
+    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
     const Icon = item.icon;
     const count = counts[item.href] ?? 0;
     return (
@@ -161,7 +161,7 @@ export function Sidebar() {
 
       <div className="flex flex-col gap-1 border-t border-border pt-3">
         <Link
-          href="#"
+          href="/support"
           title={collapsed ? 'Help Center' : undefined}
           className={clsx(
             'flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-ink-soft hover:bg-card hover:text-ink',

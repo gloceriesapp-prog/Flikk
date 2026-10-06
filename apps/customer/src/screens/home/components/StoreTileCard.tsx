@@ -25,18 +25,21 @@ export interface StoreTile {
 interface Props {
   store: StoreTile;
   onPress: () => void;
+  width?: number;
+  aspectRatio?: number;
 }
 
 export function StoreTileCard({
   store,
   onPress,
+  width = 168,
+  aspectRatio,
 }: Props) {
   return (
     <Pressable
       onPress={onPress}
+      style={{ width, height: aspectRatio ? width / aspectRatio : 196 }}
       className="
-        h-[196px]
-        w-[168px]
         overflow-hidden
         rounded-[28px]
         border

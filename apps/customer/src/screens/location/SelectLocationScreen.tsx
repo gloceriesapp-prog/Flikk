@@ -1,3 +1,4 @@
+import { useAuthStore } from '../../store/useAuthStore';
 // Reached from Home's own "Delivering to" header tap — per an explicit
 // ask/reference, that tap used to skip straight to LocationSearchScreen's
 // live map with no way to reuse a saved address or a past search. This is
@@ -47,6 +48,7 @@ const MIN_QUERY_LENGTH = 3;
 const SEARCH_DEBOUNCE_MS = 350;
 
 export function SelectLocationScreen({ navigation }: Props) {
+  const customerId = useAuthStore(state => state.customerId);
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -63,7 +65,7 @@ export function SelectLocationScreen({ navigation }: Props) {
   const [resolvingSuggestion, setResolvingSuggestion] = useState<string | null>(null);
   const recentSearches = useRecentSearchesStore((s) => s.entries);
   const { data: addresses, isLoading: addressesLoading } = useQuery({
-    queryKey: ['addresses'],
+    queryKey: ['addresses', customerId],
     queryFn: fetchAddresses,
   });
 

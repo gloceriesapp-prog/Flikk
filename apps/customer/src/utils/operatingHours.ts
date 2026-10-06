@@ -1,4 +1,4 @@
-// Platform-wide ordering window — 9:30 PM to 6:00 AM IST, every day, closed.
+// Platform-wide ordering window — 10:30 PM to 6:00 AM IST, every day, closed.
 // Single-zone MVP (CLAUDE.md) with one operating window for the whole app,
 // not per-store — this is deliberately simpler than stores.open_time/
 // close_time (which is a real per-store toggle an owner controls). If a
@@ -24,7 +24,7 @@ function currentIstMinutesOfDay(): number {
   return istDate.getUTCHours() * 60 + istDate.getUTCMinutes();
 }
 
-// True from 9:30 PM through 5:59 AM IST — the window wraps past midnight,
+// True from 10:30 PM through 5:59 AM IST — the window wraps past midnight,
 // so this is "at or after close" OR "before open", not a simple range.
 export function isOutsideOperatingHours(): boolean {
   const minutesOfDay = currentIstMinutesOfDay();

@@ -11,7 +11,7 @@
 // internally.
 //
 // No client-supplied amount here either, same as createOrder.ts — a
-// fresh Razorpay order is minted from the order row's own stored total.
+// existing Razorpay order is reused from its durable payment session.
 // Razorpay requires an email field for this endpoint; customers only
 // ever give a phone number (phone-OTP auth, no email column on users) —
 // the synthetic address below is never shown to the customer or used to
@@ -20,8 +20,8 @@ import type { Response, NextFunction } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import type { AuthedRequest } from '../middleware/auth.js';
-import { razorpay, razorpayBasicAuthHeader } from './razorpayClient.js';
-import type { OrderIdBody } from './types.js';
+import { razorpayBasicAuthHeader } from './razorpayClient.js';
+import { paymentTarget, ensureProviderOrder, requirePaymentRetrySafe, claimPayment, saveSession } from './recovery.js';
 
 interface UpiIntentResponse {
   link?: string;
@@ -31,49 +31,28 @@ interface UpiIntentResponse {
 
 export async function createUpiIntent(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
-    const { orderId, tripId } = req.body as OrderIdBody;
-    if (!orderId && !tripId) {
-      throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'orderId or tripId is required.');
+    const target = paymentTarget(req.body);
+    const razorpayOrder = await ensureProviderOrder(target, req.user!.id);
+    await requirePaymentRetrySafe(target, razorpayOrder.id, Number(razorpayOrder.amount) / 100);
+    const claim = await claimPayment(target, req.user!.id, 'upi');
+    if (!claim.claimed) {
+      if (claim.session.upi_link && claim.session.upi_payment_id) {
+        res.json({ razorpayOrderId: razorpayOrder.id, razorpayPaymentId: claim.session.upi_payment_id, upiLink: claim.session.upi_link });
+        return;
+      }
+      throw new AppError(409, 'PAYMENT_RECONCILING', 'Your previous UPI request is being checked. Please wait before paying again.');
     }
-
-    // Exactly one of these runs — same real fork createRazorpayOrder.ts/
-    // verifyPayment.ts already make for the Standard Checkout path. A
-    // multi-store trip pays once for every leg combined (trips.total),
-    // never per-leg — the UPI-app grid was single-store-only until now
-    // purely because this endpoint didn't know how to read a trip's own
-    // total, not because splitting the payment itself needs different
-    // logic (it never did: order_items.unit_price_at_order-style historical
-    // amounts already live per-leg on each real orders row regardless of
-    // how the one combined payment was collected).
-    const table = tripId ? 'trips' : 'orders';
-    const id = (tripId ?? orderId)!;
-    const { data: record, error } = await supabase.from(table).select('id, customer_id, total').eq('id', id).single();
-    if (error || !record) throw new AppError(404, tripId ? 'TRIP_NOT_FOUND' : 'ORDER_NOT_FOUND', `${tripId ? 'Trip' : 'Order'} not found.`);
-    if (record.customer_id !== req.user!.id) throw new AppError(403, 'FORBIDDEN', tripId ? 'Not your trip.' : 'Not your order.');
-
     const { data: customer } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
-
-    // notes key differs (gloceries_order_id vs gloceries_trip_id) so webhook.ts's
-    // own payment.captured handler knows which table to write
-    // razorpay_payment_id onto — a trip's own payment also cascades from
-    // there onto every child order, same as verifyPayment.ts's already-
-    // established Standard Checkout cascade.
-    const notes: Record<string, string> = tripId ? { gloceries_trip_id: record.id } : { gloceries_order_id: record.id };
-    const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(record.total * 100),
-      currency: 'INR',
-      receipt: record.id,
-      notes,
-    });
-
+    const notes: Record<string, string> = target.kind === 'trip' ? { gloceries_trip_id: target.id } : { gloceries_order_id: target.id };
     const upiRes = await fetch('https://api.razorpay.com/v1/payments/create/upi', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: razorpayBasicAuthHeader(),
       },
+      signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({
-        amount: razorpayOrder.amount,
+        amount: Number(razorpayOrder.amount),
         currency: 'INR',
         order_id: razorpayOrder.id,
         contact: customer?.phone ?? '9999999999',
@@ -93,7 +72,8 @@ export async function createUpiIntent(req: AuthedRequest, res: Response, next: N
       throw new AppError(502, 'UPI_INTENT_FAILED', upiData.error?.description ?? 'Could not start UPI payment.');
     }
 
-    res.status(201).json({
+    await saveSession(target, { upi_state: 'ready', upi_link: upiData.link, upi_payment_id: upiData.razorpay_payment_id });
+    res.status(200).json({
       razorpayOrderId: razorpayOrder.id,
       razorpayPaymentId: upiData.razorpay_payment_id,
       upiLink: upiData.link,

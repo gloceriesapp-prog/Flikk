@@ -1,10 +1,10 @@
+import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
 // Reached from CartBar's "View cart" tap (see components/CartBar/CartBar.tsx)
-// or the bottom nav. "Checkout" navigates to screens/checkout/CheckoutScreen
-// — the actual "place order" action lives there, not here; this screen is
-// just the editable item list + fee breakdown.
+// or the bottom nav. Payment selection and order placement live in the
+// cart footer; payment/useCartPayment owns the confirmed payment flow.
 //
 // Page bg is #F1F2F4 with white rounded cards stacked on it (items,
-// DeliveryTipCard, BillDetailsCard) rather than one continuous white
+// BillDetailsCard) rather than one continuous white
 // sheet — matches the reference. Items card: "N items" header + a dashed
 // divider, then one CartItemRow per item.
 //
@@ -13,12 +13,10 @@
 // its product pool was entirely fabricated (a random pick across four
 // per-tab mock lists). Re-add once a real recommendation feed exists.
 //
-// Tip selection is lifted up here (not local to DeliveryTipCard) because
-// BillDetailsCard's tip line and its own Total payable both need to
-// read it.
+// Rider tips stay hidden until collection and payout are supported.
 
 import { useMemo, useState } from 'react';
-import { ArrowLeft01Icon, Delete02Icon, MoreVerticalIcon, PackageIcon, ShoppingBasket03Icon, Timer02Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, Delete02Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { RupeePrice } from '../../components/RupeePrice';
 import { StatusBar } from 'expo-status-bar';
@@ -29,13 +27,17 @@ import { colors } from '../../theme/tokens';
 import { deleteAddress, fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import type { ApiAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
-import { estimateCartEtaMinutes } from '../../utils/estimateDelivery';
 import { groupCartItemsByStore, selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
+import { CartPaymentBar } from './components/CartPaymentBar';
+import { useCartPayment } from './payment/useCartPayment';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
-import { DeliveryTipCard, type TipSelection } from './components/DeliveryTipCard';
+import { useCartAvailability } from './quote/useCartAvailability';
+import { useCheckoutQuote } from './quote/useCheckoutQuote';
+import { quotedCartItems, quoteHasPriceChanges } from './quote/quoteItems';
+import { cartIdentity } from '../../store/cartIdentity';
 // import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
 import { ForgotToAddSection } from './components/ForgotToAddSection';
 import { PromoCodeCard } from './components/PromoCodeCard';
@@ -45,7 +47,9 @@ import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Cart'>;
 
-export function CartScreen({ navigation }: Props) {
+export function CartScreen({ navigation, route }: Props) {
+  const customerId = useAuthStore(state => state.customerId);
+  const estimatedMinutes = useDeliveryEstimateMinutes();
   const items = useCartStore((state) => state.items);
   const totalQuantity = useCartStore(selectCartTotalQuantity);
   const itemTotal = useCartStore(selectCartTotalPrice);
@@ -56,10 +60,9 @@ export function CartScreen({ navigation }: Props) {
   // Memoized off `items` (already selected above, reference-stable) — see
   // groupCartItemsByStore's own note on why this can't be a plain zustand
   // selector.
-  const storeGroups = useMemo(() => groupCartItemsByStore(items), [items]);
   // ForgotToAddSection's own exclusion list — memoized off `items` for the
   // same reference-stability reason as storeGroups above.
-  const cartItemIds = useMemo(() => items.map((item) => item.id), [items]);
+  const cartItemIds = useMemo(() => items.map((item) => item.productId ?? item.id.split('::')[0]), [items]);
   const appliedPromo = useCartStore((state) => state.appliedPromo);
   const clearCart = useCartStore((state) => state.clear);
 
@@ -76,7 +79,6 @@ export function CartScreen({ navigation }: Props) {
     clearCart();
   }
 
-  const [tip, setTip] = useState<TipSelection>(null);
   const [addressSheetVisible, setAddressSheetVisible] = useState(false);
   const [selectingAddressId, setSelectingAddressId] = useState<string | null>(null);
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
@@ -99,7 +101,7 @@ export function CartScreen({ navigation }: Props) {
   // addresses), not a forced logout.
   const accessToken = useAuthStore((state) => state.accessToken);
   const { data: addresses, isLoading: addressesLoading } = useQuery({
-    queryKey: ['addresses'],
+    queryKey: ['addresses', customerId],
     queryFn: fetchAddresses,
     enabled: !!accessToken,
   });
@@ -109,13 +111,34 @@ export function CartScreen({ navigation }: Props) {
   // visit tap through a picker for an address that hasn't changed.
   const selectedAddress = (addresses ?? []).find((a) => a.is_default) ?? addresses?.[0] ?? null;
 
+  const availabilityQuery = useCartAvailability(selectedAddress?.id);
+  const quoteQuery = useCheckoutQuote(selectedAddress?.id);
+  const quote = quoteQuery.data;
+  const storeGroups = useMemo(() => {
+    const pricedItems = quote ? quotedCartItems(items, quote) : [];
+    return groupCartItemsByStore(items.map((item) => {
+      const identity = cartIdentity(item);
+      const priced = pricedItems.find((entry) => entry.productId === identity.productId
+        && (!identity.variantId || entry.variantId === identity.variantId));
+      // Keep persisted line IDs so existing quantity controls also work for
+      // legacy carts that resolve to a default variant on the server.
+      return priced ? { ...item, price: priced.price, originalPrice: priced.originalPrice, weight: priced.weight } : item;
+    }));
+  }, [items, quote]);
+  const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod,
+    quote, onQuoteChanged: () => { void quoteQuery.refetch(); void availabilityQuery.refetch(); } });
+  function choosePayment() {
+    if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }
+    payment.choosePayment();
+  }
+
   async function handleSelectAddress(id: string) {
     setSelectingAddressId(id);
     try {
       await setDefaultAddress(id);
-      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      await queryClient.invalidateQueries({ queryKey: ['addresses', customerId] });
       setAddressSheetVisible(false);
-      navigation.navigate('Checkout');
+
     } catch (err) {
       console.error('[CartScreen] failed to set default address', id, err);
       Alert.alert('Could not select this address', err instanceof ApiError ? err.message : 'Please try again.');
@@ -129,13 +152,13 @@ export function CartScreen({ navigation }: Props) {
     // Optimistic removal — the row disappears the instant you tap, not
     // after a round trip + refetch. Snapshot the prior list so a failed
     // delete can roll back to it instead of leaving the UI wrong.
-    const previous = queryClient.getQueryData<ApiAddress[]>(['addresses']);
-    queryClient.setQueryData<ApiAddress[]>(['addresses'], (current) => (current ?? []).filter((a) => a.id !== id));
+    const previous = queryClient.getQueryData<ApiAddress[]>(['addresses', customerId]);
+    queryClient.setQueryData<ApiAddress[]>(['addresses', customerId], (current) => (current ?? []).filter((a) => a.id !== id));
     try {
       await deleteAddress(id);
-      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      await queryClient.invalidateQueries({ queryKey: ['addresses', customerId] });
     } catch (err) {
-      queryClient.setQueryData(['addresses'], previous);
+      queryClient.setQueryData(['addresses', customerId], previous);
       // Surfaced, not swallowed — a silent catch here looks identical to
       // "the tap did nothing" from the outside, which is exactly the bug
       // report this was written in response to. Logged too, since
@@ -147,15 +170,6 @@ export function CartScreen({ navigation }: Props) {
       setDeletingAddressId(null);
     }
   }
-
-  const originalItemTotal = items.some((item) => item.originalPrice)
-    ? items.reduce((sum, item) => sum + (item.originalPrice ?? item.price) * item.quantity, 0)
-    : null;
-  // TEMP: dummy fallback so the "Saved ₹X (Y% off)" header UI is visible
-  // without a real discounted item in the cart — remove once real
-  // discounted products exist to test against.
-  const savings = originalItemTotal !== null ? originalItemTotal - itemTotal : 42;
-  const savingsPercent = originalItemTotal ? Math.round((savings / originalItemTotal) * 100) : 18;
 
   return (
     <View className="flex-1 bg-[#F2F2F7]">
@@ -234,7 +248,7 @@ export function CartScreen({ navigation }: Props) {
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2.5">
                   <View>
-                    <Text className="text-[17px] font-bold text-ink">Delivery in {estimateCartEtaMinutes()} minutes</Text>
+                    <Text className="text-[17px] font-bold text-ink">Delivery in {estimatedMinutes} minutes</Text>
                     <Text className="text-[12.5px] text-ink/45 font-medium mt-1">
                       {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}
                       {storeGroups.length > 1 ? ` from ${storeGroups.length} stores` : ' in this order'}
@@ -255,13 +269,17 @@ export function CartScreen({ navigation }: Props) {
                       <Text className="text-[14.5px] font-semibold text-ink tracking-tight" numberOfLines={1}>
                         From {group.storeName ?? 'this store'}
                       </Text>
-                      <RupeePrice amount={group.itemTotal.toFixed(0)} size={13.5} color="#101C1080" />
+                      {quote && <RupeePrice amount={quote.items.filter((line) => line.store_id === group.storeId)
+                        .reduce((sum, line) => sum + line.unit_price_at_order * line.quantity, 0).toFixed(2)} size={13.5} color="#101C1080" />}
                     </View>
                   )}
 
                   {group.items.map((item, index) => (
                     <View key={item.id}>
-                      <CartItemRow item={item} />
+                      <CartItemRow item={item} availability={availabilityQuery.data?.lines.find((line) => {
+                        const identity = cartIdentity(item);
+                        return line.product_id === identity.productId && line.variant_id === (identity.variantId ?? null);
+                      })} />
                       {index < group.items.length - 1 && <View className="h-px bg-white" />}
                     </View>
                   ))}
@@ -271,18 +289,23 @@ export function CartScreen({ navigation }: Props) {
               ))}
             </View>
 
-            <DeliveryTipCard selectedTip={tip} onSelectTip={setTip} />
             {/* Hidden per an explicit ask — not deleted. <FreeDeliveryProgressCard itemTotal={itemTotal} /> */}
             <ForgotToAddSection cartItemIds={cartItemIds} />
-            <PromoCodeCard itemTotal={itemTotal} appliedPromo={appliedPromo} />
-            <BillDetailsCard
-              itemTotal={itemTotal}
-              originalItemTotal={originalItemTotal}
-              itemCount={totalQuantity}
-              tip={tip}
-              onAddTip={() => setTip(20)}
-              discountAmount={appliedPromo?.discountAmount ?? 0}
-            />
+            <PromoCodeCard itemTotal={quote?.bill.itemTotal ?? itemTotal} appliedPromo={appliedPromo} />
+            {quote && !quoteQuery.isError && availabilityQuery.data?.eligible && <BillDetailsCard quote={quote} itemCount={totalQuantity} />}
+            {availabilityQuery.data?.issues.map((issue) => <Text key={issue.code} className="px-2 text-[13px] font-semibold text-[#B42318]">{issue.message}</Text>)}
+            {availabilityQuery.isError && <Text className="px-2 text-[13px] text-[#B42318]">Could not check item availability. <Text onPress={() => { void availabilityQuery.refetch(); }} className="font-semibold">Retry</Text></Text>}
+            {quote && quoteHasPriceChanges(items, quote) && (
+              <Text className="px-2 text-[13px] text-[#996A16]">Some pack prices or sizes have changed. You’ll be asked to confirm before ordering.</Text>
+            )}
+            {(quoteQuery.isFetching || quoteQuery.isError || !quote) && (
+              <View className="gap-2 rounded-2xl bg-white p-4">
+                <Text className="text-[13px] text-ink/65">{!accessToken ? 'Sign in to get your final bill.'
+                  : !selectedAddress ? 'Choose a delivery address to get your final bill.'
+                  : quoteQuery.isError ? quoteQuery.error.message : 'Checking current prices and fees…'}</Text>
+                {quoteQuery.isError && <Pressable onPress={() => { void quoteQuery.refetch(); }}><Text className="font-semibold text-[#155DFC]">Check again</Text></Pressable>}
+              </View>
+            )}
             <CancellationNoteCard />
           </ScrollView>
 
@@ -291,7 +314,9 @@ export function CartScreen({ navigation }: Props) {
             selectedAddress={selectedAddress}
             onAddAddress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
             onChangeAddress={() => setAddressSheetVisible(true)}
-            onProceedToPay={() => navigation.navigate('Checkout')}
+            paymentBar={<CartPaymentBar method={payment.paymentMethod} apps={payment.upiApps} total={payment.grandTotal}
+              busy={payment.isPlacingOrder} disabled={addressesLoading || !payment.methodsReady || !quote || quoteQuery.isFetching || quoteQuery.isError || !availabilityQuery.data?.eligible || availabilityQuery.isError}
+              onChoose={choosePayment} onPlaceOrder={payment.placeOrder} />}
           />
 
           <AddressSelectSheet

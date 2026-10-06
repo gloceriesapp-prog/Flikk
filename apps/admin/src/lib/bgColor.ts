@@ -67,7 +67,7 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 }
 
-export async function generateProductBgColor(imageUrl: string): Promise<string | null> {
+export async function generateProductBgColor(imageUrl: string | Buffer): Promise<string | null> {
   try {
     const palette = await Vibrant.from(imageUrl).getPalette();
 

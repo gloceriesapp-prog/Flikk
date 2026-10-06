@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Agent, fetch as undiciFetch } from 'undici';
 import { env } from '../config/env.js';
+import { measureDatabaseFetch } from '../observability/database.js';
 
 // Explicit HTTP agent, not Node's ambient global fetch — the recurring
 // "requests start failing for no reason after the backend's been running
@@ -45,7 +46,7 @@ const agent = new Agent({
   connections: 60,
 });
 
-const fetchWithAgent: typeof fetch = (input, init) => undiciFetch(input as never, { ...init, dispatcher: agent } as never) as never;
+const fetchWithAgent: typeof fetch = measureDatabaseFetch((input, init) => undiciFetch(input as never, { ...init, dispatcher: agent } as never) as never);
 
 // Service-role client: bypasses RLS. Backend-only, never shipped to any app.
 // Role-scoping is enforced in application code (see middleware/auth.ts) since
@@ -71,3 +72,9 @@ export const supabaseAuth = createClient(env.supabaseUrl, env.supabaseServiceRol
   auth: { persistSession: false },
   global: { fetch: fetchWithAgent },
 });
+
+// Called only after requests and jobs finish during process shutdown.
+export async function closeDatabaseConnections(): Promise<void> {
+  await supabase.removeAllChannels();
+  await agent.close();
+}

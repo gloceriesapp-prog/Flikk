@@ -14,6 +14,8 @@ import {
   type CartItem,
 } from '../../../store/useCartStore';
 import { useWishlistStore } from '../../../store/useWishlistStore';
+import type { CartAvailability } from '../../../api/checkout';
+import { cartIdentity } from '../../../store/cartIdentity';
 import type { Product } from '../../home/products/types';
 
 const STEPPER_TINT = '#155DFC';
@@ -21,7 +23,7 @@ const BLUE = '#155DFC';
 
 function cartItemToProduct(item: CartItem): Product {
   return {
-    id: item.id,
+    id: cartIdentity(item).productId,
     name: item.name,
     localName: '',
     weight: item.weight,
@@ -38,9 +40,16 @@ function cartItemToProduct(item: CartItem): Product {
 
 interface Props {
   item: CartItem;
+  availability?: CartAvailability['lines'][number];
 }
 
-export function CartItemRow({ item }: Props) {
+export function CartItemRow({ item, availability }: Props) {
+  const removeItem = useCartStore((state) => state.removeItem);
+  const unavailable = availability != null && !availability.eligible;
+  const productId = cartIdentity(item).productId;
+  const requestedQuantity = useCartStore((state) => state.items.reduce((sum, line) =>
+    cartIdentity(line).productId === productId ? sum + line.quantity : sum, 0));
+  const cannotIncrease = unavailable || (availability?.availableQuantity != null && requestedQuantity >= availability.availableQuantity);
   const incrementItem = useCartStore(
     (state) => state.incrementItem,
   );
@@ -50,7 +59,7 @@ export function CartItemRow({ item }: Props) {
   );
 
   const isSaved = useWishlistStore(
-    (state) => state.isWishlisted(item.id),
+    (state) => state.isWishlisted(cartIdentity(item).productId),
   );
 
   const toggleWishlist = useWishlistStore(
@@ -106,6 +115,15 @@ export function CartItemRow({ item }: Props) {
       {/* PRODUCT INFO */}
       <View className="min-w-0 flex-1 gap-1 pr-1">
 
+        {!unavailable && availability?.availableQuantity != null && availability.availableQuantity <= 10 && (
+          <Text className="mb-1 self-start rounded-md bg-[#FFF7E6] px-2 py-1 text-[11px] font-semibold text-[#946B14]">Only {availability.availableQuantity} left</Text>
+        )}
+        {unavailable && (
+          <View className="mb-1 gap-1.5">
+            <Text className="self-start rounded-md bg-[#FFF0EE] px-2 py-1 text-[11px] font-bold text-[#B42318]">{availability.message ?? 'Unavailable'}</Text>
+            <Pressable onPress={() => removeItem(item.id)} accessibilityRole="button"><Text className="text-[12px] font-semibold text-[#155DFC]">Remove item</Text></Pressable>
+          </View>
+        )}
         <Text
           numberOfLines={2}
           className="
@@ -173,73 +191,86 @@ export function CartItemRow({ item }: Props) {
       <View className="items-end gap-2">
 
         {/* QUANTITY STEPPER */}
-       {/* STEPPER */}
         <View
           className="
-            flex-row
-            items-center
-            rounded-xl
-            border
-            border-[#155DFC]/25
-            bg-[#155DFC]/[0.04]
-            p-0.5
-          "
+    flex-row
+    items-center
+    rounded-xl
+    border
+    border-gray-200
+    bg-white
+    px-1
+    py-0.5
+    shadow-sm
+  "
+          style={{
+            shadowColor: '#000',
+            shadowOffset: {
+              width: 0,
+              height: 2,
+            },
+            shadowOpacity: 0.06,
+            shadowRadius: 3,
+            elevation: 2,
+          }}
         >
           {/* MINUS */}
           <Pressable
-            onPress={() =>
-              decrementItem(item.id)
-            }
+            onPress={() => decrementItem(item.id)}
             hitSlop={8}
             className="
-              h-7
-              w-7
-              items-center
-              justify-center
-              rounded-[10px]
-              active:bg-[#155DFC]/10
-            "
+      h-7
+      w-7
+      items-center
+      justify-center
+      rounded-lg
+      active:bg-gray-100
+    "
           >
             <AppIcon
               icon={MinusSignIcon}
-              size={13}
-              color={BLUE}
+              size={14}
+              color="#155DFC"
             />
           </Pressable>
 
           {/* QUANTITY */}
           <Text
             className="
-              min-w-[24px]
-              text-center
-              text-[13px]
-              font-bold
-              text-[#155DFC]
-            "
+      min-w-[26px]
+      text-center
+      text-[13px]
+      font-bold
+      text-[#155DFC]
+    "
           >
             {item.quantity}
           </Text>
 
           {/* PLUS */}
           <Pressable
-            onPress={() =>
-              incrementItem(item.id)
-            }
+            disabled={cannotIncrease}
+            accessibilityState={{
+              disabled: cannotIncrease,
+            }}
+            onPress={() => incrementItem(item.id)}
             hitSlop={8}
             className="
-              h-7
-              w-7
-              items-center
-              justify-center
-              rounded-[10px]
-              bg-[#155DFC]
-              active:bg-[#124FD8]
-            "
+      h-7
+      w-7
+      items-center
+      justify-center
+      rounded-lg
+      active:bg-gray-100
+    "
+            style={{
+              opacity: cannotIncrease ? 0.35 : 1,
+            }}
           >
             <AppIcon
               icon={Add01Icon}
-              size={13}
-              color="#FFFFFF"
+              size={14}
+              color="#155DFC"
             />
           </Pressable>
         </View>
@@ -249,16 +280,16 @@ export function CartItemRow({ item }: Props) {
         <View className="items-end">
 
           {/* CURRENT PRICE */}
-          <RupeePrice amount={lineTotal} size={16} />
+          <RupeePrice amount={lineTotal} size={17} />
 
           {/* MRP */}
           {originalLineTotal != null && (
             <View className="mt-0.5 flex-row items-center gap-1">
-              <Text className="text-[10px] font-medium text-ink/40">
+              <Text className="text-[11px] font-semibold text-ink/40">
                 MRP
               </Text>
 
-              <RupeePrice amount={originalLineTotal} size={11} strike color="#101C1066" />
+              <RupeePrice amount={originalLineTotal} size={12} strike color="#101C1066" />
             </View>
           )}
         </View>

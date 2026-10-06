@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../../components/AppImage';
 // Top-of-Home identity row — avatar (ringed, not a bare circle — the one
 // deliberate "this app has taste" detail on the screen a store owner opens
 // every single time), the store's own name as the title, then the real
@@ -20,7 +21,7 @@
 // than a screen they visit once.
 
 import { ArrowRight01Icon, User02Icon } from '@hugeicons/core-free-icons';
-import { Image, Pressable, Switch, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';

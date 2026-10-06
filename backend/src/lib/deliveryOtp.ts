@@ -1,10 +1,11 @@
+import { randomInt } from 'node:crypto';
 // Delivery OTP — issued when an order goes out_for_delivery, matched when the
 // rider marks it delivered, then consumed (column nulled) so it's single-use.
 // Pure helpers so the security-adjacent match is unit-testable without the
 // whole PATCH handler (backend/src/routes/orders.ts wires these in).
 
 export function generateDeliveryOtp(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
+  return String(randomInt(1000, 10000));
 }
 
 // Exact match, and only when a code was actually issued — a null stored code

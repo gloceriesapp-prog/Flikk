@@ -12,6 +12,8 @@
 // at the point the tabs row sits, or the scoop shows a visible seam
 // against the header behind it.
 
+import { isFestivalTabName } from '../festival/data';
+
 export interface CategoryHeaderGradient {
   colors: readonly [string, string, string, string];
   stops: readonly [number, number, number, number];
@@ -46,30 +48,48 @@ const GRADIENT_BY_TAB_NAME: Record<string, CategoryHeaderGradient> = {
   // tabs use), so the header text/icons flip to dark on this tab only
   // (HomeHeader threads an isLightHeader flag down for exactly this). Reads
   // airy/premium rather than moody.
-  all: gradient([
- '#8EB2FC',
-  '#A5C4FD',
-  '#BDD4FF',
-  '#D5E4FF',
-  ]),
-  groceries: gradient([
-    '#D2BA98', '#E2CDAF', '#F1E2CC', '#FCF7EF',
-  ]),
-  fresh: gradient([
-    '#A1C48C', '#BED7A7', '#DFECCB', '#F8FCF2',
-  ]),
-  'meat & fish': gradient([
-    '#8DB9C6', '#AED0D9', '#D8E9ED', '#F7FBFC',
-  ]),
-  regional: gradient([
-    '#D7926E', '#E6AF8F', '#F3D2BB', '#FFF7F0',
-  ]),
-  bakery: gradient([
-    '#D5A96F', '#E9C594', '#F5E0BD', '#FFFAF1',
-  ]),
+all: gradient(['#58A754', '#2A8A41', '#237036', '#205E2F']),
+
+groceries: gradient([
+  '#D7BD9D',
+  '#D7BD9D',
+  '#D7BD9D',
+  '#D7BD9D',
+]),
+
+fresh: gradient([
+  '#B0CC9D',
+  '#B0CC9D',
+  '#B0CC9D',
+  '#B0CC9D',
+]),
+
+'meat & fish': gradient([
+  '#A5CBD5',
+  '#A5CBD5',
+  '#A5CBD5',
+  '#A5CBD5',
+]),
+
+regional: gradient([
+  '#E0B29C',
+  '#E0B29C',
+  '#E0B29C',
+  '#E0B29C',
+]),
+
+bakery: gradient([
+  '#D1AC77',
+  '#DEBE91',
+  '#ECD4B0',
+  '#F8EBD5',
+]),
 };
 
 export function gradientForTabName(name: string): CategoryHeaderGradient {
+  if (isFestivalTabName(name)) {
+    const color = '#F6C667';
+    return gradient([color, color, color, color]);
+  }
   return GRADIENT_BY_TAB_NAME[name.trim().toLowerCase()] ?? GRADIENT_BY_TAB_NAME.all;
 }
-

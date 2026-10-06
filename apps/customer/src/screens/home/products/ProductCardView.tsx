@@ -1,3 +1,5 @@
+import { useProductAvailability } from './useProductAvailability';
+import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import { useState } from 'react';
 import { Add01Icon, FlashIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
@@ -6,6 +8,7 @@ import { AppIcon } from '../../../components/AppIcon';
 import { RupeePrice } from '../../../components/RupeePrice';
 import { IconlyBookmark, IconlyBookmarkFilled } from '../../../components/icons/IconlyBookmark';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
+import { cartLineId } from '../../../store/cartIdentity';
 import { colors } from '../../../theme/tokens';
 import { getPerUnitPriceLabel } from '../../../utils/perUnitPrice';
 import { useCartStore } from '../../../store/useCartStore';
@@ -31,6 +34,7 @@ interface Props {
 }
 
 export function ProductCardView({ product, widthClassName = 'w-[32%]', showDiscountBadge = false, compact = false, onDark = false, onPress }: Props) {
+  const estimatedMinutes = useDeliveryEstimateMinutes();
   const {
     id,
     name,
@@ -45,6 +49,7 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
     isVeg = true,
   } = product;
 
+  const availability = useProductAvailability(product);
   const discountPercent = showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
   const perUnitLabel = getPerUnitPriceLabel(weight, price);
 
@@ -53,7 +58,8 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
   const isBookmarked = useWishlistStore((state) => state.isWishlisted(id));
   const toggleWishlist = useWishlistStore((state) => state.toggle);
 
-  const quantity = useCartStore((state) => state.items.find((item) => item.id === id)?.quantity ?? 0);
+  const lineId = cartLineId(id, product.defaultVariantId);
+  const quantity = useCartStore((state) => state.items.find((item) => item.id === lineId)?.quantity ?? 0);
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
@@ -91,10 +97,12 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
         <View
           className="absolute bottom-0 right-0 z-10"
         >
-          {quantity === 0 ? (
+          {!availability.isAvailable ? (
+            <View className="rounded-lg bg-[#FFF0EE] px-2 py-2"><Text className="text-[10px] font-bold text-[#B42318]">{availability.label}</Text></View>
+          ) : quantity === 0 ? (
             <Pressable
               onPress={() =>
-                addToCart({ id, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
+                addToCart({ isAvailable: availability.isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
               }
               className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
             >
@@ -106,11 +114,11 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             </Pressable>
           ) : (
             <View className="flex-row items-center gap-2.5 rounded-[8px] border border-[#155dfc] bg-white px-3 py-2">
-              <Pressable onPress={() => decrementItem(id)} hitSlop={8}>
+              <Pressable onPress={() => decrementItem(lineId)} hitSlop={8}>
                 <AppIcon icon={MinusSignIcon} size={20} color="#155dfc" strokeWidth={2.5} />
               </Pressable>
               <Text className="min-w-[12px] text-center text-[13px] font-extrabold text-[#155dfc]">{quantity}</Text>
-              <Pressable onPress={() => incrementItem(id)} hitSlop={8}>
+              <Pressable onPress={() => incrementItem(lineId)} hitSlop={8}>
                 <AppIcon icon={Add01Icon} size={20} color="#155dfc" strokeWidth={2.5} />
               </Pressable>
             </View>
@@ -168,7 +176,7 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
           />
 
           <Text className="text-[10px] font-semibold text-[#1F2937] uppercase">
-            20 mins
+            {estimatedMinutes} mins
           </Text>
         </View>
       </View>

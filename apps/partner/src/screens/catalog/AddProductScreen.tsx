@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../components/AppImage';
 // New-product form — reached from Inventory's own "Add product" button
 // (InventorySummaryCard, was "Manage stocks" with nothing wired to it).
 // Field set mirrors admin's own AddProductModal (apps/admin/src/components/
@@ -21,7 +22,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,

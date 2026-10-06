@@ -18,10 +18,10 @@ interface Props {
 // of the selected one looking like a different component.
 export function SubCategorySidebarItem({ subCategory, isSelected, onPress }: Props) {
   return (
-    <Pressable onPress={onPress} className="relative items-center gap-1.5 px-1">
+    <Pressable accessibilityRole="button" accessibilityLabel={subCategory.label} accessibilityState={{ selected: isSelected }} onPress={onPress} className="relative items-center gap-1.5 px-1">
       {/* Right rail indicator — flags the active sub-category, matches the
           reference's black bar running down the rail's outer edge. */}
-      {isSelected && <View className="absolute -right-2 bottom-1 top-1 w-[3px] rounded-full bg-ink" />}
+      {isSelected && <View className="absolute right-0 bottom-1 top-1 w-[3px] rounded-full bg-ink" />}
 
       <View
         className="h-16 w-16 items-center justify-center overflow-hidden rounded-2xl"

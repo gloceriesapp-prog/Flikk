@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../../components/AppImage';
 // One catalog card — thumbnail + name, then the two things a shop owner
 // actually scans for: price and whether it's sellable right now. No
 // category/unit/size-count line here anymore — that detail lives on
@@ -11,7 +12,7 @@
 // variant) since a single number would otherwise misreport what it
 // actually costs — see summarizeVariants in ../data.ts.
 
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';

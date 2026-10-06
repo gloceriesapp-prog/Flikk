@@ -1,32 +1,4 @@
-// The rider-handoff card — reference is a familiar food-delivery app
-// pattern (status line, rider row, action buttons), but every field here
-// is real: order.riders (name + phone, a second real lookup on
-// GET /orders/:id — see api/orders.ts's own note). The item list this
-// card used to expand inline now lives in its own OrderItemsCard, sitting
-// right below OrderInfoCard on TrackOrderScreen — no
-// fabricated rating, delivery count, or "Top X" badge — the riders table
-// has no such columns (backend/migrations/001_init.sql), and inventing a
-// specific number about a real person is a different kind of wrong than a
-// placeholder image would be. Renders nothing at all until a rider is
-// actually assigned and the order is out for delivery — never a skeleton
-// standing in for a rider who doesn't exist yet.
-//
-// Avatar: riders has no photo column at all yet, so there's no "real
-// image" branch to reach today — RIDER_AVATAR_URI is what shows for every
-// rider until one exists. If that URL itself fails to load (network blip,
-// link rot), onError swaps to the app's own generic PLACEHOLDER_IMAGE_URI
-// rather than retrying the same broken URL — a self-referential fallback
-// would just fail the same way twice. Once riders gets a real photo
-// column, that becomes the primary source and RIDER_AVATAR_URI becomes
-// the fallback for riders who haven't uploaded one.
-//
-// Call opens the rider's real phone number via tel:. Chat opens WhatsApp
-// (wa.me — works whether or not WhatsApp is installed, falls back to the
-// web client) — no in-app chat infra exists, this is the honest
-// approximation every quick-commerce app actually uses for this exact
-// button. Add tip is dropped entirely — no tipping flow exists to wire it
-// to, and an unlabelled no-op here would look broken, not "coming soon".
-
+// Rider card remains visible for active orders, including assignment pending.
 import { useState } from 'react';
 import { Call02Icon, Message01Icon, StarIcon } from '@hugeicons/core-free-icons';
 import { Linking, Pressable, Text, View } from 'react-native';
@@ -40,25 +12,17 @@ interface Props {
   order: ApiOrder;
 }
 
-// name/phone/deliveries are always real once a rider is actually assigned
-// (routes/orders.ts's own GET /:id note — deliveries is a real COUNT
-// query, not a stored column). rating stays fabricated on purpose per an
-// explicit ask — riders has no rating column at all
-// (backend/migrations/001_init.sql), and this is the one field this card
-// still shows without a real number behind it. DUMMY_RIDER only backs
-// fields that genuinely have no real source yet (rating) plus a last-
-// resort fallback for the vanishingly rare case the riders lookup itself
-// comes back empty despite rider_id being set.
-const DUMMY_RIDER = { name: 'Ravi Kumar', phone: '+919876543210', rating: 4.9, deliveries: 2819 };
+// Preserve the existing rating presentation; no rider rating field exists yet.
+const DISPLAY_RATING = 4.9;
 const RIDER_AVATAR_URI = 'https://i.pinimg.com/736x/d0/21/cc/d021cc669f8688a757199873421035f3.jpg';
 
 function digitsOnly(phone: string): string {
   return phone.replace(/[^0-9]/g, '');
 }
 
-function ActionButton({ icon, label, onPress }: { icon: Parameters<typeof AppIcon>[0]['icon']; label: string; onPress: () => void }) {
+function ActionButton({ icon, label, onPress, disabled = false }: { icon: Parameters<typeof AppIcon>[0]['icon']; label: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable onPress={onPress} className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-gray-100 py-3">
+    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled }} style={{ opacity: disabled ? 0.45 : 1 }} className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-gray-100 py-3">
       <AppIcon icon={icon} size={16} color={colors.ink} />
       <Text className="text-[15px] font-semibold text-ink">{label}</Text>
     </Pressable>
@@ -67,35 +31,27 @@ function ActionButton({ icon, label, onPress }: { icon: Parameters<typeof AppIco
 
 export function DeliveryRiderCard({ order }: Props) {
   const [avatarUri, setAvatarUri] = useState(RIDER_AVATAR_URI);
-  const rider = order.riders ?? DUMMY_RIDER;
-  const isRealRider = !!order.riders;
-
-  // Real fix, not just the header comment's claim finally matching the
-  // code — this used to also render (with DUMMY_RIDER's fabricated "picked
-  // up your order... headed your way" line) while the order was still
-  // 'placed'/'packed', i.e. before a rider had even been assigned, let
-  // alone picked anything up. Only 'out_for_delivery' is the real
-  // "rider has it" state (backend/src/lib/orderStateMachine.ts's own
-  // timestampColumnFor('out_for_delivery') -> 'picked_up_at') — this is
-  // also what makes this card and TrackOrderScreen's own Cancel button
-  // mutually exclusive for free: isCancellable there is true for exactly
-  // 'placed'/'packed', the two statuses this card now excludes alongside
-  // 'delivered'/'cancelled'.
-  if (order.status !== 'out_for_delivery') return null;
+  const rider = order.riders;
+  const isRealRider = !!rider;
+  if (!['placed', 'packed', 'out_for_delivery'].includes(order.status)) return null;
 
   const storeName = order.stores?.name ?? 'The store';
 
   return (
     <View className="w-full rounded-3xl bg-white p-5">
       <Text className="text-[14.5px] font-medium leading-6 text-ink/90">
-        {rider.name} picked up your order from {storeName} and is headed your way.
+        {rider
+          ? order.status === 'out_for_delivery'
+            ? `${rider.name} picked up your order from ${storeName} and is headed your way.`
+            : `${rider.name} will pick up your order from ${storeName} once it’s ready.`
+          : 'We’ll show your delivery partner here once a rider is assigned.'}
       </Text>
 
       {/* Delivery code — the real orders.delivery_otp (api/orders.ts), only
           non-null while out_for_delivery. Read it out to the rider at the
           door; they enter it to complete delivery. tabular-nums + wide
           tracking so the four digits read cleanly at a glance. */}
-      {order.delivery_otp ? (
+      {order.status === 'out_for_delivery' && order.delivery_otp ? (
         <View className="mt-4 flex-row items-center justify-between rounded-2xl bg-lime-soft px-4 py-3">
           <View>
             <Text className="text-[12.5px] font-semibold uppercase tracking-wide text-lime-deep">Delivery code</Text>
@@ -107,28 +63,24 @@ export function DeliveryRiderCard({ order }: Props) {
 
       <View className="mt-4 flex-row items-center gap-3">
         <Image
-          source={{ uri: avatarUri }}
+          source={{ uri: isRealRider ? avatarUri : PLACEHOLDER_IMAGE_URI }}
           onError={() => setAvatarUri(PLACEHOLDER_IMAGE_URI)}
           className="h-11 w-11 rounded-full bg-gray-100"
         />
         <View>
-          <Text className="text-[14px] font-medium text-ink">{rider.name}</Text>
-          {/* Rating stays DUMMY_RIDER's fabricated value on purpose (riders
-              has no real rating column, this file's own note on why) —
-              deliveries is the real count once a real rider is assigned,
-              DUMMY_RIDER.deliveries only as the emergency fallback. */}
-          <View className="mt-0.5 flex-row items-center gap-1">
+          <Text className="text-[14px] font-medium text-ink">{rider?.name ?? 'Your delivery partner'}</Text>
+          {rider ? <View className="mt-0.5 flex-row items-center gap-1">
             <AppIcon icon={StarIcon} size={13} color={colors.gold} fill={colors.gold} />
-            <Text className="text-[12.5px] font-medium text-ink/60">{DUMMY_RIDER.rating}</Text>
+            <Text className="text-[12.5px] font-medium text-ink/60">{DISPLAY_RATING}</Text>
             <Text className="text-[12.5px] font-medium text-ink/60"> · {rider.deliveries.toLocaleString('en-IN')} deliveries</Text>
-          </View>
-          {isRealRider ? <Text className="mt-0.5 text-[12.5px] font-medium text-ink/40">{rider.phone}</Text> : null}
+          </View> : <Text className="mt-0.5 text-[12.5px] font-medium text-ink/50">Rider assignment pending</Text>}
+          {rider ? <Text className="mt-0.5 text-[12.5px] font-medium text-ink/40">{rider.phone}</Text> : null}
         </View>
       </View>
 
       <View className="mt-4 flex-row gap-2.5">
-        <ActionButton icon={Call02Icon} label="Call" onPress={() => Linking.openURL(`tel:${rider.phone}`)} />
-        <ActionButton icon={Message01Icon} label="Chat" onPress={() => Linking.openURL(`https://wa.me/${digitsOnly(rider.phone)}`)} />
+        <ActionButton icon={Call02Icon} label="Call" disabled={!rider?.phone} onPress={() => { if (rider?.phone) void Linking.openURL(`tel:${rider.phone}`); }} />
+        <ActionButton icon={Message01Icon} label="Chat" disabled={!rider?.phone} onPress={() => { if (rider?.phone) void Linking.openURL(`https://wa.me/${digitsOnly(rider.phone)}`); }} />
       </View>
     </View>
   );

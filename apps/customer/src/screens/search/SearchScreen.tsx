@@ -16,7 +16,7 @@
 // to be a single centered placeholder line.
 
 import { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StoreCard } from '../store-list/components/StoreCard';
@@ -43,9 +43,10 @@ export function SearchScreen({ navigation }: Props) {
     return allStores.filter((store) => store.name.toLowerCase().includes(needle));
   }, [allStores, isSearching, trimmedQuery]);
 
-  const { data: matchingProducts = [], isLoading: isLoadingProducts } = useProductSearch(query);
+  const search = useProductSearch(query);
+  const { data: matchingProducts = [], isLoading: isLoadingProducts } = search;
 
-  const hasNoResults = isSearching && !isLoadingProducts && matchingStores.length === 0 && matchingProducts.length === 0;
+  const hasNoResults = isSearching && !isLoadingProducts && !search.isError && !search.isDebouncing && matchingStores.length === 0 && matchingProducts.length === 0;
 
   return (
     <View className="flex-1 bg-white">
@@ -60,6 +61,13 @@ export function SearchScreen({ navigation }: Props) {
       <ScrollView contentContainerClassName="pb-10">
         {!isSearching ? (
           <SearchSuggestions />
+        ) : search.isError ? (
+          <View className="items-center gap-3 px-6 py-12">
+            <Text className="text-center text-base text-ink/60">We couldn’t load results. Check your connection and retry.</Text>
+            <Pressable accessibilityRole="button" onPress={() => void search.refetch()} className="rounded-xl bg-[#155DFC] px-5 py-3"><Text className="font-bold text-white">Retry search</Text></Pressable>
+          </View>
+        ) : isLoadingProducts || search.isDebouncing ? (
+          <ActivityIndicator className="py-12" color="#155DFC" />
         ) : hasNoResults ? (
           <View className="items-center px-6 pt-16">
             <Text className="text-center text-[15px] font-medium text-ink/50">No results for &quot;{trimmedQuery}&quot;</Text>
@@ -78,6 +86,7 @@ export function SearchScreen({ navigation }: Props) {
             ) : null}
 
             {matchingProducts.length > 0 ? <ProductSection title="Products" products={matchingProducts} /> : null}
+            {search.hasNextPage && <Pressable accessibilityRole="button" disabled={search.isFetchingNextPage} onPress={() => void search.fetchNextPage()} className="mx-5 my-4 items-center rounded-xl bg-[#EEF3FF] py-3"><Text className="font-semibold text-[#155DFC]">{search.isFetchingNextPage ? 'Loading…' : 'Show more products'}</Text></Pressable>}
           </>
         )}
       </ScrollView>

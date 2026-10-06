@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../components/AppImage';
 // Verifies the code sent by LoginScreen, then persists the session and
 // hands off. Doesn't navigate anywhere itself on success — RootNavigator
 // swaps away from the auth stack automatically once useAuthStore's
@@ -19,7 +20,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft01Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
-import { Image, KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp, verifyOtp } from '../../api/auth';

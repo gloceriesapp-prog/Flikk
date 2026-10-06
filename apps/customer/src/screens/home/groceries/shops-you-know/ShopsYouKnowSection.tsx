@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { BrowseLoadingText, BROWSE_LOADING_COPY } from '../../loading/BrowseLoadingText';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../../../navigation/types';
@@ -32,7 +33,7 @@ export function ShopsYouKnowSection() {
             </>
           ) : isLoading ? (
             <>
-              <ActivityIndicator accessibilityLabel="Loading nearby grocery stores" />
+              <BrowseLoadingText message={BROWSE_LOADING_COPY.grocery} />
               <Text className="text-center text-sm text-ink/60">Finding shops and their grocery picks…</Text>
             </>
           ) : isError ? (

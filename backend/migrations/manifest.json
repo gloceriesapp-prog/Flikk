@@ -1,0 +1,389 @@
+{
+  "version": 1,
+  "migrations": [
+    {
+      "file": "001_init.sql",
+      "sha256": "7e1cd614c4e9179017306639691b1d475e6d92cfcac6df001ff72bec6928e45b"
+    },
+    {
+      "file": "002_create_order_fn.sql",
+      "sha256": "99f01dadc565f70feb178402c3b21beee7d65364ea30c513dedfd338bad0b860"
+    },
+    {
+      "file": "003_store_onboarding_fields.sql",
+      "sha256": "2a1f3ef039d5498144094311cbb06a92321d020a18b8605d6852daea1a5b003a"
+    },
+    {
+      "file": "004_users_birthday.sql",
+      "sha256": "2c044c8694f3266af6c54b3a571ab03552ce0865ad4b93ec3533abba4f787346"
+    },
+    {
+      "file": "005_stores_lat_lng.sql",
+      "sha256": "1007671833be00c02eff3b1cb5f95d3bb20a6f7a08a18e54907b68f658c148bd"
+    },
+    {
+      "file": "006_payout_upi.sql",
+      "sha256": "fa28290e0859c3301178e3869fdca8f1b80984c1441d1cd9c9782edc7114ee97"
+    },
+    {
+      "file": "091_legacy_schema_prerequisites.sql",
+      "sha256": "a6199a48c169e5cb783de5a28d0c672ca713d053c39978ebb679fefdd836c006"
+    },
+    {
+      "file": "007_draft_owner_shop_license.sql",
+      "sha256": "88946900d49f507d8d5ca988f6e5fdb905c68c079fe84ac685508334c9e44aa0"
+    },
+    {
+      "file": "008_draft_rejection_reason.sql",
+      "sha256": "b5bf214509cc73de4e9d28eae523061471a6085326fe6b4b8c2ce1940a06a632"
+    },
+    {
+      "file": "009_payout_upi_verified_name.sql",
+      "sha256": "e9e097f4e1489fd8d469775ba0473dc5373f093c0c5d6063dfcbe57c0938e164"
+    },
+    {
+      "file": "010_payout_verification_fields.sql",
+      "sha256": "710cb9568d2eb9fb70d51843d4128ea18140ae359b47281d51fa6900dd885954"
+    },
+    {
+      "file": "011_payout_bank_account.sql",
+      "sha256": "7530fa750b37dbe6d473a23fab63310170643bca4c1731ee0184aeedd74ada4d"
+    },
+    {
+      "file": "012_weekly_payout_release.sql",
+      "sha256": "06b4cf554f0b6de0912e2a457565895e5469e8195dc3d598ece13d3d27705d66"
+    },
+    {
+      "file": "013_order_cancel_reason.sql",
+      "sha256": "a13d268b6d459b9509fe106237ee0b5616c6f63ebf08c3d3bba88d6495a32670"
+    },
+    {
+      "file": "014_trips.sql",
+      "sha256": "3e13d7a9bef3c8e84cda8c930717f5d4304254d853cd0cea0f3c2029adae7834"
+    },
+    {
+      "file": "015_create_trip_orders_fn.sql",
+      "sha256": "51f1280d5bf788d2a264e77284ab377f74e4470cb09f7eb6876c18e8bf40f88b"
+    },
+    {
+      "file": "016_payout_paid_at.sql",
+      "sha256": "873e2b124cf07866172c57bfd09bb004f085fe40024a3d8853f965c006b0b972"
+    },
+    {
+      "file": "017_enable_realtime.sql",
+      "sha256": "6a77251585668d97b9c582135d5f5c52e4178ae08a1173df4222e7967f9b507d"
+    },
+    {
+      "file": "018_festival_section.sql",
+      "sha256": "c5c44e36c6daf2ebb2cb64ad83186f509ed96cf63453c9d2bb9c5aa933dc0f1b"
+    },
+    {
+      "file": "019_promo_codes.sql",
+      "sha256": "f0a76a5ced6832be4ebcd387714bbda71bc508d57d5340d1b3ca4ff509651e09"
+    },
+    {
+      "file": "020_reviews.sql",
+      "sha256": "bf97a46c34e5f9b1cc5c78f3e3c9eda9b4c0cf2171b724259912ef5d18d0fcb0"
+    },
+    {
+      "file": "021_wishlist.sql",
+      "sha256": "3febfceb3a04c8465aca872b9b957c9d76068f3eaf6dff4767411ddeaa53c313"
+    },
+    {
+      "file": "022_referrals.sql",
+      "sha256": "d44333dca5e04b97f212c742d661ac27b18eb17379be88852889bb183393ffec"
+    },
+    {
+      "file": "023_promo_order_functions.sql",
+      "sha256": "6e9e7af7691312d5cb0bf081ceac7ca35735f31477ae8caf08f61a6c98247a13"
+    },
+    {
+      "file": "024_drop_old_order_functions.sql",
+      "sha256": "d22761ea1bc2738f24170112fd1171d1cec5cfc45cdce876e9f3a4a62ca13233"
+    },
+    {
+      "file": "025_harden_functions_security.sql",
+      "sha256": "d045af031db6a51405b6f9e4f53b7c936b7ebdfb469fd58342040fa6aaadae71"
+    },
+    {
+      "file": "026_add_missing_fk_indexes.sql",
+      "sha256": "4e80d708ec65a96386b05d12dc7adc3bc8299c4877ed8c7e7a3b7a57970aa94d"
+    },
+    {
+      "file": "027_optimize_rls_auth_calls.sql",
+      "sha256": "0439b7ebc0480d83737b3c301ae29be62c445258c445a2f0b43711727919699c"
+    },
+    {
+      "file": "028_consolidate_permissive_policies.sql",
+      "sha256": "fa0711bf344ba71563c8b4b398ca91212815133e5b4f3e9ae9d5922e0e8546ce"
+    },
+    {
+      "file": "029_delivery_settings.sql",
+      "sha256": "5c5b8c1fd5128882b1f4782371816f204328b277080c5544426127a4bd608e75"
+    },
+    {
+      "file": "030_delivery_settings_handling_fee.sql",
+      "sha256": "584f46d1c9bafa703324435235f7f9440f7a9494ef5d3cb375a5b0ec5023e3a9"
+    },
+    {
+      "file": "031_soft_delete_addresses.sql",
+      "sha256": "970c5824cf182bba062b4a0d41f1b7e0c7a49e3b0d1ec0ba1cca2de564c01456"
+    },
+    {
+      "file": "032_area_upvotes.sql",
+      "sha256": "013159fa044260d2a683c8dfa1de7faaba8bf7e73dd1875ec27fe7e98aabc363"
+    },
+    {
+      "file": "033_order_refunds.sql",
+      "sha256": "bd103ad5b7a93e38e6e22df05764429193787dd3cee21b193b19fa014536df85"
+    },
+    {
+      "file": "034_order_payment_method.sql",
+      "sha256": "692988202784f72a383bfe0b6508560f85775796f4dde0bba2e836470bc6ae4f"
+    },
+    {
+      "file": "035_store_draft_documents.sql",
+      "sha256": "dd5ab6ed339f3839d294c0e79589474a50e3e312ac4dec387f230ed3a1c567a2"
+    },
+    {
+      "file": "036_rider_dispatch.sql",
+      "sha256": "c33ffd45de3d58ca643e99591779e6a10f56dbb7f0108e110d3452aaabbeec41"
+    },
+    {
+      "file": "037_store_draft_manual_address.sql",
+      "sha256": "7cc07b34680a7ea5b5391308fbc064702fc866619c7dc2769a0b526e1ee4d7bd"
+    },
+    {
+      "file": "038_onboarding_v2_fields.sql",
+      "sha256": "0b8e4a0bd1a9026e975bba1ce4c41bbf927f6f050f85f5ef51410bb9133af7a8"
+    },
+    {
+      "file": "039_platform_settings.sql",
+      "sha256": "4bc1723ffc2241a7d719122560ce3c7cf606c3c2133b5c687a2e91b30ef7e4f8"
+    },
+    {
+      "file": "040_seasonal_section.sql",
+      "sha256": "26418c7cb8f96ba9cb031a7d731428a71a42c571ffbd13937de2ff7bc9316573"
+    },
+    {
+      "file": "041_order_handling_fee.sql",
+      "sha256": "8db06ec0fda74950c9b70948bea110b514f84c10ee29cac33e3c0788c93cba49"
+    },
+    {
+      "file": "042_rider_onboarding.sql",
+      "sha256": "278c924e42adee51c3275c06b149812f05c776a17a655e504989ca4f9128162a"
+    },
+    {
+      "file": "043_realtime_onboarding_drafts.sql",
+      "sha256": "5f28c2c0659eaf842f06bb39de1dc5dfaeb7a3f91667ef200a98a3f60b762a33"
+    },
+    {
+      "file": "044_riders_created_at.sql",
+      "sha256": "b0cbeba27e40a6ca74c0f2db989b77a525f35b60f913fc58475349e734347de0"
+    },
+    {
+      "file": "045_rider_payout_upi.sql",
+      "sha256": "9e2be7e1806bf5e3a857803e2aa21b533a356f63e62563385670fe3b50a087b4"
+    },
+    {
+      "file": "046_rider_code.sql",
+      "sha256": "d4ef8620f5d13c48cd29bf3f62fbefcdc3c83d0855538c80b0c2090249edb70e"
+    },
+    {
+      "file": "047_rider_profile_photo.sql",
+      "sha256": "6108a7fc63e1de70fa9e2d8160226fa00ea846e96ab21f800950f47554b731c7"
+    },
+    {
+      "file": "048_stores_delivery_radius.sql",
+      "sha256": "f81f406b6e1be182ee73b43e038a664957ce4e7e8add61c5296f0977c0fd4bbc"
+    },
+    {
+      "file": "049_delivery_otp.sql",
+      "sha256": "6828ed0d1384159042397dc04f9e4dcd4614141ab0d926fa5175c9561ae54d60"
+    },
+    {
+      "file": "050_rider_weekly_payouts.sql",
+      "sha256": "8bb1df1dd0f4d083056bddc4fc41ab206776cc03a534ddbf1b8977dfb4ea9d1a"
+    },
+    {
+      "file": "051_reconcile_phone_identity.sql",
+      "sha256": "bef11144358f49e79afb1983dc20bd085848313644edb58466fdd97e4cb41632"
+    },
+    {
+      "file": "051_rider_payout_compute_fn.sql",
+      "sha256": "b4d110ca8e7ae31c7a2cf19d2a6c95ba6ca701b7e0aefb81a28012a893847a21"
+    },
+    {
+      "file": "052_order_failed_status.sql",
+      "sha256": "52f87c4745c260361a00b7f8822e4a3d28b35aef84ed4bced12046f4df2a3bd7"
+    },
+    {
+      "file": "053_review_reply.sql",
+      "sha256": "76de0563467a2cbf6b8e8834fb2b88a9b92edf3a32bd97ed13039ab40f35cf71"
+    },
+    {
+      "file": "054_notifications.sql",
+      "sha256": "f8d5c4c9b96e26ae3618869821daf957ce85605b1e43048fb5708fa4aaf46a61"
+    },
+    {
+      "file": "055_rider_availability.sql",
+      "sha256": "5188bb309de3204422df7e8bda6d6dc63382a04b75bf13d73f75df5e4be85f5f"
+    },
+    {
+      "file": "056_festival_greeting.sql",
+      "sha256": "1185ecd7b0ada0e2a3d0deef7371de773769295fc8403024d3f98c1eda9375aa"
+    },
+    {
+      "file": "057_rider_dispatch_hardening.sql",
+      "sha256": "9e05dc3bcda631bede494807d83a757ed138cfb1e4cb71b1ea4f14048047b15d"
+    },
+    {
+      "file": "058_home_sections.sql",
+      "sha256": "6b9a21546e07fc8303b1a6999b3ee97bcd66c3fbfdb97f29ef1a57f93966628f"
+    },
+    {
+      "file": "059_home_content.sql",
+      "sha256": "c26e51ae2225e4d971468aff8df7439b4268d6c4b86289ee8aef9e9de7c66c96"
+    },
+    {
+      "file": "060_order_item_mrp_snapshot.sql",
+      "sha256": "100f01b5cb2678b8592f82f9e78bdb86698074f8eb954ae975976fec00c62848"
+    },
+    {
+      "file": "061_delivery_estimate.sql",
+      "sha256": "7bdb6d8b25176ac491433e16f67d4436bb94b291b12b6a40cb988e61d697e076"
+    },
+    {
+      "file": "062_order_product_variants.sql",
+      "sha256": "dca0a2afc01c2f2110759b135a2de2acdc5f73fad595adeef9b3554ccc1c5d1c"
+    },
+    {
+      "file": "063_checkout_eligibility_inventory.sql",
+      "sha256": "7dfedf5920ae7305438c34d99ca6b15411a827d4a3afb4a69c95206f186372bd"
+    },
+    {
+      "file": "064_checkout_attempts_payment_recovery.sql",
+      "sha256": "9664fc9acbccd9d56a09f6b7cb6add5c4529ef60efe3cd40412b8715c9962791"
+    },
+    {
+      "file": "065_trip_cancellation.sql",
+      "sha256": "57ffb3cc14176a7405a4e0f89279f6f5c25d9ccf161b8fd88315dd76786dccb8"
+    },
+    {
+      "file": "066_customer_support_refunds.sql",
+      "sha256": "d8d7f513d137aa1d215032a9024d8ea58611650c6c6efae0fa3c991b0398c276"
+    },
+    {
+      "file": "067_customer_notifications.sql",
+      "sha256": "d7179466b38afa5e65d2aa9fab9a09ef121e16b82e696dcc9672626cd2cb4b0e"
+    },
+    {
+      "file": "068_scoped_inventory_sync.sql",
+      "sha256": "87e1b4e4cffe627e7b29d81a06f4b27e83f0b269647471802369b0e38ff294c9"
+    },
+    {
+      "file": "069_request_auth_context.sql",
+      "sha256": "889723f7493956aead6a1b0246ee4bd2bf0aef1c4f93e3d23280aefd7ce1cf23"
+    },
+    {
+      "file": "070_tracking_live_revision.sql",
+      "sha256": "869a5079350a4a2811f26fb8a343aeb997fab1c708331017104b407d05847dc7"
+    },
+    {
+      "file": "071_auth_session_expiry.sql",
+      "sha256": "d513144f2e8fc4fe0c4dfa322c71f1fb017c5c69127270f1318cf0c411f59ec2"
+    },
+    {
+      "file": "072_bounded_collection_browse.sql",
+      "sha256": "400aa448de7a1fa75312207d6a4754d1b9f2594c5dbc9ab4663c6639d2392be5"
+    },
+    {
+      "file": "073_history_query_indexes.sql",
+      "sha256": "2a0dd39555ad251bc5e248fd972ce04ecd0d4ad9fec2ffb68d5716da6ecee17b"
+    },
+    {
+      "file": "074_indexed_store_discovery.sql",
+      "sha256": "eff93beffbc4205c893fdfc21e5e85ba9c73f7a1034b50eb0430c4e82595ab1e"
+    },
+    {
+      "file": "075_durable_background_workers.sql",
+      "sha256": "5c8c408d9934e058009fda034108ee7cea5b8c2d3f0122f8d47490b6ce6d0494"
+    },
+    {
+      "file": "076_prompt_reservation_expiry.sql",
+      "sha256": "0df0c0aa5651851a646c0dbf32f137b9652778c05dee6e440cdcbeb341d13273"
+    },
+    {
+      "file": "077_capacity_observability.sql",
+      "sha256": "4d8d4cacb2cc187d85bd23224bdd4d7f648ad4e26c5438a5f8b25cd21686aa4f"
+    },
+    {
+      "file": "078_server_owned_commerce_writes.sql",
+      "sha256": "3695efbe61f879047a37104c315522824e8bdba42bbf2a56e802e143a730e952"
+    },
+    {
+      "file": "079_private_storefronts_delivery_codes.sql",
+      "sha256": "3b91e7b417138407619ff2f9ff8025b2164d3a28b1a2a16e2c046defaae345aa"
+    },
+    {
+      "file": "080_atomic_order_financial_effects.sql",
+      "sha256": "401cef9d596903ef1e4c81811c763f439746b57dc7fff8a728c868e167100ba1"
+    },
+    {
+      "file": "081_order_refund_observability.sql",
+      "sha256": "1aec768b97b4426e4736ab4fefc9a6f9b32d61d4162ae52d7192ff18eb8f7da7"
+    },
+    {
+      "file": "082_customer_startup_addresses_auth.sql",
+      "sha256": "f9d0542027bcccd1e7e42a905c2a4d1f4a81e7551e13f5cdd1b56dd765771668"
+    },
+    {
+      "file": "083_atomic_promos_receipt_snapshots.sql",
+      "sha256": "d25bdea703c7f00a356e80c07549c27da507e361a98aac4df5c44c94caccea15"
+    },
+    {
+      "file": "084_address_scoped_browse_search.sql",
+      "sha256": "532478eb5b2de96d9562f1bbbaa4bcabfeb0a722a490e976b75ccea4b38ce42f"
+    },
+    {
+      "file": "085_push_receipts_account_deletion.sql",
+      "sha256": "e8d881319532b3d35fa1d462a3971b100cee6175c0e0943d68aaab29c002d6a3"
+    },
+    {
+      "file": "086_counted_pack_inventory_popularity.sql",
+      "sha256": "605abe729b9e61dd3016236d251f741d1370f048e3c2113c541bcde4491cc5a6"
+    },
+    {
+      "file": "087_checkout_delivery_address_snapshots.sql",
+      "sha256": "742c991840357910b5b151f2b9493028891b21ee6c16a2504bf47ac7a960547c"
+    },
+    {
+      "file": "088_atomic_customer_reviews.sql",
+      "sha256": "d0668b4dca8e8f2e3ea9255dd8ef29906cfe657198de156558a48b0d36d3cb71"
+    },
+    {
+      "file": "089_atomic_trip_delivery.sql",
+      "sha256": "c7b8d9130388481384093f5cd05d41a3b55e2c7e96cce1d4c1efeb4cd290f2ac"
+    },
+    {
+      "file": "090_bounded_repeat_purchase_candidates.sql",
+      "sha256": "b298ab931e2366295e4eb5bef6186e3ef2533446962be2e977212583624ed326"
+    },
+    {
+      "file": "092_private_application_rpcs.sql",
+      "sha256": "51420cc1055a583d4670b9b77469fb1b2b0a96c9f2a5b9091d5174f1c85a5473"
+    },
+    {
+      "file": "093_persistent_browse_visibility.sql",
+      "sha256": "8fed2c836bfb4893f8292089d13232879ede205fe1848c435a64023d0402aaa6"
+    },
+    {
+      "file": "094_media_storage_split.sql",
+      "sha256": "3ca1355c600ba9cbe735d7f676af65e7c2b20af0981bb787c11b3acf0e95d9d0"
+    },
+    {
+      "file": "095_promotional_delivery_queue.sql",
+      "sha256": "3b6bfc05b35fb4bbdf62542b29bbe7231dc51af56fb3b004e1bafd7e11728f7c"
+    }
+  ]
+}

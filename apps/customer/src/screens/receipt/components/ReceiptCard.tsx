@@ -36,11 +36,10 @@ interface Props {
   items: CartItem[];
   itemTotal: number;
   total: number;
-  // Real order.placed_at + the store's avg_prep_minutes (route params,
-  // from POST /orders's own response) — same ETA math TrackOrderScreen
-  // uses, so a customer sees one consistent estimate across both screens.
+  // The server-recorded delivery deadline, shared with order tracking.
   placedAt: string;
-  avgPrepMinutes: number | null;
+  estimatedDeliveryMinutes?: number | null;
+  estimatedDeliveryAt?: string | null;
 }
 
 function FeeRow({ label, value }: { label: string; value: number }) {
@@ -71,7 +70,8 @@ export function ReceiptCard({
   itemTotal,
   total,
   placedAt,
-  avgPrepMinutes,
+  estimatedDeliveryMinutes,
+  estimatedDeliveryAt,
 }: Props) {
   // Real placed_at now, not `new Date()` at render time — this card can
   // render a little after the order actually landed (payment-processing
@@ -80,7 +80,7 @@ export function ReceiptCard({
   const orderedAt = new Date(placedAt);
   const dateLabel = orderedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeLabel = orderedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  const eta = estimateDeliveryTime(placedAt, avgPrepMinutes);
+  const eta = estimateDeliveryTime(placedAt, estimatedDeliveryMinutes, estimatedDeliveryAt);
   const receiptUrl = `https://flikk.app/r/${orderId.replace('#', '')}`;
   const paymentStatusLabel =
     paymentMethodLabel === 'Cash on Delivery' ? 'Cash on Delivery' : `Paid via ${paymentMethodLabel}`;

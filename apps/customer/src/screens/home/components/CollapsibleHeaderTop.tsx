@@ -77,7 +77,9 @@ export function CollapsibleHeaderTop({ scrollY, onChangeLocation, isClosed = fal
     <Animated.View style={animatedStyle} className="gap-1 overflow-hidden">
       {/* <EtaBadge minutes={PLACEHOLDER_ETA_MINUTES} /> */}
       <View className="flex-row items-center justify-between">
-        <LocationSelector onPress={onChangeLocation} isClosed={isClosed} light={light} />
+        <View className="min-w-0 flex-1 pr-3">
+          <LocationSelector onPress={onChangeLocation} isClosed={isClosed} light={light} />
+        </View>
         <DeliveryModeSwitcher light={light} />
       </View>
     </Animated.View>

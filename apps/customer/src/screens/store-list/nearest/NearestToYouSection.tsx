@@ -10,9 +10,6 @@
 // - Bookmark remains connected to useLikedStoresStore
 // - Bookmark press does not accidentally open StoreDetail
 //
-// TEMP dummy data is intentionally preserved from the supplied code
-// for previewing the section before a delivery location is available.
-
 import { useEffect } from 'react';
 import {
   Pressable,
@@ -35,8 +32,8 @@ import {
 } from '../../../components/AppImage';
 
 import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
+import { useLocationStore } from '../../../store/useLocationStore';
 import { useLikedStoresStore } from '../../../store/useLikedStoresStore';
 import { getStoreStatusText } from '../storeHours';
 
@@ -49,44 +46,6 @@ import type { AppStackParamList } from '../../../navigation/types';
 
 const CARD_WIDTH = 232;
 const PHOTO_HEIGHT = 145;
-const STORE_IMAGE_URI =
-  'https://i.pinimg.com/1200x/a1/97/63/a197635a14b632f42cc62a07bb49d197.jpg';
-
-// TEMP preview data.
-// Remove before production once nearest stores always have a location.
-const DUMMY_STORES: NearestStore[] = [
-  {
-    id: 'dummy-1',
-    name: 'Kaup Kirana Mart',
-    category: 'Grocery',
-    rating: 4.5,
-    distanceKm: 0.8,
-    isOpen: true,
-    openTime: '07:00',
-    closeTime: '22:00',
-  },
-  {
-    id: 'dummy-2',
-    name: 'Coastal Fresh Store',
-    category: 'Supermarket',
-    rating: 4.2,
-    distanceKm: 1.4,
-    isOpen: true,
-    openTime: '08:00',
-    closeTime: '21:30',
-  },
-  {
-    id: 'dummy-3',
-    name: 'Udupi Daily Needs',
-    category: 'Grocery',
-    rating: 4.8,
-    distanceKm: 2.1,
-    isOpen: false,
-    openTime: '09:00',
-    closeTime: '20:00',
-  },
-];
-
 function NearestStoreCard({
   store,
 }: {
@@ -150,7 +109,7 @@ function NearestStoreCard({
           }}
         >
           <Image
-  source={{ uri: STORE_IMAGE_URI }}
+  source={{ uri: store.photoUrl || PLACEHOLDER_IMAGE_URI }}
   className="h-full w-full"
   contentFit="cover"
 />
@@ -364,23 +323,28 @@ function NearestStoreCard({
 }
 
 export function NearestToYouSection() {
-  const {
-    data: realStores = [],
-  } = useNearestStores();
-
-  // TEMP fallback for previewing this section
-  // without a delivery location.
-  const stores =
-    realStores.length > 0
-      ? realStores
-      : DUMMY_STORES;
+  const location = useLocationStore(state => state.location);
+  const { data: stores = [], isPending, isError, refetch } = useNearestStores();
 
   useEffect(() => {
-    prefetchImages([STORE_IMAGE_URI]);
+    prefetchImages(stores.flatMap(store => store.photoUrl ? [store.photoUrl] : []));
   }, [stores]);
 
   if (stores.length === 0) {
-    return null;
+    return (
+      <View className="px-5 pt-6">
+        <Text className="mb-3 text-lg font-semibold text-ink">Nearest to you</Text>
+        <Text className="text-sm text-ink/60">
+          {!location ? 'Choose your location to discover nearby shops.'
+            : isError ? 'Could not find nearby shops. Please try again.'
+            : isPending ? 'Finding your neighbourhood favourites…'
+            : 'No shops nearby yet. Try another delivery location.'}
+        </Text>
+        {isError && <Pressable onPress={() => void refetch()} accessibilityRole="button" className="mt-3">
+          <Text className="font-semibold text-[#155DFC]">Try again</Text>
+        </Pressable>}
+      </View>
+    );
   }
 
   return (

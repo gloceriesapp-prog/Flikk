@@ -15,10 +15,8 @@
 //
 // Store-scoping unchanged: useNearestStore resolves the one nearest store here
 // and the deals feeds (useDealsProducts) query that store's own catalog.
-// Festival greeting keeps its OWN admin control (festival_greeting table via
-// useFestivalGreeting) for its copy/categories; home_sections only controls its
-// order / on-off / bg for the 'festival-greeting' key (its isActive flag still
-// gates it too, ANDed with the home_sections enabled flag).
+// Festival content belongs to Navratri. In All, Quick categories continues
+// the header background; catalogue sections follow on their own surfaces.
 
 import { View } from 'react-native';
 import { CategorySections } from '../../../components/CategorySections/CategorySections';
@@ -27,32 +25,31 @@ import { DealsSection } from '../deals/DealsSection';
 import { PriceDropsSection } from '../deals/PriceDropsSection';
 import { DealsForYouSection } from '../deals/DealsForYouSection';
 import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
-import { FestivalGreetingSection } from '../festival-greeting/FestivalGreetingSection';
-import { FestivalScallopEdge } from '../festival-greeting/FestivalScallopEdge';
 import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
+import { QuickCategoriesSection } from '../quick-categories/QuickCategoriesSection';
+import { HomeWelcomeBanner } from '../welcome-banner/HomeWelcomeBanner';
+import { EverydayDairySection } from '../everyday-dairy/EverydayDairySection';
+import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
 import { NewOnGloceriesSection } from '../new-on-gloceries/NewOnGloceriesSection';
 import { ProductSection } from '../products/ProductSection';
 import { TopRatedStoresSection } from '../top-rated-stores/TopRatedStoresSection';
 import { TrendingSection } from '../trending/TrendingSection';
 import { useNearestStore } from '../useNearestStore';
-import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
-import { useFestivalProducts } from '../festival-greeting/useFestivalProducts';
-import { useFestivalGreeting } from '../festival-greeting/useFestivalGreeting';
 import { useDealsProducts } from './useDealsProducts';
 import { useHomeSections, type HomeSectionConfig } from '../useHomeSections';
 import type { Product } from '../products/types';
+import { useNearbyGroceryInventory } from '../groceries/useNearbyGroceryInventory';
+import { BrowseLoadingText } from '../loading/BrowseLoadingText';
 
 interface Props {
   onSelectCategory: (id: string) => void;
 }
 
+
 // Everything a section renderer might need, resolved once per render.
 interface SectionCtx {
   dealsProducts: Product[];
-  festivalProducts: Product[];
-  festivalGreeting: ReturnType<typeof useFestivalGreeting>['data'];
-  headerBottomColor: string;
   onSelectCategory: (id: string) => void;
 }
 
@@ -60,18 +57,8 @@ interface SectionCtx {
 // overrides; `?? undefined` lets each component fall back to its own default
 // copy when admin left the field blank. Returning null renders nothing.
 const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, cfg: HomeSectionConfig) => React.ReactNode> = {
-  'festival-greeting': (ctx) =>
-    ctx.festivalGreeting?.isActive !== false ? (
-      <View style={{ marginTop: -2, backgroundColor: ctx.headerBottomColor }}>
-        <FestivalGreetingSection
-          products={ctx.festivalProducts}
-          title={ctx.festivalGreeting?.title}
-          tagline={ctx.festivalGreeting?.tagline}
-          categories={ctx.festivalGreeting?.categories}
-        />
-        <FestivalScallopEdge color={ctx.headerBottomColor} />
-      </View>
-    ) : null,
+  'quick-categories': (ctx, cfg) => <QuickCategoriesSection onSelectCategory={ctx.onSelectCategory} title={cfg.title ?? undefined} showTitle={false} />,
+  'everyday-dairy': (_ctx, cfg) => <EverydayDairySection title={cfg.title ?? undefined} />,
   'nearby-stores': () => <NearbyStoresSection />,
   'trending': (_ctx, cfg) => <TrendingSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
   'most-bought': (_ctx, cfg) => <MostBoughtSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
@@ -96,7 +83,8 @@ const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, cfg: HomeSectionConfig)
 // Previous hardcoded order — used verbatim when the admin config is
 // unavailable, so Home is never blank on a failed/empty fetch.
 const FALLBACK_ORDER = [
-  'festival-greeting',
+  'quick-categories',
+  'everyday-dairy',
   'nearby-stores',
   'trending',
   'most-bought',
@@ -112,42 +100,74 @@ const FALLBACK_ORDER = [
 ];
 
 export function AllTabSections({ onSelectCategory }: Props) {
+  // Continue the exact final header colour rather than restarting its
+  // gradient or maintaining a separate shortcut colour that can drift.
+  const shortcutsBackground = useActiveHeaderGradient('all', false).bottomColor;
   const { storeId } = useNearestStore();
   const { data: dealsProducts = [] } = useDealsProducts(storeId);
-  const { data: festivalProducts = [] } = useFestivalProducts();
-  const { data: festivalGreeting } = useFestivalGreeting();
   const { data: sectionConfig } = useHomeSections();
-  const headerGradient = useActiveHeaderGradient('all', false);
+  const inventory = useNearbyGroceryInventory();
 
   const ctx: SectionCtx = {
     dealsProducts,
-    festivalProducts,
-    festivalGreeting,
-    headerBottomColor: headerGradient.bottomColor,
     onSelectCategory,
   };
 
   // Admin config when present (enabled only, ordered by sortIndex); otherwise
   // the fallback order, everything on, no overrides.
-  const sections: HomeSectionConfig[] =
+  const configuredSections: HomeSectionConfig[] =
     sectionConfig && sectionConfig.length > 0
       ? [...sectionConfig].filter((s) => s.enabled).sort((a, b) => a.sortIndex - b.sortIndex)
       : FALLBACK_ORDER.map((key, i) => ({ key, title: null, subtitle: null, enabled: true, sortIndex: i, bgColor: null }));
 
+  // Keep daily dairy above shops, including older server configurations
+  // that do not contain this new section. Honour an explicit disabled row.
+  const dairyConfig = sectionConfig?.find((section) => section.key === 'everyday-dairy');
+  const sections = configuredSections.filter((section) => section.key !== 'everyday-dairy' && section.key !== 'festival-greeting');
+  if (dairyConfig?.enabled !== false) {
+    const shopsIndex = sections.findIndex((section) => section.key === 'nearby-stores');
+    const dairyIndex = Math.max(shopsIndex, 0);
+    sections.splice(dairyIndex, 0, dairyConfig ?? {
+      key: 'everyday-dairy', title: null, subtitle: null, enabled: true, sortIndex: dairyIndex, bgColor: null,
+    });
+  }
+
+  // Add the new shortcuts for older server configs, honour an explicit
+  // disabled row, and keep them first so the header colour stays continuous.
+  const quickConfig = sectionConfig?.find((section) => section.key === 'quick-categories');
+  const quickIndex = sections.findIndex((section) => section.key === 'quick-categories');
+  if (quickIndex >= 0) sections.splice(quickIndex, 1);
+  if (quickConfig?.enabled !== false) {
+    sections.splice(0, 0, quickConfig ?? {
+      key: 'quick-categories', title: null, subtitle: null, enabled: true, sortIndex: 0, bgColor: null,
+    });
+  }
+
   return (
     // pb-32 — floating-CartBar clearance, same as every tab body.
     <View className="pb-32">
+      <View style={{ backgroundColor: shortcutsBackground }}>
+        <HomeWelcomeBanner backgroundColor={shortcutsBackground} />
+      </View>
       {sections.map((cfg) => {
+        if (inventory.isLoading && cfg.key !== 'quick-categories') return null;
         const render = SECTION_REGISTRY[cfg.key];
         if (!render) return null; // config key with no code section yet
         const node = render(ctx, cfg);
         if (!node) return null; // section chose to render nothing (no data etc.)
         return (
-          <View key={cfg.key} style={cfg.bgColor ? { backgroundColor: cfg.bgColor } : undefined}>
+          <View key={cfg.key} style={cfg.key === 'quick-categories' ? {
+            backgroundColor: shortcutsBackground,
+            borderBottomLeftRadius: 28,
+            borderBottomRightRadius: 28,
+            overflow: 'hidden',
+            paddingBottom: 24,
+          } : cfg.bgColor ? { backgroundColor: cfg.bgColor } : undefined}>
             {node}
           </View>
         );
       })}
+      {inventory.isLoading && <BrowseLoadingText />}
     </View>
   );
 }

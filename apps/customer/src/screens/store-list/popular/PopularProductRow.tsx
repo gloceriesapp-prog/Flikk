@@ -30,6 +30,7 @@ import { AppIcon } from '../../../components/AppIcon';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { addToCart } from '../../../store/addToCart';
+import { cartLineId } from '../../../store/cartIdentity';
 import { useCartStore } from '../../../store/useCartStore';
 import type { Product } from '../../home/products/types';
 
@@ -40,16 +41,21 @@ interface Props {
 }
 
 function AddControl({ product }: { product: Product }) {
-  const quantity = useCartStore((state) => state.items.find((item) => item.id === product.id)?.quantity ?? 0);
+  const lineId = cartLineId(product.id, product.defaultVariantId);
+  const quantity = useCartStore((state) => state.items.find((item) => item.id === lineId)?.quantity ?? 0);
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
 
+  if (product.isAvailable === false) return <Text className="text-[11px] font-bold text-[#B42318]">Out of stock</Text>;
   if (quantity === 0) {
     return (
       <Pressable
         onPress={() =>
           addToCart({
-            id: product.id,
+            isAvailable: product.isAvailable,
+            id: lineId,
+            productId: product.id,
+            variantId: product.defaultVariantId,
             name: product.name,
             weight: product.weight,
             price: product.price,
@@ -71,11 +77,11 @@ function AddControl({ product }: { product: Product }) {
 
   return (
     <View className="flex-row items-center gap-2.5 rounded-lg px-2 py-1.5 bg-white border border-[#155dfc]">
-      <Pressable onPress={() => decrementItem(product.id)} hitSlop={8}>
+      <Pressable onPress={() => decrementItem(lineId)} hitSlop={8}>
         <AppIcon icon={MinusSignIcon} size={14} color="#155dfc" />
       </Pressable>
       <Text className="min-w-[14px] text-center text-[12.5px] font-bold text-[#155dfc]">{quantity}</Text>
-      <Pressable onPress={() => incrementItem(product.id)} hitSlop={8}>
+      <Pressable onPress={() => incrementItem(lineId)} hitSlop={8}>
         <AppIcon icon={Add01Icon} size={14} color="#155dfc" />
       </Pressable>
     </View>

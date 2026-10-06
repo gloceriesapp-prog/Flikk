@@ -12,17 +12,20 @@ import { AppIcon } from '../../../../components/AppIcon';
 
 interface Props {
   onPress: () => void;
+  width?: number;
+  aspectRatio?: number;
 }
 
 export function ViewAllStoresTile({
   onPress,
+  width = 170,
+  aspectRatio,
 }: Props) {
   return (
     <Pressable
       onPress={onPress}
+      style={{ width, height: aspectRatio ? width / aspectRatio : 174 }}
       className="
-        h-[174px]
-        w-[170px]
         items-center
         justify-center
         overflow-hidden

@@ -1,3 +1,4 @@
+import { useAuthStore } from './useAuthStore';
 // Wishlist — real account-backed sync now (GET/POST/DELETE /wishlist,
 // api/wishlist.ts), replacing the previous local-device-only zustand
 // persist + AsyncStorage version. Same public shape every existing screen
@@ -35,6 +36,7 @@ export const useWishlistStore = create<WishlistState>()((set, get) => ({
   isWishlisted: (id) => get().items.some((item) => item.id === id),
 
   toggle: (product) => {
+    const epoch = useAuthStore.getState().sessionEpoch;
     const exists = get().items.some((item) => item.id === product.id);
     set((state) => ({
       items: exists ? state.items.filter((item) => item.id !== product.id) : [...state.items, product],
@@ -42,6 +44,7 @@ export const useWishlistStore = create<WishlistState>()((set, get) => ({
 
     const request = exists ? removeFromWishlist(product.id) : addToWishlist(product.id);
     request.catch(() => {
+      if (epoch !== useAuthStore.getState().sessionEpoch) return;
       // Revert on failure — put it back exactly how it was before the
       // optimistic flip, not just re-toggle blindly (a second tap in the
       // meantime could otherwise get clobbered).
@@ -52,18 +55,21 @@ export const useWishlistStore = create<WishlistState>()((set, get) => ({
   },
 
   remove: (id) => {
+    const epoch = useAuthStore.getState().sessionEpoch;
     const removed = get().items.find((item) => item.id === id);
     set((state) => ({ items: state.items.filter((item) => item.id !== id) }));
     if (!removed) return;
     removeFromWishlist(id).catch(() => {
+      if (epoch !== useAuthStore.getState().sessionEpoch) return;
       set((state) => (state.items.some((item) => item.id === id) ? state : { items: [...state.items, removed] }));
     });
   },
 
   load: async () => {
+    const epoch = useAuthStore.getState().sessionEpoch;
     try {
       const rows = await fetchWishlist();
-      set({ items: mapWishlistToProducts(rows), loaded: true });
+      if (epoch === useAuthStore.getState().sessionEpoch) set({ items: mapWishlistToProducts(rows), loaded: true });
     } catch {
       // Network blip on load — leaves whatever was already in state (empty
       // on a cold start) rather than throwing through RootNavigator's own

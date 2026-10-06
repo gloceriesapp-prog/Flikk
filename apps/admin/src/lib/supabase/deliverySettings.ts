@@ -14,6 +14,7 @@ export interface DeliverySettingsRow {
   free_delivery_enabled: boolean;
   free_delivery_threshold: number;
   handling_fee: number;
+  estimated_delivery_minutes?: number;
 }
 
 export interface DeliverySettings {
@@ -22,9 +23,10 @@ export interface DeliverySettings {
   freeDeliveryEnabled: boolean;
   freeDeliveryThreshold: number;
   handlingFee: number;
+  estimatedDeliveryMinutes: number;
 }
 
-export const DELIVERY_SETTINGS_SELECT = 'id, flat_delivery_fee, free_delivery_enabled, free_delivery_threshold, handling_fee';
+export const DELIVERY_SETTINGS_SELECT = '*';
 
 export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySettings {
   // Number(...) — PostgREST serializes Postgres `numeric` columns as JSON
@@ -38,6 +40,7 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     freeDeliveryEnabled: row.free_delivery_enabled,
     freeDeliveryThreshold: Number(row.free_delivery_threshold),
     handlingFee: Number(row.handling_fee),
+    estimatedDeliveryMinutes: Number(row.estimated_delivery_minutes ?? 35),
   };
 }
 

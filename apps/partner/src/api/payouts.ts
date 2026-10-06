@@ -38,3 +38,11 @@ export interface ApiPayoutOrder {
 export function fetchPayoutOrders(payoutId: string): Promise<ApiPayoutOrder[]> {
   return apiRequest(`/partner/payouts/${payoutId}/orders`);
 }
+
+export interface PayoutPage { items: ApiPayout[]; nextCursor: string | null }
+export function fetchPayoutPage(cursor?: string): Promise<PayoutPage> {
+  return apiRequest(`/partner/payouts?page=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+}
+export function fetchPayoutOrderPage(payoutId: string, cursor?: string): Promise<{ items: ApiPayoutOrder[]; nextCursor: string | null; summary: { netTotal: number; orderCount: number } }> {
+  return apiRequest(`/partner/payouts/${payoutId}/orders?page=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+}

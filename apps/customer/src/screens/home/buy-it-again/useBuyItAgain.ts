@@ -14,10 +14,11 @@ import { fetchBuyItAgain } from '../../../api/orders';
 import { useAuthStore } from '../../../store/useAuthStore';
 
 export function useBuyItAgain() {
+  const customerId = useAuthStore(state => state.customerId);
   const accessToken = useAuthStore((state) => state.accessToken);
 
   return useQuery({
-    queryKey: ['home', 'buy-it-again'],
+    queryKey: ['home', 'buy-it-again', customerId],
     queryFn: fetchBuyItAgain,
     enabled: accessToken != null,
   });

@@ -1,121 +1,56 @@
-// Replaces the old order-id/status-badge card — that info now lives on the
-// timeline itself (TrackingTimeline's own current-stage highlight). Label
-// row ("Estimated Time of Arrival" / "Delivered At" / "Order Cancelled")
-// plus an info icon, then one row with the status pill and the time
-// together — a rough 5-minute window (eta to eta+5) rather than a single
-// fake-precise minute, honest about this being an estimate, not a live
-// countdown (no live GPS, CLAUDE.md). Delivered/cancelled show a single
-// real timestamp instead — those aren't estimates anymore.
-//
-// The pill: green "On time" while now is still inside the eta window;
-// once now runs past the window end, it flips to an amber "Slight delay"
-// pill — enough that a late order reads as "normal delay", not "something's
-// broken", without a reason line competing with the time for attention.
-// Recomputed on every render, which is enough — TrackOrderScreen's own
-// polling already re-renders this every 8s while the order's still live.
-//
-// No shadow — this card and the timeline card below it sit flat on the
-// screen's own gray background, the white fill is what separates them,
-// not elevation.
-//
-// Tapping the info icon toggles a plain full-width card directly below
-// this one (own Fragment sibling, not a Modal/popover) — no overlay, no
-// animation, just another item in the same gap-5 ScrollView flow.
-
-import { useEffect, useState } from 'react';
-import { Cancel01Icon, CheckmarkCircle02Icon, DeliveryDelay01Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
+import { useMemo, useState } from 'react';
+import { Cancel01Icon, CheckmarkCircle02Icon, Clock01Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import type { ApiOrder } from '../../../api/orders';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { estimateDeliveryTime } from '../../../utils/estimateDelivery';
+import { usePurchaseClock } from '../../purchase/usePurchaseClock';
 
 interface Props {
   order: ApiOrder;
+  hideRefund?: boolean;
 }
 
-const ETA_WINDOW_MINUTES = 5;
+const ARRIVAL_GREEN = '#187B49';
 
-const DELAY_REASONS = [
-  'Your rider is caught in heavier traffic than usual on the way to the store.',
-  'The store is a little backed up with orders right now, so packing is taking longer.',
-  'Your rider is just a few minutes out — almost there.',
-];
-
-function pickDelayReason(orderId: string): string {
-  const sum = [...orderId].reduce((total, char) => total + char.charCodeAt(0), 0);
-  return DELAY_REASONS[sum % DELAY_REASONS.length];
-}
-
-// timeZone pinned to IST explicitly — single-zone product (Kaup/outer
-// Udupi, CLAUDE.md), and the isDelayed check below compares real instants
-// (Date.getTime(), already timezone-agnostic), but a device set to a
-// different system timezone would otherwise *display* the wrong clock
-// time next to a correct on-time/delayed verdict. Locale alone ('en-IN')
-// only changes formatting conventions, not which zone the clock reads.
 function clockTime(date: Date): string {
   return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' });
 }
 
-const TONE = {
-  success: { icon: CheckmarkCircle02Icon, bg: 'bg-success/15', fg: colors.success },
-  delay: { icon: DeliveryDelay01Icon, bg: 'bg-gold/15', fg: colors.gold },
-  danger: { icon: Cancel01Icon, bg: 'bg-danger/15', fg: colors.danger },
-} as const;
+function arrivalDeadline(order: ApiOrder): number | null {
+  if (['delivered', 'cancelled', 'failed'].includes(order.status)) return null;
+  if (!Number.isFinite(new Date(order.placed_at).getTime())) return null;
+  const deadline = estimateDeliveryTime(order.placed_at, order.estimated_delivery_minutes, order.estimated_delivery_at).getTime();
+  return Number.isFinite(deadline) ? deadline : null;
+}
 
-export function OrderInfoCard({ order }: Props) {
-  // Cancelled starts expanded — a customer who just cancelled (or is
-  // checking back on a cancelled order) shouldn't need to tap the info
-  // icon just to see whether their refund actually went through.
-  const [isReasonOpen, setIsReasonOpen] = useState(order.status === 'cancelled' || order.status === 'failed');
-  // Date.now() can't be called directly in render (React's purity rule —
-  // an impure read during render can produce unstable results). This
-  // isn't a live countdown (no live GPS, CLAUDE.md), so a 30s-granularity
-  // synced value is plenty — TrackOrderScreen's own 8s polling already
-  // re-renders this component far more often than this actually needs.
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => setNowMs(Date.now()), 30_000);
-    return () => clearInterval(interval);
-  }, []);
+export function OrderInfoCard({ order, hideRefund = false }: Props) {
   const isCancelled = order.status === 'cancelled';
   const isFailed = order.status === 'failed';
   const isDelivered = order.status === 'delivered';
   const isActive = !isCancelled && !isFailed && !isDelivered;
+  const [isReasonOpen, setIsReasonOpen] = useState(isCancelled || isFailed);
+  const deadline = arrivalDeadline(order);
+  const deadlines = useMemo(() => deadline === null ? [] : [deadline], [deadline]);
+  // Reuse the minute-boundary clock: it pauses in the background and stops
+  // at zero. Polling and rerenders cannot restart the original ETA.
+  const now = usePurchaseClock(deadlines);
+  const minutes = deadline === null ? null : Math.max(0, Math.ceil((deadline - now) / 60_000));
+  const arrivalText = minutes === null ? 'Arrival estimate unavailable' :
+    `Arriving in ${minutes} minute${minutes === 1 ? '' : 's'}`;
 
-  const label = isCancelled ? 'Order Cancelled' : isFailed ? 'Delivery Failed' : isDelivered ? 'Delivered At' : 'Estimated Time of Arrival';
-
-  let timeText = '—';
-  let isDelayed = false;
-  if (isDelivered && order.delivered_at) {
-    timeText = clockTime(new Date(order.delivered_at));
-  } else if (isActive) {
-    const eta = estimateDeliveryTime(order.placed_at, order.stores?.avg_prep_minutes ?? order.avg_prep_minutes ?? null);
-    const etaWindowEnd = new Date(eta.getTime() + ETA_WINDOW_MINUTES * 60_000);
-    timeText = `${clockTime(eta)} - ${clockTime(etaWindowEnd)}`;
-    isDelayed = nowMs > etaWindowEnd.getTime();
-  }
-
-  const tone = isCancelled || isFailed ? 'danger' : isDelayed ? 'delay' : 'success';
-  const reasonTitle = isCancelled ? 'Order cancelled' : isFailed ? 'Delivery failed' : isDelayed ? 'Why the delay?' : isDelivered ? 'Delivered' : 'On track';
+  const label = isCancelled ? 'Order Cancelled' : isFailed ? 'Delivery Failed' : 'Delivered At';
+  const deliveredAt = order.delivered_at ? new Date(order.delivered_at) : null;
+  const timeText = isDelivered && deliveredAt && Number.isFinite(deliveredAt.getTime()) ? clockTime(deliveredAt) : '—';
+  const reasonTitle = isCancelled ? 'Order cancelled' : isFailed ? 'Delivery failed' : isDelivered ? 'Delivered' : 'About your arrival estimate';
   const reasonMessage = isCancelled
     ? (order.cancel_reason ?? 'This order was cancelled and is no longer being prepared or delivered.')
     : isFailed
-      ? "This order couldn't be delivered. We're reviewing it for a refund — you don't need to do anything right now."
+      ? "This order couldn't be delivered. Check your order details for updates."
       : isDelivered
         ? 'This order has already been delivered.'
-        : isDelayed
-          ? pickDelayReason(order.id)
-          : 'Your order is on track — no delays reported right now.';
-  const { icon: toneIcon, bg: toneBg, fg: toneFg } = TONE[tone];
-
-  // COD (razorpay_payment_id null) never gets a refund line — nothing was
-  // ever charged, so refund_status correctly stays the column's own
-  // 'none' default and there's nothing honest to say here. An online
-  // payment always shows SOME line once cancelled — 'processing' is the
-  // real, honest default the instant a customer taps cancel (Razorpay's
-  // own refund object is asynchronous for most methods, backend/src/
-  // payments/refundPayment.ts's own note), not a placeholder.
+        : 'The estimate is based on the delivery time recorded when your order was placed. Actual arrival may vary.';
   const refundLine =
     isCancelled && order.razorpay_payment_id
       ? order.refund_status === 'completed'
@@ -127,41 +62,48 @@ export function OrderInfoCard({ order }: Props) {
 
   return (
     <>
-      <View className="w-full rounded-3xl bg-white p-5">
-        <Text className="text-[15.5px] font-medium text-ink">{label}</Text>
-
-        <View className="mt-2 flex-row items-center gap-2.5">
-          {isActive && (
-            <View className={`rounded-full px-2.5 py-1 ${isDelayed ? 'bg-gold/15' : 'bg-success/15'}`}>
-              <Text className={`text-[12.5px] font-medium ${isDelayed ? 'text-gold' : 'text-success'}`}>
-                {isDelayed ? 'Slight delay' : 'On time'}
-              </Text>
+      {isActive ? (
+        <View className="w-full rounded-3xl border border-[#E0EFE5] bg-[#F3FAF5] p-5">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <AppIcon icon={Clock01Icon} size={17} color={ARRIVAL_GREEN} />
+              <Text className="text-[12px] font-semibold text-[#538067]">Estimated arrival</Text>
             </View>
-          )}
-          <Text className={`text-[18px] font-semibold ${isCancelled || isFailed ? 'text-danger' : 'text-ink'}`}>{timeText}</Text>
-          <Pressable onPress={() => setIsReasonOpen((open) => !open)} hitSlop={10} className="h-6 w-6 items-center justify-center">
-            <AppIcon icon={InformationCircleIcon} size={18} color={colors.ink + '80'} />
-          </Pressable>
+            <Pressable onPress={() => setIsReasonOpen((open) => !open)} hitSlop={10}
+              accessibilityRole="button" accessibilityLabel="About your arrival estimate" accessibilityState={{ expanded: isReasonOpen }}
+              className="h-7 w-7 items-center justify-center">
+              <AppIcon icon={InformationCircleIcon} size={18} color="#538067" />
+            </Pressable>
+          </View>
+          <Text className="mt-2 text-[26px] font-bold leading-[33px] tracking-[-0.5px]"
+            style={{ color: ARRIVAL_GREEN, fontVariant: ['tabular-nums'] }}>{arrivalText}</Text>
+          <Text className="mt-2 text-[12px] font-medium text-[#64766B]">
+            {order.status === 'out_for_delivery' ? 'Your order is on its way' : 'Your order is being prepared'}
+          </Text>
         </View>
-      </View>
-
+      ) : (
+        <View className="w-full rounded-3xl bg-white p-5">
+          <Text className="text-[15.5px] font-medium text-ink">{label}</Text>
+          <View className="mt-2 flex-row items-center gap-2.5">
+            <Text className={`text-[18px] font-semibold ${isCancelled || isFailed ? 'text-danger' : 'text-black'}`}>{timeText}</Text>
+            <Pressable onPress={() => setIsReasonOpen((open) => !open)} hitSlop={10}
+              accessibilityRole="button" accessibilityLabel="Order status details" accessibilityState={{ expanded: isReasonOpen }}
+              className="h-6 w-6 items-center justify-center">
+              <AppIcon icon={InformationCircleIcon} size={18} color={colors.ink + '80'} />
+            </Pressable>
+          </View>
+        </View>
+      )}
       {isReasonOpen && (
         <View className="w-full rounded-3xl bg-white p-5">
           <View className="flex-row items-center justify-between">
-            <Text className="text-[15px] font-semibold text-ink">{reasonTitle}</Text>
-            <View className={`h-8 w-8 items-center justify-center rounded-full`}>
-              <AppIcon icon={toneIcon} size={20} color="#000000" />
-            </View>
+            <Text className="flex-1 text-[15px] font-semibold text-ink">{reasonTitle}</Text>
+            <AppIcon icon={isCancelled || isFailed ? Cancel01Icon : isDelivered ? CheckmarkCircle02Icon : Clock01Icon}
+              size={20} color={isCancelled || isFailed ? colors.danger : ARRIVAL_GREEN} />
           </View>
           <Text className="mt-1.5 text-[14.5px] font-medium leading-5 text-ink/70">{reasonMessage}</Text>
-          {refundLine ? (
-            <Text
-              className="mt-2.5 text-[13.5px] font-semibold leading-5"
-              style={{ color: order.refund_status === 'failed' ? colors.danger : colors.success }}
-            >
-              {refundLine}
-            </Text>
-          ) : null}
+          {refundLine && !hideRefund ? <Text className="mt-2.5 text-[13.5px] font-semibold leading-5"
+            style={{ color: order.refund_status === 'failed' ? colors.danger : colors.success }}>{refundLine}</Text> : null}
         </View>
       )}
     </>

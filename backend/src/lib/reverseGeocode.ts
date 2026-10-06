@@ -38,14 +38,14 @@ const NULL_RESULT: ReverseGeocodeResult = { addressLabel: null, shortName: null,
 // convention this always had as an inline route handler.
 export async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodeResult> {
   if (!env.googleGeocodingApiKey) return NULL_RESULT;
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return NULL_RESULT;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat)>90 || Math.abs(lng)>180) return NULL_RESULT;
 
   try {
     const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
     url.searchParams.set('latlng', `${lat},${lng}`);
     url.searchParams.set('key', env.googleGeocodingApiKey);
 
-    const googleRes = await fetch(url);
+    const googleRes = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!googleRes.ok) return NULL_RESULT;
 
     const data = (await googleRes.json()) as GoogleGeocodeResponse;

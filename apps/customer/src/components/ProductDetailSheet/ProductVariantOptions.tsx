@@ -52,9 +52,12 @@ export function ProductVariantOptions({ variants, selectedId, onSelect }: Props)
           return (
             <Pressable
               key={variant.id}
+              disabled={variant.isAvailable === false}
+              accessibilityState={{ disabled: variant.isAvailable === false }}
               onPress={() => onSelect(variant.id)}
               className="w-[41%] gap-1.5 rounded-[16px] border p-3"
               style={{
+                opacity: variant.isAvailable === false ? 0.45 : 1,
                 borderColor: isSelected ? '#2457F5' : '#DADADA',
                 backgroundColor: isSelected ? '#F3F6FF' : '#FFFFFF',
               }}
@@ -63,7 +66,7 @@ export function ProductVariantOptions({ variants, selectedId, onSelect }: Props)
                 className="text-[14px] font-semibold text-ink"
                 numberOfLines={1}
               >
-                {variant.label}
+                {variant.label}{variant.isAvailable === false ? variant.unavailableReason === 'stock_unconfirmed' ? ' · Stock updating' : ' · Out of stock' : ''}
               </Text>
 
               {discountPercent !== null && discountPercent > 0 && (

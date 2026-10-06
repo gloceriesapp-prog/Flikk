@@ -1,9 +1,11 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 
 // env.ts validates required vars eagerly on import (correct for runtime — fail
 // fast on missing config). Unit tests import modules that transitively pull in
 // the Supabase client, so tests need *some* value here, not real credentials.
 export default defineConfig({
+  resolve: { alias: { '@': fileURLToPath(new URL('../apps/admin/src', import.meta.url)) } },
   test: {
     env: {
       SUPABASE_URL: 'https://test.supabase.co',

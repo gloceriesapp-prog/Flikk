@@ -1,3 +1,4 @@
+import { useAuthStore } from '../../store/useAuthStore';
 // ProfileScreen's real account data — GET /auth/me (backend/src/routes/
 // auth.ts), same call WaitingApprovalScreen already polls for is_approved/
 // has_store; phone/name ride along on that same response now. auth: true
@@ -26,8 +27,9 @@ interface ApiMe {
 }
 
 export function useProfile() {
+  const customerId = useAuthStore(state => state.customerId);
   return useQuery({
-    queryKey: ['profile', 'me'],
+    queryKey: ['profile', 'me', customerId],
     queryFn: async () => {
       const data = await apiRequest<ApiMe>('/auth/me');
       const profile: Profile = {
@@ -48,10 +50,11 @@ export function useProfile() {
 // useProfile reads so the card shows the new value immediately, without a
 // manual refetch call at each call site.
 export function useUpdateProfileField() {
+  const customerId = useAuthStore(state => state.customerId);
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (patch: { name?: string; birthday?: string }) =>
       apiRequest<{ name: string | null; birthday: string | null }>('/auth/me', { method: 'PATCH', body: patch }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile', 'me'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile', 'me', customerId] }),
   });
 }

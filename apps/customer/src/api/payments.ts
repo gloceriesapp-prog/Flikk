@@ -5,6 +5,21 @@
 // "it worked."
 
 import { apiRequest } from './client';
+import type { PaymentMethod } from '../payments/paymentMethod';
+
+export function fetchPaymentPreference(): Promise<{ method: PaymentMethod | null }> {
+  return apiRequest('/payments/preference');
+}
+
+// Best effort after COD placement or verified online payment. Saving a UI
+// preference must never turn a successful order into a checkout error.
+export async function rememberPaymentMethod(method: PaymentMethod, target: { orderId: string } | { tripId: string }): Promise<void> {
+  try {
+    await apiRequest('/payments/preference', { method: 'PATCH', body: { method, ...target } });
+  } catch {
+    // The next checkout can fall back to the server's real order history.
+  }
+}
 
 export interface RazorpayOrder {
   id: string;
@@ -78,4 +93,21 @@ export type VerifyPaymentInput = ({ orderId: string; tripId?: undefined } | { tr
 // Razorpay's own SDK returned and let the server prove it for real."
 export function verifyPayment(input: VerifyPaymentInput): Promise<{ ok: true }> {
   return apiRequest('/payments/verify', { method: 'POST', body: input });
+}
+
+export type PaymentTarget = { orderId: string } | { tripId: string };
+export interface PaymentRecovery {
+  target: PaymentTarget;
+  state: 'paid' | 'unpaid' | 'pending' | 'reconciling' | 'expired' | 'cancelled';
+  record: { id: string; total: number; status: string; razorpay_payment_id: string | null };
+}
+export function recoverPayment(target: PaymentTarget): Promise<PaymentRecovery> {
+  return apiRequest('/payments/recovery', { method: 'POST', body: target });
+}
+export function fetchPendingPayments(): Promise<PaymentTarget[]> {
+  return apiRequest('/payments/pending');
+}
+
+export function selectPaymentPreference(method: PaymentMethod): Promise<{ method: PaymentMethod }> {
+  return apiRequest('/payments/preferred-method', { method: 'PATCH', body: { method } });
 }

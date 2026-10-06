@@ -45,7 +45,7 @@ addressesRouter.post('/', async (req: AuthedRequest, res, next) => {
     const body = req.body as Partial<CreateAddressBody>;
     if (!body.line1?.trim()) throw new AppError(400, 'MISSING_LINE1', 'line1 is required.');
     if (!body.recipient_name?.trim()) throw new AppError(400, 'MISSING_RECIPIENT_NAME', 'recipient_name is required.');
-    if (typeof body.latitude !== 'number' || typeof body.longitude !== 'number') {
+    if (!Number.isFinite(body.latitude) || !Number.isFinite(body.longitude) || Math.abs(body.latitude!) > 90 || Math.abs(body.longitude!) > 180) {
       throw new AppError(400, 'MISSING_LOCATION', 'A real map pin (latitude/longitude) is required.');
     }
 
@@ -54,32 +54,9 @@ addressesRouter.post('/', async (req: AuthedRequest, res, next) => {
     const { data: zone, error: zoneError } = await supabase.from('zones').select('id').eq('is_active', true).limit(1).single();
     if (zoneError || !zone) throw new AppError(500, 'NO_ACTIVE_ZONE', 'No active zone configured.');
 
-    // First address for this account becomes the default automatically —
-    // nothing to choose between yet. A second/third address never
-    // silently steals default from an existing one; that's only ever a
-    // deliberate PATCH /:id/default.
-    const { count: existingCount } = await supabase
-      .from('addresses')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', req.user!.id);
-
-    const { data, error } = await supabase
-      .from('addresses')
-      .insert({
-        user_id: req.user!.id,
-        label: body.label?.trim() || 'Home',
-        line1: body.line1.trim(),
-        landmark: body.landmark?.trim() || null,
-        recipient_name: body.recipient_name.trim(),
-        recipient_phone: body.recipient_phone?.trim() || null,
-        delivery_instructions: body.delivery_instructions?.trim() || null,
-        latitude: body.latitude,
-        longitude: body.longitude,
-        zone_id: zone.id,
-        is_default: (existingCount ?? 0) === 0,
-      })
-      .select()
-      .single();
+    const { data, error } = await supabase.rpc('manage_customer_address', {
+      p_customer: req.user!.id, p_action: 'create', p_data: { ...body, zone_id: zone.id },
+    });
     if (error || !data) throw new AppError(500, 'ADDRESS_CREATE_FAILED', 'Could not save this address.');
 
     res.status(201).json(data);
@@ -90,18 +67,11 @@ addressesRouter.post('/', async (req: AuthedRequest, res, next) => {
 
 addressesRouter.patch('/:id/default', async (req: AuthedRequest, res, next) => {
   try {
-    const { data: owned } = await supabase.from('addresses').select('id').eq('id', req.params.id).eq('user_id', req.user!.id).single();
-    if (!owned) throw new AppError(404, 'ADDRESS_NOT_FOUND', 'Address not found.');
-
-    // Two writes, not a single conditional update — Supabase JS has no
-    // multi-row "set every OTHER row false" primitive in one call, and
-    // this table is small per user (a handful of addresses at most), so
-    // the extra round trip is cheap. Order matters: clear every other
-    // default first, then set this one, so a request that fails partway
-    // never leaves two rows both marked default.
-    await supabase.from('addresses').update({ is_default: false }).eq('user_id', req.user!.id).neq('id', req.params.id);
-    const { data, error } = await supabase.from('addresses').update({ is_default: true }).eq('id', req.params.id).select().single();
-    if (error || !data) throw new AppError(500, 'ADDRESS_UPDATE_FAILED', 'Could not update this address.');
+    const { data, error } = await supabase.rpc('manage_customer_address', {
+      p_customer: req.user!.id, p_action: 'default', p_id: req.params.id,
+    });
+    if (error) throw error;
+    if (!data) throw new AppError(404, 'ADDRESS_NOT_FOUND', 'Address not found.');
 
     res.json(data);
   } catch (err) {
@@ -111,41 +81,11 @@ addressesRouter.patch('/:id/default', async (req: AuthedRequest, res, next) => {
 
 addressesRouter.delete('/:id', async (req: AuthedRequest, res, next) => {
   try {
-    const { data: target } = await supabase
-      .from('addresses')
-      .select('id, is_default')
-      .eq('id', req.params.id)
-      .eq('user_id', req.user!.id)
-      .is('deleted_at', null)
-      .single();
-    if (!target) throw new AppError(404, 'ADDRESS_NOT_FOUND', 'Address not found.');
-
-    // Soft delete, not a hard DELETE — orders.address_id references this
-    // row with no ON DELETE behavior (migrations/001_init.sql), and a
-    // past order's own address history shouldn't disappear just because
-    // the customer no longer wants this address on their active list (the
-    // rider already delivered against it; nothing downstream needs the
-    // row gone, just hidden). migrations/031_soft_delete_addresses.sql.
-    const { error } = await supabase
-      .from('addresses')
-      .update({ deleted_at: new Date().toISOString(), is_default: false })
-      .eq('id', req.params.id);
+    const { data, error } = await supabase.rpc('manage_customer_address', {
+      p_customer: req.user!.id, p_action: 'delete', p_id: req.params.id,
+    });
     if (error) throw error;
-
-    // Deleting the default address shouldn't leave the account with zero
-    // default among any addresses it still has — promote whichever one's
-    // left, arbitrarily (no real recency signal on this table to prefer
-    // one over another).
-    if (target.is_default) {
-      const { data: remaining } = await supabase
-        .from('addresses')
-        .select('id')
-        .eq('user_id', req.user!.id)
-        .is('deleted_at', null)
-        .limit(1)
-        .single();
-      if (remaining) await supabase.from('addresses').update({ is_default: true }).eq('id', remaining.id);
-    }
+    if (!data) throw new AppError(404, 'ADDRESS_NOT_FOUND', 'Address not found.');
 
     res.status(200).json({ ok: true });
   } catch (err) {

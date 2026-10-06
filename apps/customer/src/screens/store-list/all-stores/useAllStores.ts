@@ -1,3 +1,4 @@
+import { useLocationStore } from '../../../store/useLocationStore';
 // Real, active stores in the zone (GET /stores, backend/src/routes/
 // stores.ts) — replaces the old STORE_LISTINGS mock (data.ts's fictional
 // Shetty Stores/Krishna Mart/etc). rating/avgPrepMinutes are nullable on the
@@ -60,8 +61,10 @@ interface ApiStore {
 }
 
 export function useAllStores() {
+  const pin = useLocationStore(s => s.location);
   return useQuery({
-    queryKey: ['store-list', 'all-stores'],
+    queryKey: ['store-list', 'all-stores', pin?.latitude, pin?.longitude],
+    enabled: !!pin,
     queryFn: async () => {
       const rows = await apiRequest<ApiStore[]>('/stores', { auth: false });
       return rows.map(

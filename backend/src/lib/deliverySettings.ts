@@ -15,6 +15,7 @@ export interface DeliverySettings {
   freeDeliveryEnabled: boolean;
   freeDeliveryThreshold: number;
   handlingFee: number;
+  estimatedDeliveryMinutes: number;
 }
 
 export async function getDeliverySettings(): Promise<DeliverySettings> {
@@ -31,6 +32,7 @@ export async function getDeliverySettings(): Promise<DeliverySettings> {
     freeDeliveryEnabled: data.free_delivery_enabled,
     freeDeliveryThreshold: Number(data.free_delivery_threshold),
     handlingFee: Number(data.handling_fee),
+    estimatedDeliveryMinutes: Number(data.estimated_delivery_minutes ?? 35),
   };
 }
 

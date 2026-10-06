@@ -1,13 +1,12 @@
-// Maps between the real public.stores row and this dashboard's Store type
-// (lib/types.ts), plus the one client-side read Stores needs (fetchStores —
-// covered by the public stores_read_active RLS policy, no service-role key
-// needed here). Writes live in app/api/stores/* instead, same rationale as
-// lib/supabase/products.ts's own note.
+// Browser-safe store DTO mapping. Reads use authenticated admin routes;
+// server-side detail reads use the service-role client after the admin gate.
 
-import { supabase } from './client';
 import type { Store } from '../types';
 
 export interface StoreRow {
+  manual_address: string | null;
+  udyam_number: string | null;
+  avg_prep_minutes: number | null;
   id: string;
   name: string;
   category: string;
@@ -38,11 +37,14 @@ export interface StoreRow {
 }
 
 export const STORE_SELECT =
-  'id, name, category, district, is_active, created_at, phone, open_time, close_time, owner_name, address_line, city, state, country, photo_url, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_name, bank_account_last4, turnover_exceeds_gst_threshold, gst_number, drug_license_number, lat, lng, delivery_radius_km';
+  'id, manual_address, udyam_number, avg_prep_minutes, name, category, district, is_active, created_at, phone, open_time, close_time, owner_name, address_line, city, state, country, photo_url, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_name, bank_account_last4, turnover_exceeds_gst_threshold, gst_number, drug_license_number, lat, lng, delivery_radius_km';
 
 export function mapRowToStore(row: StoreRow): Store {
   return {
     id: row.id,
+    manualAddress: row.manual_address ?? '',
+    udyamNumber: row.udyam_number ?? '',
+    avgPrepMinutes: row.avg_prep_minutes ?? undefined,
     name: row.name,
     category: row.category,
     zone: 'Kaup, Udupi',
@@ -74,13 +76,8 @@ export function mapRowToStore(row: StoreRow): Store {
 }
 
 export async function fetchStores(): Promise<Store[]> {
-  const { data, error } = await supabase.from('stores').select(STORE_SELECT).order('name');
-  if (error) throw error;
-  return (data as unknown as StoreRow[]).map(mapRowToStore);
-}
-
-export async function fetchStore(id: string): Promise<Store | null> {
-  const { data, error } = await supabase.from('stores').select(STORE_SELECT).eq('id', id).maybeSingle();
-  if (error) throw error;
-  return data ? mapRowToStore(data as unknown as StoreRow) : null;
+  const response = await fetch('/api/stores', { cache: 'no-store' });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error ?? 'Could not load stores.');
+  return body as Store[];
 }

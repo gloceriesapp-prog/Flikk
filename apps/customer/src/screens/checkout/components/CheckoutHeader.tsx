@@ -18,11 +18,9 @@ import { colors } from '../../../theme/tokens';
 
 interface Props {
   onBack: () => void;
-  itemCount: number;
-  total: number;
 }
 
-export function CheckoutHeader({ onBack, itemCount, total }: Props) {
+export function CheckoutHeader({ onBack }: Props) {
   return (
     <View className="bg-[#F2F2F7] px-3 pb-1 pt-safe-offset-2">
       <View className="relative flex-row items-center justify-between">
@@ -34,7 +32,7 @@ export function CheckoutHeader({ onBack, itemCount, total }: Props) {
 
         <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
           <Text className="text-[18px] font-semibold text-ink" numberOfLines={1}>
-            Choose how to pay
+            Checkout
           </Text>
         </View>
       </View>

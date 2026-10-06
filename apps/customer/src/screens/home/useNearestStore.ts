@@ -52,9 +52,9 @@ export function useNearestStore() {
     storeId: query.data?.id,
     storeName: query.data?.name,
     isLoading: query.isLoading,
-    // ponytail: TEMP dev bypass — forced true to iterate on Home UI without a
-    // real store within 12km. Remove before ship; real logic is the line below.
-    isServiceable: true,
-    // isServiceable: !deliveryLocation || !hasResolved || query.data !== null,
+    isServiceable: !deliveryLocation || !hasResolved || query.data !== null,
+    serviceability: !deliveryLocation ? 'needs-location' : query.isError ? 'error' : !hasResolved ? 'checking' : query.data ? 'available' : 'unavailable',
+    isError: query.isError,
+    refetch: query.refetch,
   };
 }

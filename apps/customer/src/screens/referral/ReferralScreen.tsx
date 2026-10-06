@@ -1,3 +1,4 @@
+import { useAuthStore } from '../../store/useAuthStore';
 // Invite friends — reached from Profile's own "Invite Friends" row.
 // Tracking only, no credit/discount on either side (backend's routes/
 // referrals.ts own note: that would be a loyalty/rewards mechanic,
@@ -21,11 +22,12 @@ import type { AppStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'Referral'>;
 
 export function ReferralScreen({ navigation }: Props) {
+  const customerId = useAuthStore(state => state.customerId);
   const { data: codeData, isLoading: isCodeLoading } = useQuery({
-    queryKey: ['referral-code'],
+    queryKey: ['referral-code', customerId],
     queryFn: fetchMyReferralCode,
   });
-  const { data: invites } = useQuery({ queryKey: ['referral-invites'], queryFn: fetchMyInvites });
+  const { data: invites } = useQuery({ queryKey: ['referral-invites', customerId], queryFn: fetchMyInvites });
   const queryClient = useQueryClient();
 
   const [enteredCode, setEnteredCode] = useState('');
@@ -48,7 +50,7 @@ export function ReferralScreen({ navigation }: Props) {
       await redeemReferralCode(enteredCode.trim());
       setRedeemedNow(true);
       setEnteredCode('');
-      await queryClient.invalidateQueries({ queryKey: ['referral-invites'] });
+      await queryClient.invalidateQueries({ queryKey: ['referral-invites', customerId] });
     } catch (err) {
       setRedeemError(err instanceof ApiError ? err.message : 'Could not redeem this code.');
     } finally {

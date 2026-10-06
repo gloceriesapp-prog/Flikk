@@ -8,5 +8,5 @@ import { Text, type TextProps } from 'react-native';
 import { GILROY } from '../theme/fonts';
 
 export function PriceText({ style, ...rest }: TextProps) {
-  return <Text {...rest} style={[{ fontFamily: GILROY.extrabold, fontVariant: ['tabular-nums'] }, style]} />;
+  return <Text {...rest} style={[{ fontFamily: GILROY.bold }, style]} />;
 }

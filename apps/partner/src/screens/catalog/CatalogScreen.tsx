@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 // Catalog management (P4). Add/edit-product forms are a later pass — this
 // is the item list + stock/price triage, the core loop per
 // specs/02-partner-app/flows.md. No `GET /partner/products` call yet, same
@@ -9,7 +10,7 @@
 // "View" on a row pushes ProductDetailScreen rather than opening a sheet —
 // see that screen's own note on why a sheet stopped fitting the job.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
@@ -34,9 +35,9 @@ export function CatalogScreen({ navigation }: Props) {
   const loadProducts = useCatalogStore((state) => state.loadProducts);
   const [stockFilter, setStockFilter] = useState<InventoryStatusFilterValue>('all');
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     void loadProducts();
-  }, [loadProducts]);
+  }, [loadProducts]));
 
   const inStockCount = products.filter((product) => product.isInStock).length;
   const visibleProducts = products.filter((product) => {

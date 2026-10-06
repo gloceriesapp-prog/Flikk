@@ -20,14 +20,14 @@
 // instead of fetching, using the same isSample gate every other payout
 // surface already checks before treating numbers as real money.
 
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft01Icon, CheckmarkCircle02Icon, HugeiconsIcon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { fetchPayoutOrders } from '../../api/payouts';
+import { fetchPayoutOrderPage } from '../../api/payouts';
 import { buildSamplePayoutOrders } from '../payouts/data';
 import type { AppStackParamList } from '../../navigation/types';
 import { PayoutOrderHistoryRow } from './components/PayoutOrderHistoryRow';
@@ -36,11 +36,15 @@ type Props = NativeStackScreenProps<AppStackParamList, 'PayoutOrderHistory'>;
 
 export function PayoutOrderHistoryScreen({ route, navigation }: Props) {
   const { payoutId, weekLabel, isSample, sampleTotals } = route.params;
-  const { data: fetchedOrders, isLoading: isFetchLoading } = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['payout-orders', payoutId],
-    queryFn: () => fetchPayoutOrders(payoutId),
+    initialPageParam: '',
+    queryFn: ({ pageParam }) => fetchPayoutOrderPage(payoutId, pageParam || undefined),
+    getNextPageParam: page => page.nextCursor ?? undefined,
     enabled: !isSample,
   });
+  const fetchedOrders = query.data?.pages.flatMap(page => page.items);
+  const isFetchLoading = query.isLoading;
   const orders = isSample && sampleTotals ? buildSamplePayoutOrders(sampleTotals) : fetchedOrders;
   // enabled: false leaves react-query's own isLoading permanently true
   // (the query never actually runs) — the sample path has its data ready
@@ -48,7 +52,8 @@ export function PayoutOrderHistoryScreen({ route, navigation }: Props) {
   // what that flag says.
   const isLoading = !isSample && isFetchLoading;
 
-  const netTotal = (orders ?? []).reduce((sum, o) => sum + o.netAmount, 0);
+  const netTotal = isSample ? (orders ?? []).reduce((sum, o) => sum + o.netAmount, 0) : query.data?.pages[0]?.summary.netTotal ?? 0;
+  const orderCount = isSample ? orders?.length ?? 0 : query.data?.pages[0]?.summary.orderCount ?? 0;
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -70,7 +75,7 @@ export function PayoutOrderHistoryScreen({ route, navigation }: Props) {
         </Text>
         <View className="mt-1 flex-row items-center gap-1.5">
           <AppIcon icon={HugeiconsIcon} size={13} color={colors.ink} />
-          <Text className="text-[14px] font-medium text-ink/60">{(orders ?? []).length} orders add up to this payout</Text>
+          <Text className="text-[14px] font-medium text-ink/60">{orderCount} orders add up to this payout</Text>
         </View>
       </View>
 
@@ -85,6 +90,8 @@ export function PayoutOrderHistoryScreen({ route, navigation }: Props) {
               <PayoutOrderHistoryRow key={order.orderNumber} order={order} isLast={index === (orders?.length ?? 0) - 1} />
             ))}
           </View>
+          {query.hasNextPage && <Pressable disabled={query.isFetchingNextPage} onPress={() => { void query.fetchNextPage(); }} className="items-center py-4"><Text className="font-semibold text-ink">{query.isFetchingNextPage ? 'Loading…' : 'Load more orders'}</Text></Pressable>}
+          {query.isError && <Pressable onPress={() => { void query.refetch(); }} className="items-center py-4"><Text className="font-semibold text-ink">Couldn’t load orders. Try again</Text></Pressable>}
         </ScrollView>
       )}
     </SafeAreaView>

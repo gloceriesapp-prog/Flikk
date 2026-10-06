@@ -1,3 +1,4 @@
+import { useAuthStore } from '../../store/useAuthStore';
 // Real saved-address form — reached only via LocationSearchScreen's own
 // intent='address-book' branch (a real map pin already picked by the
 // time this screen shows). Collects everything a real quick-commerce app
@@ -15,7 +16,7 @@
 // extra tap. Saves via POST /addresses (backend/src/routes/addresses.ts) —
 // a first address becomes the account's default automatically (that
 // route's own note), so from here on every checkout just reuses it.
-// navigation.navigate('Checkout') at the end pops back to whatever screen
+// navigation.popTo('Cart') at the end pops back to whatever screen
 // in the stack is already named Checkout, however deep this form was
 // reached from (Checkout -> AddressList -> LocationSearch -> here).
 
@@ -43,6 +44,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'AddressForm'>;
 const ACCENT = '#1447E6';
 
 export function AddressFormScreen({ route, navigation }: Props) {
+  const customerId = useAuthStore(state => state.customerId);
   const { latitude, longitude, addressLabel, city } = route.params;
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -131,17 +133,17 @@ export function AddressFormScreen({ route, navigation }: Props) {
       await setDefaultAddress(created.id);
       // Real invalidation, not left to chance — Checkout's own useQuery
       // (['addresses']) is a still-mounted screen underneath this one
-      // (navigate('Checkout') below brings it back into focus rather than
+      // (popTo('Cart') below brings it back into focus rather than
       // remounting it), so it would otherwise keep serving its stale
       // cached list and never see this new address at all.
-      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      await queryClient.invalidateQueries({ queryKey: ['addresses', customerId] });
       // Modal is a native overlay, not scoped to this screen's place in
       // the stack — navigating away without closing it first left it
-      // floating on top of Checkout (navigate('Checkout') brings an
+      // floating on top of Cart (popTo('Cart') brings an
       // already-mounted screen back into focus, it doesn't remount this
       // one and tear the Modal down with it).
       setConfirmVisible(false);
-      navigation.navigate('Checkout');
+      navigation.popTo('Cart');
     } catch (err) {
       setConfirmVisible(false);
       setError(err instanceof ApiError ? err.message : 'Could not save this address. Please try again.');

@@ -36,10 +36,13 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/riders', label: 'Riders', icon: Bike },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/inventory', label: 'Inventory', icon: Boxes },
+  { href: '/inventory-pack-stock', label: 'Available packs', icon: Package },
   { href: '/promo-codes', label: 'Promo Codes', icon: Ticket },
+  { href: '/media', label: 'Media Library', icon: ImageIcon },
   { href: '/categories', label: 'Categories', icon: Tag },
   { href: '/home-categories', label: 'Home Categories', icon: Home },
   { href: '/home-sections', label: 'Home Sections', icon: LayoutGrid },
+  { href: '/home-content', label: 'Home Tab Content', icon: Home },
   { href: '/festival-section', label: 'Festival Section', icon: PartyPopper },
   { href: '/festival-greeting', label: 'Festival Greeting', icon: PartyPopper },
   { href: '/seasonal-section', label: 'Seasonal Section', icon: ImageIcon },
@@ -47,6 +50,8 @@ export const MENU_ITEMS: NavItem[] = [
 
 export const INSIGHTS_ITEMS: NavItem[] = [
   { href: '/orders', label: 'Orders', icon: Package },
+  { href: '/support', label: 'Customer Support', icon: Ticket },
+  { href: '/customer-deletions', label: 'Account Deletions', icon: Users },
   { href: '/revenue', label: 'Revenue', icon: Banknote },
   { href: '/rider-payouts', label: 'Rider Payouts', icon: Bike },
   { href: '/refunds', label: 'Refunds', icon: RotateCcw },

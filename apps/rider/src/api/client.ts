@@ -1,3 +1,4 @@
+import { validateApiUrl } from '../../../../packages/shared/config/api-url.cjs';
 // Thin instantiation of @gloceries/shared's createApiClient — the request/error/
 // 401-refresh/network-error logic lives in one place (packages/shared/src/
 // auth/client.ts), same as apps/customer and apps/partner. A bug fixed once
@@ -10,7 +11,7 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export { ApiError } from '@gloceries/shared';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_URL = validateApiUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__);
 
 // Plain fetch, not apiRequest — apiRequest is what calls this on a 401 (via
 // the shared client's `refresh` option); routing it through apiRequest itself

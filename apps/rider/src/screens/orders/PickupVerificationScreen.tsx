@@ -180,7 +180,7 @@ export function PickupVerificationScreen({ route, navigation }: Props) {
                 </View>
                 <View className="flex-1">
                   <Text className="text-[15px] font-semibold text-ink" numberOfLines={1}>{label}</Text>
-                  {unit && <Text className="text-[12px] text-ink/45">{unit}</Text>}
+                  {(it.unit ?? unit) && <Text className="text-[12px] text-ink/45">{it.unit ?? unit}</Text>}
                 </View>
                 <Text className="text-[14px] font-bold text-ink tabular-nums">×{it.quantity}</Text>
               </View>

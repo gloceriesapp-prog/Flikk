@@ -28,6 +28,9 @@
 
 import { Image as ExpoImage, type ImageProps as ExpoImageProps, type ImageContentFit } from 'expo-image';
 import { cssInterop } from 'nativewind';
+import { useState } from 'react';
+import { API_BASE_URL } from '../api/baseUrl';
+import { publicImageFallback } from './media/publicImageFallback';
 
 cssInterop(ExpoImage, { className: 'style' });
 
@@ -46,13 +49,33 @@ interface Props extends Omit<ExpoImageProps, 'contentFit'> {
   contentFit?: ImageContentFit;
 }
 
-export function AppImage({ resizeMode, contentFit, transition = 200, cachePolicy = 'memory-disk', ...props }: Props) {
+export function AppImage({ resizeMode, contentFit, transition = 200, cachePolicy = 'memory-disk', recyclingKey, onError, ...props }: Props) {
+  const source = props.source;
+  const uri = typeof source === 'string' ? source : source && typeof source === 'object' && !Array.isArray(source) && 'uri' in source ? source.uri : undefined;
+  const [failedUri, setFailedUri] = useState<string>();
+  const fallback = publicImageFallback(uri, API_BASE_URL);
+  const recovering = Boolean(uri && failedUri === uri && fallback);
+  const displayedUri = recovering ? fallback : uri;
   return (
     <ExpoImage
+      key={displayedUri}
       contentFit={contentFit ?? (resizeMode ? RESIZE_MODE_TO_CONTENT_FIT[resizeMode] : 'cover')}
       transition={transition}
       cachePolicy={cachePolicy}
+      recyclingKey={recyclingKey ?? displayedUri}
       {...props}
+      source={recovering ? { uri: fallback } : source}
+      // R2 uploads are WebP. Use expo-image's libwebp decoder consistently
+      // instead of depending on the iOS system codec's format support.
+      useAppleWebpCodec={props.useAppleWebpCodec ?? false}
+      onError={event => {
+        if (fallback && !recovering && uri) {
+          setFailedUri(uri);
+          if (__DEV__) console.warn('[AppImage] Public image failed; trying API recovery.', event.error);
+          return;
+        }
+        onError?.(event);
+      }}
     />
   );
 }
@@ -65,5 +88,5 @@ export function AppImage({ resizeMode, contentFit, transition = 200, cachePolicy
 // track since nothing here is rendered directly.
 export function prefetchImages(uris: (string | undefined)[]) {
   const real = uris.filter((uri): uri is string => Boolean(uri));
-  if (real.length > 0) void ExpoImage.prefetch(real, 'memory-disk');
+  if (real.length > 0) void ExpoImage.prefetch([...new Set(real)], 'memory-disk').catch(() => { /* Prefetch is optional; rendering can retry normally. */ });
 }

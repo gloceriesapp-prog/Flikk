@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ProductCard } from '../home/products/ProductCard';
@@ -32,7 +32,8 @@ type Props = NativeStackScreenProps<AppStackParamList, 'StoreDetail'>;
 
 export function StoreDetailScreen({ navigation, route }: Props) {
   const { storeId, storeName } = route.params;
-  const { data } = useStoreProducts(storeId);
+  const catalog = useStoreProducts(storeId);
+  const { data } = catalog;
   const categories = data?.categories ?? [];
   const products = data?.products ?? [];
 
@@ -103,7 +104,7 @@ export function StoreDetailScreen({ navigation, route }: Props) {
           />
 
           {/* FlashList, not a ScrollView + flex-wrap — a store's full real
-              catalog (useStoreProducts) has no cap, unlike Home's own
+              catalog is loaded in bounded pages, unlike Home's fixed
               4-6-item teaser rows, so this can genuinely grow long.
               className on the wrapping View, not FlashList itself —
               FlashList isn't one of NativeWind's auto-patched core
@@ -118,6 +119,11 @@ export function StoreDetailScreen({ navigation, route }: Props) {
             <FlashList
               data={visibleProducts}
               numColumns={2}
+              ListFooterComponent={catalog.hasNextPage || catalog.isError ? (
+                <Pressable accessibilityRole="button" disabled={catalog.isFetching} onPress={() => { void (catalog.hasNextPage ? catalog.fetchNextPage() : catalog.refetch()); }} className="items-center py-4">
+                  <Text className="font-semibold text-[#155DFC]">{catalog.isFetching ? 'Loading…' : catalog.isError ? 'Try again' : 'Load more products'}</Text>
+                </Pressable>
+              ) : null}
               keyExtractor={(product: Product) => product.id}
               contentContainerStyle={{ paddingVertical: 12, paddingLeft: 2, paddingRight: 12, paddingBottom: 64 }}
               showsVerticalScrollIndicator={false}
@@ -130,7 +136,7 @@ export function StoreDetailScreen({ navigation, route }: Props) {
               }
               ListEmptyComponent={
                 <View className="w-full items-center py-16">
-                  <Text className="text-sm text-ink/50">No items here yet.</Text>
+                  <Text className="text-sm text-ink/50">{catalog.isPending ? 'Loading products…' : catalog.hasNextPage ? 'Load more to find additional products.' : catalog.isError ? 'Couldn’t load products.' : 'No items here yet.'}</Text>
                 </View>
               }
               renderItem={({ item }: { item: Product }) => (

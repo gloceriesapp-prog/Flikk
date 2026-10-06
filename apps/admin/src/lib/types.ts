@@ -126,6 +126,9 @@ export interface Payout {
 // only the pre-approval submission). A store graduates from Application to
 // Store the moment it's approved.
 export interface Store {
+  manualAddress?: string;
+  udyamNumber?: string;
+  avgPrepMinutes?: number;
   id: string;
   name: string;
   category: string;

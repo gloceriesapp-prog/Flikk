@@ -20,6 +20,8 @@ export interface HomeSectionConfig {
 
 export function useHomeSections() {
   return useQuery({
+    staleTime: 300_000,
+    gcTime: 30 * 60_000,
     queryKey: ['home', 'sections'],
     queryFn: () => apiRequest<HomeSectionConfig[]>('/home/sections', { auth: false }),
   });

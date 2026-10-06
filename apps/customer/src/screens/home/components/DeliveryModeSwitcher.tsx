@@ -1,10 +1,8 @@
 // Right side of the header row, next to LocationSelector — one pill
 // (GlassView, real iOS 26 Liquid Glass via expo-glass-effect, falls back
 // to a plain translucent View on Android/web since the library's own
-// fallback is an unstyled View) holding just the Profile shortcut now.
-// Liked-products (heart) + Orders (clipboard) moved out to the search bar's
-// own right-edge glass pill (HomeSearchBar.tsx) per an explicit ask —
-// this top pill is profile-only.
+// fallback is an unstyled View) holding Wishlist on the left and Profile
+// on the right. The search row stays free for a full-width search bar.
 //
 // The person icon navigates to ProfileScreen (screens/profile/), a real
 // account + settings screen.
@@ -14,7 +12,7 @@
 // fallback (GlassView renders a plain View there) gets a matching
 // translucent background + soft border.
 
-import { UserIcon } from '@hugeicons/core-free-icons';
+import { HeartIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { GlassView } from 'expo-glass-effect';
 import { Platform, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -28,7 +26,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 999,
-    padding: 6,
+    padding: 2,
+    flexShrink: 0,
     // The native blur layer under GlassView renders past its own
     // borderRadius unless explicitly clipped — without this it shows as
     // a rectangular tinted halo around the rounded pill instead of a
@@ -58,7 +57,20 @@ export function DeliveryModeSwitcher({ light = false }: { light?: boolean }) {
             : { backgroundColor: 'rgba(20,20,20,0.35)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' }),
       ]}
     >
-      <Pressable hitSlop={6} className="h-9 w-9 items-center justify-center" onPress={() => navigation.navigate('Profile')}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Wishlist"
+        className="h-11 w-11 items-center justify-center active:opacity-70"
+        onPress={() => navigation.navigate('Wishlist')}
+      >
+        <AppIcon icon={HeartIcon} size={19} color={iconColor} strokeWidth={1.8} />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Profile"
+        className="h-11 w-11 items-center justify-center active:opacity-70"
+        onPress={() => navigation.navigate('Profile')}
+      >
         <AppIcon icon={UserIcon} size={19} color={iconColor} strokeWidth={1.8} />
       </Pressable>
     </GlassView>

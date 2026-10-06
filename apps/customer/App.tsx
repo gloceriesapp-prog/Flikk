@@ -1,9 +1,16 @@
+import { withCrashReporting } from './src/observability/crashReporting';
+import { detachNotifications } from './src/features/notifications/native';
 import './global.css';
+import { accountQueryClient, registerAccountReset } from './src/features/account-session/accountCache';
+import { useAuthStore } from './src/store/useAuthStore';
+import { useCartStore } from './src/store/useCartStore';
+import { useWishlistStore } from './src/store/useWishlistStore';
+import { useLocationStore } from './src/store/useLocationStore';
 import { useCallback } from 'react';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,24 +18,19 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { GILROY_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 
-void SplashScreen.preventAutoHideAsync();
-
-// staleTime: 60s — every screen was refetching its data on every mount
-// (default staleTime is 0, "always stale"), which multiplies real request
-// volume with no benefit for content that barely changes minute to minute
-// (categories, home tabs, store list, product catalogs). A screen that
-// genuinely needs live data (order tracking) still gets it: refetchInterval
-// polling fires regardless of staleTime, this only skips the redundant
-// automatic refetch-on-mount/refocus for data that's still fresh.
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60 * 1000,
-    },
-  },
+registerAccountReset(() => {
+  detachNotifications();
+  useCartStore.getState().clear();
+  useWishlistStore.getState().reset();
+  void useLocationStore.getState().clear().catch(() => {});
 });
 
-export default function App() {
+void SplashScreen.preventAutoHideAsync();
+
+function App() {
+  useAuthStore(state => state.sessionEpoch);
+  useAuthStore(state => state.customerId);
+  const queryClient = accountQueryClient();
   // Loading the weights here registers them with the OS by font-family name
   // (e.g. "Gilroy-Regular") — the actual global default is applied via
   // global.css's `@layer base { * { font-family: ... } }`, not from this
@@ -66,10 +68,10 @@ export default function App() {
             {/* Must render BEFORE RootNavigator, not after — expo-status-bar
                 lets multiple StatusBar instances mount at once, and whichever
                 one is later in render/mount order wins. With this one after
-                RootNavigator, this global "dark" always overrode any
+                RootNavigator, the global style could override any
                 per-screen style="light" override (e.g. HomeScreen.tsx's own),
                 regardless of which screen was actually focused. */}
-            <StatusBar style="dark" />
+            <StatusBar style="light" />
             <ErrorBoundary>
               <RootNavigator />
             </ErrorBoundary>
@@ -79,3 +81,5 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+export default withCrashReporting(App);

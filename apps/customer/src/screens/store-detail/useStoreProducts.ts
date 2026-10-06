@@ -9,36 +9,28 @@
 // use — not a fixed list, so a store with only 2 categories doesn't grow a
 // sidebar of empty tabs.
 
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../api/client';
 import { mapApiProduct, type ApiProduct } from '../../api/products';
-import type { Product } from '../home/products/types';
 
-export interface StoreCategory {
-  id: string;
-  label: string;
-}
-
-export interface StoreCatalog {
-  products: Product[];
-  categories: StoreCategory[];
-}
-
+export interface StoreCategory { id: string; label: string }
+interface StorePage { products: ApiProduct[]; nextCursor: string | null }
 export function useStoreProducts(storeId: string) {
-  return useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['store-detail', storeId, 'products'],
-    queryFn: async (): Promise<StoreCatalog> => {
-      const rows = await apiRequest<ApiProduct[]>(`/stores/${storeId}/products`, { auth: false });
-      const products = rows.map(mapApiProduct);
-
-      const categoryLabels = Array.from(new Set(products.map((p) => p.categoryLabel).filter((c): c is string => !!c)));
-      const categories: StoreCategory[] = [
-        { id: 'all', label: 'All' },
-        ...categoryLabels.map((label) => ({ id: label, label })),
-      ];
-
-      return { products, categories };
-    },
+    initialPageParam: '' as string,
+    queryFn: ({ pageParam }) => apiRequest<StorePage>(
+      `/stores/${storeId}/products-page?limit=30${pageParam ? `&after=${pageParam}` : ''}`, { auth: false }),
+    getNextPageParam: page => page.nextCursor ?? undefined,
     enabled: !!storeId,
+    staleTime: 60_000,
+    // Realtime recovery trims to the first page before refreshing. React
+    // Query's automatic refetch would otherwise replay every loaded page.
+    refetchOnMount: query => query.state.isInvalidated,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
+  const products = [...new Map((query.data?.pages.flatMap(p => p.products) ?? []).map(p => [p.id, p])).values()].map(mapApiProduct);
+  const labels = Array.from(new Set(products.map(p => p.categoryLabel).filter((c): c is string => !!c)));
+  return { ...query, data: query.data ? { products, categories: [{ id: 'all', label: 'All' }, ...labels.map(label => ({ id: label, label }))] } : undefined };
 }

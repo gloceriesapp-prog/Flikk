@@ -27,9 +27,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { cartIdentity } from './cartIdentity';
+import { useAuthStore } from './useAuthStore';
 
 export interface CartItem {
   id: string;
+  isAvailable?: boolean;
+  productId?: string;
+  variantId?: string;
   name: string;
   weight: string;
   price: number;
@@ -72,6 +77,8 @@ export interface AppliedPromo {
 
 interface CartState {
   items: CartItem[];
+  lastAddedItemId: string | null;
+  recentItemIds: string[];
   appliedPromo: AppliedPromo | null;
   addItem: (product: CartProduct) => void;
   incrementItem: (id: string) => void;
@@ -81,13 +88,51 @@ interface CartState {
   clear: () => void;
 }
 
+const CART_PREVIEW_LIMIT = 3;
+// Serialize writes so a slow old-account write cannot land after logout's clear.
+let storageWrites: Promise<unknown> = Promise.resolve();
+const cartStorage = {
+  async getItem(key: string) {
+    const epoch = useAuthStore.getState().sessionEpoch;
+    await storageWrites.catch(() => {});
+    const value = await AsyncStorage.getItem(key);
+    return epoch === useAuthStore.getState().sessionEpoch ? value : null;
+  },
+  setItem(key: string, value: string) {
+    const write = storageWrites.catch(() => {}).then(() => AsyncStorage.setItem(key, value));
+    storageWrites = write;
+    return write;
+  },
+  removeItem(key: string) {
+    const write = storageWrites.catch(() => {}).then(() => AsyncStorage.removeItem(key));
+    storageWrites = write;
+    return write;
+  },
+};
+
+// Keep three distinct, available products in addition order. Re-adding a
+// product moves it to the newest slot; removals backfill from the cart.
+export function getCartPreviewIds(items: CartItem[], recentItemIds: string[] = [], addedItemId?: string): string[] {
+  const available = new Set(items.map((item) => item.id));
+  const recent = recentItemIds.filter((id) => available.has(id));
+  const history = [...items.filter((item) => !recent.includes(item.id)).map((item) => item.id), ...recent];
+  const ordered = addedItemId && available.has(addedItemId)
+    ? [...history.filter((id) => id !== addedItemId), addedItemId]
+    : history;
+  return ordered.slice(-CART_PREVIEW_LIMIT);
+}
+
 export const useCartStore = create<CartState>()(
   persist(
     (set) => ({
       items: [],
+      lastAddedItemId: null,
+      recentItemIds: [],
       appliedPromo: null,
 
       addItem: (product) => {
+        product = { ...product, ...cartIdentity(product) };
+        if (product.isAvailable === false || product.variantId?.startsWith('preview-')) return;
         // A product with no real store id (any feed that hasn't been wired
         // to the real backend) can never be part of a real order —
         // refusing the add outright keeps it from ever reaching checkout,
@@ -97,15 +142,15 @@ export const useCartStore = create<CartState>()(
 
         set((state) => {
           const existing = state.items.find((item) => item.id === product.id);
-          if (existing) {
-            return {
-              items: state.items.map((item) =>
+          const items = existing
+            ? state.items.map((item) =>
                 item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
-              ),
-              appliedPromo: null,
-            };
-          }
-          return { items: [...state.items, { ...product, quantity: 1 }], appliedPromo: null };
+              )
+            : [...state.items, { ...product, quantity: 1 }];
+          return {
+            items, appliedPromo: null, lastAddedItemId: product.id,
+            recentItemIds: getCartPreviewIds(items, state.recentItemIds, product.id),
+          };
         });
       },
 
@@ -113,29 +158,60 @@ export const useCartStore = create<CartState>()(
         set((state) => ({
           items: state.items.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item)),
           appliedPromo: null,
+          lastAddedItemId: state.items.some((item) => item.id === id) ? id : state.lastAddedItemId,
+          recentItemIds: getCartPreviewIds(state.items, state.recentItemIds, id),
         })),
 
       decrementItem: (id) =>
-        set((state) => ({
-          items: state.items
+        set((state) => {
+          const items = state.items
             .map((item) => (item.id === id ? { ...item, quantity: item.quantity - 1 } : item))
-            .filter((item) => item.quantity > 0),
-          appliedPromo: null,
-        })),
+            .filter((item) => item.quantity > 0);
+          return {
+            items,
+            appliedPromo: null,
+            lastAddedItemId: items.some((item) => item.id === state.lastAddedItemId)
+              ? state.lastAddedItemId : items[items.length - 1]?.id ?? null,
+            recentItemIds: getCartPreviewIds(items, state.recentItemIds),
+          };
+        }),
 
       removeItem: (id) =>
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-          appliedPromo: null,
-        })),
+        set((state) => {
+          const items = state.items.filter((item) => item.id !== id);
+          return {
+            items,
+            appliedPromo: null,
+            lastAddedItemId: items.some((item) => item.id === state.lastAddedItemId)
+              ? state.lastAddedItemId : items[items.length - 1]?.id ?? null,
+            recentItemIds: getCartPreviewIds(items, state.recentItemIds),
+          };
+        }),
 
       setAppliedPromo: (promo) => set({ appliedPromo: promo }),
 
-      clear: () => set({ items: [], appliedPromo: null }),
+      clear: () => set({ items: [], appliedPromo: null, lastAddedItemId: null, recentItemIds: [] }),
     }),
     {
       name: 'gloceries-cart',
-      storage: createJSONStorage(() => AsyncStorage),
+      version: 2,
+      skipHydration: true,
+      // Legacy drafts have no provable owner. Never expose them to a new account.
+      migrate: () => ({ items: [], lastAddedItemId: null, recentItemIds: [], appliedPromo: null, ownerId: null }),
+      partialize: (state) => ({ items: state.items, lastAddedItemId: state.lastAddedItemId,
+        recentItemIds: state.recentItemIds, appliedPromo: null,
+        ownerId: useAuthStore.getState().customerId }),
+      merge: (saved, current) => {
+        const draft = saved as { ownerId?: string | null; items?: CartItem[]; recentItemIds?: string[] } | undefined;
+        const owner = useAuthStore.getState().customerId;
+        if (!owner || draft?.ownerId !== owner || !Array.isArray(draft.items)) return current;
+        const items = draft.items.filter(item => item && typeof item.id === 'string' && typeof item.storeId === 'string'
+          && Number.isFinite(item.price) && Number.isSafeInteger(item.quantity) && item.quantity > 0)
+          .map(item => ({ ...item, ...cartIdentity(item) })).filter(item => !item.variantId?.startsWith('preview-'));
+        return { ...current, items, appliedPromo: null, recentItemIds: getCartPreviewIds(items, draft.recentItemIds),
+          lastAddedItemId: items[items.length - 1]?.id ?? null };
+      },
+      storage: createJSONStorage(() => cartStorage),
     },
   ),
 );
@@ -193,29 +269,4 @@ export function groupCartItemsByStore(items: CartItem[]): CartStoreGroup[] {
 // can't drift out of sync with how the cart actually groups items.
 export function selectCartStoreCount(state: CartState): number {
   return new Set(state.items.map((item) => item.storeId)).size;
-}
-
-// Delivery fee AND handling fee are both real, admin-editable settings now
-// (api/deliverySettings.ts's own useDeliverySettings, backed by
-// public.delivery_settings) — no more hardcoded CART_HANDLING_FEE/
-// CART_DELIVERY_FEE constants here. The backend independently re-derives
-// both server-side too (backend/src/lib/deliverySettings.ts,
-// calcOrderTotal's own handlingFee param), so the amount actually charged
-// can never drift from what's admin-configured.
-//
-// Plain function of primitives, not a `(state: CartState) => ...` zustand
-// selector (same reasoning groupCartItemsByStore's own note documents) —
-// this also needs deliverySettings, which doesn't live in CartState at
-// all, so it could never have been a selector in the first place. Call
-// sites read `itemTotal`/`discountAmount` off their own existing
-// selectors and pass real fetched settings through (CheckoutScreen,
-// BillDetailsCard).
-export function calculateCartGrandTotal(
-  itemTotal: number,
-  discountAmount: number,
-  deliverySettings: { flatDeliveryFee: number; freeDeliveryEnabled: boolean; freeDeliveryThreshold: number; handlingFee: number },
-): number {
-  const isDeliveryFree = deliverySettings.freeDeliveryEnabled && itemTotal >= deliverySettings.freeDeliveryThreshold;
-  const deliveryFee = isDeliveryFree ? 0 : deliverySettings.flatDeliveryFee;
-  return Math.max(itemTotal + deliveryFee + deliverySettings.handlingFee - discountAmount, 0);
 }

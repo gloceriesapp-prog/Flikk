@@ -1,0 +1,63 @@
+groups:
+  - name: flikk-capacity
+    rules:
+      - alert: FlikkApiHighLatency
+        expr: histogram_quantile(0.95, sum(rate(flikk_http_request_duration_seconds_bucket[5m])) by (le)) > 0.75
+        for: 5m
+        labels: {severity: warning}
+      - alert: FlikkApiErrors
+        expr: sum(rate(flikk_http_errors_total[5m])) / clamp_min(sum(rate(flikk_http_requests_total[5m])), 0.01) > 0.01
+        for: 5m
+        labels: {severity: critical}
+      - alert: FlikkExpiredInventoryBacklog
+        expr: max(flikk_database_oldest_expired_reservation_seconds) > 30
+        for: 2m
+        labels: {severity: critical}
+      - alert: FlikkDatabaseMetricsStale
+        expr: time() - max(flikk_database_sample_timestamp_seconds) > 60
+        for: 2m
+        labels: {severity: warning}
+      - alert: FlikkDatabaseLockWaits
+        expr: max(flikk_database_lock_waiters) > 5
+        for: 2m
+        labels: {severity: warning}
+      - alert: FlikkEventLoopDelayed
+        expr: max(flikk_event_loop_delay_p99_seconds) > 0.1
+        for: 5m
+        labels: {severity: warning}
+      - alert: FlikkCapacityCollectorMissing
+        expr: absent(flikk_database_sample_timestamp_seconds)
+        for: 2m
+        labels: {severity: critical}
+      - alert: FlikkCapacityCollectorFailed
+        expr: max(flikk_database_collector_success) == 0
+        for: 2m
+        labels: {severity: warning}
+      - alert: FlikkMetricSeriesDropped
+        expr: sum(increase(flikk_metric_series_dropped_total[5m])) > 0
+        for: 1m
+        labels: {severity: warning}
+      - alert: FlikkOrderRefundRequiresReview
+        expr: max(flikk_database_order_refund_failed) > 0
+        for: 5m
+        labels: {severity: critical}
+      - alert: FlikkOrderRefundBacklogAge
+        expr: max(flikk_database_oldest_order_refund_seconds) > 1800
+        for: 5m
+        labels: {severity: critical}
+      - alert: FlikkWorkerMissing
+        expr: absent(flikk_worker_last_success_timestamp_seconds{queue="scheduled-work"})
+        for: 3m
+        labels: {severity: critical}
+      - alert: FlikkWorkerStale
+        expr: time() - max(flikk_worker_last_success_timestamp_seconds{queue="scheduled-work"}) > 120
+        for: 2m
+        labels: {severity: critical}
+      - alert: FlikkScheduledWorkOverdue
+        expr: max(flikk_database_overdue_scheduled_jobs) > 0
+        for: 3m
+        labels: {severity: critical}
+      - alert: FlikkLiveUpdatesSaturated
+        expr: sum(rate(flikk_sse_rejected_total[5m])) > 1
+        for: 3m
+        labels: {severity: warning}

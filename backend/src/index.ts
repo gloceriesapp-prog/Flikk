@@ -1,3 +1,15 @@
+import { promotionsRouter } from './promotions/router.js';
+import { privacyRouter } from './customer-experience/privacy.js';
+import { publicDeliveryRouter } from './media/publicDelivery.js';
+import { productBrowseRouter } from './customer-experience/productBrowse.js';
+import { startMonitoring } from './observability/runtime.js';
+import { measureHttp } from './observability/http.js';
+import { customerHistoryRouter } from './history/customerHistory.js';
+import { collectionRouter } from './catalogue/collections.js';
+import { liveOrdersRouter, liveTripsRouter } from './tracking/live.js';
+import { notificationsRouter } from './notifications/router.js';
+import { supportRouter } from './support/router.js';
+import { customerRefundsRouter } from './support/refundsRouter.js';
 import compression from 'compression';
 import express from 'express';
 import { pinoHttp } from 'pino-http';
@@ -13,8 +25,10 @@ import { homeTabsRouter } from './routes/homeTabs.js';
 import { homeFestivalSectionRouter } from './routes/homeFestivalSection.js';
 import { homeFestivalGreetingRouter } from './routes/homeFestivalGreeting.js';
 import { homeSectionsRouter } from './routes/homeSections.js';
+import { homeContentRouter } from './routes/homeContent.js';
 import { homeSeasonalSectionRouter } from './routes/homeSeasonalSection.js';
 import { storesRouter } from './routes/stores.js';
+import { checkoutRouter } from './routes/checkout.js';
 import { ordersRouter } from './routes/orders.js';
 import { tripsRouter } from './routes/trips.js';
 import { addressesRouter } from './routes/addresses.js';
@@ -31,16 +45,33 @@ import { wishlistRouter } from './routes/wishlist.js';
 import { referralsRouter } from './routes/referrals.js';
 import { deliverySettingsRouter } from './routes/deliverySettings.js';
 import { areaUpvotesRouter } from './routes/areaUpvotes.js';
-import cron from 'node-cron';
-import { runWeeklyPayoutJob } from './jobs/weeklyPayouts.js';
-import { runWeeklyRiderPayoutJob } from './jobs/weeklyRiderPayouts.js';
-import { expireUnpaidOrders } from './jobs/expireUnpaidOrders.js';
-import { expandDispatchOrRebroadcast } from './lib/riderDispatch.js';
+import { startServer, startupMessage } from './server/lifecycle.js';
+import { startBackgroundServices } from './server/background.js';
+import { closeDatabaseConnections } from './db/supabase.js';
+
+import { webhookAdmission } from './security/webhookAdmission.js';
+import { uploadBodyDeadline } from './security/bodyDeadline.js';
+import { requestAdmission, concurrentAdmission } from './security/admission.js';
+import { UPLOAD_PATHS, uploadAdmission, ordinaryJson, productUploadRole } from './security/parsers.js';
 
 const app = express();
+let shuttingDown = false;
+app.use(measureHttp);
+app.use((_req, res, next) => {
+  if (shuttingDown) {
+    res.setHeader('Connection', 'close');
+    res.status(503).json({ error: { code: 'SERVER_RESTARTING', message: 'The server is restarting. Please retry shortly.' } });
+    return;
+  }
+  next();
+});
 
 // Smaller responses -> more requests/sec per instance under load. Safe
 // everywhere — gzip is transparent to every client already talking JSON.
+const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
+if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5) throw new Error('Invalid TRUST_PROXY_HOPS');
+if (proxyHops) app.set('trust proxy', proxyHops);
+app.use(requestAdmission);
 app.use(compression());
 
 // Every request logged with method/path/status/duration — real, live
@@ -72,22 +103,18 @@ app.use((req, res, next) => {
 // mounted before the generic json() parser with its own raw-capture.
 app.use(
   '/payments/webhook',
+  webhookAdmission, concurrentAdmission(32), uploadBodyDeadline,
   express.json({
     verify: (req, _res, buf) => {
       (req as unknown as { rawBody: string }).rawBody = buf.toString();
     },
   }),
 );
-// Default body limit is 100kb — fine for ordinary JSON, but every photo
-// upload in this app (store-photo here, product photos, etc.) sends the
-// file as base64 inside a JSON body, which inflates a real device photo
-// well past that default and gets silently rejected outright (a real
-// device photo failed here even after the store-images bucket fix,
-// because the request body itself never made it past this limit — a tiny
-// 1x1 test image during verification stayed under 100kb and masked this).
-// 10mb covers a compressed photo (ImagePicker's own quality: 0.6) with
-// real headroom.
-app.use(express.json({ limit: '10mb' }));
+for (const path of UPLOAD_PATHS) {
+  const [auth, ...rest] = uploadAdmission;
+  app.post(path, auth!, ...(path === '/partner/product-photo' ? productUploadRole : []), ...rest);
+}
+app.use(ordinaryJson);
 
 // No root route existed at all — visiting the backend's own URL in a
 // browser (the natural "is it actually running?" check) just 404'd with
@@ -98,27 +125,39 @@ app.get('/', (_req, res) => {
   res.json({ ok: true, service: 'gloceries-backend', message: 'Gloceries backend is running.' });
 });
 
+app.use('/privacy', privacyRouter);
 app.use('/auth', authRouter);
 app.use('/zones', zonesRouter);
 // Rarely-changing, read-heavy, hit on nearly every screen load — cached for
 // 30s so concurrent traffic doesn't re-query Postgres for identical data a
 // few seconds apart. See shortCache.ts's own note on the Redis upgrade path.
+app.use('/browse', shortCache(30000), productBrowseRouter);
 app.use('/categories', shortCache(), categoriesRouter);
 app.use('/category-sections', shortCache(), categorySectionsRouter);
 app.use('/home-tabs', shortCache(), homeTabsRouter);
 app.use('/home/festival-section', shortCache(), homeFestivalSectionRouter);
 app.use('/home/festival-greeting', shortCache(), homeFestivalGreetingRouter);
 app.use('/home/sections', shortCache(), homeSectionsRouter);
+app.use('/home/content', homeContentRouter);
 app.use('/home/seasonal-section', shortCache(), homeSeasonalSectionRouter);
-app.use('/stores', shortCache(), storesRouter);
+app.use('/stores', shortCache(), collectionRouter, storesRouter);
+app.use('/media/public', publicDeliveryRouter);
+app.use('/checkout', checkoutRouter);
+app.use('/support', supportRouter);
+app.use('/customer-refunds', customerRefundsRouter);
+app.use('/notifications', notificationsRouter);
+app.use('/admin/promotions', promotionsRouter);
+app.use('/orders', customerHistoryRouter);
+app.use('/orders', liveOrdersRouter);
 app.use('/orders', ordersRouter);
+app.use('/trips', liveTripsRouter);
 app.use('/trips', tripsRouter);
 app.use('/addresses', addressesRouter);
 app.use('/promos', promosRouter);
 app.use('/reviews', reviewsRouter);
 app.use('/wishlist', wishlistRouter);
 app.use('/referrals', referralsRouter);
-app.use('/delivery-settings', shortCache(), deliverySettingsRouter);
+app.use('/delivery-settings', shortCache(5000), deliverySettingsRouter);
 app.use('/area-upvotes', areaUpvotesRouter);
 // Mounted before partnerRouter — its two routes (/store-application,
 // /store-photo) must be reachable without partnerRouter's router-wide
@@ -142,52 +181,37 @@ app.use('/location', locationRouter);
 
 app.use(errorHandler);
 
-app.listen(env.port, () => {
-  logger.info(`Gloceries backend listening on :${env.port}`);
-});
-
-// Weekly store payout release — every Monday 9 AM IST. node-cron runs
-// in-process (this backend is a long-running monolith on Railway/Render,
-// per CLAUDE.md — no separate scheduler infra needed at this scale). A
-// crash mid-job just means Monday's run didn't complete; the next
-// Monday's run picks up any still-'pending' rows from computeWeeklyPayouts'
-// own unique-per-store-per-week guarantee, nothing is silently lost.
-cron.schedule(
-  '0 9 * * 1',
-  () => {
-    void runWeeklyPayoutJob().catch((err) => logger.error({ err }, '[weeklyPayouts] job failed'));
-  },
-  { timezone: 'Asia/Kolkata' },
-);
-
-// Weekly rider payout release — Monday 9:30 AM IST, 30 min after the store
-// run so the two batches don't hit RazorpayX at the same instant. Same
-// crash-safety as the store job: a missed run's still-'pending' rows are
-// swept by the next Monday (rider_payouts_rider_week_unique + unpaid-earning
-// sweep in computeWeeklyRiderPayouts). Inert until RAZORPAYX_ACCOUNT_NUMBER
-// is set — until then release marks rows 'failed' and money waits, but
-// compute still records what's owed.
-cron.schedule(
-  '30 9 * * 1',
-  () => {
-    void runWeeklyRiderPayoutJob().catch((err) => logger.error({ err }, '[weeklyRiderPayouts] job failed'));
-  },
-  { timezone: 'Asia/Kolkata' },
-);
-// jobs/expireUnpaidOrders.ts's
-// own header note has the full reasoning; timezone doesn't matter here
-// (comparing real UTC instants against placed_at, not IST calendar days
-// the way weeklyPayouts.ts's own schedule needs to).
-cron.schedule('*/5 * * * *', () => {
-  void expireUnpaidOrders().catch((err) => logger.error({ err }, '[expireUnpaidOrders] job failed'));
-});
-
-// Rider-dispatch fallback — every minute, widen the search radius for any
-// 'packed' order still unassigned after DISPATCH_OFFER_WINDOW_MS
-// (lib/riderDispatch.ts's own note). Once every radius step is exhausted,
-// the order just sits there with rider_id still null — already visible in
-// admin's own manual assign-rider queue the whole time, which is the real
-// fallback, not a separate notification channel this job needs to own.
-cron.schedule('*/1 * * * *', () => {
-  void expandDispatchOrRebroadcast().catch((err) => logger.error({ err }, '[riderDispatch] expand job failed'));
-});
+try {
+  const runtime = await startServer(app, env.port, startBackgroundServices);
+  let stopMonitoring: () => Promise<void>;
+  try { stopMonitoring = await startMonitoring('api',() => !shuttingDown); }
+  catch (error) { await runtime.stop(); throw error; }
+  logger.info({ port: env.port, pid: process.pid }, 'Gloceries backend listening');
+  let stopping = false;
+  const shutdown = (signal: string) => {
+    if (stopping) return;
+    stopping = true;
+    shuttingDown = true;
+    logger.info({ signal }, 'Backend shutting down');
+    const deadline = setTimeout(() => {
+      logger.error('Shutdown exceeded 15 seconds; durable jobs will recover on restart');
+      runtime.server.closeAllConnections();
+      process.exit(1);
+    }, 15000);
+    void Promise.all([runtime.stop(),stopMonitoring()]).then(closeDatabaseConnections).catch(err => {
+      logger.error({ err }, 'Backend shutdown failed');
+      process.exitCode = 1;
+    }).finally(() => clearTimeout(deadline));
+  };
+  runtime.server.on('error', error => {
+    logger.error({ err: error }, 'HTTP server error');
+    process.exitCode = 1;
+    shutdown('server-error');
+  });
+  process.once('SIGINT', () => shutdown('SIGINT'));
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+} catch (error) {
+  logger.error(startupMessage(error, env.port));
+  await closeDatabaseConnections();
+  process.exitCode = 1;
+}

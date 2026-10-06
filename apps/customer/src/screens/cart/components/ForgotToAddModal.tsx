@@ -77,7 +77,7 @@ export function ForgotToAddModal({ visible, cartItemIds, onClose }: Props) {
 
         <View className="flex-1 bg-white">
           <ScrollView contentContainerClassName="px-5 pb-10 pt-5">
-            <Text className="mb-4 text-[16px] font-bold text-ink">Did you forget to add?</Text>
+            <Text className="mb-4 pt-6 pb-3 text-[17px] font-semibold text-ink">You might also need</Text>
 
             <View className="flex-row flex-wrap gap-x-2.5 gap-y-5">
               {candidates.map((product) => (

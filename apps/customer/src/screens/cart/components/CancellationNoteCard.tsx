@@ -22,7 +22,7 @@ export function CancellationNoteCard() {
     <View className="gap-1.5 rounded-2xl bg-white px-4 py-4">
       <Text className="text-[15px] font-semibold text-ink">Cancellation Policy</Text>
       <Text className="text-[13px] leading-[19px] text-ink/60 font-medium">
-       Free to cancel before your rider picks up your order. Once they've got it, we can't stop the delivery, sorry!
+       Free to cancel before your rider picks up your order. Once they&apos;ve got it, we can&apos;t stop the delivery, sorry!
       </Text>
     </View>
   );

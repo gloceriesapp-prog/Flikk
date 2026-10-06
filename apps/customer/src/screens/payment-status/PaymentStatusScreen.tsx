@@ -1,36 +1,4 @@
-// Real failure/timeout destination for the UPI Intent flow — reached only
-// from PaymentProcessingScreen.tsx when payments/pollOrderPaid.ts's poll
-// times out with no webhook confirmation (backend/src/payments/webhook.ts
-// is the only thing that can ever mark an order paid, so a timeout here
-// means genuinely "not confirmed yet", not "definitely failed" — the
-// order stays exactly as POST /orders left it, unpaid, and
-// jobs/expireUnpaidOrders.ts cleans it up after 20 min if it's truly
-// abandoned). Standard Checkout (card/online) failures still stay inline
-// on Checkout itself — Razorpay's own SDK already shows the failure
-// inside its bundled UI before ever returning control there, so that path
-// never reaches this screen.
-//
-// Both actions below use navigation.reset, not goBack/navigate — a plain
-// goBack() only pops one level, and if the customer retries a few times
-// (each retry pushes a fresh PaymentProcessing -> replaces itself with a
-// fresh PaymentStatus, CheckoutScreen.tsx's own handlePay), the stack
-// keeps accumulating Checkout/PaymentStatus pairs underneath. A single
-// pop then lands back on a STALE PaymentStatus/Checkout instead of a
-// clean one — this was the exact reported bug: back from PaymentStatus
-// showed Checkout, back again showed PaymentStatus again. Resetting
-// straight to the known-good shape ([Cart, Checkout] to retry, [Cart]
-// alone to leave) wipes every stale entry in one move regardless of how
-// many retries piled up, so there's nothing left to loop back into.
-// Checkout's own header back button (CheckoutHeader.tsx) calls
-// navigation.goBack(), so it needs a real Cart still under it — the
-// retry reset keeps that intact rather than resetting to Checkout alone.
-//
-// Hardware back (Android) and the swipe gesture (iOS, gestureEnabled:
-// false on this route in AppNavigator.tsx) are both routed through the
-// same "Back to Cart" reset rather than left to the default pop, for the
-// same reason — an unhandled back here is exactly what re-exposed the
-// stale-stack loop above.
-
+// Payment failures return to the cart for retry; no intermediate checkout page.
 import { useEffect } from 'react';
 import { BackHandler, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -49,7 +17,7 @@ const BRAND_ACCENT = '#155dfc';
 
 export function PaymentStatusScreen({ navigation }: Props) {
   function retryPayment() {
-    navigation.reset({ index: 1, routes: [{ name: 'Cart' }, { name: 'Checkout' }] });
+    navigation.reset({ index: 0, routes: [{ name: 'Cart' }] });
   }
 
   function backToCart() {

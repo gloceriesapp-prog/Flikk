@@ -57,15 +57,15 @@
 // from a useAnimatedReaction), not this file; this component only ever
 // renders the visual header itself.
 
-import { useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { AppIcon } from '../../../components/AppIcon';
 import { BlurView } from 'expo-blur';
 import { GlassView } from 'expo-glass-effect';
 import Animated, {
   Extrapolation,
   interpolate,
-  runOnJS,
-  useAnimatedReaction,
+  interpolateColor,
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -74,8 +74,11 @@ import { HeaderBackgroundGradient } from './HeaderBackgroundGradient';
 import { HomeSearchBar } from './HomeSearchBar';
 import { CategoryTabs } from './CategoryTabs';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
+import { HOME_BODY_BACKGROUND } from '../data/homeTabBackground';
+import { RegionalHeaderArtwork } from '../regional/header/RegionalHeaderArtwork';
 
 interface Props {
+  onBack?: () => void;
   onChangeLocation: () => void;
   onOpenSearch: () => void;
   selectedCategoryId: string;
@@ -83,11 +86,14 @@ interface Props {
   // Resolved by HomeScreen.tsx from its own real tab list — 'all' when
   // the All tab is selected. Drives which gradient renders.
   activeCategoryName: string;
+  activeTabBackgroundColor?: string;
   scrollY: SharedValue<number>;
   // Home shows the category tabs row; other screens reusing this header
   // (e.g. store-list/StoreListScreen.tsx) may not want it — there's nothing
   // for the tabs to filter there.
   showCategoryTabs?: boolean;
+  // Screens with artwork immediately below can join it to the header.
+  bottomSpacing?: number;
   // 10:30 PM–6:00 AM IST (utils/operatingHours.ts) — still drives
   // CollapsibleHeaderTop's LocationSelector text ("Closed for now"/"Opens
   // 6:00 AM tomorrow"); no longer swaps the header's own background color
@@ -97,13 +103,16 @@ interface Props {
 }
 
 export function HomeHeader({
+  onBack,
   onChangeLocation,
   onOpenSearch,
   selectedCategoryId,
   onSelectCategory,
   activeCategoryName,
+  activeTabBackgroundColor = HOME_BODY_BACKGROUND,
   scrollY,
   showCategoryTabs = true,
+  bottomSpacing = 28,
   isClosed = false,
 }: Props) {
   // useSpotlightAccent=false — per an explicit ask, the header no longer
@@ -113,12 +122,11 @@ export function HomeHeader({
   // call to this same hook), unaffected by this — the header's own
   // gradient is a separate resolution now.
   const gradient = useActiveHeaderGradient(activeCategoryName, false);
+  const hasHeaderArtwork = activeCategoryName.trim().toLowerCase() === 'regional';
 
-  // Every category gradient is now a light pastel (categoryHeaderGradients.ts),
-  // so the header's text/icons are always dark for legibility — not just on
-  // 'all'. Threaded down to CollapsibleHeaderTop (location + switcher) and
-  // OR'd into CategoryTabs' existing frosted (=dark-text) flip.
-  const isLightHeader = true;
+  // Primary header copy and controls use white. Search and category cards
+  // keep dark text on their own white surfaces via their existing styles.
+  const isLightHeader = false;
 
   // Same [0, COLLAPSE_DISTANCE] scroll window CollapsibleHeaderTop already
   // uses for its own fold — the frosted state and the folded-away ETA row
@@ -133,19 +141,20 @@ export function HomeHeader({
   const gradientStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, COLLAPSE_DISTANCE], [1, 0], Extrapolation.CLAMP),
   }));
-
-  // Same isScrolled flip HomeScreen.tsx already does for the OS status bar
-  // (same COLLAPSE_DISTANCE threshold) — CategoryTabs' icons/label are
-  // white against the gradient, but once the frosted BlurView takes over
-  // (frostedStyle above) that white becomes near-invisible against its
-  // light tint, so they need to flip to black at the same scroll point.
-  const [isFrosted, setIsFrosted] = useState(false);
-  useAnimatedReaction(
-    () => scrollY.value > COLLAPSE_DISTANCE,
-    (isScrolled, wasScrolled) => {
-      if (isScrolled !== wasScrolled) runOnJS(setIsFrosted)(isScrolled);
-    },
-  );
+  const inactiveCategoryStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      Math.min(Math.max(scrollY.value / COLLAPSE_DISTANCE, 0), 1),
+      [0, 1],
+      [
+        // Artwork needs an opaque surface; blend the palette with white
+        // rather than showing the photo through the category labels.
+        hasHeaderArtwork
+          ? interpolateColor(0.24, [0, 1], [gradient.bottomColor, '#FFFFFF'])
+          : 'rgba(255,255,255,0.25)',
+        '#E4E7EB',
+      ],
+    ),
+  }));
 
   return (
     <View className="overflow-hidden">
@@ -155,7 +164,14 @@ export function HomeHeader({
           opacity animation, not a second copy of the gradient-positioning
           logic that file already owns. */}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, gradientStyle]}>
-        <HeaderBackgroundGradient colors={gradient.colors} locations={gradient.stops} />
+        <HeaderBackgroundGradient
+          colors={gradient.colors}
+          // Settle into the body's shared colour before the category row,
+          // leaving a continuous surface underneath the tabs and banner.
+          locations={[0, gradient.stops[1] * 0.75, gradient.stops[2] * 0.75, 0.75]}
+        >
+          {hasHeaderArtwork && <RegionalHeaderArtwork />}
+        </HeaderBackgroundGradient>
       </Animated.View>
 
       {/* Sits between the gradient and the real content below — blurs
@@ -166,13 +182,35 @@ export function HomeHeader({
           "none" so it never steals a touch meant for whatever's beneath
           it. */}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, frostedStyle]}>
-        <BlurView intensity={75} tint="light" style={StyleSheet.absoluteFill} />
+        {/* intensity caps at 100 — stronger blur comes from (1) experimental
+            Gaussian method so Android actually blurs instead of just tinting,
+            and (2) a second stacked pass that re-blurs the already-blurred
+            output for a visibly deeper frost on both platforms. */}
+        <BlurView
+          intensity={100}
+          tint="light"
+          experimentalBlurMethod="dimezisBlurView"
+          style={StyleSheet.absoluteFill}
+        />
+        <BlurView
+          intensity={100}
+          tint="light"
+          experimentalBlurMethod="dimezisBlurView"
+          style={StyleSheet.absoluteFill}
+        />
         {Platform.OS === 'ios' && (
           <GlassView glassEffectStyle="regular" colorScheme="light" style={StyleSheet.absoluteFill} />
         )}
       </Animated.View>
 
       <View className="pt-safe">
+        {onBack && (
+          <View className="px-5">
+            <Pressable accessibilityRole="button" accessibilityLabel="Back to Home" onPress={onBack} className="h-11 w-11 items-center justify-center" hitSlop={8}>
+              <AppIcon icon={ArrowLeft01Icon} size={24} color="#101C10" strokeWidth={2} />
+            </Pressable>
+          </View>
+        )}
         {/* No pt-5 here anymore — CollapsibleHeaderTop now owns that top
             spacing itself, animated down to a small residual on scroll
             (see that component's own note on why). */}
@@ -180,17 +218,19 @@ export function HomeHeader({
           <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} isClosed={isClosed} light={isLightHeader} />
         </View>
 
-        {/* pb-7 only when the tab row is hidden — with it shown, CategoryTabs'
-            own content already fills this space; without it, the search bar
-            was the last thing in the gradient and needed real breathing room
-            below it instead of the panel ending flush against its bottom
-            edge. */}
-        <View className={`px-6 ${showCategoryTabs ? '' : 'pb-7'}`}>
+        {/* CategoryTabs owns its spacing when visible. Otherwise, the
+            screen controls the gap before the content below the header. */}
+        <View className="px-6" style={{ paddingBottom: showCategoryTabs ? 0 : bottomSpacing }}>
           <HomeSearchBar onPress={onOpenSearch} />
         </View>
 
         {showCategoryTabs && (
-          <CategoryTabs selectedId={selectedCategoryId} onSelect={onSelectCategory} isFrosted={isFrosted || isLightHeader} light={isLightHeader} />
+          <CategoryTabs
+            selectedId={selectedCategoryId}
+            onSelect={onSelectCategory}
+            activeBackgroundColor={activeTabBackgroundColor}
+            inactiveBackgroundStyle={inactiveCategoryStyle}
+          />
         )}
       </View>
     </View>

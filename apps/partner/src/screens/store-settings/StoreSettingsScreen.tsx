@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../components/AppImage';
 // Store settings (P6) — reached from StoreProfileHeader's gear icon.
 // Full-screen, not a sheet — same reasoning as ProductDetailScreen's own
 // note: a multi-section editable form belongs on a real screen, not
@@ -31,7 +32,7 @@ import {
   TagsIcon,
   Tick02Icon,
 } from '@hugeicons/core-free-icons';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';

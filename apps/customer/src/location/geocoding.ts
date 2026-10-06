@@ -17,8 +17,8 @@
 // already did before.
 
 import * as Location from 'expo-location';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+import { apiRequest } from '../api/client';
+import { withDeadline } from '../utils/deadline';
 
 export interface Coordinates {
   latitude: number;
@@ -56,9 +56,9 @@ export async function getCurrentCoordinates(): Promise<Coordinates> {
   // High, not Balanced — this fix becomes the map's starting pin position
   // and, once confirmed, the actual delivery address. A rider follows this
   // exact point, so it's worth the extra second+battery over a coarser fix.
-  const position = await Location.getCurrentPositionAsync({
+  const position = await withDeadline(Location.getCurrentPositionAsync({
     accuracy: Location.Accuracy.High,
-  });
+  }), 15000);
   return { latitude: position.coords.latitude, longitude: position.coords.longitude };
 }
 
@@ -87,7 +87,7 @@ export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocod
   const fromGoogle = await reverseGeocodeViaGoogle(coords);
   if (fromGoogle) return fromGoogle;
 
-  const results = await Location.reverseGeocodeAsync(coords);
+  const results = await withDeadline(Location.reverseGeocodeAsync(coords), 10000).catch(() => []);
   const first = results[0];
   if (!first) return { addressLabel: 'Selected location', city: '', shortName: 'Selected location' };
 
@@ -109,9 +109,7 @@ export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocod
 
 async function reverseGeocodeViaGoogle(coords: Coordinates): Promise<ReverseGeocodeResult | null> {
   try {
-    const res = await fetch(`${API_URL}/location/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`);
-    if (!res.ok) return null;
-    const data = (await res.json()) as { addressLabel: string | null; shortName?: string; city?: string };
+    const data = await apiRequest<{ addressLabel: string | null; shortName?: string; city?: string }>(`/location/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`, { auth: false });
     if (!data.addressLabel) return null;
     return { addressLabel: data.addressLabel, city: data.city ?? '', shortName: data.shortName ?? data.addressLabel };
   } catch {
@@ -121,7 +119,7 @@ async function reverseGeocodeViaGoogle(coords: Coordinates): Promise<ReverseGeoc
 
 // Free-text address -> coordinates, for the manual-search fallback.
 export async function geocodeAddress(query: string): Promise<Coordinates | null> {
-  const results = await Location.geocodeAsync(query);
+  const results = await withDeadline(Location.geocodeAsync(query), 10000);
   const first = results[0];
   return first ? { latitude: first.latitude, longitude: first.longitude } : null;
 }
@@ -136,9 +134,8 @@ export async function geocodeAddress(query: string): Promise<Coordinates | null>
 // convention the backend route's own network-failure branch already uses.
 export async function searchPlaces(query: string): Promise<string[]> {
   try {
-    const res = await fetch(`${API_URL}/location/search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) return [];
-    const data = (await res.json()) as { labels?: string[] };
+    if (query.trim().length < 3) return [];
+    const data = await apiRequest<{ labels?: string[] }>(`/location/search?q=${encodeURIComponent(query)}`, { auth: false });
     return data.labels ?? [];
   } catch {
     return [];
@@ -157,9 +154,7 @@ export interface NearbyPlace {
 // renders, not an error state.
 export async function fetchNearbyPlaces(coords: Coordinates): Promise<NearbyPlace[]> {
   try {
-    const res = await fetch(`${API_URL}/location/nearby?lat=${coords.latitude}&lng=${coords.longitude}`);
-    if (!res.ok) return [];
-    const data = (await res.json()) as { places?: { name: string }[] };
+    const data = await apiRequest<{ places?: { name: string }[] }>(`/location/nearby?lat=${coords.latitude}&lng=${coords.longitude}`, { auth: false });
     return (data.places ?? []).map((p) => ({ name: p.name }));
   } catch {
     return [];

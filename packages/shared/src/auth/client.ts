@@ -25,6 +25,7 @@ export class ApiError extends Error {
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
+  signal?: AbortSignal;
   auth?: boolean; // attach the caller-supplied access token — default true
 }
 
@@ -58,7 +59,7 @@ export interface ApiClient {
 }
 
 export function createApiClient({ baseUrl, getAccessToken, refresh, onSessionExpired }: ApiClientConfig): ApiClient {
-  async function send(path: string, method: string, body: unknown, token: string | null) {
+  async function send(path: string, method: string, body: unknown, token: string | null, signal?: AbortSignal) {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -68,19 +69,32 @@ export function createApiClient({ baseUrl, getAccessToken, refresh, onSessionExp
     // "not actually a server error", and log it so a misconfigured base URL
     // is diagnosable instead of silently swallowed. (Previously each app
     // hand-rolled this around its own send calls.)
-    let res: Response;
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    if (signal?.aborted) abort();
+    signal?.addEventListener('abort', abort, { once: true });
+    const timeout = setTimeout(abort, 20000);
     try {
-      res = await fetch(`${baseUrl}${path}`, {
-        method,
-        headers,
+      const res = await fetch(`${baseUrl}${path}`, {
+        method, headers, signal: controller.signal,
         body: body ? JSON.stringify(body) : undefined,
       });
-    } catch (err) {
-      console.error(`[apiRequest] network error calling ${path}:`, err);
-      throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your internet connection and try again.');
+      let json: unknown;
+      try { json = await res.json(); }
+      catch (error) {
+        if (controller.signal.aborted) throw error;
+        if (res.ok) throw new ApiError(0, 'INVALID_RESPONSE', 'Could not read the server response. Check your pending checkout before retrying.');
+        json = null;
+      }
+      return { res, json: json as { error?: { code?: string; message?: string } } | null };
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(0, signal?.aborted ? 'REQUEST_CANCELLED' : controller.signal.aborted ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR',
+        'Could not reach the server. Check your connection and try again.');
+    } finally {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', abort);
     }
-    const json = await res.json().catch(() => null);
-    return { res, json };
   }
 
   async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -89,7 +103,7 @@ export function createApiClient({ baseUrl, getAccessToken, refresh, onSessionExp
     // Captured before the request so the dead-session guard below fires only
     // when a real token was actually sent (guest guard — see onSessionExpired).
     const token = auth ? getAccessToken() : null;
-    let { res, json } = await send(path, method, body, token);
+    let { res, json } = await send(path, method, body, token, options.signal);
 
     // A real 401 doesn't automatically mean "log this person out" anymore
     // — it might just mean the access token expired (they're short-lived,
@@ -100,7 +114,7 @@ export function createApiClient({ baseUrl, getAccessToken, refresh, onSessionExp
     if (res.status === 401 && auth) {
       const newToken = refresh ? await refresh() : null;
       if (newToken) {
-        ({ res, json } = await send(path, method, body, newToken));
+        ({ res, json } = await send(path, method, body, newToken, options.signal));
       } else if (res.status === 401 && token && onSessionExpired) {
         // Refresh genuinely couldn't recover a session that HAD a token —
         // hand it back to the app to clear so RootNavigator bounces to login

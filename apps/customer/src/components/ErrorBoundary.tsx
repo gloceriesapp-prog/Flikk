@@ -1,3 +1,4 @@
+import { captureRenderError } from '../observability/crashReporting';
 // Top-level safety net — without this, one uncaught render error anywhere
 // in the tree (a bad prop from a slow API response, a null a screen didn't
 // guard against) crashes the whole app to a white screen with no recovery
@@ -33,6 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: { componentStack?: string | null }) {
+    captureRenderError(error);
     // Full trace to Metro/device logs — never rendered on screen (the
     // customer-facing fallback below is text-only), but still the real
     // record of what happened for whoever's debugging the build.

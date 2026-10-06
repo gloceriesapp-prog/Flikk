@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { BrowseLoadingText, BROWSE_LOADING_COPY } from '../../loading/BrowseLoadingText';
+import { Pressable, Text, View } from 'react-native';
 import { SectionTitle } from '../../components/SectionTitle';
 import { PromoListCard } from '../../products/PromoListCard';
 import { useGroceryOffers } from './useGroceryOffers';
@@ -18,7 +19,7 @@ export function GroceryOffersSection() {
           <View className="mx-5 items-center gap-3 rounded-2xl bg-mist/50 px-5 py-6">
             {isPending ? (
               <>
-                <ActivityIndicator accessibilityLabel="Loading grocery offers" />
+                <BrowseLoadingText message={BROWSE_LOADING_COPY.grocery} />
                 <Text className="text-center text-sm text-ink/60">Finding grocery offers…</Text>
               </>
             ) : isError ? (

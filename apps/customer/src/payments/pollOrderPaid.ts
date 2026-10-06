@@ -1,42 +1,9 @@
-// UPI Intent payments are asynchronous by nature — launching the app and
-// getting control back only means "the customer finished interacting
-// with it," never "the payment succeeded" (they might cancel inside the
-// app, or confirm and background before it settles). The one source of
-// truth is the order/trip row's own razorpay_payment_id, written
-// server-side only once the payment.captured webhook fires with a
-// verified signature (backend/src/payments/webhook.ts) — never
-// client-reported. Razorpay's own S2S UPI Intent docs say to allow 2-3
-// minutes before treating a payment as failed; this polls every 4s for
-// up to 2 minutes.
-//
-// Trip-aware (tripId variant) — a multi-store checkout's UPI-app grid
-// pays once for the whole trip (createUpiIntent.ts's own note), and the
-// webhook writes razorpay_payment_id onto the trip row directly (plus
-// cascading it onto every leg) — polling the trip itself is the correct
-// single source of truth here, not any one leg's own order row.
-//
-// Each wait between checks races the fixed interval against the app
-// coming back to the foreground (AppState 'active') — the moment the
-// customer returns from GPay/PhonePe/etc (confirmed OR cancelled, either
-// way control comes back to us), that's the single most likely instant
-// for the webhook to have just landed, and waiting out the rest of a
-// stale 4s tick before checking again read as "the processing screen
-// isn't updating." This doesn't add extra attempts beyond MAX_ATTEMPTS —
-// a fast foreground return just spends one attempt sooner, same total
-// budget either way.
-//
-// A declined/cancelled payment doesn't need the full 2-minute budget
-// either — Razorpay's own payment.failed webhook event
-// (backend/src/payments/webhook.ts) cancels the order/trip within
-// seconds of the actual decline/cancel inside the PSP app, well before
-// this loop would ever time out on its own. Checking record.status here
-// is what lets a real failure short-circuit immediately instead of
-// sitting through attempts that would only ever find the same "still not
-// paid" result the customer already effectively knows.
-
+// Poll current backend state while UPI is processing. Timeout means unknown,
+// so the caller opens recovery and reconciles with the provider rather than
+// starting a new checkout. Created/authorized payment failures do not cancel
+// the checkout; explicit cancellation and reservation expiry own that state.
 import { AppState } from 'react-native';
-import { fetchOrder } from '../api/orders';
-import { fetchTrip } from '../api/trips';
+import { recoverPayment } from '../api/payments';
 
 const POLL_INTERVAL_MS = 4000;
 const MAX_ATTEMPTS = 30; // 30 * 4s = 120s
@@ -65,9 +32,9 @@ function waitForNextCheck(ms: number): Promise<void> {
 
 export async function pollOrderPaid(id: { orderId: string } | { tripId: string }): Promise<boolean> {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const record = 'tripId' in id ? await fetchTrip(id.tripId) : await fetchOrder(id.orderId);
-    if (record.razorpay_payment_id) return true;
-    if (record.status === 'cancelled') return false;
+    const recovery = await recoverPayment(id);
+    if (recovery.state === 'paid') return true;
+    if (recovery.state === 'cancelled' || recovery.state === 'expired' || recovery.state === 'unpaid') return false;
     await waitForNextCheck(POLL_INTERVAL_MS);
   }
   return false;

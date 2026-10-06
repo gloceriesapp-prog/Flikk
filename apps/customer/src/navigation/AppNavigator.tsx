@@ -1,3 +1,14 @@
+import { AboutGloceriesScreen } from '../screens/about/AboutGloceriesScreen';
+import { useWarmPurchaseHistory } from '../screens/purchase/loading/useWarmPurchaseHistory';
+import { AccountPrivacyScreen } from '../features/account-privacy/AccountPrivacyScreen';
+import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
+import { SupportScreen } from '../features/customer-care/SupportScreen';
+import { SupportTicketScreen } from '../features/customer-care/SupportTicketScreen';
+import { RefundsScreen } from '../features/customer-care/RefundsScreen';
+import { RefundDetailScreen } from '../features/customer-care/RefundDetailScreen';
+import { CheckoutAttemptRecoveryScreen } from '../features/checkout-recovery/CheckoutAttemptRecoveryScreen';
+import { PaymentRecoveryScreen } from '../features/checkout-recovery/PaymentRecoveryScreen';
+import { useCheckoutRecovery } from '../features/checkout-recovery/useCheckoutRecovery';
 // Authenticated stack. Bottom-tab structure (Home/Orders/Profile per
 // specs/01-customer-app/README.md) lands when those screens are built.
 //
@@ -15,12 +26,21 @@ import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
 import { CategoryDetailScreen } from '../screens/category-detail/CategoryDetailScreen';
 import { BreakfastEssentialsScreen } from '../screens/home/groceries/breakfast-essentials/BreakfastEssentialsScreen';
 import { KitchenEssentialsScreen } from '../screens/home/groceries/kitchen-essentials/KitchenEssentialsScreen';
+import { FestivalCollectionScreen } from '../screens/home/festival/collections/FestivalCollectionScreen';
 import { SnacksAndDrinksScreen } from '../screens/home/groceries/snacks-and-drinks/SnacksAndDrinksScreen';
 import { LocalBrandScreen } from '../screens/home/groceries/local-brands/LocalBrandScreen';
-import { CheckoutScreen } from '../screens/checkout/CheckoutScreen';
+import { FreshCategoryScreen } from '../screens/home/fresh/shop-fresh/FreshCategoryScreen';
+import { EverydayVegetablesScreen } from '../screens/home/fresh/everyday-vegetables/EverydayVegetablesScreen';
+import { FruitFavouritesScreen } from '../screens/home/fresh/fruit-favourites/FruitFavouritesScreen';
+import { HomeGrownProduceScreen } from '../screens/home/fresh/home-grown-nearby/HomeGrownProduceScreen';
+import { RegionalCategoryScreen } from '../screens/home/regional/shop-by-category/RegionalCategoryScreen';
+import { CoconutOilScreen } from '../screens/home/regional/coconut-oil/CoconutOilScreen';
+import { PaymentMethodScreen } from '../screens/payment-method/PaymentMethodScreen';
 import { ComingSoonScreen } from '../screens/coming-soon/ComingSoonScreen';
 import { ErrorScreen } from '../screens/error/ErrorScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
+import { HomeCategoryScreen } from '../screens/home/category-page/HomeCategoryScreen';
+import { HomeContentCollectionScreen } from '../screens/home/content/HomeContentCollectionScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
 import { SelectLocationScreen } from '../screens/location/SelectLocationScreen';
@@ -35,19 +55,27 @@ import { StoreDetailScreen } from '../screens/store-detail/StoreDetailScreen';
 import { StoreListScreen } from '../screens/store-list/StoreListScreen';
 import { ShoppingListScreen } from '../screens/shopping-list/ShoppingListScreen';
 import { TrackOrderScreen } from '../screens/track-order/TrackOrderScreen';
+import { OrderSummaryScreen } from '../screens/order-summary/OrderSummaryScreen';
 import { UnavailableZoneScreen } from '../screens/home/unavailable-zone/UnavailableZoneScreen';
 import { WishlistScreen } from '../screens/wishlist/WishlistScreen';
 import { useLocationStore } from '../store/useLocationStore';
 import type { AppStackParamList } from './types';
+import { HomeNavigationShell } from './home/HomeNavigationShell';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export function AppNavigator() {
+  useCheckoutRecovery();
+  useWarmPurchaseHistory();
   const hasLocation = useLocationStore((s) => s.location !== null);
 
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
+      layout={({ children, state, descriptors }) => {
+        const route = state.routes[state.index];
+        return <HomeNavigationShell route={route} navigation={descriptors[route.key].navigation}>{children}</HomeNavigationShell>;
+      }}
       // Real entry logic: no saved location -> LocationPermission flow
       // first; location already set -> straight to Home. Home.tsx's own
       // isServiceable check branches to UnavailableZoneScreen inline from
@@ -58,6 +86,7 @@ export function AppNavigator() {
       initialRouteName={hasLocation ? 'Home' : 'LocationPermission'}
     >
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
+      <Stack.Screen name="HomeContentCollection" component={HomeContentCollectionScreen} />
       <Stack.Screen name="SelectLocation" component={SelectLocationScreen} />
       <Stack.Screen name="LocationSearch" component={LocationSearchScreen} />
       {/* animation: 'none' on these four — they're the bottom nav's own tabs
@@ -71,6 +100,7 @@ export function AppNavigator() {
           motion is correct there, it's specifically these four siblings
           where it read as wrong. */}
       <Stack.Screen name="Home" component={HomeScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="HomeCategory" component={HomeCategoryScreen} />
       <Stack.Screen name="Categories" component={CategoriesScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Store" component={StoreListScreen} options={{ animation: 'none' }} />
@@ -79,20 +109,37 @@ export function AppNavigator() {
       <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
       <Stack.Screen name="BreakfastEssentials" component={BreakfastEssentialsScreen} />
       <Stack.Screen name="KitchenEssentials" component={KitchenEssentialsScreen} />
+      <Stack.Screen name="FestivalCollection" component={FestivalCollectionScreen} />
       <Stack.Screen name="SnacksAndDrinks" component={SnacksAndDrinksScreen} />
       <Stack.Screen name="LocalPantryBrand" component={LocalBrandScreen} />
+      <Stack.Screen name="FreshCategory" component={FreshCategoryScreen} />
+      <Stack.Screen name="EverydayVegetables" component={EverydayVegetablesScreen} />
+      <Stack.Screen name="FruitFavourites" component={FruitFavouritesScreen} />
+      <Stack.Screen name="HomeGrownProduce" component={HomeGrownProduceScreen} />
+      <Stack.Screen name="RegionalCategory" component={RegionalCategoryScreen} />
+      <Stack.Screen name="CoconutOilCollection" component={CoconutOilScreen} />
       <Stack.Screen name="StoreDetail" component={StoreDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
-      <Stack.Screen name="Checkout" component={CheckoutScreen} />
+      <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
       <Stack.Screen name="AddressList" component={AddressListScreen} />
       <Stack.Screen name="AddressForm" component={AddressFormScreen} />
+      <Stack.Screen name="CheckoutAttemptRecovery" component={CheckoutAttemptRecoveryScreen} />
+      <Stack.Screen name="PaymentRecovery" component={PaymentRecoveryScreen} />
       <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="PaymentProcessing" component={PaymentProcessingScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="Receipt" component={ReceiptScreen} />
       <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
+      <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} />
+      <Stack.Screen name="Support" component={SupportScreen} />
+      <Stack.Screen name="AboutGloceries" component={AboutGloceriesScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="SupportTicket" component={SupportTicketScreen} />
+      <Stack.Screen name="MyRefunds" component={RefundsScreen} />
+      <Stack.Screen name="RefundDetail" component={RefundDetailScreen} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} />
       <Stack.Screen name="ShoppingList" component={ShoppingListScreen} />
       <Stack.Screen name="Referral" component={ReferralScreen} />
+      <Stack.Screen name="AccountPrivacy" component={AccountPrivacyScreen} />
       <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
       <Stack.Screen name="UnavailableZone" component={UnavailableZoneScreen} />
       <Stack.Screen name="ErrorPage" component={ErrorScreen} />

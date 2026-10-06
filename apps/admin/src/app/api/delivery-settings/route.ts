@@ -3,18 +3,20 @@
 // rationale as app/api/home-tabs/route.ts's own note. No [id] sub-route:
 // this table is a guaranteed singleton (exactly one row, seeded by the
 // migration, never inserted into again from here), so PATCH updates
-// whichever row exists rather than requiring an id the admin UI has no
-// real use for.
+// the singleton by its database ID. An explicit filter is required by
+// PostgreSQL safe-update protection, even for singleton tables.
 //
 // Validation inlined here rather than a separate lib/*Validation.ts file
 // (homeTabValidation.ts's own pattern) — three numeric/boolean fields with
 // one real constraint each doesn't earn a whole extra file yet.
 
+import { requireAdminSession } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { DELIVERY_SETTINGS_SELECT, mapRowToDeliverySettings, type DeliverySettingsRow } from '@/lib/supabase/deliverySettings';
 
 export async function GET() {
+  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
   try {
     const { data, error } = await supabaseAdmin.from('delivery_settings').select(DELIVERY_SETTINGS_SELECT).single();
     if (error) throw error;
@@ -25,9 +27,13 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const body = await request.json();
-
+  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
   try {
+    const body = await request.json();
+    const estimatedDeliveryMinutes = Number(body.estimatedDeliveryMinutes);
+    if (typeof body.estimatedDeliveryMinutes !== 'number' || !Number.isInteger(estimatedDeliveryMinutes) || estimatedDeliveryMinutes < 1 || estimatedDeliveryMinutes > 240) {
+      throw new Error('Delivery estimate must be a whole number between 1 and 240 minutes.');
+    }
     const flatDeliveryFee = Number(body.flatDeliveryFee);
     const freeDeliveryThreshold = Number(body.freeDeliveryThreshold);
     const handlingFee = Number(body.handlingFee);
@@ -37,6 +43,10 @@ export async function PATCH(request: Request) {
     }
     if (!Number.isFinite(handlingFee) || handlingFee < 0) throw new Error('Handling fee must be a real number, 0 or more.');
 
+    const { data: settings, error: readError } = await supabaseAdmin
+      .from('delivery_settings').select('id').single();
+    if (readError) throw readError;
+
     const { data, error } = await supabaseAdmin
       .from('delivery_settings')
       .update({
@@ -44,14 +54,20 @@ export async function PATCH(request: Request) {
         free_delivery_enabled: Boolean(body.freeDeliveryEnabled),
         free_delivery_threshold: freeDeliveryThreshold,
         handling_fee: handlingFee,
+        estimated_delivery_minutes: estimatedDeliveryMinutes,
         updated_at: new Date().toISOString(),
       })
+      .eq('id', settings.id)
       .select(DELIVERY_SETTINGS_SELECT)
       .single();
     if (error) throw error;
 
     return NextResponse.json(mapRowToDeliverySettings(data as unknown as DeliverySettingsRow));
   } catch (err) {
+    if (!(err instanceof Error)) {
+      console.error('Delivery settings save failed', { code: (err as { code?: string } | null)?.code });
+      return NextResponse.json({ error: 'Could not save delivery settings. Please try again.' }, { status: 500 });
+    }
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Could not save delivery settings.' }, { status: 400 });
   }
 }

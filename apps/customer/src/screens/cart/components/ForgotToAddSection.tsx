@@ -60,7 +60,7 @@ export function ForgotToAddSection({ cartItemIds }: Props) {
 
   return (
     <View className="overflow-hidden rounded-3xl bg-white shadow-sm shadow-black/5">
-      <Text className="px-5 pt-5 text-[15.5px] font-semibold text-ink">Did you forget to add?</Text>
+      <Text className="px-5 pt-6 pb-3 text-[17px] font-semibold text-ink">You might also need</Text>
 
       <View className="flex-row flex-wrap gap-x-2.5 gap-y-4 px-5 pb-5 pt-3">
         {gridCandidates.map((product) => (
@@ -77,13 +77,13 @@ export function ForgotToAddSection({ cartItemIds }: Props) {
             <Image
               key={product.id}
               source={{ uri: product.imageUrl || PLACEHOLDER_IMAGE_URI }}
-              className="h-8 w-8 rounded-full border-2 border-gray-50 bg-mist"
+              className="h-8 w-8 rounded-full border border-gray-200 bg-mist"
               style={index === 0 ? undefined : { marginLeft: -10 }}
               resizeMode="cover"
             />
           ))}
         </View>
-        <Text className="text-[13.5px] font-bold text-ink">Explore more picks</Text>
+        <Text className="text-[14.5px] font-semibold text-ink">Explore more picks</Text>
       </Pressable>
 
       <ForgotToAddModal visible={isModalOpen} cartItemIds={cartItemIds} onClose={() => setIsModalOpen(false)} />

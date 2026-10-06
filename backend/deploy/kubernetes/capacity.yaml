@@ -1,0 +1,93 @@
+# Reference configuration, not deployed. Replace image/namespace, provision
+# flikk-backend-env and flikk-monitoring secrets, and tune using staging tests.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: flikk-api}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: flikk-api}}
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  template:
+    metadata: {labels: {app: flikk-api}}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: api
+          image: REPLACE_WITH_BUILT_BACKEND_IMAGE
+          command: [node, dist/index.js]
+          envFrom: [{secretRef: {name: flikk-backend-env}}]
+          env:
+            - {name: NODE_ENV, value: production}
+            - {name: PORT, value: '4000'}
+            - {name: METRICS_HOST, value: '0.0.0.0'}
+            - {name: METRICS_PORT, value: '9464'}
+            - name: METRICS_TOKEN
+              valueFrom: {secretKeyRef: {name: flikk-monitoring, key: token}}
+          ports: [{name: http, containerPort: 4000}, {name: monitoring, containerPort: 9464}]
+          resources: {requests: {cpu: 500m, memory: 512Mi}, limits: {cpu: '2', memory: 1Gi}}
+          startupProbe: {httpGet: {path: /livez, port: monitoring}, periodSeconds: 5, failureThreshold: 24}
+          readinessProbe: {httpGet: {path: /readyz, port: monitoring}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /livez, port: monitoring}, periodSeconds: 10, failureThreshold: 3}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: flikk-worker}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: flikk-worker}}
+  template:
+    metadata: {labels: {app: flikk-worker}}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: worker
+          image: REPLACE_WITH_BUILT_BACKEND_IMAGE
+          command: [node, dist/workers/index.js]
+          envFrom: [{secretRef: {name: flikk-backend-env}}]
+          env:
+            - {name: NODE_ENV, value: production}
+            - {name: METRICS_HOST, value: '0.0.0.0'}
+            - {name: METRICS_PORT, value: '9464'}
+            - name: METRICS_TOKEN
+              valueFrom: {secretKeyRef: {name: flikk-monitoring, key: token}}
+          ports: [{name: monitoring, containerPort: 9464}]
+          resources: {requests: {cpu: 250m, memory: 256Mi}, limits: {cpu: '1', memory: 512Mi}}
+          startupProbe: {httpGet: {path: /livez, port: monitoring}, periodSeconds: 5, failureThreshold: 24}
+          readinessProbe: {httpGet: {path: /readyz, port: monitoring}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /livez, port: monitoring}, periodSeconds: 10, failureThreshold: 3}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: flikk-api}
+spec:
+  selector: {app: flikk-api}
+  ports: [{name: http, port: 4000, targetPort: http}]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: {name: flikk-api}
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: flikk-api}
+  minReplicas: 2
+  maxReplicas: 10
+  metrics: [{type: Resource, resource: {name: cpu, target: {type: Utilization, averageUtilization: 65}}}]
+  behavior:
+    scaleUp: {stabilizationWindowSeconds: 30, policies: [{type: Percent, value: 100, periodSeconds: 60}]}
+    scaleDown: {stabilizationWindowSeconds: 300, policies: [{type: Percent, value: 25, periodSeconds: 60}]}
+---
+# Requires Prometheus Adapter external.metrics.k8s.io. Expose one global
+# backlog value per namespace (max, not sum of each replica's shared sample).
+# AverageValue targets a share of that queue per desired worker replica.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: {name: flikk-worker}
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: flikk-worker}
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: External
+      external: {metric: {name: flikk_expiry_backlog}, target: {type: AverageValue, averageValue: '200'}}
+  behavior:
+    scaleUp: {stabilizationWindowSeconds: 15, policies: [{type: Pods, value: 2, periodSeconds: 30}]}
+    scaleDown: {stabilizationWindowSeconds: 300, policies: [{type: Pods, value: 1, periodSeconds: 60}]}

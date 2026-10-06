@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../components/AppImage';
 // The one screen shown on every cold app open, always, before Home or
 // Login — same real pattern as apps/customer's own screens/WelcomeScreen.tsx
 // + RootNavigator.tsx: rendered directly by RootNavigator for a fixed
@@ -14,7 +15,7 @@
 // tsx's own BRAND_ACCENT) — kept consistent across apps rather than
 // inventing a second blue.
 
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 const BRAND_BLUE = '#155dfc';
 const LOGO_URL = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/brand-preview.png';

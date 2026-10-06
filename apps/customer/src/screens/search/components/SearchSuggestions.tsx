@@ -46,7 +46,7 @@ export function SearchSuggestions() {
     <View className="pb-10 pt-2">
       {recommended.length > 0 && (
         <View className="pt-4">
-          <PromoListCard title="Recommended for you" products={recommended} />
+          <PromoListCard title="Available near you" products={recommended} />
         </View>
       )}
 
@@ -54,7 +54,7 @@ export function SearchSuggestions() {
 
       {gridProducts.length > 0 && (
         <View className="pt-8">
-          <Text className="mb-4 px-5 text-lg font-bold text-ink">Popular Products</Text>
+          <Text className="mb-4 px-5 text-lg font-bold text-ink">More to explore</Text>
           <View className="flex-row flex-wrap gap-x-2.5 gap-y-5 px-5">
             {gridProducts.map((product) => (
               <ProductCard key={product.id} product={product} widthClassName={GRID_CARD_WIDTH} showDiscountBadge />

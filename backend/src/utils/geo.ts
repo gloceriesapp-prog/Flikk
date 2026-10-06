@@ -21,7 +21,7 @@ export function distanceKm(a: Coordinates, b: Coordinates): number {
   const lat1 = (a.latitude * Math.PI) / 180;
   const lat2 = (b.latitude * Math.PI) / 180;
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(Math.min(1, Math.max(0, h))));
 }
 
 // Whether a store this far from the customer is in delivery reach. Reach is the

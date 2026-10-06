@@ -21,3 +21,7 @@ export interface RiderPayout {
 export async function fetchRiderPayouts(): Promise<RiderPayout[]> {
   return apiRequest<RiderPayout[]>('/rider/payouts');
 }
+
+export function fetchRiderPayoutPage(cursor?: string): Promise<{ items: RiderPayout[]; nextCursor: string | null }> {
+  return apiRequest(`/rider/payouts?page=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+}

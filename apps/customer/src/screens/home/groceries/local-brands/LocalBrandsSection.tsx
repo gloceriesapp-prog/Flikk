@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { BrowseLoadingText, BROWSE_LOADING_COPY } from '../../loading/BrowseLoadingText';
+import { Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../../../navigation/types';
@@ -22,7 +23,7 @@ export function LocalBrandsSection() {
         <View className="mx-5 items-center gap-3 rounded-2xl bg-mist/50 px-5 py-6">
           {!hasLocation ? (
             <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center rounded-full bg-[#155DFC] px-5"><Text className="font-semibold text-white">Choose location</Text></Pressable>
-          ) : isLoading ? <ActivityIndicator accessibilityLabel="Loading local pantry brands" color="#155DFC" /> : isError ? (
+          ) : isLoading ? <BrowseLoadingText message={BROWSE_LOADING_COPY.grocery} /> : isError ? (
             <Pressable accessibilityRole="button" onPress={retry} className="min-h-11 justify-center rounded-full bg-[#155DFC] px-5"><Text className="font-semibold text-white">Try again</Text></Pressable>
           ) : <Text className="text-center text-sm text-ink/60">No verified local pantry brands available at this address yet.</Text>}
         </View>

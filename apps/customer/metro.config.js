@@ -1,8 +1,8 @@
 const path = require('path');
-const { getDefaultConfig } = require('expo/metro-config');
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 const { withNativeWind } = require('nativewind/metro');
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 // Customer imports @gloceries/shared (src/api/client.ts) but — unlike partner/
 // rider — is NOT a root npm-workspace member, so Expo doesn't auto-detect the
@@ -19,7 +19,7 @@ const config = getDefaultConfig(__dirname);
 // nothing pulls root's copy in. Its one peer dep (expo-location) resolves from
 // customer's own node_modules, which has it.
 const sharedPkg = path.resolve(__dirname, '../../packages/shared');
-config.watchFolders = [...(config.watchFolders ?? []), sharedPkg];
+config.watchFolders = [...(config.watchFolders ?? []), sharedPkg, path.resolve(__dirname, '../../packages/home-content')];
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   '@gloceries/shared': sharedPkg,

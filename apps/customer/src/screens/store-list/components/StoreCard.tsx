@@ -1,3 +1,4 @@
+import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import {
   ArrowRight01Icon,
   Bookmark01Icon,
@@ -15,7 +16,6 @@ import { AppIcon } from '../../../components/AppIcon';
 import { useLikedStoresStore } from '../../../store/useLikedStoresStore';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { getStoreStatusText } from '../storeHours';
-import { getDeliveryMessage } from '../deliveryMessage';
 
 import type { AppStackParamList } from '../../../navigation/types';
 import type { RealStore } from '../all-stores/useAllStores';
@@ -25,6 +25,7 @@ interface Props {
 }
 
 export function StoreCard({ store }: Props) {
+  const estimatedMinutes = useDeliveryEstimateMinutes();
   const navigation =
     useNavigation<
       NativeStackNavigationProp<AppStackParamList>
@@ -337,10 +338,7 @@ export function StoreCard({ store }: Props) {
                 text-[#111111]
               "
             >
-              {getDeliveryMessage(
-                store.id,
-                store.avgPrepMinutes,
-              )}
+              {`Delivers in ~${estimatedMinutes} min`}
             </Text>
           </View>
 

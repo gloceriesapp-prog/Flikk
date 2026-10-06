@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../../components/AppImage';
 // Overlapping item-photo circles, replacing the earlier single customer
 // avatar (that photo had nothing to do with the order itself). 1 item
 // shows 1 circle, 2 items show 2, 3+ always caps at 3 — same rule as
@@ -12,7 +13,7 @@
 // product with no photo — every item used to show the same generic
 // placeholder regardless.
 
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import type { OrderLineItem } from '../data';
 

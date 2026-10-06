@@ -1,224 +1,102 @@
 'use client';
-
-// Edit hours/category/contact + deactivate — the "store detail view" half
-// of PRD A1/FR19. Category list matches apps/partner's own STORE_CATEGORIES
-// (lib/store-options.ts, shared with AddStoreModal now). Onboarding
-// documents (FSSAI, PAN, bank, address) are shown read-only — captured
-// once at store creation, not re-editable here (see app/api/stores/[id]
-// route's own note on why). Saving PATCHes /api/stores/[id].
-
-import { useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Power } from 'lucide-react';
-import clsx from 'clsx';
+import { Check, Save } from 'lucide-react';
 import type { Store } from '@/lib/types';
 import { STORE_CATEGORIES } from '@/lib/store-options';
+import { storeDraft, changedStoreFields } from '@/features/store-management/storeDraft';
+import { parseStorePatch } from '@/features/store-management/storePatch';
+import { StorePhotoEditor } from '@/features/store-management/StorePhotoEditor';
 
+const inputClass = 'w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/15 disabled:opacity-60';
 export function StoreDetailForm({ store }: { store: Store }) {
   const router = useRouter();
-  const [category, setCategory] = useState(store.category);
-  const [phone, setPhone] = useState(store.phone);
-  const [openTime, setOpenTime] = useState(store.openTime);
-  const [closeTime, setCloseTime] = useState(store.closeTime);
-  const [isActive, setIsActive] = useState(store.isActive);
-  // Strings, not numbers — an in-progress "13." or "-" while typing a
-  // coordinate isn't a valid number yet but shouldn't be rejected/reset
-  // mid-keystroke. Parsed to numbers (or null if blank) only on save.
-  const [lat, setLat] = useState(store.lat?.toString() ?? '');
-  const [lng, setLng] = useState(store.lng?.toString() ?? '');
-  // Same string-while-typing rationale as lat/lng. Blank = clear the override
-  // (backend falls back to DEFAULT_RADIUS_KM = 12).
-  const [radius, setRadius] = useState(store.deliveryRadiusKm?.toString() ?? '');
+  const savingRef = useRef(false);
+  const [draft, setDraft] = useState(() => storeDraft(store));
+  const [saved, setSaved] = useState(() => storeDraft(store));
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      const parsedLat = lat.trim() === '' ? null : Number(lat);
-      const parsedLng = lng.trim() === '' ? null : Number(lng);
-      if ((parsedLat !== null && Number.isNaN(parsedLat)) || (parsedLng !== null && Number.isNaN(parsedLng))) {
-        throw new Error('Latitude/longitude must be numbers.');
-      }
-      const parsedRadius = radius.trim() === '' ? null : Number(radius);
-      if (parsedRadius !== null && (Number.isNaN(parsedRadius) || parsedRadius <= 0)) {
-        throw new Error('Delivery radius must be a positive number of km.');
-      }
-      const res = await fetch(`/api/stores/${store.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, phone, openTime, closeTime, isActive, lat: parsedLat, lng: parsedLng, deliveryRadiusKm: parsedRadius }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Save failed.');
-      }
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save changes — try again.');
-    } finally {
-      setSaving(false);
-    }
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const dirty = Object.keys(changedStoreFields(draft, saved)).length > 0;
+  const disabled = saving || uploading;
+  function change(key: string, value: string | boolean) { setDraft(current => ({ ...current, [key]: value })); setSuccess(''); }
+  function field(key: string, label: string, type = 'text', hint?: string) {
+    return <label className="block" key={key}>
+      <span className="mb-1.5 block text-xs font-medium text-muted">{label}</span>
+      <input className={inputClass} disabled={disabled} maxLength={type === 'text' || type === 'tel' ? 500 : type === 'url' ? 2048 : undefined} type={type} value={String(draft[key] ?? '')} onChange={event => change(key, event.target.value)} step={type === 'number' ? 'any' : undefined} />
+      {hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}
+    </label>;
   }
-
+  async function save(event: React.FormEvent) {
+    event.preventDefault(); if (savingRef.current || disabled || !dirty) return;
+    savingRef.current = true;
+    setSaving(true); setError(''); setSuccess('');
+    try {
+      const patch = changedStoreFields(draft, saved);
+      parseStorePatch(patch);
+      const response = await fetch(`/api/stores/${store.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? 'Could not save changes.');
+      const next = storeDraft(body as Store); setDraft(next); setSaved(next);
+      setSuccess('Store changes saved.'); router.refresh();
+    } catch (error) { setError(error instanceof Error ? error.message : 'Could not save changes. Please retry.'); }
+    finally { savingRef.current = false; setSaving(false); }
+  }
   return (
-    <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">{store.name}</h1>
-          <p className="text-sm text-muted">
-            Owned by {store.ownerName} · Joined {store.joinedAt}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsActive((v) => !v)}
-          className={clsx(
-            'flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold',
-            isActive ? 'bg-green-50 text-success' : 'bg-red-50 text-danger'
-          )}
-        >
-          <Power size={13} />
-          {isActive ? 'Active' : 'Deactivated'}
-        </button>
+    <form id="store-detail-form" onSubmit={save} className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h1 className="text-2xl font-bold text-ink">{String(draft.name)}</h1><p className="mt-1 text-sm text-muted">Edit store profile · Joined {store.joinedAt}</p></div>
+        <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${draft.isActive ? 'bg-green-50 text-success' : 'bg-red-50 text-danger'}`}>{draft.isActive ? 'Active store' : 'Inactive store'}</span>
       </div>
-
-      <div className="mt-6 flex flex-col gap-5 border-t border-border pt-6">
-        <div className="gap-1.5">
-          <label className="mb-1.5 block text-xs font-medium text-muted">Category</label>
-          <div className="flex flex-wrap gap-2">
-            {STORE_CATEGORIES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={clsx(
-                  'rounded-full border px-3.5 py-2 text-xs font-semibold',
-                  category === c ? 'border-ink bg-ink text-white' : 'border-border text-ink-soft'
-                )}
-              >
-                {c}
-              </button>
-            ))}
+      <fieldset disabled={disabled} className="flex min-w-0 flex-col gap-5">
+        <Section title="Store profile" description="The name and photo customers see in the app.">
+          <StorePhotoEditor url={String(draft.photoUrl)} disabled={saving} onChange={url => change('photoUrl', url)} onBusy={setUploading} />
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {field('name', 'Store name')}
+            <label><span className="mb-1.5 block text-xs font-medium text-muted">Category</span><select value={String(draft.category)} onChange={event => change('category', event.target.value)} className={inputClass}>{!STORE_CATEGORIES.some(c => c === draft.category) && <option value={String(draft.category)}>{String(draft.category)}</option>}{STORE_CATEGORIES.map(category => <option key={category}>{category}</option>)}</select></label>
+            {field('ownerName', 'Owner name')}{field('phone', 'Store contact phone', 'tel')}
+          </div>
+          <div className="mt-4">{field('photoUrl', 'Photo URL', 'url', 'Upload above or paste a hosted image URL.')}</div>
+        </Section>
+        <Section title="Address & delivery" description="Set the store location and the area it delivers to.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field('addressLine', 'Street address')}{field('manualAddress', 'Landmark / directions')}
+            {field('city', 'City / town')}{field('district', 'District')}{field('state', 'State')}{field('country', 'Country')}
+            {field('lat', 'Latitude', 'number')}{field('lng', 'Longitude', 'number')}
+            {field('deliveryRadiusKm', 'Delivery radius (km)', 'number', 'Leave blank to use the platform default.')}
+          </div>
+        </Section>
+        <Section title="Hours & availability" description="Control opening hours, preparation time and store visibility.">
+          <div className="grid gap-4 sm:grid-cols-2">{field('openTime', 'Opening time', 'time')}{field('closeTime', 'Closing time', 'time')}{field('avgPrepMinutes', 'Average preparation time (minutes)', 'number')}</div>
+          <label className="mt-5 flex items-center gap-3 text-sm font-medium"><input type="checkbox" checked={Boolean(draft.isActive)} onChange={event => change('isActive', event.target.checked)} className="h-4 w-4" />Store is active and visible to customers</label>
+        </Section>
+        <Section title="Business documents" description="Update the business records held for this store.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field('fssaiNumber', 'FSSAI number')}{field('shopEstablishmentNumber', 'Shop & Establishment registration')}
+            {field('panNumber', 'PAN')}{field('aadhaarLast4', 'Aadhaar — last 4 digits')}
+            {field('udyamNumber', 'Udyam registration')}{field('gstNumber', 'GSTIN')}{field('drugLicenseNumber', 'Drug licence (pharmacy)')}
+          </div>
+          <label className="mt-5 flex items-center gap-3 text-sm font-medium"><input type="checkbox" checked={Boolean(draft.turnoverExceedsGstThreshold)} onChange={event => change('turnoverExceedsGstThreshold', event.target.checked)} className="h-4 w-4" />GST registration is required for this business</label>
+        </Section>
+        <Section title="Bank record" description="Update the bank details on the store's business record.">
+          <div className="grid gap-4 sm:grid-cols-2">{field('bankName', 'Bank name')}{field('bankAccountLast4', 'Bank account — last 4 digits')}</div>
+        </Section>
+      </fieldset>
+      <div className="sticky bottom-4 rounded-2xl border border-border bg-white p-4 shadow-sm">
+        {error && <p role="alert" className="mb-3 text-sm text-danger">{error}</p>}
+        {success && <p role="status" className="mb-3 flex items-center gap-2 text-sm text-success"><Check size={16} />{success}</p>}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm text-muted">{uploading ? 'Uploading photo…' : dirty ? 'Unsaved changes' : 'All changes saved'}</span>
+          <div className="flex items-center gap-3">
+            <button type="button" disabled={disabled || !dirty} onClick={() => { setDraft(saved); setError(''); setSuccess(''); }} className="rounded-full border border-border px-4 py-2 text-sm font-semibold disabled:opacity-40">Discard changes</button>
+            <button type="submit" disabled={disabled || !dirty} className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"><Save size={15} />{saving ? 'Saving…' : 'Save changes'}</button>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Phone">
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none"
-            />
-          </Field>
-          <Field label="Address">
-            <input
-              value={`${store.addressLine}, ${store.city}, ${store.state}`}
-              disabled
-              className="w-full rounded-xl border border-border bg-accent px-3.5 py-2.5 text-sm text-muted"
-            />
-          </Field>
-          <Field label="Opens at">
-            <input
-              value={openTime}
-              onChange={(e) => setOpenTime(e.target.value)}
-              className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none"
-            />
-          </Field>
-          <Field label="Closes at">
-            <input
-              value={closeTime}
-              onChange={(e) => setCloseTime(e.target.value)}
-              className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none"
-            />
-          </Field>
-        </div>
-
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">Map pin (lat, lng)</label>
-          <p className="mb-2 text-xs text-muted">
-            Used by the customer app to sort &quot;Shops Near You&quot; by real distance. Right-click the store&apos;s
-            location on Google Maps and copy the coordinates shown at the top of the menu.
-          </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <input
-              value={lat}
-              onChange={(e) => setLat(e.target.value)}
-              placeholder="Latitude, e.g. 13.2158"
-              inputMode="decimal"
-              className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none"
-            />
-            <input
-              value={lng}
-              onChange={(e) => setLng(e.target.value)}
-              placeholder="Longitude, e.g. 74.7431"
-              inputMode="decimal"
-              className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted">Delivery radius (km)</label>
-          <p className="mb-2 text-xs text-muted">
-            How far this store delivers from its pin. A customer outside every store&apos;s radius sees
-            &quot;Coming soon&quot; instead of a store list. Leave blank to use the default 12&nbsp;km.
-          </p>
-          <input
-            value={radius}
-            onChange={(e) => setRadius(e.target.value)}
-            placeholder="Default 12"
-            inputMode="decimal"
-            className="w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none sm:max-w-[12rem]"
-          />
-        </div>
-
-        <div className="border-t border-border pt-5">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Verification documents</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <ReadOnlyField label="FSSAI number" value={store.fssaiNumber} />
-            <ReadOnlyField label="Shop & Establishment license" value={store.shopEstablishmentNumber} />
-            <ReadOnlyField label="PAN" value={store.panNumber} />
-            <ReadOnlyField label="Aadhaar" value={store.aadhaarLast4 ? `•••• ${store.aadhaarLast4}` : '—'} />
-            <ReadOnlyField label="GSTIN" value={store.gstNumber ?? 'Not applicable (under ₹40L threshold)'} />
-            <ReadOnlyField label="Drug License" value={store.drugLicenseNumber ?? '—'} />
-            <ReadOnlyField
-              label="Payout account"
-              value={store.bankName ? `${store.bankName} •••• ${store.bankAccountLast4}` : '—'}
-            />
-          </div>
-        </div>
-
-        {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-danger">{error}</p>}
-
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="mt-2 self-start rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
-        >
-          {saving ? 'Saving…' : 'Save changes'}
-        </button>
       </div>
-    </div>
+    </form>
   );
 }
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-xs font-medium text-muted">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[11px] font-medium text-muted">{label}</p>
-      <p className="text-sm text-ink">{value || '—'}</p>
-    </div>
-  );
+function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return <section className="rounded-3xl border border-border bg-card p-6 shadow-sm"><h2 className="text-base font-bold text-ink">{title}</h2><p className="mb-5 mt-1 text-sm text-muted">{description}</p>{children}</section>;
 }

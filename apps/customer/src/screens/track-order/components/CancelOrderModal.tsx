@@ -36,7 +36,7 @@ export function CancelOrderModal({ visible, onDismiss, onConfirm, confirming }: 
           <View className="gap-1">
             <Text className="text-xl font-semibold text-ink">Cancel this order?</Text>
             <Text className="text-[14px] font-medium text-ink/55">
-              If you already paid online, we&apos;ll start your refund right away.
+              If you already paid online, your refund will be queued after cancellation is confirmed.
             </Text>
           </View>
 

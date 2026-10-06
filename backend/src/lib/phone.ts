@@ -8,8 +8,9 @@
 // and query the one canonical form.
 import { AppError } from './errors.js';
 
-export function normalizePhone(raw: string | undefined): string {
-  const digits = (raw ?? '').replace(/\D/g, ''); // drop +, spaces, dashes
+export function normalizePhone(raw: unknown): string {
+  if (typeof raw !== 'string') throw new AppError(400, 'INVALID_PHONE', 'Enter a valid 10-digit Indian mobile number.');
+  const digits = raw.replace(/\D/g, ''); // drop +, spaces, dashes
   // Strip the 91 country code if the caller included it (12 digits, 91-led),
   // leaving the 10-digit local number either way.
   const local = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;

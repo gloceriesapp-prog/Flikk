@@ -1,32 +1,41 @@
-// The real address book — GET /addresses, tap one to make it default
-// (PATCH /addresses/:id/default) and jump back to Checkout with it
-// selected, or "+ Add new address" to start the pin -> form flow
-// (LocationSearch with intent='address-book'). Reached from Checkout's own
-// "Change" affordance on its address card.
-
 import { useCallback } from 'react';
-import { ArrowLeft01Icon, Add01Icon, Location01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
+import {
+  ArrowLeft01Icon,
+  Add01Icon,
+  CheckmarkCircle02Icon,
+  Location04Icon,
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AppIcon } from '../../components/AppIcon';
-import { colors } from '../../theme/tokens';
+
+import { useAuthStore } from '../../store/useAuthStore';
 import { fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AddressList'>;
 
 export function AddressListScreen({ navigation }: Props) {
+  const customerId = useAuthStore((state) => state.customerId);
   const queryClient = useQueryClient();
-  const { data: addresses, isLoading, refetch } = useQuery({
-    queryKey: ['addresses'],
+
+  const {
+    data: addresses,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['addresses', customerId],
     queryFn: fetchAddresses,
   });
 
-  // Refetch every time this screen regains focus — coming back from
-  // AddressForm after saving a new one is exactly that, and there's no
-  // shared store to invalidate instead.
   useFocusEffect(
     useCallback(() => {
       void refetch();
@@ -36,58 +45,154 @@ export function AddressListScreen({ navigation }: Props) {
   async function handleSelect(id: string) {
     try {
       await setDefaultAddress(id);
-      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
-      navigation.navigate('Checkout');
+
+      await queryClient.invalidateQueries({
+        queryKey: ['addresses', customerId],
+      });
+
+      navigation.popTo('Cart');
     } catch {
-      // Best-effort — a failed default-switch just leaves the previous
-      // default in place, no worse off than before the tap.
+      // Keep the current default address if switching fails.
     }
   }
 
   return (
-    <View className="flex-1 bg-white pt-safe">
-      <View className="flex-row items-center px-5 py-3">
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-          <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
+    <View className="flex-1 bg-[#F4F4F6] pt-safe">
+      {/* Header */}
+      <View className="relative flex-row items-center px-5 pb-4 pt-3">
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+          className="z-10 h-10 w-10 items-center justify-center rounded-full bg-white"
+        >
+          <HugeiconsIcon
+            icon={ArrowLeft01Icon}
+            size={20}
+            color="#1D1D23"
+            strokeWidth={2}
+          />
         </Pressable>
-        <Text className="absolute left-0 right-0 text-center text-lg font-semibold text-ink">Delivery addresses</Text>
+
+        <Text className="absolute left-0 right-0 text-center text-[19px] font-bold text-[#1D1D23]">
+          Delivery addresses
+        </Text>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={colors.ink} />
+          <ActivityIndicator color="#1D1D23" />
         </View>
       ) : (
-        <ScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-6">
-          {(addresses ?? []).map((address) => (
-            <Pressable
-              key={address.id}
-              onPress={() => handleSelect(address.id)}
-              className="flex-row items-start gap-3 rounded-2xl border border-gray-200 bg-white p-4"
-            >
-              <View className="h-9 w-9 items-center justify-center rounded-full bg-mist">
-                <AppIcon icon={Location01Icon} size={16} color={colors.ink} />
-              </View>
-              <View className="flex-1 gap-0.5">
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-sm font-semibold text-ink">{address.label}</Text>
-                  {address.is_default && <View className="rounded-full bg-lime-soft px-2 py-0.5"><Text className="text-[11px] font-semibold text-lime-deep">Default</Text></View>}
-                </View>
-                <Text className="text-sm font-medium text-ink" numberOfLines={2}>
-                  {address.recipient_name} · {address.line1}
-                </Text>
-                {address.landmark && <Text className="text-xs text-ink/50">{address.landmark}</Text>}
-              </View>
-              {address.is_default && <AppIcon icon={CheckmarkCircle02Icon} size={18} color={colors.limeDeep} />}
-            </Pressable>
-          ))}
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerClassName="px-5 pb-8"
+        >
+          {/* Section title */}
+          {/* <Text className="mb-3 ml-1 text-[12px] font-bold uppercase tracking-[1.5px] text-[#8B8B92]">
+            Saved addresses
+          </Text> */}
 
+          {/* Main white card */}
+          <View className="overflow-hidden rounded-[24px] bg-white px-4">
+            {(addresses ?? []).map((address, index) => {
+              const isLast = index === (addresses?.length ?? 0) - 1;
+
+              return (
+                <View key={address.id}>
+                  <Pressable
+                    onPress={() => handleSelect(address.id)}
+                    className="flex-row items-center py-4"
+                  >
+                    {/* Location icon box */}
+                    <View className="mr-3.5 h-[52px] w-[52px] items-center justify-center rounded-[14px] border border-[#ECECF0] bg-[#F5F5F7]">
+                      <HugeiconsIcon
+                        icon={Location04Icon}
+                        size={22}
+                        color="#24242B"
+                        strokeWidth={1.8}
+                      />
+                    </View>
+
+                    {/* Address content */}
+                    <View className="flex-1 pr-2">
+                      <View className="flex-row items-center">
+                        <Text
+                          className="flex-shrink text-[17px] font-bold text-[#202027]"
+                          numberOfLines={1}
+                        >
+                          {address.label}
+                        </Text>
+
+                        {address.is_default && (
+                          <View className="ml-2 rounded-full bg-[#F1F1F3] px-2 py-0.5">
+                            <Text className="text-[10px] font-semibold text-[#696970]">
+                              Default
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <Text
+                        className="mt-1 text-[13px] font-medium leading-[18px] text-[#77777E]"
+                        numberOfLines={2}
+                      >
+                        {address.recipient_name} · {address.line1}
+                      </Text>
+
+                      {address.landmark ? (
+                        <Text
+                          className="mt-0.5 text-[12px] leading-[17px] text-[#9A9AA0]"
+                          numberOfLines={1}
+                        >
+                          {address.landmark}
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    {/* Selected indicator */}
+                    {address.is_default && (
+                      <View className="ml-1">
+                        <HugeiconsIcon
+                          icon={CheckmarkCircle02Icon}
+                          size={19}
+                          color="#202027"
+                          strokeWidth={2}
+                        />
+                      </View>
+                    )}
+                  </Pressable>
+
+                  {/* Divider */}
+                  {!isLast && (
+                    <View className="ml-[66px] h-px bg-[#E7E7EA]" />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Add new address */}
           <Pressable
-            onPress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
-            className="flex-row items-center justify-center gap-2 rounded-2xl border border-dashed border-gray-300 py-4"
+            onPress={() =>
+              navigation.navigate('LocationSearch', {
+                intent: 'address-book',
+              })
+            }
+            className="mt-4 flex-row items-center justify-center rounded-[18px] bg-white py-4"
           >
-            <AppIcon icon={Add01Icon} size={16} color={colors.ink} />
-            <Text className="text-sm font-semibold text-ink">Add new address</Text>
+            <View className="mr-2 h-7 w-7 items-center justify-center rounded-full bg-[#F1F1F3]">
+              <HugeiconsIcon
+                icon={Add01Icon}
+                size={16}
+                color="#202027"
+                strokeWidth={2}
+              />
+            </View>
+
+            <Text className="text-[13px] font-semibold text-[#202027]">
+              Add new address
+            </Text>
           </Pressable>
         </ScrollView>
       )}

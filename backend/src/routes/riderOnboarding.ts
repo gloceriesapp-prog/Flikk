@@ -1,3 +1,5 @@
+import { storePrivateDocument } from '../media/privateDocuments.js';
+import { decodeImage, normalizeImage } from '../utils/image.js';
 // Rider Onboarding (P1, rider app) — mirrors backend/src/routes/
 // storeOnboarding.ts's own real pattern almost exactly: any authenticated
 // session can apply (a brand-new phone is lazy-provisioned as 'customer'
@@ -12,7 +14,6 @@
 // its entire mount, which a brand-new applicant can never satisfy yet.
 
 import { Router } from 'express';
-import { randomUUID } from 'node:crypto';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
@@ -173,13 +174,8 @@ riderOnboardingRouter.post('/document-photo', requireAuth, async (req: AuthedReq
       throw new AppError(400, 'INVALID_KIND', 'kind must be "aadhaar", "dl" or "profile".');
     }
 
-    const path = `${req.user!.id}/${kind}-${randomUUID()}.jpg`;
-    const { error } = await supabase.storage.from(DOCUMENTS_BUCKET).upload(path, Buffer.from(base64, 'base64'), {
-      contentType: 'image/jpeg',
-    });
-    if (error) throw new AppError(500, 'UPLOAD_FAILED', error.message);
-
-    res.status(201).json({ path });
+    const document = await storePrivateDocument({ bucket: DOCUMENTS_BUCKET, ownerId: req.user!.id, kind, bytes: await normalizeImage(decodeImage(base64), 'jpeg') });
+    res.status(201).json(document);
   } catch (err) {
     next(err);
   }

@@ -1,3 +1,4 @@
+import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 // Reads the saved delivery address from useLocationStore (see
 // src/screens/location/) and lets the user tap through to change it via the
 // same LocationSearch screen used during onboarding. Two-line text stack —
@@ -39,6 +40,7 @@ interface Props {
 }
 
 export function LocationSelector({ onPress, isClosed = false, light = false }: Props) {
+  const estimatedMinutes = useDeliveryEstimateMinutes();
   const location = useLocationStore((s) => s.location);
   const label = location?.addressLabel || location?.city || 'Set your location';
 
@@ -58,8 +60,8 @@ export function LocationSelector({ onPress, isClosed = false, light = false }: P
         {/* {!isClosed && (
           <AppIcon icon={Navigation03Icon} size={12} color={navColor} fill={navColor} strokeWidth={0} />
         )} */}
-        <Text className={`text-2xl font-extrabold ${primaryText}`}>
-          {isClosed ? `Opens ${REOPEN_TIME_LABEL} tomorrow` : '20 minutes'}
+        <Text className={`${isClosed ? 'text-[18px]' : 'text-2xl'} font-extrabold ${primaryText}`}>
+          {isClosed ? `Opens ${REOPEN_TIME_LABEL} tomorrow` : `In ${estimatedMinutes} minutes`}
         </Text>
       </View>
       <View className="flex-row items-center gap-1">

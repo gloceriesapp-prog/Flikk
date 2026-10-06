@@ -1,3 +1,4 @@
+import { useAuthStore } from '../../../store/useAuthStore';
 // Order card. Real white card on PurchaseScreen's own #FCFCFB background.
 //
 // Status lives as a tinted pill in the card's own top-right corner, level
@@ -20,60 +21,47 @@ import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { fetchReviewForOrder } from '../../../api/reviews';
-import { estimateDeliveryTime, formatEta } from '../../../utils/estimateDelivery';
+import { getPurchaseArrivalLabel, getPurchaseDeliveredDateLabel } from '../orderArrival';
 import type { PurchaseOrder } from '../data';
-import { ItemThumbnailStack } from './ItemThumbnailStack';
+import { OrderProductPreview } from './OrderProductPreview';
 import { RateOrderModal } from './RateOrderModal';
 
 interface Props {
   order: PurchaseOrder;
   onPress: () => void;
+  previewOnly?: boolean;
+  now: number;
 }
 
 function statusFor(order: PurchaseOrder) {
   if (order.status === 'cancelled') return { color: colors.danger, headline: 'Cancelled' };
   if (order.status === 'failed') return { color: colors.danger, headline: 'Delivery failed' };
   if (order.status === 'delivered') return { color: colors.success, headline: 'Delivered' };
+  if (order.status === 'placed' || order.status === 'packed') return { color: colors.success, headline: 'Packing' };
   return { color: colors.success, headline: 'On the way' };
 }
 
-export function OrderRow({ order, onPress }: Props) {
+export function OrderRow({ order, onPress, previewOnly = false, now }: Props) {
+  const customerId = useAuthStore(state => state.customerId);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const status = statusFor(order);
-  const isFinished = order.status === 'delivered' || order.status === 'cancelled' || order.status === 'failed';
-
-  // Live orders show a real forward-looking ETA; a finished order instead
-  // shows when it actually finished — order.etaLabel already carries that
-  // real terminal timestamp (data.ts's own note), no separate computation
-  // needed for that branch.
-  const arrivingLabel = isFinished
-    ? order.etaLabel
-    : `Arriving on ${formatEta(estimateDeliveryTime(order.placedAtIso, order.avgPrepMinutes))}`;
-
-  const placedAt = new Date(order.placedAtIso);
-  const placedAtLabel = `${placedAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, ${placedAt.toLocaleDateString('en-IN', { weekday: 'short' })} · ${placedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
+  const arrivingLabel = getPurchaseArrivalLabel(order, now);
+  const deliveredDateLabel = getPurchaseDeliveredDateLabel(order);
 
   const { data: existingReview, refetch: refetchReview } = useQuery({
-    queryKey: ['review', order.orderId],
+    queryKey: ['review', order.orderId, customerId],
     queryFn: () => fetchReviewForOrder(order.orderId),
-    enabled: order.status === 'delivered',
+    enabled: order.status === 'delivered' && !previewOnly,
   });
 
   return (
     <View className="mb-3 rounded-2xl bg-[#FFFFFF] p-3.5">
-      {/* Row 1: photo stack + item count on the left, the status pill
-          pinned to the right end of the SAME line. Row 2: "Arriving on…"
-          on the left, the expand arrow pinned to the right end of THAT
-          line instead — not stacked under the pill — so the arrow reads
-          as acting on the arrival info specifically, one row down from
-          status the way the reference lays it out. */}
+      {previewOnly && <Text className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-ink/40">Sample order</Text>}
+      {/* Metadata stays above the full-width product preview. */}
       <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2.5">
-          <ItemThumbnailStack items={order.items} />
           <Text className="text-[13px] font-semibold text-ink/70">
             {order.items.length} item{order.items.length === 1 ? '' : 's'}
           </Text>
-        </View>
 
         <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: `${status.color}1A` }}>
           <Text className="text-[12.5px] font-semibold" style={{ color: status.color }} numberOfLines={1}>
@@ -81,13 +69,16 @@ export function OrderRow({ order, onPress }: Props) {
           </Text>
         </View>
       </View>
+      <OrderProductPreview items={order.items} />
 
-      <Pressable onPress={onPress} className="mt-3 flex-row items-start justify-between gap-3">
+      <Pressable onPress={onPress} disabled={previewOnly} accessibilityRole="button" className="mt-3 flex-row items-center justify-between gap-3">
         <View className="flex-1">
-          <Text className="text-[13.5px] font-semibold text-ink/80" numberOfLines={1}>
+          <Text className="text-[20px] font-bold leading-[26px] tracking-[-0.4px]" style={{ color: order.status === 'delivered' ? '#000000' : status.color }} numberOfLines={2}>
             {arrivingLabel}
           </Text>
-          <Text className="mt-0.5 text-[12px] font-medium text-ink/45">{placedAtLabel}</Text>
+          {deliveredDateLabel && (
+            <Text className="mt-1 text-[12px] font-medium text-ink/45">{deliveredDateLabel}</Text>
+          )}
         </View>
 
         <View className="h-8 w-8 items-center justify-center rounded-full bg-white">
@@ -96,9 +87,16 @@ export function OrderRow({ order, onPress }: Props) {
       </Pressable>
 
       {order.status === 'delivered' && (
+        <View className="mt-3 flex-row items-center justify-between gap-3 border-t border-ink/5 pt-3">
+          <Text numberOfLines={1} className="flex-1 text-[12px] font-medium text-ink/60">{order.storeName}</Text>
+          <Text className="text-[13px] font-semibold text-ink">Paid ₹{order.total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Text>
+        </View>
+      )}
+
+      {order.status === 'delivered' && (
         <Pressable
           onPress={() => !existingReview && setIsRatingModalOpen(true)}
-          disabled={!!existingReview}
+          disabled={previewOnly || !!existingReview}
           className="mt-3 flex-row items-center gap-2 rounded-xl bg-[#FDF6E9] px-3 py-2"
         >
           <View className="flex-row">
@@ -119,7 +117,7 @@ export function OrderRow({ order, onPress }: Props) {
         </Pressable>
       )}
 
-      <RateOrderModal
+      {!previewOnly && <RateOrderModal
         visible={isRatingModalOpen}
         orderId={order.orderId}
         storeName={order.storeName}
@@ -128,7 +126,7 @@ export function OrderRow({ order, onPress }: Props) {
           setIsRatingModalOpen(false);
           void refetchReview();
         }}
-      />
+      />}
     </View>
   );
 }

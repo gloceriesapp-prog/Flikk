@@ -10,13 +10,13 @@
 
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, ScrollView, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { HeadphonesIcon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { fetchPayouts } from '../../api/payouts';
+import { fetchPayoutPage } from '../../api/payouts';
 import { buildSamplePayouts, toWeeklyPayout } from './data';
 import { CurrentWeekPayoutCard } from './components/CurrentWeekPayoutCard';
 import { PayoutStatusFilter, type PayoutStatusFilterValue } from './components/PayoutStatusFilter';
@@ -29,7 +29,9 @@ const PAGE_BG = '#F1F2F4';
 
 export function PayoutsScreen(_props: Props) {
   const [statusFilter, setStatusFilter] = useState<PayoutStatusFilterValue>('all');
-  const { data: rows, isLoading } = useQuery({ queryKey: ['payouts'], queryFn: fetchPayouts });
+  const query = useInfiniteQuery({ queryKey: ['payouts'], initialPageParam: '', queryFn: ({ pageParam }) => fetchPayoutPage(pageParam || undefined), getNextPageParam: page => page.nextCursor ?? undefined, refetchOnWindowFocus: false });
+  const { isLoading } = query;
+  const rows = query.data?.pages.flatMap(page => page.items);
   const realPayouts = (rows ?? []).map(toWeeklyPayout);
   // A brand-new store (zero delivered orders, zero real payouts yet) has
   // nothing real to show — falls back to sample data (data.ts's own
@@ -38,7 +40,7 @@ export function PayoutsScreen(_props: Props) {
   // screen instead of disappearing until the first real settlement
   // exists. Only kicks in once loading is actually done and the real
   // fetch genuinely came back empty — never shown alongside real rows.
-  const payouts = !isLoading && realPayouts.length === 0 ? buildSamplePayouts() : realPayouts;
+  const payouts = !isLoading && !query.isError && realPayouts.length === 0 ? buildSamplePayouts() : realPayouts;
 
   // The most recent row that hasn't actually landed yet is the hero card
   // (pending/processing/blocked/failed all still mean "not paid out") —
@@ -120,6 +122,8 @@ export function PayoutsScreen(_props: Props) {
               </Text>
             </View>
           )}
+          {query.hasNextPage && <Pressable disabled={query.isFetchingNextPage} onPress={() => { void query.fetchNextPage(); }} className="items-center py-4"><Text className="font-semibold text-ink">{query.isFetchingNextPage ? 'Loading…' : query.isFetchNextPageError ? 'Retry loading more' : 'Load more payouts'}</Text></Pressable>}
+          {query.isError && <Pressable onPress={() => { void query.refetch(); }} className="items-center py-4"><Text className="font-semibold text-ink">Couldn’t load payouts. Try again</Text></Pressable>}
         </ScrollView>
       )}
 

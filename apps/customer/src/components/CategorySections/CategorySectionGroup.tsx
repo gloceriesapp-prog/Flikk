@@ -23,7 +23,7 @@ export function CategorySectionGroup({ section }: Props) {
       {/* Same visual spec as home/components/SectionTitle, kept inline (no
           px-5) because this wrapper already owns the px-5 gutter the grid's
           negative-margin math bleeds into. */}
-      <Text className="mb-4 text-xl font-bold tracking-tight text-ink">{section.name}</Text>
+      <Text className="mb-4 text-xl font-bold tracking-tight text-ink/90">{section.name}</Text>
       <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
         {section.categories.map((item) => (
           <View key={item.id} style={{ width: '25%', paddingHorizontal: GAP / 2, paddingBottom: 20 }}>

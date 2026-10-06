@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../components/AppImage';
 // Full-screen "new order" interrupt — pulled in at the app root (App.tsx),
 // not part of AppNavigator's stack, so it can appear over whichever tab
 // the shop owner is on. RN's core Modal, fully opaque and deliberately not
@@ -18,7 +19,7 @@
 
 import { useState } from 'react';
 import { Cancel01Icon, CheckmarkCircle02Icon, Clock01Icon, DeliveryTruck01Icon } from '@hugeicons/core-free-icons';
-import { Image, Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/AppIcon';

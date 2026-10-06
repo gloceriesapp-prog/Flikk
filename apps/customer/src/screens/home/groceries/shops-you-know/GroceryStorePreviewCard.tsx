@@ -10,9 +10,11 @@ const ACCENT = '#155DFC';
 interface Props {
   store: NearbyStore & { products: Product[] };
   onOpen: () => void;
+  showButton?: boolean;
+  buttonLabel?: string;
 }
 
-export function GroceryStorePreviewCard({ store, onOpen }: Props) {
+export function GroceryStorePreviewCard({ store, onOpen, showButton = false, buttonLabel = 'View store' }: Props) {
   return (
     <View className="w-[308px] overflow-hidden rounded-[28px] bg-white border border-gray-200 shadow-sm shadow-black/[0.05]">
       <Pressable accessibilityRole="button" accessibilityLabel={`Visit ${store.name}`} onPress={onOpen} className="px-4 pb-4 pt-4 active:bg-[#FAFAFA]">
@@ -42,6 +44,7 @@ export function GroceryStorePreviewCard({ store, onOpen }: Props) {
           ))}
         </View>
       </View>
+      {showButton && <Pressable accessibilityRole="button" onPress={onOpen} className="mx-3 mb-3 min-h-11 items-center justify-center rounded-2xl bg-[#F3F4F6] px-4 py-2.5"><Text className="text-[14px] font-semibold text-[#374151]">{buttonLabel}</Text></Pressable>}
     </View>
   );
 }

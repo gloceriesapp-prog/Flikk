@@ -1,0 +1,3 @@
+import type { Refund } from './api';
+export const REFUND_LABELS: Record<Refund['status'], string> = { queued: 'Refund requested', processing: 'Refund in progress', completed: 'Refund completed', failed: 'Needs attention' };
+export const refundReason = (reason: string) => ({ store_closed: 'Store is closed', store_out_of_stock: 'Store out of items', store_refused_handover: 'Store could not fulfil the order', long_wait_at_store: 'Pickup delay', vehicle_breakdown: 'Delivery vehicle issue', unsafe_conditions: 'Unsafe delivery conditions', other: 'Order issue' } as Record<string, string>)[reason] ?? reason;

@@ -1,3 +1,8 @@
+const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
+const buildProfile = process.env.EAS_BUILD_PROFILE;
+const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
+validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
+
 // Dynamic config (not app.json) so the Google Maps keys come from env vars,
 // never hardcoded into a file that gets committed. Expo CLI auto-loads
 // .env/.env.local into process.env before evaluating this file (no dotenv
@@ -20,6 +25,9 @@ module.exports = {
       supportsTablet: true,
       bundleIdentifier: 'com.gloceries.customer',
       infoPlist: {
+        // expo-status-bar uses React Native's application-level controller.
+        // Keep native-stack statusBar options unset to avoid competing owners.
+        UIViewControllerBasedStatusBarAppearance: false,
         NSLocationWhenInUseUsageDescription: 'Gloceries uses your location to find stores near you and set your delivery address.',
         LSApplicationQueriesSchemes: ['tez', 'phonepe', 'paytmmp', 'bhim', 'credpay', 'whatsapp'],
         ITSAppUsesNonExemptEncryption: false,
@@ -57,6 +65,7 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: [
+      ...(process.env.SENTRY_ORG && process.env.SENTRY_PROJECT ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]] : []),
       '@react-native-community/datetimepicker',
       'expo-secure-store',
       [

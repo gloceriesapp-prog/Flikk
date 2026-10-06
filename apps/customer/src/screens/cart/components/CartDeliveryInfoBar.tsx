@@ -1,3 +1,4 @@
+import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 // "Delivery Details" card — first card in Cart's scroll list, same white
 // rounded-2xl recipe as the other cards below it (BillDetailsCard etc.)
 // so it reads as one of the cart's stack of cards instead of chrome
@@ -28,7 +29,6 @@ import { AppIcon } from '../../../components/AppIcon';
 import type { ApiAddress } from '../../../api/addresses';
 
 const ACCENT = '#155DFC';
-const ETA_LABEL = '20-25 min';
 
 interface Props {
   address: ApiAddress;
@@ -36,6 +36,7 @@ interface Props {
 }
 
 export function CartDeliveryInfoBar({ address, onPress }: Props) {
+  const estimatedMinutes = useDeliveryEstimateMinutes();
   return (
     <Pressable onPress={onPress} className="flex-row items-center gap-2.5 rounded-2xl bg-white px-3.5 py-3">
       <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: `${ACCENT}14` }}>
@@ -50,7 +51,7 @@ export function CartDeliveryInfoBar({ address, onPress }: Props) {
           <View className="flex-row items-center gap-0.5 rounded-full px-1.5 py-[1px]" style={{ backgroundColor: `${ACCENT}14` }}>
             <AppIcon icon={ZapIcon} size={9} color={ACCENT} />
             <Text className="text-[12.5px] font-semibold" style={{ color: ACCENT }}>
-              {ETA_LABEL}
+              {`${estimatedMinutes} min`}
             </Text>
           </View>
         </View>

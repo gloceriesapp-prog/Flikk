@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../components/AppImage';
 // Product detail — reached from ProductRow's "View" trigger on the
 // catalog. A real pushed screen (native-stack, same as OrderDetailScreen),
 // not a bottom sheet: the old ProductManageSheet modal grew a name field,
@@ -22,7 +23,7 @@
 
 import { useState } from 'react';
 import { ArrowLeft01Icon, Delete02Icon, Edit02Icon, ShoppingBasketAdd01Icon } from '@hugeicons/core-free-icons';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -181,7 +182,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       <ScrollView className="flex-1" contentContainerClassName="gap-5 px-5 pb-6" keyboardShouldPersistTaps="handled">
         <View className="flex-row items-center gap-3">
           <View className="h-16 w-16 overflow-hidden rounded-2xl bg-gray-100">
-            <Image source={{ uri: PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+            <Image source={{ uri: product.imageUrl ?? PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
           </View>
 
           <View className="flex-1 gap-0.5">

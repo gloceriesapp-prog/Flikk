@@ -1,3 +1,4 @@
+import { AppImage as Image } from '../../components/AppImage';
 // Phone-OTP login — shared auth mechanism across all 4 apps, see
 // specs/00-foundation/auth-and-roles.md. This screen only requests the
 // OTP; verification happens on the next screen.
@@ -18,7 +19,7 @@
 // avoiding the keyboard on Android at all.
 
 import { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp } from '../../api/auth';

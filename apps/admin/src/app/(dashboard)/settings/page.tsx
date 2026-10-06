@@ -55,6 +55,7 @@ export default function SettingsPage() {
     freeDeliveryEnabled: boolean;
     freeDeliveryThreshold: string;
     handlingFee: string;
+    estimatedDeliveryMinutes: string;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -75,8 +76,9 @@ export default function SettingsPage() {
         freeDeliveryEnabled: settings.freeDeliveryEnabled,
         freeDeliveryThreshold: String(settings.freeDeliveryThreshold),
         handlingFee: String(settings.handlingFee),
+        estimatedDeliveryMinutes: String(settings.estimatedDeliveryMinutes),
       });
-    });
+    }).catch(() => setSaveError('Could not load delivery settings. Refresh to try again.'));
 
     fetch('/api/platform-settings')
       .then((res) => res.json())
@@ -120,10 +122,16 @@ export default function SettingsPage() {
     (Number(draft.flatDeliveryFee) !== saved.flatDeliveryFee ||
       draft.freeDeliveryEnabled !== saved.freeDeliveryEnabled ||
       Number(draft.freeDeliveryThreshold) !== saved.freeDeliveryThreshold ||
-      Number(draft.handlingFee) !== saved.handlingFee);
+      Number(draft.handlingFee) !== saved.handlingFee ||
+      Number(draft.estimatedDeliveryMinutes) !== saved.estimatedDeliveryMinutes);
 
   async function handleSaveDelivery() {
     if (!draft || isSaving) return;
+    const minutes = Number(draft.estimatedDeliveryMinutes);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
+      setSaveError('Enter a delivery estimate between 1 and 240 whole minutes.');
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -135,6 +143,7 @@ export default function SettingsPage() {
           freeDeliveryEnabled: draft.freeDeliveryEnabled,
           freeDeliveryThreshold: Number(draft.freeDeliveryThreshold),
           handlingFee: Number(draft.handlingFee),
+          estimatedDeliveryMinutes: Number(draft.estimatedDeliveryMinutes),
         }),
       });
       const body = await res.json();
@@ -148,7 +157,11 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+    <form id="settings-form" className="mx-auto flex max-w-2xl flex-col gap-6" onSubmit={(event) => {
+      event.preventDefault();
+      if (isDirty) void handleSaveDelivery();
+      if (isCommissionDirty) void handleSaveCommission();
+    }}>
       <div>
         <h1 className="text-3xl font-bold text-ink">Settings</h1>
         <p className="text-sm text-muted">Your account and notification preferences.</p>
@@ -188,9 +201,22 @@ export default function SettingsPage() {
         </p>
 
         {!draft ? (
-          <p className="text-sm text-muted">Loading…</p>
+          <p className="text-sm text-muted">{saveError ?? 'Loading…'}</p>
         ) : (
           <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+              <div>
+                <label htmlFor="delivery-estimate" className="text-sm font-medium text-ink">Estimated delivery time</label>
+                <p className="text-xs text-muted">One estimate for the home header, products and cart. New orders keep the time saved when placed.</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
+                <input id="delivery-estimate" type="number" min={1} max={240} step={1}
+                  value={draft.estimatedDeliveryMinutes}
+                  onChange={(event) => setDraft({ ...draft, estimatedDeliveryMinutes: event.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
+                <span className="text-sm text-muted">min</span>
+              </div>
+            </div>
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-ink">Flat delivery fee</p>
@@ -256,6 +282,7 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
               {isDirty && !isSaving && <span className="text-xs text-muted">Unsaved changes</span>}
+              {saved && !isDirty && !isSaving && !saveError && <span role="status" className="text-xs text-green-700">Changes saved</span>}
               <button
                 type="button"
                 disabled={!isDirty || isSaving}
@@ -314,6 +341,6 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-    </div>
+    </form>
   );
 }

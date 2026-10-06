@@ -1,83 +1,35 @@
+import { authBudget } from '../customer-experience/authBudget.js';
 // Shared across all 4 apps. Source: specs/00-foundation/auth-and-roles.md
 import { Router } from 'express';
 import { supabase, supabaseAuth } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
-import { normalizePhone, phoneVariants } from '../lib/phone.js';
+import { normalizePhone } from '../lib/phone.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 
 export const authRouter = Router();
 
-authRouter.post('/otp/request', async (req, res, next) => {
+authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
   try {
     const { phone } = req.body as { phone?: string };
     const canonical = normalizePhone(phone); // +91… — throws on a bad number
     const { error } = await supabaseAuth.auth.signInWithOtp({ phone: canonical });
-    if (error) throw new AppError(400, 'OTP_SEND_FAILED', error.message);
+    if (error) throw new AppError(400, 'OTP_SEND_FAILED', 'We couldn’t send a code. Please try again shortly.');
     res.status(200).json({ ok: true });
   } catch (err) {
     next(err);
   }
 });
 
-// Partner web dashboard's own pre-flight gate, called before POST
-// /otp/request — signInWithOtp above auto-creates a brand-new Supabase auth
-// user (and sends a real SMS) for ANY phone, registered or not, so the
-// dashboard's login can't tell "not a partner" apart from "partner, wrong
-// step" by waiting until after an OTP round-trip. This checks the phone
-// against public.users directly (no auth — there's no session yet) and
-// only lets the caller move on to the real OTP send once it's confirmed to
-// belong to an applied-or-approved store owner. "Registered" here means
-// the same thing apps/partner's own onboarding treats as real: role
-// already flipped to store_owner (approved), or a submitted application
-// still pending review — an abandoned, never-submitted draft doesn't
-// count, same as it doesn't unlock anything in the mobile app either.
-authRouter.post('/otp/partner-check', async (req, res, next) => {
-  try {
-    const { phone } = req.body as { phone?: string };
-    const canonical = normalizePhone(phone);
-
-    const NOT_REGISTERED = new AppError(
-      404,
-      'PARTNER_NOT_REGISTERED',
-      "This number isn't registered on the Gloceries Partner app yet. Download the Partner app and apply with your store to get access here.",
-    );
-
-    // Match any legacy phone shape for this number (pre-normalization rows
-    // may be stored as `+91…`, `91…`, or bare). If the same number exists in
-    // more than one role (e.g. a stray customer row alongside the real
-    // store_owner one), store_owner wins — that's the identity the dashboard
-    // is asking about.
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, role')
-      .in('phone', phoneVariants(canonical));
-    if (!users || users.length === 0) throw NOT_REGISTERED;
-    if (users.some((u) => u.role === 'store_owner')) {
-      res.status(200).json({ registered: true });
-      return;
-    }
-
-    // No approved owner row yet — count as registered only if one of these
-    // identities has a submitted (not merely started) store application.
-    const { data: draft } = await supabase
-      .from('store_onboarding_drafts')
-      .select('submitted_at')
-      .in('user_id', users.map((u) => u.id))
-      .not('submitted_at', 'is', null)
-      .limit(1)
-      .maybeSingle();
-    if (!draft?.submitted_at) throw NOT_REGISTERED;
-
-    res.status(200).json({ registered: true });
-  } catch (err) {
-    next(err);
-  }
+// Never reveal registration/role before phone ownership has been verified.
+// Partner login performs its actual role check after successful OTP verification.
+authRouter.post('/otp/partner-check', authBudget('partner-check'), (_req, res) => {
+  res.json({ registered: true });
 });
 
-authRouter.post('/otp/verify', async (req, res, next) => {
+authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
   try {
     const { phone, code } = req.body as { phone?: string; code?: string };
-    if (!code) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
+    if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
     const canonical = normalizePhone(phone);
     const { data, error } = await supabaseAuth.auth.verifyOtp({ phone: canonical, token: code, type: 'sms' });
     if (error || !data.session) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
@@ -143,7 +95,7 @@ authRouter.post('/otp/verify', async (req, res, next) => {
 // logged-out session. No requireAuth — the refresh token itself is the
 // credential here, there's no access token left to check by the time this
 // is needed.
-authRouter.post('/refresh', async (req, res, next) => {
+authRouter.post('/refresh', authBudget('refresh'), async (req, res, next) => {
   try {
     const { refresh_token } = req.body as { refresh_token?: string };
     if (!refresh_token) throw new AppError(400, 'MISSING_REFRESH_TOKEN', 'refresh_token is required.');
@@ -280,6 +232,7 @@ authRouter.patch('/me', requireAuth, async (req: AuthedRequest, res, next) => {
 // moment they're approved, not only after.
 authRouter.post('/push-token', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
+    if (req.user!.role === 'customer') throw new AppError(400, 'USE_DEVICE_REGISTRATION', 'Use account-owned notification device registration.');
     const { token } = req.body as { token?: string };
     if (!token) throw new AppError(400, 'MISSING_TOKEN', 'token is required.');
 

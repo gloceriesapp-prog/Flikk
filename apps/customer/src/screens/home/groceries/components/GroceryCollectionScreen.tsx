@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { BrowseLoadingText, BROWSE_LOADING_COPY } from '../../loading/BrowseLoadingText';
+import { Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
@@ -19,9 +20,9 @@ interface Props {
 
 export function GroceryCollectionScreen({ title, groups, previewProducts = [] }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const { availableProducts, hasLocation, isLoading, isError, retry } = useNearbyGroceryInventory();
-  const realProducts = selectBalancedProducts(availableProducts, groups, availableProducts.length).map(mapApiProduct);
-  const previewOnly = realProducts.length === 0 && previewProducts.length > 0;
+  const { visibleProducts, hasLocation, isLoading, isError, retry } = useNearbyGroceryInventory();
+  const realProducts = selectBalancedProducts(visibleProducts, groups, visibleProducts.length).map(mapApiProduct);
+  const previewOnly = __DEV__ && process.env.EXPO_PUBLIC_ENABLE_DESIGN_PREVIEWS === 'true' && realProducts.length === 0 && previewProducts.length > 0;
   const products = previewOnly ? previewProducts : realProducts;
 
   return (
@@ -45,14 +46,14 @@ export function GroceryCollectionScreen({ title, groups, previewProducts = [] }:
               <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-12 justify-center rounded-2xl bg-[#155DFC] px-5"><Text className="font-semibold text-white">Choose location</Text></Pressable>
             </>
           ) : isLoading ? (
-            <ActivityIndicator accessibilityLabel={`Loading ${title.toLowerCase()}`} color="#155DFC" />
+            <BrowseLoadingText message={BROWSE_LOADING_COPY.grocery} />
           ) : isError ? (
             <>
               <Text className="text-center text-sm text-ink/60">We couldn’t load {title.toLowerCase()}.</Text>
               <Pressable accessibilityRole="button" onPress={retry} className="min-h-12 justify-center rounded-2xl bg-[#155DFC] px-5"><Text className="font-semibold text-white">Try again</Text></Pressable>
             </>
           ) : (
-            <Text className="text-center text-sm text-ink/60">No {title.toLowerCase()} available from nearby open shops right now.</Text>
+            <Text className="text-center text-sm text-ink/60">No {title.toLowerCase()} available from nearby shops right now.</Text>
           )}
         </View>
       )}

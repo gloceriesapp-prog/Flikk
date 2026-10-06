@@ -1,0 +1,9 @@
+# Merge into the installed Prometheus Adapter values and enable external
+# metrics. Scrapes must attach namespace/pod labels and a worker role label.
+rules:
+  external:
+    - seriesQuery: 'flikk_database_expired_reservations{namespace!="",role="worker"}'
+      resources: {overrides: {namespace: {resource: namespace}}}
+      name: {matches: '^flikk_database_expired_reservations$', as: flikk_expiry_backlog}
+      # Shared database sample is repeated by replicas: never sum copies.
+      metricsQuery: 'max(<<.Series>>{<<.LabelMatchers>>,role="worker"})'

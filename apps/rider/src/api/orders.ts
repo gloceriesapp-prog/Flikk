@@ -25,6 +25,7 @@ type BackendOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered'
 
 interface RawOrderItem {
   quantity: number;
+  unit_at_order?: string | null;
   products: { name: string; unit: string } | null;
 }
 
@@ -52,7 +53,13 @@ interface RawAssignment {
 // dragging in react-native. Metro caches the module — no per-call cost.
 export async function fetchAssignments(): Promise<RawAssignment[]> {
   const { apiRequest } = await import('./client');
-  return apiRequest('/rider/assignments');
+  const result: RawAssignment[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: { items: RawAssignment[]; nextCursor: string | null } = await apiRequest(`/rider/assignments?view=sync&page=1&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+    result.push(...page.items); cursor = page.nextCursor;
+  } while (cursor);
+  return result;
 }
 
 export async function updateOrderStatus(orderId: string, status: BackendOrderStatus, reason?: string, otp?: string): Promise<void> {
@@ -96,6 +103,7 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
   const items: OrderItemLine[] = row.order_items.map((oi) => ({
     name: oi.products?.name ?? 'Item',
     quantity: oi.quantity,
+    unit: oi.unit_at_order ?? oi.products?.unit ?? undefined,
   }));
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   // Trip legs all share the one trip-level payout (same value on every

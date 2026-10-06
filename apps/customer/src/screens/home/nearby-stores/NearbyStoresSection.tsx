@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
 
 import { useNearbyStores } from './useNearbyStores';
 import { StoreTileCard } from '../components/StoreTileCard';
@@ -9,8 +9,11 @@ import { ViewAllStoresTile } from './components/ViewAllStoresTile';
 import type { AppStackParamList } from '../../../navigation/types';
 
 const ROW_STORE_COUNT = 4;
+const STORE_CARD_ASPECT_RATIO = 16 / 10;
 
 export function NearbyStoresSection() {
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(width - 40, 240);
   const navigation =
     useNavigation<
       NativeStackNavigationProp<AppStackParamList>
@@ -95,6 +98,8 @@ export function NearbyStoresSection() {
         {rowStores.map((store) => (
           <StoreTileCard
             key={store.id}
+            width={cardWidth}
+            aspectRatio={STORE_CARD_ASPECT_RATIO}
             store={{
               ...store,
               metaLabel:
@@ -112,6 +117,8 @@ export function NearbyStoresSection() {
         ))}
 
         <ViewAllStoresTile
+          width={cardWidth}
+          aspectRatio={STORE_CARD_ASPECT_RATIO}
           onPress={() =>
             navigation.navigate('Store')
           }

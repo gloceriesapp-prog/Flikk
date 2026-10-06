@@ -75,9 +75,9 @@
 // which is what the Reanimated/gesture-handler rewrite above addresses.
 
 import { ArrowDown01Icon, Bookmark01Icon, Share03Icon, StarIcon } from '@hugeicons/core-free-icons';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useMemo, useRef, useState } from 'react';
+import { Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   interpolate,
@@ -164,7 +164,30 @@ interface Props {
   onClose: () => void;
 }
 
-export function ProductDetailSheet({ product, visible, onClose }: Props) {
+export function ProductDetailSheet(props: Props) {
+  if (!props.visible) return null;
+  return Platform.OS === 'android'
+    ? <AndroidProductDetailContent key={props.product.id} {...props} />
+    : <ProductDetailSheetContent key={props.product.id} {...props} />;
+}
+
+// Android opens one product immediately at full screen. It reuses the card's
+// product, variant and cart logic without the iOS sibling pager/backdrop.
+function AndroidProductDetailContent({ product, visible, onClose }: Props) {
+  const grow = useSharedValue(1);
+  return (
+    <Modal visible={visible} animationType="none" transparent={false}
+      statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+        <StatusBar barStyle="dark-content" />
+        <Card product={product} onClose={onClose} grow={grow} onGrowChange={() => { }} fullScreen />
+      </GestureHandlerRootView>
+    </Modal>
+  );
+}
+
+const EMPTY_PRODUCTS: Product[] = [];
+function ProductDetailSheetContent({ product, visible, onClose }: Props) {
   const { width: screenWidth } = useWindowDimensions();
 
   // Mock products (still used by several data.ts files) set their own
@@ -173,7 +196,7 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
   // the sheet is actually open.
   const needsSimilar = visible && !product.relatedProducts;
   const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId);
-  const relatedProducts = product.relatedProducts ?? similar.data ?? [];
+  const relatedProducts = product.relatedProducts ?? similar.data ?? EMPTY_PRODUCTS;
 
   // Two distinct neighbors from the related pool, picked by hashing
   // product.id rather than Math.random() — this repo's react-compiler lint
@@ -189,21 +212,19 @@ export function ProductDetailSheet({ product, visible, onClose }: Props) {
     const left = relatedProducts[seed % relatedProducts.length];
     const right = relatedProducts.length > 1 ? relatedProducts[(seed + 1) % relatedProducts.length] : undefined;
     return [left, right] as const;
-  }, [product.id, relatedProducts.length]); // eslint-disable-line react-hooks/exhaustive-deps -- relatedProducts is a fresh array reference every render (`?? []`); length is what actually changes
+  }, [product.id, relatedProducts]);
 
   const pages = [leftSibling, product, rightSibling].filter((p): p is Product => Boolean(p));
   const centerIndex = pages.indexOf(product);
   const pageWidth = screenWidth - 2 * PEEK_WIDTH - PAGE_GAP;
   const sideInset = (screenWidth - pageWidth) / 2;
   const initialScrollX = centerIndex * (pageWidth + PAGE_GAP);
-  const [activePageIndex, setActivePageIndex] =
-    useState(centerIndex);
-
-  useEffect(() => {
-    if (visible) {
-      setActivePageIndex(centerIndex);
-    }
-  }, [visible, centerIndex]);
+  // Track identity rather than index: asynchronously loaded neighbours can
+  // shift the root product's index while the customer is viewing it.
+  const [activeProductId, setActiveProductId] = useState(product.id);
+  const selectedIndex = pages.findIndex(page => page.id === activeProductId);
+  const activePageIndex = selectedIndex < 0 ? centerIndex : selectedIndex;
+  const setActivePageIndex = (index: number) => setActiveProductId(pages[index]?.id ?? product.id);
 
   const activePage =
     pages[activePageIndex] ?? product;
@@ -533,9 +554,10 @@ interface CardProps {
   onClose: () => void;
   grow: SharedValue<number>;
   onGrowChange: (isGrown: boolean) => void;
+  fullScreen?: boolean;
 }
 
-function Card({ product, onClose, grow, onGrowChange }: CardProps) {
+function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: CardProps) {
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -555,7 +577,7 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
   // being impure or reshuffling on every unrelated re-render.
   const { data: catalog = [] } = useEverydayEssentials();
   const relatedProducts = useMemo(() => {
-    const base = product.relatedProducts ?? similar.data ?? [];
+    const base = product.relatedProducts ?? similar.data ?? EMPTY_PRODUCTS;
     const need = SIMILAR_PRODUCTS_TARGET - base.length;
     if (need <= 0) return base;
     const usedIds = new Set([product.id, ...base.map((p) => p.id)]);
@@ -575,7 +597,7 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
   // variants[0], per api/products.ts's own sort) when the product has
   // more than one; undefined when it doesn't, which is exactly the
   // "if there is no options" fallback signal both children already read.
-  const [selectedVariantId, setSelectedVariantId] = useState(product.variants?.[0]?.id);
+  const [selectedVariantId, setSelectedVariantId] = useState(product.defaultVariantId ?? product.variants?.[0]?.id);
   const selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
 
   // Drag-to-dismiss offset — 0 at rest, animates toward screenHeight on a
@@ -599,6 +621,7 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
   // `gesture.dy > 6` check), and a big horizontal move fails this gesture
   // outright so it doesn't fight the horizontal sibling pager underneath.
   const panGesture = Gesture.Pan()
+    .enabled(!fullScreen)
     .activeOffsetY(6)
     .failOffsetX([-15, 15])
     .onUpdate((event) => {
@@ -619,6 +642,7 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
+      if (fullScreen) return;
       const offsetY = event.contentOffset.y;
 
       // `grow` is a Reanimated SharedValue passed down as a prop so the
@@ -642,6 +666,7 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
       dragY.value = offsetY < 0 ? -offsetY : 0;
     },
     onEndDrag: (event) => {
+      if (fullScreen) return;
       const offsetY = event.contentOffset.y;
       if (offsetY > -DRAG_DISMISS_DISTANCE) return;
       isOverscrollDismissing.value = 1;
@@ -655,7 +680,10 @@ function Card({ product, onClose, grow, onGrowChange }: CardProps) {
     },
   });
 
-  const cardAnimatedStyle = useAnimatedStyle(() => ({
+  const cardAnimatedStyle = useAnimatedStyle(() => fullScreen ? {
+    marginTop: 0, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
+    transform: [{ translateY: 0 }],
+  } : ({
     // Keep exactly the same resting card height.
     // We only move the large empty space from bottom -> top.
     marginTop: interpolate(
@@ -735,14 +763,14 @@ const headerTitleStyle = useAnimatedStyle(() => ({
         style={[
           {
             flex: 1,
-            borderTopLeftRadius: CARD_RADIUS,
-            borderTopRightRadius: CARD_RADIUS,
+            borderTopLeftRadius: fullScreen ? 0 : CARD_RADIUS,
+            borderTopRightRadius: fullScreen ? 0 : CARD_RADIUS,
             overflow: 'hidden',
             backgroundColor: '#FFFFFF',
           },
           cardAnimatedStyle,
         ]}
-        className="shadow-lg shadow-black/30"
+        className={fullScreen ? undefined : 'shadow-lg shadow-black/30'}
       >
         {/* Status-bar blur — only reachable once grown to full screen (the
             floating card's own top margin already clears the status bar,
@@ -811,11 +839,13 @@ const headerTitleStyle = useAnimatedStyle(() => ({
         </GestureDetector>
 
         <Animated.ScrollView
-          bounces
+          bounces={!fullScreen}
+          overScrollMode={fullScreen ? 'never' : 'auto'}
           showsVerticalScrollIndicator={false}
           onScroll={scrollHandler}
           scrollEventThrottle={16}
-          contentContainerStyle={{ paddingBottom: FOOTER_SPACER }}
+          contentContainerStyle={{ paddingTop: fullScreen ? insets.top + 64 : 0,
+            paddingBottom: FOOTER_SPACER + (fullScreen ? insets.bottom : 0) }}
         >
           <View className="relative h-80 w-full" style={{ backgroundColor: '#FAFAFA' }}>
             {/* Full-bleed hero (per an explicit ask, ref #107): image fills
@@ -864,11 +894,13 @@ const headerTitleStyle = useAnimatedStyle(() => ({
         <View className="absolute bottom-0 left-0 right-0">
           {cartTotalQuantity > 0 && (
             <View className="items-center pb-3">
-              <CartBar />
+              <CartBar onBeforeNavigate={onClose} />
             </View>
           )}
           <Animated.View style={[{ overflow: 'hidden' }, footerStyle]}>
-            <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+            {fullScreen
+              ? <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }]} />
+              : <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />}
             <View className="absolute inset-0 bg-white/40" />
             <ProductDetailFooter product={product} selectedVariant={selectedVariant} />
           </Animated.View>

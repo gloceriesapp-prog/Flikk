@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { fetchRiderEarningSummary, type EarningDay } from '../../api/earnings';
 // Earnings tab — week-navigation header, the selected week's balance
 // (base + extra-stop split), that week's daily activity chart, and a
 // transactions list showing every settled order/trip that week with its
@@ -9,11 +11,9 @@
 // off the query instead. bg-[#F8F8F8] matches apps/customer's checkout bg.
 
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useActiveMsToday } from '../../hooks/useActiveMsToday';
 import {
-  breakdownForToday,
-  breakdownForWeek,
   getEarningsForWeek,
   getWeekRange,
   getWeeklyActivity,
@@ -26,24 +26,36 @@ import { WeeklyActivityChartCard } from './components/WeeklyActivityChartCard';
 import { WeeklyTransactionsCard } from './components/WeeklyTransactionsCard';
 
 export function EarningsScreen() {
-  const { data: earnings, isPending, isError, refetch } = useRiderEarnings();
   const [weekOffset, setWeekOffset] = useState(0);
   const [period, setPeriod] = useState<EarningsPeriod>('today');
   const activeMsToday = useActiveMsToday();
 
-  const rows = earnings ?? [];
   const selectedWeek = useMemo(() => getWeekRange(weekOffset), [weekOffset]);
-  const weeklyActivity = useMemo(() => getWeeklyActivity(rows, selectedWeek), [rows, selectedWeek]);
-  const weekEarnings = useMemo(() => getEarningsForWeek(rows, selectedWeek), [rows, selectedWeek]);
+  const from = selectedWeek.start.toISOString();
+  const until = new Date(selectedWeek.start.getTime() + 7 * 86400000).toISOString();
+  const query = useRiderEarnings(from, until);
+  const { data: earnings, isPending, isError, refetch } = query;
+  const todayRange = useMemo(() => {
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const start = new Date(`${day}T00:00:00+05:30`);
+    return { from: start.toISOString(), until: new Date(start.getTime() + 86400000).toISOString() };
+  }, []);
+  const today = useQuery({ queryKey: ['riderEarningsSummary', todayRange.from, todayRange.until], queryFn: () => fetchRiderEarningSummary(todayRange.from, todayRange.until) });
+  const total = (days: EarningDay[] = []) => days.reduce((sum, day) => ({
+    total: sum.total + Number(day.total), base: sum.base + Number(day.base),
+    extraStop: sum.extraStop + Number(day.extra), count: sum.count + Number(day.orders),
+  }), { total: 0, base: 0, extraStop: 0, count: 0 });
+  const summaryBreakdown = period === 'today' ? total(today.data) : total(query.summary.data);
+  const weekEarnings = getEarningsForWeek(earnings, selectedWeek);
+  // Chart values are server aggregates for the entire week, independent
+  // of how many transaction pages have been loaded.
+  const weeklyActivity = getWeeklyActivity([], selectedWeek).map((day, index) => {
+    const date = new Date(selectedWeek.start.getTime() + index * 86400000);
+    const key = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+    return { ...day, total: Number(query.summary.data?.find(row => row.day === key)?.total ?? 0) };
+  });
 
-  // Today = real current calendar day (independent of the paged week);
-  // Week = whichever week the header has selected. See breakdownForToday's
-  // own note on why Today isn't "the selected week's today."
-  const todayBreakdown = useMemo(() => breakdownForToday(rows), [rows]);
-  const weekBreakdown = useMemo(() => breakdownForWeek(rows, selectedWeek), [rows, selectedWeek]);
-  const summaryBreakdown = period === 'today' ? todayBreakdown : weekBreakdown;
-
-  if (isPending) {
+  if (isPending || (period === 'today' && today.isPending)) {
     return (
       <View className="flex-1 items-center justify-center bg-[#F8F8F8]">
         <ActivityIndicator />
@@ -51,11 +63,11 @@ export function EarningsScreen() {
     );
   }
 
-  if (isError) {
+  if ((isError && earnings.length === 0) || (period === 'today' && today.isError)) {
     return (
       <View className="flex-1 items-center justify-center gap-1 bg-[#F8F8F8] px-8">
         <Text className="text-center text-[15px] font-semibold text-ink">Couldn't load earnings</Text>
-        <Text onPress={() => refetch()} className="text-center text-[13px] font-semibold text-lime-deep">
+        <Text onPress={() => { void refetch(); void today.refetch(); }} className="text-center text-[13px] font-semibold text-lime-deep">
           Tap to retry
         </Text>
       </View>
@@ -86,6 +98,7 @@ export function EarningsScreen() {
         </View>
         <WeeklyActivityChartCard weeklyActivity={weeklyActivity} />
         <WeeklyTransactionsCard earnings={weekEarnings} />
+        {query.hasNextPage && <Pressable disabled={query.isFetchingNextPage} onPress={() => { void query.fetchNextPage(); }} className="items-center py-4"><Text className="font-semibold text-lime-deep">{query.isFetchingNextPage ? 'Loading…' : query.isFetchNextPageError ? 'Retry loading more' : 'Load more transactions'}</Text></Pressable>}
       </ScrollView>
     </View>
   );

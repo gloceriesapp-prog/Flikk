@@ -1,12 +1,20 @@
+import { logger } from '../lib/logger.js';
+import { deliveryStores } from '../customer-experience/browse.js';
+import { receiptItems, withReceiptAddress } from '../customer-experience/receipt.js';
+import { HISTORY_SELECT } from '../history/customerHistory.js';
+import { checkoutAttemptIdentity, findCheckoutAttempt, commitCheckoutAttempt } from '../lib/checkoutAttempts.js';
 // The highest-risk endpoints in the backend. Source: specs/00-foundation/api-conventions.md
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
-import { calcCommission, calcItemTotal, calcOrderTotal, round2 } from '../lib/pricing.js';
+import { calcCommission, round2 } from '../lib/pricing.js';
 import { getCommissionRate } from '../lib/platformSettings.js';
 import { formatPayoutDateLabel, nextPayoutDate } from '../lib/payoutSchedule.js';
-import { CartValidationError, validateCart } from '../lib/orderValidation.js';
+import { confirmCheckoutQuote } from '../lib/checkoutQuoteService.js';
+import { rejectUnsupportedTip } from '../lib/checkoutQuote.js';
+import { checkoutTransactionError } from '../lib/checkoutItems.js';
+import type { CartItem } from '../lib/orderValidation.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
 import {
   canRoleTransition,
@@ -15,47 +23,22 @@ import {
   type OrderStatus,
 } from '../lib/orderStateMachine.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
-import { generateDeliveryOtp, isDeliveryOtpValid } from '../lib/deliveryOtp.js';
+import { customerDeliveryCodes, completeDelivery } from '../orders/deliveryCodes.js';
 import { isRiderCancelReasonCode } from '../lib/cancelReasons.js';
 import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.js';
-import { lookupPromoForCheckout } from './promos.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
-import { rankRepeatPurchases, reorderByRank } from '../lib/buyItAgain.js';
-import { calcDeliveryFee, getDeliverySettings } from '../lib/deliverySettings.js';
-import { refundPayment } from '../payments/refundPayment.js';
+import { reorderByRank } from '../lib/buyItAgain.js';
 import { triggerDispatch } from '../lib/riderDispatch.js';
-
-// Only these three transitions are ones the customer didn't just cause
-// themselves (they placed the order) or won't see reflected in the receipt
-// screen right after paying (placed) — so only these are worth an OS-level
-// push. TrackOrderScreen's own polling still shows every status live while
-// the app's open; this is what covers it being closed.
-const CUSTOMER_STATUS_PUSH_COPY: Partial<Record<OrderStatus, { title: string; body: string }>> = {
-  packed: { title: 'Order packed', body: 'Your order has been packed and will be picked up soon.' },
-  out_for_delivery: { title: 'Out for delivery', body: 'Your rider is on the way with your order.' },
-  delivered: { title: 'Order delivered', body: 'Enjoy! Your order has been delivered.' },
-  cancelled: { title: 'Order cancelled', body: 'Your order has been cancelled.' },
-};
 
 export const ordersRouter = Router();
 
 interface CreateOrderBody {
+  attempt_id: string;
+  quote_token: string;
   store_id: string;
-  // Either a real addresses.id from a previous order, or an inline address
-  // to save-and-use — the customer app has no address-book screen yet
-  // (only a single current delivery location, useLocationStore), so
-  // `address` is what it actually sends on every order today. Support for
-  // a real multi-address picker can switch to `address_id` once that
-  // screen exists, without changing this contract.
-  address_id?: string;
-  // recipient_name is required — real quick-commerce apps (Blinkit/
-  // Instamart/Swiggy) all collect this, not just a location: the person
-  // ordering isn't always the person receiving (family, gift, office
-  // delivery), and a rider at a gate/apartment security desk needs a name
-  // to ask for, not just "the Gloceries order." Phone doesn't get its own
-  // field — the account's own verified phone already serves that role.
-  address?: { label?: string; line1: string; landmark?: string; recipient_name: string };
-  items: { product_id: string; quantity: number }[];
+  // Checkout requires an owned, saved address with a valid map pin.
+  address_id: string;
+  items: CartItem[];
   // Optional cart-level coupon (lib/promos.ts) — re-validated here from
   // scratch even if the client already called POST /promos/validate; the
   // discount actually applied is never trusted from that earlier call.
@@ -74,50 +57,25 @@ interface CreateOrderBody {
 ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
     const body = req.body as CreateOrderBody;
-    if (!body.store_id || (!body.address_id && !body.address?.line1) || !body.items?.length) {
-      throw new AppError(400, 'INVALID_ORDER', 'store_id, an address, and items are required.');
+    if (!body.store_id || !body.address_id || !body.items?.length) {
+      throw new AppError(400, 'INVALID_ORDER', 'store_id, a saved address_id, and items are required.');
     }
 
-    const addressId = await resolveAddressId(req.user!.id, body);
-
-    const productIds = body.items.map((i) => i.product_id);
-    const { data: products, error: productErr } = await supabase
-      .from('products')
-      .select('id, store_id, price, is_in_stock')
-      .in('id', productIds);
-    if (productErr) throw productErr;
-
-    try {
-      validateCart(body.items, products ?? [], body.store_id);
-    } catch (validationErr) {
-      if (validationErr instanceof CartValidationError) {
-        throw new AppError(400, validationErr.code, validationErr.message);
-      }
-      throw validationErr;
-    }
-
-    const priceByProduct = new Map(products.map((p) => [p.id, p.price as number]));
-    const lines = body.items.map((i) => ({
-      unitPrice: priceByProduct.get(i.product_id) as number,
-      quantity: i.quantity,
-    }));
-    const itemTotal = calcItemTotal(lines);
+    if (body.payment_method != null && !['cod', 'online'].includes(body.payment_method)) throw new AppError(400, 'INVALID_PAYMENT_METHOD', 'Choose a valid payment method.');
+    rejectUnsupportedTip(req.body);
+    const identity = checkoutAttemptIdentity(req.body, 'order');
+    const previous = await findCheckoutAttempt(req.user!.id, identity.id, identity.fingerprint);
+    if (previous) { res.status(200).json(previous.result); return; }
+    const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, body.store_id, body.address_id);
+    const pricedItems = quote.items;
+    const { itemTotal, deliveryFee, discountAmount, handlingFee, total } = quote.bill;
+    const promoCodeId = quote.promoCodeId;
     const commissionAmount = calcCommission(itemTotal, await getCommissionRate());
-
-    let promoCodeId: string | null = null;
-    let discountAmount = 0;
-    if (body.promo_code) {
-      const promoResult = await lookupPromoForCheckout(body.promo_code, req.user!.id, itemTotal);
-      promoCodeId = promoResult.promoCodeId;
-      discountAmount = promoResult.discountAmount;
-    }
-    const deliverySettings = await getDeliverySettings();
-    const deliveryFee = calcDeliveryFee(itemTotal, deliverySettings);
-    const total = calcOrderTotal(itemTotal, deliveryFee, discountAmount, deliverySettings.handlingFee);
+    const addressId = await resolveAddressId(req.user!.id, body);
 
     // Supabase JS has no multi-statement transaction API; this is executed as a
     // Postgres function (create_order) to keep order + order_items atomic.
-    const { data: created, error: rpcErr } = await supabase.rpc('create_order', {
+    const { data: attempt, error: rpcErr } = await commitCheckoutAttempt(req.user!.id, identity, 'order', {
       p_customer_id: req.user!.id,
       p_store_id: body.store_id,
       p_address_id: addressId,
@@ -125,24 +83,20 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       p_delivery_fee: deliveryFee,
       p_commission_amount: commissionAmount,
       p_total: total,
-      p_items: body.items.map((i) => ({
-        product_id: i.product_id,
-        quantity: i.quantity,
-        unit_price_at_order: priceByProduct.get(i.product_id),
-      })),
+      p_items: pricedItems,
       p_promo_code_id: promoCodeId,
       p_discount_amount: discountAmount,
       p_payment_method: body.payment_method ?? 'cod',
-      p_handling_fee: deliverySettings.handlingFee,
+      p_handling_fee: handlingFee,
     });
-    if (rpcErr) throw new AppError(500, 'ORDER_CREATE_FAILED', rpcErr.message);
+    if (rpcErr) throw checkoutTransactionError(rpcErr.code);
+    if (!attempt) throw new AppError(503, 'CHECKOUT_UNAVAILABLE', 'Please retry this checkout.');
+    const created = attempt.result;
+    if (attempt.replayed) { res.status(200).json(created); return; }
 
-    // Store's own avg_prep_minutes rides along on the create response —
-    // ReceiptScreen/CheckoutScreen need it immediately to show a real
-    // estimated-delivery time (placed_at + avg_prep_minutes + a fixed
-    // transit buffer, see apps/customer's own estimateDelivery.ts) without
-    // a second round trip. Best-effort: a lookup failure here doesn't fail
-    // order creation, the customer app just falls back to a generic ETA.
+    // Keep preparation metadata for existing API consumers. Delivery ETA
+    // comes from the immutable estimate attached by migration 061, not
+    // preparation time. This lookup remains best-effort.
     // The owner's expo_push_token rides along on the same query — this is
     // the one real push a store owner gets for a brand-new order; without
     // it, apps/partner's own useOrderPolling.ts (10s interval) is the only
@@ -184,9 +138,9 @@ ordersRouter.get('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       // deliberately just item_total with delivery_fee=0 per leg —
       // migrations/015_create_trip_orders_fn.sql's own note — the real
       // combined charge lives only on trips.total).
-      .select('*, order_items(*, products(name, image_url, unit)), stores(name, avg_prep_minutes), trips(total, delivery_fee)')
+      .select(HISTORY_SELECT)
       .eq('customer_id', req.user!.id)
-      .order('placed_at', { ascending: false });
+      .order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(20);
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -211,28 +165,13 @@ const BUY_IT_AGAIN_LIMIT = 10;
 
 ordersRouter.get('/buy-it-again', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
-    const { data: deliveredOrders, error: ordersErr } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('customer_id', req.user!.id)
-      .eq('status', 'delivered');
-    if (ordersErr) throw ordersErr;
-    if (!deliveredOrders || deliveredOrders.length === 0) return res.json([]);
-
-    const { data: items, error: itemsErr } = await supabase
-      .from('order_items')
-      .select('product_id, orders(placed_at)')
-      .in(
-        'order_id',
-        deliveredOrders.map((o) => o.id),
-      );
-    if (itemsErr) throw itemsErr;
-
-    const deliveredItems = ((items ?? []) as unknown as { product_id: string; orders: { placed_at: string } | null }[])
-      .filter((item) => item.orders?.placed_at != null)
-      .map((item) => ({ product_id: item.product_id, placed_at: item.orders!.placed_at }));
-
-    const rankedProductIds = rankRepeatPurchases(deliveredItems, BUY_IT_AGAIN_LIMIT);
+    const storeIds = await deliveryStores(req.query);
+    if (!storeIds.length) return res.json([]);
+    const { data: candidates, error: candidateError } = await supabase.rpc('repeat_purchase_candidates', {
+      p_customer: req.user!.id, p_stores: storeIds, p_limit: BUY_IT_AGAIN_LIMIT,
+    });
+    if (candidateError) throw candidateError;
+    const rankedProductIds = ((candidates ?? []) as { product_id: string }[]).map(row => row.product_id);
     if (rankedProductIds.length === 0) return res.json([]);
 
     // Same real-catalog gates every other product feed applies (routes/
@@ -243,6 +182,8 @@ ordersRouter.get('/buy-it-again', requireAuth, requireRole('customer'), async (r
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
       .in('id', rankedProductIds)
+      .in('store_id', storeIds)
+      .eq('is_in_stock', true)
       .eq('approval_status', 'approved')
       .eq('stores.is_active', true)
       .neq('stock_status', 'out_of_stock');
@@ -260,10 +201,11 @@ ordersRouter.get('/:id', requireAuth, async (req: AuthedRequest, res, next) => {
     // here is filtered defensively so a route bug can't leak cross-role data.
     const { data, error } = await supabase
       .from('orders')
-      .select('*, order_items(*, products(name, image_url, unit)), stores(name, avg_prep_minutes)')
+      .select('*, order_items(*, products(name, image_url, unit)), stores(name, avg_prep_minutes), addresses(label, line1, landmark, recipient_name, recipient_phone)')
       .eq('id', req.params.id)
-      .single();
-    if (error || !data) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
+      .maybeSingle();
+    if (error) throw new AppError(503, 'TRACKING_UNAVAILABLE', 'Tracking is temporarily unavailable. Please retry.');
+    if (!data) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
 
     const u = req.user!;
     const visible =
@@ -297,7 +239,9 @@ ordersRouter.get('/:id', requireAuth, async (req: AuthedRequest, res, next) => {
       rider = riderRow ? { ...riderRow, deliveries: deliveries ?? 0 } : null;
     }
 
-    res.json({ ...data, riders: rider });
+    const codes = u.role === 'customer' ? await customerDeliveryCodes(u.id,[data.id]) : new Map<string,string>();
+    res.set('Cache-Control','private, no-store');
+    res.json({ ...withReceiptAddress(data), order_items: receiptItems(data.order_items), delivery_otp: codes.get(data.id) ?? null, riders: rider });
   } catch (err) {
     next(err);
   }
@@ -312,7 +256,7 @@ interface StatusBody {
   reason?: string;
   // Only meaningful (and only ever required) alongside status: 'delivered' —
   // the code the customer read off their own order, entered by the rider at
-  // the door. Verified against orders.delivery_otp, then that column is
+  // the door. Verified against the private delivery_codes record; the legacy column is
   // nulled so the code can't be reused (lib/deliveryOtp.ts).
   otp?: string;
 }
@@ -332,12 +276,19 @@ ordersRouter.patch(
       const { status: to, reason, otp } = req.body as StatusBody;
       const { data: order, error } = await supabase
         .from('orders')
-        .select('id, status, store_id, rider_id, customer_id, trip_id, total, razorpay_payment_id, delivery_otp')
+        .select('id, status, store_id, rider_id, customer_id, trip_id, total, razorpay_payment_id, payment_method')
         .eq('id', req.params.id)
         .single();
       if (error || !order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
 
+      if (to === 'packed' && order.payment_method === 'online' && !order.razorpay_payment_id) {
+        throw new AppError(409, 'PAYMENT_PENDING', 'Wait for payment before packing this order.');
+      }
       const from = order.status as OrderStatus;
+      if (to === 'delivered' && from === 'delivered' && req.user!.role === 'rider' && order.rider_id === req.user!.id) {
+        res.json(await completeDelivery(order.id, req.user!.id, otp));
+        return;
+      }
       if (!isValidTransition(from, to)) {
         throw new AppError(409, 'INVALID_TRANSITION', `Cannot move order from ${from} to ${to}.`);
       }
@@ -355,6 +306,9 @@ ordersRouter.patch(
         throw new AppError(403, 'FORBIDDEN', 'Not your order.');
       }
 
+      if (req.user!.role === 'customer' && order.trip_id && to === 'cancelled') {
+        throw new AppError(409, 'TRIP_CANCELLATION_REQUIRED', 'Cancel this multi-shop order through its trip.');
+      }
       const tsCol = timestampColumnFor(to);
       const update: Record<string, unknown> = { status: to };
       if (tsCol) update[tsCol] = new Date().toISOString();
@@ -370,6 +324,22 @@ ordersRouter.patch(
         update.cancel_reason = reason;
       }
 
+      if (order.trip_id && to === 'cancelled') {
+        // A shared payment must never be refunded as a gross individual leg.
+        // Authorized merchants/riders/admin cancel the whole pre-pickup trip.
+        const { data: outcome, error: cancelError } = await supabase.rpc('cancel_customer_trip', {
+          p_trip_id: order.trip_id, p_customer_id: order.customer_id, p_reason: reason ?? 'Order cancelled',
+        });
+        if (cancelError) throw cancelError;
+        if ((outcome as { outcome: string }).outcome !== 'cancelled') {
+          throw new AppError(409, 'TRIP_CANCELLATION_BLOCKED', 'This trip can no longer be cancelled after pickup.');
+        }
+        const { data: cancelled, error: readError } = await supabase.from('orders').select().eq('id', order.id).single();
+        if (readError) throw readError;
+        res.json({ ...cancelled, delivery_otp: null });
+        return;
+      }
+
       if (to === 'failed') {
         // Post-pickup counterpart to cancel: a rider who's collected the
         // parcel but can't complete the drop (customer unreachable, wrong
@@ -382,12 +352,15 @@ ordersRouter.patch(
         if (req.user!.role === 'rider' && !isRiderDeliveryFailureReasonCode(reason)) {
           throw new AppError(400, 'INVALID_FAILURE_REASON', 'Unknown delivery-failure reason.');
         }
-        // Mid-trip failure is a deliberate follow-up, not MVP: a trip is one
-        // customer drop fed by N store pickups (orders sharing a trip_id), so
-        // failing one leg raises real questions the MVP doesn't answer (refund
-        // which store? pay which legs?). Reject rather than half-handle it.
         if (order.trip_id) {
-          throw new AppError(400, 'TRIP_FAILURE_UNSUPPORTED', 'Failing a multi-store trip order is not supported yet.');
+          const { error: tripError } = await supabase.rpc('fail_assigned_trip', {
+            p_trip: order.trip_id, p_rider: req.user!.id, p_reason: reason,
+          });
+          if (tripError) throw new AppError(409, 'TRIP_CHANGED', 'Refresh this trip before retrying.');
+          const { data: failed, error: readError } = await supabase.from('orders').select().eq('id', order.id).single();
+          if (readError) throw readError;
+          res.json({ ...failed, delivery_otp: null });
+          return;
         }
         // REUSE orders.cancel_reason — status ('failed' vs 'cancelled')
         // disambiguates which flow stored it, so no new column/migration is
@@ -396,63 +369,21 @@ ordersRouter.patch(
         update.cancel_reason = reason;
       }
 
-      // Delivery OTP issued the moment the rider marks pickup
-      // (out_for_delivery) — the customer sees it on their own order well
-      // before the rider reaches the door. One shared code per trip: a
-      // multi-store trip fires one PATCH per leg, so reuse a sibling leg's
-      // already-issued code rather than minting N different codes for one
-      // drop (the rider verifies every leg with the same number).
-      if (to === 'out_for_delivery') {
-        let code = generateDeliveryOtp();
-        if (order.trip_id) {
-          const { data: siblings } = await supabase
-            .from('orders')
-            .select('delivery_otp')
-            .eq('trip_id', order.trip_id)
-            .not('delivery_otp', 'is', null)
-            .limit(1);
-          const shared = siblings?.[0]?.delivery_otp;
-          if (shared) code = shared;
-        }
-        update.delivery_otp = code;
-      }
-
-      // Delivery is gated on the real code — the rider must send the OTP the
-      // customer read out, matching orders.delivery_otp. On success the
-      // column is nulled in this same write so the code is single-use
-      // ("expired once used"). A null stored code (order that never went
-      // out_for_delivery, or predates the feature) can't be satisfied by
-      // anything, so delivery stays blocked rather than silently open.
+      // Code verification, completion and its earning commit in one database
+      // transaction. Other status writes have atomic financial DB triggers.
+      let updated: Record<string, unknown>;
       if (to === 'delivered') {
-        if (!isDeliveryOtpValid(order.delivery_otp, otp)) {
-          throw new AppError(400, 'INVALID_OTP', 'The delivery code is incorrect. Ask the customer for the code shown on their order.');
-        }
-        update.delivery_otp = null;
+        updated = await completeDelivery(order.id, req.user!.id, otp);
+      } else {
+        const { data: result, error: updateErr } = await supabase.from('orders').update(update)
+          .eq('id', order.id).eq('status', from).select().maybeSingle();
+        if (updateErr) throw updateErr;
+        if (!result) throw new AppError(409, 'ORDER_CHANGED', 'The order changed. Refresh before retrying.');
+        updated = result;
       }
-
-      // Refund BEFORE the status write, not after — if the Razorpay call
-      // itself threw an unexpected error (refundPayment.ts already
-      // swallows Razorpay's own failure responses into refund_status:
-      // 'failed', so this only fires on something more fundamental), the
-      // order should stay in its real pre-cancel state rather than
-      // showing "cancelled" with no refund attempt ever having been made.
-      // COD orders (razorpay_payment_id null) skip this entirely —
-      // refund_status stays the column's own 'none' default, correctly
-      // meaning "nothing was ever charged, nothing to refund".
-      if (to === 'cancelled' && order.razorpay_payment_id) {
-        const refund = await refundPayment(order.razorpay_payment_id, order.total);
-        update.refund_status = refund.status;
-        update.razorpay_refund_id = refund.razorpayRefundId;
-        if (refund.status === 'completed') update.refunded_at = new Date().toISOString();
-      }
-
-      const { data: updated, error: updateErr } = await supabase
-        .from('orders')
-        .update(update)
-        .eq('id', order.id)
-        .select()
-        .single();
-      if (updateErr) throw updateErr;
+      // delivery_otp on orders is permanently null; only customer-owned reads
+      // may project a code from the private delivery_codes table.
+      updated.delivery_otp = null;
 
       // Real automated dispatch — fires the moment a store packs an order,
       // never blocks this response (fire-and-forget, same convention this
@@ -460,64 +391,12 @@ ordersRouter.patch(
       // lib/riderDispatch.ts's own note has the full broadcast + atomic-
       // accept-wins design.
       if (to === 'packed') {
-        void triggerDispatch({ id: updated.id, store_id: updated.store_id }).catch((err) =>
-          console.error('[riderDispatch] triggerDispatch failed for order', updated.id, err),
+        void triggerDispatch({ id: String(updated.id), store_id: String(updated.store_id) }).catch((err) =>
+          logger.error({ err, orderId: updated.id }, 'Rider dispatch failed'),
         );
       }
 
       if (to === 'delivered') {
-        // rider_earnings write-on-delivery. See specs/03-rider-app/flows.md.
-        //
-        // Trip legs (order.trip_id set — lib/trips.ts's own note) pay
-        // differently: the rider app marks every leg of a trip 'delivered'
-        // together (one customer drop for the whole trip), but this
-        // handler still receives one PATCH per leg. Paying DELIVERY_FEE
-        // per leg here would silently multiply a rider's earnings by the
-        // store count — instead, pay the trip's own delivery_fee (which
-        // already includes the multi-stop surcharge, see routes/trips.ts's
-        // EXTRA_STOP_FEE) exactly once, from whichever leg happens to be
-        // the last one to reach 'delivered'.
-        if (order.trip_id) {
-          const { data: siblings } = await supabase.from('orders').select('id, status').eq('trip_id', order.trip_id);
-          const allDelivered = (siblings ?? []).every((s) => s.id === order.id || s.status === 'delivered');
-          if (allDelivered) {
-            const { data: trip } = await supabase.from('trips').select('delivery_fee').eq('id', order.trip_id).single();
-            // trip.delivery_fee is this trip's OWN stored fee (captured
-            // at creation, same historical-value principle as the
-            // single-store path above) — `?? 0` only guards a trip
-            // lookup that somehow found no row, never an actual payout
-            // amount in practice.
-            //
-            // Double-pay is now guarded by the DB, not a check-then-insert:
-            // rider_earnings_trip_unique (migration 050) makes one earnings
-            // row per trip_id the hard rule, so two legs racing into "all
-            // delivered" at once can't both insert — the loser hits 23505
-            // and is a no-op. No TOCTOU window left.
-            const { error: earnErr } = await supabase.from('rider_earnings').insert({
-              rider_id: req.user!.id,
-              order_id: order.id,
-              trip_id: order.trip_id,
-              amount: trip?.delivery_fee ?? 0,
-            });
-            if (earnErr && earnErr.code !== '23505') throw earnErr;
-          }
-        } else {
-          // This order's OWN stored delivery_fee (captured at order-
-          // creation time, orders.delivery_fee) — not a live re-fetch of
-          // today's rate. If a delivery-fee change happens between this
-          // order being placed and delivered, the rider is still paid
-          // whatever this specific order actually charged, same principle
-          // as order_items.unit_price_at_order never drifting with a
-          // product's current price. rider_earnings_order_unique (migration
-          // 050) makes the re-insert on a retried PATCH a no-op (23505).
-          const { error: earnErr } = await supabase.from('rider_earnings').insert({
-            rider_id: req.user!.id,
-            order_id: order.id,
-            amount: updated.delivery_fee,
-          });
-          if (earnErr && earnErr.code !== '23505') throw earnErr;
-        }
-
         // Real earning-transparency push — the store's revenue is never
         // written to any ledger before this exact moment (weeklyPayouts.ts's
         // own computeWeeklyPayouts scopes strictly to delivered orders, not
@@ -526,7 +405,7 @@ ordersRouter.patch(
         // AND the real next settlement date up front — the two things a
         // store owner actually needs to not wonder "where did my money go"
         // when it doesn't show up in Payouts immediately.
-        const netEarned = round2(updated.item_total - updated.commission_amount);
+        const netEarned = round2(Number(updated.item_total) - Number(updated.commission_amount));
         const { data: storeRow } = await supabase
           .from('stores')
           .select('users!owner_user_id(expo_push_token)')
@@ -539,32 +418,11 @@ ordersRouter.patch(
         );
       }
 
-      if (to === 'failed') {
-        // Rider is paid the FULL delivery fee on a failed drop — they did the
-        // ride and the pickup; the failure is on the customer/address side, not
-        // theirs. Same single-order payout + idempotency as the delivered
-        // else-branch above (rider_earnings_order_unique, migration 050, makes
-        // a retried PATCH a 23505 no-op). Trip legs never reach here — rejected
-        // as TRIP_FAILURE_UNSUPPORTED above — so this is always a single order,
-        // no trip-fee branch needed. No auto-refund and no store payout fire:
-        // the failed order surfaces in admin's refund queue for manual review.
-        const { error: earnErr } = await supabase.from('rider_earnings').insert({
-          rider_id: req.user!.id,
-          order_id: order.id,
-          amount: updated.delivery_fee,
-        });
-        if (earnErr && earnErr.code !== '23505') throw earnErr;
-      }
-
       // Realtime propagation is automatic via Supabase's replication on this
       // table update. Push is best-effort and never blocks the response —
       // a customer who didn't get notified still sees the new status next
       // time TrackOrderScreen polls.
-      const pushCopy = CUSTOMER_STATUS_PUSH_COPY[to];
-      if (pushCopy) {
-        const { data: customer } = await supabase.from('users').select('expo_push_token').eq('id', updated.customer_id).single();
-        void sendPushNotification(customer?.expo_push_token, pushCopy.title, pushCopy.body);
-      }
+      // The database trigger records an inbox entry and durable push job atomically.
 
       res.json(updated);
     } catch (err) {

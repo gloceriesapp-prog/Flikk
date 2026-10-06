@@ -12,7 +12,7 @@
 // per an explicit ask.
 
 import { View } from 'react-native';
-import { useEverydayEssentials } from '../everyday-essentials/useEverydayEssentials';
+import { useTrendingThisWeek } from '../trending/useTrendingThisWeek';
 import { PromoListCard } from '../products/PromoListCard';
 
 interface Props {
@@ -21,7 +21,7 @@ interface Props {
 }
 
 export function MostBoughtSection({ title = 'Most Bought Near You', subtitle }: Props) {
-  const { data: catalog = [] } = useEverydayEssentials();
+  const { data: catalog = [] } = useTrendingThisWeek();
 
   if (catalog.length === 0) return null;
 

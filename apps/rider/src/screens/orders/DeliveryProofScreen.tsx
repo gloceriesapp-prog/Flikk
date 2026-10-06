@@ -17,12 +17,6 @@ export function DeliveryProofScreen({ route, navigation }: Props) {
   const advanceOrderStatus = useRiderOrdersStore((s) => s.advanceOrderStatus);
   const order = activeOrders.find((o) => o.id === orderId);
 
-  const tripLegs = order?.tripId
-    ? activeOrders.filter((o) => o.tripId === order.tripId)
-    : order
-      ? [order]
-      : [];
-
   const [code, setCode] = useState('');
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +48,7 @@ export function DeliveryProofScreen({ route, navigation }: Props) {
   const completeDelivery = async (otp: string) => {
     setSubmitting(true);
     try {
-      await Promise.all(tripLegs.map((leg) => advanceOrderStatus(leg.id, otp)));
+      await advanceOrderStatus(orderId, otp);
       navigation.replace('DeliveryComplete', { orderId });
     } catch {
       setSubmitting(false);

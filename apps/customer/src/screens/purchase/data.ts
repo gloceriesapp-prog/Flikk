@@ -43,14 +43,12 @@ export interface PurchaseOrder {
   etaLabel: string;
   placedAtLabel: string;
   total: number;
-  // Real order.placed_at (ISO) + the store's own avg_prep_minutes — what
-  // OrderRow.tsx feeds into estimateDeliveryTime (utils/estimateDelivery.ts,
-  // the same real ETA math TrackOrderScreen/ReceiptScreen already use) to
-  // show "Arriving in X min" for a still-in-progress order, instead of a
-  // static status word. null avgPrepMinutes is valid — that util already
-  // falls back to a default prep time.
+  // Placement timestamp plus the immutable admin estimate recorded for this order.
   placedAtIso: string;
+  deliveredAtIso?: string | null;
   avgPrepMinutes: number | null;
+  estimatedDeliveryMinutes?: number | null;
+  estimatedDeliveryAt?: string | null;
 }
 
 const STATUS_LABEL: Record<PurchaseOrder['status'], string> = {
@@ -77,11 +75,20 @@ function formatRelativeDateTime(iso: string): string {
 }
 
 export function mapOrderGroup(group: ApiOrder[]): PurchaseOrder {
-  const isTrip = group.length > 1;
+  const isTrip = Boolean(group[0]?.trip_id);
   const leg = representativeLeg(group);
   const status = leg.status;
   const isTerminal = status === 'delivered' || status === 'cancelled' || status === 'failed';
   const timestamp = leg.delivered_at ?? leg.picked_up_at ?? leg.packed_at ?? leg.placed_at;
+  // A delivered multi-store trip finishes at its latest real delivery.
+  // Missing delivery timestamps must not become invented completion times.
+  const deliveryTimes = group.filter((order) => order.status === 'delivered').map((order) => ({
+    iso: order.delivered_at,
+    time: Date.parse(order.delivered_at ?? ''),
+  }));
+  const deliveredAtIso = status === 'delivered' && deliveryTimes.length > 0 && deliveryTimes.every((entry) => Number.isFinite(entry.time))
+    ? deliveryTimes.reduce((latest, entry) => entry.time > latest.time ? entry : latest).iso
+    : null;
 
   return {
     id: isTrip ? `TRIP-${leg.trip_id!.slice(0, 6).toUpperCase()}` : leg.order_number,
@@ -107,6 +114,9 @@ export function mapOrderGroup(group: ApiOrder[]): PurchaseOrder {
     placedAtLabel: formatRelativeDateTime(timestamp),
     total: isTrip ? (leg.trips?.total ?? group.reduce((sum, order) => sum + order.total, 0)) : leg.total,
     placedAtIso: leg.placed_at,
+    deliveredAtIso,
+    estimatedDeliveryMinutes: leg.estimated_delivery_minutes,
+    estimatedDeliveryAt: leg.estimated_delivery_at,
     avgPrepMinutes: leg.stores?.avg_prep_minutes ?? leg.avg_prep_minutes ?? null,
   };
 }

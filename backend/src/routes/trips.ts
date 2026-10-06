@@ -1,3 +1,8 @@
+import { receiptItems, withReceiptAddress } from '../customer-experience/receipt.js';
+import { customerDeliveryCodes } from '../orders/deliveryCodes.js';
+import { cancelCustomerTrip } from '../lib/tripCancellation.js';
+import { tripRefundSummary } from '../payments/tripRefunds.js';
+import { checkoutAttemptIdentity, findCheckoutAttempt, commitCheckoutAttempt } from '../lib/checkoutAttempts.js';
 // Multi-store checkout — a cart spanning more than one store becomes one
 // trip: one payment, one delivery fee, one real order per store (own
 // store_id/order_items/status each), linked by a shared trip_id. See
@@ -14,39 +19,26 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
-import { CartValidationError, validateMultiStoreCart } from '../lib/orderValidation.js';
-import { calcTripTotal, groupCartByStore } from '../lib/trips.js';
-import { calcOrderTotal } from '../lib/pricing.js';
-import { resolveAddressId, type AddressInput } from '../lib/resolveAddress.js';
+import { confirmCheckoutQuote } from '../lib/checkoutQuoteService.js';
+import { rejectUnsupportedTip } from '../lib/checkoutQuote.js';
+export { EXTRA_STOP_FEE } from '../lib/checkoutQuote.js';
+import { checkoutTransactionError } from '../lib/checkoutItems.js';
+import type { CartItem } from '../lib/orderValidation.js';
+import { groupPricedCartByStore } from '../lib/trips.js';
+import { resolveAddressId } from '../lib/resolveAddress.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
-import { lookupPromoForCheckout } from './promos.js';
-import { getDeliverySettings } from '../lib/deliverySettings.js';
 import { getCommissionRate } from '../lib/platformSettings.js';
 
 export const tripsRouter = Router();
 
-// Commission rate now read live from platform_settings (lib/
-// platformSettings.ts's own getCommissionRate) instead of a hardcoded
-// constant — this file used to import lib/pricing.ts's own COMMISSION_RATE
-// constant, which itself used to be a manually-duplicated local copy
-// before that. The base delivery fee itself comes from lib/deliverySettings.ts (the
-// same admin-editable row POST /orders reads), not a hardcoded constant
-// here.
-//
-// EXTRA_STOP_FEE — the multi-stop pickup surcharge (lib/trips.ts's own
-// calcTripTotal note): every store beyond the first in a trip adds this
-// much to the delivery fee, which is also exactly what the rider earns
-// extra for that trip (routes/orders.ts reads trips.delivery_fee as the
-// rider's payout amount). A founder-set number, same "flat ₹20-30" PRD
-// convention as the base fee itself (PRD Section 22) — not yet wired into
-// the admin settings table (only the base fee/free-delivery toggle are),
-// since nothing has asked for that yet. Exported so GET /rider/earnings can
-// recompute the base vs extra-stop split of a settled trip earning (the
-// split isn't persisted, only the combined amount is).
-export const EXTRA_STOP_FEE = 15;
+// Shared checkout quotes own delivery fees and additional-shop pickup fees.
+// Commission remains server-only and is calculated separately for each leg.
 
-interface CreateTripBody extends AddressInput {
-  items: { product_id: string; quantity: number }[];
+interface CreateTripBody {
+  attempt_id: string;
+  address_id: string;
+  quote_token: string;
+  items: CartItem[];
   // Same promo contract as POST /orders (routes/orders.ts's own note) —
   // one code against the whole trip's item_total, re-validated here.
   promo_code?: string;
@@ -60,29 +52,19 @@ interface CreateTripBody extends AddressInput {
 tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
     const body = req.body as CreateTripBody;
-    if ((!body.address_id && !body.address?.line1) || !body.items?.length) {
+    if (!body.address_id || !body.items?.length) {
       throw new AppError(400, 'INVALID_TRIP', 'An address and items are required.');
     }
 
+    if (body.payment_method != null && !['cod', 'online'].includes(body.payment_method)) throw new AppError(400, 'INVALID_PAYMENT_METHOD', 'Choose a valid payment method.');
+    rejectUnsupportedTip(req.body);
+    const identity = checkoutAttemptIdentity(req.body, 'trip');
+    const previous = await findCheckoutAttempt(req.user!.id, identity.id, identity.fingerprint);
+    if (previous) { res.status(200).json(previous.result); return; }
+    const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, undefined, body.address_id);
+    const pricedItems = quote.items;
     const addressId = await resolveAddressId(req.user!.id, body);
-
-    const productIds = body.items.map((i) => i.product_id);
-    const { data: products, error: productErr } = await supabase
-      .from('products')
-      .select('id, store_id, price, is_in_stock')
-      .in('id', productIds);
-    if (productErr) throw productErr;
-
-    try {
-      validateMultiStoreCart(body.items, products ?? []);
-    } catch (validationErr) {
-      if (validationErr instanceof CartValidationError) {
-        throw new AppError(400, validationErr.code, validationErr.message);
-      }
-      throw validationErr;
-    }
-
-    const legs = groupCartByStore(body.items, products ?? [], await getCommissionRate());
+    const legs = groupPricedCartByStore(pricedItems, await getCommissionRate());
     if (legs.length <= 1) {
       // Not an error a real customer can hit through the app (the cart
       // itself decides which endpoint to call based on how many distinct
@@ -92,26 +74,10 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       throw new AppError(400, 'SINGLE_STORE_CART', 'This cart only touches one store — use POST /orders instead.');
     }
 
-    const deliverySettings = await getDeliverySettings();
-    const { itemTotal, deliveryFee: baseDeliveryFee } = calcTripTotal(legs, deliverySettings.flatDeliveryFee, EXTRA_STOP_FEE);
-    // Free-delivery waiver applies to the WHOLE trip fee (base + multi-stop
-    // surcharge together) once eligible — same all-or-nothing waiver
-    // lib/deliverySettings.ts's own calcDeliveryFee applies for a single-
-    // store order, just computed here against the trip's already-combined
-    // fee since calcTripTotal owns the base+surcharge math.
-    const deliveryFee =
-      deliverySettings.freeDeliveryEnabled && itemTotal >= deliverySettings.freeDeliveryThreshold ? 0 : baseDeliveryFee;
+    const { itemTotal, deliveryFee, discountAmount, handlingFee, total } = quote.bill;
+    const promoCodeId = quote.promoCodeId;
 
-    let promoCodeId: string | null = null;
-    let discountAmount = 0;
-    if (body.promo_code) {
-      const promoResult = await lookupPromoForCheckout(body.promo_code, req.user!.id, itemTotal);
-      promoCodeId = promoResult.promoCodeId;
-      discountAmount = promoResult.discountAmount;
-    }
-    const total = calcOrderTotal(itemTotal, deliveryFee, discountAmount, deliverySettings.handlingFee);
-
-    const { data: trip, error: rpcErr } = await supabase.rpc('create_trip_orders', {
+    const { data: attempt, error: rpcErr } = await commitCheckoutAttempt(req.user!.id, identity, 'trip', {
       p_customer_id: req.user!.id,
       p_address_id: addressId,
       p_delivery_fee: deliveryFee,
@@ -126,9 +92,12 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       p_promo_code_id: promoCodeId,
       p_discount_amount: discountAmount,
       p_payment_method: body.payment_method ?? 'cod',
-      p_handling_fee: deliverySettings.handlingFee,
+      p_handling_fee: handlingFee,
     });
-    if (rpcErr) throw new AppError(500, 'TRIP_CREATE_FAILED', rpcErr.message);
+    if (rpcErr) throw checkoutTransactionError(rpcErr.code);
+    if (!attempt) throw new AppError(503, 'CHECKOUT_UNAVAILABLE', 'Please retry this checkout.');
+    const trip = attempt.result;
+    if (attempt.replayed) { res.status(200).json(trip); return; }
 
     // Best-effort "new order" push to every store involved — same alert
     // POST /orders already sends on a single-store order, just fanned out
@@ -163,8 +132,11 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
 // created in the same order the cart grouped them in).
 tripsRouter.get('/:id', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
-    const { data: trip, error: tripErr } = await supabase.from('trips').select('*').eq('id', req.params.id).single();
-    if (tripErr || !trip) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found.');
+    const { data: trip, error: tripErr } = await supabase.from('trips')
+      .select('*, addresses(label, line1, landmark, recipient_name, recipient_phone)')
+      .eq('id', req.params.id).eq('customer_id', req.user!.id).maybeSingle();
+    if (tripErr) throw new AppError(503, 'TRACKING_UNAVAILABLE', 'Tracking is temporarily unavailable. Please retry.');
+    if (!trip) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found.');
     // Real RLS (trips_customer_read, 014_trips.sql) already scopes this to
     // the caller's own trip via a user-scoped client; this explicit check
     // is defense in depth for the service-role fetch above, same reasoning
@@ -197,10 +169,15 @@ tripsRouter.get('/:id', requireAuth, requireRole('customer'), async (req: Authed
         }),
       );
     }
-    const ordersWithRiders = (orders ?? []).map((o) => ({ ...o, riders: o.rider_id ? (ridersById.get(o.rider_id) ?? null) : null }));
+    const codes = await customerDeliveryCodes(req.user!.id,(orders ?? []).map(o => o.id));
+    const ordersWithRiders = (orders ?? []).map((o) => ({ ...o, order_items: receiptItems(o.order_items), delivery_otp: codes.get(o.id) ?? null, riders: o.rider_id ? (ridersById.get(o.rider_id) ?? null) : null }));
 
-    res.json({ ...trip, orders: ordersWithRiders });
+    res.json({ ...withReceiptAddress(trip), orders: ordersWithRiders, cancellation_refund: await tripRefundSummary(trip.id) });
   } catch (err) {
     next(err);
   }
+});
+
+tripsRouter.post('/:id/cancel', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
+  try { res.json(await cancelCustomerTrip(req.params.id as string, req.user!.id, req.body.reason)); } catch (err) { next(err); }
 });

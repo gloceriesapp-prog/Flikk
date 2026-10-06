@@ -9,11 +9,29 @@
 
 import type { CartItem, CartProduct } from './orderValidation.js';
 import { calcItemTotal, calcCommission, calcOrderTotal, round2 } from './pricing.js';
+import type { PricedCheckoutItem } from './checkoutItems.js';
 
 export interface TripLegItem {
   product_id: string;
+  variant_id?: string | null;
+  unit_at_order?: string;
+  variant_mrp_at_order?: number;
   quantity: number;
   unit_price_at_order: number;
+}
+
+export function groupPricedCartByStore(items: PricedCheckoutItem[], commissionRate: number): TripLeg[] {
+  const groups = new Map<string, TripLeg>();
+  for (const item of items) {
+    const leg = groups.get(item.store_id) ?? { storeId: item.store_id, items: [], itemTotal: 0, commissionAmount: 0 };
+    leg.items.push(item);
+    groups.set(item.store_id, leg);
+  }
+  for (const leg of groups.values()) {
+    leg.itemTotal = calcItemTotal(leg.items.map((item) => ({ unitPrice: item.unit_price_at_order, quantity: item.quantity })));
+    leg.commissionAmount = calcCommission(leg.itemTotal, commissionRate);
+  }
+  return [...groups.values()];
 }
 
 export interface TripLeg {

@@ -11,6 +11,7 @@ export interface ApiOrderItem {
   product_id: string;
   quantity: number;
   unit_price_at_order: number;
+  unit_at_order?: string | null;
   products: { name: string; unit: string; image_url: string | null } | null;
 }
 
@@ -42,8 +43,14 @@ export interface ApiOrder {
   addresses: { line1: string; landmark: string | null } | null;
 }
 
-export function fetchOrders(): Promise<ApiOrder[]> {
-  return apiRequest('/partner/orders');
+export async function fetchOrders(): Promise<ApiOrder[]> {
+  const result: ApiOrder[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: { items: ApiOrder[]; nextCursor: string | null } = await apiRequest(`/partner/orders?view=queue&page=1&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+    result.push(...page.items); cursor = page.nextCursor;
+  } while (cursor);
+  return result;
 }
 
 export function updateOrderStatus(orderId: string, status: 'packed' | 'cancelled'): Promise<ApiOrder> {

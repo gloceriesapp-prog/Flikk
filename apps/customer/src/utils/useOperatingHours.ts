@@ -1,5 +1,5 @@
 // Re-evaluates isOutsideOperatingHours() on a timer so the app actually
-// flips open/closed live at 9:30 PM and 6:00 AM IST while it's sitting open
+// flips open/closed live at 10:30 PM and 6:00 AM IST while it's sitting open
 // — a plain one-time check at render time would only ever update the next
 // time something else happens to re-render this component (a tab switch, a
 // screen focus), which could leave a stale "closed" banner showing well

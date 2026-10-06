@@ -1,126 +1,72 @@
-// Reached from ReceiptScreen's "Track Order" button and Purchase's own
-// Live Order card. Status-only, 4-stage timeline (placed -> packed ->
-// out_for_delivery -> delivered), no live map/GPS — CLAUDE.md scopes v1
-// tracking to status-only, deliberately, even though a rider app exists in
-// this product.
-//
-// Real order now (GET /orders/:id, api/orders.ts) — polled every 8s while
-// the order hasn't reached a terminal status (delivered/cancelled), so a
-// partner marking an order packed (or a rider moving it further, once that
-// app exists) shows up here without the customer needing to pull-to-refresh
-// or reopen the screen. Polling stops on its own once terminal, no manual
-// cleanup needed beyond the effect's own unmount.
-//
-// Trip-aware (route.params.isTrip, set by CheckoutScreen's own isMultiStore
-// branch): a multi-store checkout is one trip made of N real per-store
-// orders (backend/migrations/014_trips.sql) — this screen fetches the
-// combined trip (api/trips.ts's fetchTrip) instead of a single order.
-//
-// One combined card now, not one per store leg (each leg used to get its
-// own OrderInfoCard/DeliveryRiderCard/OrderItemsCard/TrackingTimeline,
-// which is real internal accuracy the customer doesn't actually need to
-// see — a customer who ordered from two stores in one trip cares "where's
-// my stuff", not "which of the two stores is currently packed vs still
-// placed"). The store names each leg came from still show up top, in
-// plain text — real, not hidden, just not the whole screen's structure.
-//
-// Status/ETA/rider/timeline are all driven by the REPRESENTATIVE leg —
-// the one furthest behind (lowest stage in the real placed/packed/
-// out_for_delivery/delivered order, backend/src/lib/orderStateMachine.ts).
-// That's a real, honest choice, not an average or a guess: a rider doing
-// a multi-stop pickup can't be "out for delivery" for the trip as a whole
-// until every store's leg is at least that far along, so whichever leg is
-// least advanced is genuinely what's gating the whole trip right now.
-// Items are the real union of every leg's own order_items — nothing
-// invented, just combined into one list instead of N separate ones.
-
+import { useAuthStore } from '../../store/useAuthStore';
 import { useState } from 'react';
 import { ArrowLeft01Icon, CustomerService01Icon } from '@hugeicons/core-free-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { cancelOrder, fetchOrder, type ApiOrder } from '../../api/orders';
-import { fetchTrip } from '../../api/trips';
+import { cancelOrder, type ApiOrder } from '../../api/orders';
+import { cancelTrip, type TripCancellation, type ApiTrip } from '../../api/trips';
+import { useTracking } from './state/useTracking';
+import { TrackingFeedback } from './components/TrackingFeedback';
+import { TripCancellationResult } from './components/TripCancellationResult';
 import { representativeLeg } from '../../utils/tripLegs';
 import { CancelOrderCard } from './components/CancelOrderCard';
 import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryRiderCard } from './components/DeliveryRiderCard';
 import { OrderInfoCard } from './components/OrderInfoCard';
-import { OrderItemsCard } from './components/OrderItemsCard';
+import { DeliveryDetailsSection } from './sections/delivery-details/DeliveryDetailsSection';
+import { OrderSummarySection } from './sections/order-summary/OrderSummarySection';
 import { TrackingTimeline } from './components/TrackingTimeline';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'TrackOrder'>;
 
-const POLL_INTERVAL_MS = 8000;
-
-function isTerminal(status?: string): boolean {
-  return status === 'delivered' || status === 'cancelled' || status === 'failed';
-}
-
-// Mirrors backend/src/lib/orderStateMachine.ts's own isValidTransition —
-// 'cancelled' is only reachable from 'placed' or 'packed', i.e. before the
-// rider has picked the order up from the store ('out_for_delivery', set
-// the instant a rider marks pickup). This is UI-only convenience so the
-// button doesn't even render for an order that would just get rejected —
-// the backend re-checks this exact same rule regardless, it's the real
-// source of truth, not this function.
 function isCancellable(status: string): boolean {
   return status === 'placed' || status === 'packed';
 }
 
-export function TrackOrderScreen({ navigation, route }: Props) {
+function TrackingDetails({ navigation, route }: Props) {
+  const customerId = useAuthStore(state => state.customerId);
   const { orderId, isTrip } = route.params;
 
-  const { data: order, isLoading: isOrderLoading } = useQuery({
-    queryKey: ['order', orderId],
-    queryFn: () => fetchOrder(orderId),
-    enabled: !isTrip,
-    refetchInterval: (query) => (isTerminal(query.state.data?.status) ? false : POLL_INTERVAL_MS),
-  });
-
-  const { data: trip, isLoading: isTripLoading } = useQuery({
-    queryKey: ['trip', orderId],
-    queryFn: () => fetchTrip(orderId),
-    enabled: !!isTrip,
-    // A trip as a whole is only "done" once every leg independently is —
-    // trips.status itself stays coarse (014_trips.sql's own note), so the
-    // real signal to stop polling is every child order's own status.
-    refetchInterval: (query) => {
-      const legs = query.state.data?.orders ?? [];
-      return legs.length > 0 && legs.every((leg) => isTerminal(leg.status)) ? false : POLL_INTERVAL_MS;
-    },
-  });
-
-  const isLoading = isTrip ? isTripLoading : isOrderLoading;
+  const tracking = useTracking(orderId, !!isTrip);
+  const { order, trip } = tracking;
   const legs = trip?.orders ?? [];
-
-  // A multi-store trip is N real separate orders sharing one payment
-  // (CLAUDE.md) — "cancel the whole trip" here means cancelling every
-  // still-cancellable leg, each through the exact same real per-order
-  // endpoint (and each leg's own real refund, since every leg shares the
-  // same razorpay_payment_id but Razorpay supports multiple partial
-  // refunds against one payment — backend/src/payments/refundPayment.ts's
-  // own note). Not a separate "cancel trip" endpoint — there's nothing a
-  // trip-level cancel needs to do that isn't just "do this to every leg".
+  const [cancellationResult, setCancellationResult] = useState<TripCancellation>();
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const queryClient = useQueryClient();
+  const cancellationDetails: TripCancellation | undefined = cancellationResult || legs.some(leg => leg.status === 'cancelled') ? {
+    outcome: legs.every(leg => leg.status === 'cancelled') ? 'cancelled' : 'blocked',
+    shops: legs.map(leg => ({ order_id: leg.id, store_name: leg.stores?.name ?? 'Shop', status: leg.status,
+      outcome: leg.status === 'cancelled' ? 'cancelled' : isCancellable(leg.status) ? 'not_cancelled' : 'blocked',
+      refund_status: leg.refund_status,
+    })), refund: trip?.cancellation_refund ?? null,
+  } : undefined;
   const cancelMutation = useMutation({
     mutationFn: async (reason: string) => {
       if (isTrip) {
-        await Promise.all(legs.map((leg) => cancelOrder(leg.id, reason)));
+        return cancelTrip(orderId, reason);
       } else {
         await cancelOrder(orderId, reason);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: isTrip ? ['trip', orderId] : ['order', orderId] });
+    onSuccess: (result) => {
+      if (result) {
+        setCancellationResult(result);
+        queryClient.setQueryData<ApiTrip>(['trip', orderId, customerId], current => current ? { ...current,
+          status: result.outcome === 'cancelled' ? 'cancelled' : current.status, cancellation_refund: result.refund,
+          orders: current.orders?.map(order => ({ ...order, status: (result.shops.find(shop => shop.order_id === order.id)?.status ?? order.status) as ApiOrder['status'] })),
+        } : current);
+      }
+      void queryClient.invalidateQueries({ queryKey: isTrip ? ['trip-live', orderId, customerId] : ['order-live', orderId, customerId] });
+      void queryClient.invalidateQueries({ queryKey: ['my-orders', customerId] });
+      queryClient.invalidateQueries({ queryKey: isTrip ? ['trip', orderId, customerId] : ['order', orderId, customerId] });
       setIsCancelModalOpen(false);
     },
     onError: () => {
-      Alert.alert('Could not cancel', 'Please check your connection and try again.');
+      Alert.alert('Cancellation not confirmed', 'Your request may have reached us. Refresh tracking or retry to check the outcome.');
     },
   });
 
@@ -131,43 +77,33 @@ export function TrackOrderScreen({ navigation, route }: Props) {
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
         <Text className="flex-1 text-center text-[17px] font-semibold text-ink">Track Order</Text>
-        {/* No support screen exists yet — wire this to a real destination
-            once one does, same no-op ProfileScreen's own Support tile uses
-            today. */}
-        <Pressable onPress={() => { }} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
+        <Pressable onPress={() => navigation.navigate('Support', { target: { orderId, isTrip }, category: 'delivery' })} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={CustomerService01Icon} size={22} color={colors.ink} />
         </Pressable>
       </View>
 
-      {isLoading || (isTrip ? !trip : !order) ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={colors.ink} />
-        </View>
+      {tracking.state === 'stale' ? <TrackingFeedback state="stale" retry={() => void tracking.refetch()} busy={tracking.fetching} updatedAt={tracking.updatedAt} /> : null}
+      {['loading', 'connection-error', 'request-error', 'unavailable'].includes(tracking.state) ? (
+        <TrackingFeedback state={tracking.state} retry={() => void tracking.refetch()} busy={tracking.fetching} />
       ) : isTrip ? (
         (() => {
           const leg = representativeLeg(legs);
-          // Real union of every leg's own order_items, combined into the
-          // one items card — leg's other fields (id, placed_at, etc.)
-          // ride along unchanged since OrderItemsCard only ever reads
-          // order.order_items.
+          // Preview and expanded summary include every store leg's
+          // ordered items; billing uses the trip's combined totals.
           const combinedOrder: ApiOrder = { ...leg, order_items: legs.flatMap((l) => l.order_items) };
 
           return (
             <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
-              <OrderInfoCard order={leg} />
+              <OrderInfoCard order={leg} hideRefund />
+              <TripCancellationResult result={cancellationDetails} refund={trip?.cancellation_refund} />
 
-              {/* Right below the estimate card, same placement/mutual-
-                  exclusivity reasoning as the single-order branch below —
-                  only when EVERY leg is still cancellable, since once even
-                  one store's leg has moved past pickup, "cancel the whole
-                  trip" stops being one clean action and this deliberately
-                  doesn't try to guess a partial-cancel UX for that. */}
-              {legs.length > 0 && legs.every((l) => isCancellable(l.status)) ? (
+              {legs.some((l) => isCancellable(l.status)) && legs.every((l) => isCancellable(l.status) || l.status === 'cancelled') ? (
                 <CancelOrderCard onPress={() => setIsCancelModalOpen(true)} />
               ) : null}
 
               <DeliveryRiderCard order={leg} />
-              <OrderItemsCard order={combinedOrder} />
+              <DeliveryDetailsSection address={trip!.addresses} />
+              <OrderSummarySection key={trip!.id} items={combinedOrder.order_items} onViewSummary={() => navigation.navigate('OrderSummary', { orderId, isTrip: true })} />
 
               <View className="w-full rounded-3xl bg-white p-5">
                 <TrackingTimeline order={leg} />
@@ -198,7 +134,8 @@ export function TrackOrderScreen({ navigation, route }: Props) {
 
           <DeliveryRiderCard order={order!} />
 
-          <OrderItemsCard order={order!} />
+          <DeliveryDetailsSection address={order!.addresses} />
+          <OrderSummarySection key={order!.id} items={order!.order_items} onViewSummary={() => navigation.navigate('OrderSummary', { orderId })} />
 
           <View className="w-full rounded-3xl bg-white p-5">
             <TrackingTimeline order={order!} />
@@ -217,11 +154,15 @@ export function TrackOrderScreen({ navigation, route }: Props) {
       {order || trip ? (
         <CancelOrderModal
           visible={isCancelModalOpen}
-          onDismiss={() => setIsCancelModalOpen(false)}
+          onDismiss={() => { if (!cancelMutation.isPending) setIsCancelModalOpen(false); }}
           onConfirm={(reason) => cancelMutation.mutate(reason)}
           confirming={cancelMutation.isPending}
         />
       ) : null}
     </View>
   );
+}
+
+export function TrackOrderScreen(props: Props) {
+ return <TrackingDetails key={`${props.route.params.isTrip ? 'trip' : 'order'}:${props.route.params.orderId}`} {...props} />;
 }
