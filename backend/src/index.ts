@@ -36,6 +36,7 @@ import { partnerRouter } from './routes/partner.js';
 import { riderRouter } from './routes/rider.js';
 import { adminRouter } from './routes/admin.js';
 import { paymentsRouter } from './payments/router.js';
+import { handleCashfreeWebhook } from './payments/cashfreeWebhook.js';
 import { locationRouter } from './routes/location.js';
 import { storeOnboardingRouter } from './routes/storeOnboarding.js';
 import { riderOnboardingRouter } from './routes/riderOnboarding.js';
@@ -109,6 +110,20 @@ app.use(
       (req as unknown as { rawBody: string }).rawBody = buf.toString();
     },
   }),
+);
+// Cashfree signs timestamp + raw body; capture the exact bytes before JSON
+// parsing (decimals like 120.50 must not be re-serialised). Its own route,
+// not /payments/webhook, so Razorpay keeps working during the migration.
+app.post(
+  '/payments/cashfree/webhook',
+  concurrentAdmission(32), uploadBodyDeadline,
+  express.json({
+    limit: '256kb',
+    verify: (req, _res, buf) => {
+      (req as unknown as { rawBody: string }).rawBody = buf.toString();
+    },
+  }),
+  handleCashfreeWebhook,
 );
 for (const path of UPLOAD_PATHS) {
   const [auth, ...rest] = uploadAdmission;

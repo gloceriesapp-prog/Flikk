@@ -36,6 +36,12 @@ export const env = {
   // rather than the whole server refusing to start over one blocked
   // feature.
   razorpayxAccountNumber: process.env.RAZORPAYX_ACCOUNT_NUMBER,
+  // Cashfree Payment Gateway (migration from Razorpay in progress). Optional
+  // so the backend still boots without it; the Cashfree webhook answers 503
+  // until the secret is set. The PG client secret also signs PG webhooks.
+  cashfreeClientId: process.env.CASHFREE_CLIENT_ID,
+  cashfreeClientSecret: process.env.CASHFREE_CLIENT_SECRET,
+  cashfreeEnv: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
   // apps/partner-dashboard (and any future web surface) calls this backend
   // directly from browser JS, unlike admin which only talks to Supabase/its
   // own Next API routes — the only client that actually needs CORS.
