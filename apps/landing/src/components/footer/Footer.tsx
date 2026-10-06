@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FavouriteIcon, ShoppingBag01Icon } from "@hugeicons/core-free-icons";
 import { AREAS } from "@/lib/seo/areas";
+import { POLICIES, POLICY_ORDER, policyHref } from "@/lib/legal/policies";
 
 // Footer doubles as the HTML sitemap: real crawlable <a href> to every
 // routed page. The delivery-area column is the SEO engine — it internal-
@@ -27,12 +28,11 @@ const SOON_AREAS: FooterLink[] = AREAS.filter((a) => !a.active).map((a) => ({
   href: `/delivery/${a.slug}`,
 }));
 
-// ponytail: /terms + /privacy pages don't exist yet — stub routes needed
-// before launch, footer legal links are table-stakes for an e-commerce site.
-const LEGAL: FooterLink[] = [
-  { label: "Terms of Service", href: "/terms" },
-  { label: "Privacy Policy", href: "/privacy" },
-];
+// Legal pages come from the policy registry — the same list the sitemap uses.
+const LEGAL: FooterLink[] = POLICY_ORDER.map((slug) => ({
+  label: POLICIES[slug].label,
+  href: policyHref(slug),
+}));
 
 function LinkColumn({ title, items }: { title: string; items: FooterLink[] }) {
   return (

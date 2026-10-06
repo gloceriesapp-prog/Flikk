@@ -41,7 +41,9 @@ const POPULAR_SEARCHES = [
   { term: "Cold Drinks", category: "Beverages" },
 ];
 
-export default function Navbar() {
+// promptLocation=false skips the first-visit location modal — used on pages
+// a visitor must be able to read straight away (legal/policy pages).
+export default function Navbar({ promptLocation = true }: { promptLocation?: boolean } = {}) {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -84,7 +86,7 @@ export default function Navbar() {
             /* corrupt coords — leave badge unresolved */
           }
         }
-      } else {
+      } else if (promptLocation) {
         setIsFirstVisit(true);
         const timeout = setTimeout(() => {
           setIsLocationModalOpen(true);
@@ -92,7 +94,7 @@ export default function Navbar() {
         return () => clearTimeout(timeout);
       }
     }
-  }, []);
+  }, [promptLocation]);
 
   const handleSelectLocation = (
     newLoc: string,
