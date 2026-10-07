@@ -136,6 +136,14 @@ adminRouter.get('/orders', async (req, res, next) => {
 adminRouter.patch('/orders/:id/assign-rider', async (req, res, next) => {
   try {
     const { rider_id } = req.body as { rider_id: string };
+    // A multi-store trip has exactly one rider. Assigning one leg here would
+    // leave its siblings open to dispatch to a different rider, and a trip
+    // split across riders can never be delivered or failed. trip_id never
+    // changes after checkout, so this read cannot race the update below.
+    const { data: target } = await supabase.from('orders').select('trip_id').eq('id', req.params.id).maybeSingle();
+    if (target?.trip_id) {
+      throw new AppError(409, 'TRIP_ASSIGNMENT_REQUIRED', `This order is part of a trip. Assign the whole trip via /admin/trips/${target.trip_id}/assign-rider.`);
+    }
     // only packed, unassigned orders are eligible — no auto-suggest logic here,
     // this is the single manual-assignment write path. See out-of-scope.md.
     const { data, error } = await supabase
@@ -183,12 +191,11 @@ adminRouter.patch('/orders/:id/assign-rider', async (req, res, next) => {
 adminRouter.patch('/trips/:id/assign-rider', async (req, res, next) => {
   try {
     const { rider_id } = req.body as { rider_id: string };
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ rider_id })
-      .eq('trip_id', req.params.id)
-      .is('rider_id', null)
-      .select();
+    // assign_trip_rider (migration 107) runs under the trip's advisory lock and
+    // refuses when a live leg already belongs to another rider, so a rider
+    // accept racing this call can never leave the trip split across riders.
+    const { data, error } = await supabase.rpc('assign_trip_rider', { p_trip: req.params.id, p_rider: rider_id });
+    if (error?.code === 'P0409') throw new AppError(409, 'TRIP_HAS_RIDER', 'Another rider already has this trip.');
     if (error) throw error;
     if (!data || data.length === 0) {
       throw new AppError(409, 'NOT_ASSIGNABLE', 'Trip has no unassigned legs.');

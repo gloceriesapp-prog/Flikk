@@ -8,9 +8,8 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
-import { calcCommission, round2 } from '../lib/pricing.js';
+import { calcCommission } from '../lib/pricing.js';
 import { getCommissionRate } from '../lib/platformSettings.js';
-import { formatPayoutDateLabel, nextPayoutDate } from '../lib/payoutSchedule.js';
 import { confirmCheckoutQuote } from '../lib/checkoutQuoteService.js';
 import { rejectUnsupportedTip } from '../lib/checkoutQuote.js';
 import { checkoutTransactionError } from '../lib/checkoutItems.js';
@@ -22,9 +21,9 @@ import {
   timestampColumnFor,
   type OrderStatus,
 } from '../lib/orderStateMachine.js';
-import { embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
 import { notifyStoresOfNewOrder } from '../payments/newOrderPush.js';
-import { customerDeliveryCodes, completeDelivery } from '../orders/deliveryCodes.js';
+import { customerDeliveryCodes, completeDelivery, verifyDelivery } from '../orders/deliveryCodes.js';
+import { notifyStoresOfDelivery } from '../orders/deliveredPush.js';
 import { isRiderCancelReasonCode } from '../lib/cancelReasons.js';
 import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
@@ -34,6 +33,8 @@ import { triggerDispatch } from '../lib/riderDispatch.js';
 export const ordersRouter = Router();
 // Free-text cancel reasons (customer/partner) are shown to other parties.
 export const MAX_CANCEL_REASON_LENGTH = 300;
+const tripNotReady = () =>
+  new AppError(409, 'TRIP_NOT_READY', 'Another shop in this trip has not packed yet. Pick up once every shop has packed.');
 
 interface CreateOrderBody {
   attempt_id: string;
@@ -310,6 +311,15 @@ ordersRouter.patch(
       if (req.user!.role === 'customer' && order.trip_id && to === 'cancelled') {
         throw new AppError(409, 'TRIP_CANCELLATION_REQUIRED', 'Cancel this multi-shop order through its trip.');
       }
+      if (to === 'out_for_delivery' && order.trip_id) {
+        // Once any leg is picked up the trip can no longer be cancelled, so a
+        // shop that never packs would strand the whole trip. Pick up only
+        // after every shop in the trip has packed.
+        const { data: unpacked, error: siblingErr } = await supabase.from('orders').select('id')
+          .eq('trip_id', order.trip_id).eq('status', 'placed').neq('id', order.id).limit(1);
+        if (siblingErr) throw siblingErr;
+        if (unpacked?.length) throw tripNotReady();
+      }
       const tsCol = timestampColumnFor(to);
       const update: Record<string, unknown> = { status: to };
       if (tsCol) update[tsCol] = new Date().toISOString();
@@ -373,11 +383,17 @@ ordersRouter.patch(
       // Code verification, completion and its earning commit in one database
       // transaction. Other status writes have atomic financial DB triggers.
       let updated: Record<string, unknown>;
+      let deliveryReplayed = false;
       if (to === 'delivered') {
-        updated = await completeDelivery(order.id, req.user!.id, otp);
+        const delivery = await verifyDelivery(order.id, req.user!.id, otp);
+        updated = delivery.order;
+        deliveryReplayed = delivery.replayed;
       } else {
         const { data: result, error: updateErr } = await supabase.from('orders').update(update)
           .eq('id', order.id).eq('status', from).select().maybeSingle();
+        // guard_checkout_order (migration 107) refuses a pickup while a
+        // sibling trip leg is unpacked; same outcome as the pre-check above.
+        if (updateErr?.code === 'P0409' && to === 'out_for_delivery') throw tripNotReady();
         if (updateErr) throw updateErr;
         if (!result) throw new AppError(409, 'ORDER_CHANGED', 'The order changed. Refresh before retrying.');
         updated = result;
@@ -397,27 +413,10 @@ ordersRouter.patch(
         );
       }
 
-      if (to === 'delivered') {
-        // Real earning-transparency push — the store's revenue is never
-        // written to any ledger before this exact moment (weeklyPayouts.ts's
-        // own computeWeeklyPayouts scopes strictly to delivered orders, not
-        // accepted/packed ones), so 'delivered' is the one truthful point
-        // to tell the owner "you earned this." Tells them the real amount
-        // AND the real next settlement date up front — the two things a
-        // store owner actually needs to not wonder "where did my money go"
-        // when it doesn't show up in Payouts immediately.
-        const netEarned = round2(Number(updated.item_total) - Number(updated.commission_amount));
-        const { data: storeRow } = await supabase
-          .from('stores')
-          .select('users!owner_user_id(expo_push_token)')
-          .eq('id', order.store_id)
-          .single();
-        void sendPushNotification(
-          embeddedPushToken(storeRow?.users),
-          `₹${netEarned} earned`,
-          `Order delivered — added to your balance, paid out on ${formatPayoutDateLabel(nextPayoutDate())}.`,
-          { data: { type: 'order_delivered', orderId: order.id } },
-        );
+      if (to === 'delivered' && !deliveryReplayed) {
+        // Every store whose leg this call delivered gets its own earned push
+        // (orders/deliveredPush.ts) — a trip delivers all legs at once.
+        void notifyStoresOfDelivery(order, updated);
       }
 
       // Realtime propagation is automatic via Supabase's replication on this
