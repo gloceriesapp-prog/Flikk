@@ -5,7 +5,7 @@ vi.mock('./cashfreeClient.js', async (load) => ({ ...await load<typeof import('.
   createCfOrder: mocks.create, getCfOrder: mocks.get, getCfOrderPayments: mocks.payments }));
 vi.mock('./settleCheckoutPayment.js', () => ({ settleCheckoutPayment: mocks.settle }));
 import { CashfreeError } from './cashfreeClient.js';
-import { paymentTarget, ensureProviderOrder, requirePaymentRetrySafe, claimPayment, reconcileProvider, getPaymentRecovery } from './recovery.js';
+import { paymentTarget, ensureProviderOrder, requirePaymentRetrySafe, claimPayment, reconcileProvider, getPaymentRecovery, upiClaimInFlight, UPI_CLAIM_STALE_MS } from './recovery.js';
 const id = '00000000-0000-4000-8000-000000000100';
 const cfId = 'gl_00000000000040008000000000000100';
 const target = paymentTarget({ orderId: id });
@@ -107,4 +107,14 @@ it('uses a webhook result that arrives during reconciliation instead of returnin
   expect(next).not.toHaveBeenCalled();
   expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ state: 'paid', record: expect.objectContaining({ provider_payment_id: 'captured_during_read' }) }));
   expect(mocks.payments).not.toHaveBeenCalled();
+});
+it('treats a UPI creating claim as in flight only until it is stale', () => {
+  const now = Date.parse('2026-10-07T12:00:00Z');
+  const at = (ms: number) => new Date(now - ms).toISOString();
+  expect(upiClaimInFlight({ upi_state: 'creating', upi_claimed_at: at(10_000) }, now)).toBe(true);
+  expect(upiClaimInFlight({ upi_state: 'creating', upi_claimed_at: at(UPI_CLAIM_STALE_MS + 1) }, now)).toBe(false);
+  // Claims from before migration 106 carry no timestamp: stale.
+  expect(upiClaimInFlight({ upi_state: 'creating', upi_claimed_at: null }, now)).toBe(false);
+  expect(upiClaimInFlight({ upi_state: 'ready', upi_claimed_at: at(0) }, now)).toBe(false);
+  expect(upiClaimInFlight({ upi_state: null }, now)).toBe(false);
 });

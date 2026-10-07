@@ -420,6 +420,10 @@
     {
       "file": "105_legacy_column_prerequisites.sql",
       "sha256": "6d4ed596e5ee596acd733495e015afa814d76affd567ddafa52777195796b213"
+    },
+    {
+      "file": "106_payment_refund_recovery.sql",
+      "sha256": "375d4ec054446eedca3cb51e2e87f2d53871f30cf84f0a3fc9f342f54e696d12"
     }
   ]
 }

@@ -18,7 +18,17 @@ export interface PaymentSession {
   upi_state: 'creating' | 'ready' | null;
   upi_payment_id: string | null;
   upi_link: string | null;
+  upi_claimed_at?: string | null;
   reconcile_state?: string;
+}
+// A 'creating' UPI claim older than this is past the provider call's timeout;
+// claim_checkout_payment (migration 106) lets a caller that has just seen no
+// live provider attempt reclaim it. Keep in sync with that SQL interval.
+export const UPI_CLAIM_STALE_MS = 2 * 60_000;
+export function upiClaimInFlight(session: Pick<PaymentSession, 'upi_state' | 'upi_claimed_at'>, now = Date.now()) {
+  if (session.upi_state !== 'creating') return false;
+  const at = session.upi_claimed_at ? Date.parse(session.upi_claimed_at) : NaN;
+  return Number.isFinite(at) && at > now - UPI_CLAIM_STALE_MS;
 }
 export async function claimPayment(target: Target, customerId: string, mode: 'order' | 'upi') {
   const { data, error } = await supabase.rpc('claim_checkout_payment', {
@@ -142,7 +152,7 @@ export async function getPaymentRecovery(req: AuthedRequest, res: Response, next
         if (lease.claimed) {
           const providerId = session.provider_order_id ?? (await recoverProviderOrder(target, record.total))?.order_id;
           state = providerId ? await reconcileProvider(target, providerId, record.total) : 'reconciling';
-          if (state === 'unpaid' && session.upi_state === 'creating') state = 'reconciling';
+          if (state === 'unpaid' && upiClaimInFlight(session)) state = 'reconciling';
           await saveSession(target, { reconcile_state: state });
         } else state = lease.state;
       } else {
