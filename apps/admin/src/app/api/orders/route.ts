@@ -26,6 +26,7 @@ interface OrderRow {
   total: number;
   commission_amount: number;
   rider_id: string | null;
+  trip_id: string | null;
   placed_at: string;
   packed_at: string | null;
   picked_up_at: string | null;
@@ -37,7 +38,7 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('orders')
-      .select('id, store_id, status, total, commission_amount, rider_id, placed_at, packed_at, picked_up_at, delivered_at, stores(name, zones(name))')
+      .select('id, store_id, status, total, commission_amount, rider_id, trip_id, placed_at, packed_at, picked_up_at, delivered_at, stores(name, zones(name))')
       .order('placed_at', { ascending: false })
       .limit(200);
     if (error) throw error;
@@ -56,6 +57,7 @@ export async function GET() {
         amount: Number(row.total),
         status: row.status,
         riderId: row.rider_id,
+        tripId: row.trip_id,
         minutesSinceStatusChange: Math.round((now - new Date(statusChangedAt).getTime()) / 60000),
         commissionAmount: Number(row.commission_amount),
       };

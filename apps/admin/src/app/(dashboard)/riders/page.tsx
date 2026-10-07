@@ -18,6 +18,7 @@ import { AssignRiderRow } from '@/components/dispatch/AssignRiderRow';
 import { ReasonModal } from '@/components/ui/ReasonModal';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import type { ActiveRider, Order } from '@/lib/types';
+import { formatRelativeTime } from '@/lib/format';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const PRESENCE_LABELS: Record<ActiveRider['presence'], string> = {
@@ -121,7 +122,11 @@ export default function RidersPage() {
                     </p>
                     {/* presence (riders.status) is the REAL live signal — distinct from
                         the account-active dot above (isOnline / riders.is_active). */}
-                    <p className="mt-0.5 text-[11px] text-muted">{PRESENCE_LABELS[rider.presence]}</p>
+                    <p className={clsx('mt-0.5 text-[11px]', rider.liveNow ? 'font-semibold text-success' : 'text-muted')}>
+                      {rider.liveNow ? 'Live now' : PRESENCE_LABELS[rider.presence]}
+                      {' · '}
+                      {rider.lastSeenAt ? `last ping ${formatRelativeTime(rider.lastSeenAt)}` : 'no location ping yet'}
+                    </p>
                     {!rider.isOnline && (
                       <p className="mt-0.5 text-[11px] font-semibold text-danger">
                         Suspended{rider.suspendedReason ? `: ${rider.suspendedReason}` : ''}
@@ -172,7 +177,7 @@ export default function RidersPage() {
             <p className="py-8 text-center text-sm text-muted">Nothing waiting on a rider right now.</p>
           ) : (
             unassigned.map((order) => (
-              <AssignRiderRow key={order.id} order={order} riders={riders.filter((r) => r.isOnline)} />
+              <AssignRiderRow key={order.id} order={order} riders={riders} />
             ))
           )}
         </div>

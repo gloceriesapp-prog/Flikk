@@ -12,6 +12,8 @@ export interface Order {
   amount: number;
   status: OrderStatus;
   riderId: string | null;
+  // Multi-store trip this order is one leg of (orders.trip_id), else null.
+  tripId: string | null;
   // Minutes since placed with no forward progress — how the Home
   // snapshot's "needs attention" widget and Orders' own flag are computed,
   // not a separate field the backend sends.
@@ -94,6 +96,8 @@ export interface Application {
 // list is just who's on shift right now.
 export interface ActiveRider {
   id: string;
+  // riders.user_id — what orders.rider_id holds.
+  userId: string;
   name: string;
   phone: string;
   activeOrders: number;
@@ -103,6 +107,11 @@ export interface ActiveRider {
   isOnline: boolean;
   // The REAL live presence signal (riders.status), distinct from isOnline.
   presence: 'offline' | 'online' | 'on_delivery';
+  // riders.last_location_update — the rider app's last position ping.
+  lastSeenAt: string | null;
+  // Online (or on a delivery) with a ping inside the dispatch freshness
+  // window (3 min, migration 107) — the riders who can actually take a job now.
+  liveNow: boolean;
   // riders.auto_online — rider opted into going online automatically during
   // their configured availability window.
   autoOnline: boolean;

@@ -434,6 +434,10 @@
       "sha256": "6f7aa5d6c48c1c3afa2462dc2896913691a083b60723b8c2fa730febbae2679d"
     },
     {
+      "file": "109_admin_order_control.sql",
+      "sha256": "fe098cb2aa05ed85998dd821e4215584ce9582ff9ebb1170a082385ade270978"
+    },
+    {
       "file": "110_account_controls.sql",
       "sha256": "a7ffa11e16f8123a77991b3c96b3c9114993b2234b212fba1fc7dac8611f624e"
     },
