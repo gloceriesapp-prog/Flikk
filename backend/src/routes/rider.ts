@@ -38,6 +38,14 @@ async function signRiderDoc(path: string | null): Promise<string | null> {
 }
 riderRouter.use(requireAuth, requireRole('rider'), requireApproved);
 
+function riderSuspendedError(reason: string | null): AppError {
+  return new AppError(
+    403,
+    'RIDER_SUSPENDED',
+    reason ? `Your rider account is suspended: ${reason}` : 'Your rider account is suspended. Contact Gloceries support.',
+  );
+}
+
 // Real presence + location — riders.status/current_lat/current_lng
 // (migration 036, automated-dispatch scope override, CLAUDE.md). Called by
 // apps/rider's own useRiderOrdersStore whenever the rider toggles online/
@@ -65,8 +73,25 @@ riderRouter.patch('/status', async (req: AuthedRequest, res, next) => {
       throw new AppError(400, 'MISSING_FIELDS', 'status and/or lat+lng required.');
     }
 
+    // A suspended rider (riders.is_active=false, set from admin's Riders
+    // page) can never go online — migration 110's trigger enforces the same
+    // in the DB; this check just turns it into a clear error for the app.
+    if (status === 'online') {
+      const { data: rider, error: riderError } = await supabase
+        .from('riders')
+        .select('is_active, suspended_reason')
+        .eq('user_id', req.user!.id)
+        .maybeSingle();
+      if (riderError) throw riderError;
+      if (!rider) throw new AppError(404, 'RIDER_NOT_FOUND', 'No rider profile for this account.');
+      if (!rider.is_active) throw riderSuspendedError(rider.suspended_reason);
+    }
+
     const { error } = await supabase.from('riders').update(patch).eq('user_id', req.user!.id);
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'P0403') throw riderSuspendedError(null);
+      throw error;
+    }
     res.json({ ok: true });
   } catch (err) {
     next(err);

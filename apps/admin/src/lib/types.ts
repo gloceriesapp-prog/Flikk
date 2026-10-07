@@ -100,6 +100,10 @@ export interface ActiveRider {
   // Weekly availability (riders.availability), day 0=Sun..6=Sat, 'HH:MM' IST,
   // meaningful only when enabled. [] = never configured.
   availability: { day: number; enabled: boolean; start: string; end: string }[];
+  // Admin suspension (riders.is_active=false via admin_set_rider_suspension).
+  // Null while active. Optional so other ActiveRider producers stay valid.
+  suspendedReason?: string | null;
+  suspendedAt?: string | null;
 }
 
 // One weekly payout row on the admin Payouts page — store (payouts) or rider

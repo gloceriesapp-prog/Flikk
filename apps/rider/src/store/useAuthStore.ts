@@ -34,6 +34,10 @@ interface AccountStatusSnapshot {
   isRejected: boolean;
   payoutConfigured: boolean;
   rejectionReason: string | null;
+  // Admin suspension (GET /auth/me rider_suspended). RootNavigator shows
+  // RiderSuspendedScreen instead of the app shell while this is true.
+  isSuspended: boolean;
+  suspendedReason: string | null;
 }
 
 interface AuthState extends AccountStatusSnapshot {
@@ -53,6 +57,9 @@ interface AuthState extends AccountStatusSnapshot {
   setApplicationSubmitted: (applicationSubmitted: boolean) => void;
   // BankDetailsScreen flips this on a successful payout verify.
   setPayoutConfigured: (payoutConfigured: boolean) => void;
+  // PATCH /rider/status answered RIDER_SUSPENDED — flip to the suspended
+  // screen without waiting for the next /auth/me.
+  setSuspended: (suspendedReason: string | null) => void;
   clear: () => Promise<void>;
 }
 
@@ -69,6 +76,8 @@ function persistStatus(s: AccountStatusSnapshot): void {
       isRejected: s.isRejected,
       payoutConfigured: s.payoutConfigured,
       rejectionReason: s.rejectionReason,
+      isSuspended: s.isSuspended,
+      suspendedReason: s.suspendedReason,
     }),
   ).catch(() => {});
 }
@@ -80,6 +89,8 @@ const EMPTY_STATUS: AccountStatusSnapshot = {
   isRejected: false,
   payoutConfigured: false,
   rejectionReason: null,
+  isSuspended: false,
+  suspendedReason: null,
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -151,7 +162,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       s.applicationSubmitted !== status.applicationSubmitted ||
       s.isRejected !== status.isRejected ||
       s.payoutConfigured !== status.payoutConfigured ||
-      s.rejectionReason !== status.rejectionReason
+      s.rejectionReason !== status.rejectionReason ||
+      s.isSuspended !== status.isSuspended ||
+      s.suspendedReason !== status.suspendedReason
     ) {
       set(status);
       persistStatus(status);
@@ -166,6 +179,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setPayoutConfigured: (payoutConfigured) => {
     set({ payoutConfigured });
     persistStatus({ ...currentStatus(get), payoutConfigured });
+  },
+
+  setSuspended: (suspendedReason) => {
+    set({ isSuspended: true, suspendedReason });
+    persistStatus({ ...currentStatus(get), isSuspended: true, suspendedReason });
   },
 
   clear: async () => {
@@ -189,5 +207,7 @@ function currentStatus(get: () => AuthState): AccountStatusSnapshot {
     isRejected: s.isRejected,
     payoutConfigured: s.payoutConfigured,
     rejectionReason: s.rejectionReason,
+    isSuspended: s.isSuspended,
+    suspendedReason: s.suspendedReason,
   };
 }

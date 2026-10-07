@@ -17,6 +17,7 @@ import { Settings02Icon, UserIcon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { useRiderOrdersStore } from '../../../store/useRiderOrdersStore';
+import { useAuthStore } from '../../../store/useAuthStore';
 import { useRiderProfile } from '../../profile/useRiderProfile';
 import type { AppStackParamList, AppTabParamList } from '../../../navigation/types';
 
@@ -45,7 +46,8 @@ export function RiderHomeHeader({ isOnline }: { isOnline: boolean }) {
   // re-prompt after a hard denial, so a plain retry can't fix it).
   const handleGoOnline = async () => {
     const online = await goOnline();
-    if (!online) {
+    // A suspension refusal swaps the whole app to RiderSuspendedScreen.
+    if (!online && !useAuthStore.getState().isSuspended) {
       Alert.alert(
         'Location needed to go online',
         'Gloceries shares your location while online so you receive delivery offers nearby. Enable location access to go online.',

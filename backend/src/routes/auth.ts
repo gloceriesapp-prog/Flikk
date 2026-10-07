@@ -152,7 +152,7 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       // One last thing" step) until this is set, then straight to Home.
       // payout_method is set for EITHER destination (bank_account or upi),
       // so a null means "approved but hasn't added any payout method yet".
-      supabase.from('riders').select('payout_method').eq('user_id', req.user!.id).maybeSingle(),
+      supabase.from('riders').select('payout_method, is_active, suspended_reason').eq('user_id', req.user!.id).maybeSingle(),
     ]);
 
     // A user only ever has one real application in flight (store OR
@@ -174,6 +174,10 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       has_rider_profile: (riderCount ?? 0) > 0,
       rider_application_submitted: !!riderDraft?.submitted_at,
       rider_payout_configured: !!riderPayout?.payout_method,
+      // Admin suspension (riders.is_active=false, admin Riders page). The
+      // rider app shows a blocking "account suspended" screen on this.
+      rider_suspended: riderPayout ? riderPayout.is_active === false : false,
+      rider_suspended_reason: riderPayout?.is_active === false ? (riderPayout.suspended_reason ?? null) : null,
       // Only a real, current rejection — a fresh resubmission's own PATCH
       // /store-draft (or /rider-draft) doesn't clear is_rejected on the
       // user row by itself, so this also requires a submitted application

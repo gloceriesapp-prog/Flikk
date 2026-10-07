@@ -434,6 +434,10 @@
       "sha256": "6f7aa5d6c48c1c3afa2462dc2896913691a083b60723b8c2fa730febbae2679d"
     },
     {
+      "file": "110_account_controls.sql",
+      "sha256": "f5884d58942c0ac95fb9bd181eb932bc7aba8bfdfcadfc1185c0b064c7c9dab2"
+    },
+    {
       "file": "111_catalogue_stock_integrity.sql",
       "sha256": "dee6b1ace7d6f0fc98646ede19de8ef36c92e550c7a8a30b642dad8456b2ce59"
     },

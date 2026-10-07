@@ -25,6 +25,8 @@ interface RiderRow {
   status: 'offline' | 'online' | 'on_delivery' | null;
   availability: DaySchedule[] | null;
   auto_online: boolean | null;
+  suspended_reason: string | null;
+  suspended_at: string | null;
 }
 
 export async function GET() {
@@ -32,7 +34,7 @@ export async function GET() {
     const [ridersRes, ordersRes] = await Promise.all([
       supabaseAdmin
         .from('riders')
-        .select('id, user_id, name, phone, is_active, status, availability, auto_online')
+        .select('id, user_id, name, phone, is_active, status, availability, auto_online, suspended_reason, suspended_at')
         .order('name'),
       supabaseAdmin.from('orders').select('rider_id').not('rider_id', 'is', null).not('status', 'in', '(delivered,cancelled)'),
     ]);
@@ -63,6 +65,8 @@ export async function GET() {
         autoOnline: row.auto_online ?? false,
         availability,
         onScheduleNow: isWithinSchedule(availability),
+        suspendedReason: row.is_active ? null : row.suspended_reason,
+        suspendedAt: row.is_active ? null : row.suspended_at,
       };
     });
 

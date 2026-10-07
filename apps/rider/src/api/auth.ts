@@ -52,6 +52,9 @@ export interface AccountStatus {
   rider_payout_configured: boolean;
   is_rejected: boolean;
   rejection_reason: string | null;
+  // Admin suspension (riders.is_active=false). Older backends omit these.
+  rider_suspended?: boolean;
+  rider_suspended_reason?: string | null;
 }
 
 // Polled by a waiting/gate screen the same way apps/partner's own
