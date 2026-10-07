@@ -11,14 +11,10 @@ validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
 // (no dotenv dependency needed) — see .env.example for the var name. iOS
 // needs no key at all: react-native-maps uses Apple Maps by default there.
 
-// The EAS project id is not a secret — it ties builds, OTA updates and Expo
-// push tokens to @nishal777/partner. Store builds must carry it: without it
-// getExpoPushTokenAsync can't run, so a store owner would silently never get
-// a "New order" push. A local dev run without it still starts (push no-ops).
-const easProjectId = process.env.EAS_PROJECT_ID;
-if (buildProfile && !buildProfile.startsWith('development') && !easProjectId) {
-  throw new Error('EAS_PROJECT_ID must be set for preview/production builds (run `eas project:info` in apps/partner).');
-}
+// EAS project @nishal777/partner. Not a secret: it ties builds, OTA updates
+// and Expo push tokens to this project, so it is fixed here rather than
+// read from env — a build can never ship without it.
+const easProjectId = 'f27829aa-b709-4d41-9186-8cde149ef0ac';
 
 // Sentry's build plugin uploads source maps; only wired when its org/project
 // are configured, same as apps/customer.
@@ -45,7 +41,7 @@ module.exports = {
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change.
     runtimeVersion: { policy: 'appVersion' },
-    updates: easProjectId ? { url: `https://u.expo.dev/${easProjectId}` } : undefined,
+    updates: { url: `https://u.expo.dev/${easProjectId}` },
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',

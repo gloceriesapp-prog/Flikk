@@ -23,13 +23,10 @@ validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
 
 const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
 
-// Without an EAS project id getExpoPushTokenAsync can't run, so a rider would
-// never receive a "New pickup available" push. Not a secret; preview and
-// production builds refuse to build without it (same as apps/partner).
-const easProjectId = process.env.EAS_PROJECT_ID;
-if (buildProfile && !buildProfile.startsWith('development') && !easProjectId) {
-  throw new Error('EAS_PROJECT_ID must be set for preview/production builds (run `eas init` in apps/rider).');
-}
+// EAS project @nishal777/rider. Not a secret: it ties builds, OTA updates
+// and Expo push tokens to this project, so it is fixed here rather than
+// read from env — a build can never ship without it.
+const easProjectId = '35911db7-6e35-402b-b16b-6e13019a31ae';
 
 // Android push (FCM) config, shared by all three apps — see
 // packages/shared/config/google-services.cjs.
@@ -39,6 +36,7 @@ module.exports = {
   expo: {
     name: 'Gloceries Rider',
     slug: 'rider',
+    owner: 'nishal777',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
