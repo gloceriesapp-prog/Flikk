@@ -3,9 +3,11 @@ import {
   deriveStockStatus,
   formatVariantUnit,
   resolveEditImage,
+  toProductPatchRow,
   toProductRow,
-  toVariantRows,
+  toVariantPayload,
   validateProductInput,
+  validateProductPatch,
   type ProductInput,
   type VariantInput,
 } from './products.js';
@@ -193,24 +195,76 @@ describe('deriveStockStatus', () => {
   });
 });
 
-describe('toVariantRows', () => {
-  it('marks only the first variant as default', () => {
-    const rows = toVariantRows('product-1', [validVariant(), validVariant({ unitType: 'kg', quantity: 1, price: 52 })]);
-    expect(rows[0]?.is_default).toBe(true);
-    expect(rows[1]?.is_default).toBe(false);
+describe('toVariantPayload', () => {
+  it('keeps the client order (index 0 is the default pack) and pack ids', () => {
+    const payload = toVariantPayload([validVariant({ id: 'v-250' }), validVariant({ unitType: 'kg', quantity: 1, price: 52 })]);
+    expect(payload.map((p) => [p.id, p.unit_type, p.quantity])).toEqual([['v-250', 'g', 250], [undefined, 'kg', 1]]);
   });
 
-  it('attaches the given productId to every row', () => {
-    const rows = toVariantRows('product-1', [validVariant(), validVariant()]);
-    expect(rows.every((r) => r.product_id === 'product-1')).toBe(true);
+  it('omits stock_quantity when no count was sent, so the RPC keeps the stored count', () => {
+    const [pack] = toVariantPayload([validVariant({ id: 'v-250', price: 18 })]);
+    expect(pack).not.toHaveProperty('stock_quantity');
+    expect(pack?.price).toBe(18);
+  });
+
+  it('sends each pack its own count, including zero', () => {
+    const payload = toVariantPayload([validVariant({ stockQuantity: 0 }), validVariant({ unitType: 'kg', quantity: 1, stockQuantity: 7 })]);
+    expect(payload.map((p) => p.stock_quantity)).toEqual([0, 7]);
+  });
+
+  it('applies a product-level count to a single-pack product only', () => {
+    expect(toVariantPayload([validVariant()], 9)[0]?.stock_quantity).toBe(9);
+    expect(toVariantPayload([validVariant({ stockQuantity: 2 })], 9)[0]?.stock_quantity).toBe(2);
+    const multi = toVariantPayload([validVariant(), validVariant({ unitType: 'kg', quantity: 1 })], 9);
+    expect(multi.some((p) => 'stock_quantity' in p)).toBe(false);
   });
 
   it('resolves each variant\'s own originalPrice independently', () => {
-    const rows = toVariantRows('product-1', [
-      validVariant({ price: 15, originalPrice: 20 }),
-      validVariant({ price: 52, originalPrice: 40 }),
-    ]);
-    expect(rows[0]?.original_price).toBe(20);
-    expect(rows[1]?.original_price).toBeNull();
+    const payload = toVariantPayload([validVariant({ price: 15, originalPrice: 20 }), validVariant({ unitType: 'kg', quantity: 1, price: 52, originalPrice: 40 })]);
+    expect(payload[0]?.original_price).toBe(20);
+    expect(payload[1]?.original_price).toBeNull();
+  });
+});
+
+describe('validateProductInput pack rules', () => {
+  it('rejects a duplicate size and a negative or fractional pack count', () => {
+    expect(() => validateProductInput(validInput({ variants: [validVariant(), validVariant()] }))).toThrow(/only be listed once/);
+    expect(() => validateProductInput(validInput({ variants: [validVariant({ stockQuantity: -1 })] }))).toThrow(/stockQuantity/);
+    expect(() => validateProductInput(validInput({ variants: [validVariant({ stockQuantity: 1.5 })] }))).toThrow(/stockQuantity/);
+  });
+});
+
+describe('partial product updates', () => {
+  it('writes only the fields present in the request', () => {
+    validateProductPatch({ name: ' Onion ' });
+    expect(toProductPatchRow({ name: ' Onion ' })).toEqual({ name: 'Onion' });
+  });
+
+  it('never nulls admin metadata the partner app does not send', () => {
+    const input = { name: 'Onion', category: 'Vegetables & Fruits', stockStatus: 'in_stock' as const, variants: [validVariant()] };
+    validateProductPatch(input);
+    const row = toProductPatchRow(input);
+    for (const column of ['local_name', 'description', 'freshness_tag', 'is_veg', 'image_url', 'store_id', 'stock_quantity']) {
+      expect(row).not.toHaveProperty(column);
+    }
+    expect(row).toMatchObject({ unit: '250 g', price: 15, original_price: null });
+  });
+
+  it('clears a text field only when the request explicitly sends it empty', () => {
+    expect(toProductPatchRow({ description: '  ' })).toEqual({ description: null });
+    expect(toProductPatchRow({ isVeg: false })).toEqual({ is_veg: false });
+  });
+
+  it('leaves denormalized price/unit alone when sizes are not sent', () => {
+    expect(toProductPatchRow({ stockStatus: 'out_of_stock' })).toEqual({ stock_status: 'out_of_stock' });
+  });
+
+  it('validates present fields only', () => {
+    expect(() => validateProductPatch({})).not.toThrow();
+    expect(() => validateProductPatch({ name: '' })).toThrow(/name/);
+    expect(() => validateProductPatch({ variants: [] })).toThrow(/at least one size/i);
+    expect(() => validateProductPatch({ isVeg: 'yes' })).toThrow(/isVeg/);
+    expect(() => validateProductPatch({ description: 5 })).toThrow(/description/);
+    expect(() => validateProductPatch(null)).toThrow();
   });
 });

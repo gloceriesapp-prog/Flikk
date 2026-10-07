@@ -14,10 +14,16 @@ import { CATEGORY_TINT_MAP, MIST_FALLBACK, type UnitType } from './product-optio
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
 export interface VariantInput {
+  // product_variants.id of a pack loaded for editing — save_catalogue_product
+  // (backend migration 111) updates that pack in place, keeping its stock.
+  id?: string | null;
   unitType: UnitType;
   quantity: number;
   price: number;
   originalPrice?: number | null;
+  // Counted retail packs on hand. Absent keeps an existing pack's count; a
+  // number sets it and turns on stock tracking (checkout requires it).
+  stockQuantity?: number | null;
 }
 
 export interface ProductWriteInput {
@@ -68,7 +74,13 @@ export function validateProductInput(input: Partial<ProductWriteInput>): asserts
     if (variant.originalPrice != null && (!isFiniteNumber(variant.originalPrice) || variant.originalPrice < 0)) {
       throw new Error(`${label}: MRP must be non-negative when set.`);
     }
+    if (variant.stockQuantity != null && (!Number.isSafeInteger(variant.stockQuantity) || variant.stockQuantity < 0)) {
+      throw new Error(`${label}: stock must be a whole number, 0 or more.`);
+    }
   });
+  if (new Set(input.variants.map((v) => `${v.unitType}:${v.quantity}`)).size !== input.variants.length) {
+    throw new Error('Each size can only be listed once.');
+  }
 }
 
 export function formatVariantUnit(variant: VariantInput): string {
@@ -130,22 +142,28 @@ export function toProductRow(input: ProductWriteInput): ProductRow {
   };
 }
 
-export interface ProductVariantRow {
-  product_id: string;
+// One pack as save_catalogue_product expects it. variants[0] is the default
+// pack (the RPC sets is_default by position); stock_quantity is only sent
+// when a count was entered, so an edit never wipes a pack's counted stock.
+export interface VariantPayload {
+  id?: string;
   unit_type: UnitType;
   quantity: number;
   price: number;
   original_price: number | null;
-  is_default: boolean;
+  stock_quantity?: number;
 }
 
-export function toVariantRows(productId: string, variants: VariantInput[]): ProductVariantRow[] {
-  return variants.map((variant, index) => ({
-    product_id: productId,
-    unit_type: variant.unitType,
-    quantity: variant.quantity,
-    price: variant.price,
-    original_price: resolveOriginalPrice(variant.price, variant.originalPrice),
-    is_default: index === 0,
-  }));
+export function toVariantPayload(variants: VariantInput[]): VariantPayload[] {
+  return variants.map((variant) => {
+    const payload: VariantPayload = {
+      unit_type: variant.unitType,
+      quantity: variant.quantity,
+      price: variant.price,
+      original_price: resolveOriginalPrice(variant.price, variant.originalPrice),
+    };
+    if (variant.id) payload.id = variant.id;
+    if (variant.stockQuantity != null) payload.stock_quantity = variant.stockQuantity;
+    return payload;
+  });
 }

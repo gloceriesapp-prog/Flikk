@@ -428,6 +428,10 @@
     {
       "file": "107_trip_dispatch_integrity.sql",
       "sha256": "7335b01cdc892ea386d26d0e90347035ab3d94efe1eba672a79c144c3952b8f3"
+    },
+    {
+      "file": "111_catalogue_stock_integrity.sql",
+      "sha256": "dee6b1ace7d6f0fc98646ede19de8ef36c92e550c7a8a30b642dad8456b2ce59"
     }
   ]
 }

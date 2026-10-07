@@ -48,7 +48,7 @@ export const PRODUCT_SELECT =
 
 function mapVariants(rows: ProductVariantRow[]): ProductVariant[] {
   // is_default first, then insertion order for the rest — mirrors how
-  // toVariantRows (lib/productValidation.ts) always writes index 0 as the
+  // toVariantPayload (lib/productValidation.ts) always sends index 0 as the
   // default, so a round-tripped product's size list comes back in the same
   // order a founder entered it.
   return [...rows]

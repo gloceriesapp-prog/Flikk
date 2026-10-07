@@ -1,17 +1,37 @@
-// Writes product_variants rows for a product — shared by routes/admin.ts
-// and routes/partner.ts so both write the exact same way instead of each
-// reimplementing "replace this product's sizes." Delete-then-insert rather
-// than diffing existing rows: a product's size list changes rarely and
-// entirely (a store owner editing sizes is replacing the whole list, not
-// patching one field of one variant), so the simpler approach is also the
-// correct one here — no need for row-level diffing at this scale.
+// The one write path for a product row and its packs — shared by
+// routes/admin.ts and routes/partner.ts. Calls save_catalogue_product
+// (migration 111), which diffs the pack list in the same transaction as the
+// product row: a pack is updated in place (keeping its counted stock), new
+// packs are inserted and only removed packs are deleted. The old
+// delete-then-reinsert wiped every pack's stock_quantity and failed half-way
+// when an active order reserved one of the packs.
 import { supabase } from './supabase.js';
-import { toVariantRows, type VariantInput } from '../lib/products.js';
+import { AppError } from '../lib/errors.js';
+import type { ProductRow, VariantPayload } from '../lib/products.js';
 
-export async function replaceProductVariants(productId: string, variants: VariantInput[]): Promise<void> {
-  const { error: deleteError } = await supabase.from('product_variants').delete().eq('product_id', productId);
-  if (deleteError) throw deleteError;
+export interface SaveCatalogueProduct {
+  // null creates a new product.
+  productId: string | null;
+  // Partner calls pass their own store id: the product must belong to it.
+  // Admin calls pass null (any store).
+  storeScope: string | null;
+  fields: Partial<ProductRow> & { approval_status?: string };
+  // null leaves the product's packs untouched.
+  variants: VariantPayload[] | null;
+}
 
-  const { error: insertError } = await supabase.from('product_variants').insert(toVariantRows(productId, variants));
-  if (insertError) throw insertError;
+export async function saveCatalogueProduct(save: SaveCatalogueProduct): Promise<string> {
+  const { data, error } = await supabase.rpc('save_catalogue_product', {
+    p_product: save.productId,
+    p_store: save.storeScope,
+    p_fields: save.fields,
+    p_variants: save.variants,
+  });
+  if (error) {
+    if (error.code === 'P0409') throw new AppError(409, 'PACK_RESERVED', error.message);
+    if (error.code === 'P0404') throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Not found for this store.');
+    if (error.code === 'P0400') throw new AppError(400, 'INVALID_PRODUCT', error.message);
+    throw error;
+  }
+  return data as string;
 }

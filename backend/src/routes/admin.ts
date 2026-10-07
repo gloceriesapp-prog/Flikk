@@ -6,9 +6,16 @@ import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // lib/products.ts validation/mapping.
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
-import { replaceProductVariants } from '../db/productVariants.js';
+import { saveCatalogueProduct } from '../db/productVariants.js';
 import { AppError, asValidationError } from '../lib/errors.js';
-import { toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
+import {
+  toProductPatchRow,
+  toProductRow,
+  toVariantPayload,
+  validateProductInput,
+  validateProductPatch,
+  type ProductInput,
+} from '../lib/products.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
 import { createNotification } from '../lib/notifications.js';
@@ -39,18 +46,16 @@ adminRouter.post('/products', async (req, res, next) => {
     const input: Partial<ProductInput> = req.body;
     validateProductInput(input);
 
-    const { data: product, error } = await supabase
-      .from('products')
-      .insert(toProductRow(input))
-      .select('*, stores(name, district)')
-      .single();
-    if (error) throw error;
-
-    await replaceProductVariants(product.id, input.variants);
+    const productId = await saveCatalogueProduct({
+      productId: null,
+      storeScope: null,
+      fields: toProductRow(input),
+      variants: toVariantPayload(input.variants, input.stockQuantity),
+    });
     const { data, error: refetchError } = await supabase
       .from('products')
       .select('*, stores(name, district), product_variants(*)')
-      .eq('id', product.id)
+      .eq('id', productId)
       .single();
     if (refetchError) throw refetchError;
 
@@ -62,22 +67,25 @@ adminRouter.post('/products', async (req, res, next) => {
 
 adminRouter.patch('/products/:id', async (req, res, next) => {
   try {
-    const input: Partial<ProductInput> = req.body;
-    validateProductInput(input);
-
-    const { data: product, error } = await supabase
-      .from('products')
-      .update(toProductRow(input))
-      .eq('id', req.params.id)
-      .select('*, stores(name, district)')
-      .single();
-    if (error || !product) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'No product with that id.');
-
-    await replaceProductVariants(product.id, input.variants);
+    // Partial update: only fields present in the body are written.
+    const input: unknown = req.body;
+    validateProductPatch(input);
+    const fields: Record<string, unknown> = { ...toProductPatchRow(input) };
+    if ('storeId' in (input as object)) fields.store_id = (input as { storeId: unknown }).storeId;
+    if (input.imageUrl !== undefined) {
+      fields.image_url = input.imageUrl?.trim() || null;
+      fields.pending_image_url = null;
+    }
+    const productId = await saveCatalogueProduct({
+      productId: String(req.params.id),
+      storeScope: null,
+      fields,
+      variants: input.variants ? toVariantPayload(input.variants, input.stockQuantity) : null,
+    });
     const { data, error: refetchError } = await supabase
       .from('products')
       .select('*, stores(name, district), product_variants(*)')
-      .eq('id', product.id)
+      .eq('id', productId)
       .single();
     if (refetchError) throw refetchError;
 
