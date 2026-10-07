@@ -42,7 +42,7 @@ export function parseStorePatch(value: unknown): Record<string, string | number 
       if (number !== null) {
         if (key === 'lat' && (number < -90 || number > 90)) fail('Latitude must be between -90 and 90.');
         if (key === 'lng' && (number < -180 || number > 180)) fail('Longitude must be between -180 and 180.');
-        if (key === 'deliveryRadiusKm' && (number <= 0 || number > 200)) fail('Delivery radius must be above 0 and no more than 200 km.');
+        if (key === 'deliveryRadiusKm' && (number <= 0 || number > 50)) fail('Delivery radius must be above 0 and no more than 50 km.');
         if (key === 'avgPrepMinutes' && (!Number.isInteger(number) || number < 0 || number > 1440)) fail('Preparation time must be a whole number from 0 to 1440.');
       }
       patch[numericColumns[key as keyof typeof numericColumns]] = number;

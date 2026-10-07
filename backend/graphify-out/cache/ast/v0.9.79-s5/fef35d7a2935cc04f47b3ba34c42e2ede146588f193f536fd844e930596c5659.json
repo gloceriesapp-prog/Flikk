@@ -1,1 +1,0 @@
-{"nodes": [{"id": "$graphify-root$_migrations_025_harden_functions_security_sql", "label": "025_harden_functions_security.sql", "file_type": "code", "source_file": "migrations/025_harden_functions_security.sql", "source_location": null}], "edges": []}

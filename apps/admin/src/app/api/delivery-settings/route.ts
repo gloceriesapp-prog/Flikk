@@ -55,6 +55,37 @@ export async function PATCH(request: Request) {
       riderPayouts[column] = body[field];
     }
 
+    // Delivery reach and distance pricing (migration 104): optional here,
+    // omitted = unchanged. Bounds match that migration's CHECK constraints.
+    const reach: {
+      default_delivery_radius_km?: number; road_distance_factor?: number;
+      max_store_spread_km?: number; delivery_fee_tiers?: { up_to_km: number; fee: number }[];
+    } = {};
+    for (const [field, column, label, min, max] of [
+      ['defaultDeliveryRadiusKm', 'default_delivery_radius_km', 'Default delivery radius', 0.5, 50],
+      ['roadDistanceFactor', 'road_distance_factor', 'Road distance factor', 1, 3],
+      ['maxStoreSpreadKm', 'max_store_spread_km', 'Maximum distance between shops in one order', 0, 50],
+    ] as const) {
+      if (body[field] === undefined) continue;
+      if (typeof body[field] !== 'number' || !Number.isFinite(body[field]) || body[field] < min || body[field] > max) {
+        throw new Error(`${label} must be between ${min} and ${max}.`);
+      }
+      reach[column] = body[field];
+    }
+    if (body.deliveryFeeTiers !== undefined) {
+      if (!Array.isArray(body.deliveryFeeTiers) || body.deliveryFeeTiers.length > 10) {
+        throw new Error('Add between 0 and 10 delivery fee tiers.');
+      }
+      const tiers = body.deliveryFeeTiers.map((tier: { upToKm?: unknown; fee?: unknown }) => ({ up_to_km: Number(tier?.upToKm), fee: Number(tier?.fee) }));
+      for (const tier of tiers) {
+        if (!Number.isFinite(tier.up_to_km) || tier.up_to_km <= 0 || tier.up_to_km > 50) throw new Error('Each tier distance must be above 0 and at most 50 km.');
+        if (!Number.isFinite(tier.fee) || tier.fee < 0) throw new Error('Each tier fee must be 0 or more.');
+      }
+      tiers.sort((a: { up_to_km: number }, b: { up_to_km: number }) => a.up_to_km - b.up_to_km);
+      if (new Set(tiers.map((tier: { up_to_km: number }) => tier.up_to_km)).size !== tiers.length) throw new Error('Two tiers cannot end at the same distance.');
+      reach.delivery_fee_tiers = tiers;
+    }
+
     const { data: settings, error: readError } = await supabaseAdmin
       .from('delivery_settings').select('id').single();
     if (readError) throw readError;
@@ -68,6 +99,7 @@ export async function PATCH(request: Request) {
         handling_fee: handlingFee,
         estimated_delivery_minutes: estimatedDeliveryMinutes,
         ...riderPayouts,
+        ...reach,
         updated_at: new Date().toISOString(),
       })
       .eq('id', settings.id)

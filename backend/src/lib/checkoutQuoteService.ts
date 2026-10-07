@@ -14,13 +14,13 @@ export async function buildCheckoutSnapshot(input: unknown, customerId: string, 
   // prices/pack labels again inside the order transaction.
   if (promoCode != null && typeof promoCode !== 'string') throw new AppError(400, 'INVALID_PROMO', 'Choose a valid promo code.');
   const inputItems = parseCheckoutItems(input).map((item) => ({ product_id: item.product_id, variant_id: item.variant_id, quantity: item.quantity }));
-  const { address, products } = await requireCheckoutEligibilitySnapshot(inputItems, customerId, addressId);
+  const { address, products, deliveryDistanceKm } = await requireCheckoutEligibilitySnapshot(inputItems, customerId, addressId);
   const items = await loadCheckoutItems(inputItems, storeId, products);
   const itemTotal = calcItemTotal(items.map((item) => ({ unitPrice: item.unit_price_at_order, quantity: item.quantity })));
   const promo = promoCode ? await lookupPromoForCheckout(promoCode, customerId, itemTotal)
     : { promoCodeId: null, discountAmount: 0 };
   const settings = await getDeliverySettings();
-  return { items, bill: calculateCheckoutBill(items, settings, promo.discountAmount), promoCodeId: promo.promoCodeId, address };
+  return { items, bill: calculateCheckoutBill(items, settings, promo.discountAmount, deliveryDistanceKm ?? null), promoCodeId: promo.promoCodeId, address };
 }
 export async function createCheckoutQuote(input: unknown, customerId: string, promoCode?: string, addressId?: string) {
   return issueQuote(await buildCheckoutSnapshot(input, customerId, promoCode, undefined, addressId), customerId, env.supabaseServiceRoleKey);

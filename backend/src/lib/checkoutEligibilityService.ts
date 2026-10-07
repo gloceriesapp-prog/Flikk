@@ -2,7 +2,8 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from './errors.js';
 import { readCheckoutCatalog } from './checkoutCatalog.js';
 import { parseCheckoutItems } from './checkoutItems.js';
-import { checkoutAvailability, type EligibilityAddress, type EligibilityProduct, type EligibilityStore } from './checkoutEligibility.js';
+import { checkoutAvailability, deliveryDistanceKm, type EligibilityAddress, type EligibilityProduct, type EligibilityStore } from './checkoutEligibility.js';
+import { getDeliverySettings } from './deliverySettings.js';
 
 export async function loadCheckoutAvailability(input: unknown, customerId: string, addressId?: string) {
   if (addressId != null && (typeof addressId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(addressId))) {
@@ -11,19 +12,23 @@ export async function loadCheckoutAvailability(input: unknown, customerId: strin
   const items = parseCheckoutItems(input);
   const products = await readCheckoutCatalog(items) as EligibilityProduct[];
   const storeIds = [...new Set(products.map((p) => p.store_id))];
-  const [addressResult, storeResult, zoneResult] = await Promise.all([
+  const [addressResult, storeResult, zoneResult, settings] = await Promise.all([
     addressId ? supabase.from('addresses').select('id, zone_id, latitude, longitude').eq('id', addressId)
       .eq('user_id', customerId).is('deleted_at', null).maybeSingle() : Promise.resolve({ data: null, error: null }),
     supabase.from('stores').select('id, zone_id, is_active, open_time, close_time, lat, lng, delivery_radius_km').in('id', storeIds),
     supabase.from('zones').select('id').eq('is_active', true),
+    getDeliverySettings(),
   ]);
   if (addressResult.error) throw addressResult.error;
   if (storeResult.error) throw storeResult.error;
   if (zoneResult.error) throw zoneResult.error;
   if (addressId && !addressResult.data) throw new AppError(403, 'ADDRESS_UNAVAILABLE', 'Choose one of your saved delivery addresses.');
   const address = addressResult.data as EligibilityAddress | null;
-  return { ...checkoutAvailability(items, products, storeResult.data as EligibilityStore[], address,
-    new Set((zoneResult.data ?? []).map((zone) => zone.id))), address, products };
+  const stores = storeResult.data as EligibilityStore[];
+  const rules = { defaultRadiusKm: settings.defaultDeliveryRadiusKm, roadFactor: settings.roadDistanceFactor, maxStoreSpreadKm: settings.maxStoreSpreadKm };
+  return { ...checkoutAvailability(items, products, stores, address,
+    new Set((zoneResult.data ?? []).map((zone) => zone.id)), new Date(), rules), address, products, settings,
+    deliveryDistanceKm: deliveryDistanceKm(stores, address, settings.roadDistanceFactor) };
 }
 export async function requireCheckoutEligibilitySnapshot(input: unknown, customerId: string, addressId?: string) {
   const result = await loadCheckoutAvailability(input, customerId, addressId);
@@ -31,7 +36,7 @@ export async function requireCheckoutEligibilitySnapshot(input: unknown, custome
     const issue = result.lines.find((line) => !line.eligible) ?? result.issues[0]!;
     throw new AppError(409, 'CHECKOUT_INELIGIBLE', issue.message ?? 'Some items cannot be ordered. Review your cart.');
   }
-  return { address: result.address!, products: result.products };
+  return { address: result.address!, products: result.products, settings: result.settings, deliveryDistanceKm: result.deliveryDistanceKm };
 }
 
 // Preserve the address-only contract for other callers. The quote pipeline

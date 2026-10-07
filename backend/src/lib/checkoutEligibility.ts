@@ -1,8 +1,18 @@
-import { distanceKm } from '../utils/geo.js';
+import { roadKm } from '../utils/geo.js';
 import type { CartItem } from './orderValidation.js';
 import type { CheckoutProduct } from './checkoutItems.js';
 
 export const DEFAULT_CHECKOUT_RADIUS_KM = 12;
+
+// Admin-editable reach rules (delivery_settings, migration 104). Defaults
+// match that migration's column defaults.
+export interface ReachRules {
+  defaultRadiusKm: number;
+  roadFactor: number;
+  // 0 = a multi-store cart may combine shops at any distance.
+  maxStoreSpreadKm: number;
+}
+export const DEFAULT_REACH_RULES: ReachRules = { defaultRadiusKm: DEFAULT_CHECKOUT_RADIUS_KM, roadFactor: 1.4, maxStoreSpreadKm: 2 };
 export const PLATFORM_OPEN_MINUTE = 6 * 60;
 export const PLATFORM_CLOSE_MINUTE = 22 * 60 + 30;
 export function istMinutes(date = new Date()): number {
@@ -59,7 +69,7 @@ export function validPin(lat: unknown, lng: unknown): boolean {
     && typeof lng === 'number' && Number.isFinite(lng) && lng >= -180 && lng <= 180;
 }
 export function checkoutAvailability(items: CartItem[], products: EligibilityProduct[], stores: EligibilityStore[],
-  address: EligibilityAddress | null, activeZoneIds: Set<string>, date = new Date()) {
+  address: EligibilityAddress | null, activeZoneIds: Set<string>, date = new Date(), rules: ReachRules = DEFAULT_REACH_RULES) {
   const productById = new Map(products.map((p) => [p.id, p]));
   const storeById = new Map(stores.map((s) => [s.id, s]));
   const requested = new Map<string, number>();
@@ -92,13 +102,42 @@ export function checkoutAvailability(items: CartItem[], products: EligibilityPro
     else if (!storeIsOpen(store, date)) issue = { code: 'STORE_CLOSED', message: 'Shop closed' };
     else if (!validPin(store.lat, store.lng)) issue = { code: 'STORE_UNAVAILABLE', message: 'Delivery from this shop is unavailable.' };
     else if (address && validPin(address.latitude, address.longitude)) {
-      const radius = store.delivery_radius_km ?? DEFAULT_CHECKOUT_RADIUS_KM;
+      const radius = store.delivery_radius_km ?? rules.defaultRadiusKm;
       if (store.zone_id !== address.zone_id || !Number.isFinite(radius) || radius <= 0
-        || distanceKm({ latitude: address.latitude!, longitude: address.longitude! }, { latitude: store.lat!, longitude: store.lng! }) > radius)
+        || roadKm({ latitude: address.latitude!, longitude: address.longitude! }, { latitude: store.lat!, longitude: store.lng! }, rules.roadFactor) > radius)
         issue = { code: 'OUT_OF_RANGE', message: 'This shop cannot deliver to your address.' };
     }
     return { product_id: item.product_id, variant_id: item.variant_id ?? null, quantity: item.quantity,
       eligible: !issue, status: issue?.code ?? 'AVAILABLE', message: issue?.message ?? null, availableQuantity: available };
   });
+  const spreadKm = storeSpreadKm(products, items, storeById, rules.roadFactor);
+  if (rules.maxStoreSpreadKm > 0 && spreadKm > rules.maxStoreSpreadKm) {
+    issues.push({ code: 'STORES_TOO_FAR_APART', message: 'These shops are too far apart to deliver together. Order from one shop at a time.' });
+  }
   return { eligible: issues.length === 0 && lines.every((line) => line.eligible), issues, lines };
+}
+
+// Widest road distance between any two shops in the cart: one rider collects
+// from all of them, so far-apart shops make one slow, underpaid trip.
+export function storeSpreadKm(products: EligibilityProduct[], items: CartItem[], storeById: Map<string, EligibilityStore>, roadFactor: number): number {
+  const wanted = new Set(items.map((item) => item.product_id));
+  const pins = [...new Set(products.filter((p) => wanted.has(p.id)).map((p) => p.store_id))]
+    .map((id) => storeById.get(id))
+    .filter((s): s is EligibilityStore => !!s && validPin(s.lat, s.lng));
+  let widest = 0;
+  for (let i = 0; i < pins.length; i++) {
+    for (let j = i + 1; j < pins.length; j++) {
+      widest = Math.max(widest, roadKm({ latitude: pins[i]!.lat!, longitude: pins[i]!.lng! }, { latitude: pins[j]!.lat!, longitude: pins[j]!.lng! }, roadFactor));
+    }
+  }
+  return widest;
+}
+
+// The fee distance for a cart: the farthest of its shops from the address,
+// in road km. Null when the address or every shop lacks a valid pin.
+export function deliveryDistanceKm(stores: EligibilityStore[], address: EligibilityAddress | null, roadFactor: number): number | null {
+  if (!address || !validPin(address.latitude, address.longitude)) return null;
+  const distances = stores.filter((s) => validPin(s.lat, s.lng))
+    .map((s) => roadKm({ latitude: address.latitude!, longitude: address.longitude! }, { latitude: s.lat!, longitude: s.lng! }, roadFactor));
+  return distances.length ? Math.max(...distances) : null;
 }

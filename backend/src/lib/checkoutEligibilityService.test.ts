@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ from: vi.fn(), catalogue: vi.fn(), address: null as unknown }));
 vi.mock('../db/supabase.js', () => ({ supabase: { from: mocks.from } }));
 vi.mock('./checkoutCatalog.js', () => ({ readCheckoutCatalog: mocks.catalogue }));
+vi.mock('./deliverySettings.js', () => ({ getDeliverySettings: async () => ({ defaultDeliveryRadiusKm: 12, roadDistanceFactor: 1.4, maxStoreSpreadKm: 2 }) }));
 import { loadCheckoutAvailability, requireCheckoutEligibility } from './checkoutEligibilityService.js';
 const customer = 'customer'; const id = '00000000-0000-4000-8000-000000000001';
 const input = [{ product_id: id, quantity: 1 }];

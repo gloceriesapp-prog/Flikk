@@ -15,9 +15,20 @@ export interface DeliverySettingsRow {
   free_delivery_threshold: number;
   handling_fee: number;
   estimated_delivery_minutes?: number;
-  // migration 099 — what a rider is paid per delivery / per extra trip stop.
+  // migration 104 — what a rider is paid per delivery / per extra trip stop
+  // (display/config; payout code does not read these yet).
   rider_base_payout?: number | string | null;
   rider_extra_stop_payout?: number | string | null;
+  // migration 104 — delivery reach and distance pricing.
+  default_delivery_radius_km?: number | string | null;
+  road_distance_factor?: number | string | null;
+  delivery_fee_tiers?: unknown;
+  max_store_spread_km?: number | string | null;
+}
+
+export interface DeliveryFeeTier {
+  upToKm: number;
+  fee: number;
 }
 
 export interface DeliverySettings {
@@ -29,6 +40,20 @@ export interface DeliverySettings {
   estimatedDeliveryMinutes: number;
   riderBasePayout: number;
   riderExtraStopPayout: number;
+  defaultDeliveryRadiusKm: number;
+  roadDistanceFactor: number;
+  deliveryFeeTiers: DeliveryFeeTier[];
+  maxStoreSpreadKm: number;
+}
+
+// Same parsing as backend/src/lib/deliveryFees.ts: malformed rows dropped,
+// sorted by distance.
+export function parseFeeTiers(value: unknown): DeliveryFeeTier[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((tier) => ({ upToKm: Number((tier as { up_to_km?: unknown })?.up_to_km), fee: Number((tier as { fee?: unknown })?.fee) }))
+    .filter((tier) => Number.isFinite(tier.upToKm) && tier.upToKm > 0 && Number.isFinite(tier.fee) && tier.fee >= 0)
+    .sort((a, b) => a.upToKm - b.upToKm);
 }
 
 export const DELIVERY_SETTINGS_SELECT = '*';
@@ -48,6 +73,10 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     estimatedDeliveryMinutes: Number(row.estimated_delivery_minutes ?? 35),
     riderBasePayout: Number(row.rider_base_payout ?? 0),
     riderExtraStopPayout: Number(row.rider_extra_stop_payout ?? 0),
+    defaultDeliveryRadiusKm: Number(row.default_delivery_radius_km ?? 12),
+    roadDistanceFactor: Number(row.road_distance_factor ?? 1.4),
+    deliveryFeeTiers: parseFeeTiers(row.delivery_fee_tiers),
+    maxStoreSpreadKm: Number(row.max_store_spread_km ?? 2),
   };
 }
 

@@ -64,7 +64,7 @@ export function StoreDetailForm({ store }: { store: Store }) {
             {field('addressLine', 'Street address')}{field('manualAddress', 'Landmark / directions')}
             {field('city', 'City / town')}{field('district', 'District')}{field('state', 'State')}{field('country', 'Country')}
             {field('lat', 'Latitude', 'number')}{field('lng', 'Longitude', 'number')}
-            {field('deliveryRadiusKm', 'Delivery radius (km)', 'number', 'Leave blank to use the platform default.')}
+            {field('deliveryRadiusKm', 'Delivery radius (km)', 'number', 'Leave blank to use the default radius from Settings → Delivery area.')}
           </div>
         </Section>
         <Section title="Hours & availability" description="Control opening hours, preparation time and store visibility.">

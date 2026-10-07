@@ -2,22 +2,26 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { AppError } from './errors.js';
 import { calcItemTotal, calcOrderTotal, round2 } from './pricing.js';
 import type { PricedCheckoutItem } from './checkoutItems.js';
+import { distanceDeliveryFee } from './deliveryFees.js';
 import type { DeliverySettings } from './deliverySettings.js';
 
 export const EXTRA_STOP_FEE = 15;
 export const QUOTE_TTL_MS = 5 * 60 * 1000;
 
 // All values are rupees. Waive the whole delivery fee, including pickups,
-// when free delivery applies, matching the existing trip policy.
-export function calculateCheckoutBill(items: PricedCheckoutItem[], settings: DeliverySettings, discountAmount: number) {
+// when free delivery applies, matching the existing trip policy. The base fee
+// is priced by road distance to the farthest shop (delivery_settings tiers);
+// a null distance charges the flat fee.
+export function calculateCheckoutBill(items: PricedCheckoutItem[], settings: DeliverySettings, discountAmount: number, deliveryDistanceKm: number | null = null) {
   const storeCount = new Set(items.map((item) => item.store_id)).size;
   const itemTotal = calcItemTotal(items.map((item) => ({ unitPrice: item.unit_price_at_order, quantity: item.quantity })));
   const originalItemTotal = calcItemTotal(items.map((item) => ({ unitPrice: item.variant_mrp_at_order, quantity: item.quantity })));
   const deliveryFree = settings.freeDeliveryEnabled && itemTotal >= settings.freeDeliveryThreshold;
-  const baseDeliveryFee = deliveryFree ? 0 : settings.flatDeliveryFee;
+  const baseDeliveryFee = deliveryFree ? 0 : distanceDeliveryFee(deliveryDistanceKm, settings);
   const additionalShopFee = deliveryFree ? 0 : round2(EXTRA_STOP_FEE * Math.max(0, storeCount - 1));
   const deliveryFee = round2(baseDeliveryFee + additionalShopFee);
   return { storeCount, itemTotal, originalItemTotal, baseDeliveryFee, additionalShopFee, deliveryFee,
+    deliveryDistanceKm: deliveryDistanceKm == null ? null : Math.round(deliveryDistanceKm * 10) / 10,
     handlingFee: settings.handlingFee, discountAmount,
     total: calcOrderTotal(itemTotal, deliveryFee, discountAmount, settings.handlingFee) };
 }

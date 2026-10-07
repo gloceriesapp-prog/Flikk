@@ -12,3 +12,19 @@ dist/
 # credentials only). config/firebase/google-services.json is NOT one of these.
 *firebase-adminsdk*.json
 *service-account*.json
+
+# Local AI-tool and editor state — machine-generated, regenerated on demand,
+# never part of the product. (Hundreds of MB of caches were committed before.)
+.claude-flow/
+graphify-out/
+.playwright-mcp/
+.claude/proven-config.json
+.claude/.proven-config-version
+.claude/scheduled_tasks.lock
+.swarm/
+.hive-mind/
+
+# OS / tool noise
+.DS_Store
+*.log
+.expo/
