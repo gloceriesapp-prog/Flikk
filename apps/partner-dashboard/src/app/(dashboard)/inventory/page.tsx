@@ -194,7 +194,7 @@ function isDuplicateProductName(products: PartnerProduct[], name: string, exclud
 }
 
 // Demo rows never touch the real backend, so this mirrors what
-// backend/src/lib/products.ts's toProductRow + toVariantRows do server-side:
+// backend/src/lib/products.ts's toProductRow + save_catalogue_product do server-side:
 // variants[0] is the default, its price/unit denormalize onto the product
 // itself, and is_in_stock follows stockStatus (a DB trigger does this for
 // real products — there's no trigger here, so it's done by hand).
@@ -207,7 +207,7 @@ function applyInputToDemoProduct(product: PartnerProduct, input: ProductInput): 
     image_url: input.imageUrl ?? product.image_url,
     is_veg: input.isVeg ?? product.is_veg,
     stock_status: input.stockStatus,
-    stock_quantity: input.stockQuantity ?? product.stock_quantity,
+    stock_quantity: input.variants.reduce((sum, v) => sum + (v.stockQuantity ?? 0), 0),
     is_in_stock: input.stockStatus !== 'out_of_stock',
     price: defaultVariant.price,
     original_price: defaultVariant.originalPrice ?? null,
@@ -218,6 +218,7 @@ function applyInputToDemoProduct(product: PartnerProduct, input: ProductInput): 
       price: v.price,
       original_price: v.originalPrice ?? null,
       is_default: i === 0,
+      stock_quantity: v.stockQuantity ?? null,
     })),
   };
 }

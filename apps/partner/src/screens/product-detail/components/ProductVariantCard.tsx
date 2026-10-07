@@ -99,21 +99,20 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
         />
       </View>
 
-      {/* Stock count — optional: an empty field means "not tracked", not
-          zero units, so a shop owner who doesn't count stock isn't forced
-          to fake a number. Dashed border reads as the optional field next
-          to the solid-bordered required price above it. */}
-      <View className="flex-row items-center gap-2 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-3">
+      {/* Stock count — packs of this size on hand. Required to save:
+          checkout only sells counted packs (0 is a valid count, and is what
+          "Out of stock" sets). Solid border like the required price. */}
+      <View className="flex-row items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-3">
         <AppIcon icon={PackageIcon} size={15} color={`${colors.ink}60`} />
         <TextInput
           value={variant.stockQuantity === undefined ? '' : String(variant.stockQuantity)}
           onChangeText={onChangeQuantity}
           keyboardType="number-pad"
-          placeholder="Stock count (optional)"
+          placeholder="Stock count (packs)"
           placeholderTextColor={`${colors.ink}60`}
           className="flex-1 text-base font-medium text-ink"
         />
-        {variant.stockQuantity !== undefined && <Text className="text-xs font-medium text-ink/40">units left</Text>}
+        {variant.stockQuantity !== undefined && <Text className="text-xs font-medium text-ink/40">packs left</Text>}
       </View>
     </View>
   );

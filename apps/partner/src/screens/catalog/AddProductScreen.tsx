@@ -42,7 +42,14 @@ import { compressImageToTarget } from '../../media/compressImage';
 import { uploadProductPhoto } from '../../api/catalog';
 import { ApiError } from '../../api/client';
 import { useCatalogStore } from '../../store/useCatalogStore';
-import { standardSizeOptions, PRODUCT_CATEGORIES, type ProductVariant } from './data';
+import {
+  hasUncountedVariant,
+  standardSizeOptions,
+  withStockCount,
+  withStockToggle,
+  PRODUCT_CATEGORIES,
+  type ProductVariant,
+} from './data';
 import { suggestedMrp } from './pricing';
 import { AddSizeButton } from '../product-detail/components/AddSizeButton';
 import { ProductVariantCard } from '../product-detail/components/ProductVariantCard';
@@ -122,8 +129,23 @@ export function AddProductScreen({ navigation }: Props) {
     setVariants((prev) => prev.map((v) => (v.id === variantId ? { ...v, originalPrice } : v)));
   }
 
+  function setVariantStock(variantId: string, isInStock: boolean) {
+    Haptics.selectionAsync();
+    setVariants((prev) => prev.map((v) => (v.id === variantId ? withStockToggle(v, isInStock) : v)));
+  }
+
+  function setVariantQuantity(variantId: string, rawQty: string) {
+    setVariants((prev) => prev.map((v) => (v.id === variantId ? withStockCount(v, rawQty) : v)));
+  }
+
   async function handleSubmit() {
     if (!canSubmit) return;
+    // Checkout only sells counted packs — without a count this product
+    // could be approved yet never orderable.
+    if (hasUncountedVariant(variants)) {
+      setFormError('Enter how many packs you have for every size (0 if none).');
+      return;
+    }
     setFormError(null);
     setSubmitting(true);
     try {
@@ -194,7 +216,7 @@ export function AddProductScreen({ navigation }: Props) {
               <View className="flex-row items-center">
                 <AppIcon icon={ShoppingBasketAdd01Icon} size={16} color={`${colors.ink}80`} />
                 <View className="ml-2 flex-row items-center">
-                  <Text className="text-lg font-medium tracking-tight text-ink/70">Sizes & price</Text>
+                  <Text className="text-lg font-medium tracking-tight text-ink/70">Sizes, stock & price</Text>
                   <Text className="ml-0.5 text-base font-bold text-red-500">*</Text>
                 </View>
               </View>
@@ -204,10 +226,10 @@ export function AddProductScreen({ navigation }: Props) {
                   key={variant.id}
                   variant={variant}
                   canRemove
-                  onToggleStock={() => {}}
+                  onToggleStock={(isInStock) => setVariantStock(variant.id, isInStock)}
                   onChangePrice={(text) => setVariantPrice(variant.id, text)}
                   onChangeMrp={(text) => setVariantMrp(variant.id, text)}
-                  onChangeQuantity={() => {}}
+                  onChangeQuantity={(text) => setVariantQuantity(variant.id, text)}
                   onRemove={() => removeVariant(variant.id)}
                 />
               ))}
