@@ -416,6 +416,10 @@
     {
       "file": "104_delivery_radius_fee_tiers.sql",
       "sha256": "3c5e20805d2fc36c7131342bc747cd92679ef976e23607bc432aee018c771e0b"
+    },
+    {
+      "file": "105_legacy_column_prerequisites.sql",
+      "sha256": "6d4ed596e5ee596acd733495e015afa814d76affd567ddafa52777195796b213"
     }
   ]
 }
