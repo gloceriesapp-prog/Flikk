@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { sendPushNotifications } from './pushNotifications.js';
+import { embeddedPushToken, sendPushNotifications } from './pushNotifications.js';
 
 // Only the batch chunking has real logic worth guarding: Expo caps a
 // /push/send request at 100 messages, so N messages must become ceil(N/100)
@@ -35,5 +35,18 @@ describe('sendPushNotifications', () => {
   it('never throws when a batch request fails', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down'); }));
     await expect(sendPushNotifications(msgs(3))).resolves.toBeUndefined();
+  });
+});
+
+describe('embeddedPushToken', () => {
+  it('reads the object PostgREST returns for a many-to-one embed', () => {
+    expect(embeddedPushToken({ expo_push_token: 'ExponentPushToken[a]' })).toBe('ExponentPushToken[a]');
+  });
+  it('still reads the array shape', () => {
+    expect(embeddedPushToken([{ expo_push_token: 'ExponentPushToken[b]' }])).toBe('ExponentPushToken[b]');
+  });
+  it('returns null when no token exists', () => {
+    expect(embeddedPushToken(null)).toBeNull();
+    expect(embeddedPushToken({ expo_push_token: null })).toBeNull();
   });
 });

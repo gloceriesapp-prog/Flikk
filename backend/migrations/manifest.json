@@ -384,6 +384,10 @@
     {
       "file": "095_promotional_delivery_queue.sql",
       "sha256": "3b6bfc05b35fb4bbdf62542b29bbe7231dc51af56fb3b004e1bafd7e11728f7c"
+    },
+    {
+      "file": "096_manual_payouts.sql",
+      "sha256": "a6c7afb149be89781f21717d6e4152161ee7c39700059e7449d586497c5a36ac"
     }
   ]
 }

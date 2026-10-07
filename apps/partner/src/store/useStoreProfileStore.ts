@@ -37,6 +37,8 @@ interface StoreRow {
   payout_bank_name: string | null;
   payout_bank_account_number: string | null;
   payout_bank_ifsc: string | null;
+  payout_account_holder_name: string | null;
+  payout_details_verified: boolean | null;
   owner_name: string | null;
   gst_number: string | null;
   shop_establishment_number: string | null;
@@ -72,6 +74,8 @@ function fromRow(row: StoreRow): StoreProfile {
     payoutBankName: row.payout_bank_name,
     payoutBankAccountNumber: row.payout_bank_account_number,
     payoutBankIfsc: row.payout_bank_ifsc,
+    payoutAccountHolderName: row.payout_account_holder_name,
+    payoutDetailsVerified: row.payout_details_verified === true,
     ownerName: row.owner_name ?? '',
     gstNumber: row.gst_number ?? '',
     shopLicenseNumber: row.shop_establishment_number ?? '',
@@ -93,18 +97,19 @@ interface StoreProfileState {
   loadProfile: () => Promise<void>;
   updateProfile: (patch: Partial<StoreProfile>) => Promise<ProfileSaveResult>;
   toggleOpen: () => void;
-  // Applies a real, already-bank-verified result (POST
-  // /partner/verify-payout already persisted it server-side the moment
-  // Razorpay confirmed it — this just brings the local profile in sync,
-  // no extra PATCH needed). Never call this with anything that hasn't
-  // actually been through that real verification.
+  // Applies the result of POST /partner/verify-payout, which already
+  // persisted it server-side — this just brings the local profile in sync.
+  // `verified` is the server's own answer: true only when a payout provider
+  // confirmed the account, false for manually-paid details saved as typed.
   setPayoutVerification: (payout: {
     method: 'upi' | 'bank_account';
     vpa: string | null;
     maskedAccountNumber: string | null;
     ifsc: string | null;
     verifiedName: string | null;
+    accountHolderName: string | null;
     bankName: string | null;
+    verified: boolean;
   }) => void;
 }
 
@@ -177,7 +182,9 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
         payoutBankAccountNumber: payout.maskedAccountNumber,
         payoutBankIfsc: payout.ifsc,
         payoutUpiVerifiedName: payout.verifiedName,
+        payoutAccountHolderName: payout.accountHolderName,
         payoutBankName: payout.bankName,
+        payoutDetailsVerified: payout.verified,
       },
     }));
   },

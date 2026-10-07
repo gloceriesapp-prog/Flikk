@@ -110,6 +110,13 @@ export async function devCheckAccountStatus(): Promise<AccountStatus> {
 // dev mode — that distinction is what `apiRequest` already encodes: it
 // only ever throws a plain (non-ApiError) exception when `fetch()` itself
 // rejected, never for an HTTP response it successfully received.
+//
+// Development builds only. A production build must never sign an owner into a
+// local fake session or report an application as submitted when it never
+// reached the server — a real failure surfaces as the real error instead.
+// The shared client reports a failed fetch as ApiError status 0, so that is
+// what "unreachable" means here.
 export function isBackendUnreachable(err: unknown): boolean {
-  return !(err instanceof ApiError);
+  if (!__DEV__) return false;
+  return !(err instanceof ApiError) || err.status === 0;
 }

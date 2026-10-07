@@ -1,41 +1,47 @@
 'use client';
 
-// Rider payouts — real data (public.rider_earnings), previously zero
-// admin visibility. Distinct pool from store commission/Revenue: a
-// rider's earning is always that order's own delivery fee, never a share
-// of the commission Gloceries keeps (app/api/rider-payouts' own note has the
-// full reasoning). "Release" here is a real settlement mechanism (stamps
-// paid_at) — not a fake bank transfer; riders don't have a verified
-// payout destination yet, this is the same honest manual mechanism
-// stores themselves used before RazorpayX automation existed for them.
+// Rider payouts — weekly delivery-fee payouts (rider_payouts), paid manually:
+// send each one from your bank/UPI app, then Mark paid with the transaction
+// reference. Distinct pool from store commission (app/api/rider-payouts' note).
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
-import { formatCurrency, formatNumber } from '@/lib/format';
+import { formatCurrency } from '@/lib/format';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
+import { Destination, MarkPaid } from '@/components/revenue/PayoutsTable';
+import type { PayoutDestination } from '@/lib/types';
 
-interface RiderPayoutRow {
+interface RiderPayout {
+  id: string;
+  riderName: string;
+  riderPhone: string;
+  cycleLabel: string;
+  amount: number;
+  status: 'pending' | 'paid';
+  paidAt: string | null;
+  paymentReference: string | null;
+  destination: PayoutDestination | null;
+}
+
+interface Accruing {
   riderId: string;
-  name: string;
-  phone: string;
-  pending: number;
-  paid: number;
-  orderCount: number;
+  riderName: string;
+  amount: number;
 }
 
 export default function RiderPayoutsPage() {
-  const [riders, setRiders] = useState<RiderPayoutRow[]>([]);
+  const [payouts, setPayouts] = useState<RiderPayout[]>([]);
+  const [accruing, setAccruing] = useState<Accruing[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [releasing, setReleasing] = useState(false);
-  const [justReleased, setJustReleased] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(null);
     try {
       const res = await fetch('/api/rider-payouts');
       if (!res.ok) throw new Error((await res.json()).error ?? 'Could not load rider payouts.');
-      setRiders(await res.json());
+      const data = (await res.json()) as { payouts: RiderPayout[]; accruing: Accruing[] };
+      setPayouts(data.payouts);
+      setAccruing(data.accruing);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load rider payouts.');
     } finally {
@@ -48,23 +54,20 @@ export default function RiderPayoutsPage() {
   }, [load]);
   useAdminRealtime(load);
 
-  const totalPending = riders.reduce((sum, r) => sum + r.pending, 0);
-  const totalPaid = riders.reduce((sum, r) => sum + r.paid, 0);
-
-  async function handleRelease() {
-    setReleasing(true);
-    setJustReleased(false);
-    try {
-      const res = await fetch('/api/rider-payouts', { method: 'PATCH' });
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Could not release rider payouts.');
-      await load();
-      setJustReleased(true);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Could not release rider payouts.');
-    } finally {
-      setReleasing(false);
-    }
+  async function markPaid(id: string, reference: string) {
+    const res = await fetch('/api/rider-payouts', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, reference }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'Could not mark this payout paid.');
+    await load();
   }
+
+  const pending = payouts.filter((p) => p.status === 'pending');
+  const paid = payouts.filter((p) => p.status === 'paid');
+  const totalPending = pending.reduce((sum, p) => sum + p.amount, 0);
+  const totalAccruing = accruing.reduce((sum, a) => sum + a.amount, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,69 +80,88 @@ export default function RiderPayoutsPage() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-3xl border border-border bg-card p-5">
-          <p className="text-xs font-semibold text-muted">Pending across all riders</p>
+          <p className="text-xs font-semibold text-muted">Ready to pay ({pending.length})</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{formatCurrency(totalPending)}</p>
         </div>
         <div className="rounded-3xl border border-border bg-card p-5">
-          <p className="text-xs font-semibold text-muted">Paid out so far</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{formatCurrency(totalPaid)}</p>
+          <p className="text-xs font-semibold text-muted">Accruing this week (payable after the weekly run)</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{formatCurrency(totalAccruing)}</p>
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-3xl border border-border bg-card p-5">
-        <p className="text-sm text-ink-soft">
-          Marks every rider&apos;s pending delivery-fee earnings as settled. No bank transfer happens automatically —
-          record this once you&apos;ve actually paid riders out.
-        </p>
-        <button
-          type="button"
-          onClick={handleRelease}
-          disabled={totalPending === 0 || releasing}
-          className="flex shrink-0 items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <CheckCircle2 size={15} />
-          {releasing ? 'Releasing…' : 'Release pending payouts'}
-        </button>
-      </div>
-      {justReleased && totalPending === 0 && (
-        <p className="flex items-center gap-1.5 text-sm font-medium text-success">
-          <CheckCircle2 size={15} />
-          Released — every rider is settled.
-        </p>
-      )}
+      <p className="text-sm text-muted">
+        Pay each rider from your bank or UPI app, then press <span className="font-medium text-ink">Mark paid</span> and
+        enter the transaction reference (UTR).
+      </p>
 
-      <div className="overflow-x-auto rounded-3xl border border-border bg-card">
-        <table className="w-full min-w-[640px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs text-muted">
-              <th className="p-4 font-medium">Rider</th>
-              <th className="p-4 font-medium">Phone</th>
-              <th className="p-4 font-medium text-right">Deliveries</th>
-              <th className="p-4 font-medium text-right">Pending</th>
-              <th className="p-4 font-medium text-right">Paid</th>
+      <RiderPayoutTable rows={pending} onMarkPaid={markPaid} emptyLabel={loading ? 'Loading…' : 'Nothing to pay right now.'} />
+
+      <div>
+        <h2 className="mb-3 text-sm font-medium text-ink">Paid</h2>
+        <RiderPayoutTable rows={paid} emptyLabel="No rider payouts recorded yet." />
+      </div>
+    </div>
+  );
+}
+
+function RiderPayoutTable({
+  rows,
+  emptyLabel,
+  onMarkPaid,
+}: {
+  rows: RiderPayout[];
+  emptyLabel: string;
+  onMarkPaid?: (id: string, reference: string) => Promise<void>;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+      <table className="w-full min-w-[760px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs text-muted">
+            <th className="p-4 font-medium">Rider</th>
+            <th className="p-4 font-medium">Cycle</th>
+            <th className="p-4 text-right font-medium">Amount</th>
+            <th className="p-4 font-medium">Pay to</th>
+            <th className="p-4 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className="border-b border-border align-top last:border-0">
+              <td className="p-4">
+                <p className="font-medium text-ink">{row.riderName}</p>
+                <p className="text-xs text-muted">{row.riderPhone}</p>
+              </td>
+              <td className="p-4 text-ink-soft">{row.cycleLabel}</td>
+              <td className="p-4 text-right font-semibold tabular-nums text-ink">{formatCurrency(row.amount)}</td>
+              <td className="p-4 text-ink-soft">
+                <Destination destination={row.destination} />
+              </td>
+              <td className="p-4">
+                {row.status === 'paid' ? (
+                  <div className="flex flex-col gap-1">
+                    <span className="self-start rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-success">Paid · {row.paidAt}</span>
+                    {row.paymentReference && <span className="text-xs text-muted">Ref {row.paymentReference}</span>}
+                  </div>
+                ) : onMarkPaid && row.destination ? (
+                  <MarkPaid onSubmit={(reference) => onMarkPaid(row.id, reference)} />
+                ) : (
+                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                    {row.destination ? 'Pending' : 'No payout account'}
+                  </span>
+                )}
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {riders.map((rider) => (
-              <tr key={rider.riderId} className="border-b border-border last:border-0">
-                <td className="p-4 font-medium text-ink">{rider.name}</td>
-                <td className="p-4 text-ink-soft">{rider.phone}</td>
-                <td className="p-4 text-right tabular-nums text-ink-soft">{formatNumber(rider.orderCount)}</td>
-                <td className="p-4 text-right font-semibold tabular-nums text-ink">{formatCurrency(rider.pending)}</td>
-                <td className="p-4 text-right tabular-nums text-ink-soft">{formatCurrency(rider.paid)}</td>
-              </tr>
-            ))}
-
-            {!loading && riders.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-8 text-center text-sm text-muted">
-                  No rider earnings yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          ))}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={5} className="py-8 text-center text-sm text-muted">
+                {emptyLabel}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

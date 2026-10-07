@@ -128,7 +128,9 @@ export const useOrdersStore = create<OrdersState>((set) => ({
     // seconds instead of letting it actually count down. Sample orders
     // already on screen keep their original timestamps across every
     // subsequent poll while the real queue stays empty.
-    if (mapped.length === 0) {
+    // Development builds only: a real store must never see orders that do
+    // not exist. Production shows the Orders screen's own empty state.
+    if (mapped.length === 0 && __DEV__) {
       set((state) => (state.orders.length > 0 && state.orders[0].isSample ? state : { orders: buildSampleOrders(), baselineEstablished: true }));
       return;
     }

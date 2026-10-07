@@ -77,6 +77,11 @@ export interface StoreProfile {
   // never leaves the server. IFSC shown in full, same as any bank app.
   payoutBankAccountNumber: string | null;
   payoutBankIfsc: string | null;
+  // Owner-typed holder name (bank account) — not provider-confirmed.
+  payoutAccountHolderName: string | null;
+  // True only once a payout provider has confirmed the account. Manual
+  // payouts save details unverified; the founder checks before paying.
+  payoutDetailsVerified: boolean;
   // Mirrors stores.owner_name/gst_number/shop_establishment_number — set
   // during onboarding (StoreSetupScreen/StoreDetailsScreen), editable here
   // too so an owner who skipped them at signup can add them later. All
@@ -135,6 +140,8 @@ export const EMPTY_STORE_PROFILE: StoreProfile = {
   payoutMethod: null,
   payoutBankAccountNumber: null,
   payoutBankIfsc: null,
+  payoutAccountHolderName: null,
+  payoutDetailsVerified: false,
   ownerName: '',
   gstNumber: '',
   shopLicenseNumber: '',

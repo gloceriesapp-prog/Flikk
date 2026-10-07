@@ -5,6 +5,8 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
+import { assertManualPayoutFormat } from '../payments/manualPayoutDetails.js';
+import { env } from '../config/env.js';
 import { fetchRoute } from '../lib/routeDirections.js';
 import { EXTRA_STOP_FEE } from '../lib/checkoutQuote.js';
 import { splitEarning } from '../lib/earningsBreakdown.js';
@@ -453,7 +455,7 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
     const { data: rider, error } = await supabase
       .from('riders')
       .select(
-        'rider_code, name, date_of_birth, photo_url, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, payout_account_holder_name, created_at',
+        'rider_code, name, date_of_birth, photo_url, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, payout_account_holder_name, payout_details_verified, created_at',
       )
       .eq('user_id', req.user!.id)
       .single();
@@ -496,6 +498,7 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
         maskedAccountNumber: maskAccountNumber(rider.payout_bank_account_number),
         ifsc: rider.payout_bank_ifsc,
         accountHolderName: rider.payout_account_holder_name,
+        verified: rider.payout_details_verified === true,
       },
     });
   } catch (err) {
@@ -536,6 +539,31 @@ riderRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
       .single();
     if (!rider) throw new AppError(404, 'RIDER_NOT_FOUND', 'No rider profile for this account.');
 
+    // Manual payouts (no provider configured): save as typed, flagged
+    // unverified — same model as routes/partner.ts's POST /verify-payout.
+    if (!env.razorpayxAccountNumber) {
+      assertManualPayoutFormat(input);
+      const manualPatch: Record<string, unknown> = input.method === 'upi'
+        ? { payout_method: 'upi', payout_upi_id: input.vpa, payout_upi_verified_name: null, payout_account_holder_name: rider.name ?? null,
+            payout_bank_name: null, payout_bank_account_number: null, payout_bank_ifsc: null, payout_details_verified: false }
+        : { payout_method: 'bank_account', payout_upi_id: null, payout_upi_verified_name: null, payout_account_holder_name: input.accountHolderName,
+            payout_bank_name: null, payout_bank_account_number: input.accountNumber, payout_bank_ifsc: input.ifsc, payout_details_verified: false };
+      const { error: saveError } = await supabase.from('riders').update(manualPatch).eq('id', rider.id);
+      if (saveError) throw saveError;
+      res.json({
+        method: input.method,
+        vpa: input.method === 'upi' ? input.vpa : null,
+        maskedAccountNumber: input.method === 'bank_account' ? maskAccountNumber(input.accountNumber) : null,
+        ifsc: input.method === 'bank_account' ? input.ifsc : null,
+        accountHolderName: input.method === 'bank_account' ? input.accountHolderName : null,
+        accountStatus: 'unverified',
+        bankName: null,
+        nameMatchScore: null,
+        verified: false,
+      });
+      return;
+    }
+
     const { data: user } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
 
     const accountHolder = input.method === 'bank_account' ? input.accountHolderName : (rider.name ?? '');
@@ -553,6 +581,7 @@ riderRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
             payout_bank_ifsc: null,
             razorpay_contact_id: contactId,
             razorpay_fund_account_id: fundAccountId,
+            payout_details_verified: true,
           }
         : {
             payout_method: 'bank_account',
@@ -564,6 +593,7 @@ riderRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
             payout_bank_ifsc: result.bankIfsc ?? input.ifsc,
             razorpay_contact_id: contactId,
             razorpay_fund_account_id: fundAccountId,
+            payout_details_verified: true,
           };
     await supabase.from('riders').update(patch).eq('id', rider.id);
 
@@ -576,6 +606,7 @@ riderRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
       accountStatus: result.accountStatus,
       bankName: result.bankName,
       nameMatchScore: result.nameMatchScore,
+      verified: true,
     });
   } catch (err) {
     next(err);

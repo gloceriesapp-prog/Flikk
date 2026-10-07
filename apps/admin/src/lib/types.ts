@@ -113,13 +113,22 @@ export interface Payout {
   netPayout: number;
   status: 'pending' | 'paid';
   paidAt: string | null;
-  // Where the net payout actually lands — same masked-account convention
-  // as WalletBalance's own bankName/bankAccountLast4 (the founder's own
-  // withdraw destination). A founder releasing a payout needs to see
-  // where the money is going, same as they'd expect from any real payroll
-  // run.
-  bankName: string;
-  bankAccountLast4: string;
+  // Bank reference (UTR) recorded when the founder paid it manually.
+  paymentReference: string | null;
+  // Where the money goes — the store's saved payout destination, in full,
+  // because a manual payout is typed into a bank/UPI app by the founder.
+  destination: PayoutDestination | null;
+}
+
+export interface PayoutDestination {
+  method: 'upi' | 'bank_account';
+  upiId: string | null;
+  accountNumber: string | null;
+  ifsc: string | null;
+  holderName: string | null;
+  // False = saved as typed, not provider-checked. Confirm the name your
+  // UPI/bank app shows before sending.
+  verified: boolean;
 }
 
 // Store management — the live roster, separate from Application (which is

@@ -47,3 +47,13 @@ export async function sendPushNotifications(
     }
   }
 }
+
+// PostgREST returns a many-to-one embed (stores.owner_user_id -> users) as a
+// single object, while the untyped client's inferred type is an array. Reading
+// `[0]` off the real object yielded undefined, so store owners never got the
+// "New order" / "earned" pushes. Accept either shape.
+export function embeddedPushToken(users: unknown): string | null {
+  const row = Array.isArray(users) ? users[0] : users;
+  const token = (row as { expo_push_token?: unknown } | null | undefined)?.expo_push_token;
+  return typeof token === 'string' && token.length > 0 ? token : null;
+}

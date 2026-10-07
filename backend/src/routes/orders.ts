@@ -22,7 +22,7 @@ import {
   timestampColumnFor,
   type OrderStatus,
 } from '../lib/orderStateMachine.js';
-import { sendPushNotification } from '../lib/pushNotifications.js';
+import { embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
 import { customerDeliveryCodes, completeDelivery } from '../orders/deliveryCodes.js';
 import { isRiderCancelReasonCode } from '../lib/cancelReasons.js';
 import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.js';
@@ -108,7 +108,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       .single();
 
     void sendPushNotification(
-      store?.users?.[0]?.expo_push_token,
+      embeddedPushToken(store?.users),
       'New order received',
       `Order ${created.id.slice(0, 6).toUpperCase()} · ₹${total} — tap to view.`,
     );
@@ -412,7 +412,7 @@ ordersRouter.patch(
           .eq('id', order.store_id)
           .single();
         void sendPushNotification(
-          storeRow?.users?.[0]?.expo_push_token,
+          embeddedPushToken(storeRow?.users),
           `₹${netEarned} earned`,
           `Order delivered — added to your balance, paid out on ${formatPayoutDateLabel(nextPayoutDate())}.`,
         );

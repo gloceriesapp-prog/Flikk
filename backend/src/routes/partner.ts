@@ -11,12 +11,14 @@ import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // admin. This is the same "store owner writes, admin approval gates
 // visibility" shape as store onboarding itself (storeOnboarding.ts).
 import { Router } from 'express';
+import { env } from '../config/env.js';
 import { supabase } from '../db/supabase.js';
 import { replaceProductVariants } from '../db/productVariants.js';
 import { AppError, asValidationError } from '../lib/errors.js';
 import { resolveEditImage, toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
+import { assertManualPayoutFormat } from '../payments/manualPayoutDetails.js';
 import { decodeImage, toWebp } from '../utils/image.js';
 import { round2 } from '../lib/pricing.js';
 import { reverseGeocode } from '../lib/reverseGeocode.js';
@@ -51,7 +53,7 @@ function maskAccountNumber(full: string | null): string | null {
 }
 
 const STORE_SELECT =
-  'id, name, category, is_active, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number';
+  'id, name, category, is_active, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, payout_account_holder_name, payout_details_verified, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number';
 
 // Business documents are write-once from the owner's side — real, not
 // just a disabled input client-side (a raw PATCH call could otherwise
@@ -227,6 +229,36 @@ partnerRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
     }
 
     const storeId = await ownStoreId(req.user!.id);
+
+    // Manual payouts: with no payout provider configured there is nothing to
+    // verify against, so the details are saved exactly as typed and flagged
+    // unverified. The founder confirms the account (e.g. the name a UPI app
+    // shows) before paying, and the owner sees "Not verified yet", never a
+    // fake "Verified". Once a provider is configured this path is unused.
+    if (!env.razorpayxAccountNumber) {
+      assertManualPayoutFormat(input);
+      const manualPatch: Record<string, unknown> = input.method === 'upi'
+        ? { payout_method: 'upi', payout_upi_id: input.vpa, payout_upi_verified_name: null, payout_account_holder_name: null,
+            payout_bank_name: null, payout_bank_account_number: null, payout_bank_ifsc: null, payout_details_verified: false }
+        : { payout_method: 'bank_account', payout_upi_id: null, payout_upi_verified_name: null, payout_account_holder_name: input.accountHolderName,
+            payout_bank_name: null, payout_bank_account_number: input.accountNumber, payout_bank_ifsc: input.ifsc, payout_details_verified: false };
+      const { error: saveError } = await supabase.from('stores').update(manualPatch).eq('id', storeId);
+      if (saveError) throw saveError;
+      res.json({
+        method: input.method,
+        vpa: input.method === 'upi' ? input.vpa : null,
+        maskedAccountNumber: input.method === 'bank_account' ? maskAccountNumber(input.accountNumber) : null,
+        ifsc: input.method === 'bank_account' ? input.ifsc : null,
+        accountHolderName: input.method === 'bank_account' ? input.accountHolderName : null,
+        accountStatus: 'unverified',
+        bankName: null,
+        accountType: null,
+        nameMatchScore: null,
+        verified: false,
+      });
+      return;
+    }
+
     const { data: store } = await supabase.from('stores').select('owner_name, razorpay_contact_id').eq('id', storeId).single();
     const phone = await ownerPhone(req.user!.id);
 
@@ -248,6 +280,8 @@ partnerRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
             payout_bank_ifsc: null,
             razorpay_contact_id: contactId,
             razorpay_fund_account_id: fundAccountId,
+            payout_account_holder_name: null,
+            payout_details_verified: true,
           }
         : {
             payout_method: 'bank_account',
@@ -258,6 +292,8 @@ partnerRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
             payout_bank_ifsc: result.bankIfsc ?? input.ifsc,
             razorpay_contact_id: contactId,
             razorpay_fund_account_id: fundAccountId,
+            payout_account_holder_name: input.accountHolderName,
+            payout_details_verified: true,
           };
     await supabase.from('stores').update(patch).eq('id', storeId);
 
@@ -271,6 +307,7 @@ partnerRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
       bankName: result.bankName,
       accountType: result.accountType,
       nameMatchScore: result.nameMatchScore,
+      verified: true,
     });
   } catch (err) {
     next(err);

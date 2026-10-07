@@ -15,7 +15,7 @@
 // state.
 
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarClock, CheckCircle2 } from 'lucide-react';
+import { CalendarClock } from 'lucide-react';
 import clsx from 'clsx';
 import { PayoutsTable } from '@/components/revenue/PayoutsTable';
 import { RevenueBalanceCard } from '@/components/revenue/RevenueBalanceCard';
@@ -36,8 +36,6 @@ export default function RevenuePage() {
   const [balance, setBalance] = useState<BalanceSummary | null>(null);
   const [commissionRate, setCommissionRate] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [releasing, setReleasing] = useState(false);
-  const [justReleased, setJustReleased] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoadError(null);
@@ -86,19 +84,14 @@ export default function RevenuePage() {
   const paidPayouts = payouts.filter((p) => p.status === 'paid');
   const pendingTotal = pendingPayouts.reduce((sum, p) => sum + p.netPayout, 0);
 
-  async function handleRelease() {
-    setReleasing(true);
-    setJustReleased(false);
-    try {
-      const res = await fetch('/api/payouts', { method: 'PATCH' });
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Could not release payouts.');
-      await loadData();
-      setJustReleased(true);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Could not release payouts.');
-    } finally {
-      setReleasing(false);
-    }
+  async function handleMarkPaid(id: string, reference: string) {
+    const res = await fetch('/api/payouts', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, reference }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'Could not mark this payout paid.');
+    await loadData();
   }
 
   return (
@@ -184,7 +177,7 @@ export default function RevenuePage() {
       {tab === 'Payouts' && (
         <div className="rounded-3xl border border-border bg-card p-5">
           <h3 className="mb-4 text-sm font-medium text-ink">Pending this cycle</h3>
-          <PayoutsTable payouts={pendingPayouts} emptyLabel="Nothing pending — everyone's been paid." />
+          <PayoutsTable payouts={pendingPayouts} emptyLabel="Nothing pending — everyone's been paid." onMarkPaid={handleMarkPaid} />
         </div>
       )}
 
@@ -223,28 +216,16 @@ export default function RevenuePage() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
-              <button
-                type="button"
-                onClick={handleRelease}
-                disabled={pendingPayouts.length === 0 || releasing}
-                className="flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <CheckCircle2 size={15} />
-                {releasing ? 'Releasing…' : "Release this week's payouts"}
-              </button>
-              {justReleased && pendingPayouts.length === 0 && (
-                <span className="flex items-center gap-1.5 text-sm font-medium text-success">
-                  <CheckCircle2 size={15} />
-                  Released — moved to Settlement history.
-                </span>
-              )}
-            </div>
+            <p className="mt-5 border-t border-border pt-4 text-sm text-muted">
+              Pay each store from your bank or UPI app, then press <span className="font-medium text-ink">Mark paid</span> on
+              its row and enter the transaction reference (UTR). Each payout is recorded separately, so a failed
+              transfer stays pending.
+            </p>
           </div>
 
           <div className="rounded-3xl border border-border bg-card p-5">
             <h3 className="mb-4 text-sm font-medium text-ink">Pending release</h3>
-            <PayoutsTable payouts={pendingPayouts} emptyLabel="Nothing pending — this week's already settled." />
+            <PayoutsTable payouts={pendingPayouts} emptyLabel="Nothing pending — this week's already settled." onMarkPaid={handleMarkPaid} />
           </div>
         </div>
       )}

@@ -1,32 +1,13 @@
-// Payout destination — UPI or bank account + IFSC, real RazorpayX Fund
-// Account Validation either way (POST /partner/verify-payout, see that
-// route's own note for the full Contact -> Fund Account -> Validation
-// flow). Tapping "Verify" sends a real ~₹1 penny-drop; Razorpay's own
-// bank/PSP response comes back with the actual account-holder name, bank
-// name, account type, and (for bank account) a masked account number,
-// shown in a details card the instant it succeeds — none of it typed or
-// guessed.
+// Payout destination — UPI or bank account + IFSC, saved through
+// POST /partner/verify-payout. With a payout provider configured the account
+// is bank-verified (₹1 check) before saving; while payouts are manual the
+// details are saved as typed and shown as "Not verified yet" — the founder
+// confirms the account before the first transfer. The badge always reflects
+// the server's own `verified` answer, never an assumption.
 //
-// Two top-level states:
-// - Editing: a method toggle (UPI / Bank account) plus that method's own
-//   fields, with "Verify" as a pill inside the UPI input's own right edge
-//   (the explicit ask) or as its own button below the two bank fields
-//   (a pill inside either bank field individually doesn't make sense —
-//   both account number AND IFSC are needed before there's anything to
-//   verify). While verifying, the button/pill shows a spinner.
-// - Locked: whichever method was last verified, shown as plain rows
-//   (masked account number + IFSC for bank, the VPA for UPI) plus the
-//   real bank name and account holder name, a green "Verified" badge,
-//   and a "Change" link (same collapse-with-Change pattern as
-//   StoreCategoryPicker) to re-open editing. Locking happens the moment
-//   verification succeeds — POST /verify-payout already persists it
-//   server-side the instant Razorpay confirms it, so this isn't waiting
-//   on the screen's separate "Save changes" button.
-//
-// Editing again after being locked starts blank, not prefilled with the
-// old value — every saved payout destination has gone through a real
-// verification; prefilling and letting "Verify" go unpressed again would
-// silently reintroduce an unverified value.
+// Two states: Editing (method toggle + that method's fields + Save) and
+// Locked (saved details, badge, and a "Change" link). Editing again starts
+// blank so an old value can't be re-saved by accident.
 
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
@@ -46,7 +27,8 @@ export function PayoutAccountCard() {
   const profile = useStoreProfileStore((state) => state.profile);
   const setPayoutVerification = useStoreProfileStore((state) => state.setPayoutVerification);
 
-  const [editing, setEditing] = useState(!profile.payoutMethod || !profile.payoutUpiVerifiedName);
+  const hasSavedDetails = !!profile.payoutMethod && !!(profile.payoutUpiId || profile.payoutBankAccountNumber);
+  const [editing, setEditing] = useState(!hasSavedDetails);
   const [method, setMethod] = useState<Method>(profile.payoutMethod === 'bank_account' ? 'bank_account' : 'upi');
   const [vpaInput, setVpaInput] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -72,21 +54,24 @@ export function PayoutAccountCard() {
         vpa: result.vpa,
         maskedAccountNumber: result.maskedAccountNumber,
         ifsc: result.ifsc,
-        verifiedName: result.accountHolderName,
+        verifiedName: result.verified === false ? null : result.accountHolderName,
+        accountHolderName: result.accountHolderName,
         bankName: result.bankName,
+        verified: result.verified !== false,
       });
       setEditing(false);
       setVpaInput('');
       setAccountNumber('');
       setIfsc('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not verify this payout account. Please try again.');
+      setError(err instanceof ApiError ? err.message : 'Could not save this payout account. Please try again.');
     } finally {
       setVerifying(false);
     }
   }
 
-  if (!editing && profile.payoutMethod && profile.payoutUpiVerifiedName) {
+  if (!editing && hasSavedDetails) {
+    const holderName = profile.payoutUpiVerifiedName ?? profile.payoutAccountHolderName;
     return (
       <SettingsCard icon={BankIcon} title="Payout details">
         <View className="flex-row items-center justify-between">
@@ -98,10 +83,16 @@ export function PayoutAccountCard() {
               <Text className="text-[15px] font-semibold text-ink">
                 {profile.payoutMethod === 'upi' ? profile.payoutUpiId : `${profile.payoutBankAccountNumber} · ${profile.payoutBankIfsc}`}
               </Text>
-              <View className="flex-row items-center gap-1 rounded-full bg-success/10 px-2 py-0.5">
-                <AppIcon icon={CheckmarkCircle02Icon} size={11} color={colors.success} />
-                <Text className="text-[11px] font-semibold text-success">Verified</Text>
-              </View>
+              {profile.payoutDetailsVerified ? (
+                <View className="flex-row items-center gap-1 rounded-full bg-success/10 px-2 py-0.5">
+                  <AppIcon icon={CheckmarkCircle02Icon} size={11} color={colors.success} />
+                  <Text className="text-[11px] font-semibold text-success">Verified</Text>
+                </View>
+              ) : (
+                <View className="rounded-full bg-gold/15 px-2 py-0.5">
+                  <Text className="text-[11px] font-semibold text-ink/70">Not verified yet</Text>
+                </View>
+              )}
             </View>
           </View>
           <Pressable onPress={() => setEditing(true)} hitSlop={10}>
@@ -112,10 +103,12 @@ export function PayoutAccountCard() {
         </View>
 
         <View className="gap-2 border-t border-black/5 pt-3">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-[13px] font-medium text-ink/50">Account holder</Text>
-            <Text className="text-[13px] font-semibold text-ink">{profile.payoutUpiVerifiedName}</Text>
-          </View>
+          {holderName && (
+            <View className="flex-row items-center justify-between">
+              <Text className="text-[13px] font-medium text-ink/50">Account holder</Text>
+              <Text className="text-[13px] font-semibold text-ink">{holderName}</Text>
+            </View>
+          )}
           {profile.payoutBankName && (
             <View className="flex-row items-center justify-between">
               <Text className="text-[13px] font-medium text-ink/50">Bank</Text>
@@ -125,7 +118,9 @@ export function PayoutAccountCard() {
         </View>
 
         <Text className="text-[13px] font-medium text-ink/40">
-          Your weekly payout (see the Payouts tab) is sent here.
+          {profile.payoutDetailsVerified
+            ? 'Your weekly payout (see the Payouts tab) is sent here.'
+            : 'Your weekly payout (see the Payouts tab) is sent here. Gloceries confirms this account before your first payout.'}
         </Text>
       </SettingsCard>
     );
@@ -223,7 +218,7 @@ export function PayoutAccountCard() {
             ) : (
               <>
                 <Text className="text-[14px] font-semibold" style={{ color: canVerifyBank ? '#FFFFFF' : '#9AA5A3' }}>
-                  Verify
+                  Save
                 </Text>
               </>
             )}
@@ -234,7 +229,7 @@ export function PayoutAccountCard() {
       {error && <Text className="text-[13px] font-medium text-danger">{error}</Text>}
 
       <Text className="text-[13px] font-medium leading-normal text-ink/50">
-        Every account is verified with a<Text className="font-semibold text-ink/70"> ₹1 test deposit </Text>before saving to ensure your weekly payouts arrive safely.
+        Double-check these details — your weekly payout is sent exactly where you enter. Gloceries confirms the account before your first payout.
       </Text>
     </SettingsCard>
   );
@@ -253,7 +248,7 @@ function VerifyPill({ onPress, disabled, verifying }: { onPress: () => void; dis
       ) : (
         <>
           <Text className="text-[13px] font-semibold" style={{ color: disabled ? '#9AA5A3' : ACCENT }}>
-            Verify
+            Save
           </Text>
 
         </>

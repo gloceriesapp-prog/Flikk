@@ -1,4 +1,4 @@
-// Verified + saved — a brief celebration, then it drops the rider into the
+// Saved (verified, or saved as typed while payouts are manual) — a brief celebration, then it drops the rider into the
 // app shell on its own: no button. After the tick animation plays we wait a
 // beat and flip payoutConfigured (which is all RootNavigator needs to swap
 // surfaces). The tick is a muted mp4 (expo-video), not the static
@@ -43,7 +43,7 @@ export function PayoutSuccessScreen({ onContinue }: { onContinue: () => void }) 
         <View className="items-center gap-2">
           <Text className="text-3xl font-medium tracking-tight text-ink">You&rsquo;re all set!</Text>
           <Text className="text-center text-[16px] font-medium leading-[22px] text-ink/55">
-            Your payout account is verified. Start accepting orders and earning today.
+            Your payout account is saved. Start accepting orders and earning today.
           </Text>
         </View>
       </View>

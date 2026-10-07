@@ -111,13 +111,11 @@ export async function uploadStorePhoto(base64: string, contentType: string, loca
   }
 }
 
-// Real RazorpayX Fund Account Validation (backend's routes/partner.ts's
-// own note has the full flow) — no dev-mode fallback, unlike most of this
-// file: a fake "verified" result here would be actively worse than an
-// honest failure, since Settings persists whatever this returns as if a
-// real bank confirmed it. A real 4xx/5xx (including "RazorpayX not
-// configured yet" while that account activation is pending) always
-// surfaces as a real ApiError to the caller.
+// Saves payout details (backend's routes/partner.ts POST /verify-payout).
+// With a payout provider configured the account is bank-verified first;
+// without one (manual payouts) the details are saved as typed and the
+// response says verified: false. No dev-mode fallback: a fake result here
+// would be persisted as if it were real.
 export interface PayoutVerificationResult {
   method: 'upi' | 'bank_account';
   vpa: string | null;
@@ -128,6 +126,8 @@ export interface PayoutVerificationResult {
   bankName: string | null;
   accountType: string | null;
   nameMatchScore: number | null;
+  // False when details were saved without a provider check (manual payouts).
+  verified?: boolean;
 }
 
 export async function verifyPayoutUpi(vpa: string): Promise<PayoutVerificationResult> {
