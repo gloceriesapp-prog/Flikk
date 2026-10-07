@@ -5,6 +5,9 @@
     "paths": {
       "@gloceries/shared": [
         "../../packages/shared/src/index.ts"
+      ],
+      "expo-location": [
+        "./node_modules/expo-location"
       ]
     }
   }
