@@ -31,6 +31,7 @@ import { StatTile } from '@/components/ui/StatTile';
 import { Badge } from '@/components/ui/Badge';
 import { DEMO_ORDERS } from '@/lib/demoOrders';
 import { formatInr, formatDateTime, statusColor, statusLabel } from '@/lib/format';
+import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 // Wireframe's "New order" preview card needs an order sitting in 'placed'
 // status to be worth showing — this test store has none most of the time.
@@ -166,7 +167,7 @@ export default function OverviewPage() {
   const previewOrder = orders.find((o) => o.status === 'placed');
   const recentOrders = [...orders].sort((a, b) => +new Date(b.placed_at) - +new Date(a.placed_at)).slice(0, 6);
 
-  const isDemo = orders.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && orders.length === 0;
   const displayTotalProducts = isDemo ? DEMO_TOTAL_PRODUCTS : products.length;
   const displayInStock = isDemo ? DEMO_IN_STOCK : inStockCount;
   const displayCompleted = isDemo ? DEMO_COMPLETED_ORDERS : completedOrders.length;

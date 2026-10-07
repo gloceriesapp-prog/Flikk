@@ -5,7 +5,7 @@ import type { IconSvgElement } from '@hugeicons/react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { ORDER_ACCEPT_WINDOW_MS, formatRemainingTime } from '../../../features/order-expiry/orderExpiry';
-import { useCountdownRemaining } from '../../../features/order-expiry/useCountdownRemaining';
+import { useNow } from '../../../features/order-expiry/useCountdownRemaining';
 import { useOrdersStore } from '../../../store/useOrdersStore';
 import type { PartnerOrder, PartnerOrderStatus } from '../data';
 import { ItemAvatarStack } from './ItemAvatarStack';
@@ -66,11 +66,12 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
       ? `${order.items[0].quantity}x ${order.items[0].name}, ${order.items[1].quantity}x ${order.items[1].name} & ${totalItemTypes - 2} more`
       : order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ');
 
-  const remainingMs = useCountdownRemaining(order.placedAtTimestamp + ORDER_ACCEPT_WINDOW_MS);
+  const now = useNow();
+  const remainingMs = Math.max(0, order.placedAtTimestamp + ORDER_ACCEPT_WINDOW_MS - now);
   const timerStyle = TIMER_STYLE[urgencyTier(remainingMs)];
 
   // --- Dynamic Time Elapsed Calculation ---
-  const timeElapsedMs = Math.max(0, Date.now() - order.placedAtTimestamp);
+  const timeElapsedMs = Math.max(0, now - order.placedAtTimestamp);
   const elapsedMinutes = Math.floor(timeElapsedMs / (1000 * 60));
 
   let placedTimeDisplay = order.placedAtLabel;

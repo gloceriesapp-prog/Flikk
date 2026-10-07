@@ -3,13 +3,13 @@
 import { Mail, MessageCircle, Phone } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
-// Static support page — "contact founder" per the gaps list. There's no
-// support/ticketing backend, and inventing one is out of scope, so this is
-// deliberately just the real contact channels. Edit these three constants
-// when the founder's live contact details are set.
-const SUPPORT_EMAIL = 'founder@flikk.app';
-const SUPPORT_PHONE = '+91 00000 00000';
-const SUPPORT_WHATSAPP = '910000000000'; // digits only, for wa.me
+// Static support page — the real contact channels only. Values come from env
+// (see .env.example); a channel that isn't configured is not shown, never a
+// placeholder number a store owner might try to call.
+const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim() || null;
+const SUPPORT_PHONE = process.env.NEXT_PUBLIC_SUPPORT_PHONE?.trim() || null;
+// Digits only, with country code, for wa.me (e.g. 919876543210).
+const SUPPORT_WHATSAPP = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.replace(/\D/g, '') || null;
 
 const FAQS: { q: string; a: string }[] = [
   {
@@ -18,7 +18,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'When do I get paid?',
-    a: 'Payouts are settled weekly to the account you verify under Settings → Payouts. Each payout shows the gross, commission deducted, and net amount.',
+    a: 'Payouts are settled weekly to the payout account you add under Settings → Payouts. Gloceries confirms the account before your first payout. Each payout shows the gross, commission deducted, and net amount.',
   },
   {
     q: 'How do I mark my store closed?',
@@ -52,11 +52,15 @@ function ContactCard({ icon: Icon, label, value, href }: { icon: typeof Mail; la
 export default function HelpPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <ContactCard icon={MessageCircle} label="WhatsApp" value="Chat with us" href={`https://wa.me/${SUPPORT_WHATSAPP}`} />
-        <ContactCard icon={Phone} label="Call" value={SUPPORT_PHONE} href={`tel:${SUPPORT_PHONE.replace(/\s/g, '')}`} />
-        <ContactCard icon={Mail} label="Email" value={SUPPORT_EMAIL} href={`mailto:${SUPPORT_EMAIL}`} />
-      </div>
+      {SUPPORT_WHATSAPP || SUPPORT_PHONE || SUPPORT_EMAIL ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {SUPPORT_WHATSAPP && <ContactCard icon={MessageCircle} label="WhatsApp" value="Chat with us" href={`https://wa.me/${SUPPORT_WHATSAPP}`} />}
+          {SUPPORT_PHONE && <ContactCard icon={Phone} label="Call" value={SUPPORT_PHONE} href={`tel:${SUPPORT_PHONE.replace(/\s/g, '')}`} />}
+          {SUPPORT_EMAIL && <ContactCard icon={Mail} label="Email" value={SUPPORT_EMAIL} href={`mailto:${SUPPORT_EMAIL}`} />}
+        </div>
+      ) : (
+        <Card className="p-6 text-sm text-neutral-500">Contact details will appear here soon.</Card>
+      )}
 
       <Card className="p-6">
         <h2 className="text-lg font-semibold text-black">Frequently asked</h2>

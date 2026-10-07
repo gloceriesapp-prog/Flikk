@@ -95,6 +95,9 @@ export function StoreSettingsScreen({ navigation }: Props) {
   // debt.
   useEffect(() => {
     if (!profile.id) return;
+    // Syncing local form state from the external store once it loads (see
+    // the note above) — the case this rule's own docs allow.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setName(profile.storeName);
     setCategory(profile.category);
     setOpenTime(profile.openTime);
