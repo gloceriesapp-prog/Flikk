@@ -1,11 +1,9 @@
-// Platform-wide ordering window — 10:30 PM to 6:00 AM IST, every day, closed.
-// Single-zone MVP (CLAUDE.md) with one operating window for the whole app,
-// not per-store — this is deliberately simpler than stores.open_time/
-// close_time (which is a real per-store toggle an owner controls). If a
-// founder ever needs to change these hours without a code deploy, that's
-// the moment to move this to a zones table column and read it from the
-// backend instead; hardcoded constants are the right amount of engineering
-// for "one fixed nightly window" today.
+// Platform-wide ordering window, in IST. The hours are admin settings
+// (delivery_settings.ordering_opens_minute / ordering_closes_minute,
+// migration 112; edited on admin's Settings page) served by GET
+// /delivery-settings. The defaults below are those columns' defaults and are
+// only used until the settings arrive. The backend and SQL checkout guard
+// apply the same window, so this is display only.
 //
 // Computed in IST regardless of the device's own timezone/locale — a
 // customer's phone set to a different timezone (or just wrong) must not
@@ -16,19 +14,44 @@
 // no reliance on the device's own configured timezone.
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-const CLOSE_MINUTES_OF_DAY = 22 * 60 + 30; // 10:30 PM IST
-const OPEN_MINUTES_OF_DAY = 6 * 60; // 6:00 AM IST
 
-function currentIstMinutesOfDay(): number {
-  const istDate = new Date(Date.now() + IST_OFFSET_MS);
+export interface OrderingHours {
+  // First minute orders are accepted, IST minutes since midnight.
+  opensMinute: number;
+  // First minute orders are refused again (up to 1440).
+  closesMinute: number;
+}
+
+export const DEFAULT_ORDERING_HOURS: OrderingHours = { opensMinute: 6 * 60, closesMinute: 22 * 60 + 30 };
+
+export function currentIstMinutesOfDay(now = Date.now()): number {
+  const istDate = new Date(now + IST_OFFSET_MS);
   return istDate.getUTCHours() * 60 + istDate.getUTCMinutes();
 }
 
-// True from 10:30 PM through 5:59 AM IST — the window wraps past midnight,
-// so this is "at or after close" OR "before open", not a simple range.
-export function isOutsideOperatingHours(): boolean {
-  const minutesOfDay = currentIstMinutesOfDay();
-  return minutesOfDay >= CLOSE_MINUTES_OF_DAY || minutesOfDay < OPEN_MINUTES_OF_DAY;
+// True outside [opens, closes) — e.g. 10:30 PM through 5:59 AM by default.
+export function isOutsideOperatingHours(hours: OrderingHours = DEFAULT_ORDERING_HOURS, now = Date.now()): boolean {
+  const minutesOfDay = currentIstMinutesOfDay(now);
+  return minutesOfDay >= hours.closesMinute || minutesOfDay < hours.opensMinute;
 }
 
-export const REOPEN_TIME_LABEL = '6:00 AM';
+// 360 -> "6:00 AM", 750 -> "12:30 PM". Same format as the backend message.
+export function formatIstMinute(minuteOfDay: number): string {
+  const m = ((Math.trunc(minuteOfDay) % 1440) + 1440) % 1440;
+  const hour = Math.floor(m / 60);
+  return `${hour % 12 === 0 ? 12 : hour % 12}:${String(m % 60).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
+// "today" before opening time, "tomorrow" after closing time.
+export function reopenDayLabel(hours: OrderingHours = DEFAULT_ORDERING_HOURS, now = Date.now()): 'today' | 'tomorrow' {
+  return currentIstMinutesOfDay(now) < hours.opensMinute ? 'today' : 'tomorrow';
+}
+
+// Invalid or missing values (an older backend) fall back to the defaults as a pair.
+export function orderingHoursFrom(settings: { orderingOpensMinute?: unknown; orderingClosesMinute?: unknown } | null | undefined): OrderingHours {
+  const opens = Number(settings?.orderingOpensMinute);
+  const closes = Number(settings?.orderingClosesMinute);
+  if (settings?.orderingOpensMinute == null || settings?.orderingClosesMinute == null
+    || !Number.isInteger(opens) || !Number.isInteger(closes) || opens < 0 || closes > 1440 || opens >= closes) return DEFAULT_ORDERING_HOURS;
+  return { opensMinute: opens, closesMinute: closes };
+}

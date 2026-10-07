@@ -1,4 +1,5 @@
 import { roadKm } from '../utils/geo.js';
+import { DEFAULT_ORDERING_HOURS, formatIstMinute, istMinutes, platformIsOpen, type OrderingHours } from './orderingHours.js';
 import type { CartItem } from './orderValidation.js';
 import type { CheckoutProduct } from './checkoutItems.js';
 
@@ -11,18 +12,15 @@ export interface ReachRules {
   roadFactor: number;
   // 0 = a multi-store cart may combine shops at any distance.
   maxStoreSpreadKm: number;
+  // Platform ordering window (delivery_settings.ordering_*_minute, migration
+  // 112), IST minutes since midnight. Optional so older callers keep 6:00-22:30.
+  hours?: OrderingHours;
 }
 export const DEFAULT_REACH_RULES: ReachRules = { defaultRadiusKm: DEFAULT_CHECKOUT_RADIUS_KM, roadFactor: 1.4, maxStoreSpreadKm: 2 };
-export const PLATFORM_OPEN_MINUTE = 6 * 60;
-export const PLATFORM_CLOSE_MINUTE = 22 * 60 + 30;
-export function istMinutes(date = new Date()): number {
-  const shifted = new Date(date.getTime() + 330 * 60_000);
-  return shifted.getUTCHours() * 60 + shifted.getUTCMinutes();
-}
-export function platformIsOpen(date = new Date()): boolean {
-  const minute = istMinutes(date);
-  return minute >= PLATFORM_OPEN_MINUTE && minute < PLATFORM_CLOSE_MINUTE;
-}
+export {
+  DEFAULT_ORDERING_HOURS, PLATFORM_CLOSE_MINUTE, PLATFORM_OPEN_MINUTE, formatIstMinute, istMinutes, parseOrderingHours, platformIsOpen,
+  type OrderingHours,
+} from './orderingHours.js';
 export function parseStoreTime(value: string | null): number | null {
   if (!value) return null;
   const match = value.trim().match(/^(\d{1,2}):(\d{2})(?::00)?\s*(AM|PM)?$/i);
@@ -75,7 +73,8 @@ export function checkoutAvailability(items: CartItem[], products: EligibilityPro
   const requested = new Map<string, number>();
   for (const item of items) requested.set(item.product_id, (requested.get(item.product_id) ?? 0) + item.quantity);
   const issues: AvailabilityIssue[] = [];
-  if (!platformIsOpen(date)) issues.push({ code: 'PLATFORM_CLOSED', message: 'Ordering is closed. We reopen at 6:00 AM IST.' });
+  const hours = rules.hours ?? DEFAULT_ORDERING_HOURS;
+  if (!platformIsOpen(date, hours)) issues.push({ code: 'PLATFORM_CLOSED', message: `Ordering is closed. We reopen at ${formatIstMinute(hours.opensMinute)} IST.` });
   if (!address) issues.push({ code: 'ADDRESS_REQUIRED', message: 'Choose a saved delivery address to continue.' });
   else if (!validPin(address.latitude, address.longitude)) issues.push({ code: 'ADDRESS_PIN_REQUIRED', message: 'Add a map pin to your delivery address.' });
   else if (!activeZoneIds.has(address.zone_id)) issues.push({ code: 'ZONE_UNAVAILABLE', message: 'Delivery is unavailable in this area.' });

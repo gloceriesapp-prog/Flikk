@@ -27,7 +27,7 @@ import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import { ChevronDownIcon, Navigation03Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
-import { REOPEN_TIME_LABEL } from '../../../utils/operatingHours';
+import { useReopenLabel } from '../../../utils/useOperatingHours';
 import { colors } from '../../../theme/tokens';
 import { useLocationStore } from '../../../store/useLocationStore';
 
@@ -41,6 +41,7 @@ interface Props {
 
 export function LocationSelector({ onPress, isClosed = false, light = false }: Props) {
   const estimatedMinutes = useDeliveryEstimateMinutes();
+  const reopen = useReopenLabel();
   const location = useLocationStore((s) => s.location);
   const label = location?.addressLabel || location?.city || 'Set your location';
 
@@ -61,7 +62,7 @@ export function LocationSelector({ onPress, isClosed = false, light = false }: P
           <AppIcon icon={Navigation03Icon} size={12} color={navColor} fill={navColor} strokeWidth={0} />
         )} */}
         <Text className={`${isClosed ? 'text-[18px]' : 'text-2xl'} font-extrabold ${primaryText}`}>
-          {isClosed ? `Opens ${REOPEN_TIME_LABEL} tomorrow` : `In ${estimatedMinutes} minutes`}
+          {isClosed ? `Opens ${reopen.time} ${reopen.day}` : `In ${estimatedMinutes} minutes`}
         </Text>
       </View>
       <View className="flex-row items-center gap-1">

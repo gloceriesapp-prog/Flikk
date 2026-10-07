@@ -11,6 +11,12 @@
 import { supabase } from '../db/supabase.js';
 import { DEFAULT_DELIVERY_RADIUS_KM, DEFAULT_EXTRA_STOP_FEE, DEFAULT_ROAD_DISTANCE_FACTOR, distanceDeliveryFee, nonNegative, parseFeeTiers, positive, type DeliveryFeeTier } from './deliveryFees.js';
 import type { RiderPaySettings } from './earningsBreakdown.js';
+import { parseOrderingHours } from './orderingHours.js';
+
+export function orderingHoursFields(opens: unknown, closes: unknown) {
+  const hours = parseOrderingHours(opens, closes);
+  return { orderingOpensMinute: hours.opensMinute, orderingClosesMinute: hours.closesMinute };
+}
 
 export { distanceDeliveryFee, parseFeeTiers, type DeliveryFeeTier };
 
@@ -27,6 +33,9 @@ export interface DeliverySettings {
   maxStoreSpreadKm: number;
   // migration 108 — what the customer pays per shop after the first.
   extraStopFee: number;
+  // migration 112 — platform ordering window, IST minutes since midnight.
+  orderingOpensMinute: number;
+  orderingClosesMinute: number;
 }
 
 export async function getDeliverySettings(): Promise<DeliverySettings> {
@@ -49,6 +58,7 @@ export async function getDeliverySettings(): Promise<DeliverySettings> {
     deliveryFeeTiers: parseFeeTiers(data.delivery_fee_tiers),
     maxStoreSpreadKm: Math.max(0, Number(data.max_store_spread_km ?? 0) || 0),
     extraStopFee: nonNegative(data.extra_stop_fee, DEFAULT_EXTRA_STOP_FEE),
+    ...orderingHoursFields(data.ordering_opens_minute, data.ordering_closes_minute),
   };
 }
 

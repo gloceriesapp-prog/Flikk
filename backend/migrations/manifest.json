@@ -436,6 +436,10 @@
     {
       "file": "111_catalogue_stock_integrity.sql",
       "sha256": "dee6b1ace7d6f0fc98646ede19de8ef36c92e550c7a8a30b642dad8456b2ce59"
+    },
+    {
+      "file": "112_app_config_and_hours.sql",
+      "sha256": "c538af4439134079b5a76daba358da61f96e64dd67f17c67638dc1ff1733c5e7"
     }
   ]
 }

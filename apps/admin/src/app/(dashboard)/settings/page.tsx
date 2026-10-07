@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { fetchDeliverySettings, type DeliverySettings } from '@/lib/supabase/deliverySettings';
+import { fetchDeliverySettings, minuteToTimeInput, timeInputToMinute, type DeliverySettings } from '@/lib/supabase/deliverySettings';
 
 type TierDraft = { upToKm: string; fee: string };
 
@@ -69,6 +69,8 @@ export default function SettingsPage() {
     roadDistanceFactor: string;
     maxStoreSpreadKm: string;
     deliveryFeeTiers: TierDraft[];
+    orderingOpens: string;
+    orderingCloses: string;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -97,6 +99,8 @@ export default function SettingsPage() {
         roadDistanceFactor: String(settings.roadDistanceFactor),
         maxStoreSpreadKm: String(settings.maxStoreSpreadKm),
         deliveryFeeTiers: settings.deliveryFeeTiers.map((tier) => ({ upToKm: String(tier.upToKm), fee: String(tier.fee) })),
+        orderingOpens: minuteToTimeInput(settings.orderingOpensMinute),
+        orderingCloses: minuteToTimeInput(settings.orderingClosesMinute),
       });
     }).catch(() => setSaveError('Could not load delivery settings. Refresh to try again.'));
 
@@ -150,13 +154,25 @@ export default function SettingsPage() {
       Number(draft.defaultDeliveryRadiusKm) !== saved.defaultDeliveryRadiusKm ||
       Number(draft.roadDistanceFactor) !== saved.roadDistanceFactor ||
       Number(draft.maxStoreSpreadKm) !== saved.maxStoreSpreadKm ||
-      !tiersEqual(draft.deliveryFeeTiers, saved.deliveryFeeTiers));
+      !tiersEqual(draft.deliveryFeeTiers, saved.deliveryFeeTiers) ||
+      timeInputToMinute(draft.orderingOpens) !== saved.orderingOpensMinute ||
+      timeInputToMinute(draft.orderingCloses, true) !== saved.orderingClosesMinute);
 
   async function handleSaveDelivery() {
     if (!draft || isSaving) return;
     const minutes = Number(draft.estimatedDeliveryMinutes);
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
       setSaveError('Enter a delivery estimate between 1 and 240 whole minutes.');
+      return;
+    }
+    const orderingOpensMinute = timeInputToMinute(draft.orderingOpens);
+    const orderingClosesMinute = timeInputToMinute(draft.orderingCloses, true);
+    if (orderingOpensMinute === null || orderingClosesMinute === null) {
+      setSaveError('Enter both ordering hours.');
+      return;
+    }
+    if (orderingOpensMinute >= orderingClosesMinute) {
+      setSaveError('Ordering must open before it closes. The window cannot cross midnight.');
       return;
     }
     setIsSaving(true);
@@ -178,6 +194,8 @@ export default function SettingsPage() {
           roadDistanceFactor: Number(draft.roadDistanceFactor),
           maxStoreSpreadKm: Number(draft.maxStoreSpreadKm),
           deliveryFeeTiers: draft.deliveryFeeTiers.map((tier) => ({ upToKm: Number(tier.upToKm), fee: Number(tier.fee) })),
+          orderingOpensMinute,
+          orderingClosesMinute,
         }),
       });
       const body = await res.json();
@@ -252,6 +270,27 @@ export default function SettingsPage() {
                   className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
                 <span className="text-sm text-muted">min</span>
               </div>
+            </div>
+            <div className="flex flex-col gap-3 border-b border-border pb-4">
+              <div>
+                <p className="text-sm font-medium text-ink">Ordering hours (IST)</p>
+                <p className="text-xs text-muted">
+                  Customers can place orders between these times every day. Outside them the app shows the reopening
+                  time and checkout is refused. A closing time of 12:00 AM means midnight.
+                </p>
+              </div>
+              {([
+                ['orderingOpens', 'Opens at'],
+                ['orderingCloses', 'Closes at'],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <label htmlFor={key} className="text-sm text-ink">{label}</label>
+                  <input id={key} type="time" step={60} required
+                    value={draft[key]}
+                    onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+                    className="rounded-xl border border-border bg-transparent px-3 py-2 text-sm font-semibold text-ink outline-none" />
+                </div>
+              ))}
             </div>
             <div className="flex flex-col gap-3 border-b border-border pb-4">
               <div>

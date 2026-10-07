@@ -88,6 +88,19 @@ export async function PATCH(request: Request) {
       reach.delivery_fee_tiers = tiers;
     }
 
+    // Ordering hours (migration 112): optional, omitted = unchanged; both are
+    // sent together. Bounds and ordering match that migration's CHECKs.
+    const hours: { ordering_opens_minute?: number; ordering_closes_minute?: number } = {};
+    if (body.orderingOpensMinute !== undefined || body.orderingClosesMinute !== undefined) {
+      const opens = body.orderingOpensMinute;
+      const closes = body.orderingClosesMinute;
+      if (!Number.isInteger(opens) || opens < 0 || opens > 1439) throw new Error('Ordering opening time must be a time of day.');
+      if (!Number.isInteger(closes) || closes < 1 || closes > 1440) throw new Error('Ordering closing time must be a time of day.');
+      if (opens >= closes) throw new Error('Ordering must open before it closes (the window cannot cross midnight).');
+      hours.ordering_opens_minute = opens;
+      hours.ordering_closes_minute = closes;
+    }
+
     const { data: settings, error: readError } = await supabaseAdmin
       .from('delivery_settings').select('id').single();
     if (readError) throw readError;
@@ -102,6 +115,7 @@ export async function PATCH(request: Request) {
         estimated_delivery_minutes: estimatedDeliveryMinutes,
         ...riderPayouts,
         ...reach,
+        ...hours,
         updated_at: new Date().toISOString(),
       })
       .eq('id', settings.id)

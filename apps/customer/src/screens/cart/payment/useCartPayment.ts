@@ -19,7 +19,8 @@ import type { UpiApp } from '../../../payments/upiApps';
 import { canLaunchUpiApp, detectInstalledUpiApps, openUpiApp } from '../../../payments/upiIntent';
 import { keepsCheckoutAttempt } from './attemptPolicy';
 import { selectCartStoreCount, useCartStore } from '../../../store/useCartStore';
-import { isOutsideOperatingHours, REOPEN_TIME_LABEL } from '../../../utils/operatingHours';
+import { formatIstMinute, isOutsideOperatingHours } from '../../../utils/operatingHours';
+import { useOrderingHours } from '../../../utils/useOperatingHours';
 import { availablePaymentMethod, paymentMethodLabel, type PaymentMethod } from '../../../payments/paymentMethod';
 import type { AppStackParamList } from '../../../navigation/types';
 
@@ -35,6 +36,7 @@ interface Props {
 
 export function useCartPayment({ navigation, selectedAddress, selectedPaymentMethod, upiVpa, quote, onQuoteChanged }: Props) {
   const items = useCartStore((state) => state.items);
+  const orderingHours = useOrderingHours();
   const storeCount = useCartStore(selectCartStoreCount);
   const isMultiStore = storeCount > 1;
   const appliedPromo = useCartStore((state) => state.appliedPromo);
@@ -97,8 +99,8 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   async function handlePay() {
     if (!stillOwner() || !paymentMethod || placingOrder.current || !methodsReady || !quote) return;
     if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }
-    if (isOutsideOperatingHours()) {
-      Alert.alert('We’re closed for the night', `Orders reopen at ${REOPEN_TIME_LABEL} IST. Your cart is saved.`);
+    if (isOutsideOperatingHours(orderingHours)) {
+      Alert.alert('We’re closed right now', `Orders reopen at ${formatIstMinute(orderingHours.opensMinute)} IST. Your cart is saved.`);
       return;
     }
     if (items.length === 0) {

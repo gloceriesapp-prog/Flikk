@@ -18,6 +18,11 @@ export interface DeliverySettings {
   freeDeliveryThreshold: number;
   handlingFee: number;
   estimatedDeliveryMinutes: number;
+  // migration 112 — platform ordering window, IST minutes since midnight.
+  // Optional: an older backend omits them and utils/operatingHours falls
+  // back to 6:00 AM-10:30 PM.
+  orderingOpensMinute?: number;
+  orderingClosesMinute?: number;
 }
 
 export async function fetchDeliverySettings(): Promise<DeliverySettings> {
@@ -35,6 +40,8 @@ export const DEFAULT_DELIVERY_SETTINGS: DeliverySettings = {
   freeDeliveryThreshold: 199,
   handlingFee: 5,
   estimatedDeliveryMinutes: DEFAULT_DELIVERY_MINUTES,
+  orderingOpensMinute: 360,
+  orderingClosesMinute: 1350,
 };
 
 // One query key for all fees and estimates. Root sync handles invalidation.
