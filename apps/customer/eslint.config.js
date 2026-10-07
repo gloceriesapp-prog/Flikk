@@ -6,5 +6,5 @@ const expoConfig = require('eslint-config-expo/flat');
 // install`/`expo run:ios`, not app code) — only exists in this app
 // (partner/rider have no ios/ directory at all). eslint-config-expo/flat
 // doesn't ignore it by default; without this, its minified vendor JS
-// (razorpay-pod's own EncryptedOtpelf.js) fails to even parse.
+// (minified vendor pod JS) fails to even parse.
 module.exports = [{ ignores: ['ios/Pods/**', 'android/**'] }, ...expoConfig];

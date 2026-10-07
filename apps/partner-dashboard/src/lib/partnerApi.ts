@@ -37,36 +37,30 @@ export function fetchMyStore(): Promise<Store> {
   return apiRequest('/partner/store');
 }
 
-// PATCH /partner/store deliberately drops every payout_* field server-side
-// (routes/partner.ts's own note) — a payout destination is only ever set
-// by a real RazorpayX verification (verifyPayoutAccount below), never by
-// this generic save. Passing one here would silently no-op, not error.
+// PATCH /partner/store drops every payout_* field server-side — payout
+// details are only written through PUT /partner/payout-account
+// (backend/PAYOUTS.md), never by this generic save.
 export function updateMyStore(patch: Partial<Store>): Promise<Store> {
   return apiRequest('/partner/store', { method: 'PATCH', body: patch });
 }
 
-export type VerifyPayoutInput =
-  | { method: 'upi'; vpa: string }
-  | { method: 'bank_account'; accountNumber: string; ifsc: string; accountHolderName: string };
-
-export interface VerifyPayoutResult {
-  method: 'upi' | 'bank_account';
-  vpa: string | null;
-  maskedAccountNumber: string | null;
+// Web only sets a UPI ID: bank accounts need a cancelled-cheque photo, which
+// the partner mobile app uploads. Details are saved as unverified; the
+// founder confirms the name when sending the first manual payout.
+export interface PayoutAccount {
+  method: 'upi' | 'bank' | null;
+  upiId: string | null;
+  accountHolderName: string | null;
+  accountLast4: string | null;
   ifsc: string | null;
-  accountHolderName: string;
-  accountStatus: string;
-  bankName: string;
-  accountType: string;
-  nameMatchScore: number;
+  bankName: string | null;
+  hasProof: boolean;
+  status: 'unverified' | 'verified';
+  verifiedName: string | null;
 }
 
-// A real RazorpayX Fund Account Validation, not a format check — this is
-// the ONLY write path for payout_method/payout_upi_*/payout_bank_* (see
-// updateMyStore's own note). Verifying one method clears the other's
-// saved fields server-side.
-export function verifyPayoutAccount(input: VerifyPayoutInput): Promise<VerifyPayoutResult> {
-  return apiRequest('/partner/verify-payout', { method: 'POST', body: input });
+export function saveUpiPayoutAccount(upiId: string): Promise<PayoutAccount> {
+  return apiRequest('/partner/payout-account', { method: 'PUT', body: { method: 'upi', upiId } });
 }
 
 export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
@@ -91,12 +85,12 @@ export interface PartnerOrder {
   delivery_fee: number;
   commission_amount: number;
   total: number;
-  // Set once Razorpay actually captures payment — orders.ts creates the
+  // Set once the payment provider (Cashfree) actually captures payment — orders.ts creates the
   // order row before payment completes (see that route's own note), so a
   // freshly placed order can briefly have this still null. Null does NOT
-  // mean COD; this product is Razorpay/UPI-only (no COD support exists in
+  // mean COD; this product is online-payment-only (no COD support exists in
   // the schema at all), it means payment capture hasn't landed yet.
-  razorpay_payment_id: string | null;
+  provider_payment_id: string | null;
   placed_at: string;
   packed_at: string | null;
   picked_up_at: string | null;

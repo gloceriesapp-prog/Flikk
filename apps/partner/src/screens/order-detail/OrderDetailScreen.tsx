@@ -40,7 +40,7 @@ const STATUS_BADGE_LABEL = {
   failed: 'Delivery failed',
 } as const;
 
-const PAYMENT_MODE_LABEL = { prepaid: 'Paid via UPI', cod: 'Cash on delivery' } as const;
+const PAYMENT_MODE_LABEL = { prepaid: 'Paid online', cod: 'Cash on delivery' } as const;
 
 // "Sep 19, 2:30 PM" — date + time together, unlike order.placedAtTime
 // (time-only, shared with IncomingOrderAlert's own "Time" row) since this

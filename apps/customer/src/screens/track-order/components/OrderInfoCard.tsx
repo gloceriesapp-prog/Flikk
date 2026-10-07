@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Cancel01Icon, CheckmarkCircle02Icon, Clock01Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
+import { riderDeliveryFailureReasonLabel } from '@gloceries/shared';
 import type { ApiOrder } from '../../../api/orders';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -47,18 +48,27 @@ export function OrderInfoCard({ order, hideRefund = false }: Props) {
   const reasonMessage = isCancelled
     ? (order.cancel_reason ?? 'This order was cancelled and is no longer being prepared or delivered.')
     : isFailed
-      ? "This order couldn't be delivered. Check your order details for updates."
+      // A failed delivery stores the rider's reason code in cancel_reason.
+      ? `This order couldn't be delivered${order.cancel_reason && order.cancel_reason !== 'other' ? ` — ${riderDeliveryFailureReasonLabel(order.cancel_reason).toLowerCase()}` : ''}.`
       : isDelivered
         ? 'This order has already been delivered.'
         : 'The estimate is based on the delivery time recorded when your order was placed. Actual arrival may vary.';
+  // Paid-online failed deliveries refund automatically (migration 098),
+  // same refund_status lifecycle as cancellations.
   const refundLine =
-    isCancelled && order.razorpay_payment_id
+    (isCancelled || isFailed) && order.provider_payment_id
       ? order.refund_status === 'completed'
         ? `₹${order.total.toFixed(0)} has been refunded to your original payment method.`
+        : order.refund_status === 'manual_required'
+          ? 'Refund being processed by our team.'
         : order.refund_status === 'failed'
           ? 'We could not process your refund automatically — please contact support.'
-          : `Refund of ₹${order.total.toFixed(0)} is on its way — usually settles within a few business days.`
-      : null;
+          : isFailed && order.refund_status === 'none'
+            ? 'Your refund is being reviewed — contact support if you have questions.'
+            : `Refund of ₹${order.total.toFixed(0)} is on its way — usually settles within a few business days.`
+      : isFailed && order.payment_method === 'cod'
+        ? 'Cash on Delivery — nothing was charged for this order.'
+        : null;
 
   return (
     <>

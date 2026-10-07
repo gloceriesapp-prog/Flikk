@@ -36,7 +36,7 @@ export function useTopRatedStores() {
           if (a.rating != null && b.rating != null) return b.rating - a.rating;
           if (a.rating != null) return -1;
           if (b.rating != null) return 1;
-          return b.createdAt.localeCompare(a.createdAt);
+          return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
         })
         .slice(0, TOP_RATED_LIMIT),
     [query.data],

@@ -70,3 +70,59 @@ describe('validatePromoCode', () => {
     }
   });
 });
+
+// Exact reimplementation of the SQL guard (migrations 083/096) on BigInt
+// paise: numeric(10,2) inputs, items*value/100 exact, round(...,2) half
+// away from zero (all values non-negative), least(items, raw, cap).
+function sqlDiscountPaise(itemPaise: bigint, type: 'flat' | 'percent', valueHundredths: bigint, capPaise: bigint | null): bigint {
+  let raw = type === 'flat' ? valueHundredths : (itemPaise * valueHundredths + 5000n) / 10000n;
+  if (capPaise != null && capPaise < raw) raw = capPaise;
+  return raw < itemPaise ? raw : itemPaise;
+}
+
+describe('calcDiscount matches the SQL promotion guard exactly', () => {
+  it('sweeps cart totals × percentages (including half-paisa boundaries) and caps', () => {
+    const percents = [1, 2.5, 5, 7.5, 10, 12.5, 15, 17.25, 18, 20, 25, 33.33, 50, 99.99, 100];
+    const caps: (number | null)[] = [null, 25, 99.99, 150];
+    let checked = 0;
+    for (let paise = 1; paise <= 300_000; paise += paise < 2_000 ? 1 : 137) {
+      for (const pct of percents) for (const cap of caps) {
+        const expected = sqlDiscountPaise(BigInt(paise), 'percent', BigInt(Math.round(pct * 100)), cap == null ? null : BigInt(Math.round(cap * 100)));
+        const got = calcDiscount(paise / 100, makePromo({ discount_type: 'percent', discount_value: pct, max_discount_amount: cap }));
+        if (Math.round(got * 100) !== Number(expected) || got !== Number(expected) / 100) {
+          throw new Error(`₹${paise / 100} @ ${pct}% cap ${cap}: JS ${got} vs SQL ${Number(expected) / 100}`);
+        }
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(100_000);
+  });
+
+  it('rounds a classic float trap half-up like numeric', () => {
+    // 10.05 * 5% = 0.5025 → 0.50; 1.10 * 50% = 0.55 (float gives 0.55000000000000004)
+    expect(calcDiscount(10.05, makePromo({ discount_type: 'percent', discount_value: 5 }))).toBe(0.5);
+    expect(calcDiscount(1.1, makePromo({ discount_type: 'percent', discount_value: 50 }))).toBe(0.55);
+    // 0.30 * 12.5% = 0.0375 → 0.04 (half-up at the paisa)
+    expect(calcDiscount(0.3, makePromo({ discount_type: 'percent', discount_value: 12.5 }))).toBe(0.04);
+  });
+
+  it('matches SQL for flat codes against small carts', () => {
+    for (let paise = 1; paise <= 20_000; paise += 7) {
+      const expected = sqlDiscountPaise(BigInt(paise), 'flat', 5000n, null);
+      expect(calcDiscount(paise / 100, makePromo({ discount_type: 'flat', discount_value: 50 }))).toBe(Number(expected) / 100);
+    }
+  });
+
+  it('discounts float-accumulated cart totals exactly as the stored numeric(10,2) item_total', () => {
+    // numeric(10,2) stores round(itemTotal, 2); the guard recomputes from that.
+    const carts = [0.1 + 0.2, 19.99 * 3, 33.33 + 33.33 + 33.34, 1.1 * 3, 4.35 * 100];
+    for (const itemTotal of carts) for (const pct of [12.5, 33.33, 7.5]) {
+      const stored = BigInt(Math.round(itemTotal * 100));
+      const expected = Number(sqlDiscountPaise(stored, 'percent', BigInt(Math.round(pct * 100)), null)) / 100;
+      expect(calcDiscount(itemTotal, makePromo({ discount_type: 'percent', discount_value: pct }))).toBe(expected);
+    }
+    // 199.90 @ 12.5% = 24.9875 → 24.99; 0.01 @ 50% = 0.005 → 0.01 (half-up)
+    expect(calcDiscount(199.9, makePromo({ discount_type: 'percent', discount_value: 12.5 }))).toBe(24.99);
+    expect(calcDiscount(0.01, makePromo({ discount_type: 'percent', discount_value: 50 }))).toBe(0.01);
+  });
+});

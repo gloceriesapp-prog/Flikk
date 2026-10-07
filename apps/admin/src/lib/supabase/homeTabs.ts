@@ -6,7 +6,7 @@
 // rationale as lib/supabase/categories.ts's own note.
 
 import { supabase } from './client';
-import type { HomeTab, HomeTabBanner, HomeTabTile } from '../types';
+import type { HomeTab, HomeTabBanner, HomeTabTile, HomeTabTileLinkType } from '../types';
 
 export interface HomeTabRow {
   id: string;
@@ -23,10 +23,12 @@ export interface HomeTabTileRow {
   image_url: string | null;
   sort_order: number;
   is_active: boolean;
+  link_type: HomeTabTileLinkType | null;
+  link_id: string | null;
 }
 
 export const HOME_TAB_SELECT = 'id, name, image_url, sort_order, is_active';
-export const HOME_TAB_TILE_SELECT = 'id, home_tab_id, name, image_url, sort_order, is_active';
+export const HOME_TAB_TILE_SELECT = 'id, home_tab_id, name, image_url, sort_order, is_active, link_type, link_id';
 
 export function mapRowToHomeTab(row: HomeTabRow): HomeTab {
   return { id: row.id, name: row.name, imageUrl: row.image_url ?? undefined, sortOrder: row.sort_order, isActive: row.is_active };
@@ -40,6 +42,8 @@ export function mapRowToHomeTabTile(row: HomeTabTileRow): HomeTabTile {
     imageUrl: row.image_url ?? undefined,
     sortOrder: row.sort_order,
     isActive: row.is_active,
+    linkType: row.link_type ?? null,
+    linkId: row.link_id ?? null,
   };
 }
 

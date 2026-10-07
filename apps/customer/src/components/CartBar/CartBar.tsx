@@ -43,7 +43,7 @@ export function CartBar({ onBeforeNavigate }: Props) {
         navigation.navigate('Cart');
       }}
       style={{ width: Math.min(width - 64, 200), maxWidth: '100%' }}
-      className="min-h-[52px] flex-row items-center gap-1.5 rounded-[16px] bg-[#155DFC] px-2.5 py-2 active:bg-[#124FE0]"
+      className="min-h-[52px] flex-row items-center gap-1.5 rounded-[16px] bg-coral px-2.5 py-2 active:opacity-90"
     >
       <View className="h-9 flex-row items-center" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         {previews.map((item, index) => (
@@ -60,11 +60,11 @@ export function CartBar({ onBeforeNavigate }: Props) {
         ))}
       </View>
       <View className="min-w-0 flex-1">
-        <Text numberOfLines={1} className="text-[16px] font-bold leading-[20px] text-white">Cart</Text>
-        <Text numberOfLines={1} className="text-[12px] leading-[16px] text-white/85">{quantityLabel}</Text>
+        <Text numberOfLines={1} className="text-[16px] font-bold leading-[20px] text-ink">Cart</Text>
+        <Text numberOfLines={1} className="text-[12px] leading-[16px] text-ink/80">{quantityLabel}</Text>
       </View>
       <View className="h-8 w-4 items-center justify-center">
-        <AppIcon icon={ArrowRight01Icon} size={18} color="#FFFFFF" strokeWidth={2.5} />
+        <AppIcon icon={ArrowRight01Icon} size={18} color="#101C10" strokeWidth={2.5} />
       </View>
     </Pressable>
   );

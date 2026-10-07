@@ -1,0 +1,1 @@
+{"nodes": [{"id": "screens_home_loading_warmup", "label": "Home Browsing Readiness", "file_type": "concept", "source_file": "screens/home/loading/README.md", "rationale": "Warms inventory previews for nearby stores to speed up first category visits."}], "edges": [], "hyperedges": []}

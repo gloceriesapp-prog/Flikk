@@ -1,14 +1,11 @@
-// Revenue's own hero — total earned, this week's trend, and the two
-// numbers that round it out: what's still settling and what's already
-// sitting ready to withdraw. Same real source and shape as Overview's
-// BalanceSummaryCard (app/api/balance — RazorpayX balance + payouts
-// ledger), reused here since it's the same wallet, just viewed from the
-// revenue side instead of the "founder's own money" side.
+// Revenue's own hero — total earned, this week's trend, and what's still
+// owed out to stores and riders (pending payouts ledger, same source as
+// Overview's PendingPayoutsCard).
 
-import { ArrowDownToLine, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import Link from 'next/link';
+import { TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import clsx from 'clsx';
-import { formatCurrency } from '@/lib/format';
-import type { BalanceSummary } from '@/components/dashboard/BalanceSummaryCard';
+import { formatCurrency, formatRupees } from '@/lib/format';
 
 export function RevenueBalanceCard({
   totalRevenue,
@@ -16,7 +13,7 @@ export function RevenueBalanceCard({
   totalPlatformFee,
   thisWeek,
   weekOverWeekPct,
-  wallet,
+  pendingPayouts,
   commissionRate,
 }: {
   totalRevenue: number;
@@ -29,7 +26,8 @@ export function RevenueBalanceCard({
   totalPlatformFee: number;
   thisWeek: number;
   weekOverWeekPct: number;
-  wallet: BalanceSummary | null;
+  // Sum of pending store + rider payouts (null while loading).
+  pendingPayouts: number | null;
   // Real, admin-editable rate (Settings -> Platform fees) — shown right
   // next to the number it produces so "how much did we earn" and "why"
   // read together, not as two disconnected screens.
@@ -61,16 +59,9 @@ export function RevenueBalanceCard({
           </div>
         </div>
 
-        <button
-          type="button"
-          className="flex shrink-0 items-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-medium text-white hover:opacity-90"
-        >
-          <ArrowDownToLine size={16} />
-          Withdraw
-        </button>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div className="rounded-2xl bg-[#F9FAFB] px-3.5 py-3">
           <p className="text-sm text-muted">This week vs. last</p>
           <div className="flex items-baseline gap-1.5">
@@ -84,15 +75,13 @@ export function RevenueBalanceCard({
         </div>
 
         <div className="rounded-2xl bg-[#F9FAFB] px-3.5 py-3">
-          <p className="text-sm text-muted">Available to withdraw</p>
-          <p className="text-base font-medium tabular-nums text-ink">
-            {wallet?.configured && wallet.availableToWithdraw !== null ? formatCurrency(wallet.availableToWithdraw) : '—'}
+          <p className="text-sm text-muted">
+            Pending payouts ·{' '}
+            <Link href="/payouts" className="font-medium text-ink-soft underline-offset-2 hover:underline">
+              pay now
+            </Link>
           </p>
-        </div>
-
-        <div className="rounded-2xl bg-[#F9FAFB] px-3.5 py-3">
-          <p className="text-sm text-muted">Pending settlement</p>
-          <p className="text-base font-medium tabular-nums text-ink">{formatCurrency(wallet?.pendingSettlement ?? 0)}</p>
+          <p className="text-base font-medium tabular-nums text-ink">{pendingPayouts === null ? '—' : formatRupees(pendingPayouts)}</p>
         </div>
       </div>
     </div>

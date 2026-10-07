@@ -5,15 +5,17 @@
 // rationale as sibling routes (orders has no admin-usable RLS read policy).
 //
 // Deliberately separate from /api/refunds: that route lists orders whose
-// Razorpay refund_status is already non-'none' and its 'failed' means "the
-// Razorpay refund failed" — a different meaning from a failed delivery. Once a
-// refund IS issued here, the order's refund_status moves off 'none' and it also
-// starts showing in the Refunds tab (where a failed Razorpay refund gets its
-// Retry) — so no retry logic is duplicated here.
+// refund_status is already non-'none' and its 'failed' means "the provider
+// refund failed" — a different meaning from a failed delivery. Once a refund
+// IS issued here, the order's refund_status moves off 'none' and it also
+// starts showing in the Refunds tab (where a failed refund gets its Retry and
+// a 'manual_required' one gets "Mark refunded manually") — so no retry logic
+// is duplicated here.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdminSession } from '@/lib/supabase/server';
 import { deliveryFailureReasonLabel } from '@/lib/orders/deliveryFailureReasons';
+import type { RefundStatus } from '@/lib/types';
 
 export interface FailedDeliveryOrder {
   id: string;
@@ -28,7 +30,7 @@ export interface FailedDeliveryOrder {
   // is when the order was placed, the only timestamp available.
   placedAt: string;
   // 'none' => still refundable; anything else => a refund was already issued.
-  refundStatus: 'none' | 'processing' | 'completed' | 'failed';
+  refundStatus: RefundStatus;
   refundedAt: string | null;
 }
 

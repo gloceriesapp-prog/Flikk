@@ -50,10 +50,11 @@ import { COMPLETED_ORDER_PREVIEW_ID, createCompletedOrderPreview } from './previ
 import { usePurchaseClock } from './usePurchaseClock';
 import { getPurchaseArrivalDeadline } from './orderArrival';
 import type { AppStackParamList } from '../../navigation/types';
+import { storageUrl } from '../../utils/storageUrl';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Purchase'>;
 
-const FEATURE_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/order-not-found.png';
+const FEATURE_IMAGE_URI = storageUrl('Images/order-not-found.png');
 const ORDER_STATUS_REFRESH_MS = 8_000;
 
 function isLive(status: string): boolean {

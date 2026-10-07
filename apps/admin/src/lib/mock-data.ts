@@ -27,14 +27,6 @@ export const PLACEHOLDER_APP_DOWNLOADS: AppDownloadStats = {
 // default until a real one is defined.
 export const ATTENTION_THRESHOLD_MINUTES = 20;
 
-// No payment-gateway payout automation exists yet (Razorpay payout API is
-// a later integration) — every settlement is founder-triggered today.
-// SETTLEMENT_CADENCE_LABEL is just the expected rhythm, not a cron; the
-// Transactions tab's "Release" button is the real mechanism until
-// automation ships.
-export const SETTLEMENT_CADENCE_LABEL = 'Weekly · every Monday';
-export const AUTO_RELEASE_ENABLED = false;
-
 // Admin-defined preset list for Product.freshnessTag — a store owner
 // picks one of these, they don't type free text, so the customer app's
 // ProductCard ribbon (apps/customer/src/screens/home/products/ProductCard.tsx)

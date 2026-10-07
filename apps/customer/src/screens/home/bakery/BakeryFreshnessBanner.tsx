@@ -10,13 +10,16 @@
 // same "each tab gets its own identity" idea those already established.
 
 import { Text, View } from 'react-native';
+import { useCopy } from '../../../api/appConfig';
 
 export function BakeryFreshnessBanner() {
+  const title = useCopy('home.bakery.banner.title');
+  const body = useCopy('home.bakery.banner.body');
   return (
     <View className="mx-5 mt-4 gap-1.5 rounded-3xl px-5 py-5" style={{ backgroundColor: '#7A4A1E' }}>
-      <Text className="text-[19px] font-extrabold leading-6 text-white">Baked fresh, every morning.</Text>
+      <Text className="text-[19px] font-extrabold leading-6 text-white">{title}</Text>
       <Text className="text-[13.5px] leading-5 text-white/75">
-        Bread, buns, and pastries straight from your local bakery — not a warehouse batch from yesterday.
+        {body}
       </Text>
     </View>
   );

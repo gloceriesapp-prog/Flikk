@@ -7,12 +7,12 @@
     "@hugeicons/react-native": "^1.0.15",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.1.0",
-    "@react-navigation/bottom-tabs": "^7.18.16",
     "@react-navigation/native": "^7.3.16",
     "@react-navigation/native-stack": "^7.18.8",
     "@sentry/react-native": "^8.29.0",
     "@shopify/flash-list": "2.0.2",
     "@tanstack/react-query": "^5.101.4",
+    "cashfree-pg-api-contract": "^2.1.1",
     "expo": "~57.0.13",
     "expo-blur": "~57.0.2",
     "expo-constants": "~57.0.17",
@@ -31,16 +31,14 @@
     "expo-splash-screen": "~57.0.7",
     "expo-status-bar": "~57.0.1",
     "expo-store-review": "~57.0.2",
-    "expo-video": "~57.0.4",
     "jsbarcode": "^3.12.3",
     "nativewind": "^4.2.6",
     "react": "19.2.3",
-    "react-hook-form": "^7.85.0",
     "react-native": "0.86.2",
+    "react-native-cashfree-pg-sdk": "^2.4.0",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-keyboard-controller": "1.21.9",
     "react-native-maps": "1.27.2",
-    "react-native-razorpay": "^3.0.0",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
@@ -50,12 +48,18 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@react-native/jest-preset": "0.86.2",
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "~57.0.0",
     "eas-cli": "^23.2.0",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.1",
+    "jest": "~29.7.0",
+    "jest-expo": "57.0.4",
     "patch-package": "^8.0.1",
+    "test-renderer": "^1.3.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -68,7 +72,28 @@
     "typecheck": "tsc --noEmit",
     "start:dev-client": "expo start --dev-client --lan",
     "verify:release": "node scripts/verify-release.cjs",
-    "eas-build-post-install": "node scripts/eas-build-post-install.cjs"
+    "eas-build-post-install": "node scripts/eas-build-post-install.cjs",
+    "test": "jest"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "setupFiles": [
+      "./node_modules/react-native-gesture-handler/jestSetup.js",
+      "./jest.setup.js"
+    ],
+    "testMatch": [
+      "<rootDir>/__tests__/**/*.test.[jt]s?(x)"
+    ],
+    "moduleDirectories": [
+      "<rootDir>/node_modules",
+      "node_modules"
+    ],
+    "moduleNameMapper": {
+      "\\.css$": "<rootDir>/__tests__/styleStub.js"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|jsbarcode))"
+    ]
+  }
 }

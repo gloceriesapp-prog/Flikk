@@ -18,7 +18,8 @@ interface Props {
   onChangeBuilding: (value: string) => void;
   onChangeStreet: (value: string) => void;
   onChangeLandmark: (value: string) => void;
-  onChangePin: () => void;
+  // Omitted = pin is fixed (editing a saved address); the row is display-only.
+  onChangePin?: () => void;
 }
 
 export function LocationDetailsCard({
@@ -59,16 +60,18 @@ export function LocationDetailsCard({
         />
       </View>
 
-      <Pressable onPress={onChangePin} className="h-[52px] flex-row items-center gap-3 rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
+      <Pressable onPress={onChangePin} disabled={!onChangePin} className="h-[52px] flex-row items-center gap-3 rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
         <Text className="flex-1 text-[13px] text-ink font-medium" numberOfLines={2}>
           {pinnedArea}
         </Text>
-        <View className="flex-row items-center gap-0.5">
-          <Text className="text-[13px] font-semibold" style={{ color: '#155DFC' }}>
-            Change
-          </Text>
-          <AppIcon icon={ArrowRight01Icon} size={13} color="#155DFC" />
-        </View>
+        {onChangePin ? (
+          <View className="flex-row items-center gap-0.5">
+            <Text className="text-[13px] font-semibold" style={{ color: '#155DFC' }}>
+              Change
+            </Text>
+            <AppIcon icon={ArrowRight01Icon} size={13} color="#155DFC" />
+          </View>
+        ) : null}
       </Pressable>
 
       <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>

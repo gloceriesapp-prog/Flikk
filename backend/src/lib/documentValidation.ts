@@ -1,8 +1,4 @@
-// Real format validation only, not government-database or Razorpay
-// verification — Razorpay has no standalone "verify this PAN/FSSAI is
-// real" API outside their full Route sub-merchant onboarding product, a
-// different payout architecture than this app's own RazorpayX Fund
-// Account model (payments/verifyPayoutAccount.ts). Shared by
+// Real format validation only, not government-database verification. Shared by
 // storeOnboarding.ts (Step 2 of onboarding) and partner.ts (Store
 // settings PATCH) so both real entry points for these fields enforce the
 // exact same rule — same reasoning as apps/partner's own client-side copy

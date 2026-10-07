@@ -15,10 +15,19 @@ import { useHomeContent } from '../content/useHomeContent';
 import { mergeManagedTabs } from '../content/mergeTabs';
 import type { HomeContentKey } from '../content/contracts';
 
+// Admin links a tile to a real category/subcategory (home_tab_tiles.link_*,
+// migration 097). categoryId is the parent category CategoryDetail opens.
+export interface HomeTabTileLink {
+  type: 'category' | 'subcategory';
+  id: string;
+  categoryId: string;
+}
+
 export interface RemoteHomeTabTile {
   id: string;
   name: string;
   imageUrl?: string;
+  link?: HomeTabTileLink;
 }
 
 export interface RemoteHomeTabBanner {
@@ -39,7 +48,7 @@ interface ApiHomeTab {
   id: string;
   name: string;
   image_url: string | null;
-  tiles: { id: string; name: string; image_url: string | null }[];
+  tiles: { id: string; name: string; image_url: string | null; link?: { type: 'category' | 'subcategory'; id: string; category_id: string } | null }[];
   banners: { id: string; image_url: string }[];
 }
 
@@ -55,7 +64,8 @@ export function useHomeTabs() {
         (row): RemoteHomeTab => ({
           id: row.id,
           name: row.name,
-          tiles: row.tiles.map((t) => ({ id: t.id, name: t.name, imageUrl: t.image_url ?? undefined })),
+          tiles: row.tiles.map((t) => ({ id: t.id, name: t.name, imageUrl: t.image_url ?? undefined,
+            link: t.link ? { type: t.link.type, id: t.link.id, categoryId: t.link.category_id } : undefined })),
           banners: row.banners.map((b) => ({ id: b.id, imageUrl: b.image_url })),
         }),
       );

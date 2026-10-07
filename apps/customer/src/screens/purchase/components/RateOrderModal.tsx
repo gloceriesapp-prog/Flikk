@@ -56,7 +56,7 @@ export function RateOrderModal({ visible, orderId, storeName, onClose, onSubmitt
 
           <View className="flex-row justify-center gap-2 py-2">
             {[1, 2, 3, 4, 5].map((value) => (
-              <Pressable key={value} onPress={() => setRating(value)} hitSlop={8}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Rate ${value} out of 5`} key={value} onPress={() => setRating(value)} hitSlop={8}>
                 <AppIcon
                   icon={StarIcon}
                   size={32}

@@ -1,3 +1,4 @@
+import type { ApiAddress } from '../api/addresses';
 // Central param-list definitions — one place to see every screen and what it needs.
 
 import type { CartItem } from '../store/useCartStore';
@@ -37,7 +38,8 @@ export type AppStackParamList = {
   // never directly. AddressFormScreen.tsx collects the rest (recipient
   // name/phone, landmark, label, delivery instructions) and POSTs the real
   // address (backend/src/routes/addresses.ts).
-  AddressForm: { latitude: number; longitude: number; addressLabel: string; city: string };
+  // `address` set = edit that saved address (AddressList's Edit) instead of creating one.
+  AddressForm: { latitude: number; longitude: number; addressLabel: string; city: string; address?: ApiAddress };
   // The real address book — list of saved addresses (GET /addresses) with
   // a tap-to-select and a "+ Add new address" entry point into the flow
   // above. Reached from Checkout's own "Change" affordance.
@@ -63,12 +65,14 @@ export type AppStackParamList = {
   RegionalCategory: { categoryId: string };
   CoconutOilCollection: undefined;
   StoreDetail: { storeId: string; storeName: string };
-  Cart: { selectedPaymentMethod?: PaymentMethod } | undefined;
-  PaymentMethod: { selectedMethod: PaymentMethod | null; source?: 'profile' };
+  // upiVpa: the UPI ID verified on PaymentMethod (only with 'upi_id'). Kept
+  // in navigation state only — never persisted remotely.
+  Cart: { selectedPaymentMethod?: PaymentMethod; upiVpa?: string } | undefined;
+  PaymentMethod: { selectedMethod: PaymentMethod | null; source?: 'profile'; upiVpa?: string };
   // Real failure/timeout destination for the UPI Intent flow (below) — a
   // Standard Checkout (card/online) failure is still handled inline on
-  // Checkout itself (Razorpay's own SDK already shows the failure inside
-  // its bundled UI before ever returning control here), so only the async
+  // Checkout itself (Cashfree's own checkout already shows the failure inside
+  // its hosted UI before ever returning control here), so only the async
   // UPI-app path — which has no such built-in UI — routes here.
   CheckoutAttemptRecovery: undefined;
   PaymentRecovery: { target: import('../api/payments').PaymentTarget };
@@ -107,6 +111,9 @@ export type AppStackParamList = {
     items: CartItem[];
     deliveryAddress: string;
     isTrip?: boolean;
+    // UPI collect: the customer must approve a request inside their UPI app
+    // before this time (ISO). Drives the countdown and the poll deadline.
+    collect?: { vpa: string; expiresAt: string | null };
   };
   // orderId is the real backend orders.id (UUID, from POST /orders) —
   // used only for navigation (TrackOrder's own real lookup), never shown.
@@ -153,23 +160,9 @@ export type AppStackParamList = {
   MyRefunds: undefined;
   RefundDetail: {kind:'order'|'trip';refundId:string};
   Wishlist: undefined;
-  ShoppingList: undefined;
   // Invite/referral tracking only — no credit/discount payout (backend's
   // routes/referrals.ts own note on why: that would be a loyalty/rewards
   // mechanic, explicitly out of scope until MVP validates).
   Referral: undefined;
-  // Generic "not built yet" destination — see ComingSoonScreen.tsx's own
-  // note. Both params optional so `navigation.navigate('ComingSoon')` with
-  // no args still works, falling back to that screen's own generic copy.
   AccountPrivacy: undefined;
-  ComingSoon: { title?: string; subtitle?: string } | undefined;
-  // TEMP root for design iteration on UnavailableZoneScreen.tsx — see
-  // AppNavigator.tsx's own note. Same screen HomeScreen.tsx renders inline
-  // when isServiceable is false; registered as a real route only so it can
-  // be the stack's initialRouteName without faking a real unserviceable
-  // location.
-  UnavailableZone: undefined;
-  // TEMP root for design iteration on ErrorScreen.tsx — see
-  // AppNavigator.tsx's own note.
-  ErrorPage: undefined;
 };

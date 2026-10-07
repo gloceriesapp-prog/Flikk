@@ -5,6 +5,7 @@ import { ProductCard } from '../../products/ProductCard';
 import type { Product } from '../../products/types';
 import { FESTIVAL_CATEGORIES } from './data';
 import { FestivalBanner } from '../banner/FestivalBanner';
+import { storageUrl } from '../../../../utils/storageUrl';
 
 // Smaller than every other Home row on purpose — the festival rail is a
 // lighter accent under the greeting, not a primary browse row.
@@ -22,9 +23,9 @@ const FESTIVAL_BOX_COLORS = ['#E8CFA9', '#D7DEC8', '#E6C9CC'] as const;
 // The color stays as the base fill (shows through while the image loads and
 // behind any transparent art); cycles if the backend ever sends >3 boxes.
 const FESTIVAL_BOX_IMAGES = [
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/puja.png',
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/puja2.png',
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/puja3.png',
+  storageUrl('Images/puja.png'),
+  storageUrl('Images/puja2.png'),
+  storageUrl('Images/puja3.png'),
 ] as const;
 
 interface Props {

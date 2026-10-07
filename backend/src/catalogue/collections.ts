@@ -1,8 +1,9 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { validateContent, type ContentSelection, type HomeContentKey } from '../../../packages/home-content/index.js';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
+import { browsePage, hydrateBrowse } from '../customer-experience/browse.js';
 
 export const collectionRouter = Router();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -70,19 +71,42 @@ collectionRouter.get('/:id/collection-products', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// Full store catalogue: keyset pagination, never an offset or an unbounded read.
+// Full store catalogue: filters and price sort run in SQL over the whole
+// catalogue, keyset-paged on (score,id) — never an offset or loaded-page filter.
+const STORE_SORTS = ['relevance', 'price_low', 'price_high'] as const;
+const PRICE_BANDS = ['all', 'under_100', '100_300', 'above_300'] as const;
+export function storePageFilters(query: Request['query']) {
+  const category = query.category === undefined || query.category === '' ? null : query.category;
+  const sort = query.sort ?? 'relevance'; const price = query.price ?? 'all';
+  if ((category !== null && (typeof category !== 'string' || category.length > 100))
+    || !STORE_SORTS.includes(sort as typeof STORE_SORTS[number]) || !PRICE_BANDS.includes(price as typeof PRICE_BANDS[number]))
+    throw new AppError(400, 'INVALID_FILTER', 'Invalid product filter.');
+  return { category: category as string | null, veg: query.veg === '1', deals: query.deals === '1', price: price as string, sort: sort as string };
+}
 collectionRouter.get('/:id/products-page', async (req, res, next) => {
   try {
     if (!UUID.test(req.params.id!)) throw new AppError(400, 'INVALID_STORE', 'Invalid store.');
-    const limit = pageSize(req.query.limit);
-    const after = req.query.after === undefined ? null : String(req.query.after);
-    if (after && !UUID.test(after)) throw new AppError(400, 'INVALID_CURSOR', 'Invalid page cursor.');
-    let query = supabase.from('products').select(PRODUCT_WITH_VARIANTS_SELECT)
-      .eq('store_id', req.params.id).eq('approval_status', 'approved');
-    if (after) query = query.gt('id', after);
-    const { data, error } = await query.order('id').limit(limit + 1);
+    const filters = storePageFilters(req.query);
+    const page = browsePage(req.query, ['store-page', req.params.id, filters]);
+    const { data, error } = await supabase.rpc('store_product_page_ids', {
+      p_store: req.params.id, p_category: filters.category, p_veg: filters.veg, p_deals: filters.deals,
+      p_price_band: filters.price, p_sort: filters.sort, p_after_score: page.after?.score ?? null,
+      p_after_id: page.after?.id ?? null, p_limit: page.limit + 1,
+    });
+    if (error) throw error; // No fallback to an unfiltered catalogue read.
+    const rows = (data ?? []) as { id: string; score: number }[]; const selected = rows.slice(0, page.limit);
+    res.json({ products: await hydrateBrowse(selected, [req.params.id!], PRODUCT_WITH_VARIANTS_SELECT),
+      nextCursor: rows.length > page.limit ? page.cursor(selected.at(-1)!) : null });
+  } catch (error) { next(error); }
+});
+
+// Sidebar categories for a store: one bounded aggregate (<=100 rows).
+collectionRouter.get('/:id/category-facets', async (req, res, next) => {
+  try {
+    if (!UUID.test(req.params.id!)) throw new AppError(400, 'INVALID_STORE', 'Invalid store.');
+    const { data, error } = await supabase.rpc('store_category_facets', { p_store: req.params.id });
     if (error) throw error;
-    const rows = data ?? []; const page = rows.slice(0, limit);
-    res.json({ products: page, nextCursor: rows.length > limit ? page.at(-1)?.id ?? null : null });
+    res.json(((data ?? []) as { category: string; product_count: number; image_url: string | null }[])
+      .map(row => ({ category: row.category, productCount: Number(row.product_count), imageUrl: row.image_url })));
   } catch (error) { next(error); }
 });

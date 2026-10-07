@@ -36,7 +36,7 @@ export interface CreateOrderInput {
   // it calls this (a payment method must be selected before Pay is
   // reachable at all). Lets backend/src/jobs/expireUnpaidOrders.ts tell a
   // real Cash-on-Delivery order apart from an abandoned online-payment
-  // attempt — both otherwise look identical (razorpay_payment_id null
+  // attempt — both otherwise look identical (provider_payment_id null
   // either way).
   payment_method?: 'cod' | 'online';
 }
@@ -87,7 +87,9 @@ export interface ApiOrder {
   // — 0/null on the overwhelmingly common no-code order.
   discount_amount: number;
   promo_code_id: string | null;
-  razorpay_payment_id: string | null;
+  provider_payment_id: string | null;
+  // 'razorpay' only on legacy rows paid before the Cashfree switch.
+  payment_provider?: 'cashfree' | 'razorpay';
   // Real orders.payment_method (migration 034) — 'cod' for every order
   // created before this column existed (its own default).
   payment_method: 'cod' | 'online';
@@ -96,11 +98,13 @@ export interface ApiOrder {
   // canceller (customer/store owner/rider) actually picked/typed;
   // refund_status is always meaningful, never a separate null-check
   // ('none' covers both "not cancelled" and "cancelled COD order, nothing
-  // was ever charged" — see that migration's own note). razorpay_refund_id/
+  // was ever charged" — see that migration's own note). provider_refund_id/
   // refunded_at are only set once a real online-payment refund exists.
   cancel_reason: string | null;
-  refund_status: 'none' | 'processing' | 'completed' | 'failed';
-  razorpay_refund_id: string | null;
+  // manual_required: the provider refund can't be automated (e.g. legacy
+  // pre-Cashfree payments) and our team is processing it by hand.
+  refund_status: 'none' | 'processing' | 'completed' | 'failed' | 'manual_required';
+  provider_refund_id: string | null;
   refunded_at: string | null;
   placed_at: string;
   packed_at: string | null;

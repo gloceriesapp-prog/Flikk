@@ -22,9 +22,13 @@ const googleServicesFile = resolveGoogleServicesFile(__dirname, 'com.gloceries.c
 module.exports = {
   expo: {
     name: 'Gloceries',
+    // Slug stays 'customer': it is bound to extra.eas.projectId below —
+    // renaming it would detach the EAS project (builds/updates/credentials).
     slug: 'customer',
+    scheme: 'gloceries',
     version: '1.0.0',
     orientation: 'portrait',
+    // Brand placeholders (lime + Gilroy "g", generated) — replace with designer assets before store listing.
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     ios: {
@@ -35,7 +39,10 @@ module.exports = {
         // Keep native-stack statusBar options unset to avoid competing owners.
         UIViewControllerBasedStatusBarAppearance: false,
         NSLocationWhenInUseUsageDescription: 'Gloceries uses your location to find stores near you and set your delivery address.',
-        LSApplicationQueriesSchemes: ['tez', 'phonepe', 'paytmmp', 'bhim', 'credpay', 'whatsapp'],
+        // Our UPI app list (payments/upiApps.ts) + Cashfree SDK's documented
+        // UPI schemes, so both our detection and Cashfree checkout can see them.
+        LSApplicationQueriesSchemes: ['upi', 'tez', 'phonepe', 'paytmmp', 'bhim', 'credpay', 'amazonpay', 'whatsapp',
+          'navipay', 'mobikwik', 'myairtel', 'popclubapp', 'super', 'kiwi', 'simplypayupi'],
         ITSAppUsesNonExemptEncryption: false,
       },
       // Undefined (key omitted from .env.local) is a valid, supported state
@@ -48,7 +55,7 @@ module.exports = {
       package: 'com.gloceries.customer',
       googleServicesFile,
       adaptiveIcon: {
-        backgroundColor: '#E6F4FE',
+        backgroundColor: '#A8D93A',
         foregroundImage: './assets/android-icon-foreground.png',
         backgroundImage: './assets/android-icon-background.png',
         monochromeImage: './assets/android-icon-monochrome.png',
@@ -90,10 +97,9 @@ module.exports = {
         },
       ],
       'expo-font',
-      'expo-splash-screen',
+      ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#A8D93A' }],
       'expo-image',
       'expo-notifications',
-      'expo-video',
       './plugins/withUpiAppQueries',
       './plugins/withUpiAppsModule',
     ],

@@ -294,12 +294,12 @@ export function OrdersTable({
 
                 <div className="flex min-w-0 flex-col justify-center border-r border-hairline px-4 py-3.5">
                   <p className="text-[15px] font-semibold whitespace-nowrap text-neutral-900">{formatInr(order.total)}</p>
-                  {/* Payment method, not capture status. Schema is Razorpay/UPI-only
-                      (no COD column exists — see razorpay_payment_id note), so a
-                      captured order is "Online" and an uncaptured one is "COD"
+                  {/* Payment method, not capture status. Schema is online-payment-only
+                      (no COD column exists — see provider_payment_id note), so a
+                      captured order is "Paid online" and an uncaptured one is "COD"
                       (cash on delivery, settled by the rider at the door). */}
-                  <p className={`text-xs font-medium ${order.razorpay_payment_id ? 'text-emerald-600' : 'text-neutral-500'}`}>
-                    {order.razorpay_payment_id ? 'Online' : 'COD'}
+                  <p className={`text-xs font-medium ${order.provider_payment_id ? 'text-emerald-600' : 'text-neutral-500'}`}>
+                    {order.provider_payment_id ? 'Paid online' : 'COD'}
                   </p>
                 </div>
 

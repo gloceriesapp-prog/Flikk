@@ -1,7 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 import { AppImage } from '../../../../components/AppImage';
+import { storageUrl } from '../../../../utils/storageUrl';
 const artwork = {
-  uri: 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/homebg-1.png',
+  uri: storageUrl('Images/homebg-1.png'),
   width: 1672,
   height: 941,
 };

@@ -35,7 +35,7 @@ export function StoreDetailHeader({ title, onBack, onSearch }: Props) {
   return (
     <View className="border-b border-black/[0.05] bg-white px-5 pb-4 pt-2">
       <View className="flex-row items-center gap-3">
-        <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center">
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
 
@@ -55,7 +55,7 @@ export function StoreDetailHeader({ title, onBack, onSearch }: Props) {
           </Pressable>
         </View>
 
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Search this store"
           onPress={onSearch}
           hitSlop={12}
           className="h-11 w-11 items-center justify-center rounded-full"

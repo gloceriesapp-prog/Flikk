@@ -3,6 +3,7 @@ import type { TripCancellation, TripRefund } from '../../../api/trips';
 
 const REFUND_LABELS: Record<TripRefund['status'], string> = {
   queued: 'Queued', processing: 'Processing', completed: 'Refunded', failed: 'Needs support',
+  manual_required: 'Refund being processed by our team',
 };
 
 interface Props {
@@ -20,7 +21,7 @@ export function TripCancellationResult({ result, refund }: Props) {
   return (
     <View className="w-full rounded-3xl bg-white p-5" accessibilityLiveRegion="polite">
       <Text className="text-[16px] font-bold text-black">
-        {result?.outcome === 'blocked' ? 'Cancellation not completed' : 'Cancellation & refund'}
+        {result?.outcome === 'blocked' ? 'Cancellation not completed' : result ? 'Cancellation & refund' : 'Refund'}
       </Text>
       {currentRefund ? (
         <Text className="mt-2 text-[12px] text-gray-500">
@@ -37,7 +38,7 @@ export function TripCancellationResult({ result, refund }: Props) {
           </Text>
           {shop.outcome === 'cancelled' && !currentRefund && shop.refund_status && shop.refund_status !== 'none' ? (
             <Text className="mt-1 text-[12px] text-gray-600">
-              Shop refund: {shop.refund_status === 'failed' ? 'Needs support' : shop.refund_status}
+              Shop refund: {shop.refund_status === 'failed' ? 'Needs support' : shop.refund_status === 'manual_required' ? 'Refund being processed by our team' : shop.refund_status}
             </Text>
           ) : null}
         </View>

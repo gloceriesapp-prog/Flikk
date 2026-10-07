@@ -27,7 +27,7 @@ interface Props {
 export function SearchHeader({ value, onChangeText, onBack }: Props) {
   return (
     <View className="flex-row items-center gap-3 border-b border-mist px-5 pb-3 pt-safe">
-      <Pressable onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center">
+      <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center">
         <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
       </Pressable>
       <TextInput
@@ -38,7 +38,7 @@ export function SearchHeader({ value, onChangeText, onBack }: Props) {
         placeholderTextColor="#9AA5A3"
         className="flex-1 py-2 text-lg text-ink"
       />
-      <Pressable hitSlop={10} className="h-9 w-9 items-center justify-center">
+      <Pressable accessibilityRole="button" accessibilityLabel="Search by voice" hitSlop={10} className="h-9 w-9 items-center justify-center">
         <AppIcon icon={Mic01Icon} size={20} color={colors.ink} strokeWidth={1.8} />
       </Pressable>
     </View>

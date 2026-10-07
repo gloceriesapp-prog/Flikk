@@ -17,31 +17,30 @@ export const env = {
   requireSessionContext: process.env.AUTH_REQUIRE_SESSION_CONTEXT === 'true' || process.env.NODE_ENV === 'production',
   supabaseUrl: required('SUPABASE_URL'),
   supabaseServiceRoleKey: required('SUPABASE_SERVICE_ROLE_KEY'),
-  razorpayKeyId: required('RAZORPAY_KEY_ID'),
-  razorpayKeySecret: required('RAZORPAY_KEY_SECRET'),
-  razorpayWebhookSecret: required('RAZORPAY_WEBHOOK_SECRET'),
+  // Optional, not required(): the backend boots COD-only until Cashfree is
+  // live. App id + secret together turn online payment on; without them
+  // payments/cashfreeClient.ts's requirePaymentsConfigured answers 503
+  // PAYMENTS_NOT_CONFIGURED. CASHFREE_CLIENT_ID/CLIENT_SECRET are accepted
+  // aliases (Cashfree's dashboard calls the same values "client id/secret").
+  cashfreeAppId: process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || undefined,
+  cashfreeSecretKey: process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || undefined,
+  cashfreeEnv: (process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox') as 'production' | 'sandbox',
+  // Cashfree signs PG webhooks with the PG secret key; override only if
+  // Cashfree issues a separate one.
+  cashfreeWebhookSecret: process.env.CASHFREE_WEBHOOK_SECRET || process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || undefined,
+  // Secure ID (verification suite) credentials for UPI ID name lookup.
+  // Absent: POST /payments/upi/validate is format-only (name: null).
+  cashfreeVerificationClientId: process.env.CASHFREE_VERIFICATION_CLIENT_ID || undefined,
+  cashfreeVerificationSecret: process.env.CASHFREE_VERIFICATION_SECRET || undefined,
+  // Public base URL of this API, used as Cashfree order_meta.notify_url.
+  // Absent: rely on the webhook endpoint configured in the Cashfree dashboard.
+  publicApiUrl: process.env.PUBLIC_API_URL?.replace(/\/+$/, '') || undefined,
   mapplsAccessToken: required('MAPPLS_ACCESS_TOKEN'),
   // Optional, not required() — routes/location.ts's /reverse-geocode
   // degrades to { addressLabel: null } (client falls back to the free
   // on-device geocoder) rather than the whole backend refusing to boot
   // over one enhancement-only key.
   googleGeocodingApiKey: process.env.GOOGLE_GEOCODING_API_KEY,
-  // Gloceries's OWN RazorpayX current account number — the account a payout
-  // UPI verification's penny-drop debits its ~₹1 from (routes/partner.ts's
-  // POST /verify-upi). Optional, not required(): needs a real RazorpayX
-  // current account, which needs the same account activation this
-  // project's Razorpay ticket is already waiting on — the backend must
-  // still boot and every other route must still work while that's
-  // pending. /verify-upi itself throws a clear error if this is unset,
-  // rather than the whole server refusing to start over one blocked
-  // feature.
-  razorpayxAccountNumber: process.env.RAZORPAYX_ACCOUNT_NUMBER,
-  // Cashfree Payment Gateway (migration from Razorpay in progress). Optional
-  // so the backend still boots without it; the Cashfree webhook answers 503
-  // until the secret is set. The PG client secret also signs PG webhooks.
-  cashfreeClientId: process.env.CASHFREE_CLIENT_ID,
-  cashfreeClientSecret: process.env.CASHFREE_CLIENT_SECRET,
-  cashfreeEnv: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
   // apps/partner-dashboard (and any future web surface) calls this backend
   // directly from browser JS, unlike admin which only talks to Supabase/its
   // own Next API routes — the only client that actually needs CORS.
@@ -51,3 +50,5 @@ export const env = {
     .map((origin) => origin.trim())
     .filter(Boolean),
 };
+
+export const paymentsConfigured = Boolean(env.cashfreeAppId && env.cashfreeSecretKey && env.cashfreeWebhookSecret);

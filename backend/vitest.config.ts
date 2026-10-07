@@ -10,9 +10,10 @@ export default defineConfig({
     env: {
       SUPABASE_URL: 'https://test.supabase.co',
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
-      RAZORPAY_KEY_ID: 'test-key-id',
-      RAZORPAY_KEY_SECRET: 'test-key-secret',
-      RAZORPAY_WEBHOOK_SECRET: 'test-webhook-secret',
+      CASHFREE_APP_ID: 'test-app-id',
+      CASHFREE_SECRET_KEY: 'test-secret-key',
+      CASHFREE_WEBHOOK_SECRET: 'test-webhook-secret',
+      CASHFREE_ENV: 'sandbox',
       MAPPLS_ACCESS_TOKEN: 'test-mappls-token',
     },
   },

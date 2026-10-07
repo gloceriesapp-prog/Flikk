@@ -1,8 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
+import { storageUrl } from '../../../utils/storageUrl';
 
 const WELCOME_ARTWORK = {
-  uri: 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/Your%20District,%20Your%20Shop%20tras.png',
+  uri: storageUrl('Images/Your%20District,%20Your%20Shop%20tras.png'),
 };
 
 export function HomeWelcomeBanner({

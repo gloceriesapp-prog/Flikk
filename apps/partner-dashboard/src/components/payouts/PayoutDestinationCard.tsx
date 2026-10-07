@@ -11,13 +11,9 @@ interface Props {
   linkToSettings?: boolean;
 }
 
-// Read-only summary of where this store's money actually goes — the real
-// payout_method/payout_upi_*/payout_bank_* fields on Store, verified once
-// via POST /partner/verify-payout (backend/src/routes/partner.ts) and
-// never editable from here. Deliberately NOT demo-faked like the payout
-// history table: a bank account or UPI id is real financial destination
-// data, never a safe thing to show a placeholder for — an unverified store
-// gets an honest "not set up yet" state instead.
+// Read-only summary of where this store's money goes (payout_* fields on
+// Store, written via PUT /partner/payout-account). Never demo-faked: an
+// unset store gets an honest "not set up yet" state instead.
 export function PayoutDestinationCard({ store, linkToSettings = true }: Props) {
   if (!store.payout_method) {
     return (
@@ -27,9 +23,9 @@ export function PayoutDestinationCard({ store, linkToSettings = true }: Props) {
             <TriangleAlert size={18} />
           </div>
           <div>
-            <p className="text-sm font-semibold text-neutral-900">No payout method verified</p>
+            <p className="text-sm font-semibold text-neutral-900">No payout method set</p>
             <p className="text-sm text-neutral-500">
-              {linkToSettings ? 'Add a UPI ID or bank account in Settings to receive payouts.' : 'Verify a UPI ID or bank account below to receive payouts.'}
+              {linkToSettings ? 'Add a UPI ID or bank account in Settings to receive payouts.' : 'Add a UPI ID below to receive payouts.'}
             </p>
           </div>
         </div>

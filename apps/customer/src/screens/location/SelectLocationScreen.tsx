@@ -171,7 +171,7 @@ export function SelectLocationScreen({ navigation }: Props) {
       <StatusBar style="dark" />
 
       <View className="flex-row items-center gap-3 px-5 py-3">
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back"
           onPress={() => navigation.goBack()}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full bg-white"

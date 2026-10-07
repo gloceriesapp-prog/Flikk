@@ -21,6 +21,8 @@ import { useWishlistStore } from '../../store/useWishlistStore';
 import { ProductCard } from '../home/products/ProductCard';
 import type { Product } from '../home/products/types';
 import type { AppStackParamList } from '../../navigation/types';
+import { useCopy } from '../../api/appConfig';
+import { productAvailability } from '../../utils/productAvailability';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Wishlist'>;
 
@@ -28,15 +30,25 @@ const CARD_WIDTH = 'w-full';
 const NUM_COLUMNS = 3;
 
 export function WishlistScreen({ navigation }: Props) {
-  const items = useWishlistStore((state) => state.items);
+  const saved = useWishlistStore((state) => state.items);
+  const title = useCopy('wishlist.title');
+  const emptyTitle = useCopy('wishlist.empty.title');
+  const emptySubtitle = useCopy('wishlist.empty.subtitle');
+  const unavailableNote = useCopy('wishlist.unavailable.note');
+  // Out-of-stock items and closed/deactivated shops stay listed (the customer
+  // saved them) but sort last; ProductCard itself shows the reason and
+  // disables add-to-cart via the same productAvailability check.
+  const available = saved.filter((p) => productAvailability(p).isAvailable);
+  const items = available.length === saved.length ? saved : [...available, ...saved.filter((p) => !productAvailability(p).isAvailable)];
+  const hasUnavailable = available.length < saved.length;
 
   return (
     <View className="flex-1 bg-white pt-safe">
       <View className="flex-row items-center px-2 pb-2 pt-2">
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
-        <Text className="flex-1 text-center text-xl font-bold text-ink">Wishlist</Text>
+        <Text className="flex-1 text-center text-xl font-bold text-ink">{title}</Text>
         <View className="h-11 w-11" />
       </View>
 
@@ -45,9 +57,9 @@ export function WishlistScreen({ navigation }: Props) {
           <View className="h-16 w-16 items-center justify-center rounded-full bg-[#F5F5F5]">
             <AppIcon icon={HeartIcon} size={26} color={colors.ink} strokeWidth={1.6} />
           </View>
-          <Text className="text-center text-base font-semibold text-ink">Nothing here yet</Text>
+          <Text className="text-center text-base font-semibold text-ink">{emptyTitle}</Text>
           <Text className="text-center text-sm text-ink/50">
-            Tap the heart on any product to save it here for later.
+            {emptySubtitle}
           </Text>
         </View>
       ) : (
@@ -55,6 +67,7 @@ export function WishlistScreen({ navigation }: Props) {
           data={items}
           numColumns={NUM_COLUMNS}
           keyExtractor={(product: Product) => product.id}
+          ListHeaderComponent={hasUnavailable ? <Text className="px-1 pb-3 text-[13px] text-ink/60">{unavailableNote}</Text> : null}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, paddingTop: 8 }}
           renderItem={({ item }: { item: Product }) => (
             <View style={{ flex: 1, paddingHorizontal: 5, paddingBottom: 20 }}>

@@ -29,7 +29,7 @@ const STAR_INDICES = [1, 2, 3, 4, 5];
 function Star({ filled, onPress, bounce }: { filled: boolean; onPress: () => void; bounce: ReturnType<typeof useSharedValue<number>> }) {
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: bounce.value }] }));
   return (
-    <Pressable onPress={onPress} hitSlop={6}>
+    <Pressable accessibilityRole="button" accessibilityLabel={filled ? "Selected star" : "Rate star"} onPress={onPress} hitSlop={6}>
       <Animated.View style={animatedStyle}>
         <AppIcon
           icon={StarIcon}

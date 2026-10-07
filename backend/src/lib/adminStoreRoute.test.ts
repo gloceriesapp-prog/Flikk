@@ -22,7 +22,7 @@ it('removes a photo without overwriting unrelated store details',async()=>{
  const response=await PATCH(request({photoUrl:null}),context);expect(response.status).toBe(200);expect(fixture.written).toEqual({photo_url:null});expect(await response.json()).toMatchObject({name:'Store'});
 });
 it('rejects forged provider writes and invalid merged coordinates before update',async()=>{
- expect((await PATCH(request({razorpay_fund_account_id:'fake'}),context)).status).toBe(400);
+ expect((await PATCH(request({payout_details_status:'verified'}),context)).status).toBe(400);
  expect((await PATCH(request({lat:null}),context)).status).toBe(400);expect(fixture.written).toBeNull();
 });
 it('returns a retryable failure instead of claiming an unsuccessful save succeeded',async()=>{

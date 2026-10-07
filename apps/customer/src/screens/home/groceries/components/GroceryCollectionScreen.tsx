@@ -43,14 +43,14 @@ export function GroceryCollectionScreen({ title, groups, previewProducts = [] }:
           {!hasLocation ? (
             <>
               <Text className="text-center text-sm text-ink/60">Choose your delivery address to browse {title.toLowerCase()}.</Text>
-              <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-12 justify-center rounded-2xl bg-[#155DFC] px-5"><Text className="font-semibold text-white">Choose location</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-12 justify-center rounded-2xl bg-coral px-5"><Text className="font-semibold text-ink">Choose location</Text></Pressable>
             </>
           ) : isLoading ? (
             <BrowseLoadingText message={BROWSE_LOADING_COPY.grocery} />
           ) : isError ? (
             <>
               <Text className="text-center text-sm text-ink/60">We couldn’t load {title.toLowerCase()}.</Text>
-              <Pressable accessibilityRole="button" onPress={retry} className="min-h-12 justify-center rounded-2xl bg-[#155DFC] px-5"><Text className="font-semibold text-white">Try again</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={retry} className="min-h-12 justify-center rounded-2xl bg-coral px-5"><Text className="font-semibold text-ink">Try again</Text></Pressable>
             </>
           ) : (
             <Text className="text-center text-sm text-ink/60">No {title.toLowerCase()} available from nearby shops right now.</Text>

@@ -4,18 +4,23 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { HOME_TAB_TILE_SELECT, mapRowToHomeTabTile, type HomeTabTileRow } from '@/lib/supabase/homeTabs';
-import { toHomeTabErrorMessage } from '@/lib/homeTabValidation';
+import { toHomeTabErrorMessage, toHomeTabTileLink } from '@/lib/homeTabValidation';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/home-tab-tiles/[id]'>) {
   const { id } = await ctx.params;
-  const body: { name?: string; imageUrl?: string | null } = await request.json();
+  const body: { name?: string; imageUrl?: string | null; linkType?: string | null; linkId?: string | null } = await request.json();
 
   try {
     if (!body.name || !body.name.trim()) throw new Error('Tile name is required.');
 
     const { data, error } = await supabaseAdmin
       .from('home_tab_tiles')
-      .update({ name: body.name.trim(), image_url: body.imageUrl?.trim() || null })
+      .update({
+        name: body.name.trim(),
+        image_url: body.imageUrl?.trim() || null,
+        // Link only changes when the caller sends it, so a photo-only edit keeps it.
+        ...('linkType' in body ? toHomeTabTileLink(body.linkType, body.linkId) : {}),
+      })
       .eq('id', id)
       .select(HOME_TAB_TILE_SELECT)
       .single();

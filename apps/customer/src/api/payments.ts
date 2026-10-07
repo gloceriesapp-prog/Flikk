@@ -1,9 +1,8 @@
-// Maps to POST /payments/create-order and POST /payments/verify. The
-// secret key never leaves the backend — the client only ever gets an
-// order id + the publishable key_id, and only ever sends back what
-// Razorpay Checkout itself returned on success, never a self-reported
-// "it worked."
+// Customer payment endpoints (backend/PAYMENTS.md, Cashfree). The client
+// holds no provider secret and never self-reports success: POST /verify makes
+// the server re-fetch the payment from Cashfree before settling anything.
 
+import { Platform } from 'react-native';
 import { apiRequest } from './client';
 import type { PaymentMethod } from '../payments/paymentMethod';
 
@@ -21,88 +20,70 @@ export async function rememberPaymentMethod(method: PaymentMethod, target: { ord
   }
 }
 
-export interface RazorpayOrder {
-  id: string;
-  amount: number;
-  currency: string;
-  key_id: string;
-}
-
-// Exactly one of orderId/tripId — a single-store checkout passes orderId
-// (POST /orders' own row), a multi-store checkout passes tripId (POST
-// /trips' own row, backend/src/lib/trips.ts) so the amount is read from
-// the trip's combined total instead of any one store's own order total.
-export function createRazorpayOrder(id: { orderId: string } | { tripId: string }): Promise<RazorpayOrder> {
-  return apiRequest('/payments/create-order', { method: 'POST', body: id });
-}
-
-export interface UpiIntentPayment {
-  razorpayOrderId: string;
-  razorpayPaymentId: string;
-  // Raw `upi://pay?...` deep link — payments/upiIntent.ts's own openUpiApp
-  // launches this exactly as received, never modified (Razorpay's docs
-  // explicitly warn changing it can break the payment).
-  upiLink: string;
-}
-
-// POST /payments/create-upi-intent (backend/src/routes/payments.ts) — the
-// S2S UPI Intent flow. Unlike createRazorpayOrder above (which feeds
-// Razorpay's own bundled Checkout SDK), this returns a raw deep link the
-// app launches itself at a specific installed UPI app — no Razorpay
-// branding, same mechanism Blinkit/Instamart use for their own UPI-app
-// grid (payments/upiIntent.ts). Same orderId/tripId fork as
-// createRazorpayOrder above — a multi-store trip pays once for the whole
-// trip via this exact same grid now, not just Standard Checkout; each
-// leg still gets its own real item_total/commission_amount for payout
-// purposes regardless of how the one combined payment was collected
-// (backend's own note on why splitting the charge itself was never
-// actually necessary).
-export function createUpiIntentPayment(id: { orderId: string } | { tripId: string }): Promise<UpiIntentPayment> {
-  return apiRequest('/payments/create-upi-intent', { method: 'POST', body: id });
-}
-
-export interface VerifiedUpiId {
-  valid: true;
-  accountHolderName: string | null;
-}
-
-// POST /payments/verify-upi-id — a real RazorpayX Fund Account Validation
-// (a ~₹1 penny-drop) confirming the typed VPA is genuinely resolvable,
-// NOT a payment request itself. NPCI retired UPI Collect (backend's own
-// note, payments/verifyUpiId.ts) — there is no mechanism left, on any
-// provider, to push a request into the VPA's own app. This only ever
-// confirms identity before the customer is sent to complete the payment
-// themselves (PaymentMethodList.tsx's own note on what happens after a
-// successful verify). Throws (via apiRequest) on an unverifiable/invalid
-// VPA — never resolves to a fake "valid: false", so a caller can't
-// silently mistake a thrown network error for a real rejection.
-export function verifyUpiId(vpa: string): Promise<VerifiedUpiId> {
-  return apiRequest('/payments/verify-upi-id', { method: 'POST', body: { vpa } });
-}
-
-export type VerifyPaymentInput = ({ orderId: string; tripId?: undefined } | { tripId: string; orderId?: undefined }) & {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
-};
-
-// The one and only call that can mark an order paid — backend/src/routes/
-// payments.ts's own POST /verify re-derives the HMAC signature server-side
-// from these three ids and rejects anything that doesn't match exactly,
-// so this is never "tell the server I paid," it's "hand over what
-// Razorpay's own SDK returned and let the server prove it for real."
-export function verifyPayment(input: VerifyPaymentInput): Promise<{ ok: true }> {
-  return apiRequest('/payments/verify', { method: 'POST', body: input });
-}
-
 export type PaymentTarget = { orderId: string } | { tripId: string };
+
+export interface CashfreeOrder {
+  provider: 'cashfree';
+  providerOrderId: string;
+  paymentSessionId: string;
+  amount: number;
+  environment: 'sandbox' | 'production';
+}
+
+// Reuses the SAME provider order for a given order/trip (server-side claim),
+// so retrying never creates a second charge target.
+export function createPaymentOrder(target: PaymentTarget): Promise<CashfreeOrder> {
+  return apiRequest('/payments/create-order', { method: 'POST', body: target });
+}
+
+// Per-app UPI links from Cashfree "Order Pay" (channel 'link'). `default` is
+// the generic upi://pay link; per-app keys are only present when Cashfree
+// returned them. Opened exactly as received (payments/upiIntent.ts).
+export interface UpiIntentLinks {
+  default: string;
+  [app: string]: string | undefined;
+}
+export interface UpiIntentPayment {
+  providerOrderId: string;
+  links: UpiIntentLinks;
+}
+export function createUpiIntentPayment(target: PaymentTarget, app: string): Promise<UpiIntentPayment> {
+  return apiRequest('/payments/upi/intent', { method: 'POST', body: { ...target, app, platform: Platform.OS === 'ios' ? 'ios' : 'android' } });
+}
+
+// Format check always; name lookup only when the backend has the Cashfree
+// verification suite configured (name may be null even when valid).
+export function validateVpa(vpa: string): Promise<{ valid: boolean; name: string | null }> {
+  return apiRequest('/payments/upi/validate', { method: 'POST', body: { vpa } });
+}
+
+// UPI collect request: the customer approves it inside their UPI app.
+// expiresAt is optional in the contract; the processing screen falls back to
+// its own poll budget when absent.
+export function createUpiCollectPayment(target: PaymentTarget, vpa: string): Promise<{ providerOrderId?: string; expiresAt?: string | null }> {
+  return apiRequest('/payments/upi/collect', { method: 'POST', body: { ...target, vpa } });
+}
+
+// Server fetches the order + payments from Cashfree and settles only on a
+// SUCCESS payment with a matching amount. ok:false = not paid (yet).
+export function verifyPayment(target: PaymentTarget): Promise<{ ok: boolean }> {
+  return apiRequest('/payments/verify', { method: 'POST', body: target });
+}
+
 export interface PaymentRecovery {
   target: PaymentTarget;
   state: 'paid' | 'unpaid' | 'pending' | 'reconciling' | 'expired' | 'cancelled';
-  record: { id: string; total: number; status: string; razorpay_payment_id: string | null };
+  record: { id: string; total: number; status: string; provider_payment_id: string | null };
 }
 export function recoverPayment(target: PaymentTarget): Promise<PaymentRecovery> {
   return apiRequest('/payments/recovery', { method: 'POST', body: target });
+}
+// POST /payments/abandon — cancel an unpaid checkout or switch it to cash on
+// delivery. The server re-reads Cashfree first: a captured payment is settled
+// (409 PAYMENT_CAPTURED), an authorized one is waited for (409
+// PAYMENT_RECONCILING); any capture landing later is refunded automatically.
+export function abandonCheckout(target: PaymentTarget, action: 'cancel' | 'cod'): Promise<{ target: PaymentTarget; state: 'paid' | 'cancelled' }> {
+  return apiRequest('/payments/abandon', { method: 'POST', body: { ...target, action } });
 }
 export function fetchPendingPayments(): Promise<PaymentTarget[]> {
   return apiRequest('/payments/pending');

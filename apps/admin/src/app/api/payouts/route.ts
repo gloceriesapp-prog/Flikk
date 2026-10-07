@@ -1,101 +1,135 @@
-// Store payouts for the Revenue page — service role (payouts has no RLS read
-// policy admin can use). commissionRate is derived, not stored.
-//
-// Payouts are released manually while no payout provider is active: the
-// founder transfers each store's net payout from the bank, then marks that
-// single payout paid with the bank reference (UTR). One payout per request,
-// never a bulk "mark everything paid" — a failed transfer must stay pending.
+// Admin Payouts list — store (payouts) + rider (rider_payouts) weekly rows in
+// one combined list, with full payee destination (admin only; partner/rider
+// clients only ever get last4). Contract: backend/PAYOUTS.md, Admin section.
+// Read-only: paying is per row via /api/payouts/[kind]/[id]/mark-paid.
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import type { Payout } from '@/lib/types';
+import type { AdminPayoutRow, PayoutRowStatus } from '@/lib/types';
 
-interface StoreDestinationRow {
-  name: string;
-  payout_method: 'upi' | 'bank_account' | null;
+const PAYOUT_COLS = 'id, week_start, week_end, status, paid_at, utr, payment_mode, paid_by, payment_note';
+const PAYEE_COLS =
+  'name, phone, payout_method, payout_upi_id, payout_bank_account_number, payout_bank_ifsc, payout_bank_name, payout_account_holder_name, payout_upi_verified_name, payout_details_status, payout_proof_path';
+
+interface PayeeRow {
+  name: string | null;
+  phone: string | null;
+  payout_method: string | null;
   payout_upi_id: string | null;
   payout_bank_account_number: string | null;
   payout_bank_ifsc: string | null;
+  payout_bank_name: string | null;
   payout_account_holder_name: string | null;
   payout_upi_verified_name: string | null;
-  payout_details_verified: boolean | null;
+  payout_details_status: string | null;
+  payout_proof_path: string | null;
 }
 
-interface PayoutRow {
+interface PayoutBase {
   id: string;
   week_start: string;
-  gross_amount: number;
-  commission_deducted: number;
-  net_payout: number;
-  status: string;
+  week_end: string;
+  status: PayoutRowStatus;
   paid_at: string | null;
-  payment_reference: string | null;
-  stores: StoreDestinationRow | null;
+  utr: string | null;
+  payment_mode: 'upi' | 'bank_transfer' | null;
+  paid_by: string | null;
+  payment_note: string | null;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+// 'pending' tab = everything still owed (failed/blocked included so nothing owed is hidden).
+const STATUS_FILTER: Record<string, PayoutRowStatus[] | null> = {
+  pending: ['pending', 'failed', 'blocked'],
+  paid: ['paid'],
+  all: null,
+};
 
-function destinationOf(store: StoreDestinationRow | null): Payout['destination'] {
-  if (!store?.payout_method) return null;
+function toRow(kind: 'store' | 'rider', payeeId: string, base: PayoutBase, amount: unknown, payee: PayeeRow | null): AdminPayoutRow {
+  // DB has carried 'bank_account' (pre-102) and the contract says 'bank' — accept both.
+  const method = payee?.payout_method === 'upi' ? 'upi' : payee?.payout_method ? 'bank' : null;
   return {
-    method: store.payout_method,
-    upiId: store.payout_upi_id,
-    accountNumber: store.payout_bank_account_number,
-    ifsc: store.payout_bank_ifsc,
-    holderName: store.payout_upi_verified_name ?? store.payout_account_holder_name,
-    verified: store.payout_details_verified === true,
+    kind,
+    id: base.id,
+    payeeId,
+    payeeName: payee?.name ?? (kind === 'store' ? 'Unknown store' : 'Unknown rider'),
+    phone: payee?.phone ?? null,
+    method,
+    upiId: payee?.payout_upi_id ?? null,
+    accountNumber: payee?.payout_bank_account_number ?? null,
+    ifsc: payee?.payout_bank_ifsc ?? null,
+    bankName: payee?.payout_bank_name ?? null,
+    accountHolderName: payee?.payout_account_holder_name ?? null,
+    hasProof: Boolean(payee?.payout_proof_path),
+    verification: payee?.payout_details_status === 'verified' ? 'verified' : 'unverified',
+    verifiedName: payee?.payout_upi_verified_name ?? null,
+    netAmount: Number(amount),
+    weekStart: base.week_start,
+    weekEnd: base.week_end,
+    status: base.status,
+    utr: base.utr,
+    paymentMode: base.payment_mode,
+    paidAt: base.paid_at,
+    paidBy: base.paid_by,
+    note: base.payment_note,
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const denied = await requireStoreAdmin();
+  if (denied) return denied;
+
+  const status = request.nextUrl.searchParams.get('status') ?? 'pending';
+  const kind = request.nextUrl.searchParams.get('kind') ?? 'all';
+  if (!(status in STATUS_FILTER)) return NextResponse.json({ error: 'status must be pending, paid or all.' }, { status: 400 });
+  if (!['store', 'rider', 'all'].includes(kind)) return NextResponse.json({ error: 'kind must be store, rider or all.' }, { status: 400 });
+  const statuses = STATUS_FILTER[status];
+
   try {
-    const { data, error } = await supabaseAdmin
-      .from('payouts')
-      .select('id, week_start, gross_amount, commission_deducted, net_payout, status, paid_at, payment_reference, stores(name, payout_method, payout_upi_id, payout_bank_account_number, payout_bank_ifsc, payout_account_holder_name, payout_upi_verified_name, payout_details_verified)')
-      .order('week_start', { ascending: false });
-    if (error) throw error;
+    const rows: AdminPayoutRow[] = [];
 
-    const payouts: Payout[] = ((data ?? []) as unknown as PayoutRow[]).map((row) => ({
-      id: row.id,
-      storeName: row.stores?.name ?? 'Unknown store',
-      cycleLabel: `Week of ${formatDate(row.week_start)}`,
-      grossSales: Number(row.gross_amount),
-      commissionRate: Number(row.gross_amount) > 0 ? Number(row.commission_deducted) / Number(row.gross_amount) : 0,
-      netPayout: Number(row.net_payout),
-      status: row.status === 'paid' ? 'paid' : 'pending',
-      paidAt: row.paid_at ? formatDate(row.paid_at) : null,
-      paymentReference: row.payment_reference,
-      destination: destinationOf(row.stores),
-    }));
-
-    return NextResponse.json(payouts);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Could not load payouts.';
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
-
-// PATCH { id, reference } — marks one payout paid after the founder has sent
-// the money (mark_payout_paid_manually, migration 096). Only pending/blocked/
-// failed rows qualify, so a double submit is a 409, never a second reference.
-export async function PATCH(request: NextRequest) {
-  try {
-    const body = (await request.json().catch(() => null)) as { id?: unknown; reference?: unknown } | null;
-    const id = typeof body?.id === 'string' ? body.id : '';
-    const reference = typeof body?.reference === 'string' ? body.reference.trim() : '';
-    if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: 'Choose a payout.' }, { status: 400 });
-    if (!/^[A-Za-z0-9-]{6,40}$/.test(reference)) {
-      return NextResponse.json({ error: 'Enter the bank reference (UTR / UPI transaction ID), 6–40 letters or digits.' }, { status: 400 });
+    if (kind !== 'rider') {
+      let q = supabaseAdmin.from('payouts').select(`${PAYOUT_COLS}, store_id, net_payout, stores(${PAYEE_COLS})`);
+      if (statuses) q = q.in('status', statuses);
+      const { data, error } = await q.order('week_start', { ascending: false });
+      if (error) throw error;
+      for (const r of (data ?? []) as unknown as (PayoutBase & { store_id: string; net_payout: unknown; stores: PayeeRow | null })[]) {
+        rows.push(toRow('store', r.store_id, r, r.net_payout, r.stores));
+      }
     }
 
-    const { data: marked, error } = await supabaseAdmin.rpc('mark_payout_paid_manually', { p_kind: 'store', p_id: id, p_reference: reference });
-    if (error) throw error;
-    if (marked !== true) return NextResponse.json({ error: 'This payout is already paid or is being processed.' }, { status: 409 });
-    return NextResponse.json({ ok: true });
+    if (kind !== 'store') {
+      let q = supabaseAdmin.from('rider_payouts').select(`${PAYOUT_COLS}, rider_id, amount`);
+      if (statuses) q = q.in('status', statuses);
+      const { data, error } = await q.order('week_start', { ascending: false });
+      if (error) throw error;
+      const payoutRows = (data ?? []) as unknown as (PayoutBase & { rider_id: string; amount: unknown })[];
+      // rider_payouts.rider_id is users.id; riders has no FK from rider_payouts, so join by hand.
+      const userIds = [...new Set(payoutRows.map((r) => r.rider_id))];
+      const riders = new Map<string, PayeeRow>();
+      if (userIds.length > 0) {
+        const res = await supabaseAdmin.from('riders').select(`user_id, ${PAYEE_COLS}`).in('user_id', userIds);
+        if (res.error) throw res.error;
+        for (const r of (res.data ?? []) as unknown as (PayeeRow & { user_id: string })[]) riders.set(r.user_id, r);
+      }
+      for (const r of payoutRows) rows.push(toRow('rider', r.rider_id, r, r.amount, riders.get(r.rider_id) ?? null));
+    }
+
+    // paid_by is an auth user id — show the admin's email instead (one founder, so at most a handful of lookups).
+    const adminIds = [...new Set(rows.map((r) => r.paidBy).filter((id): id is string => Boolean(id)))];
+    const emails = new Map<string, string>();
+    await Promise.all(
+      adminIds.map(async (id) => {
+        const { data } = await supabaseAdmin.auth.admin.getUserById(id);
+        if (data.user?.email) emails.set(id, data.user.email);
+      }),
+    );
+    for (const r of rows) if (r.paidBy) r.paidBy = emails.get(r.paidBy) ?? r.paidBy;
+
+    rows.sort((a, b) => b.weekStart.localeCompare(a.weekStart) || a.payeeName.localeCompare(b.payeeName));
+    return NextResponse.json(rows);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Could not mark this payout paid.';
+    const message = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'Could not load payouts.';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

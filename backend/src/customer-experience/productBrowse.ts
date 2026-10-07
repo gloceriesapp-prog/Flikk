@@ -19,10 +19,26 @@ productBrowseRouter.get('/search', async (req, res, next) => {
     res.json({ products: await hydrateBrowse(selected, stores, PRODUCT_WITH_VARIANTS_SELECT), nextCursor: rows.length > page.limit ? page.cursor(selected.at(-1)!) : null });
   } catch (error) { next(error); }
 });
+// Trending = 7-day units sold, Most Bought = 30-day (product_popularity_daily).
+export function popularityDays(value: unknown): 7 | 30 {
+  if (value === undefined || value === '7') return 7;
+  if (value === '30') return 30;
+  throw new AppError(400, 'INVALID_WINDOW', 'Popularity window must be 7 or 30 days.');
+}
 productBrowseRouter.get('/popular', async (req, res, next) => {
   try {
+    const days = popularityDays(req.query.days);
     const stores = await deliveryStores(req.query);
-    const { data, error } = stores.length ? await supabase.rpc('popular_customer_product_ids', { p_stores: stores, p_days: 7 }) : { data: [], error: null };
+    const { data, error } = stores.length ? await supabase.rpc('popular_customer_product_ids', { p_stores: stores, p_days: days }) : { data: [], error: null };
+    if (error) throw error;
+    res.json(await hydrateBrowse(data ?? [], stores, PRODUCT_WITH_VARIANTS_SELECT));
+  } catch (error) { next(error); }
+});
+// Biggest real discounts (original_price > price) across delivery stores, by %.
+productBrowseRouter.get('/deals', async (req, res, next) => {
+  try {
+    const stores = await deliveryStores(req.query);
+    const { data, error } = stores.length ? await supabase.rpc('deal_customer_product_ids', { p_stores: stores, p_limit: 20 }) : { data: [], error: null };
     if (error) throw error;
     res.json(await hydrateBrowse(data ?? [], stores, PRODUCT_WITH_VARIANTS_SELECT));
   } catch (error) { next(error); }

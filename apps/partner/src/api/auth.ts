@@ -111,40 +111,6 @@ export async function uploadStorePhoto(base64: string, contentType: string, loca
   }
 }
 
-// Saves payout details (backend's routes/partner.ts POST /verify-payout).
-// With a payout provider configured the account is bank-verified first;
-// without one (manual payouts) the details are saved as typed and the
-// response says verified: false. No dev-mode fallback: a fake result here
-// would be persisted as if it were real.
-export interface PayoutVerificationResult {
-  method: 'upi' | 'bank_account';
-  vpa: string | null;
-  maskedAccountNumber: string | null;
-  ifsc: string | null;
-  accountHolderName: string | null;
-  accountStatus: string;
-  bankName: string | null;
-  accountType: string | null;
-  nameMatchScore: number | null;
-  // False when details were saved without a provider check (manual payouts).
-  verified?: boolean;
-}
-
-export async function verifyPayoutUpi(vpa: string): Promise<PayoutVerificationResult> {
-  return apiRequest('/partner/verify-payout', { method: 'POST', body: { method: 'upi', vpa } });
-}
-
-export async function verifyPayoutBankAccount(
-  accountNumber: string,
-  ifsc: string,
-  accountHolderName: string,
-): Promise<PayoutVerificationResult> {
-  return apiRequest('/partner/verify-payout', {
-    method: 'POST',
-    body: { method: 'bank_account', accountNumber, ifsc, accountHolderName },
-  });
-}
-
 // Re-checked on cold start (a returning session's approval/store status
 // isn't persisted alongside the token, see useAuthStore.ts's own note) and
 // polled by WaitingApprovalScreen — one endpoint, two callers.

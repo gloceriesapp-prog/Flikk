@@ -24,7 +24,11 @@ import { BrandFooter } from '../../../components/BrandFooter';
 import { DealsSection } from '../deals/DealsSection';
 import { PriceDropsSection } from '../deals/PriceDropsSection';
 import { DealsForYouSection } from '../deals/DealsForYouSection';
-import { EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
+import { ESSENTIALS_GRID_LIMIT, EverydayEssentialsSection } from '../everyday-essentials/EverydayEssentialsSection';
+import { useEverydayEssentials } from '../everyday-essentials/useEverydayEssentials';
+import { usePopularProducts } from '../trending/useTrendingThisWeek';
+import { useCopyText } from '../../../api/appConfig';
+import { assignDistinctRows } from './distinctRows';
 import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { QuickCategoriesSection } from '../quick-categories/QuickCategoriesSection';
@@ -35,7 +39,6 @@ import { NewOnGloceriesSection } from '../new-on-gloceries/NewOnGloceriesSection
 import { ProductSection } from '../products/ProductSection';
 import { TopRatedStoresSection } from '../top-rated-stores/TopRatedStoresSection';
 import { TrendingSection } from '../trending/TrendingSection';
-import { useNearestStore } from '../useNearestStore';
 import { useDealsProducts } from './useDealsProducts';
 import { useHomeSections, type HomeSectionConfig } from '../useHomeSections';
 import type { Product } from '../products/types';
@@ -49,34 +52,40 @@ interface Props {
 
 // Everything a section renderer might need, resolved once per render.
 interface SectionCtx {
-  dealsProducts: Product[];
+  rows: Record<ProductRowKey, Product[]>;
   onSelectCategory: (id: string) => void;
 }
 
-// key -> how to render that section. `cfg` carries the admin title/subtitle
-// overrides; `?? undefined` lets each component fall back to its own default
-// copy when admin left the field blank. Returning null renders nothing.
-const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, cfg: HomeSectionConfig) => React.ReactNode> = {
-  'quick-categories': (ctx, cfg) => <QuickCategoriesSection onSelectCategory={ctx.onSelectCategory} title={cfg.title ?? undefined} showTitle={false} />,
-  'everyday-dairy': (_ctx, cfg) => <EverydayDairySection title={cfg.title ?? undefined} />,
+// Product rows that share feeds. Claimed in this priority (biggest discounts
+// and freshest momentum first) so no product repeats across rows and a row
+// that would only duplicate another is hidden — see distinctRows.ts.
+type ProductRowKey = 'price-drops' | 'todays-best-deals' | 'deals-for-you' | 'trending' | 'most-bought' | 'everyday-essentials';
+const ROW_PRIORITY: ProductRowKey[] = ['price-drops', 'todays-best-deals', 'deals-for-you', 'trending', 'most-bought', 'everyday-essentials'];
+
+// Section copy: Home Sections title/subtitle override (admin) wins, then the
+// app_content copy key home.<camelKey>.title|subtitle (registry default in
+// packages/home-content/copyKeys.js, editable on admin's App content page).
+interface SectionCopy { title: string; subtitle: string | null }
+const copyPrefix = (key: string) => `home.${key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())}`;
+
+// key -> how to render that section. Returning null renders nothing.
+const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, copy: SectionCopy) => React.ReactNode> = {
+  'quick-categories': (ctx, c) => <QuickCategoriesSection onSelectCategory={ctx.onSelectCategory} title={c.title} showTitle={false} />,
+  'everyday-dairy': (_ctx, c) => <EverydayDairySection title={c.title} />,
   'nearby-stores': () => <NearbyStoresSection />,
-  'trending': (_ctx, cfg) => <TrendingSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
-  'most-bought': (_ctx, cfg) => <MostBoughtSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
+  'trending': (ctx, c) => <TrendingSection title={c.title} subtitle={c.subtitle} products={ctx.rows.trending} />,
+  'most-bought': (ctx, c) => <MostBoughtSection title={c.title} subtitle={c.subtitle} products={ctx.rows['most-bought']} />,
   'category-sections': () => <CategorySections />,
-  'deals-for-you': (ctx, cfg) => (
-    <DealsForYouSection products={ctx.dealsProducts} title={cfg.title ?? undefined} subtitle={cfg.subtitle} />
-  ),
-  'top-rated-stores': (_ctx, cfg) => <TopRatedStoresSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
+  'deals-for-you': (ctx, c) => <DealsForYouSection products={ctx.rows['deals-for-you']} title={c.title} subtitle={c.subtitle} />,
+  'top-rated-stores': (_ctx, c) => <TopRatedStoresSection title={c.title} subtitle={c.subtitle} />,
   'deals-section': () => <DealsSection />,
-  'todays-best-deals': (ctx, cfg) =>
-    ctx.dealsProducts.length > 0 ? (
-      <ProductSection title={cfg.title ?? 'Today’s Best Deals'} products={ctx.dealsProducts} showDiscountBadge />
+  'todays-best-deals': (ctx, c) =>
+    ctx.rows['todays-best-deals'].length > 0 ? (
+      <ProductSection title={c.title} products={ctx.rows['todays-best-deals']} showDiscountBadge />
     ) : null,
-  'price-drops': (ctx, cfg) => (
-    <PriceDropsSection products={ctx.dealsProducts} title={cfg.title ?? undefined} subtitle={cfg.subtitle} />
-  ),
-  'everyday-essentials': (_ctx, cfg) => <EverydayEssentialsSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
-  'new-on-gloceries': (_ctx, cfg) => <NewOnGloceriesSection title={cfg.title ?? undefined} subtitle={cfg.subtitle} />,
+  'price-drops': (ctx, c) => <PriceDropsSection products={ctx.rows['price-drops']} title={c.title} subtitle={c.subtitle} />,
+  'everyday-essentials': (ctx, c) => <EverydayEssentialsSection title={c.title} subtitle={c.subtitle} products={ctx.rows['everyday-essentials']} />,
+  'new-on-gloceries': (_ctx, c) => <NewOnGloceriesSection title={c.title} subtitle={c.subtitle} />,
   'brand-footer': () => <BrandFooter />,
 };
 
@@ -103,15 +112,29 @@ export function AllTabSections({ onSelectCategory }: Props) {
   // Continue the exact final header colour rather than restarting its
   // gradient or maintaining a separate shortcut colour that can drift.
   const shortcutsBackground = useActiveHeaderGradient('all', false).bottomColor;
-  const { storeId } = useNearestStore();
-  const { data: dealsProducts = [] } = useDealsProducts(storeId);
+  const { data: dealsProducts = [] } = useDealsProducts();
+  const { data: trending = [] } = usePopularProducts(7);
+  const { data: mostBought = [] } = usePopularProducts(30);
+  const { data: essentials = [] } = useEverydayEssentials();
   const { data: sectionConfig } = useHomeSections();
   const inventory = useNearbyGroceryInventory();
+  const t = useCopyText();
 
   const ctx: SectionCtx = {
-    dealsProducts,
+    rows: assignDistinctRows(ROW_PRIORITY, {
+      'price-drops': { feed: dealsProducts, cap: 4 },
+      'todays-best-deals': { feed: dealsProducts, cap: 6 },
+      'deals-for-you': { feed: dealsProducts, cap: 8 },
+      trending: { feed: trending, cap: 6 },
+      'most-bought': { feed: mostBought, cap: 6 },
+      'everyday-essentials': { feed: essentials, cap: ESSENTIALS_GRID_LIMIT },
+    }),
     onSelectCategory,
   };
+  const sectionCopy = (cfg: HomeSectionConfig): SectionCopy => ({
+    title: cfg.title?.trim() || t(`${copyPrefix(cfg.key)}.title`),
+    subtitle: cfg.subtitle?.trim() || t(`${copyPrefix(cfg.key)}.subtitle`) || null,
+  });
 
   // Admin config when present (enabled only, ordered by sortIndex); otherwise
   // the fallback order, everything on, no overrides.
@@ -153,7 +176,7 @@ export function AllTabSections({ onSelectCategory }: Props) {
         if (inventory.isLoading && cfg.key !== 'quick-categories') return null;
         const render = SECTION_REGISTRY[cfg.key];
         if (!render) return null; // config key with no code section yet
-        const node = render(ctx, cfg);
+        const node = render(ctx, sectionCopy(cfg));
         if (!node) return null; // section chose to render nothing (no data etc.)
         return (
           <View key={cfg.key} style={cfg.key === 'quick-categories' ? {

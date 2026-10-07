@@ -39,7 +39,7 @@ export function buildOrderSummary(order?: ApiOrder, trip?: ApiTrip): OrderSummar
     orderNumbers: legs.map((leg) => leg.order_number),
     placedAt: trip?.created_at ?? first.placed_at,
     paymentLabel: first.payment_method === 'cod' ? 'Cash on delivery'
-      : payment.razorpay_payment_id ? 'Paid online' : 'Online payment pending',
+      : payment.provider_payment_id ? 'Paid online' : 'Online payment pending',
     ...calculateOrderBill(items, payment),
   };
 }

@@ -125,7 +125,7 @@ export function CartScreen({ navigation, route }: Props) {
       return priced ? { ...item, price: priced.price, originalPrice: priced.originalPrice, weight: priced.weight } : item;
     }));
   }, [items, quote]);
-  const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod,
+  const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod, upiVpa: route.params?.upiVpa,
     quote, onQuoteChanged: () => { void quoteQuery.refetch(); void availabilityQuery.refetch(); } });
   function choosePayment() {
     if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }
@@ -183,12 +183,12 @@ export function CartScreen({ navigation, route }: Props) {
 
       <View className="bg-[#F2F2F7] pt-safe">
         <View className="flex-row items-center px-4 pb-2 pt-2">
-          <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
             <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
           </Pressable>
           <Text className="flex-1 text-center text-[18px] font-bold text-ink">Checkout</Text>
           {items.length > 0 ? (
-            <Pressable onPress={() => setIsMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
+            <Pressable accessibilityRole="button" accessibilityLabel="More options" onPress={() => setIsMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
               <AppIcon icon={MoreVerticalIcon} size={22} color={colors.ink} />
             </Pressable>
           ) : (
@@ -291,7 +291,7 @@ export function CartScreen({ navigation, route }: Props) {
 
             {/* Hidden per an explicit ask — not deleted. <FreeDeliveryProgressCard itemTotal={itemTotal} /> */}
             <ForgotToAddSection cartItemIds={cartItemIds} />
-            <PromoCodeCard itemTotal={quote?.bill.itemTotal ?? itemTotal} appliedPromo={appliedPromo} />
+            <PromoCodeCard itemTotal={quote?.bill.itemTotal ?? itemTotal} appliedPromo={appliedPromo} quotedDiscount={quote?.bill.discountAmount} />
             {quote && !quoteQuery.isError && availabilityQuery.data?.eligible && <BillDetailsCard quote={quote} itemCount={totalQuantity} />}
             {availabilityQuery.data?.issues.map((issue) => <Text key={issue.code} className="px-2 text-[13px] font-semibold text-[#B42318]">{issue.message}</Text>)}
             {availabilityQuery.isError && <Text className="px-2 text-[13px] text-[#B42318]">Could not check item availability. <Text onPress={() => { void availabilityQuery.refetch(); }} className="font-semibold">Retry</Text></Text>}

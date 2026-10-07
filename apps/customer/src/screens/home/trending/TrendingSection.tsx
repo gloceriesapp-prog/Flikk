@@ -10,16 +10,17 @@
 
 import { View } from 'react-native';
 import { PromoListCard } from '../products/PromoListCard';
-import { useTrendingThisWeek } from './useTrendingThisWeek';
+import type { Product } from '../products/types';
 
+// Products come from AllTabSections (7-day popularity, deduped against the
+// other Home rows); title/subtitle are resolved there from admin copy.
 interface Props {
-  title?: string;
+  title: string;
   subtitle?: string | null;
+  products: Product[];
 }
 
-export function TrendingSection({ title = 'Popular This Week', subtitle }: Props) {
-  const { data: products = [] } = useTrendingThisWeek();
-
+export function TrendingSection({ title, subtitle, products }: Props) {
   if (products.length === 0) return null;
 
   return (

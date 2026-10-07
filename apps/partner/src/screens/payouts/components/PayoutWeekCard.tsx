@@ -17,13 +17,14 @@ import { Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { payoutStatusPresentation, type WeeklyPayout } from '../data';
 import { PayoutOrdersLink } from './PayoutOrdersLink';
+import { PayoutStatusDetail } from './PayoutStatusDetail';
 
 interface Props {
   payout: WeeklyPayout;
 }
 
 export function PayoutWeekCard({ payout }: Props) {
-  const { label, color, bgClassName } = payoutStatusPresentation(payout.status);
+  const { label, color, bgClassName } = payoutStatusPresentation(payout);
   const isPaid = payout.status === 'paid';
 
   return (
@@ -38,7 +39,7 @@ export function PayoutWeekCard({ payout }: Props) {
             {payout.weekLabel}
           </Text>
           <Text className="text-[12px] font-medium text-ink/50">
-            {payout.orderCount} {payout.orderCount === 1 ? 'order' : 'orders'} • Settled
+            {payout.orderCount} {payout.orderCount === 1 ? 'order' : 'orders'}
           </Text>
         </View>
 
@@ -54,6 +55,8 @@ export function PayoutWeekCard({ payout }: Props) {
           </View>
         </View>
       </View>
+
+      <PayoutStatusDetail payout={payout} />
 
       <PayoutOrdersLink payout={payout} variant="light" />
     </View>

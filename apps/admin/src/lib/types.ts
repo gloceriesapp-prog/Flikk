@@ -102,33 +102,38 @@ export interface ActiveRider {
   availability: { day: number; enabled: boolean; start: string; end: string }[];
 }
 
-// A4 — one store's payout for a settlement cycle. commissionRate matches
-// PRD Section 22 (12-18% from store partner per order).
-export interface Payout {
-  id: string;
-  storeName: string;
-  cycleLabel: string;
-  grossSales: number;
-  commissionRate: number;
-  netPayout: number;
-  status: 'pending' | 'paid';
-  paidAt: string | null;
-  // Bank reference (UTR) recorded when the founder paid it manually.
-  paymentReference: string | null;
-  // Where the money goes — the store's saved payout destination, in full,
-  // because a manual payout is typed into a bank/UPI app by the founder.
-  destination: PayoutDestination | null;
-}
+// One weekly payout row on the admin Payouts page — store (payouts) or rider
+// (rider_payouts), one combined list. Founder pays manually and records the
+// UTR (backend/PAYOUTS.md). Full account number is admin-only, never sent to
+// partner/rider clients. Amounts are rupees as returned by Postgres numeric.
+export type PayoutKind = 'store' | 'rider';
+export type PayoutRowStatus = 'pending' | 'paid' | 'blocked' | 'failed';
 
-export interface PayoutDestination {
-  method: 'upi' | 'bank_account';
+export interface AdminPayoutRow {
+  kind: PayoutKind;
+  id: string;
+  // stores.id for a store, users.id (= riders.user_id = rider_payouts.rider_id) for a rider.
+  payeeId: string;
+  payeeName: string;
+  phone: string | null;
+  method: 'upi' | 'bank' | null;
   upiId: string | null;
   accountNumber: string | null;
   ifsc: string | null;
-  holderName: string | null;
-  // False = saved as typed, not provider-checked. Confirm the name your
-  // UPI/bank app shows before sending.
-  verified: boolean;
+  bankName: string | null;
+  accountHolderName: string | null;
+  hasProof: boolean;
+  verification: 'unverified' | 'verified';
+  verifiedName: string | null;
+  netAmount: number;
+  weekStart: string;
+  weekEnd: string;
+  status: PayoutRowStatus;
+  utr: string | null;
+  paymentMode: 'upi' | 'bank_transfer' | null;
+  paidAt: string | null;
+  paidBy: string | null;
+  note: string | null;
 }
 
 // Store management — the live roster, separate from Application (which is
@@ -220,37 +225,8 @@ export interface RevenuePoint {
   platformFee: number;
 }
 
-// The founder's own take-home balance — platform commission earned, not
-// the gross sale amount (that mostly belongs to the stores). Available
-// to withdraw = earned commission not yet paid out to the founder's own
-// bank account, distinct from Payouts (which is money owed *to stores*).
-export interface WalletBalance {
-  availableToWithdraw: number;
-  lastWithdrawnAmount: number;
-  lastWithdrawnAt: string;
-  // Commission already earned on orders still settling (not yet cleared
-  // into availableToWithdraw) — the other number a real payout wallet
-  // always shows next to "available," so it's clear more is coming, not
-  // just what's sitting there now.
-  pendingSettlement: number;
-  pendingSettlementNote: string;
-  // Where "Withdraw" actually sends the money — masked, same convention
-  // as apps/partner's own phone-number display (shown, never editable
-  // inline here).
-  bankName: string;
-  bankAccountLast4: string;
-  // The other half of the picture: what customers actually paid across
-  // this period (grossCollected) splits into the founder's own commission
-  // (availableToWithdraw + pendingSettlement) and what's still owed back
-  // out to stores (owedToStores) — PRD Section 22's 12-18% cut, not 100%
-  // of gross. Without this, "Balance" only shows one slice of a bigger
-  // number and reads as if the whole gross amount were the founder's.
-  grossCollected: number;
-  owedToStores: number;
-}
-
 // Customer-app installs, split by store — no App Store Connect / Play
-// Console API integration exists yet (same category as Razorpay/WhatsApp
+// Console API integration exists yet (same category as the payment provider/WhatsApp
 // in CLAUDE.md's env-scoped external services, just not wired up), so
 // this is "last synced" data, not a true real-time counter. Split by
 // platform rather than combined: a founder watching for install friction
@@ -412,7 +388,12 @@ export interface HomeTabTile {
   imageUrl?: string;
   sortOrder: number;
   isActive: boolean;
+  // migration 097 — where tapping the tile navigates (null = nowhere).
+  linkType: HomeTabTileLinkType | null;
+  linkId: string | null;
 }
+
+export type HomeTabTileLinkType = 'category' | 'subcategory' | 'store';
 
 // "Ads and poster for different category" — a tab's own promo banner(s),
 // same isolation reasoning as HomeTab/HomeTabTile above. Image only, no
@@ -431,3 +412,12 @@ export interface HomeTabBanner {
 export type NewHomeTabInput = Omit<HomeTab, 'id'>;
 export type NewHomeTabTileInput = Omit<HomeTabTile, 'id'>;
 export type NewHomeTabBannerInput = Omit<HomeTabBanner, 'id'>;
+
+// Payments run on Cashfree; 'razorpay' marks legacy rows (migration 103) that
+// can't be refunded through Cashfree and land in 'manual_required'.
+export type PaymentProvider = 'cashfree' | 'razorpay';
+export type RefundStatus = 'none' | 'processing' | 'completed' | 'failed' | 'manual_required';
+
+// Cashfree documents no per-order deep link — this opens the merchant
+// dashboard; search Payments by the order id shown next to it.
+export const CASHFREE_DASHBOARD_URL = 'https://merchant.cashfree.com/';

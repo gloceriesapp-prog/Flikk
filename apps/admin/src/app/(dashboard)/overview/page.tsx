@@ -6,7 +6,7 @@
 //
 // Real data now: app/api/overview (today's orders/pending/active stores/
 // active riders/avg delivery time/completion rate/top stores) and
-// app/api/balance (RazorpayX balance + payouts ledger) — both service-role
+// app/api/payouts?status=pending (store + rider payouts owed) — both service-role
 // Supabase reads, no dummy PLACEHOLDER_* left in this file. useAdminRealtime
 // re-triggers both fetches whenever the customer, partner, or rider app
 // writes to orders/stores/riders (app/api/realtime's SSE relay of a
@@ -26,7 +26,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Bike, Clock, PackageSearch, Store, Timer } from 'lucide-react';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card } from '@/components/ui/Card';
-import { BalanceSummaryCard, type BalanceSummary } from '@/components/dashboard/BalanceSummaryCard';
+import { PendingPayoutsCard } from '@/components/dashboard/PendingPayoutsCard';
 import { TopStoresCard, type TopStoreRow } from '@/components/dashboard/TopStoresCard';
 import { CompletionGauge } from '@/components/dashboard/CompletionGauge';
 import { AppDownloadsCard } from '@/components/dashboard/AppDownloadsCard';
@@ -36,6 +36,7 @@ import { OrdersTable } from '@/components/dashboard/OrdersTable';
 import { SystemStatusBadge } from '@/components/dashboard/SystemStatusBadge';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { PLACEHOLDER_APP_DOWNLOADS } from '@/lib/mock-data';
+import type { AdminPayoutRow } from '@/lib/types';
 
 interface OverviewStats {
   totalOrdersToday: number;
@@ -50,29 +51,29 @@ interface OverviewStats {
 
 export default function OverviewPage() {
   const [stats, setStats] = useState<OverviewStats | null>(null);
-  const [balance, setBalance] = useState<BalanceSummary | null>(null);
+  const [pendingPayouts, setPendingPayouts] = useState<AdminPayoutRow[] | null>(null);
 
   const loadStats = useCallback(async () => {
     const res = await fetch('/api/overview');
     if (res.ok) setStats(await res.json());
   }, []);
 
-  const loadBalance = useCallback(async () => {
-    const res = await fetch('/api/balance');
-    if (res.ok) setBalance(await res.json());
+  const loadPendingPayouts = useCallback(async () => {
+    const res = await fetch('/api/payouts?status=pending');
+    if (res.ok) setPendingPayouts(await res.json());
   }, []);
 
   useEffect(() => {
     Promise.resolve().then(loadStats);
-    Promise.resolve().then(loadBalance);
-  }, [loadStats, loadBalance]);
+    Promise.resolve().then(loadPendingPayouts);
+  }, [loadStats, loadPendingPayouts]);
 
-  // Balance depends on payouts, not orders/stores/riders directly, but a
+  // Pending payouts depend on payouts, not orders/stores/riders directly, but a
   // new delivered order can change what's owed — refetching both on every
   // sync tick keeps them from ever quietly disagreeing.
   useAdminRealtime(() => {
     loadStats();
-    loadBalance();
+    loadPendingPayouts();
   });
 
   return (
@@ -100,11 +101,11 @@ export default function OverviewPage() {
         <StatCard icon={Timer} value={stats ? `${stats.avgDeliveryMinutes} min` : '—'} label="Avg. time to deliver" />
       </div>
 
-      {/* Row 1 — Balance gets more room (it's the only one with real
-          action content: the Withdraw button + payout-account row),
+      {/* Row 1 — Pending payouts gets more room (it's the only one with
+          real action content: the link through to the Payouts page),
           Order completion / App downloads stay compact single-stat cards. */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr_1fr]">
-        <BalanceSummaryCard balance={balance} />
+        <PendingPayoutsCard rows={pendingPayouts} />
 
         <Card title="Order completion" subtitle="Delivered vs. cancelled, this week" showMenu>
           <CompletionGauge completionRate={stats?.completionRate ?? 0} />

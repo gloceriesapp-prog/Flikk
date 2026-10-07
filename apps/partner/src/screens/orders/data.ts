@@ -65,7 +65,7 @@ export interface PartnerOrder {
   // included — a repeat-customer signal for the store owner.
   orderCount: number;
   // 'cod' means the store owner collects cash on delivery — 'prepaid'
-  // means Razorpay already settled it, nothing to collect. Shown up top in
+  // means the online payment (Cashfree) already settled it, nothing to collect. Shown up top in
   // OrderDetailScreen since it changes what the store owner does when the
   // order goes out, unlike the relative placedAtLabel it replaced there.
   paymentMode: 'prepaid' | 'cod';
@@ -299,13 +299,13 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     placedAtLabel: formatRelativeTime(order.placed_at),
     placedAtTime: new Date(order.placed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
     orderCount,
-    // No real payment_mode column on `orders` yet — a captured Razorpay
+    // No real payment_mode column on `orders` yet — a captured provider
     // payment id is the honest proxy available today (see backend's own
     // POST /payments/confirm-simulated note): if one exists, the order was
     // paid online; if not, it's COD. A real payment_mode field belongs on
     // the schema once COD stops routing through the same simulated-payment
     // call prepaid orders do — a real, separate gap, not invented here.
-    paymentMode: order.razorpay_payment_id ? 'prepaid' : 'cod',
+    paymentMode: order.provider_payment_id ? 'prepaid' : 'cod',
     deliveryAddress: [order.addresses?.line1 ?? 'Address unavailable', order.addresses?.landmark ?? ''],
     customerPhone: order.users?.phone ?? '',
     placedAtTimestamp: new Date(order.placed_at).getTime(),

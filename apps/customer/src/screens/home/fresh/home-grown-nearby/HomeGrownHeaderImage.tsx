@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Image as NativeImage, View } from 'react-native';
 import Svg, { Defs, G, Image, LinearGradient, Mask, Rect, Stop } from 'react-native-svg';
+import { storageUrl } from '../../../../utils/storageUrl';
 
 const HEADER_IMAGE =
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/fresh1.png';
+  storageUrl('Images/fresh1.png');
 
 export function HomeGrownHeaderImage({
   imageUrl = HEADER_IMAGE,

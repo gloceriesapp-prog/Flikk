@@ -19,8 +19,21 @@ export interface ApiWishlistItem {
   products: ApiProduct | null;
 }
 
-export function fetchWishlist(): Promise<ApiWishlistItem[]> {
-  return apiRequest('/wishlist');
+// GET /wishlist is keyset-paged ({ items, nextCursor }). The store keeps the
+// whole list in memory, so walk pages up to a bounded total.
+const WISHLIST_PAGE = 100;
+const WISHLIST_MAX_PAGES = 10;
+export async function fetchWishlist(): Promise<ApiWishlistItem[]> {
+  const all: ApiWishlistItem[] = [];
+  let cursor: string | null = null;
+  for (let i = 0; i < WISHLIST_MAX_PAGES; i++) {
+    const qs: string = `?limit=${WISHLIST_PAGE}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+    const page: { items: ApiWishlistItem[]; nextCursor: string | null } = await apiRequest(`/wishlist${qs}`);
+    all.push(...page.items);
+    cursor = page.nextCursor;
+    if (!cursor) break;
+  }
+  return all;
 }
 
 export function addToWishlist(productId: string): Promise<{ ok: true }> {

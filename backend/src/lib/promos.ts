@@ -38,10 +38,21 @@ export class PromoValidationError extends Error {
 // produce a negative total upstream — calcOrderTotal floors at 0 too, but
 // the discount NUMBER itself should already be honest about what it's
 // actually worth against this specific cart).
+//
+// Integer paise with one half-up rounding, identical to migration 096's
+// guard_promo_redemption — float `x * pct / 100` rounding disagreed with
+// SQL numeric on half-paisa boundaries and rejected valid checkouts.
+// Inputs are numeric(10,2) money/percent values, so `* 100` lands within
+// float noise of an integer and Math.round recovers it exactly; the
+// product stays well under 2^53 for any realistic cart.
+const toPaise = (rupees: number) => Math.round(rupees * 100);
 export function calcDiscount(itemTotal: number, promo: PromoCodeRow): number {
-  const raw = promo.discount_type === 'flat' ? promo.discount_value : itemTotal * (promo.discount_value / 100);
-  const capped = promo.max_discount_amount != null ? Math.min(raw, promo.max_discount_amount) : raw;
-  return round2(Math.min(capped, itemTotal));
+  const itemPaise = toPaise(itemTotal);
+  let paise = promo.discount_type === 'flat'
+    ? toPaise(promo.discount_value)
+    : Math.floor((itemPaise * toPaise(promo.discount_value) + 5000) / 10000);
+  if (promo.max_discount_amount != null) paise = Math.min(paise, toPaise(promo.max_discount_amount));
+  return Math.max(Math.min(paise, itemPaise), 0) / 100;
 }
 
 // Throws in the order a customer would most intuitively hit them: does

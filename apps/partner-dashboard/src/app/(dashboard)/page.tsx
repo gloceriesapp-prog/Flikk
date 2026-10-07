@@ -285,7 +285,7 @@ export default function OverviewPage() {
                 {/* Rows */}
                 {displayRecentOrders.map((order) => {
                   const customerName = order.addresses?.recipient_name ?? order.users?.name ?? 'Customer';
-                  const isPaid = !!order.razorpay_payment_id;
+                  const isPaid = !!order.provider_payment_id;
                   return (
                     <div
                       key={order.id}

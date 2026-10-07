@@ -34,7 +34,7 @@ function TransactionRow({ transaction }: { transaction: WeekTransaction }) {
         <Text className="mt-0.5 text-[12px] text-ink/45 font-medium" numberOfLines={1}>
           {formatDate(transaction.date)}
           {transaction.subtitle ? ` · ${transaction.subtitle}` : ''}
-          {transaction.status === 'pending' ? ' · Pending' : ''}
+          {transaction.status === 'pending' ? ' · Scheduled (paid every Monday)' : ''}
         </Text>
         {/* Base vs extra-stop split — the headline. Only spelled out when
             there's a real extra-stop surcharge (a multi-stop trip); a plain

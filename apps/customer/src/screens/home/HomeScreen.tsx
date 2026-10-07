@@ -93,7 +93,7 @@ export function HomeScreen({ navigation }: Props) {
   if ((serviceability === 'checking' || serviceability === 'error') && !storeId) {
     return <View className="flex-1 items-center justify-center gap-4 bg-white px-6">
       <Text className="text-center text-lg font-bold text-ink">{serviceability === 'error' ? 'Couldn’t check nearby shops' : 'Finding shops for your address…'}</Text>
-      {serviceability === 'error' && <Pressable accessibilityRole="button" onPress={() => void retryCoverage()} className="rounded-xl bg-[#155DFC] px-6 py-3"><Text className="font-bold text-white">Retry</Text></Pressable>}
+      {serviceability === 'error' && <Pressable accessibilityRole="button" onPress={() => void retryCoverage()} className="rounded-xl bg-coral px-6 py-3"><Text className="font-bold text-ink">Retry</Text></Pressable>}
     </View>;
   }
   if (!isServiceable) {

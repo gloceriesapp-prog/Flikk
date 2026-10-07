@@ -29,6 +29,7 @@ import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
+import { linking } from './linking';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { useNotifications } from '../features/notifications/useNotifications';
 import { notificationNavigation, flushOrderNotification } from '../features/notifications/navigation';
@@ -89,14 +90,14 @@ export function RootNavigator() {
     return <View className="flex-1 items-center justify-center gap-5 bg-white px-8">
       <Text className="text-center text-xl font-bold text-ink">Let’s try that again</Text>
       <Text className="text-center text-base text-ink/60">{authError || locationError || 'Couldn’t restore your saved cart. Please retry.'}</Text>
-      <Pressable accessibilityRole="button" onPress={() => { void hydrateAuth(); void hydrateLocation(); setCartReady(false); setCartError(false); setCartRetry(v => v + 1); }} className="rounded-xl bg-[#155DFC] px-7 py-3">
-        <Text className="font-bold text-white">Retry startup</Text>
+      <Pressable accessibilityRole="button" onPress={() => { void hydrateAuth(); void hydrateLocation(); setCartReady(false); setCartError(false); setCartRetry(v => v + 1); }} className="rounded-xl bg-coral px-7 py-3">
+        <Text className="font-bold text-ink">Retry startup</Text>
       </Pressable>
     </View>;
   }
 
   return (
-    <NavigationContainer key={customerId ?? 'guest'} ref={notificationNavigation} onReady={() => void flushOrderNotification()}>
+    <NavigationContainer key={customerId ?? 'guest'} linking={linking} ref={notificationNavigation} onReady={() => void flushOrderNotification()}>
       {accessToken || isGuest ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

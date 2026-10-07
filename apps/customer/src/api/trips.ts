@@ -27,7 +27,7 @@ export interface CreateTripInput {
   payment_method?: 'cod' | 'online';
 }
 
-export interface TripRefund { status: 'queued' | 'processing' | 'completed' | 'failed'; amount: number; refunded_amount: number }
+export interface TripRefund { status: 'queued' | 'processing' | 'completed' | 'failed' | 'manual_required'; amount: number; refunded_amount: number }
 export interface TripCancellation {
  outcome: 'cancelled' | 'blocked';
  shops: {order_id:string;store_name:string;status:string;outcome:'cancelled'|'blocked'|'not_cancelled';refund_status?:string}[];
@@ -52,7 +52,8 @@ export interface ApiTrip {
   total: number;
   discount_amount: number;
   promo_code_id: string | null;
-  razorpay_payment_id: string | null;
+  provider_payment_id: string | null;
+  payment_provider?: 'cashfree' | 'razorpay';
   status: 'placed' | 'delivered' | 'cancelled' | 'failed';
   created_at: string;
   // Only present on GET /trips/:id — POST /trips' own response is just the

@@ -4,10 +4,11 @@ import { clearCommittedAttempt } from '../../features/checkout-recovery/attemptS
 // UPI wait screen: success clears the saved checkout; timeout or a network
 // error opens backend recovery. Navigation snapshots only support the first
 // receipt display; restart recovery reads backend amounts and status.
-import { useEffect } from 'react';
-import { ActivityIndicator, BackHandler, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, BackHandler, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { pollOrderPaid } from '../../payments/pollOrderPaid';
+import { pollOrderPaid, POLL_TIMEOUT_SECONDS } from '../../payments/pollOrderPaid';
+import { colors, minTouchTarget } from '../../theme/tokens';
 import { useCartStore } from '../../store/useCartStore';
 import { rememberPaymentMethod } from '../../api/payments';
 import type { AppStackParamList } from '../../navigation/types';
@@ -15,7 +16,17 @@ import type { AppStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'PaymentProcessing'>;
 
 export function PaymentProcessingScreen({ route, navigation }: Props) {
-  const { target, amount, order, items, deliveryAddress, isTrip, appName, paymentMethod } = route.params;
+  const { target, amount, order, items, deliveryAddress, isTrip, appName, paymentMethod, collect } = route.params;
+  // Collect requests wait until their own expiry; intents use the poll budget.
+  const [deadline] = useState(() => {
+    const expiry = collect?.expiresAt ? Date.parse(collect.expiresAt) : NaN;
+    return Number.isFinite(expiry) ? expiry : Date.now() + POLL_TIMEOUT_SECONDS * 1000;
+  });
+  const [secondsLeft, setSecondsLeft] = useState(() => Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+  useEffect(() => {
+    const timer = setInterval(() => setSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000))), 1000);
+    return () => clearInterval(timer);
+  }, [deadline]);
   const clearCart = useCartStore((state) => state.clear);
 
   useEffect(() => {
@@ -27,7 +38,7 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
     let cancelled = false;
     const epoch = useAuthStore.getState().sessionEpoch;
 
-    pollOrderPaid(target).then(async (paid) => {
+    pollOrderPaid(target, collect ? deadline : undefined).then(async (paid) => {
       if (cancelled || useAuthStore.getState().sessionEpoch !== epoch) return;
 
       if (!paid) {
@@ -69,11 +80,21 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
 
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-white px-10">
-      <Text className="text-lg font-semibold text-ink">Payment Processing</Text>
+      <Text className="text-lg font-semibold text-ink">{collect ? 'Approve the payment in your UPI app' : 'Payment Processing'}</Text>
       <Text className="text-center text-[13.5px] font-medium text-ink/55">
-        Please wait while we confirm your payment with {appName}. This will only take a moment.
+        {collect
+          ? `We sent a payment request of ₹${amount.toFixed(2)} to ${collect.vpa}. Open your UPI app, check pending requests and approve it.`
+          : `Please wait while we confirm your payment with ${appName}. This will only take a moment.`}
       </Text>
-      <ActivityIndicator size="large" color="#155dfc" />
+      <ActivityIndicator size="large" color={colors.limeDeep} />
+      <Text accessibilityLiveRegion="polite" className="text-[13.5px] font-semibold text-ink/70">
+        {collect ? 'Request expires in ' : 'Checking for '}{Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
+      </Text>
+      {/* Backed out of the UPI app? Recovery offers cancel / cash on delivery. */}
+      <Pressable onPress={() => navigation.replace('PaymentRecovery', { target })} hitSlop={8} accessibilityRole="button"
+        accessibilityLabel="Didn’t complete the payment? See other options" className="mt-4 justify-center px-2" style={{ minHeight: minTouchTarget }}>
+        <Text className="text-[13.5px] font-semibold text-ink underline">Didn’t complete the payment?</Text>
+      </Pressable>
     </View>
   );
 }

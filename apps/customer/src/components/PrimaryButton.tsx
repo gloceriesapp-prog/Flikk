@@ -1,42 +1,38 @@
-// Single primary CTA style used across the auth flow. Per
-// specs/00-foundation/design-system.md: coral is the CTA color, not lime —
-// lime is reserved for brand/nav/active-state, so it never has to double as
-// both "this is the brand" and "tap this." Don't swap this back to lime.
+// Single primary CTA. Coral is the ONLY CTA color (CLAUDE.md design system) —
+// lime is brand/active-state, blue is off-brand. Ink text, not white: white
+// on coral is ~2.8:1 and fails AA at this size; ink on coral is ~7:1.
 //
-// variant="blue" is an explicit per-screen opt-in (LoginScreen.tsx's own
-// redesign asked for the same blue this app already uses elsewhere —
-// CartBar.tsx/ProductDetailFooter.tsx's #2457F5), not a change to the
-// shared default — OTP/LocationPermission all still render the default
-// coral, untouched.
+// `variant` is kept only so existing call sites (variant="blue") compile;
+// every variant renders coral.
 
 import { ActivityIndicator, Pressable, Text } from 'react-native';
-
-const BLUE = '#2457F5';
+import { colors } from '../theme/tokens';
 
 interface Props {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
+  /** @deprecated every variant renders the coral CTA. */
   variant?: 'coral' | 'blue';
 }
 
-export function PrimaryButton({ label, onPress, disabled, loading, variant = 'coral' }: Props) {
+export function PrimaryButton({ label, onPress, disabled, loading }: Props) {
   const isDisabled = disabled || loading;
 
   return (
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      className={`h-[52px] items-center justify-center rounded-button active:opacity-90 ${
-        variant === 'coral' ? (isDisabled ? 'bg-coral/40' : 'bg-coral') : ''
-      }`}
-      style={variant === 'blue' ? { backgroundColor: isDisabled ? `${BLUE}66` : BLUE } : undefined}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
+      className={`h-[52px] items-center justify-center rounded-button active:opacity-90 ${isDisabled ? 'bg-coral/40' : 'bg-coral'}`}
     >
       {loading ? (
-        <ActivityIndicator color="#FFFFFF" />
+        <ActivityIndicator color={colors.ink} />
       ) : (
-        <Text className="text-[15px] font-semibold text-white">{label}</Text>
+        <Text className="text-[15px] font-semibold text-ink">{label}</Text>
       )}
     </Pressable>
   );

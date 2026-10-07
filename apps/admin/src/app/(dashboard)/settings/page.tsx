@@ -56,6 +56,8 @@ export default function SettingsPage() {
     freeDeliveryThreshold: string;
     handlingFee: string;
     estimatedDeliveryMinutes: string;
+    riderBasePayout: string;
+    riderExtraStopPayout: string;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -77,6 +79,8 @@ export default function SettingsPage() {
         freeDeliveryThreshold: String(settings.freeDeliveryThreshold),
         handlingFee: String(settings.handlingFee),
         estimatedDeliveryMinutes: String(settings.estimatedDeliveryMinutes),
+        riderBasePayout: String(settings.riderBasePayout),
+        riderExtraStopPayout: String(settings.riderExtraStopPayout),
       });
     }).catch(() => setSaveError('Could not load delivery settings. Refresh to try again.'));
 
@@ -123,7 +127,9 @@ export default function SettingsPage() {
       draft.freeDeliveryEnabled !== saved.freeDeliveryEnabled ||
       Number(draft.freeDeliveryThreshold) !== saved.freeDeliveryThreshold ||
       Number(draft.handlingFee) !== saved.handlingFee ||
-      Number(draft.estimatedDeliveryMinutes) !== saved.estimatedDeliveryMinutes);
+      Number(draft.estimatedDeliveryMinutes) !== saved.estimatedDeliveryMinutes ||
+      Number(draft.riderBasePayout) !== saved.riderBasePayout ||
+      Number(draft.riderExtraStopPayout) !== saved.riderExtraStopPayout);
 
   async function handleSaveDelivery() {
     if (!draft || isSaving) return;
@@ -144,6 +150,8 @@ export default function SettingsPage() {
           freeDeliveryThreshold: Number(draft.freeDeliveryThreshold),
           handlingFee: Number(draft.handlingFee),
           estimatedDeliveryMinutes: Number(draft.estimatedDeliveryMinutes),
+          riderBasePayout: Number(draft.riderBasePayout),
+          riderExtraStopPayout: Number(draft.riderExtraStopPayout),
         }),
       });
       const body = await res.json();
@@ -277,6 +285,43 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+              <div>
+                <label htmlFor="riderBasePayout" className="text-sm font-medium text-ink">Minimum rider payout per delivery</label>
+                <p className="text-xs text-muted">The least a rider earns for one delivery, whatever the customer paid in delivery fee.</p>
+              </div>
+              <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                <span className="text-sm text-muted">₹</span>
+                <input
+                  id="riderBasePayout"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={draft.riderBasePayout}
+                  onChange={(e) => setDraft({ ...draft, riderBasePayout: e.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+              <div>
+                <label htmlFor="riderExtraStopPayout" className="text-sm font-medium text-ink">Rider payout per extra store</label>
+                <p className="text-xs text-muted">Added to the rider&apos;s payout for each extra store pickup on a multi-store trip.</p>
+              </div>
+              <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                <span className="text-sm text-muted">₹</span>
+                <input
+                  id="riderExtraStopPayout"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={draft.riderExtraStopPayout}
+                  onChange={(e) => setDraft({ ...draft, riderExtraStopPayout: e.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
+                />
+              </div>
+            </div>
 
             {saveError && <p className="text-xs font-medium text-red-600">{saveError}</p>}
 

@@ -31,14 +31,6 @@ interface StoreRow {
   open_time: string | null;
   close_time: string | null;
   avg_prep_minutes: number | null;
-  payout_method: 'upi' | 'bank_account' | null;
-  payout_upi_id: string | null;
-  payout_upi_verified_name: string | null;
-  payout_bank_name: string | null;
-  payout_bank_account_number: string | null;
-  payout_bank_ifsc: string | null;
-  payout_account_holder_name: string | null;
-  payout_details_verified: boolean | null;
   owner_name: string | null;
   gst_number: string | null;
   shop_establishment_number: string | null;
@@ -68,14 +60,6 @@ function fromRow(row: StoreRow): StoreProfile {
     // sends a real number, see PATCH's own avg_prep_minutes handling).
     avgPrepMinutes: row.avg_prep_minutes ?? 5,
     phone: row.phone ?? '',
-    payoutMethod: row.payout_method,
-    payoutUpiId: row.payout_upi_id,
-    payoutUpiVerifiedName: row.payout_upi_verified_name,
-    payoutBankName: row.payout_bank_name,
-    payoutBankAccountNumber: row.payout_bank_account_number,
-    payoutBankIfsc: row.payout_bank_ifsc,
-    payoutAccountHolderName: row.payout_account_holder_name,
-    payoutDetailsVerified: row.payout_details_verified === true,
     ownerName: row.owner_name ?? '',
     gstNumber: row.gst_number ?? '',
     shopLicenseNumber: row.shop_establishment_number ?? '',
@@ -97,20 +81,6 @@ interface StoreProfileState {
   loadProfile: () => Promise<void>;
   updateProfile: (patch: Partial<StoreProfile>) => Promise<ProfileSaveResult>;
   toggleOpen: () => void;
-  // Applies the result of POST /partner/verify-payout, which already
-  // persisted it server-side — this just brings the local profile in sync.
-  // `verified` is the server's own answer: true only when a payout provider
-  // confirmed the account, false for manually-paid details saved as typed.
-  setPayoutVerification: (payout: {
-    method: 'upi' | 'bank_account';
-    vpa: string | null;
-    maskedAccountNumber: string | null;
-    ifsc: string | null;
-    verifiedName: string | null;
-    accountHolderName: string | null;
-    bankName: string | null;
-    verified: boolean;
-  }) => void;
 }
 
 export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
@@ -171,21 +141,5 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
     const { id, isOpen } = get().profile;
     if (!id) return;
     apiRequest('/partner/store', { method: 'PATCH', body: { is_active: isOpen } }).catch(() => {});
-  },
-
-  setPayoutVerification: (payout) => {
-    set((state) => ({
-      profile: {
-        ...state.profile,
-        payoutMethod: payout.method,
-        payoutUpiId: payout.vpa,
-        payoutBankAccountNumber: payout.maskedAccountNumber,
-        payoutBankIfsc: payout.ifsc,
-        payoutUpiVerifiedName: payout.verifiedName,
-        payoutAccountHolderName: payout.accountHolderName,
-        payoutBankName: payout.bankName,
-        payoutDetailsVerified: payout.verified,
-      },
-    }));
   },
 }));

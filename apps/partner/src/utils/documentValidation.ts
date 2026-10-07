@@ -1,10 +1,7 @@
 // Real format validation for FSSAI/PAN — NOT government-database
-// verification. Razorpay has no standalone "verify this PAN/FSSAI is
-// real" API outside their full Route sub-merchant onboarding product (a
-// different payout architecture than this app's own RazorpayX Fund
-// Account model, verifyPayoutAccount.ts) — adopting that just to check a
-// document number would be a much bigger integration than this form
-// needs. This catches real typos (wrong length, wrong character
+// verification (no such API is integrated, and adopting one just to
+// check a document number would be a much bigger integration than this
+// form needs). This catches real typos (wrong length, wrong character
 // pattern) against the actual official formats, which is genuinely most
 // of what "verification" protects against in practice — it is never
 // shown to the owner as "government-verified," only as a real format

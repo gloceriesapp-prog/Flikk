@@ -10,9 +10,9 @@ import type { Product } from '../products/types';
 
 const MAX_OFFERS = 4;
 
-interface Props { products: Product[]; title?: string; subtitle?: string | null; }
+interface Props { products: Product[]; title: string; subtitle?: string | null; }
 
-export function PriceDropsSection({ products, title = 'Biggest Price Drops', subtitle }: Props) {
+export function PriceDropsSection({ products, title, subtitle }: Props) {
   const offers = products.slice(0, MAX_OFFERS);
   if (offers.length === 0) return null;
   return (

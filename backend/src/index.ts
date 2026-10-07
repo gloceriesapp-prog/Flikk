@@ -36,7 +36,6 @@ import { partnerRouter } from './routes/partner.js';
 import { riderRouter } from './routes/rider.js';
 import { adminRouter } from './routes/admin.js';
 import { paymentsRouter } from './payments/router.js';
-import { handleCashfreeWebhook } from './payments/cashfreeWebhook.js';
 import { locationRouter } from './routes/location.js';
 import { storeOnboardingRouter } from './routes/storeOnboarding.js';
 import { riderOnboardingRouter } from './routes/riderOnboarding.js';
@@ -46,6 +45,7 @@ import { wishlistRouter } from './routes/wishlist.js';
 import { referralsRouter } from './routes/referrals.js';
 import { deliverySettingsRouter } from './routes/deliverySettings.js';
 import { areaUpvotesRouter } from './routes/areaUpvotes.js';
+import { appConfigRouter } from './routes/appConfig.js';
 import { startServer, startupMessage } from './server/lifecycle.js';
 import { startBackgroundServices } from './server/background.js';
 import { closeDatabaseConnections } from './db/supabase.js';
@@ -72,6 +72,9 @@ app.use((_req, res, next) => {
 const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
 if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5) throw new Error('Invalid TRUST_PROXY_HOPS');
 if (proxyHops) app.set('trust proxy', proxyHops);
+if (!proxyHops && process.env.NODE_ENV === 'production') {
+  logger.warn('TRUST_PROXY_HOPS=0 in production: req.ip is the load balancer, so all clients share one OTP/SSE rate-limit bucket. Set TRUST_PROXY_HOPS=1 on Railway/Render (see .env.example).');
+}
 app.use(requestAdmission);
 app.use(compression());
 
@@ -110,20 +113,6 @@ app.use(
       (req as unknown as { rawBody: string }).rawBody = buf.toString();
     },
   }),
-);
-// Cashfree signs timestamp + raw body; capture the exact bytes before JSON
-// parsing (decimals like 120.50 must not be re-serialised). Its own route,
-// not /payments/webhook, so Razorpay keeps working during the migration.
-app.post(
-  '/payments/cashfree/webhook',
-  concurrentAdmission(32), uploadBodyDeadline,
-  express.json({
-    limit: '256kb',
-    verify: (req, _res, buf) => {
-      (req as unknown as { rawBody: string }).rawBody = buf.toString();
-    },
-  }),
-  handleCashfreeWebhook,
 );
 for (const path of UPLOAD_PATHS) {
   const [auth, ...rest] = uploadAdmission;
@@ -173,6 +162,7 @@ app.use('/reviews', reviewsRouter);
 app.use('/wishlist', wishlistRouter);
 app.use('/referrals', referralsRouter);
 app.use('/delivery-settings', shortCache(5000), deliverySettingsRouter);
+app.use('/app-config', shortCache(60000), appConfigRouter);
 app.use('/area-upvotes', areaUpvotesRouter);
 // Mounted before partnerRouter — its two routes (/store-application,
 // /store-photo) must be reachable without partnerRouter's router-wide

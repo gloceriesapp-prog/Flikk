@@ -14,9 +14,10 @@ import { HomeCategoryContent, homeCategoryKind } from './HomeCategoryContent';
 import { NAVRATRI_FESTIVAL } from '../festival/data';
 import { useHomeBrowseScroll } from './useHomeBrowseScroll';
 import { HomeCategoryBanner } from './components/HomeCategoryBanner';
+import { storageUrl } from '../../../utils/storageUrl';
 
 const GROCERY_HEADER_IMAGE_URI =
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/Royal%20Blue%20Tote%20of%20Indian%20Groceries.png';
+  storageUrl('Images/Royal%20Blue%20Tote%20of%20Indian%20Groceries.png');
 
 export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps<AppStackParamList, 'HomeCategory'>) {
   const isFocused = useIsFocused();

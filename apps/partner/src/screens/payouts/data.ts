@@ -20,8 +20,11 @@ export interface WeeklyPayout {
   netAmount: number;
   status: PayoutStatus;
   paidAt: string | null;
+  // Bank reference (UTR) the founder recorded when marking this paid —
+  // null until paid. Shown with a copy button to match a bank statement.
+  utr: string | null;
   // Only set for a week that hasn't actually landed yet (pending/
-  // processing/blocked/failed) — a paid week has nothing left to settle.
+  // blocked/failed) — a paid week has nothing left to settle.
   nextSettlementLabel?: string;
   // True only for SAMPLE_PAYOUTS below — never set on anything built from
   // a real GET /partner/payouts row. Every consumer that renders a
@@ -48,7 +51,7 @@ function weekLabel(weekStart: string, weekEnd: string): string {
   return `${formatDateOnly(weekStart)} – ${endLabel}`;
 }
 
-const UNSETTLED_STATUSES: PayoutStatus[] = ['pending', 'processing', 'blocked', 'failed'];
+const UNSETTLED_STATUSES: PayoutStatus[] = ['pending', 'blocked', 'failed'];
 
 export function toWeeklyPayout(row: ApiPayout): WeeklyPayout {
   return {
@@ -59,7 +62,8 @@ export function toWeeklyPayout(row: ApiPayout): WeeklyPayout {
     commissionAmount: row.commission_deducted,
     netAmount: row.net_payout,
     status: row.status,
-    paidAt: row.paid_at,
+    paidAt: row.paidAt ?? row.paid_at,
+    utr: row.utr ?? null,
     nextSettlementLabel: UNSETTLED_STATUSES.includes(row.status) ? formatPayoutDateLabel(nextPayoutDate()) : undefined,
   };
 }
@@ -93,6 +97,7 @@ export function buildSamplePayouts(now: Date = new Date()): WeeklyPayout[] {
       netAmount: 2140,
       status: 'pending',
       paidAt: null,
+      utr: null,
       nextSettlementLabel: formatPayoutDateLabel(nextPayoutDate(now)),
       isSample: true,
     },
@@ -105,6 +110,7 @@ export function buildSamplePayouts(now: Date = new Date()): WeeklyPayout[] {
       netAmount: 3080,
       status: 'paid',
       paidAt: null,
+      utr: null,
       isSample: true,
     },
     {
@@ -116,6 +122,7 @@ export function buildSamplePayouts(now: Date = new Date()): WeeklyPayout[] {
       netAmount: 2615,
       status: 'paid',
       paidAt: null,
+      utr: null,
       isSample: true,
     },
     {
@@ -127,6 +134,7 @@ export function buildSamplePayouts(now: Date = new Date()): WeeklyPayout[] {
       netAmount: 1920,
       status: 'paid',
       paidAt: null,
+      utr: null,
       isSample: true,
     },
   ];
@@ -162,26 +170,27 @@ export interface PayoutStatusPresentation {
   label: string;
   color: string;
   bgClassName: string;
+  // blocked/failed only — what went wrong, shown with an
+  // "Update payout details" CTA.
+  problem?: string;
 }
 
-// One real mapping used by both the hero card and every history row —
-// 'processing' and 'pending' both read as "on its way" (gold, same as
-// before this status existed), but 'blocked'/'failed' get their own
-// honest red state now instead of silently reading as "Paid" the way an
-// earlier version's isPending-only check would have shown them (anything
-// not 'pending' fell through to "Paid", which is exactly wrong for a
-// payout that failed or has no verified payout destination on file).
-export function payoutStatusPresentation(status: PayoutStatus): PayoutStatusPresentation {
-  switch (status) {
+function formatPaidDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+}
+
+// One mapping used by both the hero card and every history row. Payouts
+// are sent manually every Monday (backend/PAYOUTS.md) — 'pending' means
+// scheduled, not stuck.
+export function payoutStatusPresentation(payout: Pick<WeeklyPayout, 'status' | 'paidAt'>): PayoutStatusPresentation {
+  switch (payout.status) {
     case 'paid':
-      return { label: 'Paid', color: colors.limeDeep, bgClassName: 'bg-lime-soft' };
+      return { label: payout.paidAt ? `Paid on ${formatPaidDate(payout.paidAt)}` : 'Paid', color: colors.limeDeep, bgClassName: 'bg-lime-soft' };
     case 'pending':
-      return { label: 'Pending', color: colors.gold, bgClassName: 'bg-gold/15' };
-    case 'processing':
-      return { label: 'Processing', color: colors.gold, bgClassName: 'bg-gold/15' };
+      return { label: 'Scheduled (paid every Monday)', color: colors.gold, bgClassName: 'bg-gold/15' };
     case 'blocked':
-      return { label: 'Action needed', color: colors.danger, bgClassName: 'bg-danger/15' };
+      return { label: 'Action needed', color: colors.danger, bgClassName: 'bg-danger/15', problem: 'We can’t send this payout until you add valid payout details.' };
     case 'failed':
-      return { label: 'Failed', color: colors.danger, bgClassName: 'bg-danger/15' };
+      return { label: 'Payment failed', color: colors.danger, bgClassName: 'bg-danger/15', problem: 'This payout didn’t go through. Check your payout details so we can resend it.' };
   }
 }

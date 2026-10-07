@@ -4,10 +4,9 @@ import { Alert, AppState, Pressable, ScrollView, Text, View } from 'react-native
 import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { createRazorpayOrder, recoverPayment, verifyPayment, rememberPaymentMethod } from '../../api/payments';
-import { cancelOrder } from '../../api/orders';
-import { cancelTrip } from '../../api/trips';
-import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
+import { abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment, rememberPaymentMethod } from '../../api/payments';
+import { ApiError } from '../../api/client';
+import { openCashfreeCheckout } from '../../payments/openCashfreeCheckout';
 import { useCartStore } from '../../store/useCartStore';
 import { checkoutItems } from '../../store/cartIdentity';
 import { clearAttempt, readAttempt } from './attemptStorage';
@@ -51,29 +50,29 @@ export function PaymentRecoveryScreen({ route, navigation }: Props) {
     lock.current = true; setBusy(true);
     try {
       // Endpoint reconciles provider state before returning the SAME order.
-      const order = await createRazorpayOrder(target);
-      const result = await openRazorpayCheckout({ keyId: order.key_id, razorpayOrderId: order.id,
-        amountPaise: order.amount, contact: null, name: '' });
-      await verifyPayment({ ...target, ...result });
-      void rememberPaymentMethod('online', target);
+      const order = await createPaymentOrder(target);
+      await openCashfreeCheckout(order);
+      // Not settled yet is fine: the polling query below keeps checking.
+      if ((await verifyPayment(target)).ok) void rememberPaymentMethod('online', target);
     } catch (error) {
       Alert.alert('Checking your payment', error instanceof Error ? error.message : 'Your order is saved. Check its payment status before trying again.');
     } finally { await query.refetch(); lock.current = false; setBusy(false); }
   }
-  async function cancel() {
+  // Server-side atomic: re-reads Cashfree, settles a capture instead, and
+  // refunds any capture that lands afterwards. Works from 'pending' too, so a
+  // customer who backed out of the UPI app is never stuck waiting.
+  async function abandon(action: 'cancel' | 'cod') {
     if (lock.current) return;
     lock.current = true; setBusy(true);
     try {
-      const current = await recoverPayment(target);
-      if (current.state !== 'unpaid') { await query.refetch(); return; }
-      if ('tripId' in target) {
-        const result = await cancelTrip(target.tripId, 'Customer cancelled unpaid checkout.');
-        if (result.outcome === 'blocked') Alert.alert('Could not cancel', result.shops.map(shop => `${shop.store_name}: ${shop.status.replace(/_/g, ' ')}`).join('\n'));
-      } else await cancelOrder(target.orderId, 'Customer cancelled unpaid checkout.');
-      await query.refetch();
-    } catch (error) { Alert.alert('Could not cancel', error instanceof Error ? error.message : 'Check your order status.'); }
-    finally { lock.current = false; setBusy(false); }
+      await abandonCheckout(target, action);
+      if (action === 'cod') void rememberPaymentMethod('cod', target);
+    } catch (error) {
+      if (!(error instanceof ApiError && error.code === 'PAYMENT_CAPTURED'))
+        Alert.alert(action === 'cod' ? 'Could not switch to cash' : 'Could not cancel', error instanceof Error ? error.message : 'Check your order status.');
+    } finally { await query.refetch(); lock.current = false; setBusy(false); }
   }
+  const awaitingPayment = state === 'unpaid' || state === 'pending' || state === 'reconciling';
   const heading = state === 'paid' ? 'Payment confirmed' : state === 'cancelled' || state === 'expired'
     ? 'This checkout has closed' : state === 'unpaid' ? 'Your order is saved' : 'Checking your payment';
   return <ScrollView className="flex-1 bg-[#F7F8FA]" contentContainerStyle={{ padding: 24, paddingTop: 80 }}>
@@ -86,9 +85,13 @@ export function PaymentRecoveryScreen({ route, navigation }: Props) {
         : 'Please wait while we confirm the result. Avoid paying again until this check finishes.'}</Text>
       {query.data && <Text className="mt-6 text-xl font-bold">₹{Number(query.data.record.total).toFixed(2)}</Text>}
       {query.isError && <Text className="mt-4 text-red-600">We couldn’t check your payment. Your order is still saved.</Text>}
-      {(state === 'paid' || state === 'cancelled' || state === 'expired') && <Pressable disabled={busy} onPress={() => void finish().catch(() => Alert.alert('Please try again', 'Your saved checkout could not be updated.'))} className="mt-6 rounded-2xl bg-[#155DFC] py-4"><Text className="text-center font-bold text-white">{state === 'paid' ? 'View order' : 'Review cart'}</Text></Pressable>}
-      {state === 'unpaid' && <><Pressable disabled={busy} onPress={() => void continuePayment()} className="mt-6 rounded-2xl bg-[#155DFC] py-4"><Text className="text-center font-bold text-white">{busy ? 'Checking…' : 'Continue payment'}</Text></Pressable><Pressable disabled={busy} onPress={() => Alert.alert('Cancel this checkout?', 'Your items will stay in your cart.', [{ text: 'Keep order', style: 'cancel' }, { text: 'Cancel checkout', style: 'destructive', onPress: () => void cancel() }])} className="mt-4 py-3"><Text className="text-center font-semibold text-black/55">Cancel checkout</Text></Pressable></>}
+      {(state === 'paid' || state === 'cancelled' || state === 'expired') && <Pressable disabled={busy} onPress={() => void finish().catch(() => Alert.alert('Please try again', 'Your saved checkout could not be updated.'))} className="mt-6 rounded-2xl bg-coral py-4"><Text className="text-center font-bold text-ink">{state === 'paid' ? 'View order' : 'Review cart'}</Text></Pressable>}
+      {state === 'unpaid' && <><Pressable disabled={busy} onPress={() => void continuePayment()} className="mt-6 rounded-2xl bg-coral py-4"><Text className="text-center font-bold text-ink">{busy ? 'Checking…' : 'Continue payment'}</Text></Pressable></>}
       {(query.isError || state === 'pending' || state === 'reconciling') && <Pressable disabled={busy || query.isFetching} onPress={() => void query.refetch()} className="mt-6 rounded-2xl bg-[#F0F1F3] py-4"><Text className="text-center font-semibold">Check payment status</Text></Pressable>}
+      {awaitingPayment && <>
+        <Pressable disabled={busy} onPress={() => Alert.alert('Pay cash on delivery?', `Pay ₹${Number(query.data?.record.total ?? 0).toFixed(2)} in cash to the rider. If your UPI payment still goes through, it will be refunded automatically.`, [{ text: 'Not now', style: 'cancel' }, { text: 'Switch to cash', onPress: () => void abandon('cod') }])} className="mt-4 rounded-2xl border border-[#155DFC] py-4"><Text className="text-center font-bold text-[#155DFC]">Switch to cash on delivery</Text></Pressable>
+        <Pressable disabled={busy} onPress={() => Alert.alert('Cancel this order?', 'Your items will stay in your cart. If a payment still goes through, it will be refunded automatically.', [{ text: 'Keep order', style: 'cancel' }, { text: 'Cancel order', style: 'destructive', onPress: () => void abandon('cancel') }])} className="mt-2 py-3"><Text className="text-center font-semibold text-black/55">Cancel order</Text></Pressable>
+      </>}
     </View>
   </ScrollView>;
 }

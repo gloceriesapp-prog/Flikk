@@ -5,8 +5,9 @@
 
 import { View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
+import { storageUrl } from '../../../utils/storageUrl';
 
-const DEAL_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/deal.jpeg';
+const DEAL_IMAGE_URI = storageUrl('Images/deal.jpeg');
 
 export function DealsSection() {
   return (

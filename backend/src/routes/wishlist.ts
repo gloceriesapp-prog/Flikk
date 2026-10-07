@@ -9,26 +9,50 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
+import { cursorFilter, encodeCursor, readPage } from '../lib/cursorPagination.js';
+import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
 
 export const wishlistRouter = Router();
 
-// Same product+variant+store shape routes/stores.ts's own product feeds
-// return (ApiProduct on the customer app side) — lets apps/customer map a
-// wishlist row through the exact same mapApiProduct() every other product
-// feed already uses instead of inventing a second, thinner Product shape
-// just for this screen.
-const WISHLIST_PRODUCT_SELECT =
-  'product_id, created_at, products(id, name, local_name, category, description, price, original_price, image_url, bg_color, is_veg, freshness_tag, store_id, product_variants(*), stores(name, fssai_number, address_line, city, photo_url))';
+// Same product+variant+store select every browse feed uses (stock, approval,
+// store hours, variants), so mapApiProduct marks unavailable items correctly.
+// Unapproved products are filtered out; pages are keyset on (created_at,id).
+const WISHLIST_PRODUCT_SELECT = `id, product_id, created_at, products!inner(${PRODUCT_WITH_VARIANTS_SELECT})`;
+const WISHLIST_ID_LIMIT = 1000;
 
 wishlistRouter.get('/', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
-    const { data, error } = await supabase
+    const page = readPage(req, `wishlist:${req.user!.id}`);
+    let query = supabase
       .from('wishlist_items')
       .select(WISHLIST_PRODUCT_SELECT)
       .eq('customer_id', req.user!.id)
-      .order('created_at', { ascending: false });
+      .eq('products.approval_status', 'approved');
+    if (page.cursor) query = query.or(cursorFilter('created_at', page.cursor));
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(page.limit + 1);
     if (error) throw error;
-    res.json(data);
+    const rows = (data ?? []) as unknown as { id: string; created_at: string }[];
+    const items = rows.slice(0, page.limit); const last = items.at(-1);
+    res.json({ items, nextCursor: rows.length > page.limit && last ? encodeCursor(page, { at: last.created_at, id: last.id }) : null });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Heart state across the app needs membership, not full rows. Bounded.
+wishlistRouter.get('/ids', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('wishlist_items')
+      .select('product_id')
+      .eq('customer_id', req.user!.id)
+      .order('created_at', { ascending: false })
+      .limit(WISHLIST_ID_LIMIT);
+    if (error) throw error;
+    res.json((data ?? []).map(row => row.product_id));
   } catch (err) {
     next(err);
   }

@@ -24,7 +24,7 @@ export function CareButton({ label, onPress, disabled = false }: {
     onPress: () => void;
     disabled?: boolean;
 }) {
-    return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} className="rounded-2xl bg-[#155DFC] px-4 py-3" style={{ opacity: disabled ? .5 : 1 }}><Text className="text-center text-sm font-bold text-white">{label}</Text></Pressable>;
+    return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} className="rounded-2xl bg-coral px-4 py-3" style={{ opacity: disabled ? .5 : 1 }}><Text className="text-center text-sm font-bold text-ink">{label}</Text></Pressable>;
 }
 export function QueryNotice({ loading, error, hasData, retry }: {
     loading: boolean;

@@ -115,7 +115,7 @@ function NearestStoreCard({
 />
 
           {/* BOOKMARK */}
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel={`Save ${store.name}`}
             onPress={(event) => {
               event.stopPropagation();
               toggleLiked(store.id);

@@ -15,6 +15,9 @@ export interface DeliverySettingsRow {
   free_delivery_threshold: number;
   handling_fee: number;
   estimated_delivery_minutes?: number;
+  // migration 099 — what a rider is paid per delivery / per extra trip stop.
+  rider_base_payout?: number | string | null;
+  rider_extra_stop_payout?: number | string | null;
 }
 
 export interface DeliverySettings {
@@ -24,6 +27,8 @@ export interface DeliverySettings {
   freeDeliveryThreshold: number;
   handlingFee: number;
   estimatedDeliveryMinutes: number;
+  riderBasePayout: number;
+  riderExtraStopPayout: number;
 }
 
 export const DELIVERY_SETTINGS_SELECT = '*';
@@ -41,6 +46,8 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     freeDeliveryThreshold: Number(row.free_delivery_threshold),
     handlingFee: Number(row.handling_fee),
     estimatedDeliveryMinutes: Number(row.estimated_delivery_minutes ?? 35),
+    riderBasePayout: Number(row.rider_base_payout ?? 0),
+    riderExtraStopPayout: Number(row.rider_extra_stop_payout ?? 0),
   };
 }
 
