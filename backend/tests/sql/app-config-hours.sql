@@ -53,5 +53,10 @@ BEGIN
   BEGIN UPDATE delivery_settings SET ordering_opens_minute = -1;
     RAISE EXCEPTION 'Negative opening accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
 END $$;
+-- Festival Section and Seasonal Section are orderable Home sections.
+DO $$ BEGIN
+  IF (SELECT count(*) FROM home_sections WHERE key IN ('festival-picks','seasonal') AND enabled) <> 2 THEN
+    RAISE EXCEPTION 'festival-picks / seasonal home sections missing'; END IF;
+END $$;
 ROLLBACK;
 \echo 'app-config-hours: ok'

@@ -35,6 +35,13 @@ function contentChanged(type: 'content' | 'settings') {
   invalidateShortCache(type === 'content' ? '/home-tabs' : '/delivery-settings');
   broadcast({ type });
 }
+export const HOME_SECTION_TABLES = ['festival_greeting', 'festival_sections', 'festival_section_products',
+  'seasonal_banner', 'seasonal_tiles', 'home_sections'] as const;
+export const HOME_SECTION_CACHE_PATHS = ['/home/festival-greeting', '/home/festival-section', '/home/seasonal-section', '/home/sections'] as const;
+export function homeSectionsChanged() {
+  for (const path of HOME_SECTION_CACHE_PATHS) invalidateShortCache(path);
+  broadcast({ type: 'content' });
+}
 function inventoryChanged(row: Record<string, unknown>) {
   if (typeof row.store_id !== 'string') return;
   const id = row.store_id;
@@ -84,7 +91,13 @@ export function startHomeContentSync() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'zones' }, () => { invalidateShortCache('/stores'); contentChanged('content'); })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'inventory_signals' }, payload => inventoryChanged(payload.new))
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inventory_signals' }, payload => inventoryChanged(payload.new))
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_settings' }, () => contentChanged('settings'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_settings' }, () => contentChanged('settings'));
+  // Admin Festival Greeting/Section, Seasonal Section and Home Sections
+  // (migration 112 publishes them): drop their cached feeds, then tell apps.
+  for (const table of HOME_SECTION_TABLES) {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => homeSectionsChanged());
+  }
+  channel = channel
     .subscribe(status => {
       // Discard authorization snapshots across a realtime connection gap.
       invalidateAllAuthContexts();
@@ -100,6 +113,7 @@ export function startHomeContentSync() {
           invalidateShortCache('/categories');
           invalidateShortCache('/delivery-settings');
           invalidateShortCache('/home-tabs');
+          for (const path of HOME_SECTION_CACHE_PATHS) invalidateShortCache(path);
           broadcast({ type: 'health', healthy, recovery: healthy });
           if (error) logger.warn({ code: error.code }, 'Inventory sync unavailable; apply migration 068. Customers use fallback refresh.');
         });

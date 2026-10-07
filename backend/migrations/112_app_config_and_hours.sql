@@ -6,6 +6,8 @@
 -- 2. checkout_assert_store (latest: 104) reads the window from
 --    delivery_settings instead of the literals, and the refusal message names
 --    the configured opening time. The rest of the body is unchanged.
+-- 3. home_sections gains 'festival-picks' and 'seasonal' rows.
+-- 4. Festival/seasonal/home-section tables join the realtime publication.
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -54,5 +56,27 @@ begin
 end $$;
 REVOKE ALL ON FUNCTION public.checkout_assert_store(uuid,uuid,uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.checkout_assert_store(uuid,uuid,uuid) TO service_role;
+
+-- 3. The admin Festival Section (018) and Seasonal Section (040) become Home
+--    "All" sections the admin Home Sections screen can order and switch off.
+--    Disabled-by-content: each renders nothing while inactive or empty.
+INSERT INTO public.home_sections (key, title, sort_index) VALUES
+  ('festival-picks', null, 15),
+  ('seasonal', null, 25)
+ON CONFLICT (key) DO NOTHING;
+
+-- 4. Festival, seasonal and Home layout edits reach open customer apps live:
+--    the backend's home realtime channel listens to these tables.
+DO $$
+DECLARE t text;
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    FOREACH t IN ARRAY ARRAY['festival_greeting','festival_sections','festival_section_products','seasonal_banner','seasonal_tiles','home_sections'] LOOP
+      IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = t) THEN
+        EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+      END IF;
+    END LOOP;
+  END IF;
+END $$;
 
 COMMIT;

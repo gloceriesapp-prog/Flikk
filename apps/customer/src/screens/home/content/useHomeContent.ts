@@ -6,6 +6,10 @@ import { TAB_KEYS, validateContent, type HomeContentRecord } from './contracts';
 import { invalidateInventory } from './inventoryCache';
 import { subscribeHomeContent } from './realtime';
 
+export const HOME_SECTION_QUERY_KEYS = [
+  ['home', 'sections'], ['home', 'festival-greeting'], ['home', 'festival-section'], ['home', 'seasonal-section'],
+] as const;
+
 // Several mounted tabs and the header observe the same query. Register one
 // invalidation callback per QueryClient so events never cancel each other's
 // refetches while a publication is being delivered.
@@ -18,6 +22,8 @@ function subscribeClient(client: QueryClient) {
       if (event === 'content') {
         void client.invalidateQueries({ queryKey: ['home-content'] });
         void client.invalidateQueries({ queryKey: ['home-tabs'] });
+        // Admin Home Sections, Festival Greeting/Section and Seasonal Section.
+        for (const queryKey of HOME_SECTION_QUERY_KEYS) void client.invalidateQueries({ queryKey });
         invalidateInventory(client, { storeIds: [], zoneIds: [], storeChanged: false, refresh: true });
       }
     });
