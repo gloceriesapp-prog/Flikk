@@ -1,30 +1,26 @@
-// Live remaining-ms-until-deadline, re-computed against real system time (Date.now()).
-// Guarantees zero clock drift across component re-renders or app reloads.
+// Live remaining-ms-until-deadline, re-computed against real system time
+// (Date.now()), so there is no clock drift across re-renders or reloads.
+// The clock lives in state and ticks from an interval — reading Date.now()
+// during render would make the component impure.
 
 import { useEffect, useState } from 'react';
 
-export function useCountdownRemaining(deadlineMs: number): number {
-  const getRemaining = () => Math.max(0, deadlineMs - Date.now());
-
-  const [remaining, setRemaining] = useState(getRemaining);
-
+// Current time, refreshed every `intervalMs` (and right after mount).
+export function useNow(intervalMs = 1000): number {
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    // Sync state immediately when deadlineMs changes
-    setRemaining(getRemaining());
+    const tick = () => setNow(Date.now());
+    const first = setTimeout(tick, 0);
+    const interval = setInterval(tick, intervalMs);
+    return () => {
+      clearTimeout(first);
+      clearInterval(interval);
+    };
+  }, [intervalMs]);
+  return now;
+}
 
-    if (deadlineMs <= Date.now()) return;
-
-    const interval = setInterval(() => {
-      const nextRemaining = Math.max(0, deadlineMs - Date.now());
-      setRemaining(nextRemaining);
-
-      if (nextRemaining <= 0) {
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [deadlineMs]);
-
-  return remaining;
+export function useCountdownRemaining(deadlineMs: number): number {
+  const now = useNow();
+  return Math.max(0, deadlineMs - now);
 }

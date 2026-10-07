@@ -6,6 +6,12 @@
     "apps/rider",
     "packages/*"
   ],
+  "scripts": {
+    "postinstall": "patch-package"
+  },
+  "devDependencies": {
+    "patch-package": "^8.0.1"
+  },
   "overrides": {
     "react-native-worklets": "0.10.1",
     "react-native-reanimated": "4.5.1"

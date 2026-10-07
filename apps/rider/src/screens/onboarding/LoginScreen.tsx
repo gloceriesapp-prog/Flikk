@@ -48,8 +48,8 @@ export function LoginScreen({ navigation }: Props) {
 
           <View className="mt-6 flex-1 gap-6">
             <View className="gap-2">
-              <Text className="text-2xl font-semibold text-ink">What's your number?</Text>
-              <Text className="text-[15px] font-medium text-ink/55">We'll send a 6-digit code to verify it's really you.</Text>
+              <Text className="text-2xl font-semibold text-ink">What’s your number?</Text>
+              <Text className="text-[15px] font-medium text-ink/55">We’ll send a 6-digit code to verify it’s really you.</Text>
             </View>
 
             <PhoneInput value={digits} onChangeText={setDigits} autoFocus />

@@ -29,8 +29,17 @@ jobs:
           # actually run on the version both direct dependencies expect.
           node-version: 22
           cache: pnpm
-          cache-dependency-path: backend/pnpm-lock.yaml
+          cache-dependency-path: |
+            backend/pnpm-lock.yaml
+            apps/admin/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # Several backend tests import shared logic from the customer and admin
+      # apps (react-query cache helpers, admin route handlers), so their
+      # dependencies must exist for those test files to load.
+      - run: npm ci --no-audit --no-fund
+        working-directory: apps/customer
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+        working-directory: apps/admin
       - run: node scripts/migrations.mjs
       - run: pnpm run lint
       - run: pnpm exec tsc --noEmit -p tsconfig.json
@@ -109,3 +118,51 @@ jobs:
       - name: Bundle both native platforms
         run: npx expo export --platform ios --max-workers 2 --output-dir /tmp/customer-ios
       - run: npx expo export --platform android --max-workers 2 --output-dir /tmp/customer-android
+
+  # Partner and rider apps share the root npm workspace (with packages/*).
+  mobile-apps:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [partner, rider]
+    env:
+      EXPO_PUBLIC_API_URL: https://api.example.com
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+        working-directory: apps/${{ matrix.app }}
+      - run: npx eslint .
+        working-directory: apps/${{ matrix.app }}
+
+  # Next.js apps. `next typegen` generates the PageProps/LayoutProps/
+  # RouteContext globals that the typecheck relies on.
+  web-apps:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [admin, partner-dashboard, landing]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npx eslint src
+

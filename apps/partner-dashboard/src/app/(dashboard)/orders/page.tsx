@@ -8,6 +8,7 @@ import { OrdersFilterBar, ORDER_FILTERS, type DateRange } from '@/components/ord
 import { OrdersTable } from '@/components/orders/OrdersTable';
 import { StatTile } from '@/components/ui/StatTile';
 import { formatInr, statusLabel } from '@/lib/format';
+import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 const RANGE_MS: Record<Exclude<DateRange, 'all' | 'today'>, number> = {
   '7d': 7 * 86400e3,
@@ -73,7 +74,7 @@ export default function OrdersPage() {
 
   // DEMO DATA — same isDemo convention as the Overview page: shown only while
   // the store has zero real orders, replaced the instant a real one lands.
-  const isDemo = !isLoading && orders.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && orders.length === 0;
   const sourceOrders = isDemo ? demoOrders : orders;
 
   // Accept = the sole owner-side transition the backend allows (placed→packed);

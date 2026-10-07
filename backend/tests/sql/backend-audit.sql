@@ -20,7 +20,14 @@ DO $$ DECLARE o orders;r reviews; old_count bigint; BEGIN
  IF has_table_privilege('authenticated','reviews','insert') OR has_function_privilege('anon','submit_customer_review(uuid,uuid,int,text)','execute') THEN RAISE EXCEPTION 'Review bypass'; END IF;
 END $$;
 DO $$ DECLARE t trips; a uuid;b uuid;code text; result jsonb; BEGIN
- SELECT * INTO t FROM trips WHERE status='placed' ORDER BY id LIMIT 1;
+ -- A trip whose every leg is still placed and packable. Fixture IDs are random
+ -- UUIDs, so ordering by id alone picked a trip with already-delivered legs on
+ -- some runs and failed with 'Invalid order state transition'.
+ SELECT tr.* INTO t FROM trips tr WHERE tr.status='placed'
+   AND EXISTS(SELECT 1 FROM orders o WHERE o.trip_id=tr.id)
+   AND NOT EXISTS(SELECT 1 FROM orders o WHERE o.trip_id=tr.id
+     AND (o.status<>'placed' OR (o.payment_method='online' AND o.razorpay_payment_id IS NULL)))
+   ORDER BY tr.id LIMIT 1;
  IF t.id IS NULL THEN RAISE EXCEPTION 'Fixture requires trip'; END IF;
  -- Duplicate a live leg into this isolated test trip, without inventing a production order.
  INSERT INTO orders(customer_id,store_id,address_id,status,item_total,delivery_fee,commission_amount,total,payment_method,trip_id,rider_id)

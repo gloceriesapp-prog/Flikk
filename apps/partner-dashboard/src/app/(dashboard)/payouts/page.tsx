@@ -10,6 +10,7 @@ import { formatInr, formatDate } from '@/lib/format';
 import { PayoutDestinationCard } from '@/components/payouts/PayoutDestinationCard';
 import { PayoutsFilterBar, PAYOUT_FILTERS, type PayoutFilter } from '@/components/payouts/PayoutsFilterBar';
 import { PayoutsTable } from '@/components/payouts/PayoutsTable';
+import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 export default function PayoutsPage() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
@@ -31,7 +32,7 @@ export default function PayoutsPage() {
   // as Overview/Orders/Inventory: shown only while payouts.length === 0,
   // gone the instant a real payout row exists. The payout DESTINATION card
   // below is never part of this — see its own note on why.
-  const isDemo = !isLoading && payouts.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && payouts.length === 0;
   const sourcePayouts = isDemo ? DEMO_PAYOUTS : payouts;
 
   const counts = useMemo(() => {

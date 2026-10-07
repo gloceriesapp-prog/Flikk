@@ -1,4 +1,6 @@
+/* global __dirname */
 const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
+const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
@@ -21,10 +23,20 @@ validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
 
 const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
 
+// EAS project @nishal777/rider. Not a secret: it ties builds, OTA updates
+// and Expo push tokens to this project, so it is fixed here rather than
+// read from env — a build can never ship without it.
+const easProjectId = '35911db7-6e35-402b-b16b-6e13019a31ae';
+
+// Android push (FCM) config, shared by all three apps — see
+// packages/shared/config/google-services.cjs.
+const googleServicesFile = resolveGoogleServicesFile(__dirname, 'com.gloceries.rider');
+
 module.exports = {
   expo: {
-    name: 'rider',
+    name: 'Gloceries Rider',
     slug: 'rider',
+    owner: 'nishal777',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
@@ -49,6 +61,7 @@ module.exports = {
     },
     android: {
       package: 'com.gloceries.rider',
+      googleServicesFile,
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
         foregroundImage: './assets/android-icon-foreground.png',
@@ -86,6 +99,9 @@ module.exports = {
       ],
     ],
     extra: {
+      eas: {
+        projectId: easProjectId,
+      },
       // A boolean, never the key itself — DeliveryMapView reads this (via
       // expo-constants) to decide whether iOS gets real Google Maps + the
       // same grayscale style Android already uses, or falls back to Apple

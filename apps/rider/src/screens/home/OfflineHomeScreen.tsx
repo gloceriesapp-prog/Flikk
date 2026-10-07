@@ -77,7 +77,7 @@ export function OfflineHomeScreen() {
           style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
         >
           <View>
-            <Text className="text-[15px] font-semibold text-[#000000]">Today's Earnings ({todayLabel()})</Text>
+            <Text className="text-[15px] font-semibold text-[#000000]">Today’s Earnings ({todayLabel()})</Text>
             <Text className="mt-1.5 text-[38px] font-bold tabular-nums">
               ₹{todayEarnings}
             </Text>
@@ -132,7 +132,7 @@ export function OfflineHomeScreen() {
 
       {/* Go-online lives in the header pill now — this is just a nudge. */}
       <Text className="mt-1 text-center text-[14px] font-medium text-ink/45">
-        You're offline. Tap Go online to start receiving orders.
+        You’re offline. Tap Go online to start receiving orders.
       </Text>
 
     </ScrollView>

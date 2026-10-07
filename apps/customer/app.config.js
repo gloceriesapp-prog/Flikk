@@ -1,4 +1,6 @@
+/* global __dirname */
 const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
+const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
@@ -12,6 +14,10 @@ validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
 // (this is native config, not OTA-able) switches iOS to real Google Maps.
 
 const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
+
+// Android push (FCM) config, shared by all three apps — see
+// packages/shared/config/google-services.cjs.
+const googleServicesFile = resolveGoogleServicesFile(__dirname, 'com.gloceries.customer');
 
 module.exports = {
   expo: {
@@ -47,6 +53,7 @@ module.exports = {
     },
     android: {
       package: 'com.gloceries.customer',
+      googleServicesFile,
       adaptiveIcon: {
         backgroundColor: '#A8D93A',
         foregroundImage: './assets/android-icon-foreground.png',

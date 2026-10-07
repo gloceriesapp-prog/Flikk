@@ -13,7 +13,9 @@ export function DeletionInbox() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not load requests.'); }
     finally { setBusy(false); }
   }
-  useEffect(() => { void load(); }, []);
+  // Deferred one microtask so the initial load's setState isn't synchronous
+  // inside the effect (same pattern as the other admin pages).
+  useEffect(() => { void Promise.resolve().then(() => load()); }, []);
   async function review(row: RequestRow, approve: boolean) {
     setBusy(true); setError('');
     try {

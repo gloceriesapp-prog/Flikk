@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { SITE } from "@/lib/seo/config";
 import { AREAS } from "@/lib/seo/areas";
+import { POLICY_ORDER, policyHref } from "@/lib/legal/policies";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -11,6 +12,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE.url}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
   ];
 
+  const legalPages: MetadataRoute.Sitemap = POLICY_ORDER.map((slug) => ({
+    url: `${SITE.url}${policyHref(slug)}`,
+    lastModified: now,
+    changeFrequency: "yearly",
+    priority: 0.3,
+  }));
+
   // One entry per area — grows automatically as AREAS grows.
   const areaPages: MetadataRoute.Sitemap = AREAS.map((a) => ({
     url: `${SITE.url}/delivery/${a.slug}`,
@@ -19,5 +27,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: a.active ? 0.9 : 0.6,
   }));
 
-  return [...staticPages, ...areaPages];
+  return [...staticPages, ...legalPages, ...areaPages];
 }

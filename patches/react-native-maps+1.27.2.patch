@@ -1,0 +1,26 @@
+diff --git a/node_modules/react-native-maps/android/src/main/java/com/rnmaps/maps/MapView.java b/node_modules/react-native-maps/android/src/main/java/com/rnmaps/maps/MapView.java
+index ebf8780..0b37409 100644
+--- a/node_modules/react-native-maps/android/src/main/java/com/rnmaps/maps/MapView.java
++++ b/node_modules/react-native-maps/android/src/main/java/com/rnmaps/maps/MapView.java
+@@ -1325,7 +1325,7 @@ public class MapView extends com.google.android.gms.maps.MapView implements Goog
+     }
+ 
+     public void updateExtraData(Object extraData) {
+-        if (setPaddingDeferred && super.getHeight() > 0 && super.getWidth() > 0) {
++        if (setPaddingDeferred && super.getHeight() > 0 && super.getWidth() > 0 && map != null) {
+             CameraUpdate cu = CameraUpdateFactory.newCameraPosition(map.getCameraPosition());
+ 
+             map.setPadding(edgeLeftPadding + baseLeftMapPadding,
+@@ -1492,8 +1492,10 @@ public class MapView extends com.google.android.gms.maps.MapView implements Goog
+     int edgeBottomPadding;
+ 
+     public void applyBaseMapPadding(int left, int top, int right, int bottom) {
+-        if (super.getHeight() <= 0 || super.getWidth() <= 0) {
+-            // the map is not laid out yet and calling setPadding() now has no effect
++        if (super.getHeight() <= 0 || super.getWidth() <= 0 || map == null) {
++            // the map is not laid out yet, or the underlying GoogleMap object
++            // hasn't been assigned yet (onMapReady not fired), and calling
++            // setPadding()/map.getCameraPosition() now would NPE on `map`
+             baseLeftMapPadding = left;
+             baseRightMapPadding = right;
+             baseTopMapPadding = top;

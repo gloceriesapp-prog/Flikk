@@ -5,6 +5,7 @@ import { Star } from 'lucide-react';
 import { fetchMyReviews, replyToReview, type PartnerReview } from '@/lib/partnerApi';
 import { ReviewCard } from '@/components/reviews/ReviewCard';
 import { Card } from '@/components/ui/Card';
+import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 // DEMO DATA — same isDemo convention as Overview/Orders: shown only while
 // the store has zero real reviews, replaced the instant a real one lands.
@@ -35,7 +36,7 @@ export default function ReviewsPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const isDemo = !isLoading && reviews.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && reviews.length === 0;
   const source = isDemo ? DEMO_REVIEWS : reviews;
 
   // Only real reviews are replyable — demo rows have no DB row to write to,

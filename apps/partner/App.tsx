@@ -8,6 +8,7 @@
 // priming a notification/audio session before there's anyone to notify is
 // wasted work.
 
+import { withCrashReporting } from './src/observability/crashReporting';
 import './global.css';
 import { useCallback, useEffect } from 'react';
 import { useFonts } from 'expo-font';
@@ -41,7 +42,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function App() {
+function App() {
   // Loading the weights here registers them with the OS by font-family
   // name (e.g. "AeonikSoftPro-Regular") — the actual app-wide default is
   // applied via global.css's `@layer base { * { font-family: ... } }` and
@@ -104,3 +105,5 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+export default withCrashReporting(App);

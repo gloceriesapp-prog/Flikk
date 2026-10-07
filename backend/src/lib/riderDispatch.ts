@@ -36,7 +36,7 @@ async function broadcastToRadius(orderId: string, lat: number, lng: number, stor
   const messages = (riderUsers ?? [])
     .map((u) => u.expo_push_token)
     .filter((token): token is string => !!token)
-    .map((to) => ({ to, title: 'New pickup available', body: `${storeName} — tap to accept before another rider does.` }));
+    .map((to) => ({ to, title: 'New pickup available', body: `${storeName} — tap to accept before another rider does.`, priority: 'high' as const }));
   await sendPushNotifications(messages);
   return riderUserIds.length;
 }

@@ -11,7 +11,7 @@ vi.mock('../db/supabase.js', () => ({ supabase: { rpc: mocks.rpc, from: () => {
 vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () => vi.fn(), requireApproved: vi.fn() }));
 vi.mock('./resolveAddress.js', () => ({ resolveAddressId: mocks.address }));
 vi.mock('./platformSettings.js', () => ({ getCommissionRate: async () => 0.1 }));
-vi.mock('./pushNotifications.js', () => ({ sendPushNotification: vi.fn() }));
+vi.mock('./pushNotifications.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('./pushNotifications.js')>()), sendPushNotification: vi.fn() }));
 vi.mock('./riderDispatch.js', () => ({ triggerDispatch: vi.fn() }));
 vi.mock('../payments/refundPayment.js', () => ({ refundPayment: vi.fn() }));
 vi.mock('../routes/stores.js', () => ({ PRODUCT_WITH_VARIANTS_SELECT: '*' }));

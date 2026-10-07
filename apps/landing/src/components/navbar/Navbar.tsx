@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import AnnouncementBanner from "./AnnouncementBanner";
 import LocationModal from "../location/LocationModal";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -41,7 +42,9 @@ const POPULAR_SEARCHES = [
   { term: "Cold Drinks", category: "Beverages" },
 ];
 
-export default function Navbar() {
+// promptLocation=false skips the first-visit location modal — used on pages
+// a visitor must be able to read straight away (legal/policy pages).
+export default function Navbar({ promptLocation = true }: { promptLocation?: boolean } = {}) {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -84,7 +87,7 @@ export default function Navbar() {
             /* corrupt coords — leave badge unresolved */
           }
         }
-      } else {
+      } else if (promptLocation) {
         setIsFirstVisit(true);
         const timeout = setTimeout(() => {
           setIsLocationModalOpen(true);
@@ -92,7 +95,7 @@ export default function Navbar() {
         return () => clearTimeout(timeout);
       }
     }
-  }, []);
+  }, [promptLocation]);
 
   const handleSelectLocation = (
     newLoc: string,
@@ -153,11 +156,13 @@ export default function Navbar() {
       <AnnouncementBanner />
 
       {/* Increased max-width to 1280px to align with the rest of the page layout */}
-      <div className="max-w-[1280px] mx-auto px-6 py-4 flex items-center justify-between gap-4 sm:gap-6 bg-white">
+      {/* Below md the row wraps: brand + location on top, search + app CTA
+          beneath, so nothing overflows a phone-width viewport. */}
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-3 md:py-4 flex flex-wrap md:flex-nowrap items-center justify-between gap-3 sm:gap-6 bg-white">
         {/* Left Brand Logo & Location Pill */}
-        <div className="flex items-center gap-3 shrink-0">
-          <a
-            href="#"
+        <div className="flex items-center gap-3 w-full md:w-auto md:shrink-0 min-w-0">
+          <Link
+            href="/"
             className="flex items-center gap-2 cursor-pointer select-none group"
             aria-label="Gloceries Home"
           >
@@ -166,7 +171,7 @@ export default function Navbar() {
                 gloceries <span className="text-[#155dfc] h-2 w-2 rounded-full inline-block bg-[#155dfc]"></span>
               </span>
             </div>
-          </a>
+          </Link>
 
           <div className="hidden md:block w-px h-7 bg-slate-200" />
 
@@ -175,7 +180,7 @@ export default function Navbar() {
             type="button"
             onClick={() => setIsLocationModalOpen(true)}
             aria-label="Change delivery location"
-            className="flex items-center gap-1.5 px-3 cursor-pointer transition-colors text-left group"
+            className="flex items-center gap-1.5 px-3 cursor-pointer transition-colors text-left group min-w-0"
           >
             <div className="flex flex-col leading-tight">
               <span className="flex items-center gap-2">
@@ -193,8 +198,8 @@ export default function Navbar() {
                   </span>
                 )}
               </span>
-              <span className="text-sm font-medium text-slate-800 flex items-center gap-1 group-hover:text-[#0052FF] transition-colors">
-                {userLocation}
+              <span className="text-sm font-medium text-slate-800 flex items-center gap-1 group-hover:text-[#0052FF] transition-colors min-w-0">
+                <span className="truncate">{userLocation}</span>
                 <HugeiconsIcon icon={ArrowDown01Icon} className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#0052FF] transition-colors" />
               </span>
             </div>
@@ -202,9 +207,9 @@ export default function Navbar() {
         </div>
 
         {/* Center Search Bar with Interactive Dropdown */}
-        <div className="flex-1 max-w-[460px] relative" ref={searchRef}>
+        <div className="flex-1 min-w-0 md:max-w-[460px] relative" ref={searchRef}>
           <div
-            className={`flex items-center bg-[#F1F3F6] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0052FF]/20 focus-within:border-[#0052FF] border rounded-xl px-5 h-[54px] transition-all ${isSearchFocused
+            className={`flex items-center bg-[#F1F3F6] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0052FF]/20 focus-within:border-[#0052FF] border rounded-xl px-4 sm:px-5 h-12 md:h-[54px] transition-all ${isSearchFocused
                 ? "border-[#0052FF] bg-white ring-2 ring-[#0052FF]/20 shadow-md"
                 : "border-transparent"
               }`}
@@ -215,7 +220,7 @@ export default function Navbar() {
               onFocus={() => setIsSearchFocused(true)}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={SEARCH_PLACEHOLDERS[placeholderIndex]}
-              className="w-full bg-transparent outline-none text-base font-medium text-slate-800 placeholder:text-slate-400"
+              className="w-full min-w-0 bg-transparent outline-none text-base font-medium text-slate-800 placeholder:text-slate-400"
             />
             <HugeiconsIcon icon={Search01Icon} className="w-5 h-5 text-slate-500 shrink-0 cursor-pointer" />
           </div>
@@ -286,11 +291,11 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() => setIsDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-2 bg-gradient-to-r from-[#0052FF] to-[#0040E0] hover:from-[#0048E5] hover:to-[#0036C7] active:scale-[0.98] text-white px-5 sm:px-6 py-3.5 rounded-xl font-semibold text-sm sm:text-base shadow-md hover:shadow-lg transition-all cursor-pointer group shrink-0"
+            className="flex items-center gap-2 bg-gradient-to-r from-[#0052FF] to-[#0040E0] hover:from-[#0048E5] hover:to-[#0036C7] active:scale-[0.98] text-white px-4 sm:px-6 py-3 md:py-3.5 rounded-xl font-semibold text-sm sm:text-base shadow-md hover:shadow-lg transition-all cursor-pointer group shrink-0"
           >
             <HugeiconsIcon icon={ShoppingBag01Icon} className="w-5 h-5 text-white shrink-0 group-hover:scale-110 transition-transform" />
-            <span className="hidden xs:inline">Order on Gloceries App</span>
-            <span className="xs:hidden">Get App</span>
+            <span className="hidden lg:inline">Order on Gloceries App</span>
+            <span className="lg:hidden">Get App</span>
             <HugeiconsIcon
               icon={ArrowDown01Icon}
               className={`w-3.5 h-3.5 text-white/80 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""

@@ -40,7 +40,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { checkAccountStatus } from '../api/auth';
 import { ApiError } from '../api/client';
-import { registerPushToken } from '../features/push-notifications/registerPushToken';
+import {
+  flushPendingNotificationTap,
+  registerPushToken,
+  watchNotificationTaps,
+  watchPushTokenRotation,
+} from '../features/push-notifications/registerPushToken';
 import { WaitingApprovalScreen } from '../screens/onboarding/WaitingApprovalScreen';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { useAuthStore } from '../store/useAuthStore';
@@ -95,6 +100,16 @@ export function RootNavigator() {
   useEffect(() => {
     if (!isHydrated || !accessToken) return;
     void registerPushToken();
+  }, [isHydrated, accessToken]);
+
+  useEffect(() => {
+    if (!isHydrated || !accessToken) return;
+    const stopRotation = watchPushTokenRotation();
+    const stopTaps = watchNotificationTaps();
+    return () => {
+      stopRotation();
+      stopTaps();
+    };
   }, [isHydrated, accessToken]);
 
   useEffect(() => {
@@ -167,7 +182,7 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} onReady={flushPendingNotificationTap}>
       {__DEV__ && DEV_FORCE_ONBOARDING ? (
         <AuthNavigator key="dev-onboarding" initialRouteName="OnboardingIntro" />
       ) : !accessToken ? (

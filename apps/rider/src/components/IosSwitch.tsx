@@ -5,7 +5,7 @@
 // (not an instant jump) via RN's built-in Animated API — no new dependency
 // for a two-value slide + color crossfade.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Pressable } from 'react-native';
 
 const TRACK_WIDTH = 51;
@@ -21,7 +21,8 @@ interface Props {
 }
 
 export function IosSwitch({ value, onValueChange }: Props) {
-  const progress = useRef(new Animated.Value(value ? 1 : 0)).current;
+  // Created once; held in state (not a ref) so render never reads ref.current.
+  const [progress] = useState(() => new Animated.Value(value ? 1 : 0));
 
   useEffect(() => {
     Animated.timing(progress, { toValue: value ? 1 : 0, duration: 200, useNativeDriver: false }).start();

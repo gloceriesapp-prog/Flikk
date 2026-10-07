@@ -40,7 +40,10 @@ export function PayoutsScreen(_props: Props) {
   // screen instead of disappearing until the first real settlement
   // exists. Only kicks in once loading is actually done and the real
   // fetch genuinely came back empty — never shown alongside real rows.
-  const payouts = !isLoading && !query.isError && realPayouts.length === 0 ? buildSamplePayouts() : realPayouts;
+  // Development builds only — a real store must never see a balance or
+  // payouts it was not paid.
+  const payouts = __DEV__ && !isLoading && !query.isError && realPayouts.length === 0 ? buildSamplePayouts() : realPayouts;
+  const hasNoPayouts = !isLoading && !query.isError && payouts.length === 0;
 
   // The most recent row that hasn't actually landed yet is the hero card
   // (pending/blocked/failed all still mean "not paid out") —
@@ -89,6 +92,15 @@ export function PayoutsScreen(_props: Props) {
             <View className="flex-row items-center gap-2 rounded-2xl bg-gold/15 px-4 py-3">
               <Text className="text-xs font-semibold text-ink/70">
                 Sample data — real settlements will replace this once your first delivered order completes a full week.
+              </Text>
+            </View>
+          )}
+
+          {hasNoPayouts && (
+            <View className="items-center gap-2 rounded-3xl bg-white px-6 py-10">
+              <Text className="text-[16px] font-semibold text-ink">No payouts yet</Text>
+              <Text className="text-center text-[13px] font-medium leading-5 text-ink/55">
+                Your earnings from delivered orders are added up every week and transferred to the payout account in Store Settings. Your first payout appears here after your first delivered order.
               </Text>
             </View>
           )}

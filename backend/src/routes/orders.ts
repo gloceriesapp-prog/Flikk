@@ -22,7 +22,8 @@ import {
   timestampColumnFor,
   type OrderStatus,
 } from '../lib/orderStateMachine.js';
-import { sendPushNotification } from '../lib/pushNotifications.js';
+import { embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
+import { notifyStoresOfNewOrder } from '../payments/newOrderPush.js';
 import { customerDeliveryCodes, completeDelivery } from '../orders/deliveryCodes.js';
 import { isRiderCancelReasonCode } from '../lib/cancelReasons.js';
 import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.js';
@@ -99,21 +100,16 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     // Keep preparation metadata for existing API consumers. Delivery ETA
     // comes from the immutable estimate attached by migration 061, not
     // preparation time. This lookup remains best-effort.
-    // The owner's expo_push_token rides along on the same query — this is
-    // the one real push a store owner gets for a brand-new order; without
-    // it, apps/partner's own useOrderPolling.ts (10s interval) is the only
-    // thing that ever finds out, and only while the app is foregrounded.
     const { data: store } = await supabase
       .from('stores')
-      .select('avg_prep_minutes, users!owner_user_id(expo_push_token)')
+      .select('avg_prep_minutes')
       .eq('id', body.store_id)
       .single();
 
-    void sendPushNotification(
-      store?.users?.[0]?.expo_push_token,
-      'New order received',
-      `Order ${created.id.slice(0, 6).toUpperCase()} · ₹${total} — tap to view.`,
-    );
+    // COD is a real order from this moment, so the store hears now. An online
+    // order is announced only once paid (settleCheckoutPayment) — never twice,
+    // and never for a checkout the customer abandons.
+    if ((body.payment_method ?? 'cod') === 'cod') void notifyStoresOfNewOrder({ orderId: created.id });
 
     // Cashfree payment initiated by the caller once the order id is known —
     // kept out of this handler to avoid a second external-service failure mode
@@ -417,9 +413,10 @@ ordersRouter.patch(
           .eq('id', order.store_id)
           .single();
         void sendPushNotification(
-          storeRow?.users?.[0]?.expo_push_token,
+          embeddedPushToken(storeRow?.users),
           `₹${netEarned} earned`,
           `Order delivered — added to your balance, paid out on ${formatPayoutDateLabel(nextPayoutDate())}.`,
+          { data: { type: 'order_delivered', orderId: order.id } },
         );
       }
 

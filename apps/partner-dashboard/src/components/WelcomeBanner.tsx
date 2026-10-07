@@ -29,9 +29,12 @@ export function WelcomeBanner({ storeName, isActive, onToggle, toggling }: Props
   // from Date()); fill in on mount, then tick every second.
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    setNow(new Date());
+    const first = setTimeout(() => setNow(new Date()), 0);
     const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, []);
 
   return (

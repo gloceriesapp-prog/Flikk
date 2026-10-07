@@ -12,6 +12,7 @@ import { ProductForm } from '@/components/ProductForm';
 import { InventoryFilterBar, type StockFilter } from '@/components/inventory/InventoryFilterBar';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { InventoryToolbar, type SortKey } from '@/components/inventory/InventoryToolbar';
+import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 type Editing = { mode: 'create' } | { mode: 'edit'; product: PartnerProduct } | null;
 
@@ -50,7 +51,7 @@ export default function InventoryPage() {
   // Overview/Orders: shown only while products.length === 0, and replaced
   // outright the instant a real product is added (isDemo flips false on
   // the next reload(), demo rows are dropped rather than merged).
-  const isDemo = !isLoading && products.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && products.length === 0;
   const sourceProducts = isDemo ? demoProducts : products;
 
   async function handleSubmit(input: ProductInput) {

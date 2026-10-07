@@ -215,7 +215,7 @@ export function HomeScreen() {
           style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
         >
           <View>
-            <Text className="text-[15px] font-semibold text-[#000000]">Today's Earnings ({todayLabel()})</Text>
+            <Text className="text-[15px] font-semibold text-[#000000]">Today’s Earnings ({todayLabel()})</Text>
             <Text className="mt-1.5 text-[38px] font-bold tabular-nums">₹{todayEarnings}</Text>
           </View>
           {/* Right end — live online/offline status on top, tap-through

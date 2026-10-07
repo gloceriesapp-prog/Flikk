@@ -16,7 +16,7 @@
 // primitives + brand tokens. Half-hour granularity is all a shift schedule
 // needs.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
@@ -69,14 +69,13 @@ export function AvailabilityScreen() {
 
   // Seed local state once the query resolves (only if we haven't already, so
   // an in-flight edit isn't clobbered by a background refetch).
-  const seeded = week !== null;
-  useEffect(() => {
-    if (data && !seeded) {
-      const base = data.availability.length ? [...data.availability].sort((a, b) => a.day - b.day) : defaultWeek();
-      setWeek(base);
-      setAutoOnline(data.autoOnline);
-    }
-  }, [data, seeded]);
+  // Done during render (React's pattern for deriving state from loaded data)
+  // instead of an effect, so the screen doesn't render once with empty state.
+  if (data && week === null) {
+    const base = data.availability.length ? [...data.availability].sort((a, b) => a.day - b.day) : defaultWeek();
+    setWeek(base);
+    setAutoOnline(data.autoOnline);
+  }
 
   function updateDay(day: number, patch: Partial<DaySchedule>) {
     setError(null);

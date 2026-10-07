@@ -26,7 +26,7 @@ import { checkoutTransactionError } from '../lib/checkoutItems.js';
 import type { CartItem } from '../lib/orderValidation.js';
 import { groupPricedCartByStore } from '../lib/trips.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
-import { sendPushNotification } from '../lib/pushNotifications.js';
+import { notifyStoresOfNewOrder } from '../payments/newOrderPush.js';
 import { getCommissionRate } from '../lib/platformSettings.js';
 
 export const tripsRouter = Router();
@@ -99,22 +99,9 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
     const trip = attempt.result;
     if (attempt.replayed) { res.status(200).json(trip); return; }
 
-    // Best-effort "new order" push to every store involved — same alert
-    // POST /orders already sends on a single-store order, just fanned out
-    // per leg. Each store owner only ever hears about their own leg; they
-    // have no idea (and don't need to) that this was part of a bigger trip.
-    for (const leg of legs) {
-      const { data: store } = await supabase
-        .from('stores')
-        .select('users!owner_user_id(expo_push_token)')
-        .eq('id', leg.storeId)
-        .single();
-      void sendPushNotification(
-        store?.users?.[0]?.expo_push_token,
-        'New order received',
-        `New order — ₹${leg.itemTotal} — tap to view.`,
-      );
-    }
+    // COD trips alert every store now, each with its own leg; online trips
+    // alert once paid (settleCheckoutPayment), same rule as POST /orders.
+    if ((body.payment_method ?? 'cod') === 'cod') void notifyStoresOfNewOrder({ tripId: trip.id });
 
     // Cashfree payment initiated by the caller once the trip id is
     // known — same separation POST /orders already documents (a second

@@ -1,6 +1,6 @@
 import { supabase } from '../db/supabase.js';
 import { logger } from '../lib/logger.js';
-import { sendPushNotification } from '../lib/pushNotifications.js';
+import { ORDER_PUSH, embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
 import type { OrderIdBody } from './types.js';
 
 // The one "New order received" push a store owner gets. Online checkouts
@@ -15,11 +15,13 @@ export async function notifyStoresOfNewOrder(target: OrderIdBody): Promise<void>
     if (error) throw error;
     for (const order of orders ?? []) {
       const { data: store } = await supabase.from('stores').select('users!owner_user_id(expo_push_token)').eq('id', order.store_id).single();
-      const owner = (store as { users?: { expo_push_token: string | null }[] } | null)?.users?.[0];
+      // embeddedPushToken: PostgREST returns this many-to-one embed as an
+      // object, not an array — reading [0] silently dropped every push.
       // Trip legs show the store's own item total — the trip total includes other stores.
-      void sendPushNotification(owner?.expo_push_token, 'New order received', order.trip_id
+      void sendPushNotification(embeddedPushToken(store?.users), 'New order received', order.trip_id
         ? `New order — ₹${order.item_total} — tap to view.`
-        : `Order ${order.id.slice(0, 6).toUpperCase()} · ₹${order.total} — tap to view.`);
+        : `Order ${order.id.slice(0, 6).toUpperCase()} · ₹${order.total} — tap to view.`,
+      { ...ORDER_PUSH, data: { type: 'new_order', orderId: order.id } });
     }
   } catch (error) {
     logger.warn({ err: error, target }, 'New order push failed');
