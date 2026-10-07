@@ -39,3 +39,10 @@ export function isWithinReach(
   const cutoff = maxOverrideKm == null ? radius : Math.min(radius, maxOverrideKm);
   return distanceKmValue <= cutoff;
 }
+
+// Estimated road km: straight-line km x the admin's road factor (migration
+// 104's delivery_road_km does the same in SQL, so checkout, discovery and the
+// database guard agree on every distance).
+export function roadKm(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }, roadFactor: number): number {
+  return distanceKm(a, b) * roadFactor;
+}

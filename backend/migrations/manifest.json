@@ -412,6 +412,10 @@
     {
       "file": "103_cashfree_payments.sql",
       "sha256": "4f64eac0a0d8837f89df77e739b534614a0b72318f472a2d55d4d01b5438aa81"
+    },
+    {
+      "file": "104_delivery_radius_fee_tiers.sql",
+      "sha256": "3c5e20805d2fc36c7131342bc747cd92679ef976e23607bc432aee018c771e0b"
     }
   ]
 }

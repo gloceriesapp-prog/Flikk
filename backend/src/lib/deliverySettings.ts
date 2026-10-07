@@ -9,6 +9,9 @@
 // (item prices, promo discounts).
 
 import { supabase } from '../db/supabase.js';
+import { DEFAULT_DELIVERY_RADIUS_KM, DEFAULT_ROAD_DISTANCE_FACTOR, distanceDeliveryFee, parseFeeTiers, positive, type DeliveryFeeTier } from './deliveryFees.js';
+
+export { distanceDeliveryFee, parseFeeTiers, type DeliveryFeeTier };
 
 export interface DeliverySettings {
   flatDeliveryFee: number;
@@ -16,6 +19,11 @@ export interface DeliverySettings {
   freeDeliveryThreshold: number;
   handlingFee: number;
   estimatedDeliveryMinutes: number;
+  // migration 104 — reach and distance pricing (see that file's header).
+  defaultDeliveryRadiusKm: number;
+  roadDistanceFactor: number;
+  deliveryFeeTiers: DeliveryFeeTier[];
+  maxStoreSpreadKm: number;
 }
 
 export async function getDeliverySettings(): Promise<DeliverySettings> {
@@ -33,13 +41,17 @@ export async function getDeliverySettings(): Promise<DeliverySettings> {
     freeDeliveryThreshold: Number(data.free_delivery_threshold),
     handlingFee: Number(data.handling_fee),
     estimatedDeliveryMinutes: Number(data.estimated_delivery_minutes ?? 35),
+    defaultDeliveryRadiusKm: positive(data.default_delivery_radius_km, DEFAULT_DELIVERY_RADIUS_KM),
+    roadDistanceFactor: Math.max(1, positive(data.road_distance_factor, DEFAULT_ROAD_DISTANCE_FACTOR)),
+    deliveryFeeTiers: parseFeeTiers(data.delivery_fee_tiers),
+    maxStoreSpreadKm: Math.max(0, Number(data.max_store_spread_km ?? 0) || 0),
   };
 }
 
 // itemTotal here must be the SAME real item total the order/trip is
 // actually charging for (calcItemTotal's own real line totals) — never an
 // unvalidated client-sent figure.
-export function calcDeliveryFee(itemTotal: number, settings: DeliverySettings): number {
+export function calcDeliveryFee(itemTotal: number, settings: DeliverySettings, distanceKm: number | null = null): number {
   if (settings.freeDeliveryEnabled && itemTotal >= settings.freeDeliveryThreshold) return 0;
-  return settings.flatDeliveryFee;
+  return distanceDeliveryFee(distanceKm, settings);
 }

@@ -16,6 +16,12 @@ import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { fetchDeliverySettings, type DeliverySettings } from '@/lib/supabase/deliverySettings';
 
+type TierDraft = { upToKm: string; fee: string };
+
+function tiersEqual(draft: TierDraft[], saved: DeliverySettings['deliveryFeeTiers']): boolean {
+  return draft.length === saved.length && draft.every((tier, i) => Number(tier.upToKm) === saved[i]!.upToKm && Number(tier.fee) === saved[i]!.fee);
+}
+
 const NOTIFICATION_PREFS = [
   { key: 'unassignedOrder', label: 'Order unassigned too long', description: 'Alert when a packed order has no rider after 20 minutes.' },
   { key: 'newApplication', label: 'New store or rider application', description: 'Alert the moment someone applies to join.' },
@@ -58,6 +64,10 @@ export default function SettingsPage() {
     estimatedDeliveryMinutes: string;
     riderBasePayout: string;
     riderExtraStopPayout: string;
+    defaultDeliveryRadiusKm: string;
+    roadDistanceFactor: string;
+    maxStoreSpreadKm: string;
+    deliveryFeeTiers: TierDraft[];
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -81,6 +91,10 @@ export default function SettingsPage() {
         estimatedDeliveryMinutes: String(settings.estimatedDeliveryMinutes),
         riderBasePayout: String(settings.riderBasePayout),
         riderExtraStopPayout: String(settings.riderExtraStopPayout),
+        defaultDeliveryRadiusKm: String(settings.defaultDeliveryRadiusKm),
+        roadDistanceFactor: String(settings.roadDistanceFactor),
+        maxStoreSpreadKm: String(settings.maxStoreSpreadKm),
+        deliveryFeeTiers: settings.deliveryFeeTiers.map((tier) => ({ upToKm: String(tier.upToKm), fee: String(tier.fee) })),
       });
     }).catch(() => setSaveError('Could not load delivery settings. Refresh to try again.'));
 
@@ -129,7 +143,11 @@ export default function SettingsPage() {
       Number(draft.handlingFee) !== saved.handlingFee ||
       Number(draft.estimatedDeliveryMinutes) !== saved.estimatedDeliveryMinutes ||
       Number(draft.riderBasePayout) !== saved.riderBasePayout ||
-      Number(draft.riderExtraStopPayout) !== saved.riderExtraStopPayout);
+      Number(draft.riderExtraStopPayout) !== saved.riderExtraStopPayout ||
+      Number(draft.defaultDeliveryRadiusKm) !== saved.defaultDeliveryRadiusKm ||
+      Number(draft.roadDistanceFactor) !== saved.roadDistanceFactor ||
+      Number(draft.maxStoreSpreadKm) !== saved.maxStoreSpreadKm ||
+      !tiersEqual(draft.deliveryFeeTiers, saved.deliveryFeeTiers));
 
   async function handleSaveDelivery() {
     if (!draft || isSaving) return;
@@ -152,11 +170,18 @@ export default function SettingsPage() {
           estimatedDeliveryMinutes: Number(draft.estimatedDeliveryMinutes),
           riderBasePayout: Number(draft.riderBasePayout),
           riderExtraStopPayout: Number(draft.riderExtraStopPayout),
+          defaultDeliveryRadiusKm: Number(draft.defaultDeliveryRadiusKm),
+          roadDistanceFactor: Number(draft.roadDistanceFactor),
+          maxStoreSpreadKm: Number(draft.maxStoreSpreadKm),
+          deliveryFeeTiers: draft.deliveryFeeTiers.map((tier) => ({ upToKm: Number(tier.upToKm), fee: Number(tier.fee) })),
         }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? 'Could not save delivery settings.');
-      setSaved(body as DeliverySettings);
+      const next = body as DeliverySettings;
+      setSaved(next);
+      // The server sorts tiers; show them in the order they will apply.
+      setDraft((current) => current && { ...current, deliveryFeeTiers: next.deliveryFeeTiers.map((tier) => ({ upToKm: String(tier.upToKm), fee: String(tier.fee) })) });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save delivery settings.');
     } finally {
@@ -204,8 +229,7 @@ export default function SettingsPage() {
       <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
         <h3 className="mb-1 text-sm font-semibold text-ink">Delivery &amp; fees</h3>
         <p className="mb-4 text-xs text-muted">
-          Applies to every customer order right now. Free delivery is off deliberately — flat fees only, until it&apos;s
-          switched on here.
+          Applies to every customer order right now — the next checkout uses whatever is saved here, no app release needed.
         </p>
 
         {!draft ? (
@@ -225,10 +249,79 @@ export default function SettingsPage() {
                 <span className="text-sm text-muted">min</span>
               </div>
             </div>
+            <div className="flex flex-col gap-3 border-b border-border pb-4">
+              <div>
+                <p className="text-sm font-medium text-ink">Delivery area</p>
+                <p className="text-xs text-muted">
+                  A shop delivers up to its own radius (set on the store&apos;s page) or this default. Distance is the straight
+                  line × the road factor, because rivers and backwaters make real roads longer.
+                </p>
+              </div>
+              {([
+                ['defaultDeliveryRadiusKm', 'Default delivery radius', 'km', 0.5, 50, 0.5],
+                ['roadDistanceFactor', 'Road distance factor', '×', 1, 3, 0.05],
+                ['maxStoreSpreadKm', 'Max distance between shops in one order', 'km', 0, 50, 0.5],
+              ] as const).map(([key, label, unit, min, max, step]) => (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <label htmlFor={key} className="text-sm text-ink">
+                    {label}
+                    {key === 'maxStoreSpreadKm' && <span className="block text-xs text-muted">0 = no limit</span>}
+                  </label>
+                  <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                    <input id={key} type="number" min={min} max={max} step={step}
+                      value={draft[key]}
+                      onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+                      className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
+                    <span className="text-sm text-muted">{unit}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-3 border-b border-border pb-4">
+              <div>
+                <p className="text-sm font-medium text-ink">Delivery fee by distance</p>
+                <p className="text-xs text-muted">
+                  Priced by road distance to the farthest shop in the order. Past the last tier, the last tier&apos;s fee applies.
+                </p>
+              </div>
+              {draft.deliveryFeeTiers.map((tier, index) => (
+                <div key={index} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm text-ink">
+                    <span>Up to</span>
+                    <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                      <input aria-label={`Tier ${index + 1} distance`} type="number" min={0.1} max={50} step={0.5}
+                        value={tier.upToKm}
+                        onChange={(e) => setDraft({ ...draft, deliveryFeeTiers: draft.deliveryFeeTiers.map((t, i) => i === index ? { ...t, upToKm: e.target.value } : t) })}
+                        className="w-12 bg-transparent text-sm font-semibold text-ink outline-none" />
+                      <span className="text-sm text-muted">km</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                      <span className="text-sm text-muted">₹</span>
+                      <input aria-label={`Tier ${index + 1} fee`} type="number" min={0}
+                        value={tier.fee}
+                        onChange={(e) => setDraft({ ...draft, deliveryFeeTiers: draft.deliveryFeeTiers.map((t, i) => i === index ? { ...t, fee: e.target.value } : t) })}
+                        className="w-14 bg-transparent text-sm font-semibold text-ink outline-none" />
+                    </div>
+                    <button type="button" aria-label={`Remove tier ${index + 1}`}
+                      onClick={() => setDraft({ ...draft, deliveryFeeTiers: draft.deliveryFeeTiers.filter((_, i) => i !== index) })}
+                      className="rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:text-red-600">Remove</button>
+                  </div>
+                </div>
+              ))}
+              {draft.deliveryFeeTiers.length < 10 && (
+                <button type="button"
+                  onClick={() => setDraft({ ...draft, deliveryFeeTiers: [...draft.deliveryFeeTiers, { upToKm: '', fee: '' }] })}
+                  className="self-start rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-ink">+ Add tier</button>
+              )}
+            </div>
+
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-ink">Flat delivery fee</p>
-                <p className="text-xs text-muted">Charged on every order unless free delivery below is on and the order qualifies.</p>
+                <p className="text-sm font-medium text-ink">Fallback delivery fee</p>
+                <p className="text-xs text-muted">Used only when no distance tiers are set above.</p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
                 <span className="text-sm text-muted">₹</span>
