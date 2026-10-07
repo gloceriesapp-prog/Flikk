@@ -22,7 +22,7 @@ import {
   timestampColumnFor,
   type OrderStatus,
 } from '../lib/orderStateMachine.js';
-import { embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
+import { ORDER_PUSH, embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
 import { customerDeliveryCodes, completeDelivery } from '../orders/deliveryCodes.js';
 import { isRiderCancelReasonCode } from '../lib/cancelReasons.js';
 import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.js';
@@ -111,6 +111,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       embeddedPushToken(store?.users),
       'New order received',
       `Order ${created.id.slice(0, 6).toUpperCase()} · ₹${total} — tap to view.`,
+      { ...ORDER_PUSH, data: { type: 'new_order', orderId: created.id } },
     );
 
     // Razorpay payment intent initiated by the caller once the order id is known —
@@ -415,6 +416,7 @@ ordersRouter.patch(
           embeddedPushToken(storeRow?.users),
           `₹${netEarned} earned`,
           `Order delivered — added to your balance, paid out on ${formatPayoutDateLabel(nextPayoutDate())}.`,
+          { data: { type: 'order_delivered', orderId: order.id } },
         );
       }
 

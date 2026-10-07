@@ -26,7 +26,7 @@ import { checkoutTransactionError } from '../lib/checkoutItems.js';
 import type { CartItem } from '../lib/orderValidation.js';
 import { groupPricedCartByStore } from '../lib/trips.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
-import { embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
+import { ORDER_PUSH, embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
 import { getCommissionRate } from '../lib/platformSettings.js';
 
 export const tripsRouter = Router();
@@ -113,6 +113,7 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
         embeddedPushToken(store?.users),
         'New order received',
         `New order — ₹${leg.itemTotal} — tap to view.`,
+        { ...ORDER_PUSH, data: { type: 'new_order' } },
       );
     }
 

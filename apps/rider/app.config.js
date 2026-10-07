@@ -21,9 +21,17 @@ validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
 
 const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
 
+// Without an EAS project id getExpoPushTokenAsync can't run, so a rider would
+// never receive a "New pickup available" push. Not a secret; preview and
+// production builds refuse to build without it (same as apps/partner).
+const easProjectId = process.env.EAS_PROJECT_ID;
+if (buildProfile && !buildProfile.startsWith('development') && !easProjectId) {
+  throw new Error('EAS_PROJECT_ID must be set for preview/production builds (run `eas init` in apps/rider).');
+}
+
 module.exports = {
   expo: {
-    name: 'rider',
+    name: 'Gloceries Rider',
     slug: 'rider',
     version: '1.0.0',
     orientation: 'portrait',
@@ -86,6 +94,9 @@ module.exports = {
       ],
     ],
     extra: {
+      eas: {
+        projectId: easProjectId,
+      },
       // A boolean, never the key itself — DeliveryMapView reads this (via
       // expo-constants) to decide whether iOS gets real Google Maps + the
       // same grayscale style Android already uses, or falls back to Apple

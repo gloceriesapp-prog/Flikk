@@ -15,7 +15,7 @@ const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
 
 module.exports = {
   expo: {
-    name: 'customer',
+    name: 'Gloceries',
     slug: 'customer',
     version: '1.0.0',
     orientation: 'portrait',

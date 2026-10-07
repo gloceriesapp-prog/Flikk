@@ -9,18 +9,32 @@
 // didn't get the push still sees the unlock next time WaitingApprovalScreen
 // polls (worst case ~10s later), so a bad/expired token or Expo being down
 // shouldn't roll back or block the actual is_approved write.
-export async function sendPushNotification(expoPushToken: string | null | undefined, title: string, body: string): Promise<void> {
-  if (!expoPushToken) return;
 
-  try {
-    await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ to: expoPushToken, title, body, sound: 'default' }),
-    });
-  } catch {
-    // Best-effort — see the note above on why a failed push never throws.
-  }
+// Optional delivery hints. `channelId` must name an Android channel the
+// receiving app created (partner creates 'orders' — registerPushToken.ts);
+// `priority: 'high'` wakes a dozing Android phone instead of batching the
+// push until the next maintenance window. `data` reaches the app on tap.
+export type PushOptions = {
+  channelId?: string;
+  priority?: 'default' | 'normal' | 'high';
+  data?: Record<string, unknown>;
+};
+
+// Store-owner order pushes: a shop owner with the phone in a pocket must
+// hear these, so they go out high priority on the partner app's loud channel.
+export const ORDER_PUSH: PushOptions = { channelId: 'orders', priority: 'high' };
+
+type PushMessage = { to: string; title: string; body: string } & PushOptions;
+type PushTicket = { status?: string; details?: { error?: string } };
+
+export async function sendPushNotification(
+  expoPushToken: string | null | undefined,
+  title: string,
+  body: string,
+  options: PushOptions = {},
+): Promise<void> {
+  if (!expoPushToken) return;
+  await sendPushNotifications([{ to: expoPushToken, title, body, ...options }]);
 }
 
 // Batched variant — Expo's /push/send accepts an array of up to 100
@@ -28,23 +42,51 @@ export async function sendPushNotification(expoPushToken: string | null | undefi
 // (or ceil(N/100)) HTTPS call, not N. Same best-effort contract: a failed
 // batch never throws, so one bad request can't block dispatch or the rest
 // of the batches.
-// ponytail: fixed 100-per-request chunk, no receipt polling. Add receipt
-// handling only if silent-drop reports show up — at MVP fleet size a single
-// batch covers the whole radius.
-export async function sendPushNotifications(
-  messages: { to: string; title: string; body: string }[],
-): Promise<void> {
+//
+// Tickets come back in request order. A DeviceNotRegistered ticket means the
+// app was uninstalled or the token rotated — that token is cleared from
+// users so later pushes stop going to a dead device. Receipt polling (the
+// slower, second-stage check) is only done by the customer outbox worker.
+export async function sendPushNotifications(messages: PushMessage[]): Promise<void> {
   for (let i = 0; i < messages.length; i += 100) {
-    const batch = messages.slice(i, i + 100).map((m) => ({ ...m, sound: 'default' as const }));
+    const batch = messages.slice(i, i + 100).map((m) => ({ sound: 'default' as const, ...m }));
     try {
-      await fetch('https://exp.host/--/api/v2/push/send', {
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(batch),
       });
+      await clearDeadTokens(batch, await readTickets(response));
     } catch {
       // Best-effort — one failed batch never throws.
     }
+  }
+}
+
+async function readTickets(response: Response | undefined): Promise<PushTicket[]> {
+  if (!response || typeof response.json !== 'function') return [];
+  try {
+    const body = (await response.json()) as { data?: unknown };
+    return Array.isArray(body?.data) ? (body.data as PushTicket[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function deadTokens(batch: { to: string }[], tickets: PushTicket[]): string[] {
+  return batch
+    .filter((_, index) => tickets[index]?.status === 'error' && tickets[index]?.details?.error === 'DeviceNotRegistered')
+    .map((message) => message.to);
+}
+
+async function clearDeadTokens(batch: { to: string }[], tickets: PushTicket[]): Promise<void> {
+  const tokens = deadTokens(batch, tickets);
+  if (tokens.length === 0) return;
+  try {
+    const { supabase } = await import('../db/supabase.js');
+    await supabase.from('users').update({ expo_push_token: null }).in('expo_push_token', tokens);
+  } catch (err) {
+    console.warn('clearing unregistered push tokens failed (non-fatal):', err);
   }
 }
 
