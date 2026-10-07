@@ -66,7 +66,7 @@ export function EarningsScreen() {
   if ((isError && earnings.length === 0) || (period === 'today' && today.isError)) {
     return (
       <View className="flex-1 items-center justify-center gap-1 bg-[#F8F8F8] px-8">
-        <Text className="text-center text-[15px] font-semibold text-ink">Couldn't load earnings</Text>
+        <Text className="text-center text-[15px] font-semibold text-ink">Couldn’t load earnings</Text>
         <Text onPress={() => { void refetch(); void today.refetch(); }} className="text-center text-[13px] font-semibold text-lime-deep">
           Tap to retry
         </Text>

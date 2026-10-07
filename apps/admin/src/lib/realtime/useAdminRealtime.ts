@@ -73,7 +73,10 @@ export function useAdminRealtime(onChange: () => void): { connected: boolean } {
       closeTimer = null;
     }
     openSource();
-    setIsConnected(connected);
+    // Covers a change between first render (useState(connected)) and this
+    // effect registering its listener; deferred so it isn't a synchronous
+    // setState inside the effect. Later changes arrive via the listener.
+    queueMicrotask(() => onConnection(connected));
 
     return () => {
       messageListeners.delete(onMessage);

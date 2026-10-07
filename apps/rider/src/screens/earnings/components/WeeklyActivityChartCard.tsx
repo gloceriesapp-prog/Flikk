@@ -20,7 +20,7 @@
 // EarningsScreen) — the reference image's ₹1750/Mon-Sun numbers were only
 // ever a visual sample, never hardcoded here.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { WeeklyActivityDay } from '../../../utils/earnings';
 
@@ -47,10 +47,13 @@ export function WeeklyActivityChartCard({ weeklyActivity }: Props) {
   // fresh weeklyActivity array) — otherwise a tap made on last week's Wed
   // would still be "selected" after paging to this week, showing the
   // wrong day's tooltip.
-  useEffect(() => {
+  // Adjusting state when a prop changes, during render (React's documented
+  // pattern) rather than in an effect that renders twice.
+  const [selectionWeek, setSelectionWeek] = useState(weeklyActivity);
+  if (selectionWeek !== weeklyActivity) {
+    setSelectionWeek(weeklyActivity);
     setSelectedIndex(todayIndex >= 0 ? todayIndex : null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weeklyActivity]);
+  }
 
   function handleSelect(index: number) {
     setSelectedIndex((current) => (current === index ? null : index));

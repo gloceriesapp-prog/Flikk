@@ -106,7 +106,7 @@ export function PayoutHistoryScreen() {
       <View className="flex-1 bg-white">
         <Header />
         <View className="flex-1 items-center justify-center gap-1 px-8">
-          <Text className="text-center text-[15px] font-semibold text-ink">Couldn't load payouts</Text>
+          <Text className="text-center text-[15px] font-semibold text-ink">Couldn’t load payouts</Text>
           <Text onPress={() => refetch()} className="text-center text-[13px] font-semibold text-lime-deep">
             Tap to retry
           </Text>
@@ -122,7 +122,7 @@ export function PayoutHistoryScreen() {
         <View className="flex-1 items-center justify-center gap-1 px-8">
           <Text className="text-center text-[15px] font-semibold text-ink">No payouts yet</Text>
           <Text className="text-center text-[13px] font-medium text-ink/50">
-            Weekly payouts appear here once your first week's earnings settle.
+            Weekly payouts appear here once your first week’s earnings settle.
           </Text>
         </View>
       </View>

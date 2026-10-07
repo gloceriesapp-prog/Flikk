@@ -37,7 +37,7 @@ export function DeliveryFailureModal({ visible, onCancel, onConfirm }: Props) {
         <View className="gap-5 rounded-t-3xl bg-white px-6 pb-safe-offset-6 pt-6">
           <View className="h-1.5 w-12 self-center rounded-full bg-gray-200" />
           <View className="gap-1">
-            <Text className="text-xl font-semibold text-ink">Couldn't complete this delivery?</Text>
+            <Text className="text-xl font-semibold text-ink">Couldn’t complete this delivery?</Text>
             <Text className="text-[14px] text-ink/55 font-medium">Tell us what happened — this goes to the team for a refund review.</Text>
           </View>
 
