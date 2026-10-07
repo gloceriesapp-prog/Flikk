@@ -4,6 +4,13 @@ function required(name: string): string {
   return value;
 }
 
+// Anything but exactly 'production'/'sandbox' is a typo; in production a
+// typo must not silently send live checkouts to the sandbox host.
+const cashfreeEnvRaw = process.env.CASHFREE_ENV?.trim().toLowerCase() || 'sandbox';
+if (cashfreeEnvRaw !== 'production' && cashfreeEnvRaw !== 'sandbox') {
+  throw new Error(`CASHFREE_ENV must be 'production' or 'sandbox', got '${process.env.CASHFREE_ENV}'.`);
+}
+
 const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('PORT must be an integer between 1 and 65535.');
@@ -24,7 +31,7 @@ export const env = {
   // aliases (Cashfree's dashboard calls the same values "client id/secret").
   cashfreeAppId: process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || undefined,
   cashfreeSecretKey: process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || undefined,
-  cashfreeEnv: (process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox') as 'production' | 'sandbox',
+  cashfreeEnv: cashfreeEnvRaw as 'production' | 'sandbox',
   // Cashfree signs PG webhooks with the PG secret key; override only if
   // Cashfree issues a separate one.
   cashfreeWebhookSecret: process.env.CASHFREE_WEBHOOK_SECRET || process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || undefined,
@@ -35,7 +42,9 @@ export const env = {
   // Public base URL of this API, used as Cashfree order_meta.notify_url.
   // Absent: rely on the webhook endpoint configured in the Cashfree dashboard.
   publicApiUrl: process.env.PUBLIC_API_URL?.replace(/\/+$/, '') || undefined,
-  mapplsAccessToken: required('MAPPLS_ACCESS_TOKEN'),
+  // Optional: only routes/location.ts /search uses it, and answers 503
+  // LOCATION_PROVIDER_UNAVAILABLE without it. The worker never needs it.
+  mapplsAccessToken: process.env.MAPPLS_ACCESS_TOKEN || undefined,
   // Optional, not required() — routes/location.ts's /reverse-geocode
   // degrades to { addressLabel: null } (client falls back to the free
   // on-device geocoder) rather than the whole backend refusing to boot
