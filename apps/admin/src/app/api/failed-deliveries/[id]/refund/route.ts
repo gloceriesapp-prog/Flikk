@@ -13,7 +13,7 @@ export async function POST(_req: Request, ctx: RouteContext<'/api/failed-deliver
   try {
     const { data: order, error } = await supabaseAdmin
       .from('orders')
-      .select('id, total, status, refund_status, razorpay_payment_id')
+      .select('id, total, status, refund_status, provider_payment_id')
       .eq('id', id)
       .single();
     if (error || !order) return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
@@ -22,7 +22,7 @@ export async function POST(_req: Request, ctx: RouteContext<'/api/failed-deliver
     const eligibility = failedDeliveryRefundEligibility({
       status: order.status,
       refundStatus: order.refund_status,
-      razorpayPaymentId: order.razorpay_payment_id,
+      providerPaymentId: order.provider_payment_id,
     });
     if (!eligibility.ok) return NextResponse.json({ error: eligibility.error }, { status: eligibility.httpStatus });
 

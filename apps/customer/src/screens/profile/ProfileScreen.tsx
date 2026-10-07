@@ -312,7 +312,7 @@ export function ProfileScreen({
           pt-2
         "
       >
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back"
           onPress={() =>
             navigation.goBack()
           }

@@ -9,12 +9,9 @@
 // Real health, not a fabricated always-green dot:
 //  - db: app/api/health's own Supabase reachability check
 //  - realtime: this browser's live EventSource connection (useAdminRealtime)
-//  - razorpay: whether a RazorpayX current account is actually configured
-//    (Balance card's data source)
-// All three fine -> green "All systems live". db down -> red "Systems
-// down", the one failure mode that actually breaks the dashboard. Anything
-// else off (no live sync, Razorpay not set up) -> amber "Some systems
-// degraded" naming exactly what's affected, since the rest still works.
+// Both fine -> green "All systems live". db down -> red "Systems down", the
+// one failure mode that actually breaks the dashboard. No live sync ->
+// amber "Some systems degraded", since the rest still works.
 //
 // Re-checks every 60s (setInterval) and re-renders the "Updated Xm ago"
 // line every 30s so it counts up between checks instead of freezing at
@@ -38,7 +35,6 @@ const CLOCK_TICK_MS = 30_000;
 
 export function SystemStatusBadge() {
   const [dbOk, setDbOk] = useState<boolean | null>(null);
-  const [razorpayOk, setRazorpayOk] = useState<boolean | null>(null);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -54,7 +50,6 @@ export function SystemStatusBadge() {
       }
       const data = await res.json();
       setDbOk(data.dbOk);
-      setRazorpayOk(data.razorpayOk);
       setCheckedAt(data.checkedAt);
     }
     Promise.resolve().then(check);
@@ -76,7 +71,7 @@ export function SystemStatusBadge() {
     );
   }
 
-  const degradedReasons = [!realtimeOk && 'live sync', razorpayOk === false && 'payments balance'].filter(Boolean) as string[];
+  const degradedReasons = [!realtimeOk && 'live sync'].filter(Boolean) as string[];
 
   const health: Health = !dbOk ? 'down' : degradedReasons.length > 0 ? 'degraded' : 'operational';
   const message =

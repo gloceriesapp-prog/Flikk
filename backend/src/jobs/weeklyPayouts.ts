@@ -1,6 +1,5 @@
 import { supabase } from '../db/supabase.js';
 import { previousWeekRange, type WeekRange } from '../lib/payoutWeek.js';
-import { drainPayoutReleases } from '../workers/payoutReleases.js';
 export { previousWeekRange, type WeekRange };
 
 // All delivered rows are aggregated transactionally in PostgreSQL. Repeated
@@ -14,11 +13,8 @@ export async function computeWeeklyPayouts(now: Date = new Date()): Promise<{ cr
   if (error) throw error;
   return { created: data ?? 0, skipped: 0 };
 }
-export function releasePendingPayouts(guard?: () => Promise<void>) {
-  return drainPayoutReleases('store', guard);
-}
 export async function runWeeklyPayoutJob(now: Date = new Date(), guard: () => Promise<void> = async () => {}): Promise<void> {
   await guard();
   await computeWeeklyPayouts(now);
-  await releasePendingPayouts(guard);
+  // Rows stay 'pending' until the founder pays manually (PAYOUTS.md).
 }

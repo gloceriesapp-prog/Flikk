@@ -75,7 +75,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
             {name}
             {localName ? ` (${localName})` : ''}
           </Text>
-          <Pressable onPress={() => setIsLiked((prev) => !prev)} hitSlop={8} className="pt-0">
+          <Pressable accessibilityRole="button" accessibilityLabel="Toggle wishlist" onPress={() => setIsLiked((prev) => !prev)} hitSlop={8} className="pt-0">
             <AppIcon
               icon={HeartIcon}
               size={22}

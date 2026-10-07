@@ -35,9 +35,10 @@ import { useAreaUpvote } from '../../../hooks/useAreaUpvote';
 import { useLocationStore } from '../../../store/useLocationStore';
 import { colors } from '../../../theme/tokens';
 import type { AppStackParamList } from '../../../navigation/types';
+import { storageUrl } from '../../../utils/storageUrl';
 
 const PANEL_BG = '#F7DEDC';
-const ILLUSTRATION_URL = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/store-coming-soon.png';
+const ILLUSTRATION_URL = storageUrl('Images/store-coming-soon.png');
 
 export function UnavailableZoneScreen() {
   const insets = useSafeAreaInsets();
@@ -67,7 +68,7 @@ export function UnavailableZoneScreen() {
                 <AppIcon icon={ChevronDownIcon} size={17} color={colors.ink} strokeWidth={2.2} />
               </View>
             </Pressable>
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Open profile"
               onPress={() => navigation.navigate('Profile')}
               className="h-10 w-10 items-center justify-center rounded-full bg-white"
             >

@@ -13,9 +13,59 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import type { HomeTab, HomeTabBanner, HomeTabTile } from '@/lib/types';
+import type { HomeTab, HomeTabBanner, HomeTabTile, HomeTabTileLinkType } from '@/lib/types';
 import { fetchHomeTabBanners, fetchHomeTabs, fetchHomeTabTiles } from '@/lib/supabase/homeTabs';
+import { fetchCategories } from '@/lib/supabase/categories';
+import { fetchAllSubCategoryOptions } from '@/lib/supabase/subcategories';
+import { fetchStores } from '@/lib/supabase/stores';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
+
+interface TileLink {
+  linkType: HomeTabTileLinkType | null;
+  linkId: string | null;
+}
+type LinkOptions = Record<HomeTabTileLinkType, { id: string; label: string }[]>;
+
+const LINK_SELECT_CLASS =
+  'min-w-0 rounded-xl border border-border bg-card px-2 py-1.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-ink/10';
+
+// Where tapping a tile goes: a type select, then a target picker from the
+// real categories/subcategories/stores lists.
+function TileLinkPicker({ value, options, onChange }: { value: TileLink; options: LinkOptions; onChange: (next: TileLink) => void }) {
+  return (
+    <div className="flex w-full flex-col gap-1.5">
+      <select
+        aria-label="Tile opens"
+        value={value.linkType ?? 'none'}
+        onChange={(e) => {
+          const linkType = e.target.value === 'none' ? null : (e.target.value as HomeTabTileLinkType);
+          onChange({ linkType, linkId: null });
+        }}
+        className={LINK_SELECT_CLASS}
+      >
+        <option value="none">Opens nothing</option>
+        <option value="category">Opens a category</option>
+        <option value="subcategory">Opens a subcategory</option>
+        <option value="store">Opens a store</option>
+      </select>
+      {value.linkType && (
+        <select
+          aria-label={`Pick ${value.linkType}`}
+          value={value.linkId ?? ''}
+          onChange={(e) => onChange({ linkType: value.linkType, linkId: e.target.value || null })}
+          className={LINK_SELECT_CLASS}
+        >
+          <option value="">Select {value.linkType}…</option>
+          {options[value.linkType].map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
 
 export default function HomeCategoriesPage() {
   const [tabs, setTabs] = useState<HomeTab[]>([]);
@@ -33,6 +83,8 @@ export default function HomeCategoriesPage() {
   const [newTileName, setNewTileName] = useState('');
   const [newTileImage, setNewTileImage] = useState<string | undefined>(undefined);
   const [addingTile, setAddingTile] = useState(false);
+  const [newTileLink, setNewTileLink] = useState<TileLink>({ linkType: null, linkId: null });
+  const [linkOptions, setLinkOptions] = useState<LinkOptions>({ category: [], subcategory: [], store: [] });
 
   const [newBannerImage, setNewBannerImage] = useState<string | undefined>(undefined);
   const [addingBanner, setAddingBanner] = useState(false);
@@ -66,6 +118,18 @@ export default function HomeCategoriesPage() {
   useEffect(() => {
     Promise.resolve().then(loadTabs);
   }, [loadTabs]);
+
+  useEffect(() => {
+    Promise.all([fetchCategories(), fetchAllSubCategoryOptions(), fetchStores()])
+      .then(([categories, subcategories, stores]) =>
+        setLinkOptions({
+          category: categories.map((c) => ({ id: c.id, label: c.name })),
+          subcategory: subcategories,
+          store: stores.map((st) => ({ id: st.id, label: st.name })),
+        }),
+      )
+      .catch(() => setError('Could not load categories/stores for tile links.'));
+  }, []);
 
   const loadBanners = useCallback(async (tabId: string) => {
     setBannersLoading(true);
@@ -142,7 +206,7 @@ export default function HomeCategoriesPage() {
       const res = await fetch('/api/home-tab-tiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ homeTabId: selectedTabId, name, imageUrl: newTileImage, sortOrder: tiles.length }),
+        body: JSON.stringify({ homeTabId: selectedTabId, name, imageUrl: newTileImage, sortOrder: tiles.length, ...newTileLink }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -150,6 +214,7 @@ export default function HomeCategoriesPage() {
       }
       setNewTileName('');
       setNewTileImage(undefined);
+      setNewTileLink({ linkType: null, linkId: null });
       await loadTiles(selectedTabId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add tile — try again.');
@@ -173,6 +238,27 @@ export default function HomeCategoriesPage() {
       if (selectedTabId) await loadTiles(selectedTabId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save photo — try again.');
+    }
+  }
+
+  async function handleTileLinkChange(tile: HomeTabTile, link: TileLink) {
+    // Local-only until a target is picked; a half-picked link can't be saved.
+    setTiles((prev) => prev.map((t) => (t.id === tile.id ? { ...t, ...link } : t)));
+    if (link.linkType && !link.linkId) return;
+    setError(null);
+    try {
+      const res = await fetch(`/api/home-tab-tiles/${tile.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tile.name, imageUrl: tile.imageUrl ?? null, ...link }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Could not save link.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save link — try again.');
+      if (selectedTabId) await loadTiles(selectedTabId);
     }
   }
 
@@ -346,6 +432,11 @@ export default function HomeCategoriesPage() {
                     <p className="truncate text-center text-xs font-medium text-ink" title={tile.name}>
                       {tile.name}
                     </p>
+                    <TileLinkPicker
+                      value={{ linkType: tile.linkType, linkId: tile.linkId }}
+                      options={linkOptions}
+                      onChange={(link) => handleTileLinkChange(tile, link)}
+                    />
                   </div>
                 ))}
               </div>
@@ -370,10 +461,14 @@ export default function HomeCategoriesPage() {
                     className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
                   />
                 </div>
+                <div className="flex w-44 flex-col gap-1.5">
+                  <span className="text-[11px] font-medium text-muted">Opens</span>
+                  <TileLinkPicker value={newTileLink} options={linkOptions} onChange={setNewTileLink} />
+                </div>
                 <button
                   type="button"
                   onClick={handleAddTile}
-                  disabled={!newTileName.trim() || addingTile}
+                  disabled={!newTileName.trim() || addingTile || Boolean(newTileLink.linkType && !newTileLink.linkId)}
                   className="flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
                 >
                   <Plus size={14} />

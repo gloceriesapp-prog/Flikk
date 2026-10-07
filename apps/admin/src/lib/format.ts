@@ -18,3 +18,13 @@ export function formatRelativeTime(iso: string, nowMs: number = Date.now()): str
   const hours = Math.round(minutes / 60);
   return `${hours} hour${hours === 1 ? '' : 's'} ago`;
 }
+
+// Payout amounts — exact to the paisa (the founder types this into a bank/UPI app).
+export function formatRupees(amount: number): string {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+}
+
+// Sum rupee amounts via integer paise so 0.1 + 0.2 style float drift never reaches a payout total.
+export function sumRupees(amounts: number[]): number {
+  return amounts.reduce((paise, a) => paise + Math.round(a * 100), 0) / 100;
+}

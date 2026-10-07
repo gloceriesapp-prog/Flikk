@@ -6,6 +6,6 @@ Open **Stores → Edit store**. The editor groups the 28 existing editable busin
 
 Photo upload uses the existing store-images bucket: JPG/PNG/WebP, max 5 MB, decoded pixel cap 40 million, normalized WebP and at most 800×800. A failed upload keeps the old photo and displays a retryable error. Save publishes the uploaded URL. Discarded uploads may leave an unused storage object; the editor never deletes an old image still referenced elsewhere.
 
-Store writes and uploads repeat founder authorization inside the server route, in addition to dashboard middleware. Unknown fields are rejected rather than written through. Database IDs, owner login identity, ratings and Razorpay verification records are managed by their dedicated workflows; profile editing does not falsify a verified payout destination. The bank section edits business-record bank name and account last four digits, not the live payout account.
+Store writes and uploads repeat founder authorization inside the server route, in addition to dashboard middleware. Unknown fields are rejected rather than written through. Database IDs, owner login identity, ratings and payout verification status are managed by their dedicated workflows; profile editing does not falsify a verified payout destination. The bank section edits business-record bank name and account last four digits, not the live payout account.
 
 No migration is needed. Tests live in backend/src/lib/adminStoreEditing.test.ts. Production photo upload still requires the existing store-images Storage bucket and its service-role credentials.

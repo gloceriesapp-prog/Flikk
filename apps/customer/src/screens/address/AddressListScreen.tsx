@@ -10,6 +10,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -18,7 +19,8 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { useAuthStore } from '../../store/useAuthStore';
-import { fetchAddresses, setDefaultAddress } from '../../api/addresses';
+import { fetchAddresses, setDefaultAddress, type ApiAddress } from '../../api/addresses';
+import { ApiError } from '../../api/client';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AddressList'>;
@@ -50,17 +52,30 @@ export function AddressListScreen({ navigation }: Props) {
         queryKey: ['addresses', customerId],
       });
 
-      navigation.popTo('Cart');
-    } catch {
-      // Keep the current default address if switching fails.
+      // Back to whoever opened the address book (Cart or Profile).
+      navigation.goBack();
+    } catch (err) {
+      // The current default stays in place; tell the customer it didn't switch.
+      Alert.alert('Could not switch address', err instanceof ApiError ? err.message : 'Please check your connection and try again.');
     }
+  }
+
+  function handleEdit(address: ApiAddress) {
+    if (address.latitude == null || address.longitude == null) return;
+    navigation.navigate('AddressForm', {
+      latitude: address.latitude,
+      longitude: address.longitude,
+      addressLabel: address.line1,
+      city: address.label,
+      address,
+    });
   }
 
   return (
     <View className="flex-1 bg-[#F4F4F6] pt-safe">
       {/* Header */}
       <View className="relative flex-row items-center px-5 pb-4 pt-3">
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back"
           onPress={() => navigation.goBack()}
           hitSlop={12}
           className="z-10 h-10 w-10 items-center justify-center rounded-full bg-white"
@@ -160,6 +175,18 @@ export function AddressListScreen({ navigation }: Props) {
                           strokeWidth={2}
                         />
                       </View>
+                    )}
+
+                    {address.latitude != null && address.longitude != null && (
+                      <Pressable
+                        onPress={() => handleEdit(address)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Edit ${address.label} address`}
+                        className="ml-2 rounded-full bg-[#F1F1F3] px-3 py-1.5"
+                      >
+                        <Text className="text-[12px] font-semibold text-[#202027]">Edit</Text>
+                      </Pressable>
                     )}
                   </Pressable>
 

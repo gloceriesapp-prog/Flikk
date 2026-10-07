@@ -439,10 +439,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
             />
 
             {/* Honest, not "verified" — real format checks only (14-digit FSSAI,
-      ABCDE1234F PAN), never a government-database or Razorpay lookup.
-      Razorpay has no standalone PAN/FSSAI verification API compatible
-      with this app's RazorpayX payout model (only exists inside their
-      Route sub-merchant onboarding, a different product) — see
+      ABCDE1234F PAN), never a government-database lookup — see
       utils/documentValidation.ts's own note. */}
             <View className="flex-row items-start gap-2 rounded-2xl bg-[#F9FAFB] px-3.5 py-3">
               <Text className="flex-1 text-[12.5px] font-medium leading-[17px]">
@@ -454,10 +451,9 @@ export function StoreSettingsScreen({ navigation }: Props) {
             </View>
           </SettingsCard>
 
-          {/* Payout details — real RazorpayX-verified UPI or bank account
-            (PayoutAccountCard's own note has the full flow), not a plain
-            text field saved through this screen's generic Save button.
-            Verification persists it server-side the instant it succeeds. */}
+          {/* Payout details — UPI or bank account, saved through its own
+            PUT /partner/payout-account (PayoutAccountCard), not this
+            screen's generic Save button. */}
           <PayoutAccountCard />
 
           <View className="gap-4 rounded-[16px] bg-white p-4">

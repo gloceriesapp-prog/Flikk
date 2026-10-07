@@ -57,7 +57,7 @@ export function CategoryFilterSheet({ panel, filters, types, brands, onChange, o
               <View className="min-h-12 flex-row items-center justify-between"><Text className="text-[15px] text-ink">Offers only</Text><Switch accessibilityLabel="Offers only" value={filters.dealsOnly} onValueChange={(dealsOnly) => onChange({ ...filters, dealsOnly })} trackColor={{ true: '#155DFC' }} /></View>
             </View>}
           </ScrollView>
-          <Pressable accessibilityRole="button" onPress={onClose} className="mx-5 mb-4 mt-3 min-h-12 items-center justify-center rounded-2xl bg-[#155DFC] px-4"><Text className="text-[15px] font-semibold text-white">Show products</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={onClose} className="mx-5 mb-4 mt-3 min-h-12 items-center justify-center rounded-2xl bg-coral px-4"><Text className="text-[15px] font-semibold text-ink">Show products</Text></Pressable>
         </View>
       </View>
     </Modal>

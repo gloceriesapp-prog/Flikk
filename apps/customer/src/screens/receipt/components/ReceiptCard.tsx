@@ -6,11 +6,10 @@
 // the cart is already cleared by the time this renders (see
 // ReceiptScreen.tsx).
 //
-// The barcode encodes a receipt URL (flikk.app/r/<orderId>) via
-// components/BarcodeSvg.tsx — real CODE128, actually scannable with a
-// phone camera, not a decorative glyph. That URL doesn't resolve to
-// anything yet — no hosted receipt-view page exists on the backend — so
-// scanning it today is a dead link; wire a real page up when one exists.
+// The barcode encodes the real order number (orders.order_number, e.g.
+// FLK-100042) via components/BarcodeSvg.tsx — real CODE128, scannable, and
+// the same id support/partner/admin look orders up by. No hosted
+// receipt page exists, so it deliberately encodes no URL.
 // (Originally tried react-native-barcode-builder — it renders through the
 // legacy @react-native-community/art native module, which Expo Go doesn't
 // register and crashed with "View config not found for component
@@ -81,7 +80,7 @@ export function ReceiptCard({
   const dateLabel = orderedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeLabel = orderedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   const eta = estimateDeliveryTime(placedAt, estimatedDeliveryMinutes, estimatedDeliveryAt);
-  const receiptUrl = `https://flikk.app/r/${orderId.replace('#', '')}`;
+  const barcodeValue = orderId.replace('#', '');
   const paymentStatusLabel =
     paymentMethodLabel === 'Cash on Delivery' ? 'Cash on Delivery' : `Paid via ${paymentMethodLabel}`;
 
@@ -134,7 +133,7 @@ export function ReceiptCard({
       </View>
 
       <View className="mt-5 w-full items-center border-t border-dashed border-gray-300 pt-5">
-        <BarcodeSvg value={receiptUrl} height={64} color={colors.ink} />
+        <BarcodeSvg value={barcodeValue} height={64} color={colors.ink} />
         <Text className="mt-3 text-sm font-bold uppercase tracking-widest text-ink/50">Thank you! You made our day.</Text>
       </View>
     </View>

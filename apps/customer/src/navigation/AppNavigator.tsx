@@ -36,8 +36,6 @@ import { HomeGrownProduceScreen } from '../screens/home/fresh/home-grown-nearby/
 import { RegionalCategoryScreen } from '../screens/home/regional/shop-by-category/RegionalCategoryScreen';
 import { CoconutOilScreen } from '../screens/home/regional/coconut-oil/CoconutOilScreen';
 import { PaymentMethodScreen } from '../screens/payment-method/PaymentMethodScreen';
-import { ComingSoonScreen } from '../screens/coming-soon/ComingSoonScreen';
-import { ErrorScreen } from '../screens/error/ErrorScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { HomeCategoryScreen } from '../screens/home/category-page/HomeCategoryScreen';
 import { HomeContentCollectionScreen } from '../screens/home/content/HomeContentCollectionScreen';
@@ -53,10 +51,8 @@ import { ReferralScreen } from '../screens/referral/ReferralScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
 import { StoreDetailScreen } from '../screens/store-detail/StoreDetailScreen';
 import { StoreListScreen } from '../screens/store-list/StoreListScreen';
-import { ShoppingListScreen } from '../screens/shopping-list/ShoppingListScreen';
 import { TrackOrderScreen } from '../screens/track-order/TrackOrderScreen';
 import { OrderSummaryScreen } from '../screens/order-summary/OrderSummaryScreen';
-import { UnavailableZoneScreen } from '../screens/home/unavailable-zone/UnavailableZoneScreen';
 import { WishlistScreen } from '../screens/wishlist/WishlistScreen';
 import { useLocationStore } from '../store/useLocationStore';
 import type { AppStackParamList } from './types';
@@ -137,12 +133,8 @@ export function AppNavigator() {
       <Stack.Screen name="MyRefunds" component={RefundsScreen} />
       <Stack.Screen name="RefundDetail" component={RefundDetailScreen} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} />
-      <Stack.Screen name="ShoppingList" component={ShoppingListScreen} />
       <Stack.Screen name="Referral" component={ReferralScreen} />
       <Stack.Screen name="AccountPrivacy" component={AccountPrivacyScreen} />
-      <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
-      <Stack.Screen name="UnavailableZone" component={UnavailableZoneScreen} />
-      <Stack.Screen name="ErrorPage" component={ErrorScreen} />
     </Stack.Navigator>
   );
 }

@@ -40,7 +40,7 @@ export function TotalAmountCard({ items, totalPrice }: Props) {
           <Pressable onPress={(e) => e.stopPropagation()} className="rounded-t-3xl bg-white px-5 pb-safe-offset-4 pt-4" style={{ maxHeight: '75%' }}>
             <View className="mb-3 flex-row items-center justify-between">
               <Text className="text-lg font-medium text-ink">Order Summary</Text>
-              <Pressable onPress={() => setExpanded(false)} hitSlop={10} className="h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+              <Pressable accessibilityRole="button" accessibilityLabel="Close order summary" onPress={() => setExpanded(false)} hitSlop={10} className="h-9 w-9 items-center justify-center rounded-full bg-gray-100">
                 <AppIcon icon={Cancel01Icon} size={16} color={colors.ink} />
               </Pressable>
             </View>

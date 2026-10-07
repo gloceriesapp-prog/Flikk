@@ -45,13 +45,13 @@ export function ViewAllStoresTile({
           items-center
           justify-center
           rounded-full
-          bg-[#155DFC]
+          bg-coral
         "
       >
         <AppIcon
           icon={ArrowRight01Icon}
           size={20}
-          color="#FFFFFF"
+          color="#101C10"
           strokeWidth={2}
         />
       </View>

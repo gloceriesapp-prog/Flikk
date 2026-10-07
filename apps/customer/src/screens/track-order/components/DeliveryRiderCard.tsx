@@ -1,20 +1,20 @@
 // Rider card remains visible for active orders, including assignment pending.
-import { useState } from 'react';
-import { Call02Icon, Message01Icon, StarIcon } from '@hugeicons/core-free-icons';
+import { Call02Icon, Message01Icon } from '@hugeicons/core-free-icons';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { AppImage as Image } from '../../../components/AppImage';
 import type { ApiOrder } from '../../../api/orders';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
-import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 
 interface Props {
   order: ApiOrder;
 }
 
-// Preserve the existing rating presentation; no rider rating field exists yet.
-const DISPLAY_RATING = 4.9;
-const RIDER_AVATAR_URI = 'https://i.pinimg.com/736x/d0/21/cc/d021cc669f8688a757199873421035f3.jpg';
+// No rider rating source exists and riders.photo_url is an unvalidated path
+// in the private rider-documents bucket (also holds Aadhaar/DL scans), so
+// the card shows initials and no rating — never fabricated data.
+function initials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || '?';
+}
 
 function digitsOnly(phone: string): string {
   return phone.replace(/[^0-9]/g, '');
@@ -30,9 +30,7 @@ function ActionButton({ icon, label, onPress, disabled = false }: { icon: Parame
 }
 
 export function DeliveryRiderCard({ order }: Props) {
-  const [avatarUri, setAvatarUri] = useState(RIDER_AVATAR_URI);
   const rider = order.riders;
-  const isRealRider = !!rider;
   if (!['placed', 'packed', 'out_for_delivery'].includes(order.status)) return null;
 
   const storeName = order.stores?.name ?? 'The store';
@@ -62,17 +60,13 @@ export function DeliveryRiderCard({ order }: Props) {
       ) : null}
 
       <View className="mt-4 flex-row items-center gap-3">
-        <Image
-          source={{ uri: isRealRider ? avatarUri : PLACEHOLDER_IMAGE_URI }}
-          onError={() => setAvatarUri(PLACEHOLDER_IMAGE_URI)}
-          className="h-11 w-11 rounded-full bg-gray-100"
-        />
+        <View className="h-11 w-11 items-center justify-center rounded-full bg-lime-soft">
+          <Text className="text-[15px] font-semibold text-ink">{rider ? initials(rider.name) : '?'}</Text>
+        </View>
         <View>
           <Text className="text-[14px] font-medium text-ink">{rider?.name ?? 'Your delivery partner'}</Text>
           {rider ? <View className="mt-0.5 flex-row items-center gap-1">
-            <AppIcon icon={StarIcon} size={13} color={colors.gold} fill={colors.gold} />
-            <Text className="text-[12.5px] font-medium text-ink/60">{DISPLAY_RATING}</Text>
-            <Text className="text-[12.5px] font-medium text-ink/60"> · {rider.deliveries.toLocaleString('en-IN')} deliveries</Text>
+            <Text className="text-[12.5px] font-medium text-ink/60">{rider.deliveries.toLocaleString('en-IN')} deliveries</Text>
           </View> : <Text className="mt-0.5 text-[12.5px] font-medium text-ink/50">Rider assignment pending</Text>}
           {rider ? <Text className="mt-0.5 text-[12.5px] font-medium text-ink/40">{rider.phone}</Text> : null}
         </View>

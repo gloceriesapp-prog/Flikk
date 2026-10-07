@@ -12,11 +12,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   try {
     const { data: order, error } = await supabaseAdmin
       .from('orders')
-      .select('id, trip_id, total, refund_status, razorpay_payment_id')
+      .select('id, trip_id, total, refund_status, provider_payment_id')
       .eq('id', id)
       .single();
     if (error || !order) return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
-    if (!order.razorpay_payment_id) {
+    if (!order.provider_payment_id) {
       return NextResponse.json({ error: 'This order has no online payment to refund.' }, { status: 400 });
     }
     if (order.refund_status !== 'failed') {

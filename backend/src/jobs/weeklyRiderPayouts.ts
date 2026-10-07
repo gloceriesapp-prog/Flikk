@@ -1,5 +1,4 @@
 import { supabase } from '../db/supabase.js';
-import { drainPayoutReleases } from '../workers/payoutReleases.js';
 import { previousWeekRange } from '../lib/payoutWeek.js';
 
 // Phase 1 — one 'pending' rider_payouts row per rider with unpaid earnings,
@@ -27,13 +26,8 @@ export async function computeWeeklyRiderPayouts(now: Date = new Date()): Promise
   return { created: created ?? 0 };
 }
 
-// Durable, frozen provider requests and per-transfer leases allow recovery
-// after a worker crash without repeating a transfer.
-export function releasePendingRiderPayouts(guard?: () => Promise<void>) {
-  return drainPayoutReleases('rider', guard);
-}
 export async function runWeeklyRiderPayoutJob(now: Date = new Date(), guard: () => Promise<void> = async () => {}): Promise<void> {
   await guard();
   await computeWeeklyRiderPayouts(now);
-  await releasePendingRiderPayouts(guard);
+  // Rows stay 'pending' until the founder pays manually (PAYOUTS.md).
 }

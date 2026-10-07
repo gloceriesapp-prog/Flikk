@@ -215,9 +215,9 @@ export function CartItemRow({ item, availability }: Props) {
           }}
         >
           {/* MINUS */}
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${item.name}`}
             onPress={() => decrementItem(item.id)}
-            hitSlop={8}
+            hitSlop={12}
             className="
       h-7
       w-7
@@ -248,13 +248,13 @@ export function CartItemRow({ item, availability }: Props) {
           </Text>
 
           {/* PLUS */}
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${item.name}`}
             disabled={cannotIncrease}
             accessibilityState={{
               disabled: cannotIncrease,
             }}
             onPress={() => incrementItem(item.id)}
-            hitSlop={8}
+            hitSlop={12}
             className="
       h-7
       w-7

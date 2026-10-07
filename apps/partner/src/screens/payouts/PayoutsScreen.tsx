@@ -43,7 +43,7 @@ export function PayoutsScreen(_props: Props) {
   const payouts = !isLoading && !query.isError && realPayouts.length === 0 ? buildSamplePayouts() : realPayouts;
 
   // The most recent row that hasn't actually landed yet is the hero card
-  // (pending/processing/blocked/failed all still mean "not paid out") —
+  // (pending/blocked/failed all still mean "not paid out") —
   // everything else, paid or not, is history below it.
   const currentWeek = payouts.find((p) => p.status !== 'paid') ?? payouts[0];
   const history = payouts.filter((p) => p.id !== currentWeek?.id);

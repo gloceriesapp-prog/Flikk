@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_migrations_046_rider_code_sql", "label": "046_rider_code.sql", "file_type": "code", "source_file": "migrations/046_rider_code.sql", "source_location": null}, {"id": "riders", "label": "riders", "file_type": "code", "source_file": "", "source_location": "", "origin_file": "$graphify-root$/migrations/046_rider_code.sql"}], "edges": []}

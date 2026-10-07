@@ -64,7 +64,7 @@ export function SearchScreen({ navigation }: Props) {
         ) : search.isError ? (
           <View className="items-center gap-3 px-6 py-12">
             <Text className="text-center text-base text-ink/60">We couldn’t load results. Check your connection and retry.</Text>
-            <Pressable accessibilityRole="button" onPress={() => void search.refetch()} className="rounded-xl bg-[#155DFC] px-5 py-3"><Text className="font-bold text-white">Retry search</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => void search.refetch()} className="rounded-xl bg-coral px-5 py-3"><Text className="font-bold text-ink">Retry search</Text></Pressable>
           </View>
         ) : isLoadingProducts || search.isDebouncing ? (
           <ActivityIndicator className="py-12" color="#155DFC" />

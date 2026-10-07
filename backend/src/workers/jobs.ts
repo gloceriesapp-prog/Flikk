@@ -5,9 +5,10 @@ import { pruneAuthBudgets } from '../customer-experience/authBudget.js';
 import { pruneDeliveryCodes } from '../orders/deliveryCodes.js';
 import { runOrderRefunds } from '../payments/orderRefunds.js';
 import type { Jobs } from './runner.js';
-import { runWeeklyPayoutJob, releasePendingPayouts } from '../jobs/weeklyPayouts.js';
-import { runWeeklyRiderPayoutJob, releasePendingRiderPayouts } from '../jobs/weeklyRiderPayouts.js';
-import { drainExpiredReservations } from '../jobs/expireUnpaidOrders.js';
+import { runWeeklyPayoutJob } from '../jobs/weeklyPayouts.js';
+import { runWeeklyRiderPayoutJob } from '../jobs/weeklyRiderPayouts.js';
+import { runReservationExpiry } from '../jobs/expireUnpaidOrders.js';
+import { paymentsConfigured } from '../payments/cashfreeClient.js';
 import { expandDispatchOrRebroadcast } from '../lib/riderDispatch.js';
 import { runTripRefunds } from '../payments/tripRefunds.js';
 import { runCustomerNotifications } from '../notifications/worker.js';
@@ -22,13 +23,14 @@ export const jobs: Jobs = {
 export const queues: Record<string, (shouldStop: () => boolean) => Promise<unknown>> = {
   promotions: runPromotions,
   mediaCleanup: cleanupMedia,
-  reservationExpiry: shouldStop => drainExpiredReservations(undefined,shouldStop),
-  tripRefunds: runTripRefunds,
-  orderRefunds: runOrderRefunds,
+  // Provider reconciliation runs first so expiry never releases a paid checkout.
+  reservationExpiry: runReservationExpiry,
+  // Refund jobs only exist after a real payment; without keys they would
+  // lease and fail every poll, so they wait until Cashfree is configured.
+  tripRefunds: async () => { if (paymentsConfigured) await runTripRefunds(); },
+  orderRefunds: async () => { if (paymentsConfigured) await runOrderRefunds(); },
   deliveryCodes: pruneDeliveryCodes,
   authBudgets: pruneAuthBudgets,
   customerNotifications: runCustomerNotifications,
   pushReceipts: runPushReceipts,
-  // Bounded release batches continue draining between weekly compute runs.
-  payoutReleases: async () => { await releasePendingPayouts(); await releasePendingRiderPayouts(); },
 };

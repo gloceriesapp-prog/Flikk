@@ -1,7 +1,5 @@
-// The actual visual ErrorBoundary.tsx renders on an uncaught render error —
-// pulled out so ErrorScreen.tsx (a routable TEMP-root screen, AppNavigator
-// .tsx's own note) can show this exact real UI for design iteration
-// instead of a second, invented one. Same white background HomeScreen.tsx's
+// The actual visual ErrorBoundary.tsx renders on an uncaught render error.
+// Same white background HomeScreen.tsx's
 // own root uses (not colors.mist) per an explicit ask. The dev-only raw
 // stack-trace box is gone — still logged to Metro/device console via
 // ErrorBoundary's own componentDidCatch, just not rendered on screen

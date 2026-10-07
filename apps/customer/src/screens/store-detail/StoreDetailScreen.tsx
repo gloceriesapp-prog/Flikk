@@ -3,7 +3,7 @@
 // screen reuses that screen's header/sidebar components directly rather
 // than a copy, so a layout fix in one place fixes both.
 //
-// Real catalog (useStoreProducts.ts -> GET /stores/:id/products) — a
+// Real catalog (useStoreProducts.ts -> GET /stores/:id/products-page) — a
 // product only ever belongs to the one store it was added under in admin's
 // Inventory screen, so this screen only ever shows that store's own items,
 // never another store's or Home's own tab data. Sidebar categories are
@@ -22,26 +22,18 @@ import type { Product } from '../home/products/types';
 import { SubCategorySidebar } from '../category-detail/components/SubCategorySidebar';
 import { StoreCategoryGrid } from './components/StoreCategoryGrid';
 import { StoreDetailHeader } from './components/StoreDetailHeader';
-import { StorePriceRangeSheet, matchesPriceRange, type StorePriceRange } from './components/StorePriceRangeSheet';
+import { StorePriceRangeSheet, type StorePriceRange } from './components/StorePriceRangeSheet';
 import { StoreProductFilterBar } from './components/StoreProductFilterBar';
 import { StoreSortSheet, type StoreProductSort } from './components/StoreSortSheet';
 import { useStoreProducts } from './useStoreProducts';
+import { useCopy } from '../../api/appConfig';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'StoreDetail'>;
 
 export function StoreDetailScreen({ navigation, route }: Props) {
   const { storeId, storeName } = route.params;
-  const catalog = useStoreProducts(storeId);
-  const { data } = catalog;
-  const categories = data?.categories ?? [];
-  const products = data?.products ?? [];
-
-  // Real categories only — no dummy fallback (dummyStoreCategories.ts
-  // removed per an explicit ask). A store with nothing beyond 'All' just
-  // shows the one real 'All' entry.
-  const sidebarItems = categories.length > 0 ? categories : [{ id: 'all', label: 'All' }];
-
+  const emptyText = useCopy('store.empty.title');
   const [selectedId, setSelectedId] = useState('all');
   useEffect(() => {
     Promise.resolve().then(() => setSelectedId('all'));
@@ -54,18 +46,9 @@ export function StoreDetailScreen({ navigation, route }: Props) {
   const [priceRange, setPriceRange] = useState<StorePriceRange>('all');
   const [isPriceSheetOpen, setIsPriceSheetOpen] = useState(false);
 
-  const visibleProducts = (() => {
-    let result = selectedId === 'all' ? products : products.filter((p) => p.categoryLabel === selectedId);
-    if (vegOnly) result = result.filter((p) => p.isVeg !== false);
-    // Real signal — the same originalPrice field ProductCard's own
-    // showDiscountBadge already reads on this screen, not a fabricated
-    // "deal" flag.
-    if (dealsOnly) result = result.filter((p) => (p.originalPrice ?? 0) > p.price);
-    if (priceRange !== 'all') result = result.filter((p) => matchesPriceRange(p.price, priceRange));
-    if (sort === 'price_low') result = [...result].sort((a, b) => a.price - b.price);
-    if (sort === 'price_high') result = [...result].sort((a, b) => b.price - a.price);
-    return result;
-  })();
+  // Every filter/sort is a server query param over the whole catalogue.
+  const catalog = useStoreProducts(storeId, { category: selectedId, veg: vegOnly, deals: dealsOnly, price: priceRange, sort });
+  const { categories, products: visibleProducts } = catalog;
 
   return (
     <View className="flex-1 bg-white pt-safe">
@@ -86,7 +69,7 @@ export function StoreDetailScreen({ navigation, route }: Props) {
             filter bar belongs to the right-hand content column only, per
             an explicit ask, not spanning over the sidebar as a full-width
             bar above it. */}
-        <SubCategorySidebar items={sidebarItems} selectedId={selectedId} onSelect={setSelectedId} />
+        <SubCategorySidebar items={categories} selectedId={selectedId} onSelect={setSelectedId} />
 
         <View className="flex-1">
           {/* Fixed within this column — a sibling of the ScrollView below,
@@ -132,11 +115,11 @@ export function StoreDetailScreen({ navigation, route }: Props) {
                 // list. Once a specific category is picked there's nothing
                 // left for it to jump to, so it steps aside for the
                 // product grid itself.
-                selectedId === 'all' ? <StoreCategoryGrid categories={categories} products={products} onSelect={setSelectedId} /> : null
+                selectedId === 'all' ? <StoreCategoryGrid categories={categories} onSelect={setSelectedId} /> : null
               }
               ListEmptyComponent={
                 <View className="w-full items-center py-16">
-                  <Text className="text-sm text-ink/50">{catalog.isPending ? 'Loading products…' : catalog.hasNextPage ? 'Load more to find additional products.' : catalog.isError ? 'Couldn’t load products.' : 'No items here yet.'}</Text>
+                  <Text className="text-sm text-ink/50">{catalog.isPending ? 'Loading products…' : catalog.isError ? 'Couldn’t load products.' : emptyText}</Text>
                 </View>
               }
               renderItem={({ item }: { item: Product }) => (

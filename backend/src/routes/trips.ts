@@ -116,7 +116,7 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
       );
     }
 
-    // Razorpay payment intent initiated by the caller once the trip id is
+    // Cashfree payment initiated by the caller once the trip id is
     // known — same separation POST /orders already documents (a second
     // external-service failure mode kept out of this handler).
     res.status(201).json(trip);

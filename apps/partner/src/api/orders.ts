@@ -34,7 +34,7 @@ export interface ApiOrder {
   // percent locally).
   item_total: number;
   commission_amount: number;
-  razorpay_payment_id: string | null;
+  provider_payment_id: string | null;
   placed_at: string;
   packed_at: string | null;
   delivered_at: string | null;

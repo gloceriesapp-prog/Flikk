@@ -56,12 +56,34 @@ it('does not fall back to an unbounded read if the selector RPC fails', async ()
   const result = await request('/:id/home-preview', { tab: 'grocery' });
   expect(result.next).toHaveBeenCalledWith(expect.any(Error)); expect(mocks.calls.some(([key]) => key === 'hydrate')).toBe(false);
 });
-it('uses a bounded keyset read for full store pages', async () => {
-  await request('/:id/products-page', { limit: '20', after: '72000000-0000-0000-0000-000000000010' });
-  expect(mocks.calls).toContainEqual(['limit', 21]); expect(mocks.calls).toContainEqual(['store_id', store]);
-  expect(mocks.calls).toContainEqual(['id', '72000000-0000-0000-0000-000000000010']);
-  expect(mocks.calls).not.toContainEqual(['stock_status', 'out_of_stock']);
+it('filters and sorts the whole store catalogue in SQL with a bounded keyset page', async () => {
+  const ids = Array.from({ length: 3 }, (_, i) => ({ id: `72000000-0000-0000-0000-${String(i + 1).padStart(12, '0')}`, score: -10 * i }));
+  mocks.rpc.mockResolvedValue({ data: ids, error: null });
+  const first = await request('/:id/products-page', { limit: '2', category: 'Dairy', veg: '1', deals: '1', price: 'under_100', sort: 'price_low' });
+  expect(mocks.rpc).toHaveBeenCalledWith('store_product_page_ids', expect.objectContaining({
+    p_store: store, p_category: 'Dairy', p_veg: true, p_deals: true, p_price_band: 'under_100', p_sort: 'price_low', p_after_score: null, p_limit: 3 }));
+  expect(mocks.calls).toContainEqual(['hydrate', ids.slice(0, 2).map(p => p.id)]);
   expect(mocks.calls).toContainEqual(['approval_status', 'approved']);
+  const { nextCursor } = (first.res.json as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { nextCursor: string };
+  expect(nextCursor).toEqual(expect.any(String));
+  await request('/:id/products-page', { limit: '2', category: 'Dairy', veg: '1', deals: '1', price: 'under_100', sort: 'price_low', after: nextCursor });
+  expect(mocks.rpc).toHaveBeenLastCalledWith('store_product_page_ids', expect.objectContaining({ p_after_score: -10, p_after_id: ids[1]!.id }));
+  // A cursor from one filter set cannot be replayed against another.
+  const replay = await request('/:id/products-page', { limit: '2', sort: 'price_high', after: nextCursor });
+  expect(replay.next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+});
+it('rejects unknown store filters before querying', async () => {
+  for (const query of [{ sort: 'newest' }, { price: 'cheap' }, { category: 'x'.repeat(101) }]) {
+    const result = await request('/:id/products-page', query);
+    expect(result.next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+  }
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it('serves store sidebar categories from a server facet query', async () => {
+  mocks.rpc.mockResolvedValue({ data: [{ category: 'Dairy', product_count: '4', image_url: null }], error: null });
+  const result = await request('/:id/category-facets');
+  expect(mocks.rpc).toHaveBeenCalledWith('store_category_facets', { p_store: store });
+  expect(result.res.json).toHaveBeenCalledWith([{ category: 'Dairy', productCount: 4, imageUrl: null }]);
 });
 
 it('hydrates sold-out previews without losing approval or store scope', async () => {

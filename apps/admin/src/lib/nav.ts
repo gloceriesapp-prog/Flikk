@@ -3,6 +3,7 @@ import {
   Banknote,
   Bike,
   Boxes,
+  FileText,
   ImageIcon,
   LayoutGrid,
   Map,
@@ -18,6 +19,7 @@ import {
   Star,
   Store,
   Home,
+  Wallet,
 } from 'lucide-react';
 
 // Grouped sidebar sections, same "Menu" / "Insights" split as the
@@ -46,6 +48,7 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/festival-section', label: 'Festival Section', icon: PartyPopper },
   { href: '/festival-greeting', label: 'Festival Greeting', icon: PartyPopper },
   { href: '/seasonal-section', label: 'Seasonal Section', icon: ImageIcon },
+  { href: '/app-content', label: 'App content', icon: FileText },
 ];
 
 export const INSIGHTS_ITEMS: NavItem[] = [
@@ -53,7 +56,7 @@ export const INSIGHTS_ITEMS: NavItem[] = [
   { href: '/support', label: 'Customer Support', icon: Ticket },
   { href: '/customer-deletions', label: 'Account Deletions', icon: Users },
   { href: '/revenue', label: 'Revenue', icon: Banknote },
-  { href: '/rider-payouts', label: 'Rider Payouts', icon: Bike },
+  { href: '/payouts', label: 'Payouts', icon: Wallet },
   { href: '/refunds', label: 'Refunds', icon: RotateCcw },
   { href: '/failed-deliveries', label: 'Failed Deliveries', icon: PackageX },
   { href: '/reviews', label: 'Reviews', icon: Star },

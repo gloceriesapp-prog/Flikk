@@ -76,10 +76,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const session = await SecureStore.getItemAsync(SESSION_KEY);
       let token: string | null; let refreshToken: string | null;
       if (session !== null) {
-        const saved = JSON.parse(session);
-        if (saved.version !== 2 || (saved.accessToken !== null && typeof saved.accessToken !== 'string')
-          || (saved.refreshToken !== null && typeof saved.refreshToken !== 'string')
-          || Boolean(saved.accessToken) !== Boolean(saved.refreshToken)) throw new Error('Invalid saved session');
+        const saved = parseSavedSession(session);
+        if (!saved) {
+          // A corrupt record can never succeed on retry — discard it and show
+          // Login instead of looping on "Retry startup".
+          await persistSession(null, null).catch(() => {});
+          if (get().sessionEpoch !== epoch) return;
+          clearAccountCache();
+          set({ customerId: null, accessToken: null, refreshToken: null, isHydrated: true });
+          return;
+        }
         token = saved.accessToken; refreshToken = saved.refreshToken;
       } else {
         [token, refreshToken] = await Promise.all([
@@ -99,7 +105,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setSession: async (token, refreshToken) => {
     const customerId = customerIdFromToken(token);
     if (!customerId) throw new Error('Invalid customer session. Please sign in again.');
-    resetAccountData();
+    // Guest -> login keeps the guest's cart and pin (App.tsx stamps the cart
+    // with the new owner once it's persisted); switching from another
+    // account, or finishing an interrupted sign-out, is a full reset.
+    resetAccountData({ keepGuestDraft: get().customerId === null && !pendingSignOut });
     const epoch = get().sessionEpoch + 1;
     pendingSignOut = true;
     // Do not expose a new identity before its single durable token record is
@@ -135,6 +144,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   continueAsGuest: () => set({ isGuest: true }),
   exitGuestMode: () => set({ isGuest: false }),
 }));
+
+function parseSavedSession(raw: string): { accessToken: string | null; refreshToken: string | null } | null {
+  try {
+    const saved: unknown = JSON.parse(raw);
+    if (!saved || typeof saved !== 'object') return null;
+    const { version, accessToken, refreshToken } = saved as Record<string, unknown>;
+    if (version !== 2 || (accessToken !== null && typeof accessToken !== 'string')
+      || (refreshToken !== null && typeof refreshToken !== 'string') || Boolean(accessToken) !== Boolean(refreshToken)) return null;
+    return { accessToken, refreshToken };
+  } catch {
+    return null;
+  }
+}
 
 // Serialize secure storage writes so a late refresh cannot restore credentials
 // on disk after logout, or overwrite a newer login.

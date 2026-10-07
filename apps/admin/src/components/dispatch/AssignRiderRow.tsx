@@ -2,7 +2,8 @@
 
 // A3 — fully manual: founder picks from active riders, no suggested-rider
 // algorithm, no auto-assign control (specs/00-foundation/out-of-scope.md).
-// A plain <select> is the entire "algorithm" here, on purpose.
+// A plain <select> is the entire "algorithm" here, on purpose. Writes via
+// app/api/orders/[id]/assign-rider (guarded packed + unassigned update).
 
 import { useState } from 'react';
 import { Check } from 'lucide-react';
@@ -17,6 +18,28 @@ interface Props {
 export function AssignRiderRow({ order, riders }: Props) {
   const [selectedRiderId, setSelectedRiderId] = useState('');
   const [assigned, setAssigned] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleAssign() {
+    if (!selectedRiderId || pending) return;
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/assign-rider`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ riderId: selectedRiderId }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? 'Could not assign the rider.');
+      setAssigned(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not assign the rider.');
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-4 border-b border-border py-4 last:border-0">
@@ -37,6 +60,7 @@ export function AssignRiderRow({ order, riders }: Props) {
           <select
             value={selectedRiderId}
             onChange={(e) => setSelectedRiderId(e.target.value)}
+            disabled={pending}
             className="rounded-full border border-border bg-canvas px-3.5 py-2 text-sm text-ink-soft focus:outline-none"
           >
             <option value="">Select rider</option>
@@ -48,14 +72,15 @@ export function AssignRiderRow({ order, riders }: Props) {
           </select>
           <button
             type="button"
-            disabled={!selectedRiderId}
-            onClick={() => setAssigned(true)}
+            disabled={!selectedRiderId || pending}
+            onClick={handleAssign}
             className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-30"
           >
-            Assign
+            {pending ? 'Assigning…' : 'Assign'}
           </button>
         </div>
       )}
+      {error && <p className="w-full text-xs font-medium text-danger">{error}</p>}
     </div>
   );
 }

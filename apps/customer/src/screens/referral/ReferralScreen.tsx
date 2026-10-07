@@ -63,7 +63,7 @@ export function ReferralScreen({ navigation }: Props) {
       <StatusBar style="dark" />
 
       <View className="flex-row items-center px-5 pb-2 pt-2">
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
         <Text className="flex-1 text-center text-lg font-semibold text-ink">Invite Friends</Text>

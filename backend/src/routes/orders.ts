@@ -31,6 +31,8 @@ import { reorderByRank } from '../lib/buyItAgain.js';
 import { triggerDispatch } from '../lib/riderDispatch.js';
 
 export const ordersRouter = Router();
+// Free-text cancel reasons (customer/partner) are shown to other parties.
+export const MAX_CANCEL_REASON_LENGTH = 300;
 
 interface CreateOrderBody {
   attempt_id: string;
@@ -45,14 +47,14 @@ interface CreateOrderBody {
   promo_code?: string;
   // 'cod' | 'online' — real distinction jobs/expireUnpaidOrders.ts needs
   // to tell a legitimate Cash-on-Delivery order apart from an abandoned
-  // online-payment attempt (both look identical via razorpay_payment_id
+  // online-payment attempt (both look identical via provider_payment_id
   // alone: null either way). Defaults to 'cod' server-side (migration
   // 034's own default) if the client ever omits it.
   payment_method?: 'cod' | 'online';
 }
 
 // POST /orders — all-or-nothing: validate stock, lock prices, single-store only,
-// create order + order_items in one transaction, initiate Razorpay intent.
+// create order + order_items in one transaction, payment is started separately (POST /payments/create-order).
 // See specs/00-foundation/api-conventions.md.
 ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
@@ -113,7 +115,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       `Order ${created.id.slice(0, 6).toUpperCase()} · ₹${total} — tap to view.`,
     );
 
-    // Razorpay payment intent initiated by the caller once the order id is known —
+    // Cashfree payment initiated by the caller once the order id is known —
     // kept out of this handler to avoid a second external-service failure mode
     // inside the same transaction boundary. See specs/05-platform/payments.md.
     res.status(201).json({ ...created, avg_prep_minutes: store?.avg_prep_minutes ?? null });
@@ -273,15 +275,18 @@ ordersRouter.patch(
   requireApproved,
   async (req: AuthedRequest, res, next) => {
     try {
-      const { status: to, reason, otp } = req.body as StatusBody;
+      const { status: to, reason, otp } = (req.body ?? {}) as StatusBody;
+      if (reason !== undefined && reason !== null && (typeof reason !== 'string' || reason.length > MAX_CANCEL_REASON_LENGTH)) {
+        throw new AppError(400, 'INVALID_CANCEL_REASON', `Keep the reason under ${MAX_CANCEL_REASON_LENGTH} characters.`);
+      }
       const { data: order, error } = await supabase
         .from('orders')
-        .select('id, status, store_id, rider_id, customer_id, trip_id, total, razorpay_payment_id, payment_method')
+        .select('id, status, store_id, rider_id, customer_id, trip_id, total, provider_payment_id, payment_method')
         .eq('id', req.params.id)
         .single();
       if (error || !order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
 
-      if (to === 'packed' && order.payment_method === 'online' && !order.razorpay_payment_id) {
+      if (to === 'packed' && order.payment_method === 'online' && !order.provider_payment_id) {
         throw new AppError(409, 'PAYMENT_PENDING', 'Wait for payment before packing this order.');
       }
       const from = order.status as OrderStatus;

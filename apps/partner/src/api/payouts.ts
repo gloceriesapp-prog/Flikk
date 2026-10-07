@@ -5,9 +5,10 @@
 // former header note on why: a shop owner needs to trust the total is
 // built from real orders, not take it on faith).
 
+import { createPayoutAccountApi, type PayoutRowStatus } from '@gloceries/shared';
 import { apiRequest } from './client';
 
-export type PayoutStatus = 'pending' | 'processing' | 'paid' | 'blocked' | 'failed';
+export type PayoutStatus = PayoutRowStatus;
 
 export interface ApiPayout {
   id: string;
@@ -18,9 +19,13 @@ export interface ApiPayout {
   commission_deducted: number;
   net_payout: number;
   status: PayoutStatus;
-  razorpay_payout_id: string | null;
   paid_at: string | null;
   order_count: number;
+  // backend/PAYOUTS.md: bank reference the founder entered on "Mark paid",
+  // shown so the owner can match it in their bank statement.
+  utr?: string | null;
+  paymentMode?: 'upi' | 'bank_transfer' | null;
+  paidAt?: string | null;
 }
 
 export function fetchPayouts(): Promise<ApiPayout[]> {
@@ -45,4 +50,16 @@ export function fetchPayoutPage(cursor?: string): Promise<PayoutPage> {
 }
 export function fetchPayoutOrderPage(payoutId: string, cursor?: string): Promise<{ items: ApiPayoutOrder[]; nextCursor: string | null; summary: { netTotal: number; orderCount: number } }> {
   return apiRequest(`/partner/payouts/${payoutId}/orders?page=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+}
+
+// GET/PUT /partner/payout-account (backend/PAYOUTS.md). Manual weekly
+// payouts — saving details never contacts a bank; the founder confirms the
+// payee name when sending the first payout.
+export const PAYOUT_ACCOUNT_QUERY_KEY = ['payoutAccount'] as const;
+export const { fetchPayoutAccount, savePayoutAccount } = createPayoutAccountApi(apiRequest, '/partner');
+
+// Cancelled cheque / passbook photo — private store-documents bucket, object
+// PATH out (never a public URL), sent back as PUT's proofPath.
+export function uploadPayoutProof(base64: string): Promise<{ path: string }> {
+  return apiRequest('/partner/store-document-photo', { method: 'POST', body: { base64, kind: 'payout-proof' } });
 }

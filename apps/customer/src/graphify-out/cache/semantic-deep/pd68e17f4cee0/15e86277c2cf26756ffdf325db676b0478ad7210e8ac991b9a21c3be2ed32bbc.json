@@ -1,0 +1,1 @@
+{"nodes": [{"id": "features_account_session", "label": "Account Session Isolation", "file_type": "concept", "source_file": "features/account-session/README.md", "rationale": "Ensures data isolation between different customer accounts on the same device."}], "edges": [], "hyperedges": []}

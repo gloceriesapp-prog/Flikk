@@ -1,7 +1,7 @@
 // Plain "Most Bought Near You" row leading Home's "All" tab — per an
 // explicit ask, no card shell/background/"See all" button, just the
-// title and the product row (PromoListCard.tsx's own note). Real catalog
-// data (useEverydayEssentials.ts -> GET /stores/products/catalog).
+// title and the product row (PromoListCard.tsx's own note). 30-day units
+// sold near the pin (GET /browse/popular?days=30) — distinct from Trending's 7 days.
 //
 // No horizontal padding on this wrapper — PromoListCard's own title and
 // ScrollView each carry their own px-5 instead, so the ScrollView's real
@@ -12,22 +12,23 @@
 // per an explicit ask.
 
 import { View } from 'react-native';
-import { useTrendingThisWeek } from '../trending/useTrendingThisWeek';
 import { PromoListCard } from '../products/PromoListCard';
+import type { Product } from '../products/types';
 
+// Products come from AllTabSections (30-day popularity, minus anything
+// Trending already shows); title/subtitle resolved there from admin copy.
 interface Props {
-  title?: string;
+  title: string;
   subtitle?: string | null;
+  products: Product[];
 }
 
-export function MostBoughtSection({ title = 'Most Bought Near You', subtitle }: Props) {
-  const { data: catalog = [] } = useTrendingThisWeek();
-
-  if (catalog.length === 0) return null;
+export function MostBoughtSection({ title, subtitle, products }: Props) {
+  if (products.length === 0) return null;
 
   return (
     <View className="pt-8">
-      <PromoListCard title={title} subtitle={subtitle} products={catalog} />
+      <PromoListCard title={title} subtitle={subtitle} products={products} />
     </View>
   );
 }

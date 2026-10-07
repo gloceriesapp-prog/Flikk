@@ -9,7 +9,7 @@ import { ActivityIndicator, Alert, Image, Pressable, Text, TextInput, View } fro
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowRight01Icon, CheckmarkCircle02Icon, ImageUpload01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { saveRiderDraft, uploadRiderDocumentPhoto } from '../../api/onboarding';
+import { saveRiderDraft, uploadRiderDocumentPhoto, type RiderDocumentKind } from '../../api/onboarding';
 import { compressImageToTarget } from '../../media/compressImage';
 import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -99,11 +99,13 @@ export function PhotoUploadCard({
   kind,
   path,
   onUploaded,
+  hint = 'Front side · clear & fully readable',
 }: {
   label: string;
-  kind: 'aadhaar' | 'dl' | 'profile';
+  kind: RiderDocumentKind;
   path: string | null;
   onUploaded: (path: string) => void;
+  hint?: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
@@ -139,6 +141,8 @@ export function PhotoUploadCard({
       <Pressable
         onPress={pick}
         disabled={uploading}
+        accessibilityRole="button"
+        accessibilityLabel={done ? `Replace ${label}` : `Upload ${label}`}
         style={{ minHeight: 156 }}
         className={`items-center justify-center rounded-3xl px-5 py-7 ${done ? 'bg-[#EEF3FF]' : 'border border-dashed border-[#C6CDD8] bg-[#F7F9FB]'}`}
       >
@@ -169,7 +173,7 @@ export function PhotoUploadCard({
               <AppIcon icon={ImageUpload01Icon} size={34} color="#1447E6" />
             </View>
             <Text className="text-[15px] font-semibold text-ink">Upload photo</Text>
-            <Text className="text-[12px] font-medium text-ink/45">Front side · clear &amp; fully readable</Text>
+            <Text className="text-center text-[12px] font-medium text-ink/45">{hint}</Text>
           </View>
         )}
       </Pressable>

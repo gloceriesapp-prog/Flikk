@@ -30,8 +30,11 @@ function waitForNextCheck(ms: number): Promise<void> {
   });
 }
 
-export async function pollOrderPaid(id: { orderId: string } | { tripId: string }): Promise<boolean> {
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+// deadlineMs (UPI collect): keep polling until the request expires instead of
+// the default 120s budget — the customer may approve it minutes later.
+export async function pollOrderPaid(id: { orderId: string } | { tripId: string }, deadlineMs?: number): Promise<boolean> {
+  const attempts = deadlineMs ? Math.max(MAX_ATTEMPTS, Math.ceil((deadlineMs - Date.now()) / POLL_INTERVAL_MS) + 1) : MAX_ATTEMPTS;
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const recovery = await recoverPayment(id);
     if (recovery.state === 'paid') return true;
     if (recovery.state === 'cancelled' || recovery.state === 'expired' || recovery.state === 'unpaid') return false;

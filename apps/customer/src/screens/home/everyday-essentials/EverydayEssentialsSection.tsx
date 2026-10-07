@@ -19,19 +19,21 @@
 import { View } from 'react-native';
 import { ProductCard } from '../products/ProductCard';
 import { SectionTitle } from '../components/SectionTitle';
-import { useEverydayEssentials } from './useEverydayEssentials';
+import type { Product } from '../products/types';
 
-const GRID_LIMIT = 9;
+export const ESSENTIALS_GRID_LIMIT = 9;
 const CARD_WIDTH = 'w-[31%]';
 
+// Products come from AllTabSections (catalogue feed, deduped against the
+// popularity/deal rows above it).
 interface Props {
-  title?: string;
+  title: string;
   subtitle?: string | null;
+  products: Product[];
 }
 
-export function EverydayEssentialsSection({ title = 'Everyday Essentials', subtitle }: Props) {
-  const { data: products = [] } = useEverydayEssentials();
-  const gridProducts = products.slice(0, GRID_LIMIT);
+export function EverydayEssentialsSection({ title, subtitle, products }: Props) {
+  const gridProducts = products.slice(0, ESSENTIALS_GRID_LIMIT);
 
   if (gridProducts.length === 0) return null;
 

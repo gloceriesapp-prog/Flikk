@@ -54,7 +54,7 @@ export function CategoryProductPane({ products, isLoading, isError, onRetry, pre
             <View className="items-center gap-3 px-4 py-12">
               {isLoading ? <ActivityIndicator accessibilityLabel="Loading products" color="#155DFC" /> : <>
                 <Text className="text-center text-[14px] leading-5 text-ink/60">{isError ? 'We couldn’t load these products.' : products.length > 0 ? 'No products match your filters.' : 'No products available in this category yet.'}</Text>
-                {isError ? <Pressable accessibilityRole="button" onPress={onRetry} className="min-h-11 justify-center rounded-xl bg-[#155DFC] px-4"><Text className="font-semibold text-white">Try again</Text></Pressable> : activeFilterCount(filters) > 0 && <Pressable accessibilityRole="button" onPress={() => changeFilters({ ...DEFAULT_FILTERS })} className="min-h-11 justify-center px-4"><Text className="font-semibold text-[#155DFC]">Clear filters</Text></Pressable>}
+                {isError ? <Pressable accessibilityRole="button" onPress={onRetry} className="min-h-11 justify-center rounded-xl bg-coral px-4"><Text className="font-semibold text-ink">Try again</Text></Pressable> : activeFilterCount(filters) > 0 && <Pressable accessibilityRole="button" onPress={() => changeFilters({ ...DEFAULT_FILTERS })} className="min-h-11 justify-center px-4"><Text className="font-semibold text-[#155DFC]">Clear filters</Text></Pressable>}
               </>}
             </View>
           }

@@ -56,28 +56,11 @@ export async function saveRiderDraft(patch: RiderDraftPatch): Promise<void> {
 // full URL; rider-documents is a private bucket). Best-effort caller
 // convention isn't used here on purpose: a failed ID-photo upload must
 // block moving to the next step, not silently continue with no photo.
-export async function uploadRiderDocumentPhoto(base64: string, kind: 'aadhaar' | 'dl' | 'profile'): Promise<{ path: string }> {
+export type RiderDocumentKind = 'aadhaar' | 'dl' | 'profile' | 'payout-proof';
+
+// 'payout-proof' = cancelled cheque / passbook first page for the bank payout
+// method (backend/PAYOUTS.md); the returned path goes into PUT
+// /rider/payout-account's proofPath.
+export async function uploadRiderDocumentPhoto(base64: string, kind: RiderDocumentKind): Promise<{ path: string }> {
   return apiRequest('/rider/document-photo', { method: 'POST', body: { base64, kind } });
-}
-
-// Real RazorpayX Fund Account Validation — post-approval payout setup,
-// same underlying verification (and the same two-method shape: bank
-// account OR UPI) apps/partner's own PayoutAccountCard uses.
-export type RiderPayoutInput =
-  | { method: 'bank_account'; accountNumber: string; ifsc: string; accountHolderName: string }
-  | { method: 'upi'; vpa: string };
-
-export interface RiderPayoutVerificationResult {
-  method: 'bank_account' | 'upi';
-  vpa: string | null;
-  maskedAccountNumber: string | null;
-  ifsc: string | null;
-  accountHolderName: string | null;
-  accountStatus: string;
-  bankName: string | null;
-  nameMatchScore: number | null;
-}
-
-export async function verifyRiderPayout(input: RiderPayoutInput): Promise<RiderPayoutVerificationResult> {
-  return apiRequest('/rider/verify-payout', { method: 'POST', body: input });
 }

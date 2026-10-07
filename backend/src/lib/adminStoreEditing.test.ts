@@ -11,7 +11,7 @@ it('maps all editable store details and photo removal to existing database colum
   expect(Object.keys(patch)).toHaveLength(28);
 });
 it('rejects hidden database writes, malformed types, bad coordinates, hours and unsafe images', () => {
-  for (const value of [null,[],{}, {owner_user_id:'other-owner'},{razorpay_fund_account_id:'fake'}, {rating:5}, {isActive:'true'},
+  for (const value of [null,[],{}, {owner_user_id:'other-owner'},{payout_details_status:'verified'}, {rating:5}, {isActive:'true'},
     {lat:NaN},{lng:181},{lat:-91},{avgPrepMinutes:1.5},{deliveryRadiusKm:0},{category:'unknown'}, {name:''},
     {openTime:'25:00'}, {photoUrl:'javascript:alert(1)'},{photoUrl:'https://user:password@host/photo.png'},
     {aadhaarLast4:'12345'}, {bankAccountLast4:'abc'}, {phone:'not a number'}]) expect(()=>parseStorePatch(value)).toThrow();

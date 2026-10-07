@@ -3,7 +3,7 @@
 // Failed deliveries — manual refund review. Every order a rider marked
 // 'failed' after pickup: the customer paid at checkout but wasn't
 // auto-refunded (policy is case-by-case). The founder reviews each and issues
-// the refund here. Separate from Refunds (which is the Razorpay refund_status
+// the refund here. Separate from Refunds (which is the provider refund_status
 // board) — see /api/failed-deliveries/route.ts for why they must not merge.
 // Styling mirrors the Refunds page: same table shell, same status pills.
 
@@ -15,7 +15,8 @@ import { formatCurrency } from '@/lib/format';
 
 // Same pill styling as the Refunds page (a refund issued from here shows up on
 // both boards once refund_status leaves 'none').
-const STATUS_STYLE: Record<'processing' | 'completed' | 'failed', string> = {
+const STATUS_STYLE: Record<Exclude<FailedDeliveryOrder['refundStatus'], 'none'>, string> = {
+  manual_required: 'bg-red-50 text-danger',
   failed: 'bg-red-50 text-danger',
   processing: 'bg-amber-50 text-amber-600',
   completed: 'bg-green-50 text-success',
@@ -50,8 +51,8 @@ export default function FailedDeliveriesPage() {
   }, [load]);
 
   async function handleRefund(id: string) {
-    // Optimistic disable — the server guard + Razorpay idempotency are the real
-    // double-refund protection; this just stops a double-click racing itself.
+    // Optimistic disable — the server guard + the unique refund job (with its
+    // Cashfree idempotency key) are the real double-refund protection; this just stops a double-click racing itself.
     setRefundingId(id);
     setLoadError(null);
     try {
@@ -138,7 +139,11 @@ export default function FailedDeliveriesPage() {
                           STATUS_STYLE[order.refundStatus],
                         )}
                       >
-                        {order.refundStatus === 'completed' ? 'refunded' : order.refundStatus}
+                        {order.refundStatus === 'completed'
+                          ? 'refunded'
+                          : order.refundStatus === 'manual_required'
+                            ? 'manual refund — see Refunds'
+                            : order.refundStatus}
                       </span>
                     )}
                   </td>

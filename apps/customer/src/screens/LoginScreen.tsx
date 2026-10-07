@@ -37,6 +37,20 @@ import { PhoneInput } from '../components/PhoneInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useAuthStore } from '../store/useAuthStore';
 import type { AuthStackParamList } from '../navigation/types';
+import { useAppConfig } from '../api/appConfig';
+import { openLink } from '../utils/openLink';
+import { storageUrl } from '../utils/storageUrl';
+
+// Inline legal link: underlined + tappable only when admin has set a URL,
+// plain text otherwise (no dead-looking link).
+function LegalLink({ label, url }: { label: string; url: string | null }) {
+  if (!url) return <Text className="font-medium text-ink/75">{label}</Text>;
+  return (
+    <Text accessibilityRole="link" accessibilityLabel={`Open ${label}`} onPress={() => openLink(url)} suppressHighlighting className="font-semibold text-ink underline">
+      {label}
+    </Text>
+  );
+}
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -46,11 +60,12 @@ const PHONE_LENGTH = 10;
 // shown exactly as authored — no stretch, no crop. The real ratio comes from
 // expo-image's onLoad; HERO_FALLBACK_RATIO just reserves a sensible box for
 // the split-second before the image reports its size (avoids a layout jump).
-const HERO_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/app-images/app-cust.png';
+const HERO_IMAGE_URI = storageUrl('app-images/app-cust.png');
 const HERO_FALLBACK_RATIO = 1; // width:height, replaced once the image loads
 
 export function LoginScreen({ navigation }: Props) {
   const continueAsGuest = useAuthStore((s) => s.continueAsGuest);
+  const { legal } = useAppConfig();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +135,7 @@ export function LoginScreen({ navigation }: Props) {
 
         {/* Skip — floats over the image, top-right. continueAsGuest() flips
               RootNavigator to the app shell without a session. */}
-        <Pressable onPress={continueAsGuest} className="absolute right-5 top-safe-offset-4 rounded-full bg-[#FFFFFF] px-5 py-2.5">
+        <Pressable onPress={continueAsGuest} accessibilityRole="button" accessibilityLabel="Skip login and browse as guest" className="absolute right-5 top-safe-offset-4 rounded-full bg-[#FFFFFF] px-5 py-2.5">
           <Text className="text-[15px] font-medium text-black">Skip</Text>
         </Pressable>
       </View>
@@ -168,13 +183,9 @@ export function LoginScreen({ navigation }: Props) {
                 flipped from an earlier pass that had it above. */}
           <Text className="text-center text-[11px] leading-5 text-ink/45 font-medium">
             By continuing, you acknowledge our{' '}
-            <Text className="font-medium text-ink/75">
-              Terms
-            </Text>{' '}
+            <LegalLink label="Terms" url={legal.termsUrl} />{' '}
             and{' '}
-            <Text className="font-medium text-ink/75">
-              Privacy Policy
-            </Text>
+            <LegalLink label="Privacy Policy" url={legal.privacyUrl} />
           </Text>
         </View>
       </KeyboardAvoidingView>

@@ -1,7 +1,7 @@
 // Shown below the header whenever the store profile is missing something
 // it genuinely needs to operate — store hours (customers/ops need to know
-// when you're open) and a payout UPI ID (RazorpayX Payouts has nowhere to
-// send the weekly settlement without one). Real logic, not a cosmetic
+// when you're open) and payout details (UPI or bank — the founder has
+// nowhere to send the weekly settlement without one). Real logic, not a cosmetic
 // checklist: computed from the same useStoreProfileStore profile every
 // other screen reads, so it disappears the instant Settings actually
 // saves the missing pieces — no separate "mark as done" flag to drift out
@@ -11,7 +11,7 @@
 // still work even with this showing) — it's a clear nudge with exactly
 // what's missing named, not a wall. A shop owner who's already receiving
 // orders through some other channel shouldn't be locked out of this app
-// over an unset payout ID; they should just be told plainly so they fix
+// over unset payout details; they should just be told plainly so they fix
 // it before the first payout cycle needs it.
 
 import { Pressable, Text, View } from 'react-native';
@@ -21,20 +21,23 @@ import type { StoreProfile } from '../../store-settings/data';
 
 const ACCENT = '#B45309';
 
-export function getMissingProfileFields(profile: StoreProfile): string[] {
+// hasPayoutAccount: undefined while GET /partner/payout-account is still
+// loading — never nags about payout details before we actually know.
+export function getMissingProfileFields(profile: StoreProfile, hasPayoutAccount?: boolean): string[] {
   const missing: string[] = [];
   if (!profile.openTime.trim() || !profile.closeTime.trim()) missing.push('store hours');
-  if (!profile.payoutUpiId?.trim()) missing.push('payout UPI ID');
+  if (hasPayoutAccount === false) missing.push('payout details');
   return missing;
 }
 
 interface Props {
   profile: StoreProfile;
+  hasPayoutAccount?: boolean;
   onPress: () => void;
 }
 
-export function ProfileSetupBanner({ profile, onPress }: Props) {
-  const missing = getMissingProfileFields(profile);
+export function ProfileSetupBanner({ profile, hasPayoutAccount, onPress }: Props) {
+  const missing = getMissingProfileFields(profile, hasPayoutAccount);
   if (missing.length === 0) return null;
 
   return (

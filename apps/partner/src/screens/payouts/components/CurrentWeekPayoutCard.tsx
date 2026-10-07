@@ -15,13 +15,14 @@ import { colors } from '../../../theme/tokens';
 import { formatPayoutCountdown, nextPayoutDate, payoutCountdown } from '../../../utils/nextPayoutDate';
 import { payoutStatusPresentation, type WeeklyPayout } from '../data';
 import { PayoutOrdersLink } from './PayoutOrdersLink';
+import { PayoutStatusDetail } from './PayoutStatusDetail';
 
 interface Props {
   payout: WeeklyPayout;
 }
 
 export function CurrentWeekPayoutCard({ payout }: Props) {
-  const { label, color } = payoutStatusPresentation(payout.status);
+  const { label, color } = payoutStatusPresentation(payout);
 
   // Real countdown to the next actual release — mirrors backend's own
   // cron.schedule('0 9 * * 1', { timezone: 'Asia/Kolkata' }) exactly
@@ -66,12 +67,14 @@ export function CurrentWeekPayoutCard({ payout }: Props) {
         </Text>
       </View>
 
-      {payout.nextSettlementLabel && (
+      <PayoutStatusDetail payout={payout} variant="dark" />
+
+      {payout.status === 'pending' && payout.nextSettlementLabel && (
         <View className="gap-2 border-t border-white/10 pt-4">
           <View className="flex-row items-center gap-2">
             <AppIcon icon={CalendarCheckIn01Icon} size={14} color={`${colors.lime}CC`} />
             <Text className="text-[14px] font-medium text-white/50">
-              Settles automatically on <Text className="font-semibold text-white/80">{payout.nextSettlementLabel}</Text>
+              Scheduled for <Text className="font-semibold text-white/80">{payout.nextSettlementLabel}</Text>
             </Text>
           </View>
           <Text className="text-[14px] font-medium text-white/50">

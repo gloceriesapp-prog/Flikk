@@ -14,6 +14,16 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export { ApiError } from '@gloceries/shared';
 
+// 15s covers a slow 3G round trip; anything longer reads as a hung app.
+// Pass a larger timeoutMs for uploads/long-running calls.
+export const REQUEST_TIMEOUT_MS = 15000;
+export class RequestTimeoutError extends ApiError {
+  constructor() {
+    super(0, 'REQUEST_TIMEOUT', 'The server is taking too long to respond. Please try again.');
+  }
+}
+type ApiRequestOptions = Parameters<ReturnType<typeof createApiClient>['apiRequest']>[1] & { timeoutMs?: number };
+
 // Plain fetch, not this file's own apiRequest — apiRequest is what calls this
 // on a 401 (via the shared client's `refresh` option below); routing it
 // through apiRequest itself would recurse the moment the refresh call also
@@ -45,7 +55,7 @@ async function doRefresh(): Promise<string | null> {
 // Supabase refresh tokens are single-use — redeeming one issues a new one and
 // invalidates the old. Multiple authenticated calls firing close together on
 // an expired access token (e.g. checkout's order-create immediately followed
-// by the Razorpay-order-create call) can each independently try to redeem the
+// by the payment-order-create call) can each independently try to redeem the
 // SAME stored refresh token in parallel; only the first succeeds, the rest
 // reuse an already-consumed token and get rejected. One shared in-flight
 // promise makes every concurrent 401 await and reuse the same real refresh
@@ -63,7 +73,7 @@ function refreshAccessToken(epoch: number): Promise<string | null> {
 // Bind each request and its refresh/expiry callbacks to the starting session.
 // An old 401 must never retry with another customer's credentials or log out
 // the new account. Fetch connections are still shared by the native runtime.
-export async function apiRequest<T>(path: string, options?: Parameters<ReturnType<typeof createApiClient>['apiRequest']>[1]): Promise<T> {
+export async function apiRequest<T>(path: string, options?: ApiRequestOptions): Promise<T> {
   const snapshot = useAuthStore.getState();
   const pin = useLocationStore.getState().location;
   const scoped = /^\/(?:browse\/|stores(?:\?|$)|stores\/products\/|categories\/.+\/products|orders\/buy-it-again)/.test(path);
@@ -76,7 +86,25 @@ export async function apiRequest<T>(path: string, options?: Parameters<ReturnTyp
       if (useAuthStore.getState().sessionEpoch === snapshot.sessionEpoch) return useAuthStore.getState().clear();
     },
   });
-  const result = await client.apiRequest<T>(path, options);
+  // Our own deadline layered on the caller's signal: the shared client reports
+  // any caller-side abort as REQUEST_CANCELLED, so translate ours back here.
+  const deadline = new AbortController();
+  const callerSignal = options?.signal;
+  const cancel = () => deadline.abort();
+  if (callerSignal?.aborted) cancel();
+  callerSignal?.addEventListener('abort', cancel, { once: true });
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; deadline.abort(); }, options?.timeoutMs ?? REQUEST_TIMEOUT_MS);
+  let result: T;
+  try {
+    result = await client.apiRequest<T>(path, { ...options, signal: deadline.signal });
+  } catch (error) {
+    if (error instanceof ApiError && (timedOut || error.code === 'REQUEST_TIMEOUT')) throw new RequestTimeoutError();
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', cancel);
+  }
   if (options?.auth !== false && useAuthStore.getState().sessionEpoch !== snapshot.sessionEpoch) {
     throw new ApiError(409, 'SESSION_CHANGED', 'Your account changed. Please retry.');
   }

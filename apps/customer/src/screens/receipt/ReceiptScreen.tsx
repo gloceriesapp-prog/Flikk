@@ -1,6 +1,6 @@
 // Reached once CheckoutScreen's own handlePay finishes — either
-// immediately (Cash on Delivery) or after a real Razorpay Checkout
-// success + server-side signature verification (Pay Online). The cart is
+// immediately (Cash on Delivery) or after the server confirmed the online
+// payment with Cashfree (POST /payments/verify or the processing poll). The cart is
 // already cleared by then, so `items`/`amount`/`paymentMethodLabel` arrive
 // as a route-param snapshot, not read live from useCartStore.
 //
@@ -8,12 +8,13 @@
 // 4-stage tracking (no live map/GPS, see that screen's own header for why).
 
 import { Cancel01Icon, Download03Icon } from '@hugeicons/core-free-icons';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { SuccessSeal } from '../../components/SuccessSeal';
 import { colors } from '../../theme/tokens';
 import { ReceiptCard } from './components/ReceiptCard';
+import { buildReceiptText } from './receiptText';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Receipt'>;
@@ -34,6 +35,17 @@ export function ReceiptScreen({ navigation, route }: Props) {
   // done with, so leaving them in the stack meant a back-gesture from Home
   // could land back on a receipt for an already-cleared cart. Same pattern
   // LocationSearchScreen's own post-checkout reset uses.
+  async function shareReceipt() {
+    try {
+      await Share.share({
+        title: `Receipt ${orderNumber}`,
+        message: buildReceiptText({ orderNumber, placedAt, paymentMethodLabel, deliveryAddress, items, total: amount }),
+      });
+    } catch {
+      Alert.alert('Could not share receipt', 'Please try again.');
+    }
+  }
+
   function goHome() {
     navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   }
@@ -41,11 +53,11 @@ export function ReceiptScreen({ navigation, route }: Props) {
   return (
     <View className="flex-1 bg-white pt-safe">
       <View className="flex-row items-center justify-between px-5 pt-2">
-        <Pressable onPress={goHome} hitSlop={12} className="h-11 w-11 items-center justify-center">
+        <Pressable accessibilityRole="button" accessibilityLabel="Close receipt and go home" onPress={goHome} hitSlop={12} className="h-11 w-11 items-center justify-center">
           <AppIcon icon={Cancel01Icon} size={20} color={colors.ink} />
         </Pressable>
         <Text className="text-[17px] font-semibold text-ink">E-Receipt</Text>
-        <Pressable hitSlop={12} className="h-11 w-11 items-center justify-center">
+        <Pressable onPress={() => void shareReceipt()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Download receipt" className="h-11 w-11 items-center justify-center">
           <AppIcon icon={Download03Icon} size={20} color={colors.ink} />
         </Pressable>
       </View>
@@ -81,10 +93,9 @@ export function ReceiptScreen({ navigation, route }: Props) {
       <View className="flex-row gap-3 px-5 pb-safe-offset-4 pt-4">
         <Pressable
           onPress={() => navigation.navigate('TrackOrder', { orderId: realOrderId, paymentMethodLabel, isTrip })}
-          className="flex-1 items-center rounded-2xl py-4"
-          style={{ backgroundColor: '#155dfc' }}
+          className="bg-coral flex-1 items-center rounded-2xl py-4"
         >
-          <Text className="text-lg font-medium text-white">Track Order</Text>
+          <Text className="text-lg font-medium text-ink">Track Order</Text>
         </Pressable>
 
         <Pressable

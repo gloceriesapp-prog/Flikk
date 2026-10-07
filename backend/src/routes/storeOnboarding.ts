@@ -236,7 +236,7 @@ storeOnboardingRouter.post('/store-photo', requireAuth, async (req: AuthedReques
 storeOnboardingRouter.post('/store-document-photo', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     const { base64, kind } = req.body as { base64?: string; kind?: string };
-    if (!kind || !['pan', 'gst', 'fssai', 'shop-license', 'udyam'].includes(kind))
+    if (!kind || !['pan', 'gst', 'fssai', 'shop-license', 'udyam', 'payout-proof'].includes(kind))
       throw new AppError(400, 'INVALID_DOCUMENT_KIND', 'Choose a supported verification document.');
     if (!base64) throw new AppError(400, 'MISSING_IMAGE', 'Choose a document photo.');
     const document = await storePrivateDocument({ bucket: 'store-documents', ownerId: req.user!.id, kind,

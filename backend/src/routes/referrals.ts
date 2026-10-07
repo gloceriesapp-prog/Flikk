@@ -58,8 +58,8 @@ referralsRouter.get('/my-code', requireAuth, requireRole('customer'), async (req
 // never issues a discount/credit to either account.
 referralsRouter.post('/redeem', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
-    const { code } = req.body as { code?: string };
-    if (!code) throw new AppError(400, 'INVALID_REQUEST', 'code is required.');
+    const { code } = (req.body ?? {}) as { code?: unknown };
+    if (typeof code !== 'string' || !code.trim() || code.length > 32) throw new AppError(400, 'INVALID_REQUEST', 'Enter a valid invite code.');
 
     const { data: referralCode, error: codeErr } = await supabase
       .from('referral_codes')

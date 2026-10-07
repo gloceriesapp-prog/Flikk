@@ -1,4 +1,5 @@
 import type { Product } from '../../products/types';
+import { storageUrl } from '../../../../utils/storageUrl';
 
 // Layout samples only: no store identity, and never added to the cart.
 const samples = [
@@ -19,6 +20,6 @@ export const PUJA_PREVIEW_PRODUCTS: Product[] = samples.map(({ key, ...sample })
   imageSeed: key,
   bgColor: '#FFF1D6',
   // Existing festival artwork illustrates the samples, not actual packaging.
-  imageUrl: 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/puja.png',
+  imageUrl: storageUrl('Images/puja.png'),
   storeName: 'Sample seller',
 }));

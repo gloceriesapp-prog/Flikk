@@ -26,5 +26,9 @@ export async function nearbyStores(lat: number, lng: number, zoneId: string | un
     p_lat: lat, p_lng: lng, p_zone: zoneId ?? null, p_limit: limit, p_max_km: maximum,
   });
   if (error) throw error; // No full-zone fallback if the migration is missing.
-  return (data ?? []).map((row: { store: Record<string, unknown>; distance_km: number }) => ({ ...row.store, distance_km: row.distance_km }));
+  // SQL filters is_active (migration 097); this guard keeps a deactivated shop
+  // out even if an older function definition is still deployed.
+  return ((data ?? []) as { store: Record<string, unknown>; distance_km: number }[])
+    .filter(row => row.store.is_active !== false)
+    .map(row => ({ ...row.store, distance_km: row.distance_km }));
 }

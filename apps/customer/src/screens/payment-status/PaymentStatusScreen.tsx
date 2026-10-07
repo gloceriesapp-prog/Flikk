@@ -9,11 +9,6 @@ import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'PaymentStatus'>;
 
-// Same blue this whole checkout flow already uses for its one real accent
-// (PaymentMethodList.tsx, PaymentProcessingScreen.tsx's own BRAND_ACCENT)
-// — kept consistent here rather than introducing a second brand color for
-// what's still part of the same payment journey.
-const BRAND_ACCENT = '#155dfc';
 
 export function PaymentStatusScreen({ navigation }: Props) {
   function retryPayment() {
@@ -47,8 +42,8 @@ export function PaymentStatusScreen({ navigation }: Props) {
       </Text>
 
       <View className="mt-8 w-full gap-3">
-        <Pressable onPress={retryPayment} className="items-center rounded-2xl py-4" style={{ backgroundColor: BRAND_ACCENT }}>
-          <Text className="text-[13.5px] font-semibold text-white">Retry Payment</Text>
+        <Pressable onPress={retryPayment} accessibilityRole="button" className="items-center rounded-2xl bg-coral py-4">
+          <Text className="text-[13.5px] font-semibold text-ink">Retry Payment</Text>
         </Pressable>
         <Pressable onPress={backToCart} className="items-center rounded-2xl py-4 bg-[#F1F2F4]">
           <Text className="text-[13.5px] font-semibold text-ink/70">Back to Cart</Text>

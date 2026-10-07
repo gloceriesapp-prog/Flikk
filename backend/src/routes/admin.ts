@@ -219,7 +219,7 @@ adminRouter.patch('/trips/:id/assign-rider', async (req, res, next) => {
 adminRouter.get('/payouts', async (req, res, next) => {
   try {
     const page = readPage(req, `admin-payouts:${(req as AuthedRequest).user!.id}`, 'date');
-    let query = supabase.from('payouts').select('id, store_id, week_start, week_end, gross_amount, commission_deducted, net_payout, status, razorpay_payout_id, paid_at');
+    let query = supabase.from('payouts').select('id, store_id, week_start, week_end, gross_amount, commission_deducted, net_payout, status, paid_at, utr, payment_mode');
     if (page.cursor) query = query.or(cursorFilter('week_start', page.cursor));
     const { data, error } = await query.order('week_start', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;

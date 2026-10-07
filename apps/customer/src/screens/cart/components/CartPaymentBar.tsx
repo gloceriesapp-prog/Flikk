@@ -38,14 +38,14 @@ export function CartPaymentBar({ method, apps, total, busy, disabled, onChoose, 
       <Pressable onPress={method ? onPlaceOrder : onChoose} disabled={blocked}
         accessibilityRole="button" accessibilityState={{ disabled: blocked, busy }}
         accessibilityLabel={method ? `Place order, total ${amount}` : `Select payment method, total ${amount}`}
-        className="min-h-[52px] min-w-0 flex-1 items-center justify-center rounded-2xl bg-[#155DFC] px-3 py-2.5"
+        className="min-h-[52px] min-w-0 flex-1 items-center justify-center rounded-2xl bg-coral px-3 py-2.5"
         style={({ pressed }) => ({ opacity: disabled ? 0.5 : pressed ? 0.85 : 1 })}>
-        {busy ? <ActivityIndicator color="white" /> : (
+        {busy ? <ActivityIndicator color="#101C10" /> : (
           <>
-            <Text numberOfLines={1} className="text-[14px] font-semibold text-white">
+            <Text numberOfLines={1} className="text-[14px] font-semibold text-ink">
               {method ? 'Place order' : 'Select payment'}
             </Text>
-            <Text numberOfLines={1} className="mt-0.5 text-[13px] font-semibold text-white/85 tracking-tight"
+            <Text numberOfLines={1} className="mt-0.5 text-[13px] font-semibold text-ink/80 tracking-tight"
               style={{ fontVariant: ['tabular-nums'] }}>{amount}</Text>
           </>
         )}

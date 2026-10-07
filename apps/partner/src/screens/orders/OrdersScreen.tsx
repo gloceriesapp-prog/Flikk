@@ -25,6 +25,7 @@ import type { PartnerOrderStatus } from './data';
 import { OrderCard } from './components/OrderCard';
 import { OrderStatusFilter, type OrderStatusFilterValue } from './components/OrderStatusFilter';
 import { ProfileSetupBanner } from './components/ProfileSetupBanner';
+import { fetchPayoutAccount, PAYOUT_ACCOUNT_QUERY_KEY } from '../../api/payouts';
 import { StoreProfileHeader } from './components/StoreProfileHeader';
 import { TodayStatsCard } from './components/TodayStatsCard';
 import type { AppStackParamList } from '../../navigation/types';
@@ -77,6 +78,7 @@ export function OrdersScreen({ navigation }: Props) {
   // former header note on that bug).
   const queryClient = useQueryClient();
   const { data: todayStats } = useQuery({ queryKey: ['stats-today'], queryFn: fetchTodayStats });
+  const { data: payoutAccount } = useQuery({ queryKey: PAYOUT_ACCOUNT_QUERY_KEY, queryFn: fetchPayoutAccount });
 
   // Real day-boundary refresh, not a periodic poll — schedules exactly at
   // the next real IST midnight (utils/nextIstMidnight.ts) and reschedules
@@ -131,7 +133,7 @@ export function OrdersScreen({ navigation }: Props) {
       <DevSimulateOrderButton />
 
       {profile.id.length > 0 && (
-        <ProfileSetupBanner profile={profile} onPress={() => navigation.navigate('StoreSettings')} />
+        <ProfileSetupBanner profile={profile} hasPayoutAccount={payoutAccount ? payoutAccount.method !== null : undefined} onPress={() => navigation.navigate('StoreSettings')} />
       )}
 
       <View className="pb-1">

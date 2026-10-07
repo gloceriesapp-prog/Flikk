@@ -1,4 +1,3 @@
-import { ApiError } from '../../../api/client';
 import { readAttempt, closeSavedAttempt, saveAttempt, clearAttempt, clearCommittedAttempt, newAttemptId, findAttempt, attemptTarget } from '../../../features/checkout-recovery/attemptStorage';
 // Cart owns order placement; the payment picker only returns a selection.
 // See ../README.md for confirmation, persistence and navigation flows.
@@ -8,18 +7,18 @@ import { fetchCheckoutQuote } from '../../../api/checkout';
 import { quotedCartItems, quoteHasPriceChanges } from '../quote/quoteItems';
 import type { CartItem } from '../../../store/useCartStore';
 import { checkoutItems, cartPurchaseSignature } from '../../../store/cartIdentity';
-import { Alert, Linking } from 'react-native';
+import { Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createOrder } from '../../../api/orders';
 import { createTrip } from '../../../api/trips';
 import type { ApiAddress } from '../../../api/addresses';
 import { useAuthStore } from '../../../store/useAuthStore';
-import { fetchPendingPayments, recoverPayment, createRazorpayOrder, createUpiIntentPayment, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
-import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
+import { fetchPendingPayments, recoverPayment, createPaymentOrder, createUpiIntentPayment, createUpiCollectPayment, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
+import { openCashfreeCheckout } from '../../../payments/openCashfreeCheckout';
 import type { UpiApp } from '../../../payments/upiApps';
-import { detectInstalledUpiApps, openUpiApp } from '../../../payments/upiIntent';
+import { canLaunchUpiApp, detectInstalledUpiApps, openUpiApp } from '../../../payments/upiIntent';
+import { keepsCheckoutAttempt } from './attemptPolicy';
 import { selectCartStoreCount, useCartStore } from '../../../store/useCartStore';
-import { useLocationStore } from '../../../store/useLocationStore';
 import { isOutsideOperatingHours, REOPEN_TIME_LABEL } from '../../../utils/operatingHours';
 import { availablePaymentMethod, paymentMethodLabel, type PaymentMethod } from '../../../payments/paymentMethod';
 import type { AppStackParamList } from '../../../navigation/types';
@@ -30,9 +29,11 @@ interface Props {
   quote?: CheckoutQuote;
   onQuoteChanged: () => void;
   selectedPaymentMethod?: PaymentMethod;
+  // Verified UPI ID for 'upi_id' (PaymentMethod screen). Navigation state only.
+  upiVpa?: string;
 }
 
-export function useCartPayment({ navigation, selectedAddress, selectedPaymentMethod, quote, onQuoteChanged }: Props) {
+export function useCartPayment({ navigation, selectedAddress, selectedPaymentMethod, upiVpa, quote, onQuoteChanged }: Props) {
   const items = useCartStore((state) => state.items);
   const storeCount = useCartStore(selectCartStoreCount);
   const isMultiStore = storeCount > 1;
@@ -40,7 +41,6 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   const promoCode = appliedPromo?.code;
   const grandTotal = quote?.bill.total ?? null;
   const clear = useCartStore((state) => state.clear);
-  const recipientName = useLocationStore((state) => state.recipientName);
 
   const accessToken = useAuthStore((state) => state.accessToken);
   const [savedMethod, setSavedMethod] = useState<PaymentMethod | null>(null);
@@ -63,13 +63,12 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   const ownerEpoch = useRef(useAuthStore.getState().sessionEpoch).current;
   const stillOwner = () => useAuthStore.getState().sessionEpoch === ownerEpoch;
   const chosenMethod = selectedPaymentMethod;
-  const paymentMethod = chosenMethod === 'upi_id' ? chosenMethod :
-    availablePaymentMethod(chosenMethod ?? savedMethod, upiApps);
+  const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, !!upiVpa);
   const latestSelection = useRef({ addressId: selectedAddress?.id, paymentMethod });
   useLayoutEffect(() => {
     latestSelection.current = { addressId: selectedAddress?.id, paymentMethod };
   }, [selectedAddress?.id, paymentMethod]);
-  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod });
+  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod, upiVpa });
 
   async function goToReceipt(order: { orderId: string; orderNumber: string; placedAt: string; avgPrepMinutes: number | null; estimatedDeliveryMinutes?: number | null; estimatedDeliveryAt?: string | null; amount: number; items: CartItem[] }, methodLabel: string, successfulMethod: PaymentMethod) {
     if (!stillOwner()) return;
@@ -115,7 +114,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
     setIsPlacingOrder(true);
     try {
       const cartKey = JSON.stringify({ items: checkoutItems(items), promo: promoCode ?? null });
-      const saved = await readAttempt();
+      let saved = await readAttempt();
       if (saved) {
         const committed = await findAttempt(saved.id);
         if (committed?.result) {
@@ -124,13 +123,17 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
         }
         if (saved.cartKey !== cartKey || saved.input.address_id !== selectedAddress.id
           || saved.input.payment_method !== (paymentMethod === 'cod' ? 'cod' : 'online') || saved.kind !== (isMultiStore ? 'trip' : 'order')) {
-          // Replay the exact saved request, never turn an uncertain response
-          // into a different order. Server rejects changed attempt payloads.
-          const record = saved.kind === 'trip'
-            ? await createTrip(saved.input as import('../../../api/trips').CreateTripInput)
-            : await createOrder(saved.input as import('../../../api/orders').CreateOrderInput);
-          navigation.navigate('PaymentRecovery', { target: saved.kind === 'trip' ? { tripId: record.id } : { orderId: record.id } });
-          return;
+          // The cart changed since an uncertain attempt. Close it server-side
+          // (atomic with creation): either the old request already committed
+          // (recover THAT order) or it is fenced forever and this cart starts
+          // a fresh attempt. Never replay the old cart.
+          const closed = await closeSavedAttempt(saved);
+          if (closed.result) {
+            navigation.navigate('PaymentRecovery', { target: attemptTarget({ ...closed, result: closed.result }) });
+            return;
+          }
+          await clearAttempt(saved.id);
+          saved = null;
         }
       }
       const pending = await fetchPendingPayments();
@@ -209,74 +212,51 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
         return;
       }
 
-      async function payViaRazorpayCheckout() {
-        const razorpayOrder = await createRazorpayOrder(
-          isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id },
-        );
+      const payTarget = isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id };
+      const deliveryAddress = selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address';
+      const toProcessing = (appName: string, collect?: { vpa: string; expiresAt: string | null }) => navigation.navigate('PaymentProcessing', {
+        target: payTarget, appName, paymentMethod, amount: confirmedAmount, order: orderSummary,
+        items: orderedItems, deliveryAddress, isTrip: isMultiStore, collect,
+      });
+
+      // Card / netbanking / anything else, and every UPI fallback. onVerify
+      // only means the hosted checkout closed; the server re-fetches Cashfree.
+      // Not confirmed yet → the processing screen keeps polling.
+      async function payViaCashfreeCheckout(label: string) {
+        const order = await createPaymentOrder(payTarget);
         if (!stillOwner()) throw new Error('Session changed.');
-        const result = await openRazorpayCheckout({
-          keyId: razorpayOrder.key_id,
-          razorpayOrderId: razorpayOrder.id,
-          amountPaise: razorpayOrder.amount,
-          contact: null,
-          name: recipientName,
-        });
+        await openCashfreeCheckout(order);
         if (!stillOwner()) throw new Error('Session changed.');
-        await verifyPayment({
-          ...(isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id }),
-          razorpay_order_id: result.razorpay_order_id,
-          razorpay_payment_id: result.razorpay_payment_id,
-          razorpay_signature: result.razorpay_signature,
-        });
-      }
-
-      if (paymentMethod.startsWith('upi_app:')) {
-        const app = upiApps.find((a) => a.id === paymentMethod.slice('upi_app:'.length));
-        if (!app) throw new Error('This UPI app is no longer available. Please choose another payment method.');
-
-        const intentTarget = isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id };
-
-        const upiLink = (await createUpiIntentPayment(intentTarget)).upiLink;
-
-        // Do not await Android's activity result: payment confirmation must
-        // already be polling when the customer returns from the UPI app.
-        openUpiApp(app, upiLink).catch(() => {});
-
-        navigation.navigate('PaymentProcessing', {
-          target: intentTarget,
-          appName: app.name,
-          paymentMethod,
-          amount: confirmedAmount,
-          order: orderSummary,
-          items: orderedItems,
-          deliveryAddress: selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address',
-          isTrip: isMultiStore,
-        });
-        return;
+        const verified = await verifyPayment(payTarget).catch(() => ({ ok: false }));
+        if (!stillOwner()) return;
+        if (verified.ok) await goToReceipt(orderSummary, label, paymentMethod!);
+        else toProcessing(label);
       }
 
       if (paymentMethod === 'upi_id') {
-        const intentTarget = isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id };
-
-        const upiLink = (await createUpiIntentPayment(intentTarget)).upiLink;
-
-        await Linking.openURL(upiLink);
-
-        navigation.navigate('PaymentProcessing', {
-          target: intentTarget,
-          appName: 'your UPI app',
-          paymentMethod,
-          amount: confirmedAmount,
-          order: orderSummary,
-          items: orderedItems,
-          deliveryAddress: selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address',
-          isTrip: isMultiStore,
-        });
+        if (!upiVpa) throw new Error('Verify your UPI ID before paying.');
+        const collect = await createUpiCollectPayment(payTarget, upiVpa);
+        if (!stillOwner()) return;
+        toProcessing('UPI ID', { vpa: upiVpa, expiresAt: collect.expiresAt ?? null });
         return;
       }
 
-      await payViaRazorpayCheckout();
-      await goToReceipt(orderSummary, paymentMethod === 'online' ? 'Online payment' : paymentMethodLabel(paymentMethod, upiApps), paymentMethod);
+      const upiApp = paymentMethod.startsWith('upi_app:') ? upiApps.find((a) => a.id === paymentMethod.slice('upi_app:'.length)) : undefined;
+      if (paymentMethod.startsWith('upi_app:') && !upiApp) throw new Error('This UPI app is no longer available. Please choose another payment method.');
+      // An app whose scheme cannot open goes straight to Cashfree checkout,
+      // BEFORE any intent payment is created (see canLaunchUpiApp).
+      if (upiApp && await canLaunchUpiApp(upiApp)) {
+        const { links } = await createUpiIntentPayment(payTarget, upiApp.id);
+        if (!stillOwner()) return;
+        // Launch, then poll from the processing screen; returning to the
+        // foreground triggers an immediate status check (pollOrderPaid).
+        if (await openUpiApp(upiApp, links)) {
+          toProcessing(upiApp.name);
+          return;
+        }
+      }
+
+      await payViaCashfreeCheckout(paymentMethod === 'online' || upiApp ? 'Online payment' : paymentMethodLabel(paymentMethod, upiApps));
     } catch (err) {
       if (!stillOwner()) return;
       // A lost create/payment response keeps the attempt durable. Never
@@ -284,9 +264,16 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       try {
         const saved = await readAttempt();
         const committed = saved ? await findAttempt(saved.id) : null;
-        if (saved && !committed?.result && err instanceof ApiError && ['QUOTE_CHANGED', 'QUOTE_EXPIRED', 'CHECKOUT_INELIGIBLE', 'INVALID_ORDER', 'INVALID_TRIP'].includes(err.code)) {
-          const closed = await closeSavedAttempt(saved);
-          if (closed.result) { navigation.navigate('PaymentRecovery', { target: attemptTarget({ ...closed, result: closed.result }) }); return; }
+        if (saved && !committed?.result && !keepsCheckoutAttempt(err)) {
+          // Definitive rejection: nothing committed. Fence and drop the key so
+          // the next tap builds a fresh attempt from the current cart.
+          try {
+            const closed = await closeSavedAttempt(saved);
+            if (closed.result) { navigation.navigate('PaymentRecovery', { target: attemptTarget({ ...closed, result: closed.result }) }); return; }
+          } catch (closeErr) {
+            // ATTEMPT_CONFLICT etc.: the key is unusable for this cart anyway.
+            if (keepsCheckoutAttempt(closeErr)) throw closeErr;
+          }
           await clearAttempt(saved.id);
         }
         if (committed?.result) {

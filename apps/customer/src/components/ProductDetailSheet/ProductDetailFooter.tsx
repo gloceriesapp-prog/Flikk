@@ -183,9 +183,9 @@ export function ProductDetailFooter({
           }}
         >
           {/* MINUS */}
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${name}`}
             onPress={() => decrementItem(id)}
-            hitSlop={10}
+            hitSlop={12}
             className="h-8 w-8 items-center justify-center"
           >
             <AppIcon
@@ -211,9 +211,9 @@ export function ProductDetailFooter({
           </Text>
 
           {/* PLUS */}
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${name}`}
             onPress={() => incrementItem(id)}
-            hitSlop={10}
+            hitSlop={12}
             className="h-8 w-8 items-center justify-center"
           >
             <HugeiconsIcon

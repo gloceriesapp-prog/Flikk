@@ -16,9 +16,12 @@ import { useCartStore, type AppliedPromo } from '../../../store/useCartStore';
 interface Props {
   itemTotal: number;
   appliedPromo: AppliedPromo | null;
+  // The server checkout quote's discount — the amount actually charged.
+  // The validate preview is only shown until the first quote arrives.
+  quotedDiscount?: number;
 }
 
-export function PromoCodeCard({ itemTotal, appliedPromo }: Props) {
+export function PromoCodeCard({ itemTotal, appliedPromo, quotedDiscount }: Props) {
   const setAppliedPromo = useCartStore((state) => state.setAppliedPromo);
   const [code, setCode] = useState('');
   const [isApplying, setIsApplying] = useState(false);
@@ -45,10 +48,10 @@ export function PromoCodeCard({ itemTotal, appliedPromo }: Props) {
           <View className="flex-row items-center gap-2">
             <AppIcon icon={DiscountTag01Icon} size={16} color={colors.success} />
             <Text className="text-[13px] font-semibold text-success">
-              {appliedPromo.code} applied — ₹{appliedPromo.discountAmount} off
+              {appliedPromo.code} applied — ₹{quotedDiscount ?? appliedPromo.discountAmount} off
             </Text>
           </View>
-          <Pressable onPress={() => setAppliedPromo(null)} hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Remove promo code" onPress={() => setAppliedPromo(null)} hitSlop={8}>
             <AppIcon icon={Cancel01Icon} size={16} color={`${colors.ink}70`} />
           </Pressable>
         </View>

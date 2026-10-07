@@ -6,7 +6,7 @@ import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth
 import { tripRefundSummary } from '../payments/tripRefunds.js';
 
 // No items, address, seller joins, rider profile or historical delivery count.
-export const ORDER_LIVE_SELECT = 'id,live_revision,status,rider_id,estimated_delivery_minutes,estimated_delivery_at,packed_at,picked_up_at,delivered_at,delivery_otp,cancel_reason,refund_status,razorpay_refund_id,refunded_at,razorpay_payment_id';
+export const ORDER_LIVE_SELECT = 'id,live_revision,status,rider_id,estimated_delivery_minutes,estimated_delivery_at,packed_at,picked_up_at,delivered_at,delivery_otp,cancel_reason,refund_status,provider_refund_id,refunded_at,provider_payment_id,payment_provider';
 export const liveOrdersRouter = Router();
 export const liveTripsRouter = Router();
 function unavailable() { return new AppError(503, 'TRACKING_UNAVAILABLE', 'Tracking is temporarily unavailable. Please retry.'); }
@@ -24,7 +24,7 @@ liveOrdersRouter.get('/:id/live', requireAuth, requireRole('customer'), async (r
 liveTripsRouter.get('/:id/live', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
     const { data: trip, error } = await supabase.from('trips')
-      .select('id,live_revision,status,estimated_delivery_minutes,estimated_delivery_at,razorpay_payment_id')
+      .select('id,live_revision,status,estimated_delivery_minutes,estimated_delivery_at,provider_payment_id,payment_provider')
       .eq('id', req.params.id).eq('customer_id', req.user!.id).maybeSingle();
     if (error) throw unavailable();
     if (!trip) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found.');

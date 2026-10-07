@@ -73,11 +73,11 @@ function TrackingDetails({ navigation, route }: Props) {
   return (
     <View className="flex-1 bg-[#F1F2F4]">
       <View className="flex-row items-center bg-[#F1F2F4] px-4 pb-2 pt-safe-offset-2">
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
         <Text className="flex-1 text-center text-[17px] font-semibold text-ink">Track Order</Text>
-        <Pressable onPress={() => navigation.navigate('Support', { target: { orderId, isTrip }, category: 'delivery' })} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
+        <Pressable accessibilityRole="button" accessibilityLabel="Get help with this order" onPress={() => navigation.navigate('Support', { target: { orderId, isTrip }, category: 'delivery' })} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={CustomerService01Icon} size={22} color={colors.ink} />
         </Pressable>
       </View>

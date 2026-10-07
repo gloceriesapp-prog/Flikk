@@ -1,9 +1,10 @@
 import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppImage } from '../../../../components/AppImage';
+import { storageUrl } from '../../../../utils/storageUrl';
 
 const DEFAULT_BANNER_URI =
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/store-image1.jpeg';
+  storageUrl('Images/store-image1.jpeg');
 
 // A shared default for every category; callers can supply specific artwork later.
 export function HomeCategoryBanner({

@@ -20,7 +20,7 @@ export function FreshSectionState({ hasLocation, isLoading, isError, retry, empt
       {hasLocation && isLoading ? <BrowseLoadingText message={BROWSE_LOADING_COPY.fresh} /> : (
         <>
           <Text className="text-center text-sm text-ink/60">{!hasLocation ? 'Choose your delivery address to discover fresh produce nearby.' : isError ? 'We couldn’t load these listings. Please try again.' : emptyMessage}</Text>
-          {action && <Pressable accessibilityRole="button" onPress={action} className="min-h-11 justify-center rounded-full bg-[#155DFC] px-5"><Text className="font-semibold text-white">{!hasLocation ? 'Choose location' : 'Try again'}</Text></Pressable>}
+          {action && <Pressable accessibilityRole="button" onPress={action} className="min-h-11 justify-center rounded-full bg-coral px-5"><Text className="font-semibold text-ink">{!hasLocation ? 'Choose location' : 'Try again'}</Text></Pressable>}
         </>
       )}
     </View>

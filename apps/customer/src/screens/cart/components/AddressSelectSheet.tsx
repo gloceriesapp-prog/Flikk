@@ -59,7 +59,7 @@ export function AddressSelectSheet({ visible, addresses, selectingId, deletingId
             (not inside the sheet's own stopPropagation wrapper below), so
             it keeps working as a real "close" tap. */}
         <View pointerEvents="box-none" className="items-center pb-3">
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Close"
             onPress={onClose}
             hitSlop={10}
             className="h-10 w-10 items-center justify-center rounded-full bg-black/70"
@@ -108,7 +108,7 @@ export function AddressSelectSheet({ visible, addresses, selectingId, deletingId
                   {deletingId === address.id ? (
                     <ActivityIndicator color={colors.danger} style={{ marginHorizontal: 8 }} />
                   ) : (
-                    <Pressable onPress={() => confirmDelete(address)} disabled={busy} hitSlop={10} className="p-2">
+                    <Pressable accessibilityRole="button" accessibilityLabel="Delete address" onPress={() => confirmDelete(address)} disabled={busy} hitSlop={10} className="p-2">
                       <AppIcon icon={Delete02Icon} size={17} color={colors.danger} />
                     </Pressable>
                   )}

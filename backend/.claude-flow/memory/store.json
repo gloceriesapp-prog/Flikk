@@ -1,0 +1,14 @@
+{
+  "entries": {
+    "cmd-1791347561966": {
+      "key": "cmd-1791347561966",
+      "value": "{\"command\":\"cd /Users/nishalpoojary/Projects/Saas/Flikk/backend && wc -c migrations/09[6-9]*.sql migrations/10[0-3]*.sql; grep -oE \\\"^(DATABASE_URL|SUPABASE_DB_URL|DB_URL|POSTGRES_URL)=\\\" .env* 2>/dev/null; which psql supabase\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-07T04:32:41.966Z",
+      "lastAccessed": "2026-10-07T04:32:41.966Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-06T04:32:41.966Z"
+    }
+  },
+  "version": "3.0.0"
+}

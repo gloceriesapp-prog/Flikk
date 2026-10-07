@@ -100,7 +100,7 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
         <View className="flex-1 gap-5 px-6 pb-safe-offset-6 pt-safe-offset-4">
           {/* Back — plain top-left circle now (no hero photo to float over). */}
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back"
             onPress={() => navigation.goBack()}
             hitSlop={12}
             className="h-11 w-11 items-center justify-center rounded-full bg-gray-100"

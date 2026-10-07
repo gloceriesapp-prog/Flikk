@@ -19,7 +19,7 @@ export function useNewOnGloceries() {
   const stores = useMemo(
     () =>
       [...(query.data ?? [])]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
         .slice(0, NEW_ON_GLOCERIES_LIMIT),
     [query.data],
   );

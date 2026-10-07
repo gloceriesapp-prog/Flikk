@@ -384,6 +384,34 @@
     {
       "file": "095_promotional_delivery_queue.sql",
       "sha256": "3b6bfc05b35fb4bbdf62542b29bbe7231dc51af56fb3b004e1bafd7e11728f7c"
+    },
+    {
+      "file": "096_payment_reconciliation_promo_paise.sql",
+      "sha256": "64ffce063c0be9171d37302cde393751688e8e4df6563b3fe3402e61d8aecc8c"
+    },
+    {
+      "file": "097_discovery_integrity.sql",
+      "sha256": "b77ee526799a699ebae22fda56bf4a8875f82dfc04cbc4465da60152429df229"
+    },
+    {
+      "file": "098_address_edit_failed_order_refunds.sql",
+      "sha256": "7a94f1c9a7a05aeae6f79f80789be7625b7824c4a18e9e380ed28b2d8dbf70d4"
+    },
+    {
+      "file": "100_app_content.sql",
+      "sha256": "498ccc0198d2ada51f77ee88e97d8644f7555916606896d17b1ef7e61dc4c01d"
+    },
+    {
+      "file": "101_abandon_unpaid_checkout.sql",
+      "sha256": "73380935a16495e2aae6909f47772fe710c984cf9f925bb30feea2f8f1d43314"
+    },
+    {
+      "file": "102_manual_payouts.sql",
+      "sha256": "bad3c926055b72fef779a08faede22c1b7a9e4fb46ef2edb19964ff6b0273c50"
+    },
+    {
+      "file": "103_cashfree_payments.sql",
+      "sha256": "4f64eac0a0d8837f89df77e739b534614a0b72318f472a2d55d4d01b5438aa81"
     }
   ]
 }

@@ -77,11 +77,11 @@ function AddControl({ product }: { product: Product }) {
 
   return (
     <View className="flex-row items-center gap-2.5 rounded-lg px-2 py-1.5 bg-white border border-[#155dfc]">
-      <Pressable onPress={() => decrementItem(lineId)} hitSlop={8}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${product.name}`} onPress={() => decrementItem(lineId)} hitSlop={15}>
         <AppIcon icon={MinusSignIcon} size={14} color="#155dfc" />
       </Pressable>
       <Text className="min-w-[14px] text-center text-[12.5px] font-bold text-[#155dfc]">{quantity}</Text>
-      <Pressable onPress={() => incrementItem(lineId)} hitSlop={8}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${product.name}`} onPress={() => incrementItem(lineId)} hitSlop={15}>
         <AppIcon icon={Add01Icon} size={14} color="#155dfc" />
       </Pressable>
     </View>

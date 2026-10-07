@@ -39,7 +39,7 @@ export interface RealStore {
   // client-side sort reads this (this hook already fetches every active
   // store in the zone; those two sections just re-sort/slice the same
   // list rather than adding a second store-list fetch each).
-  createdAt: string;
+  createdAt?: string;
 }
 
 interface ApiStore {
@@ -57,7 +57,7 @@ interface ApiStore {
   close_time: string | null;
   lat: number | null;
   lng: number | null;
-  created_at: string;
+  created_at?: string | null;
 }
 
 export function useAllStores() {
@@ -83,7 +83,7 @@ export function useAllStores() {
           closeTime: row.close_time ?? undefined,
           latitude: row.lat ?? undefined,
           longitude: row.lng ?? undefined,
-          createdAt: row.created_at,
+          createdAt: row.created_at ?? undefined,
         }),
       );
     },

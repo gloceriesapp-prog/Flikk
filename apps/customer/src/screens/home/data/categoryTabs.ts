@@ -23,22 +23,11 @@ export interface Category {
 
 export const ALL_TAB: Category = { id: 'all', label: 'All', icon: ShoppingBasket01Icon };
 
-// Customer-facing Home labels; keep admin names and IDs intact for routing.
-const HOME_LABELS: Record<string, string> = {
-  groceries: 'Grocery',
-  grocery: 'Grocery',
-  fresh: 'Fruit & Veg',
-  'fruit & veg': 'Fruit & Veg',
-  'meat & fish': 'Fish & Meat',
-  'fish & meat': 'Fish & Meat',
-  bakery: 'Bakeries',
-  bakeries: 'Bakeries',
-  'parts & tools': 'Parts & Tools',
-};
-
+// Tab labels are the admin's own home_tabs.name (Home Categories screen) —
+// no hardcoded renames here, so what admin types is what customers see.
 export function homeTabLabel(name: string): string {
   if (isFestivalTabName(name)) return NAVRATRI_FESTIVAL.name;
-  return HOME_LABELS[name.trim().toLowerCase()] ?? name;
+  return name;
 }
 
 // Dairy now lives in the All feed. Keep Parts & Tools separate from any

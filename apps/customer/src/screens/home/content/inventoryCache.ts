@@ -4,7 +4,7 @@ import { apiRequest } from '../../../api/client';
 import { subscribeHomeContent, type InventoryEvent } from './realtime';
 
 const homeInventory = new Set(['nearby-stores', 'nearest-store', 'deals-products', 'buy-it-again',
-  'trending-this-week', 'everyday-essentials', 'groceries', 'festival-picks']);
+  'popular', 'everyday-essentials', 'groceries', 'festival-picks']);
 export function isInventoryQuery(key: readonly unknown[]) {
   return (key[0] === 'home' && homeInventory.has(String(key[1]))) ||
     (key[0] === 'store-detail' && key[2] === 'products') || key[0] === 'store-list' ||

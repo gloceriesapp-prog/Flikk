@@ -21,6 +21,7 @@ import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 
 import type { AppStackParamList } from '../../../navigation/types';
 import type { Product } from '../products/types';
+import { useCopy } from '../../../api/appConfig';
 
 /* ============================================================
    CONFIG
@@ -35,15 +36,16 @@ const SUBTITLE_COLOR = '#453765';
 
 interface Props {
   products: Product[];
-  title?: string;
+  title: string;
   subtitle?: string | null;
 }
 
 export function DealsForYouSection({
   products,
-  title = 'Everyday Savings',
-  subtitle = 'Save more on products worth buying',
+  title,
+  subtitle,
 }: Props) {
+  const ctaLabel = useCopy('home.dealsForYou.cta');
   const navigation =
     useNavigation<
       NativeStackNavigationProp<AppStackParamList>
@@ -329,7 +331,7 @@ export function DealsForYouSection({
         text-[#2F3F83]
       "
             >
-              See all deals
+              {ctaLabel}
             </Text>
 
             {/* ARROW */}

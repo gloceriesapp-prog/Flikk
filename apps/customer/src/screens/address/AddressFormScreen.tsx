@@ -16,9 +16,9 @@ import { useAuthStore } from '../../store/useAuthStore';
 // extra tap. Saves via POST /addresses (backend/src/routes/addresses.ts) —
 // a first address becomes the account's default automatically (that
 // route's own note), so from here on every checkout just reuses it.
-// navigation.popTo('Cart') at the end pops back to whatever screen
-// in the stack is already named Checkout, however deep this form was
-// reached from (Checkout -> AddressList -> LocationSearch -> here).
+// After saving, it pops back past the LocationSearch/AddressForm steps to
+// whichever screen started the flow (Cart, AddressList, Profile...).
+// With route.params.address it edits that saved address (PATCH) instead.
 
 import { useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
@@ -29,7 +29,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { createAddress, setDefaultAddress } from '../../api/addresses';
+import { createAddress, updateAddress } from '../../api/addresses';
 import { fetchAccountInfo } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import type { AppStackParamList } from '../../navigation/types';
@@ -45,26 +45,29 @@ const ACCENT = '#1447E6';
 
 export function AddressFormScreen({ route, navigation }: Props) {
   const customerId = useAuthStore(state => state.customerId);
-  const { latitude, longitude, addressLabel, city } = route.params;
+  const { latitude, longitude, addressLabel, city, address: editing } = route.params;
+  const editingPreset = editing && ['Home', 'Work'].includes(editing.label);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
 
-  const [building, setBuilding] = useState('');
+  // Edit mode prefills the saved line1 whole — it can't be split back into building/street.
+  const [building, setBuilding] = useState(editing?.line1 ?? '');
   // Not prefilled from addressLabel — LocationDetailsCard's own pin-preview
   // row already shows the full reverse-geocoded label right below this
   // field, so pre-filling street with the same text just duplicated it
   // twice on screen. Left blank for the user to type the actual street
   // name, same as building.
   const [street, setStreet] = useState('');
-  const [landmark, setLandmark] = useState('');
-  const [orderingFor, setOrderingFor] = useState<OrderingFor>('myself');
-  const [recipientName, setRecipientName] = useState('');
-  const [recipientPhone, setRecipientPhone] = useState('');
+  const [landmark, setLandmark] = useState(editing?.landmark ?? '');
+  // Editing shows the saved receiver fields directly so they're visible and editable.
+  const [orderingFor, setOrderingFor] = useState<OrderingFor>(editing ? 'someone_else' : 'myself');
+  const [recipientName, setRecipientName] = useState(editing?.recipient_name ?? '');
+  const [recipientPhone, setRecipientPhone] = useState(editing?.recipient_phone ?? '');
   const [accountName, setAccountName] = useState<string | null>(null);
   const [accountPhone, setAccountPhone] = useState<string | null>(null);
-  const [label, setLabel] = useState('Home');
-  const [customName, setCustomName] = useState('');
-  const [instructions, setInstructions] = useState('');
+  const [label, setLabel] = useState(editing ? (editingPreset ? editing.label : 'Other') : 'Home');
+  const [customName, setCustomName] = useState(editing && !editingPreset ? editing.label : '');
+  const [instructions, setInstructions] = useState(editing?.delivery_instructions ?? '');
 
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -79,10 +82,12 @@ export function AddressFormScreen({ route, navigation }: Props) {
       .then(({ phone, name }) => {
         setAccountPhone(phone);
         setAccountName(name);
+        if (editing) return; // keep the saved receiver
         setRecipientPhone(phone);
         if (name) setRecipientName(name);
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
   }, []);
 
   // "Myself" pulls straight from the account (phone always known from
@@ -111,7 +116,7 @@ export function AddressFormScreen({ route, navigation }: Props) {
     setError(null);
     setSaving(true);
     try {
-      const created = await createAddress({
+      const fields = {
         label: savedLabel,
         line1,
         landmark: landmark.trim() || undefined,
@@ -120,17 +125,13 @@ export function AddressFormScreen({ route, navigation }: Props) {
         delivery_instructions: instructions.trim() || undefined,
         latitude,
         longitude,
-      });
-      // Real setDefaultAddress call, not just relying on "a first address
-      // becomes the account's default automatically" (that only ever
-      // covers someone's very first address ever) — this screen is
-      // reached from Checkout's own "Change" affordance just as often as
-      // from the plain address book, and picking a new location there
-      // means "deliver here", not "add a second address and keep using
-      // the old default". Without this, Checkout's own selectedAddress
-      // (is_default ?? first) would keep showing the OLD address after
-      // "Change" appeared to succeed.
-      await setDefaultAddress(created.id);
+      };
+      // A new address becomes the default in the same server transaction
+      // (make_default) — picking a new location from Checkout's "Change"
+      // means "deliver here", and one call means a retry can't leave a
+      // duplicate behind a failed follow-up "set default".
+      if (editing) await updateAddress(editing.id, fields);
+      else await createAddress({ ...fields, make_default: true });
       // Real invalidation, not left to chance — Checkout's own useQuery
       // (['addresses']) is a still-mounted screen underneath this one
       // (popTo('Cart') below brings it back into focus rather than
@@ -143,7 +144,11 @@ export function AddressFormScreen({ route, navigation }: Props) {
       // already-mounted screen back into focus, it doesn't remount this
       // one and tear the Modal down with it).
       setConfirmVisible(false);
-      navigation.popTo('Cart');
+      // Pop the LocationSearch/AddressForm steps; land on whoever started the flow.
+      const routes = navigation.getState().routes;
+      let origin = routes.length - 1;
+      while (origin > 0 && ['AddressForm', 'LocationSearch'].includes(routes[origin]!.name)) origin--;
+      navigation.pop(Math.max(routes.length - 1 - origin, 1));
     } catch (err) {
       setConfirmVisible(false);
       setError(err instanceof ApiError ? err.message : 'Could not save this address. Please try again.');
@@ -155,7 +160,7 @@ export function AddressFormScreen({ route, navigation }: Props) {
   return (
     <View className="flex-1 bg-[#FAFAFA]">
         <View className="flex-row items-center gap-3 bg-white px-5 pb-3 pt-safe-offset-3">
-          <Pressable onPress={() => navigation.goBack()} hitSlop={12} className="h-10 w-10 items-center justify-center">
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-10 w-10 items-center justify-center">
             <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
           </Pressable>
           <View className="flex-1">
@@ -226,7 +231,9 @@ export function AddressFormScreen({ route, navigation }: Props) {
             onChangeBuilding={setBuilding}
             onChangeStreet={setStreet}
             onChangeLandmark={setLandmark}
-            onChangePin={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
+            // ponytail: editing keeps the saved pin; moving it means adding a new address
+            // until LocationSearch can carry an address id through to this form.
+            onChangePin={editing ? undefined : () => navigation.navigate('LocationSearch', { intent: 'address-book' })}
           />
 
           <View className="gap-3 rounded-2xl bg-white p-4">

@@ -1,49 +1,60 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ update: vi.fn(), from: vi.fn() }));
-vi.mock('../db/supabase.js', () => ({ supabase: { from: mocks.from } }));
+const mocks = vi.hoisted(() => ({ update: vi.fn(), provider: { value: 'cashfree' } }));
+vi.mock('../db/supabase.js', () => ({ supabase: { from: (table: string) => {
+  const q = { update: (p: unknown) => { mocks.update(p); return q; }, select: () => q, eq: () => q,
+    maybeSingle: async () => ({ error: null, data: table === 'trip_refunds' ? { id: 'x' } : table === 'trips' ? { payment_provider: mocks.provider.value } : null }) };
+  return q;
+} } }));
 import { refundProgress, processTripRefund, type TripRefundJob } from './tripRefunds.js';
-const job: TripRefundJob = { id: 'refund-key-123456', trip_id: 'trip', payment_id: 'payment', target_paise: 5500, request_paise: null, refunded_paise: 0, status: 'queued', provider_refund_id: null, lease_token: 'lease', attempts: 1 };
-beforeEach(() => {
-    vi.clearAllMocks();
-    const q = { update: mocks.update, eq: vi.fn(() => q), select: vi.fn(() => q), maybeSingle: vi.fn(async () => ({ data: { id: job.id }, error: null })) };
-    mocks.update.mockReturnValue(q);
-    mocks.from.mockReturnValue(q);
-});
+const trip = '00000000-0000-4000-8000-000000000500';
+const cfOrder = 'gl_00000000000040008000000000000500';
+const job: TripRefundJob = { id: '99999999-0000-4000-8000-000000000001', trip_id: trip, payment_id: '1', target_paise: 5500, request_paise: null, refunded_paise: 0, status: 'queued', provider_refund_id: null, lease_token: 'lease', attempts: 1 };
+const refundId = 'rf_99999999000040008000000000000001';
+beforeEach(() => { vi.clearAllMocks(); mocks.provider.value = 'cashfree'; });
 afterEach(() => vi.unstubAllGlobals());
-function response(items: unknown) { return { ok: true, json: async () => items }; }
+const response = (data: unknown, status = 200) => ({ ok: status < 300, status, json: async () => data });
 it('pending partial refunds reserve money but do not count as completed', () => {
-    expect(refundProgress([{ id: 'a', amount: 2000, status: 'processed' }, { id: 'b', amount: 1000, status: 'pending' }, { id: 'c', amount: 900, status: 'failed' }], 5500))
-        .toEqual({ remaining: 2500, completed: 2000, settled: false });
+  expect(refundProgress([{ id: 'a', amount: 2000, status: 'completed' }, { id: 'b', amount: 1000, status: 'processing' }, { id: 'c', amount: 900, status: 'failed' }], 5500))
+    .toEqual({ remaining: 2500, completed: 2000, settled: false });
 });
-it('requests only the remaining combined total, including fees and prior partial refunds', async () => {
-    const fetch = vi.fn().mockResolvedValueOnce(response({ items: [{ id: 'old', amount: 2000, status: 'processed' }] })).mockResolvedValueOnce(response({ id: 'new', amount: 3500, status: 'pending' }));
-    vi.stubGlobal('fetch', fetch);
-    await processTripRefund(job);
-    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ request_paise: 3500 }));
-    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ amount: 3500, speed: 'normal' });
-    expect(fetch.mock.calls[1][1].headers['X-Refund-Idempotency']).toBe(job.id);
+it('requests only the remaining combined total, including prior partial refunds', async () => {
+  const fetch = vi.fn().mockResolvedValueOnce(response([{ refund_id: 'rf_old', refund_amount: 20, refund_status: 'SUCCESS' }]))
+    .mockResolvedValueOnce(response({ refund_id: refundId, refund_amount: 35, refund_status: 'PENDING' }));
+  vi.stubGlobal('fetch', fetch);
+  await processTripRefund(job);
+  expect(fetch.mock.calls[0][0]).toContain(`/orders/${cfOrder}/refunds`);
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ request_paise: 3500 }));
+  expect(JSON.parse(fetch.mock.calls[1][1].body)).toMatchObject({ refund_amount: 35, refund_id: refundId });
+  expect(fetch.mock.calls[1][1].headers['x-idempotency-key']).toBe(refundId);
 });
-it('retries a lost refund response with the frozen body and same provider key', async () => {
-    const fetch = vi.fn().mockResolvedValueOnce(response({ items: [{ id: 'unknown', amount: 3500, status: 'pending' }] })).mockResolvedValueOnce(response({ id: 'unknown', amount: 3500, status: 'pending' }));
-    vi.stubGlobal('fetch', fetch);
-    await processTripRefund({ ...job, request_paise: 3500 });
-    expect(JSON.parse(fetch.mock.calls[1][1].body).amount).toBe(3500);
-    expect(fetch.mock.calls[1][1].headers['X-Refund-Idempotency']).toBe(job.id);
+it('adopts its own refund after a lost response instead of creating another', async () => {
+  const fetch = vi.fn().mockResolvedValue(response([{ refund_id: refundId, refund_amount: 35, refund_status: 'PENDING' }]));
+  vi.stubGlobal('fetch', fetch);
+  await processTripRefund({ ...job, request_paise: 3500 });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'processing', provider_refund_id: refundId }));
 });
 it('does not send another refund when the total has already settled', async () => {
-    const fetch = vi.fn().mockResolvedValue(response({ items: [{ id: 'done', amount: 5500, status: 'processed' }] }));
-    vi.stubGlobal('fetch', fetch);
-    await processTripRefund(job);
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed', refunded_paise: 5500 }));
+  const fetch = vi.fn().mockResolvedValue(response([{ refund_id: 'rf_done', refund_amount: 55, refund_status: 'SUCCESS' }]));
+  vi.stubGlobal('fetch', fetch);
+  await processTripRefund(job);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed', refunded_paise: 5500 }));
+});
+it('marks legacy Razorpay trips manual_required without calling Cashfree', async () => {
+  const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
+  mocks.provider.value = 'razorpay';
+  await processTripRefund(job);
+  expect(fetch).not.toHaveBeenCalled();
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'manual_required' }));
 });
 it('retains unknown network outcomes for retry instead of claiming failure or completion', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-    await processTripRefund(job);
-    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'queued', lease_until: null, last_error: 'Refund confirmation delayed' }));
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+  await processTripRefund(job);
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'queued', lease_until: null, last_error: 'Refund confirmation delayed' }));
 });
 it('stops and exposes a definitive provider rejection for support', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 400 }));
-    await processTripRefund(job);
-    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, 400)));
+  await processTripRefund(job);
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
 });

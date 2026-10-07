@@ -42,6 +42,18 @@ export async function PATCH(request: Request) {
       throw new Error('Free-delivery threshold must be a real number, 0 or more.');
     }
     if (!Number.isFinite(handlingFee) || handlingFee < 0) throw new Error('Handling fee must be a real number, 0 or more.');
+    // Rider payouts (migration 099) are optional here: omitted = unchanged.
+    const riderPayouts: { rider_base_payout?: number; rider_extra_stop_payout?: number } = {};
+    for (const [field, column, label] of [
+      ['riderBasePayout', 'rider_base_payout', 'Minimum rider payout'],
+      ['riderExtraStopPayout', 'rider_extra_stop_payout', 'Rider payout per extra store'],
+    ] as const) {
+      if (body[field] === undefined) continue;
+      if (typeof body[field] !== 'number' || !Number.isFinite(body[field]) || body[field] < 0) {
+        throw new Error(`${label} must be a real number, 0 or more.`);
+      }
+      riderPayouts[column] = body[field];
+    }
 
     const { data: settings, error: readError } = await supabaseAdmin
       .from('delivery_settings').select('id').single();
@@ -55,6 +67,7 @@ export async function PATCH(request: Request) {
         free_delivery_threshold: freeDeliveryThreshold,
         handling_fee: handlingFee,
         estimated_delivery_minutes: estimatedDeliveryMinutes,
+        ...riderPayouts,
         updated_at: new Date().toISOString(),
       })
       .eq('id', settings.id)

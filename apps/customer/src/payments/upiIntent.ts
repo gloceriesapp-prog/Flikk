@@ -1,7 +1,7 @@
-// Detects which UPI apps are installed, and launches the real
-// `upi://pay?...` link a checkout got from POST /payments/create-upi-
-// intent at one of them directly — no Razorpay-branded screen, same
-// mechanism Blinkit/Instamart use for their own in-app UPI grid.
+// Detects which UPI apps are installed, and launches the real UPI link a
+// checkout got from POST /payments/upi/intent (Cashfree Order Pay, channel
+// 'link') at one of them directly — same mechanism Blinkit/Instamart use for
+// their own in-app UPI grid.
 //
 // Android: fully dynamic, via a hand-written native module
 // (android/app/.../upiapps/UpiAppsModule.kt) that queries PackageManager
@@ -24,12 +24,32 @@
 import { Linking, NativeModules, Platform } from 'react-native';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { UPI_APPS, type UpiApp } from './upiApps';
+import type { UpiIntentLinks } from '../api/payments';
 
-interface NativeUpiApp {
+export interface NativeUpiApp {
   name: string;
   packageName: string;
   className: string;
   icon: string; // base64 PNG, no data: prefix
+}
+
+// Android PackageManager results scoped to upiApps.ts's known list — the raw
+// query matches ANY app declaring the `upi://` intent-filter, and real device
+// testing turned up apps that register it for unrelated deep-linking (a
+// shopping app, a phone-case storefront), not actual UPI payments.
+export function matchNativeUpiApps(detected: NativeUpiApp[]): UpiApp[] {
+  const byPackage = new Map(detected.map((app) => [app.packageName, app]));
+  return UPI_APPS.filter((known) => byPackage.has(known.androidPackage)).map((known) => {
+    const native = byPackage.get(known.androidPackage)!;
+    return { ...known, iconUri: `data:image/png;base64,${native.icon}`, androidClassName: native.className };
+  });
+}
+
+async function detectByScheme(): Promise<UpiApp[]> {
+  const checks = await Promise.all(
+    UPI_APPS.map((app) => Linking.canOpenURL(`${app.scheme}://`).catch(() => false)),
+  );
+  return UPI_APPS.filter((_, i) => checks[i]);
 }
 
 // Not cached module-wide — installed apps can change between app
@@ -38,30 +58,16 @@ interface NativeUpiApp {
 export async function detectInstalledUpiApps(): Promise<UpiApp[]> {
   if (Platform.OS === 'android') {
     const upiAppsModule = NativeModules.UpiApps as { getInstalledUpiApps(): Promise<NativeUpiApp[]> } | undefined;
-    if (!upiAppsModule) return []; // dev-client build predates this native module — falls back to "More payment options"
+    // Older dev-client without the native module: per-scheme canOpenURL
+    // (scheme <queries> are declared by plugins/withUpiAppQueries.js).
+    if (!upiAppsModule) return detectByScheme();
     try {
-      const detected = await upiAppsModule.getInstalledUpiApps();
-      // Filtered to upiApps.ts's known list, not shown as-is — the raw
-      // PackageManager query matches ANY app declaring the `upi://`
-      // intent-filter, and real device testing turned up apps that
-      // register it for unrelated internal deep-linking (a shopping app,
-      // a phone-case storefront), not actual UPI payments. This keeps
-      // detection genuinely dynamic (only shows what's actually
-      // installed) while scoping results to real, popular payment apps.
-      const byPackage = new Map(detected.map((app) => [app.packageName, app]));
-      return UPI_APPS.filter((known) => byPackage.has(known.androidPackage)).map((known) => {
-        const native = byPackage.get(known.androidPackage)!;
-        return { ...known, iconUri: `data:image/png;base64,${native.icon}`, androidClassName: native.className };
-      });
+      return matchNativeUpiApps(await upiAppsModule.getInstalledUpiApps());
     } catch {
       return [];
     }
   }
-
-  const checks = await Promise.all(
-    UPI_APPS.map((app) => Linking.canOpenURL(`${app.scheme}://`).catch(() => false)),
-  );
-  return UPI_APPS.filter((_, i) => checks[i]);
+  return detectByScheme();
 }
 
 // Android: an explicit intent naming the app's own package, still
@@ -71,30 +77,69 @@ export async function detectInstalledUpiApps(): Promise<UpiApp[]> {
 // app's own custom scheme. This is the real, reliable mechanism; there's
 // no equivalent "pick this one app" API on iOS.
 //
-// iOS: no way to force a specific installed app to handle a generic URI
-// — Linking.openURL on the untouched link is the most both Apple and
-// Razorpay actually support. With exactly one UPI app installed it opens
-// directly (the common case); with several, iOS shows its own native
-// disambiguation sheet. Razorpay's own docs explicitly warn against
-// rewriting the link for any platform — this never does, on either.
-export async function openUpiApp(app: UpiApp, upiLink: string): Promise<void> {
-  // packageName alone does nothing here — expo-intent-launcher's own
-  // IntentLauncherModule.kt only sets Intent.component (component =
-  // ComponentName(packageName, className)) when className is ALSO given;
-  // without it the intent stays a plain generic ACTION_VIEW and Android
-  // resolves it against every matching app, showing its own "Open with"
-  // chooser instead of jumping straight into the one app actually tapped.
-  // androidClassName comes from detectInstalledUpiApps' own real
-  // PackageManager query (UpiAppsModule.kt) — always present together
-  // with iconUri for anything Android detected, since both are set in
-  // that same mapping step.
-  if (Platform.OS === 'android' && app.androidClassName) {
-    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-      data: upiLink,
-      packageName: app.androidPackage,
-      className: app.androidClassName,
-    });
-    return;
+// iOS: the generic upi:// link is handed to an arbitrary installed handler,
+// ignoring the app the customer tapped — so iOS launches iosUpiLink(), the
+// same link with only the scheme prefix swapped (query string untouched).
+// iOS: swap only the `upi://` prefix for the chosen app's own scheme so the
+// tapped app (not iOS's arbitrary handler) opens. The payload is untouched.
+export function iosUpiLink(app: UpiApp, upiLink: string): string {
+  if (!upiLink.startsWith('upi://')) throw new Error('Unexpected UPI link.');
+  return app.iosUpiPrefix + upiLink.slice('upi://'.length);
+}
+
+// Checked BEFORE creating a UPI intent payment so an app that cannot open
+// goes straight to Cashfree checkout instead of a dangling intent attempt.
+export async function canLaunchUpiApp(app: UpiApp): Promise<boolean> {
+  if (Platform.OS === 'android') return true;
+  return Linking.canOpenURL(iosUpiLink(app, 'upi://pay')).catch(() => false);
+}
+
+export type UpiLaunchStep = { kind: 'android-intent' | 'url'; url: string };
+
+// Ordered launch attempts for the tapped app; the caller falls back to
+// Cashfree SDK checkout when every step fails.
+//  - Android: explicit intent at the app's package with the generic link
+//    (every PSP handles `upi://` per the NPCI spec), then the plain default
+//    link (system chooser).
+//  - iOS: Cashfree's own per-app link if returned, else the default link
+//    with the app's scheme prefix swapped, then the plain default link.
+export function upiLaunchPlan(app: UpiApp, links: UpiIntentLinks, os: string): UpiLaunchStep[] {
+  const steps: UpiLaunchStep[] = [];
+  if (os === 'android') {
+    if (app.androidClassName) steps.push({ kind: 'android-intent', url: links.default });
+  } else {
+    const own = links[app.id];
+    if (own) steps.push({ kind: 'url', url: own });
+    if (links.default.startsWith('upi://')) steps.push({ kind: 'url', url: iosUpiLink(app, links.default) });
   }
-  await Linking.openURL(upiLink);
+  steps.push({ kind: 'url', url: links.default });
+  return steps.filter((step, i) => steps.findIndex((other) => other.url === step.url && other.kind === step.kind) === i);
+}
+
+// Returns false when nothing could be opened (caller → Cashfree checkout).
+export async function openUpiApp(app: UpiApp, links: UpiIntentLinks): Promise<boolean> {
+  for (const step of upiLaunchPlan(app, links, Platform.OS)) {
+    try {
+      if (step.kind === 'android-intent') {
+        // className is required: expo-intent-launcher only sets
+        // Intent.component when both are given; without it Android shows its
+        // "Open with" chooser instead of jumping straight into the tapped app.
+        // startActivityAsync resolves only when the customer comes back, so
+        // don't wait for it: a launch failure (no such activity) rejects
+        // almost immediately; anything still pending after 1s has opened.
+        const launched = await Promise.race([
+          IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+            data: step.url, packageName: app.androidPackage, className: app.androidClassName,
+          }).then(() => true, () => false),
+          new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 1000)),
+        ]);
+        if (launched) return true;
+        continue;
+      }
+      if (Platform.OS === 'ios' && !(await Linking.canOpenURL(step.url))) continue;
+      await Linking.openURL(step.url);
+      return true;
+    } catch { /* try the next step */ }
+  }
+  return false;
 }

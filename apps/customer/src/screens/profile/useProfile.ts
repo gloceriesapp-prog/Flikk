@@ -5,7 +5,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 // (default) — needs the session token, same as every other authed call.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '../../api/client';
+import { Alert } from 'react-native';
+import { ApiError, apiRequest } from '../../api/client';
 
 export interface Profile {
   phone: string;
@@ -56,5 +57,10 @@ export function useUpdateProfileField() {
     mutationFn: (patch: { name?: string; birthday?: string }) =>
       apiRequest<{ name: string | null; birthday: string | null }>('/auth/me', { method: 'PATCH', body: patch }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile', 'me', customerId] }),
+    // Every caller fires-and-forgets; surface failures here so none is silent.
+    onError: (err) => {
+      Alert.alert('Could not save your profile', err instanceof ApiError ? err.message : 'Please check your connection and try again.');
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me', customerId] });
+    },
   });
 }

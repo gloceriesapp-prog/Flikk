@@ -55,28 +55,9 @@ export interface StoreProfile {
   // job, not this screen's. Shown masked, same convention a bank app uses
   // for a linked number it won't let you silently change.
   phone: string;
-  // Mirrors stores.payout_upi_id (migration 006) — the real weekly
-  // RazorpayX Payouts beneficiary address. A UPI VPA, not a bank account +
-  // IFSC, same reasoning as that migration's own note: far lower friction
-  // to collect than full bank details. Null until the owner sets one.
-  payoutUpiId: string | null;
-  // Real RazorpayX Fund Account Validation results (routes/partner.ts's
-  // POST /verify-upi) — set only once a UPI ID has actually been
-  // bank-verified, never typed or guessed. Both null again the moment
-  // the owner edits the UPI ID to something different (see Settings
-  // screen's own note on why editing invalidates the previous
-  // verification).
-  payoutUpiVerifiedName: string | null;
-  payoutBankName: string | null;
-  // Which payout method is actually active — a store only ever has one at
-  // a time (verifying one clears the other's saved fields server-side,
-  // see routes/partner.ts's POST /verify-payout). null until either has
-  // ever been verified.
-  payoutMethod: 'upi' | 'bank_account' | null;
-  // Masked (last-4 only, e.g. "XXXXXXXX5599") — the real account number
-  // never leaves the server. IFSC shown in full, same as any bank app.
-  payoutBankAccountNumber: string | null;
-  payoutBankIfsc: string | null;
+  // Payout destination is NOT part of the store profile — it has its own
+  // endpoint (GET/PUT /partner/payout-account, backend/PAYOUTS.md) and is
+  // read via TanStack Query in PayoutAccountCard / OrdersScreen.
   // Mirrors stores.owner_name/gst_number/shop_establishment_number — set
   // during onboarding (StoreSetupScreen/StoreDetailsScreen), editable here
   // too so an owner who skipped them at signup can add them later. All
@@ -85,7 +66,7 @@ export interface StoreProfile {
   gstNumber: string;
   shopLicenseNumber: string;
   // Mirrors stores.fssai_number/pan_number — format-validated (regex only,
-  // not government-database or Razorpay verified, see
+  // not government-database verified, see
   // utils/documentValidation.ts's own note on why) both client- and
   // server-side (routes/partner.ts's PATCH /store).
   fssaiNumber: string;
@@ -129,12 +110,6 @@ export const EMPTY_STORE_PROFILE: StoreProfile = {
   closeTime: '',
   avgPrepMinutes: 5,
   phone: '',
-  payoutUpiId: null,
-  payoutUpiVerifiedName: null,
-  payoutBankName: null,
-  payoutMethod: null,
-  payoutBankAccountNumber: null,
-  payoutBankIfsc: null,
   ownerName: '',
   gstNumber: '',
   shopLicenseNumber: '',

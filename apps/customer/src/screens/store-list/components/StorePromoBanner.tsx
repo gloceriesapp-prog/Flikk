@@ -6,9 +6,10 @@ import {
 } from 'react-native';
 
 import { AppImage as Image } from '../../../components/AppImage';
+import { storageUrl } from '../../../utils/storageUrl';
 
 const PROMO_IMAGE_URI =
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/Indian%20neighbourhood%20shop%20parade.png';
+  storageUrl('Images/Indian%20neighbourhood%20shop%20parade.png');
 
 const PROMO_BACKGROUND = '#D5E5F7';
 

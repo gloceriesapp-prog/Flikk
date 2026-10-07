@@ -168,10 +168,10 @@ riderOnboardingRouter.patch('/draft', requireAuth, async (req: AuthedRequest, re
 // approvals API signs a short-lived URL from this path on read.
 riderOnboardingRouter.post('/document-photo', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { base64, kind } = req.body as { base64?: string; kind?: 'aadhaar' | 'dl' | 'profile' };
+    const { base64, kind } = req.body as { base64?: string; kind?: 'aadhaar' | 'dl' | 'profile' | 'payout-proof' };
     if (!base64) throw new AppError(400, 'MISSING_FIELDS', 'base64 is required.');
-    if (kind !== 'aadhaar' && kind !== 'dl' && kind !== 'profile') {
-      throw new AppError(400, 'INVALID_KIND', 'kind must be "aadhaar", "dl" or "profile".');
+    if (kind !== 'aadhaar' && kind !== 'dl' && kind !== 'profile' && kind !== 'payout-proof') {
+      throw new AppError(400, 'INVALID_KIND', 'kind must be "aadhaar", "dl", "profile" or "payout-proof".');
     }
 
     const document = await storePrivateDocument({ bucket: DOCUMENTS_BUCKET, ownerId: req.user!.id, kind, bytes: await normalizeImage(decodeImage(base64), 'jpeg') });

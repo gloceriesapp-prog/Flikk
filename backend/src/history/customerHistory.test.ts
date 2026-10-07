@@ -18,7 +18,7 @@ it('scopes both purchase selection and leg hydration to the authenticated accoun
  m.rpc.mockResolvedValue({data:[{entity_id:id,is_trip:true,placed_at:'2026-10-01T12:00:00Z'}],error:null});
  await request('/history');expect(m.rpc).toHaveBeenCalledWith('customer_purchase_page',expect.objectContaining({p_customer:'owner',p_limit:21}));
  expect(m.filters).toContainEqual(['customer_id','owner']);expect(m.filters).toContainEqual(['or',`trip_id.eq.${id}`]);
- expect(HISTORY_SELECT).not.toContain('delivery_otp');expect(HISTORY_SELECT).not.toContain('razorpay');
+ expect(HISTORY_SELECT).not.toContain('delivery_otp');expect(HISTORY_SELECT).not.toContain('payment_id');
 });
 it('rejects malformed search and status filters before database access',async()=>{
  const result=await request('/history',{status:'invented'});expect(result.next).toHaveBeenCalledWith(expect.objectContaining({status:400}));expect(m.rpc).not.toHaveBeenCalled();

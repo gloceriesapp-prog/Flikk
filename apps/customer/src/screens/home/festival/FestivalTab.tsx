@@ -34,7 +34,7 @@ export function FestivalTab({ tab }: Props) {
         <FromLocalShopsSection />
         <FestivalOffersSection />
       </View>}
-      {hasContent && <HomeTabTileGrid tab={tab} />}
+      {hasContent && <HomeTabTileGrid tab={tab} showProducts={false} />}
     </View>
   );
 }

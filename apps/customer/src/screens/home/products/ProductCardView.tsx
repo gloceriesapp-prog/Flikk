@@ -79,7 +79,7 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
         )}
 
         {compact ? null : (
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel={isBookmarked ? `Remove ${name} from wishlist` : `Save ${name} to wishlist`}
             onPress={() => toggleWishlist(product)}
             hitSlop={8}
             className="absolute right-2 top-2 h-7 w-7 items-center justify-center"
@@ -100,7 +100,7 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
           {!availability.isAvailable ? (
             <View className="rounded-lg bg-[#FFF0EE] px-2 py-2"><Text className="text-[10px] font-bold text-[#B42318]">{availability.label}</Text></View>
           ) : quantity === 0 ? (
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
               onPress={() =>
                 addToCart({ isAvailable: availability.isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
               }
@@ -114,11 +114,11 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
             </Pressable>
           ) : (
             <View className="flex-row items-center gap-2.5 rounded-[8px] border border-[#155dfc] bg-white px-3 py-2">
-              <Pressable onPress={() => decrementItem(lineId)} hitSlop={8}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${name}`} onPress={() => decrementItem(lineId)} hitSlop={12}>
                 <AppIcon icon={MinusSignIcon} size={20} color="#155dfc" strokeWidth={2.5} />
               </Pressable>
               <Text className="min-w-[12px] text-center text-[13px] font-extrabold text-[#155dfc]">{quantity}</Text>
-              <Pressable onPress={() => incrementItem(lineId)} hitSlop={8}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${name}`} onPress={() => incrementItem(lineId)} hitSlop={12}>
                 <AppIcon icon={Add01Icon} size={20} color="#155dfc" strokeWidth={2.5} />
               </Pressable>
             </View>

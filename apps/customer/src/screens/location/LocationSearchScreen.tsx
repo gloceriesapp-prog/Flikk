@@ -49,6 +49,7 @@ import { useLocationStore } from '../../store/useLocationStore';
 import { useRecentSearchesStore } from '../../store/useRecentSearchesStore';
 import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
+import { storageUrl } from '../../utils/storageUrl';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'LocationSearch'>;
 
@@ -94,12 +95,12 @@ const DEFAULT_CENTER = { latitude: 13.2167, longitude: 74.7469 };
 // exactly the "pin isn't exactly on my location" the eyeball estimate
 // caused. Re-measure this if the asset URL below is ever swapped for a
 // visually different pin.
-const PIN_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/gps.png';
+const PIN_IMAGE_URI = storageUrl('Images/gps.png');
 const PIN_SIZE = 64;
 const PIN_TIP_RATIO = 0.926;
 // Small pin icon inside the confirm card's address row — a different asset
 // from PIN_IMAGE_URI above (that one's the actual draggable map marker).
-const CARD_PIN_ICON_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/map-pin.png';
+const CARD_PIN_ICON_URI = storageUrl('Images/map-pin.png');
 
 // app.config.js's own note: true only once IOS_GOOGLE_MAPS_API_KEY is set
 // AND a fresh native build has shipped (this is baked in at build time, not
@@ -546,7 +547,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
             that's what guarantees they sit on the exact same line instead
             of relying on two separate `top` values happening to match. */}
         <View style={{ top: insets.top + 12 }} className="absolute left-4 right-4 h-11 flex-row items-center gap-2.5">
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back"
             onPress={() => navigation.goBack()}
             hitSlop={12}
             className="h-11 w-11 items-center justify-center rounded-full border border-gray-300 bg-white"

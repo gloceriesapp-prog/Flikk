@@ -1,25 +1,15 @@
-// "Today's Steal Deals" — real, currently-discounted products from the
-// customer's own nearest store (GET /stores/:id/products?deals=true,
-// backend/src/routes/stores.ts), not pooled across every store the way
-// this used to hit /stores/products/deals. useNearestStore.ts resolves
-// which store that is once per Home screen; this just asks for that one
-// store's own deals. Disabled until a store has actually resolved — no
-// storeId means there's nothing real to ask for yet, not "show every
-// store's deals as a fallback" (that's exactly the pooling this replaces).
-// Row->Product mapping lives in api/products.ts, shared with
-// useEverydayEssentials.ts.
-
+// Biggest real discounts near the delivery pin, ranked by discount % on the
+// server (GET /browse/deals). The only deals feed on Home's All tab.
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../../api/client';
 import { mapApiProduct, type ApiProduct } from '../../../api/products';
+import { useLocationStore } from '../../../store/useLocationStore';
 
-export function useDealsProducts(storeId: string | undefined) {
+export function useDealsProducts() {
+  const location = useLocationStore(s => s.location);
   return useQuery({
-    queryKey: ['home', 'deals-products', storeId],
-    queryFn: async () => {
-      const rows = await apiRequest<ApiProduct[]>(`/stores/${storeId}/products?deals=true`, { auth: false });
-      return rows.map(mapApiProduct);
-    },
-    enabled: storeId !== undefined,
+    queryKey: ['home', 'deals-products', location?.latitude, location?.longitude],
+    queryFn: async () => (await apiRequest<ApiProduct[]>('/browse/deals', { auth: false })).map(mapApiProduct),
+    enabled: !!location,
   });
 }

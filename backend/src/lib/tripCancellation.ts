@@ -4,8 +4,8 @@ import { tripRefundSummary } from '../payments/tripRefunds.js';
 export async function cancelCustomerTrip(tripId: string, customerId: string, reason: unknown) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tripId))
         throw new AppError(400, 'INVALID_TRIP', 'Invalid trip.');
-    if (typeof reason !== 'string' || !reason.trim() || reason.length > 500)
-        throw new AppError(400, 'INVALID_CANCEL_REASON', 'Provide a cancellation reason (up to 500 characters).');
+    if (typeof reason !== 'string' || !reason.trim() || reason.length > 300)
+        throw new AppError(400, 'INVALID_CANCEL_REASON', 'Provide a cancellation reason (up to 300 characters).');
     const { data, error } = await supabase.rpc('cancel_customer_trip', { p_trip_id: tripId, p_customer_id: customerId, p_reason: reason.trim() });
     if (error) {
         if (error.code === 'P0404')

@@ -4,6 +4,8 @@
 // types/tables from categories/sub_categories — see lib/types.ts's own
 // note on why.
 
+import type { HomeTabTileLinkType } from './types';
+
 export interface HomeTabWriteInput {
   name: string;
   imageUrl?: string | null;
@@ -36,11 +38,25 @@ export interface HomeTabTileWriteInput {
   name: string;
   imageUrl?: string | null;
   sortOrder?: number;
+  linkType?: string | null;
+  linkId?: string | null;
 }
 
 export function validateHomeTabTileInput(input: Partial<HomeTabTileWriteInput>): asserts input is HomeTabTileWriteInput {
   if (!input.homeTabId) throw new Error('homeTabId is required.');
   if (!input.name || !input.name.trim()) throw new Error('Tile name is required.');
+  toHomeTabTileLink(input.linkType, input.linkId);
+}
+
+const TILE_LINK_TYPES: HomeTabTileLinkType[] = ['category', 'subcategory', 'store'];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// 'none'/empty clears both columns; a real type needs a real target id.
+export function toHomeTabTileLink(linkType: unknown, linkId: unknown): { link_type: HomeTabTileLinkType | null; link_id: string | null } {
+  if (linkType == null || linkType === '' || linkType === 'none') return { link_type: null, link_id: null };
+  if (!TILE_LINK_TYPES.includes(linkType as HomeTabTileLinkType)) throw new Error('Tile link must be a category, subcategory or store.');
+  if (typeof linkId !== 'string' || !UUID.test(linkId)) throw new Error('Pick what the tile should open.');
+  return { link_type: linkType as HomeTabTileLinkType, link_id: linkId };
 }
 
 export interface HomeTabTileRow {
@@ -48,6 +64,8 @@ export interface HomeTabTileRow {
   name: string;
   image_url: string | null;
   sort_order: number;
+  link_type: HomeTabTileLinkType | null;
+  link_id: string | null;
 }
 
 export function toHomeTabTileRow(input: HomeTabTileWriteInput): HomeTabTileRow {
@@ -56,6 +74,7 @@ export function toHomeTabTileRow(input: HomeTabTileWriteInput): HomeTabTileRow {
     name: input.name.trim(),
     image_url: input.imageUrl?.trim() || null,
     sort_order: input.sortOrder ?? 0,
+    ...toHomeTabTileLink(input.linkType, input.linkId),
   };
 }
 

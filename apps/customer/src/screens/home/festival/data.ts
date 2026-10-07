@@ -1,4 +1,5 @@
 import type { RemoteHomeTab } from '../data/useHomeTabs';
+import { storageUrl } from '../../../utils/storageUrl';
 
 // Explicit visibility keeps this tab independent of the All-tab greeting.
 // Dates and automatic expiry can be configured when a campaign is scheduled.
@@ -7,9 +8,9 @@ export const NAVRATRI_FESTIVAL = {
   name: 'Navratri',
   title: 'Navratri Essentials',
   backgroundColor: '#FFF1D6',
-  headerArtworkUri: 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/Transparent%20Navratri%20Puja%20Arrangement.png',
+  headerArtworkUri: storageUrl('Images/Transparent%20Navratri%20Puja%20Arrangement.png'),
   bannerArtwork: {
-    uri: 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/navbg.png',
+    uri: storageUrl('Images/navbg.png'),
     width: 2116,
     height: 743,
   },

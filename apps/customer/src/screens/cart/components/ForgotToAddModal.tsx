@@ -66,7 +66,7 @@ export function ForgotToAddModal({ visible, cartItemIds, onClose }: Props) {
         </View>
 
         <View style={{ height: topStripHeight }} className="items-center justify-end pb-3">
-          <Pressable
+          <Pressable accessibilityRole="button" accessibilityLabel="Close"
             onPress={onClose}
             hitSlop={10}
             className="h-11 w-11 items-center justify-center rounded-full bg-black/70"

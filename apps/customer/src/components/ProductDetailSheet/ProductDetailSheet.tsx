@@ -298,7 +298,7 @@ function ProductDetailSheetContent({ product, visible, onClose }: Props) {
             platform. */}
         <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
         <View className="absolute inset-0 bg-black/5" />
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Close product details"
           className="absolute inset-0"
           onPress={onClose}
         />
@@ -324,7 +324,7 @@ pb-0.5
               {/* LEFT */}
               <View className="h-[58px] w-[58px]">
                 {previousPage && (
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel="Previous product"
                     onPress={() =>
                       goToPage(activePageIndex - 1)
                     }
@@ -381,7 +381,7 @@ pb-0.5
               {/* RIGHT */}
               <View className="h-[58px] w-[58px]">
                 {nextPage && (
-                  <Pressable
+                  <Pressable accessibilityRole="button" accessibilityLabel="Next product"
                     onPress={() =>
                       goToPage(activePageIndex + 1)
                     }
@@ -812,12 +812,12 @@ const headerTitleStyle = useAnimatedStyle(() => ({
                 ponytail: fixed tint; swap to a per-button BlurView glass pill
                 if a truly adaptive frost is wanted. */}
             <View className="w-full flex-row items-center justify-between">
-              <Pressable onPress={onClose} hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-black/25">
+              <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-black/25">
                 <AppIcon icon={ArrowDown01Icon} size={20} color="#FFFFFF" strokeWidth={2} />
               </Pressable>
 
               <View className="flex-row gap-2.5">
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel="Toggle wishlist"
                   hitSlop={10}
                   onPress={() => setIsBookmarked((v) => !v)}
                   className="h-10 w-10 items-center justify-center rounded-full bg-black/25"
@@ -830,7 +830,7 @@ const headerTitleStyle = useAnimatedStyle(() => ({
                     strokeWidth={2}
                   />
                 </Pressable>
-                <Pressable hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-black/25">
+                <Pressable accessibilityRole="button" accessibilityLabel="Share product" hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-black/25">
                   <AppIcon icon={Share03Icon} size={18} color="#FFFFFF" strokeWidth={2} />
                 </Pressable>
               </View>

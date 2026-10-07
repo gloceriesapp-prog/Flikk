@@ -448,12 +448,12 @@ export function DealCard({
               >
                 {/* MINUS */}
 
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel={`Decrease quantity of ${name}`}
                   onPress={(event) => {
                     event.stopPropagation();
                     decrementItem(lineId);
                   }}
-                  hitSlop={8}
+                  hitSlop={12}
                   className="
         h-[30px]
         w-[24px]
@@ -485,12 +485,12 @@ export function DealCard({
 
                 {/* PLUS */}
 
-                <Pressable
+                <Pressable accessibilityRole="button" accessibilityLabel={`Increase quantity of ${name}`}
                   onPress={(event) => {
                     event.stopPropagation();
                     incrementItem(lineId);
                   }}
-                  hitSlop={8}
+                  hitSlop={12}
                   className="
         h-[30px]
         w-[24px]

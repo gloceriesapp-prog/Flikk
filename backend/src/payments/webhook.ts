@@ -1,74 +1,81 @@
-import { validateCapturedPayment } from './validateCapturedPayment.js';
-// POST /payments/webhook — Razorpay webhook. Source: specs/05-platform/
-// payments.md. Signature verification is mandatory — an unsigned/invalid
-// payload must never change payment state. No card/UPI data is ever
-// stored here, only Razorpay's own payment id.
+// POST /payments/webhook — Cashfree PG webhook. Signature verification is
+// mandatory: base64(HMAC_SHA256(x-webhook-timestamp + rawBody, secret)) must
+// equal x-webhook-signature, and the timestamp must be within 5 minutes
+// (cashfreeClient.ts). An unsigned/invalid/stale payload never changes
+// payment state. Only Cashfree's own ids are stored, never card/UPI data.
 //
-// This is the one source of truth for the UPI Intent flow (createUpiIntent.ts,
-// apps/customer's payments/pollOrderPaid.ts polls for exactly this) — an
-// intent payment is asynchronous, so this event, not the client's return
-// from the UPI app, is what actually marks an order paid.
-import { settleCheckoutPayment } from './settleCheckoutPayment.js';
-import crypto from 'node:crypto';
+// Idempotent by construction: settlement goes through settle_checkout_payment
+// (keyed by cf_payment_id, settled_now prevents double store pushes) and a
+// refund update only moves rows still 'processing'. Webhook contents are
+// never trusted for money: a payment is re-read from Cashfree before settling.
 import type { Request, Response, NextFunction } from 'express';
-import { env } from '../config/env.js';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
+import { logger } from '../lib/logger.js';
+import { paymentsConfigured, paymentsNotConfigured, verifyWebhookSignature } from './cashfreeClient.js';
+import { settleCheckoutPayment } from './settleCheckoutPayment.js';
+import { validateCapturedPayment } from './validateCapturedPayment.js';
+import type { OrderIdBody } from './types.js';
 
-function verifySignature(rawBody: string, signature: string): boolean {
-  if (!/^[a-f0-9]{64}$/.test(signature)) return false;
-  const expected = crypto.createHmac('sha256', env.razorpayWebhookSecret).update(rawBody).digest('hex');
-  return expected.length === signature.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+type Tags = Record<string, string | undefined> | null | undefined;
+function targetFromTags(tags: Tags): OrderIdBody | null {
+  if (tags?.gloceries_trip_id) return { tripId: tags.gloceries_trip_id };
+  if (tags?.gloceries_order_id) return { orderId: tags.gloceries_order_id };
+  return null;
 }
+
+// The Cashfree order id is what we persisted on checkout_payment_sessions;
+// order_tags (always set by recovery.ts) cover a crash before that write.
+// Unresolved = not our checkout.
+export async function resolveCheckoutTarget(providerOrderId: string | undefined, tags: Tags): Promise<OrderIdBody | null> {
+  if (providerOrderId) {
+    const { data: session, error } = await supabase.from('checkout_payment_sessions').select('kind,target_id')
+      .eq('provider_order_id', providerOrderId).maybeSingle();
+    if (error) throw error;
+    if (session) return session.kind === 'trip' ? { tripId: session.target_id } : { orderId: session.target_id };
+  }
+  return targetFromTags(tags);
+}
+
+const REFUND_FINAL: Record<string, 'completed' | 'failed'> = { SUCCESS: 'completed', CANCELLED: 'failed', REJECTED: 'failed' };
 
 export async function handleWebhook(req: Request, res: Response, next: NextFunction) {
   try {
-    const signature = req.headers['x-razorpay-signature'] as string | undefined;
-    const rawBody = (req as unknown as { rawBody: string }).rawBody;
-    if (!signature || !rawBody || !verifySignature(rawBody, signature)) {
+    // Unverifiable without the secret; 503 makes Cashfree retry once keys
+    // are configured instead of dropping a payment.
+    if (!paymentsConfigured) throw paymentsNotConfigured();
+    const signature = req.headers['x-webhook-signature'];
+    const timestamp = req.headers['x-webhook-timestamp'];
+    const rawBody = (req as unknown as { rawBody?: string }).rawBody;
+    if (typeof signature !== 'string' || typeof timestamp !== 'string' || !rawBody || !verifyWebhookSignature(rawBody, timestamp, signature)) {
       throw new AppError(401, 'INVALID_SIGNATURE', 'Webhook signature verification failed.');
     }
 
-    const event = req.body;
-    if (event.event === 'payment.captured') {
-      const notes = event.payload.payment.entity.notes ?? {};
-      const orderId: string | undefined = notes.gloceries_order_id;
-      const tripId: string | undefined = notes.gloceries_trip_id;
-      const paymentId = event.payload.payment.entity.id;
-
-      if (orderId || tripId) {
-        await validateCapturedPayment({ orderId, tripId }, paymentId);
-        await settleCheckoutPayment({ orderId, tripId }, paymentId);
-      }
+    const event = req.body as { type?: string; data?: Record<string, any> }; // eslint-disable-line @typescript-eslint/no-explicit-any -- provider payload, fields checked below
+    if (event.type === 'PAYMENT_SUCCESS_WEBHOOK') {
+      const providerOrderId = typeof event.data?.order?.order_id === 'string' ? event.data.order.order_id : undefined;
+      const paymentId = event.data?.payment?.cf_payment_id != null ? String(event.data.payment.cf_payment_id) : '';
+      const target = paymentId ? await resolveCheckoutTarget(providerOrderId, event.data?.order?.order_tags) : null;
+      // A late payment still settles: the SQL rejects it against the closed
+      // checkout and the refund trigger/queue returns the money.
+      if (target) {
+        await validateCapturedPayment(target, paymentId, providerOrderId);
+        await settleCheckoutPayment(target, paymentId);
+      } else logger.warn({ paymentId, providerOrderId }, 'Successful payment has no matching checkout');
     }
+    // PAYMENT_FAILED / PAYMENT_USER_DROPPED are attempt results, not checkout
+    // cancellation. Recovery reads provider state before another launch.
 
-    // payment.failed is an attempt result, not checkout cancellation.
-    // Recovery reads provider state before permitting another launch.
-
-    // Worker reconciliation stores the provider reference. Webhooks can settle
-    // that reference sooner; a webhook arriving before it is stored is recovered
-    // by the durable worker's next provider read.
-    if (event.event === 'refund.processed' || event.event === 'refund.failed') {
-      const refundId = event.payload.refund.entity.id;
-      const finalStatus = event.event === 'refund.processed' ? 'completed' : 'failed';
-      if (refundId) {
-        const update =
-          finalStatus === 'completed'
-            ? { refund_status: finalStatus, refunded_at: new Date().toISOString() }
-            : { refund_status: finalStatus };
-        const { error } = await supabase.from('orders').update(update).eq('razorpay_refund_id', refundId).eq('refund_status', 'processing');
-        if (error) throw error;
-      }
-    }
-
-    // Transfers enter processing BEFORE submission so even an early webhook
-    // can settle them. Fenced recovery never overwrites terminal states.
-    if (event.event === 'payout.processed' || event.event === 'payout.reversed' || event.event === 'payout.failed') {
-      const payout = event.payload.payout.entity;
-      if (payout.reference_id) {
-        const { error } = await supabase.rpc('settle_payout_webhook', {
-          p_reference: payout.reference_id, p_provider: payout.id, p_event: event.event,
-        });
+    if (event.type === 'REFUND_STATUS_WEBHOOK') {
+      const refund = event.data?.refund as { refund_id?: unknown; refund_status?: unknown } | undefined;
+      const finalStatus = typeof refund?.refund_status === 'string' ? REFUND_FINAL[refund.refund_status] : undefined;
+      if (typeof refund?.refund_id === 'string' && finalStatus) {
+        const update = finalStatus === 'completed'
+          ? { refund_status: finalStatus, refunded_at: new Date().toISOString() }
+          : { refund_status: finalStatus };
+        // Refund workers own the job rows; this only shortens the visible
+        // delay. A webhook before the id is stored is caught by the next poll.
+        const { error } = await supabase.from('orders').update(update).eq('provider_refund_id', refund.refund_id).eq('refund_status', 'processing');
         if (error) throw error;
       }
     }

@@ -1,6 +1,6 @@
 // Same bottom-sheet-with-checkmark shape as StoreSortSheet.tsx — a real
-// price-range filter (product.price, computed client-side from whatever's
-// actually on the shelf), not a "price drop %" filter — no per-product
+// price-range filter (product.price, applied server-side over the whole
+// store catalogue), not a "price drop %" filter — no per-product
 // discount-percentage field exists to bucket by, only the raw price.
 
 import { CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
@@ -16,13 +16,6 @@ const OPTIONS: { value: StorePriceRange; label: string }[] = [
   { value: '100_300', label: '₹100 – ₹300' },
   { value: 'above_300', label: 'Above ₹300' },
 ];
-
-export function matchesPriceRange(price: number, range: StorePriceRange): boolean {
-  if (range === 'under_100') return price < 100;
-  if (range === '100_300') return price >= 100 && price <= 300;
-  if (range === 'above_300') return price > 300;
-  return true;
-}
 
 interface Props {
   visible: boolean;

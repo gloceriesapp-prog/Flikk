@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
-import { verifyPayoutAccount, type PayoutAccountInput } from '../payments/verifyPayoutAccount.js';
+import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../lib/payoutAccount.js';
 import { fetchRoute } from '../lib/routeDirections.js';
 import { EXTRA_STOP_FEE } from '../lib/checkoutQuote.js';
 import { splitEarning } from '../lib/earningsBreakdown.js';
@@ -401,15 +401,15 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
 // week, the per-WEEKLY-PAYOUT complement to GET /earnings's per-delivery view.
 // Service client bypasses RLS like every sibling handler; the
 // .eq('rider_id', ...) filter is the scoping — a rider must never read another
-// rider's payouts, so do not remove it. Newest week first. razorpay_payout_id
-// is surfaced only as a reference the rider can quote to support; no other
-// internal columns (created_at, failure internals) leak.
+// rider's payouts, so do not remove it. Newest week first. utr is the bank
+// reference the founder recorded when paying manually (PAYOUTS.md), so the
+// rider can match it in their statement; no other internal columns leak.
 riderRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
   try {
     const page = readPage(req, `rider-payouts:${req.user!.id}`, 'date');
     let query = supabase
       .from('rider_payouts')
-      .select('id, week_start, week_end, amount, status, paid_at, razorpay_payout_id')
+      .select('id, week_start, week_end, amount, status, paid_at, utr, payment_mode')
       .eq('rider_id', req.user!.id)
 ;
     if (page.cursor) query = query.or(cursorFilter('week_start', page.cursor));
@@ -421,9 +421,10 @@ riderRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
       week_start: string;
       week_end: string;
       amount: number | string;
-      status: 'pending' | 'processing' | 'paid' | 'failed' | 'blocked';
+      status: 'pending' | 'paid' | 'failed' | 'blocked';
       paid_at: string | null;
-      razorpay_payout_id: string | null;
+      utr: string | null;
+      payment_mode: 'upi' | 'bank_transfer' | null;
     }[];
 
     const payouts = rows.map((p) => ({
@@ -433,7 +434,8 @@ riderRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
       amount: Number(p.amount),
       status: p.status,
       paidAt: p.paid_at,
-      razorpayPayoutId: p.razorpay_payout_id,
+      utr: p.utr,
+      paymentMode: p.payment_mode,
     }));
 
     sendPage(res, payouts, page, 'weekStart');
@@ -489,7 +491,8 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
       emergencyContactRelationship: rider.emergency_contact_relationship,
       memberSince: rider.created_at,
       payout: {
-        method: rider.payout_method,
+        // Legacy 'bank_account' rows read as the contract's 'bank' (PAYOUTS.md).
+        method: rider.payout_method === 'bank_account' ? 'bank' : rider.payout_method,
         upiId: rider.payout_upi_id,
         upiVerifiedName: rider.payout_upi_verified_name,
         bankName: rider.payout_bank_name,
@@ -502,81 +505,20 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
     next(err);
   }
 });
-// same underlying lib + exact same two-method (bank_account | upi) shape as
-// routes/partner.ts's own POST /verify-payout (verifyPayoutAccount.ts is
-// method-agnostic, genuinely shared). Verifying one method clears the
-// other's saved fields — a rider only ever has one active payout
-// destination at a time (payout_method).
-riderRouter.post('/verify-payout', async (req: AuthedRequest, res, next) => {
+
+// Payout destination (PAYOUTS.md) — same shared logic as partner's
+// /payout-account; riders keyed by riders.user_id (= users.id).
+riderRouter.get('/payout-account', async (req: AuthedRequest, res, next) => {
   try {
-    const body = req.body as { method?: 'upi' | 'bank_account'; vpa?: string; accountNumber?: string; ifsc?: string; accountHolderName?: string };
+    res.json(await readPayoutAccount('riders', 'user_id', req.user!.id));
+  } catch (err) {
+    next(err);
+  }
+});
 
-    let input: PayoutAccountInput;
-    if (body.method === 'upi') {
-      if (!body.vpa?.trim()) throw new AppError(400, 'MISSING_FIELDS', 'UPI ID is required.');
-      input = { method: 'upi', vpa: body.vpa.trim() };
-    } else if (body.method === 'bank_account') {
-      if (!body.accountNumber?.trim() || !body.ifsc?.trim() || !body.accountHolderName?.trim()) {
-        throw new AppError(400, 'MISSING_FIELDS', 'accountNumber, ifsc and accountHolderName are required.');
-      }
-      input = {
-        method: 'bank_account',
-        accountNumber: body.accountNumber.trim(),
-        ifsc: body.ifsc.trim().toUpperCase(),
-        accountHolderName: body.accountHolderName.trim(),
-      };
-    } else {
-      throw new AppError(400, 'INVALID_METHOD', 'method must be "upi" or "bank_account".');
-    }
-
-    const { data: rider } = await supabase
-      .from('riders')
-      .select('id, name, razorpay_contact_id')
-      .eq('user_id', req.user!.id)
-      .single();
-    if (!rider) throw new AppError(404, 'RIDER_NOT_FOUND', 'No rider profile for this account.');
-
-    const { data: user } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
-
-    const accountHolder = input.method === 'bank_account' ? input.accountHolderName : (rider.name ?? '');
-    const { result, contactId, fundAccountId } = await verifyPayoutAccount(input, accountHolder, user?.phone ?? null, rider.razorpay_contact_id);
-
-    const patch: Record<string, unknown> =
-      input.method === 'upi'
-        ? {
-            payout_method: 'upi',
-            payout_upi_id: input.vpa,
-            payout_upi_verified_name: result.registeredName,
-            payout_account_holder_name: result.registeredName ?? rider.name,
-            payout_bank_name: result.bankName,
-            payout_bank_account_number: null,
-            payout_bank_ifsc: null,
-            razorpay_contact_id: contactId,
-            razorpay_fund_account_id: fundAccountId,
-          }
-        : {
-            payout_method: 'bank_account',
-            payout_upi_id: null,
-            payout_upi_verified_name: null,
-            payout_account_holder_name: result.registeredName ?? input.accountHolderName,
-            payout_bank_name: result.bankName,
-            payout_bank_account_number: input.accountNumber,
-            payout_bank_ifsc: result.bankIfsc ?? input.ifsc,
-            razorpay_contact_id: contactId,
-            razorpay_fund_account_id: fundAccountId,
-          };
-    await supabase.from('riders').update(patch).eq('id', rider.id);
-
-    res.json({
-      method: input.method,
-      vpa: input.method === 'upi' ? input.vpa : null,
-      maskedAccountNumber: input.method === 'bank_account' ? maskAccountNumber(input.accountNumber) : null,
-      ifsc: input.method === 'bank_account' ? (result.bankIfsc ?? input.ifsc) : null,
-      accountHolderName: result.registeredName,
-      accountStatus: result.accountStatus,
-      bankName: result.bankName,
-      nameMatchScore: result.nameMatchScore,
-    });
+riderRouter.put('/payout-account', payoutAccountBudget, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(await writePayoutAccount('riders', 'user_id', req.user!.id, req.body, req.user!.id));
   } catch (err) {
     next(err);
   }

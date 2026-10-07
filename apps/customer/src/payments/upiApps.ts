@@ -33,15 +33,24 @@ export interface UpiApp {
   // canOpenURL) and launch both use this; Android instead targets
   // androidPackage explicitly via an intent (payments/upiIntent.ts).
   scheme: string;
+  // iOS cannot target an app with the generic upi:// link (iOS picks any
+  // handler, or none). Replacing the `upi://` prefix with this opens that
+  // app's own UPI handler; the query string stays byte-for-byte intact.
+  // Used only when Cashfree's intent response has no per-app link for this
+  // app (upiIntent.ts upiLaunchPlan).
+  // ponytail: prefixes from PSP docs/Cashfree iOS scheme list; verify each on
+  // a device — a wrong one only falls back to the default link / Cashfree checkout.
+  iosUpiPrefix: string;
   androidPackage: string;
   color: string;
 }
 
 export const UPI_APPS: UpiApp[] = [
-  { id: 'gpay', name: 'Google Pay', scheme: 'tez', androidPackage: 'com.google.android.apps.nbu.paisa.user', color: '#4285F4' },
-  { id: 'phonepe', name: 'PhonePe', scheme: 'phonepe', androidPackage: 'com.phonepe.app', color: '#5F259F' },
-  { id: 'paytm', name: 'Paytm', scheme: 'paytmmp', androidPackage: 'net.one97.paytm', color: '#00BAF2' },
-  { id: 'bhim', name: 'BHIM', scheme: 'bhim', androidPackage: 'in.org.npci.upiapp', color: '#00A651' },
-  { id: 'cred', name: 'CRED', scheme: 'credpay', androidPackage: 'com.dreamplug.androidapp', color: '#1C1C1E' },
-  { id: 'whatsapp', name: 'WhatsApp', scheme: 'whatsapp', androidPackage: 'com.whatsapp', color: '#25D366' },
+  { id: 'gpay', iosUpiPrefix: 'tez://upi/', name: 'Google Pay', scheme: 'tez', androidPackage: 'com.google.android.apps.nbu.paisa.user', color: '#4285F4' },
+  { id: 'phonepe', iosUpiPrefix: 'phonepe://', name: 'PhonePe', scheme: 'phonepe', androidPackage: 'com.phonepe.app', color: '#5F259F' },
+  { id: 'paytm', iosUpiPrefix: 'paytmmp://', name: 'Paytm', scheme: 'paytmmp', androidPackage: 'net.one97.paytm', color: '#00BAF2' },
+  { id: 'bhim', iosUpiPrefix: 'bhim://upi/', name: 'BHIM', scheme: 'bhim', androidPackage: 'in.org.npci.upiapp', color: '#00A651' },
+  { id: 'cred', iosUpiPrefix: 'credpay://upi/', name: 'CRED', scheme: 'credpay', androidPackage: 'com.dreamplug.androidapp', color: '#1C1C1E' },
+  { id: 'amazonpay', iosUpiPrefix: 'amazonpay://upi/', name: 'Amazon Pay', scheme: 'amazonpay', androidPackage: 'in.amazon.mShop.android.shopping', color: '#FF9900' },
+  { id: 'whatsapp', iosUpiPrefix: 'whatsapp://upi/', name: 'WhatsApp', scheme: 'whatsapp', androidPackage: 'com.whatsapp', color: '#25D366' },
 ];

@@ -5,3 +5,4 @@ claude.md.env
 !.env.example
 node_modules/
 dist/
+.aider*
