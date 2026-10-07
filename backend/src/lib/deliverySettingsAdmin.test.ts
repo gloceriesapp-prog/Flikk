@@ -55,3 +55,21 @@ describe('admin delivery estimate setting', () => {
     expect(JSON.stringify(await response.json())).not.toContain('private database details');
   });
 });
+
+describe('admin extra store fee setting', () => {
+  it.each([-1, '15', Number.NaN, null])('rejects an invalid extra store fee %s', async (value) => {
+    expect((await PATCH(request({ ...body, extraStopFee: value }))).status).toBe(400);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+  it('saves the extra store fee with the delivery fees, and leaves it unchanged when omitted', async () => {
+    expect((await PATCH(request({ ...body, extraStopFee: 20 }))).status).toBe(200);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ extra_stop_fee: 20, flat_delivery_fee: 25 }));
+    mocks.update.mockClear();
+    expect((await PATCH(request(body))).status).toBe(200);
+    expect(mocks.update.mock.calls[0]![0]).not.toHaveProperty('extra_stop_fee');
+  });
+  it('accepts 0 to turn the surcharge off', async () => {
+    expect((await PATCH(request({ ...body, extraStopFee: 0 }))).status).toBe(200);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ extra_stop_fee: 0 }));
+  });
+});

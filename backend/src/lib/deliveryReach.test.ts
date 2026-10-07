@@ -33,7 +33,7 @@ describe('delivery fee tiers', () => {
   });
   it('prices the bill by distance and still waives it for free delivery', () => {
     const settings = { flatDeliveryFee: 25, handlingFee: 5, freeDeliveryEnabled: true, freeDeliveryThreshold: 500,
-      estimatedDeliveryMinutes: 30, defaultDeliveryRadiusKm: 12, roadDistanceFactor: 1.4, deliveryFeeTiers: tiers, maxStoreSpreadKm: 2 } satisfies DeliverySettings;
+      estimatedDeliveryMinutes: 30, defaultDeliveryRadiusKm: 12, roadDistanceFactor: 1.4, deliveryFeeTiers: tiers, maxStoreSpreadKm: 2, extraStopFee: 15 } satisfies DeliverySettings;
     const line = { product_id: 'p', variant_id: null, quantity: 1, store_id: 'a', unit_price_at_order: 100, unit_at_order: '1 kg', variant_mrp_at_order: 100 };
     const bill = calculateCheckoutBill([line] as never, settings, 0, 3.04);
     expect(bill).toMatchObject({ baseDeliveryFee: 26, deliveryFee: 26, deliveryDistanceKm: 3, total: 131 });

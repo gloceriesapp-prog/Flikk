@@ -20,6 +20,12 @@ describe('authoritative checkout bill', () => {
     expect(calculateCheckoutBill([line('a'), { ...line('a', 25), variant_id: 'pack' }], settings, 0))
       .toMatchObject({ storeCount: 1, additionalShopFee: 0, total: 90 });
   });
+  it('charges the configured extra store fee per additional shop', () => {
+    expect(calculateCheckoutBill(items, { ...settings, extraStopFee: 10 }, 0))
+      .toMatchObject({ baseDeliveryFee: 20, additionalShopFee: 20, deliveryFee: 40 });
+    expect(calculateCheckoutBill(items, { ...settings, extraStopFee: 0 }, 0))
+      .toMatchObject({ additionalShopFee: 0, deliveryFee: 20 });
+  });
   it('waives all delivery charges at the threshold but keeps handling', () => {
     expect(calculateCheckoutBill(items, { ...settings, freeDeliveryEnabled: true }, 10))
       .toMatchObject({ deliveryFee: 0, additionalShopFee: 0, total: 115 });
