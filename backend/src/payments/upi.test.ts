@@ -6,6 +6,7 @@ vi.mock('./cashfreeClient.js', async (load) => ({ ...await load<typeof import('.
 vi.mock('./recovery.js', async (load) => ({ ...await load<typeof import('./recovery.js')>(),
   ensureProviderOrder: mocks.ensure, requirePaymentRetrySafe: mocks.retry, claimPayment: mocks.claim, saveSession: mocks.save }));
 import { createUpiCollect, createUpiIntent, upiValidateBudget, validateUpiId } from './upi.js';
+import { CashfreeError } from './cashfreeClient.js';
 
 const id = '00000000-0000-4000-8000-000000000600';
 const order = { order_id: 'gl_x', order_amount: 30, payment_session_id: 'session_1' };
@@ -66,4 +67,32 @@ it('sends a collect request only for a well-formed VPA and returns its expiry', 
   expect((await call(createUpiCollect, { orderId: id, vpa: 'ravi@ybl' })).json).toEqual({ providerOrderId: 'gl_x', providerPaymentId: '7', vpa: 'ravi@ybl', expiresAt: '2026-10-07T18:30:00+05:30' });
   expect(mocks.pay).toHaveBeenCalledWith(expect.objectContaining({ upi: { channel: 'collect', upi_id: 'ravi@ybl', upi_expiry_minutes: 10 } }));
   expect((await call(createUpiCollect, { orderId: id, vpa: 'not-a-vpa' })).error).toMatchObject({ code: 'INVALID_VPA' });
+});
+const released = expect.objectContaining({ upi_state: null, upi_link: null, upi_payment_id: null });
+it('releases the UPI claim when Cashfree rejects a collect, so a corrected VPA can be sent', async () => {
+  mocks.pay.mockRejectedValueOnce(new CashfreeError(400, 'upi_id_invalid'));
+  const failed = await call(createUpiCollect, { orderId: id, vpa: 'ravi@okaxis' });
+  expect(failed.error).toMatchObject({ code: 'PAYMENT_PROVIDER_ERROR' });
+  expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ id }), released);
+  mocks.pay.mockResolvedValueOnce({ cf_payment_id: 8, channel: 'collect', action: 'custom', data: { expiry: null } });
+  expect((await call(createUpiCollect, { orderId: id, vpa: 'ravi1@okaxis' })).json).toMatchObject({ providerPaymentId: '8', vpa: 'ravi1@okaxis' });
+  // Each claimed attempt gets its own idempotency key: the retry is not
+  // deduplicated to the rejected request.
+  const keys = mocks.pay.mock.calls.map(([input]) => input.idempotencyKey);
+  expect(new Set(keys).size).toBe(2);
+});
+it('releases the claim when Cashfree answers without a payment', async () => {
+  mocks.pay.mockResolvedValueOnce({ channel: 'link', action: 'custom', data: { payload: null } });
+  expect((await call(createUpiIntent, { orderId: id })).error).toMatchObject({ code: 'UPI_INTENT_FAILED' });
+  mocks.pay.mockResolvedValueOnce({ channel: 'collect', action: 'custom', data: null });
+  expect((await call(createUpiCollect, { orderId: id, vpa: 'ravi@ybl' })).error).toMatchObject({ code: 'UPI_COLLECT_FAILED' });
+  expect(mocks.save).toHaveBeenCalledTimes(2);
+  expect(mocks.save.mock.calls.every(([, patch]) => patch.upi_state === null)).toBe(true);
+});
+it('keeps the claim when the outcome is unknown (timeout or provider 5xx)', async () => {
+  for (const status of [0, 502]) {
+    mocks.pay.mockRejectedValueOnce(new CashfreeError(status));
+    expect((await call(createUpiCollect, { orderId: id, vpa: 'ravi@ybl' })).error).toBeInstanceOf(CashfreeError);
+  }
+  expect(mocks.save).not.toHaveBeenCalled();
 });

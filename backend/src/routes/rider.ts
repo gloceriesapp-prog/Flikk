@@ -128,25 +128,15 @@ riderRouter.patch('/availability', async (req: AuthedRequest, res, next) => {
 // way apps/partner's own GET /partner/orders is (no realtime infra exists
 // per CLAUDE.md's tech stack), not just relying on whichever push
 // notification happened to land while the app was foregrounded/killed.
-// Requires the rider's own live position as query params — this endpoint
-// has no server-side notion of "the rider's last known location" beyond
-// what PATCH /status already persisted, so it re-derives distance from
-// whatever position the caller has right now (slightly fresher than the
-// DB row if the rider just moved).
+// Distance and reach are derived server-side (rider_dispatch_offers,
+// migration 107): from the rider's stored position (PATCH /status, which the
+// app sends with the same GPS fix right before every poll), capped by each
+// order's own current dispatch radius, and only while the rider is online
+// with a fresh position. Client lat/lng/radius_m query params are ignored —
+// trusting them let any rider list every open order and its drop address.
 riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
   try {
-    const lat = Number(req.query.lat);
-    const lng = Number(req.query.lng);
-    const radiusM = Number(req.query.radius_m) || 8000;
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      throw new AppError(400, 'MISSING_LOCATION', 'lat and lng query params are required.');
-    }
-
-    const { data: nearby, error: rpcErr } = await supabase.rpc('nearby_dispatch_offers', {
-      p_rider_lat: lat,
-      p_rider_lng: lng,
-      p_radius_m: radiusM,
-    });
+    const { data: nearby, error: rpcErr } = await supabase.rpc('rider_dispatch_offers', { p_rider: req.user!.id });
     if (rpcErr) throw rpcErr;
     if (!nearby || nearby.length === 0) return res.json([]);
 
@@ -214,37 +204,37 @@ riderRouter.get('/route', async (req: AuthedRequest, res, next) => {
   }
 });
 
-// The atomic "first accept wins" — the one piece of this feature that has
-// to be exactly right. `.eq('status', 'packed').is('rider_id', null)` on
-// the UPDATE itself, not a separate SELECT-then-UPDATE, is what makes this
-// safe under real concurrency: Postgres only ever lets one of several
-// simultaneous UPDATEs matching this same WHERE clause actually apply —
-// every other rider's identical request matches zero rows and this
-// `.single()` call throws (PostgREST's own "no rows returned" error),
-// which is exactly the losing-the-race signal riders.ts's own caller reads
-// as ALREADY_TAKEN. No application-level check-then-write race window
-// exists here at all.
+// The atomic "first accept wins" — accept_dispatch_offer (migration 107)
+// runs as one transaction under the trip's advisory lock: the order must be
+// packed, unassigned and actually broadcast, the rider must be online and
+// inside the order's current dispatch radius, and a trip whose live legs
+// already belong to another rider is refused. Accepting one leg claims every
+// unassigned leg of the same trip in that same transaction, so two riders can
+// never split one multi-store trip. A lost race is 409 ALREADY_TAKEN (the
+// rider app reads any 409 as "taken"); a repeat accept by the winner is a
+// no-op success.
+type AcceptError = 'ORDER_NOT_FOUND' | 'ALREADY_TAKEN' | 'NOT_OFFERED' | 'RIDER_OFFLINE';
+const ACCEPT_ERRORS: Record<AcceptError, [number, string]> = {
+  ORDER_NOT_FOUND: [404, 'Order not found.'],
+  ALREADY_TAKEN: [409, 'This order was already picked up by another rider.'],
+  NOT_OFFERED: [409, 'This order is not on offer to you.'],
+  RIDER_OFFLINE: [409, 'Go online with location on to accept pickups.'],
+};
 riderRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ rider_id: req.user!.id })
-      .eq('id', req.params.id)
-      .eq('status', 'packed')
-      .is('rider_id', null)
-      .select('id, trip_id')
-      .single();
-
-    if (error || !data) {
-      throw new AppError(409, 'ALREADY_TAKEN', 'This order was already picked up by another rider.');
+    const { data, error } = await supabase.rpc('accept_dispatch_offer', { p_order: req.params.id, p_rider: req.user!.id });
+    if (error?.code === '22P02') throw new AppError(404, 'ORDER_NOT_FOUND', ACCEPT_ERRORS.ORDER_NOT_FOUND[1]);
+    if (error) throw error;
+    const result = data as { accepted: boolean; replayed?: boolean; error?: string; order_id?: string };
+    if (!result.accepted) {
+      const code: AcceptError = result.error && result.error in ACCEPT_ERRORS ? (result.error as AcceptError) : 'ALREADY_TAKEN';
+      const [status, message] = ACCEPT_ERRORS[code];
+      throw new AppError(status, code, message);
     }
-
-    // Trip-aware — one rider does the whole multi-store pickup (same
-    // reasoning as the trip-aware payout logic in routes/orders.ts's own
-    // 'delivered' handler): accepting one leg claims every other
-    // still-unassigned leg of the same trip too, not just this one order.
-    if (data.trip_id) {
-      await supabase.from('orders').update({ rider_id: req.user!.id }).eq('trip_id', data.trip_id).is('rider_id', null);
+    const orderId = result.order_id ?? req.params.id;
+    if (result.replayed) {
+      res.json({ ok: true, orderId });
+      return;
     }
 
     // Persist the win to the rider's own feed (migration 054) — the durable
@@ -259,10 +249,10 @@ riderRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) => 
       title: 'Pickup confirmed',
       body: 'Your pickup is confirmed. Head to the store to collect the order.',
       type: 'assignment',
-      orderId: data.id,
+      orderId,
     });
 
-    res.json({ ok: true, orderId: data.id });
+    res.json({ ok: true, orderId });
   } catch (err) {
     next(err);
   }

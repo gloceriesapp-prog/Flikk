@@ -6,6 +6,7 @@ interface DeliveryResult {
   accepted: boolean;
   error?: string;
   order?: Record<string, unknown>;
+  replayed?: boolean;
 }
 
 export async function customerDeliveryCodes(customerId: string, orderIds: string[]): Promise<Map<string, string>> {
@@ -16,6 +17,12 @@ export async function customerDeliveryCodes(customerId: string, orderIds: string
 }
 
 export async function completeDelivery(orderId: string, riderId: string, otp: unknown) {
+  return (await verifyDelivery(orderId, riderId, otp)).order;
+}
+
+// replayed: the order was already delivered before this call (a retry or a
+// second leg of the same trip), so delivery side effects already happened.
+export async function verifyDelivery(orderId: string, riderId: string, otp: unknown) {
   if (typeof otp !== 'string' || !/^\d{4}$/.test(otp)) {
     throw new AppError(400, 'INVALID_OTP', 'Enter the four-digit code from the customer.');
   }
@@ -31,7 +38,7 @@ export async function completeDelivery(orderId: string, riderId: string, otp: un
       'Delivery could not be verified. Check the customer’s current code or contact support.',
     );
   }
-  return result.order!;
+  return { order: result.order!, replayed: result.replayed === true };
 }
 
 export async function pruneDeliveryCodes(): Promise<void> {

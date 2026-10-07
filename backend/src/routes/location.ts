@@ -35,6 +35,7 @@ locationRouter.get('/search', async (req, res, next) => {
   try {
     const query = (req.query.q as string | undefined)?.trim();
     if (!query) return res.json({ labels: [] });
+    if (!env.mapplsAccessToken) throw new AppError(503, 'LOCATION_PROVIDER_UNAVAILABLE', 'Place search is temporarily unavailable. Try the map instead.');
 
     const url = new URL('https://search.mappls.com/search/places/autosuggest/json');
     url.searchParams.set('query', query);

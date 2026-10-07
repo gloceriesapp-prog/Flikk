@@ -63,6 +63,8 @@ export async function refundSource(kind: 'order' | 'trip', targetId: string): Pr
   return { provider: 'cashfree', providerOrderId: cashfreeOrderId(targetId) };
 }
 export const LEGACY_REFUND_NOTE = 'Legacy Razorpay payment: refund manually';
+// 401/403 are our credentials or environment (key rotation, CASHFREE_ENV vs
+// keys), not a verdict on the refund: keep retrying with backoff.
 export function isDefinitiveRejection(error: unknown) {
-  return error instanceof CashfreeError && [400, 401, 403, 404, 422].includes(error.providerStatus);
+  return error instanceof CashfreeError && [400, 404, 422].includes(error.providerStatus);
 }

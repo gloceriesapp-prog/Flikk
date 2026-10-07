@@ -15,18 +15,23 @@ export interface TripRefundJob {
     lease_token: string;
     attempts: number;
 }
+// save_trip_refund (migration 106) applies the patch under the lease and
+// copies the outcome to the trip's leg orders (refund_status/provider id).
 async function save(job: TripRefundJob, patch: Record<string, unknown>) {
-    const { data, error } = await supabase.from('trip_refunds').update({ ...patch, updated_at: new Date().toISOString() })
-        .eq('id', job.id).eq('lease_token', job.lease_token).select('id').maybeSingle();
+    const { data, error } = await supabase.rpc('save_trip_refund', { p_id: job.id, p_lease: job.lease_token, p_patch: patch });
     if (error)
         throw error;
-    return !!data;
+    return data === true;
 }
+// A trip refund has one refund_id per job, so a refund the provider rejected
+// cannot be re-sent automatically: hand it (and its legs) to the admin's
+// manual-refund path (mark_order_refund_manual) instead of a dead 'failed'.
+export const TRIP_REFUND_MANUAL_NOTE = 'Provider rejected the refund: refund manually';
 export async function processTripRefund(job: TripRefundJob): Promise<void> {
     try {
         const source = await refundSource('trip', job.trip_id);
         if (source.provider === 'legacy') {
-            await save(job, { status: 'manual_required', last_error: LEGACY_REFUND_NOTE, lease_until: null, lease_token: null });
+            await save(job, { status: 'manual_required', last_error: LEGACY_REFUND_NOTE, release: true });
             return;
         }
         const refundId = cashfreeRefundId(job.id);
@@ -47,13 +52,16 @@ export async function processTripRefund(job: TripRefundJob): Promise<void> {
             // Confirm all partial refunds, including earlier shop refunds, before
             // declaring the combined amount complete.
         }
+        if (status === 'failed')
+            status = 'manual_required';
         await save(job, { status, provider_refund_id: providerId, refunded_paise: progress.completed,
-            last_error: status === 'failed' ? 'Provider reported a failed refund' : null, lease_until: null, lease_token: null,
+            last_error: status === 'manual_required' ? TRIP_REFUND_MANUAL_NOTE : null, release: true,
             next_attempt_at: new Date(Date.now() + 60000).toISOString() });
     }
     catch (err) {
         logger.error({ err, tripId: job.trip_id }, '[tripRefunds] retry scheduled');
-        await save(job, { status: isDefinitiveRejection(err) ? 'failed' : job.status, last_error: 'Refund confirmation delayed', lease_until: null, lease_token: null,
+        const rejected = isDefinitiveRejection(err);
+        await save(job, { status: rejected ? 'manual_required' : job.status, last_error: rejected ? TRIP_REFUND_MANUAL_NOTE : 'Refund confirmation delayed', release: true,
             next_attempt_at: new Date(Date.now() + Math.min(900000, 15000 * 2 ** Math.min(job.attempts, 6))).toISOString() });
     }
 }

@@ -30,11 +30,22 @@ export async function runCustomerNotifications() {
         }) => r.customer_id))]);
     if (deviceError)
         throw deviceError;
+    // A retry (attempts > 1: an earlier claim already ran) must not resend to devices whose
+    // Expo ticket was accepted last time; every accepted ticket is stored as a receipt row.
+    const retryIds = rows.filter((r: NotificationJob) => r.attempts > 1).map((r: NotificationJob) => r.id);
+    const delivered = new Set<string>();
+    if (retryIds.length) {
+        const { data: receipts, error: receiptLookupError } = await supabase.from('customer_push_receipts').select('notification_id,installation_id').in('notification_id', retryIds);
+        if (receiptLookupError)
+            throw receiptLookupError;
+        for (const r of (receipts ?? []) as { notification_id: string; installation_id: string }[])
+            delivered.add(`${r.notification_id}:${r.installation_id}`);
+    }
     // Five bounded requests at once; no unbounded fan-out per active customer.
     for (let start = 0; start < rows.length; start += 5)
         await Promise.all(rows.slice(start, start + 5).map(async (row: NotificationJob) => {
             let failed = false;
-            const tokens = (devices ?? []).filter(d => d.customer_id === row.customer_id && !d.token.startsWith('disabled:'));
+            const tokens = (devices ?? []).filter(d => d.customer_id === row.customer_id && !d.token.startsWith('disabled:') && !delivered.has(`${row.id}:${d.installation_id}`));
             for (let i = 0; i < tokens.length; i += 100) {
                 const batch = tokens.slice(i, i + 100);
                 try {

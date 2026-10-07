@@ -5,14 +5,15 @@
 // No client-supplied amount anywhere: the Cashfree order is created from the
 // saved order total (recovery.ts). The payment itself is only ever trusted via
 // webhook / server-side provider reads (verifyPayment.ts), never the client.
+import { randomUUID } from 'node:crypto';
 import type { Response, NextFunction, RequestHandler } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
 import { authBucket } from '../customer-experience/authBudget.js';
 import type { AuthedRequest } from '../middleware/auth.js';
-import { payCfOrder, pickUpiLink, upiLinksFrom, verificationConfigured, verifyCfVpa, type UpiLinks } from './cashfreeClient.js';
-import { paymentTarget, ensureProviderOrder, requirePaymentRetrySafe, claimPayment, saveSession } from './recovery.js';
+import { CashfreeError, payCfOrder, pickUpiLink, upiLinksFrom, verificationConfigured, verifyCfVpa, type UpiLinks } from './cashfreeClient.js';
+import { paymentTarget, ensureProviderOrder, requirePaymentRetrySafe, claimPayment, saveSession, type Target } from './recovery.js';
 
 // Apps without their own Cashfree link (e.g. amazonpay) get links.default.
 const APPS = new Set(['default', 'gpay', 'phonepe', 'paytm', 'bhim', 'amazonpay', 'cred', 'whatsapp']);
@@ -22,6 +23,15 @@ const COLLECT_EXPIRY_MINUTES = 10;
 
 function clientOs(platform: unknown): 'android' | 'ios' | 'others' {
   return platform === 'android' || platform === 'ios' ? platform : 'others';
+}
+// Cashfree refused the request (4xx), or answered without a payment: no UPI
+// attempt exists, so release the claim for a corrected retry. Timeouts and
+// 5xx keep the claim ('creating'); recovery/claim release it once stale and
+// the provider shows no live attempt (claim_checkout_payment, migration 106).
+async function releaseFailedClaim(target: Target, err: unknown): Promise<never> {
+  const rejected = err instanceof CashfreeError ? err.providerStatus >= 400 && err.providerStatus < 500 : err instanceof AppError;
+  if (rejected) await saveSession(target, { upi_state: null, upi_link: null, upi_payment_id: null });
+  throw err;
 }
 function parseLinks(stored: string | null): UpiLinks | null {
   if (!stored) return null;
@@ -44,14 +54,18 @@ export async function createUpiIntent(req: AuthedRequest, res: Response, next: N
       }
       throw new AppError(409, 'PAYMENT_RECONCILING', 'Your previous UPI request is being checked. Please wait before paying again.');
     }
-    if (!order.payment_session_id) throw new AppError(502, 'UPI_INTENT_FAILED', 'Could not start UPI payment.');
-    const paid = await payCfOrder({
-      paymentSessionId: order.payment_session_id, upi: { channel: 'link' },
-      idempotencyKey: `${order.order_id}_upi_link`, os: clientOs(req.body?.platform),
-    });
-    const links = upiLinksFrom(paid.data?.payload);
-    if (!links || !paid.cf_payment_id) throw new AppError(502, 'UPI_INTENT_FAILED', 'Could not start UPI payment.');
-    const providerPaymentId = String(paid.cf_payment_id);
+    // Fresh idempotency key per claimed attempt: a retry after a rejected
+    // request must not be deduplicated to that rejection.
+    const { links, providerPaymentId } = await (async () => {
+      if (!order.payment_session_id) throw new AppError(502, 'UPI_INTENT_FAILED', 'Could not start UPI payment.');
+      const paid = await payCfOrder({
+        paymentSessionId: order.payment_session_id, upi: { channel: 'link' },
+        idempotencyKey: randomUUID(), os: clientOs(req.body?.platform),
+      });
+      const links = upiLinksFrom(paid.data?.payload);
+      if (!links || !paid.cf_payment_id) throw new AppError(502, 'UPI_INTENT_FAILED', 'Could not start UPI payment.');
+      return { links, providerPaymentId: String(paid.cf_payment_id) };
+    })().catch((err: unknown) => releaseFailedClaim(target, err));
     await saveSession(target, { upi_state: 'ready', upi_link: JSON.stringify(links), upi_payment_id: providerPaymentId });
     res.status(200).json({ providerOrderId: order.order_id, providerPaymentId, app, link: pickUpiLink(links, app), links });
   } catch (err) { next(err); }
@@ -66,12 +80,15 @@ export async function createUpiCollect(req: AuthedRequest, res: Response, next: 
     await requirePaymentRetrySafe(target, order.order_id, order.order_amount);
     const claim = await claimPayment(target, req.user!.id, 'upi');
     if (!claim.claimed) throw new AppError(409, 'PAYMENT_RECONCILING', 'Your previous UPI request is being checked. Please wait before paying again.');
-    if (!order.payment_session_id) throw new AppError(502, 'UPI_COLLECT_FAILED', 'Could not send the UPI request.');
-    const paid = await payCfOrder({
-      paymentSessionId: order.payment_session_id, upi: { channel: 'collect', upi_id: vpa, upi_expiry_minutes: COLLECT_EXPIRY_MINUTES },
-      idempotencyKey: `${order.order_id}_upi_collect`, os: clientOs(req.body?.platform),
-    });
-    if (!paid.cf_payment_id) throw new AppError(502, 'UPI_COLLECT_FAILED', 'Could not send the UPI request.');
+    const paid = await (async () => {
+      if (!order.payment_session_id) throw new AppError(502, 'UPI_COLLECT_FAILED', 'Could not send the UPI request.');
+      const paid = await payCfOrder({
+        paymentSessionId: order.payment_session_id, upi: { channel: 'collect', upi_id: vpa, upi_expiry_minutes: COLLECT_EXPIRY_MINUTES },
+        idempotencyKey: randomUUID(), os: clientOs(req.body?.platform),
+      });
+      if (!paid.cf_payment_id) throw new AppError(502, 'UPI_COLLECT_FAILED', 'Could not send the UPI request.');
+      return paid;
+    })().catch((err: unknown) => releaseFailedClaim(target, err));
     const providerPaymentId = String(paid.cf_payment_id);
     await saveSession(target, { upi_state: 'ready', upi_payment_id: providerPaymentId });
     res.status(200).json({ providerOrderId: order.order_id, providerPaymentId, vpa, expiresAt: paid.data?.expiry ?? null });

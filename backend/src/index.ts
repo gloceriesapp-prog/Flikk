@@ -69,11 +69,15 @@ app.use((_req, res, next) => {
 
 // Smaller responses -> more requests/sec per instance under load. Safe
 // everywhere — gzip is transparent to every client already talking JSON.
-const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
+// Railway/Render put one load balancer in front of the app. Without trust
+// proxy, req.ip is that balancer, so every client shares one OTP/SSE
+// rate-limit bucket. Default to 1 hop on Railway; refuse to boot in
+// production with 0 unless ALLOW_DIRECT_CLIENT_IP=true says nothing proxies.
+const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? (process.env.RAILWAY_ENVIRONMENT ? 1 : 0));
 if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5) throw new Error('Invalid TRUST_PROXY_HOPS');
 if (proxyHops) app.set('trust proxy', proxyHops);
-if (!proxyHops && process.env.NODE_ENV === 'production') {
-  logger.warn('TRUST_PROXY_HOPS=0 in production: req.ip is the load balancer, so all clients share one OTP/SSE rate-limit bucket. Set TRUST_PROXY_HOPS=1 on Railway/Render (see .env.example).');
+if (!proxyHops && process.env.NODE_ENV === 'production' && process.env.ALLOW_DIRECT_CLIENT_IP !== 'true') {
+  throw new Error('TRUST_PROXY_HOPS=0 in production: req.ip would be the load balancer, so all clients share one OTP/SSE rate-limit bucket. Set TRUST_PROXY_HOPS=1 on Railway/Render, or ALLOW_DIRECT_CLIENT_IP=true if no proxy sits in front.');
 }
 app.use(requestAdmission);
 app.use(compression());
@@ -91,9 +95,10 @@ app.use(pinoHttp({ logger }));
 // headers stay usable and no arbitrary site can call these endpoints.
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+  res.setHeader('Vary', 'Origin');
   if (origin && env.webDashboardOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   }
   if (req.method === 'OPTIONS') {

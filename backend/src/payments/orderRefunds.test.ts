@@ -71,4 +71,8 @@ it('provider timeouts retain a retryable intent; definitive rejections fail', as
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, 400)));
   await processOrderRefund(job);
   expect(patches().at(-1)).toMatchObject({ status: 'failed' });
+  // Credentials/environment errors are ours, not a refund verdict.
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, 401)));
+  await processOrderRefund(job);
+  expect(patches().at(-1)).toMatchObject({ status: 'processing', release: true });
 });

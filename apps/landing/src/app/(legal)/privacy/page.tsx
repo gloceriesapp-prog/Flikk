@@ -74,7 +74,7 @@ export default function PrivacyPage() {
             "The partner store fulfilling your order receives your order items and the name associated with the order.",
             "The rider delivering your order receives your delivery address, map pin, recipient name and phone number for that delivery.",
             "Customers see the assigned rider's name, phone number and delivery count while an order is in progress.",
-            "Service providers that run the platform for us under contract: cloud database and authentication hosting, image storage and delivery, payment processing (Razorpay or another RBI-authorised payment aggregator), SMS and push-notification delivery, maps and address lookup, and crash reporting.",
+            "Service providers that run the platform for us under contract: cloud database and authentication hosting, image storage and delivery, payment processing (Cashfree Payments, an RBI-authorised payment aggregator), SMS and push-notification delivery, maps and address lookup, and crash reporting.",
             "Government authorities or law enforcement when required by law or a valid legal request.",
           ]}
         />

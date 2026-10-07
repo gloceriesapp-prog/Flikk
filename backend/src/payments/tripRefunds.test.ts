@@ -1,11 +1,13 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ update: vi.fn(), provider: { value: 'cashfree' } }));
-vi.mock('../db/supabase.js', () => ({ supabase: { from: (table: string) => {
+const mocks = vi.hoisted(() => ({ update: vi.fn(), rpc: vi.fn(), provider: { value: 'cashfree' } }));
+vi.mock('../db/supabase.js', () => ({ supabase: { rpc: async (name: string, args: { p_patch: unknown }) => {
+  mocks.rpc(name, args); mocks.update(args.p_patch); return { data: true, error: null };
+}, from: (table: string) => {
   const q = { update: (p: unknown) => { mocks.update(p); return q; }, select: () => q, eq: () => q,
     maybeSingle: async () => ({ error: null, data: table === 'trip_refunds' ? { id: 'x' } : table === 'trips' ? { payment_provider: mocks.provider.value } : null }) };
   return q;
 } } }));
-import { refundProgress, processTripRefund, type TripRefundJob } from './tripRefunds.js';
+import { refundProgress, processTripRefund, TRIP_REFUND_MANUAL_NOTE, type TripRefundJob } from './tripRefunds.js';
 const trip = '00000000-0000-4000-8000-000000000500';
 const cfOrder = 'gl_00000000000040008000000000000500';
 const job: TripRefundJob = { id: '99999999-0000-4000-8000-000000000001', trip_id: trip, payment_id: '1', target_paise: 5500, request_paise: null, refunded_paise: 0, status: 'queued', provider_refund_id: null, lease_token: 'lease', attempts: 1 };
@@ -51,10 +53,30 @@ it('marks legacy Razorpay trips manual_required without calling Cashfree', async
 it('retains unknown network outcomes for retry instead of claiming failure or completion', async () => {
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
   await processTripRefund(job);
-  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'queued', lease_until: null, last_error: 'Refund confirmation delayed' }));
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'queued', release: true, last_error: 'Refund confirmation delayed' }));
 });
-it('stops and exposes a definitive provider rejection for support', async () => {
+it('hands a definitive provider rejection to the manual-refund path instead of a dead failed state', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, 400)));
   await processTripRefund(job);
-  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'manual_required', last_error: TRIP_REFUND_MANUAL_NOTE, release: true }));
+  expect(mocks.update).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
+});
+it('saves through the lease-guarded save_trip_refund RPC that syncs leg orders', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([{ refund_id: 'rf_done', refund_amount: 55, refund_status: 'SUCCESS' }])));
+  await processTripRefund(job);
+  expect(mocks.rpc).toHaveBeenCalledWith('save_trip_refund', { p_id: job.id, p_lease: 'lease', p_patch: expect.objectContaining({ status: 'completed', release: true }) });
+});
+it('keeps credential/environment errors (401/403) retryable with backoff', async () => {
+  for (const status of [401, 403]) {
+    vi.clearAllMocks();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, status)));
+    await processTripRefund({ ...job, status: 'processing' });
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'processing', last_error: 'Refund confirmation delayed', release: true }));
+    expect(mocks.update).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'manual_required' }));
+  }
+});
+it('moves a refund the provider cancelled or rejected to manual handling', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([{ refund_id: refundId, refund_amount: 55, refund_status: 'REJECTED' }])));
+  await processTripRefund({ ...job, status: 'processing', request_paise: 5500 });
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'manual_required', provider_refund_id: refundId, last_error: TRIP_REFUND_MANUAL_NOTE }));
 });
