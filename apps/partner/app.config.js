@@ -1,6 +1,6 @@
-const fs = require('fs');
-const path = require('path');
+/* global __dirname */
 const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
+const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
@@ -20,22 +20,18 @@ if (buildProfile && !buildProfile.startsWith('development') && !easProjectId) {
   throw new Error('EAS_PROJECT_ID must be set for preview/production builds (run `eas project:info` in apps/partner).');
 }
 
-// Android push goes through FCM, which needs Firebase's google-services.json
-// (Firebase console → project settings → Android app com.gloceries.partner).
-// It identifies the Firebase project and holds no secrets, so commit it next
-// to this file; EAS only uploads tracked files. Store builds refuse to build
-// without it rather than ship an app that can never receive a push.
-const googleServicesFile = process.env.GOOGLE_SERVICES_JSON
-  ?? (fs.existsSync(path.resolve('google-services.json')) ? './google-services.json' : undefined);
-if (buildProfile && !buildProfile.startsWith('development') && !googleServicesFile) {
-  throw new Error('google-services.json is missing from apps/partner — Android push cannot work without it.');
-}
-
 // Sentry's build plugin uploads source maps; only wired when its org/project
 // are configured, same as apps/customer.
 const sentryPlugin = process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
   ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]]
   : [];
+
+// Android push (FCM) config, shared by all three apps — see
+// packages/shared/config/google-services.cjs.
+const googleServicesFile = resolveGoogleServicesFile(__dirname, 'com.gloceries.partner');
+if (buildProfile && !buildProfile.startsWith('development') && !googleServicesFile) {
+  throw new Error('config/firebase/google-services.json is missing — Android push cannot work without it.');
+}
 
 module.exports = {
   expo: {

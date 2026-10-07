@@ -31,3 +31,13 @@ it('blocks partner and rider release builds without an EAS project id', async ()
     expect(spawnSync(process.execPath,['-e','require(process.argv[1])',path],{env,encoding:'utf8'}).status).not.toBe(0);
   }
 });
+
+it('resolves the shared google-services.json only for registered Android apps', async () => {
+  const {googleServicesFile}=await import('../../../packages/shared/config/google-services.cjs');
+  const {fileURLToPath}=await import('node:url');
+  for(const app of ['customer','partner','rider']){
+    const dir=fileURLToPath(new URL(`../../../apps/${app}`,import.meta.url));
+    expect(googleServicesFile(dir,`com.gloceries.${app}`)).toBe('../../config/firebase/google-services.json');
+  }
+  expect(()=>googleServicesFile('/tmp','com.gloceries.unknown')).toThrow(/not registered/);
+});

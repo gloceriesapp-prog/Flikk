@@ -1,6 +1,6 @@
-const fs = require('fs');
-const path = require('path');
+/* global __dirname */
 const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
+const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
@@ -15,11 +15,9 @@ validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
 
 const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
 
-// Android push goes through FCM, which needs Firebase's google-services.json
-// (Firebase console → Android app com.gloceries.customer). It holds no secrets, so
-// it is committed next to this file; EAS only uploads tracked files.
-const googleServicesFile = process.env.GOOGLE_SERVICES_JSON
-  ?? (fs.existsSync(path.resolve('google-services.json')) ? './google-services.json' : undefined);
+// Android push (FCM) config, shared by all three apps — see
+// packages/shared/config/google-services.cjs.
+const googleServicesFile = resolveGoogleServicesFile(__dirname, 'com.gloceries.customer');
 
 module.exports = {
   expo: {

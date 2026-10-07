@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "744969650160",
+    "project_id": "gloceries-2249c",
+    "storage_bucket": "gloceries-2249c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744969650160:android:55424d4b1569d5c22f2735",
+        "android_client_info": {
+          "package_name": "com.gloceries.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-stWmXY05_y49c_1tGDW_HXAwdgaf_Fg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744969650160:android:1d820b9a403cd0342f2735",
+        "android_client_info": {
+          "package_name": "com.gloceries.partner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-stWmXY05_y49c_1tGDW_HXAwdgaf_Fg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744969650160:android:db7ee9a414620c282f2735",
+        "android_client_info": {
+          "package_name": "com.gloceries.rider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-stWmXY05_y49c_1tGDW_HXAwdgaf_Fg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
