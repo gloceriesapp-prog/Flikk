@@ -21,7 +21,6 @@ import { AppError } from '../lib/errors.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { confirmCheckoutQuote } from '../lib/checkoutQuoteService.js';
 import { rejectUnsupportedTip } from '../lib/checkoutQuote.js';
-export { EXTRA_STOP_FEE } from '../lib/checkoutQuote.js';
 import { checkoutTransactionError } from '../lib/checkoutItems.js';
 import type { CartItem } from '../lib/orderValidation.js';
 import { groupPricedCartByStore } from '../lib/trips.js';

@@ -6,8 +6,6 @@ import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../lib/payoutAccount.js';
 import { fetchRoute } from '../lib/routeDirections.js';
-import { EXTRA_STOP_FEE } from '../lib/checkoutQuote.js';
-import { splitEarning } from '../lib/earningsBreakdown.js';
 import { createNotification } from '../lib/notifications.js';
 import { validateAvailability } from '../lib/riderSchedule.js';
 import { computeRiderStats } from '../lib/riderStats.js';
@@ -301,9 +299,8 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
 
 // The rider app's Earnings tab, server-derived. Each rider_earnings row is
 // either one single-store order (trip_id null) or one whole trip (trip_id
-// set). The base vs extra-stop split of the combined amount isn't persisted,
-// so it's recomputed here from EXTRA_STOP_FEE and the trip's leg count
-// (splitEarning). Sorted by deliveredAt DESC — paid_at is null until the
+// set). The base vs extra-stop split is the one stored on the row when it was
+// earned (rider_earnings.base_amount/extra_stop_amount, migration 108). Sorted by deliveredAt DESC — paid_at is null until the
 // weekly payout settles, so it can't order the list. Service client bypasses
 // RLS like every other handler here; the .eq('rider_id', ...) filter is the
 // scoping — do not remove it.
@@ -328,7 +325,7 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
     const page = readPage(req, `rider-earnings:${req.user!.id}:${from ?? ''}:${until ?? ''}`);
     let query = supabase
       .from('rider_earnings')
-      .select('id, earned_at, amount, paid_at, order_id, trip_id, orders(order_number, delivered_at, stores(name)), trips(delivery_fee)')
+      .select('id, earned_at, amount, base_amount, extra_stop_amount, paid_at, order_id, trip_id, orders(order_number, delivered_at, stores(name))')
       .eq('rider_id', req.user!.id).not('earned_at', 'is', null);
     if (from && until) query = query.gte('earned_at', from).lt('earned_at', until);
     if (page.cursor) query = query.or(cursorFilter('earned_at', page.cursor));
@@ -339,11 +336,12 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
       id: string;
       earned_at: string;
       amount: number | string;
+      base_amount: number | string | null;
+      extra_stop_amount: number | string | null;
       paid_at: string | null;
       order_id: string;
       trip_id: string | null;
       orders: { order_number: string | null; delivered_at: string | null; stores: { name: string | null } | null } | null;
-      trips: { delivery_fee: number | string } | null;
     }[];
 
     // Leg count per trip — a per-row embedded aggregate is awkward in
@@ -363,7 +361,8 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
       .map((row) => {
         const amount = Number(row.amount);
         const stopCount = row.trip_id ? stopCountByTrip.get(row.trip_id) ?? 1 : 1;
-        const { base, extraStop } = splitEarning(amount, stopCount, EXTRA_STOP_FEE);
+        const extraStop = row.extra_stop_amount == null ? 0 : Number(row.extra_stop_amount);
+        const base = row.base_amount == null ? amount - extraStop : Number(row.base_amount);
         return {
           id: row.id,
           amount,

@@ -42,7 +42,7 @@ export async function PATCH(request: Request) {
       throw new Error('Free-delivery threshold must be a real number, 0 or more.');
     }
     if (!Number.isFinite(handlingFee) || handlingFee < 0) throw new Error('Handling fee must be a real number, 0 or more.');
-    // Rider payouts (migration 099) are optional here: omitted = unchanged.
+    // Rider payouts (migrations 104 and 108) are optional here: omitted = unchanged.
     const riderPayouts: { rider_base_payout?: number; rider_extra_stop_payout?: number } = {};
     for (const [field, column, label] of [
       ['riderBasePayout', 'rider_base_payout', 'Minimum rider payout'],

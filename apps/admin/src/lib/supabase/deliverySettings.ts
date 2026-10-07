@@ -15,8 +15,8 @@ export interface DeliverySettingsRow {
   free_delivery_threshold: number;
   handling_fee: number;
   estimated_delivery_minutes?: number;
-  // migration 104 — what a rider is paid per delivery / per extra trip stop
-  // (display/config; payout code does not read these yet).
+  // migration 104 — what a rider is paid per delivery / per extra trip stop.
+  // Applied by rider_delivery_payout (migration 108) when an earning is written.
   rider_base_payout?: number | string | null;
   rider_extra_stop_payout?: number | string | null;
   // migration 104 — delivery reach and distance pricing.

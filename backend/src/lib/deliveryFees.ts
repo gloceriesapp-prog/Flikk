@@ -15,6 +15,22 @@ export interface FeeSettings {
 // that migration lands behaves exactly as the database will after it.
 export const DEFAULT_DELIVERY_RADIUS_KM = 12;
 export const DEFAULT_ROAD_DISTANCE_FACTOR = 1.4;
+// delivery_settings.extra_stop_fee default (migration 108).
+export const DEFAULT_EXTRA_STOP_FEE = 15;
+
+// A stored fee of 0 is valid (no surcharge); only a missing or malformed
+// value falls back to the default.
+export function nonNegative(value: unknown, fallback: number): number {
+  if (value == null || value === '') return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+// What the customer pays for the shops after the first in one order.
+export function additionalShopFee(storeCount: number, settings: { extraStopFee?: number }): number {
+  const fee = nonNegative(settings.extraStopFee, DEFAULT_EXTRA_STOP_FEE);
+  return Math.round(fee * Math.max(0, storeCount - 1) * 100) / 100;
+}
 
 export function positive(value: unknown, fallback: number): number {
   const n = Number(value);

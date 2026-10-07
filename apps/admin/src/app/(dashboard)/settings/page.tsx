@@ -382,7 +382,11 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
               <div>
                 <label htmlFor="riderBasePayout" className="text-sm font-medium text-ink">Minimum rider payout per delivery</label>
-                <p className="text-xs text-muted">The least a rider earns for one delivery, whatever the customer paid in delivery fee.</p>
+                <p className="text-xs text-muted">
+                  For each order or multi-store trip the rider earns the higher of this amount and the delivery fee the customer
+                  paid, so a free-delivery order still pays this amount. Set to 0 to pay riders exactly the delivery fee the customer paid
+                  (the per-extra-store payout below is then not added).
+                </p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
                 <span className="text-sm text-muted">₹</span>
@@ -400,7 +404,10 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
               <div>
                 <label htmlFor="riderExtraStopPayout" className="text-sm font-medium text-ink">Rider payout per extra store</label>
-                <p className="text-xs text-muted">Added to the rider&apos;s payout for each extra store pickup on a multi-store trip.</p>
+                <p className="text-xs text-muted">
+                  Added on top of the minimum payout for each store after the first on a multi-store trip. Applies only when the
+                  minimum rider payout is above 0.
+                </p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
                 <span className="text-sm text-muted">₹</span>
