@@ -6,3 +6,8 @@ claude.md
 !.env.example
 node_modules/
 dist/
+
+# Firebase/Google service-account keys are secrets (FCM V1 key lives in EAS
+# credentials only). config/firebase/google-services.json is NOT one of these.
+*firebase-adminsdk*.json
+*service-account*.json
