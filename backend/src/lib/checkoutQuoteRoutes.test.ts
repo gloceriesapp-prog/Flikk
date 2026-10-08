@@ -8,7 +8,7 @@ vi.mock('./checkoutQuoteService.js', () => ({ confirmCheckoutQuote: mocks.confir
 vi.mock('../db/supabase.js', () => ({ supabase: { rpc: mocks.rpc, from: () => {
   const query = { select: () => query, eq: () => query, single: async () => ({ data: null, error: null }) }; return query;
 } } }));
-vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () => vi.fn(), requireApproved: vi.fn() }));
+vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () => vi.fn(), requireApproved: vi.fn(), requireActivePartner: vi.fn() }));
 vi.mock('./resolveAddress.js', () => ({ resolveAddressId: mocks.address }));
 // Per-store commission (migration 115): shop-b has its own 5% rate, every other store the 10% default.
 const { storeRate } = vi.hoisted(() => ({ storeRate: (id: string) => ({ rate: id === 'shop-b' ? 0.05 : 0.1, isStoreOverride: id === 'shop-b' }) }));

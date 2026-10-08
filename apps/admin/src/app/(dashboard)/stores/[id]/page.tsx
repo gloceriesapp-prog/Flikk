@@ -7,6 +7,7 @@ import { StoreDetailForm } from '@/components/stores/StoreDetailForm';
 import { StoreSuspensionPanel } from '@/components/stores/StoreSuspensionPanel';
 import { StorePayoutPanel } from '@/components/stores/StorePayoutPanel';
 import { StoreCommissionPanel } from '@/components/stores/StoreCommissionPanel';
+import { PartnerAccountPanel, type PartnerAccountAction } from '@/components/stores/PartnerAccountPanel';
 import { STORE_PAYOUT_SELECT, toStorePayoutView } from '@/lib/storePayout';
 
 export default async function StoreDetailPage({ params }: PageProps<'/stores/[id]'>) {
@@ -27,6 +28,19 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
   if (commissionError) throw commissionError;
   const storeRate = (commissionRow as { commission_rate: number | string | null } | null)?.commission_rate;
   const platformRate = (platformRow as { commission_rate: number | string | null } | null)?.commission_rate;
+  // Partner account (migration 114): the owner's suspension state and the
+  // audit trail of suspend/reinstate actions.
+  const { data: ownerRef } = await supabaseAdmin.from('stores').select('owner_user_id').eq('id', id).maybeSingle();
+  const ownerId = (ownerRef as { owner_user_id: string } | null)?.owner_user_id ?? null;
+  const [{ data: owner }, { data: actions }] = ownerId
+    ? await Promise.all([
+        supabaseAdmin.from('users').select('name, phone, partner_suspended, partner_suspended_reason, partner_suspended_at').eq('id', ownerId).maybeSingle(),
+        supabaseAdmin.from('partner_account_actions').select('id, action, reason, created_at').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(10),
+      ])
+    : [{ data: null }, { data: null }];
+  const ownerRow = owner as { name: string | null; phone: string | null; partner_suspended: boolean; partner_suspended_reason: string | null; partner_suspended_at: string | null } | null;
+  const history: PartnerAccountAction[] = ((actions ?? []) as { id: string; action: 'suspend' | 'reinstate'; reason: string | null; created_at: string }[])
+    .map((a) => ({ id: a.id, action: a.action, reason: a.reason, createdAt: a.created_at }));
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -35,6 +49,16 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
         Back to Stores
       </Link>
 
+      {ownerRow && (
+        <PartnerAccountPanel
+          storeId={store.id}
+          ownerLabel={[ownerRow.name, ownerRow.phone].filter(Boolean).join(' · ') || 'Store owner'}
+          suspended={ownerRow.partner_suspended === true}
+          reason={ownerRow.partner_suspended_reason}
+          suspendedAt={ownerRow.partner_suspended_at}
+          history={history}
+        />
+      )}
       <StoreSuspensionPanel storeId={store.id} suspended={!!store.adminSuspended} reason={store.suspendedReason ?? null} suspendedAt={store.suspendedAt ?? null} />
       <StorePayoutPanel storeId={store.id} payout={payout} />
       <StoreCommissionPanel

@@ -28,7 +28,7 @@ import {
   validateProductPatch,
   type ProductInput,
 } from '../lib/products.js';
-import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
+import { requireActivePartner, requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../lib/payoutAccount.js';
 import { decodeImage, toWebp } from '../utils/image.js';
 import { round2 } from '../lib/pricing.js';
@@ -37,7 +37,7 @@ import { reverseGeocode } from '../lib/reverseGeocode.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
 
 export const partnerRouter = Router();
-partnerRouter.use(requireAuth, requireRole('store_owner'), requireApproved);
+partnerRouter.use(requireAuth, requireRole('store_owner'), requireApproved, requireActivePartner);
 
 async function ownStoreId(userId: string): Promise<string> {
   const { data, error } = await supabase.from('stores').select('id').eq('owner_user_id', userId).single();

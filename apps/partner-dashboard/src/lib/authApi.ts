@@ -46,6 +46,9 @@ export interface Me {
   application_submitted: boolean;
   is_rejected: boolean;
   rejection_reason: string | null;
+  // Admin partner-account suspension (migration 114).
+  partner_suspended?: boolean;
+  partner_suspended_reason?: string | null;
   phone: string;
   name: string | null;
 }

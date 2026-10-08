@@ -7,7 +7,7 @@ import { checkoutAttemptIdentity, findCheckoutAttempt, commitCheckoutAttempt } f
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
-import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
+import { requireActivePartner, requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { calcCommission } from '../lib/pricing.js';
 import { getStoreCommissionRate } from '../lib/platformSettings.js';
 import { confirmCheckoutQuote } from '../lib/checkoutQuoteService.js';
@@ -273,6 +273,7 @@ ordersRouter.patch(
   requireAuth,
   requireRole('customer', 'store_owner', 'rider', 'admin'),
   requireApproved,
+  requireActivePartner,
   async (req: AuthedRequest, res, next) => {
     try {
       const { status: to, reason, otp } = (req.body ?? {}) as StatusBody;
