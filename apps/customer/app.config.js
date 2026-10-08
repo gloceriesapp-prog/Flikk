@@ -6,9 +6,10 @@ const developmentApi = buildProfile ? buildProfile.startsWith('development') : p
 // eas-cli evaluates this file on the developer's machine *before* it pulls the
 // EAS environment variables (it needs extra.eas.projectId first), so a release
 // profile has no EXPO_PUBLIC_API_URL there yet. Enforce the HTTPS release URL
-// on the EAS builder (EAS_BUILD=true), where the real bundle is produced, and
-// whenever a URL is supplied; skip only that pre-read.
-if (process.env.EXPO_PUBLIC_API_URL || developmentApi || process.env.EAS_BUILD === 'true') {
+// on the EAS builder (EAS_BUILD=true), where the real bundle is produced. The
+// local pre-read is skipped entirely: it may see a developer's LAN URL from
+// .env.local, which never reaches the builder (it is not committed).
+if (developmentApi || process.env.EAS_BUILD === 'true') {
   validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
 }
 
