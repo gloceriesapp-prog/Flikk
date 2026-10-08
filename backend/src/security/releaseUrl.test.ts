@@ -13,10 +13,15 @@ it('blocks release app configs without a valid HTTPS endpoint', async () => {
   for(const app of ['customer','partner','rider']){
     const path=fileURLToPath(new URL(`../../../apps/${app}/app.config.js`,import.meta.url));
     const env={...process.env,NODE_ENV:'production',EAS_BUILD_PROFILE:'production',EXPO_PUBLIC_API_URL:'',GOOGLE_SERVICES_JSON:'./google-services.json'};
-    const run=(url:string)=>spawnSync(process.execPath,['-e','require(process.argv[1])',path],{env:{...env,EXPO_PUBLIC_API_URL:url},encoding:'utf8'});
+    // EAS_BUILD=true is the EAS builder, where the release bundle is produced.
+    const run=(url:string,builder='true')=>spawnSync(process.execPath,['-e','require(process.argv[1])',path],{env:{...env,EAS_BUILD:builder,EXPO_PUBLIC_API_URL:url},encoding:'utf8'});
     expect(run('').status).not.toBe(0);
     expect(run('http://localhost:4000').status).not.toBe(0);
     expect(run('https://api.example.com').status).toBe(0);
+    // eas-cli's local pre-read happens before EAS variables are pulled: no URL yet is allowed there,
+    // but a URL that is set is still validated.
+    expect(run('','').status).toBe(0);
+    expect(run('http://localhost:4000','').status).not.toBe(0);
   }
 });
 
