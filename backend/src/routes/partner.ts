@@ -10,6 +10,11 @@ import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // so it stays invisible to shoppers until a founder approves it from
 // admin. This is the same "store owner writes, admin approval gates
 // visibility" shape as store onboarding itself (storeOnboarding.ts).
+// Edits go through the same gate (save_catalogue_product, migration 115):
+// a rejected product the owner edits goes back to 'pending', and a new
+// name or any pack price change on a LIVE product is held in
+// products.pending_changes for admin review while customers keep seeing the
+// approved name/prices. Stock counts and other fields still apply live.
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { saveCatalogueProduct } from '../db/productVariants.js';
@@ -461,7 +466,8 @@ partnerRouter.patch('/products/:id', async (req: AuthedRequest, res, next) => {
       if (fetchError || !current) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Not found for this store.');
       // An approved product is LIVE — a new photo can't overwrite image_url
       // without admin consent, so it's queued in pending_image_url instead
-      // (see resolveEditImage). Every other field updates live as normal.
+      // (see resolveEditImage). Name and pack prices are gated the same way
+      // inside save_catalogue_product (migration 115).
       Object.assign(fields, resolveEditImage(current.image_url, current.approval_status, input.imageUrl));
     }
 

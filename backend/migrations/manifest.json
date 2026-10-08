@@ -454,6 +454,10 @@
       "sha256": "9f6ed579e1c2eabe48ede1262af514a94234e27d02229e81f2aed397795f1191"
     },
     {
+      "file": "115_product_review_commission.sql",
+      "sha256": "2cb4a0fd8ca6cc067861204183089993e33e561442ceacbe751fcbbc8977a9a1"
+    },
+    {
       "file": "116_home_content_controls.sql",
       "sha256": "1d8b39284e3f0f8dd08c117991e3afc4c5e6ce5b28e83ecd9df08288f7741853"
     }

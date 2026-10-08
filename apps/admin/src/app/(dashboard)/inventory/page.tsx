@@ -292,6 +292,13 @@ export default function InventoryPage() {
                   {product.approvalStatus === 'rejected' && (
                     <span className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-danger">Rejected</span>
                   )}
+                  {/* Partner name/price edit to this live product, awaiting
+                      review on Approvals → Products (migration 115). */}
+                  {product.pendingChanges && (
+                    <Link href="/approvals" className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 hover:underline">
+                      Edit in review
+                    </Link>
+                  )}
                 </div>
               </div>
 

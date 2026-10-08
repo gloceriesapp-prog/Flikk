@@ -426,9 +426,23 @@ export interface Product {
   // the Approvals screen's Products tab (app/api/products/[id]/image-review).
   // null = nothing pending; undefined only for rows read before the column existed.
   pendingImageUrl?: string | null;
+  // A partner's name / pack-price edit to this LIVE product awaiting review
+  // (products.pending_changes, migration 115). The fields above stay the
+  // approved values customers see until the Approvals screen approves it
+  // (app/api/products/[id]/change-review). null = nothing queued.
+  pendingChanges?: PendingProductChanges | null;
+  pendingChangesAt?: string | null;
   // Total counted packs across sizes (products.stock_quantity); null when
   // stock tracking is off (checkout refuses such products).
   stockQuantity?: number | null;
+}
+
+export interface PendingProductChanges {
+  name?: string;
+  price?: number;
+  originalPrice?: number | null;
+  unit?: string;
+  variants?: ProductVariant[];
 }
 
 export interface ProductVariant {

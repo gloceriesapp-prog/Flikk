@@ -124,8 +124,13 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     }
     setSaving(true);
     try {
-      await updateProduct(currentProduct.id, name.trim() || currentProduct.name, draft);
+      const saved = await updateProduct(currentProduct.id, name.trim() || currentProduct.name, draft);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // A live product's new name/prices wait for admin (migration 115);
+      // stock changes are already live.
+      if (saved?.approvalStatus === 'approved' && saved.hasPendingChanges) {
+        Alert.alert('Sent for review', 'Customers keep seeing the current name and prices until Gloceries approves your change. Stock updates are live now.');
+      }
       navigation.navigate('Catalog');
     } catch (err) {
       Alert.alert('Could not save changes', err instanceof ApiError ? err.message : 'Please try again.');

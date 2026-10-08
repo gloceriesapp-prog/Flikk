@@ -156,6 +156,10 @@ export interface PartnerProduct {
   // nothing pending. fetchMyProducts returns the row as-is, so this flows
   // through with no explicit mapping to add.
   pending_image_url: string | null;
+  // Name / pack price edits to a LIVE product awaiting admin review
+  // (migration 115). Customers keep seeing the approved values above until
+  // admin approves. Null when nothing is queued; absent on older backends.
+  pending_changes?: PendingProductChanges | null;
   is_veg: boolean;
   freshness_tag: string | null;
   // Kept in sync with stock_status by a DB trigger (backend/src/lib/
@@ -169,6 +173,13 @@ export interface PartnerProduct {
   stock_quantity: number | null;
   approval_status: 'pending' | 'approved' | 'rejected';
   product_variants: ProductVariant[];
+}
+
+export interface PendingProductChanges {
+  name?: string;
+  price?: number;
+  unit?: string;
+  variants?: { unit_type: UnitType; quantity: number; price: number; original_price: number | null }[];
 }
 
 export function fetchMyProducts(): Promise<PartnerProduct[]> {

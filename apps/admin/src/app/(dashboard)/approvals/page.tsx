@@ -24,7 +24,7 @@ export default function ApprovalsPage() {
   const [tab, setTab] = useState<TabKind>('store');
   const [stores, setStores] = useState<Application[]>([]);
   const [riders, setRiders] = useState<Application[]>([]);
-  const [products, setProducts] = useState<{ pending: Product[]; imageChanges: Product[] }>({ pending: [], imageChanges: [] });
+  const [products, setProducts] = useState<{ pending: Product[]; imageChanges: Product[]; edits: Product[] }>({ pending: [], imageChanges: [], edits: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +39,8 @@ export default function ApprovalsPage() {
       if (!storesRes.ok || !ridersRes.ok || !productsRes.ok) throw new Error('Could not load applications.');
       setStores(await storesRes.json());
       setRiders(await ridersRes.json());
-      setProducts(await productsRes.json());
+      const productGroups = (await productsRes.json()) as { pending: Product[]; imageChanges: Product[]; edits?: Product[] };
+      setProducts({ ...productGroups, edits: productGroups.edits ?? [] });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load applications.');
     } finally {
@@ -66,7 +67,7 @@ export default function ApprovalsPage() {
   }, [load]);
 
   const applications = tab === 'store' ? stores : riders;
-  const productCount = products.pending.length + products.imageChanges.length;
+  const productCount = products.pending.length + products.imageChanges.length + products.edits.length;
   const pendingCount = tab === 'product' ? productCount : applications.filter((a) => a.status === 'pending').length;
 
   function tabCount(kind: TabKind): number {
@@ -148,6 +149,14 @@ export default function ApprovalsPage() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted">Image changes</p>
                   {products.imageChanges.map((p) => (
                     <ProductReviewRow key={p.id} product={p} mode="image" onDone={load} />
+                  ))}
+                </div>
+              )}
+              {products.edits.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">Name &amp; price changes</p>
+                  {products.edits.map((p) => (
+                    <ProductReviewRow key={p.id} product={p} mode="changes" onDone={load} />
                   ))}
                 </div>
               )}

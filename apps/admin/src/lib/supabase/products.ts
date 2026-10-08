@@ -8,7 +8,7 @@
 // save then replaced them) and inactive stores read as "Unknown store".
 // Writes live in app/api/products/* too, see lib/supabase/admin.ts's note.
 
-import type { Product, ProductVariant, StockStatus, Store } from '../types';
+import type { PendingProductChanges, Product, ProductVariant, StockStatus, Store } from '../types';
 import type { UnitType } from '../product-options';
 
 interface ProductVariantRow {
@@ -42,6 +42,9 @@ export interface ProductRow {
   // live on its OLD image_url until admin approves/rejects this via
   // app/api/products/[id]/image-review. Null = nothing pending.
   pending_image_url: string | null;
+  // Partner name/price edit to a live product awaiting review (migration 115).
+  pending_changes: PendingChangesRow | null;
+  pending_changes_at: string | null;
   stock_quantity: number | null;
   stock_tracking_enabled: boolean;
   stores: { name: string; district: string } | null;
@@ -49,7 +52,7 @@ export interface ProductRow {
 }
 
 export const PRODUCT_SELECT =
-  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity)';
+  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity)';
 
 function mapVariants(rows: ProductVariantRow[], product: ProductRow): ProductVariant[] {
   // is_default first, then insertion order for the rest — mirrors how
@@ -88,6 +91,32 @@ function fallbackVariant(row: ProductRow): ProductVariant {
   };
 }
 
+interface PendingChangesRow {
+  name?: string;
+  price?: number | string;
+  original_price?: number | string | null;
+  unit?: string;
+  variants?: { id?: string; unit_type: ProductVariant['unitType']; quantity: number | string; price: number | string; original_price?: number | string | null; stock_quantity?: number | null }[];
+}
+
+function mapPendingChanges(row: PendingChangesRow | null | undefined): PendingProductChanges | null {
+  if (!row) return null;
+  return {
+    name: row.name,
+    price: row.price != null ? Number(row.price) : undefined,
+    originalPrice: row.original_price != null ? Number(row.original_price) : null,
+    unit: row.unit,
+    variants: row.variants?.map((v) => ({
+      id: v.id,
+      unitType: v.unit_type,
+      quantity: Number(v.quantity),
+      price: Number(v.price),
+      originalPrice: v.original_price != null ? Number(v.original_price) : undefined,
+      stockQuantity: v.stock_quantity ?? undefined,
+    })),
+  };
+}
+
 export function mapRowToProduct(row: ProductRow): Product {
   const variants = mapVariants(row.product_variants ?? [], row);
 
@@ -110,6 +139,8 @@ export function mapRowToProduct(row: ProductRow): Product {
     subCategoryId: row.sub_category_id ?? undefined,
     approvalStatus: row.approval_status,
     pendingImageUrl: row.pending_image_url,
+    pendingChanges: mapPendingChanges(row.pending_changes),
+    pendingChangesAt: row.pending_changes_at,
     // Falls back to a single variant built from the product row's own
     // denormalized price/unit if product_variants is somehow empty (a
     // product written before this table existed) — Edit should never show
