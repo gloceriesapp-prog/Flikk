@@ -9,7 +9,8 @@
 // (item prices, promo discounts).
 
 import { supabase } from '../db/supabase.js';
-import { DEFAULT_DELIVERY_RADIUS_KM, DEFAULT_ROAD_DISTANCE_FACTOR, distanceDeliveryFee, parseFeeTiers, positive, type DeliveryFeeTier } from './deliveryFees.js';
+import { DEFAULT_DELIVERY_RADIUS_KM, DEFAULT_EXTRA_STOP_FEE, DEFAULT_ROAD_DISTANCE_FACTOR, distanceDeliveryFee, nonNegative, parseFeeTiers, positive, type DeliveryFeeTier } from './deliveryFees.js';
+import type { RiderPaySettings } from './earningsBreakdown.js';
 
 export { distanceDeliveryFee, parseFeeTiers, type DeliveryFeeTier };
 
@@ -24,6 +25,8 @@ export interface DeliverySettings {
   roadDistanceFactor: number;
   deliveryFeeTiers: DeliveryFeeTier[];
   maxStoreSpreadKm: number;
+  // migration 108 — what the customer pays per shop after the first.
+  extraStopFee: number;
 }
 
 export async function getDeliverySettings(): Promise<DeliverySettings> {
@@ -45,6 +48,20 @@ export async function getDeliverySettings(): Promise<DeliverySettings> {
     roadDistanceFactor: Math.max(1, positive(data.road_distance_factor, DEFAULT_ROAD_DISTANCE_FACTOR)),
     deliveryFeeTiers: parseFeeTiers(data.delivery_fee_tiers),
     maxStoreSpreadKm: Math.max(0, Number(data.max_store_spread_km ?? 0) || 0),
+    extraStopFee: nonNegative(data.extra_stop_fee, DEFAULT_EXTRA_STOP_FEE),
+  };
+}
+
+// Rider pay settings (migrations 104 and 108). Kept out of DeliverySettings,
+// which GET /delivery-settings serves to customers as-is.
+export async function getRiderPaySettings(): Promise<Required<RiderPaySettings>> {
+  const { data, error } = await supabase.from('delivery_settings')
+    .select('rider_base_payout, rider_extra_stop_payout, extra_stop_fee').limit(1).single();
+  if (error) throw error;
+  return {
+    riderBasePayout: nonNegative(data.rider_base_payout, 0),
+    riderExtraStopPayout: nonNegative(data.rider_extra_stop_payout, 0),
+    extraStopFee: nonNegative(data.extra_stop_fee, DEFAULT_EXTRA_STOP_FEE),
   };
 }
 

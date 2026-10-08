@@ -4,46 +4,55 @@
 // doesn't have yet. AddProductModal collects the draft; InventoryPage POSTs
 // it here and gets the real DB row (with generated id) back.
 //
-// validateProductInput/toProductRow/toVariantRows are lib/productValidation.ts's
+// validateProductInput/toProductRow/toVariantPayload are lib/productValidation.ts's
 // deliberate copy of the backend's own logic — see that file's own note on
 // why this dashboard can't just call the backend directly yet.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { catalogueErrorStatus, saveCatalogueProduct } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
-import { toProductRow, toVariantRows, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
+import { toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
+
+// Inventory/festival reads. Service role + admin check, not the browser anon
+// client: RLS hides pending products' sizes and inactive stores from anon.
+export async function GET() {
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
+  const { data, error } = await supabaseAdmin.from('products').select(PRODUCT_SELECT).order('name');
+  if (error) {
+    console.error('Admin products read failed', error);
+    return NextResponse.json({ error: 'Could not load products.' }, { status: 500 });
+  }
+  return NextResponse.json((data as unknown as ProductRow[]).map(mapRowToProduct));
+}
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
+  const body = await request.json().catch(() => null);
 
   try {
-    const input: Partial<ProductWriteInput> = body;
+    const input: Partial<ProductWriteInput> = body ?? {};
     validateProductInput(input);
 
     // 'approved' explicitly, not left to the column's own default — a
     // founder adding a product here already is the approval (see
     // backend/src/routes/partner.ts's own note on the partner-app side of
-    // this same gate).
-    const { data: product, error } = await supabaseAdmin
-      .from('products')
-      .insert({ ...toProductRow(input), approval_status: 'approved' })
-      .select('id')
-      .single();
-    if (error) throw error;
-
-    const { error: variantsError } = await supabaseAdmin.from('product_variants').insert(toVariantRows(product.id, input.variants));
-    if (variantsError) throw variantsError;
+    // this same gate). Product row + packs land in one transaction.
+    const productId = await saveCatalogueProduct(null, { ...toProductRow(input), approval_status: 'approved' }, toVariantPayload(input.variants));
 
     const { data, error: refetchError } = await supabaseAdmin
       .from('products')
       .select(PRODUCT_SELECT)
-      .eq('id', product.id)
+      .eq('id', productId)
       .single();
     if (refetchError) throw refetchError;
 
     return NextResponse.json(mapRowToProduct(data as unknown as ProductRow));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not add product.';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: catalogueErrorStatus(err) });
   }
 }

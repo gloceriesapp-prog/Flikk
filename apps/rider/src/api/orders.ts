@@ -7,19 +7,11 @@
 import { distanceKm } from '../utils/geo';
 import type { OrderItemLine, RiderOrder } from '../data/mockOrders';
 
-// A single-store order pays this flat fee — backend/src/routes/orders.ts's
-// own DELIVERY_FEE constant (rider_earnings is written with exactly this
-// amount on every 'delivered' transition of a non-trip order). A
-// multi-store trip leg pays the trip's own delivery_fee instead (below) —
-// base fee plus routes/trips.ts's EXTRA_STOP_FEE per store beyond the
-// first, since a 3-store trip is three real pickups, not one. No
-// distance-based fare, no surge, no tips exist anywhere in the schema yet
-// — baseFare/distanceFare/surge stay zeroed to match that real model
-// honestly rather than fabricate a breakdown the backend doesn't actually
-// compute or pay. Keep DELIVERY_FEE in sync by hand until a shared
-// constants module exists (packages/shared) — not worth one for a single
-// number at this scale.
-const DELIVERY_FEE = 25;
+// Payout comes from the backend (rider_payout, backend/src/lib/
+// riderDeliveryMoney.ts): what this order — or, on a trip leg, the whole
+// trip — pays the rider under the admin pay settings, or the earning already
+// recorded once delivered. No surge or tips exist in the schema, so surge
+// stays 0.
 
 type BackendOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
 
@@ -39,13 +31,17 @@ interface RawAssignment {
   // common single-store order, set when this is one leg of a multi-store
   // checkout. RiderOrder's own note explains what this drives.
   trip_id: string | null;
-  // Only non-null when trip_id is set (rider.ts's own trips(delivery_fee)
-  // embed) — the real combined multi-stop payout for this leg's trip.
-  trips: { delivery_fee: number } | null;
   order_items: RawOrderItem[];
   stores: { name: string; phone: string | null; lat: number | null; lng: number | null; manual_address: string | null; address_line: string | null; zones: { name: string } | null } | null;
   users: { name: string | null; phone: string } | null;
   addresses: { line1: string; landmark: string | null; latitude: number | null; longitude: number | null; delivery_instructions: string | null } | null;
+  // Backend-derived (lib/riderDeliveryMoney.ts): how the customer pays and,
+  // for cash on delivery, how much to collect for the whole order/trip.
+  payment_method: 'cod' | 'online';
+  cash_to_collect: number;
+  rider_payout: number;
+  rider_payout_base: number;
+  rider_payout_extra_stop: number;
 }
 
 // client (and its auth-store → RN chain) is imported lazily so this module's
@@ -109,7 +105,7 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
   // Trip legs all share the one trip-level payout (same value on every
   // leg's card, not multiplied per leg) — MultiStopJobCard's own note on
   // why it doesn't sum this across legs.
-  const payout = row.trips?.delivery_fee ?? DELIVERY_FEE;
+  const payout = Number(row.rider_payout) || 0;
 
   const storeCoords =
     row.stores?.lat != null && row.stores?.lng != null ? { latitude: row.stores.lat, longitude: row.stores.lng } : null;
@@ -147,8 +143,8 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     itemCount,
     items,
     payout,
-    baseFare: payout,
-    distanceFare: 0,
+    baseFare: Number(row.rider_payout_base) || 0,
+    extraStopFare: Number(row.rider_payout_extra_stop) || 0,
     surge: 0,
     distanceKm: storeCoords && customerCoords ? distanceKm(storeCoords, customerCoords) : 0,
     status,
@@ -156,5 +152,7 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     deliveredAt: row.delivered_at ?? undefined,
     cancelReason: row.cancel_reason ?? undefined,
     tripId: row.trip_id ?? undefined,
+    paymentMethod: row.payment_method === 'online' ? 'online' : 'cod',
+    cashToCollect: Number(row.cash_to_collect) || 0,
   };
 }

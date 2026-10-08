@@ -428,6 +428,14 @@
     {
       "file": "107_trip_dispatch_integrity.sql",
       "sha256": "7335b01cdc892ea386d26d0e90347035ab3d94efe1eba672a79c144c3952b8f3"
+    },
+    {
+      "file": "108_rider_pay_cod.sql",
+      "sha256": "67f821b402d554ce864abeadc5d74b0cbea5303dbc189f0479860e62ca35cbc4"
+    },
+    {
+      "file": "111_catalogue_stock_integrity.sql",
+      "sha256": "dee6b1ace7d6f0fc98646ede19de8ef36c92e550c7a8a30b642dad8456b2ce59"
     }
   ]
 }

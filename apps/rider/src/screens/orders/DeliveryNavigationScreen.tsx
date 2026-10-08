@@ -20,6 +20,8 @@ import {
 } from '@hugeicons/core-free-icons';
 
 import { AppIcon } from '../../components/AppIcon';
+import { CollectCashBanner } from '../../components/CollectCashBanner';
+import { distanceKm, etaMinutes } from '../../utils/geo';
 import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors, shadow } from '../../theme/tokens';
 import { DeliveryMapView } from './components/DeliveryMapView';
@@ -70,6 +72,12 @@ export function DeliveryNavigationScreen({
   const [arriving, setArriving] =
     useState(false);
 
+  const [routeInfo, setRouteInfo] =
+    useState<{
+      durationMin: number | null;
+      distanceKm: number | null;
+    } | null>(null);
+
   /*
    * ---------------------------------------------------------
    * ORDER NOT FOUND
@@ -97,46 +105,33 @@ export function DeliveryNavigationScreen({
 
   /*
    * ---------------------------------------------------------
-   * TEMP DUMMY DATA
+   * ROUTE INFO
    * ---------------------------------------------------------
    *
-   * UI preview only.
-   *
-   * Later replace these values with:
-   *
-   * order.customerName
-   * order.customerPhone
-   * order.customerAddress
-   * order.landmark
-   * order.deliveryNote
-   *
+   * Rider -> customer. The routed Google distance/ETA from the map when
+   * available, else the straight-line estimate from the live GPS fix.
+   * "Locating…" until the first fix, never a made-up figure. A drop with no
+   * pin (0,0) has no distance to show.
    */
 
-  const dummyCustomer = {
-    name: 'Rahul Shetty',
+  const hasDropPin =
+    order.customerCoords.latitude !== 0 ||
+    order.customerCoords.longitude !== 0;
 
-    phone: '9876543210',
+  const straightKm =
+    riderCoords && hasDropPin
+      ? distanceKm(riderCoords, order.customerCoords)
+      : null;
 
-    address:
-      'Flat 304, Ocean View Apartments, MG Road, Mangaluru, Karnataka 575001',
+  const km = routeInfo?.distanceKm ?? straightKm;
 
-    landmark:
-      'Opposite City Centre Mall, near the main entrance',
+  const eta =
+    routeInfo?.durationMin ??
+    (km != null ? etaMinutes(km) : null);
 
-    deliveryNote:
-      'Please call when you reach the gate. Leave the order with security if I am unavailable.',
-  };
-
-  /*
-   * TEMP route information for UI preview.
-   *
-   * Replace this later with your real:
-   * distanceKm() + etaMinutes() logic.
-   */
-
-  const distanceText = '2.4 km';
-  const durationText = '8 min';
-  const hasRouteInfo = true;
+  const hasRouteInfo = km != null && eta != null;
+  const distanceText = km != null ? `${km} km` : '';
+  const durationText = eta != null ? `${eta} min` : '';
 
   /*
    * ---------------------------------------------------------
@@ -157,8 +152,16 @@ export function DeliveryNavigationScreen({
    */
 
   const callCustomer = () => {
-    Linking.openURL(
-      `tel:${dummyCustomer.phone}`
+    if (!order.customerPhone) {
+      Alert.alert(
+        'No phone number',
+        'This customer has no phone number on the order.'
+      );
+      return;
+    }
+
+    void Linking.openURL(
+      `tel:${order.customerPhone}`
     );
   };
 
@@ -216,6 +219,7 @@ export function DeliveryNavigationScreen({
         destinationKind="customer"
         fullScreen
         onRiderMove={setRiderCoords}
+        onRouteInfo={setRouteInfo}
       />
 
       {/* =====================================================
@@ -309,7 +313,7 @@ export function DeliveryNavigationScreen({
               className="mt-0.5 text-[21px] font-semibold text-ink"
               numberOfLines={1}
             >
-              {dummyCustomer.name}
+              {order.customerName}
             </Text>
 
           </View>
@@ -320,7 +324,7 @@ export function DeliveryNavigationScreen({
             onPress={() =>
               openNavigation(
                 order.customerCoords,
-                dummyCustomer.name
+                order.customerName
               )
             }
             className="h-11 flex-row items-center justify-center gap-1 rounded-full bg-[#F1F2F4] px-4"
@@ -339,6 +343,15 @@ export function DeliveryNavigationScreen({
             />
           </Pressable>
 
+        </View>
+
+        {/* Cash on delivery: amount for the whole order/trip. */}
+
+        <View className="mb-3">
+          <CollectCashBanner
+            paymentMethod={order.paymentMethod}
+            cashToCollect={order.cashToCollect}
+          />
         </View>
 
         {/* =================================================
@@ -366,15 +379,16 @@ export function DeliveryNavigationScreen({
               </Text>
 
               <Text className="mt-0.5 text-[14px] font-semibold leading-5 text-ink">
-                {dummyCustomer.address}
+                {order.customerAddress || 'Address not provided'}
               </Text>
 
             </View>
 
           </View>
 
-          {/* LANDMARK */}
+          {/* LANDMARK — only when the customer gave one */}
 
+          {order.landmark ? (
           <View className="mt-3 flex-row items-start gap-3 border-t border-ink/10 pt-3">
 
             <View className="h-9 w-9 items-center justify-center">
@@ -392,15 +406,17 @@ export function DeliveryNavigationScreen({
               </Text>
 
               <Text className="mt-0.5 text-[13.5px] font-medium leading-5 text-ink/70">
-                {dummyCustomer.landmark}
+                {order.landmark}
               </Text>
 
             </View>
 
           </View>
+          ) : null}
 
-          {/* DELIVERY INSTRUCTIONS */}
+          {/* DELIVERY INSTRUCTIONS — the customer's own note, if any */}
 
+          {order.deliveryNote ? (
           <View className="mt-3 flex-row items-start gap-3 border-t border-ink/10 pt-3">
 
             <View className="h-9 w-9 items-center justify-center">
@@ -418,12 +434,13 @@ export function DeliveryNavigationScreen({
               </Text>
 
               <Text className="mt-0.5 text-[13.5px] font-medium leading-5 text-ink/70">
-                {dummyCustomer.deliveryNote}
+                {order.deliveryNote}
               </Text>
 
             </View>
 
           </View>
+          ) : null}
 
         </View>
 

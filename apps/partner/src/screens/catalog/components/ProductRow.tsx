@@ -52,6 +52,7 @@ export function ProductRow({ product, onPressView }: Props) {
             <View className={`h-1.5 w-1.5 rounded-full ${product.isInStock ? 'bg-lime-deep' : 'bg-danger'}`} />
             <Text className={`text-[12px] font-medium ${product.isInStock ? 'text-lime-deep' : 'text-danger'}`}>
               {product.isInStock ? 'In Stock' : 'Out of Stock'}
+              {product.stockQuantity != null && product.stockQuantity > 0 ? ` · ${product.stockQuantity}` : ''}
             </Text>
           </View>
 

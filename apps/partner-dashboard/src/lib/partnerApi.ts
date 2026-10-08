@@ -120,6 +120,8 @@ export interface ProductVariant {
   price: number;
   original_price: number | null;
   is_default: boolean;
+  // Counted packs of this size on hand; null/absent = never counted.
+  stock_quantity?: number | null;
 }
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -176,10 +178,16 @@ export function fetchMyProducts(): Promise<PartnerProduct[]> {
 // denormalized onto the product row itself, so this must always carry at
 // least one entry — the backend rejects an empty array.
 export interface VariantInput {
+  // Existing pack id when editing, so the backend updates that pack in
+  // place and keeps its stock instead of replacing it.
+  id?: string;
   unitType: UnitType;
   quantity: number;
   price: number;
   originalPrice?: number | null;
+  // Counted packs of this size on hand. The backend sums the packs into the
+  // product's stock and turns on tracking (checkout needs both).
+  stockQuantity?: number;
 }
 
 // Matches backend/src/lib/products.ts's ProductInput exactly (camelCase,
@@ -207,6 +215,7 @@ export function createProduct(input: ProductInput): Promise<PartnerProduct> {
   return apiRequest('/partner/products', { method: 'POST', body: input });
 }
 
+// PATCH is a partial update — fields left out of `input` are not changed.
 export function updateProduct(id: string, input: ProductInput): Promise<PartnerProduct> {
   return apiRequest(`/partner/products/${id}`, { method: 'PATCH', body: input });
 }

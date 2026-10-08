@@ -13,18 +13,19 @@
 // anything that isn't 'approved' yet.
 //
 // updateProduct/deleteProduct are backed by real PATCH/DELETE
-// /partner/products/:id (backend/src/routes/partner.ts) — per-variant
-// stock toggling still rolls up to the one product-level stock_status
-// column (no per-size stock flag on product_variants), same rollup
-// summarizeVariants below already does for the row-summary fields.
+// /partner/products/:id (backend/src/routes/partner.ts). Stock is counted
+// per size (product_variants.stock_quantity): add/edit send each size's
+// count, the backend saves packs in place (keeping counts it wasn't sent)
+// and turns on stock tracking, which checkout requires. PATCH is partial —
+// only name/stock/sizes are sent, so admin-set fields are never touched.
 
 import { create } from 'zustand';
 import { apiRequest } from '../api/client';
 import { deleteProductApi, updateProductApi } from '../api/catalog';
 import {
   isDuplicateProductName,
-  parseVariantLabel,
   summarizeVariants,
+  toBackendVariant,
   type PartnerProduct,
   type ProductVariant,
 } from '../screens/catalog/data';
@@ -34,7 +35,9 @@ interface VariantRow {
   unit_type: string;
   quantity: number;
   price: number;
+  original_price: number | null;
   is_default: boolean;
+  stock_quantity: number | null;
 }
 
 interface ProductRow {
@@ -46,24 +49,39 @@ interface ProductRow {
   stock_status: 'in_stock' | 'low_stock' | 'out_of_stock';
   image_url: string | null;
   approval_status: 'pending' | 'approved' | 'rejected';
+  stock_quantity: number | null;
+  stock_tracking_enabled: boolean;
   product_variants: VariantRow[];
 }
 
 const UNIT_LABEL: Record<string, string> = { g: 'g', kg: 'kg', ml: 'ml', l: 'L', pc: 'pc' };
 
 function labelFor(row: VariantRow): string {
-  const qty = Number.isInteger(row.quantity) ? row.quantity : row.quantity;
-  return `${qty} ${UNIT_LABEL[row.unit_type] ?? row.unit_type}`;
+  return `${Number(row.quantity)} ${UNIT_LABEL[row.unit_type] ?? row.unit_type}`;
 }
 
 function fromRow(row: ProductRow): PartnerProduct {
-  // No per-variant stock column on product_variants — every size of a
-  // product shares the one product-level stock_status, see this file's own
-  // note above.
+  // Each size reads its own counted stock (set here or by admin); a size
+  // never counted falls back to the product-level status.
   const isInStock = row.stock_status !== 'out_of_stock';
+  const single = row.product_variants.length === 1;
   const variants: ProductVariant[] =
     row.product_variants.length > 0
-      ? row.product_variants.map((v) => ({ id: v.id, label: labelFor(v), price: v.price, isInStock }))
+      ? [...row.product_variants]
+          .sort((a, b) => Number(b.is_default) - Number(a.is_default))
+          .map((v) => {
+            // A single uncounted pack is tracked at product level (same rule
+            // checkout uses), so show that count for it.
+            const count = v.stock_quantity ?? (single && row.stock_tracking_enabled ? row.stock_quantity : null);
+            return {
+              id: v.id,
+              label: labelFor(v),
+              price: Number(v.price),
+              originalPrice: v.original_price != null ? Number(v.original_price) : undefined,
+              stockQuantity: count ?? undefined,
+              isInStock: count != null ? count > 0 : isInStock,
+            };
+          })
       : [{ id: 'default', label: row.unit, price: row.price, isInStock }];
 
   return {
@@ -74,6 +92,7 @@ function fromRow(row: ProductRow): PartnerProduct {
     price: row.price,
     isInStock,
     imageUrl: row.image_url,
+    stockQuantity: row.stock_tracking_enabled ? row.stock_quantity : null,
     approvalStatus: row.approval_status,
     variants,
   };
@@ -126,10 +145,8 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
     const { isInStock } = summarizeVariants(variants);
     const row = await updateProductApi(productId, {
       name: name.trim(),
-      category: existing.category,
-      imageUrl: existing.imageUrl,
       stockStatus: isInStock ? 'in_stock' : 'out_of_stock',
-      variants: variants.map((v) => parseVariantLabel(v.label, v.price, v.originalPrice)),
+      variants: variants.map(toBackendVariant),
     });
     const updated = fromRow(row as ProductRow);
     set((state) => ({ products: state.products.map((p) => (p.id === productId ? updated : p)) }));
@@ -147,8 +164,8 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
       name: name.trim(),
       category,
       imageUrl,
-      stockStatus: 'in_stock' as const,
-      variants: variants.map((v) => parseVariantLabel(v.label, v.price, v.originalPrice)),
+      stockStatus: summarizeVariants(variants).isInStock ? ('in_stock' as const) : ('out_of_stock' as const),
+      variants: variants.map(toBackendVariant),
     };
     const row = await apiRequest<ProductRow>('/partner/products', { method: 'POST', body });
     set((state) => ({ products: [...state.products, fromRow(row)] }));

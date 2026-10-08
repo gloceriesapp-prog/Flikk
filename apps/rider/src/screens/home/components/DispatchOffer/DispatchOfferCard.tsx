@@ -16,6 +16,7 @@
 import { CheckmarkCircle02Icon, CreditCardIcon, PackageIcon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../../components/AppIcon';
+import { formatCash } from '../../../../components/CollectCashBanner';
 import { colors } from '../../../../theme/tokens';
 import type { AcceptDispatchOfferResult, DispatchOffer } from '../../../../api/dispatch';
 import { OfferCountdownRing } from './OfferCountdownRing';
@@ -85,9 +86,8 @@ export function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = DE
       {/* Stat tiles */}
       <OfferStatTiles totalKm={offer.totalKm} payout={offer.payout} />
 
-      {/* Meta line: item count + payment mode. Gloceries is prepaid/UPI only
-          (no COD in the schema), so every order is cashless — stated as the
-          platform fact it is, not a per-order flag we don't store. */}
+      {/* Meta line: item count + payment mode, from the order's real
+          payment_method. Cash on delivery shows the amount to collect. */}
       <View className="flex-row items-center justify-center gap-4">
         <View className="flex-row items-center gap-1.5">
           <AppIcon icon={PackageIcon} size={14} color="#FFFFFF99" />
@@ -97,7 +97,9 @@ export function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = DE
         </View>
         <View className="flex-row items-center gap-1.5">
           <AppIcon icon={CreditCardIcon} size={14} color="#FFFFFF99" />
-          <Text className="text-[13px] font-medium text-white/70">Cashless payment</Text>
+          <Text className={`text-[13px] font-medium ${offer.paymentMethod === 'cod' ? 'text-[#fe9a00]' : 'text-white/70'}`}>
+            {offer.paymentMethod === 'cod' ? `Collect ₹${formatCash(offer.cashToCollect)} cash` : 'Paid online'}
+          </Text>
         </View>
       </View>
 

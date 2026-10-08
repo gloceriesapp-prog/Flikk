@@ -64,6 +64,7 @@ export default function SettingsPage() {
     estimatedDeliveryMinutes: string;
     riderBasePayout: string;
     riderExtraStopPayout: string;
+    extraStopFee: string;
     defaultDeliveryRadiusKm: string;
     roadDistanceFactor: string;
     maxStoreSpreadKm: string;
@@ -91,6 +92,7 @@ export default function SettingsPage() {
         estimatedDeliveryMinutes: String(settings.estimatedDeliveryMinutes),
         riderBasePayout: String(settings.riderBasePayout),
         riderExtraStopPayout: String(settings.riderExtraStopPayout),
+        extraStopFee: String(settings.extraStopFee),
         defaultDeliveryRadiusKm: String(settings.defaultDeliveryRadiusKm),
         roadDistanceFactor: String(settings.roadDistanceFactor),
         maxStoreSpreadKm: String(settings.maxStoreSpreadKm),
@@ -144,6 +146,7 @@ export default function SettingsPage() {
       Number(draft.estimatedDeliveryMinutes) !== saved.estimatedDeliveryMinutes ||
       Number(draft.riderBasePayout) !== saved.riderBasePayout ||
       Number(draft.riderExtraStopPayout) !== saved.riderExtraStopPayout ||
+      Number(draft.extraStopFee) !== saved.extraStopFee ||
       Number(draft.defaultDeliveryRadiusKm) !== saved.defaultDeliveryRadiusKm ||
       Number(draft.roadDistanceFactor) !== saved.roadDistanceFactor ||
       Number(draft.maxStoreSpreadKm) !== saved.maxStoreSpreadKm ||
@@ -170,6 +173,7 @@ export default function SettingsPage() {
           estimatedDeliveryMinutes: Number(draft.estimatedDeliveryMinutes),
           riderBasePayout: Number(draft.riderBasePayout),
           riderExtraStopPayout: Number(draft.riderExtraStopPayout),
+          extraStopFee: Number(draft.extraStopFee),
           defaultDeliveryRadiusKm: Number(draft.defaultDeliveryRadiusKm),
           roadDistanceFactor: Number(draft.roadDistanceFactor),
           maxStoreSpreadKm: Number(draft.maxStoreSpreadKm),
@@ -337,6 +341,27 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
               <div>
+                <label htmlFor="extraStopFee" className="text-sm font-medium text-ink">Extra store fee</label>
+                <p className="text-xs text-muted">
+                  Charged to the customer for each store after the first in a multi-store order. Waived with free delivery.
+                </p>
+              </div>
+              <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
+                <span className="text-sm text-muted">₹</span>
+                <input
+                  id="extraStopFee"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={draft.extraStopFee}
+                  onChange={(e) => setDraft({ ...draft, extraStopFee: e.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+              <div>
                 <p className="text-sm font-medium text-ink">Handling fee</p>
                 <p className="text-xs text-muted">Charged on every order, regardless of free delivery.</p>
               </div>
@@ -382,7 +407,11 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
               <div>
                 <label htmlFor="riderBasePayout" className="text-sm font-medium text-ink">Minimum rider payout per delivery</label>
-                <p className="text-xs text-muted">The least a rider earns for one delivery, whatever the customer paid in delivery fee.</p>
+                <p className="text-xs text-muted">
+                  For each order or multi-store trip the rider earns the higher of this amount and the delivery fee the customer
+                  paid, so a free-delivery order still pays this amount. Set to 0 to pay riders exactly the delivery fee the customer paid
+                  (the per-extra-store payout below is then not added).
+                </p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
                 <span className="text-sm text-muted">₹</span>
@@ -400,7 +429,10 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
               <div>
                 <label htmlFor="riderExtraStopPayout" className="text-sm font-medium text-ink">Rider payout per extra store</label>
-                <p className="text-xs text-muted">Added to the rider&apos;s payout for each extra store pickup on a multi-store trip.</p>
+                <p className="text-xs text-muted">
+                  Added on top of the minimum payout for each store after the first on a multi-store trip. Applies only when the
+                  minimum rider payout is above 0.
+                </p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
                 <span className="text-sm text-muted">₹</span>

@@ -20,6 +20,7 @@ import {
   Store,
   Home,
   Wallet,
+  HandCoins,
 } from 'lucide-react';
 
 // Grouped sidebar sections, same "Menu" / "Insights" split as the
@@ -57,6 +58,7 @@ export const INSIGHTS_ITEMS: NavItem[] = [
   { href: '/customer-deletions', label: 'Account Deletions', icon: Users },
   { href: '/revenue', label: 'Revenue', icon: Banknote },
   { href: '/payouts', label: 'Payouts', icon: Wallet },
+  { href: '/cash-on-delivery', label: 'Cash on delivery', icon: HandCoins },
   { href: '/refunds', label: 'Refunds', icon: RotateCcw },
   { href: '/failed-deliveries', label: 'Failed Deliveries', icon: PackageX },
   { href: '/reviews', label: 'Reviews', icon: Star },

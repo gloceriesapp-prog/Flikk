@@ -33,11 +33,10 @@ export interface RiderOrder {
   storeCoords: Coordinates;
   customerName: string;
   customerAddress: string;
-  // Drop-nav extras — a nearby landmark and a free-text delivery instruction
-  // ("leave at door", "call on arrival"). No backend column for either yet
-  // (orders has no delivery-note field), so real assignments leave these
-  // undefined and DeliveryNavigationScreen falls back to placeholder copy.
-  // ponytail: drop the fallback once the customer app collects a real note.
+  // Drop-nav extras — the address's landmark and the customer's delivery
+  // instructions (addresses.landmark / addresses.delivery_instructions via
+  // GET /rider/assignments). Undefined when the customer gave none, and
+  // DeliveryNavigationScreen then hides that row.
   landmark?: string;
   deliveryNote?: string;
   customerCoords: Coordinates;
@@ -48,13 +47,14 @@ export interface RiderOrder {
   // cart from yet). Quantities always sum to itemCount, so the two never
   // disagree on-screen.
   items: OrderItemLine[];
-  // baseFare + distanceFare + surge always sums to payout — shown as an
-  // itemized breakup (OrderDetailScreen/EarningsScreen) instead of one bare
-  // number, since an unexplained payout figure is the single biggest
-  // driver of gig-app 1-star reviews.
+  // baseFare + extraStopFare + surge always sums to payout — shown as an
+  // itemized breakup (OrderDetailScreen/DeliveryCompleteScreen) instead of
+  // one bare number. Real values come from the backend's rider_payout split
+  // (the admin pay rule, or the recorded earning once delivered); on a trip
+  // every leg carries the whole trip's figures (utils/payout.ts).
   payout: number;
   baseFare: number;
-  distanceFare: number;
+  extraStopFare: number;
   surge: number;
   distanceKm: number;
   status: 'assigned' | 'picked_up' | 'arrived_at_customer' | 'delivered' | 'cancelled';
@@ -80,6 +80,11 @@ export interface RiderOrder {
   // than treating them as N unrelated deliveries that happen to arrive at
   // the same address.
   tripId?: string;
+  // Real orders.payment_method (backend GET /rider/assignments). 'cod' means
+  // the rider collects cashToCollect in cash at the door — the order total,
+  // or the whole trip total on every leg of a trip (not per leg).
+  paymentMethod: 'cod' | 'online';
+  cashToCollect: number;
 }
 
 const STORE_NAMES = ['Ganesh Kirana Store', 'Suvarna Supermarket', 'Kaup Fresh Mart', 'Udupi Daily Needs', 'Anantha Provision Store'];
@@ -147,7 +152,7 @@ function generateOrderItems(itemCount: number): OrderItemLine[] {
 export function generateMockOrder(): RiderOrder {
   orderSequence += 1;
   const distanceKm = Number((1 + Math.random() * 3.5).toFixed(1));
-  const distanceFare = Math.round(distanceKm * 8);
+  const extraStopFare = 0;
   // Surge fires ~1 in 4 orders — a flat "sometimes there's more" is enough
   // for a mock; a real surge model reads live demand, out of scope here.
   const surge = Math.random() < 0.25 ? 10 : 0;
@@ -165,13 +170,15 @@ export function generateMockOrder(): RiderOrder {
     customerPhone: randomPhone(),
     itemCount,
     items: generateOrderItems(itemCount),
-    payout: BASE_FARE + distanceFare + surge,
+    payout: BASE_FARE + extraStopFare + surge,
     baseFare: BASE_FARE,
-    distanceFare,
+    extraStopFare,
     surge,
     distanceKm,
     status: 'assigned',
     placedAt: new Date().toISOString(),
+    paymentMethod: 'cod',
+    cashToCollect: 100 + itemCount * 40,
   };
 }
 

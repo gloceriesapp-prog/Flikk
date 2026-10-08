@@ -35,6 +35,7 @@ import { formatDurationShort, isToday, todayLabel } from '../../utils/date';
 import type { AppStackParamList, AppTabParamList } from '../../navigation/types';
 import type { AcceptDispatchOfferResult, DispatchOffer } from '../../api/dispatch';
 import type { RiderOrder } from '../../data/mockOrders';
+import { totalPayout } from '../../utils/payout';
 
 // ponytail: __DEV__-only sample offer for the "Test" button below — lets us
 // pop the full-screen new-order UI without a live dispatch. coords null →
@@ -53,6 +54,8 @@ const DEMO_OFFER: DispatchOffer = {
   storeCoords: { latitude: 13.2167, longitude: 74.7469 },
   dropCoords: { latitude: 13.2231, longitude: 74.7512 },
   expiresAt: null, // no server deadline for a demo offer → ring uses its windowSeconds fallback
+  paymentMethod: 'cod',
+  cashToCollect: 420,
 };
 
 // Same page + earnings card as OfflineHomeScreen (one visual language across
@@ -82,7 +85,7 @@ export function HomeScreen() {
   // folded silently in — a real tip is the customer's own money on top of
   // the fare, not part of what the delivery itself earned
   // (data/mockOrders.ts's own note).
-  const todayEarnings = todayOrders.reduce((sum, order) => sum + order.payout, 0);
+  const todayEarnings = totalPayout(todayOrders.map((order) => ({ ...order, tip: undefined })));
   const todayTips = todayOrders.reduce((sum, order) => sum + (order.tip ?? 0), 0);
   const activeMs = useActiveMsToday();
   const [filter, setFilter] = useState<DeliveryFilter>('active');
@@ -112,9 +115,11 @@ export function HomeScreen() {
       distanceKm: o.totalKm,
       payout: o.payout,
       baseFare: 15,
-      distanceFare: Math.max(0, o.payout - 15),
+      extraStopFare: Math.max(0, o.payout - 15),
       surge: 0,
       placedAt: new Date().toISOString(),
+      paymentMethod: 'cod',
+      cashToCollect: 420,
     };
     useRiderOrdersStore.setState((s) => ({ activeOrders: [active, ...s.activeOrders.filter((o) => o.id !== active.id)] }));
     setFilter('active');
@@ -144,9 +149,11 @@ export function HomeScreen() {
       distanceKm: 4.1,
       payout: 35,
       baseFare: 15,
-      distanceFare: 20,
+      extraStopFare: 20,
       surge: 0,
       placedAt: new Date().toISOString(),
+      paymentMethod: 'cod',
+      cashToCollect: 420,
     };
     useRiderOrdersStore.setState((s) => ({
       activeOrders: [active, ...s.activeOrders.filter((o) => o.id !== id)],

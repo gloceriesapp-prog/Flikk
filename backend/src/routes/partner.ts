@@ -12,9 +12,17 @@ import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // visibility" shape as store onboarding itself (storeOnboarding.ts).
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
-import { replaceProductVariants } from '../db/productVariants.js';
+import { saveCatalogueProduct } from '../db/productVariants.js';
 import { AppError, asValidationError } from '../lib/errors.js';
-import { resolveEditImage, toProductRow, validateProductInput, type ProductInput } from '../lib/products.js';
+import {
+  resolveEditImage,
+  toProductPatchRow,
+  toProductRow,
+  toVariantPayload,
+  validateProductInput,
+  validateProductPatch,
+  type ProductInput,
+} from '../lib/products.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../lib/payoutAccount.js';
 import { decodeImage, toWebp } from '../utils/image.js';
@@ -399,18 +407,16 @@ partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
     // only. Admin's own POST /api/products (apps/admin) sets 'approved'
     // instead, since a founder adding a product for a store is already the
     // approval.
-    const { data: product, error } = await supabase
-      .from('products')
-      .insert({ ...toProductRow(input), approval_status: 'pending' })
-      .select()
-      .single();
-    if (error) throw error;
-
-    await replaceProductVariants(product.id, input.variants);
+    const productId = await saveCatalogueProduct({
+      productId: null,
+      storeScope: storeId,
+      fields: { ...toProductRow(input), approval_status: 'pending' },
+      variants: toVariantPayload(input.variants, input.stockQuantity),
+    });
     const { data, error: refetchError } = await supabase
       .from('products')
       .select('*, product_variants(*)')
-      .eq('id', product.id)
+      .eq('id', productId)
       .single();
     if (refetchError) throw refetchError;
 
@@ -423,41 +429,40 @@ partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
 partnerRouter.patch('/products/:id', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const input: Partial<ProductInput> = { ...req.body, storeId };
-    validateProductInput(input);
+    // A true partial update: only fields present in the body are written,
+    // so a partner edit never erases admin-set metadata (local_name,
+    // description, freshness_tag, is_veg) the partner app doesn't send.
+    // storeId is never taken from the body — the RPC scopes to this store.
+    const input: unknown = req.body;
+    validateProductPatch(input);
+    const fields: Record<string, unknown> = { ...toProductPatchRow(input) };
 
-    // scoped by store_id so a store owner cannot edit another store's product
-    // even with a guessed product id
-    const { data: current, error: fetchError } = await supabase
-      .from('products')
-      .select('image_url, approval_status')
-      .eq('id', req.params.id)
-      .eq('store_id', storeId)
-      .single();
-    if (fetchError || !current) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Not found for this store.');
+    if (input.imageUrl !== undefined) {
+      // scoped by store_id so a store owner cannot read another store's
+      // product even with a guessed product id
+      const { data: current, error: fetchError } = await supabase
+        .from('products')
+        .select('image_url, approval_status')
+        .eq('id', req.params.id)
+        .eq('store_id', storeId)
+        .single();
+      if (fetchError || !current) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Not found for this store.');
+      // An approved product is LIVE — a new photo can't overwrite image_url
+      // without admin consent, so it's queued in pending_image_url instead
+      // (see resolveEditImage). Every other field updates live as normal.
+      Object.assign(fields, resolveEditImage(current.image_url, current.approval_status, input.imageUrl));
+    }
 
-    // An approved product is LIVE — a new photo can't overwrite image_url
-    // without admin consent, so it's queued in pending_image_url instead
-    // (see resolveEditImage). Every other field updates live as normal.
-    const row = toProductRow(input);
-    const imageCols = resolveEditImage(current.image_url, current.approval_status, input.imageUrl);
-    delete (row as { image_url?: string | null }).image_url;
-    Object.assign(row, imageCols);
-
-    const { data: product, error } = await supabase
-      .from('products')
-      .update(row)
-      .eq('id', req.params.id)
-      .eq('store_id', storeId)
-      .select()
-      .single();
-    if (error || !product) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Not found for this store.');
-
-    await replaceProductVariants(product.id, input.variants);
+    const productId = await saveCatalogueProduct({
+      productId: String(req.params.id),
+      storeScope: storeId,
+      fields,
+      variants: input.variants ? toVariantPayload(input.variants, input.stockQuantity) : null,
+    });
     const { data, error: refetchError } = await supabase
       .from('products')
       .select('*, product_variants(*)')
-      .eq('id', product.id)
+      .eq('id', productId)
       .single();
     if (refetchError) throw refetchError;
 

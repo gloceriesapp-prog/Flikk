@@ -33,7 +33,13 @@ import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { colors } from '../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { useCatalogStore } from '../../store/useCatalogStore';
-import { standardSizeOptions, type ProductVariant } from '../catalog/data';
+import {
+  hasUncountedVariant,
+  standardSizeOptions,
+  withStockCount,
+  withStockToggle,
+  type ProductVariant,
+} from '../catalog/data';
 import { suggestedMrp } from '../catalog/pricing';
 import type { AppStackParamList } from '../../navigation/types';
 import { AddSizeButton } from './components/AddSizeButton';
@@ -70,7 +76,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
   function setVariantStock(variantId: string, isInStock: boolean) {
     Haptics.selectionAsync();
-    setDraft((prev) => prev.map((v) => (v.id === variantId ? { ...v, isInStock } : v)));
+    setDraft((prev) => prev.map((v) => (v.id === variantId ? withStockToggle(v, isInStock) : v)));
   }
 
   function setVariantPrice(variantId: string, rawPrice: string) {
@@ -93,9 +99,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   }
 
   function setVariantQuantity(variantId: string, rawQty: string) {
-    const digits = rawQty.replace(/[^0-9]/g, '');
-    const stockQuantity = digits === '' ? undefined : Number(digits);
-    setDraft((prev) => prev.map((v) => (v.id === variantId ? { ...v, stockQuantity } : v)));
+    setDraft((prev) => prev.map((v) => (v.id === variantId ? withStockCount(v, rawQty) : v)));
   }
 
   function addVariant(label: string) {
@@ -112,6 +116,12 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   }
 
   async function handleSave() {
+    // Customers can only order counted packs — a size without a count
+    // would stay unorderable, so ask for it before saving.
+    if (hasUncountedVariant(draft)) {
+      Alert.alert('Add stock counts', 'Enter how many packs you have for every size (0 if none).');
+      return;
+    }
     setSaving(true);
     try {
       await updateProduct(currentProduct.id, name.trim() || currentProduct.name, draft);

@@ -11,6 +11,7 @@
 import { ArrowRight01Icon, MapPinIcon, Navigation03Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
+import { CollectCashBanner } from '../../../components/CollectCashBanner';
 import { colors } from '../../../theme/tokens';
 import { openNavigation } from '../../../location/openNavigation';
 import type { RiderOrder } from '../../../data/mockOrders';
@@ -88,6 +89,8 @@ export function ActiveDeliveryCard({ order, onPress }: Props) {
             </View>
           </View>
         </View>
+
+        <CollectCashBanner paymentMethod={order.paymentMethod} cashToCollect={order.cashToCollect} compact />
 
         <View className="flex-row items-center justify-between border-t border-mist pt-3">
           <View className="flex-row items-center gap-2">

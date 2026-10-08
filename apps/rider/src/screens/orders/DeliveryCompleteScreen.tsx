@@ -9,11 +9,12 @@
 // DeliveryNavigation / DeliveryProof), so this matches its own siblings, not
 // the dark comp.
 //
-// Earnings are REAL order fields (mockOrders' generators): payout = baseFare +
-// distanceFare + surge. "Incentive" = surge (shown only when > 0). Distance =
-// distanceKm; Time = etaMinutes(distanceKm) (straight-line ETA, same caveat as
-// everywhere else). For a multi-store trip the figures sum across every leg —
-// one combined payout per trip, same rule the store's payout logic uses.
+// Earnings are the backend's rider payout for this order or whole trip:
+// payout = baseFare + extraStopFare + surge. "Incentive" = surge (shown only
+// when > 0). Distance = distanceKm; Time = etaMinutes(distanceKm)
+// (straight-line ETA, same caveat as everywhere else). Every trip leg carries
+// the whole trip's payout, so money is counted once per trip
+// (utils/payout.ts) while distance sums across legs.
 // "Today's total" sums every delivery completed today from the persisted
 // history.
 
@@ -28,6 +29,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors } from '../../theme/tokens';
 import { etaMinutes } from '../../utils/geo';
 import { isToday } from '../../utils/date';
+import { totalPayout } from '../../utils/payout';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -63,17 +65,16 @@ export function DeliveryCompleteScreen({ route, navigation }: Props) {
   // Guard an impossible-but-typed empty tripLegs so the sums below never read
   // undefined. A gone order just shows zeros behind the tick + a way home.
   const sum = (pick: (o: (typeof tripLegs)[number]) => number) => tripLegs.reduce((t, o) => t + pick(o), 0);
-  const earning = sum((o) => o.payout + (o.tip ?? 0));
-  const basePay = sum((o) => o.baseFare);
-  const distancePay = sum((o) => o.distanceFare);
-  const incentive = sum((o) => o.surge);
+  const receipt = tripLegs[0];
+  const earning = receipt ? receipt.payout + (receipt.tip ?? 0) : 0;
+  const basePay = receipt?.baseFare ?? 0;
+  const extraStopPay = receipt?.extraStopFare ?? 0;
+  const incentive = receipt?.surge ?? 0;
   const distance = sum((o) => o.distanceKm);
   const time = etaMinutes(distance);
 
   // Every delivery banked today (this one included — it's in completedOrders).
-  const todaysTotal = completedOrders
-    .filter((o) => o.deliveredAt && isToday(o.deliveredAt))
-    .reduce((t, o) => t + o.payout + (o.tip ?? 0), 0);
+  const todaysTotal = totalPayout(completedOrders.filter((o) => o.deliveredAt && isToday(o.deliveredAt)));
 
   useEffect(() => {
     return () => player.release();
@@ -101,7 +102,7 @@ export function DeliveryCompleteScreen({ route, navigation }: Props) {
 
           <View className="gap-2">
             <Row label="Base pay" value={rupee(basePay)} />
-            <Row label="Distance pay" value={rupee(distancePay)} />
+            {extraStopPay > 0 ? <Row label="Extra stores" value={rupee(extraStopPay)} /> : null}
             {incentive > 0 ? <Row label="Incentive" value={`+${rupee(incentive)}`} accent /> : null}
           </View>
 

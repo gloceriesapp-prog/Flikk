@@ -1,36 +1,31 @@
 // Server-side update for one product — same service_role rationale as
-// app/api/products/route.ts's own note. Variants are replaced wholesale
-// (delete then reinsert), not diffed — same call as
-// backend/src/db/productVariants.ts's own note: a size list changes rarely
-// and entirely, so the simpler approach is also the correct one here.
+// app/api/products/route.ts's own note. The product row and its packs are
+// saved in ONE transaction by save_catalogue_product (lib/catalogueSave.ts):
+// packs are diffed by id/size, so editing a price keeps every pack's
+// counted stock, and removing a pack an active order reserves is refused
+// (409) without touching the product row.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { catalogueErrorStatus, saveCatalogueProduct } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
-import { toProductRow, toVariantRows, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
+import { toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[id]'>) {
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
   const { id } = await ctx.params;
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
 
   try {
-    const input: Partial<ProductWriteInput> = body;
+    const input: Partial<ProductWriteInput> = body ?? {};
     validateProductInput(input);
 
     // toProductRow always writes image_url, so the admin's chosen image
     // supersedes any partner-submitted pending photo — clear it in the same
-    // update (see app/api/products/[id]/image-review for the review path).
-    const { error } = await supabaseAdmin
-      .from('products')
-      .update({ ...toProductRow(input), pending_image_url: null })
-      .eq('id', id);
-    if (error) throw error;
-
-    const { error: deleteError } = await supabaseAdmin.from('product_variants').delete().eq('product_id', id);
-    if (deleteError) throw deleteError;
-
-    const { error: insertError } = await supabaseAdmin.from('product_variants').insert(toVariantRows(id, input.variants));
-    if (insertError) throw insertError;
+    // save (see app/api/products/[id]/image-review for the review path).
+    await saveCatalogueProduct(id, { ...toProductRow(input), pending_image_url: null }, toVariantPayload(input.variants));
 
     const { data, error: refetchError } = await supabaseAdmin.from('products').select(PRODUCT_SELECT).eq('id', id).single();
     if (refetchError) throw refetchError;
@@ -38,6 +33,6 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[
     return NextResponse.json(mapRowToProduct(data as unknown as ProductRow));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not save changes.';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: catalogueErrorStatus(err) });
   }
 }

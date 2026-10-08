@@ -9,6 +9,7 @@
 import { ArrowRight01Icon, Location01Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
+import { CollectCashBanner } from '../../../components/CollectCashBanner';
 import { colors } from '../../../theme/tokens';
 import type { RiderOrder } from '../../../data/mockOrders';
 
@@ -79,6 +80,9 @@ export function MultiStopJobCard({ legs, onPress }: Props) {
             <Text className="flex-1 text-[13px] font-semibold text-ink" numberOfLines={1}>{legs[0]!.customerName}</Text>
           </View>
         </View>
+
+        {/* Trip-level cash: the same whole-trip amount on every leg. */}
+        <CollectCashBanner paymentMethod={legs[0]!.paymentMethod} cashToCollect={legs[0]!.cashToCollect} compact />
 
         <View className="flex-row items-center justify-between border-t border-ink/[0.06] pt-3">
           <View className="flex-row items-center gap-1.5">

@@ -14,8 +14,9 @@ export interface ProductVariant {
   label: string;
   price: number;
   isInStock: boolean;
-  // Optional — a shop owner may not always know or care to track an exact
-  // count. `undefined` means "not tracked", not "zero".
+  // Counted retail packs of THIS size on hand (product_variants.
+  // stock_quantity). Checkout only sells counted packs, so the add/edit
+  // screens require it; `undefined` means "never counted", not "zero".
   stockQuantity?: number;
   // Optional MRP — undefined means "no MRP set", not zero/free. Auto-
   // suggested per category (pricing.ts's own suggestedMrp) the moment a
@@ -33,6 +34,9 @@ export interface PartnerProduct {
   isInStock: boolean;
   variants: ProductVariant[];
   imageUrl: string | null;
+  // Total counted packs across sizes (products.stock_quantity), null when
+  // the shop has never confirmed stock for this product.
+  stockQuantity: number | null;
   // 'pending' the moment this store owner adds it (POST /partner/products
   // always inserts pending — backend/src/routes/partner.ts's own note) —
   // invisible to customers until a founder approves it in admin.
@@ -113,10 +117,15 @@ export const CATALOG_LAST_UPDATED_LABEL = 'Updated 1 Jun, 26';
 // screen's own label-based ProductVariant editing UI.
 export type BackendUnitType = 'g' | 'kg' | 'ml' | 'l' | 'pc';
 export interface BackendVariantInput {
+  // Real product_variants.id when editing a loaded pack, so the backend
+  // updates it in place (keeping its stock) instead of replacing it.
+  id?: string;
   unitType: BackendUnitType;
   quantity: number;
   price: number;
   originalPrice?: number;
+  // Counted packs on hand for this size; enables stock tracking.
+  stockQuantity?: number;
 }
 
 // Every label this screen ever produces comes from standardSizeOptions
@@ -124,10 +133,43 @@ export interface BackendVariantInput {
 // parse is exhaustive over what a shop owner can actually pick, not a
 // general-purpose unit parser.
 export function parseVariantLabel(label: string, price: number, originalPrice?: number): BackendVariantInput {
-  const match = /^(\d+(?:\.\d+)?)\s*(g|kg|ml|l)$/i.exec(label.trim());
+  const match = /^(\d+(?:\.\d+)?)\s*(g|kg|ml|l|pc)$/i.exec(label.trim());
   if (!match) throw new Error(`Unrecognized size "${label}".`);
   const [, qty, unit] = match;
   return { unitType: unit.toLowerCase() as BackendUnitType, quantity: Number(qty), price, originalPrice };
+}
+
+const PACK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// What add/edit actually send per size: the parsed label + price, the real
+// pack id (local draft ids like "new-500 g-…" are never sent) and the count.
+export function toBackendVariant(variant: ProductVariant): BackendVariantInput {
+  const input = parseVariantLabel(variant.label, variant.price, variant.originalPrice);
+  if (PACK_ID.test(variant.id)) input.id = variant.id;
+  if (variant.stockQuantity !== undefined) input.stockQuantity = variant.stockQuantity;
+  return input;
+}
+
+// Checkout refuses packs whose stock was never confirmed, so a product is
+// only saved once every size has a count (0 is a valid count).
+export function hasUncountedVariant(variants: ProductVariant[]): boolean {
+  return variants.some((v) => v.stockQuantity === undefined);
+}
+
+// The Available / Out of stock toggle and the count field drive each other:
+// "Out of stock" is a count of 0, and a count above 0 is available.
+// Switching a 0-count size back to Available clears the count so the shop
+// owner types how many packs they actually have.
+export function withStockToggle(variant: ProductVariant, isInStock: boolean): ProductVariant {
+  if (!isInStock) return { ...variant, isInStock, stockQuantity: 0 };
+  return { ...variant, isInStock, stockQuantity: variant.stockQuantity === 0 ? undefined : variant.stockQuantity };
+}
+
+export function withStockCount(variant: ProductVariant, rawCount: string): ProductVariant {
+  const digits = rawCount.replace(/[^0-9]/g, '');
+  if (digits === '') return { ...variant, stockQuantity: undefined };
+  const stockQuantity = Number(digits);
+  return { ...variant, stockQuantity, isInStock: stockQuantity > 0 };
 }
 
 // A partner app's catalog is one store's own listing — there's no

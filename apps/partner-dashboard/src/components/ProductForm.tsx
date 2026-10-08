@@ -12,8 +12,8 @@ interface Props {
 }
 
 const UNIT_TYPES: UnitType[] = ['g', 'kg', 'ml', 'l', 'pc'];
-// Derived-status readout shown under the quantity input — label + dot color
-// per state. Status itself is computed from quantity (deriveStockStatus),
+// Derived-status readout for the total of every size's pack count — label +
+// dot color per state. Status is computed from the counts (deriveStockStatus),
 // never picked by hand, so the number and the label can't disagree.
 const STATUS_DISPLAY: Record<StockStatus, { label: string; text: string; dot: string }> = {
   in_stock: { label: 'In stock', text: 'text-emerald-600', dot: 'bg-emerald-500' },
@@ -21,34 +21,47 @@ const STATUS_DISPLAY: Record<StockStatus, { label: string; text: string; dot: st
   out_of_stock: { label: 'Out of stock', text: 'text-red-600', dot: 'bg-red-500' },
 };
 
-// One row of the variants editor — a local id (not sent to the backend)
-// so React can key/remove rows before they have a real identity; string
-// inputs so an emptied field doesn't collapse to a stray "0" mid-edit.
+// One row of the variants editor — a local key so React can key/remove
+// rows before they have a real identity, plus the real pack id when the row
+// was loaded (sent so the backend edits that pack in place, keeping its
+// stock); string inputs so an emptied field doesn't collapse to a stray "0".
 interface VariantRow {
   key: string;
+  id?: string;
   unitType: UnitType;
   quantity: string;
   price: string;
   originalPrice: string;
+  stock: string;
 }
 
 let variantRowSeq = 0;
 function newVariantRow(seed?: Partial<VariantRow>): VariantRow {
-  return { key: `row-${++variantRowSeq}`, unitType: 'kg', quantity: '', price: '', originalPrice: '', ...seed };
+  return { key: `row-${++variantRowSeq}`, unitType: 'kg', quantity: '', price: '', originalPrice: '', stock: '', ...seed };
+}
+
+function parseStock(value: string): number | null {
+  const count = Number(value);
+  return value !== '' && Number.isInteger(count) && count >= 0 ? count : null;
 }
 
 function variantRowsFromProduct(product?: PartnerProduct): VariantRow[] {
   if (!product?.product_variants.length) return [newVariantRow()];
   return [...product.product_variants]
     .sort((a, b) => (a.is_default ? -1 : b.is_default ? 1 : 0))
-    .map((v) =>
-      newVariantRow({
+    .map((v, _index, all) => {
+      // A single uncounted pack was tracked at product level before per-pack
+      // counts existed — prefill that count rather than an empty field.
+      const count = v.stock_quantity ?? (all.length === 1 ? product.stock_quantity : null);
+      return newVariantRow({
+        id: v.id,
         unitType: v.unit_type,
         quantity: String(v.quantity),
         price: String(v.price),
         originalPrice: v.original_price != null ? String(v.original_price) : '',
-      }),
-    );
+        stock: count != null ? String(count) : '',
+      });
+    });
 }
 
 export function ProductForm({ initial, onSubmit, onCancel }: Props) {
@@ -56,7 +69,6 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
   const [category, setCategory] = useState(initial?.category ?? '');
   const [imageUrl, setImageUrl] = useState(initial?.image_url ?? '');
   const [isVeg, setIsVeg] = useState(initial?.is_veg ?? true);
-  const [stockQuantity, setStockQuantity] = useState(initial?.stock_quantity != null ? String(initial.stock_quantity) : '');
   const [variants, setVariants] = useState<VariantRow[]>(() => variantRowsFromProduct(initial));
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,12 +105,6 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
     e.preventDefault();
     if (isSubmitting) return;
 
-    const quantity = Number(stockQuantity);
-    if (stockQuantity === '' || !Number.isInteger(quantity) || quantity < 0) {
-      setError('Enter the stock quantity as a whole number (0 or more).');
-      return;
-    }
-
     const parsedVariants: VariantInput[] = [];
     for (const v of variants) {
       const quantity = Number(v.quantity);
@@ -111,13 +117,21 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
         setError(`Enter a valid price for the ${quantity} ${v.unitType} size.`);
         return;
       }
+      const stock = parseStock(v.stock);
+      if (stock == null) {
+        setError(`Enter the packs in stock for the ${quantity} ${v.unitType} size as a whole number (0 or more).`);
+        return;
+      }
       parsedVariants.push({
+        id: v.id,
         unitType: v.unitType,
         quantity,
         price,
         originalPrice: v.originalPrice ? Number(v.originalPrice) : undefined,
+        stockQuantity: stock,
       });
     }
+    const totalStock = parsedVariants.reduce((sum, v) => sum + (v.stockQuantity ?? 0), 0);
 
     setIsSubmitting(true);
     setError(null);
@@ -125,8 +139,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
       await onSubmit({
         name,
         category,
-        stockQuantity: quantity,
-        stockStatus: deriveStockStatus(quantity),
+        stockStatus: deriveStockStatus(totalStock),
         imageUrl: imageUrl || undefined,
         isVeg,
         variants: parsedVariants,
@@ -148,25 +161,21 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
       </Field>
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Stock quantity">
-          <input
-            type="number"
-            min="0"
-            step="1"
-            required
-            placeholder="Units on hand"
-            value={stockQuantity}
-            onChange={(e) => setStockQuantity(e.target.value)}
-            className="input"
-          />
-          {stockQuantity !== '' && Number.isInteger(Number(stockQuantity)) && Number(stockQuantity) >= 0 ? (
-            <span className={`mt-1 inline-flex items-center gap-1.5 text-xs font-semibold ${STATUS_DISPLAY[deriveStockStatus(Number(stockQuantity))].text}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DISPLAY[deriveStockStatus(Number(stockQuantity))].dot}`} />
-              {STATUS_DISPLAY[deriveStockStatus(Number(stockQuantity))].label}
-            </span>
-          ) : (
-            <span className="mt-1 text-xs text-neutral-400">Status is set automatically from the quantity.</span>
-          )}
+        <Field label="Stock (all sizes)">
+          {(() => {
+            const counts = variants.map((v) => parseStock(v.stock));
+            if (counts.some((c) => c == null)) {
+              return <span className="flex h-[42px] items-center text-xs text-neutral-400">Enter packs in stock for each size below.</span>;
+            }
+            const total = counts.reduce<number>((sum, c) => sum + (c ?? 0), 0);
+            const status = STATUS_DISPLAY[deriveStockStatus(total)];
+            return (
+              <span className={`flex h-[42px] items-center gap-1.5 text-sm font-semibold ${status.text}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                {total} packs · {status.label}
+              </span>
+            );
+          })()}
         </Field>
         <Field label="Veg / non-veg">
           <div className="flex h-[42px] items-center gap-4">
@@ -220,7 +229,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
 
         <div className="flex flex-col gap-2">
           {variants.map((v) => (
-            <div key={v.key} className="grid grid-cols-[0.9fr_1fr_1fr_1fr_28px] items-center gap-2">
+            <div key={v.key} className="grid grid-cols-[0.9fr_1fr_1fr_1fr_1fr_28px] items-center gap-2">
               <select
                 value={v.unitType}
                 onChange={(e) => updateVariant(v.key, { unitType: e.target.value as UnitType })}
@@ -257,6 +266,16 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
                 placeholder="MRP ₹ (optional)"
                 value={v.originalPrice}
                 onChange={(e) => updateVariant(v.key, { originalPrice: e.target.value })}
+                className="input"
+              />
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                placeholder="Packs in stock"
+                value={v.stock}
+                onChange={(e) => updateVariant(v.key, { stock: e.target.value })}
                 className="input"
               />
               <button

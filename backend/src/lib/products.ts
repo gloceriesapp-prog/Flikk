@@ -43,10 +43,17 @@ export function deriveStockStatus(quantity: number): StockStatus {
 // base price by quantity (a 1kg pack isn't always exactly 4x a 250g pack in
 // a real kirana store's pricing, bulk discounts and rounding both apply).
 export interface VariantInput {
+  // Existing product_variants.id when editing a pack the client loaded —
+  // lets save_catalogue_product (migration 111) update that pack in place.
+  // Absent/unknown ids fall back to matching by size, then insert.
+  id?: string | null;
   unitType: UnitType;
   quantity: number;
   price: number;
   originalPrice?: number | null;
+  // Counted retail packs on hand for THIS size. Absent/null on an existing
+  // pack keeps its current count; a number sets it and enables tracking.
+  stockQuantity?: number | null;
 }
 
 // What a caller (partner or admin route) sends in. storeId is intentionally
@@ -100,19 +107,6 @@ export interface ProductRow {
   description: string | null;
 }
 
-// product_variants' own column shape. product_id is filled in by the route
-// after the parent product insert returns its generated id — toVariantRows
-// takes it as a parameter rather than expecting it on VariantInput, since
-// it doesn't exist yet at validation time for a brand-new product.
-export interface ProductVariantRow {
-  product_id: string;
-  unit_type: UnitType;
-  quantity: number;
-  price: number;
-  original_price: number | null;
-  is_default: boolean;
-}
-
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
@@ -134,6 +128,19 @@ function validateVariant(variant: Partial<VariantInput>, index: number): asserts
   ) {
     throw new Error(`${label}.originalPrice must be a non-negative number when set.`);
   }
+  if (variant.stockQuantity != null && (!Number.isSafeInteger(variant.stockQuantity) || variant.stockQuantity < 0)) {
+    throw new Error(`${label}.stockQuantity must be a non-negative whole number when set.`);
+  }
+  if (variant.id != null && typeof variant.id !== 'string') throw new Error(`${label}.id must be a string when set.`);
+}
+
+function validateVariants(variants: unknown): asserts variants is VariantInput[] {
+  if (!Array.isArray(variants) || variants.length === 0) {
+    throw new Error('At least one size (variants) is required.');
+  }
+  variants.forEach((variant: Partial<VariantInput>, index) => validateVariant(variant, index));
+  const sizes = new Set(variants.map((v: VariantInput) => `${v.unitType}:${v.quantity}`));
+  if (sizes.size !== variants.length) throw new Error('Each size can only be listed once.');
 }
 
 // Throws a plain Error with a message safe to surface to the caller (the
@@ -151,10 +158,33 @@ export function validateProductInput(input: Partial<ProductInput>): asserts inpu
   if (input.stockQuantity != null && (!Number.isInteger(input.stockQuantity) || input.stockQuantity < 0)) {
     throw new Error('stockQuantity must be a non-negative whole number when set.');
   }
-  if (!Array.isArray(input.variants) || input.variants.length === 0) {
-    throw new Error('At least one size (variants) is required.');
+  validateVariants(input.variants);
+}
+
+const OPTIONAL_TEXT_FIELDS = ['imageUrl', 'localName', 'freshnessTag', 'description'] as const;
+
+// PATCH body: every field optional, and only fields that are PRESENT are
+// validated and written (toProductPatchRow) — a client that doesn't know
+// about a column (the partner app has no local_name/description/is_veg UI)
+// must never erase what an admin set there.
+export type ProductPatchInput = Partial<Omit<ProductInput, 'storeId'>>;
+
+export function validateProductPatch(input: unknown): asserts input is ProductPatchInput {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Product changes must be an object.');
+  const patch = input as Record<string, unknown>;
+  if ('name' in patch && (typeof patch.name !== 'string' || !patch.name.trim())) throw new Error('name is required.');
+  if ('category' in patch && (typeof patch.category !== 'string' || !patch.category.trim())) throw new Error('category is required.');
+  if ('stockStatus' in patch && !STOCK_STATUSES.includes(patch.stockStatus as StockStatus)) {
+    throw new Error(`stockStatus must be one of: ${STOCK_STATUSES.join(', ')}.`);
   }
-  input.variants.forEach((variant, index) => validateVariant(variant, index));
+  if (patch.stockQuantity != null && (!Number.isSafeInteger(patch.stockQuantity) || (patch.stockQuantity as number) < 0)) {
+    throw new Error('stockQuantity must be a non-negative whole number when set.');
+  }
+  if ('isVeg' in patch && typeof patch.isVeg !== 'boolean') throw new Error('isVeg must be true or false.');
+  for (const field of OPTIONAL_TEXT_FIELDS) {
+    if (patch[field] != null && typeof patch[field] !== 'string') throw new Error(`${field} must be text when set.`);
+  }
+  if ('variants' in patch) validateVariants(patch.variants);
 }
 
 // "250 g" / "1 kg" / "500 ml" / "1 L" / "2 pc" — kg and l are the only unit
@@ -212,15 +242,60 @@ export function toProductRow(input: ProductInput): ProductRow {
   return row;
 }
 
-export function toVariantRows(productId: string, variants: VariantInput[]): ProductVariantRow[] {
-  return variants.map((variant, index) => ({
-    product_id: productId,
-    unit_type: variant.unitType,
-    quantity: variant.quantity,
-    price: variant.price,
-    original_price: resolveOriginalPrice(variant.price, variant.originalPrice),
-    is_default: index === 0,
-  }));
+// Row for save_catalogue_product's partial update (migration 111): only the
+// columns whose input field is present. image_url is deliberately left out —
+// partner edits route it through resolveEditImage, admin edits add it back.
+export function toProductPatchRow(input: ProductPatchInput): Partial<ProductRow> {
+  const row: Partial<ProductRow> = {};
+  if (input.name !== undefined) row.name = input.name.trim();
+  if (input.category !== undefined) row.category = input.category.trim();
+  if (input.stockStatus !== undefined) row.stock_status = input.stockStatus;
+  if (input.localName !== undefined) row.local_name = input.localName?.trim() || null;
+  if (input.isVeg !== undefined) row.is_veg = input.isVeg;
+  if (input.freshnessTag !== undefined) row.freshness_tag = input.freshnessTag?.trim() || null;
+  if (input.description !== undefined) row.description = input.description?.trim() || null;
+  const defaultVariant = input.variants?.[0];
+  if (defaultVariant) {
+    row.unit = formatVariantUnit(defaultVariant);
+    row.price = defaultVariant.price;
+    row.original_price = resolveOriginalPrice(defaultVariant.price, defaultVariant.originalPrice);
+  }
+  if (input.stockQuantity != null && !(input.variants?.length === 1)) {
+    row.stock_quantity = input.stockQuantity;
+    row.stock_tracking_enabled = true;
+    row.stock_status = deriveStockStatus(input.stockQuantity);
+  }
+  return row;
+}
+
+// One pack as save_catalogue_product expects it (snake_case jsonb).
+export interface VariantPayload {
+  id?: string;
+  unit_type: UnitType;
+  quantity: number;
+  price: number;
+  original_price: number | null;
+  stock_quantity?: number;
+}
+
+// variants[0] is the default pack (the RPC sets is_default by position).
+// stock_quantity is only sent when the client sent a count, so an edit that
+// doesn't mention stock keeps every pack's counted stock. A product-level
+// stockQuantity (older partner-dashboard builds) on a single-pack product
+// is that pack's count — the same rule set_product_pack_stock enforces.
+export function toVariantPayload(variants: VariantInput[], productStockQuantity?: number | null): VariantPayload[] {
+  return variants.map((variant, index) => {
+    const payload: VariantPayload = {
+      unit_type: variant.unitType,
+      quantity: variant.quantity,
+      price: variant.price,
+      original_price: resolveOriginalPrice(variant.price, variant.originalPrice),
+    };
+    if (variant.id) payload.id = variant.id;
+    const count = variant.stockQuantity ?? (variants.length === 1 && index === 0 ? productStockQuantity : null);
+    if (count != null) payload.stock_quantity = count;
+    return payload;
+  });
 }
 
 // Edit-image gate: an approved (live) product's image_url must never change

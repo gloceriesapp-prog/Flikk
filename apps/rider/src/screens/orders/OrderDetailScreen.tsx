@@ -23,6 +23,7 @@ import { ArrowLeft01Icon, Call02Icon, Navigation03Icon, PackageIcon, Store01Icon
 import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { CollectCashBanner } from '../../components/CollectCashBanner';
 import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors, shadow } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
@@ -255,6 +256,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             </View>
           )}
 
+          <CollectCashBanner paymentMethod={order.paymentMethod} cashToCollect={order.cashToCollect} />
+
           {/* Package/payout row — same data the old scroll-list screen
               showed, surfaced here instead so the card isn't just a name
               and a button: a rider glancing at this wants to know what
@@ -266,7 +269,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
                 {order.itemCount + siblingLegs.reduce((sum, leg) => sum + leg.itemCount, 0)} items · {order.distanceKm} km
               </Text>
             </View>
-            <Text className="text-[16px] font-bold text-ink">₹{order.payout + siblingLegs.reduce((sum, leg) => sum + leg.payout, 0)}</Text>
+            <Text className="text-[16px] font-bold text-ink">₹{order.payout}</Text>
           </View>
 
           <View className="flex-row gap-3">
@@ -389,6 +392,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           </Pressable>
         )}
 
+        <CollectCashBanner paymentMethod={order.paymentMethod} cashToCollect={order.cashToCollect} />
+
         <View className="gap-2.5 rounded-2xl bg-white px-4 py-3.5">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
@@ -428,8 +433,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
               <Text className="text-[13px] text-ink/70 font-medium">₹{order.baseFare}</Text>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-[13px] text-ink/60 font-medium">Distance</Text>
-              <Text className="text-[13px] text-ink/70 font-medium">₹{order.distanceFare}</Text>
+              <Text className="text-[13px] text-ink/60 font-medium">Extra stores</Text>
+              <Text className="text-[13px] text-ink/70 font-medium">₹{order.extraStopFare}</Text>
             </View>
             <View
               className={`flex-row items-center justify-between rounded-lg px-2 py-1 ${order.surge > 0 ? 'bg-surge-soft' : 'bg-mist'}`}
