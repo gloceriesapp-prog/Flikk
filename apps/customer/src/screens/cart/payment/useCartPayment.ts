@@ -259,7 +259,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       }
 
       // An app that couldn't be launched falls back to Cashfree's UPI checkout.
-      const modes: CheckoutMode[] | undefined = upiApp || paymentMethod === 'upi_other' ? ['UPI']
+      const modes: CheckoutMode[] | undefined = upiApp ? ['UPI']
         : paymentMethod === 'card' ? ['CARD'] : paymentMethod === 'netbanking' ? ['NB'] : undefined;
       await payViaCashfreeCheckout(paymentMethod === 'online' || upiApp ? 'Online payment' : paymentMethodLabel(paymentMethod, upiApps), modes);
     } catch (err) {
