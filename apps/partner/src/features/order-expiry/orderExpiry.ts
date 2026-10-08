@@ -1,18 +1,50 @@
 import type { PartnerOrder } from '../../screens/orders/data';
+import { apiRequest } from '../../api/client';
 
-// Updated to 10 minutes (10 * 60 * 1000)
-export const ORDER_ACCEPT_WINDOW_MS = 10 * 60 * 1000;
+// The accept window is the admin-set delivery_settings
+// .store_response_timeout_minutes (default 10), served by GET
+// /delivery-settings. The backend worker (jobs/storeNoResponse.ts) cancels an
+// unanswered order after the same window even when this app is closed; this
+// client timer just reacts sooner while the app is open.
+export const DEFAULT_ACCEPT_WINDOW_MINUTES = 10;
+let acceptWindowMs = DEFAULT_ACCEPT_WINDOW_MINUTES * 60 * 1000;
 
-// Adjusted reminder checkpoints across the 10-minute window
-export const REMINDER_CHECKPOINTS_MS = [3 * 60 * 1000, 6 * 60 * 1000, 8.5 * 60 * 1000] as const;
+export function getOrderAcceptWindowMs(): number {
+  return acceptWindowMs;
+}
+
+export function setOrderAcceptWindowMinutes(minutes: unknown): void {
+  if (typeof minutes === 'number' && Number.isInteger(minutes) && minutes >= 3 && minutes <= 120) {
+    acceptWindowMs = minutes * 60 * 1000;
+  }
+}
+
+// Best-effort: on failure the default (and the server job) still apply.
+export async function loadOrderAcceptWindow(): Promise<void> {
+  try {
+    const settings = await apiRequest<{ storeResponseTimeoutMinutes?: number }>('/delivery-settings');
+    setOrderAcceptWindowMinutes(settings?.storeResponseTimeoutMinutes);
+  } catch {
+    // Keep the current window.
+  }
+}
+
+// Reminder checkpoints at 30%, 60% and 85% of the window (3, 6 and 8.5
+// minutes of the default 10).
+export const REMINDER_CHECKPOINT_FRACTIONS = [0.3, 0.6, 0.85] as const;
+export function getReminderCheckpointsMs(): number[] {
+  return REMINDER_CHECKPOINT_FRACTIONS.map((fraction) => fraction * acceptWindowMs);
+}
 export type ReminderStage = 'first' | 'final';
 
+// The window starts when the order reached the store (orders.store_visible_at:
+// checkout for COD, payment for online), the same anchor the server job uses.
 export function getElapsedMs(order: PartnerOrder, now: number = Date.now()): number {
-  return now - order.placedAtTimestamp;
+  return now - (order.acceptWindowStartTimestamp ?? order.placedAtTimestamp);
 }
 
 export function getRemainingAcceptMs(order: PartnerOrder, now: number = Date.now()): number {
-  return Math.max(0, ORDER_ACCEPT_WINDOW_MS - getElapsedMs(order, now));
+  return Math.max(0, acceptWindowMs - getElapsedMs(order, now));
 }
 
 export function hasAcceptWindowExpired(order: PartnerOrder, now: number = Date.now()): boolean {

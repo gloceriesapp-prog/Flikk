@@ -36,6 +36,8 @@ export interface ApiOrder {
   commission_amount: number;
   provider_payment_id: string | null;
   placed_at: string;
+  // migration 109 — when the order reached the store (accept window start).
+  store_visible_at?: string | null;
   packed_at: string | null;
   delivered_at: string | null;
   order_items: ApiOrderItem[];

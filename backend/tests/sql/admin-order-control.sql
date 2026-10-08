@@ -4,7 +4,8 @@ BEGIN;
 DO $$ DECLARE f text; BEGIN
  FOREACH f IN ARRAY ARRAY['admin_assign_order_rider(uuid,uuid,text)','admin_cancel_order(uuid,text,text)','admin_advance_order_status(uuid,text,text,text)',
   'admin_unassign_rider(uuid,text,text)','admin_reassign_rider(uuid,uuid,text,text)','cancel_trip_from_leg(uuid,text,text)',
-  'admin_reissue_delivery_code(uuid,uuid,text)','admin_approve_trip_failure_refund(uuid,bigint,text)'] LOOP
+  'admin_reissue_delivery_code(uuid,uuid,text)','admin_approve_trip_failure_refund(uuid,bigint,text)',
+  'cancel_unanswered_store_orders(integer)'] LOOP
   IF has_function_privilege('anon',f,'EXECUTE') OR has_function_privilege('authenticated',f,'EXECUTE') THEN RAISE EXCEPTION '% exposed to API roles',f; END IF;
   IF NOT has_function_privilege('service_role',f,'EXECUTE') THEN RAISE EXCEPTION 'service_role cannot run %',f; END IF;
  END LOOP;
@@ -207,5 +208,49 @@ DO $$ DECLARE r jsonb; BEGIN
  OR NOT EXISTS(SELECT 1 FROM admin_order_actions WHERE trip_id='00000000-0000-4000-8000-000000009006' AND action='trip_failure_refund' AND to_value='4500') THEN RAISE EXCEPTION 'Trip refund not single or not audited'; END IF;
 END $$;
 
+-- B5: the store_no_response job cancels only paid/COD orders still placed past the window.
+DO $$ DECLARE r jsonb; BEGIN
+ -- Visibility stamps: COD on insert, online only once paid.
+ SET LOCAL session_replication_role=replica;
+ INSERT INTO trips(id,customer_id,address_id,delivery_fee,item_total,total,provider_payment_id)
+  VALUES('00000000-0000-4000-8000-000000009007','00000000-0000-4000-8000-000000009c01','00000000-0000-4000-8000-000000009b01',40,20,60,'pay_admin_trip_7');
+ INSERT INTO orders(id,trip_id,customer_id,store_id,address_id,item_total,delivery_fee,commission_amount,total,payment_method,provider_payment_id,status,placed_at,store_visible_at)
+  SELECT ('00000000-0000-4000-8000-0000000094'||n)::uuid,CASE WHEN n IN('71','72') THEN '00000000-0000-4000-8000-000000009007'::uuid END,
+   '00000000-0000-4000-8000-000000009c01',CASE WHEN n='72' THEN '00000000-0000-4000-8000-000000009f02'::uuid ELSE '00000000-0000-4000-8000-000000009f01'::uuid END,
+   '00000000-0000-4000-8000-000000009b01',10,20,1,30,
+   CASE WHEN n IN('02','03','71','72') THEN 'online' ELSE 'cod' END,
+   CASE WHEN n IN('02','71','72') THEN 'pay_nr_'||n END,
+   CASE WHEN n IN('05','72') THEN 'packed' ELSE 'placed' END,
+   now()-interval '40 minutes',
+   CASE WHEN n='03' THEN NULL WHEN n='04' THEN now()-interval '2 minutes' WHEN n='06' THEN now()-interval '15 minutes' ELSE now()-interval '35 minutes' END
+  FROM unnest(ARRAY['01','02','03','04','05','06','71','72']) n;
+ SET LOCAL session_replication_role=origin;
+ -- 01 COD old, 02 paid old, 03 unpaid checkout, 04 COD fresh, 05 packed old,
+ -- 06 COD 15 min, trip 7: leg 71 placed+paid old beside packed leg 72.
+ UPDATE delivery_settings SET store_response_timeout_minutes=30;
+ r:=cancel_unanswered_store_orders(50);
+ IF (SELECT array_agg(id ORDER BY id) FROM orders WHERE id::text LIKE '00000000-0000-4000-8000-0000000094%' AND status='cancelled')
+  <>ARRAY['00000000-0000-4000-8000-000000009401','00000000-0000-4000-8000-000000009402','00000000-0000-4000-8000-000000009471','00000000-0000-4000-8000-000000009472']::uuid[] THEN
+  RAISE EXCEPTION 'Job picked the wrong orders: %',r; END IF;
+ IF (r->>'single_targets')::int<>2 OR (r->>'trip_targets')::int<>1 OR (r->>'cancelled_orders')::int<>4 THEN RAISE EXCEPTION 'Unexpected batch: %',r; END IF;
+ IF EXISTS(SELECT 1 FROM orders WHERE id IN('00000000-0000-4000-8000-000000009401','00000000-0000-4000-8000-000000009402','00000000-0000-4000-8000-000000009471','00000000-0000-4000-8000-000000009472')
+  AND (cancel_reason<>'store_no_response' OR cancelled_by<>'system')) THEN RAISE EXCEPTION 'Wrong reason/actor'; END IF;
+ IF (SELECT refund_status FROM orders WHERE id='00000000-0000-4000-8000-000000009402')<>'processing'
+ OR NOT EXISTS(SELECT 1 FROM trip_refunds WHERE trip_id='00000000-0000-4000-8000-000000009007')
+ OR NOT EXISTS(SELECT 1 FROM customer_notifications WHERE order_id='00000000-0000-4000-8000-000000009401' AND event='cancelled') THEN RAISE EXCEPTION 'Refund or notification missing'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM trips WHERE id='00000000-0000-4000-8000-000000009007' AND status='cancelled' AND cancelled_by='system'
+  AND cancel_origin_order_id='00000000-0000-4000-8000-000000009471' AND cancel_origin_store_id='00000000-0000-4000-8000-000000009f01') THEN RAISE EXCEPTION 'Trip origin not recorded'; END IF;
+ -- A shorter window then picks the 15-minute order; a second pass is a no-op.
+ UPDATE delivery_settings SET store_response_timeout_minutes=10;
+ r:=cancel_unanswered_store_orders(50);
+ IF (SELECT status FROM orders WHERE id='00000000-0000-4000-8000-000000009406')<>'cancelled' OR (r->>'cancelled_orders')::int<>1 THEN RAISE EXCEPTION 'Setting not applied: %',r; END IF;
+ IF (SELECT status FROM orders WHERE id='00000000-0000-4000-8000-000000009403')<>'placed' OR (SELECT status FROM orders WHERE id='00000000-0000-4000-8000-000000009404')<>'placed' THEN RAISE EXCEPTION 'Ineligible order cancelled'; END IF;
+ BEGIN UPDATE delivery_settings SET store_response_timeout_minutes=1; RAISE EXCEPTION 'Timeout bound missing';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ -- Visibility stamp: an online order becomes visible when it is paid.
+ UPDATE orders SET provider_payment_id='pay_nr_03' WHERE id='00000000-0000-4000-8000-000000009403';
+ IF (SELECT store_visible_at FROM orders WHERE id='00000000-0000-4000-8000-000000009403') IS NULL THEN RAISE EXCEPTION 'Payment did not stamp visibility'; END IF;
+END $$;
+
 ROLLBACK;
-SELECT 'Admin order control: trip-aware assignment, safe cancel, rider changes, forward status and audit verified' AS result;
+SELECT 'Admin order control: trip-aware assignment, safe cancel, rider changes, forward status, code reissue, trip refunds, store_no_response job and audit verified' AS result;

@@ -68,6 +68,7 @@ export default function SettingsPage() {
     defaultDeliveryRadiusKm: string;
     roadDistanceFactor: string;
     maxStoreSpreadKm: string;
+    storeResponseTimeoutMinutes: string;
     deliveryFeeTiers: TierDraft[];
     orderingOpens: string;
     orderingCloses: string;
@@ -98,6 +99,7 @@ export default function SettingsPage() {
         defaultDeliveryRadiusKm: String(settings.defaultDeliveryRadiusKm),
         roadDistanceFactor: String(settings.roadDistanceFactor),
         maxStoreSpreadKm: String(settings.maxStoreSpreadKm),
+        storeResponseTimeoutMinutes: String(settings.storeResponseTimeoutMinutes),
         deliveryFeeTiers: settings.deliveryFeeTiers.map((tier) => ({ upToKm: String(tier.upToKm), fee: String(tier.fee) })),
         orderingOpens: minuteToTimeInput(settings.orderingOpensMinute),
         orderingCloses: minuteToTimeInput(settings.orderingClosesMinute),
@@ -154,6 +156,7 @@ export default function SettingsPage() {
       Number(draft.defaultDeliveryRadiusKm) !== saved.defaultDeliveryRadiusKm ||
       Number(draft.roadDistanceFactor) !== saved.roadDistanceFactor ||
       Number(draft.maxStoreSpreadKm) !== saved.maxStoreSpreadKm ||
+      Number(draft.storeResponseTimeoutMinutes) !== saved.storeResponseTimeoutMinutes ||
       !tiersEqual(draft.deliveryFeeTiers, saved.deliveryFeeTiers) ||
       timeInputToMinute(draft.orderingOpens) !== saved.orderingOpensMinute ||
       timeInputToMinute(draft.orderingCloses, true) !== saved.orderingClosesMinute);
@@ -175,6 +178,11 @@ export default function SettingsPage() {
       setSaveError('Ordering must open before it closes. The window cannot cross midnight.');
       return;
     }
+    const responseMinutes = Number(draft.storeResponseTimeoutMinutes);
+    if (!Number.isInteger(responseMinutes) || responseMinutes < 3 || responseMinutes > 120) {
+      setSaveError('Enter a store response time between 3 and 120 whole minutes.');
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -193,6 +201,7 @@ export default function SettingsPage() {
           defaultDeliveryRadiusKm: Number(draft.defaultDeliveryRadiusKm),
           roadDistanceFactor: Number(draft.roadDistanceFactor),
           maxStoreSpreadKm: Number(draft.maxStoreSpreadKm),
+          storeResponseTimeoutMinutes: Number(draft.storeResponseTimeoutMinutes),
           deliveryFeeTiers: draft.deliveryFeeTiers.map((tier) => ({ upToKm: Number(tier.upToKm), fee: Number(tier.fee) })),
           orderingOpensMinute,
           orderingClosesMinute,
@@ -267,6 +276,22 @@ export default function SettingsPage() {
                 <input id="delivery-estimate" type="number" min={1} max={240} step={1}
                   value={draft.estimatedDeliveryMinutes}
                   onChange={(event) => setDraft({ ...draft, estimatedDeliveryMinutes: event.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
+                <span className="text-sm text-muted">min</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+              <div>
+                <label htmlFor="store-response" className="text-sm font-medium text-ink">Store response time</label>
+                <p className="text-xs text-muted">
+                  A new order the shop has not accepted within this time is cancelled automatically (reason &ldquo;store did not
+                  respond&rdquo;), its stock released and any payment refunded. The partner app counts down the same time.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
+                <input id="store-response" type="number" min={3} max={120} step={1}
+                  value={draft.storeResponseTimeoutMinutes}
+                  onChange={(event) => setDraft({ ...draft, storeResponseTimeoutMinutes: event.target.value })}
                   className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
                 <span className="text-sm text-muted">min</span>
               </div>

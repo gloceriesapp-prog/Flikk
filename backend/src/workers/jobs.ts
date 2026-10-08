@@ -12,6 +12,7 @@ import { paymentsConfigured } from '../payments/cashfreeClient.js';
 import { expandDispatchOrRebroadcast } from '../lib/riderDispatch.js';
 import { runTripRefunds } from '../payments/tripRefunds.js';
 import { runCustomerNotifications } from '../notifications/worker.js';
+import { runStoreNoResponse } from '../jobs/storeNoResponse.js';
 export const jobs: Jobs = {
   weeklyPayouts: (date, guard) => runWeeklyPayoutJob(date, guard),
   weeklyRiderPayouts: (date, guard) => runWeeklyRiderPayoutJob(date, guard),
@@ -25,6 +26,8 @@ export const queues: Record<string, (shouldStop: () => boolean) => Promise<unkno
   mediaCleanup: cleanupMedia,
   // Provider reconciliation runs first so expiry never releases a paid checkout.
   reservationExpiry: runReservationExpiry,
+  // Orders a store never answered within delivery_settings' response window.
+  storeNoResponse: (shouldStop) => runStoreNoResponse(shouldStop),
   // Refund jobs only exist after a real payment; without keys they would
   // lease and fail every poll, so they wait until Cashfree is configured.
   tripRefunds: async () => { if (paymentsConfigured) await runTripRefunds(); },

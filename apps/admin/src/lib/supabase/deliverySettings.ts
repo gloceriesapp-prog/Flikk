@@ -29,6 +29,9 @@ export interface DeliverySettingsRow {
   // migration 112 — platform ordering window, IST minutes since midnight.
   ordering_opens_minute?: number | null;
   ordering_closes_minute?: number | null;
+  // migration 109 — minutes a store has to accept an order before the
+  // backend's store_no_response job cancels it.
+  store_response_timeout_minutes?: number | null;
 }
 
 export interface DeliveryFeeTier {
@@ -52,6 +55,7 @@ export interface DeliverySettings {
   maxStoreSpreadKm: number;
   orderingOpensMinute: number;
   orderingClosesMinute: number;
+  storeResponseTimeoutMinutes: number;
 }
 
 // <input type="time"> values <-> IST minutes since midnight. A closing time
@@ -104,6 +108,7 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     maxStoreSpreadKm: Number(row.max_store_spread_km ?? 2),
     orderingOpensMinute: Number(row.ordering_opens_minute ?? 360),
     orderingClosesMinute: Number(row.ordering_closes_minute ?? 1350),
+    storeResponseTimeoutMinutes: Number(row.store_response_timeout_minutes ?? 10),
   };
 }
 

@@ -1,9 +1,9 @@
 // The grace-phase enforcer — ticks every second, doing two things for
 // every still-'placed', not-yet-acknowledged order:
 // 1. Fires a reminder (in-app banner + OS notification) once per
-//    checkpoint in REMINDER_CHECKPOINTS_MS as its elapsed time crosses
+//    checkpoint in getReminderCheckpointsMs() as its elapsed time crosses
 //    each one.
-// 2. Rejects it once the total ORDER_ACCEPT_WINDOW_MS has elapsed.
+// 2. Rejects it once the accept window (admin setting, orderExpiry.ts) has elapsed.
 //
 // Mounted once at the app root (App.tsx), not inside IncomingOrderAlert or
 // OrdersScreen — it has to keep running regardless of whether the alert is
@@ -25,7 +25,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useOrdersStore } from '../../store/useOrdersStore';
-import { REMINDER_CHECKPOINTS_MS, getElapsedMs, hasAcceptWindowExpired } from './orderExpiry';
+import { getElapsedMs, getReminderCheckpointsMs, hasAcceptWindowExpired, loadOrderAcceptWindow } from './orderExpiry';
 import { sendOrderReminderNotification } from './orderReminderNotification';
 import { useOrderReminderStore } from './useOrderReminderStore';
 
@@ -35,12 +35,18 @@ export function useOrderExpiryWatcher(): void {
   const rejectOrder = useOrdersStore((state) => state.rejectOrder);
   const showReminder = useOrderReminderStore((state) => state.showReminder);
 
-  // orderId -> set of checkpoint indexes (into REMINDER_CHECKPOINTS_MS)
+  // orderId -> set of checkpoint indexes (into getReminderCheckpointsMs())
   // already fired for that order — so a reminder never repeats once sent.
   const remindedCheckpointsRef = useRef<Map<string, Set<number>>>(new Map());
 
+  // The admin-set accept window (delivery_settings), refreshed on mount.
+  useEffect(() => {
+    void loadOrderAcceptWindow();
+  }, []);
+
   useEffect(() => {
     const interval = setInterval(() => {
+      const checkpoints = getReminderCheckpointsMs();
       const now = Date.now();
 
       for (const order of orders) {
@@ -60,13 +66,13 @@ export function useOrderExpiryWatcher(): void {
         const elapsed = getElapsedMs(order, now);
         const fired = remindedCheckpointsRef.current.get(order.id) ?? new Set<number>();
 
-        REMINDER_CHECKPOINTS_MS.forEach((checkpointMs, index) => {
+        checkpoints.forEach((checkpointMs, index) => {
           if (elapsed < checkpointMs || fired.has(index)) return;
 
           fired.add(index);
           remindedCheckpointsRef.current.set(order.id, fired);
 
-          const stage = index === REMINDER_CHECKPOINTS_MS.length - 1 ? 'final' : 'first';
+          const stage = index === checkpoints.length - 1 ? 'final' : 'first';
           showReminder({ orderId: order.id, customerName: order.customerName, stage });
           // Best-effort — a notification-permission/scheduling failure
           // shouldn't crash the watcher (showReminder's in-app banner

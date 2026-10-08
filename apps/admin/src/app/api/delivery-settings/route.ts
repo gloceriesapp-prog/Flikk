@@ -74,6 +74,15 @@ export async function PATCH(request: Request) {
       }
       reach[column] = body[field];
     }
+    // Store response window (migration 109): optional, omitted = unchanged.
+    const storeResponse: { store_response_timeout_minutes?: number } = {};
+    if (body.storeResponseTimeoutMinutes !== undefined) {
+      const minutes = body.storeResponseTimeoutMinutes;
+      if (typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes < 3 || minutes > 120) {
+        throw new Error('Store response time must be a whole number between 3 and 120 minutes.');
+      }
+      storeResponse.store_response_timeout_minutes = minutes;
+    }
     if (body.deliveryFeeTiers !== undefined) {
       if (!Array.isArray(body.deliveryFeeTiers) || body.deliveryFeeTiers.length > 10) {
         throw new Error('Add between 0 and 10 delivery fee tiers.');
@@ -116,6 +125,7 @@ export async function PATCH(request: Request) {
         ...riderPayouts,
         ...reach,
         ...hours,
+        ...storeResponse,
         updated_at: new Date().toISOString(),
       })
       .eq('id', settings.id)

@@ -36,6 +36,9 @@ export interface DeliverySettings {
   // migration 112 — platform ordering window, IST minutes since midnight.
   orderingOpensMinute: number;
   orderingClosesMinute: number;
+  // migration 109 — minutes a store has to accept a new order before
+  // jobs/storeNoResponse.ts cancels it (the partner app's timer uses it too).
+  storeResponseTimeoutMinutes: number;
 }
 
 export async function getDeliverySettings(): Promise<DeliverySettings> {
@@ -59,6 +62,7 @@ export async function getDeliverySettings(): Promise<DeliverySettings> {
     maxStoreSpreadKm: Math.max(0, Number(data.max_store_spread_km ?? 0) || 0),
     extraStopFee: nonNegative(data.extra_stop_fee, DEFAULT_EXTRA_STOP_FEE),
     ...orderingHoursFields(data.ordering_opens_minute, data.ordering_closes_minute),
+    storeResponseTimeoutMinutes: Number(data.store_response_timeout_minutes ?? 10) || 10,
   };
 }
 
