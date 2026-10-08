@@ -462,6 +462,10 @@
       "sha256": "1d8b39284e3f0f8dd08c117991e3afc4c5e6ce5b28e83ecd9df08288f7741853"
     },
     {
+      "file": "117_customer_commerce_controls.sql",
+      "sha256": "56244a949e026131291f76f2ce5d0f322bed1a1180cea811d00e181a4b346a59"
+    },
+    {
       "file": "118_partner_rider_support.sql",
       "sha256": "6cf0e4fa0d2088917ea38f9acc8d185e8a12215650f8fef1ecc96623bf5a3edc"
     }
