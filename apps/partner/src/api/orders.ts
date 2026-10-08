@@ -55,6 +55,8 @@ export async function fetchOrders(): Promise<ApiOrder[]> {
   return result;
 }
 
-export function updateOrderStatus(orderId: string, status: 'packed' | 'cancelled'): Promise<ApiOrder> {
-  return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: { status } });
+// reason: a STORE_REJECT_REASONS code (@gloceries/shared) for a reject, or
+// 'store_no_response' for the auto-reject; stored as orders.cancel_reason.
+export function updateOrderStatus(orderId: string, status: 'packed' | 'cancelled', reason?: string): Promise<ApiOrder> {
+  return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: reason ? { status, reason } : { status } });
 }

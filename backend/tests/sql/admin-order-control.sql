@@ -252,5 +252,27 @@ DO $$ DECLARE r jsonb; BEGIN
  IF (SELECT store_visible_at FROM orders WHERE id='00000000-0000-4000-8000-000000009403') IS NULL THEN RAISE EXCEPTION 'Payment did not stamp visibility'; END IF;
 END $$;
 
+-- B6: a partner reject on one leg cancels the trip and records which store caused it.
+DO $$ DECLARE r jsonb; BEGIN
+ SET LOCAL session_replication_role=replica;
+ INSERT INTO trips(id,customer_id,address_id,delivery_fee,item_total,total)
+  VALUES('00000000-0000-4000-8000-000000009008','00000000-0000-4000-8000-000000009c01','00000000-0000-4000-8000-000000009b01',40,20,60);
+ INSERT INTO orders(id,trip_id,customer_id,store_id,address_id,item_total,delivery_fee,commission_amount,total,payment_method,status)
+  SELECT ('00000000-0000-4000-8000-00000000938'||n)::uuid,'00000000-0000-4000-8000-000000009008','00000000-0000-4000-8000-000000009c01',
+   ('00000000-0000-4000-8000-000000009f0'||n)::uuid,'00000000-0000-4000-8000-000000009b01',10,20,1,30,'cod','placed' FROM generate_series(1,2) n;
+ SET LOCAL session_replication_role=origin;
+ BEGIN PERFORM cancel_trip_from_leg('00000000-0000-4000-8000-000000009382','store_closed','robot'); RAISE EXCEPTION 'Unknown role accepted';
+ EXCEPTION WHEN sqlstate 'P0422' THEN NULL; END;
+ r:=cancel_trip_from_leg('00000000-0000-4000-8000-000000009382','store_out_of_stock','store_owner');
+ IF r->>'outcome'<>'cancelled' OR (r->>'origin_store_id')::uuid<>'00000000-0000-4000-8000-000000009f02' THEN RAISE EXCEPTION 'Unexpected result: %',r; END IF;
+ IF NOT EXISTS(SELECT 1 FROM trips WHERE id='00000000-0000-4000-8000-000000009008' AND status='cancelled' AND cancelled_by='store_owner'
+  AND cancel_origin_order_id='00000000-0000-4000-8000-000000009382' AND cancel_origin_store_id='00000000-0000-4000-8000-000000009f02')
+ OR EXISTS(SELECT 1 FROM orders WHERE trip_id='00000000-0000-4000-8000-000000009008' AND (status<>'cancelled' OR cancel_reason<>'store_out_of_stock' OR cancelled_by<>'store_owner')) THEN
+  RAISE EXCEPTION 'Partner reject origin not recorded'; END IF;
+ -- Replaying on the cancelled trip keeps the original origin.
+ PERFORM cancel_trip_from_leg('00000000-0000-4000-8000-000000009381','other','admin');
+ IF (SELECT cancel_origin_order_id FROM trips WHERE id='00000000-0000-4000-8000-000000009008')<>'00000000-0000-4000-8000-000000009382' THEN RAISE EXCEPTION 'Origin overwritten'; END IF;
+END $$;
+
 ROLLBACK;
-SELECT 'Admin order control: trip-aware assignment, safe cancel, rider changes, forward status, code reissue, trip refunds, store_no_response job and audit verified' AS result;
+SELECT 'Admin order control: trip-aware assignment, safe cancel, rider changes, forward status, code reissue, trip refunds, store_no_response job, reject origin and audit verified' AS result;

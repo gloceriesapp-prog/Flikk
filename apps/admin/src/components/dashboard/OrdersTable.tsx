@@ -265,6 +265,7 @@ export function OrdersTable() {
                         {orderReasonLabel(order.status, order.cancelReason)}
                       </span>
                       {order.cancelledBy && <span>by {CANCELLED_BY_LABELS[order.cancelledBy] ?? order.cancelledBy}</span>}
+                      {order.tripId && order.status === 'cancelled' && <span> · whole trip (cause on the order page)</span>}
                     </>
                   ) : '—'}
                 </td>

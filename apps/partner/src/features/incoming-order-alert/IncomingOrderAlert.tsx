@@ -24,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
+import { STORE_REJECT_REASONS } from '@gloceries/shared';
 import { useIncomingOrderAlert } from './useIncomingOrderAlert';
 import { useOrderPolling } from './useOrderPolling';
 import { AutoRejectChip } from './components/AutoRejectChip';
@@ -117,7 +118,7 @@ export function IncomingOrderAlert() {
 
 interface OrderAlertActionsProps {
   onAccept: () => void;
-  onDecline: () => void;
+  onDecline: (reason: string) => void;
 }
 
 // Pulled out only so the "just tapped Accept" micro-state (a brief label
@@ -125,10 +126,35 @@ interface OrderAlertActionsProps {
 // clutter the parent's already-long return.
 function OrderAlertActions({ onAccept, onDecline }: OrderAlertActionsProps) {
   const [justAccepted, setJustAccepted] = useState(false);
+  // Reject asks why first (STORE_REJECT_REASONS) — the code is stored as the
+  // order's cancel_reason, shown to the customer's support and to admin.
+  const [choosingReason, setChoosingReason] = useState(false);
 
   function handleAccept() {
     setJustAccepted(true);
     setTimeout(onAccept, 260);
+  }
+
+  if (choosingReason) {
+    return (
+      <View className="w-full gap-2">
+        <Text className="text-center text-base font-medium text-ink">Why are you rejecting this order?</Text>
+        {STORE_REJECT_REASONS.map((option) => (
+          <Pressable
+            key={option.code}
+            onPress={() => onDecline(option.code)}
+            accessibilityRole="button"
+            className="w-full items-center rounded-full border border-gray-200 bg-white py-3"
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          >
+            <Text className="text-base font-medium text-ink">{option.label}</Text>
+          </Pressable>
+        ))}
+        <Pressable onPress={() => setChoosingReason(false)} accessibilityRole="button" className="w-full items-center py-2">
+          <Text className="text-sm font-medium text-ink/50">Back</Text>
+        </Pressable>
+      </View>
+    );
   }
 
   return (
@@ -138,7 +164,7 @@ function OrderAlertActions({ onAccept, onDecline }: OrderAlertActionsProps) {
     // instead of one on top of the other.
     <View className="w-full flex-row gap-3">
       <Pressable
-        onPress={onDecline}
+        onPress={() => setChoosingReason(true)}
         disabled={justAccepted}
         className="flex-1 flex-row items-center justify-center gap-2 rounded-full border border-gray-200 bg-white py-4 shadow-sm shadow-black/5"
         style={({ pressed }) => ({ opacity: pressed || justAccepted ? 0.5 : 1 })}

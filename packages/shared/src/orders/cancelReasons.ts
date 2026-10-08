@@ -40,3 +40,27 @@ export function isRiderCancelReasonCode(value: unknown): value is RiderCancelRea
 export function riderCancelReasonLabel(code: string): string {
   return RIDER_CANCEL_REASONS.find((r) => r.code === code)?.label ?? code;
 }
+
+// Store reject reasons — what a shop owner picks when declining a new order
+// (apps/partner's reject flow, apps/partner-dashboard's Reject). Stored as the
+// order's cancel_reason. store_closed / store_out_of_stock are the same codes
+// the rider list uses for the same facts. 'store_no_response' is NOT pickable:
+// it is written only by the auto-reject (partner app timer and the backend's
+// jobs/storeNoResponse.ts). Mirrored in backend/src/lib/cancelReasons.ts,
+// apps/partner-dashboard/src/lib/storeRejectReasons.ts and apps/admin's
+// lib/orders/cancelReasons.ts labels — keep them identical.
+export const STORE_REJECT_REASONS: readonly CancelReason[] = [
+  { code: 'store_out_of_stock', label: 'Items out of stock' },
+  { code: 'store_closed', label: 'Shop is closed / closing' },
+  { code: 'store_too_busy', label: 'Too busy right now' },
+  { code: 'store_price_or_item_issue', label: 'Price or item issue' },
+  { code: 'other', label: 'Other' },
+] as const;
+
+export const STORE_NO_RESPONSE_REASON = 'store_no_response';
+
+const STORE_CODES = new Set<string>([...STORE_REJECT_REASONS.map((r) => r.code), STORE_NO_RESPONSE_REASON]);
+
+export function isStoreRejectReasonCode(value: unknown): value is string {
+  return typeof value === 'string' && STORE_CODES.has(value);
+}

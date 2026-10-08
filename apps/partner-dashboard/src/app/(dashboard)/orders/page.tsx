@@ -6,6 +6,7 @@ import { fetchMyOrders, updateOrderStatus, type OrderStatus, type PartnerOrder }
 import { DEMO_ORDERS } from '@/lib/demoOrders';
 import { OrdersFilterBar, ORDER_FILTERS, type DateRange } from '@/components/orders/OrdersFilterBar';
 import { OrdersTable } from '@/components/orders/OrdersTable';
+import { RejectReasonDialog } from '@/components/orders/RejectReasonDialog';
 import { StatTile } from '@/components/ui/StatTile';
 import { formatInr, statusLabel } from '@/lib/format';
 import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
@@ -93,11 +94,9 @@ export default function OrdersPage() {
     }
   }
   const handleAccept = (id: string) => mutate(id, 'packed');
-  const handleReject = (id: string) => {
-    if (window.confirm('Reject this order? This cancels it for the customer and refunds their payment. This cannot be undone.')) {
-      mutate(id, 'cancelled');
-    }
-  };
+  // Reject opens the reason picker; the chosen code goes out as the reason.
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const handleReject = (id: string) => setRejectingId(id);
 
   // Demo-only staged lifecycle (no backend, no confirm): Accept stages the
   // order (still 'placed', now in acceptedIds → row shows Mark packed), Mark
@@ -269,6 +268,16 @@ export default function OrdersPage() {
           onMarkPacked={isDemo ? demoMarkPacked : undefined}
           acceptedIds={isDemo ? acceptedIds : undefined}
           actioningId={actioningId}
+        />
+      )}
+      {rejectingId && (
+        <RejectReasonDialog
+          onClose={() => setRejectingId(null)}
+          onConfirm={(reason) => {
+            const id = rejectingId;
+            setRejectingId(null);
+            void mutate(id, 'cancelled', reason);
+          }}
         />
       )}
     </div>

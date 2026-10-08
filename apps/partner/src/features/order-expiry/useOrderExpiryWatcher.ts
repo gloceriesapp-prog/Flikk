@@ -24,6 +24,7 @@
 // interval without retriggering this effect.
 
 import { useEffect, useRef } from 'react';
+import { STORE_NO_RESPONSE_REASON } from '@gloceries/shared';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { getElapsedMs, getReminderCheckpointsMs, hasAcceptWindowExpired, loadOrderAcceptWindow } from './orderExpiry';
 import { sendOrderReminderNotification } from './orderReminderNotification';
@@ -58,7 +59,7 @@ export function useOrderExpiryWatcher(): void {
           // means the order stays visible past its window, which a store
           // owner can still act on manually, not a broken flow worth
           // surfacing mid-background-timer.
-          rejectOrder(order.id).catch(() => {});
+          rejectOrder(order.id, STORE_NO_RESPONSE_REASON).catch(() => {});
           remindedCheckpointsRef.current.delete(order.id);
           continue;
         }
