@@ -36,7 +36,7 @@ describe('admin cash on delivery routes', () => {
     expect((await GET(new Request('http://localhost/api/cash-collections'))).status).toBe(401);
     expect((await settle({ riderId: RIDER })).status).toBe(401);
     mocks.user = { id: 'someone', email: 'someone@example.com' };
-    expect((await settle({ riderId: RIDER })).status).toBe(401);
+    expect((await settle({ riderId: RIDER })).status).toBe(403);
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 

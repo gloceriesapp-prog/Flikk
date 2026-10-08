@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 interface GreetingCategory {
   id: string;
@@ -50,7 +50,8 @@ function artwork(value: unknown, label: string): string | null {
 }
 
 export async function GET() {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data, error } = await supabaseAdmin.from('festival_greeting').select(SELECT).limit(1).maybeSingle();
     if (error) throw error;
@@ -61,7 +62,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = await request.json();
     const tabTitle = typeof body.tab_title === 'string' ? body.tab_title.trim() : '';

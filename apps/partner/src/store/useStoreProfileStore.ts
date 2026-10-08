@@ -14,7 +14,19 @@
 
 import { create } from 'zustand';
 import { apiRequest, ApiError } from '../api/client';
-import { EMPTY_STORE_PROFILE, type StoreProfile } from '../screens/store-settings/data';
+import { EMPTY_STORE_PROFILE, type StoreProfile, type StoreProfileChange } from '../screens/store-settings/data';
+
+interface ChangeRow {
+  id: string;
+  status: StoreProfileChange['status'];
+  changes: StoreProfileChange['changes'];
+  review_reason: string | null;
+  created_at: string;
+}
+
+function fromChange(row: ChangeRow | null | undefined): StoreProfileChange | null {
+  return row ? { id: row.id, status: row.status, changes: row.changes ?? {}, reviewReason: row.review_reason, createdAt: row.created_at } : null;
+}
 
 interface StoreRow {
   id: string;
@@ -38,6 +50,9 @@ interface StoreRow {
   shop_establishment_number: string | null;
   fssai_number: string | null;
   pan_number: string | null;
+  drug_license_number?: string | null;
+  pending_change?: ChangeRow | null;
+  last_change_review?: ChangeRow | null;
 }
 
 function fromRow(row: StoreRow): StoreProfile {
@@ -69,6 +84,9 @@ function fromRow(row: StoreRow): StoreProfile {
     shopLicenseNumber: row.shop_establishment_number ?? '',
     fssaiNumber: row.fssai_number ?? '',
     panNumber: row.pan_number ?? '',
+    drugLicenseNumber: row.drug_license_number ?? '',
+    pendingChange: fromChange(row.pending_change),
+    lastChangeReview: fromChange(row.last_change_review),
   };
 }
 
@@ -78,7 +96,9 @@ function fromRow(row: StoreRow): StoreProfile {
 // Save button) can await this and read `ok`/`error`; fire-and-forget
 // callers (photo upload, the Open/Closed toggle) can just ignore it since
 // it never rejects.
-export type ProfileSaveResult = { ok: true } | { ok: false; error: string };
+// pendingReview: the save filed a name/category/address/map-pin change that
+// Gloceries must approve before it goes live (migration 114).
+export type ProfileSaveResult = { ok: true; pendingReview: boolean } | { ok: false; error: string };
 
 interface StoreProfileState {
   profile: StoreProfile;
@@ -108,11 +128,12 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
   },
 
   updateProfile: async (patch) => {
+    const before = get().profile;
     set((state) => ({ profile: { ...state.profile, ...patch } }));
     const { id } = get().profile;
-    if (!id) return { ok: true };
+    if (!id) return { ok: true, pendingReview: false };
     try {
-      await apiRequest('/partner/store', {
+      const row = await apiRequest<StoreRow>('/partner/store', {
         method: 'PATCH',
         body: {
           name: patch.storeName,
@@ -131,10 +152,16 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
           shop_establishment_number: patch.shopLicenseNumber,
           fssai_number: patch.fssaiNumber,
           pan_number: patch.panNumber,
+          drug_license_number: patch.drugLicenseNumber,
         },
       });
-      return { ok: true };
+      // The server's copy wins: reviewed fields keep their live values and
+      // the pending request rides along for the "pending review" notice.
+      const saved = fromRow(row);
+      set({ profile: saved });
+      return { ok: true, pendingReview: saved.pendingChange !== null && saved.pendingChange.id !== before.pendingChange?.id };
     } catch (err) {
+      set({ profile: before });
       const message = err instanceof ApiError ? err.message : 'Could not save changes. Check your connection and try again.';
       return { ok: false, error: message };
     }

@@ -15,6 +15,7 @@ import {
   REGISTERED_COPY_KEYS,
   type AppContent,
 } from '@/lib/appContentValidation';
+import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 
 interface CopyRow {
   id: number;
@@ -221,10 +222,13 @@ export default function AppContentPage() {
                     aria-label="Copy key"
                     className={`${INPUT} font-mono md:w-72 ${badKey ? 'border-danger' : ''}`}
                   />
+                  {registered?.image && (
+                    <ProductImageUpload imageUrl={row.value || undefined} onChange={(url) => updateRow(row.id, { value: url })} bucket="banners" />
+                  )}
                   <input
                     value={row.value}
                     onChange={(e) => updateRow(row.id, { value: e.target.value })}
-                    placeholder={registered ? registered.defaultValue || '(app built-in text / none)' : 'Text shown in the app'}
+                    placeholder={registered?.image ? '(built-in artwork) — upload or paste an https:// link' : registered ? registered.defaultValue || '(app built-in text / none)' : 'Text shown in the app'}
                     aria-label={`Value for ${row.key || 'new key'}`}
                     className={`${INPUT} flex-1`}
                   />

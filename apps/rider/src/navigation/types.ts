@@ -95,4 +95,8 @@ export type AppStackParamList = {
   // Weekly payout history — the per-payout complement to the Earnings tab.
   // Reached from Profile's "Payout history" row.
   PayoutHistory: undefined;
+  // Help & support: admin-configured contacts + the rider's support requests.
+  // compose opens the new-request form directly (Profile's "Report a problem").
+  Support: { compose?: boolean } | undefined;
+  SupportTicket: { ticketId: string };
 };

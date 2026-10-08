@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { activeBlock, sanitizeCustomerSearch, type CustomerBlockRow } from '@/lib/customerBlocks';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 interface UserRow {
   id: string;
@@ -21,6 +22,8 @@ interface UserRow {
 }
 
 export async function GET(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(request.url);
     const q = sanitizeCustomerSearch(searchParams.get('q') ?? '');

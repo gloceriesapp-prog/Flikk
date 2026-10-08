@@ -8,19 +8,6 @@
 // (RecentOrdersWidget, OrdersChart) that only ever rendered them and were
 // never actually wired into a page.
 
-import type { AppDownloadStats } from './types';
-
-export const ZONE_NAME = 'Kaup, Udupi';
-
-// App Store Connect / Play Console API isn't wired yet — genuinely out of
-// scope for this pass (would need a real integration, not a UI change),
-// labelled honestly on AppDownloadsCard rather than silently claimed live.
-export const PLACEHOLDER_APP_DOWNLOADS: AppDownloadStats = {
-  android: 812,
-  ios: 341,
-  changePctThisWeek: 6.4,
-  lastSyncedAt: '12 minutes ago',
-};
 
 // Threshold past which an order counts as "needs attention" on the Home
 // snapshot — no real SLA config exists yet, this is a reasonable founder

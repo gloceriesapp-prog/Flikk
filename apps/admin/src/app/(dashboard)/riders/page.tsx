@@ -13,19 +13,27 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { Phone } from 'lucide-react';
+import { MapPin, Phone } from 'lucide-react';
 import { AssignRiderRow } from '@/components/dispatch/AssignRiderRow';
 import { ReasonModal } from '@/components/ui/ReasonModal';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import type { ActiveRider, Order } from '@/lib/types';
-import { formatRelativeTime } from '@/lib/format';
+import { formatDateTime, formatRelativeTime } from '@/lib/format';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const PRESENCE_LABELS: Record<ActiveRider['presence'], string> = {
-  offline: 'Offline',
-  online: 'Online',
-  on_delivery: 'On delivery',
+// liveStatus is derived server-side (app/api/riders): a live trip = On
+// delivery; online with a heartbeat inside the 3-minute dispatch window =
+// Online; anything else (app killed, location off, went offline) = Offline.
+const LIVE_STATUS: Record<NonNullable<ActiveRider['liveStatus']>, { label: string; dot: string; text: string }> = {
+  on_delivery: { label: 'On delivery', dot: 'bg-blue-500', text: 'font-semibold text-blue-700' },
+  online: { label: 'Online', dot: 'bg-success', text: 'font-semibold text-success' },
+  offline: { label: 'Offline', dot: 'bg-muted', text: 'text-muted' },
+  suspended: { label: 'Suspended', dot: 'bg-danger', text: 'font-semibold text-danger' },
 };
+
+function mapsUrl(lat: number, lng: number): string {
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+}
 
 // Compact "Mon 09:00–18:00 · Tue 10:00–14:00" summary of a rider's configured
 // week — enabled days only, shown as a tooltip so the row stays uncluttered.
@@ -102,17 +110,13 @@ export default function RidersPage() {
           <div className="flex flex-col gap-3">
             {riders.map((rider) => {
               const hours = hoursSummary(rider.availability);
+              const live = LIVE_STATUS[rider.liveStatus ?? 'offline'];
+              const staleOnDelivery = rider.liveStatus === 'on_delivery' && !rider.liveNow;
               return (
                 <div key={rider.id} className="flex items-center gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
                   <div className="relative">
                     <div className="h-10 w-10 rounded-full bg-accent" />
-                    <span
-                      className={
-                        rider.isOnline
-                          ? 'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-success'
-                          : 'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-muted'
-                      }
-                    />
+                    <span title={live.label} className={clsx('absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card', live.dot)} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-ink">{rider.name}</p>
@@ -120,17 +124,28 @@ export default function RidersPage() {
                       <Phone size={11} />
                       {rider.phone}
                     </p>
-                    {/* presence (riders.status) is the REAL live signal — distinct from
-                        the account-active dot above (isOnline / riders.is_active). */}
-                    <p className={clsx('mt-0.5 text-[11px]', rider.liveNow ? 'font-semibold text-success' : 'text-muted')}>
-                      {rider.liveNow ? 'Live now' : PRESENCE_LABELS[rider.presence]}
-                      {' · '}
-                      {rider.lastSeenAt ? `last ping ${formatRelativeTime(rider.lastSeenAt)}` : 'no location ping yet'}
+                    <p className="mt-0.5 text-[11px]">
+                      <span className={live.text}>{live.label}</span>
+                      <span className="text-muted">
+                        {' · '}
+                        {rider.lastSeenAt ? `last seen ${formatRelativeTime(rider.lastSeenAt)}` : 'never seen'}
+                      </span>
+                      {staleOnDelivery && <span className="font-semibold text-amber-600"> · no recent location</span>}
                     </p>
-                    {!rider.isOnline && (
-                      <p className="mt-0.5 text-[11px] font-semibold text-danger">
-                        Suspended{rider.suspendedReason ? `: ${rider.suspendedReason}` : ''}
-                      </p>
+                    {rider.lastLat != null && rider.lastLng != null && (
+                      <a
+                        href={mapsUrl(rider.lastLat, rider.lastLng)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={rider.lastSeenAt ? `Reported ${formatDateTime(rider.lastSeenAt)}` : undefined}
+                        className="mt-0.5 flex w-fit items-center gap-1 text-[11px] font-medium text-ink-soft hover:underline"
+                      >
+                        <MapPin size={11} />
+                        {rider.lastLat.toFixed(5)}, {rider.lastLng.toFixed(5)}
+                      </a>
+                    )}
+                    {!rider.isOnline && rider.suspendedReason && (
+                      <p className="mt-0.5 text-[11px] font-semibold text-danger">Suspended: {rider.suspendedReason}</p>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -143,7 +158,9 @@ export default function RidersPage() {
                     >
                       {rider.onScheduleNow ? 'On schedule' : 'Off schedule'}
                     </span>
-                    <span className="text-xs font-semibold text-ink-soft">{rider.activeOrders} active</span>
+                    <span className="text-xs font-semibold text-ink-soft">
+                      {rider.activeTrips ?? rider.activeOrders} active trip{(rider.activeTrips ?? rider.activeOrders) === 1 ? '' : 's'}
+                    </span>
                     {rider.isOnline ? (
                       <button
                         type="button"

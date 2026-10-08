@@ -44,6 +44,7 @@ const EMPTY_DRAFT: StoreDraft = {
   fssaiNumber: '',
   panNumber: '',
   udyamNumber: '',
+  drugLicenseNumber: '',
   openTime: '',
   closeTime: '',
 };
@@ -79,6 +80,7 @@ export function OnboardingIntroScreen({ navigation, route }: Props) {
           fssaiNumber: saved.fssai_number ?? '',
           panNumber: saved.pan_number ?? '',
           udyamNumber: saved.udyam_number ?? '',
+          drugLicenseNumber: saved.drug_license_number ?? '',
           openTime: saved.open_time ?? '',
           closeTime: saved.close_time ?? '',
         };
@@ -92,7 +94,7 @@ export function OnboardingIntroScreen({ navigation, route }: Props) {
 
     // Resume at the first step whose own required field is still missing —
     // a returning applicant never has to redo an already-completed step.
-    if (!draft.storeName || !draft.category || !draft.phone) {
+    if (!draft.storeName || !draft.category || !draft.phone || (draft.category === 'Pharmacy' && !draft.drugLicenseNumber)) {
       navigation.navigate('StoreDetails', { draft });
     } else if (!draft.district) {
       navigation.navigate('StoreLocation', { draft });

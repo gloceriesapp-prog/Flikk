@@ -50,7 +50,7 @@ function riderSuspendedError(reason: string | null): AppError {
 // (migration 036, automated-dispatch scope override, CLAUDE.md). Called by
 // apps/rider's own useRiderOrdersStore whenever the rider toggles online/
 // offline, and on a periodic ping (~30-60s) while online — this is what
-// lib/riderDispatch.ts's nearby_online_riders RPC actually reads. Going
+// lib/riderDispatch.ts's nearby_dispatchable_riders RPC actually reads. Going
 // offline never clears current_lat/lng — a stale-but-present position is
 // harmless (status='offline' already excludes the row from that RPC
 // entirely), and keeping it means the very next "go online" doesn't start
@@ -178,16 +178,21 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
       .select(
         // dispatch_broadcast_at — when this offer was (re)broadcast; the
         // client derives the real per-offer countdown deadline from it
-        // (that timestamp + DISPATCH_OFFER_WINDOW_MS), instead of a
-        // mount-seeded guess. Set on every broadcast/rebroadcast in
-        // lib/riderDispatch.ts.
+        // (that timestamp + offer_window_seconds), instead of a
+        // mount-seeded guess. Set on every broadcast/rebroadcast by
+        // advance_dispatch_offers.
         `id, order_number, trip_id, dispatch_broadcast_at, ${DELIVERY_MONEY_COLUMNS}, stores(name, lat, lng), addresses(line1, landmark, latitude, longitude), order_items(quantity)`
       )
       .in('id', orderIds);
     if (ordersErr) throw ordersErr;
 
+    // How long each ring is offered (delivery_settings.dispatch_step_seconds,
+    // admin-set, migration 113) — the app's countdown is broadcast + this.
+    const { data: dispatchConfig } = await supabase.rpc('dispatch_config');
+    const offerWindowSeconds = Number((dispatchConfig as { step_seconds?: number }[] | null)?.[0]?.step_seconds) || 45;
+
     const withDistance = (await withDeliveryMoney((orders ?? []) as unknown as (DeliveryMoneyOrder & Record<string, unknown>)[]))
-      .map((o) => ({ ...o, distance_m: distanceByOrderId.get(o.id) ?? null }))
+      .map((o) => ({ ...o, distance_m: distanceByOrderId.get(o.id) ?? null, offer_window_seconds: offerWindowSeconds }))
       .sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0));
 
     res.json(withDistance);
@@ -234,15 +239,18 @@ riderRouter.get('/route', async (req: AuthedRequest, res, next) => {
 // inside the order's current dispatch radius, and a trip whose live legs
 // already belong to another rider is refused. Accepting one leg claims every
 // unassigned leg of the same trip in that same transaction, so two riders can
-// never split one multi-store trip. A lost race is 409 ALREADY_TAKEN (the
-// rider app reads any 409 as "taken"); a repeat accept by the winner is a
-// no-op success.
-type AcceptError = 'ORDER_NOT_FOUND' | 'ALREADY_TAKEN' | 'NOT_OFFERED' | 'RIDER_OFFLINE';
+// never split one multi-store trip. A rider already holding the admin's
+// max_active_trips_per_rider (migration 113) is refused with RIDER_AT_CAPACITY.
+// A lost race is 409 ALREADY_TAKEN (the rider app reads any other 409 as
+// "taken"); a repeat accept by the winner is a no-op success.
+type AcceptError = 'ORDER_NOT_FOUND' | 'ALREADY_TAKEN' | 'NOT_OFFERED' | 'RIDER_OFFLINE' | 'RIDER_AT_CAPACITY';
 const ACCEPT_ERRORS: Record<AcceptError, [number, string]> = {
   ORDER_NOT_FOUND: [404, 'Order not found.'],
   ALREADY_TAKEN: [409, 'This order was already picked up by another rider.'],
   NOT_OFFERED: [409, 'This order is not on offer to you.'],
   RIDER_OFFLINE: [409, 'Go online with location on to accept pickups.'],
+  // delivery_settings.max_active_trips_per_rider (migration 113).
+  RIDER_AT_CAPACITY: [409, 'Finish your current deliveries before accepting another pickup.'],
 };
 riderRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) => {
   try {

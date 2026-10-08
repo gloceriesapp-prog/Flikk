@@ -71,6 +71,13 @@ export function ProductRow({ product, onPressView }: Props) {
               <Text className="text-[12px] font-medium text-danger">Rejected</Text>
             </View>
           )}
+          {/* Name/price edit on a live product, waiting for admin review. */}
+          {product.approvalStatus === 'approved' && product.hasPendingChanges && (
+            <View className="flex-row items-center gap-1 rounded-full bg-amber-50 px-2 py-1">
+              <View className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              <Text className="text-[12px] font-medium text-amber-700">Edit in review</Text>
+            </View>
+          )}
         </View>
       </View>
 

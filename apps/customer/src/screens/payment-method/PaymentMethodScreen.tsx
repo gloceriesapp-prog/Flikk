@@ -13,6 +13,7 @@ import type { AppStackParamList } from '../../navigation/types';
 import { PaymentMethodList } from './components/PaymentMethodList';
 import type { PaymentMethod } from '../../payments/paymentMethod';
 import { loadRememberedVpa, saveRememberedVpa } from '../../payments/vpa';
+import { usePaymentAvailability } from '../../payments/usePaymentAvailability';
 import { fetchAddresses } from '../../api/addresses';
 import { useCheckoutQuote } from '../cart/quote/useCheckoutQuote';
 import { quotedCartItems } from '../cart/quote/quoteItems';
@@ -34,6 +35,7 @@ export function PaymentMethodScreen({ route, navigation }: Props) {
   const { data: addresses } = useQuery({ queryKey: ['addresses', customerId], queryFn: fetchAddresses, enabled: !!accessToken && !fromProfile });
   const address = addresses?.find((item) => item.is_default) ?? addresses?.[0] ?? null;
   const quoteQuery = useCheckoutQuote(fromProfile ? undefined : address?.id);
+  const { allowed } = usePaymentAvailability();
   const [apps, setApps] = useState<UpiApp[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -93,7 +95,7 @@ export function PaymentMethodScreen({ route, navigation }: Props) {
         {saving && <Text className="text-ink/60">Saving your preference…</Text>}
         <View pointerEvents={saving ? "none" : "auto"}>
         {loading || rememberedVpa === undefined ? <ActivityIndicator color={colors.limeDeep} /> :
-          <PaymentMethodList method={fromProfile ? preference.data?.method ?? null : route.params.selectedMethod} upiApps={apps} onSelect={select}
+          <PaymentMethodList method={fromProfile ? preference.data?.method ?? null : route.params.selectedMethod} upiApps={apps} onSelect={select} allowed={allowed}
             upiId={fromProfile ? undefined : { initialVpa: route.params.upiVpa ?? rememberedVpa ?? undefined, remembered: !!rememberedVpa, onUse: (vpa, remember) => void chooseUpiId(vpa, remember) }} />}
         </View>
       </KeyboardAwareScrollView>

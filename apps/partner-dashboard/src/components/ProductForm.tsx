@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { PartnerProduct, ProductInput, StockStatus, UnitType, VariantInput } from '@/lib/partnerApi';
 import { deriveStockStatus, uploadProductPhoto } from '@/lib/partnerApi';
+import { formatVariantSize } from '@/lib/format';
 
 interface Props {
   initial?: PartnerProduct;
@@ -214,6 +215,21 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
             <span className="text-[11px] font-medium text-amber-600">In review</span>
           </div>
           <p className="text-xs font-medium text-amber-600">Awaiting admin approval — your live photo stays until it&apos;s approved.</p>
+        </div>
+      )}
+
+      {/* Name/price edits to a live product (migration 115) wait for admin;
+          the form shows the live values customers currently see. */}
+      {initial?.pending_changes && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-700">
+          <p>Your last name or price change is awaiting admin approval — customers see the current values until it&apos;s approved.</p>
+          {initial.pending_changes.name && <p className="mt-1">New name: {initial.pending_changes.name}</p>}
+          {initial.pending_changes.variants && (
+            <p className="mt-1">
+              New prices:{' '}
+              {initial.pending_changes.variants.map((v) => `${formatVariantSize(Number(v.quantity), v.unit_type)} ₹${v.price}`).join(' · ')}
+            </p>
+          )}
         </div>
       )}
 

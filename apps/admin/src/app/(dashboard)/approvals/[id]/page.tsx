@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Store, User } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdminPage } from '@/lib/auth/requireAdminPage';
 import {
   APPROVED_RIDER_SELECT,
   APPROVED_STORE_SELECT,
@@ -79,6 +80,7 @@ async function loadApplication(id: string): Promise<Application | null> {
 }
 
 export default async function ApplicationReviewPage({ params }: PageProps<'/approvals/[id]'>) {
+  await requireAdminPage();
   const { id } = await params;
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) notFound();
   const application = await loadApplication(id);

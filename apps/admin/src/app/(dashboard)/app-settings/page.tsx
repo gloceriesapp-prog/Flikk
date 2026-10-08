@@ -16,6 +16,7 @@ type AppKey = 'customer' | 'partner' | 'rider';
 interface ReleaseRow {
   app: AppKey; min_supported_version: string; latest_version: string; ios_store_url: string | null; android_store_url: string | null;
   force_update: boolean; maintenance_enabled: boolean; maintenance_message: string | null; updated_at: string;
+  support_phone: string | null; support_email: string | null; support_whatsapp: string | null;
 }
 interface FaqRow { id: string; question: string; answer: string; sort_order: number; is_active: boolean }
 interface ReleaseDraft {
@@ -96,6 +97,62 @@ function ReleaseCard({ app, label, row, onSaved }: { app: AppKey; label: string;
           {saving ? 'Saving…' : 'Save'}
         </button>
         {saved && !saving && <span role="status" className="text-xs text-green-700">Saved. Apps pick it up within about a minute.</span>}
+      </div>
+    </div>
+  );
+}
+
+// Partner / rider help contacts (migration 118). The apps read them from the
+// backend's GET /app-config/support/:app; a blank field falls back to the
+// general contact on "App content".
+function SupportContactsCard({ app, label, row, onSaved }: { app: 'partner' | 'rider'; label: string; row: ReleaseRow | undefined; onSaved: () => void }) {
+  const [phone, setPhone] = useState(row?.support_phone ?? '');
+  const [whatsapp, setWhatsapp] = useState(row?.support_whatsapp ?? '');
+  const [email, setEmail] = useState(row?.support_email ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  async function save() {
+    setSaving(true); setError(null); setSaved(false);
+    try {
+      const res = await fetch('/api/app-settings/support', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ app, phone, whatsapp, email }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Could not save.');
+      setSaved(true);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-[#F9FAFB] p-4">
+      <h3 className="mb-3 text-sm font-semibold text-ink">{label}</h3>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div>
+          <label htmlFor={`${app}-support-phone`} className="mb-1.5 block text-xs font-medium text-muted">Support phone</label>
+          <input id={`${app}-support-phone`} value={phone} placeholder="+919876543210" onChange={(e) => setPhone(e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label htmlFor={`${app}-support-whatsapp`} className="mb-1.5 block text-xs font-medium text-muted">WhatsApp number</label>
+          <input id={`${app}-support-whatsapp`} value={whatsapp} placeholder="+919876543210" onChange={(e) => setWhatsapp(e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label htmlFor={`${app}-support-email`} className="mb-1.5 block text-xs font-medium text-muted">Support email</label>
+          <input id={`${app}-support-email`} type="email" value={email} placeholder="help@example.com" onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+        </div>
+      </div>
+      {error && <p className="mt-3 text-xs font-medium text-danger">{error}</p>}
+      <div className="mt-3 flex items-center gap-3">
+        <button type="button" onClick={save} disabled={saving} className="rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+          {saving ? 'Saving…' : 'Save contacts'}
+        </button>
+        {saved && !saving && <span role="status" className="text-xs text-green-700">Saved. The app shows them within about a minute.</span>}
       </div>
     </div>
   );
@@ -194,6 +251,17 @@ export default function AppSettingsPage() {
       {APPS.map(({ key, label }) => (
         <ReleaseCard key={`${key}-${version}`} app={key} label={label} row={releases.find((r) => r.app === key)} onSaved={load} />
       ))}
+      <div className="rounded-3xl border border-border bg-card p-5">
+        <h2 className="mb-1 text-sm font-semibold text-ink">Partner &amp; rider help contacts</h2>
+        <p className="mb-4 text-xs text-muted">
+          Shown in the partner app&apos;s Help &amp; support screen and the rider app&apos;s Help buttons. Leave a field blank to use the
+          general contact from App content; with neither set, the app hides that option.
+        </p>
+        <div className="flex flex-col gap-3">
+          <SupportContactsCard key={`partner-support-${version}`} app="partner" label="Partner (store) app" row={releases.find((r) => r.app === 'partner')} onSaved={load} />
+          <SupportContactsCard key={`rider-support-${version}`} app="rider" label="Rider app" row={releases.find((r) => r.app === 'rider')} onSaved={load} />
+        </div>
+      </div>
       <div className="rounded-3xl border border-border bg-card p-5">
         <h2 className="mb-1 text-sm font-semibold text-ink">Customer FAQ</h2>
         <p className="mb-4 text-xs text-muted">Shown in the customer app under Help &amp; support, lowest order first.</p>

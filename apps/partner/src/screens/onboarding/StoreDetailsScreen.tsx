@@ -10,7 +10,7 @@ import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { saveStoreDraft } from '../../api/auth';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { StoreCategoryPicker } from '../store-settings/components/StoreCategoryPicker';
+import { categoryNeedsDrugLicense, StoreCategoryPicker, useStoreCategories } from '../store-settings/components/StoreCategoryPicker';
 import { FieldCard, INPUT_CLASS, OnboardingScaffold } from './components/OnboardingScaffold';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -21,18 +21,24 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
   const [storeName, setStoreName] = useState(draft.storeName);
   const [category, setCategory] = useState(draft.category);
   const [phone, setPhone] = useState(draft.phone);
+  const [drugLicenseNumber, setDrugLicenseNumber] = useState(draft.drugLicenseNumber ?? '');
   const [saving, setSaving] = useState(false);
+  const categories = useStoreCategories();
+  const needsDrugLicense = categoryNeedsDrugLicense(categories, category);
+  const isKnownCategory = categories.some((option) => option.name === category);
 
-  const canContinue = storeName.trim().length > 0 && category.length > 0 && phone.trim().length >= 10;
+  const canContinue =
+    storeName.trim().length > 0 && isKnownCategory && phone.trim().length >= 10 && (!needsDrugLicense || drugLicenseNumber.trim().length > 0);
 
   async function handleNext() {
     if (!canContinue) return;
     const trimmedName = storeName.trim();
     const trimmedPhone = phone.trim();
+    const trimmedLicense = needsDrugLicense ? drugLicenseNumber.trim() : '';
 
     setSaving(true);
     try {
-      await saveStoreDraft({ storeName: trimmedName, category, phone: trimmedPhone });
+      await saveStoreDraft({ storeName: trimmedName, category, phone: trimmedPhone, drugLicenseNumber: trimmedLicense });
     } catch {
       // Best-effort autosave — a failed save just costs a resume, not a
       // blocked flow (fetchStoreDraft's own note in api/auth.ts).
@@ -41,7 +47,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
     }
 
     navigation.navigate('StoreLocation', {
-      draft: { ...draft, storeName: trimmedName, category, phone: trimmedPhone },
+      draft: { ...draft, storeName: trimmedName, category, phone: trimmedPhone, drugLicenseNumber: trimmedLicense },
     });
   }
 
@@ -66,6 +72,21 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
       <FieldCard label="Category">
         <StoreCategoryPicker selected={category} onSelect={setCategory} />
       </FieldCard>
+
+      {needsDrugLicense && (
+        <FieldCard label="Drug licence number">
+          <TextInput
+            value={drugLicenseNumber}
+            onChangeText={setDrugLicenseNumber}
+            placeholder="From your state Drug Control authority"
+            placeholderTextColor="#9AA5A3"
+            autoCapitalize="characters"
+            maxLength={100}
+            className={INPUT_CLASS}
+          />
+          <Text className="text-[12px] font-medium text-ink/40">Required for a pharmacy.</Text>
+        </FieldCard>
+      )}
 
       <FieldCard label="Store phone number">
         <TextInput

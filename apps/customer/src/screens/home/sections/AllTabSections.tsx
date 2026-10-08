@@ -56,6 +56,8 @@ interface Props {
 interface SectionCtx {
   rows: Record<ProductRowKey, Product[]>;
   onSelectCategory: (id: string) => void;
+  // Quick categories directly under the header continue its colour, untitled.
+  quickCategoriesLeading: boolean;
 }
 
 // Product rows that share feeds. Claimed in this priority (biggest discounts
@@ -72,7 +74,7 @@ const copyPrefix = (key: string) => `home.${key.replace(/-([a-z])/g, (_, c: stri
 
 // key -> how to render that section. Returning null renders nothing.
 const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, copy: SectionCopy) => React.ReactNode> = {
-  'quick-categories': (ctx, c) => <QuickCategoriesSection onSelectCategory={ctx.onSelectCategory} title={c.title} showTitle={false} />,
+  'quick-categories': (ctx, c) => <QuickCategoriesSection onSelectCategory={ctx.onSelectCategory} title={c.title} showTitle={!ctx.quickCategoriesLeading} />,
   'everyday-dairy': (_ctx, c) => <EverydayDairySection title={c.title} />,
   // Admin Festival Section / Seasonal Section; each renders nothing while
   // inactive or empty (FestivalPicksSection.tsx, SeasonalSection.tsx).
@@ -138,6 +140,7 @@ export function AllTabSections({ onSelectCategory }: Props) {
       'everyday-essentials': { feed: essentials, cap: ESSENTIALS_GRID_LIMIT },
     }),
     onSelectCategory,
+    quickCategoriesLeading: false,
   };
   const sectionCopy = (cfg: HomeSectionConfig): SectionCopy => ({
     title: cfg.title?.trim() || t(`${copyPrefix(cfg.key)}.title`),
@@ -151,28 +154,23 @@ export function AllTabSections({ onSelectCategory }: Props) {
       ? [...sectionConfig].filter((s) => s.enabled).sort((a, b) => a.sortIndex - b.sortIndex)
       : FALLBACK_ORDER.map((key, i) => ({ key, title: null, subtitle: null, enabled: true, sortIndex: i, bgColor: null }));
 
-  // Keep daily dairy above shops, including older server configurations
-  // that do not contain this new section. Honour an explicit disabled row.
-  const dairyConfig = sectionConfig?.find((section) => section.key === 'everyday-dairy');
-  const sections = configuredSections.filter((section) => section.key !== 'everyday-dairy' && section.key !== 'festival-greeting');
-  if (dairyConfig?.enabled !== false) {
-    const shopsIndex = sections.findIndex((section) => section.key === 'nearby-stores');
-    const dairyIndex = Math.max(shopsIndex, 0);
-    sections.splice(dairyIndex, 0, dairyConfig ?? {
-      key: 'everyday-dairy', title: null, subtitle: null, enabled: true, sortIndex: dairyIndex, bgColor: null,
-    });
+  // Quick categories and Everyday Dairy are ordinary admin rows (migration
+  // 116): their enabled flag and order come from Home Sections. Only a server
+  // that predates 116 (no row at all) gets them at their old default spots.
+  const sections = configuredSections.filter((section) => section.key !== 'festival-greeting');
+  if (sectionConfig && sectionConfig.length > 0) {
+    if (!sectionConfig.some((section) => section.key === 'everyday-dairy')) {
+      const shopsIndex = sections.findIndex((section) => section.key === 'nearby-stores');
+      sections.splice(Math.max(shopsIndex, 0), 0, {
+        key: 'everyday-dairy', title: null, subtitle: null, enabled: true, sortIndex: 0, bgColor: null,
+      });
+    }
+    if (!sectionConfig.some((section) => section.key === 'quick-categories')) {
+      sections.unshift({ key: 'quick-categories', title: null, subtitle: null, enabled: true, sortIndex: 0, bgColor: null });
+    }
   }
 
-  // Add the new shortcuts for older server configs, honour an explicit
-  // disabled row, and keep them first so the header colour stays continuous.
-  const quickConfig = sectionConfig?.find((section) => section.key === 'quick-categories');
-  const quickIndex = sections.findIndex((section) => section.key === 'quick-categories');
-  if (quickIndex >= 0) sections.splice(quickIndex, 1);
-  if (quickConfig?.enabled !== false) {
-    sections.splice(0, 0, quickConfig ?? {
-      key: 'quick-categories', title: null, subtitle: null, enabled: true, sortIndex: 0, bgColor: null,
-    });
-  }
+  ctx.quickCategoriesLeading = sections[0]?.key === 'quick-categories';
 
   return (
     // pb-32 — floating-CartBar clearance, same as every tab body.
@@ -187,7 +185,7 @@ export function AllTabSections({ onSelectCategory }: Props) {
         const node = render(ctx, sectionCopy(cfg));
         if (!node) return null; // section chose to render nothing (no data etc.)
         return (
-          <View key={cfg.key} style={cfg.key === 'quick-categories' ? {
+          <View key={cfg.key} style={cfg.key === 'quick-categories' && ctx.quickCategoriesLeading ? {
             backgroundColor: shortcutsBackground,
             borderBottomLeftRadius: 28,
             borderBottomRightRadius: 28,

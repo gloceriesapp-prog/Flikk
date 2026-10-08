@@ -20,7 +20,9 @@ export interface TripLegItem {
   unit_price_at_order: number;
 }
 
-export function groupPricedCartByStore(items: PricedCheckoutItem[], commissionRate: number): TripLeg[] {
+// commissionRate is one rate for every store, or a per-store lookup
+// (stores.commission_rate overrides, migration 115).
+export function groupPricedCartByStore(items: PricedCheckoutItem[], commissionRate: number | ((storeId: string) => number)): TripLeg[] {
   const groups = new Map<string, TripLeg>();
   for (const item of items) {
     const leg = groups.get(item.store_id) ?? { storeId: item.store_id, items: [], itemTotal: 0, commissionAmount: 0 };
@@ -29,7 +31,7 @@ export function groupPricedCartByStore(items: PricedCheckoutItem[], commissionRa
   }
   for (const leg of groups.values()) {
     leg.itemTotal = calcItemTotal(leg.items.map((item) => ({ unitPrice: item.unit_price_at_order, quantity: item.quantity })));
-    leg.commissionAmount = calcCommission(leg.itemTotal, commissionRate);
+    leg.commissionAmount = calcCommission(leg.itemTotal, typeof commissionRate === 'number' ? commissionRate : commissionRate(leg.storeId));
   }
   return [...groups.values()];
 }

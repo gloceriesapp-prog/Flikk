@@ -1,11 +1,12 @@
 // Create a customer FAQ entry (app_faqs, migration 112).
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
 import { validateFaqInput } from '@/lib/appSettingsValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(request: Request) {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   let row;
   try {
     row = validateFaqInput(await request.json());

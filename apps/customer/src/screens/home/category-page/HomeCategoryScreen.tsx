@@ -8,12 +8,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AppStackParamList } from '../../../navigation/types';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
-import { withHomeCategoryTabs } from '../data/categoryTabs';
 import { useHomeTabs } from '../data/useHomeTabs';
 import { HomeCategoryContent, homeCategoryKind } from './HomeCategoryContent';
 import { useHomeBrowseScroll } from './useHomeBrowseScroll';
 import { HomeCategoryBanner } from './components/HomeCategoryBanner';
 import { storageUrl } from '../../../utils/storageUrl';
+import { useCopyImage } from '../../../api/appConfig';
 
 const GROCERY_HEADER_IMAGE_URI =
   storageUrl('Images/Royal%20Blue%20Tote%20of%20Indian%20Groceries.png');
@@ -22,17 +22,19 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const tabs = useHomeTabs();
-  const tab = withHomeCategoryTabs(tabs.data ?? []).find((item) => item.id === route.params.tabId);
+  const tab = (tabs.data ?? []).find((item) => item.id === route.params.tabId);
   const categoryKind = tab ? homeCategoryKind(tab) : undefined;
   const isFestival = categoryKind === 'festival';
   const { scrollHandler } = useHomeBrowseScroll();
+  // Admin App content: home.groceries.headerImageUrl.
+  const groceryHeaderImage = useCopyImage('home.groceries.headerImageUrl', GROCERY_HEADER_IMAGE_URI);
 
   return (
     <View className="flex-1 bg-white">
       {isFocused && <StatusBar style="dark" />}
       <Animated.ScrollView className="flex-1" contentContainerClassName="pb-28" contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} onScroll={scrollHandler} scrollEventThrottle={16} bounces={false} overScrollMode="never">
         <HomeCategoryBanner
-          imageUri={isFestival ? tab?.festival?.headerImageUri ?? undefined : categoryKind === 'groceries' ? GROCERY_HEADER_IMAGE_URI : undefined}
+          imageUri={isFestival ? tab?.festival?.headerImageUri ?? undefined : categoryKind === 'groceries' ? groceryHeaderImage : undefined}
           backgroundColor={isFestival ? tab?.festival?.backgroundColor : undefined}
           imageFit={isFestival ? 'contain' : 'cover'}
           seamless={isFestival}

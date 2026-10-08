@@ -51,6 +51,7 @@ import { usePurchaseClock } from './usePurchaseClock';
 import { getPurchaseArrivalDeadline } from './orderArrival';
 import type { AppStackParamList } from '../../navigation/types';
 import { storageUrl } from '../../utils/storageUrl';
+import { useCopy } from '../../api/appConfig';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Purchase'>;
 
@@ -64,6 +65,7 @@ function isLive(status: string): boolean {
 export function PurchaseScreen({ navigation }: Props) {
   const client = useQueryClient();
   const customerId = useAuthStore(state => state.customerId);
+  const emptyTitle = useCopy('orders.empty.title');
   const isFocused = useIsFocused();
   const [isForeground, setIsForeground] = useState(AppState.currentState === 'active');
   useEffect(() => {
@@ -328,7 +330,7 @@ export function PurchaseScreen({ navigation }: Props) {
           <View className="flex-grow justify-between">
             <View>
               <Image source={{ uri: FEATURE_IMAGE_URI }} className="mt-6 aspect-[4/5] w-3/5 self-center" resizeMode="cover" />
-              <Text className="mt-5 px-8 text-center text-[17px] font-semibold text-ink">No orders yet.</Text>
+              <Text className="mt-5 px-8 text-center text-[17px] font-semibold text-ink">{emptyTitle}</Text>
               <Text className="mt-1 px-8 text-center text-sm font-medium text-ink/50">
                 Looks like you haven&apos;t placed orders yet.
               </Text>

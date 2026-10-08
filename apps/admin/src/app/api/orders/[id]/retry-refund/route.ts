@@ -1,11 +1,11 @@
 // Manual retry queues the existing durable refund job after admin authorization.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireAdminSession();
-  if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
 
   const { id } = await params;
 

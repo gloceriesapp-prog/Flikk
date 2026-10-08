@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
-  const user = await requireAdminSession();
-  if (!user || !isAllowedAdminEmail(user.email))
-    return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const params = new URL(request.url).searchParams;
   const kind = params.get('kind');
   const tables = { products: 'products', categories: 'sub_categories', stores: 'stores' } as const;

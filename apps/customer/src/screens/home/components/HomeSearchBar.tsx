@@ -4,7 +4,8 @@
 // Only the product hint rolls; the word Search remains fixed.
 
 import { Search01Icon } from '@hugeicons/core-free-icons';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { useCopy } from '../../../api/appConfig';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { RotatingSearchHint } from './RotatingSearchHint';
@@ -14,6 +15,8 @@ interface Props {
 }
 
 export function HomeSearchBar({ onPress }: Props) {
+  // Admin App content: home.search.placeholder replaces the rolling hints.
+  const placeholder = useCopy('home.search.placeholder');
   return (
     <View className="mt-1.5 w-full">
       <Pressable
@@ -39,7 +42,9 @@ export function HomeSearchBar({ onPress }: Props) {
         </View>
 
         <View className="flex-1">
-          <RotatingSearchHint />
+          {placeholder ? (
+            <Text numberOfLines={1} className="text-base font-medium text-ink/55">{placeholder}</Text>
+          ) : <RotatingSearchHint />}
         </View>
       </Pressable>
     </View>

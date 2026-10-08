@@ -9,8 +9,11 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { HOME_TAB_SELECT, mapRowToHomeTab, type HomeTabRow } from '@/lib/supabase/homeTabs';
 import { toHomeTabErrorMessage, toHomeTabRow, validateHomeTabInput, type HomeTabWriteInput } from '@/lib/homeTabValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/home-tabs/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   const body = await request.json();
 
@@ -33,6 +36,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/home-tabs/
 }
 
 export async function DELETE(request: Request, ctx: RouteContext<'/api/home-tabs/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   try {

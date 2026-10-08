@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Calendar, HandCoins, Wallet } from 'lucide-react';
-import { fetchMyPayouts, fetchMyStore, type Payout, type Store } from '@/lib/partnerApi';
+import { AlertCircle, Calendar, HandCoins, Percent, Wallet } from 'lucide-react';
+import { fetchMyCommission, fetchMyPayouts, fetchMyStore, type PartnerCommission, type Payout, type Store } from '@/lib/partnerApi';
 import { DEMO_PAYOUTS } from '@/lib/demoPayouts';
 import { Card } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
@@ -15,6 +15,7 @@ import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 export default function PayoutsPage() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [store, setStore] = useState<Store | null>(null);
+  const [commission, setCommission] = useState<PartnerCommission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<PayoutFilter>('all');
 
@@ -25,6 +26,8 @@ export default function PayoutsPage() {
         setStore(storeRes);
       })
       .finally(() => setIsLoading(false));
+    // Best-effort: the rate line just stays hidden if this fails.
+    fetchMyCommission().then(setCommission).catch(() => setCommission(null));
   }, []);
 
   // DEMO DATA — this store has zero real payout history, so the table/
@@ -65,6 +68,14 @@ export default function PayoutsPage() {
           <StatTile label="Next payout" value={nextPayout ? formatDate(nextPayout.week_end) : '—'} icon={Calendar} />
           <StatTile label="Needs attention" value={String(needsAttention)} icon={AlertCircle} sublabel={needsAttention > 0 ? 'Blocked or failed' : 'All clear'} />
         </div>
+
+      {commission && (
+        <p className="flex items-center gap-1.5 text-sm text-neutral-500">
+          <Percent size={14} />
+          Gloceries commission: {Math.round(commission.commissionRate * 10000) / 100}% of the item total on each new order
+          {commission.isStoreOverride ? ' (your store’s rate)' : ''}.
+        </p>
+      )}
 
       <PayoutsFilterBar filter={filter} onFilterChange={setFilter} counts={counts} />
 

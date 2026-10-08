@@ -27,10 +27,13 @@
 // plain ReadableStream on the Node runtime with no extra library.
 
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const encoder = new TextEncoder();
 
   let heartbeat: ReturnType<typeof setInterval>;

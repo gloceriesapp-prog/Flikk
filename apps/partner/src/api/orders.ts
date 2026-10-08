@@ -25,8 +25,8 @@ export interface ApiOrder {
   // is stranded with a rider. Now surfaced, same as 'cancelled' is skipped.
   status: 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
   total: number;
-  // Real orders.item_total/commission_amount — backend/src/lib/pricing.ts's
-  // own COMMISSION_RATE (6%) applied server-side at order-creation time,
+  // Real orders.item_total/commission_amount — the store's commission rate
+  // (its own rate, else the platform default) applied server-side at order-creation time,
   // already selected by GET /partner/orders's `select('*', ...)` but never
   // typed/used here until now. This app must never recompute a payout
   // figure client-side (screens/orders/data.ts's own note on the bug this

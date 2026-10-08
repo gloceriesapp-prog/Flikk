@@ -1,10 +1,11 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), payments: vi.fn(), get: vi.fn(), terminate: vi.fn(), settle: vi.fn(), push: vi.fn(), record: vi.fn(), session: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), payments: vi.fn(), get: vi.fn(), terminate: vi.fn(), settle: vi.fn(), push: vi.fn(), record: vi.fn(), session: vi.fn(), available: vi.fn() }));
 vi.mock('../db/supabase.js', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from } }));
 vi.mock('./cashfreeClient.js', async (load) => ({ ...await load<typeof import('./cashfreeClient.js')>(), paymentsConfigured: true,
   getCfOrderPayments: mocks.payments, getCfOrder: mocks.get, terminateCfOrder: mocks.terminate }));
 vi.mock('./settleCheckoutPayment.js', () => ({ settleCheckoutPayment: mocks.settle }));
 vi.mock('./newOrderPush.js', () => ({ notifyStoresOfNewOrder: mocks.push }));
+vi.mock('./availability.js', () => ({ assertPaymentMethodAvailable: mocks.available }));
 import { abandonCheckout } from './abandonCheckout.js';
 
 const id = '00000000-0000-4000-8000-000000000200';
@@ -28,6 +29,7 @@ beforeEach(() => {
   mocks.terminate.mockResolvedValue('TERMINATED');
   mocks.rpc.mockResolvedValue({ data: {}, error: null });
   mocks.settle.mockResolvedValue(true);
+  mocks.available.mockResolvedValue(undefined);
 });
 
 it('terminates the Cashfree order, then cancels when the customer backed out of the UPI app', async () => {
@@ -80,4 +82,14 @@ it('skips the provider read once the checkout already has a recorded payment', a
   mocks.rpc.mockResolvedValue({ data: null, error: { code: 'P0410' } });
   expect((await call('cancel')).error).toMatchObject({ code: 'CHECKOUT_NOT_AWAITING_PAYMENT' });
   expect(mocks.payments).not.toHaveBeenCalled();
+});
+
+it('refuses to switch to cash when admin has turned COD off', async () => {
+  const { AppError } = await import('../lib/errors.js');
+  mocks.available.mockRejectedValue(new AppError(409, 'COD_UNAVAILABLE', 'Cash on delivery is not available right now.'));
+  const { json, error } = await call('cod');
+  expect(json).toBeUndefined();
+  expect(error).toMatchObject({ code: 'COD_UNAVAILABLE' });
+  expect(mocks.available).toHaveBeenCalledWith('cod');
+  expect(mocks.rpc).not.toHaveBeenCalled();
 });

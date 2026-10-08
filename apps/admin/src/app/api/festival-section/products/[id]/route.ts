@@ -5,8 +5,11 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { id } = await params;
     const { sort_order } = (await request.json()) as { sort_order: number };
@@ -22,6 +25,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { id } = await params;
     const { error } = await supabaseAdmin.from('festival_section_products').delete().eq('id', id);

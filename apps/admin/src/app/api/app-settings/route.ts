@@ -8,14 +8,15 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
 import { validateReleaseInput } from '@/lib/appSettingsValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
-const RELEASE_SELECT = 'app, min_supported_version, latest_version, ios_store_url, android_store_url, force_update, maintenance_enabled, maintenance_message, updated_at';
+const RELEASE_SELECT = 'app, min_supported_version, latest_version, ios_store_url, android_store_url, force_update, maintenance_enabled, maintenance_message, support_phone, support_email, support_whatsapp, updated_at';
 const FAQ_SELECT = 'id, question, answer, sort_order, is_active, updated_at';
 
 export async function GET() {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const [releases, faqs] = await Promise.all([
       supabaseAdmin.from('app_release_config').select(RELEASE_SELECT).order('app'),
@@ -30,7 +31,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   let row;
   try {
     row = validateReleaseInput(await request.json());

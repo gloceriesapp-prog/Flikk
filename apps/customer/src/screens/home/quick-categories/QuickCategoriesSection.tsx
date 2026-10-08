@@ -1,10 +1,11 @@
 import { View } from 'react-native';
 import { SectionTitle } from '../components/SectionTitle';
-import { ALL_TAB, buildHomeCategories, withHomeCategoryTabs } from '../data/categoryTabs';
+import { ALL_TAB, buildHomeCategories } from '../data/categoryTabs';
 import { useHomeTabs } from '../data/useHomeTabs';
 import { QuickCategoryCard } from './QuickCategoryCard';
 import { quickCategoryRows } from './layout';
 import { GROCERY_QUICK_CATEGORY_IMAGE, GROCERY_IMAGE_BOTTOM_BLEED } from './data';
+import { useCopy, useCopyImage } from '../../../api/appConfig';
 
 interface Props {
   onSelectCategory: (id: string) => void;
@@ -14,11 +15,15 @@ interface Props {
 
 export function QuickCategoriesSection({ onSelectCategory, title = 'Quick categories', showTitle = true }: Props) {
   const { data: tabs = [] } = useHomeTabs();
-  // Hide only these shortcuts, preserving their actual tabs/routes. Match
-  // stable source names so an admin label override cannot bring them back.
-  const sourceTabs = withHomeCategoryTabs(tabs);
+  // Admin App content: home.quickCategories.hiddenTabs (comma-separated tab
+  // names, matched on the tab's name or label) hides only these shortcuts,
+  // preserving their actual tabs/routes; groceryImageUrl swaps the artwork.
+  const hiddenNames = new Set(useCopy('home.quickCategories.hiddenTabs').split(',')
+    .map((name) => name.trim().toLowerCase()).filter(Boolean));
+  const groceryImage = useCopyImage('home.quickCategories.groceryImageUrl', GROCERY_QUICK_CATEGORY_IMAGE);
+  const sourceTabs = tabs;
   const excludedIds = new Set(sourceTabs
-    .filter((tab) => ['bakery', 'bakeries', 'parts & tools'].includes(tab.name.trim().toLowerCase()))
+    .filter((tab) => hiddenNames.has(tab.name.trim().toLowerCase()) || hiddenNames.has((tab.label ?? '').trim().toLowerCase()))
     .map((tab) => tab.id));
   const groceryIds = new Set(sourceTabs
     .filter((tab) => tab.contentKey === 'grocery' || ['grocery', 'groceries'].includes(tab.name.trim().toLowerCase()))
@@ -42,7 +47,7 @@ export function QuickCategoriesSection({ onSelectCategory, title = 'Quick catego
                 <QuickCategoryCard
                   category={category}
                   onSelect={onSelectCategory}
-                  imageUrl={groceryIds.has(category.id) ? GROCERY_QUICK_CATEGORY_IMAGE : festivalImages.get(category.id)}
+                  imageUrl={groceryIds.has(category.id) ? groceryImage : festivalImages.get(category.id)}
                   imageBottomBleed={groceryIds.has(category.id) ? GROCERY_IMAGE_BOTTOM_BLEED : 0}
                   imageScale={festivalImages.has(category.id) ? 1.12 : 1}
                 />

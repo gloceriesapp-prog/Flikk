@@ -448,6 +448,30 @@
     {
       "file": "112_app_config_and_hours.sql",
       "sha256": "43dd50d6dfceda6f79ab8fc750cb2b2a12624d74cc0d6b554f984a900e6bdb4f"
+    },
+    {
+      "file": "113_rider_ops.sql",
+      "sha256": "9f6ed579e1c2eabe48ede1262af514a94234e27d02229e81f2aed397795f1191"
+    },
+    {
+      "file": "114_partner_store_controls.sql",
+      "sha256": "a24e7c47e79f8ed4322bee80b7a04df65988ae58868f0a8f0fc2b84f15340229"
+    },
+    {
+      "file": "115_product_review_commission.sql",
+      "sha256": "236c8dc33c29ae2dfd3aedff03c6d1522618f41654c9e42372621c9870bf2870"
+    },
+    {
+      "file": "116_home_content_controls.sql",
+      "sha256": "1d8b39284e3f0f8dd08c117991e3afc4c5e6ce5b28e83ecd9df08288f7741853"
+    },
+    {
+      "file": "117_customer_commerce_controls.sql",
+      "sha256": "56244a949e026131291f76f2ce5d0f322bed1a1180cea811d00e181a4b346a59"
+    },
+    {
+      "file": "118_partner_rider_support.sql",
+      "sha256": "6cf0e4fa0d2088917ea38f9acc8d185e8a12215650f8fef1ecc96623bf5a3edc"
     }
   ]
 }

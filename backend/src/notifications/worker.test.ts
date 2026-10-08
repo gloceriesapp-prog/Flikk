@@ -3,7 +3,7 @@ const fixture=vi.hoisted(()=>({job:{id:'notification',customer_id:'customer-a',o
 vi.mock('../db/supabase.js',()=>({supabase:{rpc:vi.fn(async()=>({data:[fixture.job],error:null})),from:vi.fn((table:string)=>{
  const chain:{upsert:(data:Record<string,unknown>)=>unknown;select:()=>unknown;in:(...args:unknown[])=>Promise<unknown>;delete:()=>unknown;update:(data:Record<string,unknown>)=>unknown;eq:(...args:unknown[])=>unknown;then:(resolve:(v:unknown)=>void)=>void}={upsert:(data)=>{fixture.upserts.push(data);return chain;},select:()=>chain,in:async(...args)=>{fixture.inCalls.push([table,...args]);return {data:table==='customer_push_receipts'?fixture.receipts:fixture.devices,error:null};},delete:()=>chain,update:(data:Record<string,unknown>)=>{fixture.saved=data;return chain;},eq:(...args:unknown[])=>{fixture.filters.push([table,...args]);return chain;},then:(resolve:(v:unknown)=>void)=>resolve({error:null})};return chain;
 })}}));
-import { runCustomerNotifications } from './worker.js';
+import { pushData, runCustomerNotifications } from './worker.js';
 const twoDevices=()=>[{customer_id:'customer-a',token:'ExpoPushToken[ios]',installation_id:'install-ios',revision:1},{customer_id:'customer-a',token:'ExpoPushToken[android]',installation_id:'install-android',revision:1}];
 const sentTo=(fetch:{mock:{calls:unknown[][]}})=>fetch.mock.calls.flatMap(call=>(JSON.parse((call[1] as {body:string}).body) as {to:string}[]).map(m=>m.to));
 beforeEach(()=>{fixture.saved={};fixture.filters=[];fixture.upserts=[];fixture.inCalls=[];fixture.receipts=[];fixture.job.attempts=1;fixture.devices=[{customer_id:'customer-a',token:'ExpoPushToken[a]'}];vi.unstubAllGlobals();});
@@ -46,4 +46,18 @@ it('finalizes a retry without sending when every device already accepted it',asy
  fixture.receipts=[{notification_id:'notification',installation_id:'install-ios'},{notification_id:'notification',installation_id:'install-android'}];
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);await runCustomerNotifications();
  expect(fetch).not.toHaveBeenCalled();expect(fixture.saved.push_sent_at).toBeTypeOf('string');
+});
+it('records why a push failed for the admin outbox and clears it once sent',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({data:[{status:'error',message:'rate',details:{error:'MessageRateExceeded'}}]})));await runCustomerNotifications();
+ expect(fixture.saved.last_error).toBe('Push rejected: MessageRateExceeded');expect(fixture.saved.push_sent_at).toBeUndefined();
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({data:[{status:'ok',id:'expo-ticket'}]})));await runCustomerNotifications();
+ expect(fixture.saved.last_error).toBeNull();expect(fixture.saved.push_sent_at).toBeTypeOf('string');
+});
+it('marks a customer without a device as done with a note',async()=>{
+ fixture.devices=[];const fetch=vi.fn();vi.stubGlobal('fetch',fetch);await runCustomerNotifications();
+ expect(fetch).not.toHaveBeenCalled();expect(fixture.saved).toMatchObject({last_error:'No registered device'});expect(fixture.saved.push_sent_at).toBeTypeOf('string');
+});
+it('sends an admin message without an order as an announcement',()=>{
+ expect(pushData({id:'n',customer_id:'c',order_id:null,trip_id:null})).toEqual({type:'announcement',customer_id:'c',notification_id:'n'});
+ expect(pushData({id:'n',customer_id:'c',order_id:'o',trip_id:null})).toEqual({type:'order',customer_id:'c',notification_id:'n',order_id:'o',is_trip:false});
 });

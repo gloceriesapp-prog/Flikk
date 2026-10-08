@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
 import { TAB_KEYS, referencedIds, validateContent } from '@/lib/homeContent';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export const dynamic = 'force-dynamic';
 const SELECT = 'tab_key, home_tab_id, revision, updated_at, content';
@@ -22,17 +21,16 @@ function record(row: {
     content: row.content,
   };
 }
-async function authorize(context: Context) {
-  const user = await requireAdminSession();
-  if (!user || !isAllowedAdminEmail(user.email))
-    return { error: NextResponse.json({ error: 'Admin access required.' }, { status: 403 }) };
+async function resolveTab(context: Context) {
   const { tab } = await context.params;
   if (!TAB_KEYS.some((key) => key === tab))
     return { error: NextResponse.json({ error: 'Unknown Home tab.' }, { status: 404 }) };
-  return { user, tab };
+  return { tab };
 }
 export async function GET(request: Request, context: Context) {
-  const auth = await authorize(context);
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
+  const auth = await resolveTab(context);
   if (auth.error) return auth.error;
   if (new URL(request.url).searchParams.get('history') === '1') {
     const { data, error } = await supabaseAdmin
@@ -58,7 +56,9 @@ export async function GET(request: Request, context: Context) {
   return NextResponse.json(record(data), { headers: { 'Cache-Control': 'no-store' } });
 }
 export async function PUT(request: Request, context: Context) {
-  const auth = await authorize(context);
+  const { actor, denied } = await requireAdmin();
+  if (denied) return denied;
+  const auth = await resolveTab(context);
   if (auth.error) return auth.error;
   const origin = request.headers.get('origin');
   if (origin && origin !== new URL(request.url).origin)
@@ -119,7 +119,7 @@ export async function PUT(request: Request, context: Context) {
   }
   const { data, error } = await supabaseAdmin
     .from('home_content')
-    .update({ content, updated_by: auth.user.id })
+    .update({ content, updated_by: actor.id })
     .eq('tab_key', auth.tab)
     .eq('revision', body.revision)
     .select(SELECT)

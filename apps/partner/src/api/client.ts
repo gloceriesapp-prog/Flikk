@@ -9,10 +9,10 @@ import { validateApiUrl } from '../../../../packages/shared/config/api-url.cjs';
 // call site in this app (storeOnboarding calls, etc. — not just the OTP
 // endpoints) keeps working unchanged.
 
-import { createApiClient } from '@gloceries/shared';
+import { ApiError, createApiClient } from '@gloceries/shared';
 import { useAuthStore } from '../store/useAuthStore';
 
-export { ApiError } from '@gloceries/shared';
+export { ApiError };
 
 // Fallback only matters when EXPO_PUBLIC_API_URL is unset — backend/Express
 // listens on 4000, not 3000 (that's apps/admin's Next.js dev server). A
@@ -85,4 +85,17 @@ const client = createApiClient({
   onSessionExpired: () => useAuthStore.getState().clear(),
 });
 
-export const apiRequest = client.apiRequest;
+// Any partner route answers 403 PARTNER_SUSPENDED once Gloceries suspends
+// this partner account (backend requireActivePartner) — flip the app to the
+// blocking PartnerSuspendedScreen right away instead of failing call by call.
+// The screen re-reads the reason from GET /auth/me.
+export async function apiRequest<T>(path: string, options?: Parameters<typeof client.apiRequest>[1]): Promise<T> {
+  try {
+    return await client.apiRequest<T>(path, options);
+  } catch (err) {
+    if (err instanceof ApiError && err.code === 'PARTNER_SUSPENDED' && !useAuthStore.getState().partnerSuspended) {
+      useAuthStore.getState().setPartnerSuspension(true, null);
+    }
+    throw err;
+  }
+}

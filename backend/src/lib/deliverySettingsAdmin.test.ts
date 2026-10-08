@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ authenticated: true, from: vi.fn(), update: vi.fn(), eq: vi.fn(), error: null as unknown }));
-vi.mock('@/lib/supabase/server', () => ({ requireAdminSession: async () => mocks.authenticated ? { id: 'admin' } : null }));
+vi.mock('@/lib/supabase/server', () => ({ requireAdminSession: async () => mocks.authenticated ? { id: 'admin', email: 'nishalpoojary810@gmail.com' } : null }));
 vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: { from: mocks.from } }));
 vi.mock('@/lib/supabase/client', () => ({ supabase: {} }));
 import { GET, PATCH } from '../../../apps/admin/src/app/api/delivery-settings/route';

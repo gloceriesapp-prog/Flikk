@@ -5,8 +5,11 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { CATEGORY_SELECT, mapRowToCategory, type CategoryRow } from '@/lib/supabase/categories';
 import { toCategoryErrorMessage, toCategoryRow, validateCategoryInput, type CategoryWriteInput } from '@/lib/categoryValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/categories/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   const body = await request.json();
 
@@ -29,6 +32,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/categories
 }
 
 export async function DELETE(request: Request, ctx: RouteContext<'/api/categories/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   try {

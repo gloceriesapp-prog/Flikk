@@ -49,6 +49,7 @@ interface ProductRow {
   stock_status: 'in_stock' | 'low_stock' | 'out_of_stock';
   image_url: string | null;
   approval_status: 'pending' | 'approved' | 'rejected';
+  pending_changes?: Record<string, unknown> | null;
   stock_quantity: number | null;
   stock_tracking_enabled: boolean;
   product_variants: VariantRow[];
@@ -94,6 +95,7 @@ function fromRow(row: ProductRow): PartnerProduct {
     imageUrl: row.image_url,
     stockQuantity: row.stock_tracking_enabled ? row.stock_quantity : null,
     approvalStatus: row.approval_status,
+    hasPendingChanges: row.pending_changes != null,
     variants,
   };
 }
@@ -111,7 +113,9 @@ interface CatalogState {
   loadProducts: () => Promise<void>;
   // Throws (with a real message) on failure — ProductDetailScreen surfaces
   // it, same convention as addProduct below.
-  updateProduct: (productId: string, name: string, variants: ProductVariant[]) => Promise<void>;
+  // Resolves to the saved product (null if it was not in the list) so the
+  // caller can tell the owner when a name/price edit went to review.
+  updateProduct: (productId: string, name: string, variants: ProductVariant[]) => Promise<PartnerProduct | null>;
   // Throws PRODUCT_HAS_ORDERS (409, backend's own note) if this product has
   // ever been ordered — order_items.product_id can't be orphaned, so a
   // product with real order history can only be marked out of stock, not
@@ -140,7 +144,7 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
 
   updateProduct: async (productId, name, variants) => {
     const existing = get().products.find((p) => p.id === productId);
-    if (!existing) return;
+    if (!existing) return null;
 
     const { isInStock } = summarizeVariants(variants);
     const row = await updateProductApi(productId, {
@@ -150,6 +154,7 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
     });
     const updated = fromRow(row as ProductRow);
     set((state) => ({ products: state.products.map((p) => (p.id === productId ? updated : p)) }));
+    return updated;
   },
 
   deleteProduct: async (productId) => {

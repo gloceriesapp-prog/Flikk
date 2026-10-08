@@ -20,6 +20,8 @@ interface HomeSection {
 // Friendly names + the component's own default heading (shown as the input
 // placeholder so the founder sees what "leave blank" falls back to).
 const SECTION_META: Record<string, { label: string; defaultTitle: string }> = {
+  'quick-categories': { label: 'Quick categories', defaultTitle: 'Quick categories (heading hidden when first)' },
+  'everyday-dairy': { label: 'Everyday Dairy', defaultTitle: 'Everyday Dairy' },
   'festival-greeting': { label: 'Festival Greeting', defaultTitle: '(managed in Festival Greeting)' },
   'festival-picks': { label: 'Festival Section products', defaultTitle: '(the Festival Section title)' },
   seasonal: { label: 'Seasonal Section', defaultTitle: '(no heading)' },

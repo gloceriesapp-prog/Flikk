@@ -14,6 +14,7 @@ import { AppError } from '../lib/errors.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { decodeImage, toWebp, normalizeImage } from '../utils/image.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
+import { assertStoreCategory, DRUG_LICENSE_CATEGORIES, isStoreCategory, normalizeDrugLicense, storeCategoryOptions } from '../lib/storeCategories.js';
 
 export const storeOnboardingRouter = Router();
 
@@ -32,9 +33,18 @@ interface OnboardingFields {
   fssaiNumber?: string;
   panNumber?: string;
   udyamNumber?: string;
+  // Pharmacy only — required for that category (lib/storeCategories.ts).
+  drugLicenseNumber?: string;
   openTime?: string;
   closeTime?: string;
 }
+
+// The category list the partner app/dashboard pickers show — the same set
+// admin allows (lib/storeCategories.ts). requireAuth only: applicants
+// (not yet store_owner) need it for the onboarding wizard.
+storeOnboardingRouter.get('/store-categories', requireAuth, (_req, res) => {
+  res.json(storeCategoryOptions());
+});
 
 // Submitting no longer writes a real `stores` row — it only marks the
 // draft as "ready for review" (submitted_at). The real store row (and the
@@ -57,12 +67,21 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
       fssaiNumber,
       panNumber,
       udyamNumber,
+      drugLicenseNumber,
       openTime,
       closeTime,
     } = req.body as OnboardingFields;
     if (!storeName || !category || !district) {
       throw new AppError(400, 'MISSING_FIELDS', 'storeName, category and district are required.');
     }
+    // Same allowed set admin uses; a pharmacy must give its drug licence
+    // (falls back to one already autosaved on the draft).
+    let drugLicense = normalizeDrugLicense(drugLicenseNumber);
+    if (!drugLicense && DRUG_LICENSE_CATEGORIES.includes(category)) {
+      const { data: savedDraft } = await supabase.from('store_onboarding_drafts').select('drug_license_number').eq('user_id', req.user!.id).maybeSingle();
+      drugLicense = normalizeDrugLicense(savedDraft?.drug_license_number);
+    }
+    assertStoreCategory(category, drugLicense);
     // One store per owner: approving a second application would create a
     // duplicate store (migration 110's trigger refuses it in the DB too).
     // An approved owner edits their store in Settings instead.
@@ -100,6 +119,7 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
         fssai_number: fssaiNumber || null,
         pan_number: panNumber.trim().toUpperCase(),
         udyam_number: udyamNumber || null,
+        drug_license_number: drugLicense,
         open_time: openTime || null,
         close_time: closeTime || null,
         // Clears out any reason from a previous rejection — a fresh
@@ -141,7 +161,7 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
     const { data, error } = await supabase
       .from('store_onboarding_drafts')
       .select(
-        'store_name, category, phone, district, address_line, manual_address, lat, lng, photo_url, gst_number, owner_name, shop_establishment_number, fssai_number, pan_number, udyam_number, open_time, close_time, submitted_at',
+        'store_name, category, phone, district, address_line, manual_address, lat, lng, photo_url, gst_number, owner_name, shop_establishment_number, fssai_number, pan_number, udyam_number, drug_license_number, open_time, close_time, submitted_at',
       )
       .eq('user_id', req.user!.id)
       .maybeSingle();
@@ -178,9 +198,13 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
       fssaiNumber,
       panNumber,
       udyamNumber,
+      drugLicenseNumber,
       openTime,
       closeTime,
     } = req.body as OnboardingFields & { lat?: number; lng?: number };
+    if (typeof category === 'string' && category && !isStoreCategory(category)) {
+      assertStoreCategory(category, null);
+    }
 
     // Same real format guard as final submit (POST /store-application) and
     // Store Settings' own PATCH /store — a Step-by-step autosave shouldn't
@@ -211,6 +235,7 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
     if (fssaiNumber !== undefined) patch.fssai_number = fssaiNumber;
     if (panNumber !== undefined) patch.pan_number = typeof panNumber === 'string' ? panNumber.trim().toUpperCase() : panNumber;
     if (udyamNumber !== undefined) patch.udyam_number = udyamNumber;
+    if (drugLicenseNumber !== undefined) patch.drug_license_number = normalizeDrugLicense(drugLicenseNumber);
     if (openTime !== undefined) patch.open_time = openTime;
     if (closeTime !== undefined) patch.close_time = closeTime;
 

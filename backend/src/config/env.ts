@@ -32,6 +32,10 @@ export const env = {
   cashfreeAppId: process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || undefined,
   cashfreeSecretKey: process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || undefined,
   cashfreeEnv: cashfreeEnvRaw as 'production' | 'sandbox',
+  // Hard kill switches over the admin checkout settings (platform_settings,
+  // migration 117): 'true' turns the method off whatever admin saved.
+  codDisabled: process.env.COD_DISABLED === 'true',
+  onlinePaymentsDisabled: process.env.ONLINE_PAYMENTS_DISABLED === 'true',
   // Cashfree signs PG webhooks with the PG secret key; override only if
   // Cashfree issues a separate one.
   cashfreeWebhookSecret: process.env.CASHFREE_WEBHOOK_SECRET || process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || undefined,

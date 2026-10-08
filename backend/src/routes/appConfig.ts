@@ -9,6 +9,12 @@
 // GET /app-config/release/:app — the release gate alone, for the partner and
 // rider apps (callable before sign-in: a forced update or maintenance must
 // reach a signed-out app too).
+//
+// GET /app-config/support/:app — the partner or rider app's help contacts
+// (app_release_config.support_* per app, migration 118; edited on admin's
+// "App settings" page). A field the admin left blank for that app falls back
+// to the general support contact (app_content). Nothing configured: nulls,
+// and the apps hide that contact instead of showing a placeholder.
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
@@ -79,6 +85,18 @@ export function toFaqs(rows: AppFaqRow[] | null) {
     .map((row) => ({ id: row.id, question: row.question.trim(), answer: row.answer.trim() }));
 }
 
+export interface SupportContactRow {
+  support_phone?: string | null;
+  support_email?: string | null;
+  support_whatsapp?: string | null;
+}
+
+// Per-app contact first, then the general (customer) contact.
+export function toSupportContacts(appRow: SupportContactRow | null, generalRow: SupportContactRow | null) {
+  const pick = (key: keyof SupportContactRow) => text(appRow?.[key]) ?? text(generalRow?.[key]);
+  return { phone: pick('support_phone'), email: pick('support_email'), whatsapp: pick('support_whatsapp') };
+}
+
 const RELEASE_SELECT = 'app, min_supported_version, latest_version, ios_store_url, android_store_url, force_update, maintenance_enabled, maintenance_message';
 
 async function readRelease(app: ReleaseApp) {
@@ -94,6 +112,25 @@ appConfigRouter.get('/release/:app', async (req, res, next) => {
     if (!RELEASE_APPS.includes(app)) throw new AppError(404, 'UNKNOWN_APP', 'Unknown app.');
     res.set('Cache-Control', 'public, max-age=30');
     res.json(await readRelease(app));
+  } catch (err) {
+    next(err);
+  }
+});
+
+appConfigRouter.get('/support/:app', async (req, res, next) => {
+  try {
+    const app = req.params.app;
+    if (app !== 'partner' && app !== 'rider') throw new AppError(404, 'UNKNOWN_APP', 'Unknown app.');
+    const [appRow, general] = await Promise.all([
+      supabase.from('app_release_config').select('support_phone, support_email, support_whatsapp').eq('app', app).maybeSingle(),
+      supabase.from('app_content').select('support_phone, support_email, support_whatsapp').eq('id', true).maybeSingle(),
+    ]);
+    if (appRow.error && general.error) throw new AppError(503, 'APP_CONFIG_UNAVAILABLE', 'Support contacts are temporarily unavailable.');
+    res.set('Cache-Control', 'public, max-age=60');
+    res.json(toSupportContacts(
+      appRow.error ? null : (appRow.data as SupportContactRow | null),
+      general.error ? null : (general.data as SupportContactRow | null),
+    ));
   } catch (err) {
     next(err);
   }

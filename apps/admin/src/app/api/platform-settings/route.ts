@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 interface PlatformSettingsRow {
   id: string;
@@ -21,6 +22,8 @@ function mapRow(row: PlatformSettingsRow) {
 }
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data, error } = await supabaseAdmin.from('platform_settings').select('id, commission_rate').single();
     if (error) throw error;
@@ -31,6 +34,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = await request.json();
 
   try {

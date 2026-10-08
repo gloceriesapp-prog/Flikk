@@ -1,13 +1,13 @@
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { STORE_SELECT, mapRowToStore, type StoreRow } from '@/lib/supabase/stores';
 import { parseStorePatch, StorePatchError, validateMergedStore } from '@/features/store-management/storePatch';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/stores/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
-    const unauthorized = await requireStoreAdmin();
-    if (unauthorized) return unauthorized;
     const { id } = await ctx.params;
     if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) return NextResponse.json({ error: 'Invalid store ID.' }, { status: 400 });
     let body: unknown;

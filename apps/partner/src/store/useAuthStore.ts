@@ -43,6 +43,11 @@ interface AuthState {
   // /auth/me own note on why a resubmission clears this server-side.
   isRejected: boolean;
   rejectionReason: string | null;
+  // Admin partner-account suspension (GET /auth/me partner_suspended, or a
+  // 403 PARTNER_SUSPENDED from any partner route) — RootNavigator shows
+  // PartnerSuspendedScreen instead of the app shell while set.
+  partnerSuspended: boolean;
+  partnerSuspendedReason: string | null;
   isHydrated: boolean; // true once we've checked SecureStore on cold start
   hydrate: () => Promise<void>;
   setSession: (
@@ -61,6 +66,7 @@ interface AuthState {
   setHasStore: (hasStore: boolean) => void;
   setApplicationSubmitted: (applicationSubmitted: boolean) => void;
   setRejection: (isRejected: boolean, rejectionReason: string | null) => void;
+  setPartnerSuspension: (suspended: boolean, reason: string | null) => void;
   clear: () => Promise<void>;
 }
 
@@ -72,6 +78,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   applicationSubmitted: false,
   isRejected: false,
   rejectionReason: null,
+  partnerSuspended: false,
+  partnerSuspendedReason: null,
   isHydrated: false,
 
   hydrate: async () => {
@@ -100,6 +108,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setHasStore: (hasStore) => set({ hasStore }),
   setApplicationSubmitted: (applicationSubmitted) => set({ applicationSubmitted }),
   setRejection: (isRejected, rejectionReason) => set({ isRejected, rejectionReason }),
+  setPartnerSuspension: (partnerSuspended, partnerSuspendedReason) => set({ partnerSuspended, partnerSuspendedReason }),
 
   clear: async () => {
     await Promise.all([SecureStore.deleteItemAsync(TOKEN_KEY), SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)]);
@@ -111,6 +120,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       applicationSubmitted: false,
       isRejected: false,
       rejectionReason: null,
+      partnerSuspended: false,
+      partnerSuspendedReason: null,
     });
   },
 }));

@@ -14,7 +14,7 @@
 //                                   sidebar badge read this shape)
 
 import { NextResponse } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import {
   buildOrderQuery, loadCustomers, mapOrderRow, ordersToCsv, parseOrderFilters, searchCustomerIds,
   type OrderListRow,
@@ -25,8 +25,8 @@ const CSV_ROW_CAP = 10_000;
 const CSV_CHUNK = 1000;
 
 export async function GET(request: Request) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const params = new URL(request.url).searchParams;
   const filters = parseOrderFilters(params);
 

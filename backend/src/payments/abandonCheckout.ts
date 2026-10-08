@@ -19,6 +19,7 @@ import { AppError } from '../lib/errors.js';
 import { cashfreeOrderId, paymentsConfigured, terminateCfOrder } from './cashfreeClient.js';
 import { paymentTarget, recoverProviderOrder, reconcileProvider } from './recovery.js';
 import { notifyStoresOfNewOrder } from './newOrderPush.js';
+import { assertPaymentMethodAvailable } from './availability.js';
 
 export type AbandonAction = 'cancel' | 'cod';
 const REASON = 'Customer cancelled unpaid checkout.';
@@ -28,6 +29,8 @@ export async function abandonCheckout(req: AuthedRequest, res: Response, next: N
     const action = req.body?.action as unknown;
     if (action !== 'cancel' && action !== 'cod') throw new AppError(400, 'INVALID_ABANDON_ACTION', 'Choose cancel or cash on delivery.');
     const target = paymentTarget({ orderId: req.body?.orderId, tripId: req.body?.tripId });
+    // Switching an unpaid checkout to cash obeys the admin COD switch too.
+    if (action === 'cod') await assertPaymentMethodAvailable('cod');
     const customerId = req.user!.id;
     const { data: record, error } = await supabase.from(target.table).select('id,total,provider_payment_id')
       .eq('id', target.id).eq('customer_id', customerId).maybeSingle();

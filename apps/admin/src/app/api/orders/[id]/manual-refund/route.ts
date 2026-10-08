@@ -5,12 +5,12 @@
 // in one transaction, so a double-submit can't record two refunds.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
 import { manualRefundReference } from '@/lib/refunds/failedDeliveryRefund';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireAdminSession();
-  if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
 
   const { id } = await params;
   const body = (await req.json().catch(() => null)) as { reference?: unknown } | null;

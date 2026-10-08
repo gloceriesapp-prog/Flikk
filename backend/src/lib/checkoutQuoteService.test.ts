@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn(), promo: vi.fn(), eligibility: vi.fn() }));
+const mocks = vi.hoisted(() => ({ load: vi.fn(), settings: vi.fn(), promo: vi.fn(), eligibility: vi.fn(), controls: vi.fn() }));
 vi.mock('../config/env.js', () => ({ env: { supabaseServiceRoleKey: 'test-secret' } }));
 vi.mock('./checkoutEligibilityService.js', () => ({ requireCheckoutEligibilitySnapshot: mocks.eligibility }));
 vi.mock('./checkoutCatalog.js', () => ({ loadCheckoutItems: mocks.load }));
 vi.mock('./deliverySettings.js', () => ({ getDeliverySettings: mocks.settings }));
 vi.mock('../routes/promos.js', () => ({ lookupPromoForCheckout: mocks.promo }));
+vi.mock('./platformSettings.js', () => ({ getCheckoutControls: mocks.controls }));
 import { confirmCheckoutQuote, createCheckoutQuote } from './checkoutQuoteService.js';
 const productId = '00000000-0000-4000-8000-000000000001';
 const input = [{ product_id: productId, quantity: 2, expected_unit_price: 20 }];
@@ -15,6 +16,7 @@ beforeEach(() => {
     unit_price_at_order: 30, unit_at_order: '500 g', variant_mrp_at_order: 35 }]);
   mocks.settings.mockResolvedValue({ flatDeliveryFee: 20, handlingFee: 5, freeDeliveryEnabled: false, freeDeliveryThreshold: 100 });
   mocks.promo.mockResolvedValue({ promoCodeId: 'promo', discountAmount: 10 });
+  mocks.controls.mockResolvedValue({ codEnabled: true, onlinePaymentsEnabled: true, minOrderValue: 0 });
 });
 describe('quote and placement share the same server calculation', () => {
   it('returns changed catalogue prices for review without trusting the expected price', async () => {
@@ -52,4 +54,20 @@ it('blocks checkout before pricing when a shop or address becomes ineligible', a
   mocks.eligibility.mockRejectedValue(new Error('Shop closed'));
   await expect(createCheckoutQuote(input, 'customer')).rejects.toThrow('Shop closed');
   expect(mocks.load).not.toHaveBeenCalled();
+});
+
+describe('platform minimum order value', () => {
+  it('reports the shortfall on the quote and refuses placement below it', async () => {
+    mocks.controls.mockResolvedValue({ codEnabled: true, onlinePaymentsEnabled: true, minOrderValue: 99 });
+    const quote = await createCheckoutQuote(input, 'customer');
+    // Item subtotal is 60 (2 x 30), before delivery, handling and coupon.
+    expect(quote.minimumOrder).toEqual({ value: 99, shortfall: 39 });
+    await expect(confirmCheckoutQuote(input, 'customer', quote.token)).rejects.toMatchObject({ code: 'BELOW_MINIMUM_ORDER', status: 409 });
+  });
+  it('places an order that meets the minimum', async () => {
+    mocks.controls.mockResolvedValue({ codEnabled: true, onlinePaymentsEnabled: true, minOrderValue: 60 });
+    const quote = await createCheckoutQuote(input, 'customer');
+    expect(quote.minimumOrder).toEqual({ value: 60, shortfall: 0 });
+    await expect(confirmCheckoutQuote(input, 'customer', quote.token)).resolves.toMatchObject({ bill: { itemTotal: 60 } });
+  });
 });

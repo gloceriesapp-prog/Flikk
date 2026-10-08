@@ -9,12 +9,13 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { adminReason, adminRpcErrorResponse, isUuid, requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { adminReason, adminRpcErrorResponse, isUuid } from '@/lib/orders/adminActor';
 
 const ALLOWED_TARGETS = new Set(['packed', 'out_for_delivery']);
 
 export async function POST(request: Request, ctx: RouteContext<'/api/orders/[id]/status'>) {
-  const { actor, denied } = await requireAdminActor();
+  const { actor, denied } = await requireAdmin();
   if (denied) return denied;
   const { id } = await ctx.params;
   if (!isUuid(id)) return NextResponse.json({ error: 'Order not found.' }, { status: 404 });

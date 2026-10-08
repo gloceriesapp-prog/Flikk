@@ -54,6 +54,8 @@ export interface StoreDraft {
   // Udyam/business registration number — optional, same "add later if you
   // don't have one" treatment as GST (Business Documents step's own copy).
   udyamNumber: string;
+  // Pharmacy only — required for that category (Store details step).
+  drugLicenseNumber: string;
   // "9:00 AM" / "9:00 PM" — same free-text shape StoreProfile's own
   // openTime/closeTime always used (TimeDigitsInput.tsx), now collected
   // during onboarding instead of left entirely to Store Settings
@@ -152,6 +154,10 @@ export type AppStackParamList = {
   // Store settings (P6) — reached from StoreProfileHeader's gear icon.
   // No params; reads/writes the shared ../store/useStoreProfileStore.ts.
   StoreSettings: undefined;
+  // Help & support: admin-configured contacts + the store's support requests
+  // (reached from Store settings' "Help & support" row and Payouts' headset).
+  Support: { compose?: boolean } | undefined;
+  SupportTicket: { ticketId: string };
   // Same real map-pin screen onboarding's own AuthStackParamList already
   // registers (LocationPinScreen) — registered again here so
   // StoreSettingsScreen's own "Change on map" can reach it post-approval;

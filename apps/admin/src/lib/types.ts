@@ -143,6 +143,67 @@ export interface ActiveRider {
   // Null while active. Optional so other ActiveRider producers stay valid.
   suspendedReason?: string | null;
   suspendedAt?: string | null;
+  // Derived live status (app/api/riders): 'on_delivery' while the rider holds
+  // a live trip, 'online' while online with a fresh heartbeat (location ping
+  // inside the 3-minute dispatch window), else 'offline' — so a killed app
+  // drops to Offline instead of showing Online forever. Optional so other
+  // ActiveRider producers stay valid.
+  liveStatus?: 'suspended' | 'on_delivery' | 'online' | 'offline';
+  // Live trips (a multi-store trip counts once) currently assigned.
+  activeTrips?: number;
+  // Last reported position (riders.current_lat/lng), null before the first ping.
+  lastLat?: number | null;
+  lastLng?: number | null;
+}
+
+// One live trip (or single order) on the Trips & dispatch page
+// (admin_dispatch_board, migration 113).
+export interface DispatchBoardRow {
+  scopeId: string;
+  tripId: string | null;
+  orderIds: string[];
+  // A packed, unassigned leg to hand to the manual assign action (null when
+  // nothing is waiting on a rider).
+  assignOrderId: string | null;
+  legs: number;
+  statuses: string[];
+  storeNames: string[];
+  riderUserId: string | null;
+  riderName: string | null;
+  placedAt: string | null;
+  total: number;
+  // Current offer ring (km) and how many rings were offered so far.
+  radiusKm: number | null;
+  attempts: number;
+  lastOfferAt: string | null;
+  awaitingRider: boolean;
+  // Every configured ring offered, window passed, still no rider.
+  outOfOffers: boolean;
+}
+
+// Per-delivery rider earning (rider_earnings) on the Rider earnings page.
+export type RiderEarningPaidStatus = 'paid' | 'in_payout' | 'unpaid';
+export interface RiderEarningRow {
+  id: string;
+  riderUserId: string;
+  riderName: string;
+  orderId: string;
+  tripId: string | null;
+  baseAmount: number;
+  extraStopAmount: number;
+  amount: number;
+  earnedAt: string | null;
+  paidAt: string | null;
+  status: RiderEarningPaidStatus;
+}
+export interface RiderEarningWeek {
+  weekStart: string;
+  deliveries: number;
+  total: number;
+  base: number;
+  extra: number;
+  paid: number;
+  unpaid: number;
 }
 
 // One weekly payout row on the admin Payouts page — store (payouts) or rider
@@ -190,6 +251,7 @@ export interface Store {
   name: string;
   category: string;
   zone: string;
+  zoneId?: string;
   district: string;
   phone: string;
   openTime: string;
@@ -239,6 +301,22 @@ export interface Store {
 // Admin Add Store payload — see lib/storeValidation.ts.
 export type { StoreWriteInput as NewStoreInput } from './storeValidation';
 
+// A partner's store profile edit waiting for (or past) admin review
+// (store_profile_change_requests, migration 114). changes/previous are keyed
+// by stores column (name, category, district, address_line, manual_address,
+// lat, lng, drug_license_number).
+export interface StoreChangeRequest {
+  id: string;
+  storeId: string;
+  storeName: string;
+  changes: Record<string, unknown>;
+  previous: Record<string, unknown>;
+  status: 'pending' | 'approved' | 'rejected' | 'superseded';
+  reviewReason: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
 // zones is first-class in the DB from day 1 (PRD Section 16) even though
 // only one is active at launch — this type exists so the Zones screen can
 // show the framework (a second zone slots in with zero schema change),
@@ -273,20 +351,6 @@ export interface RevenuePoint {
   // (which comes from stores). app/api/revenue-trend's own note has the
   // full reasoning.
   platformFee: number;
-}
-
-// Customer-app installs, split by store — no App Store Connect / Play
-// Console API integration exists yet (same category as the payment provider/WhatsApp
-// in CLAUDE.md's env-scoped external services, just not wired up), so
-// this is "last synced" data, not a true real-time counter. Split by
-// platform rather than combined: a founder watching for install friction
-// on one store specifically (e.g. Android install drop-off, iOS review
-// delay) needs the two numbers separate, not folded into one total.
-export interface AppDownloadStats {
-  android: number;
-  ios: number;
-  changePctThisWeek: number;
-  lastSyncedAt: string;
 }
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -365,9 +429,23 @@ export interface Product {
   // the Approvals screen's Products tab (app/api/products/[id]/image-review).
   // null = nothing pending; undefined only for rows read before the column existed.
   pendingImageUrl?: string | null;
+  // A partner's name / pack-price edit to this LIVE product awaiting review
+  // (products.pending_changes, migration 115). The fields above stay the
+  // approved values customers see until the Approvals screen approves it
+  // (app/api/products/[id]/change-review). null = nothing queued.
+  pendingChanges?: PendingProductChanges | null;
+  pendingChangesAt?: string | null;
   // Total counted packs across sizes (products.stock_quantity); null when
   // stock tracking is off (checkout refuses such products).
   stockQuantity?: number | null;
+}
+
+export interface PendingProductChanges {
+  name?: string;
+  price?: number;
+  originalPrice?: number | null;
+  unit?: string;
+  variants?: ProductVariant[];
 }
 
 export interface ProductVariant {

@@ -201,6 +201,13 @@ export function InventoryTable({ products, onEdit }: Props) {
                   <Camera size={11} /> Photo in review
                 </span>
               )}
+              {/* Name/price edits to a live product wait for admin; the row
+                  still shows the approved values customers see. */}
+              {product.pending_changes && (
+                <span className="inline-flex w-fit items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-amber-600">
+                  <Pencil size={11} /> Edits in review
+                </span>
+              )}
             </div>
 
             <div className="flex items-center px-4 py-3.5">

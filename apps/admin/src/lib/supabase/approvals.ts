@@ -23,16 +23,15 @@
 // mapping ever sees them, so mapRiderDraft/mapApprovedRider just pass the
 // (already-signed) string through.
 
-import { ZONE_NAME } from '../mock-data';
 import type { Application } from '../types';
 
 // Everything the partner app's 5-step Store Setup wizard collects
 // (backend/src/routes/storeOnboarding.ts: store-draft / store-application),
 // so the reviewer sees exactly what the applicant submitted.
 const STORE_DETAIL_COLUMNS =
-  'category, district, photo_url, gst_number, phone, address_line, manual_address, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, udyam_number, open_time, close_time';
+  'category, district, photo_url, gst_number, phone, address_line, manual_address, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, udyam_number, drug_license_number, open_time, close_time';
 export const STORE_DRAFT_SELECT = `user_id, store_name, ${STORE_DETAIL_COLUMNS}, rejection_reason, submitted_at, users!user_id(phone, email, is_rejected)`;
-export const APPROVED_STORE_SELECT = `owner_user_id, name, ${STORE_DETAIL_COLUMNS}, drug_license_number, created_at, users!owner_user_id(phone, email)`;
+export const APPROVED_STORE_SELECT = `owner_user_id, name, ${STORE_DETAIL_COLUMNS}, created_at, zones(name), users!owner_user_id(phone, email)`;
 const RIDER_COLUMNS =
   'date_of_birth, photo_url, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship';
 export const RIDER_DRAFT_SELECT = `user_id, full_name, ${RIDER_COLUMNS}, rejection_reason, submitted_at, users!user_id(phone, is_rejected)`;
@@ -53,6 +52,8 @@ interface ApiStoreDetail {
   fssai_number: string | null;
   pan_number: string | null;
   udyam_number: string | null;
+  // Pharmacy only (onboarding collects it since migration 114).
+  drug_license_number?: string | null;
   open_time: string | null;
   close_time: string | null;
 }
@@ -70,6 +71,7 @@ export interface ApiApprovedStore extends ApiStoreDetail {
   name: string;
   drug_license_number: string | null;
   created_at: string;
+  zones: { name: string } | null;
   users: { phone: string; email: string | null } | null;
 }
 
@@ -89,6 +91,7 @@ function storeDetail(row: ApiStoreDetail, email: string | null | undefined): Par
     fssaiNumber: row.fssai_number ?? undefined,
     panNumber: row.pan_number ?? undefined,
     udyamNumber: row.udyam_number ?? undefined,
+    drugLicenseNumber: row.drug_license_number ?? undefined,
     openTime: row.open_time ?? undefined,
     closeTime: row.close_time ?? undefined,
   };
@@ -144,7 +147,8 @@ export function mapStoreDraft(row: ApiStoreDraft): Application {
     kind: 'store',
     name: row.store_name ?? 'Untitled store',
     category: row.category,
-    zone: ZONE_NAME,
+    // No zone until approval, where the founder picks one when several are active.
+    zone: 'Chosen at approval',
     submittedAt: new Date(row.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
     status: row.users?.is_rejected ? 'rejected' : 'pending',
     phone: row.users?.phone ?? '',
@@ -159,7 +163,7 @@ export function mapApprovedStore(row: ApiApprovedStore): Application {
     kind: 'store',
     name: row.name,
     category: row.category,
-    zone: ZONE_NAME,
+    zone: row.zones?.name ?? '',
     submittedAt: new Date(row.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
     status: 'approved',
     phone: row.users?.phone ?? '',
@@ -174,7 +178,8 @@ export function mapRiderDraft(row: ApiRiderDraft): Application {
     kind: 'rider',
     name: row.full_name ?? 'Unnamed rider',
     category: null,
-    zone: ZONE_NAME,
+    // Riders are not tied to a zone (riders has no zone_id).
+    zone: 'All zones',
     submittedAt: new Date(row.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
     status: row.users?.is_rejected ? 'rejected' : 'pending',
     phone: row.users?.phone ?? '',
@@ -201,7 +206,7 @@ export function mapApprovedRider(row: ApiApprovedRider): Application {
     name: row.name,
     riderCode: row.rider_code ?? undefined,
     category: null,
-    zone: ZONE_NAME,
+    zone: 'All zones',
     submittedAt: row.created_at ? new Date(row.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '',
     status: 'approved',
     phone: row.users?.phone ?? '',

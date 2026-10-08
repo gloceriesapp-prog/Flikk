@@ -8,10 +8,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { failedDeliveryRefundEligibility } from '@/lib/refunds/failedDeliveryRefund';
-import { adminRpcErrorResponse, isUuid, requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { adminRpcErrorResponse, isUuid } from '@/lib/orders/adminActor';
 
 export async function POST(req: Request, ctx: RouteContext<'/api/failed-deliveries/[id]/refund'>) {
-  const { actor, denied } = await requireAdminActor();
+  const { actor, denied } = await requireAdmin();
   if (denied) return denied;
   const { id } = await ctx.params;
   if (!isUuid(id)) return NextResponse.json({ error: 'Order not found.' }, { status: 404 });

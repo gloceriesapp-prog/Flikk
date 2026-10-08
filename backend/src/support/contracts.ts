@@ -20,13 +20,23 @@ export function ticketInput(body: Record<string, unknown>) {
         throw new AppError(400, 'ORDER_REQUIRED', 'Choose the relevant order.');
     return { p_request_id: uuid(body.request_id), p_order_id: orderId, p_trip_id: tripId, p_category: category, p_message: message(body.message, 10) };
 }
+// Rider and store-partner tickets (migration 118): their own categories,
+// optionally about one of their own orders (never a trip).
+export const staffCategories = ['order_issue', 'payout', 'app_issue', 'account', 'general'] as const;
+export function staffTicketInput(body: Record<string, unknown>) {
+    const category = body.category as typeof staffCategories[number];
+    if (!staffCategories.includes(category))
+        throw new AppError(400, 'INVALID_CATEGORY', 'Choose an issue type.');
+    const orderId = body.order_id == null || body.order_id === '' ? null : uuid(body.order_id);
+    return { p_request_id: uuid(body.request_id), p_order_id: orderId, p_category: category, p_message: message(body.message, 10) };
+}
 export function supportError(error: {
     code?: string;
 }) {
     const codes: Record<string, [
         number,
         string
-    ]> = { P0404: [404, 'Not found.'], '23505': [409, 'Another active case exists. Open it from your conversations.'], P0409: [409, 'This request changed. Please reopen the conversation.'], P0403: [403, 'Not permitted.'], P0429: [429, 'Please wait before sending more requests.'] };
+    ]> = { P0400: [400, 'Choose an issue type.'], P0404: [404, 'Not found.'], '23505': [409, 'Another active case exists. Open it from your conversations.'], P0409: [409, 'This request changed. Please reopen the conversation.'], P0403: [403, 'Not permitted.'], P0429: [429, 'Please wait before sending more requests.'] };
     const [status, text] = codes[error.code ?? ''] ?? [503, 'Support is temporarily unavailable. Your request may have been saved; retry safely.'];
     return new AppError(status, 'SUPPORT_REQUEST_FAILED', text);
 }

@@ -47,6 +47,7 @@ import {
   watchPushTokenRotation,
 } from '../features/push-notifications/registerPushToken';
 import { WaitingApprovalScreen } from '../screens/onboarding/WaitingApprovalScreen';
+import { PartnerSuspendedScreen } from '../screens/onboarding/PartnerSuspendedScreen';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { useAuthStore } from '../store/useAuthStore';
 import { colors } from '../theme/tokens';
@@ -78,6 +79,8 @@ export function RootNavigator() {
     setHasStore,
     setApplicationSubmitted,
     setRejection,
+    partnerSuspended,
+    setPartnerSuspension,
     clear,
   } = useAuthStore();
   const [statusChecked, setStatusChecked] = useState(false);
@@ -117,12 +120,13 @@ export function RootNavigator() {
 
     let cancelled = false;
     checkAccountStatus()
-      .then(({ is_approved, has_store, application_submitted, is_rejected, rejection_reason }) => {
+      .then(({ is_approved, has_store, application_submitted, is_rejected, rejection_reason, partner_suspended, partner_suspended_reason }) => {
         if (cancelled) return;
         setApproved(is_approved);
         setHasStore(has_store);
         setApplicationSubmitted(application_submitted);
         setRejection(!!is_rejected, rejection_reason ?? null);
+        setPartnerSuspension(partner_suspended === true, partner_suspended_reason ?? null);
       })
       .catch((err) => {
         // A 401 here means the stored token is genuinely invalid (expired,
@@ -200,6 +204,8 @@ export function RootNavigator() {
         // Welcome. A distinct key per accessToken value forces the remount
         // React Navigation's own reset needs.
         <AuthNavigator key="anon" />
+      ) : hasStore && isApproved && partnerSuspended ? (
+        <PartnerSuspendedGate />
       ) : hasStore && isApproved ? (
         <AppNavigator />
       ) : applicationSubmitted ? (
@@ -217,6 +223,15 @@ export function RootNavigator() {
 // container" rule (see App.tsx's own note) still holds even for the one
 // state that has no tabs or chrome to navigate between.
 const WaitingStack = createNativeStackNavigator();
+
+// Same single-screen wrapper for an admin-suspended partner account.
+function PartnerSuspendedGate() {
+  return (
+    <WaitingStack.Navigator screenOptions={{ headerShown: false }}>
+      <WaitingStack.Screen name="PartnerSuspended" component={PartnerSuspendedScreen} />
+    </WaitingStack.Navigator>
+  );
+}
 
 function WaitingApprovalGate() {
   return (

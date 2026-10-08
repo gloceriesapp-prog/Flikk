@@ -13,7 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { isWithinSchedule, type DaySchedule } from '@/lib/riderSchedule';
 import type { ActiveRider } from '@/lib/types';
 
@@ -29,6 +29,8 @@ interface RiderRow {
   suspended_reason: string | null;
   suspended_at: string | null;
   last_location_update: string | null;
+  current_lat: number | null;
+  current_lng: number | null;
 }
 
 // Same freshness window the dispatch RPCs use (rider_dispatch_offers /
@@ -37,28 +39,46 @@ interface RiderRow {
 const FRESH_PING_MS = 3 * 60 * 1000;
 
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const now = Date.now();
     const [ridersRes, ordersRes] = await Promise.all([
       supabaseAdmin
         .from('riders')
-        .select('id, user_id, name, phone, is_active, status, availability, auto_online, suspended_reason, suspended_at, last_location_update')
+        .select('id, user_id, name, phone, is_active, status, availability, auto_online, suspended_reason, suspended_at, last_location_update, current_lat, current_lng')
         .order('name'),
-      supabaseAdmin.from('orders').select('rider_id').not('rider_id', 'is', null).not('status', 'in', '(delivered,cancelled,failed)'),
+      supabaseAdmin.from('orders').select('rider_id, trip_id, id').not('rider_id', 'is', null).not('status', 'in', '(delivered,cancelled,failed)'),
     ]);
     if (ridersRes.error) throw ridersRes.error;
     if (ordersRes.error) throw ordersRes.error;
 
     const activeOrderCounts = new Map<string, number>();
+    // Live trips per rider: a multi-store trip counts once (same unit as
+    // delivery_settings.max_active_trips_per_rider, migration 113).
+    const activeTripScopes = new Map<string, Set<string>>();
     for (const row of ordersRes.data ?? []) {
       const riderId = row.rider_id as string;
       activeOrderCounts.set(riderId, (activeOrderCounts.get(riderId) ?? 0) + 1);
+      const scopes = activeTripScopes.get(riderId) ?? new Set<string>();
+      scopes.add((row.trip_id as string | null) ?? (row.id as string));
+      activeTripScopes.set(riderId, scopes);
     }
 
     const riders: ActiveRider[] = ((ridersRes.data ?? []) as RiderRow[]).map((row) => {
       const availability = row.availability ?? [];
+      const activeTrips = activeTripScopes.get(row.user_id)?.size ?? 0;
+      // Heartbeat = the rider app's location ping (PATCH /rider/status, every
+      // ~30-60 s while online, also from the background task). riders.status
+      // stays 'online' when the app is killed, so freshness decides.
+      const freshPing = !!row.last_location_update && now - new Date(row.last_location_update).getTime() <= FRESH_PING_MS;
+      const liveStatus: ActiveRider['liveStatus'] = !row.is_active
+        ? 'suspended'
+        : activeTrips > 0
+          ? 'on_delivery'
+          : row.status !== 'offline' && row.status !== null && freshPing
+            ? 'online'
+            : 'offline';
       return {
         id: row.id,
         userId: row.user_id,
@@ -72,10 +92,15 @@ export async function GET() {
         // these two differ: a rider can have an active account (isOnline=true)
         // while being 'offline' right now (presence).
         isOnline: row.is_active,
-        presence: row.status ?? 'offline',
+        // riders.status is only ever 'online'/'offline' (nothing writes
+        // 'on_delivery'), so a live trip is what makes a rider on delivery.
+        presence: activeTrips > 0 ? 'on_delivery' : (row.status ?? 'offline'),
         lastSeenAt: row.last_location_update,
-        liveNow: row.is_active && row.status !== 'offline' && row.status !== null && !!row.last_location_update
-          && now - new Date(row.last_location_update).getTime() <= FRESH_PING_MS,
+        liveNow: row.is_active && row.status !== 'offline' && row.status !== null && freshPing,
+        liveStatus,
+        activeTrips,
+        lastLat: row.current_lat,
+        lastLng: row.current_lng,
         autoOnline: row.auto_online ?? false,
         availability,
         onScheduleNow: isWithinSchedule(availability),

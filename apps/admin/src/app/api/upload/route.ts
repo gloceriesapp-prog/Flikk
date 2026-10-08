@@ -1,5 +1,5 @@
 import { boundedForm, UploadBodyTooLarge } from '@/features/uploads/boundedForm';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 // Public media bytes live in R2; Supabase retains the durable asset reference.
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
@@ -11,8 +11,8 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5MB — generous for a product/store photo
 
 let activeUploads = 0;
 export async function POST(request: Request) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   if (activeUploads >= 2) return NextResponse.json({error:'Image processing is busy. Retry shortly.'},{status:503,headers:{'Retry-After':'2'}});
   activeUploads++;
   try {

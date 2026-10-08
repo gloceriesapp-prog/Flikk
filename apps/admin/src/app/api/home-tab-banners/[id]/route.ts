@@ -6,8 +6,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { toHomeTabErrorMessage } from '@/lib/homeTabValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function DELETE(request: Request, ctx: RouteContext<'/api/home-tab-banners/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   try {
