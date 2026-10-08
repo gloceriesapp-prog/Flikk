@@ -32,6 +32,8 @@ export function adminRpcErrorResponse(err: unknown): NextResponse | null {
   if (code === 'P0404') return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
   if (code === 'P0422') return NextResponse.json({ error: message }, { status: 400 });
   if (code === 'P0409') return NextResponse.json({ error: message }, { status: 409 });
+  // enforce_rider_capacity (migration 113): rider at max_active_trips_per_rider.
+  if (code === 'P0429') return NextResponse.json({ error: message }, { status: 409 });
   if (code === 'P1001') {
     return NextResponse.json({ error: message === 'Awaiting payment' ? 'This order is still waiting for online payment.' : 'That status change is not allowed for this order.' }, { status: 409 });
   }

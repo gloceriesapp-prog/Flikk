@@ -450,6 +450,10 @@
       "sha256": "43dd50d6dfceda6f79ab8fc750cb2b2a12624d74cc0d6b554f984a900e6bdb4f"
     },
     {
+      "file": "113_rider_ops.sql",
+      "sha256": "9f6ed579e1c2eabe48ede1262af514a94234e27d02229e81f2aed397795f1191"
+    },
+    {
       "file": "116_home_content_controls.sql",
       "sha256": "1d8b39284e3f0f8dd08c117991e3afc4c5e6ce5b28e83ecd9df08288f7741853"
     }

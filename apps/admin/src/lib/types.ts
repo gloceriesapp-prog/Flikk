@@ -143,6 +143,67 @@ export interface ActiveRider {
   // Null while active. Optional so other ActiveRider producers stay valid.
   suspendedReason?: string | null;
   suspendedAt?: string | null;
+  // Derived live status (app/api/riders): 'on_delivery' while the rider holds
+  // a live trip, 'online' while online with a fresh heartbeat (location ping
+  // inside the 3-minute dispatch window), else 'offline' — so a killed app
+  // drops to Offline instead of showing Online forever. Optional so other
+  // ActiveRider producers stay valid.
+  liveStatus?: 'suspended' | 'on_delivery' | 'online' | 'offline';
+  // Live trips (a multi-store trip counts once) currently assigned.
+  activeTrips?: number;
+  // Last reported position (riders.current_lat/lng), null before the first ping.
+  lastLat?: number | null;
+  lastLng?: number | null;
+}
+
+// One live trip (or single order) on the Trips & dispatch page
+// (admin_dispatch_board, migration 113).
+export interface DispatchBoardRow {
+  scopeId: string;
+  tripId: string | null;
+  orderIds: string[];
+  // A packed, unassigned leg to hand to the manual assign action (null when
+  // nothing is waiting on a rider).
+  assignOrderId: string | null;
+  legs: number;
+  statuses: string[];
+  storeNames: string[];
+  riderUserId: string | null;
+  riderName: string | null;
+  placedAt: string | null;
+  total: number;
+  // Current offer ring (km) and how many rings were offered so far.
+  radiusKm: number | null;
+  attempts: number;
+  lastOfferAt: string | null;
+  awaitingRider: boolean;
+  // Every configured ring offered, window passed, still no rider.
+  outOfOffers: boolean;
+}
+
+// Per-delivery rider earning (rider_earnings) on the Rider earnings page.
+export type RiderEarningPaidStatus = 'paid' | 'in_payout' | 'unpaid';
+export interface RiderEarningRow {
+  id: string;
+  riderUserId: string;
+  riderName: string;
+  orderId: string;
+  tripId: string | null;
+  baseAmount: number;
+  extraStopAmount: number;
+  amount: number;
+  earnedAt: string | null;
+  paidAt: string | null;
+  status: RiderEarningPaidStatus;
+}
+export interface RiderEarningWeek {
+  weekStart: string;
+  deliveries: number;
+  total: number;
+  base: number;
+  extra: number;
+  paid: number;
+  unpaid: number;
 }
 
 // One weekly payout row on the admin Payouts page — store (payouts) or rider

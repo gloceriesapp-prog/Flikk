@@ -13,7 +13,9 @@ import { formatCurrency } from '@/lib/format';
 import { RiderSelect } from './RiderSelect';
 
 interface Props {
-  order: Order;
+  // Only these fields are read, so the Trips & dispatch board can pass a
+  // trip's waiting leg without loading the full order.
+  order: Pick<Order, 'id' | 'tripId' | 'storeName' | 'amount'>;
   riders: ActiveRider[];
 }
 

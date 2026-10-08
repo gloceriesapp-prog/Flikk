@@ -34,14 +34,16 @@ const accept = (id = 'order-1') => call('/orders/:id/accept', 'post', { params: 
 beforeEach(() => { vi.clearAllMocks(); db.orders = []; });
 
 it('lists offers from the server-side rider position, ignoring client position and radius', async () => {
-  db.rpc.mockResolvedValue({ data: [{ order_id: 'o1', distance_m: 1200 }], error: null });
+  db.rpc.mockImplementation(async (name: string) => name === 'dispatch_config'
+    ? { data: [{ steps: [2000, 4000], step_seconds: 30, max_trips: 2 }], error: null }
+    : { data: [{ order_id: 'o1', distance_m: 1200 }], error: null });
   db.orders = [{ id: 'o1', order_number: 'FLK-1', trip_id: null, payment_method: 'cod', total: '150', delivery_fee: '0' }];
   const { res, err } = await call('/dispatch-offers', 'get', { query: { lat: '0', lng: '0', radius_m: '100000000' } });
   expect(err).toBeUndefined();
   expect(db.rpc).toHaveBeenCalledWith('rider_dispatch_offers', { p_rider: 'rider-1' });
   // Free delivery still offers the admin minimum payout; COD shows the cash to collect.
   expect(res.json).toHaveBeenCalledWith([{ ...db.orders[0], distance_m: 1200, cash_to_collect: 150,
-    rider_payout: 30, rider_payout_base: 30, rider_payout_extra_stop: 0 }]);
+    rider_payout: 30, rider_payout_base: 30, rider_payout_extra_stop: 0, offer_window_seconds: 30 }]);
 });
 
 it('returns no offers (not 400) when the client sends no position', async () => {
@@ -72,6 +74,7 @@ it.each([
   ['ALREADY_TAKEN', 409],
   ['NOT_OFFERED', 409],
   ['RIDER_OFFLINE', 409],
+  ['RIDER_AT_CAPACITY', 409],
   ['ORDER_NOT_FOUND', 404],
 ])('maps refused accept %s to %i without notifying', async (code, status) => {
   db.rpc.mockResolvedValue({ data: { accepted: false, error: code }, error: null });

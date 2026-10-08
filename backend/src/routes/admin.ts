@@ -141,6 +141,12 @@ adminRouter.get('/orders', async (req, res, next) => {
   }
 });
 
+// orders' enforce_rider_capacity trigger (migration 113) refuses any
+// assignment past delivery_settings.max_active_trips_per_rider with P0429.
+function riderAtCapacityError(): AppError {
+  return new AppError(409, 'RIDER_AT_CAPACITY', 'This rider already has the maximum number of active deliveries.');
+}
+
 adminRouter.patch('/orders/:id/assign-rider', async (req, res, next) => {
   try {
     const { rider_id } = req.body as { rider_id: string };
@@ -162,6 +168,7 @@ adminRouter.patch('/orders/:id/assign-rider', async (req, res, next) => {
       .is('rider_id', null)
       .select()
       .single();
+    if (error?.code === 'P0429') throw riderAtCapacityError();
     if (error || !data) {
       throw new AppError(409, 'NOT_ASSIGNABLE', 'Order is not packed or already has a rider.');
     }
@@ -204,6 +211,7 @@ adminRouter.patch('/trips/:id/assign-rider', async (req, res, next) => {
     // accept racing this call can never leave the trip split across riders.
     const { data, error } = await supabase.rpc('assign_trip_rider', { p_trip: req.params.id, p_rider: rider_id });
     if (error?.code === 'P0409') throw new AppError(409, 'TRIP_HAS_RIDER', 'Another rider already has this trip.');
+    if (error?.code === 'P0429') throw riderAtCapacityError();
     if (error) throw error;
     if (!data || data.length === 0) {
       throw new AppError(409, 'NOT_ASSIGNABLE', 'Trip has no unassigned legs.');

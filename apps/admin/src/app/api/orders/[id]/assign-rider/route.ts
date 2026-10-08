@@ -45,6 +45,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (code === 'P0404') return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     if (code === 'P0422') return NextResponse.json({ error: 'That rider is not an approved, active rider.' }, { status: 409 });
     if (code === 'P0409') return NextResponse.json({ error: 'Another rider already has this trip.' }, { status: 409 });
+    // enforce_rider_capacity (migration 113): no admin override of the limit.
+    if (code === 'P0429') {
+      return NextResponse.json({ error: 'This rider already has the maximum number of active deliveries (Trips & dispatch settings).' }, { status: 409 });
+    }
     if (error) throw error;
     const assigned = (data ?? []) as { id: string; trip_id: string | null }[];
     if (assigned.length === 0) {
