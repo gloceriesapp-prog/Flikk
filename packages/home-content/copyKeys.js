@@ -2,7 +2,16 @@
 // 100). The customer app's useCopy(key) falls back to `default` here; the admin
 // "App content" page lists every key with its default so the founder can see
 // exactly what is editable. Add a key here when a new customer string ships.
+// kind: 'image' keys hold an https artwork URL (admin shows an uploader);
+// blank keeps the app's built-in artwork.
 export const COPY_KEYS = {
+  // Home artwork and tiles (blank = built-in artwork / behaviour).
+  'home.welcome.imageUrl': { default: '', hint: 'Home welcome banner artwork (wide, about 3:1). Blank = built-in artwork', kind: 'image' },
+  'home.welcome.label': { default: 'Welcome. Shop the stores you already love.', hint: 'Home welcome banner text read by screen readers' },
+  'home.quickCategories.groceryImageUrl': { default: '', hint: 'Groceries quick-category tile artwork. Blank = built-in artwork', kind: 'image' },
+  'home.quickCategories.hiddenTabs': { default: 'Bakery, Bakeries', hint: 'Comma-separated tab names left out of the Home quick-category tiles (the tabs still exist). Type - to show every tab' },
+  'home.groceries.headerImageUrl': { default: '', hint: 'Groceries category page header artwork. Blank = built-in artwork', kind: 'image' },
+  'stores.promo.imageUrl': { default: '', hint: 'Store list promo banner artwork (wide, 160px tall). Blank = built-in artwork', kind: 'image' },
   // Home "All" tab section headings (a Home Sections title override wins).
   'home.quickCategories.title': { default: 'Quick categories', hint: 'Home quick-categories heading' },
   'home.everydayDairy.title': { default: 'Everyday Dairy', hint: 'Home dairy row heading' },

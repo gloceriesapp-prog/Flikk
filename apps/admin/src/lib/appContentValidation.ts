@@ -41,8 +41,8 @@ export const COPY_MAX_KEYS = 300;
 // Every key the customer app reads, with its shipped default — the single
 // registry in packages/home-content/copyKeys.js (customer useCopy reads the
 // same file). The editor lists all of them; an empty value = app default.
-export const REGISTERED_COPY_KEYS: { key: string; hint: string; defaultValue: string }[] =
-  Object.entries(COPY_KEYS).map(([key, info]) => ({ key, hint: info.hint, defaultValue: info.default }));
+export const REGISTERED_COPY_KEYS: { key: string; hint: string; defaultValue: string; image: boolean }[] =
+  Object.entries(COPY_KEYS).map(([key, info]) => ({ key, hint: info.hint, defaultValue: info.default, image: info.kind === 'image' }));
 
 const HTTPS_URL = /^https:\/\/\S+$/;
 const PHONE = /^\+[1-9][0-9]{7,14}$/;
@@ -92,7 +92,8 @@ export function validateAppContentInput(body: unknown) {
     if (!COPY_KEY_PATTERN.test(key)) throw new Error(`"${key}" is not a valid key — use dotted names like home.search.placeholder.`);
     if (typeof value !== 'string') throw new Error(`Value for "${key}" must be text.`);
     if (value.length > COPY_VALUE_MAX) throw new Error(`Value for "${key}" must be ${COPY_VALUE_MAX} characters or fewer.`);
-    copy[key] = value;
+    if (COPY_KEYS[key]?.kind === 'image' && value.trim() && !HTTPS_URL.test(value.trim())) throw new Error(`"${key}" must be an https:// image link.`);
+    copy[key] = COPY_KEYS[key]?.kind === 'image' ? value.trim() : value;
   }
   if (new TextEncoder().encode(JSON.stringify(copy)).length >= 60000) throw new Error('UI copy is too large.');
 

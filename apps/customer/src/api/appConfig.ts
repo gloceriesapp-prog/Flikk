@@ -86,3 +86,10 @@ export function useCopyText(): (key: string, fallback?: string) => string {
   const { copy } = useAppConfig();
   return (key, fallback) => resolveCopy(copy, key, fallback);
 }
+
+// Admin artwork override (registry kind 'image'): an https URL, else the
+// app's built-in artwork.
+export function useCopyImage(key: string, builtIn: string): string {
+  const value = useCopy(key);
+  return /^https:\/\/\S+$/.test(value) ? value : builtIn;
+}

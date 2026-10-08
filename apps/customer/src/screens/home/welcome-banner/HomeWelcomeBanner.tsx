@@ -1,16 +1,18 @@
 import { StyleSheet, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
 import { storageUrl } from '../../../utils/storageUrl';
+import { useCopy, useCopyImage } from '../../../api/appConfig';
 
-const WELCOME_ARTWORK = {
-  uri: storageUrl('Images/Your%20District,%20Your%20Shop%20tras.png'),
-};
+// Admin App content: home.welcome.imageUrl / home.welcome.label.
+const WELCOME_ARTWORK_URI = storageUrl('Images/Your%20District,%20Your%20Shop%20tras.png');
 
 export function HomeWelcomeBanner({
   backgroundColor,
 }: {
   backgroundColor: string;
 }) {
+  const uri = useCopyImage('home.welcome.imageUrl', WELCOME_ARTWORK_URI);
+  const label = useCopy('home.welcome.label');
   return (
     <View
       style={{
@@ -20,13 +22,13 @@ export function HomeWelcomeBanner({
       }}
     >
       <Image
-        source={WELCOME_ARTWORK}
+        source={{ uri }}
         style={StyleSheet.absoluteFill}
         resizeMode="contain"
         transition={0}
         priority="high"
         accessible
-        accessibilityLabel="Welcome. Shop the stores you already love."
+        accessibilityLabel={label}
       />
     </View>
   );
