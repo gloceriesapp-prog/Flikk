@@ -33,11 +33,10 @@ export interface RiderOrder {
   storeCoords: Coordinates;
   customerName: string;
   customerAddress: string;
-  // Drop-nav extras — a nearby landmark and a free-text delivery instruction
-  // ("leave at door", "call on arrival"). No backend column for either yet
-  // (orders has no delivery-note field), so real assignments leave these
-  // undefined and DeliveryNavigationScreen falls back to placeholder copy.
-  // ponytail: drop the fallback once the customer app collects a real note.
+  // Drop-nav extras — the address's landmark and the customer's delivery
+  // instructions (addresses.landmark / addresses.delivery_instructions via
+  // GET /rider/assignments). Undefined when the customer gave none, and
+  // DeliveryNavigationScreen then hides that row.
   landmark?: string;
   deliveryNote?: string;
   customerCoords: Coordinates;
