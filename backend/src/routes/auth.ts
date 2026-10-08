@@ -8,11 +8,17 @@ import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 
 export const authRouter = Router();
 
+// Supabase Auth refuses a banned user (admin customer Block → ban_duration)
+// with code 'user_banned'. Say so plainly instead of "invalid code".
+const isBanned = (error: unknown) => (error as { code?: string } | null)?.code === 'user_banned';
+const accountBlocked = () => new AppError(403, 'ACCOUNT_BLOCKED', 'This account has been blocked. Contact Gloceries support.');
+
 authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
   try {
     const { phone } = req.body as { phone?: string };
     const canonical = normalizePhone(phone); // +91… — throws on a bad number
     const { error } = await supabaseAuth.auth.signInWithOtp({ phone: canonical });
+    if (isBanned(error)) throw accountBlocked();
     if (error) throw new AppError(400, 'OTP_SEND_FAILED', 'We couldn’t send a code. Please try again shortly.');
     res.status(200).json({ ok: true });
   } catch (err) {
@@ -32,6 +38,7 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
     const canonical = normalizePhone(phone);
     const { data, error } = await supabaseAuth.auth.verifyOtp({ phone: canonical, token: code, type: 'sms' });
+    if (isBanned(error)) throw accountBlocked();
     if (error || !data.session) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
 
     const userId = data.session.user.id;
@@ -101,6 +108,7 @@ authRouter.post('/refresh', authBudget('refresh'), async (req, res, next) => {
     if (!refresh_token) throw new AppError(400, 'MISSING_REFRESH_TOKEN', 'refresh_token is required.');
 
     const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token });
+    if (isBanned(error)) throw accountBlocked();
     if (error || !data.session) throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'Session could not be refreshed.');
 
     res.status(200).json({

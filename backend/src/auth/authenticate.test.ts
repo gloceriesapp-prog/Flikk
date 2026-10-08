@@ -26,7 +26,17 @@ it('writes bypass cached role/session status and detect revocation', async () =>
   await authenticate(`token-${token}`, false);
   mocks.rpc.mockResolvedValue({ data: [{ user_id: user, role: 'customer', session_valid: false }], error: null });
   await expect(authenticate(`token-${token}`, true)).rejects.toMatchObject({ status: 401 });
-  expect(mocks.user).toHaveBeenCalledTimes(1); expect(mocks.rpc).toHaveBeenCalledTimes(2);
+  // Context load + the ban lookup on the invalid-session path.
+  expect(mocks.user).toHaveBeenCalledTimes(1); expect(mocks.rpc).toHaveBeenCalledTimes(3);
+  expect(mocks.rpc).toHaveBeenLastCalledWith('auth_account_blocked', { p_user_id: user });
+});
+it('reports an admin-blocked account as ACCOUNT_BLOCKED, not a dead session', async () => {
+  mocks.rpc.mockImplementation(async (name: string) => name === 'auth_account_blocked'
+    ? { data: true, error: null }
+    : { data: [{ user_id: user, role: 'customer', session_valid: false }], error: null });
+  await expect(authenticate(`token-${token}`, false)).rejects.toMatchObject({ status: 403, code: 'ACCOUNT_BLOCKED' });
+  mocks.user.mockResolvedValue({ data: { user: null }, error: { status: 403, code: 'user_banned' } });
+  await expect(authenticate(`token-${token}`, true)).rejects.toMatchObject({ status: 403, code: 'ACCOUNT_BLOCKED' });
 });
 it('role invalidation affects all sessions and a profile outage never provisions a customer', async () => {
   await authenticate(`token-${token}`, false); invalidateAuthUser(user);
@@ -87,7 +97,8 @@ it('rechecks revoked read sessions within the maximum cache TTL', async () => {
     mocks.rpc.mockResolvedValue({ data: [{ user_id: user, role: 'customer', session_valid: false }], error: null });
     clock.mockReturnValue(now + 30_001);
     await expect(authenticate(`ttl-${token}`, false)).rejects.toMatchObject({ status: 401 });
-    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+    expect(mocks.rpc).toHaveBeenCalledWith('request_auth_context_v2', { p_user_id: user, p_session_id: session });
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'request_auth_context_v2')).toHaveLength(2);
   } finally { clock.mockRestore(); }
 });
 it('bounds direct remote verification for concurrent mutation requests', async () => {

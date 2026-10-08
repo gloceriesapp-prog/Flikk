@@ -9,6 +9,13 @@
 --      write path (API, app, dashboard) can put a suspended rider back on shift.
 --    - nearby_online_riders (latest: 057) also requires is_active, so a
 --      suspended rider gets no new-pickup pushes. Body otherwise unchanged.
+-- 2. Customer blocks. The ban itself is Supabase Auth's banned_until (set by
+--    the admin panel with auth.admin.updateUserById ban_duration), which
+--    request_auth_context_v2 (071) already treats as an invalid session.
+--    - customer_blocks records who blocked whom, why, until when, and when
+--      the block was lifted. Service role only (RLS on, no policies).
+--    - auth_account_blocked(user) lets the API tell a ban apart from a dead
+--      session so apps can show "account blocked" instead of a silent logout.
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -85,5 +92,35 @@ as $$
   where distance_m <= p_radius_m
   order by distance_m asc;
 $$;
+
+-- 2. Customer blocks ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.customer_blocks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  reason text NOT NULL CHECK (length(btrim(reason)) BETWEEN 3 AND 500),
+  blocked_by uuid,
+  blocked_at timestamptz NOT NULL DEFAULT now(),
+  blocked_until timestamptz,
+  unblocked_at timestamptz,
+  unblocked_by uuid,
+  CHECK (blocked_until IS NULL OR blocked_until > blocked_at),
+  CHECK (unblocked_at IS NULL OR unblocked_at >= blocked_at)
+);
+CREATE INDEX IF NOT EXISTS customer_blocks_user_idx ON public.customer_blocks(user_id, blocked_at DESC);
+ALTER TABLE public.customer_blocks ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.customer_blocks FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.customer_blocks TO service_role;
+
+CREATE OR REPLACE FUNCTION public.auth_account_blocked(p_user_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+ SECURITY DEFINER
+ SET search_path = public, auth, pg_temp
+AS $function$
+  SELECT EXISTS(SELECT 1 FROM auth.users WHERE id=p_user_id AND banned_until > now());
+$function$;
+REVOKE ALL ON FUNCTION public.auth_account_blocked(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.auth_account_blocked(uuid) TO service_role;
 
 COMMIT;

@@ -54,5 +54,26 @@ DO $$ DECLARE r riders; BEGIN
  EXCEPTION WHEN sqlstate 'P0404' THEN NULL; END;
 END $$;
 
+-- 2. Customer blocks: ban is read from auth.users, history is service-only.
+DO $$ BEGIN
+ IF has_function_privilege('anon','auth_account_blocked(uuid)','EXECUTE') OR has_function_privilege('authenticated','auth_account_blocked(uuid)','EXECUTE')
+ OR has_table_privilege('anon','customer_blocks','SELECT') OR has_table_privilege('authenticated','customer_blocks','SELECT') THEN
+  RAISE EXCEPTION 'Customer block data exposed to API roles'; END IF;
+ INSERT INTO auth.users(id,phone) VALUES('00000000-0000-4000-8000-0000000110c1','+919999911101');
+ INSERT INTO users(id,phone,role) VALUES('00000000-0000-4000-8000-0000000110c1','+919999911101','customer');
+ IF auth_account_blocked('00000000-0000-4000-8000-0000000110c1') THEN RAISE EXCEPTION 'Unbanned customer reported blocked'; END IF;
+ UPDATE auth.users SET banned_until=now()+interval '1 day' WHERE id='00000000-0000-4000-8000-0000000110c1';
+ IF NOT auth_account_blocked('00000000-0000-4000-8000-0000000110c1') THEN RAISE EXCEPTION 'Banned customer not reported blocked'; END IF;
+ IF (SELECT session_valid FROM request_auth_context_v2('00000000-0000-4000-8000-0000000110c1',gen_random_uuid())) THEN
+  RAISE EXCEPTION 'Banned customer keeps a valid session'; END IF;
+ UPDATE auth.users SET banned_until=now()-interval '1 minute' WHERE id='00000000-0000-4000-8000-0000000110c1';
+ IF auth_account_blocked('00000000-0000-4000-8000-0000000110c1') THEN RAISE EXCEPTION 'Expired ban still blocks'; END IF;
+ INSERT INTO customer_blocks(user_id,reason) VALUES('00000000-0000-4000-8000-0000000110c1','Chargeback abuse');
+ BEGIN
+  INSERT INTO customer_blocks(user_id,reason) VALUES('00000000-0000-4000-8000-0000000110c1',' ');
+  RAISE EXCEPTION 'Block without reason accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+END $$;
+
 ROLLBACK;
 SELECT 'Account controls verified' AS result;

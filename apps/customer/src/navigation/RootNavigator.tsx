@@ -21,7 +21,8 @@
 
 import { useDeliverySettingsSync } from '../api/deliverySettings';
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
+import { onAccountBlocked } from '../api/accountBlocked';
 import { NavigationContainer } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLocationStore } from '../store/useLocationStore';
@@ -55,6 +56,9 @@ export function RootNavigator() {
     const id = setTimeout(() => setWelcomeElapsed(true), WELCOME_DURATION_MS);
     return () => clearTimeout(id);
   }, []);
+
+  // Admin blocked this account: api/client.ts already signed it out.
+  useEffect(() => onAccountBlocked((message) => Alert.alert('Account blocked', message)), []);
 
   useEffect(() => {
     if (!authHydrated || authError) return;

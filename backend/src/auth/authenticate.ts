@@ -15,6 +15,9 @@ let schemaRetryAt = 0;
 // Jitter cache expiry without extending the maximum revocation window.
 const cacheTtl = () => 20_000 + Math.floor(Math.random() * 10_000);
 const denied = () => new AppError(401, 'UNAUTHENTICATED', 'Invalid or expired session.');
+// Admin-blocked customer (auth.users.banned_until in the future, set from the
+// admin customer page). Distinct from a dead session so apps can say why.
+const blocked = () => new AppError(403, 'ACCOUNT_BLOCKED', 'This account has been blocked. Contact Gloceries support.');
 const unavailable = () => new AppError(503, 'AUTH_UNAVAILABLE', 'Authentication is temporarily unavailable. Please retry.');
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 export function validateClaims(claims: Record<string, unknown>): Identity {
@@ -38,6 +41,7 @@ async function remoteUser(token: string) {
   const { data, error } = await verificationWork(() => supabase.auth.getUser(token));
   if (error || !data.user) {
     if (error && (!error.status || error.status >= 500)) throw unavailable();
+    if ((error as { code?: string } | null)?.code === 'user_banned') throw blocked();
     throw denied();
   }
   return data.user;
@@ -49,6 +53,12 @@ async function verify(token: string): Promise<Identity> {
     throw denied();
   }
   return validateClaims(data.claims as unknown as Record<string, unknown>);
+}
+// Only on the (rare) invalid-session path: tell a ban apart from a revoked or
+// expired session. A lookup failure falls back to the plain 401.
+async function deniedOrBlocked(id: string): Promise<AppError> {
+  const { data, error } = await supabase.rpc('auth_account_blocked', { p_user_id: id });
+  return !error && data === true ? blocked() : denied();
 }
 export function invalidateAllAuthContexts() { contexts.invalidate(() => true); }
 export function invalidateAuthUser(id: string) { contexts.invalidate(key => key.startsWith(`${id}:`)); }
@@ -105,6 +115,7 @@ export async function authenticate(token: string, mutation: boolean): Promise<Co
         return (data as AuthRow[] | null)?.[0];
       };
       let row = await load();
+      if (row && row.user_id === identity.id && !row.session_valid) throw await deniedOrBlocked(identity.id);
       if (!row?.session_valid || row.user_id !== identity.id) throw denied();
       if (row.role === null) { await provision(identity.id, row.phone); row = await load(); }
       if (!row?.session_valid || row.user_id !== identity.id) throw denied();

@@ -18,6 +18,7 @@ interface CustomerRow {
   createdAt: string;
   orderCount: number;
   totalSpend: number;
+  block: { reason: string; blockedUntil: string | null } | null;
 }
 
 export default function CustomersPage() {
@@ -89,6 +90,11 @@ export default function CustomersPage() {
                 <td className="p-0">
                   <Link href={`/customers/${customer.id}`} className="block p-4 font-medium text-ink">
                     {customer.name ?? 'No name on file'}
+                    {customer.block && (
+                      <span title={customer.block.reason} className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-danger">
+                        Blocked
+                      </span>
+                    )}
                   </Link>
                 </td>
                 <td className="p-4 text-ink-soft">{customer.phone}</td>

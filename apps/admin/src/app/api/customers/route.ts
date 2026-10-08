@@ -11,6 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { activeBlock, sanitizeCustomerSearch, type CustomerBlockRow } from '@/lib/customerBlocks';
 
 interface UserRow {
   id: string;
@@ -22,7 +23,7 @@ interface UserRow {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const q = searchParams.get('q')?.trim() ?? '';
+    const q = sanitizeCustomerSearch(searchParams.get('q') ?? '');
 
     let query = supabaseAdmin.from('users').select('id, name, phone, created_at').eq('role', 'customer').order('created_at', { ascending: false });
     if (q) query = query.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
@@ -35,6 +36,17 @@ export async function GET(request: Request) {
       ? await supabaseAdmin.from('orders').select('customer_id, total, status').in('customer_id', userIds)
       : { data: [], error: null };
     if (ordersErr) throw ordersErr;
+
+    const { data: blocks, error: blocksErr } = userIds.length
+      ? await supabaseAdmin
+          .from('customer_blocks')
+          .select('user_id, reason, blocked_at, blocked_until, unblocked_at')
+          .in('user_id', userIds)
+          .is('unblocked_at', null)
+      : { data: [], error: null };
+    if (blocksErr) throw blocksErr;
+    const blockByCustomer = new Map<string, CustomerBlockRow>();
+    for (const row of (blocks ?? []) as CustomerBlockRow[]) blockByCustomer.set(row.user_id, row);
 
     const statsByCustomer = new Map<string, { orderCount: number; totalSpend: number }>();
     for (const order of orders ?? []) {
@@ -51,6 +63,7 @@ export async function GET(request: Request) {
       createdAt: u.created_at,
       orderCount: statsByCustomer.get(u.id)?.orderCount ?? 0,
       totalSpend: statsByCustomer.get(u.id)?.totalSpend ?? 0,
+      block: activeBlock(blockByCustomer.get(u.id)),
     }));
 
     return NextResponse.json(customers);
