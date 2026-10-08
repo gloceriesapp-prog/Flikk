@@ -5,7 +5,8 @@
 // label · value · chevron). No brand-green surfaces — neutral gray + ink only.
 //
 // Real data: GET /rider/profile (name / phone / riderCode / vehicle / docs
-// / payout). Every row wires to a real action — Support (tel/mail),
+// / payout). Every row wires to a real action — Help & support (admin-
+// configured contacts + support requests, screens/support),
 // Emergency SOS (rider's emergency contact), Shift & availability (points to
 // Home's online toggle), Wallet (Earnings tab), Payout method, Documents.
 // Placeholder "coming soon" rows (Language / Radius / Insurance / Settings)
@@ -39,7 +40,9 @@ import { PerformanceRow } from '../../components/PerformanceRow';
 import { colors } from '../../theme/tokens';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
-import { SUPPORT_EMAIL, SUPPORT_PHONE } from '../../data/support';
+import { supportCallUrl } from '@gloceries/shared';
+import { EMERGENCY_PHONE } from '../../data/support';
+import { useSupportContacts } from '../support/useSupport';
 import { useRiderProfile } from './useRiderProfile';
 import { useRiderStats } from './useRiderStats';
 import type { RiderStats } from '../../api/stats';
@@ -78,6 +81,7 @@ export function ProfileScreen() {
   const clear = useAuthStore((s) => s.clear);
   const { data: profile, isLoading } = useRiderProfile();
   const { data: stats } = useRiderStats();
+  const { data: contacts } = useSupportContacts();
   const [editingPayout, setEditingPayout] = useState(false);
 
   const displayName = profile?.name?.trim() || 'Rider';
@@ -91,25 +95,33 @@ export function ProfileScreen() {
     else navigation.navigate('Home');
   }
 
-  function callSupport() {
-    void Linking.openURL(`tel:${SUPPORT_PHONE}`);
+  // Help & support screen: admin-configured contacts + support requests.
+  function openSupport() {
+    navigation.navigate('Support');
   }
 
   function reportProblem() {
-    void Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Rider%20app%20issue`);
+    navigation.navigate('Support', { compose: true });
   }
 
   function emergencySos() {
-    // Rider's own emergency contact if we have it, else support line — never
-    // a fabricated number.
+    // Rider's own emergency contact if we have it, else the admin-configured
+    // support line, else the national emergency number — never a fabricated
+    // number.
     const num = profile?.emergencyContactPhone;
+    const supportCall = contacts ? supportCallUrl(contacts) : null;
     if (num) {
       Alert.alert('Emergency call', `Call ${profile?.emergencyContactName || 'your emergency contact'} now?`, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Call', style: 'destructive', onPress: () => void Linking.openURL(`tel:${num}`) },
       ]);
+    } else if (supportCall) {
+      void Linking.openURL(supportCall);
     } else {
-      callSupport();
+      Alert.alert('Emergency SOS', `Call India's emergency helpline (${EMERGENCY_PHONE})?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Call now', style: 'destructive', onPress: () => void Linking.openURL(`tel:${EMERGENCY_PHONE}`) },
+      ]);
     }
   }
 
@@ -156,8 +168,9 @@ export function ProfileScreen() {
             </Pressable>
             <Text className="flex-1 text-center text-[18px] font-semibold text-ink">Profile</Text>
             <Pressable
-              onPress={callSupport}
+              onPress={openSupport}
               hitSlop={8}
+              accessibilityLabel="Help & support"
               className="h-11 w-11 items-center justify-center rounded-full bg-[#F1F1F4]"
               style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             >
@@ -210,7 +223,7 @@ export function ProfileScreen() {
           {/* Menu list — every row is a real wired action. */}
           <View>
             <MenuRow icon={Clock01Icon} label="Working hours" onPress={() => navigation.navigate('Availability')} />
-            <MenuRow icon={CustomerService01Icon} label="Support" onPress={callSupport} />
+            <MenuRow icon={CustomerService01Icon} label="Help & support" onPress={openSupport} />
             <MenuRow icon={Alert02Icon} label="Emergency SOS" danger onPress={emergencySos} />
             <MenuRow icon={Wallet01Icon} label="Wallet & payouts" onPress={() => navigation.navigate('Earnings')} />
             <MenuRow icon={Invoice01Icon} label="Payout history" onPress={() => navigation.navigate('PayoutHistory')} />
