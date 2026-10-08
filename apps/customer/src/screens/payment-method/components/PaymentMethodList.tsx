@@ -1,12 +1,16 @@
-// Payment groups, selection-only (Cart places the order). UPI apps (only
-// those actually installed) use Cashfree UPI intent; UPI ID uses a verified
-// collect request; cards, netbanking and the rest use Cashfree checkout.
+// Payment groups, selection-only (Cart places the order). Only modes enabled
+// on the Cashfree account are offered (UPI, Visa/RuPay cards, netbanking);
+// wallets and pay-later are not enabled. UPI apps (only those actually
+// installed) use Cashfree UPI intent; UPI ID (iOS only, NPCI withdrew collect
+// on Android) uses a verified collect request; 'Other UPI apps', cards and
+// netbanking open Cashfree checkout limited to that mode.
 import { Image, Pressable, Text, View } from 'react-native';
-import { CreditCardIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { BankIcon, CreditCardIcon, ArrowRight01Icon, SmartPhone01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage } from '../../../components/AppImage';
 import { colors, minTouchTarget } from '../../../theme/tokens';
 import { UpiIdSection } from './UpiIdSection';
+import { UPI_ID_SUPPORTED } from '../../../payments/upiIntent';
 import type { UpiApp } from '../../../payments/upiApps';
 
 import type { PaymentMethod } from '../../../payments/paymentMethod';
@@ -48,6 +52,22 @@ function UpiAppBadge({ app }: { app: UpiApp }) {
   );
 }
 
+function MethodRow({ icon, title, subtitle, selected, onPress, label }: {
+  icon: typeof CreditCardIcon; title: string; subtitle: string; selected: boolean; onPress: () => void; label: string;
+}) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}
+      accessibilityState={{ selected }} className="flex-row items-center gap-3" style={{ minHeight: minTouchTarget }}>
+      <AppBadge icon={icon} />
+      <View className="flex-1">
+        <Text className="text-[15px] font-medium text-ink">{title}</Text>
+        <Text className="mt-0.5 text-[12.5px] font-medium text-ink/50">{subtitle}</Text>
+      </View>
+      <SelectionArrow selected={selected} />
+    </Pressable>
+  );
+}
+
 interface Props {
   method: PaymentMethod | null;
   onSelect: (method: PaymentMethod) => void;
@@ -68,15 +88,13 @@ export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, upi
 
   return (
     <View className="mt-6 gap-6">
-      {upiApps.length > 0 ? (
-        <View>
-          <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Pay with UPI app</Text>
-          <View className="bg-white p-4" style={{ borderRadius: 12 }}>
+      <View>
+        <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Pay with UPI app</Text>
+        <View className="bg-white p-4" style={{ borderRadius: 12 }}>
             {upiApps.map((app, index) => {
               const isSelected = selectedUpiAppId === app.id;
-              const isLast = index === upiApps.length - 1;
               return (
-                <View key={app.id} className={isLast ? '' : 'mb-3 border-b border-dashed border-gray-100 pb-3'}>
+                <View key={app.id} className="mb-3 border-b border-dashed border-gray-100 pb-3">
                   <Pressable onPress={() => onSelect(`upi_app:${app.id}`)} accessibilityRole="button"
                     accessibilityLabel={`Pay with ${app.name}`} accessibilityState={{ selected: isSelected }}
                     className="flex-row items-center gap-3" style={{ minHeight: minTouchTarget }}>
@@ -95,25 +113,24 @@ export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, upi
                 </View>
               );
             })}
-          </View>
+          <MethodRow icon={SmartPhone01Icon} title={upiApps.length ? 'Other UPI apps' : 'Pay with any UPI app'}
+            subtitle="Any UPI app on this phone, incl. RuPay credit card on UPI" selected={method === 'upi_other'}
+            onPress={() => onSelect('upi_other')} label="Pay with another UPI app" />
         </View>
-      ) : null}
+      </View>
 
-      {upiId ? <UpiIdSection initialVpa={upiId.initialVpa} rememberedByDefault={upiId.remembered}
+      {upiId && UPI_ID_SUPPORTED ? <UpiIdSection initialVpa={upiId.initialVpa} rememberedByDefault={upiId.remembered}
         selected={method === 'upi_id'} onUse={upiId.onUse} /> : null}
 
       <View>
-        <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">{'Cards, netbanking & more'}</Text>
+        <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">{'Cards & netbanking'}</Text>
         <View className="bg-white p-4" style={{ borderRadius: 12 }}>
-          <Pressable onPress={() => onSelect('card')} accessibilityRole="button" accessibilityLabel="Pay with card, netbanking or other options"
-            accessibilityState={{ selected: method === 'card' }} className="flex-row items-center gap-3" style={{ minHeight: minTouchTarget }}>
-            <AppBadge icon={CreditCardIcon} />
-            <View className="flex-1">
-              <Text className="text-[15px] font-medium text-ink">Credit / Debit Card</Text>
-              <Text className="mt-0.5 text-[12.5px] font-medium text-ink/50">Also netbanking, wallets and UPI QR</Text>
-            </View>
-            <SelectionArrow selected={method === 'card'} />
-          </Pressable>
+          <View className="mb-3 border-b border-dashed border-gray-100 pb-3">
+            <MethodRow icon={CreditCardIcon} title="Credit / Debit Card" subtitle="Visa and RuPay cards"
+              selected={method === 'card'} onPress={() => onSelect('card')} label="Pay with credit or debit card" />
+          </View>
+          <MethodRow icon={BankIcon} title="Netbanking" subtitle="Karnataka Bank, Canara, Union Bank and more"
+            selected={method === 'netbanking'} onPress={() => onSelect('netbanking')} label="Pay with netbanking" />
         </View>
       </View>
 

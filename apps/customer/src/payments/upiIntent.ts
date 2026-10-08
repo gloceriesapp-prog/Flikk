@@ -26,6 +26,11 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { UPI_APPS, type UpiApp } from './upiApps';
 import type { UpiIntentLinks } from '../api/payments';
 
+// Paying by typing a UPI ID is a UPI collect request. NPCI has withdrawn
+// collect for merchant payments on Android (Cashfree rejects it there); it is
+// still allowed on iOS. Android customers pay through a UPI app instead.
+export const UPI_ID_SUPPORTED = Platform.OS === 'ios';
+
 export interface NativeUpiApp {
   name: string;
   packageName: string;

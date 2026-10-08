@@ -14,9 +14,9 @@ import { createTrip } from '../../../api/trips';
 import type { ApiAddress } from '../../../api/addresses';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { fetchPendingPayments, recoverPayment, createPaymentOrder, createUpiIntentPayment, createUpiCollectPayment, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
-import { openCashfreeCheckout } from '../../../payments/openCashfreeCheckout';
+import { openCashfreeCheckout, type CheckoutMode } from '../../../payments/openCashfreeCheckout';
 import type { UpiApp } from '../../../payments/upiApps';
-import { canLaunchUpiApp, detectInstalledUpiApps, openUpiApp } from '../../../payments/upiIntent';
+import { canLaunchUpiApp, detectInstalledUpiApps, openUpiApp, UPI_ID_SUPPORTED } from '../../../payments/upiIntent';
 import { keepsCheckoutAttempt } from './attemptPolicy';
 import { selectCartStoreCount, useCartStore } from '../../../store/useCartStore';
 import { formatIstMinute, isOutsideOperatingHours } from '../../../utils/operatingHours';
@@ -65,7 +65,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   const ownerEpoch = useRef(useAuthStore.getState().sessionEpoch).current;
   const stillOwner = () => useAuthStore.getState().sessionEpoch === ownerEpoch;
   const chosenMethod = selectedPaymentMethod;
-  const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, !!upiVpa);
+  const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, !!upiVpa, UPI_ID_SUPPORTED);
   const latestSelection = useRef({ addressId: selectedAddress?.id, paymentMethod });
   useLayoutEffect(() => {
     latestSelection.current = { addressId: selectedAddress?.id, paymentMethod };
@@ -224,10 +224,10 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       // Card / netbanking / anything else, and every UPI fallback. onVerify
       // only means the hosted checkout closed; the server re-fetches Cashfree.
       // Not confirmed yet → the processing screen keeps polling.
-      async function payViaCashfreeCheckout(label: string) {
+      async function payViaCashfreeCheckout(label: string, modes?: CheckoutMode[]) {
         const order = await createPaymentOrder(payTarget);
         if (!stillOwner()) throw new Error('Session changed.');
-        await openCashfreeCheckout(order);
+        await openCashfreeCheckout(order, modes);
         if (!stillOwner()) throw new Error('Session changed.');
         const verified = await verifyPayment(payTarget).catch(() => ({ ok: false }));
         if (!stillOwner()) return;
@@ -258,7 +258,10 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
         }
       }
 
-      await payViaCashfreeCheckout(paymentMethod === 'online' || upiApp ? 'Online payment' : paymentMethodLabel(paymentMethod, upiApps));
+      // An app that couldn't be launched falls back to Cashfree's UPI checkout.
+      const modes: CheckoutMode[] | undefined = upiApp || paymentMethod === 'upi_other' ? ['UPI']
+        : paymentMethod === 'card' ? ['CARD'] : paymentMethod === 'netbanking' ? ['NB'] : undefined;
+      await payViaCashfreeCheckout(paymentMethod === 'online' || upiApp ? 'Online payment' : paymentMethodLabel(paymentMethod, upiApps), modes);
     } catch (err) {
       if (!stillOwner()) return;
       // A lost create/payment response keeps the attempt durable. Never
