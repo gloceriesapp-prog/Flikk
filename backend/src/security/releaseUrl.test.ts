@@ -18,10 +18,10 @@ it('blocks release app configs without a valid HTTPS endpoint', async () => {
     expect(run('').status).not.toBe(0);
     expect(run('http://localhost:4000').status).not.toBe(0);
     expect(run('https://api.example.com').status).toBe(0);
-    // eas-cli's local pre-read happens before EAS variables are pulled: no URL yet is allowed there,
-    // but a URL that is set is still validated.
+    // eas-cli's local pre-read happens before EAS variables are pulled and may see a developer's
+    // .env.local LAN URL; it is not the bundle that ships, so it must not fail the build command.
     expect(run('','').status).toBe(0);
-    expect(run('http://localhost:4000','').status).not.toBe(0);
+    expect(run('http://192.168.0.162:4000','').status).toBe(0);
   }
 });
 
