@@ -17,6 +17,7 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
   },
 } }));
 vi.mock('../lib/notifications.js', () => ({ createNotification: db.notify }));
+vi.mock('../lib/deliverySettings.js', () => ({ getRiderPaySettings: async () => ({ riderBasePayout: 30, riderExtraStopPayout: 10, extraStopFee: 15 }) }));
 import { riderRouter } from './rider.js';
 
 function handler(path: string, method: 'get' | 'post'): RequestHandler {
@@ -34,11 +35,13 @@ beforeEach(() => { vi.clearAllMocks(); db.orders = []; });
 
 it('lists offers from the server-side rider position, ignoring client position and radius', async () => {
   db.rpc.mockResolvedValue({ data: [{ order_id: 'o1', distance_m: 1200 }], error: null });
-  db.orders = [{ id: 'o1', order_number: 'FLK-1' }];
+  db.orders = [{ id: 'o1', order_number: 'FLK-1', trip_id: null, payment_method: 'cod', total: '150', delivery_fee: '0' }];
   const { res, err } = await call('/dispatch-offers', 'get', { query: { lat: '0', lng: '0', radius_m: '100000000' } });
   expect(err).toBeUndefined();
   expect(db.rpc).toHaveBeenCalledWith('rider_dispatch_offers', { p_rider: 'rider-1' });
-  expect(res.json).toHaveBeenCalledWith([{ id: 'o1', order_number: 'FLK-1', distance_m: 1200 }]);
+  // Free delivery still offers the admin minimum payout; COD shows the cash to collect.
+  expect(res.json).toHaveBeenCalledWith([{ ...db.orders[0], distance_m: 1200, cash_to_collect: 150,
+    rider_payout: 30, rider_payout_base: 30, rider_payout_extra_stop: 0 }]);
 });
 
 it('returns no offers (not 400) when the client sends no position', async () => {

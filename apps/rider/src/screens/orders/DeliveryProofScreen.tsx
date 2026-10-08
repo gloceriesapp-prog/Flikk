@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { More03Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
+import { CollectCashBanner } from '../../components/CollectCashBanner';
 import { colors } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import type { AppStackParamList } from '../../navigation/types';
@@ -77,6 +78,8 @@ export function DeliveryProofScreen({ route, navigation }: Props) {
             Ask {order.customerName} for PIN
           </Text>
         </View>
+
+        <CollectCashBanner paymentMethod={order.paymentMethod} cashToCollect={order.cashToCollect} />
 
         {/* PIN Input Section */}
         <View className="gap-6">

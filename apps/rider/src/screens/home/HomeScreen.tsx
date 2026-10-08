@@ -53,6 +53,8 @@ const DEMO_OFFER: DispatchOffer = {
   storeCoords: { latitude: 13.2167, longitude: 74.7469 },
   dropCoords: { latitude: 13.2231, longitude: 74.7512 },
   expiresAt: null, // no server deadline for a demo offer → ring uses its windowSeconds fallback
+  paymentMethod: 'cod',
+  cashToCollect: 420,
 };
 
 // Same page + earnings card as OfflineHomeScreen (one visual language across
@@ -115,6 +117,8 @@ export function HomeScreen() {
       distanceFare: Math.max(0, o.payout - 15),
       surge: 0,
       placedAt: new Date().toISOString(),
+      paymentMethod: 'cod',
+      cashToCollect: 420,
     };
     useRiderOrdersStore.setState((s) => ({ activeOrders: [active, ...s.activeOrders.filter((o) => o.id !== active.id)] }));
     setFilter('active');
@@ -147,6 +151,8 @@ export function HomeScreen() {
       distanceFare: 20,
       surge: 0,
       placedAt: new Date().toISOString(),
+      paymentMethod: 'cod',
+      cashToCollect: 420,
     };
     useRiderOrdersStore.setState((s) => ({
       activeOrders: [active, ...s.activeOrders.filter((o) => o.id !== id)],

@@ -3,7 +3,14 @@ DO $$ BEGIN IF current_database()<>'flikk_migrations_tests' THEN RAISE EXCEPTION
 BEGIN;
 DO $$ BEGIN
  IF has_function_privilege('anon','rider_delivery_payout(numeric,integer)','EXECUTE') OR has_function_privilege('authenticated','rider_delivery_payout(numeric,integer)','EXECUTE')
- THEN RAISE EXCEPTION 'Rider pay RPC exposed to API roles'; END IF;
+ OR has_function_privilege('anon','settle_rider_cash(uuid,uuid,text,uuid[])','EXECUTE') OR has_function_privilege('authenticated','settle_rider_cash(uuid,uuid,text,uuid[])','EXECUTE')
+ OR has_function_privilege('authenticated','rider_cash_outstanding()','EXECUTE') OR has_function_privilege('authenticated','cod_cash_due(uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'Rider pay or cash RPC exposed to API roles'; END IF;
+ IF NOT has_function_privilege('service_role','settle_rider_cash(uuid,uuid,text,uuid[])','EXECUTE')
+ OR NOT has_function_privilege('service_role','rider_cash_outstanding()','EXECUTE') THEN RAISE EXCEPTION 'API cannot settle cash'; END IF;
+ IF has_table_privilege('authenticated','rider_cash_collections','INSERT') OR has_table_privilege('authenticated','rider_cash_collections','UPDATE')
+ OR has_table_privilege('anon','rider_cash_collections','UPDATE') THEN RAISE EXCEPTION 'Cash collections writable by API roles'; END IF;
+ IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.rider_cash_collections'::regclass) THEN RAISE EXCEPTION 'Cash collections without RLS'; END IF;
 END $$;
 
 -- Fixture rows bypass checkout triggers; every assertion below runs with them on.
@@ -62,8 +69,53 @@ DO $$ DECLARE r jsonb; e rider_earnings; BEGIN
  IF NOT (r->>'accepted')::boolean THEN RAISE EXCEPTION 'Prepaid delivery refused: %',r; END IF;
  SELECT * INTO STRICT e FROM rider_earnings WHERE order_id='00000000-0000-4000-8000-000000000892';
  IF e.amount<>25 OR e.base_amount<>25 OR e.extra_stop_amount<>0 THEN RAISE EXCEPTION 'Old pay rule changed: %',e.amount; END IF;
+ IF (SELECT sum(base) FROM rider_earning_totals('00000000-0000-4000-8000-0000000008e1',now()-interval '1 day',now()+interval '1 day'))<>85
+ OR (SELECT sum(extra) FROM rider_earning_totals('00000000-0000-4000-8000-0000000008e1',now()-interval '1 day',now()+interval '1 day'))<>12 THEN
+  RAISE EXCEPTION 'Earnings day totals ignore the stored split'; END IF;
  IF (SELECT amount FROM rider_delivery_payout(55,2))<>55 OR (SELECT extra_stop_amount FROM rider_delivery_payout(55,2))<>30
  OR (SELECT base_amount FROM rider_delivery_payout(0,2))<>0 THEN RAISE EXCEPTION 'Old split rule changed'; END IF;
 END $$;
+
+-- Cash on delivery: one collection per delivered COD order or trip, none when prepaid.
+DO $$ DECLARE r jsonb; BEGIN
+ IF (SELECT count(*) FROM rider_cash_collections WHERE order_id='00000000-0000-4000-8000-000000000891')<>1
+ OR (SELECT amount FROM rider_cash_collections WHERE order_id='00000000-0000-4000-8000-000000000891')<>200 THEN
+  RAISE EXCEPTION 'COD order collection missing or wrong'; END IF;
+ -- Trip total 300 less the cancelled shop's 100.
+ IF (SELECT count(*) FROM rider_cash_collections WHERE trip_id='00000000-0000-4000-8000-000000000881')<>1
+ OR (SELECT amount FROM rider_cash_collections WHERE trip_id='00000000-0000-4000-8000-000000000881')<>200
+ OR EXISTS(SELECT 1 FROM rider_cash_collections WHERE order_id IN('00000000-0000-4000-8000-000000000881','00000000-0000-4000-8000-000000000882')) THEN
+  RAISE EXCEPTION 'COD trip collection missing or wrong'; END IF;
+ IF EXISTS(SELECT 1 FROM rider_cash_collections WHERE order_id='00000000-0000-4000-8000-000000000892') THEN
+  RAISE EXCEPTION 'Prepaid delivery recorded as cash'; END IF;
+ -- Replays (same order, sibling leg) record nothing more.
+ r:=complete_verified_delivery('00000000-0000-4000-8000-000000000891','00000000-0000-4000-8000-0000000008e1','1111');
+ IF NOT (r->>'replayed')::boolean THEN RAISE EXCEPTION 'Order replay not detected: %',r; END IF;
+ r:=complete_verified_delivery('00000000-0000-4000-8000-000000000882','00000000-0000-4000-8000-0000000008e1','3333');
+ IF NOT (r->>'replayed')::boolean THEN RAISE EXCEPTION 'Sibling replay not detected: %',r; END IF;
+ IF (SELECT count(*) FROM rider_cash_collections WHERE rider_id='00000000-0000-4000-8000-0000000008e1')<>2 THEN
+  RAISE EXCEPTION 'Replay recorded cash twice'; END IF;
+END $$;
+
+-- Settlement.
+DO $$ DECLARE r jsonb; one uuid; o record; BEGIN
+ SELECT * INTO STRICT o FROM rider_cash_outstanding() WHERE rider_id='00000000-0000-4000-8000-0000000008e1';
+ IF o.outstanding_amount<>400 OR o.outstanding_count<>2 THEN RAISE EXCEPTION 'Outstanding cash wrong: %',o; END IF;
+ BEGIN PERFORM settle_rider_cash('00000000-0000-4000-8000-0000000008e1',null,'x'); RAISE EXCEPTION 'Settled without an admin';
+ EXCEPTION WHEN sqlstate '22023' THEN NULL; END;
+ SELECT id INTO one FROM rider_cash_collections WHERE order_id='00000000-0000-4000-8000-000000000891';
+ r:=settle_rider_cash('00000000-0000-4000-8000-0000000008e1','00000000-0000-4000-8000-0000000008ff','  RCPT-1  ',ARRAY[one]);
+ IF (r->>'settled_count')::int<>1 OR (r->>'settled_amount')::numeric<>200 THEN RAISE EXCEPTION 'Partial settlement wrong: %',r; END IF;
+ IF NOT EXISTS(SELECT 1 FROM rider_cash_collections WHERE id=one AND settled_at IS NOT NULL
+  AND settled_by='00000000-0000-4000-8000-0000000008ff' AND settlement_ref='RCPT-1') THEN RAISE EXCEPTION 'Settlement not recorded'; END IF;
+ IF (SELECT outstanding_amount FROM rider_cash_outstanding() WHERE rider_id='00000000-0000-4000-8000-0000000008e1')<>200 THEN
+  RAISE EXCEPTION 'Settled cash still outstanding'; END IF;
+ r:=settle_rider_cash('00000000-0000-4000-8000-0000000008e1','00000000-0000-4000-8000-0000000008ff','');
+ IF (r->>'settled_count')::int<>1 OR (r->>'settled_amount')::numeric<>200 THEN RAISE EXCEPTION 'Full settlement wrong: %',r; END IF;
+ r:=settle_rider_cash('00000000-0000-4000-8000-0000000008e1','00000000-0000-4000-8000-0000000008ff','again');
+ IF (r->>'settled_count')::int<>0 THEN RAISE EXCEPTION 'Settlement not idempotent: %',r; END IF;
+ IF (SELECT settlement_ref FROM rider_cash_collections WHERE id=one)<>'RCPT-1' THEN RAISE EXCEPTION 'Settled row overwritten'; END IF;
+ IF EXISTS(SELECT 1 FROM rider_cash_outstanding() WHERE rider_id='00000000-0000-4000-8000-0000000008e1') THEN RAISE EXCEPTION 'Rider still owes cash'; END IF;
+END $$;
 ROLLBACK;
-SELECT 'Rider pay settings verified' AS result;
+SELECT 'Rider pay settings and cash on delivery verified' AS result;

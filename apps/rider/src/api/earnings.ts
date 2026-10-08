@@ -1,8 +1,8 @@
 // GET /rider/earnings — the Earnings tab's single data source. Each row is
 // one settled rider_earnings record: a single-store order (isTrip false) or a
 // whole multi-stop trip (isTrip true). amount is the combined payout; the
-// backend recomputes the base vs extra-stop split (not persisted) and returns
-// it as baseFee/extraStopFee. status is 'paid' once the weekly payout settles,
+// base vs extra-stop split stored when it was earned comes back as
+// baseFee/extraStopFee. status is 'paid' once the weekly payout settles,
 // 'pending' until then. deliveredAt drives week bucketing (paid_at is null
 // until settlement).
 
@@ -36,4 +36,12 @@ export function fetchRiderEarningPage(from: string, until: string, cursor?: stri
 }
 export function fetchRiderEarningSummary(from: string, until: string): Promise<EarningDay[]> {
   return apiRequest(`/rider/earnings-summary?${new URLSearchParams({ from, until })}`);
+}
+
+// GET /rider/cash-balance — cash collected on cash-on-delivery orders that
+// the rider still holds (an admin marks it settled once handed over).
+export interface RiderCashBalance { outstanding: number; count: number }
+
+export async function fetchRiderCashBalance(): Promise<RiderCashBalance> {
+  return apiRequest<RiderCashBalance>('/rider/cash-balance');
 }

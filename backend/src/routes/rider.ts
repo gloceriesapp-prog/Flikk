@@ -9,6 +9,7 @@ import { fetchRoute } from '../lib/routeDirections.js';
 import { createNotification } from '../lib/notifications.js';
 import { validateAvailability } from '../lib/riderSchedule.js';
 import { computeRiderStats } from '../lib/riderStats.js';
+import { DELIVERY_MONEY_COLUMNS, withDeliveryMoney, type DeliveryMoneyOrder } from '../lib/riderDeliveryMoney.js';
 
 export const riderRouter = Router();
 
@@ -141,10 +142,10 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
     const orderIds = (nearby as { order_id: string; distance_m: number }[]).map((r) => r.order_id);
     const distanceByOrderId = new Map((nearby as { order_id: string; distance_m: number }[]).map((r) => [r.order_id, r.distance_m]));
 
-    // Same trip-aware payout shape as GET /assignments — a trip leg's real
-    // payout is the trip's own combined delivery_fee (base + EXTRA_STOP_FEE
-    // per store beyond the first), never the flat single-store fee. Store
-    // + drop coords, drop label and item count are the same joins
+    // Same money fields as GET /assignments (withDeliveryMoney): what the
+    // rider will earn under the admin pay settings (rider_payout, for the
+    // whole trip on a trip leg), the payment method and the cash to collect
+    // at the door. Store + drop coords, drop label and item count are the same joins
     // /assignments already pulls — the rider app's offer card renders a
     // pickup→drop preview from them (no new migration, real order data).
     const { data: orders, error: ordersErr } = await supabase
@@ -155,12 +156,12 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
         // (that timestamp + DISPATCH_OFFER_WINDOW_MS), instead of a
         // mount-seeded guess. Set on every broadcast/rebroadcast in
         // lib/riderDispatch.ts.
-        'id, order_number, delivery_fee, trip_id, dispatch_broadcast_at, trips(delivery_fee), stores(name, lat, lng), addresses(line1, landmark, latitude, longitude), order_items(quantity)'
+        `id, order_number, trip_id, dispatch_broadcast_at, ${DELIVERY_MONEY_COLUMNS}, stores(name, lat, lng), addresses(line1, landmark, latitude, longitude), order_items(quantity)`
       )
       .in('id', orderIds);
     if (ordersErr) throw ordersErr;
 
-    const withDistance = (orders ?? [])
+    const withDistance = (await withDeliveryMoney((orders ?? []) as unknown as (DeliveryMoneyOrder & Record<string, unknown>)[]))
       .map((o) => ({ ...o, distance_m: distanceByOrderId.get(o.id) ?? null }))
       .sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0));
 
@@ -273,12 +274,10 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
         // stores has no street-address column at all (migration 005 only
         // ever added lat/lng) — zones(name) is the most specific real
         // location text available for a pickup point today.
-        // trips(delivery_fee) — only present when trip_id is set (a
-        // multi-store leg); apps/rider's toRiderOrder reads this to show
-        // the real trip-level payout (base fee + multi-stop surcharge,
-        // routes/trips.ts's EXTRA_STOP_FEE) instead of assuming every
-        // order pays the flat single-store DELIVERY_FEE.
-        'id, status, placed_at, delivered_at, cancel_reason, trip_id, order_items(quantity, unit_at_order, products(name, unit)), stores(name, phone, lat, lng, manual_address, address_line, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude, delivery_instructions), trips(delivery_fee)',
+        // DELIVERY_MONEY_COLUMNS feed withDeliveryMoney below: the rider's
+        // payout (the recorded earning once delivered, else the admin pay
+        // rule) and, for cash on delivery, the amount to collect.
+        `id, status, placed_at, delivered_at, cancel_reason, trip_id, ${DELIVERY_MONEY_COLUMNS}, order_items(quantity, unit_at_order, products(name, unit)), stores(name, phone, lat, lng, manual_address, address_line, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude, delivery_instructions)`,
       )
       .eq('rider_id', req.user!.id)
 ;
@@ -291,7 +290,8 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
     if (syncFilter) query = query.or(syncFilter);
     const { data, error } = await query.order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
-    sendPage(res, data ?? [], page, 'placed_at');
+    const rows = (data ?? []) as unknown as (DeliveryMoneyOrder & { placed_at: string })[];
+    sendPage(res, await withDeliveryMoney(rows, req.user!.id), page, 'placed_at');
   } catch (err) {
     next(err);
   }
@@ -380,6 +380,26 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
       .sort((a, b) => (b.deliveredAt ?? '').localeCompare(a.deliveredAt ?? ''));
 
     sendPage(res, earnings, page, 'deliveredAt');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Cash the rider collected on cash-on-delivery orders and has not yet handed
+// over (rider_cash_collections, migration 108; an admin settles it from the
+// Cash on delivery page). Own rows only — the .eq('rider_id', ...) filter is
+// the scoping, as in every sibling handler.
+riderRouter.get('/cash-balance', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('rider_cash_collections')
+      .select('amount')
+      .eq('rider_id', req.user!.id)
+      .is('settled_at', null);
+    if (error) throw error;
+    const rows = (data ?? []) as { amount: number | string }[];
+    const outstanding = Math.round(rows.reduce((sum, row) => sum + Number(row.amount), 0) * 100) / 100;
+    res.json({ outstanding, count: rows.length });
   } catch (err) {
     next(err);
   }

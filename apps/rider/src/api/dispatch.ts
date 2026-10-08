@@ -31,6 +31,8 @@ interface RawDispatchOffer {
   order_items: { quantity: number }[] | null;
   dispatch_broadcast_at: string | null;
   distance_m: number | null;
+  payment_method: 'cod' | 'online';
+  cash_to_collect: number;
 }
 
 export interface DispatchOffer {
@@ -58,6 +60,9 @@ export interface DispatchOffer {
   // DISPATCH_OFFER_WINDOW_MS. null when the server didn't send a broadcast
   // timestamp — the ring then falls back to its mount-seeded window.
   expiresAt: number | null;
+  // Cash on delivery: the rider collects cashToCollect at the door.
+  paymentMethod: 'cod' | 'online';
+  cashToCollect: number;
 }
 
 function coordsOf(lat: number | null | undefined, lng: number | null | undefined): Coordinates | null {
@@ -87,6 +92,8 @@ function toDispatchOffer(row: RawDispatchOffer): DispatchOffer {
     storeCoords,
     dropCoords,
     expiresAt: row.dispatch_broadcast_at ? Date.parse(row.dispatch_broadcast_at) + DISPATCH_OFFER_WINDOW_MS : null,
+    paymentMethod: row.payment_method === 'online' ? 'online' : 'cod',
+    cashToCollect: Number(row.cash_to_collect) || 0,
   };
 }
 

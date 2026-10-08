@@ -431,7 +431,7 @@
     },
     {
       "file": "108_rider_pay_cod.sql",
-      "sha256": "ce0eeaeab39f5de1348c371331a77b29c3d2535054be21a0b09992839b4d59a9"
+      "sha256": "67f821b402d554ce864abeadc5d74b0cbea5303dbc189f0479860e62ca35cbc4"
     },
     {
       "file": "111_catalogue_stock_integrity.sql",

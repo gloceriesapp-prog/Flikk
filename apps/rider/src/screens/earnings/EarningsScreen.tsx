@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchRiderEarningSummary, type EarningDay } from '../../api/earnings';
+import { fetchRiderCashBalance, fetchRiderEarningSummary, type EarningDay } from '../../api/earnings';
+import { formatCash } from '../../components/CollectCashBanner';
 // Earnings tab — week-navigation header, the selected week's balance
 // (base + extra-stop split), that week's daily activity chart, and a
 // transactions list showing every settled order/trip that week with its
@@ -41,6 +42,7 @@ export function EarningsScreen() {
     return { from: start.toISOString(), until: new Date(start.getTime() + 86400000).toISOString() };
   }, []);
   const today = useQuery({ queryKey: ['riderEarningsSummary', todayRange.from, todayRange.until], queryFn: () => fetchRiderEarningSummary(todayRange.from, todayRange.until) });
+  const cash = useQuery({ queryKey: ['riderCashBalance'], queryFn: fetchRiderCashBalance });
   const total = (days: EarningDay[] = []) => days.reduce((sum, day) => ({
     total: sum.total + Number(day.total), base: sum.base + Number(day.base),
     extraStop: sum.extraStop + Number(day.extra), count: sum.count + Number(day.orders),
@@ -96,6 +98,14 @@ export function EarningsScreen() {
             activeMs={period === 'today' ? activeMsToday : null}
           />
         </View>
+        {cash.data && cash.data.outstanding > 0 ? (
+          <View className="mx-5 rounded-2xl bg-surge-soft px-4 py-3">
+            <Text className="text-[15px] font-extrabold text-ink">Cash to hand over: ₹{formatCash(cash.data.outstanding)}</Text>
+            <Text className="mt-0.5 text-[12px] font-medium text-ink/60">
+              Collected on {cash.data.count} cash-on-delivery {cash.data.count === 1 ? 'order' : 'orders'}. Settled with the Gloceries team.
+            </Text>
+          </View>
+        ) : null}
         <WeeklyActivityChartCard weeklyActivity={weeklyActivity} />
         <WeeklyTransactionsCard earnings={weekEarnings} />
         {query.hasNextPage && <Pressable disabled={query.isFetchingNextPage} onPress={() => { void query.fetchNextPage(); }} className="items-center py-4"><Text className="font-semibold text-lime-deep">{query.isFetchingNextPage ? 'Loading…' : query.isFetchNextPageError ? 'Retry loading more' : 'Load more transactions'}</Text></Pressable>}

@@ -23,6 +23,7 @@ import { ArrowLeft01Icon, Call02Icon, Navigation03Icon, PackageIcon, Store01Icon
 import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
+import { CollectCashBanner } from '../../components/CollectCashBanner';
 import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors, shadow } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
@@ -255,6 +256,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             </View>
           )}
 
+          <CollectCashBanner paymentMethod={order.paymentMethod} cashToCollect={order.cashToCollect} />
+
           {/* Package/payout row — same data the old scroll-list screen
               showed, surfaced here instead so the card isn't just a name
               and a button: a rider glancing at this wants to know what
@@ -388,6 +391,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             <Text className="text-[14px] font-bold text-ink">Navigate to store</Text>
           </Pressable>
         )}
+
+        <CollectCashBanner paymentMethod={order.paymentMethod} cashToCollect={order.cashToCollect} />
 
         <View className="gap-2.5 rounded-2xl bg-white px-4 py-3.5">
           <View className="flex-row items-center justify-between">

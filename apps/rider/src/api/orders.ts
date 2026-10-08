@@ -46,6 +46,10 @@ interface RawAssignment {
   stores: { name: string; phone: string | null; lat: number | null; lng: number | null; manual_address: string | null; address_line: string | null; zones: { name: string } | null } | null;
   users: { name: string | null; phone: string } | null;
   addresses: { line1: string; landmark: string | null; latitude: number | null; longitude: number | null; delivery_instructions: string | null } | null;
+  // Backend-derived (lib/riderDeliveryMoney.ts): how the customer pays and,
+  // for cash on delivery, how much to collect for the whole order/trip.
+  payment_method: 'cod' | 'online';
+  cash_to_collect: number;
 }
 
 // client (and its auth-store → RN chain) is imported lazily so this module's
@@ -156,5 +160,7 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     deliveredAt: row.delivered_at ?? undefined,
     cancelReason: row.cancel_reason ?? undefined,
     tripId: row.trip_id ?? undefined,
+    paymentMethod: row.payment_method === 'online' ? 'online' : 'cod',
+    cashToCollect: Number(row.cash_to_collect) || 0,
   };
 }

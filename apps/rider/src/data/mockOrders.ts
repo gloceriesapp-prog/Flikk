@@ -80,6 +80,11 @@ export interface RiderOrder {
   // than treating them as N unrelated deliveries that happen to arrive at
   // the same address.
   tripId?: string;
+  // Real orders.payment_method (backend GET /rider/assignments). 'cod' means
+  // the rider collects cashToCollect in cash at the door — the order total,
+  // or the whole trip total on every leg of a trip (not per leg).
+  paymentMethod: 'cod' | 'online';
+  cashToCollect: number;
 }
 
 const STORE_NAMES = ['Ganesh Kirana Store', 'Suvarna Supermarket', 'Kaup Fresh Mart', 'Udupi Daily Needs', 'Anantha Provision Store'];
@@ -172,6 +177,8 @@ export function generateMockOrder(): RiderOrder {
     distanceKm,
     status: 'assigned',
     placedAt: new Date().toISOString(),
+    paymentMethod: 'cod',
+    cashToCollect: 100 + itemCount * 40,
   };
 }
 
