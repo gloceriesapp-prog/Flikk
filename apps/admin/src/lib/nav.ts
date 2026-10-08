@@ -75,17 +75,23 @@ export const INSIGHTS_ITEMS: NavItem[] = [
 
 export const ALL_NAV_ITEMS: NavItem[] = [...MENU_ITEMS, ...INSIGHTS_ITEMS, { href: '/settings', label: 'Settings', icon: Settings }];
 
-// TopNav's own contextual quick-action per section — reference's
-// "+ Create Task" is generic to its one page; ours varies since each
-// section has a different primary create action.
-export const QUICK_ACTION_LABEL: Record<string, string> = {
-  '/overview': 'Add Store',
-  '/approvals': 'Review Next',
-  '/riders': 'Add Rider',
-  '/inventory': 'Add Product',
-  '/promo-codes': 'Add Promo Code',
-  '/orders': 'Add Order',
-  '/revenue': 'Export CSV',
-  '/zones': 'Add Zone',
-  '/settings': 'Save Changes',
+// TopNav's contextual quick action per section — only where a real flow
+// exists behind it. Pages that already carry their own create button
+// (Stores, Inventory, Promo codes) don't repeat it up here, and sections
+// with no admin create flow (riders and orders come from the apps, zones
+// have no create API) get no button rather than a dead one.
+//   href: navigate (Add store opens the Stores page's Add store form);
+//   download: a file link (Revenue's order transactions CSV);
+//   form: submits that page's form (Settings).
+export interface QuickAction {
+  label: string;
+  kind: 'add' | 'download' | 'save';
+  href?: string;
+  form?: string;
+}
+
+export const QUICK_ACTIONS: Record<string, QuickAction> = {
+  '/overview': { label: 'Add Store', kind: 'add', href: '/stores?new=1' },
+  '/revenue': { label: 'Export CSV', kind: 'download', href: '/api/orders?format=csv' },
+  '/settings': { label: 'Save Changes', kind: 'save', form: 'settings-form' },
 };

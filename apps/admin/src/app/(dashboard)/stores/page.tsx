@@ -41,6 +41,15 @@ export default function StoresPage() {
     Promise.resolve().then(loadData);
   }, [loadData]);
 
+  // /stores?new=1 (TopNav's "Add Store" on Overview) opens the Add store
+  // form directly; the flag is dropped from the URL so a reload doesn't
+  // reopen it.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') !== '1') return;
+    window.history.replaceState(null, '', window.location.pathname);
+    Promise.resolve().then(() => setAdding(true));
+  }, []);
+
   const filtered = stores.filter((s) => [s.name, s.ownerName, s.phone, s.city, s.district].some(value => value.toLowerCase().includes(query.trim().toLowerCase())));
 
   async function handleAdd(newStore: NewStoreInput) {
