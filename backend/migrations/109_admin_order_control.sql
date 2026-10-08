@@ -29,6 +29,7 @@
 --                                offers it again.
 --    admin_reassign_rider        pre-pickup only; moves every live leg to the
 --                                new rider.
+-- 5. admin_reissue_delivery_code (see its definition).
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -290,6 +291,31 @@ END $function$
 ;
 REVOKE ALL ON FUNCTION public.admin_reassign_rider(uuid,uuid,text,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_reassign_rider(uuid,uuid,text,text) TO service_role;
+
+-- 5. admin_reissue_delivery_code: the same reissue_delivery_code (079) the
+--    backend POST /admin/orders/:id/delivery-code/reissue uses (fresh code,
+--    attempts reset, delivery_code_resets row), plus the audit row.
+CREATE OR REPLACE FUNCTION public.admin_reissue_delivery_code(p_order uuid,p_actor uuid,p_admin_email text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE o orders; c delivery_codes;
+BEGIN
+ SELECT * INTO o FROM orders WHERE id=p_order;
+ IF NOT FOUND THEN RAISE EXCEPTION USING errcode='P0404',message='Order not found'; END IF;
+ IF o.status<>'out_for_delivery' THEN
+  RAISE EXCEPTION USING errcode='P0409',message='A new code can only be issued while the order is out for delivery'; END IF;
+ PERFORM reissue_delivery_code(p_order,p_actor);
+ SELECT * INTO c FROM delivery_codes WHERE scope_id=coalesce(o.trip_id,o.id);
+ PERFORM record_admin_order_action(o.id,o.trip_id,'reissue_delivery_code',NULL,NULL,NULL,p_admin_email);
+ -- Never the code: only the customer may read it.
+ RETURN jsonb_build_object('expires_at',c.expires_at,'attempts',c.attempts);
+END $function$
+;
+REVOKE ALL ON FUNCTION public.admin_reissue_delivery_code(uuid,uuid,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_reissue_delivery_code(uuid,uuid,text) TO service_role;
 
 NOTIFY pgrst,'reload schema';
 COMMIT;

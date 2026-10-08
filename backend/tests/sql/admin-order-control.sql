@@ -3,7 +3,8 @@ DO $$ BEGIN IF current_database()<>'flikk_migrations_tests' THEN RAISE EXCEPTION
 BEGIN;
 DO $$ DECLARE f text; BEGIN
  FOREACH f IN ARRAY ARRAY['admin_assign_order_rider(uuid,uuid,text)','admin_cancel_order(uuid,text,text)','admin_advance_order_status(uuid,text,text,text)',
-  'admin_unassign_rider(uuid,text,text)','admin_reassign_rider(uuid,uuid,text,text)','cancel_trip_from_leg(uuid,text,text)'] LOOP
+  'admin_unassign_rider(uuid,text,text)','admin_reassign_rider(uuid,uuid,text,text)','cancel_trip_from_leg(uuid,text,text)',
+  'admin_reissue_delivery_code(uuid,uuid,text)'] LOOP
   IF has_function_privilege('anon',f,'EXECUTE') OR has_function_privilege('authenticated',f,'EXECUTE') THEN RAISE EXCEPTION '% exposed to API roles',f; END IF;
   IF NOT has_function_privilege('service_role',f,'EXECUTE') THEN RAISE EXCEPTION 'service_role cannot run %',f; END IF;
  END LOOP;
@@ -21,7 +22,8 @@ INSERT INTO users(id,phone,role,is_approved) VALUES
  ('00000000-0000-4000-8000-000000009e01','+919999980004','rider',true),
  ('00000000-0000-4000-8000-000000009e02','+919999980005','rider',true),
  ('00000000-0000-4000-8000-000000009e03','+919999980006','rider',true),
- ('00000000-0000-4000-8000-000000009e04','+919999980007','rider',false);
+ ('00000000-0000-4000-8000-000000009e04','+919999980007','rider',false),
+ ('00000000-0000-4000-8000-000000009ad1','+919999980010','admin',true);
 INSERT INTO riders(user_id,name,phone,status,is_active,current_lat,current_lng,last_location_update) VALUES
  ('00000000-0000-4000-8000-000000009e01','Rider one','+919999980004','online',true,12.97,77.59,now()),
  ('00000000-0000-4000-8000-000000009e02','Rider two','+919999980005','online',true,12.97,77.59,now()),
@@ -166,6 +168,22 @@ DO $$ BEGIN
  IF (SELECT status FROM orders WHERE id='00000000-0000-4000-8000-000000009351')<>'packed' OR (SELECT packed_at FROM orders WHERE id='00000000-0000-4000-8000-000000009351') IS NULL
  OR (SELECT status FROM orders WHERE id='00000000-0000-4000-8000-000000009352')<>'out_for_delivery' THEN RAISE EXCEPTION 'Forward status not applied'; END IF;
  IF (SELECT count(*) FROM admin_order_actions WHERE trip_id='00000000-0000-4000-8000-000000009005' AND action='advance_status')<>2 THEN RAISE EXCEPTION 'Status changes not audited'; END IF;
+END $$;
+
+-- B3: reissue uses reissue_delivery_code, resets attempts, is audited, never returns the code.
+DO $$ DECLARE r jsonb; old text; BEGIN
+ BEGIN PERFORM admin_reissue_delivery_code('00000000-0000-4000-8000-000000009102','00000000-0000-4000-8000-000000009ad1','admin@test.dev'); RAISE EXCEPTION 'Code issued before pickup';
+ EXCEPTION WHEN sqlstate 'P0409' THEN NULL; END;
+ UPDATE delivery_codes SET attempts=5 WHERE scope_id='00000000-0000-4000-8000-000000009105';
+ SELECT code INTO old FROM delivery_codes WHERE scope_id='00000000-0000-4000-8000-000000009105';
+ r:=admin_reissue_delivery_code('00000000-0000-4000-8000-000000009105','00000000-0000-4000-8000-000000009ad1','admin@test.dev');
+ IF r ? 'code' OR (r->>'attempts')::int<>0 THEN RAISE EXCEPTION 'Reissue result wrong: %',r; END IF;
+ IF NOT EXISTS(SELECT 1 FROM delivery_codes WHERE scope_id='00000000-0000-4000-8000-000000009105' AND attempts=0 AND consumed_at IS NULL AND expires_at>now()+interval '1 hour')
+ OR NOT EXISTS(SELECT 1 FROM delivery_code_resets WHERE order_id='00000000-0000-4000-8000-000000009105')
+ OR NOT EXISTS(SELECT 1 FROM admin_order_actions WHERE order_id='00000000-0000-4000-8000-000000009105' AND action='reissue_delivery_code') THEN RAISE EXCEPTION 'Code not reissued'; END IF;
+ -- Trip scope: one code per trip.
+ r:=admin_reissue_delivery_code('00000000-0000-4000-8000-000000009352','00000000-0000-4000-8000-000000009ad1','admin@test.dev');
+ IF NOT EXISTS(SELECT 1 FROM delivery_codes WHERE scope_id='00000000-0000-4000-8000-000000009005') THEN RAISE EXCEPTION 'Trip code not reissued'; END IF;
 END $$;
 
 ROLLBACK;
