@@ -1,9 +1,16 @@
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopNav } from '@/components/layout/TopNav';
+import { requireAdminPage } from '@/lib/auth/requireAdminPage';
 
 // Route group (dashboard) — adds no URL segment, wraps every real screen
 // in the shared sidebar + topnav shell.
-export default function DashboardLayout({ children }: LayoutProps<'/'>) {
+//
+// Checks the admin itself (not only middleware.ts) on a full page load.
+// Layouts don't re-render on client navigation, so Server Component pages
+// that read data call requireAdminPage() too, and every /api route calls
+// requireAdmin().
+export default async function DashboardLayout({ children }: LayoutProps<'/'>) {
+  await requireAdminPage();
   return (
     // Fixed-height shell, not min-h-screen — the whole app never scrolls as
     // one document. Sidebar and TopNav are permanently in place; only
