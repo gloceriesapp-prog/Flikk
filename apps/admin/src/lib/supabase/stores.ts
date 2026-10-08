@@ -37,10 +37,12 @@ export interface StoreRow {
   lat: number | null;
   lng: number | null;
   delivery_radius_km: number | null;
+  zone_id: string;
+  zones: { name: string } | null;
 }
 
 export const STORE_SELECT =
-  'id, manual_address, udyam_number, avg_prep_minutes, name, category, district, is_active, admin_suspended, suspended_reason, suspended_at, created_at, phone, open_time, close_time, owner_name, address_line, city, state, country, photo_url, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_name, bank_account_last4, turnover_exceeds_gst_threshold, gst_number, drug_license_number, lat, lng, delivery_radius_km';
+  'id, manual_address, udyam_number, avg_prep_minutes, name, category, district, is_active, admin_suspended, suspended_reason, suspended_at, created_at, phone, open_time, close_time, owner_name, address_line, city, state, country, photo_url, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_name, bank_account_last4, turnover_exceeds_gst_threshold, gst_number, drug_license_number, lat, lng, delivery_radius_km, zone_id, zones(name)';
 
 export function mapRowToStore(row: StoreRow): Store {
   return {
@@ -50,7 +52,10 @@ export function mapRowToStore(row: StoreRow): Store {
     avgPrepMinutes: row.avg_prep_minutes ?? undefined,
     name: row.name,
     category: row.category,
-    zone: 'Kaup, Udupi',
+    // The store's real zone (stores.zone_id → zones.name), set at approval
+    // or from the store page's zone picker.
+    zone: row.zones?.name ?? '',
+    zoneId: row.zone_id,
     district: row.district,
     phone: row.phone ?? '',
     openTime: row.open_time ?? '',

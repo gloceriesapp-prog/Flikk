@@ -8,6 +8,7 @@ import { StoreSuspensionPanel } from '@/components/stores/StoreSuspensionPanel';
 import { StorePayoutPanel } from '@/components/stores/StorePayoutPanel';
 import { StoreCommissionPanel } from '@/components/stores/StoreCommissionPanel';
 import { StoreChangeRequests } from '@/components/stores/StoreChangeRequests';
+import { StoreZonePanel } from '@/components/stores/StoreZonePanel';
 import { PartnerAccountPanel, type PartnerAccountAction } from '@/components/stores/PartnerAccountPanel';
 import { STORE_PAYOUT_SELECT, toStorePayoutView } from '@/lib/storePayout';
 
@@ -62,6 +63,7 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
       )}
       <StoreSuspensionPanel storeId={store.id} suspended={!!store.adminSuspended} reason={store.suspendedReason ?? null} suspendedAt={store.suspendedAt ?? null} />
       <StoreChangeRequests storeId={store.id} />
+      <StoreZonePanel storeId={store.id} zoneId={store.zoneId ?? null} zoneName={store.zone} />
       <StorePayoutPanel storeId={store.id} payout={payout} />
       <StoreCommissionPanel
         key={`commission:${storeRate ?? 'default'}`}

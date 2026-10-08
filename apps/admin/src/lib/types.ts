@@ -251,6 +251,7 @@ export interface Store {
   name: string;
   category: string;
   zone: string;
+  zoneId?: string;
   district: string;
   phone: string;
   openTime: string;

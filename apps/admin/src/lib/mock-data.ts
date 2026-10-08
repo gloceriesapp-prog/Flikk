@@ -8,7 +8,6 @@
 // (RecentOrdersWidget, OrdersChart) that only ever rendered them and were
 // never actually wired into a page.
 
-export const ZONE_NAME = 'Kaup, Udupi';
 
 // Threshold past which an order counts as "needs attention" on the Home
 // snapshot — no real SLA config exists yet, this is a reasonable founder
