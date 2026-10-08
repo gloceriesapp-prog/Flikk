@@ -16,6 +16,13 @@
 --      the block was lifted. Service role only (RLS on, no policies).
 --    - auth_account_blocked(user) lets the API tell a ban apart from a dead
 --      session so apps can show "account blocked" instead of a silent logout.
+-- 3. Store suspension. is_active stays the partner's open/closed switch;
+--    stores gains admin_suspended (+ suspended_reason/_at/_by), which only
+--    admin_set_store_suspension (service role) changes. Suspend sets
+--    admin_suspended=true AND is_active=false; unsuspend clears
+--    admin_suspended and leaves is_active=false so the partner reopens.
+--    stores_suspension_guard refuses is_active=true while admin_suspended on
+--    every write path (P0409 STORE_SUSPENDED).
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -122,5 +129,53 @@ AS $function$
 $function$;
 REVOKE ALL ON FUNCTION public.auth_account_blocked(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.auth_account_blocked(uuid) TO service_role;
+
+-- 3. Store suspension --------------------------------------------------------
+ALTER TABLE public.stores
+  ADD COLUMN IF NOT EXISTS admin_suspended boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS suspended_reason text,
+  ADD COLUMN IF NOT EXISTS suspended_at timestamptz,
+  ADD COLUMN IF NOT EXISTS suspended_by uuid;
+
+CREATE OR REPLACE FUNCTION public.stores_suspension_guard()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path = public, pg_temp
+AS $function$
+BEGIN
+  IF NEW.admin_suspended AND NEW.is_active THEN
+    RAISE EXCEPTION USING errcode='P0409', message='STORE_SUSPENDED';
+  END IF;
+  RETURN NEW;
+END $function$;
+REVOKE ALL ON FUNCTION public.stores_suspension_guard() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS stores_suspension_guard ON public.stores;
+CREATE TRIGGER stores_suspension_guard BEFORE INSERT OR UPDATE OF is_active, admin_suspended ON public.stores
+  FOR EACH ROW EXECUTE FUNCTION public.stores_suspension_guard();
+
+CREATE OR REPLACE FUNCTION public.admin_set_store_suspension(p_store uuid, p_suspend boolean, p_reason text, p_admin uuid)
+ RETURNS public.stores
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path = public, pg_temp
+AS $function$
+DECLARE s public.stores;
+BEGIN
+  IF p_suspend AND nullif(btrim(coalesce(p_reason, '')), '') IS NULL THEN
+    RAISE EXCEPTION USING errcode='P0400', message='A suspension reason is required';
+  END IF;
+  IF p_suspend THEN
+    UPDATE stores SET admin_suspended=true, is_active=false, suspended_reason=left(btrim(p_reason), 500),
+      suspended_at=now(), suspended_by=p_admin
+    WHERE id=p_store RETURNING * INTO s;
+  ELSE
+    UPDATE stores SET admin_suspended=false, suspended_reason=NULL, suspended_at=NULL, suspended_by=NULL
+    WHERE id=p_store RETURNING * INTO s;
+  END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION USING errcode='P0404', message='Store not found'; END IF;
+  RETURN s;
+END $function$;
+REVOKE ALL ON FUNCTION public.admin_set_store_suspension(uuid, boolean, text, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_set_store_suspension(uuid, boolean, text, uuid) TO service_role;
 
 COMMIT;

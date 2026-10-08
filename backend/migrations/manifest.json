@@ -435,7 +435,7 @@
     },
     {
       "file": "110_account_controls.sql",
-      "sha256": "057052fc777a6b889c8dcdce0b16ebeddd4b2471286143e11c6594c518cb40de"
+      "sha256": "c98f4beeea370aa24108529751cda64c62c0601e0c58e3327ac8600dd2886947"
     },
     {
       "file": "111_catalogue_stock_integrity.sql",

@@ -18,6 +18,9 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/stores/[id
     if (!current) return NextResponse.json({ error: 'Store not found.' }, { status: 404 });
     validateMergedStore(current, patch);
     const { data, error } = await supabaseAdmin.from('stores').update(patch).eq('id', id).select(STORE_SELECT).maybeSingle();
+    if (error?.code === 'P0409' && error.message === 'STORE_SUSPENDED') {
+      return NextResponse.json({ error: 'This store is suspended. Unsuspend it before opening it.' }, { status: 409 });
+    }
     if (error) throw error;
     if (!data) return NextResponse.json({ error: 'Store not found.' }, { status: 404 });
     return NextResponse.json(mapRowToStore(data as unknown as StoreRow));

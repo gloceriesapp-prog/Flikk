@@ -47,7 +47,7 @@ export function StoreDetailForm({ store }: { store: Store }) {
     <form id="store-detail-form" onSubmit={save} className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="text-2xl font-bold text-ink">{String(draft.name)}</h1><p className="mt-1 text-sm text-muted">Edit store profile · Joined {store.joinedAt}</p></div>
-        <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${draft.isActive ? 'bg-green-50 text-success' : 'bg-red-50 text-danger'}`}>{draft.isActive ? 'Active store' : 'Inactive store'}</span>
+        <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${draft.isActive ? 'bg-green-50 text-success' : 'bg-red-50 text-danger'}`}>{store.adminSuspended ? 'Suspended' : draft.isActive ? 'Open' : 'Closed'}</span>
       </div>
       <fieldset disabled={disabled} className="flex min-w-0 flex-col gap-5">
         <Section title="Store profile" description="The name and photo customers see in the app.">
@@ -69,7 +69,8 @@ export function StoreDetailForm({ store }: { store: Store }) {
         </Section>
         <Section title="Hours & availability" description="Control opening hours, preparation time and store visibility.">
           <div className="grid gap-4 sm:grid-cols-2">{field('openTime', 'Opening time', 'time')}{field('closeTime', 'Closing time', 'time')}{field('avgPrepMinutes', 'Average preparation time (minutes)', 'number')}</div>
-          <label className="mt-5 flex items-center gap-3 text-sm font-medium"><input type="checkbox" checked={Boolean(draft.isActive)} onChange={event => change('isActive', event.target.checked)} className="h-4 w-4" />Store is active and visible to customers</label>
+          <label className="mt-5 flex items-center gap-3 text-sm font-medium"><input type="checkbox" checked={Boolean(draft.isActive)} disabled={store.adminSuspended} onChange={event => change('isActive', event.target.checked)} className="h-4 w-4" />Store is open (temporary open/close — the partner controls this too)</label>
+          {store.adminSuspended && <p className="mt-1 text-xs text-muted">Suspended stores stay closed. Use Unsuspend above first.</p>}
         </Section>
         <Section title="Business documents" description="Update the business records held for this store.">
           <div className="grid gap-4 sm:grid-cols-2">

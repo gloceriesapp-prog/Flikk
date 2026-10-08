@@ -155,7 +155,13 @@ export interface Store {
   phone: string;
   openTime: string;
   closeTime: string;
+  // Partner's temporary open/closed switch (stores.is_active).
   isActive: boolean;
+  // Admin suspension (migration 110) — distinct from isActive; only admin
+  // lifts it, and the store cannot reopen while it is set.
+  adminSuspended?: boolean;
+  suspendedReason?: string | null;
+  suspendedAt?: string | null;
   ownerName: string;
   joinedAt: string;
   // Real onboarding fields (AddStoreModal / storeValidation.ts) — same
@@ -191,7 +197,7 @@ export interface Store {
   deliveryRadiusKm?: number;
 }
 
-export type NewStoreInput = Omit<Store, 'id' | 'zone' | 'isActive' | 'joinedAt'>;
+export type NewStoreInput = Omit<Store, 'id' | 'zone' | 'isActive' | 'joinedAt' | 'adminSuspended' | 'suspendedReason' | 'suspendedAt'>;
 
 // zones is first-class in the DB from day 1 (PRD Section 16) even though
 // only one is active at launch — this type exists so the Zones screen can

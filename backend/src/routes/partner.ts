@@ -59,7 +59,7 @@ function maskAccountNumber(full: string | null): string | null {
 }
 
 const STORE_SELECT =
-  'id, name, category, is_active, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number';
+  'id, name, category, is_active, admin_suspended, suspended_reason, suspended_at, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number';
 
 // Business documents are write-once from the owner's side — real, not
 // just a disabled input client-side (a raw PATCH call could otherwise
@@ -73,6 +73,14 @@ function assertNotLocked(field: string, current: string | null, incoming: unknow
   if (incomingValue !== current.trim()) {
     throw new AppError(400, 'DOCUMENT_LOCKED', `${field} is already on file and can't be changed here.`);
   }
+}
+
+function storeSuspendedError(reason: string | null): AppError {
+  return new AppError(
+    409,
+    'STORE_SUSPENDED',
+    reason ? `Suspended by Gloceries: ${reason}. Contact Gloceries support to reopen.` : 'Suspended by Gloceries. Contact Gloceries support to reopen.',
+  );
 }
 
 function toStoreResponse(data: Record<string, unknown>, phone: string | null) {
@@ -147,10 +155,13 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     // Enforced by assertNotLocked below (module-level, see its own note).
     const { data: currentDoc, error: currentDocError } = await supabase
       .from('stores')
-      .select('gst_number, shop_establishment_number, fssai_number, pan_number')
+      .select('gst_number, shop_establishment_number, fssai_number, pan_number, admin_suspended, suspended_reason')
       .eq('id', storeId)
       .single();
     if (currentDocError || !currentDoc) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
+    // An admin suspension (migration 110) is not the partner's open/closed
+    // toggle: only admin can lift it. The DB trigger enforces the same rule.
+    if (is_active === true && currentDoc.admin_suspended) throw storeSuspendedError(currentDoc.suspended_reason);
 
     assertNotLocked('GST number', currentDoc.gst_number, gst_number);
     assertNotLocked('Shop & Establishment license', currentDoc.shop_establishment_number, shop_establishment_number);
@@ -188,6 +199,7 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     if (pan_number !== undefined) patch.pan_number = typeof pan_number === 'string' ? pan_number.trim().toUpperCase() : pan_number;
 
     const { data, error } = await supabase.from('stores').update(patch).eq('id', storeId).select(STORE_SELECT).single();
+    if (error?.code === 'P0409' && error.message === 'STORE_SUSPENDED') throw storeSuspendedError(null);
     if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
     res.json(toStoreResponse(data, await ownerPhone(req.user!.id)));
   } catch (err) {

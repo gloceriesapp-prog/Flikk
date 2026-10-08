@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { STORE_SELECT, mapRowToStore, type StoreRow } from '@/lib/supabase/stores';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { StoreDetailForm } from '@/components/stores/StoreDetailForm';
+import { StoreSuspensionPanel } from '@/components/stores/StoreSuspensionPanel';
 
 export default async function StoreDetailPage({ params }: PageProps<'/stores/[id]'>) {
   const { id } = await params;
@@ -20,7 +21,8 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
         Back to Stores
       </Link>
 
-      <StoreDetailForm key={store.id} store={store} />
+      <StoreSuspensionPanel storeId={store.id} suspended={!!store.adminSuspended} reason={store.suspendedReason ?? null} suspendedAt={store.suspendedAt ?? null} />
+      <StoreDetailForm key={`${store.id}:${store.adminSuspended ? 's' : 'a'}`} store={store} />
     </div>
   );
 }

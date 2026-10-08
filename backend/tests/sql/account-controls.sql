@@ -75,5 +75,30 @@ DO $$ BEGIN
  EXCEPTION WHEN check_violation THEN NULL; END;
 END $$;
 
+-- 3. Store suspension cannot be overridden by the open/closed switch.
+DO $$ DECLARE s stores; BEGIN
+ IF has_function_privilege('anon','admin_set_store_suspension(uuid,boolean,text,uuid)','EXECUTE')
+ OR has_function_privilege('authenticated','admin_set_store_suspension(uuid,boolean,text,uuid)','EXECUTE')
+ OR NOT has_function_privilege('service_role','admin_set_store_suspension(uuid,boolean,text,uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'Store suspension RPC grants wrong'; END IF;
+ INSERT INTO users(id,phone,role,is_approved) VALUES('00000000-0000-4000-8000-0000000110d1','+919999911201','store_owner',true);
+ INSERT INTO stores(id,owner_user_id,zone_id,name,category,district,lat,lng,is_active) VALUES
+  ('00000000-0000-4000-8000-0000000110a1','00000000-0000-4000-8000-0000000110d1','00000000-0000-4000-8000-0000000110a0','Controls shop','grocery','Test',12.97,77.59,true);
+ s:=admin_set_store_suspension('00000000-0000-4000-8000-0000000110a1',true,'Expired licence',null);
+ IF NOT s.admin_suspended OR s.is_active OR s.suspended_reason<>'Expired licence' THEN RAISE EXCEPTION 'Suspend did not close the store'; END IF;
+ BEGIN
+  UPDATE stores SET is_active=true WHERE id='00000000-0000-4000-8000-0000000110a1';
+  RAISE EXCEPTION 'Suspended store reopened';
+ EXCEPTION WHEN sqlstate 'P0409' THEN NULL; END;
+ UPDATE stores SET name='Renamed shop' WHERE id='00000000-0000-4000-8000-0000000110a1';
+ s:=admin_set_store_suspension('00000000-0000-4000-8000-0000000110a1',false,null,null);
+ IF s.admin_suspended OR s.is_active OR s.suspended_reason IS NOT NULL THEN RAISE EXCEPTION 'Unsuspend must leave the store closed for the partner'; END IF;
+ UPDATE stores SET is_active=true WHERE id='00000000-0000-4000-8000-0000000110a1';
+ BEGIN
+  PERFORM admin_set_store_suspension('00000000-0000-4000-8000-0000000110a1',true,'',null);
+  RAISE EXCEPTION 'Store suspension without reason accepted';
+ EXCEPTION WHEN sqlstate 'P0400' THEN NULL; END;
+END $$;
+
 ROLLBACK;
 SELECT 'Account controls verified' AS result;

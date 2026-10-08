@@ -121,8 +121,9 @@ export default function StoresPage() {
                     'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold',
                     store.isActive ? 'bg-green-50 text-success' : 'bg-red-50 text-danger'
                   )}
+                  title={store.adminSuspended ? (store.suspendedReason ?? undefined) : undefined}
                 >
-                  {store.isActive ? 'Active' : 'Inactive'}
+                  {store.adminSuspended ? 'Suspended' : store.isActive ? 'Open' : 'Closed'}
                 </span>
               </div>
               <p className="mt-0.5 truncate text-xs font-medium text-muted">{store.category}</p>

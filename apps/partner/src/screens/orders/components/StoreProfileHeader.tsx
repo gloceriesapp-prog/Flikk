@@ -77,10 +77,11 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressLocation, onP
               Open vs Closed the way the pill it replaced used to. */}
           <View className="flex-row items-center gap-1.5 rounded-full bg-white py-1 pl-3 pr-1">
             <Text className={`text-[13px] font-medium ${profile.isOpen ? 'text-lime-deep' : 'text-ink/50'}`}>
-              {profile.isOpen ? 'Open' : 'Closed'}
+              {profile.adminSuspended ? 'Suspended' : profile.isOpen ? 'Open' : 'Closed'}
             </Text>
             <Switch
               value={profile.isOpen}
+              disabled={profile.adminSuspended}
               onValueChange={() => {
                 Haptics.selectionAsync();
                 onToggleOpen();
@@ -115,6 +116,14 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressLocation, onP
           </Pressable> */}
         </View>
       </View>
+      {profile.adminSuspended && (
+        <View className="mx-5 mb-4 rounded-2xl bg-red-50 px-4 py-3">
+          <Text className="text-sm font-semibold text-red-700">
+            Suspended by Gloceries{profile.suspendedReason ? `: ${profile.suspendedReason}` : ''}
+          </Text>
+          <Text className="mt-0.5 text-xs font-medium text-red-700/80">Your store is closed to customers. Contact Gloceries support to reopen.</Text>
+        </View>
+      )}
     </View>
   );
 }

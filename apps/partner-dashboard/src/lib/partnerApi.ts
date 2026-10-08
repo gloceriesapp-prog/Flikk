@@ -12,6 +12,10 @@ export interface Store {
   name: string;
   category: string;
   is_active: boolean;
+  // Admin suspension (migration 110) — while set the store cannot reopen;
+  // PATCH /partner/store answers 409 STORE_SUSPENDED.
+  admin_suspended?: boolean;
+  suspended_reason?: string | null;
   district: string | null;
   photo_url: string | null;
   open_time: string | null;
