@@ -315,6 +315,9 @@ export interface Product {
   // the Approvals screen's Products tab (app/api/products/[id]/image-review).
   // null = nothing pending; undefined only for rows read before the column existed.
   pendingImageUrl?: string | null;
+  // Total counted packs across sizes (products.stock_quantity); null when
+  // stock tracking is off (checkout refuses such products).
+  stockQuantity?: number | null;
 }
 
 export interface ProductVariant {
@@ -323,6 +326,10 @@ export interface ProductVariant {
   quantity: number;
   price: number;
   originalPrice?: number;
+  // Counted retail packs of this size on hand (product_variants.
+  // stock_quantity). Checkout only sells counted packs, so Add/Edit require
+  // it; undefined = never counted.
+  stockQuantity?: number;
 }
 
 // What AddProductModal actually collects and POSTs to /api/products —

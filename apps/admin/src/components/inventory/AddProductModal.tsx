@@ -81,6 +81,12 @@ export function AddProductModal({
 
     const defaultVariant = draft.variants[0];
     if (!defaultVariant) return;
+    // Checkout only sells counted packs: without a count for every size the
+    // product would be approved but unorderable.
+    if (draft.variants.some((v) => v.stockQuantity == null)) {
+      setError('Enter packs in stock for every size (0 if none).');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);

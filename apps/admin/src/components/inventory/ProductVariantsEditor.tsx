@@ -68,7 +68,7 @@ export function ProductVariantsEditor({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-        Sizes &amp; pricing {variants.length > 1 && <span className="normal-case text-muted/70">— first size shown on the card</span>}
+        Sizes, pricing &amp; stock {variants.length > 1 && <span className="normal-case text-muted/70">— first size shown on the card</span>}
       </p>
 
       {variants.map((variant, index) => (
@@ -126,6 +126,22 @@ export function ProductVariantsEditor({
             placeholder="MRP"
             className="w-24 flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             aria-label={`Size ${index + 1} MRP`}
+          />
+
+          {/* Packs of this size on hand — saved per pack and summed into the
+              product's stock (save_catalogue_product), which is what lets
+              checkout sell it. Required by Add/Edit; 0 means out of stock. */}
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={variant.stockQuantity ?? ''}
+            onChange={(e) =>
+              updateVariant(index, { stockQuantity: e.target.value === '' ? undefined : Math.max(0, Math.trunc(Number(e.target.value))) })
+            }
+            placeholder="Stock"
+            className="w-20 rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+            aria-label={`Size ${index + 1} packs in stock`}
           />
 
           <button

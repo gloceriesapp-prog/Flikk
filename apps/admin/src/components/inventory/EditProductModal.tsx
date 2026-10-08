@@ -48,6 +48,11 @@ export function EditProductModal({
   async function handleSave() {
     const defaultVariant = draft.variants[0];
     if (!defaultVariant) return;
+    // Same rule as Add: every size needs a counted stock to be orderable.
+    if (draft.variants.some((v) => v.stockQuantity == null)) {
+      setError('Enter packs in stock for every size (0 if none).');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);

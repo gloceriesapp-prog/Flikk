@@ -15,6 +15,19 @@ import { catalogueErrorStatus, saveCatalogueProduct } from '@/lib/catalogueSave'
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
 import { toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
+// Inventory/festival reads. Service role + admin check, not the browser anon
+// client: RLS hides pending products' sizes and inactive stores from anon.
+export async function GET() {
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
+  const { data, error } = await supabaseAdmin.from('products').select(PRODUCT_SELECT).order('name');
+  if (error) {
+    console.error('Admin products read failed', error);
+    return NextResponse.json({ error: 'Could not load products.' }, { status: 500 });
+  }
+  return NextResponse.json((data as unknown as ProductRow[]).map(mapRowToProduct));
+}
+
 export async function POST(request: Request) {
   const unauthorized = await requireStoreAdmin();
   if (unauthorized) return unauthorized;
