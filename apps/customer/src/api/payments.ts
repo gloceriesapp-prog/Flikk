@@ -6,6 +6,18 @@ import { Platform } from 'react-native';
 import { apiRequest } from './client';
 import type { PaymentMethod } from '../payments/paymentMethod';
 
+// Public. Which methods a new checkout may use (admin Checkout settings with
+// the server's env as hard kill) and the platform minimum order value (item
+// subtotal, rupees). The server enforces both; this only shapes the UI.
+export interface PaymentAvailability {
+  online: boolean;
+  cod: boolean;
+  min_order_value: number;
+}
+export function fetchPaymentAvailability(): Promise<PaymentAvailability> {
+  return apiRequest('/payments/availability');
+}
+
 export function fetchPaymentPreference(): Promise<{ method: PaymentMethod | null }> {
   return apiRequest('/payments/preference');
 }

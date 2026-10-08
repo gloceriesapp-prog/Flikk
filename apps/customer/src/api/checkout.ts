@@ -26,6 +26,10 @@ export interface CheckoutQuote {
     discountAmount: number;
     total: number;
   };
+  // Platform minimum order on the item subtotal (admin Checkout settings).
+  // shortfall > 0: the server refuses the order until more is added.
+  // Absent from older servers.
+  minimumOrder?: { value: number; shortfall: number };
 }
 export function fetchCheckoutQuote(items: CreateOrderItem[], promoCode?: string, addressId?: string): Promise<CheckoutQuote> {
   return apiRequest('/checkout/quote', { method: 'POST', body: { items, promo_code: promoCode, address_id: addressId } });

@@ -96,6 +96,16 @@ describe('UPI ID verification state machine', () => {
     expect(availablePaymentMethod('upi_id', [], false)).toBeNull();
     expect(availablePaymentMethod('upi_id', [], true)).toBe('upi_id');
   });
+
+  it('drops a method admin has switched off', () => {
+    const codOnly = { cod: true, online: false };
+    expect(availablePaymentMethod('cod', [], false, true, codOnly)).toBe('cod');
+    expect(availablePaymentMethod('card', [], false, true, codOnly)).toBeNull();
+    expect(availablePaymentMethod('upi_id', [], true, true, codOnly)).toBeNull();
+    expect(availablePaymentMethod('upi_app:gpay', [app('gpay')], false, true, codOnly)).toBeNull();
+    expect(availablePaymentMethod('cod', [], false, true, { cod: false, online: true })).toBeNull();
+    expect(availablePaymentMethod('netbanking', [], false, true, { cod: false, online: true })).toBe('netbanking');
+  });
 });
 
 describe('Cashfree environment', () => {

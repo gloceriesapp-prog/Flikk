@@ -117,6 +117,7 @@ export function CartScreen({ navigation, route }: Props) {
   const availabilityQuery = useCartAvailability(selectedAddress?.id);
   const quoteQuery = useCheckoutQuote(selectedAddress?.id);
   const quote = quoteQuery.data;
+  const minimumShortfall = quote?.minimumOrder?.shortfall ?? 0;
   const storeGroups = useMemo(() => {
     const pricedItems = quote ? quotedCartItems(items, quote) : [];
     return groupCartItemsByStore(items.map((item) => {
@@ -296,6 +297,11 @@ export function CartScreen({ navigation, route }: Props) {
             <ForgotToAddSection cartItemIds={cartItemIds} />
             <PromoCodeCard itemTotal={quote?.bill.itemTotal ?? itemTotal} appliedPromo={appliedPromo} quotedDiscount={quote?.bill.discountAmount} />
             {quote && !quoteQuery.isError && availabilityQuery.data?.eligible && <BillDetailsCard quote={quote} itemCount={totalQuantity} />}
+            {quote && !quoteQuery.isError && minimumShortfall > 0 && (
+              <Text className="px-2 text-[13px] font-semibold text-[#B42318]">
+                {`Minimum order is ₹${quote.minimumOrder!.value}. Add items worth ₹${minimumShortfall} more to place your order.`}
+              </Text>
+            )}
             {availabilityQuery.data?.issues.map((issue) => <Text key={issue.code} className="px-2 text-[13px] font-semibold text-[#B42318]">{issue.message}</Text>)}
             {availabilityQuery.isError && <Text className="px-2 text-[13px] text-[#B42318]">Could not check item availability. <Text onPress={() => { void availabilityQuery.refetch(); }} className="font-semibold">Retry</Text></Text>}
             {quote && quoteHasPriceChanges(items, quote) && (
@@ -318,7 +324,7 @@ export function CartScreen({ navigation, route }: Props) {
             onAddAddress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
             onChangeAddress={() => setAddressSheetVisible(true)}
             paymentBar={<CartPaymentBar method={payment.paymentMethod} apps={payment.upiApps} total={payment.grandTotal}
-              busy={payment.isPlacingOrder} disabled={addressesLoading || !payment.methodsReady || !quote || quoteQuery.isFetching || quoteQuery.isError || !availabilityQuery.data?.eligible || availabilityQuery.isError}
+              busy={payment.isPlacingOrder} disabled={addressesLoading || !payment.methodsReady || !quote || minimumShortfall > 0 || quoteQuery.isFetching || quoteQuery.isError || !availabilityQuery.data?.eligible || availabilityQuery.isError}
               onChoose={choosePayment} onPlaceOrder={payment.placeOrder} />}
           />
 

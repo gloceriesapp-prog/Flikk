@@ -3,7 +3,7 @@ import type { NextFunction, RequestHandler, Response, Router } from 'express';
 import type { AuthedRequest } from '../middleware/auth.js';
 import { AppError } from './errors.js';
 import { calculateCheckoutBill } from './checkoutQuote.js';
-const mocks = vi.hoisted(() => ({ confirm: vi.fn(), rpc: vi.fn(), address: vi.fn() }));
+const mocks = vi.hoisted(() => ({ confirm: vi.fn(), rpc: vi.fn(), address: vi.fn(), available: vi.fn() }));
 vi.mock('./checkoutQuoteService.js', () => ({ confirmCheckoutQuote: mocks.confirm }));
 vi.mock('../db/supabase.js', () => ({ supabase: { rpc: mocks.rpc, from: () => {
   const query = { select: () => query, eq: () => query, single: async () => ({ data: null, error: null }) }; return query;
@@ -20,6 +20,7 @@ vi.mock('./pushNotifications.js', async (importOriginal) => ({ ...(await importO
 vi.mock('./riderDispatch.js', () => ({ triggerDispatch: vi.fn() }));
 vi.mock('../payments/refundPayment.js', () => ({ refundPayment: vi.fn() }));
 vi.mock('../routes/stores.js', () => ({ PRODUCT_WITH_VARIANTS_SELECT: '*' }));
+vi.mock('../payments/availability.js', () => ({ assertPaymentMethodAvailable: mocks.available }));
 vi.mock('./checkoutAttempts.js', () => ({
   checkoutAttemptIdentity: () => ({ id: 'attempt', fingerprint: 'cart' }),
   findCheckoutAttempt: async () => null,
@@ -82,5 +83,14 @@ it('rejects tip amounts before checkout in either route', async () => {
     const { next } = await place(router, { store_id: 'shop', address_id: 'address', items: [line('shop', 'pack')], quote_token: 'signed', tip_amount: 20 });
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ code: 'TIPS_UNAVAILABLE' }));
   }
+  expect(mocks.confirm).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it('refuses a payment method admin has switched off before quoting or writing, in either route', async () => {
+  mocks.available.mockRejectedValue(new AppError(409, 'COD_UNAVAILABLE', 'Cash on delivery is not available right now.'));
+  for (const router of [ordersRouter, tripsRouter]) {
+    const { next } = await place(router, { store_id: 'shop', address_id: 'address', items: [line('shop', 'pack')], quote_token: 'signed' });
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ code: 'COD_UNAVAILABLE', status: 409 }));
+  }
+  expect(mocks.available).toHaveBeenCalledWith('cod');
   expect(mocks.confirm).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
 });

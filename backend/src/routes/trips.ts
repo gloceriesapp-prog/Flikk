@@ -27,6 +27,7 @@ import { groupPricedCartByStore } from '../lib/trips.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
 import { notifyStoresOfNewOrder } from '../payments/newOrderPush.js';
 import { getStoreCommissionRates } from '../lib/platformSettings.js';
+import { assertPaymentMethodAvailable } from '../payments/availability.js';
 
 export const tripsRouter = Router();
 
@@ -60,6 +61,8 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
     const identity = checkoutAttemptIdentity(req.body, 'trip');
     const previous = await findCheckoutAttempt(req.user!.id, identity.id, identity.fingerprint);
     if (previous) { res.status(200).json(previous.result); return; }
+    // Admin checkout settings (migration 117) with the env as hard kill.
+    await assertPaymentMethodAvailable(body.payment_method ?? 'cod');
     const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, undefined, body.address_id);
     const pricedItems = quote.items;
     const addressId = await resolveAddressId(req.user!.id, body);

@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Banknote,
+  CreditCard,
   Bike,
   Boxes,
   Coins,
@@ -57,6 +58,7 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/seasonal-section', label: 'Seasonal Section', icon: ImageIcon },
   { href: '/app-content', label: 'App content', icon: FileText },
   { href: '/app-settings', label: 'App settings', icon: Smartphone },
+  { href: '/checkout-settings', label: 'Checkout settings', icon: CreditCard },
 ];
 
 export const INSIGHTS_ITEMS: NavItem[] = [

@@ -29,6 +29,7 @@ import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
 import { reorderByRank } from '../lib/buyItAgain.js';
 import { triggerDispatch } from '../lib/riderDispatch.js';
+import { assertPaymentMethodAvailable } from '../payments/availability.js';
 
 export const ordersRouter = Router();
 // Free-text cancel reasons (customer/partner) are shown to other parties.
@@ -70,6 +71,8 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     const identity = checkoutAttemptIdentity(req.body, 'order');
     const previous = await findCheckoutAttempt(req.user!.id, identity.id, identity.fingerprint);
     if (previous) { res.status(200).json(previous.result); return; }
+    // Admin checkout settings (migration 117) with the env as hard kill.
+    await assertPaymentMethodAvailable(body.payment_method ?? 'cod');
     const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, body.store_id, body.address_id);
     const pricedItems = quote.items;
     const { itemTotal, deliveryFee, discountAmount, handlingFee, total } = quote.bill;

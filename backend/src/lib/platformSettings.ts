@@ -55,3 +55,32 @@ export async function promotionsSwitchOn(): Promise<boolean> {
   const { data, error } = await supabase.from('platform_settings').select('promotions_enabled').limit(1).maybeSingle();
   return !error && (data as { promotions_enabled?: unknown } | null)?.promotions_enabled === true;
 }
+
+// Checkout settings (platform_settings, migration 117): which payment methods
+// the admin has switched on and the platform-wide minimum order value (item
+// subtotal, rupees). Read fresh on every checkout, like the commission rate.
+// A read error or a pre-117 schema falls back to the old behaviour: both
+// methods on (env and Cashfree keys still decide) and no minimum.
+export interface CheckoutControls {
+  codEnabled: boolean;
+  onlinePaymentsEnabled: boolean;
+  minOrderValue: number;
+}
+
+export const DEFAULT_CHECKOUT_CONTROLS: CheckoutControls = { codEnabled: true, onlinePaymentsEnabled: true, minOrderValue: 0 };
+
+export function parseCheckoutControls(row: unknown): CheckoutControls {
+  const r = (row ?? {}) as { cod_enabled?: unknown; online_payments_enabled?: unknown; min_order_value?: unknown };
+  const min = Number(r.min_order_value);
+  return {
+    codEnabled: r.cod_enabled !== false,
+    onlinePaymentsEnabled: r.online_payments_enabled !== false,
+    minOrderValue: Number.isFinite(min) && min > 0 ? min : 0,
+  };
+}
+
+export async function getCheckoutControls(): Promise<CheckoutControls> {
+  const { data, error } = await supabase.from('platform_settings').select('cod_enabled, online_payments_enabled, min_order_value').limit(1).maybeSingle();
+  if (error || !data) return DEFAULT_CHECKOUT_CONTROLS;
+  return parseCheckoutControls(data);
+}
