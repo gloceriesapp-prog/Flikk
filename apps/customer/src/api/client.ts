@@ -9,6 +9,7 @@ import { useLocationStore } from '../store/useLocationStore';
 // every existing call site in this app keeps working unchanged.
 
 import { ApiError, createApiClient } from '@gloceries/shared';
+import { publishAccountBlocked } from './accountBlocked';
 import { API_BASE_URL } from './baseUrl';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -60,6 +61,18 @@ async function doRefresh(): Promise<string | null> {
 // reuse an already-consumed token and get rejected. One shared in-flight
 // promise makes every concurrent 401 await and reuse the same real refresh
 // instead of racing separate ones (this exact race was a real bug on partner).
+// Admin blocked this customer (backend 403 ACCOUNT_BLOCKED on any
+// authenticated call or token refresh). Sign out once and say why, instead of
+// leaving the shell up while every call fails; the login screen shows the
+// same message if they try to sign back in.
+let blockedEpoch: number | null = null;
+async function signOutBlocked(epoch: number, message: string): Promise<void> {
+  if (blockedEpoch === epoch || useAuthStore.getState().sessionEpoch !== epoch) return;
+  blockedEpoch = epoch;
+  await useAuthStore.getState().clear();
+  publishAccountBlocked(message);
+}
+
 let inFlightRefresh: { epoch: number; work: Promise<string | null> } | null = null;
 function refreshAccessToken(epoch: number): Promise<string | null> {
   if (useAuthStore.getState().sessionEpoch !== epoch) return Promise.resolve(null);
@@ -100,6 +113,7 @@ export async function apiRequest<T>(path: string, options?: ApiRequestOptions): 
     result = await client.apiRequest<T>(path, { ...options, signal: deadline.signal });
   } catch (error) {
     if (error instanceof ApiError && (timedOut || error.code === 'REQUEST_TIMEOUT')) throw new RequestTimeoutError();
+    if (error instanceof ApiError && error.code === 'ACCOUNT_BLOCKED' && snapshot.accessToken) void signOutBlocked(snapshot.sessionEpoch, error.message);
     throw error;
   } finally {
     clearTimeout(timer);

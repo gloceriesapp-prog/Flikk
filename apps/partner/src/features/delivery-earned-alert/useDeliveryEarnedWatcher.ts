@@ -13,7 +13,6 @@
 
 import { useEffect } from 'react';
 import { useOrdersStore } from '../../store/useOrdersStore';
-import { formatPayoutDateLabel, nextPayoutDate } from '../../utils/nextPayoutDate';
 import { useDeliveryEarnedAlertStore } from './useDeliveryEarnedAlertStore';
 
 export function useDeliveryEarnedWatcher(): void {
@@ -41,7 +40,6 @@ export function useDeliveryEarnedWatcher(): void {
       orderId: order.id,
       orderNumber: order.orderNumber,
       netEarned: order.netPayout,
-      payoutDateLabel: formatPayoutDateLabel(nextPayoutDate()),
     });
   }, [activeEarning, justDeliveredOrderIds, orders, clearJustDelivered, showEarning]);
 }

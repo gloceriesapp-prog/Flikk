@@ -1,7 +1,8 @@
 // Mirrors specs/00-foundation/data-model.md — only the fields this
 // dashboard's screens actually read, not the full backend row shape.
 
-export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+// 'failed' — the rider could not complete the drop after pickup (migration 052).
+export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
 
 export interface Order {
   id: string;
@@ -12,6 +13,8 @@ export interface Order {
   amount: number;
   status: OrderStatus;
   riderId: string | null;
+  // Multi-store trip this order is one leg of (orders.trip_id), else null.
+  tripId: string | null;
   // Minutes since placed with no forward progress — how the Home
   // snapshot's "needs attention" widget and Orders' own flag are computed,
   // not a separate field the backend sends.
@@ -20,6 +23,23 @@ export interface Order {
   // from this specific order, not an estimated rate applied after the
   // fact. 0 for a cancelled/non-delivered order (nothing earned yet).
   commissionAmount: number;
+  orderNumber: string;
+  paymentMethod: string | null;
+  refundStatus: string | null;
+  // orders.cancel_reason: cancel reason (cancelled) or delivery-failure code (failed).
+  cancelReason: string | null;
+  // orders.cancelled_by (migration 109): customer/store_owner/rider/admin/system.
+  cancelledBy: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+}
+
+// GET /api/orders?paged=1 — one server-side page of the filtered list.
+export interface OrderPage {
+  orders: Order[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
@@ -43,21 +63,33 @@ export interface Application {
   photoUrl?: string;
   gstNumber?: string;
   district?: string;
-  // Store verification documents — each undefined/false means "not yet
-  // submitted", not "not required" (GSTIN is the one exception: it's
-  // legitimately optional under the ₹40L GST threshold, tracked
-  // separately via turnoverExceedsGstThreshold rather than by presence).
+  // Everything the partner Store Setup wizard collects (storeOnboarding.ts).
+  // undefined = not submitted. PAN is the only document the wizard requires.
+  storePhone?: string;
+  addressLine?: string;
+  manualAddress?: string;
+  lat?: number;
+  lng?: number;
+  ownerName?: string;
+  ownerEmail?: string;
+  openTime?: string;
+  closeTime?: string;
   fssaiNumber?: string;
   shopEstablishmentNumber?: string;
   panNumber?: string;
-  aadhaarLast4?: string;
-  bankAccountLast4?: string;
-  turnoverExceedsGstThreshold?: boolean;
+  udyamNumber?: string;
+  // The reviewer's last rejection reason (draft.rejection_reason), shown
+  // while the application is rejected or has been resubmitted.
+  rejectionReason?: string;
+  // Store: the applicant already owns a live store (re-application after
+  // approval). Approving would create a duplicate, so it is refused.
+  alreadyOwnsStore?: boolean;
   // Pharmacy category only — a stricter, separately regulated path (state
   // Drug Control authority, tied to a registered pharmacist), never
   // lumped in with general kirana document requirements.
   drugLicenseNumber?: string;
-  // Rider-only fields — undefined for store applications. aadhaarPhotoUrl/
+  // Rider-only fields — undefined for store applications (a rider's selfie
+  // uses photoUrl above). aadhaarPhotoUrl/
   // dlPhotoUrl are short-lived SIGNED urls (rider-documents is a private
   // bucket, migrations/042_rider_onboarding.sql's own note) generated
   // fresh by GET /api/approvals/riders on every read, never stored as-is.
@@ -82,6 +114,8 @@ export interface Application {
 // list is just who's on shift right now.
 export interface ActiveRider {
   id: string;
+  // riders.user_id — what orders.rider_id holds.
+  userId: string;
   name: string;
   phone: string;
   activeOrders: number;
@@ -91,6 +125,11 @@ export interface ActiveRider {
   isOnline: boolean;
   // The REAL live presence signal (riders.status), distinct from isOnline.
   presence: 'offline' | 'online' | 'on_delivery';
+  // riders.last_location_update — the rider app's last position ping.
+  lastSeenAt: string | null;
+  // Online (or on a delivery) with a ping inside the dispatch freshness
+  // window (3 min, migration 107) — the riders who can actually take a job now.
+  liveNow: boolean;
   // riders.auto_online — rider opted into going online automatically during
   // their configured availability window.
   autoOnline: boolean;
@@ -100,6 +139,10 @@ export interface ActiveRider {
   // Weekly availability (riders.availability), day 0=Sun..6=Sat, 'HH:MM' IST,
   // meaningful only when enabled. [] = never configured.
   availability: { day: number; enabled: boolean; start: string; end: string }[];
+  // Admin suspension (riders.is_active=false via admin_set_rider_suspension).
+  // Null while active. Optional so other ActiveRider producers stay valid.
+  suspendedReason?: string | null;
+  suspendedAt?: string | null;
 }
 
 // One weekly payout row on the admin Payouts page — store (payouts) or rider
@@ -151,7 +194,13 @@ export interface Store {
   phone: string;
   openTime: string;
   closeTime: string;
+  // Partner's temporary open/closed switch (stores.is_active).
   isActive: boolean;
+  // Admin suspension (migration 110) — distinct from isActive; only admin
+  // lifts it, and the store cannot reopen while it is set.
+  adminSuspended?: boolean;
+  suspendedReason?: string | null;
+  suspendedAt?: string | null;
   ownerName: string;
   joinedAt: string;
   // Real onboarding fields (AddStoreModal / storeValidation.ts) — same
@@ -187,7 +236,8 @@ export interface Store {
   deliveryRadiusKm?: number;
 }
 
-export type NewStoreInput = Omit<Store, 'id' | 'zone' | 'isActive' | 'joinedAt'>;
+// Admin Add Store payload — see lib/storeValidation.ts.
+export type { StoreWriteInput as NewStoreInput } from './storeValidation';
 
 // zones is first-class in the DB from day 1 (PRD Section 16) even though
 // only one is active at launch — this type exists so the Zones screen can

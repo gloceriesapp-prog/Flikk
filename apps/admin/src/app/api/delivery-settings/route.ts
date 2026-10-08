@@ -74,6 +74,15 @@ export async function PATCH(request: Request) {
       }
       reach[column] = body[field];
     }
+    // Store response window (migration 109): optional, omitted = unchanged.
+    const storeResponse: { store_response_timeout_minutes?: number } = {};
+    if (body.storeResponseTimeoutMinutes !== undefined) {
+      const minutes = body.storeResponseTimeoutMinutes;
+      if (typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes < 3 || minutes > 120) {
+        throw new Error('Store response time must be a whole number between 3 and 120 minutes.');
+      }
+      storeResponse.store_response_timeout_minutes = minutes;
+    }
     if (body.deliveryFeeTiers !== undefined) {
       if (!Array.isArray(body.deliveryFeeTiers) || body.deliveryFeeTiers.length > 10) {
         throw new Error('Add between 0 and 10 delivery fee tiers.');
@@ -86,6 +95,19 @@ export async function PATCH(request: Request) {
       tiers.sort((a: { up_to_km: number }, b: { up_to_km: number }) => a.up_to_km - b.up_to_km);
       if (new Set(tiers.map((tier: { up_to_km: number }) => tier.up_to_km)).size !== tiers.length) throw new Error('Two tiers cannot end at the same distance.');
       reach.delivery_fee_tiers = tiers;
+    }
+
+    // Ordering hours (migration 112): optional, omitted = unchanged; both are
+    // sent together. Bounds and ordering match that migration's CHECKs.
+    const hours: { ordering_opens_minute?: number; ordering_closes_minute?: number } = {};
+    if (body.orderingOpensMinute !== undefined || body.orderingClosesMinute !== undefined) {
+      const opens = body.orderingOpensMinute;
+      const closes = body.orderingClosesMinute;
+      if (!Number.isInteger(opens) || opens < 0 || opens > 1439) throw new Error('Ordering opening time must be a time of day.');
+      if (!Number.isInteger(closes) || closes < 1 || closes > 1440) throw new Error('Ordering closing time must be a time of day.');
+      if (opens >= closes) throw new Error('Ordering must open before it closes (the window cannot cross midnight).');
+      hours.ordering_opens_minute = opens;
+      hours.ordering_closes_minute = closes;
     }
 
     const { data: settings, error: readError } = await supabaseAdmin
@@ -102,6 +124,8 @@ export async function PATCH(request: Request) {
         estimated_delivery_minutes: estimatedDeliveryMinutes,
         ...riderPayouts,
         ...reach,
+        ...hours,
+        ...storeResponse,
         updated_at: new Date().toISOString(),
       })
       .eq('id', settings.id)

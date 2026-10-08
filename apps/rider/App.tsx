@@ -16,6 +16,7 @@ import { useRiderOrdersStore } from './src/store/useRiderOrdersStore';
 import { IncomingOrderAlert } from './src/features/incoming-order-alert/IncomingOrderAlert';
 import { AEONIK_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { ReleaseGate } from './src/features/app-release/ReleaseGate';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -47,8 +48,12 @@ export default function App() {
     <SafeAreaProvider onLayout={onRootLayout}>
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>
-          <RootNavigator />
-          {hasSession ? <IncomingOrderAlert /> : null}
+          {/* Admin App settings: maintenance / required update replace the
+              whole app (features/app-release/ReleaseGate.tsx). */}
+          <ReleaseGate>
+            <RootNavigator />
+            {hasSession ? <IncomingOrderAlert /> : null}
+          </ReleaseGate>
         </ErrorBoundary>
         <StatusBar style="dark" />
       </QueryClientProvider>

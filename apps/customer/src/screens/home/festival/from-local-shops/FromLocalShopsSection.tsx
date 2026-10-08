@@ -7,9 +7,9 @@ import { ContentState } from '../../content/ContentState';
 import { FestivalStoreCard } from './FestivalStoreCard';
 import { useFestivalShops } from './useFestivalShops';
 
-export function FromLocalShopsSection() {
+export function FromLocalShopsSection({ storeIds }: { storeIds?: string[] }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const { stores, hasLocation, isLoading, isError, retry } = useFestivalShops();
+  const { stores, hasLocation, isLoading, isError, retry } = useFestivalShops(storeIds);
   return (
     <View className="pt-8">
       <SectionTitle>From local shops</SectionTitle>

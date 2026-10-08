@@ -1,10 +1,9 @@
 import { Alert02Icon, ArrowRight01Icon, CheckmarkCircle02Icon, Clock01Icon, DeliveryTruck01Icon, Time03Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
-import { useEffect } from 'react';
 import type { IconSvgElement } from '@hugeicons/react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
-import { ORDER_ACCEPT_WINDOW_MS, formatRemainingTime } from '../../../features/order-expiry/orderExpiry';
+import { formatRemainingTime, getElapsedMs, getOrderAcceptWindowMs, getRemainingAcceptMs } from '../../../features/order-expiry/orderExpiry';
 import { useNow } from '../../../features/order-expiry/useCountdownRemaining';
 import { useOrdersStore } from '../../../store/useOrdersStore';
 import type { PartnerOrder, PartnerOrderStatus } from '../data';
@@ -26,14 +25,13 @@ const STATUS_BADGE: Partial<Record<PartnerOrderStatus, { label: string; icon: Ic
   failed: { label: 'Delivery failed', icon: Alert02Icon, color: colors.danger },
 };
 
-// Three-tier urgency on the 10-minute accept window (ORDER_ACCEPT_WINDOW_MS)
+// Three-tier urgency on the accept window (getOrderAcceptWindowMs)
 // — green for most of it, amber once under half remains, red for the last
 // 2 minutes. Real thresholds against the same window everywhere else in
 // this feature already uses (orderExpiry.ts), not independently invented
 // ones.
 const URGENT_THRESHOLD_MS = 2 * 60 * 1000;
 const WARNING_THRESHOLD_MS = 5 * 60 * 1000;
-const MAX_ACCEPT_MINUTES = 10;
 
 type UrgencyTier = 'urgent' | 'warning' | 'safe';
 
@@ -52,7 +50,6 @@ const TIMER_STYLE: Record<UrgencyTier, { bg: string; text: string; icon: string 
 export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: Props) {
   const isPlaced = order.status === 'placed';
   const isAccepted = useOrdersStore((state) => state.acknowledgedOrderIds.has(order.id));
-  const rejectOrder = useOrdersStore((state) => state.rejectOrder);
   const isPending = isPlaced && !isAccepted;
   const badge = STATUS_BADGE[order.status];
 
@@ -67,11 +64,12 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
       : order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ');
 
   const now = useNow();
-  const remainingMs = Math.max(0, order.placedAtTimestamp + ORDER_ACCEPT_WINDOW_MS - now);
+  const remainingMs = getRemainingAcceptMs(order, now);
+  const maxAcceptMinutes = Math.round(getOrderAcceptWindowMs() / 60000);
   const timerStyle = TIMER_STYLE[urgencyTier(remainingMs)];
 
   // --- Dynamic Time Elapsed Calculation ---
-  const timeElapsedMs = Math.max(0, now - order.placedAtTimestamp);
+  const timeElapsedMs = Math.max(0, getElapsedMs(order, now));
   const elapsedMinutes = Math.floor(timeElapsedMs / (1000 * 60));
 
   let placedTimeDisplay = order.placedAtLabel;
@@ -79,19 +77,16 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
   if (isPending) {
     if (elapsedMinutes < 1) {
       placedTimeDisplay = 'Just now';
-    } else if (elapsedMinutes <= MAX_ACCEPT_MINUTES) {
+    } else if (elapsedMinutes <= maxAcceptMinutes) {
       placedTimeDisplay = `${elapsedMinutes} ${elapsedMinutes === 1 ? 'min' : 'mins'} ago`;
     } else {
       placedTimeDisplay = 'Cancelled';
     }
   }
 
-  // Automatically trigger cancellation when 10 minutes pass without acceptance
-  useEffect(() => {
-    if (isPending && elapsedMinutes > MAX_ACCEPT_MINUTES) {
-      rejectOrder(order.id);
-    }
-  }, [isPending, elapsedMinutes, order.id, rejectOrder]);
+  // Auto-reject at the end of the window is useOrderExpiryWatcher's job
+  // (mounted at the app root) and, when the app is closed, the backend's
+  // store_no_response job — not repeated per card.
 
   return (
     // Whole card opens the order detail screen — but only once accepted.

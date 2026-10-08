@@ -13,6 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import { isWithinSchedule, type DaySchedule } from '@/lib/riderSchedule';
 import type { ActiveRider } from '@/lib/types';
 
@@ -25,16 +26,27 @@ interface RiderRow {
   status: 'offline' | 'online' | 'on_delivery' | null;
   availability: DaySchedule[] | null;
   auto_online: boolean | null;
+  suspended_reason: string | null;
+  suspended_at: string | null;
+  last_location_update: string | null;
 }
 
+// Same freshness window the dispatch RPCs use (rider_dispatch_offers /
+// accept_dispatch_offer, migration 107): an 'online' rider whose last
+// position ping is older than this cannot receive or accept offers.
+const FRESH_PING_MS = 3 * 60 * 1000;
+
 export async function GET() {
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
   try {
+    const now = Date.now();
     const [ridersRes, ordersRes] = await Promise.all([
       supabaseAdmin
         .from('riders')
-        .select('id, user_id, name, phone, is_active, status, availability, auto_online')
+        .select('id, user_id, name, phone, is_active, status, availability, auto_online, suspended_reason, suspended_at, last_location_update')
         .order('name'),
-      supabaseAdmin.from('orders').select('rider_id').not('rider_id', 'is', null).not('status', 'in', '(delivered,cancelled)'),
+      supabaseAdmin.from('orders').select('rider_id').not('rider_id', 'is', null).not('status', 'in', '(delivered,cancelled,failed)'),
     ]);
     if (ridersRes.error) throw ridersRes.error;
     if (ordersRes.error) throw ordersRes.error;
@@ -49,6 +61,7 @@ export async function GET() {
       const availability = row.availability ?? [];
       return {
         id: row.id,
+        userId: row.user_id,
         name: row.name,
         phone: row.phone,
         activeOrders: activeOrderCounts.get(row.user_id) ?? 0,
@@ -60,9 +73,14 @@ export async function GET() {
         // while being 'offline' right now (presence).
         isOnline: row.is_active,
         presence: row.status ?? 'offline',
+        lastSeenAt: row.last_location_update,
+        liveNow: row.is_active && row.status !== 'offline' && row.status !== null && !!row.last_location_update
+          && now - new Date(row.last_location_update).getTime() <= FRESH_PING_MS,
         autoOnline: row.auto_online ?? false,
         availability,
         onScheduleNow: isWithinSchedule(availability),
+        suspendedReason: row.is_active ? null : row.suspended_reason,
+        suspendedAt: row.is_active ? null : row.suspended_at,
       };
     });
 

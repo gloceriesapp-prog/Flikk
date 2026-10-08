@@ -1,120 +1,140 @@
-// Store onboarding — the real document set a kirana/pharmacy store needs
-// before it can legally list on Gloceries (see AddStoreModal's own note for the
-// per-document rationale). Same "copy of the backend rule, not a second
-// invented one" caveat as lib/productValidation.ts — this dashboard writes
-// straight to Supabase with the service-role key (app/api/stores/*) since
-// there's no admin login flow yet.
+// Admin "Add store" — creates a live store for an existing Gloceries
+// account, the same end state as approving a partner application
+// (app/api/approvals/stores/[userId]/route.ts): a stores row owned by that
+// user, the user flipped to role store_owner + is_approved. stores.owner_user_id
+// is NOT NULL (001_init.sql), so the owner is looked up by phone; the owner
+// must have signed in once (any Gloceries app) so their account exists.
+// lat/lng are required: without a map pin the store is invisible to
+// customers (nearby discovery sorts and filters by distance from it).
+// Payout details are not collected here — set them on the store page (the
+// real payout_* columns) or let the partner add them in the partner app.
 
 export interface StoreWriteInput {
   name: string;
   category: string;
   ownerName: string;
-  phone: string;
+  // The owner's login phone (users.phone) — required, used to find the account.
+  ownerPhone: string;
+  // Optional storefront contact number (stores.phone).
+  phone?: string | null;
   addressLine: string;
   city: string;
   state: string;
   country: string;
+  lat: number;
+  lng: number;
   openTime: string;
   closeTime: string;
   photoUrl?: string | null;
-  // Legally mandatory for any food/grocery business in India — Basic
-  // FSSAI registration at minimum, State License above ₹12L turnover.
   fssaiNumber: string;
-  // Local municipal registration — standard for any physical shop.
   shopEstablishmentNumber: string;
   panNumber: string;
-  aadhaarLast4: string;
-  bankName: string;
-  bankAccountLast4: string;
-  // GSTIN is only mandatory once turnover crosses ₹40L — legitimately
-  // exempt below that, so it's conditional, not always-required.
-  turnoverExceedsGstThreshold: boolean;
   gstNumber?: string | null;
-  // Pharmacy only — a separately regulated, stricter path (state Drug
-  // Control authority, tied to a registered pharmacist).
+  udyamNumber?: string | null;
+  // Pharmacy only — a separately regulated, stricter path.
   drugLicenseNumber?: string | null;
+  // Needed only when more than one zone is active.
+  zoneId?: string | null;
 }
 
 function required(value: string | undefined | null, label: string): asserts value is string {
-  if (!value || !value.trim()) throw new Error(`${label} is required.`);
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`${label} is required.`);
+}
+
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const PAN = /^[A-Z]{5}\d{4}[A-Z]$/;
+const FSSAI = /^\d{14}$/;
+
+// Same canonical form the backend writes at OTP verify (lib/phone.ts):
+// +91 followed by the 10-digit local number. Null when not a valid number.
+export function normalizeOwnerPhone(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const digits = raw.replace(/\D/g, '');
+  const local = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;
+  return local.length === 10 ? `+91${local}` : null;
+}
+
+export function ownerPhoneVariants(canonical: string): string[] {
+  const local = canonical.slice(3);
+  return [canonical, `91${local}`, local];
 }
 
 export function validateStoreInput(input: Partial<StoreWriteInput>): asserts input is StoreWriteInput {
   required(input.name, 'Store name');
   required(input.category, 'Category');
   required(input.ownerName, "Owner's name");
-  required(input.phone, 'Phone number');
+  required(input.ownerPhone, "Owner's phone number");
+  if (!normalizeOwnerPhone(input.ownerPhone)) throw new Error("Enter the owner's 10-digit mobile number.");
   required(input.addressLine, 'Address');
   required(input.city, 'City');
   required(input.state, 'State');
   required(input.country, 'Country');
+  if (typeof input.lat !== 'number' || !Number.isFinite(input.lat) || input.lat < -90 || input.lat > 90 ||
+    typeof input.lng !== 'number' || !Number.isFinite(input.lng) || input.lng < -180 || input.lng > 180) {
+    throw new Error('Store location (latitude and longitude) is required — without it customers cannot find the store.');
+  }
   required(input.openTime, 'Opening time');
   required(input.closeTime, 'Closing time');
+  if (!TIME.test(input.openTime.trim()) || !TIME.test(input.closeTime.trim())) throw new Error('Hours must use a valid 24-hour time.');
   required(input.fssaiNumber, 'FSSAI license/registration number');
+  if (!FSSAI.test(input.fssaiNumber.trim())) throw new Error('FSSAI license number must be exactly 14 digits.');
   required(input.shopEstablishmentNumber, 'Shop & Establishment license number');
   required(input.panNumber, "Owner's PAN");
-  required(input.aadhaarLast4, "Owner's Aadhaar");
-  required(input.bankName, 'Bank name');
-  required(input.bankAccountLast4, 'Bank account details');
-
-  if (input.turnoverExceedsGstThreshold) {
-    required(input.gstNumber, 'GSTIN (required once turnover exceeds ₹40L)');
-  }
-  if (input.category === 'Pharmacy') {
-    required(input.drugLicenseNumber, 'Drug License number');
-  }
+  if (!PAN.test(input.panNumber.trim().toUpperCase())) throw new Error('PAN must be in the format ABCDE1234F.');
+  if (input.category === 'Pharmacy') required(input.drugLicenseNumber, 'Drug License number');
 }
 
 export interface StoreRow {
+  owner_user_id: string;
+  zone_id: string;
   name: string;
   category: string;
   owner_name: string;
-  phone: string;
+  phone: string | null;
   address_line: string;
   city: string;
   state: string;
   country: string;
   district: string;
+  lat: number;
+  lng: number;
   open_time: string;
   close_time: string;
   photo_url: string | null;
   fssai_number: string;
   shop_establishment_number: string;
   pan_number: string;
-  aadhaar_last4: string;
-  bank_name: string;
-  bank_account_last4: string;
-  turnover_exceeds_gst_threshold: boolean;
   gst_number: string | null;
+  udyam_number: string | null;
   drug_license_number: string | null;
   is_active: boolean;
 }
 
-export function toStoreRow(input: StoreWriteInput): StoreRow {
+export function toStoreRow(input: StoreWriteInput, ownerUserId: string, zoneId: string): StoreRow {
   return {
+    owner_user_id: ownerUserId,
+    zone_id: zoneId,
     name: input.name.trim(),
     category: input.category,
     owner_name: input.ownerName.trim(),
-    phone: input.phone.trim(),
+    phone: input.phone?.trim() || null,
     address_line: input.addressLine.trim(),
     city: input.city.trim(),
     state: input.state.trim(),
     country: input.country.trim(),
     // district is the pre-existing column stores/[id] and the customer app
-    // already read before this onboarding form existed — city is the closer
-    // real-world fit for it now that a real address exists.
+    // already read — city is the closer real-world fit for it.
     district: input.city.trim(),
+    lat: input.lat,
+    lng: input.lng,
     open_time: input.openTime.trim(),
     close_time: input.closeTime.trim(),
     photo_url: input.photoUrl?.trim() || null,
     fssai_number: input.fssaiNumber.trim(),
     shop_establishment_number: input.shopEstablishmentNumber.trim(),
-    pan_number: input.panNumber.trim(),
-    aadhaar_last4: input.aadhaarLast4.trim(),
-    bank_name: input.bankName.trim(),
-    bank_account_last4: input.bankAccountLast4.trim(),
-    turnover_exceeds_gst_threshold: input.turnoverExceedsGstThreshold,
-    gst_number: input.turnoverExceedsGstThreshold ? input.gstNumber?.trim() || null : null,
+    pan_number: input.panNumber.trim().toUpperCase(),
+    gst_number: input.gstNumber?.trim() || null,
+    udyam_number: input.udyamNumber?.trim() || null,
     drug_license_number: input.category === 'Pharmacy' ? input.drugLicenseNumber?.trim() || null : null,
     is_active: true,
   };

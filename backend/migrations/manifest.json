@@ -431,11 +431,23 @@
     },
     {
       "file": "108_rider_pay_cod.sql",
-      "sha256": "67f821b402d554ce864abeadc5d74b0cbea5303dbc189f0479860e62ca35cbc4"
+      "sha256": "6f7aa5d6c48c1c3afa2462dc2896913691a083b60723b8c2fa730febbae2679d"
+    },
+    {
+      "file": "109_admin_order_control.sql",
+      "sha256": "b5d224e13e4adbbd0bbb71fb62b573a3c81822040c67e1967b63d13a90674920"
+    },
+    {
+      "file": "110_account_controls.sql",
+      "sha256": "a7ffa11e16f8123a77991b3c96b3c9114993b2234b212fba1fc7dac8611f624e"
     },
     {
       "file": "111_catalogue_stock_integrity.sql",
       "sha256": "dee6b1ace7d6f0fc98646ede19de8ef36c92e550c7a8a30b642dad8456b2ce59"
+    },
+    {
+      "file": "112_app_config_and_hours.sql",
+      "sha256": "43dd50d6dfceda6f79ab8fc750cb2b2a12624d74cc0d6b554f984a900e6bdb4f"
     }
   ]
 }

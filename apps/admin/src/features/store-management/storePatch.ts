@@ -5,11 +5,13 @@ const textColumns = {
   addressLine: 'address_line', manualAddress: 'manual_address', city: 'city', district: 'district',
   state: 'state', country: 'country', openTime: 'open_time', closeTime: 'close_time', photoUrl: 'photo_url',
   fssaiNumber: 'fssai_number', shopEstablishmentNumber: 'shop_establishment_number', panNumber: 'pan_number',
-  aadhaarLast4: 'aadhaar_last4', bankName: 'bank_name', bankAccountLast4: 'bank_account_last4',
   gstNumber: 'gst_number', drugLicenseNumber: 'drug_license_number', udyamNumber: 'udyam_number',
 } as const;
 const numericColumns = { lat: 'lat', lng: 'lng', deliveryRadiusKm: 'delivery_radius_km', avgPrepMinutes: 'avg_prep_minutes' } as const;
-const booleanColumns = { isActive: 'is_active', turnoverExceedsGstThreshold: 'turnover_exceeds_gst_threshold' } as const;
+// Legacy aadhaar_last4 / bank_name / bank_account_last4 /
+// turnover_exceeds_gst_threshold are not editable: nothing reads them (payouts
+// use the payout_* columns, set via the store page's payout account panel).
+const booleanColumns = { isActive: 'is_active' } as const;
 export type StorePatchInput = Partial<Record<keyof typeof textColumns, string | null> & Record<keyof typeof numericColumns, number | null> & Record<keyof typeof booleanColumns, boolean>>;
 export class StorePatchError extends Error {}
 const fail = (message: string): never => { throw new StorePatchError(message); };
@@ -28,7 +30,6 @@ export function parseStorePatch(value: unknown): Record<string, string | number 
       if (key === 'category' && !STORE_CATEGORIES.some(category => category === text)) fail('Choose a valid store category.');
       if (['openTime', 'closeTime'].includes(key) && text && !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(text)) fail('Hours must use a valid 24-hour time.');
       if (key === 'phone' && text && !/^\+?[\d\s()-]{7,25}$/.test(text)) fail('Enter a valid contact phone number.');
-      if (['aadhaarLast4', 'bankAccountLast4'].includes(key) && text && !/^\d{4}$/.test(text)) fail(`${key} must contain exactly four digits.`);
       if (key === 'photoUrl' && text) {
         let url: URL;
         try { url = new URL(text); } catch { fail('Enter a valid photo URL.'); }
@@ -58,6 +59,4 @@ export function validateMergedStore(store: Record<string, unknown>, patch: Recor
   const merged = { ...store, ...patch };
   if (Object.hasOwn(patch, 'category') && merged.category === 'Pharmacy' && !merged.drug_license_number) fail('Add a drug licence before changing the category to Pharmacy.');
   if ((merged.lat == null) !== (merged.lng == null)) fail('Set both latitude and longitude, or clear both.');
-  if (patch.turnover_exceeds_gst_threshold === true && !merged.gst_number) fail('Add the GSTIN before enabling the GST requirement.');
-  if (Object.hasOwn(patch, 'gst_number') && merged.turnover_exceeds_gst_threshold && !merged.gst_number) fail('GSTIN is required while the GST requirement is enabled.');
 }

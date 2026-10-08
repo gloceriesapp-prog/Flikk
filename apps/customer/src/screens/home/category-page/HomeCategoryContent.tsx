@@ -4,14 +4,13 @@ import { GroceriesTab } from '../groceries/GroceriesTab';
 import { FreshTab } from '../fresh/FreshTab';
 import { RegionalTab } from '../regional/RegionalTab';
 import { FestivalTab } from '../festival/FestivalTab';
-import { isFestivalTabName } from '../festival/data';
 import { HomeTabTileGrid } from '../hometab/HomeTabTileGrid';
 
 // Resolve by managed identity first, so admin display-name changes cannot
 // send Grocery/Fresh/Regional to a different template.
 export function homeCategoryKind(tab: RemoteHomeTab) {
   if (tab.contentKey) return tab.contentKey === 'grocery' ? 'groceries' : tab.contentKey;
-  if (isFestivalTabName(tab.name)) return 'festival';
+  if (tab.festival) return 'festival';
   const names: Record<string, string> = {
     grocery: 'groceries', groceries: 'groceries', fresh: 'fresh',
     'fruit & veg': 'fresh', 'meat & fish': 'meat-fish', 'fish & meat': 'meat-fish',

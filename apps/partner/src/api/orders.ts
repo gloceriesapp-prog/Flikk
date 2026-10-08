@@ -36,6 +36,8 @@ export interface ApiOrder {
   commission_amount: number;
   provider_payment_id: string | null;
   placed_at: string;
+  // migration 109 — when the order reached the store (accept window start).
+  store_visible_at?: string | null;
   packed_at: string | null;
   delivered_at: string | null;
   order_items: ApiOrderItem[];
@@ -53,6 +55,8 @@ export async function fetchOrders(): Promise<ApiOrder[]> {
   return result;
 }
 
-export function updateOrderStatus(orderId: string, status: 'packed' | 'cancelled'): Promise<ApiOrder> {
-  return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: { status } });
+// reason: a STORE_REJECT_REASONS code (@gloceries/shared) for a reject, or
+// 'store_no_response' for the auto-reject; stored as orders.cancel_reason.
+export function updateOrderStatus(orderId: string, status: 'packed' | 'cancelled', reason?: string): Promise<ApiOrder> {
+  return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: reason ? { status, reason } : { status } });
 }

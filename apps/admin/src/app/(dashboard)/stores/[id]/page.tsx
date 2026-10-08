@@ -4,6 +4,9 @@ import { ArrowLeft } from 'lucide-react';
 import { STORE_SELECT, mapRowToStore, type StoreRow } from '@/lib/supabase/stores';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { StoreDetailForm } from '@/components/stores/StoreDetailForm';
+import { StoreSuspensionPanel } from '@/components/stores/StoreSuspensionPanel';
+import { StorePayoutPanel } from '@/components/stores/StorePayoutPanel';
+import { STORE_PAYOUT_SELECT, toStorePayoutView } from '@/lib/storePayout';
 
 export default async function StoreDetailPage({ params }: PageProps<'/stores/[id]'>) {
   const { id } = await params;
@@ -12,6 +15,9 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
   if (error) throw error;
   if (!data) notFound();
   const store = mapRowToStore(data as unknown as StoreRow);
+  const { data: payoutRow, error: payoutError } = await supabaseAdmin.from('stores').select(STORE_PAYOUT_SELECT).eq('id', id).maybeSingle();
+  if (payoutError) throw payoutError;
+  const payout = toStorePayoutView(payoutRow as Record<string, string | null> | null);
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -20,7 +26,9 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
         Back to Stores
       </Link>
 
-      <StoreDetailForm key={store.id} store={store} />
+      <StoreSuspensionPanel storeId={store.id} suspended={!!store.adminSuspended} reason={store.suspendedReason ?? null} suspendedAt={store.suspendedAt ?? null} />
+      <StorePayoutPanel storeId={store.id} payout={payout} />
+      <StoreDetailForm key={`${store.id}:${store.adminSuspended ? 's' : 'a'}`} store={store} />
     </div>
   );
 }

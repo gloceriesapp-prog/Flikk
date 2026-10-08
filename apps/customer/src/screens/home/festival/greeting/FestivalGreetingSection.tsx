@@ -35,16 +35,18 @@ interface Props {
   title?: string;
   tagline?: string;
   categories?: { id: string; title: string }[];
+  bannerUri: string | null;
+  festivalTitle: string;
 }
 
-export function FestivalGreetingSection({ products, categories }: Props) {
+export function FestivalGreetingSection({ products, categories, bannerUri, festivalTitle }: Props) {
   const visibleProducts = products.slice(0, VISIBLE_PRODUCTS);
   const boxes = categories && categories.length > 0 ? categories : FESTIVAL_CATEGORIES;
 
   return (
     <View>
       {/* 1. Festival banner image (replaces the old text greeting). */}
-      <FestivalBanner />
+      <FestivalBanner uri={bannerUri} label={festivalTitle} />
 
       {/* 2. Sample festival category boxes (image #89) — one tone per box
           (FESTIVAL_BOX_COLORS), bold title top-left, product-image collage

@@ -49,7 +49,7 @@ interface UseIncomingOrderAlertResult {
   activeOrder: PartnerOrder | null;
   secondsLeft: number;
   onAccept: () => void;
-  onDecline: () => void;
+  onDecline: (reason: string) => void;
 }
 
 export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
@@ -141,7 +141,7 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
     setActiveOrder(null);
   }
 
-  function onDecline() {
+  function onDecline(reason: string) {
     if (!activeOrder) return;
     dismissedOrderIdsRef.current.add(activeOrder.id);
     clearNewlyArrived(activeOrder.id);
@@ -151,7 +151,7 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
     // a failure still needs to not be a silently-swallowed unhandled
     // rejection (the exact bug class this app already got bitten by once,
     // see features/order-expiry's own note on the same fix).
-    rejectOrder(activeOrder.id).catch(() => {});
+    rejectOrder(activeOrder.id, reason).catch(() => {});
     setActiveOrder(null);
   }
 

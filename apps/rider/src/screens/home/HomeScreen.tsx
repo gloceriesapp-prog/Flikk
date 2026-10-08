@@ -29,7 +29,6 @@ import { RiderHomeHeader } from './components/RiderHomeHeader';
 import { SearchingForOrders } from './components/SearchingForOrders';
 import { OnlineStatusBadge } from './components/OnlineStatusBadge';
 import { OfflineHomeScreen } from './OfflineHomeScreen';
-import { MaintenanceBanner } from './components/MaintenanceBanner';
 import { useActiveMsToday } from '../../hooks/useActiveMsToday';
 import { formatDurationShort, isToday, todayLabel } from '../../utils/date';
 import type { AppStackParamList, AppTabParamList } from '../../navigation/types';
@@ -179,8 +178,6 @@ export function HomeScreen() {
       contentContainerClassName="gap-4 px-5 pb-28 pt-safe-offset-4"
       showsVerticalScrollIndicator={false}
     >
-      <MaintenanceBanner />
-
       {/* Same header as the offline home — only the pill flips to "Online"
           (→ goOffline). */}
       <RiderHomeHeader isOnline={isOnline} />

@@ -62,6 +62,10 @@ DO $$ DECLARE r jsonb; e rider_earnings; BEGIN
  -- Two shops visited (the cancelled shop is not a stop): 30 + 1 x 12.
  IF e.amount<>42 OR e.base_amount<>30 OR e.extra_stop_amount<>12 THEN
   RAISE EXCEPTION 'Trip earning ignores extra-shop payout: % % %',e.amount,e.base_amount,e.extra_stop_amount; END IF;
+ -- The customer's extra-shop fee is not paid twice: fee 41 = 26 + 15 for one extra shop.
+ IF (SELECT amount FROM rider_delivery_payout(41,1))<>42 OR (SELECT base_amount FROM rider_delivery_payout(60,1))<>45
+ OR (SELECT amount FROM rider_delivery_payout(60,1))<>57 THEN
+  RAISE EXCEPTION 'Extra shops paid twice: %',(SELECT amount FROM rider_delivery_payout(41,1)); END IF;
 
  -- Minimum payout 0 keeps the old rule: pay = delivery fee charged.
  UPDATE delivery_settings SET rider_base_payout=0;

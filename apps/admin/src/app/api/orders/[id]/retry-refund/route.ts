@@ -26,7 +26,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     // Shared payments are reconciled through the combined refund worker.
     // A gross shop subtotal must never start a competing refund.
     if (order.trip_id) {
-      return NextResponse.json({ error: 'This is a shared trip payment. Review the combined trip refund before retrying.' }, { status: 409 });
+      return NextResponse.json({ error: 'This is a shared trip payment. Use Trip refunds on the Refunds page: a rejected trip refund is closed with "Mark refunded manually".' }, { status: 409 });
     }
 
     const { error: retryError } = await supabaseAdmin.rpc('request_order_refund',{p_order:id});

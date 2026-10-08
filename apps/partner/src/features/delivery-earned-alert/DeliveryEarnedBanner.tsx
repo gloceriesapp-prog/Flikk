@@ -4,12 +4,13 @@
 // order that just earned this). Mounted once at the app root (App.tsx) so
 // it can appear over whichever tab is focused.
 //
-// Real numbers only — netEarned/payoutDateLabel both come from
-// useDeliveryEarnedWatcher.ts, which reads them off the actual delivered
-// order (PartnerOrder.netPayout) and the real settlement schedule
-// (utils/nextPayoutDate.ts), never a guess made here.
+// Real numbers only — netEarned comes from useDeliveryEarnedWatcher.ts,
+// which reads it off the actual delivered order (PartnerOrder.netPayout).
+// No payout date is promised: payouts are sent by hand weekly
+// (utils/payoutPolicy.ts).
 
 import { useEffect } from 'react';
+import { PAYOUT_POLICY } from '../../utils/payoutPolicy';
 import { Cancel01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,7 +51,7 @@ export function DeliveryEarnedBanner() {
         <View className="flex-1">
           <Text className="text-sm font-semibold text-white">₹{activeEarning.netEarned.toLocaleString('en-IN')} earned</Text>
           <Text className="mt-0.5 text-xs font-medium text-white/85" numberOfLines={2}>
-            Order {activeEarning.orderNumber} delivered — added to your balance, paid out on {activeEarning.payoutDateLabel}.
+            Order {activeEarning.orderNumber} delivered — added to your balance. {PAYOUT_POLICY}.
           </Text>
         </View>
         <Pressable onPress={dismissEarning} hitSlop={8}>

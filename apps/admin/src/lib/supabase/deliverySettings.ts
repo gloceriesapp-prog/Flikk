@@ -26,6 +26,12 @@ export interface DeliverySettingsRow {
   road_distance_factor?: number | string | null;
   delivery_fee_tiers?: unknown;
   max_store_spread_km?: number | string | null;
+  // migration 112 — platform ordering window, IST minutes since midnight.
+  ordering_opens_minute?: number | null;
+  ordering_closes_minute?: number | null;
+  // migration 109 — minutes a store has to accept an order before the
+  // backend's store_no_response job cancels it.
+  store_response_timeout_minutes?: number | null;
 }
 
 export interface DeliveryFeeTier {
@@ -47,6 +53,25 @@ export interface DeliverySettings {
   roadDistanceFactor: number;
   deliveryFeeTiers: DeliveryFeeTier[];
   maxStoreSpreadKm: number;
+  orderingOpensMinute: number;
+  orderingClosesMinute: number;
+  storeResponseTimeoutMinutes: number;
+}
+
+// <input type="time"> values <-> IST minutes since midnight. A closing time
+// of 00:00 means midnight at the end of the day (1440).
+export function minuteToTimeInput(minute: number): string {
+  const m = ((minute % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+export function timeInputToMinute(value: string, endOfDay = false): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  const total = hour * 60 + minute;
+  return endOfDay && total === 0 ? 1440 : total;
 }
 
 // Same parsing as backend/src/lib/deliveryFees.ts: malformed rows dropped,
@@ -81,6 +106,9 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     roadDistanceFactor: Number(row.road_distance_factor ?? 1.4),
     deliveryFeeTiers: parseFeeTiers(row.delivery_fee_tiers),
     maxStoreSpreadKm: Number(row.max_store_spread_km ?? 2),
+    orderingOpensMinute: Number(row.ordering_opens_minute ?? 360),
+    orderingClosesMinute: Number(row.ordering_closes_minute ?? 1350),
+    storeResponseTimeoutMinutes: Number(row.store_response_timeout_minutes ?? 10),
   };
 }
 

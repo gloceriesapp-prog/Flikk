@@ -1,9 +1,13 @@
 import { supabase } from '../db/supabase.js';
 import { promotionalPreferences } from '../notifications/preferences.js';
+import { promotionsSwitchOn } from '../lib/platformSettings.js';
 import { deliverPromotion, DeliveryError, providerReady, type Channel } from './providers.js';
 interface Job { id: string; customer_id: string; channel: Channel; subject: string; body: string; lease_token: string; lease_until: string; attempts: number }
 export async function runPromotions(shouldStop: () => boolean = () => false) {
   if (process.env.PROMOTIONS_ENABLED !== 'true') return { more: false };
+  // Admin kill switch (Promotions page): checked before every claim, so
+  // switching it off stops sending within one poll; queued jobs wait.
+  if (!(await promotionsSwitchOn())) return { more: false };
   const { data, error } = await supabase.rpc('claim_promotional_deliveries', { p_limit: 1 });
   if (error) throw error;
   const jobs = (data ?? []) as Job[];

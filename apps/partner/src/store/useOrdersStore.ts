@@ -71,7 +71,8 @@ interface OrdersState {
   // Local UI flag only — see file header. Not a status transition.
   acknowledgeOrder: (orderId: string) => void;
   markPacked: (orderId: string) => Promise<void>;
-  rejectOrder: (orderId: string) => Promise<void>;
+  // reason: STORE_REJECT_REASONS code, or STORE_NO_RESPONSE_REASON for the auto-reject.
+  rejectOrder: (orderId: string, reason: string) => Promise<void>;
   clearNewlyArrived: (orderId: string) => void;
   clearJustDelivered: (orderId: string) => void;
   // Dev-only — injects one fake order into `orders` AND
@@ -180,12 +181,12 @@ export const useOrdersStore = create<OrdersState>((set) => ({
     }));
   },
 
-  rejectOrder: async (orderId) => {
+  rejectOrder: async (orderId, reason) => {
     if (orderId.startsWith('sample-')) {
       set((state) => ({ orders: state.orders.filter((order) => order.id !== orderId) }));
       return;
     }
-    await updateOrderStatus(orderId, 'cancelled');
+    await updateOrderStatus(orderId, 'cancelled', reason);
     set((state) => {
       const acknowledgedOrderIds = new Set(state.acknowledgedOrderIds);
       acknowledgedOrderIds.delete(orderId);

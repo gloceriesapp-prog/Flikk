@@ -7,7 +7,6 @@
 
 import { colors } from '../../theme/tokens';
 import type { ApiPayout, ApiPayoutOrder, PayoutStatus } from '../../api/payouts';
-import { formatPayoutDateLabel, nextPayoutDate } from '../../utils/nextPayoutDate';
 
 export type { PayoutStatus };
 
@@ -23,9 +22,6 @@ export interface WeeklyPayout {
   // Bank reference (UTR) the founder recorded when marking this paid —
   // null until paid. Shown with a copy button to match a bank statement.
   utr: string | null;
-  // Only set for a week that hasn't actually landed yet (pending/
-  // blocked/failed) — a paid week has nothing left to settle.
-  nextSettlementLabel?: string;
   // True only for SAMPLE_PAYOUTS below — never set on anything built from
   // a real GET /partner/payouts row. Every consumer that renders a
   // WeeklyPayout checks this before treating its numbers as real money,
@@ -51,8 +47,6 @@ function weekLabel(weekStart: string, weekEnd: string): string {
   return `${formatDateOnly(weekStart)} – ${endLabel}`;
 }
 
-const UNSETTLED_STATUSES: PayoutStatus[] = ['pending', 'blocked', 'failed'];
-
 export function toWeeklyPayout(row: ApiPayout): WeeklyPayout {
   return {
     id: row.id,
@@ -64,14 +58,13 @@ export function toWeeklyPayout(row: ApiPayout): WeeklyPayout {
     status: row.status,
     paidAt: row.paidAt ?? row.paid_at,
     utr: row.utr ?? null,
-    nextSettlementLabel: UNSETTLED_STATUSES.includes(row.status) ? formatPayoutDateLabel(nextPayoutDate()) : undefined,
   };
 }
 
 // Sample data — shown only while a store has zero real payouts yet
 // (PayoutsScreen's own fallback, gated on the real GET /partner/payouts
 // response actually being empty). Dates are computed relative to `now`
-// (real weeks-ago math, real nextPayoutDate()), never hardcoded strings
+// (real weeks-ago math), never hardcoded strings
 // like "11–17 Aug" that go stale and eventually read as a real-but-wrong
 // date — the whole reason the original placeholder version of this file
 // was a problem. The money figures themselves ARE made up (there are no
@@ -98,7 +91,6 @@ export function buildSamplePayouts(now: Date = new Date()): WeeklyPayout[] {
       status: 'pending',
       paidAt: null,
       utr: null,
-      nextSettlementLabel: formatPayoutDateLabel(nextPayoutDate(now)),
       isSample: true,
     },
     {
@@ -180,14 +172,14 @@ function formatPaidDate(iso: string): string {
 }
 
 // One mapping used by both the hero card and every history row. Payouts
-// are sent manually every Monday (backend/PAYOUTS.md) — 'pending' means
-// scheduled, not stuck.
+// are sent by hand weekly after verification (backend/PAYOUTS.md) —
+// 'pending' means waiting to be sent, not stuck.
 export function payoutStatusPresentation(payout: Pick<WeeklyPayout, 'status' | 'paidAt'>): PayoutStatusPresentation {
   switch (payout.status) {
     case 'paid':
       return { label: payout.paidAt ? `Paid on ${formatPaidDate(payout.paidAt)}` : 'Paid', color: colors.limeDeep, bgClassName: 'bg-lime-soft' };
     case 'pending':
-      return { label: 'Scheduled (paid every Monday)', color: colors.gold, bgClassName: 'bg-gold/15' };
+      return { label: 'Pending (paid weekly)', color: colors.gold, bgClassName: 'bg-gold/15' };
     case 'blocked':
       return { label: 'Action needed', color: colors.danger, bgClassName: 'bg-danger/15', problem: 'We can’t send this payout until you add valid payout details.' };
     case 'failed':

@@ -96,7 +96,7 @@ export default function OverviewPage() {
   }, []);
 
   async function handleToggleActive(nextActive: boolean) {
-    if (!store || isTogglingActive) return;
+    if (!store || isTogglingActive || store.admin_suspended) return;
     setIsTogglingActive(true);
     const previous = store;
     setStore({ ...store, is_active: nextActive });
@@ -189,6 +189,7 @@ export default function OverviewPage() {
         <WelcomeBanner
           storeName={store.name}
           isActive={store.is_active}
+          suspendedReason={store.admin_suspended ? (store.suspended_reason ?? '') : null}
           onToggle={handleToggleActive}
           toggling={isTogglingActive}
         />

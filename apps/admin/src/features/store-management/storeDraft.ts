@@ -11,10 +11,8 @@ export function storeDraft(store: Store): StoreDraft {
     openTime: editableStoreTime(store.openTime), closeTime: editableStoreTime(store.closeTime), isActive: store.isActive,
     lat: store.lat?.toString() ?? '', lng: store.lng?.toString() ?? '', deliveryRadiusKm: store.deliveryRadiusKm?.toString() ?? '',
     avgPrepMinutes: store.avgPrepMinutes?.toString() ?? '', fssaiNumber: store.fssaiNumber,
-    shopEstablishmentNumber: store.shopEstablishmentNumber, panNumber: store.panNumber, aadhaarLast4: store.aadhaarLast4,
-    bankName: store.bankName, bankAccountLast4: store.bankAccountLast4, gstNumber: store.gstNumber ?? '',
+    shopEstablishmentNumber: store.shopEstablishmentNumber, panNumber: store.panNumber, gstNumber: store.gstNumber ?? '',
     udyamNumber: store.udyamNumber ?? '', drugLicenseNumber: store.drugLicenseNumber ?? '',
-    turnoverExceedsGstThreshold: store.turnoverExceedsGstThreshold,
   };
 }
 export function changedStoreFields(draft: StoreDraft, saved: StoreDraft): StorePatchInput {

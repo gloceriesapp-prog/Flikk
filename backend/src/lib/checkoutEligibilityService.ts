@@ -4,6 +4,7 @@ import { readCheckoutCatalog } from './checkoutCatalog.js';
 import { parseCheckoutItems } from './checkoutItems.js';
 import { checkoutAvailability, deliveryDistanceKm, type EligibilityAddress, type EligibilityProduct, type EligibilityStore } from './checkoutEligibility.js';
 import { getDeliverySettings } from './deliverySettings.js';
+import { parseOrderingHours } from './orderingHours.js';
 
 export async function loadCheckoutAvailability(input: unknown, customerId: string, addressId?: string) {
   if (addressId != null && (typeof addressId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(addressId))) {
@@ -25,7 +26,8 @@ export async function loadCheckoutAvailability(input: unknown, customerId: strin
   if (addressId && !addressResult.data) throw new AppError(403, 'ADDRESS_UNAVAILABLE', 'Choose one of your saved delivery addresses.');
   const address = addressResult.data as EligibilityAddress | null;
   const stores = storeResult.data as EligibilityStore[];
-  const rules = { defaultRadiusKm: settings.defaultDeliveryRadiusKm, roadFactor: settings.roadDistanceFactor, maxStoreSpreadKm: settings.maxStoreSpreadKm };
+  const rules = { defaultRadiusKm: settings.defaultDeliveryRadiusKm, roadFactor: settings.roadDistanceFactor, maxStoreSpreadKm: settings.maxStoreSpreadKm,
+    hours: parseOrderingHours(settings.orderingOpensMinute, settings.orderingClosesMinute) };
   return { ...checkoutAvailability(items, products, stores, address,
     new Set((zoneResult.data ?? []).map((zone) => zone.id)), new Date(), rules), address, products, settings,
     deliveryDistanceKm: deliveryDistanceKm(stores, address, settings.roadDistanceFactor) };

@@ -26,4 +26,12 @@ No destination, body, token or raw provider error is written to logs.
 Promotional push remains a saved preference; no push campaign broadcaster is
 implemented here. Transactional order push/inbox remains separate. Before enabling
 SMS/email, verify provider opt-out suppression and your approved promotional
-sender/template setup with test recipients. The API has no admin campaign UI yet.
+sender/template setup with test recipients.
+
+Admin UI and kill switch (migration 112): the admin "Promotions" page composes a
+campaign for searched customers, lists past campaigns (`promotional_campaigns`
+RPC) and per-recipient status. Its route writes the same rows as POST
+`/admin/promotions`, validated by the shared `packages/promotions/campaign.cjs`.
+`platform_settings.promotions_enabled` (default false, toggled on that page) is
+a second switch: the worker claims nothing while it is off, even with
+`PROMOTIONS_ENABLED=true`, and both queuing routes refuse new campaigns.

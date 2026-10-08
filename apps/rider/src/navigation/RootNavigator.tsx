@@ -37,6 +37,7 @@ import { AppNavigator } from './AppNavigator';
 import { AccountStatusScreen } from '../screens/onboarding/AccountStatusScreen';
 import { BankDetailsScreen } from '../screens/onboarding/BankDetailsScreen';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
+import { RiderSuspendedScreen } from '../screens/onboarding/RiderSuspendedScreen';
 import { registerPushToken } from '../features/push-notifications/registerPushToken';
 
 const WELCOME_DURATION_MS = 2000;
@@ -56,6 +57,7 @@ export function RootNavigator() {
   const applicationSubmitted = useAuthStore((s) => s.applicationSubmitted);
   const isRejected = useAuthStore((s) => s.isRejected);
   const payoutConfigured = useAuthStore((s) => s.payoutConfigured);
+  const isSuspended = useAuthStore((s) => s.isSuspended);
   const setAccountStatus = useAuthStore((s) => s.setAccountStatus);
   const clearSession = useAuthStore((s) => s.clear);
   const startSync = useRiderOrdersStore((s) => s.startSync);
@@ -80,7 +82,7 @@ export function RootNavigator() {
     }, 6000);
 
     fetchAccountStatus()
-      .then(({ role: freshRole, is_approved, rider_application_submitted, is_rejected, rider_payout_configured, rejection_reason }) => {
+      .then(({ role: freshRole, is_approved, rider_application_submitted, is_rejected, rider_payout_configured, rejection_reason, rider_suspended, rider_suspended_reason }) => {
         if (!cancelled) {
           setAccountStatus({
             role: freshRole,
@@ -89,6 +91,8 @@ export function RootNavigator() {
             isRejected: is_rejected,
             payoutConfigured: rider_payout_configured,
             rejectionReason: rejection_reason,
+            isSuspended: rider_suspended === true,
+            suspendedReason: rider_suspended_reason ?? null,
           });
         }
       })
@@ -121,7 +125,9 @@ export function RootNavigator() {
   // BankDetailsScreen has no business polling assignments or being pushed
   // orders they can't be paid for yet.
   const isApprovedRider = role === 'rider' && isApproved;
-  const isUsableRider = isApprovedRider && payoutConfigured;
+  // An admin-suspended rider never reaches the shell (no sync, no presence).
+  const isSuspendedRider = isApprovedRider && isSuspended;
+  const isUsableRider = isApprovedRider && payoutConfigured && !isSuspended;
 
   // Registered as soon as there's ANY authenticated session — pending
   // applicant included, deliberately. The "You're approved!"/rejection push
@@ -196,6 +202,8 @@ export function RootNavigator() {
         // silently stay on whatever wizard step it was on instead of
         // actually resetting to Login.
         <AuthNavigator key="anon" />
+      ) : isSuspendedRider ? (
+        <RiderSuspendedScreen />
       ) : isUsableRider ? (
         <AppNavigator />
       ) : isApprovedRider ? (

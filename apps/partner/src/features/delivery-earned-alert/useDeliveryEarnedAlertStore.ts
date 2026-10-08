@@ -11,10 +11,6 @@ export interface ActiveEarning {
   // Real orders.item_total - commission_amount (PartnerOrder.netPayout,
   // screens/orders/data.ts) — never a figure computed fresh here.
   netEarned: number;
-  // Real next Monday-9AM-IST settlement date (utils/nextPayoutDate.ts) —
-  // the honest answer to "when will I actually see this," not a vague
-  // "soon".
-  payoutDateLabel: string;
 }
 
 interface DeliveryEarnedAlertState {

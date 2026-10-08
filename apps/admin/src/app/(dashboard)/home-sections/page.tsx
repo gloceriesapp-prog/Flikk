@@ -21,6 +21,8 @@ interface HomeSection {
 // placeholder so the founder sees what "leave blank" falls back to).
 const SECTION_META: Record<string, { label: string; defaultTitle: string }> = {
   'festival-greeting': { label: 'Festival Greeting', defaultTitle: '(managed in Festival Greeting)' },
+  'festival-picks': { label: 'Festival Section products', defaultTitle: '(the Festival Section title)' },
+  seasonal: { label: 'Seasonal Section', defaultTitle: '(no heading)' },
   'nearby-stores': { label: 'Nearby Stores', defaultTitle: 'Nearby Stores' },
   trending: { label: 'Trending', defaultTitle: 'Popular This Week' },
   'most-bought': { label: 'Most Bought', defaultTitle: 'Most Bought Near You' },

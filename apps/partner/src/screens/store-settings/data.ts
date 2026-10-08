@@ -17,6 +17,10 @@ export interface StoreProfile {
   storeName: string;
   category: string;
   isOpen: boolean;
+  // Admin suspension (stores.admin_suspended, migration 110). While set the
+  // store cannot be reopened from here; only Gloceries can lift it.
+  adminSuspended: boolean;
+  suspendedReason: string | null;
   district: string;
   // The real reverse-geocoded full address (stores.address_line, captured
   // during onboarding's LocationPinScreen) — null for any store approved
@@ -99,6 +103,8 @@ export const EMPTY_STORE_PROFILE: StoreProfile = {
   storeName: '',
   category: '',
   isOpen: false,
+  adminSuspended: false,
+  suspendedReason: null,
   district: '',
   addressLine: null,
   manualAddress: '',

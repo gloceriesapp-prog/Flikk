@@ -43,7 +43,11 @@ export function ApplicationRow({ application }: { application: Application }) {
     if (!approve) {
       const typed = window.prompt('Reason for rejecting this application (shown to the applicant):', DEFAULT_REJECTION_REASON);
       if (typed === null) return; // cancelled — don't reject at all
-      reason = typed.trim() || undefined;
+      reason = typed.trim();
+      if (reason.length < 3) {
+        window.alert('A rejection reason is required — the applicant sees it.');
+        return;
+      }
     }
 
     setBusy(true);

@@ -20,7 +20,7 @@ import { useSpotlightAccentStore } from '../../../store/useSpotlightAccentStore'
 import { gradientForTabName, type CategoryHeaderGradient } from './categoryHeaderGradients';
 import { gradientForSpotlightKey } from './spotlightGradients';
 
-export function useActiveHeaderGradient(categoryName: string, useSpotlightAccent = true): CategoryHeaderGradient {
+export function useActiveHeaderGradient(categoryName: string, useSpotlightAccent = true, festivalHeaderColor?: string): CategoryHeaderGradient {
   const spotlightCardKey = useSpotlightAccentStore((state) => state.activeCardKey);
-  return useSpotlightAccent && spotlightCardKey ? gradientForSpotlightKey(spotlightCardKey) : gradientForTabName(categoryName);
+  return useSpotlightAccent && spotlightCardKey ? gradientForSpotlightKey(spotlightCardKey) : gradientForTabName(categoryName, festivalHeaderColor);
 }

@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { fetchDeliverySettings, type DeliverySettings } from '@/lib/supabase/deliverySettings';
+import { fetchDeliverySettings, minuteToTimeInput, timeInputToMinute, type DeliverySettings } from '@/lib/supabase/deliverySettings';
 
 type TierDraft = { upToKm: string; fee: string };
 
@@ -68,7 +68,10 @@ export default function SettingsPage() {
     defaultDeliveryRadiusKm: string;
     roadDistanceFactor: string;
     maxStoreSpreadKm: string;
+    storeResponseTimeoutMinutes: string;
     deliveryFeeTiers: TierDraft[];
+    orderingOpens: string;
+    orderingCloses: string;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -96,7 +99,10 @@ export default function SettingsPage() {
         defaultDeliveryRadiusKm: String(settings.defaultDeliveryRadiusKm),
         roadDistanceFactor: String(settings.roadDistanceFactor),
         maxStoreSpreadKm: String(settings.maxStoreSpreadKm),
+        storeResponseTimeoutMinutes: String(settings.storeResponseTimeoutMinutes),
         deliveryFeeTiers: settings.deliveryFeeTiers.map((tier) => ({ upToKm: String(tier.upToKm), fee: String(tier.fee) })),
+        orderingOpens: minuteToTimeInput(settings.orderingOpensMinute),
+        orderingCloses: minuteToTimeInput(settings.orderingClosesMinute),
       });
     }).catch(() => setSaveError('Could not load delivery settings. Refresh to try again.'));
 
@@ -150,13 +156,31 @@ export default function SettingsPage() {
       Number(draft.defaultDeliveryRadiusKm) !== saved.defaultDeliveryRadiusKm ||
       Number(draft.roadDistanceFactor) !== saved.roadDistanceFactor ||
       Number(draft.maxStoreSpreadKm) !== saved.maxStoreSpreadKm ||
-      !tiersEqual(draft.deliveryFeeTiers, saved.deliveryFeeTiers));
+      Number(draft.storeResponseTimeoutMinutes) !== saved.storeResponseTimeoutMinutes ||
+      !tiersEqual(draft.deliveryFeeTiers, saved.deliveryFeeTiers) ||
+      timeInputToMinute(draft.orderingOpens) !== saved.orderingOpensMinute ||
+      timeInputToMinute(draft.orderingCloses, true) !== saved.orderingClosesMinute);
 
   async function handleSaveDelivery() {
     if (!draft || isSaving) return;
     const minutes = Number(draft.estimatedDeliveryMinutes);
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
       setSaveError('Enter a delivery estimate between 1 and 240 whole minutes.');
+      return;
+    }
+    const orderingOpensMinute = timeInputToMinute(draft.orderingOpens);
+    const orderingClosesMinute = timeInputToMinute(draft.orderingCloses, true);
+    if (orderingOpensMinute === null || orderingClosesMinute === null) {
+      setSaveError('Enter both ordering hours.');
+      return;
+    }
+    if (orderingOpensMinute >= orderingClosesMinute) {
+      setSaveError('Ordering must open before it closes. The window cannot cross midnight.');
+      return;
+    }
+    const responseMinutes = Number(draft.storeResponseTimeoutMinutes);
+    if (!Number.isInteger(responseMinutes) || responseMinutes < 3 || responseMinutes > 120) {
+      setSaveError('Enter a store response time between 3 and 120 whole minutes.');
       return;
     }
     setIsSaving(true);
@@ -177,7 +201,10 @@ export default function SettingsPage() {
           defaultDeliveryRadiusKm: Number(draft.defaultDeliveryRadiusKm),
           roadDistanceFactor: Number(draft.roadDistanceFactor),
           maxStoreSpreadKm: Number(draft.maxStoreSpreadKm),
+          storeResponseTimeoutMinutes: Number(draft.storeResponseTimeoutMinutes),
           deliveryFeeTiers: draft.deliveryFeeTiers.map((tier) => ({ upToKm: Number(tier.upToKm), fee: Number(tier.fee) })),
+          orderingOpensMinute,
+          orderingClosesMinute,
         }),
       });
       const body = await res.json();
@@ -252,6 +279,43 @@ export default function SettingsPage() {
                   className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
                 <span className="text-sm text-muted">min</span>
               </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+              <div>
+                <label htmlFor="store-response" className="text-sm font-medium text-ink">Store response time</label>
+                <p className="text-xs text-muted">
+                  A new order the shop has not accepted within this time is cancelled automatically (reason &ldquo;store did not
+                  respond&rdquo;), its stock released and any payment refunded. The partner app counts down the same time.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
+                <input id="store-response" type="number" min={3} max={120} step={1}
+                  value={draft.storeResponseTimeoutMinutes}
+                  onChange={(event) => setDraft({ ...draft, storeResponseTimeoutMinutes: event.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
+                <span className="text-sm text-muted">min</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 border-b border-border pb-4">
+              <div>
+                <p className="text-sm font-medium text-ink">Ordering hours (IST)</p>
+                <p className="text-xs text-muted">
+                  Customers can place orders between these times every day. Outside them the app shows the reopening
+                  time and checkout is refused. A closing time of 12:00 AM means midnight.
+                </p>
+              </div>
+              {([
+                ['orderingOpens', 'Opens at'],
+                ['orderingCloses', 'Closes at'],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <label htmlFor={key} className="text-sm text-ink">{label}</label>
+                  <input id={key} type="time" step={60} required
+                    value={draft[key]}
+                    onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+                    className="rounded-xl border border-border bg-transparent px-3 py-2 text-sm font-semibold text-ink outline-none" />
+                </div>
+              ))}
             </div>
             <div className="flex flex-col gap-3 border-b border-border pb-4">
               <div>
@@ -409,7 +473,8 @@ export default function SettingsPage() {
                 <label htmlFor="riderBasePayout" className="text-sm font-medium text-ink">Minimum rider payout per delivery</label>
                 <p className="text-xs text-muted">
                   For each order or multi-store trip the rider earns the higher of this amount and the delivery fee the customer
-                  paid, so a free-delivery order still pays this amount. Set to 0 to pay riders exactly the delivery fee the customer paid
+                  paid (not counting the extra-store fee, which is paid through the payout below), so a free-delivery order still
+                  pays this amount. Set to 0 to pay riders exactly the delivery fee the customer paid
                   (the per-extra-store payout below is then not added).
                 </p>
               </div>

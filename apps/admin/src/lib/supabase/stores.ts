@@ -12,6 +12,9 @@ export interface StoreRow {
   category: string;
   district: string;
   is_active: boolean;
+  admin_suspended: boolean;
+  suspended_reason: string | null;
+  suspended_at: string | null;
   created_at: string;
   phone: string | null;
   open_time: string | null;
@@ -37,7 +40,7 @@ export interface StoreRow {
 }
 
 export const STORE_SELECT =
-  'id, manual_address, udyam_number, avg_prep_minutes, name, category, district, is_active, created_at, phone, open_time, close_time, owner_name, address_line, city, state, country, photo_url, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_name, bank_account_last4, turnover_exceeds_gst_threshold, gst_number, drug_license_number, lat, lng, delivery_radius_km';
+  'id, manual_address, udyam_number, avg_prep_minutes, name, category, district, is_active, admin_suspended, suspended_reason, suspended_at, created_at, phone, open_time, close_time, owner_name, address_line, city, state, country, photo_url, fssai_number, shop_establishment_number, pan_number, aadhaar_last4, bank_name, bank_account_last4, turnover_exceeds_gst_threshold, gst_number, drug_license_number, lat, lng, delivery_radius_km';
 
 export function mapRowToStore(row: StoreRow): Store {
   return {
@@ -53,6 +56,9 @@ export function mapRowToStore(row: StoreRow): Store {
     openTime: row.open_time ?? '',
     closeTime: row.close_time ?? '',
     isActive: row.is_active,
+    adminSuspended: row.admin_suspended ?? false,
+    suspendedReason: row.suspended_reason ?? null,
+    suspendedAt: row.suspended_at ?? null,
     ownerName: row.owner_name ?? '',
     joinedAt: new Date(row.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
     addressLine: row.address_line ?? '',

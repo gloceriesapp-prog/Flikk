@@ -44,7 +44,7 @@ export function AccountStatusScreen() {
     async function poll() {
       setChecking(true);
       try {
-        const { role: freshRole, is_approved, rider_application_submitted, is_rejected, rider_payout_configured, rejection_reason } =
+        const { role: freshRole, is_approved, rider_application_submitted, is_rejected, rider_payout_configured, rejection_reason, rider_suspended, rider_suspended_reason } =
           await fetchAccountStatus();
         if (!cancelled) {
           setAccountStatus({
@@ -54,6 +54,8 @@ export function AccountStatusScreen() {
             isRejected: is_rejected,
             payoutConfigured: rider_payout_configured,
             rejectionReason: rejection_reason,
+            isSuspended: rider_suspended === true,
+            suspendedReason: rider_suspended_reason ?? null,
           });
         }
       } catch {

@@ -27,7 +27,7 @@ export function Sidebar() {
       const [storesRes, ridersRes, ordersRes, refundsRes] = await Promise.all([
         fetch('/api/approvals/stores'),
         fetch('/api/approvals/riders'),
-        fetch('/api/orders'),
+        fetch('/api/orders?status=active'),
         fetch('/api/refunds'),
       ]);
       const next: Record<string, number> = {};
@@ -38,14 +38,19 @@ export function Sidebar() {
         next['/approvals'] = [...stores, ...riders].filter((a) => a.status === 'pending').length;
       }
       if (ordersRes.ok) {
+        // Anything not yet finished (placed/packed/out for delivery) — the
+        // live queue the founder may need to act on.
         const orders = (await ordersRes.json()) as { status: string }[];
-        // Anything not yet finished — the live queue the founder may need
-        // to act on (matches Overview's "pending orders" idea).
-        next['/orders'] = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
+        next['/orders'] = orders.length;
       }
       if (refundsRes.ok) {
         const refunds = (await refundsRes.json()) as { refundStatus: string }[];
-        next['/refunds'] = refunds.filter((r) => r.refundStatus === 'pending').length;
+        // Needs a human: a provider refund that failed (retry) or one that
+        // must be refunded by hand (manual_required). Trip legs share one
+        // refund, so they are counted once per trip.
+        const needsAction = (refunds as { refundStatus: string; tripId?: string | null; id?: string }[])
+          .filter((r) => r.refundStatus === 'failed' || r.refundStatus === 'manual_required');
+        next['/refunds'] = new Set(needsAction.map((r) => r.tripId ?? r.id)).size;
       }
 
       // Merge, don't replace — a request that failed this round keeps its

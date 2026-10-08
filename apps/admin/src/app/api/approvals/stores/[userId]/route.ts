@@ -28,18 +28,26 @@
 // applicant to exist, regardless of what role they currently hold.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import { sendPushNotification } from '@/lib/pushNotification';
 
-const DEFAULT_REJECTION_REASON =
-  "We couldn't verify your store documents this time. Please double-check your store details and photo, then resubmit your application.";
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/stores/[userId]'>) {
   const { userId } = await ctx.params;
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
+  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(userId)) return NextResponse.json({ error: 'Invalid applicant.' }, { status: 400 });
 
   try {
-    const { approve, reason } = (await request.json()) as { approve: boolean; reason?: string };
+    const { approve, reason, zoneId } = (await request.json()) as { approve: boolean; reason?: string; zoneId?: string };
 
     if (!approve) {
+      // The applicant sees this reason in their app — a reject without one
+      // left them guessing (the detail page used to send none at all).
+      const trimmed = typeof reason === 'string' ? reason.trim() : '';
+      if (trimmed.length < 3 || trimmed.length > 500) {
+        return NextResponse.json({ error: 'Give a rejection reason (3–500 characters).' }, { status: 400 });
+      }
       const { data: user, error } = await supabaseAdmin
         .from('users')
         .update({ is_approved: false, is_rejected: true })
@@ -48,7 +56,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
         .single();
       if (error || !user) throw new Error('No pending store application for that id.');
 
-      const rejectionReason = reason?.trim() || DEFAULT_REJECTION_REASON;
+      const rejectionReason = trimmed;
       await supabaseAdmin
         .from('store_onboarding_drafts')
         .update({ rejection_reason: rejectionReason })
@@ -73,10 +81,32 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
       .single();
     if (draftError || !draft) throw new Error('No submitted application found for that id.');
 
-    // Single-zone launch (CLAUDE.md) — the app never picks a zone, this is
-    // the one active one.
-    const { data: zone, error: zoneError } = await supabaseAdmin.from('zones').select('id').eq('is_active', true).single();
-    if (zoneError || !zone) throw new Error('No active zone configured.');
+    // One store per owner: an approved owner who reapplies must not get a
+    // second store (the migration 110 trigger enforces the same in the DB).
+    const { count: ownedStores, error: ownedError } = await supabaseAdmin
+      .from('stores')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_user_id', userId);
+    if (ownedError) throw ownedError;
+    if ((ownedStores ?? 0) > 0) {
+      return NextResponse.json(
+        { error: 'This applicant already owns a store. Reject this re-application or edit the existing store instead.' },
+        { status: 409 },
+      );
+    }
+
+    // Zones have no geometry, so the store's zone is: the one the founder
+    // picked (when several are active), else the only active zone.
+    const { data: activeZones, error: zoneError } = await supabaseAdmin.from('zones').select('id').eq('is_active', true);
+    if (zoneError) throw zoneError;
+    const zone = zoneId ? activeZones?.find((z) => z.id === zoneId) : activeZones?.length === 1 ? activeZones[0] : undefined;
+    if (!activeZones?.length) throw new Error('No active zone configured. Activate a zone first.');
+    if (!zone) {
+      return NextResponse.json(
+        { error: zoneId ? 'Pick an active zone.' : 'Several zones are active — open the application and choose its zone.' },
+        { status: 400 },
+      );
+    }
 
     // lat/lng carried straight through from the draft — the owner already
     // pinned their exact store location during onboarding (LocationPinScreen),
@@ -103,6 +133,9 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
       open_time: draft.open_time,
       close_time: draft.close_time,
     });
+    if (storeError?.code === 'P0409' && storeError.message === 'STORE_ALREADY_OWNED') {
+      return NextResponse.json({ error: 'This applicant already owns a store.' }, { status: 409 });
+    }
     if (storeError) throw storeError;
 
     const { data: user, error: userError } = await supabaseAdmin

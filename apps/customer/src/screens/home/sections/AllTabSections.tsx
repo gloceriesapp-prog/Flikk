@@ -44,6 +44,8 @@ import { useHomeSections, type HomeSectionConfig } from '../useHomeSections';
 import type { Product } from '../products/types';
 import { useNearbyGroceryInventory } from '../groceries/useNearbyGroceryInventory';
 import { BrowseLoadingText } from '../loading/BrowseLoadingText';
+import { FestivalPicksSection } from '../festival/picks/FestivalPicksSection';
+import { SeasonalSection } from '../seasonal/SeasonalSection';
 
 interface Props {
   onSelectCategory: (id: string) => void;
@@ -72,6 +74,10 @@ const copyPrefix = (key: string) => `home.${key.replace(/-([a-z])/g, (_, c: stri
 const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, copy: SectionCopy) => React.ReactNode> = {
   'quick-categories': (ctx, c) => <QuickCategoriesSection onSelectCategory={ctx.onSelectCategory} title={c.title} showTitle={false} />,
   'everyday-dairy': (_ctx, c) => <EverydayDairySection title={c.title} />,
+  // Admin Festival Section / Seasonal Section; each renders nothing while
+  // inactive or empty (FestivalPicksSection.tsx, SeasonalSection.tsx).
+  'festival-picks': (_ctx, c) => <FestivalPicksSection title={c.title} />,
+  'seasonal': (_ctx, c) => <SeasonalSection title={c.title} subtitle={c.subtitle} />,
   'nearby-stores': () => <NearbyStoresSection />,
   'trending': (ctx, c) => <TrendingSection title={c.title} subtitle={c.subtitle} products={ctx.rows.trending} />,
   'most-bought': (ctx, c) => <MostBoughtSection title={c.title} subtitle={c.subtitle} products={ctx.rows['most-bought']} />,
@@ -94,7 +100,9 @@ const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, copy: SectionCopy) => R
 const FALLBACK_ORDER = [
   'quick-categories',
   'everyday-dairy',
+  'festival-picks',
   'nearby-stores',
+  'seasonal',
   'trending',
   'most-bought',
   'category-sections',

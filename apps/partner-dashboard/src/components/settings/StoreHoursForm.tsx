@@ -43,9 +43,19 @@ export function StoreHoursForm({ store: initial, onSaved }: Props) {
     <SettingsSection title="Availability" description="When your store is open, and how long orders take to prep.">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex items-center gap-2.5 text-sm text-neutral-700">
-          <input type="checkbox" checked={store.is_active} onChange={(e) => setStore({ ...store, is_active: e.target.checked })} />
+          <input
+            type="checkbox"
+            checked={store.is_active}
+            disabled={store.admin_suspended}
+            onChange={(e) => setStore({ ...store, is_active: e.target.checked })}
+          />
           Store is open for orders
         </label>
+        {store.admin_suspended && (
+          <p className="text-sm text-red-700">
+            Suspended by Gloceries{store.suspended_reason ? `: ${store.suspended_reason}` : ''}. Contact Gloceries support to reopen.
+          </p>
+        )}
 
         <div className="grid grid-cols-3 gap-4">
           <Field label="Opens at">

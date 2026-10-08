@@ -52,6 +52,8 @@ import { fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders
 import { generateMockOrder, generateMockRating, generateMockTip, type RiderOrder } from '../data/mockOrders';
 import { getCurrentCoordinates, requestLocationPermission } from '../location/riderLocation';
 import { startBackgroundLocation, stopBackgroundLocation } from '../location/backgroundLocation';
+import { ApiError } from '../api/client';
+import { useAuthStore } from './useAuthStore';
 import { todayKey } from '../utils/date';
 import { carryOverActiveMs } from '../utils/activeTime';
 
@@ -186,6 +188,14 @@ interface RiderOrdersState {
   // behind __DEV__ at the call site (HomeScreen.tsx), never shown to a
   // real rider in a production build.
   loadSampleData: () => void;
+}
+
+// True (and flips useAuthStore to the suspended state) when the backend
+// refused presence because an admin suspended this rider.
+function handleSuspended(err: unknown): boolean {
+  if (!(err instanceof ApiError) || err.code !== 'RIDER_SUSPENDED') return false;
+  useAuthStore.getState().setSuspended(err.message || null);
+  return true;
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -365,6 +375,16 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     const granted = await requestLocationPermission();
     if (!granted) return false;
 
+    // An admin-suspended rider (riders.is_active=false) is refused by PATCH
+    // /rider/status with RIDER_SUSPENDED — surface that as the suspended
+    // screen instead of a silent "online" that dispatch never sees. Any other
+    // failure (network) is left to the ping loop below, as before.
+    const suspended = await updateRiderStatus({ status: 'online' }).then(
+      () => false,
+      (err: unknown) => handleSuspended(err),
+    );
+    if (suspended) return false;
+
     set((state) => {
       // Already online → don't restart the session clock. Fresh online →
       // stamp onlineSince, and if the banked total is from an earlier day,
@@ -392,7 +412,14 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
     async function pingAndRefresh() {
       const coords = await getCurrentCoordinates().catch(() => null);
       if (!coords) return; // permission denied / no fix yet — try again next tick
-      await updateRiderStatus({ status: 'online', lat: coords.latitude, lng: coords.longitude }).catch(() => {});
+      const suspendedNow = await updateRiderStatus({ status: 'online', lat: coords.latitude, lng: coords.longitude }).then(
+        () => false,
+        (err: unknown) => handleSuspended(err),
+      );
+      if (suspendedNow) {
+        get().goOffline();
+        return;
+      }
       const offers = await fetchDispatchOffers(coords.latitude, coords.longitude).catch(() => null);
       if (offers) set({ nearbyOffers: offers });
     }

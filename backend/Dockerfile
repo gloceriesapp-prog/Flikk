@@ -1,6 +1,6 @@
 # Backend image for Railway (API and background worker share it).
-# Build context is the REPO ROOT: the backend imports packages/server-media
-# and packages/home-content, which live outside backend/. Only those folders
+# Build context is the REPO ROOT: the backend imports packages/server-media,
+# packages/home-content and packages/promotions, which live outside backend/. Only those folders
 # are copied, so the Expo apps' dependencies are never installed.
 FROM node:22-slim AS build
 WORKDIR /app
@@ -11,6 +11,7 @@ COPY backend/tsconfig.json backend/
 COPY backend/src backend/src
 COPY packages/server-media packages/server-media
 COPY packages/home-content packages/home-content
+COPY packages/promotions packages/promotions
 RUN cd backend && pnpm run build && pnpm prune --prod
 
 FROM node:22-slim

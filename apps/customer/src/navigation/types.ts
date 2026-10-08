@@ -156,6 +156,7 @@ export type AppStackParamList = {
   Support: {target?:import('../features/customer-care/api').SupportTarget;category?:import('../features/customer-care/api').IssueCategory} | undefined;
   Notifications: undefined;
   AboutGloceries: undefined;
+  Faq: undefined;
   SupportTicket: {ticketId:string};
   MyRefunds: undefined;
   RefundDetail: {kind:'order'|'trip';refundId:string};

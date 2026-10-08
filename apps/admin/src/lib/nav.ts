@@ -7,11 +7,13 @@ import {
   ImageIcon,
   LayoutGrid,
   Map,
+  Megaphone,
   Package,
   PackageX,
   PartyPopper,
   RotateCcw,
   Settings,
+  Smartphone,
   Tag,
   Ticket,
   UserCheck,
@@ -41,6 +43,7 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/inventory', label: 'Inventory', icon: Boxes },
   { href: '/inventory-pack-stock', label: 'Available packs', icon: Package },
   { href: '/promo-codes', label: 'Promo Codes', icon: Ticket },
+  { href: '/promotions', label: 'Promotions', icon: Megaphone },
   { href: '/media', label: 'Media Library', icon: ImageIcon },
   { href: '/categories', label: 'Categories', icon: Tag },
   { href: '/home-categories', label: 'Home Categories', icon: Home },
@@ -50,6 +53,7 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/festival-greeting', label: 'Festival Greeting', icon: PartyPopper },
   { href: '/seasonal-section', label: 'Seasonal Section', icon: ImageIcon },
   { href: '/app-content', label: 'App content', icon: FileText },
+  { href: '/app-settings', label: 'App settings', icon: Smartphone },
 ];
 
 export const INSIGHTS_ITEMS: NavItem[] = [

@@ -6,7 +6,10 @@
 // as every other app/api/* route in this dashboard).
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import {
+  APPROVED_STORE_SELECT,
+  STORE_DRAFT_SELECT,
   mapApprovedStore,
   mapStoreDraft,
   type ApiApprovedStore,
@@ -14,11 +17,13 @@ import {
 } from '@/lib/supabase/approvals';
 
 export async function GET() {
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
   try {
     const [draftsRes, storesRes] = await Promise.all([
       supabaseAdmin
         .from('store_onboarding_drafts')
-        .select('user_id, store_name, category, district, photo_url, gst_number, submitted_at, users!user_id(phone, is_rejected)')
+        .select(STORE_DRAFT_SELECT)
         .not('submitted_at', 'is', null)
         .order('submitted_at', { ascending: false }),
       // owner_user_id is null for stores a founder added directly via
@@ -27,16 +32,18 @@ export async function GET() {
       // here rather than showing up as a row with no applicant.
       supabaseAdmin
         .from('stores')
-        .select('owner_user_id, name, category, district, photo_url, gst_number, created_at, users!owner_user_id(phone)')
+        .select(APPROVED_STORE_SELECT)
         .not('owner_user_id', 'is', null)
         .order('created_at', { ascending: false }),
     ]);
     if (draftsRes.error) throw draftsRes.error;
     if (storesRes.error) throw storesRes.error;
 
+    const approvedRows = storesRes.data as unknown as ApiApprovedStore[];
+    const owners = new Set(approvedRows.map((row) => row.owner_user_id));
     const applications = [
-      ...(draftsRes.data as unknown as ApiStoreDraft[]).map(mapStoreDraft),
-      ...(storesRes.data as unknown as ApiApprovedStore[]).map(mapApprovedStore),
+      ...(draftsRes.data as unknown as ApiStoreDraft[]).map((row) => ({ ...mapStoreDraft(row), alreadyOwnsStore: owners.has(row.user_id) })),
+      ...approvedRows.map(mapApprovedStore),
     ];
 
     return NextResponse.json(applications);

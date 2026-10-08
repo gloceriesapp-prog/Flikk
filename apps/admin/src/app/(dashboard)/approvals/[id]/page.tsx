@@ -10,6 +10,10 @@ import Link from 'next/link';
 import { ArrowLeft, Store, User } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import {
+  APPROVED_RIDER_SELECT,
+  APPROVED_STORE_SELECT,
+  RIDER_DRAFT_SELECT,
+  STORE_DRAFT_SELECT,
   mapApprovedRider,
   mapApprovedStore,
   mapRiderDraft,
@@ -24,31 +28,20 @@ import { RiderDocumentChecklist } from '@/components/approvals/RiderDocumentChec
 import { DecisionButtons } from '@/components/approvals/DecisionButtons';
 import type { Application } from '@/lib/types';
 
-const DRAFT_SELECT = 'user_id, store_name, category, district, photo_url, gst_number, submitted_at, users!user_id(phone, is_rejected)';
-const STORE_SELECT = 'owner_user_id, name, category, district, photo_url, gst_number, created_at, users!owner_user_id(phone)';
-const RIDER_DRAFT_SELECT =
-  'user_id, full_name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, submitted_at, users!user_id(phone, is_rejected)';
-const RIDER_SELECT =
-  'user_id, rider_code, name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, users!user_id(phone)';
-
 const DOCUMENTS_BUCKET = 'rider-documents';
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
-// aadhaar_photo_url/dl_photo_url are object PATHS on the private
-// rider-documents bucket — signed fresh on every page load, same as
-// app/api/approvals/riders/route.ts's own signPhotoUrls.
-async function signRiderPhotos<T extends { aadhaar_photo_url: string | null; dl_photo_url: string | null }>(row: T): Promise<T> {
-  const paths = [row.aadhaar_photo_url, row.dl_photo_url].filter((p): p is string => !!p);
+// photo_url (selfie) / aadhaar_photo_url / dl_photo_url are object PATHS on
+// the private rider-documents bucket — signed fresh on every page load, same
+// as app/api/approvals/riders/route.ts's own signPhotoUrls.
+async function signRiderPhotos<T extends { photo_url: string | null; aadhaar_photo_url: string | null; dl_photo_url: string | null }>(row: T): Promise<T> {
+  const paths = [row.photo_url, row.aadhaar_photo_url, row.dl_photo_url].filter((p): p is string => !!p);
   if (paths.length === 0) return row;
 
   const { data } = await supabaseAdmin.storage.from(DOCUMENTS_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
   const signedByPath = new Map((data ?? []).map((d) => [d.path, d.signedUrl]));
-
-  return {
-    ...row,
-    aadhaar_photo_url: row.aadhaar_photo_url ? (signedByPath.get(row.aadhaar_photo_url) ?? null) : null,
-    dl_photo_url: row.dl_photo_url ? (signedByPath.get(row.dl_photo_url) ?? null) : null,
-  };
+  const sign = (path: string | null) => (path ? (signedByPath.get(path) ?? null) : null);
+  return { ...row, photo_url: sign(row.photo_url), aadhaar_photo_url: sign(row.aadhaar_photo_url), dl_photo_url: sign(row.dl_photo_url) };
 }
 
 // Pending/rejected (draft, no real row yet) and approved (real `stores`/
@@ -59,13 +52,16 @@ async function signRiderPhotos<T extends { aadhaar_photo_url: string | null; dl_
 async function loadApplication(id: string): Promise<Application | null> {
   const { data: draftRow } = await supabaseAdmin
     .from('store_onboarding_drafts')
-    .select(DRAFT_SELECT)
+    .select(STORE_DRAFT_SELECT)
     .eq('user_id', id)
     .not('submitted_at', 'is', null)
     .maybeSingle();
-  if (draftRow) return mapStoreDraft(draftRow as unknown as ApiStoreDraft);
+  if (draftRow) {
+    const { count } = await supabaseAdmin.from('stores').select('id', { count: 'exact', head: true }).eq('owner_user_id', id);
+    return { ...mapStoreDraft(draftRow as unknown as ApiStoreDraft), alreadyOwnsStore: (count ?? 0) > 0 };
+  }
 
-  const { data: storeRow } = await supabaseAdmin.from('stores').select(STORE_SELECT).eq('owner_user_id', id).maybeSingle();
+  const { data: storeRow } = await supabaseAdmin.from('stores').select(APPROVED_STORE_SELECT).eq('owner_user_id', id).limit(1).maybeSingle();
   if (storeRow) return mapApprovedStore(storeRow as unknown as ApiApprovedStore);
 
   const { data: riderDraftRow } = await supabaseAdmin
@@ -76,7 +72,7 @@ async function loadApplication(id: string): Promise<Application | null> {
     .maybeSingle();
   if (riderDraftRow) return mapRiderDraft(await signRiderPhotos(riderDraftRow as unknown as ApiRiderDraft));
 
-  const { data: riderRow } = await supabaseAdmin.from('riders').select(RIDER_SELECT).eq('user_id', id).maybeSingle();
+  const { data: riderRow } = await supabaseAdmin.from('riders').select(APPROVED_RIDER_SELECT).eq('user_id', id).maybeSingle();
   if (riderRow) return mapApprovedRider(await signRiderPhotos(riderRow as unknown as ApiApprovedRider));
 
   return null;
@@ -84,8 +80,10 @@ async function loadApplication(id: string): Promise<Application | null> {
 
 export default async function ApplicationReviewPage({ params }: PageProps<'/approvals/[id]'>) {
   const { id } = await params;
+  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) notFound();
   const application = await loadApplication(id);
   if (!application) notFound();
+  const { data: zones } = await supabaseAdmin.from('zones').select('id, name').eq('is_active', true).order('name');
 
   const Icon = application.kind === 'store' ? Store : User;
 
@@ -124,7 +122,39 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
           <Field label="Phone" value={application.phone} />
           <Field label="Zone" value={application.zone} />
           {application.kind === 'store' && <Field label="District" value={application.district ?? '—'} />}
+          {application.kind === 'store' && (
+            <>
+              <Field label="Owner name" value={application.ownerName ?? '—'} />
+              <Field label="Owner email" value={application.ownerEmail ?? '—'} />
+              <Field label="Store contact phone" value={application.storePhone ?? '—'} />
+              <Field label="Hours" value={application.openTime || application.closeTime ? `${application.openTime ?? '?'} – ${application.closeTime ?? '?'}` : '—'} />
+              <Field label="Address" value={application.addressLine ?? '—'} />
+              <Field label="Landmark / directions" value={application.manualAddress ?? '—'} />
+              <div>
+                <p className="text-xs text-muted">Map pin</p>
+                {application.lat != null && application.lng != null ? (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${application.lat},${application.lng}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-medium text-ink underline"
+                  >
+                    {application.lat.toFixed(5)}, {application.lng.toFixed(5)} — open map
+                  </a>
+                ) : (
+                  <p className="text-sm font-medium text-danger">No pin — the store would be invisible to customers</p>
+                )}
+              </div>
+            </>
+          )}
         </div>
+
+        {application.rejectionReason && (
+          <div className="mt-6 rounded-2xl border border-danger/20 bg-red-50 p-4">
+            <p className="text-xs font-semibold text-danger">{application.status === 'rejected' ? 'Rejected' : 'Previously rejected'}</p>
+            <p className="mt-1 text-sm text-ink">{application.rejectionReason}</p>
+          </div>
+        )}
 
         {application.kind === 'store' ? (
           <DocumentChecklist application={application} />
@@ -143,7 +173,18 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
                 Previously rejected — approving now still creates the {application.kind === 'store' ? 'store' : 'rider profile'}.
               </p>
             )}
-            <DecisionButtons applicationId={application.id} kind={application.kind} />
+            {application.alreadyOwnsStore && (
+              <p className="mt-6 border-t border-border pt-6 text-xs font-medium text-danger">
+                This applicant already owns a live store. Approving would create a duplicate, so it is blocked — reject this
+                re-application (or edit the existing store on the Stores page).
+              </p>
+            )}
+            <DecisionButtons
+              applicationId={application.id}
+              kind={application.kind}
+              zones={application.kind === 'store' ? (zones ?? []) : []}
+              canApprove={!application.alreadyOwnsStore}
+            />
           </>
         )}
       </div>

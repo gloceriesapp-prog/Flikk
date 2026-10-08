@@ -6,11 +6,13 @@
 // service-role only, same "no anon-key read policy" reason every other
 // service-role admin page is a client component calling its own API route.
 
-import { use, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, MapPin } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { ReasonModal } from '@/components/ui/ReasonModal';
+import { BLOCK_DURATIONS } from '@/lib/customerBlocks';
 import type { OrderStatus } from '@/lib/types';
 
 interface CustomerDetail {
@@ -18,6 +20,8 @@ interface CustomerDetail {
   name: string | null;
   phone: string;
   createdAt: string;
+  block: { reason: string; blockedAt: string | null; blockedUntil: string | null } | null;
+  blockHistory: { reason: string; blockedAt: string; blockedUntil: string | null; unblockedAt: string | null }[];
   addresses: { id: string; label: string | null; line1: string; landmark: string | null; isDefault: boolean }[];
   orders: { id: string; status: OrderStatus; total: number; placedAt: string; storeName: string }[];
 }
@@ -26,15 +30,43 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [blocking, setBlocking] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch(`/api/customers/${id}`)
+  const load = useCallback(() => {
+    return fetch(`/api/customers/${id}`)
       .then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error ?? 'Could not load this customer.');
         setCustomer(await res.json());
       })
       .catch((err) => setLoadError(err instanceof Error ? err.message : 'Could not load this customer.'));
   }, [id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function block(reason: string, duration: string | null) {
+    const res = await fetch(`/api/customers/${id}/block`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason, duration }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Could not block this customer.');
+    setBlocking(false);
+    await load();
+  }
+
+  async function unblock() {
+    if (!window.confirm('Unblock this customer? They can sign in and order again.')) return;
+    setActionError(null);
+    const res = await fetch(`/api/customers/${id}/block`, { method: 'DELETE' });
+    if (!res.ok) {
+      setActionError((await res.json().catch(() => null))?.error ?? 'Could not unblock this customer.');
+      return;
+    }
+    await load();
+  }
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -62,6 +94,49 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             <p className="mt-4 border-t border-border pt-4 text-xs text-muted">
               Joined {new Date(customer.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+              {customer.block ? (
+                <div>
+                  <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-danger">Blocked</span>
+                  <p className="mt-2 text-sm text-ink">{customer.block.reason}</p>
+                  <p className="text-xs text-muted">
+                    {customer.block.blockedUntil ? `Until ${formatDateTime(customer.block.blockedUntil)}` : 'Until unblocked'}
+                  </p>
+                </div>
+              ) : (
+                <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-success">Active</span>
+              )}
+              {customer.block ? (
+                <button type="button" onClick={() => void unblock()} className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
+                  Unblock
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionError(null);
+                    setBlocking(true);
+                  }}
+                  className="rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Block customer
+                </button>
+              )}
+            </div>
+            {actionError && <p className="mt-2 text-sm text-danger">{actionError}</p>}
+            {customer.blockHistory.length > 0 && (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="mb-2 text-xs font-semibold text-ink">Block history</p>
+                <ul className="flex flex-col gap-1.5">
+                  {customer.blockHistory.map((b) => (
+                    <li key={b.blockedAt} className="text-xs text-muted">
+                      {formatDateTime(b.blockedAt)} · {b.reason}
+                      {b.unblockedAt ? ` · lifted ${formatDateTime(b.unblockedAt)}` : b.blockedUntil ? ` · until ${formatDateTime(b.blockedUntil)}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="rounded-3xl border border-border bg-card p-6">
@@ -108,6 +183,21 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           </div>
         </>
       )}
+
+      {blocking && (
+        <ReasonModal
+          title="Block customer"
+          description="The customer is signed out of the app on their next request and cannot sign in or order until the block ends or you unblock them."
+          confirmLabel="Block"
+          durations={BLOCK_DURATIONS.map((d) => ({ value: d.value, label: d.label }))}
+          onClose={() => setBlocking(false)}
+          onConfirm={block}
+        />
+      )}
     </div>
   );
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }

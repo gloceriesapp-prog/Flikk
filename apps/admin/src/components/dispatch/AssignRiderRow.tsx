@@ -1,14 +1,16 @@
 'use client';
 
-// A3 — fully manual: founder picks from active riders, no suggested-rider
-// algorithm, no auto-assign control (specs/00-foundation/out-of-scope.md).
-// A plain <select> is the entire "algorithm" here, on purpose. Writes via
-// app/api/orders/[id]/assign-rider (guarded packed + unassigned update).
+// A3 — fully manual: founder picks a rider, no auto-assign control
+// (specs/00-foundation/out-of-scope.md). RiderSelect lists riders who are
+// live now (online + fresh ping) first. Writes via
+// app/api/orders/[id]/assign-rider (admin_assign_order_rider: trip-wide via
+// assign_trip_rider for a trip leg, guarded packed + unassigned otherwise).
 
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import type { ActiveRider, Order } from '@/lib/types';
 import { formatCurrency } from '@/lib/format';
+import { RiderSelect } from './RiderSelect';
 
 interface Props {
   order: Order;
@@ -44,7 +46,10 @@ export function AssignRiderRow({ order, riders }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-4 border-b border-border py-4 last:border-0">
       <div className="min-w-[160px] flex-1">
-        <p className="text-sm font-semibold text-ink">{order.id}</p>
+        <p className="text-sm font-semibold text-ink">
+          #{order.id.slice(0, 6).toUpperCase()}
+          {order.tripId && <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Trip — all stops</span>}
+        </p>
         <p className="text-xs text-muted">
           {order.storeName} · {formatCurrency(order.amount)}
         </p>
@@ -57,19 +62,7 @@ export function AssignRiderRow({ order, riders }: Props) {
         </span>
       ) : (
         <div className="flex items-center gap-2">
-          <select
-            value={selectedRiderId}
-            onChange={(e) => setSelectedRiderId(e.target.value)}
-            disabled={pending}
-            className="rounded-full border border-border bg-canvas px-3.5 py-2 text-sm text-ink-soft focus:outline-none"
-          >
-            <option value="">Select rider</option>
-            {riders.map((rider) => (
-              <option key={rider.id} value={rider.id}>
-                {rider.name} ({rider.activeOrders} active)
-              </option>
-            ))}
-          </select>
+          <RiderSelect riders={riders} value={selectedRiderId} onChange={setSelectedRiderId} disabled={pending} />
           <button
             type="button"
             disabled={!selectedRiderId || pending}

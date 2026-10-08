@@ -7,12 +7,11 @@
 // display of a server-computed number — see ../data.ts's own note on why
 // nothing here is computed client-side.
 
-import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { CalendarCheckIn01Icon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
-import { formatPayoutCountdown, nextPayoutDate, payoutCountdown } from '../../../utils/nextPayoutDate';
+import { PAYOUT_POLICY } from '../../../utils/payoutPolicy';
 import { payoutStatusPresentation, type WeeklyPayout } from '../data';
 import { PayoutOrdersLink } from './PayoutOrdersLink';
 import { PayoutStatusDetail } from './PayoutStatusDetail';
@@ -23,19 +22,6 @@ interface Props {
 
 export function CurrentWeekPayoutCard({ payout }: Props) {
   const { label, color } = payoutStatusPresentation(payout);
-
-  // Real countdown to the next actual release — mirrors backend's own
-  // cron.schedule('0 9 * * 1', { timezone: 'Asia/Kolkata' }) exactly
-  // (utils/nextPayoutDate.ts), not a guessed/static date. Recomputed every
-  // minute, not every second — a multi-day countdown doesn't need
-  // per-second precision, and this avoids a needless re-render tick.
-  const [countdownLabel, setCountdownLabel] = useState(() => formatPayoutCountdown(payoutCountdown(nextPayoutDate())));
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCountdownLabel(formatPayoutCountdown(payoutCountdown(nextPayoutDate())));
-    }, 60_000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <View className="gap-5 rounded-[28px] bg-[#151515] p-6">
@@ -69,17 +55,10 @@ export function CurrentWeekPayoutCard({ payout }: Props) {
 
       <PayoutStatusDetail payout={payout} variant="dark" />
 
-      {payout.status === 'pending' && payout.nextSettlementLabel && (
-        <View className="gap-2 border-t border-white/10 pt-4">
-          <View className="flex-row items-center gap-2">
-            <AppIcon icon={CalendarCheckIn01Icon} size={14} color={`${colors.lime}CC`} />
-            <Text className="text-[14px] font-medium text-white/50">
-              Scheduled for <Text className="font-semibold text-white/80">{payout.nextSettlementLabel}</Text>
-            </Text>
-          </View>
-          <Text className="text-[14px] font-medium text-white/50">
-            In <Text className="font-semibold text-white/80" style={{ fontVariant: ['tabular-nums'] }}>{countdownLabel}</Text>
-          </Text>
+      {payout.status === 'pending' && (
+        <View className="flex-row items-center gap-2 border-t border-white/10 pt-4">
+          <AppIcon icon={CalendarCheckIn01Icon} size={14} color={`${colors.lime}CC`} />
+          <Text className="text-[14px] font-medium text-white/50">{PAYOUT_POLICY}</Text>
         </View>
       )}
 

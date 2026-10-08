@@ -81,11 +81,16 @@ export interface PartnerOrder {
   // it (address unclear, item substitution question), not only after.
   customerPhone: string;
   // Epoch ms — the anchor for the total accept window
-  // (features/order-expiry/orderExpiry.ts's ORDER_ACCEPT_WINDOW_MS), not
+  // (features/order-expiry/orderExpiry.ts's getOrderAcceptWindowMs), not
   // derivable from placedAtLabel ("2 min ago" isn't a timestamp) or
   // placedAtTime ("12:40 pm" has no date and drifts stale by the next
   // day). A real fetch populates this from orders.placed_at.
   placedAtTimestamp: number;
+  // Epoch ms the order reached the store (orders.store_visible_at: checkout
+  // for COD, payment for online) — the accept window's start, same anchor as
+  // the backend's store_no_response job. Undefined for sample rows / older
+  // backends, which fall back to placedAtTimestamp.
+  acceptWindowStartTimestamp?: number;
   // Only ever true for buildSampleOrders()'s own rows — never set on a
   // mapApiOrder() result. Lets OrdersScreen show a plain banner instead of
   // silently mixing fake orders into what looks like a real queue.
@@ -309,5 +314,6 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     deliveryAddress: [order.addresses?.line1 ?? 'Address unavailable', order.addresses?.landmark ?? ''],
     customerPhone: order.users?.phone ?? '',
     placedAtTimestamp: new Date(order.placed_at).getTime(),
+    acceptWindowStartTimestamp: order.store_visible_at ? new Date(order.store_visible_at).getTime() : undefined,
   };
 }

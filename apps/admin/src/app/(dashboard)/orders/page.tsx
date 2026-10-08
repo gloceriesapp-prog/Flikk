@@ -1,12 +1,7 @@
-// A2 — Cross-app order monitor. Backed by real data (GET /api/orders,
-// service-role Supabase read — see that route's own note) and a real
-// Supabase Realtime subscription (app/api/realtime's SSE relay ->
-// useAdminRealtime, wired inside OrdersTable) so any order write from the
-// customer, partner, or rider app refetches this table live, no manual
-// reload. OrdersTable's filter pills are the client-side half of
-// specs/05-platform/realtime.md's own scoping note; server-side
-// filter/pagination is a data-layer concern for once order volume outgrows
-// the current 200-row cap, not before.
+// A2 — Cross-app order monitor: server-side filtered, paginated list with CSV
+// export (OrdersTable -> GET /api/orders). Each row opens /orders/[id], the
+// detail page with the admin actions (cancel, status, rider, delivery code).
+// Live via Supabase Realtime (useAdminRealtime inside OrdersTable).
 
 import { OrdersTable } from '@/components/dashboard/OrdersTable';
 

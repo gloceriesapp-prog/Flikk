@@ -5,9 +5,10 @@
 --    checkoutQuote.ts). Default 15 keeps the current price.
 -- 2. rider_delivery_payout(fee, extra_stops): the one rider pay rule.
 --    - rider_base_payout > 0: the rider earns max(rider_base_payout, the
---      delivery fee charged for that order or trip) plus
---      rider_extra_stop_payout for each extra shop. A free-delivery order
---      still pays rider_base_payout.
+--      delivery fee charged for that order or trip less the customer's
+--      extra-shop fee) plus rider_extra_stop_payout for each extra shop, so
+--      extra shops are paid once, by the extra-shop payout. A free-delivery
+--      order still pays rider_base_payout.
 --    - rider_base_payout = 0 (default): unchanged, the rider earns exactly the
 --      delivery fee charged; the extra-shop part of that fee is reported as
 --      the extra-stop share.
@@ -63,7 +64,7 @@ AS $function$
            greatest(coalesce(p_delivery_fee, 0), 0) AS fee,
            greatest(coalesce(p_extra_stops, 0), 0) AS stops
   ), p AS (
-    SELECT round(CASE WHEN base_payout > 0 THEN greatest(base_payout, fee) ELSE fee - least(fee, stop_fee * stops) END, 2) AS base_part,
+    SELECT round(CASE WHEN base_payout > 0 THEN greatest(base_payout, fee - least(fee, stop_fee * stops)) ELSE fee - least(fee, stop_fee * stops) END, 2) AS base_part,
            round(CASE WHEN base_payout > 0 THEN stop_payout * stops ELSE least(fee, stop_fee * stops) END, 2) AS extra_part
     FROM s
   )

@@ -334,12 +334,16 @@ ordersRouter.patch(
         }
         update.cancel_reason = reason;
       }
+      // Who cancelled (migration 109), shown to admin next to the reason.
+      if (to === 'cancelled') update.cancelled_by = req.user!.role;
 
       if (order.trip_id && to === 'cancelled') {
         // A shared payment must never be refunded as a gross individual leg.
         // Authorized merchants/riders/admin cancel the whole pre-pickup trip.
-        const { data: outcome, error: cancelError } = await supabase.rpc('cancel_customer_trip', {
-          p_trip_id: order.trip_id, p_customer_id: order.customer_id, p_reason: reason ?? 'Order cancelled',
+        // cancel_trip_from_leg (migration 109) wraps cancel_customer_trip and
+        // records which leg/store (and role) caused the trip cancellation.
+        const { data: outcome, error: cancelError } = await supabase.rpc('cancel_trip_from_leg', {
+          p_order: order.id, p_reason: reason ?? 'Order cancelled', p_actor_role: req.user!.role,
         });
         if (cancelError) throw cancelError;
         if ((outcome as { outcome: string }).outcome !== 'cancelled') {

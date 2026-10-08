@@ -86,6 +86,8 @@ interface Props {
   // Resolved by HomeScreen.tsx from its own real tab list — 'all' when
   // the All tab is selected. Drives which gradient renders.
   activeCategoryName: string;
+  // The admin festival tab's header colour when that tab is selected.
+  activeFestivalHeaderColor?: string;
   activeTabBackgroundColor?: string;
   scrollY: SharedValue<number>;
   // Home shows the category tabs row; other screens reusing this header
@@ -109,6 +111,7 @@ export function HomeHeader({
   selectedCategoryId,
   onSelectCategory,
   activeCategoryName,
+  activeFestivalHeaderColor,
   activeTabBackgroundColor = HOME_BODY_BACKGROUND,
   scrollY,
   showCategoryTabs = true,
@@ -121,7 +124,7 @@ export function HomeHeader({
   // own background still uses that spotlight accent for itself (its own
   // call to this same hook), unaffected by this — the header's own
   // gradient is a separate resolution now.
-  const gradient = useActiveHeaderGradient(activeCategoryName, false);
+  const gradient = useActiveHeaderGradient(activeCategoryName, false, activeFestivalHeaderColor);
   const hasHeaderArtwork = activeCategoryName.trim().toLowerCase() === 'regional';
 
   // Primary header copy and controls use white. Search and category cards

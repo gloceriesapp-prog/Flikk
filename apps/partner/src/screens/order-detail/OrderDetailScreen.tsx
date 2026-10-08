@@ -19,7 +19,6 @@ import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { ApiError } from '../../api/client';
 import { useOrdersStore } from '../../store/useOrdersStore';
-import { formatPayoutDateLabel, nextPayoutDate } from '../../utils/nextPayoutDate';
 import type { AppStackParamList } from '../../navigation/types';
 import { OrderDetailItemRow } from './components/OrderDetailItemRow';
 import { OrderDetailSectionHeader } from './components/OrderDetailSectionHeader';
@@ -143,7 +142,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           commissionPercent={commissionPercent}
           commissionAmount={order.commissionAmount}
           netPayout={order.netPayout}
-          payoutDateLabel={order.status === 'delivered' ? formatPayoutDateLabel(nextPayoutDate()) : undefined}
+          delivered={order.status === 'delivered'}
         />
       </ScrollView>
 

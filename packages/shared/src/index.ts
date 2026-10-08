@@ -23,3 +23,4 @@ export * from './auth';
 export * from './location';
 export * from './orders';
 export * from './payouts';
+export * from './release';

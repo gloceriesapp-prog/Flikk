@@ -2,10 +2,9 @@ import { View } from 'react-native';
 import { SectionTitle } from '../components/SectionTitle';
 import { ALL_TAB, buildHomeCategories, withHomeCategoryTabs } from '../data/categoryTabs';
 import { useHomeTabs } from '../data/useHomeTabs';
-import { isFestivalTabName } from '../festival/data';
 import { QuickCategoryCard } from './QuickCategoryCard';
 import { quickCategoryRows } from './layout';
-import { GROCERY_QUICK_CATEGORY_IMAGE, GROCERY_IMAGE_BOTTOM_BLEED, NAVRATRI_QUICK_CATEGORY_IMAGE } from './data';
+import { GROCERY_QUICK_CATEGORY_IMAGE, GROCERY_IMAGE_BOTTOM_BLEED } from './data';
 
 interface Props {
   onSelectCategory: (id: string) => void;
@@ -24,9 +23,10 @@ export function QuickCategoriesSection({ onSelectCategory, title = 'Quick catego
   const groceryIds = new Set(sourceTabs
     .filter((tab) => tab.contentKey === 'grocery' || ['grocery', 'groceries'].includes(tab.name.trim().toLowerCase()))
     .map((tab) => tab.id));
-  const festivalIds = new Set(sourceTabs
-    .filter((tab) => !tab.contentKey && isFestivalTabName(tab.name))
-    .map((tab) => tab.id));
+  // The admin festival tab's own header artwork (festival_greeting, 112).
+  const festivalImages = new Map(sourceTabs
+    .filter((tab) => tab.festival)
+    .map((tab) => [tab.id, tab.festival?.headerImageUri ?? undefined] as const));
   const categories = buildHomeCategories(tabs).filter((category) => category.id !== ALL_TAB.id && !excludedIds.has(category.id));
   const rows = quickCategoryRows(categories);
   if (rows.length === 0) return null;
@@ -42,9 +42,9 @@ export function QuickCategoriesSection({ onSelectCategory, title = 'Quick catego
                 <QuickCategoryCard
                   category={category}
                   onSelect={onSelectCategory}
-                  imageUrl={groceryIds.has(category.id) ? GROCERY_QUICK_CATEGORY_IMAGE : festivalIds.has(category.id) ? NAVRATRI_QUICK_CATEGORY_IMAGE : undefined}
+                  imageUrl={groceryIds.has(category.id) ? GROCERY_QUICK_CATEGORY_IMAGE : festivalImages.get(category.id)}
                   imageBottomBleed={groceryIds.has(category.id) ? GROCERY_IMAGE_BOTTOM_BLEED : 0}
-                  imageScale={festivalIds.has(category.id) ? 1.12 : 1}
+                  imageScale={festivalImages.has(category.id) ? 1.12 : 1}
                 />
               </View>
             ))}

@@ -23,6 +23,7 @@ import { IncomingOrderAlert } from './src/features/incoming-order-alert/Incoming
 import { primeOrderAlertSound } from './src/features/incoming-order-alert/playOrderAlertSound';
 import { OrderReminderBanner } from './src/features/order-expiry/components/OrderReminderBanner';
 import { useOrderExpiryWatcher } from './src/features/order-expiry/useOrderExpiryWatcher';
+import { ReleaseGate } from './src/features/app-release/ReleaseGate';
 import { DeliveryEarnedBanner } from './src/features/delivery-earned-alert/DeliveryEarnedBanner';
 import { useDeliveryEarnedWatcher } from './src/features/delivery-earned-alert/useDeliveryEarnedWatcher';
 
@@ -88,18 +89,22 @@ function App() {
         {/* RootNavigator owns its own NavigationContainer — see that
             file's own note on why the auth split lives there now instead
             of here, same shape as apps/customer/App.tsx. */}
-        <RootNavigator />
-        {hasFullAccess && (
-          <>
-            {/* Mounted outside AppNavigator's own tree — a new order
-                needs to interrupt whichever tab is focused. See
-                src/features/incoming-order-alert/IncomingOrderAlert.tsx's
-                own note. */}
-            <IncomingOrderAlert />
-            <OrderReminderBanner />
-            <DeliveryEarnedBanner />
-          </>
-        )}
+        {/* Admin App settings: maintenance / required update replace the
+            whole app (features/app-release/ReleaseGate.tsx). */}
+        <ReleaseGate>
+          <RootNavigator />
+          {hasFullAccess && (
+            <>
+              {/* Mounted outside AppNavigator's own tree — a new order
+                  needs to interrupt whichever tab is focused. See
+                  src/features/incoming-order-alert/IncomingOrderAlert.tsx's
+                  own note. */}
+              <IncomingOrderAlert />
+              <OrderReminderBanner />
+              <DeliveryEarnedBanner />
+            </>
+          )}
+        </ReleaseGate>
         <StatusBar style="dark" />
       </QueryClientProvider>
     </SafeAreaProvider>

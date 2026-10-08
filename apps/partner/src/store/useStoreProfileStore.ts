@@ -21,6 +21,8 @@ interface StoreRow {
   name: string;
   category: string;
   is_active: boolean;
+  admin_suspended?: boolean;
+  suspended_reason?: string | null;
   district: string | null;
   address_line: string | null;
   manual_address: string | null;
@@ -44,6 +46,8 @@ function fromRow(row: StoreRow): StoreProfile {
     storeName: row.name,
     category: row.category,
     isOpen: row.is_active,
+    adminSuspended: row.admin_suspended === true,
+    suspendedReason: row.suspended_reason ?? null,
     district: row.district ?? '',
     addressLine: row.address_line,
     manualAddress: row.manual_address ?? '',
@@ -137,9 +141,19 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
   },
 
   toggleOpen: () => {
+    // Suspended by Gloceries: the switch is disabled in the UI and the
+    // backend refuses to reopen (409 STORE_SUSPENDED) — never flip locally.
+    if (get().profile.adminSuspended) return;
     set((state) => ({ profile: { ...state.profile, isOpen: !state.profile.isOpen } }));
     const { id, isOpen } = get().profile;
     if (!id) return;
-    apiRequest('/partner/store', { method: 'PATCH', body: { is_active: isOpen } }).catch(() => {});
+    apiRequest('/partner/store', { method: 'PATCH', body: { is_active: isOpen } }).catch((err) => {
+      // Suspended since the last load — undo the optimistic flip and pull
+      // the real state (with the reason) so the banner shows.
+      if (err instanceof ApiError && err.code === 'STORE_SUSPENDED') {
+        set((state) => ({ profile: { ...state.profile, isOpen: false, adminSuspended: true } }));
+        void get().loadProfile();
+      }
+    });
   },
 }));
