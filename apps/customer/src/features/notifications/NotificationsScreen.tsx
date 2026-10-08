@@ -10,7 +10,7 @@ import { AppIcon } from '../../components/AppIcon';
 import type { AppStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ApiError } from '../../api/client';
-import { fetchNotifications, type CustomerNotification } from './api';
+import { fetchNotifications, markNotificationRead, type CustomerNotification } from './api';
 import { notificationPermission, registerNotifications, openNotificationSettings } from './native';
 import { queueOrderNotification } from './navigation';
 
@@ -121,8 +121,14 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
         renderItem={({ item }) => (
           <View className="mx-5"><NotificationRow item={item} onPress={() => {
             if (!customerId) return;
+            const orderId = item.trip_id ?? item.order_id;
+            // A team message has no order to open; reading it just marks it read.
+            if (!orderId) {
+              if (!item.read_at) void markNotificationRead(item.id).then(() => refetch()).catch(() => {});
+              return;
+            }
             queueOrderNotification({ type: 'order', customer_id: customerId, notification_id: item.id,
-              order_id: item.trip_id ?? item.order_id, is_trip: !!item.trip_id });
+              order_id: orderId, is_trip: !!item.trip_id });
           }} /></View>
         )}
       />

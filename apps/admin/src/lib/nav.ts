@@ -1,7 +1,11 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  AlarmClock,
   Banknote,
+  Bell,
   CreditCard,
+  Gift,
+  Send,
   Bike,
   Boxes,
   Coins,
@@ -59,6 +63,7 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/app-content', label: 'App content', icon: FileText },
   { href: '/app-settings', label: 'App settings', icon: Smartphone },
   { href: '/checkout-settings', label: 'Checkout settings', icon: CreditCard },
+  { href: '/notifications', label: 'Customer notifications', icon: Bell },
 ];
 
 export const INSIGHTS_ITEMS: NavItem[] = [
@@ -70,6 +75,9 @@ export const INSIGHTS_ITEMS: NavItem[] = [
   { href: '/rider-earnings', label: 'Rider earnings', icon: Coins },
   { href: '/cash-on-delivery', label: 'Cash on delivery', icon: HandCoins },
   { href: '/refunds', label: 'Refunds', icon: RotateCcw },
+  { href: '/stuck-payments', label: 'Stuck checkouts', icon: AlarmClock },
+  { href: '/push-outbox', label: 'Push outbox', icon: Send },
+  { href: '/referrals', label: 'Referrals', icon: Gift },
   { href: '/failed-deliveries', label: 'Failed Deliveries', icon: PackageX },
   { href: '/reviews', label: 'Reviews', icon: Star },
   { href: '/zones', label: 'Zones', icon: Map },

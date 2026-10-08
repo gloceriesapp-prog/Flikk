@@ -184,6 +184,9 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               ) : (
                 <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-success">Active</span>
               )}
+              <Link href={`/notifications?customerId=${customer.id}`} className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
+                Send push
+              </Link>
               {customer.block ? (
                 <button type="button" onClick={() => void unblock()} className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
                   Unblock
