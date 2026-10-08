@@ -1,12 +1,13 @@
 // Payment groups, selection-only (Cart places the order). UPI apps (only
-// those actually installed) use Cashfree UPI intent; UPI ID uses a verified
-// collect request; cards, netbanking and the rest use Cashfree checkout.
+// those actually installed) use Cashfree UPI intent; UPI ID (iOS only, NPCI
+// withdrew collect on Android) uses a verified collect request; cards, netbanking and the rest use Cashfree checkout.
 import { Image, Pressable, Text, View } from 'react-native';
 import { CreditCardIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage } from '../../../components/AppImage';
 import { colors, minTouchTarget } from '../../../theme/tokens';
 import { UpiIdSection } from './UpiIdSection';
+import { UPI_ID_SUPPORTED } from '../../../payments/upiIntent';
 import type { UpiApp } from '../../../payments/upiApps';
 
 import type { PaymentMethod } from '../../../payments/paymentMethod';
@@ -99,7 +100,7 @@ export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, upi
         </View>
       ) : null}
 
-      {upiId ? <UpiIdSection initialVpa={upiId.initialVpa} rememberedByDefault={upiId.remembered}
+      {upiId && UPI_ID_SUPPORTED ? <UpiIdSection initialVpa={upiId.initialVpa} rememberedByDefault={upiId.remembered}
         selected={method === 'upi_id'} onUse={upiId.onUse} /> : null}
 
       <View>

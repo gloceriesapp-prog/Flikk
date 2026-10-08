@@ -75,6 +75,9 @@ export async function createUpiCollect(req: AuthedRequest, res: Response, next: 
   try {
     const vpa = typeof req.body?.vpa === 'string' ? req.body.vpa.trim() : '';
     if (!VPA_FORMAT.test(vpa)) throw new AppError(400, 'INVALID_VPA', 'Enter a valid UPI ID, like name@bank.');
+    // NPCI withdrew UPI collect for merchant payments on Android; Cashfree
+    // rejects it there. Refuse before creating any payment attempt.
+    if (req.body?.platform === 'android') throw new AppError(400, 'UPI_COLLECT_UNSUPPORTED', 'Paying by UPI ID is not available on Android. Choose a UPI app instead.');
     const target = paymentTarget(req.body);
     const order = await ensureProviderOrder(target, req.user!.id);
     await requirePaymentRetrySafe(target, order.order_id, order.order_amount);

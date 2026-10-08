@@ -10,9 +10,10 @@ export function paymentMethodLabel(method: PaymentMethod, apps: UpiApp[]): strin
   return apps.find((app) => `upi_app:${app.id}` === method)?.name ?? 'UPI';
 }
 
-// 'upi_id' is only usable with a verified UPI ID in hand for this checkout.
-export function availablePaymentMethod(method: string | null, apps: UpiApp[], hasVerifiedVpa = false): PaymentMethod | null {
+// 'upi_id' is only usable with a verified UPI ID in hand for this checkout,
+// and only where UPI collect is still allowed (see UPI_ID_SUPPORTED).
+export function availablePaymentMethod(method: string | null, apps: UpiApp[], hasVerifiedVpa = false, upiIdSupported = true): PaymentMethod | null {
   if (method === 'cod' || method === 'card' || method === 'online') return method;
-  if (method === 'upi_id') return hasVerifiedVpa ? method : null;
+  if (method === 'upi_id') return upiIdSupported && hasVerifiedVpa ? method : null;
   return apps.some((app) => `upi_app:${app.id}` === method) ? method as PaymentMethod : null;
 }

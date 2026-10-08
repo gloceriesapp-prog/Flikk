@@ -61,7 +61,7 @@ export function validateVpa(vpa: string): Promise<{ valid: boolean; name: string
 // expiresAt is optional in the contract; the processing screen falls back to
 // its own poll budget when absent.
 export function createUpiCollectPayment(target: PaymentTarget, vpa: string): Promise<{ providerOrderId?: string; expiresAt?: string | null }> {
-  return apiRequest('/payments/upi/collect', { method: 'POST', body: { ...target, vpa } });
+  return apiRequest('/payments/upi/collect', { method: 'POST', body: { ...target, vpa, platform: Platform.OS } });
 }
 
 // Server fetches the order + payments from Cashfree and settles only on a

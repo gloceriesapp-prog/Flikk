@@ -16,7 +16,7 @@ import { useAuthStore } from '../../../store/useAuthStore';
 import { fetchPendingPayments, recoverPayment, createPaymentOrder, createUpiIntentPayment, createUpiCollectPayment, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
 import { openCashfreeCheckout } from '../../../payments/openCashfreeCheckout';
 import type { UpiApp } from '../../../payments/upiApps';
-import { canLaunchUpiApp, detectInstalledUpiApps, openUpiApp } from '../../../payments/upiIntent';
+import { canLaunchUpiApp, detectInstalledUpiApps, openUpiApp, UPI_ID_SUPPORTED } from '../../../payments/upiIntent';
 import { keepsCheckoutAttempt } from './attemptPolicy';
 import { selectCartStoreCount, useCartStore } from '../../../store/useCartStore';
 import { formatIstMinute, isOutsideOperatingHours } from '../../../utils/operatingHours';
@@ -65,7 +65,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   const ownerEpoch = useRef(useAuthStore.getState().sessionEpoch).current;
   const stillOwner = () => useAuthStore.getState().sessionEpoch === ownerEpoch;
   const chosenMethod = selectedPaymentMethod;
-  const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, !!upiVpa);
+  const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, !!upiVpa, UPI_ID_SUPPORTED);
   const latestSelection = useRef({ addressId: selectedAddress?.id, paymentMethod });
   useLayoutEffect(() => {
     latestSelection.current = { addressId: selectedAddress?.id, paymentMethod };

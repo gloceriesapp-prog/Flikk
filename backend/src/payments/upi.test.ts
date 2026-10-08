@@ -67,6 +67,7 @@ it('sends a collect request only for a well-formed VPA and returns its expiry', 
   expect((await call(createUpiCollect, { orderId: id, vpa: 'ravi@ybl' })).json).toEqual({ providerOrderId: 'gl_x', providerPaymentId: '7', vpa: 'ravi@ybl', expiresAt: '2026-10-07T18:30:00+05:30' });
   expect(mocks.pay).toHaveBeenCalledWith(expect.objectContaining({ upi: { channel: 'collect', upi_id: 'ravi@ybl', upi_expiry_minutes: 10 } }));
   expect((await call(createUpiCollect, { orderId: id, vpa: 'not-a-vpa' })).error).toMatchObject({ code: 'INVALID_VPA' });
+  expect((await call(createUpiCollect, { orderId: id, vpa: 'ravi@ybl', platform: 'android' })).error).toMatchObject({ code: 'UPI_COLLECT_UNSUPPORTED' });
 });
 const released = expect.objectContaining({ upi_state: null, upi_link: null, upi_payment_id: null });
 it('releases the UPI claim when Cashfree rejects a collect, so a corrected VPA can be sent', async () => {
