@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { SectionTitle } from '../components/SectionTitle';
-import { ALL_TAB, buildHomeCategories, withHomeCategoryTabs } from '../data/categoryTabs';
+import { ALL_TAB, buildHomeCategories } from '../data/categoryTabs';
 import { useHomeTabs } from '../data/useHomeTabs';
 import { QuickCategoryCard } from './QuickCategoryCard';
 import { quickCategoryRows } from './layout';
@@ -16,9 +16,9 @@ export function QuickCategoriesSection({ onSelectCategory, title = 'Quick catego
   const { data: tabs = [] } = useHomeTabs();
   // Hide only these shortcuts, preserving their actual tabs/routes. Match
   // stable source names so an admin label override cannot bring them back.
-  const sourceTabs = withHomeCategoryTabs(tabs);
+  const sourceTabs = tabs;
   const excludedIds = new Set(sourceTabs
-    .filter((tab) => ['bakery', 'bakeries', 'parts & tools'].includes(tab.name.trim().toLowerCase()))
+    .filter((tab) => ['bakery', 'bakeries'].includes(tab.name.trim().toLowerCase()))
     .map((tab) => tab.id));
   const groceryIds = new Set(sourceTabs
     .filter((tab) => tab.contentKey === 'grocery' || ['grocery', 'groceries'].includes(tab.name.trim().toLowerCase()))

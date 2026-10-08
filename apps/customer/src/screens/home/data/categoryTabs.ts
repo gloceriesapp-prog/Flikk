@@ -1,6 +1,6 @@
-// Home's top tab row. All is permanent; admin tabs come from /home-tabs.
-// Home labels are customised without renaming the underlying records.
-// Parts & Tools is also shown locally until its admin tab is configured.
+// Home's top tab row. All is permanent; every other tab comes from admin
+// data (/home-tabs + Home Tab Content). The app injects and hides nothing:
+// a tab exists exactly when admin has it active.
 
 import {
   Bread01Icon,
@@ -29,17 +29,6 @@ export function homeTabLabel(name: string): string {
   return name;
 }
 
-// Dairy now lives in the All feed. Keep Parts & Tools separate from any
-// Dairy admin content, and prefer its real tab when configured.
-const PARTS_AND_TOOLS_HOME_TAB: RemoteHomeTab = { id: 'home-header-parts-tools', name: 'Parts & Tools', tiles: [], banners: [] };
-
-export function withHomeCategoryTabs(tabs: RemoteHomeTab[]): RemoteHomeTab[] {
-  const homeTabs = tabs.filter((tab) => tab.contentKey || tab.name.trim().toLowerCase() !== 'dairy');
-  const tabsWithTools = homeTabs.some((tab) => tab.name.trim().toLowerCase() === 'parts & tools') ? homeTabs : [...homeTabs, PARTS_AND_TOOLS_HOME_TAB];
-  // The admin festival tab is already resolved first by useHomeTabs.
-  return tabsWithTools;
-}
-
 // Real tabs carry no icon of their own (title-only by admin design — see
 // home-categories/page.tsx's own note on why). A handful of well-known
 // names still get their old icon for continuity; anything else falls back
@@ -60,7 +49,7 @@ export function iconForTabName(name: string): IconSvgElement {
 // Header tabs and in-feed shortcuts must share IDs, labels, icons and
 // visibility, including admin-managed categories and festival fallbacks.
 export function buildHomeCategories(tabs: RemoteHomeTab[]): Category[] {
-  return [ALL_TAB, ...withHomeCategoryTabs(tabs).map((tab) => ({
+  return [ALL_TAB, ...tabs.map((tab) => ({
     id: tab.id,
     label: tab.label ?? homeTabLabel(tab.name),
     icon: iconForTabName(tab.contentKey === 'grocery' ? 'groceries' : tab.contentKey ?? tab.name),

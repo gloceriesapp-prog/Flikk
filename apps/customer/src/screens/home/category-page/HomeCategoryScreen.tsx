@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AppStackParamList } from '../../../navigation/types';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
-import { withHomeCategoryTabs } from '../data/categoryTabs';
 import { useHomeTabs } from '../data/useHomeTabs';
 import { HomeCategoryContent, homeCategoryKind } from './HomeCategoryContent';
 import { useHomeBrowseScroll } from './useHomeBrowseScroll';
@@ -22,7 +21,7 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const tabs = useHomeTabs();
-  const tab = withHomeCategoryTabs(tabs.data ?? []).find((item) => item.id === route.params.tabId);
+  const tab = (tabs.data ?? []).find((item) => item.id === route.params.tabId);
   const categoryKind = tab ? homeCategoryKind(tab) : undefined;
   const isFestival = categoryKind === 'festival';
   const { scrollHandler } = useHomeBrowseScroll();

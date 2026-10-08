@@ -28,7 +28,7 @@ import { UnavailableZoneScreen } from './unavailable-zone/UnavailableZoneScreen'
 import { HomeCategoryContent } from './category-page/HomeCategoryContent';
 import { useHomeBrowseScroll } from './category-page/useHomeBrowseScroll';
 import { AllTabSections } from './sections/AllTabSections';
-import { ALL_TAB, withHomeCategoryTabs } from './data/categoryTabs';
+import { ALL_TAB } from './data/categoryTabs';
 import { useHomeTabs } from './data/useHomeTabs';
 import { homeTabBackground } from './data/homeTabBackground';
 import { useIsOutsideOperatingHours } from '../../utils/useOperatingHours';
@@ -41,8 +41,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
 export function HomeScreen({ navigation }: Props) {
   const isFocused = useIsFocused();
   const [preferredCategoryId, setSelectedCategoryId] = useState(ALL_TAB.id);
-  const { data: remoteTabs = [] } = useHomeTabs();
-  const realTabs = withHomeCategoryTabs(remoteTabs);
+  const { data: realTabs = [] } = useHomeTabs();
   const selectedCategoryId = realTabs.some((tab) => tab.id === preferredCategoryId) ? preferredCategoryId : ALL_TAB.id;
   const activeTabBackgroundColor = homeTabBackground(realTabs.find((tab) => tab.id === selectedCategoryId));
   const openingCategory = useRef(false);

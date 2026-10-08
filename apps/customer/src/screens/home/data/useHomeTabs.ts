@@ -1,7 +1,6 @@
 // Real, admin-added Home tabs (GET /home-tabs, backend/src/routes/homeTabs.ts)
-// — curated extras a founder appends after the 4 hardcoded tabs in
-// categoryTabs.ts (All/Groceries/Fresh/Meat & Fish/Bakery), managed from
-// admin's own Home Categories screen. Deliberately separate from
+// — every tab after the permanent All tab, managed from admin's own Home
+// Categories screen (plus Home Tab Content for Groceries/Fresh/Regional). Deliberately separate from
 // useCategorySections.ts (categories/category_sections) — same isolation
 // this whole home_tabs/home_tab_tiles system was built for.
 // Banners are the "ads and poster for different category" ask — a tab's

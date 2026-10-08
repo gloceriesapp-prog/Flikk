@@ -7,7 +7,7 @@
 //   - products: the generic category browse (GET /browse/category) for the
 //     tab's linked category — the single category every linked tile shares,
 //     otherwise the first linked tile's own target.
-//   - first poster banner.
+//   - every poster banner (HomeTabExtras, also used by managed tabs).
 // Shows a real empty state when the tab has no linked category or the
 // category truly has no products near the pin.
 
@@ -80,12 +80,15 @@ function TabProducts({ target }: { target?: HomeTabTileLink }) {
   );
 }
 
-export function HomeTabTileGrid({ tab, showProducts = true }: Props) {
+// Admin tiles + every "Ads & posters" banner for a tab. Shared by the
+// generic tab body and the managed Groceries/Fresh/Regional/Bakery tabs, so
+// tiles and banners set in Home Categories show on every tab.
+export function HomeTabExtras({ tab }: { tab: RemoteHomeTab }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const banner = tab.banners[0];
+  if (tab.tiles.length === 0 && tab.banners.length === 0) return null;
 
   return (
-    <View className="pb-32">
+    <View>
       {tab.tiles.length > 0 && (
         <View className="px-5 pt-6">
           <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
@@ -112,8 +115,15 @@ export function HomeTabTileGrid({ tab, showProducts = true }: Props) {
         </View>
       )}
 
-      {banner && <PosterBanner imageUri={banner.imageUrl} />}
+      {tab.banners.map((banner) => <PosterBanner key={banner.id} imageUri={banner.imageUrl} />)}
+    </View>
+  );
+}
 
+export function HomeTabTileGrid({ tab, showProducts = true }: Props) {
+  return (
+    <View className="pb-32">
+      <HomeTabExtras tab={tab} />
       {showProducts && <TabProducts target={tabBrowseTarget(tab.tiles)} />}
     </View>
   );
