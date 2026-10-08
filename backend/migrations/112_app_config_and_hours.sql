@@ -9,6 +9,8 @@
 -- 3. home_sections gains 'festival-picks' and 'seasonal' rows.
 -- 4. Festival/seasonal/home-section tables join the realtime publication.
 -- 5. festival_greeting gains the festival tab switch, title, colours, artwork.
+-- 6. platform_settings.promotions_enabled: DB kill switch for promotions.
+-- 7. promotional_campaigns(limit): campaign summaries for admin.
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -102,5 +104,29 @@ BEGIN
     END LOOP;
   END IF;
 END $$;
+
+-- 6. Promotions kill switch (default OFF). The promotional worker sends only
+--    when this AND the backend's PROMOTIONS_ENABLED env var are on; both
+--    queuing routes refuse while it is off. Toggled on admin's Promotions page.
+ALTER TABLE public.platform_settings
+  ADD COLUMN IF NOT EXISTS promotions_enabled boolean NOT NULL DEFAULT false;
+
+-- 7. Past campaigns for the admin Promotions page: one row per campaign and
+--    channel with per-status recipient counts. Never returns destinations.
+CREATE OR REPLACE FUNCTION public.promotional_campaigns(p_limit integer DEFAULT 50)
+RETURNS TABLE(campaign_id uuid, channel text, subject text, body text, created_at timestamptz, updated_at timestamptz,
+  recipients bigint, queued bigint, sending bigint, accepted bigint, skipped bigint, failed bigint, uncertain bigint)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT d.campaign_id, d.channel, min(d.subject), min(d.body), min(d.created_at), max(d.updated_at), count(*),
+    count(*) FILTER (WHERE d.status = 'queued'), count(*) FILTER (WHERE d.status = 'sending'),
+    count(*) FILTER (WHERE d.status = 'accepted'), count(*) FILTER (WHERE d.status = 'skipped'),
+    count(*) FILTER (WHERE d.status = 'failed'), count(*) FILTER (WHERE d.status = 'uncertain')
+  FROM public.promotional_deliveries d
+  GROUP BY d.campaign_id, d.channel
+  ORDER BY min(d.created_at) DESC, d.campaign_id
+  LIMIT greatest(1, least(coalesce(p_limit, 50), 200))
+$$;
+REVOKE ALL ON FUNCTION public.promotional_campaigns(integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.promotional_campaigns(integer) TO service_role;
 
 COMMIT;

@@ -18,3 +18,10 @@ export async function getCommissionRate(): Promise<number> {
   if (error || !data) return DEFAULT_COMMISSION_RATE;
   return Number(data.commission_rate);
 }
+
+// Promotions kill switch (platform_settings.promotions_enabled, migration
+// 112). Fails closed: no row, a read error or a pre-112 schema means off.
+export async function promotionsSwitchOn(): Promise<boolean> {
+  const { data, error } = await supabase.from('platform_settings').select('promotions_enabled').limit(1).maybeSingle();
+  return !error && (data as { promotions_enabled?: unknown } | null)?.promotions_enabled === true;
+}

@@ -67,5 +67,21 @@ DO $$ BEGIN
   BEGIN UPDATE festival_greeting SET tab_title = '  ';
     RAISE EXCEPTION 'Blank tab title accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
 END $$;
+-- Promotions kill switch defaults off; campaign summaries count per status
+-- and are service-role only.
+DO $$
+DECLARE r record; c uuid := gen_random_uuid(); u1 uuid := gen_random_uuid(); u2 uuid := gen_random_uuid();
+BEGIN
+  IF EXISTS (SELECT 1 FROM platform_settings WHERE promotions_enabled) THEN RAISE EXCEPTION 'Promotions on by default'; END IF;
+  IF has_function_privilege('anon','promotional_campaigns(integer)','EXECUTE') OR has_function_privilege('authenticated','promotional_campaigns(integer)','EXECUTE')
+   OR NOT has_function_privilege('service_role','promotional_campaigns(integer)','EXECUTE') THEN
+    RAISE EXCEPTION 'promotional_campaigns privileges wrong'; END IF;
+  INSERT INTO users(id,phone,role,is_approved) VALUES (u1,'+919999981001','customer',true),(u2,'+919999981002','customer',true);
+  INSERT INTO promotional_deliveries(campaign_id,customer_id,channel,subject,body,status) VALUES
+    (c,u1,'sms','Diwali','10% off','accepted'),(c,u2,'sms','Diwali','10% off','skipped');
+  SELECT * INTO r FROM promotional_campaigns(50) WHERE campaign_id = c;
+  IF r.recipients <> 2 OR r.accepted <> 1 OR r.skipped <> 1 OR r.queued <> 0 OR r.subject <> 'Diwali' OR r.channel <> 'sms' THEN
+    RAISE EXCEPTION 'Campaign summary wrong: %', r; END IF;
+END $$;
 ROLLBACK;
 \echo 'app-config-hours: ok'
