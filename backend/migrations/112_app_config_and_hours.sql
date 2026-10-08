@@ -8,6 +8,7 @@
 --    the configured opening time. The rest of the body is unchanged.
 -- 3. home_sections gains 'festival-picks' and 'seasonal' rows.
 -- 4. Festival/seasonal/home-section tables join the realtime publication.
+-- 5. festival_greeting gains the festival tab switch, title, colours, artwork.
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -64,6 +65,29 @@ INSERT INTO public.home_sections (key, title, sort_index) VALUES
   ('festival-picks', null, 15),
   ('seasonal', null, 25)
 ON CONFLICT (key) DO NOTHING;
+
+-- 5. The customer Home festival tab becomes admin-controlled (it was a
+--    hard-coded, always-on Navratri tab). festival_greeting (056) gains the
+--    tab switch (default OFF), its title, colours and artwork. Artwork is a
+--    storage path (served through the public media URL) or an https URL;
+--    the existing row keeps the Navratri artwork so switching it on restores
+--    the old tab exactly.
+ALTER TABLE public.festival_greeting
+  ADD COLUMN IF NOT EXISTS tab_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS tab_title text NOT NULL DEFAULT 'Navratri'
+    CHECK (char_length(btrim(tab_title)) BETWEEN 1 AND 30),
+  ADD COLUMN IF NOT EXISTS tab_background_color text NOT NULL DEFAULT '#FFF1D6'
+    CHECK (tab_background_color ~ '^#[0-9A-Fa-f]{6}$'),
+  ADD COLUMN IF NOT EXISTS tab_header_color text NOT NULL DEFAULT '#F6C667'
+    CHECK (tab_header_color ~ '^#[0-9A-Fa-f]{6}$'),
+  ADD COLUMN IF NOT EXISTS tab_header_image_url text
+    CHECK (tab_header_image_url IS NULL OR char_length(tab_header_image_url) <= 1000),
+  ADD COLUMN IF NOT EXISTS tab_banner_image_url text
+    CHECK (tab_banner_image_url IS NULL OR char_length(tab_banner_image_url) <= 1000);
+UPDATE public.festival_greeting
+SET tab_header_image_url = coalesce(tab_header_image_url, 'Images/Transparent%20Navratri%20Puja%20Arrangement.png'),
+    tab_banner_image_url = coalesce(tab_banner_image_url, 'Images/navbg.png')
+WHERE tab_header_image_url IS NULL OR tab_banner_image_url IS NULL;
 
 -- 4. Festival, seasonal and Home layout edits reach open customer apps live:
 --    the backend's home realtime channel listens to these tables.

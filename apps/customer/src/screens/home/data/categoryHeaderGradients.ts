@@ -12,7 +12,6 @@
 // at the point the tabs row sits, or the scoop shows a visible seam
 // against the header behind it.
 
-import { isFestivalTabName } from '../festival/data';
 
 export interface CategoryHeaderGradient {
   colors: readonly [string, string, string, string];
@@ -86,10 +85,11 @@ bakery: gradient([
 ]),
 };
 
-export function gradientForTabName(name: string): CategoryHeaderGradient {
-  if (isFestivalTabName(name)) {
-    const color = '#F6C667';
-    return gradient([color, color, color, color]);
+// festivalHeaderColor: the admin festival tab's flat header colour
+// (festival_greeting.tab_header_color, migration 112) when it is active.
+export function gradientForTabName(name: string, festivalHeaderColor?: string): CategoryHeaderGradient {
+  if (festivalHeaderColor) {
+    return gradient([festivalHeaderColor, festivalHeaderColor, festivalHeaderColor, festivalHeaderColor]);
   }
   return GRADIENT_BY_TAB_NAME[name.trim().toLowerCase()] ?? GRADIENT_BY_TAB_NAME.all;
 }

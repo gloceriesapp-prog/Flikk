@@ -13,7 +13,6 @@ import {
 } from '@hugeicons/core-free-icons';
 import type { IconSvgElement } from '@hugeicons/react-native';
 import type { RemoteHomeTab } from './useHomeTabs';
-import { isFestivalTabName, NAVRATRI_FESTIVAL, withFestivalHomeTab } from '../festival/data';
 
 export interface Category {
   id: string;
@@ -25,8 +24,8 @@ export const ALL_TAB: Category = { id: 'all', label: 'All', icon: ShoppingBasket
 
 // Tab labels are the admin's own home_tabs.name (Home Categories screen) —
 // no hardcoded renames here, so what admin types is what customers see.
+// The festival tab carries the admin tab title as its label (festival/data.ts).
 export function homeTabLabel(name: string): string {
-  if (isFestivalTabName(name)) return NAVRATRI_FESTIVAL.name;
   return name;
 }
 
@@ -37,7 +36,8 @@ const PARTS_AND_TOOLS_HOME_TAB: RemoteHomeTab = { id: 'home-header-parts-tools',
 export function withHomeCategoryTabs(tabs: RemoteHomeTab[]): RemoteHomeTab[] {
   const homeTabs = tabs.filter((tab) => tab.contentKey || tab.name.trim().toLowerCase() !== 'dairy');
   const tabsWithTools = homeTabs.some((tab) => tab.name.trim().toLowerCase() === 'parts & tools') ? homeTabs : [...homeTabs, PARTS_AND_TOOLS_HOME_TAB];
-  return withFestivalHomeTab(tabsWithTools);
+  // The admin festival tab is already resolved first by useHomeTabs.
+  return tabsWithTools;
 }
 
 // Real tabs carry no icon of their own (title-only by admin design — see

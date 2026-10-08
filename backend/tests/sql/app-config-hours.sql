@@ -57,6 +57,15 @@ END $$;
 DO $$ BEGIN
   IF (SELECT count(*) FROM home_sections WHERE key IN ('festival-picks','seasonal') AND enabled) <> 2 THEN
     RAISE EXCEPTION 'festival-picks / seasonal home sections missing'; END IF;
+  -- The festival tab is off until an admin turns it on; the seeded row keeps
+  -- the Navratri artwork, and malformed colours are refused.
+  IF EXISTS (SELECT 1 FROM festival_greeting WHERE tab_enabled OR tab_title <> 'Navratri'
+             OR tab_banner_image_url IS DISTINCT FROM 'Images/navbg.png') THEN
+    RAISE EXCEPTION 'festival tab defaults wrong'; END IF;
+  BEGIN UPDATE festival_greeting SET tab_background_color = 'red';
+    RAISE EXCEPTION 'Malformed tab colour accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN UPDATE festival_greeting SET tab_title = '  ';
+    RAISE EXCEPTION 'Blank tab title accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
 END $$;
 ROLLBACK;
 \echo 'app-config-hours: ok'

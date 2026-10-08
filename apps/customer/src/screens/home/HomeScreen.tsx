@@ -129,6 +129,7 @@ export function HomeScreen({ navigation }: Props) {
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
           activeCategoryName={activeCategoryName}
+          activeFestivalHeaderColor={selectedCategoryId === ALL_TAB.id ? undefined : activeTab?.festival?.headerColor}
           activeTabBackgroundColor={activeTabBackgroundColor}
           scrollY={scrollY}
           // Header category row temporarily disabled. Restore this line

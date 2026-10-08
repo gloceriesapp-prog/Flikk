@@ -11,7 +11,6 @@ import { AppIcon } from '../../../components/AppIcon';
 import { withHomeCategoryTabs } from '../data/categoryTabs';
 import { useHomeTabs } from '../data/useHomeTabs';
 import { HomeCategoryContent, homeCategoryKind } from './HomeCategoryContent';
-import { NAVRATRI_FESTIVAL } from '../festival/data';
 import { useHomeBrowseScroll } from './useHomeBrowseScroll';
 import { HomeCategoryBanner } from './components/HomeCategoryBanner';
 import { storageUrl } from '../../../utils/storageUrl';
@@ -33,8 +32,8 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
       {isFocused && <StatusBar style="dark" />}
       <Animated.ScrollView className="flex-1" contentContainerClassName="pb-28" contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} onScroll={scrollHandler} scrollEventThrottle={16} bounces={false} overScrollMode="never">
         <HomeCategoryBanner
-          imageUri={isFestival ? NAVRATRI_FESTIVAL.headerArtworkUri : categoryKind === 'groceries' ? GROCERY_HEADER_IMAGE_URI : undefined}
-          backgroundColor={isFestival ? NAVRATRI_FESTIVAL.backgroundColor : undefined}
+          imageUri={isFestival ? tab?.festival?.headerImageUri ?? undefined : categoryKind === 'groceries' ? GROCERY_HEADER_IMAGE_URI : undefined}
+          backgroundColor={isFestival ? tab?.festival?.backgroundColor : undefined}
           imageFit={isFestival ? 'contain' : 'cover'}
           seamless={isFestival}
         />

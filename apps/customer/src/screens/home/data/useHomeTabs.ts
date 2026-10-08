@@ -14,6 +14,8 @@ import { apiRequest } from '../../../api/client';
 import { useHomeContent } from '../content/useHomeContent';
 import { mergeManagedTabs } from '../content/mergeTabs';
 import type { HomeContentKey } from '../content/contracts';
+import { DISABLED_FESTIVAL_TAB, withFestivalHomeTab, type FestivalTabConfig } from '../festival/data';
+import { useFestivalGreeting } from '../festival/greeting/useFestivalGreeting';
 
 // Admin links a tile to a real category/subcategory (home_tab_tiles.link_*,
 // migration 097). categoryId is the parent category CategoryDetail opens.
@@ -42,6 +44,8 @@ export interface RemoteHomeTab {
   banners: RemoteHomeTabBanner[];
   contentKey?: HomeContentKey;
   label?: string;
+  // Set on the admin festival tab only (festival/data.ts withFestivalHomeTab).
+  festival?: FestivalTabConfig;
 }
 
 interface ApiHomeTab {
@@ -54,6 +58,7 @@ interface ApiHomeTab {
 
 export function useHomeTabs() {
   const content = useHomeContent();
+  const greeting = useFestivalGreeting();
   const query = useQuery({
     staleTime: 300_000,
     gcTime: 30 * 60_000,
@@ -73,14 +78,17 @@ export function useHomeTabs() {
   });
   return {
     ...query,
-    data: mergeManagedTabs(query.data ?? [], content.data),
+    // The admin festival tab (or none) is applied here, so the header, Home
+    // body and category routes all resolve the same tab list.
+    data: withFestivalHomeTab(mergeManagedTabs(query.data ?? [], content.data), greeting.data?.tab ?? DISABLED_FESTIVAL_TAB),
     // Dedicated category routes resolve IDs against both sources. A missing
     // managed tab is not "removed" while its content config is still loading.
-    isResolvingTabs: query.isPending || content.isPending,
+    isResolvingTabs: query.isPending || content.isPending || greeting.isPending,
     hasTabLoadError: query.isError || content.isError,
     retryTabs: () => {
       void query.refetch();
       void content.refetch();
+      void greeting.refetch();
     },
   };
 }

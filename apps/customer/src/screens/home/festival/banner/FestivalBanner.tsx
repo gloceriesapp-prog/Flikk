@@ -1,18 +1,17 @@
 import { AppImage } from '../../../../components/AppImage';
-import { NAVRATRI_FESTIVAL } from '../data';
+import { FESTIVAL_BANNER_ASPECT_RATIO } from '../data';
 
-const artwork = NAVRATRI_FESTIVAL.bannerArtwork;
-
-// Scale height with width using the artwork's proportions. No letterboxing,
-// cropping or external vertical spacing around the festival banner.
-export function FestivalBanner() {
+// Admin festival banner (festival_greeting.tab_banner_image_url). Scales
+// height with width using the banner proportions; nothing without artwork.
+export function FestivalBanner({ uri, label }: { uri: string | null; label: string }) {
+  if (!uri) return null;
   return (
     <AppImage
-      source={{ uri: artwork.uri }}
-      style={{ width: '100%', aspectRatio: artwork.width / artwork.height }}
+      source={{ uri }}
+      style={{ width: '100%', aspectRatio: FESTIVAL_BANNER_ASPECT_RATIO }}
       resizeMode="contain"
       priority="high"
-      accessibilityLabel="Navratri celebration"
+      accessibilityLabel={`${label} celebration`}
     />
   );
 }
