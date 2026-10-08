@@ -1,5 +1,5 @@
 // Payout destination — UPI ID or bank account (backend/PAYOUTS.md). Payouts
-// are sent manually by the founder every Monday; nothing here contacts a
+// are sent manually by the founder each week; nothing here contacts a
 // bank. Saved via PUT /partner/payout-account, read via GET (TanStack
 // Query, PAYOUT_ACCOUNT_QUERY_KEY — also read by OrdersScreen's setup
 // banner). The full account number lives in this card's form state only
@@ -114,7 +114,7 @@ function AccountSummary({ account, onChange }: { account: PayoutAccount; onChang
         </View>
       )}
 
-      <Text className="text-[13px] font-medium text-ink/40">Your weekly payout (see the Payouts tab) is sent here every Monday.</Text>
+      <Text className="text-[13px] font-medium text-ink/40">Your weekly payout (see the Payouts tab) is sent here after verification.</Text>
     </>
   );
 }
@@ -294,7 +294,7 @@ function PayoutForm({
       )}
 
       <Text className="text-[13px] font-medium leading-normal text-ink/50">
-        We pay out every Monday. When we send your first payout we check the name on the account matches.
+        We pay out weekly after verification. When we send your first payout we check the name on the account matches.
       </Text>
     </>
   );

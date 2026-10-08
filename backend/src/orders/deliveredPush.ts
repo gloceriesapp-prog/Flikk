@@ -1,6 +1,5 @@
 import { supabase } from '../db/supabase.js';
 import { round2 } from '../lib/pricing.js';
-import { formatPayoutDateLabel, nextPayoutDate } from '../lib/payoutSchedule.js';
 import { embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
 
 interface DeliveredLeg { id: string; store_id: string; item_total: unknown; commission_amount: unknown }
@@ -27,7 +26,6 @@ export async function notifyStoresOfDelivery(
         .eq('status', 'delivered');
       if (!error && data?.length) legs = data as DeliveredLeg[];
     }
-    const payoutLabel = formatPayoutDateLabel(nextPayoutDate());
     await Promise.all(legs.map(async (leg) => {
       const netEarned = round2(Number(leg.item_total) - Number(leg.commission_amount));
       const { data: storeRow } = await supabase
@@ -38,7 +36,7 @@ export async function notifyStoresOfDelivery(
       await sendPushNotification(
         embeddedPushToken(storeRow?.users),
         `₹${netEarned} earned`,
-        `Order delivered — added to your balance, paid out on ${payoutLabel}.`,
+        'Order delivered — added to your balance. Paid weekly after verification.',
         { data: { type: 'order_delivered', orderId: leg.id } },
       );
     }));

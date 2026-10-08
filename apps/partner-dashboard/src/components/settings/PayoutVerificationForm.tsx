@@ -16,7 +16,7 @@ interface Props {
 // Same rule as the backend (backend/PAYOUTS.md); the server re-validates.
 const UPI_RE = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
 
-// Payouts are sent manually every Monday. Saving stores the UPI ID as
+// Payouts are sent manually each week. Saving stores the UPI ID as
 // unverified; the founder confirms the registered name in the UPI app when
 // paying. Bank accounts need a cheque photo, so they're set in the mobile app.
 export function PayoutVerificationForm({ store, onVerified }: Props) {
@@ -51,7 +51,7 @@ export function PayoutVerificationForm({ store, onVerified }: Props) {
   return (
     <SettingsSection
       title="Payout method"
-      description="Weekly payouts are sent every Monday. We confirm the account name when we send your first payout."
+      description="Payouts are sent weekly after verification. We confirm the account name when we send your first payout."
     >
       <div className="mb-5">
         <PayoutDestinationCard store={store} linkToSettings={false} />

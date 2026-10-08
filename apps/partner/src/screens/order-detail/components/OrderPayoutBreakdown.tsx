@@ -12,23 +12,21 @@
 // orderTotal itself; the commission stays with the platform.
 
 import { Text, View } from 'react-native';
+import { PAYOUT_POLICY } from '../../../utils/payoutPolicy';
 
 interface Props {
   orderTotal: number;
   commissionPercent: number;
   commissionAmount: number;
   netPayout: number;
-  // Only passed once the order is actually delivered (OrderDetailScreen's
-  // own note) — the real next Monday-9AM-IST settlement date
-  // (utils/nextPayoutDate.ts). Its presence is what flips "You'll
-  // receive" (still projected, order not delivered yet) to "Added to your
-  // balance" (already earned, just not settled yet) — the exact
-  // distinction backend/src/jobs/weeklyPayouts.ts's own delivered-only
-  // scoping is built on, made visible here instead of left implicit.
-  payoutDateLabel?: string;
+  // True once the order is delivered: flips "You'll receive" (still
+  // projected) to "Added to your balance" (earned, not yet paid out) — the
+  // distinction backend/src/jobs/weeklyPayouts.ts's delivered-only scoping
+  // is built on.
+  delivered?: boolean;
 }
 
-export function OrderPayoutBreakdown({ orderTotal, commissionPercent, commissionAmount, netPayout, payoutDateLabel }: Props) {
+export function OrderPayoutBreakdown({ orderTotal, commissionPercent, commissionAmount, netPayout, delivered }: Props) {
   return (
     <View className="gap-2.5 rounded-3xl bg-white p-4">
       <Text className="mb-0.5 text-[15px] font-medium text-ink/80">Payout breakdown</Text>
@@ -44,12 +42,12 @@ export function OrderPayoutBreakdown({ orderTotal, commissionPercent, commission
       </View>
 
       <View className="mt-1 flex-row items-center justify-between border-t border-black/5 pt-2.5">
-        <Text className="text-[15px] font-medium text-ink">{payoutDateLabel ? "Added to your balance" : "You'll receive"}</Text>
+        <Text className="text-[15px] font-medium text-ink">{delivered ? "Added to your balance" : "You'll receive"}</Text>
         <Text className="text-[15px] font-semibold text-lime-deep">₹{netPayout.toLocaleString('en-IN')}</Text>
       </View>
 
-      {payoutDateLabel && (
-        <Text className="text-[12px] font-medium text-ink/50">Paid out with the rest of your balance on {payoutDateLabel}.</Text>
+      {delivered && (
+        <Text className="text-[12px] font-medium text-ink/50">Paid out with the rest of your balance. {PAYOUT_POLICY}.</Text>
       )}
     </View>
   );

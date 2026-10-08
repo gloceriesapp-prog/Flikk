@@ -7,9 +7,7 @@
 // IST-wall-clock-stored / UTC-DB reasoning: a rider types "I work 09:00-18:00"
 // meaning IST wall-clock, but Postgres/`Date` deal in UTC instants. Rather than
 // store an offset-baked timestamp, we store the bare 'HH:MM' IST string and
-// compare it against `now` RE-FORMATTED into IST — the same pattern
-// lib/payoutSchedule.ts / apps/partner's nextPayoutDate use for the fixed
-// Monday-9AM-IST payout cadence. Intl.DateTimeFormat with timeZone:'Asia/Kolkata'
+// compare it against `now` RE-FORMATTED into IST. Intl.DateTimeFormat with timeZone:'Asia/Kolkata'
 // does the offset (a fixed +5:30, no DST) correctly for us, so there's no
 // hand-rolled offset arithmetic here.
 //
