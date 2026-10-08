@@ -26,7 +26,7 @@ import type { CartItem } from '../lib/orderValidation.js';
 import { groupPricedCartByStore } from '../lib/trips.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
 import { notifyStoresOfNewOrder } from '../payments/newOrderPush.js';
-import { getCommissionRate } from '../lib/platformSettings.js';
+import { getStoreCommissionRates } from '../lib/platformSettings.js';
 
 export const tripsRouter = Router();
 
@@ -63,7 +63,9 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
     const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, undefined, body.address_id);
     const pricedItems = quote.items;
     const addressId = await resolveAddressId(req.user!.id, body);
-    const legs = groupPricedCartByStore(pricedItems, await getCommissionRate());
+    // Each store's own commission rate (override or platform default).
+    const rates = await getStoreCommissionRates(pricedItems.map((item) => item.store_id));
+    const legs = groupPricedCartByStore(pricedItems, (storeId) => rates.get(storeId)!.rate);
     if (legs.length <= 1) {
       // Not an error a real customer can hit through the app (the cart
       // itself decides which endpoint to call based on how many distinct

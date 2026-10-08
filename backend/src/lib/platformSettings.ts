@@ -19,6 +19,36 @@ export async function getCommissionRate(): Promise<number> {
   return Number(data.commission_rate);
 }
 
+// Effective commission per store (migration 115): the store's own
+// stores.commission_rate when admin set one, else the platform default
+// above. Every requested id gets an entry (an unknown store gets the
+// default). Only a database without store_commission_rates (115 not applied
+// yet) falls back to the platform rate; any other error fails the checkout
+// rather than charging a store the wrong rate.
+export interface StoreCommission {
+  rate: number;
+  isStoreOverride: boolean;
+}
+
+export async function getStoreCommissionRates(storeIds: string[]): Promise<Map<string, StoreCommission>> {
+  const ids = [...new Set(storeIds)];
+  const result = new Map<string, StoreCommission>();
+  const { data, error } = await supabase.rpc('store_commission_rates', { p_stores: ids });
+  if (error && error.code !== 'PGRST202' && error.code !== '42883') throw error;
+  for (const row of (error ? [] : (data ?? [])) as { store_id: string; commission_rate: unknown; is_override: boolean }[]) {
+    result.set(row.store_id, { rate: Number(row.commission_rate), isStoreOverride: row.is_override === true });
+  }
+  if (ids.some((id) => !result.has(id))) {
+    const rate = await getCommissionRate();
+    for (const id of ids) if (!result.has(id)) result.set(id, { rate, isStoreOverride: false });
+  }
+  return result;
+}
+
+export async function getStoreCommissionRate(storeId: string): Promise<StoreCommission> {
+  return (await getStoreCommissionRates([storeId])).get(storeId)!;
+}
+
 // Promotions kill switch (platform_settings.promotions_enabled, migration
 // 112). Fails closed: no row, a read error or a pre-112 schema means off.
 export async function promotionsSwitchOn(): Promise<boolean> {

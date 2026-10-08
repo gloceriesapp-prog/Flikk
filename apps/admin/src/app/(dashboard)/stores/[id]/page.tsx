@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { StoreDetailForm } from '@/components/stores/StoreDetailForm';
 import { StoreSuspensionPanel } from '@/components/stores/StoreSuspensionPanel';
 import { StorePayoutPanel } from '@/components/stores/StorePayoutPanel';
+import { StoreCommissionPanel } from '@/components/stores/StoreCommissionPanel';
 import { STORE_PAYOUT_SELECT, toStorePayoutView } from '@/lib/storePayout';
 
 export default async function StoreDetailPage({ params }: PageProps<'/stores/[id]'>) {
@@ -18,6 +19,14 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
   const { data: payoutRow, error: payoutError } = await supabaseAdmin.from('stores').select(STORE_PAYOUT_SELECT).eq('id', id).maybeSingle();
   if (payoutError) throw payoutError;
   const payout = toStorePayoutView(payoutRow as Record<string, string | null> | null);
+  // Commission override (migration 115) next to the platform default it replaces.
+  const [{ data: commissionRow, error: commissionError }, { data: platformRow }] = await Promise.all([
+    supabaseAdmin.from('stores').select('commission_rate').eq('id', id).maybeSingle(),
+    supabaseAdmin.from('platform_settings').select('commission_rate').limit(1).maybeSingle(),
+  ]);
+  if (commissionError) throw commissionError;
+  const storeRate = (commissionRow as { commission_rate: number | string | null } | null)?.commission_rate;
+  const platformRate = (platformRow as { commission_rate: number | string | null } | null)?.commission_rate;
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -28,6 +37,12 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
 
       <StoreSuspensionPanel storeId={store.id} suspended={!!store.adminSuspended} reason={store.suspendedReason ?? null} suspendedAt={store.suspendedAt ?? null} />
       <StorePayoutPanel storeId={store.id} payout={payout} />
+      <StoreCommissionPanel
+        key={`commission:${storeRate ?? 'default'}`}
+        storeId={store.id}
+        storeRate={storeRate == null ? null : Number(storeRate)}
+        platformRate={platformRate == null ? null : Number(platformRate)}
+      />
       <StoreDetailForm key={`${store.id}:${store.adminSuspended ? 's' : 'a'}`} store={store} />
     </div>
   );

@@ -251,6 +251,17 @@ export interface Payout {
   paid_at: string | null;
 }
 
+// GET /partner/commission — the rate this store's new orders are charged:
+// its own rate set by Gloceries, else the platform default (migration 115).
+export interface PartnerCommission {
+  commissionRate: number;
+  isStoreOverride: boolean;
+}
+
+export function fetchMyCommission(): Promise<PartnerCommission> {
+  return apiRequest('/partner/commission');
+}
+
 export function fetchMyPayouts(): Promise<Payout[]> {
   return apiRequest('/partner/payouts');
 }

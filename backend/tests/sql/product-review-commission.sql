@@ -100,5 +100,24 @@ BEGIN
  PERFORM save_catalogue_product(created,shop,'{"approval_status":"approved"}',NULL);
  IF (SELECT approval_status FROM products WHERE id=created)<>'pending' THEN RAISE EXCEPTION 'Partner self-approved an edit'; END IF;
 END $$;
+
+-- Commission: per-store override, else the platform default.
+DO $$
+DECLARE shop constant uuid:='00000000-0000-4000-8000-000000000cf1'; r record;
+BEGIN
+ IF has_function_privilege('anon','store_commission_rates(uuid[])','EXECUTE')
+ OR has_function_privilege('authenticated','store_commission_rates(uuid[])','EXECUTE') THEN RAISE EXCEPTION 'Commission RPC exposed to API roles'; END IF;
+ UPDATE platform_settings SET commission_rate=0.08;
+ SELECT * INTO r FROM store_commission_rates(ARRAY[shop]);
+ IF r.commission_rate<>0.08 OR r.is_override THEN RAISE EXCEPTION 'Platform default not used: %',row_to_json(r); END IF;
+ UPDATE stores SET commission_rate=0.035 WHERE id=shop;
+ SELECT * INTO r FROM store_commission_rates(ARRAY[shop]);
+ IF r.commission_rate<>0.035 OR NOT r.is_override THEN RAISE EXCEPTION 'Store override not used: %',row_to_json(r); END IF;
+ BEGIN
+  UPDATE stores SET commission_rate=1.5 WHERE id=shop;
+  RAISE EXCEPTION 'Out-of-range store rate accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ IF (SELECT count(*) FROM store_commission_rates(ARRAY['00000000-0000-4000-8000-0000000000ff'::uuid]))<>0 THEN RAISE EXCEPTION 'Unknown store got a rate'; END IF;
+END $$;
 ROLLBACK;
-SELECT 'Live product name/price edits wait for review; rejected products return to review' AS result;
+SELECT 'Live product name/price edits wait for review; rejected products return to review; per-store commission overrides the default' AS result;

@@ -2,7 +2,7 @@
 // and a real commission breakdown (gross → commission deducted → net).
 
 import { Text, View } from 'react-native';
-import type { ApiPayoutOrder } from '../../../api/payouts';
+import { formatCommissionPercent, type ApiPayoutOrder } from '../../../api/payouts';
 
 interface Props {
   order: ApiPayoutOrder;
@@ -30,6 +30,9 @@ function formatOrderDateTime(deliveredAt: string): string {
 }
 
 export function PayoutOrderHistoryRow({ order, isLast }: Props) {
+  // The rate this order was really charged — from the API, else from its own
+  // amounts (sample rows), never a hard-coded percentage.
+  const rate = order.commissionRate ?? (order.grossAmount > 0 ? order.commissionAmount / order.grossAmount : 0);
   return (
     <View className={`py-3.5 ${isLast ? '' : 'border-b border-black/5'}`}>
       {/* Top Row: Order ID (Left), Formatted Date & Time (Right) */}
@@ -43,14 +46,14 @@ export function PayoutOrderHistoryRow({ order, isLast }: Props) {
         </Text>
       </View>
 
-      {/* Bottom Breakdown Row: Total – Commission (6%) = Net */}
+      {/* Bottom Breakdown Row: Total – Commission (rate) = Net */}
       <View className="mt-1.5 flex-row items-center gap-1.5">
         <Text className="text-[12.5px] font-medium text-ink/50" style={{ fontVariant: ['tabular-nums'] }}>
           ₹{order.grossAmount.toLocaleString('en-IN')}
         </Text>
 
         <Text className="text-[12.5px] font-medium text-ink/40">
-          − ₹{order.commissionAmount.toLocaleString('en-IN')} (6% fee)
+          − ₹{order.commissionAmount.toLocaleString('en-IN')} ({formatCommissionPercent(rate)} fee)
         </Text>
 
         <View className="ml-auto flex-row items-center gap-1">

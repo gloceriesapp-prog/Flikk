@@ -24,6 +24,14 @@
 --    change through save_catalogue_product as an admin save (packs matched by
 --    id, so counted stock is kept), reject drops it. Either way the queue is
 --    cleared. Returns false when nothing was queued.
+-- 4. stores.commission_rate: optional per-store commission (0..1 fraction),
+--    set from admin store detail. NULL means the platform default
+--    (platform_settings.commission_rate, 039, edited in admin settings).
+-- 5. store_commission_rates(stores): the effective rate per store
+--    (override, else platform default, else 0.06) and whether it is an
+--    override. The backend reads it at checkout to price each store's
+--    commission_amount (weekly payouts sum that column) and for the partner
+--    app/dashboard's "commission" display.
 -- Errors: P0400 invalid input, P0404 product not in scope, P0409 reserved pack.
 BEGIN;
 SET LOCAL lock_timeout='5s';
@@ -230,5 +238,18 @@ END $$;
 
 REVOKE ALL ON FUNCTION public.review_product_changes(uuid,boolean) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.review_product_changes(uuid,boolean) TO service_role;
+
+ALTER TABLE public.stores ADD COLUMN IF NOT EXISTS commission_rate numeric
+ CONSTRAINT stores_commission_rate_range CHECK (commission_rate IS NULL OR (commission_rate>=0 AND commission_rate<=1));
+
+CREATE OR REPLACE FUNCTION public.store_commission_rates(p_stores uuid[])
+RETURNS TABLE(store_id uuid,commission_rate numeric,is_override boolean)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $$
+ SELECT s.id,coalesce(s.commission_rate,(SELECT ps.commission_rate FROM platform_settings ps ORDER BY ps.updated_at DESC LIMIT 1),0.06),s.commission_rate IS NOT NULL
+ FROM stores s WHERE s.id=ANY(coalesce(p_stores,'{}'::uuid[]));
+$$;
+
+REVOKE ALL ON FUNCTION public.store_commission_rates(uuid[]) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.store_commission_rates(uuid[]) TO service_role;
 
 COMMIT;

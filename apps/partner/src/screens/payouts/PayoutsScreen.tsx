@@ -10,13 +10,13 @@
 
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, ScrollView, View } from 'react-native';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { HeadphonesIcon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { fetchPayoutPage } from '../../api/payouts';
+import { fetchCommission, fetchPayoutPage, formatCommissionPercent } from '../../api/payouts';
 import { buildSamplePayouts, toWeeklyPayout } from './data';
 import { CurrentWeekPayoutCard } from './components/CurrentWeekPayoutCard';
 import { PayoutStatusFilter, type PayoutStatusFilterValue } from './components/PayoutStatusFilter';
@@ -31,6 +31,8 @@ export function PayoutsScreen(_props: Props) {
   const [statusFilter, setStatusFilter] = useState<PayoutStatusFilterValue>('all');
   const query = useInfiniteQuery({ queryKey: ['payouts'], initialPageParam: '', queryFn: ({ pageParam }) => fetchPayoutPage(pageParam || undefined), getNextPageParam: page => page.nextCursor ?? undefined, refetchOnWindowFocus: false });
   const { isLoading } = query;
+  // This store's real commission rate (GET /partner/commission).
+  const commission = useQuery({ queryKey: ['partner-commission'], queryFn: fetchCommission, refetchOnWindowFocus: false });
   const rows = query.data?.pages.flatMap(page => page.items);
   const realPayouts = (rows ?? []).map(toWeeklyPayout);
   // A brand-new store (zero delivered orders, zero real payouts yet) has
@@ -106,6 +108,13 @@ export function PayoutsScreen(_props: Props) {
           )}
 
           {currentWeek && <CurrentWeekPayoutCard payout={currentWeek} />}
+
+          {commission.data && (
+            <Text className="px-1 text-[12.5px] font-medium text-ink/55">
+              Gloceries commission: {formatCommissionPercent(commission.data.commissionRate)} of the item total on each new order
+              {commission.data.isStoreOverride ? ' (your store’s rate)' : ''}.
+            </Text>
+          )}
 
           <View className="mt-3 gap-3">
             <PayoutStatusFilter

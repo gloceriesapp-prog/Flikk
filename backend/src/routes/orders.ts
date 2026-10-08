@@ -9,7 +9,7 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { calcCommission } from '../lib/pricing.js';
-import { getCommissionRate } from '../lib/platformSettings.js';
+import { getStoreCommissionRate } from '../lib/platformSettings.js';
 import { confirmCheckoutQuote } from '../lib/checkoutQuoteService.js';
 import { rejectUnsupportedTip } from '../lib/checkoutQuote.js';
 import { checkoutTransactionError } from '../lib/checkoutItems.js';
@@ -74,7 +74,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     const pricedItems = quote.items;
     const { itemTotal, deliveryFee, discountAmount, handlingFee, total } = quote.bill;
     const promoCodeId = quote.promoCodeId;
-    const commissionAmount = calcCommission(itemTotal, await getCommissionRate());
+    const commissionAmount = calcCommission(itemTotal, (await getStoreCommissionRate(body.store_id)).rate);
     const addressId = await resolveAddressId(req.user!.id, body);
 
     // Supabase JS has no multi-statement transaction API; this is executed as a

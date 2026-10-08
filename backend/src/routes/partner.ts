@@ -32,6 +32,7 @@ import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '.
 import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../lib/payoutAccount.js';
 import { decodeImage, toWebp } from '../utils/image.js';
 import { round2 } from '../lib/pricing.js';
+import { getStoreCommissionRate } from '../lib/platformSettings.js';
 import { reverseGeocode } from '../lib/reverseGeocode.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
 
@@ -522,6 +523,19 @@ partnerRouter.delete('/products/:id', async (req: AuthedRequest, res, next) => {
   }
 });
 
+// The commission rate this store's NEW orders are charged (migration 115):
+// the store's own rate when admin set one, else the platform default. Shown
+// by the partner app/dashboard instead of a hard-coded percentage.
+partnerRouter.get('/commission', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    const { rate, isStoreOverride } = await getStoreCommissionRate(storeId);
+    res.json({ commissionRate: rate, isStoreOverride });
+  } catch (err) {
+    next(err);
+  }
+});
+
 partnerRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
@@ -590,6 +604,9 @@ partnerRouter.get('/payouts/:id/orders', async (req: AuthedRequest, res, next) =
       id: o.id, orderNumber: o.order_number, deliveredAt: o.delivered_at,
       grossAmount: o.item_total, commissionAmount: o.commission_amount,
       netAmount: o.item_total - o.commission_amount,
+      // The rate this order was actually charged at (rates can change, so
+      // this comes from the order's own amounts, not today's rate).
+      commissionRate: Number(o.item_total) > 0 ? Math.round((Number(o.commission_amount) / Number(o.item_total)) * 10000) / 10000 : 0,
     })), page, 'deliveredAt', { summary: { netTotal: Number(payout.net_payout), orderCount: Number(counts?.[0]?.order_count ?? 0) } });
 
   } catch (err) {
