@@ -29,7 +29,7 @@
 --                                offers it again.
 --    admin_reassign_rider        pre-pickup only; moves every live leg to the
 --                                new rider.
--- 5. admin_reissue_delivery_code (see its definition).
+-- 5. admin_reissue_delivery_code, 6. admin_approve_trip_failure_refund (see their definitions).
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -316,6 +316,36 @@ END $function$
 ;
 REVOKE ALL ON FUNCTION public.admin_reissue_delivery_code(uuid,uuid,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_reissue_delivery_code(uuid,uuid,text) TO service_role;
+
+-- 6. admin_approve_trip_failure_refund: the admin "Issue refund" for a failed
+--    trip leg. request_order_refund (103) refuses trip legs, so this runs
+--    approve_failed_trip_refund (103, behind backend POST
+--    /admin/trips/:id/failure-refund) for the leg's trip and audits it.
+CREATE OR REPLACE FUNCTION public.admin_approve_trip_failure_refund(p_order uuid,p_amount_paise bigint,p_admin_email text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE o orders; r trip_refunds;
+BEGIN
+ SELECT * INTO o FROM orders WHERE id=p_order;
+ IF NOT FOUND THEN RAISE EXCEPTION USING errcode='P0404',message='Order not found'; END IF;
+ IF o.trip_id IS NULL THEN RAISE EXCEPTION USING errcode='P0409',message='Not part of a trip; refund the order itself'; END IF;
+ BEGIN
+  PERFORM approve_failed_trip_refund(o.trip_id,p_amount_paise);
+ EXCEPTION WHEN raise_exception THEN
+  RAISE EXCEPTION USING errcode='P0409',message=CASE WHEN SQLERRM='Refund amount already frozen'
+   THEN 'A different refund amount was already approved for this trip'
+   ELSE 'This trip cannot take that refund: it must be failed, paid online, and the amount at most the trip total' END;
+ END;
+ SELECT * INTO r FROM trip_refunds WHERE trip_id=o.trip_id;
+ PERFORM record_admin_order_action(o.id,o.trip_id,'trip_failure_refund',NULL,p_amount_paise::text,NULL,p_admin_email);
+ RETURN jsonb_build_object('trip_id',o.trip_id,'status',r.status,'target_paise',r.target_paise);
+END $function$
+;
+REVOKE ALL ON FUNCTION public.admin_approve_trip_failure_refund(uuid,bigint,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_approve_trip_failure_refund(uuid,bigint,text) TO service_role;
 
 NOTIFY pgrst,'reload schema';
 COMMIT;

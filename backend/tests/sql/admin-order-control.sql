@@ -4,7 +4,7 @@ BEGIN;
 DO $$ DECLARE f text; BEGIN
  FOREACH f IN ARRAY ARRAY['admin_assign_order_rider(uuid,uuid,text)','admin_cancel_order(uuid,text,text)','admin_advance_order_status(uuid,text,text,text)',
   'admin_unassign_rider(uuid,text,text)','admin_reassign_rider(uuid,uuid,text,text)','cancel_trip_from_leg(uuid,text,text)',
-  'admin_reissue_delivery_code(uuid,uuid,text)'] LOOP
+  'admin_reissue_delivery_code(uuid,uuid,text)','admin_approve_trip_failure_refund(uuid,bigint,text)'] LOOP
   IF has_function_privilege('anon',f,'EXECUTE') OR has_function_privilege('authenticated',f,'EXECUTE') THEN RAISE EXCEPTION '% exposed to API roles',f; END IF;
   IF NOT has_function_privilege('service_role',f,'EXECUTE') THEN RAISE EXCEPTION 'service_role cannot run %',f; END IF;
  END LOOP;
@@ -184,6 +184,27 @@ DO $$ DECLARE r jsonb; old text; BEGIN
  -- Trip scope: one code per trip.
  r:=admin_reissue_delivery_code('00000000-0000-4000-8000-000000009352','00000000-0000-4000-8000-000000009ad1','admin@test.dev');
  IF NOT EXISTS(SELECT 1 FROM delivery_codes WHERE scope_id='00000000-0000-4000-8000-000000009005') THEN RAISE EXCEPTION 'Trip code not reissued'; END IF;
+END $$;
+
+-- B4: a failed trip leg is refunded through approve_failed_trip_refund, once, for the whole trip.
+DO $$ DECLARE r jsonb; BEGIN
+ BEGIN PERFORM admin_approve_trip_failure_refund('00000000-0000-4000-8000-000000009361',6000,'admin@test.dev'); RAISE EXCEPTION 'Refunded a trip that did not fail';
+ EXCEPTION WHEN sqlstate 'P0409' THEN NULL; END;
+ SET LOCAL session_replication_role=replica;
+ UPDATE orders SET status='failed',rider_id='00000000-0000-4000-8000-000000009e01' WHERE trip_id='00000000-0000-4000-8000-000000009006';
+ UPDATE trips SET status='failed' WHERE id='00000000-0000-4000-8000-000000009006';
+ SET LOCAL session_replication_role=origin;
+ BEGIN PERFORM request_order_refund('00000000-0000-4000-8000-000000009361'); RAISE EXCEPTION 'Single-order refund accepted a trip leg';
+ EXCEPTION WHEN raise_exception THEN NULL; END;
+ BEGIN PERFORM admin_approve_trip_failure_refund('00000000-0000-4000-8000-000000009361',999999,'admin@test.dev'); RAISE EXCEPTION 'Refund above trip total';
+ EXCEPTION WHEN sqlstate 'P0409' THEN NULL; END;
+ r:=admin_approve_trip_failure_refund('00000000-0000-4000-8000-000000009362',4500,'admin@test.dev');
+ IF r->>'status'<>'queued' OR (r->>'target_paise')::bigint<>4500 THEN RAISE EXCEPTION 'Trip refund not queued: %',r; END IF;
+ IF EXISTS(SELECT 1 FROM orders WHERE trip_id='00000000-0000-4000-8000-000000009006' AND refund_status<>'processing') THEN RAISE EXCEPTION 'Legs not marked processing'; END IF;
+ BEGIN PERFORM admin_approve_trip_failure_refund('00000000-0000-4000-8000-000000009361',6000,'admin@test.dev'); RAISE EXCEPTION 'Second amount accepted';
+ EXCEPTION WHEN sqlstate 'P0409' THEN NULL; END;
+ IF (SELECT count(*) FROM trip_refunds WHERE trip_id='00000000-0000-4000-8000-000000009006')<>1
+ OR NOT EXISTS(SELECT 1 FROM admin_order_actions WHERE trip_id='00000000-0000-4000-8000-000000009006' AND action='trip_failure_refund' AND to_value='4500') THEN RAISE EXCEPTION 'Trip refund not single or not audited'; END IF;
 END $$;
 
 ROLLBACK;

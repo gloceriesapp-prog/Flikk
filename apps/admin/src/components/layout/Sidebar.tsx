@@ -45,7 +45,12 @@ export function Sidebar() {
       }
       if (refundsRes.ok) {
         const refunds = (await refundsRes.json()) as { refundStatus: string }[];
-        next['/refunds'] = refunds.filter((r) => r.refundStatus === 'pending').length;
+        // Needs a human: a provider refund that failed (retry) or one that
+        // must be refunded by hand (manual_required). Trip legs share one
+        // refund, so they are counted once per trip.
+        const needsAction = (refunds as { refundStatus: string; tripId?: string | null; id?: string }[])
+          .filter((r) => r.refundStatus === 'failed' || r.refundStatus === 'manual_required');
+        next['/refunds'] = new Set(needsAction.map((r) => r.tripId ?? r.id)).size;
       }
 
       // Merge, don't replace — a request that failed this round keeps its

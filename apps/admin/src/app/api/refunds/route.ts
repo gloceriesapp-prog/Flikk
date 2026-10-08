@@ -5,7 +5,7 @@
 // backend refund worker is the single place that talks to Cashfree.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import type { PaymentProvider, RefundStatus } from '@/lib/types';
 
 export interface RefundOrder {
@@ -20,19 +20,21 @@ export interface RefundOrder {
   // For a manual refund this holds the bank/UPI reference the founder entered.
   providerRefundId: string | null;
   cancelReason: string | null;
+  // Leg of a multi-store trip: refunded once for the whole trip (Trip refunds).
+  tripId: string | null;
   refundedAt: string | null;
 }
 
 const STATUS_RANK: Record<RefundOrder['refundStatus'], number> = { manual_required: 0, failed: 1, processing: 2, completed: 3 };
 
 export async function GET() {
-  const user = await requireAdminSession();
-  if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
 
   try {
     const { data, error } = await supabaseAdmin
       .from('orders')
-      .select('id, order_number, total, refund_status, payment_provider, provider_payment_id, provider_refund_id, cancel_reason, refunded_at')
+      .select('id, order_number, total, refund_status, payment_provider, provider_payment_id, provider_refund_id, cancel_reason, refunded_at, trip_id')
       .neq('refund_status', 'none')
       .order('placed_at', { ascending: false });
     if (error) throw error;
@@ -56,6 +58,7 @@ export async function GET() {
         providerPaymentId: row.provider_payment_id,
         providerRefundId: row.provider_refund_id,
         cancelReason: row.cancel_reason,
+        tripId: row.trip_id,
         refundedAt: row.refunded_at,
       }))
       .sort((a, b) => (STATUS_RANK[a.refundStatus] ?? 9) - (STATUS_RANK[b.refundStatus] ?? 9));

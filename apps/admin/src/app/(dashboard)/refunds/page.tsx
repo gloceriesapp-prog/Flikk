@@ -7,12 +7,18 @@
 // so a retry can't double-refund. 'manual_required' rows (legacy-provider
 // payments Cashfree can't refund) get "Mark refunded manually", which needs
 // the bank/UPI reference of the payout the founder sent.
+// Trip legs share one combined refund (trip_refunds), shown in the "Trip
+// refunds" section below with its legs; its manual refund closes every leg.
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { ExternalLink, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
 import type { RefundOrder } from '@/app/api/refunds/route';
+import type { TripRefundRow } from '@/app/api/refunds/trips/route';
 import { CASHFREE_DASHBOARD_URL } from '@/lib/types';
+import { cancelReasonLabel } from '@/lib/orders/cancelReasons';
+import { formatDateTime } from '@/lib/format';
 
 const STATUS_STYLE: Record<RefundOrder['refundStatus'], string> = {
   manual_required: 'bg-red-50 text-danger',
@@ -21,27 +27,17 @@ const STATUS_STYLE: Record<RefundOrder['refundStatus'], string> = {
   completed: 'bg-green-50 text-success',
 };
 
-// Rider cancels store a stable CODE (backend/src/lib/cancelReasons.ts —
-// itself mirrored from @gloceries/shared, which admin isn't a member of), so map
-// it to a readable label here. Partner/customer cancels are still free text,
-// which falls through unchanged.
-const CANCEL_REASON_LABELS: Record<string, string> = {
-  store_closed: 'Store is closed',
-  store_out_of_stock: 'Store out of items',
-  store_refused_handover: 'Store refused to hand over',
-  long_wait_at_store: 'Waiting too long at store',
-  vehicle_breakdown: 'Vehicle breakdown',
-  unsafe_conditions: 'Unsafe to continue',
-  other: 'Other',
+const TRIP_STATUS_STYLE: Record<TripRefundRow['status'], string> = {
+  manual_required: 'bg-red-50 text-danger',
+  failed: 'bg-red-50 text-danger',
+  queued: 'bg-amber-50 text-amber-600',
+  processing: 'bg-amber-50 text-amber-600',
+  completed: 'bg-green-50 text-success',
 };
-
-function cancelReasonLabel(reason: string | null): string {
-  if (!reason) return '—';
-  return CANCEL_REASON_LABELS[reason] ?? reason;
-}
 
 export default function RefundsPage() {
   const [refunds, setRefunds] = useState<RefundOrder[]>([]);
+  const [tripRefunds, setTripRefunds] = useState<TripRefundRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
@@ -52,10 +48,13 @@ export default function RefundsPage() {
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      const res = await fetch('/api/refunds');
+      const [res, tripRes] = await Promise.all([fetch('/api/refunds'), fetch('/api/refunds/trips')]);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Could not load refunds.');
+      const tripData = await tripRes.json();
+      if (!tripRes.ok) throw new Error(tripData.error ?? 'Could not load trip refunds.');
       setRefunds(data);
+      setTripRefunds(tripData);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load refunds.');
     } finally {
@@ -102,8 +101,10 @@ export default function RefundsPage() {
     }
   }
 
-  const failedCount = refunds.filter((r) => r.refundStatus === 'failed').length;
-  const manualCount = refunds.filter((r) => r.refundStatus === 'manual_required').length;
+  const singles = refunds.filter((r) => !r.tripId);
+  const failedCount = singles.filter((r) => r.refundStatus === 'failed').length;
+  const manualCount = singles.filter((r) => r.refundStatus === 'manual_required').length
+    + tripRefunds.filter((t) => t.status === 'manual_required').length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -147,7 +148,10 @@ export default function RefundsPage() {
             ) : (
               refunds.map((refund) => (
                 <tr key={refund.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-medium text-ink">{refund.orderNumber}</td>
+                  <td className="px-4 py-3 font-medium text-ink">
+                    {refund.orderNumber}
+                    {refund.tripId && <span className="block text-[11px] font-normal text-blue-700">Trip leg — see Trip refunds</span>}
+                  </td>
                   <td className="px-4 py-3 tabular-nums text-ink">₹{refund.total.toFixed(0)}</td>
                   <td className="max-w-xs truncate px-4 py-3 text-muted">{cancelReasonLabel(refund.cancelReason)}</td>
                   <td className="px-4 py-3 text-xs text-muted">
@@ -175,7 +179,7 @@ export default function RefundsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {refund.refundStatus === 'failed' && (
+                    {!refund.tripId && refund.refundStatus === 'failed' && (
                       <button
                         type="button"
                         onClick={() => handleRetry(refund.id)}
@@ -186,7 +190,7 @@ export default function RefundsPage() {
                         {retryingId === refund.id ? 'Retrying…' : 'Retry'}
                       </button>
                     )}
-                    {refund.refundStatus === 'manual_required' &&
+                    {!refund.tripId && refund.refundStatus === 'manual_required' &&
                       (manualId === refund.id ? (
                         <form
                           className="flex items-center justify-end gap-2"
@@ -240,6 +244,106 @@ export default function RefundsPage() {
                 </tr>
               ))
             )}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-bold text-ink">Trip refunds</h2>
+        <p className="text-sm text-muted">One combined refund per multi-shop trip (cancelled trips and approved failed-delivery refunds).</p>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-accent/40 text-left text-xs font-semibold uppercase text-muted">
+            <tr>
+              <th className="px-4 py-3">Trip</th>
+              <th className="px-4 py-3">Shops</th>
+              <th className="px-4 py-3">Refund</th>
+              <th className="px-4 py-3">Payment</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {!loading && tripRefunds.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted">No trip refunds yet.</td>
+              </tr>
+            )}
+            {tripRefunds.map((trip) => {
+              const manualLeg = trip.legs.find((leg) => leg.refundStatus === 'manual_required');
+              return (
+                <tr key={trip.tripId} className="border-t border-border align-top">
+                  <td className="px-4 py-3 text-ink">
+                    <p className="font-mono text-xs">{trip.tripId.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-xs capitalize text-muted">trip {trip.tripStatus} · ₹{trip.tripTotal.toFixed(0)}</p>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted">
+                    {trip.legs.map((leg) => (
+                      <p key={leg.id}>
+                        <Link href={`/orders/${leg.id}`} className="font-medium text-ink hover:underline">{leg.orderNumber}</Link>
+                        {' '}· {leg.storeName} · {leg.status}
+                      </p>
+                    ))}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums text-ink">
+                    ₹{(trip.targetPaise / 100).toFixed(2)}
+                    {trip.refundedPaise > 0 && <span className="block text-xs text-muted">refunded ₹{(trip.refundedPaise / 100).toFixed(2)}</span>}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted">
+                    <p className="font-semibold text-ink">{trip.paymentProvider === 'razorpay' ? 'Legacy provider' : 'Cashfree'}</p>
+                    <p className="font-mono">pay: {trip.paymentId}</p>
+                    {trip.providerRefundId && <p className="font-mono">ref: {trip.providerRefundId}</p>}
+                    {trip.lastError && <p>{trip.lastError}</p>}
+                    <p>updated {formatDateTime(trip.updatedAt)}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={clsx('rounded-full px-2.5 py-1 text-xs font-semibold capitalize', TRIP_STATUS_STYLE[trip.status])}>
+                      {trip.status === 'manual_required' ? 'manual refund needed' : trip.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {trip.status === 'manual_required' && manualLeg &&
+                      (manualId === manualLeg.id ? (
+                        <form
+                          className="flex items-center justify-end gap-2"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            void handleManual(manualLeg.id);
+                          }}
+                        >
+                          <input
+                            autoFocus
+                            required
+                            minLength={4}
+                            maxLength={64}
+                            value={manualRef}
+                            onChange={(e) => setManualRef(e.target.value)}
+                            placeholder="Bank/UPI reference (UTR)"
+                            aria-label="Bank or UPI reference"
+                            className="w-48 rounded-full border border-border px-3 py-1.5 text-xs"
+                          />
+                          <button type="submit" disabled={savingManual || manualRef.trim().length < 4}
+                            className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+                            {savingManual ? 'Saving…' : 'Save'}
+                          </button>
+                          <button type="button" onClick={() => { setManualId(null); setManualRef(''); }} className="text-xs text-muted hover:text-ink">
+                            Cancel
+                          </button>
+                        </form>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setManualId(manualLeg.id); setManualRef(''); }}
+                          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent/50"
+                        >
+                          Mark refunded manually
+                        </button>
+                      ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
