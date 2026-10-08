@@ -1,4 +1,5 @@
 import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
+import { useCopy } from '../../api/appConfig';
 // Reached from CartBar's "View cart" tap (see components/CartBar/CartBar.tsx)
 // or the bottom nav. Payment selection and order placement live in the
 // cart footer; payment/useCartPayment owns the confirmed payment flow.
@@ -49,6 +50,8 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Cart'>;
 
 export function CartScreen({ navigation, route }: Props) {
   const customerId = useAuthStore(state => state.customerId);
+  const emptyTitle = useCopy('cart.empty.title');
+  const emptySubtitle = useCopy('cart.empty.subtitle');
   const estimatedMinutes = useDeliveryEstimateMinutes();
   const items = useCartStore((state) => state.items);
   const totalQuantity = useCartStore(selectCartTotalQuantity);
@@ -231,8 +234,8 @@ export function CartScreen({ navigation, route }: Props) {
       {items.length === 0 ? (
         <View className="flex-1 items-center justify-center gap-1 px-10">
           <AppIcon icon={ShoppingBasket03Icon} size={40} color={`${colors.ink}`} />
-          <Text className="text-center text-lg font-semibold text-ink">Your cart is empty</Text>
-          <Text className="text-center text-base text-ink/50">Add something from a store to see it here.</Text>
+          <Text className="text-center text-lg font-semibold text-ink">{emptyTitle}</Text>
+          <Text className="text-center text-base text-ink/50">{emptySubtitle}</Text>
         </View>
       ) : (
         <>

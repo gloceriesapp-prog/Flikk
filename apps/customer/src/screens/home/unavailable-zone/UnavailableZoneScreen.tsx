@@ -36,12 +36,14 @@ import { useLocationStore } from '../../../store/useLocationStore';
 import { colors } from '../../../theme/tokens';
 import type { AppStackParamList } from '../../../navigation/types';
 import { storageUrl } from '../../../utils/storageUrl';
+import { useCopy } from '../../../api/appConfig';
 
 const PANEL_BG = '#F7DEDC';
 const ILLUSTRATION_URL = storageUrl('Images/store-coming-soon.png');
 
 export function UnavailableZoneScreen() {
   const insets = useSafeAreaInsets();
+  const title = useCopy('serviceability.unavailable.title');
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const location = useLocationStore((s) => s.location);
   const addressLabel = location?.addressLabel || location?.city || 'Set your location';
@@ -82,7 +84,7 @@ export function UnavailableZoneScreen() {
                 ✦ Coming Soon
               </Text>
             </View>
-            <Text className="text-center text-[24px] font-semibold leading-8 text-ink/90">We&apos;re on our way to you.</Text>
+            <Text className="text-center text-[24px] font-semibold leading-8 text-ink/90">{title}</Text>
             <Text className="text-center text-[15px] font-medium leading-6 text-ink/60">
               Gloceries isn&apos;t in your area just yet, but you can help us get there faster.
             </Text>

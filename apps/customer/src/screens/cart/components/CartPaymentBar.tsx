@@ -3,6 +3,7 @@ import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import type { UpiApp } from '../../../payments/upiApps';
 import { paymentMethodLabel, type PaymentMethod } from '../../../payments/paymentMethod';
+import { useCopy } from '../../../api/appConfig';
 
 interface Props {
   method: PaymentMethod | null;
@@ -19,6 +20,7 @@ export function CartPaymentBar({ method, apps, total, busy, disabled, onChoose, 
   const label = method ? paymentMethodLabel(method, apps) : 'Select payment method';
   const amount = total == null ? 'Checking total…' : `₹${total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   const blocked = busy || disabled;
+  const placeOrderLabel = useCopy('checkout.placeOrder.cta');
 
   return (
     <View className="flex-row items-center gap-3 bg-white px-4 pb-safe-offset-3 pt-2">
@@ -37,13 +39,13 @@ export function CartPaymentBar({ method, apps, total, busy, disabled, onChoose, 
 
       <Pressable onPress={method ? onPlaceOrder : onChoose} disabled={blocked}
         accessibilityRole="button" accessibilityState={{ disabled: blocked, busy }}
-        accessibilityLabel={method ? `Place order, total ${amount}` : `Select payment method, total ${amount}`}
+        accessibilityLabel={method ? `${placeOrderLabel}, total ${amount}` : `Select payment method, total ${amount}`}
         className="min-h-[52px] min-w-0 flex-1 items-center justify-center rounded-2xl bg-coral px-3 py-2.5"
         style={({ pressed }) => ({ opacity: disabled ? 0.5 : pressed ? 0.85 : 1 })}>
         {busy ? <ActivityIndicator color="#101C10" /> : (
           <>
             <Text numberOfLines={1} className="text-[14px] font-semibold text-ink">
-              {method ? 'Place order' : 'Select payment'}
+              {method ? placeOrderLabel : 'Select payment'}
             </Text>
             <Text numberOfLines={1} className="mt-0.5 text-[13px] font-semibold text-ink/80 tracking-tight"
               style={{ fontVariant: ['tabular-nums'] }}>{amount}</Text>

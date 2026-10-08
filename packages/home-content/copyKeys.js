@@ -31,8 +31,6 @@ export const COPY_KEYS = {
   'home.everydayEssentials.subtitle': { default: '', hint: 'Home catalogue grid sub-text' },
   'home.newOnGloceries.title': { default: 'New on Gloceries', hint: 'Home newly-onboarded stores heading' },
   'home.newOnGloceries.subtitle': { default: '', hint: 'Home new stores sub-text' },
-  'home.buyItAgain.title': { default: 'Buy It Again', hint: 'Home repeat-purchase row heading' },
-  'home.groceries.bestSellers.title': { default: 'Best sellers near you', hint: 'Grocery tab best-sellers heading' },
   // Category tabs (Bakery, Protein, Meat & Fish and any admin tab).
   'home.categoryTab.products.title': { default: 'All products', hint: 'Category tab product grid heading' },
   'home.categoryTab.empty.title': { default: 'No products here yet', hint: 'Category tab with no products' },
@@ -46,14 +44,14 @@ export const COPY_KEYS = {
   'wishlist.empty.title': { default: 'Nothing here yet', hint: 'Empty wishlist heading' },
   'wishlist.empty.subtitle': { default: 'Tap the heart on any product to save it here for later.', hint: 'Empty wishlist sub-text' },
   'wishlist.unavailable.note': { default: 'Some saved items are out of stock or their shop is closed right now.', hint: 'Wishlist note when items cannot be bought' },
-  // Other screens (wired by their owners; listed so admin sees them).
-  'home.search.placeholder': { default: '', hint: 'Home search bar placeholder' },
-  'cart.empty.title': { default: '', hint: 'Empty cart heading' },
-  'cart.empty.subtitle': { default: '', hint: 'Empty cart sub-text' },
-  'checkout.placeOrder.cta': { default: '', hint: 'Place-order button label' },
-  'orders.empty.title': { default: '', hint: 'No orders yet heading' },
-  'support.hours.text': { default: '', hint: 'Support availability line' },
-  'serviceability.unavailable.title': { default: '', hint: 'Area not serviceable heading' },
+  // Other screens.
+  'home.search.placeholder': { default: '', hint: 'Home search bar text. Blank = rotating product suggestions' },
+  'cart.empty.title': { default: 'Your cart is empty', hint: 'Empty cart heading' },
+  'cart.empty.subtitle': { default: 'Add something from a store to see it here.', hint: 'Empty cart sub-text' },
+  'checkout.placeOrder.cta': { default: 'Place order', hint: 'Cart place-order button label' },
+  'orders.empty.title': { default: 'No orders yet.', hint: 'Orders screen heading when there are no orders' },
+  'support.hours.text': { default: '', hint: 'Support availability line on the Help screen, e.g. "We reply 7 AM – 10 PM". Blank = hidden' },
+  'serviceability.unavailable.title': { default: 'We’re on our way to you.', hint: 'Area not serviceable heading' },
 };
 
 export function copyDefault(key) {

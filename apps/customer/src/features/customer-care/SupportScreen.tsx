@@ -3,11 +3,13 @@ import { useRef, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../navigation/types';
+import { useCopy } from '../../api/appConfig';
 import { createTicket, getTickets, getSupportOrders, requestId, ISSUE_LABELS, type IssueCategory, type SupportTarget } from './api';
 import { useCareList, uniqueRows } from './useCareQuery';
 import { CareLayout, CareButton, CareEmpty, QueryNotice, displayDate } from './components/CareLayout';
 type Props = NativeStackScreenProps<AppStackParamList, 'Support'>;
 function SupportForm({ navigation, route }: Props) {
+    const hoursText = useCopy('support.hours.text');
     const tickets = useCareList('tickets', getTickets);
     const orders = useCareList('support-orders', getSupportOrders);
     const [target, setTarget] = useState<SupportTarget | undefined>(route.params?.target);
@@ -50,7 +52,7 @@ function SupportForm({ navigation, route }: Props) {
         }
     }
     return <CareLayout title="Help & support" onBack={() => navigation.goBack()}>
-  <View className="rounded-3xl bg-white p-5"><Text className="text-[22px] font-bold text-black">Let’s sort it out</Text><Text className="mt-2 text-sm text-gray-600">Choose an order and tell us what happened. Replies appear in your support conversation.</Text></View>
+  <View className="rounded-3xl bg-white p-5"><Text className="text-[22px] font-bold text-black">Let’s sort it out</Text><Text className="mt-2 text-sm text-gray-600">Choose an order and tell us what happened. Replies appear in your support conversation.</Text>{hoursText ? <Text className="mt-2 text-sm font-semibold text-gray-700">{hoursText}</Text> : null}</View>
   <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Faq')} className="flex-row items-center justify-between rounded-2xl bg-white p-4"><Text className="text-[15px] font-bold text-black">Common questions</Text><Text className="text-sm font-semibold text-[#155DFC]">View</Text></Pressable>
   <Text className="text-lg font-bold text-black">Which order?</Text>
   {target ? <View className="rounded-2xl bg-white p-4"><Text className="text-sm font-semibold text-black">{target.isTrip ? 'Multi-shop order' : choices.find(o => o.id === target.orderId)?.order_number ?? 'Selected order'}</Text><Pressable disabled={busy || uncertain} onPress={() => setTarget(undefined)}><Text className="mt-2 text-sm font-semibold text-[#155DFC]">Choose another order</Text></Pressable></View> : <>
