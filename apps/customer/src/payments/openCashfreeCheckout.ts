@@ -16,7 +16,10 @@ export function cashfreeEnvironment(fromServer: string | undefined): 'SANDBOX' |
   return env === 'production' ? 'PRODUCTION' : 'SANDBOX';
 }
 
-export async function openCashfreeCheckout(order: Pick<CashfreeOrder, 'paymentSessionId' | 'providerOrderId' | 'environment'>): Promise<void> {
+// Modes to show. Omitted: every mode enabled on the Cashfree account.
+export type CheckoutMode = 'CARD' | 'NB' | 'UPI';
+
+export async function openCashfreeCheckout(order: Pick<CashfreeOrder, 'paymentSessionId' | 'providerOrderId' | 'environment'>, modes?: CheckoutMode[]): Promise<void> {
   let sdk: typeof import('react-native-cashfree-pg-sdk');
   let contract: typeof import('cashfree-pg-api-contract');
   try {
@@ -40,7 +43,20 @@ export async function openCashfreeCheckout(order: Pick<CashfreeOrder, 'paymentSe
       },
     });
     try {
-      CFPaymentGatewayService.doWebPayment(new contract.CFSession(order.paymentSessionId, order.providerOrderId, env));
+      const session = new contract.CFSession(order.paymentSessionId, order.providerOrderId, env);
+      if (modes?.length) {
+        // Native drop checkout limited to the chosen modes; the hosted web
+        // checkout can't be filtered client-side.
+        const builder = new contract.CFPaymentComponentBuilder();
+        for (const mode of modes) builder.add(contract.CFPaymentModes[mode]);
+        try {
+          CFPaymentGatewayService.doPayment(new contract.CFDropCheckoutPayment(session, builder.build(), null));
+          return;
+        } catch {
+          // Older native build without drop checkout: fall back to every mode.
+        }
+      }
+      CFPaymentGatewayService.doWebPayment(session);
     } catch (err) {
       CFPaymentGatewayService.removeCallback();
       reject(err instanceof Error ? err : new Error('Could not open checkout.'));

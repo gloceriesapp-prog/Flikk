@@ -3,7 +3,7 @@ import type { AuthedRequest } from '../middleware/auth.js';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 
-const METHODS = new Set(['cod', 'online', 'card', 'upi_id', 'upi_app:gpay', 'upi_app:phonepe', 'upi_app:paytm', 'upi_app:bhim', 'upi_app:amazonpay', 'upi_app:cred', 'upi_app:whatsapp']);
+const METHODS = new Set(['cod', 'online', 'card', 'netbanking', 'upi_other', 'upi_id', 'upi_app:gpay', 'upi_app:phonepe', 'upi_app:paytm', 'upi_app:bhim', 'upi_app:amazonpay', 'upi_app:cred', 'upi_app:whatsapp']);
 const METADATA_KEY = 'customer_checkout_payment_method';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
