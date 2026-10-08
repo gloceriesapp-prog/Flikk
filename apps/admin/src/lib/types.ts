@@ -300,6 +300,22 @@ export interface Store {
 // Admin Add Store payload — see lib/storeValidation.ts.
 export type { StoreWriteInput as NewStoreInput } from './storeValidation';
 
+// A partner's store profile edit waiting for (or past) admin review
+// (store_profile_change_requests, migration 114). changes/previous are keyed
+// by stores column (name, category, district, address_line, manual_address,
+// lat, lng, drug_license_number).
+export interface StoreChangeRequest {
+  id: string;
+  storeId: string;
+  storeName: string;
+  changes: Record<string, unknown>;
+  previous: Record<string, unknown>;
+  status: 'pending' | 'approved' | 'rejected' | 'superseded';
+  reviewReason: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
 // zones is first-class in the DB from day 1 (PRD Section 16) even though
 // only one is active at launch — this type exists so the Zones screen can
 // show the framework (a second zone slots in with zero schema change),

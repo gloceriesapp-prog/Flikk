@@ -37,6 +37,18 @@ export interface Store {
   // Required while category is Pharmacy (backend lib/storeCategories.ts).
   drug_license_number?: string | null;
   phone: string | null;
+  // Name/category/address/map-pin/licence edits wait for Gloceries review
+  // (migration 114): the live values above stay until approved.
+  pending_change?: StoreProfileChange | null;
+  last_change_review?: StoreProfileChange | null;
+}
+
+export interface StoreProfileChange {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  changes: Record<string, string | number | null>;
+  review_reason: string | null;
+  created_at: string;
 }
 
 // The store categories admin allows — the backend refuses anything else.

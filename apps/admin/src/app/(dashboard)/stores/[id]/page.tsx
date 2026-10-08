@@ -7,6 +7,7 @@ import { StoreDetailForm } from '@/components/stores/StoreDetailForm';
 import { StoreSuspensionPanel } from '@/components/stores/StoreSuspensionPanel';
 import { StorePayoutPanel } from '@/components/stores/StorePayoutPanel';
 import { StoreCommissionPanel } from '@/components/stores/StoreCommissionPanel';
+import { StoreChangeRequests } from '@/components/stores/StoreChangeRequests';
 import { PartnerAccountPanel, type PartnerAccountAction } from '@/components/stores/PartnerAccountPanel';
 import { STORE_PAYOUT_SELECT, toStorePayoutView } from '@/lib/storePayout';
 
@@ -60,6 +61,7 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
         />
       )}
       <StoreSuspensionPanel storeId={store.id} suspended={!!store.adminSuspended} reason={store.suspendedReason ?? null} suspendedAt={store.suspendedAt ?? null} />
+      <StoreChangeRequests storeId={store.id} />
       <StorePayoutPanel storeId={store.id} payout={payout} />
       <StoreCommissionPanel
         key={`commission:${storeRate ?? 'default'}`}
@@ -67,7 +69,7 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
         storeRate={storeRate == null ? null : Number(storeRate)}
         platformRate={platformRate == null ? null : Number(platformRate)}
       />
-      <StoreDetailForm key={`${store.id}:${store.adminSuspended ? 's' : 'a'}`} store={store} />
+      <StoreDetailForm key={`${store.id}:${store.adminSuspended ? 's' : 'a'}:${store.name}:${store.category}:${store.lat}:${store.lng}:${store.addressLine}`} store={store} />
     </div>
   );
 }

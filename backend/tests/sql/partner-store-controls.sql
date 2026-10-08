@@ -67,4 +67,66 @@ DO $$ BEGIN
   RAISE EXCEPTION 'Draft cannot hold a drug licence'; END IF;
 END $$;
 
+-- 3. Store profile change review: live store untouched until approved.
+DO $$ BEGIN
+ IF has_function_privilege('authenticated','partner_request_store_profile_change(uuid,uuid,jsonb)','EXECUTE')
+ OR has_function_privilege('anon','admin_review_store_profile_change(uuid,boolean,text,uuid)','EXECUTE')
+ OR has_function_privilege('authenticated','admin_review_store_profile_change(uuid,boolean,text,uuid)','EXECUTE')
+ OR has_table_privilege('authenticated','store_profile_change_requests','SELECT') THEN
+  RAISE EXCEPTION 'Store change review exposed to API roles'; END IF;
+END $$;
+DO $$ DECLARE r store_profile_change_requests; s stores; first_id uuid; BEGIN
+ BEGIN
+  PERFORM partner_request_store_profile_change('00000000-0000-4000-8000-0000001140f1','00000000-0000-4000-8000-0000001140e1','{"is_active":true}');
+  RAISE EXCEPTION 'Unreviewed field accepted';
+ EXCEPTION WHEN sqlstate 'P0400' THEN NULL; END;
+ BEGIN
+  PERFORM partner_request_store_profile_change('00000000-0000-4000-8000-0000001140f1','00000000-0000-4000-8000-0000001140e3','{"name":"Hijack"}');
+  RAISE EXCEPTION 'Another owner filed a change';
+ EXCEPTION WHEN sqlstate 'P0403' THEN NULL; END;
+ r:=partner_request_store_profile_change('00000000-0000-4000-8000-0000001140f1','00000000-0000-4000-8000-0000001140e1',
+   '{"name":"Renamed store","lat":13.5,"lng":74.9,"district":"Udupi"}');
+ first_id:=r.id;
+ IF r.status<>'pending' OR r.changes<>'{"name":"Renamed store","lat":13.5,"lng":74.9}'::jsonb OR r.previous->>'name'<>'Partner store' THEN
+  RAISE EXCEPTION 'Change not filed as expected: % %', r.changes, r.previous; END IF;
+ SELECT * INTO s FROM stores WHERE id='00000000-0000-4000-8000-0000001140f1';
+ IF s.name<>'Partner store' OR s.lat<>13.2 THEN RAISE EXCEPTION 'Pending change went live'; END IF;
+ -- A newer edit merges into the pending one; a field set back to live drops out.
+ r:=partner_request_store_profile_change('00000000-0000-4000-8000-0000001140f1','00000000-0000-4000-8000-0000001140e1',
+   '{"category":"Pharmacy","lat":13.2,"lng":74.7}');
+ IF r.changes<>'{"name":"Renamed store","category":"Pharmacy"}'::jsonb THEN RAISE EXCEPTION 'Merge wrong: %', r.changes; END IF;
+ IF (SELECT status FROM store_profile_change_requests WHERE id=first_id)<>'superseded'
+ OR (SELECT count(*) FROM store_profile_change_requests WHERE store_id='00000000-0000-4000-8000-0000001140f1' AND status='pending')<>1 THEN
+  RAISE EXCEPTION 'Older pending change not superseded'; END IF;
+ BEGIN
+  PERFORM admin_review_store_profile_change(first_id,true,null,null);
+  RAISE EXCEPTION 'Superseded change approved';
+ EXCEPTION WHEN sqlstate 'P0409' THEN NULL; END;
+ -- Pharmacy without a licence cannot be approved (and nothing is applied).
+ BEGIN
+  PERFORM admin_review_store_profile_change(r.id,true,null,null);
+  RAISE EXCEPTION 'Pharmacy without licence approved';
+ EXCEPTION WHEN sqlstate 'P0400' THEN NULL; END;
+ IF (SELECT name FROM stores WHERE id='00000000-0000-4000-8000-0000001140f1')<>'Partner store' THEN
+  RAISE EXCEPTION 'Failed approval leaked changes'; END IF;
+ BEGIN
+  PERFORM admin_review_store_profile_change(r.id,false,'x',null);
+  RAISE EXCEPTION 'Rejection without reason accepted';
+ EXCEPTION WHEN sqlstate 'P0400' THEN NULL; END;
+ r:=admin_review_store_profile_change(r.id,false,'Need a drug licence for pharmacy','00000000-0000-4000-8000-0000001140e3');
+ IF r.status<>'rejected' OR r.review_reason<>'Need a drug licence for pharmacy' OR r.reviewed_at IS NULL THEN
+  RAISE EXCEPTION 'Rejection not recorded'; END IF;
+ -- A clean request is applied on approval, null clears a text field.
+ r:=partner_request_store_profile_change('00000000-0000-4000-8000-0000001140f1','00000000-0000-4000-8000-0000001140e1',
+   '{"name":"Renamed store","lat":13.5,"lng":74.9,"category":"Pharmacy","drug_license_number":"KA-20B-1","manual_address":"","address_line":null}');
+ IF r.changes ? 'manual_address' OR r.changes ? 'address_line' THEN RAISE EXCEPTION 'Blank equal to live kept'; END IF;
+ r:=admin_review_store_profile_change(r.id,true,null,'00000000-0000-4000-8000-0000001140e3');
+ SELECT * INTO s FROM stores WHERE id='00000000-0000-4000-8000-0000001140f1';
+ IF r.status<>'approved' OR s.name<>'Renamed store' OR s.lat<>13.5 OR s.lng<>74.9 OR s.category<>'Pharmacy'
+ OR s.drug_license_number<>'KA-20B-1' OR s.district<>'Udupi' THEN RAISE EXCEPTION 'Approved change not applied'; END IF;
+ -- Same values as live: nothing to review.
+ IF partner_request_store_profile_change('00000000-0000-4000-8000-0000001140f1','00000000-0000-4000-8000-0000001140e1','{"name":"Renamed store"}') IS NOT NULL THEN
+  RAISE EXCEPTION 'No-op change filed'; END IF;
+END $$;
+
 ROLLBACK;

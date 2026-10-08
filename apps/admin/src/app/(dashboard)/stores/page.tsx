@@ -15,6 +15,7 @@ import { Pencil, Clock, MapPin, Plus, Search, Store as StoreIcon } from 'lucide-
 import type { NewStoreInput, Store } from '@/lib/types';
 import { fetchStores } from '@/lib/supabase/stores';
 import { AddStoreModal } from '@/components/stores/AddStoreModal';
+import { StoreChangeRequests } from '@/components/stores/StoreChangeRequests';
 
 export default function StoresPage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -82,6 +83,8 @@ export default function StoresPage() {
           Add store
         </button>
       </div>
+
+      <StoreChangeRequests onReviewed={loadData} />
 
       {loadError && (
         <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-danger">

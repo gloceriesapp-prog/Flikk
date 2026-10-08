@@ -6,6 +6,7 @@
 // reverse-geocode) onboarding already uses — this is the one post-
 // approval way to reach it.
 
+import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../navigation/types';
@@ -26,7 +27,14 @@ export function useChangeStoreLocation(): () => void {
         // Applies instantly — same "photo is live the moment it's hosted"
         // reasoning StoreSettingsScreen's own handlePickPhoto uses, since
         // LocationPinScreen already has its own explicit confirm step.
-        updateProfile({ district, addressLine, lat: coordinates.latitude, lng: coordinates.longitude });
+        // A new pin changes which customers the store reaches, so it goes to
+        // Gloceries for review (migration 114) — the live pin stays until then.
+        void updateProfile({ district, addressLine, lat: coordinates.latitude, lng: coordinates.longitude }).then((result) => {
+          if (!result.ok) Alert.alert('Could not update location', result.error);
+          else if (result.pendingReview) {
+            Alert.alert('Location sent for review', 'Your new store location goes live once Gloceries approves it.');
+          }
+        });
       },
     });
   };

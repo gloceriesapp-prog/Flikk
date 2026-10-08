@@ -58,6 +58,21 @@ import { TimeDigitsInput } from './components/TimeDigitsInput';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'StoreSettings'>;
 
+const CHANGE_LABELS: Record<string, string> = {
+  name: 'store name',
+  category: 'category',
+  district: 'area',
+  address_line: 'address',
+  manual_address: 'address description',
+  lat: 'map pin',
+  lng: 'map pin',
+  drug_license_number: 'drug licence',
+};
+
+function describeChange(changes: Record<string, unknown>): string {
+  return [...new Set(Object.keys(changes).map((key) => CHANGE_LABELS[key] ?? key))].join(', ');
+}
+
 // Same flat gray Payouts/Orders/Catalog already use (PayoutsScreen.tsx's
 // own PAGE_BG, itself matching apps/customer's checkout flow,
 // CheckoutScreen.tsx's `#F1F2F4`) — cards stay solid white on top of it,
@@ -69,18 +84,22 @@ export function StoreSettingsScreen({ navigation }: Props) {
   const updateProfile = useStoreProfileStore((state) => state.updateProfile);
   const clearSession = useAuthStore((state) => state.clear);
 
-  const [name, setName] = useState(profile.storeName);
-  const [category, setCategory] = useState(profile.category);
+  // Reviewed fields start from the pending request (if any), so saving again
+  // keeps it instead of reverting it to the live values.
+  const pendingValues = profile.pendingChange?.changes ?? {};
+  const pendingText = (key: string, live: string) => (typeof pendingValues[key] === 'string' ? (pendingValues[key] as string) : key in pendingValues ? '' : live);
+  const [name, setName] = useState(pendingText('name', profile.storeName));
+  const [category, setCategory] = useState(pendingText('category', profile.category));
   const [openTime, setOpenTime] = useState(profile.openTime);
   const [closeTime, setCloseTime] = useState(profile.closeTime);
   const [avgPrepMinutes, setAvgPrepMinutes] = useState(profile.avgPrepMinutes);
-  const [manualAddress, setManualAddress] = useState(profile.manualAddress);
+  const [manualAddress, setManualAddress] = useState(pendingText('manual_address', profile.manualAddress));
   const [ownerName, setOwnerName] = useState(profile.ownerName);
   const [gstNumber, setGstNumber] = useState(profile.gstNumber);
   const [shopLicenseNumber, setShopLicenseNumber] = useState(profile.shopLicenseNumber);
   const [fssaiLicenseNumber, setFssaiLicenseNumber] = useState(profile.fssaiNumber);
   const [panNumber, setPanNumber] = useState(profile.panNumber);
-  const [drugLicenseNumber, setDrugLicenseNumber] = useState(profile.drugLicenseNumber);
+  const [drugLicenseNumber, setDrugLicenseNumber] = useState(pendingText('drug_license_number', profile.drugLicenseNumber));
   const categories = useStoreCategories();
   const needsDrugLicense = categoryNeedsDrugLicense(categories, category);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -101,18 +120,18 @@ export function StoreSettingsScreen({ navigation }: Props) {
     // Syncing local form state from the external store once it loads (see
     // the note above) — the case this rule's own docs allow.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setName(profile.storeName);
-    setCategory(profile.category);
+    setName(pendingText('name', profile.storeName));
+    setCategory(pendingText('category', profile.category));
     setOpenTime(profile.openTime);
     setCloseTime(profile.closeTime);
     setAvgPrepMinutes(profile.avgPrepMinutes);
-    setManualAddress(profile.manualAddress);
+    setManualAddress(pendingText('manual_address', profile.manualAddress));
     setOwnerName(profile.ownerName);
     setGstNumber(profile.gstNumber);
     setShopLicenseNumber(profile.shopLicenseNumber);
     setFssaiLicenseNumber(profile.fssaiNumber);
     setPanNumber(profile.panNumber);
-    setDrugLicenseNumber(profile.drugLicenseNumber);
+    setDrugLicenseNumber(pendingText('drug_license_number', profile.drugLicenseNumber));
     // Only re-syncs when the loaded store's identity changes (a real new
     // load), not on every keystroke into these same fields — profile.id
     // is stable across an in-progress edit, so this won't fight typing.
@@ -207,6 +226,12 @@ export function StoreSettingsScreen({ navigation }: Props) {
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (result.pendingReview) {
+      Alert.alert(
+        'Sent for review',
+        'Changes to your store name, category or address go live once Gloceries approves them. Your other changes are saved.',
+      );
+    }
     // Explicit navigate, not goBack() — this screen is only ever reached
     // from the Orders tab (OrdersScreen's own gear icon / ProfileSetupBanner),
     // so this always lands there regardless of what's actually on the
@@ -300,6 +325,23 @@ export function StoreSettingsScreen({ navigation }: Props) {
               placeholderTextColor="#9AA5A3"
             />
           </View>
+
+          {profile.pendingChange ? (
+            <View className="rounded-[16px] bg-amber-50 px-4 py-3">
+              <Text className="text-[13px] font-semibold text-amber-800">Pending review</Text>
+              <Text className="mt-0.5 text-[12.5px] font-medium leading-[17px] text-amber-900/70">
+                Your change to {describeChange(profile.pendingChange.changes)} is waiting for Gloceries approval. Customers still see your current
+                details until then.
+              </Text>
+            </View>
+          ) : profile.lastChangeReview?.status === 'rejected' ? (
+            <View className="rounded-[16px] bg-red-50 px-4 py-3">
+              <Text className="text-[13px] font-semibold text-red-700">Last change not approved</Text>
+              <Text className="mt-0.5 text-[12.5px] font-medium leading-[17px] text-red-900/70">
+                {profile.lastChangeReview.reviewReason ?? 'Gloceries did not approve your last store change.'}
+              </Text>
+            </View>
+          ) : null}
 
           <SettingsCard icon={TagsIcon} title="Category">
             <StoreCategoryPicker selected={category} onSelect={setCategory} />

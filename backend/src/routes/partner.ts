@@ -35,7 +35,8 @@ import { round2 } from '../lib/pricing.js';
 import { getStoreCommissionRate } from '../lib/platformSettings.js';
 import { reverseGeocode } from '../lib/reverseGeocode.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
-import { assertStoreCategory, DRUG_LICENSE_CATEGORIES, normalizeDrugLicense } from '../lib/storeCategories.js';
+import { assertStoreCategory, DRUG_LICENSE_CATEGORIES } from '../lib/storeCategories.js';
+import { PROFILE_CHANGE_SELECT, reviewedChanges, type ReviewedChanges } from '../lib/storeProfileReview.js';
 
 export const partnerRouter = Router();
 partnerRouter.use(requireAuth, requireRole('store_owner'), requireApproved, requireActivePartner);
@@ -90,9 +91,34 @@ function storeSuspendedError(reason: string | null): AppError {
   );
 }
 
-function toStoreResponse(data: Record<string, unknown>, phone: string | null) {
+interface ProfileChange { id: string; status: string; changes: Record<string, unknown>; review_reason: string | null; created_at: string; reviewed_at: string | null }
+
+async function pendingProfileChange(storeId: string): Promise<ProfileChange | null> {
+  const { data, error } = await supabase.from('store_profile_change_requests').select(PROFILE_CHANGE_SELECT)
+    .eq('store_id', storeId).eq('status', 'pending').maybeSingle();
+  if (error) throw error;
+  return (data as ProfileChange | null) ?? null;
+}
+
+// The newest pending/approved/rejected request, so the apps can show
+// "pending review" or why the last change was not approved. Null before
+// migration 114 is applied.
+async function latestProfileChange(storeId: string): Promise<ProfileChange | null> {
+  const { data, error } = await supabase.from('store_profile_change_requests').select(PROFILE_CHANGE_SELECT)
+    .eq('store_id', storeId).neq('status', 'superseded').order('created_at', { ascending: false }).limit(1);
+  if (error) return null;
+  return ((data as ProfileChange[] | null) ?? [])[0] ?? null;
+}
+
+function toStoreResponse(data: Record<string, unknown>, phone: string | null, profileChange: ProfileChange | null = null) {
   const { payout_bank_account_number, ...rest } = data;
-  return { ...rest, payout_bank_account_number: maskAccountNumber(payout_bank_account_number as string | null), phone };
+  return {
+    ...rest,
+    payout_bank_account_number: maskAccountNumber(payout_bank_account_number as string | null),
+    phone,
+    pending_change: profileChange?.status === 'pending' ? profileChange : null,
+    last_change_review: profileChange && profileChange.status !== 'pending' ? profileChange : null,
+  };
 }
 
 partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
@@ -118,7 +144,7 @@ partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
       }
     }
 
-    res.json(toStoreResponse(data, await ownerPhone(req.user!.id)));
+    res.json(toStoreResponse(data, await ownerPhone(req.user!.id), await latestProfileChange(data.id)));
   } catch (err) {
     next(err);
   }
@@ -127,15 +153,9 @@ partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
 partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
+    const body = (req.body ?? {}) as Record<string, unknown>;
     const {
-      name,
-      category,
       is_active,
-      district,
-      address_line,
-      manual_address,
-      lat,
-      lng,
       open_time,
       close_time,
       avg_prep_minutes,
@@ -145,8 +165,7 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
       shop_establishment_number,
       fssai_number,
       pan_number,
-      drug_license_number,
-    } = req.body as Record<string, unknown>;
+    } = body;
 
     // Reject rather than silently save an obviously malformed number —
     // both are optional-to-omit (undefined skips the field entirely, same
@@ -160,6 +179,11 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
       throw new AppError(400, 'INVALID_PAN_FORMAT', 'PAN must be in the format ABCDE1234F.');
     }
 
+    // Name, category, address, map pin and drug licence need admin review
+    // (lib/storeProfileReview.ts, migration 114): moving the pin changes who
+    // the store delivers to, and the category/licence decide what it may sell.
+    const reviewed = reviewedChanges(body);
+
     // Enforced by assertNotLocked below (module-level, see its own note).
     const { data: currentDoc, error: currentDocError } = await supabase
       .from('stores')
@@ -171,12 +195,17 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     // toggle: only admin can lift it. The DB trigger enforces the same rule.
     if (is_active === true && currentDoc.admin_suspended) throw storeSuspendedError(currentDoc.suspended_reason);
 
-    // Same allowed set admin uses (lib/storeCategories.ts); a pharmacy must
-    // hold a drug licence, whether the category or the licence changes.
-    const drugLicense = drug_license_number !== undefined ? normalizeDrugLicense(drug_license_number) : normalizeDrugLicense(currentDoc.drug_license_number);
-    if (category !== undefined) assertStoreCategory(category, drugLicense);
-    else if (drug_license_number !== undefined && DRUG_LICENSE_CATEGORIES.includes(currentDoc.category) && !drugLicense) {
-      assertStoreCategory(currentDoc.category, null);
+    if (Object.keys(reviewed).length > 0) {
+      // Same allowed set admin uses (lib/storeCategories.ts); a pharmacy must
+      // hold a drug licence — judged on what the store would look like once
+      // this and any still-pending change are approved.
+      const pending = await pendingProfileChange(storeId);
+      const pendingChanges = (pending?.changes ?? {}) as ReviewedChanges;
+      const category = reviewed.category ?? pendingChanges.category ?? currentDoc.category;
+      const licence = 'drug_license_number' in reviewed ? reviewed.drug_license_number
+        : 'drug_license_number' in pendingChanges ? pendingChanges.drug_license_number : currentDoc.drug_license_number;
+      if (reviewed.category !== undefined) assertStoreCategory(reviewed.category, (licence as string | null) ?? null);
+      else if (DRUG_LICENSE_CATEGORIES.includes(String(category)) && !licence) assertStoreCategory(category, null);
     }
     assertNotLocked('GST number', currentDoc.gst_number, gst_number);
     assertNotLocked('Shop & Establishment license', currentDoc.shop_establishment_number, shop_establishment_number);
@@ -187,23 +216,7 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     // is only ever written by PUT /payout-account, which validates them and
     // resets the founder's verification flag (PAYOUTS.md).
     const patch: Record<string, unknown> = {};
-    if (name !== undefined) patch.name = name;
-    if (category !== undefined) patch.category = category;
-    if (drug_license_number !== undefined) patch.drug_license_number = drugLicense;
     if (is_active !== undefined) patch.is_active = is_active;
-    if (district !== undefined) patch.district = district;
-    if (address_line !== undefined) patch.address_line = address_line;
-    // manual_address is the shop owner's own typed description (e.g. "Near
-    // Bus Stand, opposite Xyz store") — a genuinely different field from
-    // address_line, which is always the real reverse-geocoded text from
-    // the map pin (LocationPinScreen). Never derived from one another.
-    if (manual_address !== undefined) patch.manual_address = manual_address;
-    // lat/lng only ever arrive together, from StoreSettingsScreen's own
-    // "Change on map" flow (LocationPinScreen, same real pin-drag +
-    // reverse-geocode onboarding already used) — the one place after
-    // approval a store owner can update their store's actual location.
-    if (lat !== undefined) patch.lat = lat;
-    if (lng !== undefined) patch.lng = lng;
     if (open_time !== undefined) patch.open_time = open_time;
     if (close_time !== undefined) patch.close_time = close_time;
     if (avg_prep_minutes !== undefined) patch.avg_prep_minutes = avg_prep_minutes;
@@ -214,10 +227,24 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     if (fssai_number !== undefined) patch.fssai_number = typeof fssai_number === 'string' ? fssai_number.trim() : fssai_number;
     if (pan_number !== undefined) patch.pan_number = typeof pan_number === 'string' ? pan_number.trim().toUpperCase() : pan_number;
 
-    const { data, error } = await supabase.from('stores').update(patch).eq('id', storeId).select(STORE_SELECT).single();
-    if (error?.code === 'P0409' && error.message === 'STORE_SUSPENDED') throw storeSuspendedError(null);
+    if (Object.keys(patch).length > 0) {
+      const { error } = await supabase.from('stores').update(patch).eq('id', storeId).select('id').single();
+      if (error?.code === 'P0409' && error.message === 'STORE_SUSPENDED') throw storeSuspendedError(null);
+      if (error) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
+    }
+    if (Object.keys(reviewed).length > 0) {
+      // Merges into any pending request; values equal to the live store drop out.
+      const { error } = await supabase.rpc('partner_request_store_profile_change', {
+        p_store: storeId,
+        p_user: req.user!.id,
+        p_changes: reviewed,
+      });
+      if (error) throw error;
+    }
+
+    const { data, error } = await supabase.from('stores').select(STORE_SELECT).eq('id', storeId).single();
     if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
-    res.json(toStoreResponse(data, await ownerPhone(req.user!.id)));
+    res.json(toStoreResponse(data, await ownerPhone(req.user!.id), await latestProfileChange(storeId)));
   } catch (err) {
     next(err);
   }

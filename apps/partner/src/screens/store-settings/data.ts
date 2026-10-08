@@ -12,6 +12,18 @@
 // store_id once one exists). Edits here only ever touch
 // useStoreProfileStore, not a server.
 
+// A store profile edit waiting for (or decided by) Gloceries review —
+// GET/PATCH /partner/store pending_change / last_change_review (migration
+// 114). changes is keyed by stores column (name, category, district,
+// address_line, manual_address, lat, lng, drug_license_number).
+export interface StoreProfileChange {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  changes: Record<string, string | number | null>;
+  reviewReason: string | null;
+  createdAt: string;
+}
+
 export interface StoreProfile {
   id: string;
   storeName: string;
@@ -78,6 +90,10 @@ export interface StoreProfile {
   // stores.drug_license_number — required while the category is Pharmacy
   // (backend lib/storeCategories.ts).
   drugLicenseNumber: string;
+  // Name/category/address/map-pin/licence edits only go live once Gloceries
+  // approves them; the live values above stay until then.
+  pendingChange: StoreProfileChange | null;
+  lastChangeReview: StoreProfileChange | null;
 }
 
 // Offline fallback only — the picker loads the real list from
@@ -128,4 +144,6 @@ export const EMPTY_STORE_PROFILE: StoreProfile = {
   fssaiNumber: '',
   panNumber: '',
   drugLicenseNumber: '',
+  pendingChange: null,
+  lastChangeReview: null,
 };

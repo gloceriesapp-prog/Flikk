@@ -14,8 +14,22 @@ interface Props {
 // deliberately read-only: it's the real OTP-verified users.phone (see
 // partnerApi.ts's own Store.phone note), not a free-text field this screen
 // could silently desync from the number the owner actually logs in with.
+// Reviewed fields start from the pending request so re-saving keeps it.
+function withPending(store: Store): Store {
+  const pending = store.pending_change?.changes ?? {};
+  const text = (key: string, live: string | null) => (key in pending ? ((pending[key] as string | null) ?? '') : live);
+  return {
+    ...store,
+    name: text('name', store.name) ?? '',
+    category: text('category', store.category) ?? '',
+    district: text('district', store.district),
+    drug_license_number: text('drug_license_number', store.drug_license_number ?? null),
+  };
+}
+
 export function StoreProfileForm({ store: initial, onSaved }: Props) {
-  const [store, setStore] = useState(initial);
+  const [store, setStore] = useState(() => withPending(initial));
+  const [live, setLive] = useState(initial);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +54,8 @@ export function StoreProfileForm({ store: initial, onSaved }: Props) {
         shop_establishment_number: store.shop_establishment_number,
         ...(needsDrugLicense ? { drug_license_number: store.drug_license_number ?? '' } : {}),
       });
-      setStore(updated);
+      setStore(withPending(updated));
+      setLive(updated);
       onSaved(updated);
       setSavedAt(Date.now());
     } catch (err) {
@@ -53,6 +68,16 @@ export function StoreProfileForm({ store: initial, onSaved }: Props) {
   return (
     <SettingsSection title="Store profile" description="How your store is identified across Gloceries.">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {live.pending_change ? (
+          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <span className="font-semibold">Pending review.</span> Changes to your store name, category, address or licence go live once
+            Gloceries approves them. Customers still see “{live.name}” in {live.category} until then.
+          </p>
+        ) : live.last_change_review?.status === 'rejected' ? (
+          <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span className="font-semibold">Last change not approved:</span> {live.last_change_review.review_reason ?? 'Contact Gloceries support.'}
+          </p>
+        ) : null}
         <div className="grid grid-cols-2 gap-4">
           <Field label="Store name">
             <input required value={store.name} onChange={(e) => setStore({ ...store, name: e.target.value })} className="input" />
