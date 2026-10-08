@@ -22,7 +22,7 @@ supportRouter.get('/orders', async (req: AuthedRequest, res, next) => {
 supportRouter.get('/tickets', async (req: AuthedRequest, res, next) => {
     try {
         const offset = pageOffset(req.query.offset);
-        const { data, error } = await supabase.from('support_tickets').select('*').eq('customer_id', req.user!.id).order('created_at', { ascending: false }).order('id', { ascending: false }).range(offset, offset + 24);
+        const { data, error } = await supabase.from('support_tickets').select('*').eq('customer_id', req.user!.id).eq('requester_role', 'customer').order('created_at', { ascending: false }).order('id', { ascending: false }).range(offset, offset + 24);
         if (error)
             throw error;
         res.json(data ?? []);
@@ -45,7 +45,7 @@ supportRouter.post('/tickets', async (req: AuthedRequest, res, next) => {
 });
 supportRouter.get('/tickets/:id', async (req: AuthedRequest, res, next) => {
     try {
-        const { data: ticket, error } = await supabase.from('support_tickets').select('*').eq('id', uuid(req.params.id)).eq('customer_id', req.user!.id).maybeSingle();
+        const { data: ticket, error } = await supabase.from('support_tickets').select('*').eq('id', uuid(req.params.id)).eq('customer_id', req.user!.id).eq('requester_role', 'customer').maybeSingle();
         if (error)
             throw error;
         if (!ticket)
