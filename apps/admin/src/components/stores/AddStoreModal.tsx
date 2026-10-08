@@ -1,18 +1,12 @@
 'use client';
 
-// Store onboarding — the real document set a kirana/pharmacy store needs
-// before it can legally list on Gloceries:
-//   FSSAI license/registration — mandatory for any food/grocery business
-//   Shop & Establishment license — standard municipal registration
-//   GSTIN — only once turnover crosses ₹40L, so conditional not mandatory
-//   Owner's PAN + Aadhaar — identity verification
-//   Bank details — weekly payout settlement
-//   Storefront photo — same real-photo trust convention as products
-//   Drug License — pharmacy category only, its own stricter path
-// onAdd is async — StoresPage POSTs to /api/stores (service-role write,
-// see that route's own note) and refetches the live list.
+// Admin Add Store — creates a live store for an existing Gloceries account
+// (looked up by the owner's login phone), the same end state as approving a
+// partner application. See lib/storeValidation.ts for the rules. The map pin
+// (lat/lng) is required; payout details are set afterwards on the store page.
+// onAdd is async — StoresPage POSTs to /api/stores and refetches the list.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import type { NewStoreInput } from '@/lib/types';
 import { STORE_CATEGORIES } from '@/lib/store-options';
@@ -26,23 +20,24 @@ function makeEmptyDraft() {
     name: '',
     category: STORE_CATEGORIES[0] as string,
     ownerName: '',
+    ownerPhone: '',
     phone: '',
     addressLine: '',
     city: '',
     state: 'Karnataka',
     country: 'India',
-    openTime: '9:00 AM',
-    closeTime: '9:00 PM',
+    lat: '',
+    lng: '',
+    openTime: '09:00',
+    closeTime: '21:00',
     photoUrl: undefined as string | undefined,
     fssaiNumber: '',
     shopEstablishmentNumber: '',
     panNumber: '',
-    aadhaarLast4: '',
-    bankName: '',
-    bankAccountLast4: '',
-    turnoverExceedsGstThreshold: false,
     gstNumber: '',
+    udyamNumber: '',
     drugLicenseNumber: '',
+    zoneId: '',
   };
 }
 
@@ -51,17 +46,36 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [activeZones, setActiveZones] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch('/api/zones')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((zones: { id: string; name: string; isActive: boolean }[]) => setActiveZones(zones.filter((z) => z.isActive)))
+      .catch(() => setActiveZones([]));
+  }, []);
   const isPharmacy = draft.category === 'Pharmacy';
+  const lat = Number(draft.lat);
+  const lng = Number(draft.lng);
+  const hasPin = draft.lat.trim() !== '' && draft.lng.trim() !== '' && Number.isFinite(lat) && Number.isFinite(lng);
 
   async function handleAdd() {
+    if (!hasPin) {
+      setError('Enter the store’s latitude and longitude — without a map pin customers cannot find it.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
       await onAdd({
         ...draft,
-        district: draft.city,
-        gstNumber: draft.turnoverExceedsGstThreshold ? draft.gstNumber.trim() || undefined : undefined,
-        drugLicenseNumber: isPharmacy ? draft.drugLicenseNumber.trim() || undefined : undefined,
+        lat,
+        lng,
+        phone: draft.phone.trim() || null,
+        gstNumber: draft.gstNumber.trim() || null,
+        udyamNumber: draft.udyamNumber.trim() || null,
+        drugLicenseNumber: isPharmacy ? draft.drugLicenseNumber.trim() || null : null,
+        // Only needed (and only shown) when several zones are active.
+        zoneId: activeZones.length > 1 ? draft.zoneId || null : null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add store — try again.');
@@ -111,7 +125,26 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
             ))}
           </select>
 
+          {activeZones.length > 1 && (
+            <select
+              value={draft.zoneId}
+              onChange={(e) => setDraft({ ...draft, zoneId: e.target.value })}
+              className={FIELD_CLASS}
+              aria-label="Zone"
+            >
+              <option value="">Choose zone…</option>
+              {activeZones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name}
+                </option>
+              ))}
+            </select>
+          )}
+
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Owner</p>
+          <p className="-mt-2 text-xs text-muted">
+            The owner must have signed in to a Gloceries app once with this phone. Their account becomes the store owner.
+          </p>
           <div className="flex gap-3">
             <input
               value={draft.ownerName}
@@ -121,13 +154,21 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
               aria-label="Owner's name"
             />
             <input
-              value={draft.phone}
-              onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+              value={draft.ownerPhone}
+              onChange={(e) => setDraft({ ...draft, ownerPhone: e.target.value })}
               className={FIELD_CLASS}
-              placeholder="Phone number"
-              aria-label="Phone number"
+              placeholder="Owner's login phone"
+              aria-label="Owner's login phone"
+              inputMode="tel"
             />
           </div>
+          <input
+            value={draft.phone}
+            onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+            className={FIELD_CLASS}
+            placeholder="Store contact phone (optional)"
+            aria-label="Store contact phone"
+          />
 
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Address</p>
           <input
@@ -163,17 +204,38 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
 
           <div className="flex gap-3">
             <input
+              value={draft.lat}
+              onChange={(e) => setDraft({ ...draft, lat: e.target.value })}
+              className={FIELD_CLASS}
+              placeholder="Latitude (e.g. 13.2203)"
+              aria-label="Latitude"
+              inputMode="decimal"
+            />
+            <input
+              value={draft.lng}
+              onChange={(e) => setDraft({ ...draft, lng: e.target.value })}
+              className={FIELD_CLASS}
+              placeholder="Longitude (e.g. 74.7500)"
+              aria-label="Longitude"
+              inputMode="decimal"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <input
+              type="time"
               value={draft.openTime}
               onChange={(e) => setDraft({ ...draft, openTime: e.target.value })}
               className={FIELD_CLASS}
-              placeholder="Opens at (e.g. 9:00 AM)"
+              placeholder="Opens at"
               aria-label="Opens at"
             />
             <input
+              type="time"
               value={draft.closeTime}
               onChange={(e) => setDraft({ ...draft, closeTime: e.target.value })}
               className={FIELD_CLASS}
-              placeholder="Closes at (e.g. 9:00 PM)"
+              placeholder="Closes at"
               aria-label="Closes at"
             />
           </div>
@@ -201,14 +263,6 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
               placeholder="Owner's PAN"
               aria-label="PAN number"
             />
-            <input
-              value={draft.aadhaarLast4}
-              onChange={(e) => setDraft({ ...draft, aadhaarLast4: e.target.value })}
-              maxLength={4}
-              className={FIELD_CLASS}
-              placeholder="Aadhaar — last 4 digits"
-              aria-label="Aadhaar last 4 digits"
-            />
           </div>
 
           {isPharmacy && (
@@ -221,40 +275,20 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
             />
           )}
 
-          <label className="flex items-center gap-2 text-xs font-medium text-ink-soft">
-            <input
-              type="checkbox"
-              checked={draft.turnoverExceedsGstThreshold}
-              onChange={(e) => setDraft({ ...draft, turnoverExceedsGstThreshold: e.target.checked })}
-            />
-            Annual turnover exceeds ₹40L (GSTIN required)
-          </label>
-          {draft.turnoverExceedsGstThreshold && (
+          <div className="flex gap-3">
             <input
               value={draft.gstNumber}
               onChange={(e) => setDraft({ ...draft, gstNumber: e.target.value })}
               className={FIELD_CLASS}
-              placeholder="GSTIN"
+              placeholder="GSTIN (optional)"
               aria-label="GSTIN"
             />
-          )}
-
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Payout account</p>
-          <div className="flex gap-3">
             <input
-              value={draft.bankName}
-              onChange={(e) => setDraft({ ...draft, bankName: e.target.value })}
+              value={draft.udyamNumber}
+              onChange={(e) => setDraft({ ...draft, udyamNumber: e.target.value })}
               className={FIELD_CLASS}
-              placeholder="Bank name"
-              aria-label="Bank name"
-            />
-            <input
-              value={draft.bankAccountLast4}
-              onChange={(e) => setDraft({ ...draft, bankAccountLast4: e.target.value })}
-              maxLength={4}
-              className={FIELD_CLASS}
-              placeholder="Account — last 4 digits"
-              aria-label="Bank account last 4 digits"
+              placeholder="Udyam registration (optional)"
+              aria-label="Udyam registration"
             />
           </div>
 
@@ -272,7 +306,7 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!draft.name.trim() || submitting}
+            disabled={!draft.name.trim() || !draft.ownerPhone.trim() || submitting}
             className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
           >
             {submitting ? 'Adding…' : 'Add store'}

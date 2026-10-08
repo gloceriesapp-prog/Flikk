@@ -209,7 +209,8 @@ export interface Store {
   deliveryRadiusKm?: number;
 }
 
-export type NewStoreInput = Omit<Store, 'id' | 'zone' | 'isActive' | 'joinedAt' | 'adminSuspended' | 'suspendedReason' | 'suspendedAt'>;
+// Admin Add Store payload — see lib/storeValidation.ts.
+export type { StoreWriteInput as NewStoreInput } from './storeValidation';
 
 // zones is first-class in the DB from day 1 (PRD Section 16) even though
 // only one is active at launch — this type exists so the Zones screen can
