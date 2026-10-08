@@ -42,9 +42,6 @@ function required(value: string | undefined | null, label: string): asserts valu
   if (typeof value !== 'string' || !value.trim()) throw new Error(`${label} is required.`);
 }
 
-const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
-const PAN = /^[A-Z]{5}\d{4}[A-Z]$/;
-const FSSAI = /^\d{14}$/;
 
 // Same canonical form the backend writes at OTP verify (lib/phone.ts):
 // +91 followed by the 10-digit local number. Null when not a valid number.
@@ -77,12 +74,9 @@ export function validateStoreInput(input: Partial<StoreWriteInput>): asserts inp
   }
   required(input.openTime, 'Opening time');
   required(input.closeTime, 'Closing time');
-  if (!TIME.test(input.openTime.trim()) || !TIME.test(input.closeTime.trim())) throw new Error('Hours must use a valid 24-hour time.');
   required(input.fssaiNumber, 'FSSAI license/registration number');
-  if (!FSSAI.test(input.fssaiNumber.trim())) throw new Error('FSSAI license number must be exactly 14 digits.');
   required(input.shopEstablishmentNumber, 'Shop & Establishment license number');
   required(input.panNumber, "Owner's PAN");
-  if (!PAN.test(input.panNumber.trim().toUpperCase())) throw new Error('PAN must be in the format ABCDE1234F.');
   if (input.category === 'Pharmacy') required(input.drugLicenseNumber, 'Drug License number');
 }
 

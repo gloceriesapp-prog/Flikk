@@ -39,3 +39,5 @@ it('requires a pharmacy licence when switching to pharmacy', () => {
   expect(() => validateMergedStore({ category: 'Others' }, { category: 'Pharmacy' })).toThrow('drug licence');
   expect(() => validateMergedStore({}, { category: 'Pharmacy', drug_license_number: 'licence' })).not.toThrow();
 });
+
+it('uses canonical store document validation and normalizes PAN corrections', () => { expect(parseStorePatch({panNumber:'abcde1234f'})).toEqual({pan_number:'ABCDE1234F'}); expect(() => parseStorePatch({panNumber:'record'})).toThrow('PAN'); expect(() => parseStorePatch({fssaiNumber:'record'})).toThrow('FSSAI'); });
