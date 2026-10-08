@@ -17,12 +17,14 @@
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
       "env": {
         "APP_ENV": "production"
       }
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
       "env": {
         "APP_ENV": "production"
       }
