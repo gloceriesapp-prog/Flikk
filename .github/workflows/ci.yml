@@ -95,6 +95,7 @@ jobs:
           createdb flikk_migrations_tests
           PGDATABASE=flikk_migrations_tests node backend/scripts/verify-fresh-migrations.mjs
           PGDATABASE=flikk_migrations_tests psql -X -v ON_ERROR_STOP=1 -f backend/tests/sql/security-patch.sql -f backend/tests/sql/browse-visibility.sql -f backend/tests/sql/media-storage.sql -f backend/tests/sql/promotional-deliveries.sql -f backend/tests/sql/verify-rpc-security.sql -f backend/tests/sql/verify-commerce-security.sql -f backend/tests/sql/verify-order-safety.sql
+          PGDATABASE=flikk_migrations_tests psql -X -v ON_ERROR_STOP=1 -f backend/tests/sql/payment-refund-recovery.sql -f backend/tests/sql/trip-dispatch-integrity.sql -f backend/tests/sql/rider-pay-cod.sql -f backend/tests/sql/admin-order-control.sql -f backend/tests/sql/account-controls.sql -f backend/tests/sql/catalogue-stock-integrity.sql -f backend/tests/sql/app-config-hours.sql -f backend/tests/sql/rider-ops.sql -f backend/tests/sql/partner-store-controls.sql -f backend/tests/sql/product-review-commission.sql -f backend/tests/sql/home-content-controls.sql -f backend/tests/sql/customer-commerce-controls.sql -f backend/tests/sql/partner-rider-support.sql
 
   customer:
     runs-on: ubuntu-latest
