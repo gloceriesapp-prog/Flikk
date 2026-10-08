@@ -54,6 +54,8 @@ export interface StoreDraft {
   // Udyam/business registration number — optional, same "add later if you
   // don't have one" treatment as GST (Business Documents step's own copy).
   udyamNumber: string;
+  // Pharmacy only — required for that category (Store details step).
+  drugLicenseNumber: string;
   // "9:00 AM" / "9:00 PM" — same free-text shape StoreProfile's own
   // openTime/closeTime always used (TimeDigitsInput.tsx), now collected
   // during onboarding instead of left entirely to Store Settings

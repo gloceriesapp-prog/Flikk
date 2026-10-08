@@ -53,7 +53,7 @@ import { PayoutAccountCard } from './components/PayoutAccountCard';
 import { PrepTimeStepper } from './components/PrepTimeStepper';
 import { SettingsCard } from './components/SettingsCard';
 import { SettingsLinkRow } from './components/SettingsLinkRow';
-import { StoreCategoryPicker } from './components/StoreCategoryPicker';
+import { categoryNeedsDrugLicense, StoreCategoryPicker, useStoreCategories } from './components/StoreCategoryPicker';
 import { TimeDigitsInput } from './components/TimeDigitsInput';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'StoreSettings'>;
@@ -80,6 +80,9 @@ export function StoreSettingsScreen({ navigation }: Props) {
   const [shopLicenseNumber, setShopLicenseNumber] = useState(profile.shopLicenseNumber);
   const [fssaiLicenseNumber, setFssaiLicenseNumber] = useState(profile.fssaiNumber);
   const [panNumber, setPanNumber] = useState(profile.panNumber);
+  const [drugLicenseNumber, setDrugLicenseNumber] = useState(profile.drugLicenseNumber);
+  const categories = useStoreCategories();
+  const needsDrugLicense = categoryNeedsDrugLicense(categories, category);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -109,6 +112,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
     setShopLicenseNumber(profile.shopLicenseNumber);
     setFssaiLicenseNumber(profile.fssaiNumber);
     setPanNumber(profile.panNumber);
+    setDrugLicenseNumber(profile.drugLicenseNumber);
     // Only re-syncs when the loaded store's identity changes (a real new
     // load), not on every keystroke into these same fields — profile.id
     // is stable across an in-progress edit, so this won't fight typing.
@@ -175,6 +179,11 @@ export function StoreSettingsScreen({ navigation }: Props) {
       return;
     }
 
+    if (needsDrugLicense && !drugLicenseNumber.trim()) {
+      Alert.alert('Drug licence needed', 'A pharmacy needs its drug licence number (state Drug Control authority).');
+      return;
+    }
+
     setSaving(true);
     const result = await updateProfile({
       storeName: name.trim() || profile.storeName,
@@ -188,6 +197,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
       shopLicenseNumber: shopLicenseNumber.trim(),
       fssaiNumber: fssaiLicenseNumber.trim(),
       panNumber: panNumber.trim().toUpperCase(),
+      ...(needsDrugLicense ? { drugLicenseNumber: drugLicenseNumber.trim() } : {}),
     });
     setSaving(false);
 
@@ -293,6 +303,17 @@ export function StoreSettingsScreen({ navigation }: Props) {
 
           <SettingsCard icon={TagsIcon} title="Category">
             <StoreCategoryPicker selected={category} onSelect={setCategory} />
+            {needsDrugLicense && (
+              <TextInput
+                value={drugLicenseNumber}
+                onChangeText={setDrugLicenseNumber}
+                placeholder="Drug licence number (required for a pharmacy)"
+                placeholderTextColor="#9AA5A3"
+                autoCapitalize="characters"
+                maxLength={100}
+                className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-[15px] font-medium text-ink"
+              />
+            )}
           </SettingsCard>
 
           <SettingsCard icon={Clock01Icon} title="Store hours">

@@ -35,6 +35,7 @@ import { round2 } from '../lib/pricing.js';
 import { getStoreCommissionRate } from '../lib/platformSettings.js';
 import { reverseGeocode } from '../lib/reverseGeocode.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
+import { assertStoreCategory, DRUG_LICENSE_CATEGORIES, normalizeDrugLicense } from '../lib/storeCategories.js';
 
 export const partnerRouter = Router();
 partnerRouter.use(requireAuth, requireRole('store_owner'), requireApproved, requireActivePartner);
@@ -65,7 +66,7 @@ function maskAccountNumber(full: string | null): string | null {
 }
 
 const STORE_SELECT =
-  'id, name, category, is_active, admin_suspended, suspended_reason, suspended_at, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number';
+  'id, name, category, is_active, admin_suspended, suspended_reason, suspended_at, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number, drug_license_number';
 
 // Business documents are write-once from the owner's side — real, not
 // just a disabled input client-side (a raw PATCH call could otherwise
@@ -144,6 +145,7 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
       shop_establishment_number,
       fssai_number,
       pan_number,
+      drug_license_number,
     } = req.body as Record<string, unknown>;
 
     // Reject rather than silently save an obviously malformed number —
@@ -161,7 +163,7 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     // Enforced by assertNotLocked below (module-level, see its own note).
     const { data: currentDoc, error: currentDocError } = await supabase
       .from('stores')
-      .select('gst_number, shop_establishment_number, fssai_number, pan_number, admin_suspended, suspended_reason')
+      .select('category, drug_license_number, gst_number, shop_establishment_number, fssai_number, pan_number, admin_suspended, suspended_reason')
       .eq('id', storeId)
       .single();
     if (currentDocError || !currentDoc) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
@@ -169,6 +171,13 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     // toggle: only admin can lift it. The DB trigger enforces the same rule.
     if (is_active === true && currentDoc.admin_suspended) throw storeSuspendedError(currentDoc.suspended_reason);
 
+    // Same allowed set admin uses (lib/storeCategories.ts); a pharmacy must
+    // hold a drug licence, whether the category or the licence changes.
+    const drugLicense = drug_license_number !== undefined ? normalizeDrugLicense(drug_license_number) : normalizeDrugLicense(currentDoc.drug_license_number);
+    if (category !== undefined) assertStoreCategory(category, drugLicense);
+    else if (drug_license_number !== undefined && DRUG_LICENSE_CATEGORIES.includes(currentDoc.category) && !drugLicense) {
+      assertStoreCategory(currentDoc.category, null);
+    }
     assertNotLocked('GST number', currentDoc.gst_number, gst_number);
     assertNotLocked('Shop & Establishment license', currentDoc.shop_establishment_number, shop_establishment_number);
     assertNotLocked('FSSAI license number', currentDoc.fssai_number, fssai_number);
@@ -180,6 +189,7 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     const patch: Record<string, unknown> = {};
     if (name !== undefined) patch.name = name;
     if (category !== undefined) patch.category = category;
+    if (drug_license_number !== undefined) patch.drug_license_number = drugLicense;
     if (is_active !== undefined) patch.is_active = is_active;
     if (district !== undefined) patch.district = district;
     if (address_line !== undefined) patch.address_line = address_line;

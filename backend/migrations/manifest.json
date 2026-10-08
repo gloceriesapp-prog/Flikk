@@ -455,7 +455,7 @@
     },
     {
       "file": "114_partner_store_controls.sql",
-      "sha256": "c884828d8812639da46db8fc4d91a68d345349f210b639b9ea798a619245a36d"
+      "sha256": "312a3365f8bb6076e4a5bbebd944f3c61131bf61386b724650eb5ed84c3d04fa"
     },
     {
       "file": "115_product_review_commission.sql",

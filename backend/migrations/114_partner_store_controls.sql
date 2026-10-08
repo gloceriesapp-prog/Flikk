@@ -13,6 +13,10 @@
 --      partner reopens. Only store_owner accounts. Service role only.
 --    - stores_partner_suspension_guard refuses is_active=true for a store
 --      whose owner is suspended (P0409 PARTNER_SUSPENDED) on every write path.
+-- 2. Store categories (backend lib/storeCategories.ts, the same set admin
+--    allows): a pharmacy needs a drug licence, so the onboarding draft now
+--    carries store_onboarding_drafts.drug_license_number, which admin
+--    approval copies to stores.drug_license_number (091).
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -91,5 +95,8 @@ BEGIN
 END $function$;
 REVOKE ALL ON FUNCTION public.admin_set_partner_suspension(uuid, boolean, text, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_set_partner_suspension(uuid, boolean, text, uuid) TO service_role;
+
+-- 2. Drug licence on the onboarding draft ---------------------------------------
+ALTER TABLE public.store_onboarding_drafts ADD COLUMN IF NOT EXISTS drug_license_number text;
 
 COMMIT;

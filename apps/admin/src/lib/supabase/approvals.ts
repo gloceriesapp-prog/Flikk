@@ -30,9 +30,9 @@ import type { Application } from '../types';
 // (backend/src/routes/storeOnboarding.ts: store-draft / store-application),
 // so the reviewer sees exactly what the applicant submitted.
 const STORE_DETAIL_COLUMNS =
-  'category, district, photo_url, gst_number, phone, address_line, manual_address, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, udyam_number, open_time, close_time';
+  'category, district, photo_url, gst_number, phone, address_line, manual_address, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, udyam_number, drug_license_number, open_time, close_time';
 export const STORE_DRAFT_SELECT = `user_id, store_name, ${STORE_DETAIL_COLUMNS}, rejection_reason, submitted_at, users!user_id(phone, email, is_rejected)`;
-export const APPROVED_STORE_SELECT = `owner_user_id, name, ${STORE_DETAIL_COLUMNS}, drug_license_number, created_at, users!owner_user_id(phone, email)`;
+export const APPROVED_STORE_SELECT = `owner_user_id, name, ${STORE_DETAIL_COLUMNS}, created_at, users!owner_user_id(phone, email)`;
 const RIDER_COLUMNS =
   'date_of_birth, photo_url, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship';
 export const RIDER_DRAFT_SELECT = `user_id, full_name, ${RIDER_COLUMNS}, rejection_reason, submitted_at, users!user_id(phone, is_rejected)`;
@@ -53,6 +53,8 @@ interface ApiStoreDetail {
   fssai_number: string | null;
   pan_number: string | null;
   udyam_number: string | null;
+  // Pharmacy only (onboarding collects it since migration 114).
+  drug_license_number?: string | null;
   open_time: string | null;
   close_time: string | null;
 }
@@ -89,6 +91,7 @@ function storeDetail(row: ApiStoreDetail, email: string | null | undefined): Par
     fssaiNumber: row.fssai_number ?? undefined,
     panNumber: row.pan_number ?? undefined,
     udyamNumber: row.udyam_number ?? undefined,
+    drugLicenseNumber: row.drug_license_number ?? undefined,
     openTime: row.open_time ?? undefined,
     closeTime: row.close_time ?? undefined,
   };

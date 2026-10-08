@@ -38,6 +38,7 @@ interface StoreRow {
   shop_establishment_number: string | null;
   fssai_number: string | null;
   pan_number: string | null;
+  drug_license_number?: string | null;
 }
 
 function fromRow(row: StoreRow): StoreProfile {
@@ -69,6 +70,7 @@ function fromRow(row: StoreRow): StoreProfile {
     shopLicenseNumber: row.shop_establishment_number ?? '',
     fssaiNumber: row.fssai_number ?? '',
     panNumber: row.pan_number ?? '',
+    drugLicenseNumber: row.drug_license_number ?? '',
   };
 }
 
@@ -131,6 +133,7 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
           shop_establishment_number: patch.shopLicenseNumber,
           fssai_number: patch.fssaiNumber,
           pan_number: patch.panNumber,
+          drug_license_number: patch.drugLicenseNumber,
         },
       });
       return { ok: true };

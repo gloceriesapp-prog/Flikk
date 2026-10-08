@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import type { Store } from '@/lib/partnerApi';
-import { updateMyStore } from '@/lib/partnerApi';
+import { useEffect, useState } from 'react';
+import type { Store, StoreCategoryOption } from '@/lib/partnerApi';
+import { fetchStoreCategories, updateMyStore } from '@/lib/partnerApi';
 import { SettingsSection, Field } from './SettingsSection';
 
 interface Props {
@@ -18,11 +18,18 @@ export function StoreProfileForm({ store: initial, onSaved }: Props) {
   const [store, setStore] = useState(initial);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<StoreCategoryOption[]>([]);
+  useEffect(() => {
+    fetchStoreCategories().then(setCategories).catch(() => setCategories([]));
+  }, []);
+  const needsDrugLicense = categories.some((c) => c.name === store.category && c.requires_drug_license);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isSaving) return;
     setIsSaving(true);
+    setError(null);
     try {
       const updated = await updateMyStore({
         name: store.name,
@@ -31,10 +38,13 @@ export function StoreProfileForm({ store: initial, onSaved }: Props) {
         district: store.district,
         gst_number: store.gst_number,
         shop_establishment_number: store.shop_establishment_number,
+        ...(needsDrugLicense ? { drug_license_number: store.drug_license_number ?? '' } : {}),
       });
       setStore(updated);
       onSaved(updated);
       setSavedAt(Date.now());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save changes.');
     } finally {
       setIsSaving(false);
     }
@@ -61,9 +71,27 @@ export function StoreProfileForm({ store: initial, onSaved }: Props) {
             <input value={store.phone ?? ''} disabled className="input cursor-not-allowed bg-neutral-50 text-neutral-400" />
           </Field>
           <Field label="Category">
-            <input required value={store.category} onChange={(e) => setStore({ ...store, category: e.target.value })} className="input" />
+            <select required value={store.category} onChange={(e) => setStore({ ...store, category: e.target.value })} className="input">
+              {!categories.some((c) => c.name === store.category) && <option value={store.category}>{store.category}</option>}
+              {categories.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
+
+        {needsDrugLicense && (
+          <Field label="Drug licence number" hint="Required for a pharmacy">
+            <input
+              required
+              value={store.drug_license_number ?? ''}
+              onChange={(e) => setStore({ ...store, drug_license_number: e.target.value })}
+              className="input"
+            />
+          </Field>
+        )}
 
         <Field label="District">
           <input
@@ -98,7 +126,8 @@ export function StoreProfileForm({ store: initial, onSaved }: Props) {
           >
             {isSaving ? 'Saving…' : 'Save changes'}
           </button>
-          {savedAt && <span className="text-sm text-emerald-600">Saved</span>}
+          {savedAt && !error && <span className="text-sm text-emerald-600">Saved</span>}
+          {error && <span className="text-sm text-red-600">{error}</span>}
         </div>
       </form>
     </SettingsSection>

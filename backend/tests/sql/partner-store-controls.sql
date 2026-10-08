@@ -60,4 +60,11 @@ DO $$ DECLARE r jsonb; s stores; BEGIN
   RAISE EXCEPTION 'Partner actions not audited'; END IF;
 END $$;
 
+-- 2. Pharmacy drug licence travels with the onboarding draft.
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public'
+   AND table_name='store_onboarding_drafts' AND column_name='drug_license_number') THEN
+  RAISE EXCEPTION 'Draft cannot hold a drug licence'; END IF;
+END $$;
+
 ROLLBACK;

@@ -34,7 +34,19 @@ export interface Store {
   // isValidPanFormat) server-side before writing. Real columns, same store row.
   fssai_number: string | null;
   pan_number: string | null;
+  // Required while category is Pharmacy (backend lib/storeCategories.ts).
+  drug_license_number?: string | null;
   phone: string | null;
+}
+
+// The store categories admin allows — the backend refuses anything else.
+export interface StoreCategoryOption {
+  name: string;
+  requires_drug_license: boolean;
+}
+
+export function fetchStoreCategories(): Promise<StoreCategoryOption[]> {
+  return apiRequest('/partner/store-categories');
 }
 
 export function fetchMyStore(): Promise<Store> {
