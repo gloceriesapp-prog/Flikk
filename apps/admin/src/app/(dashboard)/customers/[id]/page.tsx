@@ -18,6 +18,7 @@ import type { OrderStatus } from '@/lib/types';
 interface CustomerDetail {
   id: string;
   name: string | null;
+  email: string | null;
   phone: string;
   createdAt: string;
   block: { reason: string; blockedAt: string | null; blockedUntil: string | null } | null;
@@ -32,6 +33,9 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [loadError, setLoadError] = useState<string | null>(null);
   const [blocking, setBlocking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ name: string; email: string } | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     return fetch(`/api/customers/${id}`)
@@ -55,6 +59,27 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Could not block this customer.');
     setBlocking(false);
     await load();
+  }
+
+  // Name and contact email only; the phone number is the sign-in identity.
+  async function saveProfile() {
+    if (!editing) return;
+    setSavingProfile(true);
+    setProfileError(null);
+    try {
+      const res = await fetch(`/api/customers/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editing.name, email: editing.email.trim() || null }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Could not save this customer.');
+      setEditing(null);
+      await load();
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Could not save this customer.');
+    } finally {
+      setSavingProfile(false);
+    }
   }
 
   async function unblock() {
@@ -86,11 +111,64 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent text-lg font-bold text-ink-soft">
                 {(customer.name ?? customer.phone).slice(0, 1).toUpperCase()}
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-lg font-semibold text-ink">{customer.name ?? 'No name on file'}</p>
                 <p className="text-sm text-muted">{customer.phone}</p>
+                {customer.email && <p className="text-sm text-muted">{customer.email}</p>}
               </div>
+              {!editing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileError(null);
+                    setEditing({ name: customer.name ?? '', email: customer.email ?? '' });
+                  }}
+                  className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent"
+                >
+                  Edit profile
+                </button>
+              )}
             </div>
+            {editing && (
+              <form
+                className="mt-4 flex flex-col gap-3 border-t border-border pt-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void saveProfile();
+                }}
+              >
+                <label className="flex flex-col gap-1 text-xs font-semibold text-ink">
+                  Name
+                  <input
+                    value={editing.name}
+                    maxLength={80}
+                    required
+                    onChange={(event) => setEditing({ ...editing, name: event.target.value })}
+                    className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-ink"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-ink">
+                  Email (optional)
+                  <input
+                    type="email"
+                    value={editing.email}
+                    maxLength={254}
+                    onChange={(event) => setEditing({ ...editing, email: event.target.value })}
+                    className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-ink"
+                  />
+                </label>
+                <p className="text-xs text-muted">The phone number is how the customer signs in, so it cannot be changed here. Every change is recorded with your email.</p>
+                {profileError && <p className="text-sm text-danger">{profileError}</p>}
+                <div className="flex gap-2">
+                  <button type="submit" disabled={savingProfile} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                    {savingProfile ? 'Saving…' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => setEditing(null)} className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
             <p className="mt-4 border-t border-border pt-4 text-xs text-muted">
               Joined {new Date(customer.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
