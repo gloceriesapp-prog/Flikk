@@ -23,6 +23,13 @@
 --    admin_suspended and leaves is_active=false so the partner reopens.
 --    stores_suspension_guard refuses is_active=true while admin_suspended on
 --    every write path (P0409 STORE_SUSPENDED).
+-- 4. admin_set_store_payout_account(store, method, ...): the admin panel's way
+--    to set or replace a store's real payout destination (the payout_*
+--    columns payouts read, not the legacy bank_name/bank_account_last4), e.g.
+--    for an admin-created store whose owner never opens the partner app.
+--    Same formats and column shape as PUT /partner/payout-account
+--    (backend/src/lib/payoutAccount.ts) and the same verification reset, so
+--    the founder must still verify the name before paying.
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -177,5 +184,52 @@ BEGIN
 END $function$;
 REVOKE ALL ON FUNCTION public.admin_set_store_suspension(uuid, boolean, text, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_set_store_suspension(uuid, boolean, text, uuid) TO service_role;
+
+-- 4. Admin payout destination ----------------------------------------------------
+CREATE OR REPLACE FUNCTION public.admin_set_store_payout_account(p_store uuid, p_method text, p_upi_id text,
+  p_account_holder_name text, p_account_number text, p_ifsc text, p_bank_name text, p_admin uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path = public, pg_temp
+AS $function$
+DECLARE
+  v_upi text := btrim(coalesce(p_upi_id, ''));
+  v_holder text := btrim(coalesce(p_account_holder_name, ''));
+  v_account text := btrim(coalesce(p_account_number, ''));
+  v_ifsc text := upper(btrim(coalesce(p_ifsc, '')));
+  v_bank text := nullif(btrim(coalesce(p_bank_name, '')), '');
+  s public.stores;
+BEGIN
+  IF p_admin IS NULL THEN RAISE EXCEPTION USING errcode='P0400', message='Admin id required'; END IF;
+  IF p_method = 'upi' THEN
+    -- Same as the API's UPI pattern; PG caps {m,n} at 255, so the 256 limit is a length check.
+    IF v_upi !~ '^[a-zA-Z0-9.\-_]{2,}@[a-zA-Z]{2,64}$' OR length(split_part(v_upi, '@', 1)) > 256 THEN
+      RAISE EXCEPTION USING errcode='P0400', message='Enter a valid UPI ID, e.g. name@okaxis.'; END IF;
+    UPDATE stores SET payout_method='upi', payout_upi_id=v_upi, payout_account_holder_name=NULL,
+      payout_bank_account_number=NULL, payout_bank_ifsc=NULL, payout_bank_name=NULL, payout_proof_path=NULL,
+      payout_details_status='unverified', payout_details_verified_at=NULL, payout_details_verified_by=NULL, payout_upi_verified_name=NULL
+    WHERE id=p_store RETURNING * INTO s;
+  ELSIF p_method = 'bank' THEN
+    IF length(v_holder) NOT BETWEEN 2 AND 100 THEN
+      RAISE EXCEPTION USING errcode='P0400', message='Account holder name must be 2-100 characters.'; END IF;
+    IF v_account !~ '^\d{9,18}$' THEN RAISE EXCEPTION USING errcode='P0400', message='Account number must be 9-18 digits.'; END IF;
+    IF v_ifsc !~ '^[A-Z]{4}0[A-Z0-9]{6}$' THEN
+      RAISE EXCEPTION USING errcode='P0400', message='Enter a valid 11-character IFSC, e.g. HDFC0001234.'; END IF;
+    IF length(coalesce(v_bank, '')) > 100 THEN RAISE EXCEPTION USING errcode='P0400', message='Bank name must be at most 100 characters.'; END IF;
+    UPDATE stores SET payout_method='bank', payout_upi_id=NULL, payout_account_holder_name=v_holder,
+      payout_bank_account_number=v_account, payout_bank_ifsc=v_ifsc, payout_bank_name=v_bank, payout_proof_path=NULL,
+      payout_details_status='unverified', payout_details_verified_at=NULL, payout_details_verified_by=NULL, payout_upi_verified_name=NULL
+    WHERE id=p_store RETURNING * INTO s;
+  ELSE
+    RAISE EXCEPTION USING errcode='P0400', message='method must be upi or bank';
+  END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION USING errcode='P0404', message='Store not found'; END IF;
+  RETURN jsonb_build_object('method', s.payout_method, 'upi_id', s.payout_upi_id,
+    'account_holder_name', s.payout_account_holder_name, 'account_last4', right(s.payout_bank_account_number, 4),
+    'ifsc', s.payout_bank_ifsc, 'bank_name', s.payout_bank_name, 'status', s.payout_details_status);
+END $function$;
+REVOKE ALL ON FUNCTION public.admin_set_store_payout_account(uuid, text, text, text, text, text, text, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_set_store_payout_account(uuid, text, text, text, text, text, text, uuid) TO service_role;
 
 COMMIT;

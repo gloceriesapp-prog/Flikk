@@ -75,13 +75,9 @@ export function StoreDetailForm({ store }: { store: Store }) {
         <Section title="Business documents" description="Update the business records held for this store.">
           <div className="grid gap-4 sm:grid-cols-2">
             {field('fssaiNumber', 'FSSAI number')}{field('shopEstablishmentNumber', 'Shop & Establishment registration')}
-            {field('panNumber', 'PAN')}{field('aadhaarLast4', 'Aadhaar — last 4 digits')}
+            {field('panNumber', 'PAN')}
             {field('udyamNumber', 'Udyam registration')}{field('gstNumber', 'GSTIN')}{field('drugLicenseNumber', 'Drug licence (pharmacy)')}
           </div>
-          <label className="mt-5 flex items-center gap-3 text-sm font-medium"><input type="checkbox" checked={Boolean(draft.turnoverExceedsGstThreshold)} onChange={event => change('turnoverExceedsGstThreshold', event.target.checked)} className="h-4 w-4" />GST registration is required for this business</label>
-        </Section>
-        <Section title="Bank record" description="Update the bank details on the store's business record.">
-          <div className="grid gap-4 sm:grid-cols-2">{field('bankName', 'Bank name')}{field('bankAccountLast4', 'Bank account — last 4 digits')}</div>
         </Section>
       </fieldset>
       <div className="sticky bottom-4 rounded-2xl border border-border bg-white p-4 shadow-sm">

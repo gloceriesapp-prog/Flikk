@@ -100,5 +100,33 @@ DO $$ DECLARE s stores; BEGIN
  EXCEPTION WHEN sqlstate 'P0400' THEN NULL; END;
 END $$;
 
+-- 4. Admin payout destination writes the real payout_* columns and resets verification.
+DO $$ DECLARE j jsonb; s stores; BEGIN
+ IF has_function_privilege('authenticated','admin_set_store_payout_account(uuid,text,text,text,text,text,text,uuid)','EXECUTE')
+ OR NOT has_function_privilege('service_role','admin_set_store_payout_account(uuid,text,text,text,text,text,text,uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'Payout RPC grants wrong'; END IF;
+ UPDATE stores SET payout_method='upi', payout_upi_id='old@okaxis' WHERE id='00000000-0000-4000-8000-0000000110a1';
+ UPDATE stores SET payout_details_status='verified', payout_details_verified_at=now(), payout_upi_verified_name='Old Name'
+  WHERE id='00000000-0000-4000-8000-0000000110a1';
+ j:=admin_set_store_payout_account('00000000-0000-4000-8000-0000000110a1','bank',null,'Shop Owner','123456789012','hdfc0001234','HDFC',
+  '00000000-0000-4000-8000-0000000110d1');
+ SELECT * INTO s FROM stores WHERE id='00000000-0000-4000-8000-0000000110a1';
+ IF s.payout_method<>'bank' OR s.payout_bank_account_number<>'123456789012' OR s.payout_bank_ifsc<>'HDFC0001234' OR s.payout_upi_id IS NOT NULL
+ OR s.payout_details_status<>'unverified' OR s.payout_upi_verified_name IS NOT NULL OR s.payout_details_verified_at IS NOT NULL THEN
+  RAISE EXCEPTION 'Admin payout write did not replace and reset verification'; END IF;
+ IF j->>'account_last4'<>'9012' OR j ? 'account_number' THEN RAISE EXCEPTION 'Payout RPC leaked or mis-masked the account'; END IF;
+ j:=admin_set_store_payout_account('00000000-0000-4000-8000-0000000110a1','upi','shop@okicici',null,null,null,null,'00000000-0000-4000-8000-0000000110d1');
+ IF (SELECT payout_bank_account_number FROM stores WHERE id='00000000-0000-4000-8000-0000000110a1') IS NOT NULL THEN
+  RAISE EXCEPTION 'Switching to UPI kept bank details'; END IF;
+ BEGIN
+  PERFORM admin_set_store_payout_account('00000000-0000-4000-8000-0000000110a1','upi','not-a-upi',null,null,null,null,'00000000-0000-4000-8000-0000000110d1');
+  RAISE EXCEPTION 'Invalid UPI accepted';
+ EXCEPTION WHEN sqlstate 'P0400' THEN NULL; END;
+ BEGIN
+  PERFORM admin_set_store_payout_account('00000000-0000-4000-8000-0000000110a1','bank',null,'Owner','12','HDFC0001234',null,'00000000-0000-4000-8000-0000000110d1');
+  RAISE EXCEPTION 'Invalid account accepted';
+ EXCEPTION WHEN sqlstate 'P0400' THEN NULL; END;
+END $$;
+
 ROLLBACK;
 SELECT 'Account controls verified' AS result;
