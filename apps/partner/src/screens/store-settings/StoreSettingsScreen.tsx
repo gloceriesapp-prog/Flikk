@@ -460,7 +460,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
           <PayoutAccountCard />
 
           <View className="gap-4 rounded-[16px] bg-white p-4">
-            <SettingsLinkRow icon={InformationCircleIcon} label="Help & support" onPress={() => { }} />
+            <SettingsLinkRow icon={InformationCircleIcon} label="Help & support" onPress={() => navigation.navigate('Support')} />
             {/* No confirmation dialog — RootNavigator swaps to the auth
               stack the instant accessToken clears, same "store update
               drives navigation" pattern the rest of this auth flow uses.

@@ -152,6 +152,10 @@ export type AppStackParamList = {
   // Store settings (P6) — reached from StoreProfileHeader's gear icon.
   // No params; reads/writes the shared ../store/useStoreProfileStore.ts.
   StoreSettings: undefined;
+  // Help & support: admin-configured contacts + the store's support requests
+  // (reached from Store settings' "Help & support" row and Payouts' headset).
+  Support: { compose?: boolean } | undefined;
+  SupportTicket: { ticketId: string };
   // Same real map-pin screen onboarding's own AuthStackParamList already
   // registers (LocationPinScreen) — registered again here so
   // StoreSettingsScreen's own "Change on map" can reach it post-approval;

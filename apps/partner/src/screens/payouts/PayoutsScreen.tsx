@@ -27,7 +27,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Payouts'>;
 
 const PAGE_BG = '#F1F2F4';
 
-export function PayoutsScreen(_props: Props) {
+export function PayoutsScreen({ navigation }: Props) {
   const [statusFilter, setStatusFilter] = useState<PayoutStatusFilterValue>('all');
   const query = useInfiniteQuery({ queryKey: ['payouts'], initialPageParam: '', queryFn: ({ pageParam }) => fetchPayoutPage(pageParam || undefined), getNextPageParam: page => page.nextCursor ?? undefined, refetchOnWindowFocus: false });
   const { isLoading } = query;
@@ -66,12 +66,12 @@ export function PayoutsScreen(_props: Props) {
         <Text className="text-2xl font-semibold text-ink">Payouts</Text>
 
         {/* Support — the one thing a shop owner reaches for when a
-            settlement figure looks wrong. No backend/contact flow yet
-            (specs/05-platform doesn't cover one) — stubbed rather than
-            silently doing nothing, same convention as the notification
-            bell on the Orders screen. */}
+            settlement figure looks wrong. Opens Help & support: the
+            admin-configured contacts and a payout support request. */}
         <Pressable
-          onPress={() => { }}
+          onPress={() => navigation.navigate('Support', { compose: true })}
+          accessibilityRole="button"
+          accessibilityLabel="Help & support"
           className="h-11 w-11 items-center justify-center rounded-full bg-white"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
