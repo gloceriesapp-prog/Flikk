@@ -1,0 +1,28 @@
+# Local Supabase for development: `supabase start` (needs Docker), then apply our
+# migrations with backend/scripts/db-migrate.mjs (see ENVIRONMENTS.md).
+# Schema lives in backend/migrations, not supabase/migrations.
+project_id = "flikk-local"
+
+[api]
+port = 54321
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+port = 54323
+
+[auth]
+site_url = "http://localhost:3000"
+
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+
+# Fixed OTPs so phone login works locally without sending SMS.
+# Log in with any of these numbers and the code shown.
+[auth.sms.test_otp]
+910000000001 = "123456"
+910000000002 = "123456"
+910000000003 = "123456"
