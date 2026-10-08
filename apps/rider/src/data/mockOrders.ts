@@ -48,13 +48,14 @@ export interface RiderOrder {
   // cart from yet). Quantities always sum to itemCount, so the two never
   // disagree on-screen.
   items: OrderItemLine[];
-  // baseFare + distanceFare + surge always sums to payout — shown as an
-  // itemized breakup (OrderDetailScreen/EarningsScreen) instead of one bare
-  // number, since an unexplained payout figure is the single biggest
-  // driver of gig-app 1-star reviews.
+  // baseFare + extraStopFare + surge always sums to payout — shown as an
+  // itemized breakup (OrderDetailScreen/DeliveryCompleteScreen) instead of
+  // one bare number. Real values come from the backend's rider_payout split
+  // (the admin pay rule, or the recorded earning once delivered); on a trip
+  // every leg carries the whole trip's figures (utils/payout.ts).
   payout: number;
   baseFare: number;
-  distanceFare: number;
+  extraStopFare: number;
   surge: number;
   distanceKm: number;
   status: 'assigned' | 'picked_up' | 'arrived_at_customer' | 'delivered' | 'cancelled';
@@ -152,7 +153,7 @@ function generateOrderItems(itemCount: number): OrderItemLine[] {
 export function generateMockOrder(): RiderOrder {
   orderSequence += 1;
   const distanceKm = Number((1 + Math.random() * 3.5).toFixed(1));
-  const distanceFare = Math.round(distanceKm * 8);
+  const extraStopFare = 0;
   // Surge fires ~1 in 4 orders — a flat "sometimes there's more" is enough
   // for a mock; a real surge model reads live demand, out of scope here.
   const surge = Math.random() < 0.25 ? 10 : 0;
@@ -170,9 +171,9 @@ export function generateMockOrder(): RiderOrder {
     customerPhone: randomPhone(),
     itemCount,
     items: generateOrderItems(itemCount),
-    payout: BASE_FARE + distanceFare + surge,
+    payout: BASE_FARE + extraStopFare + surge,
     baseFare: BASE_FARE,
-    distanceFare,
+    extraStopFare,
     surge,
     distanceKm,
     status: 'assigned',

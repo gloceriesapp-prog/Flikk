@@ -269,7 +269,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
                 {order.itemCount + siblingLegs.reduce((sum, leg) => sum + leg.itemCount, 0)} items · {order.distanceKm} km
               </Text>
             </View>
-            <Text className="text-[16px] font-bold text-ink">₹{order.payout + siblingLegs.reduce((sum, leg) => sum + leg.payout, 0)}</Text>
+            <Text className="text-[16px] font-bold text-ink">₹{order.payout}</Text>
           </View>
 
           <View className="flex-row gap-3">
@@ -433,8 +433,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
               <Text className="text-[13px] text-ink/70 font-medium">₹{order.baseFare}</Text>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-[13px] text-ink/60 font-medium">Distance</Text>
-              <Text className="text-[13px] text-ink/70 font-medium">₹{order.distanceFare}</Text>
+              <Text className="text-[13px] text-ink/60 font-medium">Extra stores</Text>
+              <Text className="text-[13px] text-ink/70 font-medium">₹{order.extraStopFare}</Text>
             </View>
             <View
               className={`flex-row items-center justify-between rounded-lg px-2 py-1 ${order.surge > 0 ? 'bg-surge-soft' : 'bg-mist'}`}

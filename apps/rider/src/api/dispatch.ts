@@ -7,12 +7,10 @@ import { apiRequest, ApiError } from './client';
 import { distanceKm } from '../utils/geo';
 import type { Coordinates } from '../data/mockOrders';
 
-const DELIVERY_FEE = 25;
-
 // Hand-synced mirror of backend/src/lib/riderDispatch.ts's own
 // DISPATCH_OFFER_WINDOW_MS — how long an offer stays open before the cron
-// rebroadcasts/expands it. Same "keep it in sync by hand until a shared
-// package exists" convention as DELIVERY_FEE in api/orders.ts. Used to turn
+// rebroadcasts/expands it. Kept in sync by hand until a shared package
+// exists. Used to turn
 // the server's dispatch_broadcast_at into a real countdown deadline.
 export const DISPATCH_OFFER_WINDOW_MS = 45_000;
 
@@ -23,9 +21,9 @@ export function updateRiderStatus(patch: { status?: 'online' | 'offline'; lat?: 
 interface RawDispatchOffer {
   id: string;
   order_number: string;
-  delivery_fee: number;
   trip_id: string | null;
-  trips: { delivery_fee: number } | null;
+  // What the rider earns for this order or whole trip (admin pay rule).
+  rider_payout: number;
   stores: { name: string; lat: number | null; lng: number | null } | null;
   addresses: { line1: string; landmark: string | null; latitude: number | null; longitude: number | null } | null;
   order_items: { quantity: number }[] | null;
@@ -80,10 +78,8 @@ function toDispatchOffer(row: RawDispatchOffer): DispatchOffer {
     orderId: row.id,
     orderNumber: `FLK-${row.id.slice(0, 6).toUpperCase()}`,
     storeName: row.stores?.name ?? 'Store',
-    // Same trip-aware payout rule as api/orders.ts's own toRiderOrder —
-    // a trip leg pays the trip's own combined fee, never the flat
-    // single-store DELIVERY_FEE.
-    payout: row.trips?.delivery_fee ?? row.delivery_fee ?? DELIVERY_FEE,
+    // Backend-computed rider payout (whole trip on a trip leg).
+    payout: Number(row.rider_payout) || 0,
     pickupKm,
     storeToDropKm,
     totalKm: Math.round((pickupKm + storeToDropKm) * 10) / 10,

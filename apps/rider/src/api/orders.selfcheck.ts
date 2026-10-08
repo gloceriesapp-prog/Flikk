@@ -13,7 +13,11 @@ function raw(overrides: any = {}) {
     delivered_at: null,
     cancel_reason: null,
     trip_id: null,
-    trips: null,
+    payment_method: 'cod',
+    cash_to_collect: 250,
+    rider_payout: 42,
+    rider_payout_base: 30,
+    rider_payout_extra_stop: 12,
     order_items: [],
     stores: { name: 'Kirana', phone: null, lat: 13.2, lng: 74.7, manual_address: 'Near Bus Stand', address_line: 'MG Rd geocoded', zones: { name: 'Kaup' } },
     users: { name: 'Asha', phone: '9' },
@@ -43,5 +47,19 @@ assert.deepEqual(o.customerCoords, { latitude: 13.21, longitude: 74.71 });
 o = toRiderOrder(raw({ addresses: { line1: 'X', landmark: null, latitude: 1, longitude: 2, delivery_instructions: null } }))!;
 assert.equal(o.landmark, undefined);
 assert.equal(o.deliveryNote, undefined);
+
+// Money comes from the backend: payout split and cash to collect.
+o = toRiderOrder(raw())!;
+assert.equal(o.payout, 42);
+assert.equal(o.baseFare, 30);
+assert.equal(o.extraStopFare, 12);
+assert.equal(o.paymentMethod, 'cod');
+assert.equal(o.cashToCollect, 250);
+o = toRiderOrder(raw({ payment_method: 'online', cash_to_collect: 0 }))!;
+assert.equal(o.paymentMethod, 'online');
+assert.equal(o.cashToCollect, 0);
+// Customer name/phone are the real ones, never placeholders.
+assert.equal(o.customerName, 'Asha');
+assert.equal(o.customerPhone, '9');
 
 console.log('orders.selfcheck OK');
