@@ -13,21 +13,22 @@ export interface RiderPayout { amount: number; base: number; extraStop: number }
 // Mirror of rider_delivery_payout (migration 108), the rule the database
 // applies when it writes rider_earnings. Used to show a rider what a delivery
 // will pay before it completes.
-// - riderBasePayout > 0: max(riderBasePayout, delivery fee charged) plus
-//   riderExtraStopPayout for each extra shop.
+// - riderBasePayout > 0: max(riderBasePayout, delivery fee charged less the
+//   customer's extra-shop fee) plus riderExtraStopPayout for each extra shop,
+//   so extra shops are paid once.
 // - riderBasePayout = 0: exactly the delivery fee charged; the extra-shop
 //   part of that fee is reported as the extra-stop share.
 export function riderDeliveryPayout(deliveryFee: number, extraStops: number, settings: RiderPaySettings): RiderPayout {
   const fee = Math.max(0, Number(deliveryFee) || 0);
   const stops = Math.max(0, Math.floor(Number(extraStops) || 0));
   const basePayout = Math.max(0, Number(settings.riderBasePayout) || 0);
+  const stopFee = nonNegative(settings.extraStopFee, DEFAULT_EXTRA_STOP_FEE);
   let base: number;
   let extraStop: number;
   if (basePayout > 0) {
-    base = round2(Math.max(basePayout, fee));
+    base = round2(Math.max(basePayout, fee - Math.min(fee, stopFee * stops)));
     extraStop = round2(Math.max(0, Number(settings.riderExtraStopPayout) || 0) * stops);
   } else {
-    const stopFee = nonNegative(settings.extraStopFee, DEFAULT_EXTRA_STOP_FEE);
     extraStop = round2(Math.min(fee, stopFee * stops));
     base = round2(fee - extraStop);
   }

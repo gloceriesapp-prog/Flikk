@@ -409,7 +409,8 @@ export default function SettingsPage() {
                 <label htmlFor="riderBasePayout" className="text-sm font-medium text-ink">Minimum rider payout per delivery</label>
                 <p className="text-xs text-muted">
                   For each order or multi-store trip the rider earns the higher of this amount and the delivery fee the customer
-                  paid, so a free-delivery order still pays this amount. Set to 0 to pay riders exactly the delivery fee the customer paid
+                  paid (not counting the extra-store fee, which is paid through the payout below), so a free-delivery order still
+                  pays this amount. Set to 0 to pay riders exactly the delivery fee the customer paid
                   (the per-extra-store payout below is then not added).
                 </p>
               </div>

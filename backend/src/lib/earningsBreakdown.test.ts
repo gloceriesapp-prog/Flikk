@@ -21,7 +21,12 @@ describe('riderDeliveryPayout (mirror of rider_delivery_payout, migration 108)',
   });
   it('adds the extra-shop payout per extra shop', () => {
     expect(riderDeliveryPayout(0, 2, set)).toEqual({ amount: 54, base: 30, extraStop: 24 });
-    expect(riderDeliveryPayout(40, 1, set)).toEqual({ amount: 52, base: 40, extraStop: 12 });
+    expect(riderDeliveryPayout(40, 1, set)).toEqual({ amount: 42, base: 30, extraStop: 12 });
+  });
+  it('does not pay the customer extra-shop fee on top of the extra-shop payout', () => {
+    // Fee 41 = tier 26 + one extra shop at 15: base compares 30 with 26, not 41.
+    expect(riderDeliveryPayout(41, 1, set)).toEqual({ amount: 42, base: 30, extraStop: 12 });
+    expect(riderDeliveryPayout(60, 1, set)).toEqual({ amount: 57, base: 45, extraStop: 12 });
   });
   it('treats a configured extra-stop fee of 0 as no surcharge share', () => {
     expect(riderDeliveryPayout(25, 2, { ...unset, extraStopFee: 0 })).toEqual({ amount: 25, base: 25, extraStop: 0 });
