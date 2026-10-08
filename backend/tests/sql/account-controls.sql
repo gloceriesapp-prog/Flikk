@@ -128,5 +128,23 @@ DO $$ DECLARE j jsonb; s stores; BEGIN
  EXCEPTION WHEN sqlstate 'P0400' THEN NULL; END;
 END $$;
 
+-- 5. One store per owner.
+DO $$ BEGIN
+ BEGIN
+  INSERT INTO stores(owner_user_id,zone_id,name,category,district) VALUES
+   ('00000000-0000-4000-8000-0000000110d1','00000000-0000-4000-8000-0000000110a0','Duplicate shop','grocery','Test');
+  RAISE EXCEPTION 'Second store for one owner accepted';
+ EXCEPTION WHEN sqlstate 'P0409' THEN
+  IF SQLERRM<>'STORE_ALREADY_OWNED' THEN RAISE; END IF;
+ END;
+ INSERT INTO users(id,phone,role,is_approved) VALUES('00000000-0000-4000-8000-0000000110d2','+919999911202','store_owner',true);
+ INSERT INTO stores(owner_user_id,zone_id,name,category,district) VALUES
+  ('00000000-0000-4000-8000-0000000110d2','00000000-0000-4000-8000-0000000110a0','Second owner shop','grocery','Test');
+ BEGIN
+  UPDATE stores SET owner_user_id='00000000-0000-4000-8000-0000000110d1' WHERE owner_user_id='00000000-0000-4000-8000-0000000110d2';
+  RAISE EXCEPTION 'Ownership move created a duplicate';
+ EXCEPTION WHEN sqlstate 'P0409' THEN NULL; END;
+END $$;
+
 ROLLBACK;
 SELECT 'Account controls verified' AS result;

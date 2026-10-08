@@ -17,19 +17,27 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import { sendPushNotification } from '@/lib/pushNotification';
 import { createNotification } from '@/lib/notification';
 
-const DEFAULT_REJECTION_REASON =
-  "We couldn't verify your documents this time. Please double-check your details and photos, then resubmit your application.";
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/riders/[userId]'>) {
   const { userId } = await ctx.params;
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
+  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(userId)) return NextResponse.json({ error: 'Invalid applicant.' }, { status: 400 });
 
   try {
     const { approve, reason } = (await request.json()) as { approve: boolean; reason?: string };
 
     if (!approve) {
+      // The applicant sees this reason in their app — a reject without one
+      // left them guessing (the detail page used to send none at all).
+      const trimmed = typeof reason === 'string' ? reason.trim() : '';
+      if (trimmed.length < 3 || trimmed.length > 500) {
+        return NextResponse.json({ error: 'Give a rejection reason (3–500 characters).' }, { status: 400 });
+      }
       const { data: user, error } = await supabaseAdmin
         .from('users')
         .update({ is_approved: false, is_rejected: true })
@@ -38,7 +46,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
         .single();
       if (error || !user) throw new Error('No pending rider application for that id.');
 
-      const rejectionReason = reason?.trim() || DEFAULT_REJECTION_REASON;
+      const rejectionReason = trimmed;
       await supabaseAdmin.from('rider_onboarding_drafts').update({ rejection_reason: rejectionReason }).eq('user_id', userId);
 
       await sendPushNotification(user.expo_push_token, 'Your application needs another look', rejectionReason);

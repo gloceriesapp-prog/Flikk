@@ -43,21 +43,33 @@ export interface Application {
   photoUrl?: string;
   gstNumber?: string;
   district?: string;
-  // Store verification documents — each undefined/false means "not yet
-  // submitted", not "not required" (GSTIN is the one exception: it's
-  // legitimately optional under the ₹40L GST threshold, tracked
-  // separately via turnoverExceedsGstThreshold rather than by presence).
+  // Everything the partner Store Setup wizard collects (storeOnboarding.ts).
+  // undefined = not submitted. PAN is the only document the wizard requires.
+  storePhone?: string;
+  addressLine?: string;
+  manualAddress?: string;
+  lat?: number;
+  lng?: number;
+  ownerName?: string;
+  ownerEmail?: string;
+  openTime?: string;
+  closeTime?: string;
   fssaiNumber?: string;
   shopEstablishmentNumber?: string;
   panNumber?: string;
-  aadhaarLast4?: string;
-  bankAccountLast4?: string;
-  turnoverExceedsGstThreshold?: boolean;
+  udyamNumber?: string;
+  // The reviewer's last rejection reason (draft.rejection_reason), shown
+  // while the application is rejected or has been resubmitted.
+  rejectionReason?: string;
+  // Store: the applicant already owns a live store (re-application after
+  // approval). Approving would create a duplicate, so it is refused.
+  alreadyOwnsStore?: boolean;
   // Pharmacy category only — a stricter, separately regulated path (state
   // Drug Control authority, tied to a registered pharmacist), never
   // lumped in with general kirana document requirements.
   drugLicenseNumber?: string;
-  // Rider-only fields — undefined for store applications. aadhaarPhotoUrl/
+  // Rider-only fields — undefined for store applications (a rider's selfie
+  // uses photoUrl above). aadhaarPhotoUrl/
   // dlPhotoUrl are short-lived SIGNED urls (rider-documents is a private
   // bucket, migrations/042_rider_onboarding.sql's own note) generated
   // fresh by GET /api/approvals/riders on every read, never stored as-is.

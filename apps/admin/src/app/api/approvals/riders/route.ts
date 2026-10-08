@@ -11,7 +11,10 @@
 // the bucket ever being public.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import {
+  APPROVED_RIDER_SELECT,
+  RIDER_DRAFT_SELECT,
   mapApprovedRider,
   mapRiderDraft,
   type ApiApprovedRider,
@@ -21,35 +24,32 @@ import {
 const DOCUMENTS_BUCKET = 'rider-documents';
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
-async function signPhotoUrls<T extends { aadhaar_photo_url: string | null; dl_photo_url: string | null }>(row: T): Promise<T> {
-  const paths = [row.aadhaar_photo_url, row.dl_photo_url].filter((p): p is string => !!p);
+// photo_url (the rider's selfie), aadhaar_photo_url and dl_photo_url are all
+// object paths on the private bucket.
+async function signPhotoUrls<T extends { photo_url: string | null; aadhaar_photo_url: string | null; dl_photo_url: string | null }>(row: T): Promise<T> {
+  const paths = [row.photo_url, row.aadhaar_photo_url, row.dl_photo_url].filter((p): p is string => !!p);
   if (paths.length === 0) return row;
 
   const { data } = await supabaseAdmin.storage.from(DOCUMENTS_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
   const signedByPath = new Map((data ?? []).map((d) => [d.path, d.signedUrl]));
+  const sign = (path: string | null) => (path ? (signedByPath.get(path) ?? null) : null);
 
-  return {
-    ...row,
-    aadhaar_photo_url: row.aadhaar_photo_url ? (signedByPath.get(row.aadhaar_photo_url) ?? null) : null,
-    dl_photo_url: row.dl_photo_url ? (signedByPath.get(row.dl_photo_url) ?? null) : null,
-  };
+  return { ...row, photo_url: sign(row.photo_url), aadhaar_photo_url: sign(row.aadhaar_photo_url), dl_photo_url: sign(row.dl_photo_url) };
 }
 
 export async function GET() {
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
   try {
     const [draftsRes, ridersRes] = await Promise.all([
       supabaseAdmin
         .from('rider_onboarding_drafts')
-        .select(
-          'user_id, full_name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, submitted_at, users!user_id(phone, is_rejected)',
-        )
+        .select(RIDER_DRAFT_SELECT)
         .not('submitted_at', 'is', null)
         .order('submitted_at', { ascending: false }),
       supabaseAdmin
         .from('riders')
-        .select(
-          'user_id, rider_code, name, date_of_birth, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, users!user_id(phone)',
-        )
+        .select(APPROVED_RIDER_SELECT)
         .not('user_id', 'is', null),
     ]);
 

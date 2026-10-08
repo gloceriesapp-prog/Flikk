@@ -30,6 +30,10 @@
 --    Same formats and column shape as PUT /partner/payout-account
 --    (backend/src/lib/payoutAccount.ts) and the same verification reset, so
 --    the founder must still verify the name before paying.
+-- 5. One store per owner: stores_one_per_owner refuses a second store for an
+--    owner (P0409 STORE_ALREADY_OWNED), so neither approving a re-application
+--    nor admin Add Store can create a duplicate. Existing rows are untouched
+--    (no unique index, in case production already holds a duplicate).
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -231,5 +235,24 @@ BEGIN
 END $function$;
 REVOKE ALL ON FUNCTION public.admin_set_store_payout_account(uuid, text, text, text, text, text, text, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_set_store_payout_account(uuid, text, text, text, text, text, text, uuid) TO service_role;
+
+-- 5. One store per owner -----------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.stores_one_per_owner()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path = public, pg_temp
+AS $function$
+BEGIN
+  -- Serialize concurrent inserts for the same owner so both cannot pass.
+  PERFORM pg_advisory_xact_lock(hashtextextended(NEW.owner_user_id::text, 110));
+  IF EXISTS(SELECT 1 FROM stores WHERE owner_user_id=NEW.owner_user_id AND id<>NEW.id) THEN
+    RAISE EXCEPTION USING errcode='P0409', message='STORE_ALREADY_OWNED';
+  END IF;
+  RETURN NEW;
+END $function$;
+REVOKE ALL ON FUNCTION public.stores_one_per_owner() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS stores_one_per_owner ON public.stores;
+CREATE TRIGGER stores_one_per_owner BEFORE INSERT OR UPDATE OF owner_user_id ON public.stores
+  FOR EACH ROW EXECUTE FUNCTION public.stores_one_per_owner();
 
 COMMIT;

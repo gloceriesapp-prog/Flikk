@@ -1,12 +1,11 @@
-// Store verification — what's legally required before a store can go
-// live, not a generic "upload some files" checklist. GSTIN is
-// conditional (only above the ₹40L turnover threshold — most small
-// kirana stores are legitimately exempt, not delinquent) rather than
-// mandatory like everything else here. Pharmacy gets its own separate,
-// stricter section (Drug License, state Drug Control authority) instead
-// of being folded into the general list — a pharmacy missing its license
-// is a different severity of problem than a kirana store missing a
-// storefront photo.
+// Store verification — exactly what the partner app's Store Setup wizard
+// collects (backend/src/routes/storeOnboarding.ts), so nothing here asks
+// for a document the applicant was never given a field for. PAN is the one
+// document the wizard requires; FSSAI and Shop & Establishment are expected
+// for a grocery shop but optional in the wizard; GSTIN and Udyam are
+// optional. Payout details are collected after approval (partner app), not
+// here. Pharmacy gets its own section: the wizard does not collect a drug
+// licence, so it must be added on the store page after approval.
 
 import { AlertCircle, CheckCircle2, MinusCircle } from 'lucide-react';
 import clsx from 'clsx';
@@ -24,13 +23,20 @@ interface DocRow {
 const STATUS_CONFIG: Record<DocStatus, { icon: typeof CheckCircle2; className: string; label: string }> = {
   verified: { icon: CheckCircle2, className: 'text-success', label: 'Submitted' },
   missing: { icon: AlertCircle, className: 'text-danger', label: 'Missing' },
-  not_required: { icon: MinusCircle, className: 'text-muted', label: 'Not required' },
+  not_required: { icon: MinusCircle, className: 'text-muted', label: 'Optional — not given' },
 };
 
 export function DocumentChecklist({ application }: { application: Application }) {
   const isPharmacy = application.category === 'Pharmacy';
 
+  const optional = (value: string | undefined): DocStatus => (value ? 'verified' : 'not_required');
   const rows: DocRow[] = [
+    {
+      label: "Owner's PAN",
+      why: 'Required by the wizard — identity and tax/payout compliance.',
+      status: application.panNumber ? 'verified' : 'missing',
+      value: application.panNumber,
+    },
     {
       label: 'FSSAI license/registration',
       why: 'Legally mandatory for any business selling food/groceries in India, even small kirana stores.',
@@ -45,26 +51,26 @@ export function DocumentChecklist({ application }: { application: Application })
     },
     {
       label: 'GSTIN',
-      why: 'Only required above the ₹40L turnover threshold — exempt below that, not optional above it.',
-      status: !application.turnoverExceedsGstThreshold ? 'not_required' : application.gstNumber ? 'verified' : 'missing',
+      why: 'Only required above the GST turnover threshold — optional in the wizard.',
+      status: optional(application.gstNumber),
       value: application.gstNumber,
     },
     {
-      label: "Owner's PAN + Aadhaar",
-      why: 'Identity verification.',
-      status: application.panNumber && application.aadhaarLast4 ? 'verified' : 'missing',
-      value: application.panNumber && application.aadhaarLast4 ? `${application.panNumber} · Aadhaar ····${application.aadhaarLast4}` : undefined,
-    },
-    {
-      label: 'Bank account details',
-      why: 'Cancelled cheque/passbook, for weekly payout settlement.',
-      status: application.bankAccountLast4 ? 'verified' : 'missing',
-      value: application.bankAccountLast4 ? `Account ····${application.bankAccountLast4}` : undefined,
+      label: 'Udyam registration',
+      why: 'MSME registration — optional.',
+      status: optional(application.udyamNumber),
+      value: application.udyamNumber,
     },
     {
       label: 'Storefront photo',
       why: "Ties into Gloceries's real-photo trust strategy.",
       status: application.photoUrl ? 'verified' : 'missing',
+    },
+    {
+      label: 'Store location pin',
+      why: 'Without a map pin the store is invisible to nearby customers.',
+      status: application.lat != null && application.lng != null ? 'verified' : 'missing',
+      value: application.lat != null && application.lng != null ? `${application.lat.toFixed(5)}, ${application.lng.toFixed(5)}` : undefined,
     },
   ];
 
@@ -89,7 +95,7 @@ export function DocumentChecklist({ application }: { application: Application })
             <DocRowItem
               row={{
                 label: 'Drug License',
-                why: 'Separately regulated — a valid license from the state Drug Control authority, often tied to a registered pharmacist on record. Not covered by the general documents above.',
+                why: 'Separately regulated (state Drug Control authority). The wizard does not collect it — get it from the applicant and add it on the store page after approval.',
                 status: application.drugLicenseNumber ? 'verified' : 'missing',
                 value: application.drugLicenseNumber,
               }}

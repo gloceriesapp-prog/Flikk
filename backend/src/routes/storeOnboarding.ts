@@ -63,6 +63,17 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
     if (!storeName || !category || !district) {
       throw new AppError(400, 'MISSING_FIELDS', 'storeName, category and district are required.');
     }
+    // One store per owner: approving a second application would create a
+    // duplicate store (migration 110's trigger refuses it in the DB too).
+    // An approved owner edits their store in Settings instead.
+    const { count: ownedStores, error: ownedError } = await supabase
+      .from('stores')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_user_id', req.user!.id);
+    if (ownedError) throw ownedError;
+    if ((ownedStores ?? 0) > 0) {
+      throw new AppError(409, 'STORE_ALREADY_EXISTS', 'You already have a store on Gloceries. Update it from Store Settings instead.');
+    }
     // PAN is the one compulsory document at submit time — real per an
     // explicit ask (tax/payout compliance applies to every store
     // regardless of category). GST/Udyam/FSSAI/shop-license stay optional.
