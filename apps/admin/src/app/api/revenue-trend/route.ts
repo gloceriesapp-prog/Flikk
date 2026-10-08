@@ -6,82 +6,31 @@
 // payout is gross item_total minus commission only; a rider's own payout
 // is the delivery_fee only — neither pool ever includes the handling fee),
 // so both belong in "how much Gloceries earned," not just commission alone.
-// Grouped by the Monday of each order's delivered_at week to match
-// payouts' own week_start convention.
 //
-// Single-store orders (trip_id null) charge their own handling_fee
-// directly. A multi-store trip charges it once at the trip level
-// (trip.handling_fee, real per orders.ts's own note on why: one combined
-// checkout, one fee) — counted here only once the trip is FULLY delivered
-// (every leg independently delivered), not per-leg, so a 3-store trip
-// doesn't triple-count one checkout's fee.
+// Summed in Postgres (admin_revenue_trend, migration 118) — fetching the
+// delivered orders here stopped at PostgREST's 1,000-row page, so the
+// all-time total quietly stopped growing. Weeks start Monday (IST),
+// matching payouts' week_start. A single-store order counts in the week it
+// was delivered; a multi-store trip counts once, only when every leg is
+// delivered, in its last leg's week, with the trip-level handling fee.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import type { RevenuePoint } from '@/lib/types';
 
-function mondayOf(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-
 export async function GET() {
   try {
-    const [singleStoreRes, tripsRes] = await Promise.all([
-      supabaseAdmin
-        .from('orders')
-        .select('commission_amount, handling_fee, delivered_at')
-        .eq('status', 'delivered')
-        .is('trip_id', null)
-        .not('delivered_at', 'is', null),
-      supabaseAdmin.from('trips').select('id, handling_fee, orders(status, commission_amount, delivered_at)'),
-    ]);
-    if (singleStoreRes.error) throw singleStoreRes.error;
-    if (tripsRes.error) throw tripsRes.error;
-
-    const byWeek = new Map<string, { commission: number; platformFee: number }>();
-
-    function add(week: string, commission: number, platformFee: number) {
-      const entry = byWeek.get(week) ?? { commission: 0, platformFee: 0 };
-      entry.commission += commission;
-      entry.platformFee += platformFee;
-      byWeek.set(week, entry);
-    }
-
-    for (const row of singleStoreRes.data ?? []) {
-      const week = mondayOf(new Date(row.delivered_at as string));
-      add(week, Number(row.commission_amount), Number(row.handling_fee));
-    }
-
-    for (const trip of tripsRes.data ?? []) {
-      const legs = (trip.orders ?? []) as { status: string; commission_amount: number; delivered_at: string | null }[];
-      if (legs.length === 0 || !legs.every((leg) => leg.status === 'delivered')) continue;
-
-      // Every leg's own commission was already earned independently — the
-      // trip's handling_fee is the one thing that only exists at the trip
-      // level, attributed to whichever leg happened to deliver last (same
-      // "last leg to finish" convention orders.ts's own rider_earnings
-      // trip-payout logic already uses).
-      const lastDeliveredAt = legs.reduce((latest, leg) => (leg.delivered_at! > latest ? leg.delivered_at! : latest), legs[0].delivered_at!);
-      const week = mondayOf(new Date(lastDeliveredAt));
-      const commissionSum = legs.reduce((sum, leg) => sum + Number(leg.commission_amount), 0);
-      add(week, commissionSum, Number(trip.handling_fee));
-    }
-
-    const trend: RevenuePoint[] = [...byWeek.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([week, { commission, platformFee }]) => ({
-        label: `Wk ${new Date(week).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
-        commission,
-        platformFee,
-      }));
-
+    const { data, error } = await supabaseAdmin.rpc('admin_revenue_trend');
+    if (error) throw error;
+    const rows = (data ?? []) as { week_start: string; commission: number | string; platform_fee: number | string }[];
+    const trend: RevenuePoint[] = rows.map((row) => ({
+      label: `Wk ${new Date(`${row.week_start}T00:00:00+05:30`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}`,
+      commission: Number(row.commission),
+      platformFee: Number(row.platform_fee),
+    }));
     return NextResponse.json(trend);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Could not load revenue trend.';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('Revenue trend failed', { code: (err as { code?: string } | null)?.code });
+    return NextResponse.json({ error: 'Could not load revenue trend.' }, { status: 500 });
   }
 }

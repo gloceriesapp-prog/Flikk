@@ -336,20 +336,6 @@ export interface RevenuePoint {
   platformFee: number;
 }
 
-// Customer-app installs, split by store — no App Store Connect / Play
-// Console API integration exists yet (same category as the payment provider/WhatsApp
-// in CLAUDE.md's env-scoped external services, just not wired up), so
-// this is "last synced" data, not a true real-time counter. Split by
-// platform rather than combined: a founder watching for install friction
-// on one store specifically (e.g. Android install drop-off, iOS review
-// delay) needs the two numbers separate, not folded into one total.
-export interface AppDownloadStats {
-  android: number;
-  ios: number;
-  changePctThisWeek: number;
-  lastSyncedAt: string;
-}
-
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
 // Inventory — a cross-store catalog view for the founder ("what do stores
