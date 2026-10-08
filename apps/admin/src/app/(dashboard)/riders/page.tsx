@@ -47,7 +47,7 @@ export default function RidersPage() {
   const loadData = useCallback(async () => {
     setLoadError(null);
     try {
-      const [ridersRes, ordersRes] = await Promise.all([fetch('/api/riders'), fetch('/api/orders')]);
+      const [ridersRes, ordersRes] = await Promise.all([fetch('/api/riders'), fetch('/api/orders?status=packed&unassigned=1')]);
       if (!ridersRes.ok) throw new Error((await ridersRes.json()).error ?? 'Could not load riders.');
       if (!ordersRes.ok) throw new Error((await ordersRes.json()).error ?? 'Could not load orders.');
       setRiders(await ridersRes.json());

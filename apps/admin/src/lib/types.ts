@@ -1,7 +1,8 @@
 // Mirrors specs/00-foundation/data-model.md — only the fields this
 // dashboard's screens actually read, not the full backend row shape.
 
-export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+// 'failed' — the rider could not complete the drop after pickup (migration 052).
+export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
 
 export interface Order {
   id: string;
@@ -22,6 +23,23 @@ export interface Order {
   // from this specific order, not an estimated rate applied after the
   // fact. 0 for a cancelled/non-delivered order (nothing earned yet).
   commissionAmount: number;
+  orderNumber: string;
+  paymentMethod: string | null;
+  refundStatus: string | null;
+  // orders.cancel_reason: cancel reason (cancelled) or delivery-failure code (failed).
+  cancelReason: string | null;
+  // orders.cancelled_by (migration 109): customer/store_owner/rider/admin/system.
+  cancelledBy: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+}
+
+// GET /api/orders?paged=1 — one server-side page of the filtered list.
+export interface OrderPage {
+  orders: Order[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
