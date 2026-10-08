@@ -13,6 +13,7 @@ import {
   PartyPopper,
   RotateCcw,
   Settings,
+  Smartphone,
   Tag,
   Ticket,
   UserCheck,
@@ -52,6 +53,7 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/festival-greeting', label: 'Festival Greeting', icon: PartyPopper },
   { href: '/seasonal-section', label: 'Seasonal Section', icon: ImageIcon },
   { href: '/app-content', label: 'App content', icon: FileText },
+  { href: '/app-settings', label: 'App settings', icon: Smartphone },
 ];
 
 export const INSIGHTS_ITEMS: NavItem[] = [

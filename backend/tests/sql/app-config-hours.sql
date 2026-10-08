@@ -83,5 +83,23 @@ BEGIN
   IF r.recipients <> 2 OR r.accepted <> 1 OR r.skipped <> 1 OR r.queued <> 0 OR r.subject <> 'Diwali' OR r.channel <> 'sms' THEN
     RAISE EXCEPTION 'Campaign summary wrong: %', r; END IF;
 END $$;
+-- App release config: one non-blocking row per app; service-role only;
+-- versions, links and messages are checked.
+DO $$ BEGIN
+  IF (SELECT count(*) FROM app_release_config WHERE min_supported_version = '0.0.0' AND NOT force_update AND NOT maintenance_enabled) <> 3 THEN
+    RAISE EXCEPTION 'release defaults wrong'; END IF;
+  IF has_table_privilege('anon','app_release_config','SELECT') OR has_table_privilege('authenticated','app_faqs','SELECT') THEN
+    RAISE EXCEPTION 'release/faq tables exposed to API roles'; END IF;
+  BEGIN UPDATE app_release_config SET min_supported_version = '1.x' WHERE app = 'customer';
+    RAISE EXCEPTION 'Bad version accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN UPDATE app_release_config SET android_store_url = 'http://play.google.com' WHERE app = 'customer';
+    RAISE EXCEPTION 'Insecure store link accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN INSERT INTO app_release_config(app) VALUES ('admin');
+    RAISE EXCEPTION 'Unknown app accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN INSERT INTO app_faqs(question, answer) VALUES ('  ', 'x');
+    RAISE EXCEPTION 'Blank FAQ accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
+  UPDATE app_release_config SET min_supported_version = '1.2.0', latest_version = '1.3.0', maintenance_enabled = true WHERE app = 'rider';
+  INSERT INTO app_faqs(question, answer, sort_order) VALUES ('When do you deliver?', 'Every day.', 1);
+END $$;
 ROLLBACK;
 \echo 'app-config-hours: ok'

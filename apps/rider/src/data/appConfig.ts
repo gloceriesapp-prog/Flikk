@@ -1,9 +1,5 @@
-// Static, local-only config for the soft in-app notice on Home
-// (MaintenanceBanner.tsx) — a real deployment would read this from a
-// remote-config/backend flag; null here just means "nothing to show,"
-// never a blocking gate. Deliberately dismissible, never a forced screen —
-// a hard-blocking maintenance modal is its own class of 1-star review.
-export const MAINTENANCE_MESSAGE: string | null = null;
+// Maintenance mode and app updates come from admin "App settings" via the
+// backend (features/app-release/ReleaseGate.tsx), not from this file.
 
 // Single-zone launch per CLAUDE.md (Kaup / outer Udupi) — surfaced on Home
 // as a plain fact, not a marketing claim, so nothing implies citywide

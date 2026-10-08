@@ -17,6 +17,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { GILROY_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { ReleaseGate } from './src/features/app-release/ReleaseGate';
 
 registerAccountReset(() => {
   detachNotifications();
@@ -73,7 +74,9 @@ function App() {
                 regardless of which screen was actually focused. */}
             <StatusBar style="light" />
             <ErrorBoundary>
-              <RootNavigator />
+              <ReleaseGate>
+                <RootNavigator />
+              </ReleaseGate>
             </ErrorBoundary>
           </QueryClientProvider>
         </KeyboardProvider>

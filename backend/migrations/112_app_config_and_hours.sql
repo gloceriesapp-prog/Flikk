@@ -11,6 +11,8 @@
 -- 5. festival_greeting gains the festival tab switch, title, colours, artwork.
 -- 6. platform_settings.promotions_enabled: DB kill switch for promotions.
 -- 7. promotional_campaigns(limit): campaign summaries for admin.
+-- 8. app_release_config: per-app versions, store links, force update, maintenance.
+-- 9. app_faqs: customer FAQ entries.
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -128,5 +130,41 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
 $$;
 REVOKE ALL ON FUNCTION public.promotional_campaigns(integer) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.promotional_campaigns(integer) TO service_role;
+
+-- 8. App release config, one row per app: minimum supported and latest
+--    versions (dotted numbers), store links, force update (blocks anything
+--    below latest) and maintenance mode. Edited on admin "App settings",
+--    served by the backend's public GET /app-config(/release/:app). Defaults
+--    block nothing and keep maintenance off.
+CREATE TABLE IF NOT EXISTS public.app_release_config (
+  app text PRIMARY KEY CHECK (app IN ('customer','partner','rider')),
+  min_supported_version text NOT NULL DEFAULT '0.0.0' CHECK (min_supported_version ~ '^\d{1,4}(\.\d{1,4}){0,3}$'),
+  latest_version text NOT NULL DEFAULT '0.0.0' CHECK (latest_version ~ '^\d{1,4}(\.\d{1,4}){0,3}$'),
+  ios_store_url text CHECK (ios_store_url IS NULL OR (ios_store_url ~ '^https://' AND char_length(ios_store_url) <= 500)),
+  android_store_url text CHECK (android_store_url IS NULL OR (android_store_url ~ '^https://' AND char_length(android_store_url) <= 500)),
+  force_update boolean NOT NULL DEFAULT false,
+  maintenance_enabled boolean NOT NULL DEFAULT false,
+  maintenance_message text CHECK (maintenance_message IS NULL OR char_length(maintenance_message) <= 500),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO public.app_release_config (app) VALUES ('customer'),('partner'),('rider') ON CONFLICT (app) DO NOTHING;
+ALTER TABLE public.app_release_config ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.app_release_config FROM PUBLIC,anon,authenticated;
+GRANT ALL ON public.app_release_config TO service_role;
+
+-- 9. Customer FAQ entries (Help & support), edited on admin "App settings".
+CREATE TABLE IF NOT EXISTS public.app_faqs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  question text NOT NULL CHECK (char_length(btrim(question)) BETWEEN 1 AND 300),
+  answer text NOT NULL CHECK (char_length(btrim(answer)) BETWEEN 1 AND 4000),
+  sort_order integer NOT NULL DEFAULT 0,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS app_faqs_active_order ON public.app_faqs (sort_order, created_at) WHERE is_active;
+ALTER TABLE public.app_faqs ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.app_faqs FROM PUBLIC,anon,authenticated;
+GRANT ALL ON public.app_faqs TO service_role;
 
 COMMIT;
