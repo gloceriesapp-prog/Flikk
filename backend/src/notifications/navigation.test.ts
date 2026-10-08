@@ -35,3 +35,32 @@ it('opens trip tracking only after fetching the owned trip', async () => {
   queueOrderNotification({ ...target, notification_id: 'notification-trip', order_id: 'trip-a', is_trip: true });
   await vi.waitFor(() => expect(fixture.navigate).toHaveBeenCalledWith('TrackOrder', { orderId: 'trip-a', isTrip: true, paymentMethodLabel: 'Online payment' }));
 });
+
+
+it('defers an area launch alert through cold start and opens its owned inbox', async () => {
+  const area = { type: 'area' as const, customer_id: 'customer-a', notification_id: 'area-notification' };
+  fixture.ready = false; fixture.session.customerId = null;
+  queueOrderNotification(area); await flushOrderNotification();
+  expect(fixture.read).not.toHaveBeenCalled(); expect(fixture.navigate).not.toHaveBeenCalled();
+  fixture.session.customerId = area.customer_id; fixture.ready = true;
+  await flushOrderNotification();
+  expect(fixture.read).toHaveBeenCalledWith(area.notification_id);
+  expect(fixture.navigate).toHaveBeenCalledWith('Notifications');
+  expect(fixture.order).not.toHaveBeenCalled(); expect(fixture.trip).not.toHaveBeenCalled();
+});
+it('does not open an area alert belonging to another account', async () => {
+  fixture.session.customerId = 'customer-b';
+  queueOrderNotification({ type: 'area', customer_id: 'customer-a', notification_id: 'wrong-area' });
+  await flushOrderNotification();
+  expect(fixture.read).not.toHaveBeenCalled(); expect(fixture.navigate).not.toHaveBeenCalled();
+});
+it('ignores an area read acknowledgement arriving after an account switch', async () => {
+  let resolve!: (value: unknown) => void;
+  fixture.read.mockImplementation(() => new Promise(done => { resolve = done; }));
+  fixture.session.customerId = 'customer-a';
+  queueOrderNotification({ type: 'area', customer_id: 'customer-a', notification_id: 'switched-area' });
+  fixture.session = { customerId: 'customer-b', sessionEpoch: fixture.session.sessionEpoch + 1 };
+  resolve(undefined);
+  await new Promise(done => setTimeout(done, 0));
+  expect(fixture.navigate).not.toHaveBeenCalled();
+});

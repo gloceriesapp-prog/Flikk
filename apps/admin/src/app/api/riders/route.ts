@@ -20,6 +20,9 @@ import type { ActiveRider } from '@/lib/types';
 interface RiderRow {
   id: string;
   user_id: string;
+  photo_url: string | null;
+  zone_id: string | null;
+  zone: { name: string } | { name: string }[] | null;
   name: string;
   phone: string;
   is_active: boolean;
@@ -44,7 +47,7 @@ export async function GET() {
     const [ridersRes, ordersRes] = await Promise.all([
       supabaseAdmin
         .from('riders')
-        .select('id, user_id, name, phone, is_active, status, availability, auto_online, suspended_reason, suspended_at, last_location_update')
+        .select('id, user_id, photo_url, zone_id, zone:zones(name), name, phone, is_active, status, availability, auto_online, suspended_reason, suspended_at, last_location_update')
         .order('name'),
       supabaseAdmin.from('orders').select('rider_id').not('rider_id', 'is', null).not('status', 'in', '(delivered,cancelled,failed)'),
     ]);
@@ -57,7 +60,11 @@ export async function GET() {
       activeOrderCounts.set(riderId, (activeOrderCounts.get(riderId) ?? 0) + 1);
     }
 
-    const riders: ActiveRider[] = ((ridersRes.data ?? []) as RiderRow[]).map((row) => {
+    const rows = (ridersRes.data ?? []) as unknown as RiderRow[];
+    const paths = rows.map((row) => row.photo_url).filter((path): path is string => !!path);
+    const signed = paths.length ? await supabaseAdmin.storage.from('rider-documents').createSignedUrls(paths, 600) : { data: [] };
+    const photos = new Map((signed.data ?? []).map((item) => [item.path, item.signedUrl]));
+    const riders: ActiveRider[] = rows.map((row) => {
       const availability = row.availability ?? [];
       return {
         id: row.id,
@@ -65,7 +72,9 @@ export async function GET() {
         name: row.name,
         phone: row.phone,
         activeOrders: activeOrderCounts.get(row.user_id) ?? 0,
-        zone: 'Kaup, Udupi',
+        zone: (Array.isArray(row.zone) ? row.zone[0] : row.zone)?.name ?? 'Not assigned',
+        zoneId: row.zone_id,
+        photoUrl: photos.get(row.photo_url ?? '') ?? null,
         // NOTE: isOnline maps to is_active (account-active), NOT live presence.
         // AssignRiderRow filters on isOnline so its source is unchanged. The
         // real live online/offline signal is `presence` (riders.status) —
@@ -84,7 +93,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json(riders);
+    return NextResponse.json(riders, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not load riders.';
     return NextResponse.json({ error: message }, { status: 500 });

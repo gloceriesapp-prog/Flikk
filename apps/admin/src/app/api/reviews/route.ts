@@ -9,6 +9,7 @@
 // neither of which is a real admin session, same "no admin login yet" gap
 // every other admin route works around.
 
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
@@ -18,15 +19,19 @@ interface ReviewRow {
   comment: string | null;
   created_at: string;
   store_id: string;
+  owner_reply: string | null;
+  owner_replied_at: string | null;
   stores: { name: string } | null;
   users: { name: string | null; phone: string } | null;
 }
 
 export async function GET() {
   try {
+    const unauthorized = await requireStoreAdmin();
+    if (unauthorized) return unauthorized;
     const { data, error } = await supabaseAdmin
       .from('reviews')
-      .select('id, rating, comment, created_at, store_id, stores(name), users!customer_id(name, phone)')
+      .select('id, rating, comment, created_at, store_id, owner_reply, owner_replied_at, stores(name), users!customer_id(name, phone)')
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) throw error;
@@ -35,6 +40,8 @@ export async function GET() {
       id: row.id,
       rating: row.rating,
       comment: row.comment,
+      ownerReply: row.owner_reply,
+      ownerRepliedAt: row.owner_replied_at,
       createdAt: row.created_at,
       storeId: row.store_id,
       storeName: row.stores?.name ?? 'Unknown store',

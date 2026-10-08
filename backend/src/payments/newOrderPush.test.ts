@@ -1,3 +1,4 @@
+vi.mock('../stores/pushRecipients.js', () => ({ storePushRecipients: async (_store: string, owner: string | null) => owner ? [owner] : [] }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sent: unknown[] = [];

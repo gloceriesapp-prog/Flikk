@@ -1,3 +1,4 @@
+import { validateStoreFields, validateStoreCoordinates } from '../../../../../backend/src/stores/validation';
 import { STORE_CATEGORIES } from '../../lib/store-options';
 
 const textColumns = {
@@ -53,10 +54,11 @@ export function parseStorePatch(value: unknown): Record<string, string | number 
     } else fail(`Unsupported store field: ${key}.`);
   }
   if (!Object.keys(patch).length) fail('No store changes supplied.');
+  try { validateStoreFields(patch); } catch (error) { fail(error instanceof Error ? error.message : 'Invalid store changes.'); }
   return patch;
 }
 export function validateMergedStore(store: Record<string, unknown>, patch: Record<string, unknown>): void {
   const merged = { ...store, ...patch };
   if (Object.hasOwn(patch, 'category') && merged.category === 'Pharmacy' && !merged.drug_license_number) fail('Add a drug licence before changing the category to Pharmacy.');
-  if ((merged.lat == null) !== (merged.lng == null)) fail('Set both latitude and longitude, or clear both.');
+  try { validateStoreCoordinates(merged); } catch (error) { fail(error instanceof Error ? error.message : 'Invalid store location.'); }
 }

@@ -5,7 +5,7 @@ import { ConnectionPolicy } from './connection';
 
 export interface InventoryEvent { storeIds: string[]; zoneIds: string[]; storeChanged: boolean; refresh?: boolean }
 export interface InventoryScope { storeIds: string[]; zoneIds: string[] }
-type Kind = 'content' | 'inventory' | 'settings';
+type Kind = 'content' | 'inventory' | 'settings' | 'config';
 type Listener = (event: Kind, inventory?: InventoryEvent) => void;
 const listeners = new Map<Listener, InventoryScope>();
 let source: EventSource | null = null;
@@ -41,7 +41,7 @@ function scope() {
     zoneIds: [...new Set([...listeners.values()].flatMap(s => s.zoneIds))].sort().slice(0, 10) };
 }
 const policy = new ConnectionPolicy(() => {
-  notify('content'); notify('settings'); notify('inventory', { ...scope(), storeChanged: true, refresh: true });
+  notify('content'); notify('settings'); notify('config'); notify('inventory', { ...scope(), storeChanged: true, refresh: true });
 }, () => {
   closeSource();
   const interests = scope();
@@ -53,7 +53,7 @@ const policy = new ConnectionPolicy(() => {
     try {
       const value = JSON.parse(event.data);
       if (value.type === 'health' && typeof value.healthy === 'boolean') policy.pulse(value.healthy && !scopeOverflow(), value.recovery === true);
-      else if (value.type === 'content' || value.type === 'settings') notify(value.type);
+      else if (value.type === 'content' || value.type === 'settings' || value.type === 'config') notify(value.type);
       else if (value.type === 'inventory' && Array.isArray(value.storeIds) && Array.isArray(value.zoneIds) &&
         value.storeIds.every((id: unknown) => typeof id === 'string') && value.zoneIds.every((id: unknown) => typeof id === 'string')) {
         notify('inventory', { storeIds: value.storeIds, zoneIds: value.zoneIds, storeChanged: value.storeChanged === true });

@@ -6,12 +6,12 @@ import { fetchOrder } from '../../api/orders';
 import { fetchTrip } from '../../api/trips';
 import { ApiError } from '../../api/client';
 import { markNotificationRead } from './api';
-import { notificationDisposition, type OrderNotificationTarget } from './target';
+import { notificationDisposition, type CustomerNotificationTarget } from './target';
 export const notificationNavigation = createNavigationContainerRef<AppStackParamList>();
-let pending: OrderNotificationTarget | null = null;
+let pending: CustomerNotificationTarget | null = null;
 let opening = false;
 const seen = new Set<string>();
-export function queueOrderNotification(target: OrderNotificationTarget, deduplicate = false) {
+export function queueOrderNotification(target: CustomerNotificationTarget, deduplicate = false) {
     if (deduplicate && seen.has(target.notification_id))
         return;
     if (deduplicate) {
@@ -38,6 +38,13 @@ export async function flushOrderNotification(): Promise<void> {
         return;
     opening = true;
     try {
+        if (target.type === 'area') {
+            await markNotificationRead(target.notification_id);
+            if (useAuthStore.getState().sessionEpoch !== session.sessionEpoch || !notificationNavigation.isReady()) return;
+            notificationNavigation.navigate('Notifications');
+            if (pending === target) pending = null;
+            return;
+        }
         // The backend proves ownership; payload IDs alone are never authorization.
         const order = target.is_trip ? await fetchTrip(target.order_id) : await fetchOrder(target.order_id);
         if (useAuthStore.getState().sessionEpoch !== session.sessionEpoch || !notificationNavigation.isReady())
@@ -53,10 +60,10 @@ export async function flushOrderNotification(): Promise<void> {
         if (error instanceof ApiError && [401, 403, 404, 410].includes(error.status)) {
             if (pending === target)
                 pending = null;
-            Alert.alert('Order unavailable', 'This order cannot be opened for this account.');
+            Alert.alert(target.type === 'area' ? 'Update unavailable' : 'Order unavailable', target.type === 'area' ? 'This update cannot be opened for this account.' : 'This order cannot be opened for this account.');
         }
         else
-            Alert.alert('Could not open order', 'Check your connection and try again.', [{ text: 'Later' }, { text: 'Retry', onPress: () => void flushOrderNotification() }]);
+            Alert.alert(target.type === 'area' ? 'Could not open update' : 'Could not open order', 'Check your connection and try again.', [{ text: 'Later' }, { text: 'Retry', onPress: () => void flushOrderNotification() }]);
     }
     finally {
         opening = false;

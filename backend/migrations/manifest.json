@@ -448,6 +448,18 @@
     {
       "file": "112_app_config_and_hours.sql",
       "sha256": "43dd50d6dfceda6f79ab8fc750cb2b2a12624d74cc0d6b554f984a900e6bdb4f"
+    },
+    {
+      "file": "20261008161055_rider_reviewed_profile_changes.sql",
+      "sha256": "12450b2817586aa2c1ab66a29eb3602ec7dd2287d2bc5dc3d08fd483352a0f95"
+    },
+    {
+      "file": "20261008161114_store_team_access.sql",
+      "sha256": "fdd5747bfcdfaaf1428ac9ed09ca2758aa2d1a0363a02da76ebd03963c6a2b75"
+    },
+    {
+      "file": "20261008172854_customer_policy_and_content_sync.sql",
+      "sha256": "724c180539272918d24fbefddda75d187dbcc9ae30b434d0978e784f31de472c"
     }
   ]
 }

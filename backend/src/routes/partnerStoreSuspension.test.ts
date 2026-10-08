@@ -11,6 +11,7 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
     const builder = {
       select: () => builder,
       eq: () => builder,
+      maybeSingle: () => Promise.resolve({ data: db.store, error: null }),
       single: () => Promise.resolve(table === 'users' ? { data: { phone: '+919999999999' }, error: null } : { data: db.store, error: null }),
       update: (patch: Record<string, unknown>) => {
         db.updates.push(patch);

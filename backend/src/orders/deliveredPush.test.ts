@@ -1,3 +1,4 @@
+vi.mock('../stores/pushRecipients.js', () => ({ storePushRecipients: async (_store: string, owner: string | null) => owner ? [owner] : [] }));
 import { beforeEach, expect, it, vi } from 'vitest';
 
 const db = vi.hoisted(() => ({

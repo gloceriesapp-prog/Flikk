@@ -17,6 +17,8 @@ export interface PromoCodeRow {
   times_used: number;
   is_active: boolean;
   expires_at: string | null;
+  starts_at: string | null;
+  per_customer_limit: number;
   created_at: string;
 }
 
@@ -31,11 +33,13 @@ export interface PromoCode {
   timesUsed: number;
   isActive: boolean;
   expiresAt: string | null;
+  startsAt: string | null;
+  perCustomerLimit: number;
   createdAt: string;
 }
 
 export const PROMO_CODE_SELECT =
-  'id, code, discount_type, discount_value, max_discount_amount, min_order_value, usage_limit, times_used, is_active, expires_at, created_at';
+  'id, code, discount_type, discount_value, max_discount_amount, min_order_value, usage_limit, times_used, is_active, expires_at, starts_at, per_customer_limit, created_at';
 
 export function mapRowToPromoCode(row: PromoCodeRow): PromoCode {
   // Number(...) — PostgREST serializes Postgres `numeric` as a JSON
@@ -52,6 +56,8 @@ export function mapRowToPromoCode(row: PromoCodeRow): PromoCode {
     timesUsed: row.times_used,
     isActive: row.is_active,
     expiresAt: row.expires_at,
+    startsAt: row.starts_at,
+    perCustomerLimit: row.per_customer_limit,
     createdAt: row.created_at,
   };
 }

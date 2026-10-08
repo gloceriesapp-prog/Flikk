@@ -21,6 +21,17 @@ interface CreateReviewBody {
   comment?: string;
 }
 
+reviewsRouter.post('/app', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
+  try {
+    const { rating, comment = '' } = req.body ?? {};
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5 || typeof comment !== 'string' || comment.length > 2000)
+      throw new AppError(400, 'INVALID_FEEDBACK', 'Choose a rating from 1 to 5 and a comment up to 2000 characters.');
+    const { error } = await supabase.from('customer_app_feedback').upsert({ customer_id: req.user!.id, rating, comment: comment.trim(), updated_at: new Date().toISOString() });
+    if (error) throw error;
+    res.status(200).json({ ok: true });
+  } catch (error) { next(error); }
+});
+
 reviewsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
     const { order_id, rating, comment } = (req.body ?? {}) as CreateReviewBody;

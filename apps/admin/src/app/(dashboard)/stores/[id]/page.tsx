@@ -1,3 +1,5 @@
+import { StoreTeamPanel } from '@/components/stores/StoreTeamPanel';
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -9,6 +11,7 @@ import { StorePayoutPanel } from '@/components/stores/StorePayoutPanel';
 import { STORE_PAYOUT_SELECT, toStorePayoutView } from '@/lib/storePayout';
 
 export default async function StoreDetailPage({ params }: PageProps<'/stores/[id]'>) {
+  if (await requireStoreAdmin()) notFound();
   const { id } = await params;
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) notFound();
   const { data, error } = await supabaseAdmin.from('stores').select(STORE_SELECT).eq('id', id).maybeSingle();
@@ -28,6 +31,7 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
 
       <StoreSuspensionPanel storeId={store.id} suspended={!!store.adminSuspended} reason={store.suspendedReason ?? null} suspendedAt={store.suspendedAt ?? null} />
       <StorePayoutPanel storeId={store.id} payout={payout} />
+      <StoreTeamPanel storeId={store.id} />
       <StoreDetailForm key={`${store.id}:${store.adminSuspended ? 's' : 'a'}`} store={store} />
     </div>
   );

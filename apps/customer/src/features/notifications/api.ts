@@ -1,7 +1,7 @@
 import { apiRequest } from '../../api/client';
 export interface CustomerNotification {
     id: string;
-    order_id: string;
+    order_id: string | null;
     trip_id: string | null;
     title: string;
     body: string;

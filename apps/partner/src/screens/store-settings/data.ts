@@ -13,6 +13,7 @@
 // useStoreProfileStore, not a server.
 
 export interface StoreProfile {
+  accessRole?: 'owner' | 'manager';
   id: string;
   storeName: string;
   category: string;

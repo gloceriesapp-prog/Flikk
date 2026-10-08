@@ -24,6 +24,7 @@ export interface ApiPayout {
   // backend/PAYOUTS.md: bank reference the founder entered on "Mark paid",
   // shown so the owner can match it in their bank statement.
   utr?: string | null;
+  payment_note?: string | null;
   paymentMode?: 'upi' | 'bank_transfer' | null;
   paidAt?: string | null;
 }

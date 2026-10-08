@@ -21,7 +21,9 @@ export function PayoutStatusDetail({ payout, variant = 'light' }: { payout: Week
   if (payout.status === 'paid' && payout.utr) {
     const utr = payout.utr;
     return (
-      <View className="flex-row items-center gap-2">
+      <View className="gap-2">
+        {payout.paymentNote && <Text className={`text-[12px] font-medium ${isDark ? 'text-white/70' : 'text-ink/70'}`}>Admin note: {payout.paymentNote}</Text>}
+        <View className="flex-row items-center gap-2">
         <Text className={`flex-1 text-[12px] font-medium ${isDark ? 'text-white/60' : 'text-ink/50'}`} selectable>
           UTR {utr}
         </Text>
@@ -29,6 +31,7 @@ export function PayoutStatusDetail({ payout, variant = 'light' }: { payout: Week
         <Pressable onPress={() => Clipboard.setString(utr)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Copy UTR ${utr}`}>
           <AppIcon icon={Copy01Icon} size={15} color={isDark ? '#FFFFFF' : colors.ink} />
         </Pressable>
+        </View>
       </View>
     );
   }

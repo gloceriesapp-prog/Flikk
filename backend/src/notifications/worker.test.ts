@@ -6,7 +6,7 @@ vi.mock('../db/supabase.js',()=>({supabase:{rpc:vi.fn(async()=>({data:[fixture.j
 import { runCustomerNotifications } from './worker.js';
 const twoDevices=()=>[{customer_id:'customer-a',token:'ExpoPushToken[ios]',installation_id:'install-ios',revision:1},{customer_id:'customer-a',token:'ExpoPushToken[android]',installation_id:'install-android',revision:1}];
 const sentTo=(fetch:{mock:{calls:unknown[][]}})=>fetch.mock.calls.flatMap(call=>(JSON.parse((call[1] as {body:string}).body) as {to:string}[]).map(m=>m.to));
-beforeEach(()=>{fixture.saved={};fixture.filters=[];fixture.upserts=[];fixture.inCalls=[];fixture.receipts=[];fixture.job.attempts=1;fixture.devices=[{customer_id:'customer-a',token:'ExpoPushToken[a]'}];vi.unstubAllGlobals();});
+beforeEach(()=>{fixture.saved={};fixture.filters=[];fixture.upserts=[];fixture.inCalls=[];fixture.receipts=[];fixture.job.attempts=1;fixture.job.order_id='order-a';fixture.job.trip_id='trip-a';fixture.devices=[{customer_id:'customer-a',token:'ExpoPushToken[a]'}];vi.unstubAllGlobals();});
 it('sends an account-owned trip payload and finalizes only the claimed lease',async()=>{
  const fetch=vi.fn(async()=>Response.json({data:[{status:'ok',id:'expo-ticket'}]}));vi.stubGlobal('fetch',fetch);await runCustomerNotifications();
  const payload=JSON.parse(fetch.mock.calls[0]![1]!.body as string)[0];
@@ -46,4 +46,18 @@ it('finalizes a retry without sending when every device already accepted it',asy
  fixture.receipts=[{notification_id:'notification',installation_id:'install-ios'},{notification_id:'notification',installation_id:'install-android'}];
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);await runCustomerNotifications();
  expect(fetch).not.toHaveBeenCalled();expect(fixture.saved.push_sent_at).toBeTypeOf('string');
+});
+
+it('sends a launch alert with an area destination and no invented order', async () => {
+ fixture.job.order_id=null as unknown as string; fixture.job.trip_id=null as unknown as string;
+ const fetch=vi.fn(async()=>Response.json({data:[{status:'ok',id:'launch-ticket'}]}));vi.stubGlobal('fetch',fetch);await runCustomerNotifications();
+ const payload=JSON.parse(fetch.mock.calls[0]![1]!.body as string)[0];
+ expect(payload.data).toMatchObject({type:'area',customer_id:'customer-a',notification_id:'notification'});
+ expect(payload.data.order_id).toBeNull(); expect(payload.data.is_trip).toBe(false);
+});
+it('retains order routing for a trip notification without a single-leg id', async () => {
+ fixture.job.order_id=null as unknown as string;
+ const fetch=vi.fn(async()=>Response.json({data:[{status:'ok',id:'trip-ticket'}]}));vi.stubGlobal('fetch',fetch);await runCustomerNotifications();
+ const payload=JSON.parse(fetch.mock.calls[0]![1]!.body as string)[0];
+ expect(payload.data).toMatchObject({type:'order',order_id:'trip-a',is_trip:true});
 });

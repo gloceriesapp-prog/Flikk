@@ -1,14 +1,8 @@
-import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdminSession } from '@/lib/supabase/server';
 export async function supportAdmin() {
     const user = await requireAdminSession();
     if (!user)
         throw new Error('UNAUTHENTICATED');
-    const { data, error } = await supabaseAdmin.from('users').select('role').eq('id', user.id).maybeSingle();
-    if (error)
-        throw error;
-    if (data?.role !== 'admin')
-        throw new Error('FORBIDDEN');
     return user;
 }
 export function supportPage(value: string | null) {

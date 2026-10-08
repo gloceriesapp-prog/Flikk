@@ -1,9 +1,12 @@
+import { requireStoreAdmin } from '@/features/store-management/adminGate';
 // Database triggers update store rating totals atomically with moderation.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function DELETE(request: Request, ctx: RouteContext<'/api/reviews/[id]'>) {
+  const unauthorized = await requireStoreAdmin();
+  if (unauthorized) return unauthorized;
   const { id } = await ctx.params;
 
   try {

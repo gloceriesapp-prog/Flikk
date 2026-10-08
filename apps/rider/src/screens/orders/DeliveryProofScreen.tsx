@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -24,7 +24,7 @@ export function DeliveryProofScreen({ route, navigation }: Props) {
   // Hidden TextInput drives the keyboard; autoFocus opens it on mount, and
   // tapping the boxes refocuses it (autoFocus alone won't reopen a dismissed
   // keyboard — the boxes are Views, so they need to hand focus back manually).
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
 
   if (!order) {
     return (

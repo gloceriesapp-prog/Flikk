@@ -8,6 +8,7 @@
 import { apiRequest } from './api';
 
 export interface Store {
+  access_role?: 'owner' | 'manager';
   id: string;
   name: string;
   category: string;
@@ -229,6 +230,7 @@ export function uploadProductPhoto(base64: string): Promise<{ url: string }> {
 }
 
 export interface Payout {
+  payment_note?: string | null;
   id: string;
   store_id: string;
   week_start: string;

@@ -38,7 +38,7 @@ import { useCartAvailability } from './quote/useCartAvailability';
 import { useCheckoutQuote } from './quote/useCheckoutQuote';
 import { quotedCartItems, quoteHasPriceChanges } from './quote/quoteItems';
 import { cartIdentity } from '../../store/cartIdentity';
-// import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
+import { FreeDeliveryProgressCard } from './components/FreeDeliveryProgressCard';
 import { ForgotToAddSection } from './components/ForgotToAddSection';
 import { PromoCodeCard } from './components/PromoCodeCard';
 import { BillDetailsCard } from './components/BillDetailsCard';
@@ -289,7 +289,7 @@ export function CartScreen({ navigation, route }: Props) {
               ))}
             </View>
 
-            {/* Hidden per an explicit ask — not deleted. <FreeDeliveryProgressCard itemTotal={itemTotal} /> */}
+            <FreeDeliveryProgressCard itemTotal={quote?.bill.itemTotal ?? itemTotal} />
             <ForgotToAddSection cartItemIds={cartItemIds} />
             <PromoCodeCard itemTotal={quote?.bill.itemTotal ?? itemTotal} appliedPromo={appliedPromo} quotedDiscount={quote?.bill.discountAmount} />
             {quote && !quoteQuery.isError && availabilityQuery.data?.eligible && <BillDetailsCard quote={quote} itemCount={totalQuantity} />}

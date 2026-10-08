@@ -19,6 +19,7 @@ export async function createOrder(req: AuthedRequest, res: Response, next: NextF
       providerOrderId: order.order_id,
       paymentSessionId: order.payment_session_id,
       amount: order.order_amount,
+      expiresAt: order.order_expiry_time ?? null,
       environment: env.cashfreeEnv,
     });
   } catch (error) { next(error); }

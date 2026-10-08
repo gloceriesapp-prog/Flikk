@@ -1,3 +1,4 @@
+import { validateStoreFields } from '../../../../backend/src/stores/validation';
 // Admin "Add store" — creates a live store for an existing Gloceries
 // account, the same end state as approving a partner application
 // (app/api/approvals/stores/[userId]/route.ts): a stores row owned by that
@@ -60,6 +61,7 @@ export function ownerPhoneVariants(canonical: string): string[] {
 }
 
 export function validateStoreInput(input: Partial<StoreWriteInput>): asserts input is StoreWriteInput {
+  validateStoreFields({ name: input.name, category: input.category, owner_name: input.ownerName, address_line: input.addressLine, city: input.city, state: input.state, country: input.country, lat: input.lat, lng: input.lng, open_time: input.openTime, close_time: input.closeTime, photo_url: input.photoUrl ?? null, pan_number: input.panNumber, fssai_number: input.fssaiNumber });
   required(input.name, 'Store name');
   required(input.category, 'Category');
   required(input.ownerName, "Owner's name");

@@ -1,3 +1,4 @@
+import { resolveStoreAccess } from '../stores/access.js';
 import { authBudget } from '../customer-experience/authBudget.js';
 // Shared across all 4 apps. Source: specs/00-foundation/auth-and-roles.md
 import { Router } from 'express';
@@ -77,7 +78,7 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
       // to log out. That's the exact "logs out on its own" bug this fixes.
       refresh_token: data.session.refresh_token,
       is_approved: userRow?.is_approved ?? false,
-      has_store: (count ?? 0) > 0,
+      has_store: (count ?? 0) > 0 || (userRow?.role === 'store_owner' && !!(await resolveStoreAccess(userId))),
       application_submitted: !!draft?.submitted_at,
       // One phone number, one role — real across all 4 apps since they
       // share this one users table (specs/00-foundation/auth-and-roles.md).
@@ -177,7 +178,7 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       // approval" that only this field can tell apart.
       role: req.user!.role,
       is_approved: req.user!.isApproved,
-      has_store: (count ?? 0) > 0,
+      has_store: (count ?? 0) > 0 || (req.user!.role === 'store_owner' && !!(await resolveStoreAccess(req.user!.id))),
       application_submitted: !!draft?.submitted_at,
       has_rider_profile: (riderCount ?? 0) > 0,
       rider_application_submitted: !!riderDraft?.submitted_at,

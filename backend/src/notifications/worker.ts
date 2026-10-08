@@ -4,7 +4,7 @@ import { supabase } from '../db/supabase.js';
 interface NotificationJob {
     id: string;
     customer_id: string;
-    order_id: string;
+    order_id: string | null;
     trip_id: string | null;
     title: string;
     body: string;
@@ -50,7 +50,7 @@ export async function runCustomerNotifications() {
                 const batch = tokens.slice(i, i + 100);
                 try {
                     const response = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000),
-                        body: JSON.stringify(batch.map(d => ({ to: d.token, title: row.title, body: row.body, sound: 'default', data: { type: 'order', customer_id: row.customer_id, notification_id: row.id, order_id: row.trip_id ?? row.order_id, is_trip: !!row.trip_id } }))) });
+                        body: JSON.stringify(batch.map(d => ({ to: d.token, title: row.title, body: row.body, sound: 'default', data: { type: row.order_id || row.trip_id ? 'order' : 'area', customer_id: row.customer_id, notification_id: row.id, order_id: row.trip_id ?? row.order_id, is_trip: !!row.trip_id } }))) });
                     if (!response.ok)
                         throw new Error('Push provider unavailable');
                     const result = await response.json() as {

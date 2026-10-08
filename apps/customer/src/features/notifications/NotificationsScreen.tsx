@@ -10,7 +10,7 @@ import { AppIcon } from '../../components/AppIcon';
 import type { AppStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ApiError } from '../../api/client';
-import { fetchNotifications, type CustomerNotification } from './api';
+import { fetchNotifications, markNotificationRead, type CustomerNotification } from './api';
 import { notificationPermission, registerNotifications, openNotificationSettings } from './native';
 import { queueOrderNotification } from './navigation';
 
@@ -121,8 +121,15 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
         renderItem={({ item }) => (
           <View className="mx-5"><NotificationRow item={item} onPress={() => {
             if (!customerId) return;
+            if (!item.order_id && !item.trip_id) {
+              const epoch = useAuthStore.getState().sessionEpoch;
+              void markNotificationRead(item.id).then(() => {
+                if (useAuthStore.getState().sessionEpoch === epoch) return refetch();
+              }).catch(() => { if (useAuthStore.getState().sessionEpoch === epoch) setMessage('Could not mark this update as read. Please try again.'); });
+              return;
+            }
             queueOrderNotification({ type: 'order', customer_id: customerId, notification_id: item.id,
-              order_id: item.trip_id ?? item.order_id, is_trip: !!item.trip_id });
+              order_id: (item.trip_id ?? item.order_id)!, is_trip: !!item.trip_id });
           }} /></View>
         )}
       />

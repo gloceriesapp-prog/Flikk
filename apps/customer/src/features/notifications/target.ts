@@ -15,8 +15,18 @@ export function orderNotificationTarget(value: unknown): OrderNotificationTarget
         return null;
     return data as unknown as OrderNotificationTarget;
 }
-export function notificationDisposition(target: OrderNotificationTarget, customerId: string | null, ready: boolean): 'wait' | 'discard' | 'open' {
+export function notificationDisposition(target: CustomerNotificationTarget, customerId: string | null, ready: boolean): 'wait' | 'discard' | 'open' {
     if (!customerId || !ready)
         return 'wait';
     return target.customer_id === customerId ? 'open' : 'discard';
+}
+
+export interface AreaNotificationTarget { type: 'area'; customer_id: string; notification_id: string }
+export type CustomerNotificationTarget = OrderNotificationTarget | AreaNotificationTarget;
+export function customerNotificationTarget(value: unknown): CustomerNotificationTarget | null {
+  const order = orderNotificationTarget(value); if (order) return order;
+  if (!value || typeof value !== 'object') return null;
+  const data = value as Record<string, unknown>;
+  return data.type === 'area' && typeof data.customer_id === 'string' && uuid.test(data.customer_id) && typeof data.notification_id === 'string' && uuid.test(data.notification_id)
+    ? { type: 'area', customer_id: data.customer_id, notification_id: data.notification_id } : null;
 }

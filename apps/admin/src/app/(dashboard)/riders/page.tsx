@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { Phone } from 'lucide-react';
+import { RiderChangeRequests } from '@/components/riders/RiderChangeRequests';
 import { AssignRiderRow } from '@/components/dispatch/AssignRiderRow';
 import { ReasonModal } from '@/components/ui/ReasonModal';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
@@ -39,6 +40,8 @@ function hoursSummary(availability: ActiveRider['availability']): string {
 
 export default function RidersPage() {
   const [riders, setRiders] = useState<ActiveRider[]>([]);
+  const [zones, setZones] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+  const [zoneBusy, setZoneBusy] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [suspending, setSuspending] = useState<ActiveRider | null>(null);
@@ -47,9 +50,10 @@ export default function RidersPage() {
   const loadData = useCallback(async () => {
     setLoadError(null);
     try {
-      const [ridersRes, ordersRes] = await Promise.all([fetch('/api/riders'), fetch('/api/orders?status=packed&unassigned=1')]);
+      const [ridersRes, ordersRes, zonesRes] = await Promise.all([fetch('/api/riders'), fetch('/api/orders?status=packed&unassigned=1'), fetch('/api/zones')]);
       if (!ridersRes.ok) throw new Error((await ridersRes.json()).error ?? 'Could not load riders.');
       if (!ordersRes.ok) throw new Error((await ordersRes.json()).error ?? 'Could not load orders.');
+      if (zonesRes.ok) setZones(await zonesRes.json());
       setRiders(await ridersRes.json());
       setOrders(await ordersRes.json());
     } catch (err) {
@@ -96,6 +100,7 @@ export default function RidersPage() {
       {loadError && <p className="text-sm text-danger">{loadError}</p>}
       {actionError && <p className="text-sm text-danger">{actionError}</p>}
 
+      <RiderChangeRequests />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
           <h3 className="mb-3 text-sm font-semibold text-ink">Riders</h3>
@@ -105,7 +110,10 @@ export default function RidersPage() {
               return (
                 <div key={rider.id} className="flex items-center gap-3 border-b border-border pb-3 last:border-0 last:pb-0">
                   <div className="relative">
-                    <div className="h-10 w-10 rounded-full bg-accent" />
+                    {rider.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- private signed selfie URL
+                      <img src={rider.photoUrl} alt={`${rider.name} selfie`} className="h-10 w-10 rounded-full object-cover" />
+                    ) : <div className="h-10 w-10 rounded-full bg-accent" />}
                     <span
                       className={
                         rider.isOnline
@@ -120,6 +128,22 @@ export default function RidersPage() {
                       <Phone size={11} />
                       {rider.phone}
                     </p>
+                    <select aria-label={`Service zone for ${rider.name}`} value={rider.zoneId ?? ''} disabled={zoneBusy !== null}
+                      onChange={async (event) => {
+                        const zoneId = event.target.value;
+                        if (!zoneId) return;
+                        setZoneBusy(rider.id); setActionError(null);
+                        try {
+                          const res = await fetch('/api/riders/zone', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ riderId: rider.id, zoneId }) });
+                          if (!res.ok) throw new Error((await res.json()).error ?? 'Could not assign zone.');
+                          await loadData();
+                        } catch (error) { setActionError(error instanceof Error ? error.message : 'Could not assign zone.'); }
+                        finally { setZoneBusy(null); }
+                      }} className="mt-1 max-w-full rounded border border-border text-xs">
+                      <option value="" disabled>Service zone not assigned</option>
+                      {zones.filter((zone) => zone.isActive || zone.id === rider.zoneId).map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
+                    </select>
                     {/* presence (riders.status) is the REAL live signal — distinct from
                         the account-active dot above (isOnline / riders.is_active). */}
                     <p className={clsx('mt-0.5 text-[11px]', rider.liveNow ? 'font-semibold text-success' : 'text-muted')}>

@@ -8,6 +8,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { isAllowedAdminEmail } from '../adminAccess';
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -41,5 +42,5 @@ export async function requireAdminSession() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  return user;
+  return user && isAllowedAdminEmail(user.email) ? user : null;
 }

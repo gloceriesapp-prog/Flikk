@@ -30,17 +30,18 @@ function send(res: Response, event: HomeEvent) {
 function broadcast(event: HomeEvent) {
   for (const res of broker.recipients(event)) send(res, event);
 }
-function contentChanged(type: 'content' | 'settings') {
-  if (type === 'content') invalidateShortCache('/stores');
+function contentChanged(type: 'content' | 'settings' | 'config') {
+  if (type === 'content') { invalidateShortCache('/stores'); invalidateShortCache('/categories'); invalidateShortCache('/category-sections'); }
+  if (type === 'config') invalidateShortCache('/app-config');
   invalidateShortCache(type === 'content' ? '/home-tabs' : '/delivery-settings');
   broadcast({ type });
 }
 export const HOME_SECTION_TABLES = ['festival_greeting', 'festival_sections', 'festival_section_products',
-  'seasonal_banner', 'seasonal_tiles', 'home_sections'] as const;
+  'seasonal_banner', 'seasonal_tiles', 'home_sections', 'home_tab_banners', 'home_tab_tiles', 'categories', 'category_sections', 'sub_categories'] as const;
 export const HOME_SECTION_CACHE_PATHS = ['/home/festival-greeting', '/home/festival-section', '/home/seasonal-section', '/home/sections'] as const;
 export function homeSectionsChanged() {
   for (const path of HOME_SECTION_CACHE_PATHS) invalidateShortCache(path);
-  broadcast({ type: 'content' });
+  contentChanged('content');
 }
 function inventoryChanged(row: Record<string, unknown>) {
   if (typeof row.store_id !== 'string') return;
@@ -97,6 +98,7 @@ export function startHomeContentSync() {
   for (const table of HOME_SECTION_TABLES) {
     channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => homeSectionsChanged());
   }
+  for (const table of ['app_content', 'app_faqs', 'app_release_config']) channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => contentChanged('config'));
   channel = channel
     .subscribe(status => {
       // Discard authorization snapshots across a realtime connection gap.
@@ -111,6 +113,8 @@ export function startHomeContentSync() {
           healthy = !error;
           invalidateShortCache('/stores');
           invalidateShortCache('/categories');
+          invalidateShortCache('/category-sections');
+          invalidateShortCache('/app-config');
           invalidateShortCache('/delivery-settings');
           invalidateShortCache('/home-tabs');
           for (const path of HOME_SECTION_CACHE_PATHS) invalidateShortCache(path);

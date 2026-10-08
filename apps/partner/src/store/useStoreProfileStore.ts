@@ -17,6 +17,7 @@ import { apiRequest, ApiError } from '../api/client';
 import { EMPTY_STORE_PROFILE, type StoreProfile } from '../screens/store-settings/data';
 
 interface StoreRow {
+  access_role?: 'owner' | 'manager';
   id: string;
   name: string;
   category: string;
@@ -43,6 +44,7 @@ interface StoreRow {
 function fromRow(row: StoreRow): StoreProfile {
   return {
     id: row.id,
+    accessRole: row.access_role ?? 'owner',
     storeName: row.name,
     category: row.category,
     isOpen: row.is_active,

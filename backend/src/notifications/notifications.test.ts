@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { notificationCursor } from './contracts.js';
-import { notificationDisposition, orderNotificationTarget } from '../../../apps/customer/src/features/notifications/target';
+import { notificationDisposition, orderNotificationTarget, customerNotificationTarget } from '../../../apps/customer/src/features/notifications/target';
 const a = '00000000-0000-4000-8000-000000000001';
 const b = '00000000-0000-4000-8000-000000000002';
 const target = { type: 'order' as const, customer_id: a, notification_id: b, order_id: a, is_trip: false };
@@ -21,4 +21,11 @@ it('validates bounded, typed keyset cursors before constructing a database filte
     expect(notificationCursor(undefined)).toBeNull();
     for (const bad of ['', [], 'x'.repeat(301), Buffer.from(JSON.stringify({ ...cursor, id: 'a),customer_id.neq.any' })).toString('base64url'), Buffer.from(JSON.stringify({ ...cursor, created_at: 'oops' })).toString('base64url')])
         expect(() => notificationCursor(bad)).toThrow('Invalid notification cursor');
+});
+
+it('parses account-owned area alerts without accepting arbitrary destination routes', () => {
+  const area = { type: 'area', customer_id: a, notification_id: b, route: 'Admin' };
+  expect(customerNotificationTarget(area)).toEqual({ type: 'area', customer_id: a, notification_id: b });
+  expect(customerNotificationTarget({ ...area, customer_id: 'invalid' })).toBeNull();
+  expect(customerNotificationTarget({ ...area, notification_id: null })).toBeNull();
 });

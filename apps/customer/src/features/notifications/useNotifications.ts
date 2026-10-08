@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { accountQueryClient } from '../account-session/accountCache';
 import { nativeNotifications, registerNotifications } from './native';
 import { queueOrderNotification, flushOrderNotification } from './navigation';
-import { orderNotificationTarget } from './target';
+import { customerNotificationTarget } from './target';
 export function useNotifications() {
     const customerId = useAuthStore(s => s.customerId);
     useEffect(() => { if (customerId)
@@ -22,14 +22,14 @@ export function useNotifications() {
             if (!native || disposed)
                 return;
             native.setNotificationHandler({ handleNotification: async (notification) => {
-                    const target = orderNotificationTarget(notification.request.content.data);
+                    const target = customerNotificationTarget(notification.request.content.data);
                     const owned = !!target && target.customer_id === useAuthStore.getState().customerId;
                     return { shouldShowBanner: owned, shouldShowList: owned, shouldPlaySound: owned, shouldSetBadge: false };
                 } });
             const accept = (response: import('expo-notifications').NotificationResponse) => {
                 if (disposed || response.actionIdentifier !== native.DEFAULT_ACTION_IDENTIFIER)
                     return;
-                const target = orderNotificationTarget(response.notification.request.content.data);
+                const target = customerNotificationTarget(response.notification.request.content.data);
                 if (target)
                     queueOrderNotification(target, true);
                 void native.clearLastNotificationResponseAsync().catch(() => { });

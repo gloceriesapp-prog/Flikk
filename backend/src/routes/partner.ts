@@ -1,3 +1,5 @@
+import { validateStoreFields, validateStoreCoordinates } from '../stores/validation.js';
+import { requireStoreAccess } from '../stores/access.js';
 import { storePublicImage } from '../media/publicImages.js';
 import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // Source: specs/02-partner-app/api.md — every query scoped to the caller's own store,
@@ -34,10 +36,21 @@ export const partnerRouter = Router();
 partnerRouter.use(requireAuth, requireRole('store_owner'), requireApproved);
 
 async function ownStoreId(userId: string): Promise<string> {
-  const { data, error } = await supabase.from('stores').select('id').eq('owner_user_id', userId).single();
-  if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
-  return data.id;
+  return (await requireStoreAccess(userId)).storeId;
 }
+
+// Managers can run the shop, but never edit its legal identity or payout destination.
+partnerRouter.use(async (req: AuthedRequest, _res, next) => {
+  try {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const access = await requireStoreAccess(req.user!.id);
+      if (access.role !== 'owner' && (['/payout-account', '/store-document-photo'].includes(req.path) || (req.path === '/store' && Object.keys(req.body ?? {}).some(key => key !== 'is_active')))) {
+        throw new AppError(403, 'OWNER_REQUIRED', 'Only the store owner can change these details.');
+      }
+    }
+    next();
+  } catch (error) { next(error); }
+});
 
 // The real, verified account phone (users.phone, set at OTP verify time)
 // — never stores.phone, which is a separate unset column meant for a
@@ -90,7 +103,8 @@ function toStoreResponse(data: Record<string, unknown>, phone: string | null) {
 
 partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
   try {
-    const { data, error } = await supabase.from('stores').select(STORE_SELECT).eq('owner_user_id', req.user!.id).single();
+    const access = await requireStoreAccess(req.user!.id);
+    const { data, error } = await supabase.from('stores').select(STORE_SELECT).eq('id', access.storeId).single();
     if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
 
     // Real backfill, not a fake fallback — a store that was pinned
@@ -111,7 +125,11 @@ partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
       }
     }
 
-    res.json(toStoreResponse(data, await ownerPhone(req.user!.id)));
+    const response = toStoreResponse(data, await ownerPhone(req.user!.id));
+    if (access.role !== 'owner') {
+      for (const key of Object.keys(response)) if (key.startsWith('payout_') || ['pan_number', 'gst_number', 'fssai_number', 'shop_establishment_number'].includes(key)) delete (response as Record<string, unknown>)[key];
+    }
+    res.json({ ...response, access_role: access.role });
   } catch (err) {
     next(err);
   }
@@ -119,7 +137,8 @@ partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
 
 partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
   try {
-    const storeId = await ownStoreId(req.user!.id);
+    const access = await requireStoreAccess(req.user!.id);
+    const storeId = access.storeId;
     const {
       name,
       category,
@@ -197,11 +216,16 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     if (shop_establishment_number !== undefined) patch.shop_establishment_number = shop_establishment_number;
     if (fssai_number !== undefined) patch.fssai_number = typeof fssai_number === 'string' ? fssai_number.trim() : fssai_number;
     if (pan_number !== undefined) patch.pan_number = typeof pan_number === 'string' ? pan_number.trim().toUpperCase() : pan_number;
+    try { validateStoreFields(patch); validateStoreCoordinates({ lat: lat ?? null, lng: lng ?? null }); } catch (error) { throw new AppError(400, 'INVALID_STORE_FIELDS', error instanceof Error ? error.message : 'Invalid store details.'); }
 
     const { data, error } = await supabase.from('stores').update(patch).eq('id', storeId).select(STORE_SELECT).single();
     if (error?.code === 'P0409' && error.message === 'STORE_SUSPENDED') throw storeSuspendedError(null);
     if (error || !data) throw new AppError(404, 'STORE_NOT_FOUND', 'No store for this owner.');
-    res.json(toStoreResponse(data, await ownerPhone(req.user!.id)));
+    const response = toStoreResponse(data, await ownerPhone(req.user!.id));
+    if (access.role !== 'owner') {
+      for (const key of Object.keys(response)) if (key.startsWith('payout_') || ['pan_number', 'gst_number', 'fssai_number', 'shop_establishment_number'].includes(key)) delete (response as Record<string, unknown>)[key];
+    }
+    res.json({ ...response, access_role: access.role });
   } catch (err) {
     next(err);
   }
@@ -211,7 +235,9 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
 // founder verifies the name in admin. Full account number never returned.
 partnerRouter.get('/payout-account', async (req: AuthedRequest, res, next) => {
   try {
-    res.json(await readPayoutAccount('stores', 'id', await ownStoreId(req.user!.id)));
+    const access = await requireStoreAccess(req.user!.id);
+    if (access.role !== 'owner') throw new AppError(403, 'OWNER_REQUIRED', 'Only the owner can view payout account details.');
+    res.json(await readPayoutAccount('stores', 'id', access.storeId));
   } catch (err) {
     next(err);
   }
@@ -520,7 +546,7 @@ partnerRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
     const page = readPage(req, `partner-payouts:${storeId}`, 'date');
-    let query = supabase.from('payouts').select('id, store_id, week_start, week_end, gross_amount, commission_deducted, net_payout, status, paid_at, utr, payment_mode').eq('store_id', storeId);
+    let query = supabase.from('payouts').select('id, store_id, week_start, week_end, gross_amount, commission_deducted, net_payout, status, paid_at, utr, payment_mode, payment_note').eq('store_id', storeId);
     if (page.cursor) query = query.or(cursorFilter('week_start', page.cursor));
     const { data, error } = await query.order('week_start', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;

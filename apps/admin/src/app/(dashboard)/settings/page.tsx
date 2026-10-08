@@ -69,6 +69,8 @@ export default function SettingsPage() {
     roadDistanceFactor: string;
     maxStoreSpreadKm: string;
     storeResponseTimeoutMinutes: string;
+    checkoutHoldMinutes: string;
+    checkoutReconciliationGraceMinutes: string;
     deliveryFeeTiers: TierDraft[];
     orderingOpens: string;
     orderingCloses: string;
@@ -99,6 +101,8 @@ export default function SettingsPage() {
         defaultDeliveryRadiusKm: String(settings.defaultDeliveryRadiusKm),
         roadDistanceFactor: String(settings.roadDistanceFactor),
         maxStoreSpreadKm: String(settings.maxStoreSpreadKm),
+        checkoutHoldMinutes: String(settings.checkoutHoldMinutes),
+        checkoutReconciliationGraceMinutes: String(settings.checkoutReconciliationGraceMinutes),
         storeResponseTimeoutMinutes: String(settings.storeResponseTimeoutMinutes),
         deliveryFeeTiers: settings.deliveryFeeTiers.map((tier) => ({ upToKm: String(tier.upToKm), fee: String(tier.fee) })),
         orderingOpens: minuteToTimeInput(settings.orderingOpensMinute),
@@ -156,6 +160,8 @@ export default function SettingsPage() {
       Number(draft.defaultDeliveryRadiusKm) !== saved.defaultDeliveryRadiusKm ||
       Number(draft.roadDistanceFactor) !== saved.roadDistanceFactor ||
       Number(draft.maxStoreSpreadKm) !== saved.maxStoreSpreadKm ||
+      Number(draft.checkoutHoldMinutes) !== saved.checkoutHoldMinutes ||
+      Number(draft.checkoutReconciliationGraceMinutes) !== saved.checkoutReconciliationGraceMinutes ||
       Number(draft.storeResponseTimeoutMinutes) !== saved.storeResponseTimeoutMinutes ||
       !tiersEqual(draft.deliveryFeeTiers, saved.deliveryFeeTiers) ||
       timeInputToMinute(draft.orderingOpens) !== saved.orderingOpensMinute ||
@@ -201,6 +207,8 @@ export default function SettingsPage() {
           defaultDeliveryRadiusKm: Number(draft.defaultDeliveryRadiusKm),
           roadDistanceFactor: Number(draft.roadDistanceFactor),
           maxStoreSpreadKm: Number(draft.maxStoreSpreadKm),
+          checkoutHoldMinutes: Number(draft.checkoutHoldMinutes),
+          checkoutReconciliationGraceMinutes: Number(draft.checkoutReconciliationGraceMinutes),
           storeResponseTimeoutMinutes: Number(draft.storeResponseTimeoutMinutes),
           deliveryFeeTiers: draft.deliveryFeeTiers.map((tier) => ({ upToKm: Number(tier.upToKm), fee: Number(tier.fee) })),
           orderingOpensMinute,
@@ -267,6 +275,18 @@ export default function SettingsPage() {
           <p className="text-sm text-muted">{saveError ?? 'Loading…'}</p>
         ) : (
           <div className="flex flex-col gap-4">
+            {([
+              ['checkoutHoldMinutes', 'Online checkout hold', 16, 60, 'Time to complete payment. New checkouts use this value.'],
+              ['checkoutReconciliationGraceMinutes', 'Payment confirmation grace', 5, 120, 'Time to reconcile delayed payment before releasing reserved stock.'],
+            ] as const).map(([key, label, min, max, description]) => (
+              <div key={key} className="flex items-center justify-between gap-4 border-b border-border pb-4">
+                <div><label htmlFor={key} className="text-sm font-medium text-ink">{label}</label><p className="text-xs text-muted">{description}</p></div>
+                <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
+                  <input id={key} type="number" min={min} max={max} step={1} value={draft[key]} onChange={event => setDraft({ ...draft, [key]: event.target.value })} className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
+                  <span className="text-sm text-muted">min</span>
+                </div>
+              </div>
+            ))}
             <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
               <div>
                 <label htmlFor="delivery-estimate" className="text-sm font-medium text-ink">Estimated delivery time</label>
