@@ -5,8 +5,7 @@
 // allow-listed email are checked first.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export interface RiderCashBalance {
   riderId: string;
@@ -52,8 +51,8 @@ interface CollectionRow {
 }
 
 export async function GET(request: Request) {
-  const user = await requireAdminSession();
-  if (!user || !isAllowedAdminEmail(user.email)) return NextResponse.json({ error: 'Administrator access required.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
 
   try {
     const view = new URL(request.url).searchParams.get('view');

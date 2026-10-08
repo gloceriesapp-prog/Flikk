@@ -15,6 +15,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 const RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 };
@@ -28,6 +29,8 @@ function istMidnightUtcIso(daysAgo: number): string {
 }
 
 export async function GET(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(request.url);
     const rangeParam = searchParams.get('range') ?? '7d';

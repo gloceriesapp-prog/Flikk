@@ -4,14 +4,13 @@
 // destination and enforces UTR uniqueness/idempotency.
 
 import { NextResponse } from 'next/server';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { mapRpcError, parseKindAndId, parseMarkPaidInput } from '@/lib/payoutValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(request: Request, context: { params: Promise<{ kind: string; id: string }> }) {
-  const user = await requireAdminSession();
-  if (!user || !isAllowedAdminEmail(user.email)) return NextResponse.json({ error: 'Administrator access required.' }, { status: 401 });
+  const { actor: user, denied } = await requireAdmin();
+  if (denied) return denied;
 
   const { kind, id } = await context.params;
   const target = parseKindAndId(kind, id);

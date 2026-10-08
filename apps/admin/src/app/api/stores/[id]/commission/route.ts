@@ -7,15 +7,14 @@
 // commission they were charged.
 
 import { NextResponse } from 'next/server';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function PUT(request: Request, ctx: RouteContext<'/api/stores/[id]/commission'>) {
-  const user = await requireAdminSession();
-  if (!user || !isAllowedAdminEmail(user.email)) return NextResponse.json({ error: 'Administrator access required.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Invalid store ID.' }, { status: 400 });
 

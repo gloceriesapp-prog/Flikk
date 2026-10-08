@@ -4,11 +4,11 @@
 // next status change. Defaults are the wording that used to be hard-coded.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { TEMPLATE_EVENT_LABEL } from '@/lib/pushOutbox';
 
 export async function GET() {
-  const { denied } = await requireAdminActor();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const { data, error } = await supabaseAdmin
     .from('customer_notification_templates')

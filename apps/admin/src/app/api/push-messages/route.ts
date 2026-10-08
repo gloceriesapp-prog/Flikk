@@ -6,11 +6,12 @@
 // per hour, three per customer) and audited. GET lists recent sends.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { isUuid, requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { isUuid } from '@/lib/orders/adminActor';
 import { controlRpcStatus } from '@/lib/pushOutbox';
 
 export async function GET() {
-  const { denied } = await requireAdminActor();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const { data, error } = await supabaseAdmin
     .from('admin_push_messages')
@@ -45,7 +46,7 @@ function normalizePhone(raw: string): string | null {
 }
 
 export async function POST(request: Request) {
-  const { actor, denied } = await requireAdminActor();
+  const { actor, denied } = await requireAdmin();
   if (denied) return denied;
   const body = (await request.json().catch(() => null)) as
     | { audience?: unknown; customerId?: unknown; customerPhone?: unknown; title?: unknown; body?: unknown }

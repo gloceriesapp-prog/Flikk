@@ -3,14 +3,14 @@
 // the store, so only an active zone is accepted.
 
 import { NextResponse } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request, ctx: RouteContext<'/api/stores/[id]/zone'>) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Invalid store ID.' }, { status: 400 });
   const body = (await request.json().catch(() => null)) as { zoneId?: unknown } | null;

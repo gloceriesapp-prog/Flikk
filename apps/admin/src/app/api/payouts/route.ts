@@ -4,7 +4,7 @@
 // Read-only: paying is per row via /api/payouts/[kind]/[id]/mark-paid.
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import type { AdminPayoutRow, PayoutRowStatus } from '@/lib/types';
 
@@ -76,7 +76,7 @@ function toRow(kind: 'store' | 'rider', payeeId: string, base: PayoutBase, amoun
 }
 
 export async function GET(request: NextRequest) {
-  const denied = await requireStoreAdmin();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
 
   const status = request.nextUrl.searchParams.get('status') ?? 'pending';

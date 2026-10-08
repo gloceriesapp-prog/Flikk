@@ -1,6 +1,9 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { supportAdmin, supportPage, supportFailure } from '@/features/customer-support/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 export async function GET(request: Request) {
+    const { denied } = await requireAdmin();
+    if (denied) return denied;
     try {
         await supportAdmin();
         const url = new URL(request.url);

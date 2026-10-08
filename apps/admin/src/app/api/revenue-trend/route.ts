@@ -17,8 +17,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import type { RevenuePoint } from '@/lib/types';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data, error } = await supabaseAdmin.rpc('admin_revenue_trend');
     if (error) throw error;

@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 const fixture = vi.hoisted(() => ({ authorized: true, reviewFail: false, lookupFail: false, removalFail: false, completionFail: false, deleted: false, status: 'approved', calls: [] as string[] }));
-vi.mock('@/lib/supabase/server', () => ({ requireAdminSession: async () => fixture.authorized ? { id: 'admin' } : null }));
+vi.mock('@/lib/supabase/server', () => ({ requireAdminSession: async () => fixture.authorized ? { id: 'admin', email: 'nishalpoojary810@gmail.com' } : null }));
 vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: {
  rpc: async (name: string) => { fixture.calls.push(name); return { data: { status: fixture.status, customer_id: 'customer' }, error: (name === 'review_customer_deletion' ? fixture.reviewFail : fixture.completionFail) ? new Error('Unavailable') : null }; },
  auth: { admin: {

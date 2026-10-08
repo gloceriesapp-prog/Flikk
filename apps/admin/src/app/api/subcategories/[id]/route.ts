@@ -4,8 +4,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { SUB_CATEGORY_SELECT, mapRowToSubCategory, type SubCategoryRow } from '@/lib/supabase/subcategories';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/subcategories/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   const body: { name?: string; imageUrl?: string | null } = await request.json();
 
@@ -28,6 +31,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/subcategor
 }
 
 export async function DELETE(request: Request, ctx: RouteContext<'/api/subcategories/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   try {

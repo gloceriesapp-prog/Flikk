@@ -28,15 +28,15 @@
 // applicant to exist, regardless of what role they currently hold.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { sendPushNotification } from '@/lib/pushNotification';
 import { STORE_CATEGORIES } from '@/lib/store-options';
 
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/stores/[userId]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { userId } = await ctx.params;
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(userId)) return NextResponse.json({ error: 'Invalid applicant.' }, { status: 400 });
 
   try {

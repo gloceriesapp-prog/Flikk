@@ -5,25 +5,20 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
 import { APP_CONTENT_SELECT, mapRowToAppContent, validateAppContentInput, type AppContentRow } from '@/lib/appContentValidation';
-
-async function adminUser() {
-  const user = await requireAdminSession();
-  return user && isAllowedAdminEmail(user.email) ? user : null;
-}
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function GET() {
-  if (!(await adminUser())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { data, error } = await supabaseAdmin.from('app_content').select(APP_CONTENT_SELECT).eq('id', true).maybeSingle();
   if (error) return NextResponse.json({ error: 'Could not load app content.' }, { status: 500 });
   return NextResponse.json(mapRowToAppContent(data as AppContentRow | null));
 }
 
 export async function PUT(request: Request) {
-  const user = await adminUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { actor: user, denied } = await requireAdmin();
+  if (denied) return denied;
 
   let row;
   try {

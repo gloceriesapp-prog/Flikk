@@ -9,10 +9,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import type { Zone } from '@/lib/types';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { ZoneInputError, parseZoneActive, parseZoneName, zoneSlug } from '@/lib/zoneValidation';
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const [zonesRes, storesRes, ridersRes] = await Promise.all([
       supabaseAdmin.from('zones').select('id, name, is_active').order('name'),
@@ -47,8 +49,8 @@ export async function GET() {
 // Create a zone (admin only). New zones start inactive unless isActive is
 // sent: activating one makes the approval / Add Store zone pickers appear.
 export async function POST(request: Request) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = (await request.json().catch(() => null)) as { name?: unknown; isActive?: unknown } | null;
   try {
     const name = parseZoneName(body?.name);

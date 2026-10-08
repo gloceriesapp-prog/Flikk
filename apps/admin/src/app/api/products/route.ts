@@ -10,7 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { catalogueErrorStatus, saveCatalogueProduct } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
 import { toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
@@ -18,8 +18,8 @@ import { toProductRow, toVariantPayload, validateProductInput, type ProductWrite
 // Inventory/festival reads. Service role + admin check, not the browser anon
 // client: RLS hides pending products' sizes and inactive stores from anon.
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { data, error } = await supabaseAdmin.from('products').select(PRODUCT_SELECT).order('name');
   if (error) {
     console.error('Admin products read failed', error);
@@ -29,8 +29,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = await request.json().catch(() => null);
 
   try {

@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { buildOrderQuery, mapOrderRow, parseOrderFilters, searchCustomerIds, type OrderListRow } from '@/lib/orders/orderQuery';
 
 export interface SearchResult {
@@ -17,8 +17,8 @@ export interface SearchResult {
 const LIMIT = 5;
 
 export async function GET(request: Request) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   // Same sanitising as the Orders search: PostgREST filter characters are
   // stripped so a query can never add its own conditions to an or().
   const filters = parseOrderFilters(new URL(request.url).searchParams);

@@ -12,10 +12,11 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { sendPushNotification } from '@/lib/pushNotification';
 import { createNotification } from '@/lib/notification';
-import { isUuid, requireAdminActor, rpcErrorCode } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { isUuid, rpcErrorCode } from '@/lib/orders/adminActor';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { actor, denied } = await requireAdminActor();
+  const { actor, denied } = await requireAdmin();
   if (denied) return denied;
   const { id } = await params;
   if (!isUuid(id)) return NextResponse.json({ error: 'Order not found.' }, { status: 404 });

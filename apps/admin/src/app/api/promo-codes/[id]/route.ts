@@ -5,8 +5,11 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { PROMO_CODE_SELECT, mapRowToPromoCode, type PromoCodeRow } from '@/lib/supabase/promoCodes';
 import { toPromoCodeErrorMessage, toPromoCodeRow, validatePromoCodeInput, type PromoCodeWriteInput } from '@/lib/promoCodeValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/promo-codes/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   const body = await request.json();
 
@@ -29,6 +32,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/promo-code
 }
 
 export async function DELETE(request: Request, ctx: RouteContext<'/api/promo-codes/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   try {

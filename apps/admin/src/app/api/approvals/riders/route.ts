@@ -11,7 +11,7 @@
 // the bucket ever being public.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import {
   APPROVED_RIDER_SELECT,
   RIDER_DRAFT_SELECT,
@@ -38,8 +38,8 @@ async function signPhotoUrls<T extends { photo_url: string | null; aadhaar_photo
 }
 
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const [draftsRes, ridersRes] = await Promise.all([
       supabaseAdmin

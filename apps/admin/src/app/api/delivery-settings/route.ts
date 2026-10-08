@@ -10,13 +10,14 @@
 // (homeTabValidation.ts's own pattern) — three numeric/boolean fields with
 // one real constraint each doesn't earn a whole extra file yet.
 
-import { requireAdminSession } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { DELIVERY_SETTINGS_SELECT, mapRowToDeliverySettings, type DeliverySettingsRow } from '@/lib/supabase/deliverySettings';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function GET() {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data, error } = await supabaseAdmin.from('delivery_settings').select(DELIVERY_SETTINGS_SELECT).single();
     if (error) throw error;
@@ -27,7 +28,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = await request.json();
     const estimatedDeliveryMinutes = Number(body.estimatedDeliveryMinutes);

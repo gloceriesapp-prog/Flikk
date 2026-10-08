@@ -5,13 +5,12 @@
 // click settles nothing twice.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
 import { parseSettleInput } from '@/lib/cashCollectionValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(request: Request) {
-  const user = await requireAdminSession();
-  if (!user || !isAllowedAdminEmail(user.email)) return NextResponse.json({ error: 'Administrator access required.' }, { status: 401 });
+  const { actor: user, denied } = await requireAdmin();
+  if (denied) return denied;
 
   const input = parseSettleInput(await request.json().catch(() => null));
   if (typeof input === 'string') return NextResponse.json({ error: input }, { status: 400 });

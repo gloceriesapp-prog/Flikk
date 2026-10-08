@@ -10,7 +10,7 @@
 //   (/api/orders/[id]/retry-refund) and manual-refund flows on Refunds.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 function stuckMinutes(raw: string | null): number {
   const n = Number(raw ?? 30);
@@ -18,7 +18,7 @@ function stuckMinutes(raw: string | null): number {
 }
 
 export async function GET(request: Request) {
-  const { denied } = await requireAdminActor();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const minutes = stuckMinutes(new URL(request.url).searchParams.get('minutes'));
   const cutoff = new Date(Date.now() - minutes * 60_000).toISOString();

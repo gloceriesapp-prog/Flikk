@@ -3,7 +3,7 @@
 // ./[id]/retry. See lib/pushOutbox.ts for the status rules.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { MAX_PUSH_ATTEMPTS, OUTBOX_STATUSES, isOutboxStatus, outboxStatus, type OutboxStatus } from '@/lib/pushOutbox';
 
 const SELECT = 'id, customer_id, order_id, trip_id, admin_message_id, event, title, body, created_at, push_sent_at, attempts, next_attempt_at, last_error, users(name, phone)';
@@ -24,7 +24,7 @@ function applyStatus<T extends Filterable<T>>(query: T, status: OutboxStatus): T
 }
 
 export async function GET(request: Request) {
-  const { denied } = await requireAdminActor();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const param = new URL(request.url).searchParams.get('status');
   const status: OutboxStatus = isOutboxStatus(param) ? param : 'failed';

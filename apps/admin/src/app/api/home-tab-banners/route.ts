@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { HOME_TAB_BANNER_SELECT, mapRowToHomeTabBanner, type HomeTabBannerRow } from '@/lib/supabase/homeTabs';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import {
   toHomeTabBannerRow,
   toHomeTabErrorMessage,
@@ -12,6 +13,8 @@ import {
 } from '@/lib/homeTabValidation';
 
 export async function POST(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = await request.json();
 
   try {

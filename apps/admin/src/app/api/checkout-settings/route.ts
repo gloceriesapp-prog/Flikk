@@ -11,7 +11,8 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { adminRpcErrorResponse, requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { adminRpcErrorResponse } from '@/lib/orders/adminActor';
 
 interface SettingsRow {
   cod_enabled: boolean;
@@ -20,7 +21,7 @@ interface SettingsRow {
 }
 
 export async function GET() {
-  const { denied } = await requireAdminActor();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   try {
     const [settingsRes, auditRes] = await Promise.all([
@@ -47,7 +48,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const { actor, denied } = await requireAdminActor();
+  const { actor, denied } = await requireAdmin();
   if (denied) return denied;
   const body = (await request.json().catch(() => null)) as { codEnabled?: unknown; onlinePaymentsEnabled?: unknown; minOrderValue?: unknown } | null;
   const minOrderValue = Number(body?.minOrderValue);

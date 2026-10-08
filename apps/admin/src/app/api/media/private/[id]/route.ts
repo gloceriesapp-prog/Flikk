@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const denied = await requireStoreAdmin();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const { id } = await context.params;
   const headers = { 'Cache-Control': 'private, no-store' };

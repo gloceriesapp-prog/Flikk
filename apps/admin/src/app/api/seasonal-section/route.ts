@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 interface TileRow {
   id: string;
@@ -17,6 +18,8 @@ interface TileRow {
 }
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const [bannerRes, tilesRes] = await Promise.all([
       supabaseAdmin.from('seasonal_banner').select('id, banner_image_url, is_active').single(),
@@ -46,6 +49,8 @@ export async function GET() {
 // PATCH /api/seasonal-section/banner instead), tiles are a real list a
 // founder adds/removes from.
 export async function POST(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = await request.json();
 
   try {

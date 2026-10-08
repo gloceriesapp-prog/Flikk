@@ -6,13 +6,13 @@
 // pending and decided requests (newest first).
 
 import { NextResponse } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { STORE_CHANGE_SELECT, mapStoreChange, type StoreChangeRow } from '@/lib/storeChanges';
 
 export async function GET(request: Request) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const storeId = new URL(request.url).searchParams.get('storeId');
   let query = supabaseAdmin.from('store_profile_change_requests').select(STORE_CHANGE_SELECT);
   if (storeId) {

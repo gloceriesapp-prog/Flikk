@@ -10,6 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 interface HomeSectionRow {
   key: string;
@@ -29,6 +30,8 @@ function clean(value: unknown): string | null {
 }
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data, error } = await supabaseAdmin.from('home_sections').select(SELECT).order('sort_index', { ascending: true });
     if (error) throw error;
@@ -39,6 +42,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = await request.json();
   const list: unknown[] = Array.isArray(body?.sections) ? body.sections : [];
 

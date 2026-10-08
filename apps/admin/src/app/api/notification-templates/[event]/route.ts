@@ -2,11 +2,11 @@
 // (migration 117: validated, audited in admin_control_audit).
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { controlRpcStatus } from '@/lib/pushOutbox';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/notification-templates/[event]'>) {
-  const { actor, denied } = await requireAdminActor();
+  const { actor, denied } = await requireAdmin();
   if (denied) return denied;
   const { event } = await ctx.params;
   const body = (await request.json().catch(() => null)) as { title?: unknown; body?: unknown } | null;

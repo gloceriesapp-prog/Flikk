@@ -1,11 +1,14 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { supportAdmin, supportPage, supportId, supportFailure } from '@/features/customer-support/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 type Context = {
     params: Promise<{
         id: string;
     }>;
 };
 export async function GET(request: Request, context: Context) {
+    const { denied } = await requireAdmin();
+    if (denied) return denied;
     try {
         await supportAdmin();
         const id = supportId((await context.params).id);
@@ -25,6 +28,8 @@ export async function GET(request: Request, context: Context) {
     }
 }
 export async function POST(request: Request, context: Context) {
+    const { denied } = await requireAdmin();
+    if (denied) return denied;
     try {
         const user = await supportAdmin();
         const id = supportId((await context.params).id);

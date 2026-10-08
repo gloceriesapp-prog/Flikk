@@ -6,7 +6,7 @@
 // from admin_rider_earning_weeks (migration 113), aggregated in SQL.
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { isUuid } from '@/lib/orders/adminActor';
 import type { RiderEarningRow, RiderEarningWeek } from '@/lib/types';
@@ -44,7 +44,7 @@ function istMidnight(day: string): Date {
 }
 
 export async function GET(request: NextRequest) {
-  const denied = await requireStoreAdmin();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const params = request.nextUrl.searchParams;
   const rider = params.get('rider') || null;

@@ -14,8 +14,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const [pendingRes, imageRes, editsRes] = await Promise.all([
       supabaseAdmin.from('products').select(PRODUCT_SELECT).eq('approval_status', 'pending').order('name'),

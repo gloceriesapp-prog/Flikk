@@ -4,8 +4,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { CATEGORY_SECTION_SELECT, mapRowToCategorySection, type CategorySectionRow } from '@/lib/supabase/categorySections';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body: { name?: string; sortOrder?: number } = await request.json();
 
   try {

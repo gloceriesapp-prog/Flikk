@@ -4,15 +4,15 @@
 // Add Store zone pickers; the page asks for confirmation first.
 
 import { NextResponse } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { ZoneInputError, parseZoneActive, parseZoneName } from '@/lib/zoneValidation';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/zones/[id]'>) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Invalid zone ID.' }, { status: 400 });
   const body = (await request.json().catch(() => null)) as { name?: unknown; isActive?: unknown } | null;

@@ -5,7 +5,7 @@
 // backend refund worker is the single place that talks to Cashfree.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import type { PaymentProvider, RefundStatus } from '@/lib/types';
 
 export interface RefundOrder {
@@ -28,8 +28,8 @@ export interface RefundOrder {
 const STATUS_RANK: Record<RefundOrder['refundStatus'], number> = { manual_required: 0, failed: 1, processing: 2, completed: 3 };
 
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
 
   try {
     const { data, error } = await supabaseAdmin

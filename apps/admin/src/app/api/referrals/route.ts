@@ -4,7 +4,7 @@
 // this lists invites and whether the invited customer went on to order.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 interface Person {
   id: string;
@@ -13,7 +13,7 @@ interface Person {
 }
 
 export async function GET() {
-  const { denied } = await requireAdminActor();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   try {
     const [signupsRes, codesRes] = await Promise.all([

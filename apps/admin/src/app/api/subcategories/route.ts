@@ -5,8 +5,11 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { SUB_CATEGORY_SELECT, mapRowToSubCategory, type SubCategoryRow } from '@/lib/supabase/subcategories';
 import { toSubCategoryRow, validateSubCategoryInput, type SubCategoryWriteInput } from '@/lib/subcategoryValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = await request.json();
 
   try {

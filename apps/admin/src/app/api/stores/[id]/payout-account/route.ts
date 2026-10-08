@@ -5,16 +5,15 @@
 // so the founder still verifies the name before marking a payout paid.
 
 import { NextResponse } from 'next/server';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { parseStorePayoutInput, STORE_PAYOUT_SELECT, toStorePayoutView } from '@/lib/storePayout';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function PUT(request: Request, ctx: RouteContext<'/api/stores/[id]/payout-account'>) {
-  const user = await requireAdminSession();
-  if (!user || !isAllowedAdminEmail(user.email)) return NextResponse.json({ error: 'Administrator access required.' }, { status: 401 });
+  const { actor: user, denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Invalid store ID.' }, { status: 400 });
 

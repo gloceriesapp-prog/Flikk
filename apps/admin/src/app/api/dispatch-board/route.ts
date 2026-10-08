@@ -5,7 +5,7 @@
 // Paged server-side (?page=, 50 per page).
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import type { DispatchBoardRow } from '@/lib/types';
 
@@ -32,7 +32,7 @@ interface Row {
 }
 
 export async function GET(request: NextRequest) {
-  const denied = await requireStoreAdmin();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const params = request.nextUrl.searchParams;
   const page = Math.max(1, Math.floor(Number(params.get('page')) || 1));

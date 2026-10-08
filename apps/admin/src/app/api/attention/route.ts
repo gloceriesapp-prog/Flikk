@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { ATTENTION_THRESHOLD_MINUTES } from '@/lib/mock-data';
 
 export interface AttentionItem {
@@ -24,8 +24,8 @@ const ITEMS: { key: string; label: string; href: string }[] = [
 ];
 
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data, error } = await supabaseAdmin.rpc('admin_attention_counts', { p_stuck_minutes: ATTENTION_THRESHOLD_MINUTES });
     if (error) throw error;

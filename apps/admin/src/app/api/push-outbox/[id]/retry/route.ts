@@ -3,11 +3,12 @@
 // it up on its next pass and still skips devices that already accepted it.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { isUuid, requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { isUuid } from '@/lib/orders/adminActor';
 import { controlRpcStatus } from '@/lib/pushOutbox';
 
 export async function POST(_request: Request, ctx: RouteContext<'/api/push-outbox/[id]/retry'>) {
-  const { actor, denied } = await requireAdminActor();
+  const { actor, denied } = await requireAdmin();
   if (denied) return denied;
   const { id } = await ctx.params;
   if (!isUuid(id)) return NextResponse.json({ error: 'Notification not found.' }, { status: 404 });

@@ -5,9 +5,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { activeBlock, type CustomerBlockRow } from '@/lib/customerBlocks';
-import { adminRpcErrorResponse, isUuid, requireAdminActor } from '@/lib/orders/adminActor';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { adminRpcErrorResponse, isUuid } from '@/lib/orders/adminActor';
 
 export async function GET(request: Request, ctx: RouteContext<'/api/customers/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   try {
@@ -79,7 +82,7 @@ export async function GET(request: Request, ctx: RouteContext<'/api/customers/[i
 // the before/after values). Phone is the sign-in identity (phone OTP) and is
 // not editable here. The customer app reads the name from GET /auth/me.
 export async function PATCH(request: Request, ctx: RouteContext<'/api/customers/[id]'>) {
-  const { actor, denied } = await requireAdminActor();
+  const { actor, denied } = await requireAdmin();
   if (denied) return denied;
   const { id } = await ctx.params;
   if (!isUuid(id)) return NextResponse.json({ error: 'Customer not found.' }, { status: 404 });

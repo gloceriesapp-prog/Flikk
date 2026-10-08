@@ -9,7 +9,7 @@
 // here never rewrites the fee columns.
 
 import { NextResponse } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { parseDispatchSettings, type DispatchSettings } from '@/lib/dispatchSettings';
 
@@ -31,7 +31,7 @@ function toSettings(row: Row): DispatchSettings {
 }
 
 export async function GET() {
-  const denied = await requireStoreAdmin();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const { data, error } = await supabaseAdmin.from('delivery_settings').select(COLUMNS).single();
   if (error) return NextResponse.json({ error: 'Could not load dispatch settings.' }, { status: 500 });
@@ -39,7 +39,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const denied = await requireStoreAdmin();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const parsed = parseDispatchSettings(await request.json().catch(() => null));
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });

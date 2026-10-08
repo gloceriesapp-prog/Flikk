@@ -16,6 +16,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 interface OverviewAggregate {
   totalOrdersToday: number;
@@ -30,6 +31,8 @@ interface OverviewAggregate {
 }
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data, error } = await supabaseAdmin.rpc('admin_overview_stats', {});
     if (error) throw error;
