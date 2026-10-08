@@ -61,7 +61,7 @@ export const MENU_ITEMS: NavItem[] = [
 
 export const INSIGHTS_ITEMS: NavItem[] = [
   { href: '/orders', label: 'Orders', icon: Package },
-  { href: '/support', label: 'Customer Support', icon: Ticket },
+  { href: '/support', label: 'Support', icon: Ticket },
   { href: '/customer-deletions', label: 'Account Deletions', icon: Users },
   { href: '/revenue', label: 'Revenue', icon: Banknote },
   { href: '/payouts', label: 'Payouts', icon: Wallet },
