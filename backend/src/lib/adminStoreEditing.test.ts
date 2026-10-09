@@ -5,7 +5,7 @@ it('maps all editable store details and photo removal to existing database colum
   const patch = parseStorePatch({ name:' New store ', ownerName:' New owner ', photoUrl:null, addressLine:'New address', manualAddress:'Near bus stand',
     city:'Kaup',district:'Udupi',state:'Karnataka',country:'India',category:'Kirana & Grocery',phone:'+91 9876543210',
     openTime:'06:00',closeTime:'23:00',lat:13.2,lng:74.7,deliveryRadiusKm:15,avgPrepMinutes:12,isActive:false,
-    fssaiNumber:'record',panNumber:'record',
+    fssaiNumber:'12345678901234',panNumber:'ABCDE1234F',
     shopEstablishmentNumber:'record',gstNumber:'record',drugLicenseNumber:'record',udyamNumber:'record' });
   expect(patch).toMatchObject({name:'New store',owner_name:'New owner',photo_url:null,manual_address:'Near bus stand',is_active:false,avg_prep_minutes:12,udyam_number:'record'});
   expect(Object.keys(patch)).toHaveLength(24);
@@ -39,3 +39,5 @@ it('requires a pharmacy licence when switching to pharmacy', () => {
   expect(() => validateMergedStore({ category: 'Others' }, { category: 'Pharmacy' })).toThrow('drug licence');
   expect(() => validateMergedStore({}, { category: 'Pharmacy', drug_license_number: 'licence' })).not.toThrow();
 });
+
+it('uses canonical store document validation and normalizes PAN corrections', () => { expect(parseStorePatch({panNumber:'abcde1234f'})).toEqual({pan_number:'ABCDE1234F'}); expect(() => parseStorePatch({panNumber:'record'})).toThrow('PAN'); expect(() => parseStorePatch({fssaiNumber:'record'})).toThrow('FSSAI'); });

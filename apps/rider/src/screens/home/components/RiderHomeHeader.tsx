@@ -27,8 +27,6 @@ type Nav = CompositeNavigationProp<
 >;
 
 const CARD_BORDER = '#EAECEE';
-const ONLINE_GREEN = '#00a63e';
-const OFFLINE_GRAY = '#e7000b';
 
 export function RiderHomeHeader({ isOnline }: { isOnline: boolean }) {
   const navigation = useNavigation<Nav>();
@@ -74,6 +72,7 @@ export function RiderHomeHeader({ isOnline }: { isOnline: boolean }) {
         <View className="flex-1">
           <Text className="text-[15px] font-medium text-ink/50">Hello,</Text>
           <Text className="text-[22px] font-medium text-ink" numberOfLines={1}>{first}</Text>
+          <Text className="text-xs text-ink/60" numberOfLines={1}>{profile?.zoneName ? `Serving ${profile.zoneName}` : 'Service zone not assigned'}</Text>
           {/* Status indicator — plain text + dot, not a button. Tells the
               rider what state they're in; the button on the right changes it. */}
         </View>

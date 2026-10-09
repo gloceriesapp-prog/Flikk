@@ -10,7 +10,6 @@ import { Location01Icon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
-import { ZONE_LABEL } from '../../../data/appConfig';
 import { useRiderProfile } from '../../profile/useRiderProfile';
 
 function firstName(fullName: string): string {
@@ -25,7 +24,7 @@ export function HomeGreeting() {
       <Text className="text-[16px] font-semibold text-ink">Hi, {firstName(name)},</Text>
       <AppIcon icon={Location01Icon} size={12} color={colors.limeDeep} />
       <Text className="flex-1 text-[13px] font-medium text-lime-deep" numberOfLines={1}>
-        {ZONE_LABEL}
+        {profile?.zoneName ? `Serving ${profile.zoneName}` : 'Service zone not assigned'}
       </Text>
     </View>
   );

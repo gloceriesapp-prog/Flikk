@@ -1,3 +1,4 @@
+import { resolveStoreAccess } from '../stores/access.js';
 import { logger } from '../lib/logger.js';
 import { deliveryStores } from '../customer-experience/browse.js';
 import { receiptItems, withReceiptAddress } from '../customer-experience/receipt.js';
@@ -218,7 +219,7 @@ ordersRouter.get('/:id', requireAuth, async (req: AuthedRequest, res, next) => {
     if (!visible) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
 
     if (u.role === 'store_owner') {
-      const { data: store } = await supabase.from('stores').select('id').eq('id', data.store_id).eq('owner_user_id', u.id).single();
+      const store = await resolveStoreAccess(u.id, data.store_id);
       if (!store) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
     }
 
@@ -302,7 +303,7 @@ ordersRouter.patch(
         throw new AppError(403, 'FORBIDDEN', `Role ${req.user!.role} cannot set status ${to}.`);
       }
       if (req.user!.role === 'store_owner') {
-        const { data: store } = await supabase.from('stores').select('id').eq('id', order.store_id).eq('owner_user_id', req.user!.id).single();
+        const store = await resolveStoreAccess(req.user!.id, order.store_id);
         if (!store) throw new AppError(403, 'FORBIDDEN', 'Not your store.');
       }
       if (req.user!.role === 'rider' && order.rider_id !== req.user!.id) {

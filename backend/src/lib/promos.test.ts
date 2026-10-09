@@ -126,3 +126,18 @@ describe('calcDiscount matches the SQL promotion guard exactly', () => {
     expect(calcDiscount(0.01, makePromo({ discount_type: 'percent', discount_value: 50 }))).toBe(0.01);
   });
 });
+
+
+describe('promotion scheduling and configurable customer usage', () => {
+  it('rejects a future start and allows a started promotion', () => {
+    expect(() => validatePromoCode(makePromo({ starts_at: new Date(Date.now() + 60000).toISOString() }), 500, 0)).toThrow('not available yet');
+    expect(validatePromoCode(makePromo({ starts_at: '2020-01-01T00:00:00Z' }), 500, 0)).toBe(50);
+  });
+  it('allows repeats below the configured cap and rejects the final used slot', () => {
+    expect(validatePromoCode(makePromo({ per_customer_limit: 3 }), 500, 2)).toBe(50);
+    expect(() => validatePromoCode(makePromo({ per_customer_limit: 3 }), 500, 3)).toThrow('usage limit');
+  });
+  it('keeps the legacy one-use default', () => {
+    expect(() => validatePromoCode(makePromo(), 500, 1)).toThrow('usage limit');
+  });
+});

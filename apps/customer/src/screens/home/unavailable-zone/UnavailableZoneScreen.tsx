@@ -23,7 +23,7 @@
 
 import { useState } from 'react';
 import { CheckmarkCircle02Icon, ChevronDownIcon, ThumbsUpIcon, UserIcon } from '@hugeicons/core-free-icons';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -31,6 +31,8 @@ import { AppIcon } from '../../../components/AppIcon';
 import { AppImage as Image } from '../../../components/AppImage';
 import { BrandFooter } from '../../../components/BrandFooter';
 import { CategorySections } from '../../../components/CategorySections/CategorySections';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { subscribeAreaWaitlist } from '../../../api/areaUpvotes';
 import { useAreaUpvote } from '../../../hooks/useAreaUpvote';
 import { useLocationStore } from '../../../store/useLocationStore';
 import { colors } from '../../../theme/tokens';
@@ -52,6 +54,13 @@ export function UnavailableZoneScreen() {
   // guess either crops the image (contentFit="cover") or letterboxes it
   // wrong (contentFit="contain" with the wrong ratio). Falls back to a
   // square box only until onLoad fires once.
+  const customerId = useAuthStore(state => state.customerId);
+  const sessionEpoch = useAuthStore(state => state.sessionEpoch);
+  const waitlistKey = JSON.stringify([customerId, sessionEpoch, location?.latitude, location?.longitude, location?.addressLabel]);
+  const [joiningKey, setJoiningKey] = useState<string | null>(null);
+  const [joinedKey, setJoinedKey] = useState<string | null>(null);
+  const joining = joiningKey === waitlistKey;
+  const joined = joinedKey === waitlistKey;
   const [illustrationRatio, setIllustrationRatio] = useState(1);
 
   return (
@@ -98,6 +107,13 @@ export function UnavailableZoneScreen() {
           />
         </View>
 
+        <View className="px-5 py-4"><Pressable disabled={joining || joined || !location} onPress={async () => {
+          if (!location || joining) return;
+          setJoiningKey(waitlistKey);
+          try { await subscribeAreaWaitlist(location); setJoinedKey(waitlistKey); }
+          catch { Alert.alert('Could not join waitlist', 'Sign in and check your connection, then try again.'); }
+          finally { setJoiningKey(key => key === waitlistKey ? null : key); }
+        }}><Text className="text-center font-semibold text-blue-600">{joined ? 'You’re on the launch waitlist' : joining ? 'Joining…' : 'Notify me when Gloceries launches here'}</Text></Pressable></View>
         <CategorySections />
 
         <BrandFooter showSocialLinks />

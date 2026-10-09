@@ -4,7 +4,7 @@ export interface InventorySignal {
   storeChanged: boolean;
 }
 export interface InventoryScope { storeIds: string[]; zoneIds: string[] }
-export type HomeEvent = { type: 'content' | 'settings' } | ({ type: 'inventory' } & InventorySignal)
+export type HomeEvent = { type: 'content' | 'settings' | 'config' } | ({ type: 'inventory' } & InventorySignal)
   | { type: 'health'; healthy: boolean; recovery: boolean };
 
 // Reverse indexes make delivery proportional to interested clients, not all

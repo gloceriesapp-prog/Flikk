@@ -47,7 +47,6 @@ export async function saveSession(target: Target, patch: Partial<PaymentSession>
 // provider order accepted just before a process crash is recovered with a GET
 // on that id. An absent result NEVER authorizes another creation by itself;
 // creation also needs the durable claim (and Cashfree refuses a duplicate id).
-const RESERVATION_MS = 20 * 60_000;
 const MIN_PROVIDER_EXPIRY_MS = 16 * 60_000; // Cashfree rejects near-term expiries
 function tagsFor(target: Target): Record<string, string> {
   return target.kind === 'trip' ? { gloceries_trip_id: target.id } : { gloceries_order_id: target.id };
@@ -69,15 +68,16 @@ export async function recoverProviderOrder(target: Target, total: number) {
 async function createProviderOrder(target: Target, customerId: string, total: number): Promise<CfOrder> {
   const [{ data: customer, error }, { data: leg, error: legError }] = await Promise.all([
     supabase.from('users').select('phone').eq('id', customerId).maybeSingle(),
-    supabase.from('orders').select('placed_at').eq(target.kind === 'trip' ? 'trip_id' : 'id', target.id).order('placed_at').limit(1).maybeSingle(),
+    supabase.from('orders').select('placed_at,reservation_expires_at').eq(target.kind === 'trip' ? 'trip_id' : 'id', target.id).order('placed_at').limit(1).maybeSingle(),
   ]);
   if (error || legError) throw error ?? legError;
   const phone = String(customer?.phone ?? '').replace(/\D/g, '').slice(-10);
   if (phone.length !== 10) throw new AppError(409, 'PAYMENT_PHONE_REQUIRED', 'Add a mobile number to your account to pay online.');
   // Reservation expiry, but never sooner than Cashfree accepts; expiry
   // reconciliation terminates the order when the reservation lapses first.
-  const placedAt = Date.parse(leg?.placed_at ?? '') || Date.now();
-  const expiresAt = new Date(Math.max(placedAt + RESERVATION_MS, Date.now() + MIN_PROVIDER_EXPIRY_MS));
+  const deadline = Date.parse(leg?.reservation_expires_at ?? '');
+  if (!Number.isFinite(deadline) || deadline <= Date.now()) throw new AppError(409, 'PAYMENT_NOT_PAYABLE', 'This checkout has expired.');
+  const expiresAt = new Date(Math.max(deadline, Date.now() + MIN_PROVIDER_EXPIRY_MS));
   const orderId = cashfreeOrderId(target.id);
   try {
     return await createCfOrder({ orderId, amountPaise: toPaise(total), customerId, customerPhone: phone, tags: tagsFor(target), expiresAt });
@@ -163,7 +163,7 @@ export async function getPaymentRecovery(req: AuthedRequest, res: Response, next
       }
       if (state !== 'paid' && (record.checkout_payment_rejected || record.status === 'cancelled' || record.status === 'failed')) state = 'cancelled';
     }
-    if ((state === 'unpaid' || state === 'reconciling') && (record.status !== 'placed' || Date.parse(record.placed_at ?? record.created_at) + 20 * 60_000 <= Date.now())) state = 'expired';
+    if ((state === 'unpaid' || state === 'reconciling') && (record.status !== 'placed' || Date.parse(record.reservation_expires_at) <= Date.now())) state = 'expired';
     // Re-read after reconciliation; the response is backend state, never
     // a navigation snapshot or a client payment-success claim.
     const { data: current, error: currentError } = await supabase.from(target.table).select('*').eq('id', target.id).eq('customer_id', req.user!.id).single();
@@ -179,9 +179,9 @@ export async function getPendingPayments(req: AuthedRequest, res: Response, next
   try {
     const [orders, legs] = await Promise.all([
       supabase.from('orders').select('id,placed_at').eq('customer_id', req.user!.id).eq('payment_method', 'online').eq('status', 'placed')
-        .is('provider_payment_id', null).is('trip_id', null).gte('placed_at', new Date(Date.now() - 20 * 60_000).toISOString()).order('placed_at', { ascending: false }).limit(20),
+        .is('provider_payment_id', null).is('trip_id', null).gt('reservation_expires_at', new Date().toISOString()).order('placed_at', { ascending: false }).limit(20),
       supabase.from('orders').select('trip_id,placed_at').eq('customer_id', req.user!.id).eq('payment_method', 'online').eq('status', 'placed')
-        .is('provider_payment_id', null).not('trip_id', 'is', null).gte('placed_at', new Date(Date.now() - 20 * 60_000).toISOString()).order('placed_at', { ascending: false }).limit(40),
+        .is('provider_payment_id', null).not('trip_id', 'is', null).gt('reservation_expires_at', new Date().toISOString()).order('placed_at', { ascending: false }).limit(40),
     ]);
     if (orders.error) throw orders.error;
     if (legs.error) throw legs.error;

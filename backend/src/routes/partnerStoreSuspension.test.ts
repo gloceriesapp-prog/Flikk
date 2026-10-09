@@ -17,7 +17,7 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
       neq: () => builder,
       order: () => builder,
       limit: () => Promise.resolve({ data: db.pending ? [db.pending] : [], error: null }),
-      maybeSingle: () => Promise.resolve({ data: db.pending, error: null }),
+      maybeSingle: () => Promise.resolve({ data: table === 'stores' ? db.store : db.pending, error: null }),
       single: () => Promise.resolve(result()),
       update: (patch: Record<string, unknown>) => {
         db.updates.push(patch);

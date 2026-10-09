@@ -1,3 +1,4 @@
+import { resolveStoreAccess } from '../stores/access.js';
 import { storePrivateDocument } from '../media/privateDocuments.js';
 import { storePublicImage } from '../media/publicImages.js';
 // Store Setup (partner app P1) — deliberately its own router, not part of
@@ -17,6 +18,15 @@ import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.
 import { assertStoreCategory, DRUG_LICENSE_CATEGORIES, isStoreCategory, normalizeDrugLicense, storeCategoryOptions } from '../lib/storeCategories.js';
 
 export const storeOnboardingRouter = Router();
+
+// Onboarding/upload routes mount before the approved partner router; fence managers here too.
+async function requirePrimaryStoreAccount(req: AuthedRequest, _res: import('express').Response, next: import('express').NextFunction) {
+  try {
+    if (req.user?.role === 'store_owner' && (await resolveStoreAccess(req.user.id))?.role === 'manager') throw new AppError(403, 'OWNER_REQUIRED', 'Only the primary owner can edit store documents or onboarding details.');
+    next();
+  } catch (error) { next(error); }
+}
+
 
 interface OnboardingFields {
   storeName?: string;
@@ -50,7 +60,7 @@ storeOnboardingRouter.get('/store-categories', requireAuth, (_req, res) => {
 // draft as "ready for review" (submitted_at). The real store row (and the
 // role flip to store_owner) is created later, by admin's own approve
 // action (apps/admin/src/app/api/approvals/stores/[userId]/route.ts).
-storeOnboardingRouter.post('/store-application', requireAuth, async (req: AuthedRequest, res, next) => {
+storeOnboardingRouter.post('/store-application', requireAuth, requirePrimaryStoreAccount, async (req: AuthedRequest, res, next) => {
   try {
     const {
       storeName,
@@ -93,6 +103,9 @@ storeOnboardingRouter.post('/store-application', requireAuth, async (req: Authed
     if ((ownedStores ?? 0) > 0) {
       throw new AppError(409, 'STORE_ALREADY_EXISTS', 'You already have a store on Gloceries. Update it from Store Settings instead.');
     }
+    const { data: membership, error: membershipError } = await supabase.from('store_memberships').select('user_id').eq('user_id', req.user!.id).eq('is_active', true).maybeSingle();
+    if (membershipError) throw membershipError;
+    if (membership) throw new AppError(409, 'STORE_TEAM_MEMBER', 'You already manage a store. Ask the administrator before applying for a separate store.');
     // PAN is the one compulsory document at submit time — real per an
     // explicit ask (tax/payout compliance applies to every store
     // regardless of category). GST/Udyam/FSSAI/shop-license stay optional.
@@ -179,7 +192,7 @@ storeOnboardingRouter.get('/store-draft', requireAuth, async (req: AuthedRequest
   }
 });
 
-storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedRequest, res, next) => {
+storeOnboardingRouter.patch('/store-draft', requireAuth, requirePrimaryStoreAccount, async (req: AuthedRequest, res, next) => {
   try {
     const {
       storeName,
@@ -255,7 +268,7 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, async (req: AuthedReque
 // Public storefront photos go to R2; verification documents stay private.
 // Still used by StoreSettingsScreen post-approval even though onboarding
 // itself no longer collects a photo (StoreDraft's own note on why).
-storeOnboardingRouter.post('/store-photo', requireAuth, async (req: AuthedRequest, res, next) => {
+storeOnboardingRouter.post('/store-photo', requireAuth, requirePrimaryStoreAccount, async (req: AuthedRequest, res, next) => {
   try {
     const { base64 } = req.body as { base64?: string };
     if (!base64) throw new AppError(400, 'MISSING_FIELDS', 'base64 is required.');
@@ -269,7 +282,7 @@ storeOnboardingRouter.post('/store-photo', requireAuth, async (req: AuthedReques
 });
 
 // Verification attachments never enter the public image pipeline.
-storeOnboardingRouter.post('/store-document-photo', requireAuth, async (req: AuthedRequest, res, next) => {
+storeOnboardingRouter.post('/store-document-photo', requireAuth, requirePrimaryStoreAccount, async (req: AuthedRequest, res, next) => {
   try {
     const { base64, kind } = req.body as { base64?: string; kind?: string };
     if (!kind || !['pan', 'gst', 'fssai', 'shop-license', 'udyam', 'payout-proof'].includes(kind))

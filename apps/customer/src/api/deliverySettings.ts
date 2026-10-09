@@ -8,9 +8,9 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useInventoryCacheSync } from '../screens/home/content/inventoryCache';
-import { subscribeHomeContent } from '../screens/home/content/realtime';
 import { DEFAULT_DELIVERY_MINUTES, deliveryMinutes } from '../utils/estimateDelivery';
 import { apiRequest } from './client';
+import { subscribePublicContentCache } from '../screens/home/content/publicContentCache';
 
 export interface DeliverySettings {
   flatDeliveryFee: number;
@@ -65,8 +65,5 @@ export function useDeliverySettingsSync() {
   const client = useQueryClient();
   useDeliverySettings();
   useInventoryCacheSync();
-  useEffect(() => subscribeHomeContent((event) => {
-    if (event === 'content') void client.invalidateQueries({ queryKey: ['inventory-zone'] });
-    if (event === 'settings') void client.invalidateQueries({ queryKey: ['delivery-settings'] });
-  }), [client]);
+  useEffect(() => subscribePublicContentCache(client), [client]);
 }

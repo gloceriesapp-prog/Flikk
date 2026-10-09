@@ -19,6 +19,8 @@ interface Review {
   id: string;
   rating: number;
   comment: string | null;
+  ownerReply: string | null;
+  ownerRepliedAt: string | null;
   createdAt: string;
   storeId: string;
   storeName: string;
@@ -128,6 +130,7 @@ export default function ReviewsPage() {
             </div>
 
             {review.comment && <p className="mt-3 text-sm text-ink-soft">{review.comment}</p>}
+            {review.ownerReply && <div className="mt-3 rounded-xl bg-neutral-50 p-3"><p className="text-xs font-semibold text-muted">Store reply{review.ownerRepliedAt ? ` · ${new Date(review.ownerRepliedAt).toLocaleDateString('en-IN')}` : ''}</p><p className="mt-1 text-sm text-ink-soft">{review.ownerReply}</p></div>}
             {rowError?.id === review.id && <p className="mt-2 text-xs text-danger">{rowError.message}</p>}
           </div>
         ))}

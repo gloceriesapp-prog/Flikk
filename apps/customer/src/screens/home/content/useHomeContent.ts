@@ -1,44 +1,13 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
-import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../../api/client';
 import { TAB_KEYS, validateContent, type HomeContentRecord } from './contracts';
-import { invalidateInventory } from './inventoryCache';
-import { subscribeHomeContent } from './realtime';
+import { subscribePublicContentCache } from './publicContentCache';
 
 export const HOME_SECTION_QUERY_KEYS = [
   ['home', 'sections'], ['home', 'festival-greeting'], ['home', 'festival-section'], ['home', 'seasonal-section'],
 ] as const;
-
-// Several mounted tabs and the header observe the same query. Register one
-// invalidation callback per QueryClient so events never cancel each other's
-// refetches while a publication is being delivered.
-const clients = new WeakMap<QueryClient, { count: number; stop: () => void }>();
-function subscribeClient(client: QueryClient) {
-  let entry = clients.get(client);
-  if (!entry) {
-    const stop = subscribeHomeContent((event) => {
-      if (event === 'settings') return;
-      if (event === 'content') {
-        void client.invalidateQueries({ queryKey: ['home-content'] });
-        void client.invalidateQueries({ queryKey: ['home-tabs'] });
-        // Admin Home Sections, Festival Greeting/Section and Seasonal Section.
-        for (const queryKey of HOME_SECTION_QUERY_KEYS) void client.invalidateQueries({ queryKey });
-        invalidateInventory(client, { storeIds: [], zoneIds: [], storeChanged: false, refresh: true });
-      }
-    });
-    entry = { count: 0, stop };
-    clients.set(client, entry);
-  }
-  entry.count += 1;
-  return () => {
-    entry.count -= 1;
-    if (entry.count === 0) {
-      entry.stop();
-      clients.delete(client);
-    }
-  };
-}
 
 export function useHomeContent() {
   const client = useQueryClient();
@@ -51,7 +20,7 @@ export function useHomeContent() {
     );
     return () => subscription.remove();
   }, []);
-  useEffect(() => subscribeClient(client), [client]);
+  useEffect(() => subscribePublicContentCache(client), [client]);
   return useQuery({
     queryKey: ['home-content'],
     queryFn: async () => {

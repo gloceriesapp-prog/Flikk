@@ -61,9 +61,12 @@ function Img({ src, className }: { src?: string; className: string }) {
 }
 
 export function ProductReviewRow({ product, mode, onDone }: { product: Product; mode: 'new' | 'image' | 'changes'; onDone: () => void }) {
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function call(url: string, body: unknown) {
+    if (busy) return;
+    setError(null);
     setBusy(true);
     try {
       const res = await fetch(url, {
@@ -75,10 +78,10 @@ export function ProductReviewRow({ product, mode, onDone }: { product: Product; 
         onDone();
       } else {
         const b = (await res.json().catch(() => null)) as { error?: string } | null;
-        window.alert(b?.error ?? 'Could not update this product.');
+        setError(b?.error ?? 'Could not update this product.');
       }
     } catch {
-      window.alert('Could not reach the server. Please try again.');
+      setError('Could not reach the server. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -125,6 +128,7 @@ export function ProductReviewRow({ product, mode, onDone }: { product: Product; 
         {mode === 'changes' && <ChangeSummary product={product} />}
       </div>
 
+      {!!error && <p role="alert" className="text-sm text-danger">{error}</p>}
       <div className="flex shrink-0 items-center gap-2">
         {mode === 'image' && <ProductImageUpload imageUrl={undefined} onChange={replace} />}
         <button

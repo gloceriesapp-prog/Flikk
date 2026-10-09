@@ -3,7 +3,7 @@ import type { Request, RequestHandler, Response } from 'express';
 
 vi.mock('../db/supabase.js', () => ({ supabase: {
   from: () => {
-    const builder = { select: () => builder, eq: () => builder, single: () => Promise.resolve({ data: { id: 'store-1' }, error: null }) };
+    const builder = { select: () => builder, eq: () => builder, maybeSingle: () => Promise.resolve({ data: { id: 'store-1' }, error: null }), single: () => Promise.resolve({ data: { id: 'store-1' }, error: null }) };
     return builder;
   },
 } }));

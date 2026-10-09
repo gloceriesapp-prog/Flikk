@@ -72,8 +72,15 @@ function validateSubmission(input: RiderOnboardingFields): asserts input is Requ
   }
 }
 
+async function assertNewApplicant(userId: string): Promise<void> {
+  const { data, error } = await supabase.from('riders').select('id').eq('user_id', userId).maybeSingle();
+  if (error) throw error;
+  if (data) throw new AppError(409, 'ALREADY_APPROVED', 'Use the document and vehicle update request in your profile.');
+}
+
 riderOnboardingRouter.post('/application', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
+    await assertNewApplicant(req.user!.id);
     const body = req.body as RiderOnboardingFields;
     validateSubmission(body);
     if (!body.emergencyContactName?.trim() || !body.emergencyContactPhone?.trim() || !body.emergencyContactRelationship?.trim()) {
@@ -132,6 +139,7 @@ riderOnboardingRouter.get('/draft', requireAuth, async (req: AuthedRequest, res,
 
 riderOnboardingRouter.patch('/draft', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
+    await assertNewApplicant(req.user!.id);
     const body = req.body as RiderOnboardingFields;
 
     // Partial upsert — only fields the caller actually sent overwrite the

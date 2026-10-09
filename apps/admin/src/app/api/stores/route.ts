@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     if (!zone) return fail(input.zoneId ? 'Pick an active zone.' : 'Several zones are active — choose the store’s zone.', 400);
 
     const { data, error } = await supabaseAdmin.from('stores').insert(toStoreRow(input, owner.id, zone.id)).select(STORE_SELECT).single();
+    if (error?.code === 'P0409' && error.message === 'STORE_MANAGER_CANNOT_OWN') return fail('Remove this account from its current store team before making it a primary owner.', 409);
     if (error?.code === 'P0409' && error.message === 'STORE_ALREADY_OWNED') return fail('That account already owns a store.', 409);
     if (error) throw error;
 

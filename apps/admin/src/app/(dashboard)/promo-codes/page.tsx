@@ -25,6 +25,8 @@ interface DraftForm {
   minOrderValue: string;
   usageLimit: string;
   expiresAt: string;
+  startsAt: string;
+  perCustomerLimit: string;
 }
 
 const EMPTY_DRAFT: DraftForm = {
@@ -35,6 +37,8 @@ const EMPTY_DRAFT: DraftForm = {
   minOrderValue: '',
   usageLimit: '',
   expiresAt: '',
+  startsAt: '',
+  perCustomerLimit: '1',
 };
 
 function formatExpiry(iso: string | null): string {
@@ -85,6 +89,8 @@ export default function PromoCodesPage() {
           maxDiscountAmount: draft.maxDiscountAmount ? Number(draft.maxDiscountAmount) : null,
           minOrderValue: draft.minOrderValue ? Number(draft.minOrderValue) : 0,
           usageLimit: draft.usageLimit ? Number(draft.usageLimit) : null,
+          perCustomerLimit: Number(draft.perCustomerLimit),
+          startsAt: draft.startsAt ? new Date(draft.startsAt).toISOString() : null,
           expiresAt: draft.expiresAt ? new Date(draft.expiresAt).toISOString() : null,
         }),
       });
@@ -112,6 +118,8 @@ export default function PromoCodesPage() {
         minOrderValue: promo.minOrderValue,
         usageLimit: promo.usageLimit,
         expiresAt: promo.expiresAt,
+        startsAt: promo.startsAt,
+        perCustomerLimit: promo.perCustomerLimit,
         isActive: !promo.isActive,
       }),
     });
@@ -200,6 +208,8 @@ export default function PromoCodesPage() {
               </Field>
             )}
 
+            <Field label="Starts at (your local time)"><input type="datetime-local" value={draft.startsAt} onChange={e => setDraft({ ...draft, startsAt: e.target.value })} className="w-full rounded-xl border border-border px-3 py-2 text-sm" /></Field>
+            <Field label="Uses per customer"><input required type="number" min={1} max={100} step={1} value={draft.perCustomerLimit} onChange={e => setDraft({ ...draft, perCustomerLimit: e.target.value })} className="w-full rounded-xl border border-border px-3 py-2 text-sm" /></Field>
             <Field label="Minimum order value (₹)">
               <input
                 type="number"

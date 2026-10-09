@@ -33,16 +33,15 @@ export async function lookupPromoForCheckout(
   if (promoErr) throw promoErr;
   if (!promo) throw new AppError(400, 'PROMO_NOT_FOUND', "This code doesn't exist.");
 
-  const { data: existingRedemption, error: redemptionErr } = await supabase
+  const { count: redemptionCount, error: redemptionErr } = await supabase
     .from('promo_redemptions')
-    .select('id')
+    .select('id', { count: 'exact', head: true })
     .eq('promo_code_id', promo.id)
-    .eq('customer_id', customerId)
-    .maybeSingle();
+    .eq('customer_id', customerId);
   if (redemptionErr) throw redemptionErr;
 
   try {
-    const discountAmount = validatePromoCode(promo as PromoCodeRow, itemTotal, !!existingRedemption);
+    const discountAmount = validatePromoCode(promo as PromoCodeRow, itemTotal, redemptionCount ?? 0);
     return { promoCodeId: promo.id, discountAmount };
   } catch (err) {
     if (err instanceof Error && 'code' in err) {
@@ -59,8 +58,8 @@ interface ValidateBody {
 
 promosRouter.post('/validate', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
-    const { code, item_total } = req.body as ValidateBody;
-    if (!code || typeof item_total !== 'number') {
+    const { code, item_total } = (req.body ?? {}) as ValidateBody;
+    if (typeof code !== 'string' || !code.trim() || code.length > 100 || typeof item_total !== 'number' || !Number.isFinite(item_total) || item_total < 0) {
       throw new AppError(400, 'INVALID_REQUEST', 'code and item_total are required.');
     }
     const { discountAmount } = await lookupPromoForCheckout(code, req.user!.id, item_total);

@@ -1,3 +1,4 @@
+import { safeNextPath } from '@/lib/safeNext';
 // Google OAuth lands here after consent (LoginPage's own
 // signInWithOAuth redirectTo) with a real `?code=`. Exchanges it for a
 // session on the SSR server client (same cookie adapter middleware.ts
@@ -16,7 +17,7 @@ import { isAllowedAdminEmail } from '@/lib/adminAccess';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/overview';
+  const next = safeNextPath(searchParams.get('next'));
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('Google sign-in did not return a code.')}`);

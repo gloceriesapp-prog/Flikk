@@ -1,0 +1,32 @@
+\set ON_ERROR_STOP on
+BEGIN;
+DO $$ BEGIN IF current_database()<>'flikk_migrations_tests' THEN RAISE EXCEPTION 'Disposable fixture only'; END IF; END $$;
+INSERT INTO users(id,phone,role) VALUES('00000000-0000-4000-8000-000000009001','test-policy-customer','customer');
+INSERT INTO zones(id,name,slug) VALUES('00000000-0000-4000-8000-000000009002','Policy fixture','policy-fixture');
+INSERT INTO addresses(id,user_id,line1,zone_id,latitude,longitude) VALUES('00000000-0000-4000-8000-000000009003','00000000-0000-4000-8000-000000009001','Policy street','00000000-0000-4000-8000-000000009002',13,74);
+UPDATE delivery_settings SET checkout_hold_minutes=35,checkout_reconciliation_grace_minutes=45;
+DO $$ DECLARE t trips; t2 trips; t3 trips; promo uuid; n integer; BEGIN
+ INSERT INTO trips(customer_id,address_id,item_total,delivery_fee,total) VALUES('00000000-0000-4000-8000-000000009001','00000000-0000-4000-8000-000000009003',10,0,10) RETURNING * INTO t;
+ IF t.reservation_expires_at<>t.created_at+interval '35 minutes' OR t.reservation_release_after<>t.created_at+interval '80 minutes' THEN RAISE EXCEPTION 'Configured deadlines not snapshotted'; END IF;
+ UPDATE delivery_settings SET checkout_hold_minutes=16,checkout_reconciliation_grace_minutes=5;
+ UPDATE trips SET reservation_expires_at=now(),reservation_release_after=now() WHERE id=t.id RETURNING * INTO t2;
+ IF t2.reservation_expires_at<>t.reservation_expires_at OR checkout_reservation_deadline('trip',t.id)<>t.reservation_expires_at THEN RAISE EXCEPTION 'Existing deadlines changed'; END IF;
+ INSERT INTO trips(customer_id,address_id,item_total,delivery_fee,total) VALUES(t.customer_id,t.address_id,10,0,10) RETURNING * INTO t2;
+ INSERT INTO trips(customer_id,address_id,item_total,delivery_fee,total) VALUES(t.customer_id,t.address_id,10,0,10) RETURNING * INTO t3;
+ IF t2.reservation_expires_at<>t2.created_at+interval '16 minutes' THEN RAISE EXCEPTION 'New checkout ignored admin edit'; END IF;
+ INSERT INTO promo_codes(code,discount_type,discount_value,per_customer_limit,starts_at) VALUES('POLICY_TEST','flat',1,2,now()+interval '1 hour') RETURNING id INTO promo;
+ BEGIN INSERT INTO promo_redemptions(promo_code_id,customer_id,trip_id,discount_amount) VALUES(promo,t.customer_id,t.id,1); RAISE EXCEPTION 'Future promo accepted'; EXCEPTION WHEN SQLSTATE 'P1003' THEN NULL; END;
+ UPDATE promo_codes SET starts_at=now()-interval '1 hour' WHERE id=promo;
+ INSERT INTO promo_redemptions(promo_code_id,customer_id,trip_id,discount_amount) VALUES(promo,t.customer_id,t.id,1),(promo,t.customer_id,t2.id,1);
+ BEGIN INSERT INTO promo_redemptions(promo_code_id,customer_id,trip_id,discount_amount) VALUES(promo,t.customer_id,t3.id,1); RAISE EXCEPTION 'Promo limit bypassed'; EXCEPTION WHEN SQLSTATE 'P1003' THEN NULL; END;
+ PERFORM subscribe_area_waitlist(t.customer_id,13,74,'Fixture locality');
+ PERFORM subscribe_area_waitlist(t.customer_id,13,74,'Fixture locality');
+ IF (SELECT count(*) FROM area_upvotes WHERE customer_id=t.customer_id)<>1 THEN RAISE EXCEPTION 'Duplicate waitlist subscription'; END IF;
+ n:=notify_area_waitlist('Fixture locality','Now open','Your locality is now served',100);
+ IF n<>1 OR notify_area_waitlist('Fixture locality','Now open','Your locality is now served',100)<>0 THEN RAISE EXCEPTION 'Waitlist delivery not idempotent'; END IF;
+ IF (SELECT count(*) FROM customer_notifications WHERE customer_id=t.customer_id AND order_id IS NULL)<>1 THEN RAISE EXCEPTION 'General notification missing'; END IF;
+ INSERT INTO customer_app_feedback(customer_id,rating) VALUES(t.customer_id,1);
+ IF NOT EXISTS(SELECT 1 FROM customer_app_feedback WHERE customer_id=t.customer_id AND rating=1) THEN RAISE EXCEPTION 'Low rating discarded'; END IF;
+ IF has_function_privilege('anon','notify_area_waitlist(text,text,text,integer)','EXECUTE') OR has_function_privilege('authenticated','subscribe_area_waitlist(uuid,numeric,numeric,text)','EXECUTE') OR has_table_privilege('anon','customer_app_feedback','SELECT') THEN RAISE EXCEPTION 'Private policy data exposed'; END IF;
+END $$;
+ROLLBACK;

@@ -1,11 +1,3 @@
-// Sits right below YouMayAlsoLikeRow, above BillDetailsCard — a progress
-// bar toward the real freeDeliveryThreshold (useDeliverySettings, same
-// admin-editable setting BillDetailsCard reads to actually waive the fee,
-// so this card's claim and the real waiver can't drift apart). Below
-// threshold: "Add ₹X more" with a partial-fill bar; at/above it: unlocked
-// state, full bar, tick icon. Currently unused (hidden per an explicit
-// ask, CartScreen.tsx's own note) — kept compiling, not deleted.
-
 import { CheckmarkCircle02Icon, DeliveryTruck01Icon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
@@ -21,9 +13,10 @@ interface Props {
 export function FreeDeliveryProgressCard({ itemTotal }: Props) {
   const { data: deliverySettings = DEFAULT_DELIVERY_SETTINGS } = useDeliverySettings();
   const { freeDeliveryThreshold } = deliverySettings;
+  if (!deliverySettings.freeDeliveryEnabled || !Number.isFinite(freeDeliveryThreshold) || freeDeliveryThreshold < 0 || !Number.isFinite(itemTotal)) return null;
   const isUnlocked = itemTotal >= freeDeliveryThreshold;
   const remaining = freeDeliveryThreshold - itemTotal;
-  const progress = Math.min(1, itemTotal / freeDeliveryThreshold);
+  const progress = freeDeliveryThreshold === 0 ? 1 : Math.min(1, Math.max(0, itemTotal) / freeDeliveryThreshold);
   const tint = isUnlocked ? SUCCESS : ACCENT;
 
   return (
@@ -33,10 +26,11 @@ export function FreeDeliveryProgressCard({ itemTotal }: Props) {
           <AppIcon icon={isUnlocked ? CheckmarkCircle02Icon : DeliveryTruck01Icon} size={16} color={tint} />
         </View>
         <Text className="flex-1 text-[13.5px] font-semibold text-ink">
-          {isUnlocked ? 'You unlocked free delivery' : `Add ₹${remaining} more for free delivery`}
+          {isUnlocked ? 'You unlocked free delivery' : `Add ₹${remaining.toFixed(2)} more for free delivery`}
         </Text>
       </View>
 
+      <Text className="text-[11px] text-ink/50">Handling fees still apply.</Text>
       <View className="h-2 overflow-hidden rounded-full bg-gray-100">
         <View className="h-full rounded-full" style={{ width: `${progress * 100}%`, backgroundColor: tint }} />
       </View>
