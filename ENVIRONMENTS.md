@@ -11,7 +11,7 @@ Every change goes **local → staging → production**. Only production has real
 | EAS variables | none (`.env.local`) | EAS environment `preview` | EAS environment `production` |
 | Admin panel | `pnpm dev` in `apps/admin` | Vercel preview pointed at staging | Vercel production |
 | Payments | Cashfree sandbox | Cashfree sandbox | Cashfree live |
-| Phone OTP | Test numbers in `supabase/config.toml`, or real SMS via the local hook → laptop backend → MSG91 | Supabase test phone numbers | Real SMS via MSG91 (Supabase Send SMS hook → `POST /auth/hooks/send-sms`) |
+| Phone OTP | Backend → MSG91 (no keys: code printed in the backend log); test numbers 9100000001/2/3 = 123456 | Backend → MSG91; test numbers from `LOGIN_TEST_OTPS` | Backend → MSG91; test numbers from `LOGIN_TEST_OTPS` |
 | Data | `backend/seed/dev-seed.sql` | `backend/seed/dev-seed.sql` + your test accounts | Real |
 
 ## Guard rails already in the code
@@ -66,7 +66,7 @@ Then, each in its own terminal:
 - The phone apps need a **development build** installed once per app: `npx eas-cli build --profile development --platform android`. Expo Go can't load maps, Sentry or the other native modules.
 - **Logging in:**
   - Test numbers `9100000001`, `9100000002` and `9100000003` with OTP `123456` work with no SMS.
-  - Any real number gets a real SMS through MSG91, provided `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID` are in `backend/.env.local` and the backend is running.
+  - Any real number gets a real SMS through MSG91, provided `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID` are in `backend/.env.local` and the backend is running. Without them the backend prints the code in its terminal.
 - Local test data is the fake Kaup zone with 2 stores and 20 products. Set your delivery location to Kaup, Udupi.
 - `CASHFREE_ENV=sandbox` in `backend/.env.local`. Never put live Cashfree keys on a laptop.
 
@@ -138,20 +138,19 @@ After that, `--status` lists exactly what production is missing (113 onward).
 
 ## How login OTP SMS works
 
-Supabase generates the code, checks it and issues the session. With the Send SMS hook enabled, Supabase sends the code to our backend (`POST /auth/hooks/send-sms`, signed with `SEND_SMS_HOOK_SECRET`), and the backend sends it through MSG91 with the DLT-approved template.
+The backend owns the login code (`backend/src/auth/loginOtp.ts`):
 
-| | Who calls the hook | Hook URL | Where it's configured |
-|---|---|---|---|
-| Local | Local Supabase (Docker) | `http://host.docker.internal:4000/auth/hooks/send-sms` | `supabase/config.toml` (secret in `supabase/.env`, written by `local:setup`) |
-| Staging | flikk-staging | `https://<staging railway domain>/auth/hooks/send-sms` | Supabase dashboard → Authentication → Hooks |
-| Production | Flikk | `https://flikk-production.up.railway.app/auth/hooks/send-sms` | Supabase dashboard → Authentication → Hooks |
+1. `POST /auth/otp/request` makes a 6-digit code and sends it through MSG91 with the DLT-approved template (`src/lib/msg91.ts`, the same call `pnpm sms:test` makes). It keeps only a hash, for 5 minutes and 5 attempts.
+2. `POST /auth/otp/verify` checks the code. Then it asks Supabase for a normal session: it finds or creates the confirmed auth user, sets a one-time random password and signs in with it.
 
-- **Backend variables for the hook:**
-  - On a laptop, `backend/.env.local` needs `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID`. `local:setup` writes `SEND_SMS_HOOK_SECRET` for you.
-  - On Railway, set all three. The hook secret must equal the one in that Supabase project's hook settings.
+Supabase sends no SMS and needs no SMS provider, test OTPs or Send SMS hook. The path is the same locally and on Railway, and a laptop backend works against local or hosted Supabase alike.
+
+- **Backend variables:** `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID` (or `MSG91_SMS_TEMPLATE_ID`), in `backend/.env.local` on a laptop and in Railway Variables in production.
+- **Supabase setting:** Authentication → Sign In / Providers → **Phone** must stay enabled, because the session is a phone sign-in. Once the new backend is live, disable Authentication → Hooks → Send SMS in the hosted projects; it is no longer used.
+- **Test numbers:** set `LOGIN_TEST_OTPS` on Railway for the Google Play reviewer, e.g. `919100000001=123456`. Supabase's own test numbers no longer apply. Test numbers never send an SMS, so the reviewer login keeps working even if MSG91 is down.
+- **Where failures show up:** in the backend log, as `Login OTP SMS failed` with MSG91's reason. The app only shows "We couldn't send a code".
 - **Check MSG91 on its own:** `cd backend && pnpm sms:test 98XXXXXXXX` sends one real OTP and prints the code it should contain.
-- **Never point a hosted Supabase project's hook at a laptop.** A laptop backend only works with *local* Supabase. Hosted Supabase can't reach `localhost`, and pointing production at a tunnel would put every customer's login on your laptop.
-- Test numbers never trigger the hook, so the Google Play reviewer login keeps working even if MSG91 is down.
+- **Codes are held in memory** (one API replica). A restart or deploy only means the user taps "Resend".
 
 ## Rules to keep in mind
 

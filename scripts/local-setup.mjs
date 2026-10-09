@@ -10,20 +10,17 @@
 //
 // What it writes (existing values for other keys are kept; the previous file
 // is saved once as .env.local.before-local-setup):
-//   backend/.env.local          SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
-//                               SEND_SMS_HOOK_SECRET, PORT=4000
+//   backend/.env.local          SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, PORT=4000
 //   apps/{customer,partner,rider}/.env.local
 //                               EXPO_PUBLIC_API_URL=http://<this Mac's LAN IP>:4000
 //   apps/customer/.env.local    EXPO_PUBLIC_SUPABASE_URL=http://<LAN IP>:54321
 //   apps/admin, apps/landing    NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY (local)
 //   apps/partner-dashboard,
 //   apps/landing                NEXT_PUBLIC_API_URL=http://localhost:4000
-//   supabase/.env               SEND_SMS_HOOK_SECRET (read by config.toml)
 //
 // Production is never touched: release builds read EAS environment
 // variables, and Railway/Vercel have their own. See ENVIRONMENTS.md.
 import { spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -72,20 +69,11 @@ function supabase(cliArgs, env = process.env) {
   return spawnSync('npx', ['--yes', 'supabase', ...cliArgs], { cwd: root, env, encoding: 'utf8' });
 }
 
-// 1. The hook secret must exist before Supabase starts: config.toml reads it.
-const supabaseEnvFile = 'supabase/.env';
-let secret = readEnv(path(supabaseEnvFile)).SEND_SMS_HOOK_SECRET;
-const newSecret = !secret;
-if (newSecret) secret = `v1,whsec_${randomBytes(32).toString('base64')}`;
-upsertEnv(supabaseEnvFile, { SEND_SMS_HOOK_SECRET: secret });
-const cliEnv = { ...process.env, SEND_SMS_HOOK_SECRET: secret };
-
-// 2. Start (or restart, when the secret is new) local Supabase.
+// 1. Start local Supabase.
 console.log('\nStarting local Supabase (Docker)…');
-if (newSecret) supabase(['stop'], cliEnv);
-const started = spawnSync('npx', ['--yes', 'supabase', 'start'], { cwd: root, env: cliEnv, stdio: 'inherit' });
+const started = spawnSync('npx', ['--yes', 'supabase', 'start'], { cwd: root, stdio: 'inherit' });
 if (started.status !== 0) fail('supabase start failed (see the lines above). If Docker is not running, start Docker Desktop; if a container is "unhealthy", run `npx supabase stop --no-backup` and try again.');
-const status = supabase(['status', '-o', 'env'], cliEnv);
+const status = supabase(['status', '-o', 'env']);
 if (status.status !== 0) fail(`supabase status failed:\n${status.stderr}`);
 const s = readEnvText(status.stdout);
 function readEnvText(text) {
@@ -103,10 +91,10 @@ if (!ip || !/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) fail('No Wi-Fi/LAN IPv4 address 
 const apiPort = 4000;
 const supabasePort = new URL(apiUrl).port || '54321';
 
-// 3. Point every app at local services.
+// 2. Point every app at local services.
 console.log(`\nWriting .env.local files (LAN IP ${ip})…`);
 upsertEnv('backend/.env.local', {
-  SUPABASE_URL: apiUrl, SUPABASE_SERVICE_ROLE_KEY: serviceKey, SEND_SMS_HOOK_SECRET: secret, PORT: String(apiPort),
+  SUPABASE_URL: apiUrl, SUPABASE_SERVICE_ROLE_KEY: serviceKey, PORT: String(apiPort),
 });
 for (const app of ['customer', 'partner', 'rider']) {
   upsertEnv(`apps/${app}/.env.local`, {
@@ -118,7 +106,7 @@ upsertEnv('apps/admin/.env.local', { NEXT_PUBLIC_SUPABASE_URL: apiUrl, NEXT_PUBL
 upsertEnv('apps/partner-dashboard/.env.local', { NEXT_PUBLIC_API_URL: `http://localhost:${apiPort}` });
 upsertEnv('apps/landing/.env.local', { NEXT_PUBLIC_SUPABASE_URL: apiUrl, NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey, NEXT_PUBLIC_API_URL: `http://localhost:${apiPort}` });
 
-// 4. Schema + fake test data in the local database.
+// 3. Schema + fake test data in the local database.
 if (!args.includes('--no-db')) {
   console.log('\nApplying migrations and test data to the local database…');
   const migrate = spawnSync('node', ['backend/scripts/db-migrate.mjs', '--seed'], { cwd: root, env: { ...process.env, DATABASE_URL: dbUrl }, stdio: 'inherit' });
@@ -126,7 +114,7 @@ if (!args.includes('--no-db')) {
 }
 
 const backendEnv = readEnv(path('backend/.env.local'));
-const msg91 = backendEnv.MSG91_AUTH_KEY && backendEnv.MSG91_OTP_TEMPLATE_ID;
+const msg91 = backendEnv.MSG91_AUTH_KEY && (backendEnv.MSG91_OTP_TEMPLATE_ID || backendEnv.MSG91_SMS_TEMPLATE_ID);
 console.log(`
 ✓ Local stack ready.
 
@@ -139,6 +127,6 @@ console.log(`
 
   Real images + home content: SOURCE_DATABASE_URL='<prod Session pooler URI>' npm run local:content
   Login without SMS: 9100000001 / 9100000002 / 9100000003, OTP 123456.
-  Login with a real number: ${msg91 ? 'MSG91 keys found — a real SMS is sent through the local backend.' : 'add MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID to backend/.env.local first.'}
+  Login with a real number: ${msg91 ? 'MSG91 keys found — a real SMS is sent through the local backend.' : 'no MSG91 keys in backend/.env.local, so the backend prints each code in its terminal.'}
   The phone must be on the same Wi-Fi as this computer. If your Wi-Fi IP changes, run this again.
 `);

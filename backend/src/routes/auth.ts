@@ -8,6 +8,7 @@ import { normalizePhone } from '../lib/phone.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { partnerSuspension } from '../auth/partnerSuspension.js';
 import { logger } from '../lib/logger.js';
+import { checkLoginOtp, isPhoneBanned, requestLoginOtp, sessionForVerifiedPhone } from '../auth/loginOtp.js';
 
 export const authRouter = Router();
 
@@ -20,21 +21,10 @@ authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
   try {
     const { phone } = req.body as { phone?: string };
     const canonical = normalizePhone(phone); // +91… — throws on a bad number
-    const { error } = await supabaseAuth.auth.signInWithOtp({ phone: canonical });
-    if (isBanned(error)) throw accountBlocked();
-    if (error) {
-      // The app only shows a generic message; log Supabase's reason so a
-      // failed send can be diagnosed (e.g. "Error running hook URI" when
-      // the Send SMS hook or MSG91 failed, or SMS rate limits). Never the
-      // phone number or code.
-      const e = error as { code?: unknown; status?: unknown; message?: unknown };
-      logger.warn({
-        code: typeof e.code === 'string' ? e.code : undefined,
-        status: typeof e.status === 'number' ? e.status : undefined,
-        reason: typeof e.message === 'string' ? e.message.slice(0, 200) : undefined,
-      }, 'Login OTP request failed at Supabase Auth');
-      throw new AppError(400, 'OTP_SEND_FAILED', 'We couldn’t send a code. Please try again shortly.');
-    }
+    if (await isPhoneBanned(canonical)) throw accountBlocked();
+    // The backend sends and checks the code itself (auth/loginOtp.ts); a
+    // failed send is logged there with MSG91's reason.
+    await requestLoginOtp(canonical);
     res.status(200).json({ ok: true });
   } catch (err) {
     next(err);
@@ -52,9 +42,13 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
     const { phone, code } = req.body as { phone?: string; code?: string };
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
     const canonical = normalizePhone(phone);
-    const { data, error } = await supabaseAuth.auth.verifyOtp({ phone: canonical, token: code, type: 'sms' });
+    if (!checkLoginOtp(canonical, code)) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
+    const { data, error } = await sessionForVerifiedPhone(canonical);
     if (isBanned(error)) throw accountBlocked();
-    if (error || !data.session) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
+    if (error || !data.session) {
+      logger.error({ code: error?.code, reason: error?.message?.slice(0, 200) }, 'Could not issue a session after a correct login code');
+      throw new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
+    }
 
     const userId = data.session.user.id;
     // Same lazy-provisioning as requireAuth (see that file's own note) —
