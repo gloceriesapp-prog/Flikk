@@ -10,13 +10,13 @@
 
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, ScrollView, View } from 'react-native';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { HeadphonesIcon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { fetchPayoutPage } from '../../api/payouts';
+import { fetchCommission, fetchPayoutPage, formatCommissionPercent } from '../../api/payouts';
 import { buildSamplePayouts, toWeeklyPayout } from './data';
 import { CurrentWeekPayoutCard } from './components/CurrentWeekPayoutCard';
 import { PayoutStatusFilter, type PayoutStatusFilterValue } from './components/PayoutStatusFilter';
@@ -27,10 +27,12 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Payouts'>;
 
 const PAGE_BG = '#F1F2F4';
 
-export function PayoutsScreen(_props: Props) {
+export function PayoutsScreen({ navigation }: Props) {
   const [statusFilter, setStatusFilter] = useState<PayoutStatusFilterValue>('all');
   const query = useInfiniteQuery({ queryKey: ['payouts'], initialPageParam: '', queryFn: ({ pageParam }) => fetchPayoutPage(pageParam || undefined), getNextPageParam: page => page.nextCursor ?? undefined, refetchOnWindowFocus: false });
   const { isLoading } = query;
+  // This store's real commission rate (GET /partner/commission).
+  const commission = useQuery({ queryKey: ['partner-commission'], queryFn: fetchCommission, refetchOnWindowFocus: false });
   const rows = query.data?.pages.flatMap(page => page.items);
   const realPayouts = (rows ?? []).map(toWeeklyPayout);
   // A brand-new store (zero delivered orders, zero real payouts yet) has
@@ -64,12 +66,12 @@ export function PayoutsScreen(_props: Props) {
         <Text className="text-2xl font-semibold text-ink">Payouts</Text>
 
         {/* Support — the one thing a shop owner reaches for when a
-            settlement figure looks wrong. No backend/contact flow yet
-            (specs/05-platform doesn't cover one) — stubbed rather than
-            silently doing nothing, same convention as the notification
-            bell on the Orders screen. */}
+            settlement figure looks wrong. Opens Help & support: the
+            admin-configured contacts and a payout support request. */}
         <Pressable
-          onPress={() => { }}
+          onPress={() => navigation.navigate('Support', { compose: true })}
+          accessibilityRole="button"
+          accessibilityLabel="Help & support"
           className="h-11 w-11 items-center justify-center rounded-full bg-white"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
@@ -106,6 +108,13 @@ export function PayoutsScreen(_props: Props) {
           )}
 
           {currentWeek && <CurrentWeekPayoutCard payout={currentWeek} />}
+
+          {commission.data && (
+            <Text className="px-1 text-[12.5px] font-medium text-ink/55">
+              Gloceries commission: {formatCommissionPercent(commission.data.commissionRate)} of the item total on each new order
+              {commission.data.isStoreOverride ? ' (your store’s rate)' : ''}.
+            </Text>
+          )}
 
           <View className="mt-3 gap-3">
             <PayoutStatusFilter

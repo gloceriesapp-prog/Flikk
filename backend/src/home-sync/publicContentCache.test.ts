@@ -32,3 +32,15 @@ it('does not duplicate a recovery inventory refresh or invalidate config twice',
   emit('config'); expect(cache.invalidateQueries).toHaveBeenCalledTimes(3);
   stop();
 });
+
+it('refreshes payment policy and checkout quotes on an admin configuration change', () => {
+  const cache = client(); const stop = subscribePublicContentCache(cache);
+  emit('config');
+  const options = vi.mocked(cache.invalidateQueries).mock.calls[0];
+  const predicate = options[0]?.predicate;
+  expect(predicate?.({ queryKey: ['payment-availability'] } as never)).toBe(true);
+  expect(predicate?.({ queryKey: ['checkout-quote', 'customer'] } as never)).toBe(true);
+  expect(predicate?.({ queryKey: ['orders'] } as never)).toBe(false);
+  expect(options[1]).toEqual({ cancelRefetch: false });
+  stop();
+});

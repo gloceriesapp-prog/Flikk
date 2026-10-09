@@ -6,6 +6,7 @@ import { supabase, supabaseAuth } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { normalizePhone } from '../lib/phone.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
+import { partnerSuspension } from '../auth/partnerSuspension.js';
 
 export const authRouter = Router();
 
@@ -168,6 +169,10 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
     // rider — the one-phone-one-role rule), so whichever draft actually
     // has a submission is the one whose rejection state is real.
     const activeDraft = draft?.submitted_at ? draft : riderDraft?.submitted_at ? riderDraft : null;
+    // Admin partner-account suspension (migration 114). The partner app and
+    // dashboard show a blocking "account suspended" screen on this; every
+    // partner API route refuses with 403 PARTNER_SUSPENDED meanwhile.
+    const partner = req.user!.role === 'store_owner' ? await partnerSuspension(req.user!.id) : null;
 
     res.json({
       // Already resolved by requireAuth's own users.role lookup — no extra
@@ -187,6 +192,8 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       // rider app shows a blocking "account suspended" screen on this.
       rider_suspended: riderPayout ? riderPayout.is_active === false : false,
       rider_suspended_reason: riderPayout?.is_active === false ? (riderPayout.suspended_reason ?? null) : null,
+      partner_suspended: partner?.suspended === true,
+      partner_suspended_reason: partner?.suspended ? partner.reason : null,
       // Only a real, current rejection — a fresh resubmission's own PATCH
       // /store-draft (or /rider-draft) doesn't clear is_rejected on the
       // user row by itself, so this also requires a submitted application

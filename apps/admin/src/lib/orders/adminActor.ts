@@ -1,22 +1,7 @@
-// Admin identity for audited order writes (admin_order_actions, migration 109).
-// Same allow-list check as requireStoreAdmin, but returns who is acting so the
-// SECURITY DEFINER RPCs can record the admin's email next to every change.
+// Helpers for audited order writes (admin_order_actions, migration 109).
+// The acting admin's identity comes from requireAdmin() (lib/auth/requireAdmin.ts),
+// whose `actor` the SECURITY DEFINER RPCs record next to every change.
 import { NextResponse } from 'next/server';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
-
-export interface AdminActor {
-  id: string;
-  email: string;
-}
-
-export async function requireAdminActor(): Promise<{ actor: AdminActor; denied: null } | { actor: null; denied: NextResponse }> {
-  const user = await requireAdminSession();
-  if (!user || !user.email || !isAllowedAdminEmail(user.email)) {
-    return { actor: null, denied: NextResponse.json({ error: 'Administrator access required.' }, { status: 401 }) };
-  }
-  return { actor: { id: user.id, email: user.email }, denied: null };
-}
 
 // Errcodes raised by the migration 109 admin RPCs (and the functions they call).
 export function rpcErrorCode(err: unknown): string | undefined {
@@ -32,6 +17,8 @@ export function adminRpcErrorResponse(err: unknown): NextResponse | null {
   if (code === 'P0404') return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
   if (code === 'P0422') return NextResponse.json({ error: message }, { status: 400 });
   if (code === 'P0409') return NextResponse.json({ error: message }, { status: 409 });
+  // enforce_rider_capacity (migration 113): rider at max_active_trips_per_rider.
+  if (code === 'P0429') return NextResponse.json({ error: message }, { status: 409 });
   if (code === 'P1001') {
     return NextResponse.json({ error: message === 'Awaiting payment' ? 'This order is still waiting for online payment.' : 'That status change is not allowed for this order.' }, { status: 409 });
   }

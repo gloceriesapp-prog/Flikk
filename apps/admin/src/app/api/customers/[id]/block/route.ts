@@ -8,19 +8,13 @@
 // trail: who, why, until when, and when it was lifted.
 
 import { NextResponse } from 'next/server';
-import { requireAdminSession } from '@/lib/supabase/server';
-import { isAllowedAdminEmail } from '@/lib/adminAccess';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { BLOCK_DURATIONS, type BlockDuration } from '@/lib/customerBlocks';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Supabase has no "forever" ban; ~100 years is its documented equivalent.
 const INDEFINITE_BAN = '876000h';
-
-async function adminUser() {
-  const user = await requireAdminSession();
-  return user && isAllowedAdminEmail(user.email) ? user : null;
-}
 
 async function loadCustomer(id: string) {
   if (!UUID.test(id)) return null;
@@ -29,8 +23,8 @@ async function loadCustomer(id: string) {
 }
 
 export async function POST(request: Request, ctx: RouteContext<'/api/customers/[id]/block'>) {
-  const user = await adminUser();
-  if (!user) return NextResponse.json({ error: 'Administrator access required.' }, { status: 401 });
+  const { actor: user, denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!(await loadCustomer(id))) return NextResponse.json({ error: 'Customer not found.' }, { status: 404 });
 
@@ -66,8 +60,8 @@ export async function POST(request: Request, ctx: RouteContext<'/api/customers/[
 }
 
 export async function DELETE(_request: Request, ctx: RouteContext<'/api/customers/[id]/block'>) {
-  const user = await adminUser();
-  if (!user) return NextResponse.json({ error: 'Administrator access required.' }, { status: 401 });
+  const { actor: user, denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!(await loadCustomer(id))) return NextResponse.json({ error: 'Customer not found.' }, { status: 404 });
 

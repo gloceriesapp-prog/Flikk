@@ -19,8 +19,10 @@ INSERT INTO stores(id,owner_user_id,zone_id,name,category,district,lat,lng) VALU
  ('00000000-0000-4000-8000-000000000bf2','00000000-0000-4000-8000-000000000bd2','00000000-0000-4000-8000-000000000ba0','Shop two','grocery','Test',12.98,77.60);
 INSERT INTO addresses(id,user_id,line1,zone_id) VALUES('00000000-0000-4000-8000-000000000bb1','00000000-0000-4000-8000-000000000bc1','1 Test Road','00000000-0000-4000-8000-000000000ba0');
 -- Onion: 250 g (12 packs, reserved by a live order) and 1 kg (5 packs).
+-- Not yet approved, so partner price edits apply directly (a live product's
+-- price edits are queued for review instead: product-change-review.sql).
 INSERT INTO products(id,store_id,name,unit,price,category,stock_status,approval_status,stock_quantity,stock_tracking_enabled,local_name,description,freshness_tag,is_veg) VALUES
- ('00000000-0000-4000-8000-000000000b01','00000000-0000-4000-8000-000000000bf1','Onion','250 g',15,'Vegetables & Fruits','in_stock','approved',17,true,'Pyaz','Admin copy','Fresh today',true);
+ ('00000000-0000-4000-8000-000000000b01','00000000-0000-4000-8000-000000000bf1','Onion','250 g',15,'Vegetables & Fruits','in_stock','pending',17,true,'Pyaz','Admin copy','Fresh today',true);
 INSERT INTO product_variants(id,product_id,unit_type,quantity,price,is_default,stock_quantity) VALUES
  ('00000000-0000-4000-8000-000000000b11','00000000-0000-4000-8000-000000000b01','g',250,15,true,12),
  ('00000000-0000-4000-8000-000000000b12','00000000-0000-4000-8000-000000000b01','kg',1,52,false,5);

@@ -5,6 +5,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { accountAdmission } from '../security/admission.js';
 import { authenticate } from '../auth/authenticate.js';
+import { partnerSuspendedError, partnerSuspension } from '../auth/partnerSuspension.js';
 import { AppError } from '../lib/errors.js';
 import type { Role } from '../lib/orderStateMachine.js';
 
@@ -48,4 +49,16 @@ export function requireApproved(req: AuthedRequest, _res: Response, next: NextFu
     return next(new AppError(403, 'PENDING_APPROVAL', 'Account is pending admin approval.'));
   }
   next();
+}
+
+// store_owner only: an admin-suspended partner account (migration 114) is
+// refused on every partner surface with the reason, so the apps can show a
+// blocking "account suspended" screen instead of a generic error.
+export async function requireActivePartner(req: AuthedRequest, _res: Response, next: NextFunction) {
+  if (req.user?.role !== 'store_owner') return next();
+  try {
+    const status = await partnerSuspension(req.user.id);
+    if (status.suspended) return next(partnerSuspendedError(status.reason));
+    next();
+  } catch (error) { next(error); }
 }

@@ -2,13 +2,14 @@
 // Privileged counts use the authenticated admin service-role route.
 
 import { NextResponse } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import type { Zone } from '@/lib/types';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { ZoneInputError, parseZoneActive, parseZoneName, zoneSlug } from '@/lib/zoneValidation';
 
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const [zonesRes, storesRes, ridersRes] = await Promise.all([
       supabaseAdmin.from('zones').select('id, name, is_active').order('name'),
@@ -40,5 +41,30 @@ export async function GET() {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not load zones.';
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// Create a zone (admin only). New zones start inactive unless isActive is
+// sent: activating one makes the approval / Add Store zone pickers appear.
+export async function POST(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
+  const body = (await request.json().catch(() => null)) as { name?: unknown; isActive?: unknown } | null;
+  try {
+    const name = parseZoneName(body?.name);
+    const isActive = parseZoneActive(body?.isActive) ?? false;
+    const { data, error } = await supabaseAdmin
+      .from('zones')
+      .insert({ name, slug: zoneSlug(name), is_active: isActive })
+      .select('id, name, is_active')
+      .single();
+    if (error?.code === '23505') return NextResponse.json({ error: 'A zone with that name already exists.' }, { status: 409 });
+    if (error) throw error;
+    const zone: Zone = { id: data.id, name: data.name, isActive: data.is_active, storeCount: 0, riderCount: 0 };
+    return NextResponse.json(zone, { status: 201 });
+  } catch (err) {
+    if (err instanceof ZoneInputError) return NextResponse.json({ error: err.message }, { status: 400 });
+    console.error('Zone create failed', err);
+    return NextResponse.json({ error: 'Could not create the zone. Try again.' }, { status: 500 });
   }
 }

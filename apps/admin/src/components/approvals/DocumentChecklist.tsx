@@ -4,8 +4,8 @@
 // document the wizard requires; FSSAI and Shop & Establishment are expected
 // for a grocery shop but optional in the wizard; GSTIN and Udyam are
 // optional. Payout details are collected after approval (partner app), not
-// here. Pharmacy gets its own section: the wizard does not collect a drug
-// licence, so it must be added on the store page after approval.
+// here. Pharmacy gets its own section: the wizard collects the drug
+// licence (migration 114) and approval refuses a pharmacy without one.
 
 import { AlertCircle, CheckCircle2, MinusCircle } from 'lucide-react';
 import clsx from 'clsx';
@@ -95,7 +95,7 @@ export function DocumentChecklist({ application }: { application: Application })
             <DocRowItem
               row={{
                 label: 'Drug License',
-                why: 'Separately regulated (state Drug Control authority). The wizard does not collect it — get it from the applicant and add it on the store page after approval.',
+                why: 'Separately regulated (state Drug Control authority). Required for a pharmacy — approval is blocked without it.',
                 status: application.drugLicenseNumber ? 'verified' : 'missing',
                 value: application.drugLicenseNumber,
               }}

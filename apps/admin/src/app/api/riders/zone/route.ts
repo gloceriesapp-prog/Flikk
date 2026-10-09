@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 const uuid = /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 export async function PATCH(request: Request) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { riderId, zoneId } = await request.json();
     if (typeof riderId !== 'string' || !uuid.test(riderId) || typeof zoneId !== 'string' || !uuid.test(zoneId))

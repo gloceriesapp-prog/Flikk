@@ -1,6 +1,6 @@
 // "Which stores are actually performing" — a plain ranked table, real data
 // throughout: daily order count (placed today) and total order count
-// (all-time) both come from app/api/overview's own all-orders fetch, and
+// (all-time) both come from app/api/overview's SQL aggregate (no row cap), and
 // rating is stores.rating itself — a real, continuously recomputed average
 // (backend/src/routes/reviews.ts updates it on every new review), not a
 // placeholder. Top 5 rows only, nothing else on this card — the old

@@ -3,19 +3,16 @@
 // until a founder decides here). Separate from the approval route next door
 // (that flips approval_status for brand-new products) — this only ever touches
 // the two image columns. Approving promotes pending_image_url onto image_url;
-// rejecting just drops it. Unlike the approval route, this calls
-// requireAdminSession() itself — a direct /api call (curl, stale tab) bypasses
-// the page-redirect middleware, so a data-touching route re-checks (see
-// lib/supabase/server.ts's own note).
+// rejecting just drops it. Like every admin API route, it calls
+// requireAdmin() itself (lib/auth/requireAdmin.ts).
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
-
-  const user = await requireAdminSession();
-  if (!user) return NextResponse.json({ error: 'Not authorized.' }, { status: 401 });
 
   try {
     const { action } = (await request.json()) as { action: 'approve' | 'reject' };

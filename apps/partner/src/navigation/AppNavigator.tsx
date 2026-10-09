@@ -27,6 +27,8 @@ import { PayoutOrderHistoryScreen } from '../screens/payout-detail/PayoutOrderHi
 import { PayoutsScreen } from '../screens/payouts/PayoutsScreen';
 import { ProductDetailScreen } from '../screens/product-detail/ProductDetailScreen';
 import { StoreSettingsScreen } from '../screens/store-settings/StoreSettingsScreen';
+import { SupportScreen } from '../screens/support/SupportScreen';
+import { SupportTicketScreen } from '../screens/support/SupportTicketScreen';
 import type { AppStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -49,6 +51,8 @@ export function AppNavigator() {
       <Stack.Screen name="AddProduct" component={AddProductScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="PayoutOrderHistory" component={PayoutOrderHistoryScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="StoreSettings" component={StoreSettingsScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="Support" component={SupportScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="SupportTicket" component={SupportTicketScreen} options={{ presentation: 'card' }} />
       {/* Same real map-pin screen onboarding's own AuthNavigator already
           registers — StoreSettingsScreen's "Change on map" is the one
           post-approval way to reach it, updating the store's real

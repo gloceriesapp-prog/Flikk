@@ -1,8 +1,7 @@
-// Shared across ProfileScreen's Support section and the Home header's
-// HELP/SOS pills — one place to update once a real ops line exists.
-export const SUPPORT_PHONE = '+919980000000';
-export const SUPPORT_EMAIL = 'riders@flikk.app';
-
 // India's real national emergency number — SOS should reach an actual
-// emergency line, not a fake in-app number, even in a mock build.
+// emergency line, not a fake in-app number.
+//
+// Support contacts are no longer hard-coded here: they are admin-configured
+// (admin "App settings" -> GET /app-config/support/rider) and read through
+// screens/support/useSupport.ts.
 export const EMERGENCY_PHONE = '112';

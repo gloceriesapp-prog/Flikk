@@ -22,11 +22,12 @@ export function notificationDisposition(target: CustomerNotificationTarget, cust
 }
 
 export interface AreaNotificationTarget { type: 'area'; customer_id: string; notification_id: string }
-export type CustomerNotificationTarget = OrderNotificationTarget | AreaNotificationTarget;
+export interface AnnouncementNotificationTarget { type: 'announcement'; customer_id: string; notification_id: string }
+export type CustomerNotificationTarget = OrderNotificationTarget | AreaNotificationTarget | AnnouncementNotificationTarget;
 export function customerNotificationTarget(value: unknown): CustomerNotificationTarget | null {
   const order = orderNotificationTarget(value); if (order) return order;
   if (!value || typeof value !== 'object') return null;
   const data = value as Record<string, unknown>;
-  return data.type === 'area' && typeof data.customer_id === 'string' && uuid.test(data.customer_id) && typeof data.notification_id === 'string' && uuid.test(data.notification_id)
-    ? { type: 'area', customer_id: data.customer_id, notification_id: data.notification_id } : null;
+  return (data.type === 'area' || data.type === 'announcement') && typeof data.customer_id === 'string' && uuid.test(data.customer_id) && typeof data.notification_id === 'string' && uuid.test(data.notification_id)
+    ? { type: data.type, customer_id: data.customer_id, notification_id: data.notification_id } : null;
 }

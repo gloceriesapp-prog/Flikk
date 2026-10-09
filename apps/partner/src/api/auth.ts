@@ -79,6 +79,7 @@ export interface StoreApplication {
   fssaiNumber?: string;
   panNumber?: string;
   udyamNumber?: string;
+  drugLicenseNumber?: string;
   openTime?: string;
   closeTime?: string;
 }
@@ -146,6 +147,7 @@ export interface StoreDraftPatch {
   fssaiNumber?: string;
   panNumber?: string;
   udyamNumber?: string;
+  drugLicenseNumber?: string;
   openTime?: string;
   closeTime?: string;
 }
@@ -167,6 +169,7 @@ export interface SavedStoreDraft {
   fssai_number: string | null;
   pan_number: string | null;
   udyam_number: string | null;
+  drug_license_number?: string | null;
   open_time: string | null;
   close_time: string | null;
 }

@@ -5,12 +5,12 @@
 // [id] = stores.id for a store, users.id (riders.user_id) for a rider.
 
 import { NextResponse } from 'next/server';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { parseKindAndId } from '@/lib/payoutValidation';
 
 export async function GET(_request: Request, context: { params: Promise<{ kind: string; id: string }> }) {
-  const denied = await requireStoreAdmin();
+  const { denied } = await requireAdmin();
   if (denied) return denied;
   const headers = { 'Cache-Control': 'private, no-store' };
 

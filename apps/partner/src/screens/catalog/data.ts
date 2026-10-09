@@ -43,6 +43,10 @@ export interface PartnerProduct {
   // 'approved'/'rejected' after a decision. InventoryProductListCard/
   // ProductRow show a badge for anything not 'approved'.
   approvalStatus: 'pending' | 'approved' | 'rejected';
+  // A name or price edit to this LIVE product is waiting for admin review
+  // (products.pending_changes, migration 115) — customers still see the
+  // approved name/prices shown here until it's approved.
+  hasPendingChanges?: boolean;
 }
 
 // Same fixed vocabulary as admin's own Add/Edit product form

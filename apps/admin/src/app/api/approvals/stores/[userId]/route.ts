@@ -28,14 +28,15 @@
 // applicant to exist, regardless of what role they currently hold.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { sendPushNotification } from '@/lib/pushNotification';
+import { STORE_CATEGORIES } from '@/lib/store-options';
 
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/stores/[userId]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { userId } = await ctx.params;
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(userId)) return NextResponse.json({ error: 'Invalid applicant.' }, { status: 400 });
 
   try {
@@ -74,12 +75,21 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
     const { data: draft, error: draftError } = await supabaseAdmin
       .from('store_onboarding_drafts')
       .select(
-        'store_name, category, district, address_line, manual_address, photo_url, gst_number, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, phone, udyam_number, open_time, close_time',
+        'store_name, category, district, address_line, manual_address, photo_url, gst_number, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, phone, udyam_number, drug_license_number, open_time, close_time',
       )
       .eq('user_id', userId)
       .not('submitted_at', 'is', null)
       .single();
     if (draftError || !draft) throw new Error('No submitted application found for that id.');
+
+    // Same category rules as the backend (lib/storeCategories.ts): only the
+    // admin category list, and a pharmacy only with a drug licence.
+    if (!STORE_CATEGORIES.some((c) => c === draft.category)) {
+      return NextResponse.json({ error: `“${draft.category}” is not a store category Gloceries allows. Reject so the applicant picks one from the list.` }, { status: 400 });
+    }
+    if (draft.category === 'Pharmacy' && !draft.drug_license_number?.trim()) {
+      return NextResponse.json({ error: 'A pharmacy needs a drug licence number. Reject so the applicant adds it.' }, { status: 400 });
+    }
 
     // One store per owner: an approved owner who reapplies must not get a
     // second store (the migration 110 trigger enforces the same in the DB).
@@ -130,6 +140,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
       pan_number: draft.pan_number,
       phone: draft.phone,
       udyam_number: draft.udyam_number,
+      drug_license_number: draft.drug_license_number,
       open_time: draft.open_time,
       close_time: draft.close_time,
     });

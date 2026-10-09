@@ -54,3 +54,10 @@ it.each([
 ])('admin validation rejects %o', (patch) => {
   expect(() => validateAppContentInput({ ...valid, ...patch })).toThrow();
 });
+
+it('admin validation requires https links for registered artwork keys and trims them', () => {
+  const row = validateAppContentInput({ ...valid, copy: { 'home.welcome.imageUrl': ' https://cdn.x.in/a.webp ', 'home.welcome.label': ' Hi ' } });
+  expect(row.copy).toEqual({ 'home.welcome.imageUrl': 'https://cdn.x.in/a.webp', 'home.welcome.label': ' Hi ' });
+  expect(() => validateAppContentInput({ ...valid, copy: { 'stores.promo.imageUrl': 'http://x.in/a.png' } })).toThrow(/https/);
+  expect(() => validateAppContentInput({ ...valid, copy: { 'home.groceries.headerImageUrl': 'not a link' } })).toThrow(/https/);
+});

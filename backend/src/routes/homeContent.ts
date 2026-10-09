@@ -98,7 +98,7 @@ export function startHomeContentSync() {
   for (const table of HOME_SECTION_TABLES) {
     channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => homeSectionsChanged());
   }
-  for (const table of ['app_content', 'app_faqs', 'app_release_config']) channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => contentChanged('config'));
+  for (const table of ['app_content', 'app_faqs', 'app_release_config', 'platform_settings']) channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => contentChanged('config'));
   channel = channel
     .subscribe(status => {
       // Discard authorization snapshots across a realtime connection gap.

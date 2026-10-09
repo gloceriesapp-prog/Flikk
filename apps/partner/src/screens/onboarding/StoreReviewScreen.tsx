@@ -48,6 +48,7 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         fssaiNumber: draft.fssaiNumber || undefined,
         panNumber: draft.panNumber || undefined,
         udyamNumber: draft.udyamNumber || undefined,
+        drugLicenseNumber: draft.drugLicenseNumber || undefined,
         openTime: draft.openTime || undefined,
         closeTime: draft.closeTime || undefined,
       });
@@ -103,6 +104,9 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         <Row label="PAN" value={draft.panNumber} onEdit={() => navigation.navigate('BusinessDocuments', { draft })} />
         <Row label="GSTIN" value={draft.gstNumber} onEdit={() => navigation.navigate('BusinessDocuments', { draft })} />
         <Row label="Udyam number" value={draft.udyamNumber} onEdit={() => navigation.navigate('BusinessDocuments', { draft })} />
+        {draft.category === 'Pharmacy' && (
+          <Row label="Drug licence number" value={draft.drugLicenseNumber} onEdit={() => navigation.navigate('StoreDetails', { draft })} />
+        )}
 
         <SectionLabel label="Hours" />
         <Row

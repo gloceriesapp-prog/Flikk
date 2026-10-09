@@ -1,6 +1,7 @@
 import { apiRequest } from '../../api/client';
 export interface CustomerNotification {
     id: string;
+    // Null for a message from the Gloceries team (no order to open).
     order_id: string | null;
     trip_id: string | null;
     title: string;

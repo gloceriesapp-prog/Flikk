@@ -1,8 +1,8 @@
-import { requireAdminSession } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const actor = await requireAdminSession();
-  if (!actor) return Response.json({ error: 'Not signed in.' }, { status: 401 });
+  const { actor, denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await params;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return Response.json({ error: 'Invalid request.' }, { status: 400 });
   const body = await request.json().catch(() => null);

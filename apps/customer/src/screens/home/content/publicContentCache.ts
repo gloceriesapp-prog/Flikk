@@ -22,10 +22,10 @@ export function subscribePublicContentCache(client: QueryClient) {
         // its scoped observer handles that once, without cancelling refetches.
         if (!inventory?.refresh) invalidateInventory(client, { storeIds: [], zoneIds: [], storeChanged: false, refresh: true });
       } else if (event === 'config') {
-        void client.invalidateQueries({ predicate: query => query.queryKey[0] === 'app-config' || query.queryKey[0] === 'app-release' });
+        void client.invalidateQueries({ predicate: query => ['app-config', 'app-release', 'payment-availability', 'checkout-quote'].includes(String(query.queryKey[0])) }, { cancelRefetch: false });
       } else if (event === 'settings') {
         void client.invalidateQueries({ queryKey: ['delivery-settings'] });
-        void client.invalidateQueries({ queryKey: ['checkout-quote'] });
+        void client.invalidateQueries({ queryKey: ['checkout-quote'] }, { cancelRefetch: false });
       }
     });
     entry = { count: 0, stop };

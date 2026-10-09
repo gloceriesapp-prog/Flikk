@@ -3,8 +3,11 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/seasonal-section/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   const body = await request.json();
 
@@ -40,6 +43,8 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/seasonal-s
 }
 
 export async function DELETE(request: Request, ctx: RouteContext<'/api/seasonal-section/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   try {

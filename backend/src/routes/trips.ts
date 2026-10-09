@@ -26,7 +26,8 @@ import type { CartItem } from '../lib/orderValidation.js';
 import { groupPricedCartByStore } from '../lib/trips.js';
 import { resolveAddressId } from '../lib/resolveAddress.js';
 import { notifyStoresOfNewOrder } from '../payments/newOrderPush.js';
-import { getCommissionRate } from '../lib/platformSettings.js';
+import { getStoreCommissionRates } from '../lib/platformSettings.js';
+import { assertPaymentMethodAvailable } from '../payments/availability.js';
 
 export const tripsRouter = Router();
 
@@ -60,10 +61,14 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
     const identity = checkoutAttemptIdentity(req.body, 'trip');
     const previous = await findCheckoutAttempt(req.user!.id, identity.id, identity.fingerprint);
     if (previous) { res.status(200).json(previous.result); return; }
+    // Admin checkout settings (migration 117) with the env as hard kill.
+    await assertPaymentMethodAvailable(body.payment_method ?? 'cod');
     const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, undefined, body.address_id);
     const pricedItems = quote.items;
     const addressId = await resolveAddressId(req.user!.id, body);
-    const legs = groupPricedCartByStore(pricedItems, await getCommissionRate());
+    // Each store's own commission rate (override or platform default).
+    const rates = await getStoreCommissionRates(pricedItems.map((item) => item.store_id));
+    const legs = groupPricedCartByStore(pricedItems, (storeId) => rates.get(storeId)!.rate);
     if (legs.length <= 1) {
       // Not an error a real customer can hit through the app (the cart
       // itself decides which endpoint to call based on how many distinct

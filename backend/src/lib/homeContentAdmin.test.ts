@@ -58,7 +58,7 @@ describe('Admin Home content API', () => {
     mocks.user = null;
     expect(
       (await GET(new Request('http://localhost:3000/api/home-content/grocery'), context)).status,
-    ).toBe(403);
+    ).toBe(401);
     mocks.user = { id: 'user', email: 'another@example.com' };
     expect((await PUT(publish({}), context)).status).toBe(403);
     expect(mocks.from).not.toHaveBeenCalled();

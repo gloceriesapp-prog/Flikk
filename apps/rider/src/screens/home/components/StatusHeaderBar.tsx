@@ -12,7 +12,10 @@ import { HeadphonesIcon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { IosSwitch } from '../../../components/IosSwitch';
 import { colors } from '../../../theme/tokens';
-import { EMERGENCY_PHONE, SUPPORT_PHONE } from '../../../data/support';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { EMERGENCY_PHONE } from '../../../data/support';
+import type { AppStackParamList } from '../../../navigation/types';
 
 interface Props {
   isOnline: boolean;
@@ -29,6 +32,9 @@ function handleSos() {
 }
 
 export function StatusHeaderBar({ isOnline, onToggle }: Props) {
+  // HELP opens Help & support: the admin-configured contacts (call /
+  // WhatsApp / email) and the rider's support requests.
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   return (
     <View className="flex-row items-center justify-between gap-2.5">
       <View
@@ -42,7 +48,8 @@ export function StatusHeaderBar({ isOnline, onToggle }: Props) {
 
       <View className="flex-row items-center gap-2">
         <Pressable
-          onPress={() => void Linking.openURL(`tel:${SUPPORT_PHONE}`)}
+          onPress={() => navigation.navigate('Support')}
+          accessibilityLabel="Help & support"
           className="h-12 flex-row items-center gap-1.5 rounded-3xl bg-gray-200 px-4"
         >
           <AppIcon icon={HeadphonesIcon} size={15} color={colors.ink} />

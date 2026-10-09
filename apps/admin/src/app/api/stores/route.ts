@@ -1,4 +1,4 @@
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 // Admin "Add store" — see lib/storeValidation.ts's note. Same end state as
 // approving a partner application: the store is owned by the existing
 // account with that phone, which becomes an approved store_owner. Refused if
@@ -13,8 +13,8 @@ import { normalizeOwnerPhone, ownerPhoneVariants, toStoreRow, validateStoreInput
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
 
 export async function POST(request: Request) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = await request.json().catch(() => null);
 
   const input: Partial<StoreWriteInput> = body ?? {};
@@ -75,8 +75,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { data, error } = await supabaseAdmin.from('stores').select(STORE_SELECT).order('name');
   if (error) {
     console.error('Admin stores read failed', error);

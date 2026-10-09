@@ -64,3 +64,14 @@ it('ignores an area read acknowledgement arriving after an account switch', asyn
   await new Promise(done => setTimeout(done, 0));
   expect(fixture.navigate).not.toHaveBeenCalled();
 });
+
+it('opens a cold-start team announcement in the owned inbox without an order fetch', async () => {
+  fixture.ready = false; fixture.session.customerId = null;
+  queueOrderNotification({ type: 'announcement', customer_id: 'customer-a', notification_id: 'announcement-a' });
+  await flushOrderNotification(); expect(fixture.read).not.toHaveBeenCalled();
+  fixture.session.customerId = 'customer-a'; fixture.ready = true;
+  await flushOrderNotification();
+  expect(fixture.read).toHaveBeenCalledWith('announcement-a');
+  expect(fixture.navigate).toHaveBeenCalledWith('Notifications');
+  expect(fixture.order).not.toHaveBeenCalled(); expect(fixture.trip).not.toHaveBeenCalled();
+});

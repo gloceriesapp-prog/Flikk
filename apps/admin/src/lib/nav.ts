@@ -1,8 +1,14 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  AlarmClock,
   Banknote,
+  Bell,
+  CreditCard,
+  Gift,
+  Send,
   Bike,
   Boxes,
+  Coins,
   FileText,
   ImageIcon,
   LayoutGrid,
@@ -12,6 +18,7 @@ import {
   PackageX,
   PartyPopper,
   RotateCcw,
+  Route,
   Settings,
   Smartphone,
   Tag,
@@ -39,6 +46,7 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/approvals', label: 'Approvals', icon: UserCheck },
   { href: '/stores', label: 'Stores', icon: Store },
   { href: '/riders', label: 'Riders', icon: Bike },
+  { href: '/dispatch', label: 'Trips & dispatch', icon: Route },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/inventory', label: 'Inventory', icon: Boxes },
   { href: '/inventory-pack-stock', label: 'Available packs', icon: Package },
@@ -54,16 +62,22 @@ export const MENU_ITEMS: NavItem[] = [
   { href: '/seasonal-section', label: 'Seasonal Section', icon: ImageIcon },
   { href: '/app-content', label: 'App content', icon: FileText },
   { href: '/app-settings', label: 'App settings', icon: Smartphone },
+  { href: '/checkout-settings', label: 'Checkout settings', icon: CreditCard },
+  { href: '/notifications', label: 'Customer notifications', icon: Bell },
 ];
 
 export const INSIGHTS_ITEMS: NavItem[] = [
   { href: '/orders', label: 'Orders', icon: Package },
-  { href: '/support', label: 'Customer Support', icon: Ticket },
+  { href: '/support', label: 'Support', icon: Ticket },
   { href: '/customer-deletions', label: 'Account Deletions', icon: Users },
   { href: '/revenue', label: 'Revenue', icon: Banknote },
   { href: '/payouts', label: 'Payouts', icon: Wallet },
+  { href: '/rider-earnings', label: 'Rider earnings', icon: Coins },
   { href: '/cash-on-delivery', label: 'Cash on delivery', icon: HandCoins },
   { href: '/refunds', label: 'Refunds', icon: RotateCcw },
+  { href: '/stuck-payments', label: 'Stuck checkouts', icon: AlarmClock },
+  { href: '/push-outbox', label: 'Push outbox', icon: Send },
+  { href: '/referrals', label: 'Referrals', icon: Gift },
   { href: '/failed-deliveries', label: 'Failed Deliveries', icon: PackageX },
   { href: '/reviews', label: 'Reviews', icon: Star },
   { href: '/zones', label: 'Zones', icon: Map },
@@ -71,17 +85,23 @@ export const INSIGHTS_ITEMS: NavItem[] = [
 
 export const ALL_NAV_ITEMS: NavItem[] = [...MENU_ITEMS, ...INSIGHTS_ITEMS, { href: '/settings', label: 'Settings', icon: Settings }];
 
-// TopNav's own contextual quick-action per section — reference's
-// "+ Create Task" is generic to its one page; ours varies since each
-// section has a different primary create action.
-export const QUICK_ACTION_LABEL: Record<string, string> = {
-  '/overview': 'Add Store',
-  '/approvals': 'Review Next',
-  '/riders': 'Add Rider',
-  '/inventory': 'Add Product',
-  '/promo-codes': 'Add Promo Code',
-  '/orders': 'Add Order',
-  '/revenue': 'Export CSV',
-  '/zones': 'Add Zone',
-  '/settings': 'Save Changes',
+// TopNav's contextual quick action per section — only where a real flow
+// exists behind it. Pages that already carry their own create button
+// (Stores, Inventory, Promo codes) don't repeat it up here, and sections
+// with no admin create flow (riders and orders come from the apps, zones
+// have no create API) get no button rather than a dead one.
+//   href: navigate (Add store opens the Stores page's Add store form);
+//   download: a file link (Revenue's order transactions CSV);
+//   form: submits that page's form (Settings).
+export interface QuickAction {
+  label: string;
+  kind: 'add' | 'download' | 'save';
+  href?: string;
+  form?: string;
+}
+
+export const QUICK_ACTIONS: Record<string, QuickAction> = {
+  '/overview': { label: 'Add Store', kind: 'add', href: '/stores?new=1' },
+  '/revenue': { label: 'Export CSV', kind: 'download', href: '/api/orders?format=csv' },
+  '/settings': { label: 'Save Changes', kind: 'save', form: 'settings-form' },
 };

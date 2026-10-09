@@ -15,6 +15,7 @@ import { Pencil, Clock, MapPin, Plus, Search, Store as StoreIcon } from 'lucide-
 import type { NewStoreInput, Store } from '@/lib/types';
 import { fetchStores } from '@/lib/supabase/stores';
 import { AddStoreModal } from '@/components/stores/AddStoreModal';
+import { StoreChangeRequests } from '@/components/stores/StoreChangeRequests';
 
 export default function StoresPage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -40,6 +41,15 @@ export default function StoresPage() {
     // call).
     Promise.resolve().then(loadData);
   }, [loadData]);
+
+  // /stores?new=1 (TopNav's "Add Store" on Overview) opens the Add store
+  // form directly; the flag is dropped from the URL so a reload doesn't
+  // reopen it.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') !== '1') return;
+    window.history.replaceState(null, '', window.location.pathname);
+    Promise.resolve().then(() => setAdding(true));
+  }, []);
 
   const filtered = stores.filter((s) => [s.name, s.ownerName, s.phone, s.city, s.district].some(value => value.toLowerCase().includes(query.trim().toLowerCase())));
 
@@ -73,6 +83,8 @@ export default function StoresPage() {
           Add store
         </button>
       </div>
+
+      <StoreChangeRequests onReviewed={loadData} />
 
       {loadError && (
         <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-danger">

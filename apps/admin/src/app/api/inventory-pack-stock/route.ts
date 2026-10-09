@@ -1,8 +1,9 @@
-import { requireAdminSession } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 export async function GET(request: Request) {
-  if (!await requireAdminSession()) return Response.json({ error: 'Not signed in.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const after = new URL(request.url).searchParams.get('after');
   if (after && !uuid(after)) return Response.json({ error: 'Invalid page.' }, { status: 400 });
   let query = supabaseAdmin.from('products').select('id,name,stock_quantity,stock_tracking_enabled,product_variants(id,unit_type,quantity,stock_quantity)').order('id').limit(26);
@@ -13,7 +14,8 @@ export async function GET(request: Request) {
   return Response.json({ items, nextCursor: data && data.length > 25 ? items.at(-1)!.id : null });
 }
 export async function PATCH(request: Request) {
-  if (!await requireAdminSession()) return Response.json({ error: 'Not signed in.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = await request.json().catch(() => null);
   if (!body || !uuid(body.productId) || (body.variantId !== null && !uuid(body.variantId)) || !Number.isSafeInteger(body.quantity) || body.quantity < 0 || body.quantity > 1000000)
     return Response.json({ error: 'Enter a valid available pack count.' }, { status: 400 });

@@ -121,7 +121,10 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
         renderItem={({ item }) => (
           <View className="mx-5"><NotificationRow item={item} onPress={() => {
             if (!customerId) return;
-            if (!item.order_id && !item.trip_id) {
+            const orderId = item.trip_id ?? item.order_id;
+            // Team and area messages only mark their own inbox entry read.
+            if (!orderId) {
+              if (item.read_at) return;
               const epoch = useAuthStore.getState().sessionEpoch;
               void markNotificationRead(item.id).then(() => {
                 if (useAuthStore.getState().sessionEpoch === epoch) return refetch();
@@ -129,7 +132,7 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
               return;
             }
             queueOrderNotification({ type: 'order', customer_id: customerId, notification_id: item.id,
-              order_id: (item.trip_id ?? item.order_id)!, is_trip: !!item.trip_id });
+              order_id: orderId, is_trip: !!item.trip_id });
           }} /></View>
         )}
       />

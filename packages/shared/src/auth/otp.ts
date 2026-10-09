@@ -49,6 +49,10 @@ export interface AccountStatus {
   // stale once the owner has tried again.
   is_rejected?: boolean;
   rejection_reason?: string | null;
+  // Admin partner-account suspension (migration 114) — partner apps show a
+  // blocking screen with the reason while set.
+  partner_suspended?: boolean;
+  partner_suspended_reason?: string | null;
   phone?: string;
   name?: string | null;
 }

@@ -29,3 +29,8 @@ it('parses account-owned area alerts without accepting arbitrary destination rou
   expect(customerNotificationTarget({ ...area, customer_id: 'invalid' })).toBeNull();
   expect(customerNotificationTarget({ ...area, notification_id: null })).toBeNull();
 });
+
+it('accepts owned team announcements and rejects malformed recipient identities', () => {
+  expect(customerNotificationTarget({ type: 'announcement', customer_id: a, notification_id: b })).toEqual({ type: 'announcement', customer_id: a, notification_id: b });
+  expect(customerNotificationTarget({ type: 'announcement', customer_id: 'invalid', notification_id: b })).toBeNull();
+});

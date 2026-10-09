@@ -9,8 +9,11 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { PROMO_CODE_SELECT, mapRowToPromoCode, type PromoCodeRow } from '@/lib/supabase/promoCodes';
 import { toPromoCodeErrorMessage, toPromoCodeRow, validatePromoCodeInput, type PromoCodeWriteInput } from '@/lib/promoCodeValidation';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data, error } = await supabaseAdmin.from('promo_codes').select(PROMO_CODE_SELECT).order('created_at', { ascending: false });
     if (error) throw error;
@@ -22,6 +25,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const body = await request.json();
 
   try {

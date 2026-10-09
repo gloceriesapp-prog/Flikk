@@ -6,8 +6,11 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { festival_section_id, product_id } = (await request.json()) as { festival_section_id: string; product_id: string };
     if (!festival_section_id || !product_id) throw new Error('festival_section_id and product_id are required.');

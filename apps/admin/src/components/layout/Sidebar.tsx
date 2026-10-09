@@ -13,10 +13,14 @@ import clsx from 'clsx';
 import { INSIGHTS_ITEMS, MENU_ITEMS, type NavItem } from '@/lib/nav';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import type { Application } from '@/lib/types';
+import { SidebarSearch } from './SidebarSearch';
 
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  // Bumped by the collapsed rail's search button so SidebarSearch focuses
+  // its input once the sidebar has expanded.
+  const [searchFocus, setSearchFocus] = useState(0);
   // "Needs attention" counts, keyed by nav href — a red badge next to any
   // item with a non-zero count. Real numbers from the same endpoints each
   // page reads, refreshed live via the realtime stream + polling below.
@@ -136,17 +140,12 @@ export function Sidebar() {
       </div>
 
       {!collapsed ? (
-        <div className="mb-5 flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
-          <Search size={14} className="text-muted" />
-          <span className="flex-1 text-sm text-muted">Search</span>
-          <kbd className="rounded-md border border-border bg-canvas px-1.5 py-0.5 text-[10px] font-semibold text-muted">
-            ⌘K
-          </kbd>
-        </div>
+        <SidebarSearch focusSignal={searchFocus} />
       ) : (
         <button
           type="button"
           aria-label="Search"
+          onClick={() => { setCollapsed(false); setSearchFocus((n) => n + 1); }}
           className="mb-5 flex h-9 w-9 items-center justify-center self-center rounded-xl border border-border bg-card text-muted hover:text-ink"
         >
           <Search size={14} />

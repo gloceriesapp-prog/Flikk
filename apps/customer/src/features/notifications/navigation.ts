@@ -38,7 +38,7 @@ export async function flushOrderNotification(): Promise<void> {
         return;
     opening = true;
     try {
-        if (target.type === 'area') {
+        if (target.type !== 'order') {
             await markNotificationRead(target.notification_id);
             if (useAuthStore.getState().sessionEpoch !== session.sessionEpoch || !notificationNavigation.isReady()) return;
             notificationNavigation.navigate('Notifications');
@@ -60,10 +60,10 @@ export async function flushOrderNotification(): Promise<void> {
         if (error instanceof ApiError && [401, 403, 404, 410].includes(error.status)) {
             if (pending === target)
                 pending = null;
-            Alert.alert(target.type === 'area' ? 'Update unavailable' : 'Order unavailable', target.type === 'area' ? 'This update cannot be opened for this account.' : 'This order cannot be opened for this account.');
+            Alert.alert(target.type !== 'order' ? 'Update unavailable' : 'Order unavailable', target.type !== 'order' ? 'This update cannot be opened for this account.' : 'This order cannot be opened for this account.');
         }
         else
-            Alert.alert(target.type === 'area' ? 'Could not open update' : 'Could not open order', 'Check your connection and try again.', [{ text: 'Later' }, { text: 'Retry', onPress: () => void flushOrderNotification() }]);
+            Alert.alert(target.type !== 'order' ? 'Could not open update' : 'Could not open order', 'Check your connection and try again.', [{ text: 'Later' }, { text: 'Retry', onPress: () => void flushOrderNotification() }]);
     }
     finally {
         opening = false;

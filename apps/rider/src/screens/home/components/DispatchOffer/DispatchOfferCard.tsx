@@ -25,9 +25,9 @@ import { OfferStatTiles } from './OfferStatTiles';
 import { OfferRoutePreview } from './OfferRoutePreview';
 import { useOfferDecision } from './useOfferDecision';
 
-// Decide-window length in seconds — the arc denominator. Matches the
-// backend's real DISPATCH_OFFER_WINDOW_MS (45s) so the ring's full arc lines
-// up with the true server window; the ring counts down to offer.expiresAt
+// Decide-window length in seconds — the arc denominator. The offer's own
+// windowSeconds (admin's dispatch_step_seconds) wins; 45s is the fallback, so
+// the ring's full arc lines up with the true server window; the ring counts down to offer.expiresAt
 // (the real per-offer deadline) when present. The __DEV__ Test popup passes a
 // long override so the UI can be inspected without auto-dismissing.
 const DECISION_WINDOW_S = 45;
@@ -46,7 +46,7 @@ interface Props {
   windowSeconds?: number;
 }
 
-export function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = DECISION_WINDOW_S }: Props) {
+export function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = offer.windowSeconds ?? DECISION_WINDOW_S }: Props) {
   const { state, handleAccept, handleDecline } = useOfferDecision(offer.orderId, onAccept, onClose);
   const hasRoute = offer.storeCoords != null && offer.dropCoords != null;
 

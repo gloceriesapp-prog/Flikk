@@ -6,7 +6,7 @@
 // as every other app/api/* route in this dashboard).
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import {
   APPROVED_STORE_SELECT,
   STORE_DRAFT_SELECT,
@@ -17,8 +17,8 @@ import {
 } from '@/lib/supabase/approvals';
 
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const [draftsRes, storesRes] = await Promise.all([
       supabaseAdmin

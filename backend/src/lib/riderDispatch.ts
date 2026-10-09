@@ -1,24 +1,21 @@
 import { supabase } from '../db/supabase.js';
 import { sendPushNotifications } from './pushNotifications.js';
 
-// Expanding search — most orders should be picked up well within the
-// first, tightest radius; each step only fires if nobody accepted in time.
-export const DISPATCH_RADIUS_STEPS_M = [3000, 5000, 8000];
+// Expanding search — the rings (delivery_settings.dispatch_radius_steps_m)
+// and how long each ring is offered (dispatch_step_seconds) are admin
+// settings (migration 113), read by advance_dispatch_offers on every pass,
+// so a change applies to the next ring without a deploy. Most orders should
+// be picked up in the first, tightest ring; each step only fires if nobody
+// accepted in time. Defaults: 3/5/8 km, 45 s.
 
-// How long a broadcast at one radius gets before the fallback job
-// (expandDispatchOrRebroadcast) tries the next radius — real, not
-// decorative: rider.ts's own PATCH /status is what keeps a rider's
-// current_lat/lng fresh, so this window has to be long enough for a
-// rider's phone to actually receive and act on the push, short enough
-// that a genuinely-idle order doesn't sit for minutes before trying wider.
-export const DISPATCH_OFFER_WINDOW_MS = 45_000;
-
-// Pushes to every online rider currently within radiusM of (lat, lng).
+// Pushes to every online rider currently within radiusM of (lat, lng) who
+// is below the admin's max_active_trips_per_rider (nearby_dispatchable_riders,
+// migration 113 — the same limit accept_dispatch_offer enforces).
 // Best-effort per-rider (sendPushNotification itself never throws) — one
 // rider with a stale/invalid token must never block the rest of the
 // broadcast.
 async function broadcastToRadius(orderId: string, lat: number, lng: number, storeName: string, radiusM: number): Promise<number> {
-  const { data: nearby, error } = await supabase.rpc('nearby_online_riders', {
+  const { data: nearby, error } = await supabase.rpc('nearby_dispatchable_riders', {
     p_store_lat: lat,
     p_store_lng: lng,
     p_radius_m: radiusM,

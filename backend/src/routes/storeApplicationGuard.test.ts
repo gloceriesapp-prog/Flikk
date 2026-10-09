@@ -17,10 +17,10 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
 import { storeOnboardingRouter } from './storeOnboarding.js';
 
 const handler = storeOnboardingRouter.stack.find(l => l.route?.path === '/store-application')!.route!.stack.at(-1)!.handle as RequestHandler;
-async function submit() {
+async function submit(extra: Record<string, unknown> = {}) {
   const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
   const next = vi.fn();
-  await handler({ user: { id: 'owner-1' }, body: { storeName: 'Shop', category: 'Kirana & Grocery', district: 'Udupi', panNumber: 'ABCDE1234F' } } as unknown as Request, res, next);
+  await handler({ user: { id: 'owner-1' }, body: { storeName: 'Shop', category: 'Kirana & Grocery', district: 'Udupi', panNumber: 'ABCDE1234F', ...extra } } as unknown as Request, res, next);
   return { res, err: next.mock.calls[0]?.[0] as { status?: number; code?: string } | undefined };
 }
 
@@ -41,3 +41,15 @@ it('refuses a second application from an owner who already has a store', async (
 });
 
 it('refuses a new primary application for an active manager', async () => { db.member = true; const { err } = await submit(); expect(err).toMatchObject({ code: 'STORE_TEAM_MEMBER', status: 409 }); expect(db.upserts).toHaveLength(0); });
+it('refuses a category admin does not allow', async () => {
+  const { err } = await submit({ category: 'Liquor store' });
+  expect(err).toMatchObject({ status: 400, code: 'INVALID_CATEGORY' });
+  expect(db.upserts).toHaveLength(0);
+});
+
+it('refuses a pharmacy without a drug licence and stores one that has it', async () => {
+  expect((await submit({ category: 'Pharmacy' })).err).toMatchObject({ status: 400, code: 'DRUG_LICENSE_REQUIRED' });
+  const { err } = await submit({ category: 'Pharmacy', drugLicenseNumber: ' KA-20B-1 ' });
+  expect(err).toBeUndefined();
+  expect(db.upserts[0]).toMatchObject({ category: 'Pharmacy', drug_license_number: 'KA-20B-1' });
+});

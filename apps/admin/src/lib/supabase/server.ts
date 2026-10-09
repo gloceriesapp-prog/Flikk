@@ -8,7 +8,6 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { isAllowedAdminEmail } from '../adminAccess';
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -31,16 +30,14 @@ export async function createSupabaseServerClient() {
   });
 }
 
-// Route Handlers under app/api/* all read this before touching
-// supabaseAdmin (service role) — middleware.ts already blocks an
-// unauthenticated request from reaching here for normal browser
-// navigation, but a direct API call (curl, a stale tab) bypasses the page
-// redirect middleware.ts does, so each data-touching route re-checks for
-// itself too. Returns the session or null; callers 401 on null.
+// Returns the signed-in Supabase user or null. It does NOT check the admin
+// email allowlist — Route Handlers must use requireAdmin()
+// (lib/auth/requireAdmin.ts) and Server Components requireAdminPage()
+// (lib/auth/requireAdminPage.ts), which build on this.
 export async function requireAdminSession() {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  return user && isAllowedAdminEmail(user.email) ? user : null;
+  return user;
 }

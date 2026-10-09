@@ -42,6 +42,12 @@ export function useSession(): SessionState {
           router.replace('/login');
           return;
         }
+        if (result.partner_suspended) {
+          // Gloceries suspended this partner account — every partner API
+          // route answers 403 PARTNER_SUSPENDED, so show why instead.
+          router.replace('/suspended');
+          return;
+        }
         if (!result.has_store || !result.is_approved) {
           router.replace('/pending-approval');
           return;

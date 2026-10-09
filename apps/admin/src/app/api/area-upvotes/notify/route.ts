@@ -1,7 +1,8 @@
-import { requireAdminSession } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 export async function POST(request: Request) {
-  if (!await requireAdminSession()) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { addressLabel, title, body } = await request.json();
     if (typeof addressLabel !== 'string' || !addressLabel.trim() || addressLabel.length > 500 || typeof title !== 'string' || !title.trim() || title.length > 100 || typeof body !== 'string' || !body.trim() || body.length > 500)

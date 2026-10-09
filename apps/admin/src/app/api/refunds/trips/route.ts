@@ -8,7 +8,7 @@
 // with any leg, which completes the whole trip).
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export interface TripRefundLeg {
   id: string;
@@ -38,8 +38,8 @@ export interface TripRefundRow {
 const RANK: Record<string, number> = { manual_required: 0, failed: 1, queued: 2, processing: 3, completed: 4 };
 
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data, error } = await supabaseAdmin
       .from('trip_refunds')

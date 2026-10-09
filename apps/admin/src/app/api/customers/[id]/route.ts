@@ -5,13 +5,17 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { activeBlock, type CustomerBlockRow } from '@/lib/customerBlocks';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { adminRpcErrorResponse, isUuid } from '@/lib/orders/adminActor';
 
 export async function GET(request: Request, ctx: RouteContext<'/api/customers/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   try {
     const [userRes, addressesRes, ordersRes, blockRes] = await Promise.all([
-      supabaseAdmin.from('users').select('id, name, phone, created_at').eq('id', id).eq('role', 'customer').maybeSingle(),
+      supabaseAdmin.from('users').select('id, name, email, phone, created_at').eq('id', id).eq('role', 'customer').maybeSingle(),
       // Soft-deleted addresses (031) are history, not where the customer is now.
       supabaseAdmin.from('addresses').select('id, label, line1, landmark, is_default').eq('user_id', id).is('deleted_at', null),
       supabaseAdmin
@@ -47,6 +51,7 @@ export async function GET(request: Request, ctx: RouteContext<'/api/customers/[i
     return NextResponse.json({
       id: userRes.data.id,
       name: userRes.data.name,
+      email: userRes.data.email,
       phone: userRes.data.phone,
       createdAt: userRes.data.created_at,
       block,
@@ -70,4 +75,34 @@ export async function GET(request: Request, ctx: RouteContext<'/api/customers/[i
     const message = err instanceof Error ? err.message : 'Could not load this customer.';
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+// Edit a customer's name and contact email (migration 117's
+// admin_update_customer_profile: validated, audited in admin_control_audit with
+// the before/after values). Phone is the sign-in identity (phone OTP) and is
+// not editable here. The customer app reads the name from GET /auth/me.
+export async function PATCH(request: Request, ctx: RouteContext<'/api/customers/[id]'>) {
+  const { actor, denied } = await requireAdmin();
+  if (denied) return denied;
+  const { id } = await ctx.params;
+  if (!isUuid(id)) return NextResponse.json({ error: 'Customer not found.' }, { status: 404 });
+
+  const body = (await request.json().catch(() => null)) as { name?: unknown; email?: unknown } | null;
+  if (typeof body?.name !== 'string' || (body.email != null && typeof body.email !== 'string')) {
+    return NextResponse.json({ error: 'Give a name and an optional email.' }, { status: 400 });
+  }
+  const { data, error } = await supabaseAdmin.rpc('admin_update_customer_profile', {
+    p_customer: id,
+    p_name: body.name,
+    p_email: (body.email as string | null | undefined) ?? null,
+    p_admin_email: actor.email,
+  });
+  if (error) {
+    if (error.code === 'P0404') return NextResponse.json({ error: 'Customer not found.' }, { status: 404 });
+    const mapped = adminRpcErrorResponse(error);
+    if (mapped) return mapped;
+    return NextResponse.json({ error: 'Could not save this customer.' }, { status: 500 });
+  }
+  const saved = data as { name: string; email: string | null };
+  return NextResponse.json({ name: saved.name, email: saved.email });
 }

@@ -14,8 +14,11 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function GET() {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const { data: section, error: sectionError } = await supabaseAdmin
       .from('festival_sections')
@@ -41,6 +44,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = (await request.json()) as { id?: string; title: string; is_active: boolean };
     if (!body.title.trim()) throw new Error('Title is required.');

@@ -8,7 +8,7 @@ const fx = vi.hoisted(() => ({
   userUpdate: null as Record<string, unknown> | null,
   insertError: null as { code: string; message: string } | null,
 }));
-vi.mock('@/features/store-management/adminGate', () => ({ requireStoreAdmin: async () => null }));
+vi.mock('@/lib/supabase/server', () => ({ requireAdminSession: async () => ({ id: 'admin', email: 'nishalpoojary810@gmail.com' }) }));
 vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: { from: (table: string) => {
   const chain: Record<string, unknown> = {};
   Object.assign(chain, {

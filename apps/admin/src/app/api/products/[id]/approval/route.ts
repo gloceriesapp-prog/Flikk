@@ -7,8 +7,11 @@
 // (app/api/approvals/stores/[userId]).
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   try {

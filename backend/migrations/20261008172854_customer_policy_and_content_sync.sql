@@ -1,4 +1,4 @@
--- Reviewed customer policies; apply after 112. No client-side financial authority.
+-- Reviewed customer policies; apply after 118. No client-side financial authority.
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -104,7 +104,11 @@ ALTER TABLE public.area_upvotes ADD COLUMN customer_id uuid REFERENCES public.us
  ADD COLUMN notify_when_available boolean NOT NULL DEFAULT false, ADD COLUMN notified_at timestamptz;
 CREATE UNIQUE INDEX customer_area_waitlist ON public.area_upvotes(customer_id,address_label) WHERE customer_id IS NOT NULL;
 ALTER TABLE public.customer_notifications ALTER COLUMN order_id DROP NOT NULL;
-CREATE UNIQUE INDEX customer_general_notification ON public.customer_notifications(customer_id,event) WHERE order_id IS NULL AND trip_id IS NULL;
+ALTER TABLE public.customer_notifications ADD COLUMN area_upvote_id uuid REFERENCES public.area_upvotes(id) ON DELETE CASCADE;
+ALTER TABLE public.customer_notifications DROP CONSTRAINT customer_notifications_source_check;
+ALTER TABLE public.customer_notifications ADD CONSTRAINT customer_notifications_source_check
+ CHECK(order_id IS NOT NULL OR trip_id IS NOT NULL OR admin_message_id IS NOT NULL OR area_upvote_id IS NOT NULL);
+CREATE UNIQUE INDEX customer_general_notification ON public.customer_notifications(customer_id,event) WHERE area_upvote_id IS NOT NULL;
 -- Bounded batch + SKIP LOCKED; retrying a notification never creates duplicates.
 CREATE FUNCTION public.notify_area_waitlist(p_address text,p_title text,p_body text,p_limit integer DEFAULT 100) RETURNS integer
 LANGUAGE plpgsql SECURITY INVOKER SET search_path=public,pg_temp AS $$
@@ -114,8 +118,8 @@ BEGIN
  OR p_limit NOT BETWEEN 1 AND 100 THEN RAISE EXCEPTION 'Invalid waitlist message'; END IF;
  WITH due AS(SELECT id,customer_id FROM area_upvotes WHERE address_label=p_address AND customer_id IS NOT NULL AND notify_when_available AND notified_at IS NULL
  ORDER BY created_at,id LIMIT p_limit FOR UPDATE SKIP LOCKED),
- queued AS(INSERT INTO customer_notifications(customer_id,event,title,body)
- SELECT customer_id,'area-available:'||md5(p_address),p_title,p_body FROM due ON CONFLICT(customer_id,event) WHERE order_id IS NULL AND trip_id IS NULL DO NOTHING RETURNING id)
+ queued AS(INSERT INTO customer_notifications(customer_id,event,title,body,area_upvote_id)
+ SELECT customer_id,'area-available:'||md5(p_address),p_title,p_body,id FROM due ON CONFLICT(customer_id,event) WHERE area_upvote_id IS NOT NULL DO NOTHING RETURNING id)
  UPDATE area_upvotes a SET notified_at=now() FROM due WHERE a.id=due.id;
  GET DIAGNOSTICS n=ROW_COUNT; RETURN n;
 END $$;
@@ -124,7 +128,7 @@ GRANT EXECUTE ON FUNCTION public.notify_area_waitlist(text,text,text,integer),pu
 -- Complete the realtime publication for admin-editable public content.
 DO $$ DECLARE t text; BEGIN
  IF EXISTS(SELECT 1 FROM pg_publication WHERE pubname='supabase_realtime') THEN
-  FOREACH t IN ARRAY ARRAY['app_content','app_faqs','app_release_config','categories','category_sections','sub_categories','home_tab_banners','home_tab_tiles'] LOOP
+  FOREACH t IN ARRAY ARRAY['app_content','app_faqs','app_release_config','categories','category_sections','sub_categories','home_tab_banners','home_tab_tiles','platform_settings'] LOOP
    IF NOT EXISTS(SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename=t) THEN
     EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I',t);
    END IF;

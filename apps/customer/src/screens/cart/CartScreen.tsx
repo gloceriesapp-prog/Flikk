@@ -1,4 +1,5 @@
 import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
+import { useCopy } from '../../api/appConfig';
 // Reached from CartBar's "View cart" tap (see components/CartBar/CartBar.tsx)
 // or the bottom nav. Payment selection and order placement live in the
 // cart footer; payment/useCartPayment owns the confirmed payment flow.
@@ -49,6 +50,8 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Cart'>;
 
 export function CartScreen({ navigation, route }: Props) {
   const customerId = useAuthStore(state => state.customerId);
+  const emptyTitle = useCopy('cart.empty.title');
+  const emptySubtitle = useCopy('cart.empty.subtitle');
   const estimatedMinutes = useDeliveryEstimateMinutes();
   const items = useCartStore((state) => state.items);
   const totalQuantity = useCartStore(selectCartTotalQuantity);
@@ -114,6 +117,7 @@ export function CartScreen({ navigation, route }: Props) {
   const availabilityQuery = useCartAvailability(selectedAddress?.id);
   const quoteQuery = useCheckoutQuote(selectedAddress?.id);
   const quote = quoteQuery.data;
+  const minimumShortfall = quote?.minimumOrder?.shortfall ?? 0;
   const storeGroups = useMemo(() => {
     const pricedItems = quote ? quotedCartItems(items, quote) : [];
     return groupCartItemsByStore(items.map((item) => {
@@ -231,8 +235,8 @@ export function CartScreen({ navigation, route }: Props) {
       {items.length === 0 ? (
         <View className="flex-1 items-center justify-center gap-1 px-10">
           <AppIcon icon={ShoppingBasket03Icon} size={40} color={`${colors.ink}`} />
-          <Text className="text-center text-lg font-semibold text-ink">Your cart is empty</Text>
-          <Text className="text-center text-base text-ink/50">Add something from a store to see it here.</Text>
+          <Text className="text-center text-lg font-semibold text-ink">{emptyTitle}</Text>
+          <Text className="text-center text-base text-ink/50">{emptySubtitle}</Text>
         </View>
       ) : (
         <>
@@ -293,6 +297,11 @@ export function CartScreen({ navigation, route }: Props) {
             <ForgotToAddSection cartItemIds={cartItemIds} />
             <PromoCodeCard itemTotal={quote?.bill.itemTotal ?? itemTotal} appliedPromo={appliedPromo} quotedDiscount={quote?.bill.discountAmount} />
             {quote && !quoteQuery.isError && availabilityQuery.data?.eligible && <BillDetailsCard quote={quote} itemCount={totalQuantity} />}
+            {quote && !quoteQuery.isError && minimumShortfall > 0 && (
+              <Text className="px-2 text-[13px] font-semibold text-[#B42318]">
+                {`Minimum order is ₹${quote.minimumOrder!.value}. Add items worth ₹${minimumShortfall} more to place your order.`}
+              </Text>
+            )}
             {availabilityQuery.data?.issues.map((issue) => <Text key={issue.code} className="px-2 text-[13px] font-semibold text-[#B42318]">{issue.message}</Text>)}
             {availabilityQuery.isError && <Text className="px-2 text-[13px] text-[#B42318]">Could not check item availability. <Text onPress={() => { void availabilityQuery.refetch(); }} className="font-semibold">Retry</Text></Text>}
             {quote && quoteHasPriceChanges(items, quote) && (
@@ -315,7 +324,7 @@ export function CartScreen({ navigation, route }: Props) {
             onAddAddress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
             onChangeAddress={() => setAddressSheetVisible(true)}
             paymentBar={<CartPaymentBar method={payment.paymentMethod} apps={payment.upiApps} total={payment.grandTotal}
-              busy={payment.isPlacingOrder} disabled={addressesLoading || !payment.methodsReady || !quote || quoteQuery.isFetching || quoteQuery.isError || !availabilityQuery.data?.eligible || availabilityQuery.isError}
+              busy={payment.isPlacingOrder} disabled={addressesLoading || !payment.methodsReady || !quote || minimumShortfall > 0 || quoteQuery.isFetching || quoteQuery.isError || !availabilityQuery.data?.eligible || availabilityQuery.isError}
               onChoose={choosePayment} onPlaceOrder={payment.placeOrder} />}
           />
 

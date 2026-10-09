@@ -12,8 +12,8 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
 import { CampaignError, deliveryRows, parseCampaign } from '../../../../../../packages/promotions/campaign.cjs';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 interface CampaignRow {
   campaign_id: string; channel: 'sms' | 'email'; subject: string; body: string; created_at: string; updated_at: string;
@@ -27,7 +27,8 @@ async function readSwitch(): Promise<{ id: string; enabled: boolean }> {
 }
 
 export async function GET() {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const [settings, campaigns] = await Promise.all([readSwitch(), supabaseAdmin.rpc('promotional_campaigns', { p_limit: 50 })]);
     if (campaigns.error) throw campaigns.error;
@@ -48,7 +49,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   let campaign;
   try {
     campaign = parseCampaign(await request.json());
@@ -76,7 +78,8 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = await request.json();
     if (typeof body?.promotionsEnabled !== 'boolean') {

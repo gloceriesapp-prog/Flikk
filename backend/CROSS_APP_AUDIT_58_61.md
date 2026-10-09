@@ -2,6 +2,8 @@
 
 ## Storage and authorization
 
+Integrated against main through `c791e7d`; the latest admin guard, partner profile-review/category controls, notification templates and support features are preserved.
+
 All new operational tables are private: store memberships, rider change requests and customer app feedback are available only to backend/admin service clients. Public apps send authenticated requests; they never receive a service key. Rider document uploads remain private Supabase objects and the review UI receives short-lived signed URLs. Store push readiness exposes a boolean, never the push token.
 
 A store has one primary owner and up to 20 active managers. An administrator adds existing accounts by phone. Managers have operational store access; payout and legal-document controls remain owner-only. Removing membership is checked on the next API request. Assigning a rider, administrator or another store’s owner is refused. Customer identity is never inferred from request bodies.
@@ -22,7 +24,7 @@ Public content changes invalidate the relevant server caches and emit content/co
 
 ## Admin behavior
 
-Login destinations are normalized local paths. Support and new administrative routes use the same verified-session/email allowlist. Approval failures are visible inline. Failed/unknown statuses have readable labels. Customer search sanitization is covered by a regression test, including commas and Unicode.
+Login destinations are normalized local paths. Support and new administrative routes use the same verified-session/email allowlist. Approval failures are visible inline. Failed/unknown statuses have readable labels. Every new admin API uses the canonical `requireAdmin()` guard; support uses the same guard. Customer search sanitization is covered by a regression test, including commas and Unicode.
 
 ## Rollout
 

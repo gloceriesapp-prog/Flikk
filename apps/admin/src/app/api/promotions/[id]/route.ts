@@ -4,8 +4,8 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
 import { isUuid } from '../../../../../../../packages/promotions/campaign.cjs';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 interface DeliveryRow {
   id: string; customer_id: string; channel: string; status: string; attempts: number; updated_at: string;
@@ -13,7 +13,8 @@ interface DeliveryRow {
 }
 
 export async function GET(_request: Request, ctx: RouteContext<'/api/promotions/[id]'>) {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { id } = await ctx.params;
   if (!isUuid(id)) return NextResponse.json({ error: 'Invalid campaign.' }, { status: 400 });
   try {

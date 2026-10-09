@@ -4,14 +4,49 @@
 // partner listing (mode 'new' → PATCH /api/products/[id]/approval) or a
 // partner-submitted photo swap (mode 'image' → PATCH /api/products/[id]/image-review,
 // with a Replace option that uploads a founder-chosen photo through the product
-// PATCH route, which clears the pending one). Same bordered-card + amber-accent
-// shape as ApplicationRow so both tabs read the same.
+// PATCH route, which clears the pending one), or a partner's name/price edit
+// to a live product (mode 'changes' → PATCH /api/products/[id]/change-review,
+// shown as live → proposed). Same bordered-card + amber-accent shape as
+// ApplicationRow so both tabs read the same.
 
 import { useState } from 'react';
 import { Check, Package, X } from 'lucide-react';
 import clsx from 'clsx';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
-import type { Product } from '@/lib/types';
+import type { Product, ProductVariant } from '@/lib/types';
+
+const UNIT_LABEL: Record<ProductVariant['unitType'], string> = { g: 'g', kg: 'kg', ml: 'ml', l: 'L', pc: 'pc' };
+
+function packLabel(v: ProductVariant): string {
+  const mrp = v.originalPrice && v.originalPrice > v.price ? ` (MRP ₹${v.originalPrice})` : '';
+  return `${v.quantity} ${UNIT_LABEL[v.unitType]} ₹${v.price}${mrp}`;
+}
+
+// Live → proposed, only for what the partner actually changed.
+function ChangeSummary({ product }: { product: Product }) {
+  const changes = product.pendingChanges;
+  if (!changes) return null;
+  return (
+    <div className="mt-1 flex flex-col gap-0.5 text-xs">
+      {changes.name && (
+        <p className="text-ink">
+          <span className="text-muted">Name:</span> {product.name} → <span className="font-semibold">{changes.name}</span>
+        </p>
+      )}
+      {changes.variants && (
+        <p className="text-ink">
+          <span className="text-muted">Packs:</span> {product.variants.map(packLabel).join(' · ')} →{' '}
+          <span className="font-semibold">{changes.variants.map(packLabel).join(' · ')}</span>
+        </p>
+      )}
+      {!changes.variants && changes.price != null && (
+        <p className="text-ink">
+          <span className="text-muted">Price:</span> ₹{product.price} → <span className="font-semibold">₹{changes.price}</span>
+        </p>
+      )}
+    </div>
+  );
+}
 
 function Img({ src, className }: { src?: string; className: string }) {
   if (!src) {
@@ -25,7 +60,7 @@ function Img({ src, className }: { src?: string; className: string }) {
   return <img src={src} alt="" className={className} />;
 }
 
-export function ProductReviewRow({ product, mode, onDone }: { product: Product; mode: 'new' | 'image'; onDone: () => void }) {
+export function ProductReviewRow({ product, mode, onDone }: { product: Product; mode: 'new' | 'image' | 'changes'; onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -62,7 +97,12 @@ export function ProductReviewRow({ product, mode, onDone }: { product: Product; 
 
   const approvalBody = mode === 'new' ? { approve: true } : { action: 'approve' };
   const rejectBody = mode === 'new' ? { approve: false } : { action: 'reject' };
-  const endpoint = mode === 'new' ? `/api/products/${product.id}/approval` : `/api/products/${product.id}/image-review`;
+  const endpoint =
+    mode === 'new'
+      ? `/api/products/${product.id}/approval`
+      : mode === 'image'
+        ? `/api/products/${product.id}/image-review`
+        : `/api/products/${product.id}/change-review`;
 
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-amber-100 bg-amber-50/40 p-4 sm:flex-row sm:items-center">
@@ -85,6 +125,7 @@ export function ProductReviewRow({ product, mode, onDone }: { product: Product; 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-ink">{product.name}</p>
         <p className="truncate text-xs text-muted">{product.storeName}</p>
+        {mode === 'changes' && <ChangeSummary product={product} />}
       </div>
 
       {!!error && <p role="alert" className="text-sm text-danger">{error}</p>}

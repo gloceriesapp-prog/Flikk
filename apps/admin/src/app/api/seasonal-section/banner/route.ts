@@ -5,10 +5,11 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminSession } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(request: Request) {
-  if (!(await requireAdminSession())) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = await request.json();
     const bannerImageUrl = typeof body.bannerImageUrl === 'string' && body.bannerImageUrl.trim() ? body.bannerImageUrl.trim() : null;

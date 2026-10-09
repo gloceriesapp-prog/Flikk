@@ -39,6 +39,26 @@ export interface ApiPayoutOrder {
   grossAmount: number;
   commissionAmount: number;
   netAmount: number;
+  // 0-1 rate this order was charged (backend derives it from the order's own
+  // amounts). Absent on older backends and sample rows.
+  commissionRate?: number;
+}
+
+// GET /partner/commission — the rate new orders at this store are charged:
+// the store's own rate set by Gloceries, else the platform default
+// (migration 115). Replaces the old hard-coded "6%".
+export interface PartnerCommission {
+  commissionRate: number;
+  isStoreOverride: boolean;
+}
+
+export function fetchCommission(): Promise<PartnerCommission> {
+  return apiRequest('/partner/commission');
+}
+
+// 0.06 -> "6%", 0.045 -> "4.5%".
+export function formatCommissionPercent(rate: number): string {
+  return `${Math.round(rate * 10000) / 100}%`;
 }
 
 export function fetchPayoutOrders(payoutId: string): Promise<ApiPayoutOrder[]> {

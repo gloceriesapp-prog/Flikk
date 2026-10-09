@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireStoreAdmin } from '@/features/store-management/adminGate';
-import { requireAdminSession } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function GET() {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const { data, error } = await supabaseAdmin.from('rider_profile_change_requests')
     .select('id,user_id,changes,submitted_at,users(name,phone)')
     .eq('status', 'pending').order('submitted_at').limit(30);
@@ -24,8 +23,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const unauthorized = await requireStoreAdmin();
-  if (unauthorized) return unauthorized;
+  const { actor, denied } = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = await request.json();
     if (typeof body.id !== 'string' || !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(body.id)
@@ -34,10 +33,8 @@ export async function PATCH(request: Request) {
     const note = body.note?.trim() ?? '';
     if (note.length > 500 || (!body.approve && note.length < 3))
       return NextResponse.json({ error: 'Enter a rejection reason of 3–500 characters.' }, { status: 400 });
-    const admin = await requireAdminSession();
-    if (!admin) return NextResponse.json({ error: 'Administrator access required.' }, { status: 401 });
     const { data, error } = await supabaseAdmin.rpc('review_rider_profile_change', {
-      p_id: body.id, p_approve: body.approve, p_note: note, p_reviewer: admin.id,
+      p_id: body.id, p_approve: body.approve, p_note: note, p_reviewer: actor.id,
     });
     if (error) return NextResponse.json({ error: 'Could not review the request. Refresh and retry.' }, { status: 409 });
     return NextResponse.json({ status: data });

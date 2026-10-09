@@ -563,8 +563,8 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-ink">Commission rate</p>
-                <p className="text-xs text-muted">Deducted from every store&apos;s payout at delivery.</p>
+                <p className="text-sm font-medium text-ink">Default commission rate</p>
+                <p className="text-xs text-muted">Taken from each store&apos;s item total on new orders, unless the store has its own rate (Stores → store).</p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
                 <input

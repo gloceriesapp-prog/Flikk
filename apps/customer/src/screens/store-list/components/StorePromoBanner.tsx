@@ -7,6 +7,7 @@ import {
 
 import { AppImage as Image } from '../../../components/AppImage';
 import { storageUrl } from '../../../utils/storageUrl';
+import { useCopyImage } from '../../../api/appConfig';
 
 const PROMO_IMAGE_URI =
   storageUrl('Images/Indian%20neighbourhood%20shop%20parade.png');
@@ -15,6 +16,8 @@ const PROMO_BACKGROUND = '#D5E5F7';
 
 export function StorePromoBanner() {
   const { width: screenWidth } = useWindowDimensions();
+  // Admin App content: stores.promo.imageUrl.
+  const imageUri = useCopyImage('stores.promo.imageUrl', PROMO_IMAGE_URI);
 
   return (
     <View
@@ -28,7 +31,7 @@ export function StorePromoBanner() {
       }}
     >
       <Image
-        source={{ uri: PROMO_IMAGE_URI }}
+        source={{ uri: imageUri }}
         style={StyleSheet.absoluteFill}
         contentFit="cover"
         contentPosition="bottom center"

@@ -63,6 +63,42 @@ export function validateReleaseInput(input: ReleaseInput) {
   return row;
 }
 
+// Partner and rider help contacts (migration 118: app_release_config
+// support_phone / support_email / support_whatsapp). Blank clears a field,
+// and the app then falls back to the general contact on "App content".
+export const SUPPORT_CONTACT_APPS = ['partner', 'rider'] as const;
+export interface SupportContactsInput { app?: unknown; phone?: unknown; email?: unknown; whatsapp?: unknown }
+
+function optionalText(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value !== 'string') throw new Error('Contacts must be text.');
+  return value.trim() ? value.trim() : null;
+}
+
+// Accepts "+91 98765 43210" or a bare 10-digit Indian number and stores
+// E.164 (+919876543210), the format the CHECK and tel:/wa.me links need.
+function e164(value: unknown, label: string): string | null {
+  const raw = optionalText(value);
+  if (!raw) return null;
+  let digits = raw.replace(/[\s()-]/g, '');
+  if (/^\d{10}$/.test(digits)) digits = `+91${digits}`;
+  if (!/^\+[1-9]\d{7,14}$/.test(digits)) throw new Error(`${label} must be a phone number like +919876543210.`);
+  return digits;
+}
+
+export function validateSupportContactsInput(input: SupportContactsInput) {
+  const app = input.app as (typeof SUPPORT_CONTACT_APPS)[number];
+  if (!SUPPORT_CONTACT_APPS.includes(app)) throw new Error('Choose the partner or rider app.');
+  const email = optionalText(input.email);
+  if (email && (email.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))) throw new Error('Support email must be a valid email address.');
+  return {
+    app,
+    support_phone: e164(input.phone, 'Support phone'),
+    support_email: email,
+    support_whatsapp: e164(input.whatsapp, 'WhatsApp number'),
+  };
+}
+
 export interface FaqInput { question?: unknown; answer?: unknown; sortOrder?: unknown; isActive?: unknown }
 
 export function validateFaqInput(input: FaqInput) {

@@ -6,7 +6,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import type { Request, RequestHandler, Response, Router } from 'express';
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), deliveryStores: vi.fn(), tables: {} as Record<string, unknown[]> }));
-vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () => vi.fn(), requireApproved: vi.fn() }));
+vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () => vi.fn(), requireApproved: vi.fn(), requireActivePartner: vi.fn() }));
 vi.mock('../customer-experience/browse.js', async (original) => ({ ...(await original<object>()), deliveryStores: mocks.deliveryStores }));
 vi.mock('../db/supabase.js', () => ({ supabase: {
   rpc: mocks.rpc,

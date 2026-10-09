@@ -43,7 +43,11 @@ INSERT INTO public.trip_refunds(trip_id,payment_id,target_paise,refunded_paise,s
  ('d2000000-0000-4000-8000-000000000003','cf_t3',13000,0,'queued',null);
 SET session_replication_role=origin;
 
+-- Test legacy backfill while preserving newer production payment gates.
+CREATE TEMP TABLE fixture_payment_gates AS SELECT pg_get_functiondef('claim_checkout_payment(uuid,text,uuid,text)'::regprocedure) AS body;
 \ir ../../migrations/106_payment_refund_recovery.sql
+DO $$ DECLARE body text; BEGIN SELECT f.body INTO body FROM fixture_payment_gates f; EXECUTE body; END $$;
+DROP TABLE fixture_payment_gates;
 
 DO $$
 DECLARE r jsonb; o uuid:='d1000000-0000-4000-8000-000000000001'; cust uuid:='d0000000-0000-4000-8000-000000000002';

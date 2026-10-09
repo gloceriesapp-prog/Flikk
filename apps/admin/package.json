@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:api-guards": "eslint src/app/api"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1146.0",

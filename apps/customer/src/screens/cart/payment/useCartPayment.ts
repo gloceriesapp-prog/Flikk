@@ -22,6 +22,7 @@ import { selectCartStoreCount, useCartStore } from '../../../store/useCartStore'
 import { formatIstMinute, isOutsideOperatingHours } from '../../../utils/operatingHours';
 import { useOrderingHours } from '../../../utils/useOperatingHours';
 import { availablePaymentMethod, paymentMethodLabel, type PaymentMethod } from '../../../payments/paymentMethod';
+import { usePaymentAvailability } from '../../../payments/usePaymentAvailability';
 import type { AppStackParamList } from '../../../navigation/types';
 
 interface Props {
@@ -65,7 +66,9 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   const ownerEpoch = useRef(useAuthStore.getState().sessionEpoch).current;
   const stillOwner = () => useAuthStore.getState().sessionEpoch === ownerEpoch;
   const chosenMethod = selectedPaymentMethod;
-  const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, !!upiVpa, UPI_ID_SUPPORTED);
+  // A method admin switched off is dropped, so the cart asks for another one.
+  const { allowed } = usePaymentAvailability();
+  const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, !!upiVpa, UPI_ID_SUPPORTED, allowed);
   const latestSelection = useRef({ addressId: selectedAddress?.id, paymentMethod });
   useLayoutEffect(() => {
     latestSelection.current = { addressId: selectedAddress?.id, paymentMethod };
@@ -259,7 +262,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       }
 
       // An app that couldn't be launched falls back to Cashfree's UPI checkout.
-      const modes: CheckoutMode[] | undefined = upiApp || paymentMethod === 'upi_other' ? ['UPI']
+      const modes: CheckoutMode[] | undefined = upiApp ? ['UPI']
         : paymentMethod === 'card' ? ['CARD'] : paymentMethod === 'netbanking' ? ['NB'] : undefined;
       await payViaCashfreeCheckout(paymentMethod === 'online' || upiApp ? 'Online payment' : paymentMethodLabel(paymentMethod, upiApps), modes);
     } catch (err) {

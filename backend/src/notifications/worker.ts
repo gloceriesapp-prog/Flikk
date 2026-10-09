@@ -4,14 +4,24 @@ import { supabase } from '../db/supabase.js';
 interface NotificationJob {
     id: string;
     customer_id: string;
+    // Null for an admin message (migration 117: admin_message_id instead).
     order_id: string | null;
     trip_id: string | null;
+    event?: string;
     title: string;
     body: string;
     attempts: number;
     lease_token: string;
 }
 let schemaRetryAfter = 0;
+// Before migration 117 there is no last_error column; keep sending without it.
+let lastErrorColumn = true;
+// Order updates open the order; admin messages (no order) only open the inbox.
+export function pushData(row: Pick<NotificationJob, 'id' | 'customer_id' | 'order_id' | 'trip_id' | 'event'>) {
+    if (!row.order_id && !row.trip_id)
+        return { type: row.event?.startsWith('area-available:') ? 'area' : 'announcement', customer_id: row.customer_id, notification_id: row.id };
+    return { type: 'order', customer_id: row.customer_id, notification_id: row.id, order_id: row.trip_id ?? row.order_id, is_trip: !!row.trip_id };
+}
 export async function runCustomerNotifications() {
     if (Date.now() < schemaRetryAfter) return;
     const { data: rows, error } = await supabase.rpc('claim_customer_notifications', { p_limit: 50 });
@@ -45,18 +55,25 @@ export async function runCustomerNotifications() {
     for (let start = 0; start < rows.length; start += 5)
         await Promise.all(rows.slice(start, start + 5).map(async (row: NotificationJob) => {
             let failed = false;
-            const tokens = (devices ?? []).filter(d => d.customer_id === row.customer_id && !d.token.startsWith('disabled:') && !delivered.has(`${row.id}:${d.installation_id}`));
+            // Shown on the admin Push outbox page; never a token or payload.
+            let lastError: string | null = null;
+            const fail = (reason: string) => { failed = true; lastError = reason.slice(0, 300); };
+            const active = (devices ?? []).filter(d => d.customer_id === row.customer_id && !d.token.startsWith('disabled:'));
+            const tokens = active.filter(d => !delivered.has(`${row.id}:${d.installation_id}`));
+            if (!active.length)
+                lastError = 'No registered device';
             for (let i = 0; i < tokens.length; i += 100) {
                 const batch = tokens.slice(i, i + 100);
                 try {
                     const response = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000),
-                        body: JSON.stringify(batch.map(d => ({ to: d.token, title: row.title, body: row.body, sound: 'default', data: { type: row.order_id || row.trip_id ? 'order' : 'area', customer_id: row.customer_id, notification_id: row.id, order_id: row.trip_id ?? row.order_id, is_trip: !!row.trip_id } }))) });
+                        body: JSON.stringify(batch.map(d => ({ to: d.token, title: row.title, body: row.body, sound: 'default', data: pushData(row) }))) });
                     if (!response.ok)
                         throw new Error('Push provider unavailable');
                     const result = await response.json() as {
                         data?: {
                             status: string;
                             id?: string;
+                            message?: string;
                             details?: {
                                 error?: string;
                             };
@@ -80,16 +97,21 @@ export async function runCustomerNotifications() {
                                 throw removeError;
                         }
                         else
-                            failed = true;
+                            fail(`Push rejected: ${ticket.details?.error ?? ticket.message ?? 'unknown error'}`);
                     }
                 }
-                catch {
-                    failed = true;
+                catch (error) {
+                    fail(error instanceof Error ? error.message : 'Push provider unavailable');
                 }
             }
-            const { error: saveError } = await supabase.from('customer_notifications').update({ lease_token: null, lease_until: null,
-                ...(failed ? { next_attempt_at: new Date(Date.now() + Math.min(3600000, 30000 * 2 ** row.attempts)).toISOString() } : { push_sent_at: new Date().toISOString() }) })
-                .eq('id', row.id).eq('lease_token', row.lease_token);
+            const outcome = { lease_token: null, lease_until: null,
+                ...(failed ? { next_attempt_at: new Date(Date.now() + Math.min(3600000, 30000 * 2 ** row.attempts)).toISOString() } : { push_sent_at: new Date().toISOString() }) };
+            const save = (patch: Record<string, unknown>) => supabase.from('customer_notifications').update(patch).eq('id', row.id).eq('lease_token', row.lease_token);
+            let { error: saveError } = await save(lastErrorColumn ? { ...outcome, last_error: lastError } : outcome);
+            if (saveError && lastErrorColumn && saveError.code === 'PGRST204') {
+                lastErrorColumn = false;
+                ({ error: saveError } = await save(outcome));
+            }
             if (saveError)
                 throw saveError;
         }));

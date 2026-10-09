@@ -97,6 +97,9 @@ it('admin trip assignment goes through the locked RPC and refuses a trip owned b
   db.rpc.mockResolvedValue({ data: null, error: { code: 'P0409' } });
   const req = { params: { id: 'trip-1' }, body: { rider_id: 'rider-2' } } as unknown as Partial<Request>;
   expect((await call(adminRouter, '/trips/:id/assign-rider', req)).err).toMatchObject({ status: 409, code: 'TRIP_HAS_RIDER' });
+  // enforce_rider_capacity (migration 113) refuses a rider at the admin's limit.
+  db.rpc.mockResolvedValue({ data: null, error: { code: 'P0429' } });
+  expect((await call(adminRouter, '/trips/:id/assign-rider', req)).err).toMatchObject({ status: 409, code: 'RIDER_AT_CAPACITY' });
   expect(db.rpc).toHaveBeenCalledWith('assign_trip_rider', { p_trip: 'trip-1', p_rider: 'rider-2' });
   db.rpc.mockResolvedValue({ data: [{ id: 'leg-a' }, { id: 'leg-b' }], error: null });
   const { err, res } = await call(adminRouter, '/trips/:id/assign-rider', req);

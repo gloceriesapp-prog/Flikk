@@ -1,5 +1,5 @@
 // Framework-free canonical constraints, shared by partner API and admin writes.
-export const STORE_CATEGORIES = ['Kirana & Grocery', 'Supermarket', 'Pharmacy', 'Bakery', 'Fruits & Vegetables', 'Hardware', 'Paint Shop', 'Steel & Vessels', 'General Store', 'Others'] as const;
+import { isStoreCategory } from '../lib/storeCategories.js';
 export function validateStoreFields(patch: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(patch)) {
     if (['name','category','district','address_line','manual_address','owner_name','city','state','country','phone','photo_url','open_time','close_time','pan_number','fssai_number','gst_number','shop_establishment_number','drug_license_number','udyam_number'].includes(key)) {
@@ -7,7 +7,7 @@ export function validateStoreFields(patch: Record<string, unknown>): void {
       const text = typeof value === 'string' ? value.trim() : '';
       if (text.length > (key === 'photo_url' ? 2048 : 500)) throw new Error(`${key} is too long.`);
       if (['name','category','city','district','state','country'].includes(key) && !text) throw new Error(`${key} cannot be empty.`);
-      if (key === 'category' && !STORE_CATEGORIES.some(category => category === text)) throw new Error('Choose a valid store category.');
+      if (key === 'category' && !isStoreCategory(text)) throw new Error('Choose a valid store category.');
       if (['open_time','close_time'].includes(key) && text && !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(text)) throw new Error('Hours must use a valid 24-hour time.');
       if (key === 'phone' && text && !/^\+?[\d\s()-]{7,25}$/.test(text)) throw new Error('Enter a valid contact phone number.');
       if (key === 'pan_number' && text && !/^[A-Z]{5}\d{4}[A-Z]$/.test(text.toUpperCase())) throw new Error('PAN must be in the format ABCDE1234F.');

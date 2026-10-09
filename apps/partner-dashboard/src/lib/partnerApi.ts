@@ -35,7 +35,31 @@ export interface Store {
   // isValidPanFormat) server-side before writing. Real columns, same store row.
   fssai_number: string | null;
   pan_number: string | null;
+  // Required while category is Pharmacy (backend lib/storeCategories.ts).
+  drug_license_number?: string | null;
   phone: string | null;
+  // Name/category/address/map-pin/licence edits wait for Gloceries review
+  // (migration 114): the live values above stay until approved.
+  pending_change?: StoreProfileChange | null;
+  last_change_review?: StoreProfileChange | null;
+}
+
+export interface StoreProfileChange {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  changes: Record<string, string | number | null>;
+  review_reason: string | null;
+  created_at: string;
+}
+
+// The store categories admin allows — the backend refuses anything else.
+export interface StoreCategoryOption {
+  name: string;
+  requires_drug_license: boolean;
+}
+
+export function fetchStoreCategories(): Promise<StoreCategoryOption[]> {
+  return apiRequest('/partner/store-categories');
 }
 
 export function fetchMyStore(): Promise<Store> {
@@ -157,6 +181,10 @@ export interface PartnerProduct {
   // nothing pending. fetchMyProducts returns the row as-is, so this flows
   // through with no explicit mapping to add.
   pending_image_url: string | null;
+  // Name / pack price edits to a LIVE product awaiting admin review
+  // (migration 115). Customers keep seeing the approved values above until
+  // admin approves. Null when nothing is queued; absent on older backends.
+  pending_changes?: PendingProductChanges | null;
   is_veg: boolean;
   freshness_tag: string | null;
   // Kept in sync with stock_status by a DB trigger (backend/src/lib/
@@ -170,6 +198,13 @@ export interface PartnerProduct {
   stock_quantity: number | null;
   approval_status: 'pending' | 'approved' | 'rejected';
   product_variants: ProductVariant[];
+}
+
+export interface PendingProductChanges {
+  name?: string;
+  price?: number;
+  unit?: string;
+  variants?: { unit_type: UnitType; quantity: number; price: number; original_price: number | null }[];
 }
 
 export function fetchMyProducts(): Promise<PartnerProduct[]> {
@@ -240,6 +275,17 @@ export interface Payout {
   net_payout: number;
   status: 'pending' | 'processing' | 'paid' | 'blocked' | 'failed';
   paid_at: string | null;
+}
+
+// GET /partner/commission — the rate this store's new orders are charged:
+// its own rate set by Gloceries, else the platform default (migration 115).
+export interface PartnerCommission {
+  commissionRate: number;
+  isStoreOverride: boolean;
+}
+
+export function fetchMyCommission(): Promise<PartnerCommission> {
+  return apiRequest('/partner/commission');
 }
 
 export function fetchMyPayouts(): Promise<Payout[]> {

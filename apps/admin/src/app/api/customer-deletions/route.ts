@@ -1,7 +1,8 @@
-import { requireAdminSession } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 export async function GET(request: Request) {
-  if (!await requireAdminSession()) return Response.json({ error: 'Not signed in.' }, { status: 401 });
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
   const before = new URL(request.url).searchParams.get('before');
   let query = supabaseAdmin.from('customer_deletion_requests').select('id,customer_id,status,reason,review_note,created_at,completed_at,users!customer_id(name,phone)');
   if (before) {

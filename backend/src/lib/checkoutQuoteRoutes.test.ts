@@ -3,18 +3,24 @@ import type { NextFunction, RequestHandler, Response, Router } from 'express';
 import type { AuthedRequest } from '../middleware/auth.js';
 import { AppError } from './errors.js';
 import { calculateCheckoutBill } from './checkoutQuote.js';
-const mocks = vi.hoisted(() => ({ confirm: vi.fn(), rpc: vi.fn(), address: vi.fn() }));
+const mocks = vi.hoisted(() => ({ confirm: vi.fn(), rpc: vi.fn(), address: vi.fn(), available: vi.fn() }));
 vi.mock('./checkoutQuoteService.js', () => ({ confirmCheckoutQuote: mocks.confirm }));
 vi.mock('../db/supabase.js', () => ({ supabase: { rpc: mocks.rpc, from: () => {
   const query = { select: () => query, eq: () => query, single: async () => ({ data: null, error: null }) }; return query;
 } } }));
-vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () => vi.fn(), requireApproved: vi.fn() }));
+vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () => vi.fn(), requireApproved: vi.fn(), requireActivePartner: vi.fn() }));
 vi.mock('./resolveAddress.js', () => ({ resolveAddressId: mocks.address }));
-vi.mock('./platformSettings.js', () => ({ getCommissionRate: async () => 0.1 }));
+// Per-store commission (migration 115): shop-b has its own 5% rate, every other store the 10% default.
+const { storeRate } = vi.hoisted(() => ({ storeRate: (id: string) => ({ rate: id === 'shop-b' ? 0.05 : 0.1, isStoreOverride: id === 'shop-b' }) }));
+vi.mock('./platformSettings.js', () => ({
+  getStoreCommissionRate: async (id: string) => storeRate(id),
+  getStoreCommissionRates: async (ids: string[]) => new Map(ids.map((id) => [id, storeRate(id)])),
+}));
 vi.mock('./pushNotifications.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('./pushNotifications.js')>()), sendPushNotification: vi.fn() }));
 vi.mock('./riderDispatch.js', () => ({ triggerDispatch: vi.fn() }));
 vi.mock('../payments/refundPayment.js', () => ({ refundPayment: vi.fn() }));
 vi.mock('../routes/stores.js', () => ({ PRODUCT_WITH_VARIANTS_SELECT: '*' }));
+vi.mock('../payments/availability.js', () => ({ assertPaymentMethodAvailable: mocks.available }));
 vi.mock('./checkoutAttempts.js', () => ({
   checkoutAttemptIdentity: () => ({ id: 'attempt', fingerprint: 'cart' }),
   findCheckoutAttempt: async () => null,
@@ -56,7 +62,13 @@ it('persists the multi-shop surcharge once for the entire trip', async () => {
   expect(next).not.toHaveBeenCalled();
   expect(mocks.rpc).toHaveBeenCalledWith('create_trip_orders', expect.objectContaining({ p_item_total: 80,
     p_delivery_fee: 35, p_handling_fee: 5, p_total: 120, p_payment_method: 'cod',
-    p_legs: [expect.objectContaining({ store_id: 'shop-a', item_total: 40 }), expect.objectContaining({ store_id: 'shop-b', item_total: 40 })] }));
+    p_legs: [expect.objectContaining({ store_id: 'shop-a', item_total: 40, commission_amount: 4 }), expect.objectContaining({ store_id: 'shop-b', item_total: 40, commission_amount: 2 })] }));
+});
+it('uses the store’s own commission rate for a single-shop order', async () => {
+  const items = [line('shop-b', 'small')];
+  mocks.confirm.mockResolvedValue({ items, bill: calculateCheckoutBill(items, settings, 0), promoCodeId: null });
+  await place(ordersRouter, { store_id: 'shop-b', address_id: 'address', items, quote_token: 'signed' });
+  expect(mocks.rpc).toHaveBeenCalledWith('create_order', expect.objectContaining({ p_item_total: 40, p_commission_amount: 2 }));
 });
 it('creates no order or address for a stale quote in either route', async () => {
   mocks.confirm.mockRejectedValue(new AppError(409, 'QUOTE_CHANGED', 'Review your bill'));
@@ -71,5 +83,14 @@ it('rejects tip amounts before checkout in either route', async () => {
     const { next } = await place(router, { store_id: 'shop', address_id: 'address', items: [line('shop', 'pack')], quote_token: 'signed', tip_amount: 20 });
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ code: 'TIPS_UNAVAILABLE' }));
   }
+  expect(mocks.confirm).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it('refuses a payment method admin has switched off before quoting or writing, in either route', async () => {
+  mocks.available.mockRejectedValue(new AppError(409, 'COD_UNAVAILABLE', 'Cash on delivery is not available right now.'));
+  for (const router of [ordersRouter, tripsRouter]) {
+    const { next } = await place(router, { store_id: 'shop', address_id: 'address', items: [line('shop', 'pack')], quote_token: 'signed' });
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ code: 'COD_UNAVAILABLE', status: 409 }));
+  }
+  expect(mocks.available).toHaveBeenCalledWith('cod');
   expect(mocks.confirm).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
 });
