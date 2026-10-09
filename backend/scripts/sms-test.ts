@@ -28,10 +28,11 @@ try {
   const requestId = await sendOtpSms(mobile, otp, config);
   console.log(`MSG91 accepted the SMS to +${mobile} (request_id ${requestId || 'none'}).`);
   console.log(`The SMS should show the code ${otp}. If it arrives, MSG91 + DLT are set up correctly.`);
-  console.log('If it never arrives, check MSG91 -> Reports -> OTP for this request_id (DLT or operator failure).');
+  console.log(`Sent via the MSG91 ${config.api === 'otp' ? 'OTP' : 'Flow'} API with variable ${config.otpVariable}.`);
+  console.log('If it never arrives, open MSG91 -> SMS -> Logs: the row should name your template; the status column gives the DLT/operator reason.');
 } catch (error) {
   console.error(error instanceof SmsDeliveryError ? error.message : 'Unexpected error sending the SMS.');
   console.error('HTTP 401 / "IP not whitelisted": MSG91 -> Auth key -> turn off IP security (or whitelist your IP).');
-  console.error('"Invalid template" / "template not found": MSG91_OTP_TEMPLATE_ID must be the MSG91 OTP template ID, not the DLT template ID.');
+  console.error('"Invalid template" / "template not found": MSG91_OTP_TEMPLATE_ID must be the MSG91 template ID (SMS -> Templates), not the 19-digit DLT template ID.');
   process.exit(1);
 }

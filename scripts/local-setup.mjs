@@ -84,7 +84,7 @@ const cliEnv = { ...process.env, SEND_SMS_HOOK_SECRET: secret };
 console.log('\nStarting local Supabase (Docker)…');
 if (newSecret) supabase(['stop'], cliEnv);
 const started = spawnSync('npx', ['--yes', 'supabase', 'start'], { cwd: root, env: cliEnv, stdio: 'inherit' });
-if (started.status !== 0) fail('supabase start failed. Is Docker Desktop running?');
+if (started.status !== 0) fail('supabase start failed (see the lines above). If Docker is not running, start Docker Desktop; if a container is "unhealthy", run `npx supabase stop --no-backup` and try again.');
 const status = supabase(['status', '-o', 'env'], cliEnv);
 if (status.status !== 0) fail(`supabase status failed:\n${status.stderr}`);
 const s = readEnvText(status.stdout);
