@@ -3,7 +3,7 @@
 // focus/paste bugs that come from managing N separate TextInputs). Same
 // as apps/customer/apps/partner's own OtpBoxInput.tsx.
 
-import { useRef } from 'react';
+import { useRef, type ComponentRef } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 const OTP_LENGTH = 6;
@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function OtpBoxInput({ value, onChangeText, autoFocus }: Props) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const digits = value.padEnd(OTP_LENGTH, ' ').split('');
 
   return (

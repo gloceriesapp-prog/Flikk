@@ -25,6 +25,7 @@ export interface StoreProfileChange {
 }
 
 export interface StoreProfile {
+  accessRole?: 'owner' | 'manager';
   id: string;
   storeName: string;
   category: string;

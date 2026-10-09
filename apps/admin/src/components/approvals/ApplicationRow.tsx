@@ -26,6 +26,7 @@ const DEFAULT_REJECTION_REASON =
 
 export function ApplicationRow({ application }: { application: Application }) {
   const [status, setStatus] = useState(application.status);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const Icon = application.kind === 'store' ? Store : User;
   // Rejected still shows the decide buttons, not a terminal pill — a
@@ -50,6 +51,8 @@ export function ApplicationRow({ application }: { application: Application }) {
       }
     }
 
+    if (busy) return;
+    setError(null);
     setBusy(true);
     try {
       const res = await fetch(`/api/approvals/${application.kind === 'store' ? 'stores' : 'riders'}/${application.id}`, {
@@ -64,10 +67,10 @@ export function ApplicationRow({ application }: { application: Application }) {
         // with zero indication anything went wrong, which is exactly
         // what "reject button does nothing" looked like from the outside.
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        window.alert(body?.error ?? 'Could not update this application.');
+        setError(body?.error ?? 'Could not update this application.');
       }
     } catch {
-      window.alert('Could not reach the server. Please try again.');
+      setError('Could not reach the server. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -105,6 +108,7 @@ export function ApplicationRow({ application }: { application: Application }) {
         <ChevronRight size={15} className="shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100" />
       </Link>
 
+      {!!error && <p role="alert" className="text-sm text-danger">{error}</p>}
       {needsDecision ? (
         <div className="flex shrink-0 items-center gap-2">
           <button

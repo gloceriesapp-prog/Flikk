@@ -1,16 +1,4 @@
-// "Rate us" — real interaction, not a static row: 5 tappable stars, each
-// with its own spring-bounce + haptic pop on tap, then branches on the
-// score exactly like Zomato/Swiggy's own rating gate: 4-5 stars hands off
-// to the OS's native App Store/Play Store review sheet (expo-store-review
-// — the actual mechanism that produces real public store ratings, not a
-// custom form pretending to be one); 1-3 stars just says thanks and closes
-// — never funnels a low score toward the public store listing, same
-// pattern every major app uses. No backend/local persistence of the score
-// itself (no ratings table exists, and this isn't asking to build one) —
-// this is the entry point + the interaction, not a feedback-analytics
-// pipeline.
-
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StarIcon } from '@hugeicons/core-free-icons';
 import * as Haptics from 'expo-haptics';
 import * as StoreReview from 'expo-store-review';
@@ -18,6 +6,8 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { apiRequest } from '../../../api/client';
 
 interface Props {
   visible: boolean;
@@ -44,8 +34,22 @@ function Star({ filled, onPress, bounce }: { filled: boolean; onPress: () => voi
 }
 
 export function RateUsModal({ visible, onClose }: Props) {
+  const sessionEpoch = useAuthStore(state => state.sessionEpoch);
+  // Each visible account session starts with fresh feedback state. Closing
+  // unmounts the body and invalidates pending acknowledgements.
+  return visible ? <RateUsContent key={sessionEpoch} onClose={onClose} /> : null;
+}
+
+function RateUsContent({ onClose }: Omit<Props, 'visible'>) {
   const [rating, setRating] = useState(0);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const sending = useRef(false);
+  const generation = useRef(0);
+  useEffect(() => {
+    const current = generation.current;
+    return () => { generation.current = current + 1; };
+  }, []);
 
   // One shared scale value per star — indices below map 1:1 to STAR_INDICES.
   const bounce1 = useSharedValue(1);
@@ -61,11 +65,14 @@ export function RateUsModal({ visible, onClose }: Props) {
   }
 
   function handleDismiss() {
+    generation.current++;
+    sending.current = false;
     onClose();
     reset();
   }
 
   async function handleSelect(score: number) {
+    if (sending.current) return;
     setRating(score);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // Every star up to and including the tapped one pops — reads as one
@@ -74,20 +81,33 @@ export function RateUsModal({ visible, onClose }: Props) {
       if (i < score) bounce.value = withSequence(withSpring(1.35, { damping: 6 }), withSpring(1, { damping: 8 }));
     });
 
-    setTimeout(async () => {
+    sending.current = true;
+    setError(null);
+    const current = generation.current;
+    try {
+      await apiRequest('/reviews/app', { method: 'POST', body: { rating: score } });
+      if (current !== generation.current) return;
       setHasSubmitted(true);
-      if (score >= 4 && (await StoreReview.isAvailableAsync())) {
-        void StoreReview.requestReview();
+    } catch { if (current === generation.current) setError('Could not save your rating. Tap a star to retry.'); }
+    finally { if (current === generation.current) sending.current = false; }
+
+  }
+
+  async function handleStoreReview() {
+    const current = generation.current;
+    try {
+      if (!await StoreReview.isAvailableAsync()) {
+        if (current === generation.current) setError('Store reviews are unavailable right now.');
+        return;
       }
-      setTimeout(() => {
-        onClose();
-        reset();
-      }, 1400);
-    }, 350);
+      if (current === generation.current) await StoreReview.requestReview();
+    } catch {
+      if (current === generation.current) setError('Store reviews are unavailable right now.');
+    }
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible transparent animationType="slide" onRequestClose={handleDismiss}>
       <View className="flex-1 justify-end bg-black/40">
         <View className="items-center rounded-t-[32px] bg-white px-6 pb-safe pt-7">
           {!hasSubmitted ? (
@@ -95,6 +115,7 @@ export function RateUsModal({ visible, onClose }: Props) {
               <Text className="text-[19px] font-bold text-ink">Enjoying Gloceries?</Text>
               <Text className="mt-1 text-center text-[13px] font-normal text-ink/50">Tap a star to rate your experience</Text>
 
+              {!!error && <Text className="mt-2 text-center text-red-600">{error}</Text>}
               <View className="mt-6 flex-row gap-2 pb-2">
                 {STAR_INDICES.map((score, i) => (
                   <Star key={score} filled={score <= rating} onPress={() => handleSelect(score)} bounce={bounces[i]} />
@@ -112,6 +133,7 @@ export function RateUsModal({ visible, onClose }: Props) {
             </View>
           )}
 
+          {hasSubmitted && <><Pressable className="mt-3" onPress={() => void handleStoreReview()}><Text className="text-sm font-semibold text-blue-600">Review us on the app store</Text></Pressable><Pressable className="py-4" onPress={handleDismiss}><Text>Done</Text></Pressable>{!!error && <Text className="text-red-600">{error}</Text>}</>}
           {!hasSubmitted && (
             <Pressable onPress={handleDismiss} hitSlop={8} className="mt-5 pb-2">
               <Text className="text-[14px] font-normal text-ink/40">Maybe later</Text>

@@ -113,6 +113,8 @@ export interface Application {
 // algorithm, no auto-assign (specs/00-foundation/out-of-scope.md) — this
 // list is just who's on shift right now.
 export interface ActiveRider {
+  photoUrl?: string | null;
+  zoneId?: string | null;
   id: string;
   // riders.user_id — what orders.rider_id holds.
   userId: string;

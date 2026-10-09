@@ -244,6 +244,8 @@ export function StoreSettingsScreen({ navigation }: Props) {
   // onConfirm, one real implementation instead of two copies.
   const changeStoreLocation = useChangeStoreLocation();
 
+  if (profile.accessRole === 'manager') return <View className="flex-1 bg-white px-6 pb-safe pt-safe"><Text className="mt-6 text-xl font-semibold text-ink">Store settings</Text><Text className="mt-3 text-base text-ink/70">Your manager access covers orders, products and reviews. Ask the store owner to update legal details, store information or the payout account.</Text><Pressable onPress={() => navigation.goBack()} className="mt-6 rounded-xl bg-ink px-4 py-3"><Text className="text-center font-semibold text-white">Back</Text></Pressable></View>;
+
   return (
     // Keyboard was covering the "Save changes" bar below (name TextInput
     // in the scrollable content, no keyboard-avoidance at all) — same

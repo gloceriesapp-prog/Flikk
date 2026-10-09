@@ -7,6 +7,7 @@ interface NotificationJob {
     // Null for an admin message (migration 117: admin_message_id instead).
     order_id: string | null;
     trip_id: string | null;
+    event?: string;
     title: string;
     body: string;
     attempts: number;
@@ -16,9 +17,9 @@ let schemaRetryAfter = 0;
 // Before migration 117 there is no last_error column; keep sending without it.
 let lastErrorColumn = true;
 // Order updates open the order; admin messages (no order) only open the inbox.
-export function pushData(row: Pick<NotificationJob, 'id' | 'customer_id' | 'order_id' | 'trip_id'>) {
+export function pushData(row: Pick<NotificationJob, 'id' | 'customer_id' | 'order_id' | 'trip_id' | 'event'>) {
     if (!row.order_id && !row.trip_id)
-        return { type: 'announcement', customer_id: row.customer_id, notification_id: row.id };
+        return { type: row.event?.startsWith('area-available:') ? 'area' : 'announcement', customer_id: row.customer_id, notification_id: row.id };
     return { type: 'order', customer_id: row.customer_id, notification_id: row.id, order_id: row.trip_id ?? row.order_id, is_trip: !!row.trip_id };
 }
 export async function runCustomerNotifications() {

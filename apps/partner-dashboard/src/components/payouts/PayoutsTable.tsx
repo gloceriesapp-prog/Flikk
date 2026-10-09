@@ -26,7 +26,7 @@ export function PayoutsTable({ payouts }: { payouts: Payout[] }) {
           <span className="border-r border-hairline px-4 py-3">Commission</span>
           <span className="border-r border-hairline px-4 py-3">Net</span>
           <span className="border-r border-hairline px-4 py-3">Status</span>
-          <span className="px-4 py-3">Paid on</span>
+          <span className="px-4 py-3">Paid on / Admin note</span>
         </div>
 
         {/* Rows */}
@@ -47,7 +47,7 @@ export function PayoutsTable({ payouts }: { payouts: Payout[] }) {
                 {statusLabel(p.status)}
               </span>
             </span>
-            <span className="flex items-center px-4 py-3.5 text-sm whitespace-nowrap text-neutral-400">{p.paid_at ? formatDate(p.paid_at) : '—'}</span>
+            <span className="flex items-center px-4 py-3.5 text-sm whitespace-nowrap text-neutral-400"><span>{p.paid_at ? formatDate(p.paid_at) : '—'}{p.payment_note && <span className="mt-1 block whitespace-normal text-neutral-600">{p.payment_note}</span>}</span></span>
           </div>
         ))}
       </div>

@@ -122,9 +122,13 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
           <View className="mx-5"><NotificationRow item={item} onPress={() => {
             if (!customerId) return;
             const orderId = item.trip_id ?? item.order_id;
-            // A team message has no order to open; reading it just marks it read.
+            // Team and area messages only mark their own inbox entry read.
             if (!orderId) {
-              if (!item.read_at) void markNotificationRead(item.id).then(() => refetch()).catch(() => {});
+              if (item.read_at) return;
+              const epoch = useAuthStore.getState().sessionEpoch;
+              void markNotificationRead(item.id).then(() => {
+                if (useAuthStore.getState().sessionEpoch === epoch) return refetch();
+              }).catch(() => { if (useAuthStore.getState().sessionEpoch === epoch) setMessage('Could not mark this update as read. Please try again.'); });
               return;
             }
             queueOrderNotification({ type: 'order', customer_id: customerId, notification_id: item.id,

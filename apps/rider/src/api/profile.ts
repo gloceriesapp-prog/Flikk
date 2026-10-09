@@ -16,6 +16,7 @@ export interface RiderProfilePayout {
 }
 
 export interface RiderProfile {
+  zoneName: string | null;
   riderCode: string | null;
   name: string | null;
   phone: string | null;

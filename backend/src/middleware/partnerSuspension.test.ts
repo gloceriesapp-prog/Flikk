@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 
 const db = vi.hoisted(() => ({
-  rows: {} as Record<string, { partner_suspended: boolean; partner_suspended_reason: string | null }>,
+  rows: {} as Record<string, { partner_suspended: boolean; partner_suspended_reason: string | null; store_memberships?: unknown }>,
   error: null as { code: string } | null,
   lookups: 0,
 }));
@@ -53,4 +53,14 @@ it('treats a database without migration 114 as nobody suspended', async () => {
 it('fails closed when the lookup errors', async () => {
   db.error = { code: 'XX000' };
   expect(await run({ id: 'owner-dberror', role: 'store_owner', isApproved: true })).toMatchObject({ status: 503 });
+});
+
+it('inherits the primary owner suspension for a store manager', async () => {
+  db.rows['manager-owner-suspended'] = { partner_suspended:false,partner_suspended_reason:null,
+    store_memberships:[{is_active:true,stores:{owner:{partner_suspended:true,partner_suspended_reason:'Owner policy breach'}}}] };
+  expect(await run({id:'manager-owner-suspended',role:'store_owner',isApproved:true})).toMatchObject({code:'PARTNER_SUSPENDED',status:403});
+});
+it('fails closed if an active membership has no verified owner', async () => {
+  db.rows['manager-owner-missing'] = {partner_suspended:false,partner_suspended_reason:null,store_memberships:[{is_active:true,stores:null}]};
+  expect(await run({id:'manager-owner-missing',role:'store_owner',isApproved:true})).toMatchObject({status:503});
 });

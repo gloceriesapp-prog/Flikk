@@ -13,10 +13,10 @@ const provider = { order_id: cfId, order_currency: 'INR', order_amount: 30, orde
 const pay = (status: string, extra: Record<string, unknown> = {}) => ({ cf_payment_id: `cf_${status}`, order_id: cfId, payment_currency: 'INR', payment_amount: 30, payment_status: status, ...extra });
 const claim = (claimed: boolean, providerOrderId: string | null) => mocks.rpc.mockResolvedValue({ data: { claimed, total: 30, session: { provider_order_id: providerOrderId } }, error: null });
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   claim(false, cfId);
   const query = { update: mocks.update, select: vi.fn(() => query), eq: vi.fn(() => query), order: vi.fn(() => query), limit: vi.fn(() => query),
-    maybeSingle: async () => ({ data: { phone: '+91 98765 43210', placed_at: new Date().toISOString() }, error: null }),
+    maybeSingle: async () => ({ data: { phone: '+91 98765 43210', reservation_expires_at: new Date(Date.now() + 35 * 60_000).toISOString(), placed_at: new Date().toISOString() }, error: null }),
     then: (resolve: (value: unknown) => unknown) => Promise.resolve({ error: null }).then(resolve) };
   mocks.update.mockReturnValue(query); mocks.from.mockReturnValue(query);
   mocks.get.mockResolvedValue(provider); mocks.create.mockResolvedValue(provider);
@@ -42,6 +42,9 @@ it('creates only after winning the durable claim, with paise converted to rupees
   claim(true, null); mocks.get.mockResolvedValue(null);
   await ensureProviderOrder(target, 'customer');
   expect(mocks.create).toHaveBeenCalledTimes(1);
+  const expiry = mocks.create.mock.calls[0][0].expiresAt.getTime();
+  expect(expiry - Date.now()).toBeGreaterThan(34 * 60_000);
+  expect(expiry - Date.now()).toBeLessThanOrEqual(35 * 60_000);
   expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ orderId: cfId, amountPaise: 3000, customerPhone: '9876543210', tags: { gloceries_order_id: id } }));
   expect(mocks.update).toHaveBeenCalledWith({ provider_order_id: cfId });
 });
@@ -117,4 +120,13 @@ it('treats a UPI creating claim as in flight only until it is stale', () => {
   expect(upiClaimInFlight({ upi_state: 'creating', upi_claimed_at: null }, now)).toBe(false);
   expect(upiClaimInFlight({ upi_state: 'ready', upi_claimed_at: at(0) }, now)).toBe(false);
   expect(upiClaimInFlight({ upi_state: null }, now)).toBe(false);
+});
+
+it('fails closed for a missing reservation snapshot before provider creation', async () => {
+  claim(true, null); mocks.get.mockResolvedValue(null);
+  const query = { select: () => query, eq: () => query, order: () => query, limit: () => query,
+    maybeSingle: async () => ({ data: { phone: '9876543210', placed_at: new Date().toISOString() }, error: null }) };
+  mocks.from.mockReturnValue(query);
+  await expect(ensureProviderOrder(target, 'customer')).rejects.toMatchObject({ code: 'PAYMENT_NOT_PAYABLE' });
+  expect(mocks.create).not.toHaveBeenCalled();
 });

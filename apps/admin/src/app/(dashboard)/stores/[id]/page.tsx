@@ -1,3 +1,4 @@
+import { StoreTeamPanel } from '@/components/stores/StoreTeamPanel';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -67,6 +68,7 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
       <StoreChangeRequests storeId={store.id} />
       <StoreZonePanel storeId={store.id} zoneId={store.zoneId ?? null} zoneName={store.zone} />
       <StorePayoutPanel storeId={store.id} payout={payout} />
+      <StoreTeamPanel storeId={store.id} />
       <StoreCommissionPanel
         key={`commission:${storeRate ?? 'default'}`}
         storeId={store.id}

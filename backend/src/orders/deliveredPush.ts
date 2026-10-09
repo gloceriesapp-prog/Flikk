@@ -1,3 +1,4 @@
+import { storePushRecipients } from '../stores/pushRecipients.js';
 import { supabase } from '../db/supabase.js';
 import { round2 } from '../lib/pricing.js';
 import { embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
@@ -33,12 +34,13 @@ export async function notifyStoresOfDelivery(
         .select('users!owner_user_id(expo_push_token)')
         .eq('id', leg.store_id)
         .single();
-      await sendPushNotification(
-        embeddedPushToken(storeRow?.users),
+      const recipients = await storePushRecipients(leg.store_id, embeddedPushToken(storeRow?.users));
+      await Promise.all(recipients.map(token => sendPushNotification(
+        token,
         `₹${netEarned} earned`,
         'Order delivered — added to your balance. Paid weekly after verification.',
         { data: { type: 'order_delivered', orderId: leg.id } },
-      );
+      )));
     }));
   } catch {
     // Push is best-effort; the delivery itself already committed.

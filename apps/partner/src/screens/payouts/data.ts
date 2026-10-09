@@ -22,6 +22,7 @@ export interface WeeklyPayout {
   // Bank reference (UTR) the founder recorded when marking this paid —
   // null until paid. Shown with a copy button to match a bank statement.
   utr: string | null;
+  paymentNote?: string | null;
   // True only for SAMPLE_PAYOUTS below — never set on anything built from
   // a real GET /partner/payouts row. Every consumer that renders a
   // WeeklyPayout checks this before treating its numbers as real money,
@@ -58,6 +59,7 @@ export function toWeeklyPayout(row: ApiPayout): WeeklyPayout {
     status: row.status,
     paidAt: row.paidAt ?? row.paid_at,
     utr: row.utr ?? null,
+    paymentNote: row.payment_note ?? null,
   };
 }
 

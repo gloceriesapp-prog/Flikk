@@ -22,11 +22,13 @@ export interface PromoCodeRow {
   times_used: number;
   is_active: boolean;
   expires_at: string | null;
+  starts_at?: string | null;
+  per_customer_limit?: number;
 }
 
 export class PromoValidationError extends Error {
   constructor(
-    public code: 'PROMO_NOT_FOUND' | 'PROMO_INACTIVE' | 'PROMO_EXPIRED' | 'PROMO_USAGE_LIMIT_REACHED' | 'PROMO_BELOW_MIN_ORDER' | 'PROMO_ALREADY_USED',
+    public code: 'PROMO_NOT_STARTED' | 'PROMO_NOT_FOUND' | 'PROMO_INACTIVE' | 'PROMO_EXPIRED' | 'PROMO_USAGE_LIMIT_REACHED' | 'PROMO_BELOW_MIN_ORDER' | 'PROMO_ALREADY_USED',
     message: string,
   ) {
     super(message);
@@ -61,18 +63,19 @@ export function calcDiscount(itemTotal: number, promo: PromoCodeRow): number {
 // passed in rather than queried here — the caller already needs to check
 // promo_redemptions for the (promo_code_id, customer_id) unique
 // constraint before this point, no reason to query it twice.
-export function validatePromoCode(promo: PromoCodeRow, itemTotal: number, alreadyRedeemed: boolean): number {
+export function validatePromoCode(promo: PromoCodeRow, itemTotal: number, redemptions: number | boolean): number {
   if (!promo.is_active) {
     throw new PromoValidationError('PROMO_INACTIVE', 'This code is no longer active.');
   }
-  if (promo.expires_at && new Date(promo.expires_at).getTime() < Date.now()) {
+  if (promo.starts_at && Date.parse(promo.starts_at) > Date.now()) throw new PromoValidationError('PROMO_NOT_STARTED', 'This code is not available yet.');
+  if (promo.expires_at && new Date(promo.expires_at).getTime() <= Date.now()) {
     throw new PromoValidationError('PROMO_EXPIRED', 'This code has expired.');
   }
   if (promo.usage_limit != null && promo.times_used >= promo.usage_limit) {
     throw new PromoValidationError('PROMO_USAGE_LIMIT_REACHED', 'This code has been fully redeemed.');
   }
-  if (alreadyRedeemed) {
-    throw new PromoValidationError('PROMO_ALREADY_USED', "You've already used this code.");
+  if (Number(redemptions) >= (promo.per_customer_limit ?? 1)) {
+    throw new PromoValidationError('PROMO_ALREADY_USED', "You've reached the usage limit for this code.");
   }
   if (itemTotal < promo.min_order_value) {
     throw new PromoValidationError('PROMO_BELOW_MIN_ORDER', `Add ₹${round2(promo.min_order_value - itemTotal)} more to use this code.`);

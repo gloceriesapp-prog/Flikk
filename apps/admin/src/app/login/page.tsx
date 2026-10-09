@@ -1,5 +1,7 @@
 'use client';
 
+import { safeNextPath } from '@/lib/safeNext';
+
 // The only page this dashboard can reach without a session (middleware.ts
 // enforces that everywhere else). Two ways in:
 //  - Username/password — the original flow (api/auth/login/route.ts's own
@@ -31,7 +33,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') ?? '/overview';
+  const next = safeNextPath(searchParams.get('next'));
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

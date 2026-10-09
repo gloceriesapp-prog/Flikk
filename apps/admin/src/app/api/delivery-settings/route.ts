@@ -77,6 +77,16 @@ export async function PATCH(request: Request) {
       reach[column] = body[field];
     }
     // Store response window (migration 109): optional, omitted = unchanged.
+    const holds: Record<string, number> = {};
+    for (const [key, column, minimum, maximum] of [
+      ['checkoutHoldMinutes', 'checkout_hold_minutes', 16, 60],
+      ['checkoutReconciliationGraceMinutes', 'checkout_reconciliation_grace_minutes', 5, 120],
+    ] as const) {
+      if (body[key] !== undefined) {
+        if (!Number.isInteger(body[key]) || body[key] < minimum || body[key] > maximum) throw new Error(`${key} must be a whole number from ${minimum} to ${maximum}.`);
+        holds[column] = body[key];
+      }
+    }
     const storeResponse: { store_response_timeout_minutes?: number } = {};
     if (body.storeResponseTimeoutMinutes !== undefined) {
       const minutes = body.storeResponseTimeoutMinutes;
@@ -128,6 +138,7 @@ export async function PATCH(request: Request) {
         ...reach,
         ...hours,
         ...storeResponse,
+        ...holds,
         updated_at: new Date().toISOString(),
       })
       .eq('id', settings.id)

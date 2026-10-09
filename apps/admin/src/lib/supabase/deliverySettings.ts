@@ -32,6 +32,8 @@ export interface DeliverySettingsRow {
   // migration 109 — minutes a store has to accept an order before the
   // backend's store_no_response job cancels it.
   store_response_timeout_minutes?: number | null;
+  checkout_hold_minutes?: number;
+  checkout_reconciliation_grace_minutes?: number;
 }
 
 export interface DeliveryFeeTier {
@@ -56,6 +58,8 @@ export interface DeliverySettings {
   orderingOpensMinute: number;
   orderingClosesMinute: number;
   storeResponseTimeoutMinutes: number;
+  checkoutHoldMinutes: number;
+  checkoutReconciliationGraceMinutes: number;
 }
 
 // <input type="time"> values <-> IST minutes since midnight. A closing time
@@ -108,6 +112,8 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     maxStoreSpreadKm: Number(row.max_store_spread_km ?? 2),
     orderingOpensMinute: Number(row.ordering_opens_minute ?? 360),
     orderingClosesMinute: Number(row.ordering_closes_minute ?? 1350),
+    checkoutHoldMinutes: Number(row.checkout_hold_minutes ?? 20),
+    checkoutReconciliationGraceMinutes: Number(row.checkout_reconciliation_grace_minutes ?? 30),
     storeResponseTimeoutMinutes: Number(row.store_response_timeout_minutes ?? 10),
   };
 }

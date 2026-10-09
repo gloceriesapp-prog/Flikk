@@ -21,6 +21,7 @@ export function RiderDocumentChecklist({ application }: { application: Applicati
   return (
     <div className="mt-6 flex flex-col gap-4 border-t border-border pt-6">
       <h3 className="text-sm font-medium text-ink">Rider verification</h3>
+      <DocumentPhoto label="Rider selfie" photoUrl={application.photoUrl} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Date of birth" value={application.dateOfBirth ? `${application.dateOfBirth}${age !== null ? ` (${age} yrs)` : ''}` : '—'} />
@@ -69,7 +70,7 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 function DocumentPhoto({ label, number, photoUrl }: { label: string; number?: string; photoUrl?: string }) {
-  const hasBoth = !!number && !!photoUrl;
+  const hasBoth = !!photoUrl && (label === 'Rider selfie' || !!number);
   return (
     <div className="rounded-2xl border border-border p-3.5">
       <div className="flex items-center gap-2">

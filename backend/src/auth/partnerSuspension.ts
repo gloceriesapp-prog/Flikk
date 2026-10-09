@@ -15,7 +15,7 @@ export async function partnerSuspension(userId: string): Promise<PartnerSuspensi
   return cache.get(userId, TTL_MS, async () => {
     const { data, error } = await supabase
       .from('users')
-      .select('partner_suspended, partner_suspended_reason')
+      .select('partner_suspended, partner_suspended_reason, store_memberships!user_id(is_active, stores!store_id(owner:users!owner_user_id(partner_suspended,partner_suspended_reason)))')
       .eq('id', userId)
       .maybeSingle();
     if (error) {
@@ -25,6 +25,14 @@ export async function partnerSuspension(userId: string): Promise<PartnerSuspensi
         return { suspended: false, reason: null };
       }
       throw new AppError(503, 'AUTH_UNAVAILABLE', 'Authentication is temporarily unavailable. Please retry.');
+    }
+    const memberships = data?.store_memberships ?? [];
+    for (const member of Array.isArray(memberships) ? memberships : [memberships]) {
+      if (!member.is_active) continue;
+      const store = Array.isArray(member.stores) ? member.stores[0] : member.stores;
+      const owner = Array.isArray(store?.owner) ? store.owner[0] : store?.owner;
+      if (!owner) throw new AppError(503, 'AUTH_UNAVAILABLE', 'Store access could not be verified.');
+      if (owner.partner_suspended) return { suspended: true, reason: owner.partner_suspended_reason ?? 'The store owner account is suspended.' };
     }
     return { suspended: data?.partner_suspended === true, reason: data?.partner_suspended_reason ?? null };
   });

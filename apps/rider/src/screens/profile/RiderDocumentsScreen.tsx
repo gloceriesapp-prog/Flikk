@@ -1,4 +1,5 @@
-// Rider Documents — a read-only page listing everything the rider submitted
+// Rider Documents shows approved details and offers reviewed update requests.
+// The details below are everything the rider submitted
 // at onboarding and that admin approved: profile photo, personal details,
 // identity (masked Aadhaar + DL, plus the actual scan images), vehicle,
 // emergency contact, and payout destination. All from GET /rider/profile
@@ -16,6 +17,8 @@ import { ArrowLeft01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-ico
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { useRiderProfile } from './useRiderProfile';
+import { useAuthStore } from '../../store/useAuthStore';
+import { RiderProfileChangeForm } from './RiderProfileChangeForm';
 import type { RiderProfile } from '../../api/profile';
 
 const CARD_BORDER = '#EAECEE';
@@ -37,6 +40,7 @@ function formatDate(iso: string | null): string {
 
 export function RiderDocumentsScreen() {
   const navigation = useNavigation();
+  const phone = useAuthStore((state) => state.phone);
   const { data: profile, isLoading } = useRiderProfile();
 
   if (isLoading && !profile) {
@@ -98,6 +102,8 @@ export function RiderDocumentsScreen() {
           <Field label="Phone" value={profile?.emergencyContactPhone} />
           <Field label="Relationship" value={profile?.emergencyContactRelationship} last />
         </Section>
+
+        {profile && <RiderProfileChangeForm key={phone} profile={profile} />}
 
         <Section title="Payout">
           <Field label={payout?.method === 'upi' ? 'UPI' : 'Bank account'} value={payoutValue} last />

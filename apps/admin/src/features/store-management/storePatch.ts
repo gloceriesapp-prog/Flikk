@@ -1,4 +1,4 @@
-import { STORE_CATEGORIES } from '../../lib/store-options';
+import { validateStoreFields, validateStoreCoordinates } from '../../../../../backend/src/stores/validation';
 
 const textColumns = {
   name: 'name', category: 'category', ownerName: 'owner_name', phone: 'phone',
@@ -25,27 +25,11 @@ export function parseStorePatch(value: unknown): Record<string, string | number 
     if (Object.hasOwn(textColumns, key)) {
       if (raw !== null && typeof raw !== 'string') fail(`${key} must be text.`);
       const text = typeof raw === 'string' ? raw.trim() : '';
-      if (text.length > (key === 'photoUrl' ? 2048 : 500)) fail(`${key} is too long.`);
-      if (['name', 'category', 'city', 'district', 'state', 'country'].includes(key) && !text) fail(`${key} cannot be empty.`);
-      if (key === 'category' && !STORE_CATEGORIES.some(category => category === text)) fail('Choose a valid store category.');
-      if (['openTime', 'closeTime'].includes(key) && text && !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(text)) fail('Hours must use a valid 24-hour time.');
-      if (key === 'phone' && text && !/^\+?[\d\s()-]{7,25}$/.test(text)) fail('Enter a valid contact phone number.');
-      if (key === 'photoUrl' && text) {
-        let url: URL;
-        try { url = new URL(text); } catch { fail('Enter a valid photo URL.'); }
-        if (!['https:', 'http:'].includes(url!.protocol) || url!.username || url!.password) fail('Photo URL must use HTTP or HTTPS without credentials.');
-      }
       const column = textColumns[key as keyof typeof textColumns];
-      patch[column] = text || (['name', 'category', 'city', 'district', 'state', 'country'].includes(key) ? '' : null);
+      patch[column] = (column === 'pan_number' ? text.toUpperCase() : text) || (['name', 'category', 'city', 'district', 'state', 'country'].includes(key) ? '' : null);
     } else if (Object.hasOwn(numericColumns, key)) {
       if (raw !== null && (typeof raw !== 'number' || !Number.isFinite(raw))) fail(`${key} must be a finite number.`);
       const number = raw as number | null;
-      if (number !== null) {
-        if (key === 'lat' && (number < -90 || number > 90)) fail('Latitude must be between -90 and 90.');
-        if (key === 'lng' && (number < -180 || number > 180)) fail('Longitude must be between -180 and 180.');
-        if (key === 'deliveryRadiusKm' && (number <= 0 || number > 50)) fail('Delivery radius must be above 0 and no more than 50 km.');
-        if (key === 'avgPrepMinutes' && (!Number.isInteger(number) || number < 0 || number > 1440)) fail('Preparation time must be a whole number from 0 to 1440.');
-      }
       patch[numericColumns[key as keyof typeof numericColumns]] = number;
     } else if (Object.hasOwn(booleanColumns, key)) {
       if (typeof raw !== 'boolean') fail(`${key} must be true or false.`);
@@ -53,10 +37,11 @@ export function parseStorePatch(value: unknown): Record<string, string | number 
     } else fail(`Unsupported store field: ${key}.`);
   }
   if (!Object.keys(patch).length) fail('No store changes supplied.');
+  try { validateStoreFields(patch); } catch (error) { fail(error instanceof Error ? error.message : 'Invalid store changes.'); }
   return patch;
 }
 export function validateMergedStore(store: Record<string, unknown>, patch: Record<string, unknown>): void {
   const merged = { ...store, ...patch };
   if (Object.hasOwn(patch, 'category') && merged.category === 'Pharmacy' && !merged.drug_license_number) fail('Add a drug licence before changing the category to Pharmacy.');
-  if ((merged.lat == null) !== (merged.lng == null)) fail('Set both latitude and longitude, or clear both.');
+  try { validateStoreCoordinates(merged); } catch (error) { fail(error instanceof Error ? error.message : 'Invalid store location.'); }
 }

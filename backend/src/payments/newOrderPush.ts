@@ -1,3 +1,4 @@
+import { storePushRecipients } from '../stores/pushRecipients.js';
 import { supabase } from '../db/supabase.js';
 import { logger } from '../lib/logger.js';
 import { ORDER_PUSH, embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
@@ -18,7 +19,8 @@ export async function notifyStoresOfNewOrder(target: OrderIdBody): Promise<void>
       // embeddedPushToken: PostgREST returns this many-to-one embed as an
       // object, not an array — reading [0] silently dropped every push.
       // Trip legs show the store's own item total — the trip total includes other stores.
-      void sendPushNotification(embeddedPushToken(store?.users), 'New order received', order.trip_id
+      const recipients = await storePushRecipients(order.store_id, embeddedPushToken(store?.users));
+      for (const token of recipients) void sendPushNotification(token, 'New order received', order.trip_id
         ? `New order — ₹${order.item_total} — tap to view.`
         : `Order ${order.id.slice(0, 6).toUpperCase()} · ₹${order.total} — tap to view.`,
       { ...ORDER_PUSH, data: { type: 'new_order', orderId: order.id } });

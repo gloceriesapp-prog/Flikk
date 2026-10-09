@@ -16,9 +16,14 @@ export interface PromoCodeWriteInput {
   usageLimit?: number | null;
   isActive?: boolean;
   expiresAt?: string | null;
+  startsAt?: string | null;
+  perCustomerLimit?: number;
 }
 
 export function validatePromoCodeInput(input: Partial<PromoCodeWriteInput>): asserts input is PromoCodeWriteInput {
+  if (input.perCustomerLimit !== undefined && (!Number.isInteger(input.perCustomerLimit) || input.perCustomerLimit < 1 || input.perCustomerLimit > 100)) throw new Error('Per-customer uses must be a whole number from 1 to 100.');
+  for (const date of [input.startsAt, input.expiresAt]) if (date != null && (typeof date !== 'string' || !Number.isFinite(Date.parse(date)))) throw new Error('Enter a valid start and expiry date.');
+  if (input.startsAt && input.expiresAt && Date.parse(input.startsAt) >= Date.parse(input.expiresAt)) throw new Error('Expiry must be after the start date.');
   if (!input.code || !input.code.trim()) throw new Error('A code is required.');
   if (input.discountType !== 'flat' && input.discountType !== 'percent') {
     throw new Error('Discount type must be flat or percent.');
@@ -49,6 +54,8 @@ export interface PromoCodeRow {
   usage_limit: number | null;
   is_active: boolean;
   expires_at: string | null;
+  starts_at: string | null;
+  per_customer_limit: number;
 }
 
 export function toPromoCodeRow(input: PromoCodeWriteInput): PromoCodeRow {
@@ -61,6 +68,8 @@ export function toPromoCodeRow(input: PromoCodeWriteInput): PromoCodeRow {
     usage_limit: input.usageLimit ?? null,
     is_active: input.isActive ?? true,
     expires_at: input.expiresAt ?? null,
+    starts_at: input.startsAt ?? null,
+    per_customer_limit: input.perCustomerLimit ?? 1,
   };
 }
 

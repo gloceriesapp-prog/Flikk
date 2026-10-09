@@ -26,6 +26,8 @@ export default function SettingsPage() {
     return <Card className="py-20 text-center text-sm text-neutral-400">Loading settings…</Card>;
   }
 
+  if (store.access_role === 'manager') return <Card className="p-6 text-sm text-neutral-600">Your manager access covers orders, products and reviews. Ask the store owner to update store information, legal details or payout settings.</Card>;
+
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <StoreProfileForm store={store} onSaved={handleStoreSaved} />

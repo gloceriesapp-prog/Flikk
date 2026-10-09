@@ -1,3 +1,4 @@
+import { validateRiderProfileChanges, isOwnedRiderDocument } from '../lib/riderProfileChanges.js';
 import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // Source: specs/03-rider-app/api.md — assignments/earnings scoped to the caller only.
 import { Router } from 'express';
@@ -497,7 +498,7 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
     const { data: rider, error } = await supabase
       .from('riders')
       .select(
-        'rider_code, name, date_of_birth, photo_url, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, payout_account_holder_name, created_at',
+        'zone:zones(name), rider_code, name, date_of_birth, photo_url, home_address, aadhaar_number, aadhaar_photo_url, dl_number, dl_photo_url, vehicle_type, vehicle_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, payout_account_holder_name, created_at',
       )
       .eq('user_id', req.user!.id)
       .single();
@@ -516,6 +517,7 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
     ]);
 
     res.json({
+      zoneName: (Array.isArray(rider.zone) ? rider.zone[0] : rider.zone)?.name ?? null,
       riderCode: rider.rider_code,
       name: rider.name,
       phone: user?.phone ?? null,
@@ -546,6 +548,43 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// Changes never overwrite an approved identity until an administrator reviews them.
+riderRouter.get('/profile-changes', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data, error } = await supabase.from('rider_profile_change_requests')
+      .select('id,status,submitted_at,reviewed_at,review_note').eq('user_id', req.user!.id)
+      .order('submitted_at', { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    res.json(data);
+  } catch (error) { next(error); }
+});
+riderRouter.post('/profile-changes', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data: rider, error } = await supabase.from('riders').select('vehicle_type')
+      .eq('user_id', req.user!.id).single();
+    if (error || !rider) throw new AppError(404, 'RIDER_NOT_FOUND', 'Rider profile not found.');
+    const changes = validateRiderProfileChanges(req.body, rider.vehicle_type);
+    for (const [field, kind] of [['aadhaar_photo_url', 'aadhaar'], ['dl_photo_url', 'dl']] as const) {
+      const path = changes[field];
+      if (!path) continue;
+      if (!isOwnedRiderDocument(path, req.user!.id, kind))
+        throw new AppError(400, 'INVALID_DOCUMENT', 'Upload your own document before submitting.');
+      const asset = await supabase.from('media_assets').select('id').eq('object_key', path)
+        .eq('uploaded_by', req.user!.id).eq('bucket', 'rider-documents').eq('visibility', 'private')
+        .eq('status', 'ready').maybeSingle();
+      if (asset.error) throw asset.error;
+      if (!asset.data) throw new AppError(400, 'INVALID_DOCUMENT', 'Document upload is not ready.');
+    }
+    const result = await supabase.rpc('submit_rider_profile_change', { p_user_id: req.user!.id, p_changes: changes });
+    if (result.error) {
+      if (result.error.code === '23505' || result.error.message.includes('awaiting review'))
+        throw new AppError(409, 'REVIEW_PENDING', 'Your previous changes are still awaiting review.');
+      throw result.error;
+    }
+    res.status(201).json({ id: result.data, status: 'pending' });
+  } catch (error) { next(error); }
 });
 
 // Payout destination (PAYOUTS.md) — same shared logic as partner's
