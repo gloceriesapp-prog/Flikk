@@ -2,9 +2,10 @@ Promotional delivery
 ====================
 
 Apply migration 095 to add the service-only outbox. This feature is OFF by
- default (`PROMOTIONS_ENABLED=false`). Default adapters are Twilio Messaging
-Services for SMS and Resend for email; neither has been activated or sent a real
-message during implementation. Configure approved sender details and keys in
+ default (`PROMOTIONS_ENABLED=false`). The only adapter is Resend for email; it
+has not been activated or sent a real message during implementation. The `sms`
+channel is never ready: Indian DLT rules allow only pre-approved promotional
+templates, and campaigns here are free text. Configure approved sender details and keys in
 backend environment variables. Never expose them in mobile/admin public env.
 
 An authenticated admin can POST `/admin/promotions` with `campaign_id` (UUID),
@@ -18,9 +19,9 @@ up to 100 status records; it never returns destination phone/email.
 The existing standalone worker consumes one claimed job at a time per replica,
 rechecks each recipient's confirmed contact and current saved opt-out, and fences
 completion by lease token. Expiry cleanup uses bounded locked batches. Resend
-retries use the same 24-hour idempotency key. Uncertain SMS responses become
+retries use the same 24-hour idempotency key. Uncertain responses become
 `uncertain` and require provider reconciliation; never manually resend them
-without checking Twilio first. `accepted` means provider acceptance, not delivery.
+without checking the provider first. `accepted` means provider acceptance, not delivery.
 No destination, body, token or raw provider error is written to logs.
 
 Promotional push remains a saved preference; no push campaign broadcaster is

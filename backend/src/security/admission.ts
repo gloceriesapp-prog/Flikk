@@ -32,8 +32,10 @@ export function accountAdmission(customerId: string): number { return accountBud
 export const requestAdmission: RequestHandler = (req, res, next) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   // Signed provider webhooks have their own smaller parser and need provider
-  // burst tolerance. Protect them with a separate edge/provider quota.
-  if (req.path !== '/payments/webhook') {
+  // burst tolerance. Protect them with a separate edge/provider quota. The
+  // Supabase Send SMS hook arrives from Supabase's few egress IPs for every
+  // login, so a per-IP budget would block OTPs for everyone at once.
+  if (req.path !== '/payments/webhook' && req.path !== '/auth/hooks/send-sms') {
     let retry = publicBudget.claim(ip);
     if (!retry && (!['GET','HEAD','OPTIONS'].includes(req.method) || req.path.startsWith('/browse/'))) retry = costlyBudget.claim(ip);
     if (retry) {
