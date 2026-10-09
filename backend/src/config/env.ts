@@ -16,6 +16,16 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('PORT must be an integer between 1 and 65535.');
 }
 
+// A laptop backend (NODE_ENV is not 'production'; the Docker image sets it) must
+// not read or write the live database by accident: test orders and riders would
+// land next to real customers. Point local dev at local Supabase or flikk-staging,
+// or set ALLOW_PRODUCTION_DATABASE=true for a deliberate, read-mostly session.
+const PRODUCTION_SUPABASE_REF = 'bjlknohjdnemxwwoxcsv';
+if (process.env.NODE_ENV !== 'production' && process.env.SUPABASE_URL?.includes(PRODUCTION_SUPABASE_REF)
+  && process.env.ALLOW_PRODUCTION_DATABASE !== 'true') {
+  throw new Error('SUPABASE_URL points at the PRODUCTION project from a non-production backend. Use local Supabase or flikk-staging (see ENVIRONMENTS.md), or set ALLOW_PRODUCTION_DATABASE=true on purpose.');
+}
+
 export const env = {
   port,
   // Production cannot silently fall back to stateless remote verification

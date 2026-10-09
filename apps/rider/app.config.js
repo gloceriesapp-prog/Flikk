@@ -65,7 +65,9 @@ module.exports = {
       },
       // Undefined when the key is unset is a valid, supported state — Expo
       // just skips Google Maps setup on iOS then (Apple Maps fallback).
-      config: iosGoogleMapsApiKey ? { googleMapsApiKey: iosGoogleMapsApiKey } : undefined,
+      // Spread, not `config: undefined`: an own key holding undefined crashes
+      // Expo's iOS Info.plist mod ('usesNonExemptEncryption' in undefined).
+      ...(iosGoogleMapsApiKey ? { config: { googleMapsApiKey: iosGoogleMapsApiKey } } : {}),
     },
     android: {
       package: 'com.gloceries.rider',

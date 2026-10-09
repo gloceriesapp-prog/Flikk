@@ -57,7 +57,9 @@ module.exports = {
       // — Expo's own config schema just skips Google Maps setup on iOS
       // when this is absent, same as Android would if GOOGLE_MAPS_API_KEY
       // were unset.
-      config: iosGoogleMapsApiKey ? { googleMapsApiKey: iosGoogleMapsApiKey } : undefined,
+      // Spread, not `config: undefined`: an own key holding undefined crashes
+      // Expo's iOS Info.plist mod ('usesNonExemptEncryption' in undefined).
+      ...(iosGoogleMapsApiKey ? { config: { googleMapsApiKey: iosGoogleMapsApiKey } } : {}),
     },
     android: {
       package: 'com.gloceries.customer',

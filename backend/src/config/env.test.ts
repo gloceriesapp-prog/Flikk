@@ -25,6 +25,14 @@ describe('env', () => {
     expect(env.cashfreeEnv).toBe('sandbox');
   });
 
+  it('refuses the production Supabase project from a non-production backend', async () => {
+    const prod = 'https://bjlknohjdnemxwwoxcsv.supabase.co';
+    await expect(loadEnv({ NODE_ENV: 'development', SUPABASE_URL: prod })).rejects.toThrow(/PRODUCTION/);
+    await expect(loadEnv({ NODE_ENV: 'development', SUPABASE_URL: prod, ALLOW_PRODUCTION_DATABASE: 'true' })).resolves.toBeDefined();
+    await expect(loadEnv({ NODE_ENV: 'production', SUPABASE_URL: prod })).resolves.toBeDefined();
+    await expect(loadEnv({ NODE_ENV: 'development', SUPABASE_URL: 'https://qgbuvydwcgjthwqxqylk.supabase.co' })).resolves.toBeDefined();
+  });
+
   it('boots without MAPPLS_ACCESS_TOKEN', async () => {
     const { env } = await loadEnv({ MAPPLS_ACCESS_TOKEN: '' });
     expect(env.mapplsAccessToken).toBeUndefined();
