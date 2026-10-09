@@ -40,6 +40,17 @@ npm run local:setup                 # from the repo root; re-run whenever your W
 
 It keeps your other keys (MSG91, Maps, Sentry and so on) and saves each old file once as `.env.local.before-local-setup`. If the IP it picks is wrong, use `npm run local:setup -- --ip 192.168.x.x`. Use `-- --no-db` to skip the database step.
 
+**Real content and images (optional):** the test data has no pictures or home-screen content. To copy production's catalogue and home content (categories, banners, tabs, tiles, festival and seasonal sections, FAQs, products, variants) into local:
+
+```
+SOURCE_DATABASE_URL='<Flikk Session pooler URI>' npm run local:content
+```
+
+- The production connection is read-only, and the script refuses to write anywhere except a local database.
+- Nothing personal is copied: no users, stores, addresses, orders or riders.
+- Products are attached to the local test store. Images keep their production URLs, which are public.
+- Get the URI from Supabase → Flikk → **Connect** → Session pooler. Paste it only into your terminal, and never commit it.
+
 Then, each in its own terminal:
 
 | What | Command | Where it runs |

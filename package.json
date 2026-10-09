@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "postinstall": "patch-package",
-    "local:setup": "node scripts/local-setup.mjs"
+    "local:setup": "node scripts/local-setup.mjs",
+    "local:content": "node scripts/pull-content.mjs"
   },
   "devDependencies": {
     "patch-package": "^8.0.1"

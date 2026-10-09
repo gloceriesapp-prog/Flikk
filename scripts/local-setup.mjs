@@ -137,6 +137,7 @@ console.log(`
   Rider app         cd apps/rider && npx expo start --dev-client
   Admin             cd apps/admin && npm run dev     (http://localhost:3000)
 
+  Real images + home content: SOURCE_DATABASE_URL='<prod Session pooler URI>' npm run local:content
   Login without SMS: 9100000001 / 9100000002 / 9100000003, OTP 123456.
   Login with a real number: ${msg91 ? 'MSG91 keys found — a real SMS is sent through the local backend.' : 'add MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID to backend/.env.local first.'}
   The phone must be on the same Wi-Fi as this computer. If your Wi-Fi IP changes, run this again.
