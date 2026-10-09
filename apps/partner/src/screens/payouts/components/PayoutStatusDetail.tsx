@@ -44,7 +44,7 @@ export function PayoutStatusDetail({ payout, variant = 'light' }: { payout: Week
         onPress={() => navigation.navigate('StoreSettings')}
         accessibilityRole="button"
         className="items-center rounded-xl py-2.5"
-        style={{ backgroundColor: colors.coral }}
+        style={{ backgroundColor: colors.primary }}
       >
         <Text className="text-[13px] font-semibold text-white">Update payout details</Text>
       </Pressable>

@@ -202,9 +202,9 @@ export function HomeScreen() {
         <Pressable
           onPress={openDemoDelivery}
           className="items-center justify-center rounded-full border border-dashed py-3"
-          style={{ borderColor: colors.coral }}
+          style={{ borderColor: colors.primary }}
         >
-          <Text className="text-[14px] font-bold" style={{ color: colors.coral }}>
+          <Text className="text-[14px] font-bold" style={{ color: colors.primary }}>
             🧪 Test: Delivery Nav UI
           </Text>
         </Pressable>

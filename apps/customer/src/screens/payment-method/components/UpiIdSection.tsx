@@ -88,10 +88,10 @@ export function UpiIdSection({ initialVpa, rememberedByDefault, selected, onUse 
           accessibilityRole="button"
           accessibilityLabel="Use this UPI ID"
           accessibilityState={{ disabled: !canPayWithVpa(state), selected }}
-          className="items-center justify-center rounded-xl bg-coral"
+          className="items-center justify-center rounded-xl bg-primary"
           style={{ minHeight: minTouchTarget, opacity: canPayWithVpa(state) ? 1 : 0.45 }}
         >
-          <Text className="text-[15px] font-bold text-ink">Use this UPI ID</Text>
+          <Text className="text-[15px] font-bold text-white">Use this UPI ID</Text>
         </Pressable>
       </View>
     </View>

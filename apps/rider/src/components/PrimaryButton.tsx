@@ -14,16 +14,16 @@ interface Props {
   trailingIcon?: IconSvgElement;
   // 'ink' (default) for the main app; 'blue' for the rider onboarding flow,
   // which uses one brand blue (#1447E6) across every Next/CTA.
-  // 'coral' for money/save CTAs per CLAUDE.md (payout details).
-  tone?: 'ink' | 'blue' | 'coral';
+  // 'primary' (#155DFC) for money/save CTAs (payout details).
+  tone?: 'ink' | 'blue' | 'primary';
 }
 
 // Per-tone solid / disabled fills — one place so a tone is a single word
 // at the call site, not a re-typed hex.
-const TONE_BG: Record<'ink' | 'blue' | 'coral', { solid: string; disabled: string }> = {
+const TONE_BG: Record<'ink' | 'blue' | 'primary', { solid: string; disabled: string }> = {
   ink: { solid: 'bg-ink', disabled: 'bg-ink/40' },
   blue: { solid: 'bg-[#1447E6]', disabled: 'bg-[#1447E6]/40' },
-  coral: { solid: 'bg-coral', disabled: 'bg-coral/40' },
+  primary: { solid: 'bg-primary', disabled: 'bg-primary/40' },
 };
 
 export function PrimaryButton({ label, onPress, disabled, loading, trailingIcon, tone = 'ink' }: Props) {

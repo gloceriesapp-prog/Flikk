@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
               dev) is recoverable without a full app kill. */}
           <Pressable
             onPress={() => this.setState({ error: null, componentStack: null })}
-            style={{ marginTop: 24, alignSelf: 'flex-start', backgroundColor: '#FF6B4A', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 }}
+            style={{ marginTop: 24, alignSelf: 'flex-start', backgroundColor: '#155DFC', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 }}
           >
             <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Try again</Text>
           </Pressable>

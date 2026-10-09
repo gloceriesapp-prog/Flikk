@@ -28,7 +28,7 @@ export function BankDetailsScreen() {
     <OnboardingScaffold
       title="You're approved! One last thing."
       subheading="Add where you'd like to receive your delivery earnings."
-      footer={<PrimaryButton label="Save & finish" onPress={form.submit} loading={form.isSaving} trailingIcon={ArrowRight01Icon} tone="coral" />}
+      footer={<PrimaryButton label="Save & finish" onPress={form.submit} loading={form.isSaving} trailingIcon={ArrowRight01Icon} tone="primary" />}
     >
       <PayoutDetailsFields form={form} />
     </OnboardingScaffold>

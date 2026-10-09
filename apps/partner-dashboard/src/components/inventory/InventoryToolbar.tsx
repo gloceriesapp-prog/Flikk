@@ -81,7 +81,7 @@ export function InventoryToolbar({
           className="flex items-center gap-2.5 rounded-xl border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
         >
           <BarChart3 size={16} className="text-neutral-500" /> Show statistics
-          <span className={clsx('relative h-5 w-9 rounded-full transition-colors', showStats ? 'bg-coral' : 'bg-neutral-300')} style={{ ['--tw-bg-opacity' as string]: '1' }}>
+          <span className={clsx('relative h-5 w-9 rounded-full transition-colors', showStats ? 'bg-[#155DFC]' : 'bg-neutral-300')} style={{ ['--tw-bg-opacity' as string]: '1' }}>
             <span className={clsx('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', showStats ? 'left-4' : 'left-0.5')} />
           </span>
         </button>

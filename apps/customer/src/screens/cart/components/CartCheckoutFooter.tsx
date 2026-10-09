@@ -21,10 +21,10 @@ export function CartCheckoutFooter({ addressesLoading, selectedAddress, onAddAdd
       <View className="border-t border-mist bg-white px-5 pb-safe-offset-4 pt-4">
         <Pressable
           onPress={onAddAddress}
-          className="flex-row items-center justify-center gap-2 rounded-3xl bg-coral py-4"
+          className="flex-row items-center justify-center gap-2 rounded-3xl bg-primary py-4"
         >
-          <AppIcon icon={Location01Icon} size={18} color="#101C10" />
-          <Text className="text-lg font-medium text-ink">Add delivery address</Text>
+          <AppIcon icon={Location01Icon} size={18} color="#FFFFFF" />
+          <Text className="text-lg font-medium text-white">Add delivery address</Text>
         </Pressable>
       </View>
     );

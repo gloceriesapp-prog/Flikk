@@ -180,13 +180,13 @@ export function AvailabilityScreen() {
         </View>
       </ScrollView>
 
-      {/* Footer Save — coral is the only CTA color (CLAUDE.md). */}
+      {/* Footer Save — primary (blue) CTA. */}
       <View className="absolute inset-x-0 bottom-0 border-t bg-[#fbfafa] px-5 pb-safe-offset-3 pt-3" style={{ borderColor: CARD_BORDER }}>
         <Pressable
           onPress={onSave}
           disabled={saving}
           className="h-[52px] items-center justify-center rounded-[13px]"
-          style={({ pressed }) => ({ backgroundColor: colors.coral, opacity: saving ? 0.6 : pressed ? 0.85 : 1 })}
+          style={({ pressed }) => ({ backgroundColor: colors.primary, opacity: saving ? 0.6 : pressed ? 0.85 : 1 })}
         >
           {saving ? (
             <ActivityIndicator color="#FFFFFF" />

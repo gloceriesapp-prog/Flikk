@@ -283,7 +283,7 @@ function PayoutForm({
         disabled={busy}
         accessibilityRole="button"
         className="items-center justify-center rounded-2xl py-3.5"
-        style={{ backgroundColor: colors.coral, opacity: busy ? 0.6 : 1 }}
+        style={{ backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }}
       >
         {mutation.isPending ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text className="text-[14px] font-semibold text-white">Save payout details</Text>}
       </Pressable>

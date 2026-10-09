@@ -38,7 +38,7 @@ export function LocalBrandScreen({ navigation, route }: Props) {
         </ScrollView>
       ) : (
         <View className="flex-1 items-center justify-center gap-4 px-6">
-          {!hasLocation ? <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center rounded-full bg-coral px-5"><Text className="font-semibold text-ink">Choose location</Text></Pressable> : isLoading ? <BrowseLoadingText message={BROWSE_LOADING_COPY.grocery} /> : isError ? <Pressable accessibilityRole="button" onPress={retry} className="min-h-11 justify-center rounded-full bg-coral px-5"><Text className="font-semibold text-ink">Try again</Text></Pressable> : <Text className="text-center text-sm text-ink/60">This brand has no available pantry products at your address right now.</Text>}
+          {!hasLocation ? <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center rounded-full bg-primary px-5"><Text className="font-semibold text-white">Choose location</Text></Pressable> : isLoading ? <BrowseLoadingText message={BROWSE_LOADING_COPY.grocery} /> : isError ? <Pressable accessibilityRole="button" onPress={retry} className="min-h-11 justify-center rounded-full bg-primary px-5"><Text className="font-semibold text-white">Try again</Text></Pressable> : <Text className="text-center text-sm text-ink/60">This brand has no available pantry products at your address right now.</Text>}
         </View>
       )}
     </View>

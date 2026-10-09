@@ -93,9 +93,9 @@ export function ReceiptScreen({ navigation, route }: Props) {
       <View className="flex-row gap-3 px-5 pb-safe-offset-4 pt-4">
         <Pressable
           onPress={() => navigation.navigate('TrackOrder', { orderId: realOrderId, paymentMethodLabel, isTrip })}
-          className="bg-coral flex-1 items-center rounded-2xl py-4"
+          className="bg-primary flex-1 items-center rounded-2xl py-4"
         >
-          <Text className="text-lg font-medium text-ink">Track Order</Text>
+          <Text className="text-lg font-medium text-white">Track Order</Text>
         </Pressable>
 
         <Pressable

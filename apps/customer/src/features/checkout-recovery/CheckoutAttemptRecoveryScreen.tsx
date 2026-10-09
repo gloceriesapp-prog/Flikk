@@ -50,7 +50,7 @@ export function CheckoutAttemptRecoveryScreen({ navigation }: Props) {
   return <View className="flex-1 justify-center bg-[#F7F8FA] px-6"><View className="rounded-3xl bg-white p-6">
     <Text className="text-2xl font-bold">Let’s check your last checkout</Text>
     <Text className="mt-3 text-base text-black/55">The app closed before we received its result. We’ll check the same attempt so your order isn’t placed twice.</Text>
-    <Pressable disabled={busy} onPress={() => void check(false)} className="mt-6 rounded-2xl bg-coral py-4"><Text className="text-center font-bold text-ink">{busy ? 'Checking…' : 'Check saved checkout'}</Text></Pressable>
+    <Pressable disabled={busy} onPress={() => void check(false)} className="mt-6 rounded-2xl bg-primary py-4"><Text className="text-center font-bold text-white">{busy ? 'Checking…' : 'Check saved checkout'}</Text></Pressable>
     <Pressable disabled={busy} onPress={() => void check(true)} className="mt-4 py-3"><Text className="text-center font-semibold text-black/55">Review cart instead</Text></Pressable>
   </View></View>;
 }

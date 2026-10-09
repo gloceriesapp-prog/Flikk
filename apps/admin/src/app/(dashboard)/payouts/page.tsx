@@ -284,7 +284,7 @@ export default function PayoutsPage() {
                       type="button"
                       onClick={() => setPaying(r)}
                       disabled={!r.method}
-                      className="rounded-full bg-[#FF6B4A] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full bg-[#155DFC] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Mark paid
                     </button>
