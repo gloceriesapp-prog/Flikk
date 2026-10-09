@@ -180,7 +180,9 @@ jobs:
       - run: npx eslint src
       # Full build — CI must prove a deployable bundle, not just types/lint.
       # Use each app's own `build` script (admin needs `next build --webpack` for
-      # its raw backend/src/*.ts `.js`->`.ts` imports; others are plain next build),
-      # all resolving sibling packages/*.cjs via the full-repo checkout above.
-      - run: pnpm build
+      # its raw backend/src/*.ts `.js`->`.ts` imports; others are plain next build).
+      # --ignore-workspace mirrors the install step: admin/partner-dashboard have a
+      # pnpm-workspace.yaml with no `packages:` key, which `pnpm build` otherwise
+      # rejects ("packages field missing or empty").
+      - run: pnpm --ignore-workspace build
 
