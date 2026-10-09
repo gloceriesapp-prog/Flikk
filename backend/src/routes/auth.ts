@@ -7,8 +7,7 @@ import { AppError } from '../lib/errors.js';
 import { normalizePhone } from '../lib/phone.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { partnerSuspension } from '../auth/partnerSuspension.js';
-import { logger } from '../lib/logger.js';
-import { checkLoginOtp, isPhoneBanned, requestLoginOtp, sessionForVerifiedPhone } from '../auth/loginOtp.js';
+import { CODE_TTL_MINUTES, checkLoginOtp, consumeLoginOtp, isPhoneBanned, requestLoginOtp, sessionForVerifiedPhone } from '../auth/loginOtp.js';
 
 export const authRouter = Router();
 
@@ -25,7 +24,7 @@ authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
     // The backend sends and checks the code itself (auth/loginOtp.ts); a
     // failed send is logged there with MSG91's reason.
     await requestLoginOtp(canonical);
-    res.status(200).json({ ok: true });
+    res.status(200).json({ ok: true, expires_in_minutes: CODE_TTL_MINUTES });
   } catch (err) {
     next(err);
   }
@@ -45,10 +44,9 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
     if (!checkLoginOtp(canonical, code)) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
     const { data, error } = await sessionForVerifiedPhone(canonical);
     if (isBanned(error)) throw accountBlocked();
-    if (error || !data.session) {
-      logger.error({ code: error?.code, reason: error?.message?.slice(0, 200) }, 'Could not issue a session after a correct login code');
-      throw new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
-    }
+    if (error || !data.session) throw new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
+    // Only now is the code used up: a failed sign-in above leaves it valid.
+    consumeLoginOtp(canonical);
 
     const userId = data.session.user.id;
     // Same lazy-provisioning as requireAuth (see that file's own note) —
