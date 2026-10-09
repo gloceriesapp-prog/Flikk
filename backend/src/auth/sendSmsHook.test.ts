@@ -55,15 +55,33 @@ describe('msg91Mobile', () => {
 });
 
 describe('sendOtpSms', () => {
-  it('calls the MSG91 v5 OTP API with the template, mobile and Supabase code', async () => {
-    const send = vi.fn(async (_url: URL, _init: RequestInit) => Response.json({ type: 'success', request_id: 'req-1' }));
+  it('sends the SMS-section DLT template through the Flow API, filling ##OTP##', async () => {
+    const send = vi.fn(async (_url: URL, _init: RequestInit) => Response.json({ type: 'success', message: 'req-1' }));
     vi.stubGlobal('fetch', send);
     expect(await sendOtpSms('919876543210', '654321')).toBe('req-1');
     const [url, init] = send.mock.calls[0];
-    expect(url.origin + url.pathname).toBe('https://control.msg91.com/api/v5/otp');
-    expect(Object.fromEntries(url.searchParams)).toEqual({ template_id: 'template-1', mobile: '919876543210', otp: '654321' });
+    expect(url.toString()).toBe('https://control.msg91.com/api/v5/flow');
+    expect(JSON.parse(init.body as string)).toEqual({
+      template_id: 'template-1', short_url: '0', recipients: [{ mobiles: '919876543210', OTP: '654321' }],
+    });
     expect((init.headers as Record<string, string>).authkey).toBe('test-auth-key');
     expect(init.method).toBe('POST');
+  });
+  it('uses MSG91_OTP_VARIABLE as the template variable name, with or without ## marks', async () => {
+    const send = vi.fn(async (_url: URL, _init: RequestInit) => Response.json({ type: 'success', message: 'req-3' }));
+    vi.stubGlobal('fetch', send);
+    vi.stubEnv('MSG91_OTP_VARIABLE', '##var1##');
+    await sendOtpSms('919876543210', '111222');
+    expect(JSON.parse(send.mock.calls[0][1].body as string).recipients[0]).toEqual({ mobiles: '919876543210', var1: '111222' });
+  });
+  it('can use the OTP API instead (MSG91_API=otp) for an OTP-section template', async () => {
+    const send = vi.fn(async (_url: URL, _init: RequestInit) => Response.json({ type: 'success', request_id: 'req-4' }));
+    vi.stubGlobal('fetch', send);
+    vi.stubEnv('MSG91_API', 'otp');
+    expect(await sendOtpSms('919876543210', '654321')).toBe('req-4');
+    const [url] = send.mock.calls[0];
+    expect(url.origin + url.pathname).toBe('https://control.msg91.com/api/v5/otp');
+    expect(Object.fromEntries(url.searchParams)).toEqual({ template_id: 'template-1', mobile: '919876543210', otp: '654321' });
   });
   it('treats HTTP 200 with type "error" as a failure', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ type: 'error', message: 'Invalid template' })));
