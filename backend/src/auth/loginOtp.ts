@@ -141,16 +141,38 @@ const failure = (where: string, error: { code?: string; status?: number; message
   return new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
 };
 
-// Gives the auth user this phone (confirmed) and a fresh random password.
-async function preparePassword(userId: string, phone: string, password: string) {
-  let updated = await supabase.auth.admin.updateUserById(userId, { phone, password, phone_confirm: true });
-  // A public.users row whose auth user is gone (e.g. local seed data or a
-  // reset auth schema): recreate the auth user under the same id.
-  if (updated.error?.status === 404) {
-    const created = await supabase.auth.admin.createUser({ id: userId, phone, phone_confirm: true, password });
-    updated = { data: { user: created.data.user }, error: created.error } as typeof updated;
+/**
+ * The private sign-in address of a phone-login account, e.g.
+ * login+919876543210@gloceries.com. Never shown or mailed (it is confirmed
+ * by the admin API, so Supabase sends nothing); it only lets the backend use
+ * Supabase's email + password sign-in, which works whether or not the
+ * project's Phone provider is enabled. Admin accounts have real addresses.
+ */
+export const loginEmailFor = (phone: string) => `login+${authDigits(phone)}@gloceries.com`;
+const isLoginEmail = (email: string | undefined | null) => !!email && /^login\+\d+@gloceries\.com$/i.test(email);
+
+type Prepared = { error: { code?: string; status?: number; message?: string } | null; email?: string };
+
+// Gives the auth user this phone and its login address (both confirmed) and
+// a fresh random password. An account with its own email (an admin who signs
+// in to the admin panel with email + password) is never touched: resetting
+// its password would lock that person out of the admin panel.
+async function preparePassword(userId: string, phone: string, password: string): Promise<Prepared> {
+  const existing = await supabase.auth.admin.getUserById(userId);
+  const user = existing.data?.user;
+  if (user?.email && !isLoginEmail(user.email)) {
+    return { error: { code: 'email_account', message: 'This number belongs to an account that signs in with email and password (admin). Use another number in the apps.' } };
   }
-  return updated.error;
+  const email = loginEmailFor(phone);
+  const attributes = { phone, phone_confirm: true, email, email_confirm: true, password };
+  if (!user) {
+    // A public.users row whose auth user is gone (e.g. local seed data or a
+    // reset auth schema): recreate the auth user under the same id.
+    const created = await supabase.auth.admin.createUser({ id: userId, ...attributes });
+    return { error: created.error, email };
+  }
+  const updated = await supabase.auth.admin.updateUserById(userId, attributes);
+  return { error: updated.error, email };
 }
 
 /**
@@ -158,27 +180,33 @@ async function preparePassword(userId: string, phone: string, password: string) 
  * a confirmed auth user plus a single-use random password, exchanged at once
  * for a session. Banned users get Supabase's user_banned error back.
  *
- * Supabase finds a password sign-in by the auth user's phone, so the user
- * that gets the password must be the one holding this phone in auth. When
- * public.users points elsewhere (an old or duplicate row), the auth user
- * found by phone wins.
+ * The password goes to the auth user that holds this phone in Supabase Auth.
+ * When public.users points elsewhere (an old or duplicate row), the auth
+ * user found by phone wins. Sign-in uses the private login address, falling
+ * back to the phone if the project's Email provider is switched off.
  */
 export async function sessionForVerifiedPhone(phone: string) {
   // Upper, lower, digit and symbol, whatever password policy the project has.
   const password = `${randomBytes(32).toString('base64url')}Aa1!`;
   let userId = await findOrCreateAuthUser(phone);
-  let error = await preparePassword(userId, phone, password);
-  if (error) {
+  let prepared = await preparePassword(userId, phone, password);
+  if (prepared.error && prepared.error.code !== 'email_account') {
     // Usually another auth user already holds this phone (Supabase answers
     // phone_exists or a plain 500 "Error updating user"): sign in as that one.
     const owner = await findAuthUserByPhone(phone);
     if (owner && owner !== userId) {
       userId = owner;
-      error = await preparePassword(userId, phone, password);
+      prepared = await preparePassword(userId, phone, password);
     }
   }
-  if (error) throw failure('set one-time password', error);
-  const result = await supabaseAuth.auth.signInWithPassword({ phone, password });
+  if (prepared.error?.code === 'email_account') {
+    throw new AppError(409, 'ADMIN_ACCOUNT_NUMBER', 'This number belongs to an admin account. Use a different number to sign in to the app.');
+  }
+  if (prepared.error) throw failure('prepare one-time password', prepared.error);
+  let result = await supabaseAuth.auth.signInWithPassword({ email: prepared.email!, password });
+  if (result.error?.code === 'email_provider_disabled') {
+    result = await supabaseAuth.auth.signInWithPassword({ phone, password });
+  }
   if (result.error && result.error.code !== 'user_banned') throw failure('password sign-in', result.error);
   return result;
 }

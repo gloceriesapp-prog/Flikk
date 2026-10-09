@@ -141,12 +141,12 @@ After that, `--status` lists exactly what production is missing (113 onward).
 The backend owns the login code (`backend/src/auth/loginOtp.ts`):
 
 1. `POST /auth/otp/request` makes a 6-digit code and sends it through MSG91 with the DLT-approved template (`src/lib/msg91.ts`, the same call `pnpm sms:test` makes). It keeps only a hash, valid for 10 minutes and 5 wrong tries. A correct code is used up only once the session exists, so a failed sign-in can be retried with the same code.
-2. `POST /auth/otp/verify` checks the code. Then it asks Supabase for a normal session: it finds or creates the confirmed auth user, sets a one-time random password and signs in with it.
+2. `POST /auth/otp/verify` checks the code. Then it asks Supabase for a normal session: it finds or creates the confirmed auth user that holds the phone, gives it a private login address (`login+91XXXXXXXXXX@gloceries.com`, never mailed) and a one-time random password, and signs in with them. An admin account with its own email is never touched; that number gets a clear error instead.
 
 Supabase sends no SMS and needs no SMS provider, test OTPs or Send SMS hook. The path is the same locally and on Railway, and a laptop backend works against local or hosted Supabase alike.
 
 - **Backend variables:** `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID` (or `MSG91_SMS_TEMPLATE_ID`), in `backend/.env.local` on a laptop and in Railway Variables in production.
-- **Supabase setting:** Authentication → Sign In / Providers → **Phone** must stay enabled, because the session is a phone sign-in. Once the new backend is live, disable Authentication → Hooks → Send SMS in the hosted projects; it is no longer used.
+- **Supabase settings:** none needed. Sign-in uses Email + password, which is on by default (the admin panel uses it too); if Email is switched off it falls back to Phone. Phone sign-in and the Send SMS hook can stay off.
 - **Test numbers:** set `LOGIN_TEST_OTPS` on Railway for the Google Play reviewer, e.g. `919100000001=123456`. Supabase's own test numbers no longer apply. Test numbers never send an SMS, so the reviewer login keeps working even if MSG91 is down.
 - **Where failures show up:** in the backend log, as `Login OTP SMS failed` with MSG91's reason. The app only shows "We couldn't send a code".
 - **Check MSG91 on its own:** `cd backend && pnpm sms:test 98XXXXXXXX` sends one real OTP and prints the code it should contain.
