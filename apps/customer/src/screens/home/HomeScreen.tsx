@@ -89,13 +89,6 @@ export function HomeScreen({ navigation }: Props) {
   // instead of a section-level swap (this used to only replace AllTabSections'
   // own content while every other tab still rendered a normal, empty-store
   // Home underneath) — see UnavailableZoneScreen.tsx's own note.
-  // Local design preview: EXPO_PUBLIC_PREVIEW_UNAVAILABLE_ZONE=true in
-  // apps/customer/.env.local shows the "not deliverable here" screen at any
-  // address, to see and edit it in Expo Go. Development builds only
-  // (__DEV__), so a release build can never get stuck on it.
-  if (__DEV__ && process.env.EXPO_PUBLIC_PREVIEW_UNAVAILABLE_ZONE === 'true') {
-    return <UnavailableZoneScreen />;
-  }
   if ((serviceability === 'checking' || serviceability === 'error') && !storeId) {
     return <View className="flex-1 items-center justify-center gap-4 bg-white px-6">
       <Text className="text-center text-lg font-bold text-ink">{serviceability === 'error' ? 'Couldn’t check nearby shops' : 'Finding shops for your address…'}</Text>
