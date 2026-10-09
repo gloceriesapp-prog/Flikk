@@ -11,7 +11,7 @@ Every change goes **local → staging → production**. Only production has real
 | EAS variables | none (`.env.local`) | EAS environment `preview` | EAS environment `production` |
 | Admin panel | `pnpm dev` in `apps/admin` | Vercel preview pointed at staging | Vercel production |
 | Payments | Cashfree sandbox | Cashfree sandbox | Cashfree live |
-| Phone OTP | Fixed test OTPs in `supabase/config.toml` | Supabase test phone numbers | Real SMS |
+| Phone OTP | Fixed test OTPs in `supabase/config.toml` | Supabase test phone numbers | Real SMS via MSG91 (Supabase Send SMS hook → `POST /auth/hooks/send-sms`) |
 | Data | `backend/seed/dev-seed.sql` | `backend/seed/dev-seed.sql` + your test accounts | Real |
 
 ## Guard rails already in the code

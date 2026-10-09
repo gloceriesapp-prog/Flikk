@@ -3,7 +3,6 @@ import { deliverPromotion, providerReady } from './providers.js';
 const message = { id: 'job-1', channel: 'email' as const, destination: 'test@example.com', subject: 'Offers', body: 'Savings' };
 beforeEach(() => {
   vi.stubEnv('PROMOTIONS_ENABLED', 'true'); vi.stubEnv('RESEND_API_KEY', 'test'); vi.stubEnv('PROMOTIONAL_EMAIL_FROM', 'test@example.com');
-  vi.stubEnv('TWILIO_ACCOUNT_SID', `AC${'a'.repeat(32)}`); vi.stubEnv('TWILIO_AUTH_TOKEN', 'test'); vi.stubEnv('TWILIO_MESSAGING_SERVICE_SID', 'test');
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 it('never sends while disabled', async () => {
@@ -17,9 +16,15 @@ it('uses a stable email idempotency key for retries', async () => {
   expect(await deliverPromotion(message)).toBe('provider-1');
   expect(send.mock.calls[0][1].headers['Idempotency-Key']).toBe('promotion/job-1');
 });
-it('preserves uncertain SMS outcomes so workers cannot blindly resend', async () => {
+it('preserves uncertain email outcomes so workers cannot blindly resend', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('timeout'); }));
-  await expect(deliverPromotion({ ...message, channel: 'sms', destination: '+919999999999' })).rejects.toMatchObject({ outcome: 'uncertain' });
+  await expect(deliverPromotion(message)).rejects.toMatchObject({ outcome: 'uncertain' });
+});
+it('never sends promotional SMS: DLT needs approved templates, not free text', async () => {
+  const send = vi.fn(); vi.stubGlobal('fetch', send);
+  expect(providerReady('sms')).toBe(false);
+  await expect(deliverPromotion({ ...message, channel: 'sms', destination: '+919999999999' })).rejects.toMatchObject({ outcome: 'failed' });
+  expect(send).not.toHaveBeenCalled();
 });
 it('does not treat rejected or malformed provider replies as acceptance', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ message: 'bad' }, { status: 400 })));

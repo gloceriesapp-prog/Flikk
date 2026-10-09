@@ -52,6 +52,7 @@ import { startBackgroundServices } from './server/background.js';
 import { closeDatabaseConnections } from './db/supabase.js';
 
 import { webhookAdmission } from './security/webhookAdmission.js';
+import { sendSmsHookRoute } from './auth/sendSmsHook.js';
 import { uploadBodyDeadline } from './security/bodyDeadline.js';
 import { requestAdmission, concurrentAdmission } from './security/admission.js';
 import { UPLOAD_PATHS, uploadAdmission, ordinaryJson, productUploadRole } from './security/parsers.js';
@@ -120,6 +121,9 @@ app.use(
     },
   }),
 );
+// Supabase Auth's Send SMS hook (login OTPs via MSG91). Signed with Standard
+// Webhooks over the raw body, so it is mounted before the json() parser too.
+app.post('/auth/hooks/send-sms', concurrentAdmission(32), ...sendSmsHookRoute);
 for (const path of UPLOAD_PATHS) {
   const [auth, ...rest] = uploadAdmission;
   app.post(path, auth!, ...(path === '/partner/product-photo' ? productUploadRole : []), ...rest);

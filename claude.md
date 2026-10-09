@@ -35,7 +35,7 @@ This is the single most important structural fact about the project. Build four 
 | Backend | Node.js + Express, **monolith** serving all four apps | Not microservices, not one backend per app — a single API with role-scoped endpoints/auth is correct at this scale |
 | Database | PostgreSQL via **Supabase** | Auth (phone OTP) + Postgres + realtime + storage in one service — don't hand-roll any of these |
 | Payments | **Cashfree** PG (UPI-first; React Native SDK in the customer app, webhook at `/payments/webhook`) | Customer app only. Razorpay was replaced in migration 103; `payment_provider='razorpay'` marks a few legacy rows that are refunded by hand. Store/rider payouts are manual bank transfers recorded in admin |
-| Notifications | WhatsApp Business API (Interakt/Gupshup), Twilio SMS as fallback | Cross-cutting — customer order updates, partner new-order alerts, rider assignment pings |
+| Notifications | WhatsApp Business API (Interakt/Gupshup); login OTP SMS via MSG91 (Supabase Send SMS hook) | Cross-cutting — customer order updates, partner new-order alerts, rider assignment pings |
 | Hosting | Railway/Render (backend), Vercel (admin dashboard), Supabase (DB/auth) | Cost ceiling: <₹2,000/month at MVP order volume — treat as a real constraint when adding any paid service. Re-check this ceiling now that infra serves 3 mobile apps instead of 1 |
 | Analytics | PostHog or Supabase event table | |
 
@@ -86,7 +86,7 @@ Partner app (Expo)  ──┼─→ Node/Express API (monolith, role-scoped auth
 Rider app (Expo)    ──┘              │
 Admin dashboard (Next.js) ───────────┤
                                       ├─→ Cashfree (payments)
-                                      └─→ WhatsApp Business API / Twilio (notifications)
+                                      └─→ WhatsApp Business API / MSG91 (notifications, OTP)
 ```
 
 Full detail — database schema and REST API surface: PRD-Gloceries-Final.md Sections 15-18. Note the PRD's API table assumes a web partner dashboard; endpoints hold, but partner and rider endpoints now serve native app clients instead — same contracts, different consumer.
