@@ -13,7 +13,7 @@ const db = vi.hoisted(() => {
   };
 });
 vi.mock('../db/supabase.js', () => ({ supabase: db.supabase, supabaseAuth: db.supabaseAuth }));
-import { checkLoginOtp, isPhoneBanned, requestLoginOtp, resetLoginOtpsForTests, sessionForVerifiedPhone, testOtps } from './loginOtp.js';
+import { checkLoginOtp, consumeLoginOtp, isPhoneBanned, requestLoginOtp, resetLoginOtpsForTests, sessionForVerifiedPhone, testOtps } from './loginOtp.js';
 
 const phone = '+919876543210';
 let sent: string[] = [];
@@ -32,20 +32,31 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('login OTP', () => {
-  it('sends a 6-digit code through MSG91 and accepts it once', async () => {
+  it('sends a 6-digit code through MSG91; it stays valid until the sign-in succeeds', async () => {
     await requestLoginOtp(phone);
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatch(/^\d{6}$/);
     expect(checkLoginOtp(phone, sent[0])).toBe(true);
+    // A sign-in failure after a correct code: the same code works again.
+    expect(checkLoginOtp(phone, sent[0])).toBe(true);
+    consumeLoginOtp(phone);
     expect(checkLoginOtp(phone, sent[0])).toBe(false);
   });
 
-  it('only the latest code works, and it expires after 5 minutes', async () => {
+  it('a wrong code does not spoil the right one', async () => {
+    await requestLoginOtp(phone);
+    const wrong = sent[0] === '000000' ? '111111' : '000000';
+    expect(checkLoginOtp(phone, wrong)).toBe(false);
+    expect(checkLoginOtp(phone, sent[0])).toBe(true);
+  });
+
+  it('only the latest code works, valid for 10 minutes', async () => {
     const t = 1_000_000;
     await requestLoginOtp(phone, t);
     await requestLoginOtp(phone, t);
     if (sent[0] !== sent[1]) expect(checkLoginOtp(phone, sent[0], t)).toBe(false);
-    expect(checkLoginOtp(phone, sent[1], t + 5 * 60_000)).toBe(false);
+    expect(checkLoginOtp(phone, sent[1], t + 9 * 60_000)).toBe(true);
+    expect(checkLoginOtp(phone, sent[1], t + 10 * 60_000)).toBe(false);
   });
 
   it('locks the code after 5 wrong attempts', async () => {
@@ -141,5 +152,25 @@ describe('sessionForVerifiedPhone with a missing auth user', () => {
     expect(db.supabase.auth.admin.createUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'orphan', phone, phone_confirm: true }));
     const { password } = db.supabase.auth.admin.createUser.mock.calls[0][0];
     expect(db.supabaseAuth.auth.signInWithPassword).toHaveBeenCalledWith({ phone, password });
+  });
+});
+
+describe('sessionForVerifiedPhone when another auth user holds the phone', () => {
+  it('signs in as the auth user that owns the phone', async () => {
+    db.maybeSingle.mockResolvedValue({ data: { id: 'stale-row' } });
+    db.supabase.auth.admin.updateUserById
+      .mockResolvedValueOnce({ data: { user: null }, error: { status: 500, message: 'Error updating user' } })
+      .mockResolvedValueOnce({ data: { user: { id: 'owner' } }, error: null });
+    db.supabase.auth.admin.listUsers.mockResolvedValue({ data: { users: [{ id: 'owner', phone: '919876543210' }] }, error: null });
+    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: {} }, error: null });
+    await sessionForVerifiedPhone(phone);
+    expect(db.supabase.auth.admin.updateUserById.mock.calls[1][0]).toBe('owner');
+  });
+
+  it('throws SIGN_IN_FAILED (logged with the step) when Supabase refuses the sign-in', async () => {
+    db.maybeSingle.mockResolvedValue({ data: { id: 'user-1' } });
+    db.supabase.auth.admin.updateUserById.mockResolvedValue({ error: null });
+    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: null }, error: { code: 'phone_provider_disabled', status: 422 } });
+    await expect(sessionForVerifiedPhone(phone)).rejects.toMatchObject({ code: 'SIGN_IN_FAILED' });
   });
 });

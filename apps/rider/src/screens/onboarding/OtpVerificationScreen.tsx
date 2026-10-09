@@ -26,6 +26,7 @@ export function OtpVerificationScreen({ navigation, route }: Props) {
   const setSession = useAuthStore((s) => s.setSession);
 
   async function handleVerify() {
+    if (loading) return;
     setLoading(true);
     try {
       const result = await verifyOtp(phone, code);
@@ -69,7 +70,7 @@ export function OtpVerificationScreen({ navigation, route }: Props) {
             <View className="gap-2">
               <Text className="text-2xl font-semibold text-ink">Enter the code</Text>
               <Text className="text-[15px] font-medium text-ink/55">
-                Sent to <Text className="font-semibold text-ink">{phone}</Text>
+                Sent to <Text className="font-semibold text-ink">{phone}</Text> · valid for 10 minutes
               </Text>
             </View>
 

@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import type { Request, RequestHandler, Response } from 'express';
 
 const auth = vi.hoisted(() => ({ signInWithPassword: vi.fn(), refreshSession: vi.fn() }));
-const login = vi.hoisted(() => ({ isPhoneBanned: vi.fn(), requestLoginOtp: vi.fn(), checkLoginOtp: vi.fn(), sessionForVerifiedPhone: vi.fn() }));
+const login = vi.hoisted(() => ({ CODE_TTL_MINUTES: 10, isPhoneBanned: vi.fn(), requestLoginOtp: vi.fn(), checkLoginOtp: vi.fn(), consumeLoginOtp: vi.fn(), sessionForVerifiedPhone: vi.fn() }));
 vi.mock('../db/supabase.js', () => ({ supabase: {}, supabaseAuth: { auth } }));
 vi.mock('../auth/loginOtp.js', () => login);
 import { authRouter } from './auth.js';
@@ -34,7 +34,7 @@ it('sends the code for the canonical +91 number', async () => {
   const { error, res } = await post('/otp/request', { phone: '98765 43210' });
   expect(error).toBeUndefined();
   expect(login.requestLoginOtp).toHaveBeenCalledWith('+919876543210');
-  expect(res.json).toHaveBeenCalledWith({ ok: true });
+  expect(res.json).toHaveBeenCalledWith({ ok: true, expires_in_minutes: 10 });
 });
 
 it('refuses to refresh a blocked session with ACCOUNT_BLOCKED', async () => {
@@ -46,4 +46,11 @@ it('keeps a wrong code as OTP_INVALID and never creates a session for it', async
   login.checkLoginOtp.mockReturnValue(false);
   expect((await post('/otp/verify', { phone: '9876543210', code: '123456' })).error).toMatchObject({ status: 401, code: 'OTP_INVALID' });
   expect(login.sessionForVerifiedPhone).not.toHaveBeenCalled();
+});
+
+it('keeps the code usable when the sign-in fails, and uses it up only after success', async () => {
+  login.checkLoginOtp.mockReturnValue(true);
+  login.sessionForVerifiedPhone.mockRejectedValue(Object.assign(new Error('x'), { status: 500, code: 'SIGN_IN_FAILED' }));
+  expect((await post('/otp/verify', { phone: '9876543210', code: '123456' })).error).toMatchObject({ code: 'SIGN_IN_FAILED' });
+  expect(login.consumeLoginOtp).not.toHaveBeenCalled();
 });

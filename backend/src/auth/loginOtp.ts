@@ -8,7 +8,7 @@
 // project and a laptop) and shared its secret; any of those failing showed
 // up as "We couldn't send a code" with nothing in this backend's logs.
 //
-// Pending codes live in this process (hashed, 5 minutes, 5 attempts). The API
+// Pending codes live in this process (hashed, 10 minutes, 5 wrong tries). The API
 // runs as one replica; a restart or deploy just means "send the code again".
 // Delivery OTPs at the doorstep are separate (lib/deliveryOtp.ts).
 import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
@@ -18,7 +18,8 @@ import { logger } from '../lib/logger.js';
 import { msg91Config, sendOtpSms, SmsDeliveryError } from '../lib/msg91.js';
 import { phoneVariants } from '../lib/phone.js';
 
-const CODE_TTL_MS = 5 * 60_000;
+export const CODE_TTL_MINUTES = 10;
+const CODE_TTL_MS = CODE_TTL_MINUTES * 60_000;
 const MAX_ATTEMPTS = 5;
 const MAX_PENDING = 10_000;
 const pepper = randomBytes(32);
@@ -79,17 +80,25 @@ export async function requestLoginOtp(phone: string, now = Date.now()): Promise<
   pending.set(phone, { hash: hashCode(phone, code), expiresAt: now + CODE_TTL_MS, attempts: 0 });
 }
 
-/** True when `code` is the live code for `phone`; consumes it on success. */
+/**
+ * Checks `code` against the live code for `phone`. A wrong code counts as a
+ * try (5 tries, then a new code is needed); a right one is NOT used up here,
+ * only by consumeLoginOtp() once the session exists, so a sign-in failure
+ * after a correct code can be retried with the same code.
+ */
 export function checkLoginOtp(phone: string, code: string, now = Date.now()): boolean {
   const testCode = testOtps().get(phone);
   if (testCode !== undefined) return code === testCode;
   const entry = pending.get(phone);
   if (!entry || entry.expiresAt <= now) { pending.delete(phone); return false; }
+  if (timingSafeEqual(entry.hash, hashCode(phone, code))) return true;
   entry.attempts += 1;
-  const ok = timingSafeEqual(entry.hash, hashCode(phone, code));
-  if (ok || entry.attempts >= MAX_ATTEMPTS) pending.delete(phone);
-  return ok;
+  if (entry.attempts >= MAX_ATTEMPTS) pending.delete(phone);
+  return false;
 }
+
+/** Called after a successful sign-in: the code cannot be used again. */
+export function consumeLoginOtp(phone: string) { pending.delete(phone); }
 
 const authDigits = (phone: string) => phone.replace(/\D/g, '');
 
@@ -101,13 +110,8 @@ async function findOrCreateAuthUser(phone: string): Promise<string> {
   if (row?.id) return row.id as string;
   const created = await supabase.auth.admin.createUser({ phone, phone_confirm: true });
   if (created.data.user) return created.data.user.id;
-  for (let page = 1; page <= 20; page += 1) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
-    if (error) break;
-    const match = data.users.find((user) => user.phone && authDigits(user.phone) === authDigits(phone));
-    if (match) return match.id;
-    if (data.users.length < 1000) break;
-  }
+  const existing = await findAuthUserByPhone(phone);
+  if (existing) return existing;
   logger.error({ code: created.error?.code, reason: created.error?.message?.slice(0, 200) }, 'Could not create or find the auth user for a verified phone');
   throw new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
 }
@@ -121,27 +125,62 @@ export async function isPhoneBanned(phone: string): Promise<boolean> {
   return !!until && new Date(until).getTime() > Date.now();
 }
 
-/**
- * Issues a normal Supabase session for a phone whose OTP was just verified:
- * a confirmed auth user plus a single-use random password, exchanged at once
- * for a session. Banned users get Supabase's user_banned error back.
- */
-export async function sessionForVerifiedPhone(phone: string) {
-  const userId = await findOrCreateAuthUser(phone);
-  // Upper, lower, digit and symbol, whatever password policy the project has.
-  const password = `${randomBytes(32).toString('base64url')}Aa1!`;
-  let updated = await supabase.auth.admin.updateUserById(userId, { password, phone_confirm: true });
+async function findAuthUserByPhone(phone: string): Promise<string | undefined> {
+  for (let page = 1; page <= 50; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) return undefined;
+    const match = data.users.find((user) => user.phone && authDigits(user.phone) === authDigits(phone));
+    if (match) return match.id;
+    if (data.users.length < 1000) return undefined;
+  }
+  return undefined;
+}
+
+const failure = (where: string, error: { code?: string; status?: number; message?: string } | null | undefined) => {
+  logger.error({ step: where, code: error?.code, status: error?.status, reason: error?.message?.slice(0, 200) }, 'Login: could not issue a session after a correct code');
+  return new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
+};
+
+// Gives the auth user this phone (confirmed) and a fresh random password.
+async function preparePassword(userId: string, phone: string, password: string) {
+  let updated = await supabase.auth.admin.updateUserById(userId, { phone, password, phone_confirm: true });
   // A public.users row whose auth user is gone (e.g. local seed data or a
   // reset auth schema): recreate the auth user under the same id.
   if (updated.error?.status === 404) {
     const created = await supabase.auth.admin.createUser({ id: userId, phone, phone_confirm: true, password });
     updated = { data: { user: created.data.user }, error: created.error } as typeof updated;
   }
-  if (updated.error) {
-    logger.error({ code: updated.error.code, reason: updated.error.message?.slice(0, 200) }, 'Could not prepare the session for a verified phone');
-    throw new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
+  return updated.error;
+}
+
+/**
+ * Issues a normal Supabase session for a phone whose OTP was just verified:
+ * a confirmed auth user plus a single-use random password, exchanged at once
+ * for a session. Banned users get Supabase's user_banned error back.
+ *
+ * Supabase finds a password sign-in by the auth user's phone, so the user
+ * that gets the password must be the one holding this phone in auth. When
+ * public.users points elsewhere (an old or duplicate row), the auth user
+ * found by phone wins.
+ */
+export async function sessionForVerifiedPhone(phone: string) {
+  // Upper, lower, digit and symbol, whatever password policy the project has.
+  const password = `${randomBytes(32).toString('base64url')}Aa1!`;
+  let userId = await findOrCreateAuthUser(phone);
+  let error = await preparePassword(userId, phone, password);
+  if (error) {
+    // Usually another auth user already holds this phone (Supabase answers
+    // phone_exists or a plain 500 "Error updating user"): sign in as that one.
+    const owner = await findAuthUserByPhone(phone);
+    if (owner && owner !== userId) {
+      userId = owner;
+      error = await preparePassword(userId, phone, password);
+    }
   }
-  return supabaseAuth.auth.signInWithPassword({ phone, password });
+  if (error) throw failure('set one-time password', error);
+  const result = await supabaseAuth.auth.signInWithPassword({ phone, password });
+  if (result.error && result.error.code !== 'user_banned') throw failure('password sign-in', result.error);
+  return result;
 }
 
 export function resetLoginOtpsForTests() { pending.clear(); }

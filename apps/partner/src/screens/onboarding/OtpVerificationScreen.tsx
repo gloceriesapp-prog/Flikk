@@ -82,8 +82,10 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
         // RootNavigator swaps to Store Setup / Waiting / the app shell
         // automatically once the store updates — see that file's own note.
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Invalid code. Please try again.');
-        setCode('');
+        setError(err instanceof ApiError ? err.message : 'Could not verify the code. Please try again.');
+        // Only a wrong or expired code is cleared; after a sign-in or network
+        // failure the same code still works, so keep it for another tap.
+        if (err instanceof ApiError && err.code === 'OTP_INVALID') setCode('');
       } finally {
         setLoading(false);
       }
@@ -91,10 +93,10 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
     [phone, setSession]
   );
 
-  // auto-submit once all 6 digits are entered — one less tap for the user.
+  // No auto-submit: the code is checked only when Continue is pressed.
   function handleCodeChange(digits: string) {
     setCode(digits);
-    if (digits.length === 6) handleVerify(digits);
+    if (error) setError(null);
   }
 
   async function handleResend() {
@@ -133,7 +135,7 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
           <View className="gap-1.5">
             <Text className="text-2xl font-semibold leading-8 text-ink">Verify your number.</Text>
             <Text className="text-sm text-ink/55">
-              Code sent to <Text className="font-semibold text-ink">{phone}</Text>
+              Code sent to <Text className="font-semibold text-ink">{phone}</Text> · valid for 10 minutes
             </Text>
           </View>
 
@@ -164,7 +166,7 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
 
             <PrimaryButton
               label={loading ? 'Verifying…' : 'Continue'}
-              onPress={() => handleVerify(code)}
+              onPress={() => { if (!loading) handleVerify(code); }}
               disabled={code.length !== 6 || loading}
               loading={loading}
             />

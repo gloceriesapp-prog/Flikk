@@ -140,7 +140,7 @@ After that, `--status` lists exactly what production is missing (113 onward).
 
 The backend owns the login code (`backend/src/auth/loginOtp.ts`):
 
-1. `POST /auth/otp/request` makes a 6-digit code and sends it through MSG91 with the DLT-approved template (`src/lib/msg91.ts`, the same call `pnpm sms:test` makes). It keeps only a hash, for 5 minutes and 5 attempts.
+1. `POST /auth/otp/request` makes a 6-digit code and sends it through MSG91 with the DLT-approved template (`src/lib/msg91.ts`, the same call `pnpm sms:test` makes). It keeps only a hash, valid for 10 minutes and 5 wrong tries. A correct code is used up only once the session exists, so a failed sign-in can be retried with the same code.
 2. `POST /auth/otp/verify` checks the code. Then it asks Supabase for a normal session: it finds or creates the confirmed auth user, sets a one-time random password and signs in with it.
 
 Supabase sends no SMS and needs no SMS provider, test OTPs or Send SMS hook. The path is the same locally and on Railway, and a laptop backend works against local or hosted Supabase alike.
