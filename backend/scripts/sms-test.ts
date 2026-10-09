@@ -12,7 +12,7 @@ import { msg91Config, msg91Mobile, sendOtpSms, SmsDeliveryError } from '../src/l
 
 const phone = process.argv[2];
 const config = msg91Config();
-const missing = [!config.authKey && 'MSG91_AUTH_KEY', !config.templateId && 'MSG91_OTP_TEMPLATE_ID'].filter(Boolean);
+const missing = [!config.authKey && 'MSG91_AUTH_KEY', !config.templateId && 'MSG91_OTP_TEMPLATE_ID (or MSG91_SMS_TEMPLATE_ID)'].filter(Boolean);
 if (missing.length) {
   const similar = Object.keys(process.env).filter((name) => /MSG91|SMS|OTP/i.test(name) && !missing.includes(name) && process.env[name]?.trim());
   console.error(`Missing or empty in backend/.env.local: ${missing.join(', ')}.`);

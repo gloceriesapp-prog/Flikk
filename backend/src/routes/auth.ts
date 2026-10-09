@@ -7,6 +7,7 @@ import { AppError } from '../lib/errors.js';
 import { normalizePhone } from '../lib/phone.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { partnerSuspension } from '../auth/partnerSuspension.js';
+import { logger } from '../lib/logger.js';
 
 export const authRouter = Router();
 
@@ -21,7 +22,19 @@ authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
     const canonical = normalizePhone(phone); // +91… — throws on a bad number
     const { error } = await supabaseAuth.auth.signInWithOtp({ phone: canonical });
     if (isBanned(error)) throw accountBlocked();
-    if (error) throw new AppError(400, 'OTP_SEND_FAILED', 'We couldn’t send a code. Please try again shortly.');
+    if (error) {
+      // The app only shows a generic message; log Supabase's reason so a
+      // failed send can be diagnosed (e.g. "Error running hook URI" when
+      // the Send SMS hook or MSG91 failed, or SMS rate limits). Never the
+      // phone number or code.
+      const e = error as { code?: unknown; status?: unknown; message?: unknown };
+      logger.warn({
+        code: typeof e.code === 'string' ? e.code : undefined,
+        status: typeof e.status === 'number' ? e.status : undefined,
+        reason: typeof e.message === 'string' ? e.message.slice(0, 200) : undefined,
+      }, 'Login OTP request failed at Supabase Auth');
+      throw new AppError(400, 'OTP_SEND_FAILED', 'We couldn’t send a code. Please try again shortly.');
+    }
     res.status(200).json({ ok: true });
   } catch (err) {
     next(err);

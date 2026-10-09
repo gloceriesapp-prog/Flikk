@@ -87,6 +87,14 @@ describe('sendOtpSms', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ type: 'error', message: 'Invalid template' })));
     await expect(sendOtpSms('919876543210', '123456')).rejects.toMatchObject({ status: 502 });
   });
+  it('accepts MSG91_SMS_TEMPLATE_ID as the template ID name', async () => {
+    const send = vi.fn(async (_url: URL, _init: RequestInit) => Response.json({ type: 'success', message: 'req-5' }));
+    vi.stubGlobal('fetch', send);
+    vi.stubEnv('MSG91_OTP_TEMPLATE_ID', '');
+    vi.stubEnv('MSG91_SMS_TEMPLATE_ID', 'sms-template-9');
+    await sendOtpSms('919876543210', '123456');
+    expect(JSON.parse(send.mock.calls[0][1].body as string).template_id).toBe('sms-template-9');
+  });
   it('refuses to send without configuration', async () => {
     vi.stubEnv('MSG91_AUTH_KEY', '');
     const send = vi.fn(); vi.stubGlobal('fetch', send);
