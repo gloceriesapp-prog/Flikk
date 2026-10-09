@@ -153,6 +153,17 @@ jobs:
     defaults:
       run:
         working-directory: apps/${{ matrix.app }}
+    # Safe placeholders so `next build` fails on real bundling/code errors, not
+    # on missing env. Admin-only vars (service role, admin login) are harmless
+    # for the other apps. Deliberately NOT setting VERCEL_ENV/APP_ENV (keeps the
+    # landing build-guard from hard-failing) nor NEXT_PUBLIC_API_URL (lets
+    # landing's localhost fallback apply) — both intended for CI.
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+      SUPABASE_SERVICE_ROLE_KEY: placeholder
+      ADMIN_USERNAME: ci
+      ADMIN_LOGIN_EMAIL: ci@example.com
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -167,4 +178,9 @@ jobs:
       - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npx eslint src
+      # Full build — CI must prove a deployable bundle, not just types/lint.
+      # Use each app's own `build` script (admin needs `next build --webpack` for
+      # its raw backend/src/*.ts `.js`->`.ts` imports; others are plain next build),
+      # all resolving sibling packages/*.cjs via the full-repo checkout above.
+      - run: pnpm build
 

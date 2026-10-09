@@ -4,6 +4,8 @@
 // hardcoded keyword list. Never computes distance client-side: that would need
 // every store's raw coords in the browser, which the backend deliberately
 // avoids handing out (see backend/src/routes/stores.ts /nearest note).
+// In prod the build (next.config.ts) already failed if this was unset, so the
+// var is trustworthy here; the localhost fallback only ever serves dev/CI.
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export interface ServiceabilityResult {
