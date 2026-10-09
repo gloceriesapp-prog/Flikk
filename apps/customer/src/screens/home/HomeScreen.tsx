@@ -24,6 +24,7 @@ import { StatusBar } from 'expo-status-bar';
 import Animated from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeHeader } from './components/HomeHeader';
+import { PREVIEW_UNAVAILABLE_ZONE } from '../../dev/UnavailableZonePreview';
 import { UnavailableZoneScreen } from './unavailable-zone/UnavailableZoneScreen';
 import { HomeCategoryContent } from './category-page/HomeCategoryContent';
 import { useHomeBrowseScroll } from './category-page/useHomeBrowseScroll';
@@ -89,11 +90,8 @@ export function HomeScreen({ navigation }: Props) {
   // instead of a section-level swap (this used to only replace AllTabSections'
   // own content while every other tab still rendered a normal, empty-store
   // Home underneath) — see UnavailableZoneScreen.tsx's own note.
-  // Local design preview: EXPO_PUBLIC_PREVIEW_UNAVAILABLE_ZONE=true in
-  // apps/customer/.env.local shows the "not deliverable here" screen at any
-  // address, to see and edit it in Expo Go. Development builds only
-  // (__DEV__), so a release build can never get stuck on it.
-  if (__DEV__ && process.env.EXPO_PUBLIC_PREVIEW_UNAVAILABLE_ZONE === 'true') {
+  // Local design preview (dev builds only): see dev/UnavailableZonePreview.tsx.
+  if (PREVIEW_UNAVAILABLE_ZONE) {
     return <UnavailableZoneScreen />;
   }
   if ((serviceability === 'checking' || serviceability === 'error') && !storeId) {
