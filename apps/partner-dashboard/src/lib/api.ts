@@ -29,11 +29,18 @@ interface RequestOptions {
 async function send(path: string, method: string, body: unknown, token: string | null) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    // Network failure or a CORS refusal: say which server, instead of the
+    // pages' generic "Could not send the code." / "Invalid or expired code."
+    throw new ApiError(0, 'SERVER_UNREACHABLE', `Can't reach the Gloceries server (${API_URL}). Check it is running, and that this site's address is in the backend's WEB_DASHBOARD_ORIGINS.`);
+  }
   const json = await res.json().catch(() => null);
   return { res, json };
 }

@@ -18,12 +18,11 @@
 // backend answers; nothing here needs to change when that happens.
 
 import { createAuthApi, type AccountStatus, type VerifyOtpResponse } from '@gloceries/shared';
-import { apiRequest } from './client';
+import { ApiError, apiRequest } from './client';
+import { API_BASE_URL } from './baseUrl';
 import {
   devCheckAccountStatus,
-  devRequestOtp,
   devSubmitStoreApplication,
-  devVerifyOtp,
   isBackendUnreachable,
 } from './devAuthFallback';
 
@@ -36,14 +35,22 @@ export interface RequestOtpResult {
   devMode: boolean;
 }
 
+// Login never falls back to devAuthFallback: a fake "sent" code that only
+// accepted 123456 hid every real problem (wrong Wi-Fi IP, backend stopped)
+// behind "invalid code". An unreachable backend is now a clear error.
+function unreachable(err: unknown): never {
+  if (!(err instanceof ApiError) || err.status === 0) {
+    throw new ApiError(0, 'SERVER_UNREACHABLE', `Can't reach the Gloceries server (${API_BASE_URL}). Check the backend is running and this phone is on the same Wi-Fi.`);
+  }
+  throw err;
+}
+
 export async function requestOtp(phone: string): Promise<RequestOtpResult> {
   try {
     const result = await authApi.requestOtp(phone);
     return { ...result, devMode: false };
   } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    const result = await devRequestOtp(phone);
-    return { ...result, devMode: true };
+    return unreachable(err);
   }
 }
 
@@ -51,8 +58,7 @@ export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpR
   try {
     return await authApi.verifyOtp(phone, code);
   } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    return devVerifyOtp(phone, code);
+    return unreachable(err);
   }
 }
 
