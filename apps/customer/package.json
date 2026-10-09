@@ -90,7 +90,9 @@
       "node_modules"
     ],
     "moduleNameMapper": {
-      "\\.css$": "<rootDir>/__tests__/styleStub.js"
+      "\\.css$": "<rootDir>/__tests__/styleStub.js",
+      "^react$": "<rootDir>/node_modules/react",
+      "^react/(.*)$": "<rootDir>/node_modules/react/$1"
     },
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|jsbarcode))"
