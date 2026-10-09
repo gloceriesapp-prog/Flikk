@@ -20,9 +20,5 @@ site_url = "http://localhost:3000"
 enable_signup = true
 enable_confirmations = true
 
-# Fixed OTPs so phone login works locally without sending SMS.
-# Log in with any of these numbers and the code shown.
-[auth.sms.test_otp]
-910000000001 = "123456"
-910000000002 = "123456"
-910000000003 = "123456"
+# No fixed login OTPs. Real-message testing uses the signed staging SMS hook;
+# isolated automated tests mock the transport without issuing real sessions.

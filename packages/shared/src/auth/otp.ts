@@ -6,11 +6,8 @@
 // stores its session — same separation of concerns as that module's own
 // note.
 //
-// What's deliberately NOT here: any devAuthFallback-style "no backend
-// reachable, simulate it locally" logic. That's a per-app development
-// convenience (see apps/partner/src/api/devAuthFallback.ts), not part of
-// the real contract — mixing it in here would make this module lie about
-// what the actual backend does.
+// Authentication always uses the backend. Network failures must propagate;
+// clients never manufacture local OTPs, sessions or approval states.
 
 import type { ApiClient } from './client';
 

@@ -51,9 +51,9 @@ export function LoginScreen({ navigation }: Props) {
       setError(null);
       try {
         const fullPhone = `+91${phone}`;
-        const { devMode } = await requestOtp(fullPhone);
+        await requestOtp(fullPhone);
         if (!isCurrent()) return;
-        navigation.navigate('OtpVerification', { phone: fullPhone, devMode });
+        navigation.navigate('OtpVerification', { phone: fullPhone });
       } catch (err) {
         if (!isCurrent()) return;
         setError(err instanceof ApiError ? err.message : 'Could not send OTP. Please try again.');

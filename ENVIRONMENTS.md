@@ -1,6 +1,6 @@
 # Environments: local, staging, production
 
-Every change goes **local → staging → production**. Only production has real customers, real money and real SMS. Nothing reaches production without first running on staging, on a real phone.
+Every change goes **local → staging → production**. Only production has real customers and real money. Staging sends real authentication SMS only to controlled test phones through its configured provider. Nothing reaches production without first running on staging, on a real phone.
 
 | | Local | Staging | Production |
 |---|---|---|---|
@@ -11,7 +11,7 @@ Every change goes **local → staging → production**. Only production has real
 | EAS variables | none (`.env.local`) | EAS environment `preview` | EAS environment `production` |
 | Admin panel | `pnpm dev` in `apps/admin` | Vercel preview pointed at staging | Vercel production |
 | Payments | Cashfree sandbox | Cashfree sandbox | Cashfree live |
-| Phone OTP | Fixed test OTPs in `supabase/config.toml` | Supabase test phone numbers | Real SMS |
+| Phone OTP | Mocked transport in automated tests; no fixed login codes | Real SMS to controlled test phones through the signed MSG91 hook | Real SMS |
 | Data | `backend/seed/dev-seed.sql` | `backend/seed/dev-seed.sql` + your test accounts | Real |
 
 ## Guard rails already in the code
@@ -50,7 +50,7 @@ In each app's `.env.local`, set:
 - `EXPO_PUBLIC_API_URL=http://<your-LAN-IP>:4000`
 - `EXPO_PUBLIC_SUPABASE_URL=http://<your-LAN-IP>:54321`
 
-Log in with `+91 0000000001` and OTP `123456`.
+There are no fixed login OTPs or simulated sign-in sessions. Use the automated authentication tests for local development. To test handset delivery, use the staging backend and configure its signed SMS hook as described in [backend/MSG91_AUTH.md](backend/MSG91_AUTH.md); a LAN-only backend cannot receive Supabase's outbound hook.
 
 ### Staging database (once)
 
@@ -60,7 +60,7 @@ Log in with `+91 0000000001` and OTP `123456`.
    cd backend
    DATABASE_URL='<staging pooler URI>' pnpm db:seed
    ```
-3. Supabase → `flikk-staging` → Authentication → Phone: enable phone sign-in and add test numbers, for example `910000000001` with OTP `123456`.
+3. Supabase → `flikk-staging` → Authentication → Phone: enable phone sign-in, keep phone verification enabled and remove fixed test-number OTP mappings. Configure the signed Send SMS hook following [backend/MSG91_AUTH.md](backend/MSG91_AUTH.md), then test only with controlled handset numbers.
 4. Storage: create the same public buckets as production (store-images, product-images, banners, etc.) if a migration didn't already create them.
 
 ### Railway staging environment (once)

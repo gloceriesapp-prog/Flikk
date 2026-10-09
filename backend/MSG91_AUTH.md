@@ -34,6 +34,17 @@ Generate the HMAC budget secret securely with `openssl rand -hex 32`. Keep it st
 
 The backend may run behind Railway, Render or another host: the provider name is not assumed. Configure secrets on the service that actually runs Express and restart/redeploy it. For local real-SMS testing, the staging Supabase hook needs a secure publicly reachable development endpoint; a physical phone reaching your LAN backend is insufficient for Supabase's outbound webhook.
 
+### Keys are present but SMS still uses the previous provider
+
+Adding `MSG91_AUTH_KEY`, the template ID and variable does not activate delivery. Confirm all of these before a real-message test:
+
+- The running backend uses the staging Supabase project, with the SMS receipt migration applied there.
+- `OTP_SMS_PROVIDER=msg91` and the matching `SUPABASE_SEND_SMS_HOOK_SECRET` are configured on that backend and it has restarted successfully. Set a stable `AUTH_BUDGET_SECRET` shared with its worker.
+- Staging Supabase's Send SMS hook is enabled and points to that backend's public HTTPS `/auth/hooks/send-sms` endpoint. Never substitute a generated local signing secret for the secret configured on Supabase.
+- Customer, partner and rider builds point at the same staging backend. Hosted Supabase test-number OTP mappings must be removed separately; deleting local `auth.sms.test_otp` configuration does not change hosted settings.
+
+All three apps use the same server-authentication routes; no MSG91 credentials belong in app environment files. Delivery verification OTPs are a separate order workflow and are unchanged by this integration. Automated synthetic OTP fixtures remain isolated to tests and cannot log a user in.
+
 ## Database and abuse controls
 
 The new RLS-enabled service-only tables store keyed event/body/phone identifiers and delivery outcomes, never plaintext codes or phone numbers. An atomic unique receipt allows one send across replicas. Accepted duplicates return success; in-flight, failed or ambiguous duplicates do not send again. A provider timeout may already have submitted the SMS, so there are no automatic provider retries. A fresh user request after the cooldown creates a fresh Supabase OTP event.

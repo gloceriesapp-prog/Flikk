@@ -70,11 +70,7 @@ export type AuthStackParamList = {
   // own WelcomeScreen/RootNavigator pattern), before either stack ever
   // mounts. Login is this stack's real first screen now.
   Login: undefined;
-  // devMode flags that requestOtp fell back to the local dev stand-in
-  // (backend unreachable — see api/devAuthFallback.ts) so this screen can
-  // show the fixed demo code instead of leaving "why doesn't my real SMS
-  // arrive" a mystery.
-  OtpVerification: { phone: string; devMode: boolean };
+  OtpVerification: { phone: string };
   // Only reached when the verify response says has_store: false — an
   // existing, already-onboarded owner skips straight past this. Screen 1
   // of the wizard: no fields, just "Get Started" — that tap is what

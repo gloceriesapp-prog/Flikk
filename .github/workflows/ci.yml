@@ -147,6 +147,10 @@ jobs:
         working-directory: apps/${{ matrix.app }}
       - run: npx eslint .
         working-directory: apps/${{ matrix.app }}
+      - name: Verify partner real-auth boundary
+        if: matrix.app == 'partner'
+        run: npm test
+        working-directory: apps/partner
 
   # Next.js apps. `next typegen` generates the PageProps/LayoutProps/
   # RouteContext globals that the typecheck relies on.

@@ -129,10 +129,8 @@ export function RootNavigator() {
         setPartnerSuspension(partner_suspended === true, partner_suspended_reason ?? null);
       })
       .catch((err) => {
-        // A 401 here means the stored token is genuinely invalid (expired,
-        // or a leftover devAuthFallback "dev:<phone>" token from before a
-        // real backend existed — see StoreReviewScreen.tsx's own note on
-        // that exact failure mode) — the backend rejected it outright,
+        // A 401 here means the stored token is genuinely invalid —
+        // the backend rejected it outright,
         // it's not coming back on its own. Left uncleared, this token
         // stays in SecureStore forever: accessToken keeps looking
         // "logged in" to RootNavigator's own branch below, so the app

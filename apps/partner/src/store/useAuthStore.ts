@@ -87,6 +87,16 @@ export const useAuthStore = create<AuthState>((set) => ({
       SecureStore.getItemAsync(TOKEN_KEY),
       SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
     ]);
+    // Remove sessions issued by the retired local demo flow, even offline.
+    // Real sessions remain available while the backend is temporarily unreachable.
+    if (token?.startsWith('dev:') || refreshToken?.startsWith('dev:')) {
+      await Promise.all([
+        SecureStore.deleteItemAsync(TOKEN_KEY),
+        SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
+      ]);
+      set({ accessToken: null, refreshToken: null, isHydrated: true });
+      return;
+    }
     // Approval/store status aren't persisted alongside the token — a
     // returning session re-checks both via checkApprovalStatus() rather
     // than trusting a stale local flag that could be wrong by the time

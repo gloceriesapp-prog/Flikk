@@ -157,7 +157,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
     try {
       const compressed = await compressImageToTarget(asset.uri, asset.base64);
       const contentType = compressed.uri === asset.uri ? (asset.mimeType ?? 'image/jpeg') : 'image/jpeg';
-      const { url } = await uploadStorePhoto(compressed.base64, contentType, compressed.uri);
+      const { url } = await uploadStorePhoto(compressed.base64, contentType);
       updateProfile({ photoUrl: url });
     } catch {
       // Best-effort, same tolerance as this screen's other background

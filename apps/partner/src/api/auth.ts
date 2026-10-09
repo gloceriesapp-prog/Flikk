@@ -1,10 +1,5 @@
 import { createAuthApi, type AccountStatus, type VerifyOtpResponse } from '@gloceries/shared';
 import { apiRequest } from './client';
-import {
-  devCheckAccountStatus,
-  devSubmitStoreApplication,
-  isBackendUnreachable,
-} from './devAuthFallback';
 
 const authApi = createAuthApi({ apiRequest });
 
@@ -12,13 +7,12 @@ export type { AccountStatus, VerifyOtpResponse };
 
 export interface RequestOtpResult {
   ok: true;
-  devMode: boolean;
 }
 
 // SMS delivery is backend-only. A network failure must never manufacture a
 // local OTP/session, including in development builds used for device tests.
 export async function requestOtp(phone: string): Promise<RequestOtpResult> {
-  return { ...await authApi.requestOtp(phone), devMode: false };
+  return authApi.requestOtp(phone);
 }
 
 export function verifyOtp(phone: string, code: string): Promise<VerifyOtpResponse> {
@@ -56,12 +50,7 @@ export interface StoreApplication {
 // Partner-only endpoint (Store Setup submission) — not part of the shared
 // auth contract, stays local to this app.
 export async function submitStoreApplication(application: StoreApplication): Promise<{ ok: true }> {
-  try {
-    return await apiRequest('/partner/store-application', { method: 'POST', body: application });
-  } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    return devSubmitStoreApplication(application);
-  }
+  return apiRequest('/partner/store-application', { method: 'POST', body: application });
 }
 
 // Storefront photo — uploaded ahead of the actual application submit so
@@ -70,27 +59,15 @@ export async function submitStoreApplication(application: StoreApplication): Pro
 // local file. base64 in, public URL out — see backend/src/routes/
 // storeOnboarding.ts's own note on why this is its own endpoint, not
 // bundled into POST /store-application's body.
-export async function uploadStorePhoto(base64: string, contentType: string, localUri: string): Promise<{ url: string }> {
-  try {
-    return await apiRequest('/partner/store-photo', { method: 'POST', body: { base64, contentType } });
-  } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    // No real storage to fall back to — stands in with the picked file's own
-    // local URI so StoreReviewScreen still has something to render.
-    return { url: localUri };
-  }
+export async function uploadStorePhoto(base64: string, contentType: string): Promise<{ url: string }> {
+  return apiRequest('/partner/store-photo', { method: 'POST', body: { base64, contentType } });
 }
 
 // Re-checked on cold start (a returning session's approval/store status
 // isn't persisted alongside the token, see useAuthStore.ts's own note) and
 // polled by WaitingApprovalScreen — one endpoint, two callers.
 export async function checkAccountStatus(): Promise<AccountStatus> {
-  try {
-    return await authApi.checkAccountStatus();
-  } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    return devCheckAccountStatus();
-  }
+  return authApi.checkAccountStatus();
 }
 
 // Store Setup's "resume where you left off" — StoreDraft (navigation/
