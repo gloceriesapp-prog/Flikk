@@ -19,14 +19,18 @@
       "distribution": "internal",
       "environment": "preview",
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "SENTRY_ORG": "gloceries",
+        "SENTRY_PROJECT": "react-native"
       }
     },
     "production": {
       "autoIncrement": true,
       "environment": "production",
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "SENTRY_ORG": "gloceries",
+        "SENTRY_PROJECT": "react-native"
       }
     }
   },
