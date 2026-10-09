@@ -19,13 +19,12 @@ import { AppImage as Image } from '../../components/AppImage';
 // hiding behind the keyboard).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft01Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp, verifyOtp } from '../../api/auth';
 import { ApiError } from '../../api/client';
-import { DEMO_OTP_CODE } from '../../api/devAuthFallback';
 import { AppIcon } from '../../components/AppIcon';
 import { OtpBoxInput } from '../../components/OtpBoxInput';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -43,7 +42,7 @@ const HERO_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/obje
 const HERO_HEIGHT = 240;
 
 export function OtpVerificationScreen({ route, navigation }: Props) {
-  const { phone, devMode } = route.params;
+  const { phone } = route.params;
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,18 +141,6 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
           <OtpBoxInput value={code} onChangeText={handleCodeChange} autoFocus />
           {error && <Text className="text-center text-[13px] text-danger">{error}</Text>}
 
-          {/* Only shown when requestOtp fell back to the local dev
-              stand-in (no backend/SMS provider reachable) — see
-              api/devAuthFallback.ts. Disappears the moment a real backend
-              answers, since devMode would then be false. */}
-          {devMode && (
-            <View className="flex-row items-center gap-2 rounded-2xl bg-lime-soft px-4 py-3">
-              <AppIcon icon={InformationCircleIcon} size={16} color={colors.limeDeep} />
-              <Text className="flex-1 text-xs font-medium text-lime-deep">
-                No backend connected — dev mode. Enter <Text className="font-bold">{DEMO_OTP_CODE}</Text> to continue.
-              </Text>
-            </View>
-          )}
 
           <View className="mt-auto gap-4 pb-6">
             <Pressable onPress={handleResend} disabled={secondsLeft > 0}>

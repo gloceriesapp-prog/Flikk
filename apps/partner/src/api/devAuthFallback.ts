@@ -10,9 +10,9 @@
 // of a real SMS gateway, so swapping it out later is deleting this file,
 // not rewriting anything that calls it.
 //
-// Fixed demo code (DEMO_OTP_CODE) rather than "any code works" — typing a
-// real, specific code exercises the actual verify-and-fail-on-wrong-code
-// path, not just a rubber-stamp success.
+// Login (OTP request/verify) no longer falls back here: a fake code hid
+// real problems behind "invalid code" (see auth.ts). What remains only
+// covers a dev session that already exists.
 //
 // Session identity is threaded through the fake access token itself
 // (`dev:<phone>`) since there's no real server to hold a session — every
@@ -23,9 +23,7 @@
 
 import { useAuthStore } from '../store/useAuthStore';
 import { ApiError } from './client';
-import type { AccountStatus, StoreApplication, VerifyOtpResponse } from './auth';
-
-export const DEMO_OTP_CODE = '123456';
+import type { AccountStatus, StoreApplication } from './auth';
 
 // How long after submitting a store application the dev fallback
 // "approves" it on its own — long enough to see the Waiting screen for
@@ -43,41 +41,11 @@ const EMPTY_ACCOUNT: DevAccount = { hasStore: false, isApproved: false, applicat
 
 const devAccounts = new Map<string, DevAccount>();
 
-function tokenFor(phone: string): string {
-  return `dev:${phone}`;
-}
-
 function phoneFromCurrentToken(): string {
   const token = useAuthStore.getState().accessToken ?? '';
   return token.startsWith('dev:') ? token.slice(4) : '';
 }
 
-export async function devRequestOtp(phone: string): Promise<{ ok: true }> {
-  if (!devAccounts.has(phone)) devAccounts.set(phone, { ...EMPTY_ACCOUNT });
-  return { ok: true };
-}
-
-export async function devVerifyOtp(phone: string, code: string): Promise<VerifyOtpResponse> {
-  if (code !== DEMO_OTP_CODE) {
-    throw new ApiError(401, 'INVALID_OTP', `Incorrect code — dev mode uses ${DEMO_OTP_CODE}.`);
-  }
-  const account = devAccounts.get(phone) ?? { ...EMPTY_ACCOUNT };
-  devAccounts.set(phone, account);
-  return {
-    access_token: tokenFor(phone),
-    // No real expiry concept in dev mode — reusing the same fake token is
-    // fine, refreshAccessToken (api/client.ts) never actually needs to
-    // call a real /auth/refresh here since a dev session never 401s.
-    refresh_token: tokenFor(phone),
-    is_approved: account.isApproved,
-    has_store: account.hasStore,
-    application_submitted: account.applicationSubmitted,
-    // Mirrors the real backend rule (auth.ts's own note): role only ever
-    // flips to store_owner once a real store exists, same as the
-    // simulated "admin approve" below does for hasStore.
-    role: account.hasStore ? 'store_owner' : 'customer',
-  };
-}
 
 // Mirrors the real model now (storeOnboarding.ts's own note): submitting
 // only marks the application as submitted/pending — hasStore doesn't flip
