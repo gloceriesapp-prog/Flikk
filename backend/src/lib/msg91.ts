@@ -33,7 +33,9 @@ export function msg91Config(): Msg91Config {
   const variable = process.env.MSG91_OTP_VARIABLE?.trim().replace(/^#+|#+$/g, '');
   return {
     authKey: process.env.MSG91_AUTH_KEY?.trim() || undefined,
-    templateId: process.env.MSG91_OTP_TEMPLATE_ID?.trim() || undefined,
+    // MSG91_SMS_TEMPLATE_ID is accepted too: it is the name used on Railway
+    // and in local .env files, and it is the same SMS-section template ID.
+    templateId: process.env.MSG91_OTP_TEMPLATE_ID?.trim() || process.env.MSG91_SMS_TEMPLATE_ID?.trim() || undefined,
     api: process.env.MSG91_API?.trim().toLowerCase() === 'otp' ? 'otp' : 'flow',
     otpVariable: variable && /^[A-Za-z0-9_]{1,40}$/.test(variable) ? variable : 'OTP',
   };
