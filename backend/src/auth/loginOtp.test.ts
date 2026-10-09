@@ -13,7 +13,7 @@ const db = vi.hoisted(() => {
   };
 });
 vi.mock('../db/supabase.js', () => ({ supabase: db.supabase, supabaseAuth: db.supabaseAuth }));
-import { checkLoginOtp, consumeLoginOtp, isPhoneBanned, requestLoginOtp, resetLoginOtpsForTests, sessionForVerifiedPhone, testOtps } from './loginOtp.js';
+import { checkLoginOtp, consumeLoginOtp, isPhoneBanned, loginEmailFor, requestLoginOtp, resetLoginOtpsForTests, sessionForVerifiedPhone, testOtps } from './loginOtp.js';
 
 const phone = '+919876543210';
 let sent: string[] = [];
@@ -102,22 +102,41 @@ describe('login OTP', () => {
 });
 
 describe('sessionForVerifiedPhone', () => {
-  it('signs in an existing user with a fresh one-time password', async () => {
+  const email = 'login+919876543210@gloceries.com';
+  const existing = (user: object | null) => db.supabase.auth.admin.getUserById.mockResolvedValue({ data: { user } });
+  const signedIn = () => db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: { access_token: 'a' } }, error: null });
+
+  it('uses a private login address, so it works with the Phone provider switched off', async () => {
+    expect(loginEmailFor(phone)).toBe(email);
     db.maybeSingle.mockResolvedValue({ data: { id: 'user-1' } });
+    existing({ id: 'user-1', phone: '919876543210' });
     db.supabase.auth.admin.updateUserById.mockResolvedValue({ error: null });
-    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: { access_token: 'a' } }, error: null });
+    signedIn();
     const result = await sessionForVerifiedPhone(phone);
     expect(result.data.session).toEqual({ access_token: 'a' });
-    expect(db.supabase.auth.admin.createUser).not.toHaveBeenCalled();
-    const { password } = db.supabase.auth.admin.updateUserById.mock.calls[0][1];
-    expect(db.supabaseAuth.auth.signInWithPassword).toHaveBeenCalledWith({ phone, password });
+    const [id, attributes] = db.supabase.auth.admin.updateUserById.mock.calls[0];
+    expect(id).toBe('user-1');
+    expect(attributes).toMatchObject({ phone, phone_confirm: true, email, email_confirm: true });
+    expect(db.supabaseAuth.auth.signInWithPassword).toHaveBeenCalledWith({ email, password: attributes.password });
+  });
+
+  it('falls back to phone sign-in when the Email provider is switched off', async () => {
+    db.maybeSingle.mockResolvedValue({ data: { id: 'user-1' } });
+    existing({ id: 'user-1' });
+    db.supabase.auth.admin.updateUserById.mockResolvedValue({ error: null });
+    db.supabaseAuth.auth.signInWithPassword
+      .mockResolvedValueOnce({ data: { session: null }, error: { code: 'email_provider_disabled', status: 422 } })
+      .mockResolvedValueOnce({ data: { session: {} }, error: null });
+    await sessionForVerifiedPhone(phone);
+    expect(db.supabaseAuth.auth.signInWithPassword.mock.calls[1][0]).toMatchObject({ phone });
   });
 
   it('creates a confirmed auth user for a new phone', async () => {
     db.maybeSingle.mockResolvedValue({ data: null });
     db.supabase.auth.admin.createUser.mockResolvedValue({ data: { user: { id: 'new-user' } }, error: null });
+    existing({ id: 'new-user' });
     db.supabase.auth.admin.updateUserById.mockResolvedValue({ error: null });
-    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: {} }, error: null });
+    signedIn();
     await sessionForVerifiedPhone(phone);
     expect(db.supabase.auth.admin.createUser).toHaveBeenCalledWith({ phone, phone_confirm: true });
     expect(db.supabase.auth.admin.updateUserById.mock.calls[0][0]).toBe('new-user');
@@ -127,50 +146,66 @@ describe('sessionForVerifiedPhone', () => {
     db.maybeSingle.mockResolvedValue({ data: null });
     db.supabase.auth.admin.createUser.mockResolvedValue({ data: { user: null }, error: { code: 'phone_exists' } });
     db.supabase.auth.admin.listUsers.mockResolvedValue({ data: { users: [{ id: 'other', phone: '919000000000' }, { id: 'old-user', phone: '919876543210' }] }, error: null });
+    existing({ id: 'old-user' });
     db.supabase.auth.admin.updateUserById.mockResolvedValue({ error: null });
-    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: {} }, error: null });
+    signedIn();
     await sessionForVerifiedPhone(phone);
     expect(db.supabase.auth.admin.updateUserById.mock.calls[0][0]).toBe('old-user');
   });
 
+  it('recreates a missing auth user under the public.users id', async () => {
+    db.maybeSingle.mockResolvedValue({ data: { id: 'orphan' } });
+    existing(null);
+    db.supabase.auth.admin.createUser.mockResolvedValue({ data: { user: { id: 'orphan' } }, error: null });
+    signedIn();
+    await sessionForVerifiedPhone(phone);
+    expect(db.supabase.auth.admin.createUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'orphan', phone, email }));
+    expect(db.supabase.auth.admin.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it('signs in as the auth user that owns the phone when public.users points elsewhere', async () => {
+    db.maybeSingle.mockResolvedValue({ data: { id: 'stale-row' } });
+    db.supabase.auth.admin.getUserById.mockImplementation(async (id: string) => ({ data: { user: { id } } }));
+    db.supabase.auth.admin.updateUserById
+      .mockResolvedValueOnce({ data: { user: null }, error: { status: 500, message: 'Error updating user' } })
+      .mockResolvedValueOnce({ data: { user: { id: 'owner' } }, error: null });
+    db.supabase.auth.admin.listUsers.mockResolvedValue({ data: { users: [{ id: 'owner', phone: '919876543210' }] }, error: null });
+    signedIn();
+    await sessionForVerifiedPhone(phone);
+    expect(db.supabase.auth.admin.updateUserById.mock.calls[1][0]).toBe('owner');
+  });
+
+  it('never resets the password of an admin account that has its own email', async () => {
+    db.maybeSingle.mockResolvedValue({ data: { id: 'admin-1' } });
+    existing({ id: 'admin-1', email: 'owner@example.com' });
+    await expect(sessionForVerifiedPhone(phone)).rejects.toMatchObject({ code: 'ADMIN_ACCOUNT_NUMBER' });
+    expect(db.supabase.auth.admin.updateUserById).not.toHaveBeenCalled();
+    expect(db.supabaseAuth.auth.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  it('throws SIGN_IN_FAILED (logged with the step) when Supabase refuses the sign-in', async () => {
+    db.maybeSingle.mockResolvedValue({ data: { id: 'user-1' } });
+    existing({ id: 'user-1' });
+    db.supabase.auth.admin.updateUserById.mockResolvedValue({ error: null });
+    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: null }, error: { code: 'invalid_credentials', status: 400 } });
+    await expect(sessionForVerifiedPhone(phone)).rejects.toMatchObject({ code: 'SIGN_IN_FAILED' });
+  });
+
+  it('passes a ban through so the route answers ACCOUNT_BLOCKED', async () => {
+    db.maybeSingle.mockResolvedValue({ data: { id: 'user-1' } });
+    existing({ id: 'user-1' });
+    db.supabase.auth.admin.updateUserById.mockResolvedValue({ error: null });
+    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: null }, error: { code: 'user_banned', status: 400 } });
+    expect((await sessionForVerifiedPhone(phone)).error).toMatchObject({ code: 'user_banned' });
+  });
+});
+
+describe('isPhoneBanned', () => {
   it('reports a banned account', async () => {
     db.maybeSingle.mockResolvedValue({ data: { id: 'user-1' } });
     db.supabase.auth.admin.getUserById.mockResolvedValue({ data: { user: { banned_until: '2999-01-01T00:00:00Z' } } });
     expect(await isPhoneBanned(phone)).toBe(true);
     db.supabase.auth.admin.getUserById.mockResolvedValue({ data: { user: { banned_until: null } } });
     expect(await isPhoneBanned(phone)).toBe(false);
-  });
-});
-
-describe('sessionForVerifiedPhone with a missing auth user', () => {
-  it('recreates the auth user under the public.users id', async () => {
-    db.maybeSingle.mockResolvedValue({ data: { id: 'orphan' } });
-    db.supabase.auth.admin.updateUserById.mockResolvedValue({ data: { user: null }, error: { status: 404, code: 'user_not_found' } });
-    db.supabase.auth.admin.createUser.mockResolvedValue({ data: { user: { id: 'orphan' } }, error: null });
-    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: {} }, error: null });
-    await sessionForVerifiedPhone(phone);
-    expect(db.supabase.auth.admin.createUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'orphan', phone, phone_confirm: true }));
-    const { password } = db.supabase.auth.admin.createUser.mock.calls[0][0];
-    expect(db.supabaseAuth.auth.signInWithPassword).toHaveBeenCalledWith({ phone, password });
-  });
-});
-
-describe('sessionForVerifiedPhone when another auth user holds the phone', () => {
-  it('signs in as the auth user that owns the phone', async () => {
-    db.maybeSingle.mockResolvedValue({ data: { id: 'stale-row' } });
-    db.supabase.auth.admin.updateUserById
-      .mockResolvedValueOnce({ data: { user: null }, error: { status: 500, message: 'Error updating user' } })
-      .mockResolvedValueOnce({ data: { user: { id: 'owner' } }, error: null });
-    db.supabase.auth.admin.listUsers.mockResolvedValue({ data: { users: [{ id: 'owner', phone: '919876543210' }] }, error: null });
-    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: {} }, error: null });
-    await sessionForVerifiedPhone(phone);
-    expect(db.supabase.auth.admin.updateUserById.mock.calls[1][0]).toBe('owner');
-  });
-
-  it('throws SIGN_IN_FAILED (logged with the step) when Supabase refuses the sign-in', async () => {
-    db.maybeSingle.mockResolvedValue({ data: { id: 'user-1' } });
-    db.supabase.auth.admin.updateUserById.mockResolvedValue({ error: null });
-    db.supabaseAuth.auth.signInWithPassword.mockResolvedValue({ data: { session: null }, error: { code: 'phone_provider_disabled', status: 422 } });
-    await expect(sessionForVerifiedPhone(phone)).rejects.toMatchObject({ code: 'SIGN_IN_FAILED' });
   });
 });
