@@ -2,17 +2,31 @@
 import { useCallback, useEffect, useState } from 'react';
 interface Member { id: string; name: string | null; phone: string; role: 'owner' | 'manager'; pushRegistered: boolean; approved: boolean }
 export function StoreTeamPanel({ storeId }: { storeId: string }) {
+  return <StoreTeamContent key={storeId} storeId={storeId} />;
+}
+function StoreTeamContent({ storeId }: { storeId: string }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const load = useCallback(async () => {
-    const response = await fetch(`/api/stores/${storeId}/team`, { cache: 'no-store' });
+  const load = useCallback(async (signal?: AbortSignal): Promise<Member[]> => {
+    const response = await fetch(`/api/stores/${storeId}/team`, { cache: 'no-store', signal });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error ?? 'Could not load store team.');
-    setMembers(body);
+    return body;
   }, [storeId]);
-  useEffect(() => { void load().catch(err => setError(err.message)); }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal).then(
+      rows => { if (!controller.signal.aborted) setMembers(rows); },
+      err => {
+        if (!controller.signal.aborted) {
+          setError(err instanceof Error ? err.message : 'Could not load store team.');
+        }
+      },
+    );
+    return () => controller.abort();
+  }, [load]);
   async function save(active: boolean, userId?: string) {
     if (busy) return;
     setBusy(true); setError(null);
@@ -20,7 +34,7 @@ export function StoreTeamPanel({ storeId }: { storeId: string }) {
       const response = await fetch(`/api/stores/${storeId}/team`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active, phone, userId }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? 'Could not update team.');
-      setPhone(''); await load();
+      setPhone(''); setMembers(await load());
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not update team.'); }
     finally { setBusy(false); }
   }
