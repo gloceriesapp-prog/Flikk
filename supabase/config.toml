@@ -13,6 +13,16 @@ major_version = 17
 [studio]
 port = 54323
 
+# Off locally: the analytics (Logflare) container needs the default Docker
+# socket, which Docker Desktop on macOS often doesn't expose; its failed
+# health check aborts `supabase start`. Nothing in the app uses it.
+[analytics]
+enabled = false
+
+# Test data comes from backend/seed/dev-seed.sql via `npm run local:setup`.
+[db.seed]
+enabled = false
+
 [auth]
 site_url = "http://localhost:3000"
 
