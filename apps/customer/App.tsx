@@ -15,7 +15,6 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { PREVIEW_UNAVAILABLE_ZONE, UnavailableZonePreview } from './src/dev/UnavailableZonePreview';
 import { GILROY_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { ReleaseGate } from './src/features/app-release/ReleaseGate';
@@ -75,14 +74,9 @@ function App() {
                 regardless of which screen was actually focused. */}
             <StatusBar style="light" />
             <ErrorBoundary>
-              {/* Local design preview (dev builds only): opens straight onto
-                  the "not deliverable here" screen. See
-                  src/dev/UnavailableZonePreview.tsx. */}
-              {PREVIEW_UNAVAILABLE_ZONE ? <UnavailableZonePreview /> : (
-                <ReleaseGate>
-                  <RootNavigator />
-                </ReleaseGate>
-              )}
+              <ReleaseGate>
+                <RootNavigator />
+              </ReleaseGate>
             </ErrorBoundary>
           </QueryClientProvider>
         </KeyboardProvider>

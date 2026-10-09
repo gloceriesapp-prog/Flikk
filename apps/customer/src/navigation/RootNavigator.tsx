@@ -23,6 +23,7 @@ import { useDeliverySettingsSync } from '../api/deliverySettings';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { onAccountBlocked } from '../api/accountBlocked';
+import { PREVIEW_UNAVAILABLE_ZONE, UnavailableZonePreview } from '../dev/UnavailableZonePreview';
 import { NavigationContainer } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLocationStore } from '../store/useLocationStore';
@@ -88,6 +89,11 @@ export function RootNavigator() {
 
   if (!isHydrated) {
     return <WelcomeScreen />;
+  }
+
+  // Local design preview (dev builds only): see dev/UnavailableZonePreview.tsx.
+  if (PREVIEW_UNAVAILABLE_ZONE) {
+    return <UnavailableZonePreview />;
   }
 
   if (authError || locationError || cartError) {
