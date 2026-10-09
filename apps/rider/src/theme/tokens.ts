@@ -11,6 +11,7 @@ export const colors = {
   limeSoft: '#EEF7DC',
   ink: '#101C10',
   coral: '#FF6B4A',
+  primary: '#155DFC',
   gold: '#D9A441',
   mist: '#F6FAF0',
   success: '#2E9E77',

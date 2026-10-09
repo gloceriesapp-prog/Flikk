@@ -42,9 +42,9 @@ export function ContentState({
             <Pressable
               accessibilityRole="button"
               onPress={action}
-              className="min-h-11 justify-center rounded-full bg-coral px-5"
+              className="min-h-11 justify-center rounded-full bg-primary px-5"
             >
-              <Text className="text-sm font-semibold text-ink">
+              <Text className="text-sm font-semibold text-white">
                 {!hasLocation ? 'Choose location' : 'Try again'}
               </Text>
             </Pressable>

@@ -113,7 +113,7 @@ export function MarkPaidModal({ row, onClose, onPaid }: { row: AdminPayoutRow; o
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="rounded-full bg-[#FF6B4A] px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-full bg-[#155DFC] px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting ? 'Saving…' : 'Mark paid'}
           </button>

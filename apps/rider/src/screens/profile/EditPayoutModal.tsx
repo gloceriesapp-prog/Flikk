@@ -55,7 +55,7 @@ export function EditPayoutModal({ visible, onClose }: { visible: boolean; onClos
           </ScrollView>
 
           <View className="mt-4">
-            <PrimaryButton label="Save payout details" onPress={form.submit} loading={form.isSaving} tone="coral" />
+            <PrimaryButton label="Save payout details" onPress={form.submit} loading={form.isSaving} tone="primary" />
           </View>
         </View>
       </View>

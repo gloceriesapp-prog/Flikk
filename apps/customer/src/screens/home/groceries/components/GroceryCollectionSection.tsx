@@ -63,8 +63,8 @@ export function GroceryCollectionSection({ title, groups, maxProducts = 8, previ
           {!hasLocation ? (
             <>
               <Text className="text-center text-sm text-ink/60">Choose your delivery address to see available products.</Text>
-              <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center rounded-full bg-coral px-5">
-                <Text className="text-sm font-semibold text-ink">Choose location</Text>
+              <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SelectLocation')} className="min-h-11 justify-center rounded-full bg-primary px-5">
+                <Text className="text-sm font-semibold text-white">Choose location</Text>
               </Pressable>
             </>
           ) : isLoading ? (
@@ -74,8 +74,8 @@ export function GroceryCollectionSection({ title, groups, maxProducts = 8, previ
           ) : isError ? (
             <>
               <Text className="text-center text-sm text-ink/60">We couldn’t load these products. Please try again.</Text>
-              <Pressable accessibilityRole="button" onPress={retry} className="min-h-11 justify-center rounded-full bg-coral px-5">
-                <Text className="text-sm font-semibold text-ink">Try again</Text>
+              <Pressable accessibilityRole="button" onPress={retry} className="min-h-11 justify-center rounded-full bg-primary px-5">
+                <Text className="text-sm font-semibold text-white">Try again</Text>
               </Pressable>
             </>
           ) : (

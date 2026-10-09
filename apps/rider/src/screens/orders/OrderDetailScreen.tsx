@@ -476,11 +476,11 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           <SlideToConfirmButton label={NEXT_ACTION_LABEL.assigned} successLabel="Heading to customer" onConfirm={handlePrimaryAction} />
         ) : allLegsPickedUp ? (
           // Whole trip picked up — the real next step is the drop-leg map
-          // (DeliveryNavigation). Coral CTA per CLAUDE.md.
+          // (DeliveryNavigation). Primary (blue) CTA.
           <Pressable
             onPress={() => navigation.navigate('DeliveryNavigation', { orderId })}
             className="h-14 items-center justify-center rounded-2xl"
-            style={({ pressed }) => ({ backgroundColor: colors.coral, opacity: pressed ? 0.85 : 1 })}
+            style={({ pressed }) => ({ backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 })}
           >
             <Text className="text-[15px] font-bold text-white">Continue to customer</Text>
           </Pressable>

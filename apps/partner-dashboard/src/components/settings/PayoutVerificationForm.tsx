@@ -73,7 +73,7 @@ export function PayoutVerificationForm({ store, onVerified }: Props) {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-full bg-[#FF6B4A] px-5 py-2.5 text-sm font-medium text-[#101C10] disabled:opacity-40"
+            className="rounded-full bg-[#155DFC] px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
           >
             {saving ? 'Saving…' : 'Save UPI ID'}
           </button>

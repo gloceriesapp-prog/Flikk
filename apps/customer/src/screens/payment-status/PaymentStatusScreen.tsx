@@ -42,8 +42,8 @@ export function PaymentStatusScreen({ navigation }: Props) {
       </Text>
 
       <View className="mt-8 w-full gap-3">
-        <Pressable onPress={retryPayment} accessibilityRole="button" className="items-center rounded-2xl bg-coral py-4">
-          <Text className="text-[13.5px] font-semibold text-ink">Retry Payment</Text>
+        <Pressable onPress={retryPayment} accessibilityRole="button" className="items-center rounded-2xl bg-primary py-4">
+          <Text className="text-[13.5px] font-semibold text-white">Retry Payment</Text>
         </Pressable>
         <Pressable onPress={backToCart} className="items-center rounded-2xl py-4 bg-[#F1F2F4]">
           <Text className="text-[13.5px] font-semibold text-ink/70">Back to Cart</Text>

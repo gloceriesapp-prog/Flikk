@@ -5,13 +5,13 @@ Every change goes **local → staging → production**. Only production has real
 | | Local | Staging | Production |
 |---|---|---|---|
 | Purpose | Build and debug | End-to-end test before release | Real customers |
-| Database (Supabase) | `supabase start` on your laptop | `flikk-staging` (`qgbuvydwcgjthwqxqylk`, Singapore) | `Flikk` (`bjlknohjdnemxwwoxcsv`) |
+| Database (Supabase) | `npm run local:setup` (local Supabase in Docker) | `flikk-staging` (`qgbuvydwcgjthwqxqylk`, Singapore) | `Flikk` (`bjlknohjdnemxwwoxcsv`) |
 | Backend + worker | `pnpm dev` / `pnpm dev:worker` in `backend/` | Railway environment `staging` (branch `staging`) | Railway environment `production` (branch `main`) |
 | Mobile apps | Dev build, `.env.local` → your LAN IP | EAS profile `preview` → APK on test phones | EAS profile `production` → Play Store |
 | EAS variables | none (`.env.local`) | EAS environment `preview` | EAS environment `production` |
 | Admin panel | `pnpm dev` in `apps/admin` | Vercel preview pointed at staging | Vercel production |
 | Payments | Cashfree sandbox | Cashfree sandbox | Cashfree live |
-| Phone OTP | Fixed test OTPs in `supabase/config.toml` | Supabase test phone numbers | Real SMS via MSG91 (Supabase Send SMS hook → `POST /auth/hooks/send-sms`) |
+| Phone OTP | Test numbers in `supabase/config.toml`, or real SMS via the local hook → laptop backend → MSG91 | Supabase test phone numbers | Real SMS via MSG91 (Supabase Send SMS hook → `POST /auth/hooks/send-sms`) |
 | Data | `backend/seed/dev-seed.sql` | `backend/seed/dev-seed.sql` + your test accounts | Real |
 
 ## Guard rails already in the code
@@ -30,27 +30,34 @@ brew install libpq && brew link --force libpq   # psql, used by db-migrate
 brew install supabase/tap/supabase              # local Supabase (needs Docker Desktop)
 ```
 
-### Local database
+### Run everything locally
+
+One command starts local Supabase, writes every app's `.env.local`, and loads the schema and test data:
 
 ```
-supabase start                      # from the repo root; prints URL + keys
-cd backend
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres pnpm db:seed
+npm run local:setup                 # from the repo root; re-run whenever your Wi-Fi IP changes
 ```
 
-`pnpm db:seed` applies every migration and then the test data. Then edit `backend/.env.local`:
+It keeps your other keys (MSG91, Maps, Sentry and so on) and saves each old file once as `.env.local.before-local-setup`. If the IP it picks is wrong, use `npm run local:setup -- --ip 192.168.x.x`. Use `-- --no-db` to skip the database step.
 
-```
-SUPABASE_URL=http://127.0.0.1:54321
-SUPABASE_SERVICE_ROLE_KEY=<service_role key from `supabase status`>
-CASHFREE_ENV=sandbox
-```
+Then, each in its own terminal:
 
-In each app's `.env.local`, set:
-- `EXPO_PUBLIC_API_URL=http://<your-LAN-IP>:4000`
-- `EXPO_PUBLIC_SUPABASE_URL=http://<your-LAN-IP>:54321`
+| What | Command | Where it runs |
+|---|---|---|
+| Backend | `cd backend && pnpm dev` | `http://<LAN IP>:4000` |
+| Worker (pushes, payouts, dispatch) | `cd backend && pnpm dev:worker` | — |
+| Customer app | `cd apps/customer && npx expo start --dev-client` | phone, same Wi-Fi |
+| Partner app | `cd apps/partner && npx expo start --dev-client` | phone, same Wi-Fi |
+| Rider app | `cd apps/rider && npx expo start --dev-client` | phone, same Wi-Fi |
+| Admin | `cd apps/admin && npm run dev` | `http://localhost:3000` |
+| Supabase Studio | (started by the script) | `http://127.0.0.1:54323` |
 
-Log in with `+91 0000000001` and OTP `123456`.
+- The phone apps need a **development build** installed once per app: `npx eas-cli build --profile development --platform android`. Expo Go can't load maps, Sentry or the other native modules.
+- **Logging in:**
+  - Test numbers `9100000001`, `9100000002` and `9100000003` with OTP `123456` work with no SMS.
+  - Any real number gets a real SMS through MSG91, provided `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID` are in `backend/.env.local` and the backend is running.
+- Local test data is the fake Kaup zone with 2 stores and 20 products. Set your delivery location to Kaup, Udupi.
+- `CASHFREE_ENV=sandbox` in `backend/.env.local`. Never put live Cashfree keys on a laptop.
 
 ### Staging database (once)
 
@@ -60,7 +67,7 @@ Log in with `+91 0000000001` and OTP `123456`.
    cd backend
    DATABASE_URL='<staging pooler URI>' pnpm db:seed
    ```
-3. Supabase → `flikk-staging` → Authentication → Phone: enable phone sign-in and add test numbers, for example `910000000001` with OTP `123456`.
+3. Supabase → `flikk-staging` → Authentication → Phone: enable phone sign-in and add test numbers, for example `919100000001` with OTP `123456`.
 4. Storage: create the same public buckets as production (store-images, product-images, banners, etc.) if a migration didn't already create them.
 
 ### Railway staging environment (once)
@@ -117,6 +124,23 @@ DATABASE_URL='<prod URI>' CONFIRM_PRODUCTION=bjlknohjdnemxwwoxcsv \
 ```
 
 After that, `--status` lists exactly what production is missing (113 onward).
+
+## How login OTP SMS works
+
+Supabase generates the code, checks it and issues the session. With the Send SMS hook enabled, Supabase sends the code to our backend (`POST /auth/hooks/send-sms`, signed with `SEND_SMS_HOOK_SECRET`), and the backend sends it through MSG91 with the DLT-approved template.
+
+| | Who calls the hook | Hook URL | Where it's configured |
+|---|---|---|---|
+| Local | Local Supabase (Docker) | `http://host.docker.internal:4000/auth/hooks/send-sms` | `supabase/config.toml` (secret in `supabase/.env`, written by `local:setup`) |
+| Staging | flikk-staging | `https://<staging railway domain>/auth/hooks/send-sms` | Supabase dashboard → Authentication → Hooks |
+| Production | Flikk | `https://flikk-production.up.railway.app/auth/hooks/send-sms` | Supabase dashboard → Authentication → Hooks |
+
+- **Backend variables for the hook:**
+  - On a laptop, `backend/.env.local` needs `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID`. `local:setup` writes `SEND_SMS_HOOK_SECRET` for you.
+  - On Railway, set all three. The hook secret must equal the one in that Supabase project's hook settings.
+- **Check MSG91 on its own:** `cd backend && pnpm sms:test 98XXXXXXXX` sends one real OTP and prints the code it should contain.
+- **Never point a hosted Supabase project's hook at a laptop.** A laptop backend only works with *local* Supabase. Hosted Supabase can't reach `localhost`, and pointing production at a tunnel would put every customer's login on your laptop.
+- Test numbers never trigger the hook, so the Google Play reviewer login keeps working even if MSG91 is down.
 
 ## Rules to keep in mind
 

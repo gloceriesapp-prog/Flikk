@@ -90,7 +90,7 @@ function PayoutRow({ payout, onUpdateDetails }: { payout: RiderPayout; onUpdateD
       {s.problem && (
         <View className="gap-2 border-t pt-3" style={{ borderColor: CARD_BORDER }}>
           <Text className="text-[12.5px] font-medium text-danger">{s.problem}</Text>
-          <Pressable onPress={onUpdateDetails} accessibilityRole="button" className="items-center rounded-full bg-coral py-2.5">
+          <Pressable onPress={onUpdateDetails} accessibilityRole="button" className="items-center rounded-full bg-primary py-2.5">
             <Text className="text-[13px] font-semibold text-white">Update payout details</Text>
           </Pressable>
         </View>

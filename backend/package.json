@@ -10,6 +10,7 @@
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "dev:worker": "tsx watch --env-file=.env.local src/workers/index.ts",
+    "sms:test": "tsx --env-file=.env.local scripts/sms-test.ts",
     "start:worker": "node dist/workers/index.js",
     "db:status": "node scripts/db-migrate.mjs --status",
     "db:migrate": "node scripts/db-migrate.mjs",

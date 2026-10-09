@@ -16,6 +16,8 @@ module.exports = {
         'lime-soft': '#EEF7DC',
         ink: '#101C10',
         coral: '#FF6B4A',
+        // Button / call-to-action color. White text on it (contrast ~5.2:1).
+        primary: '#155DFC',
         gold: '#D9A441',
         mist: '#F6FAF0',
         success: '#2E9E77',

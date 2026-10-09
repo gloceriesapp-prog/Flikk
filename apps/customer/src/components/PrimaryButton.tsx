@@ -1,9 +1,8 @@
-// Single primary CTA. Coral is the ONLY CTA color (CLAUDE.md design system) —
-// lime is brand/active-state, blue is off-brand. Ink text, not white: white
-// on coral is ~2.8:1 and fails AA at this size; ink on coral is ~7:1.
+// Single primary CTA. Blue (`primary`, #155DFC) is the CTA color; lime stays
+// brand/active-state. White text on it is ~5.2:1, which passes AA.
 //
-// `variant` is kept only so existing call sites (variant="blue") compile;
-// every variant renders coral.
+// `variant` is kept only so existing call sites compile; every variant
+// renders the same blue button.
 
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { colors } from '../theme/tokens';
@@ -13,7 +12,7 @@ interface Props {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
-  /** @deprecated every variant renders the coral CTA. */
+  /** @deprecated every variant renders the primary CTA. */
   variant?: 'coral' | 'blue';
 }
 
@@ -27,12 +26,12 @@ export function PrimaryButton({ label, onPress, disabled, loading }: Props) {
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
-      className={`h-[52px] items-center justify-center rounded-button active:opacity-90 ${isDisabled ? 'bg-coral/40' : 'bg-coral'}`}
+      className={`h-[52px] items-center justify-center rounded-button active:opacity-90 ${isDisabled ? 'bg-primary/40' : 'bg-primary'}`}
     >
       {loading ? (
-        <ActivityIndicator color={colors.ink} />
+        <ActivityIndicator color="#FFFFFF" />
       ) : (
-        <Text className="text-[15px] font-semibold text-ink">{label}</Text>
+        <Text className="text-[15px] font-semibold text-white">{label}</Text>
       )}
     </Pressable>
   );

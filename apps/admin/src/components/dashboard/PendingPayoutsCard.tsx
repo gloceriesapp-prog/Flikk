@@ -22,7 +22,7 @@ export function PendingPayoutsCard({ rows }: { rows: AdminPayoutRow[] | null }) 
         </div>
         <Link
           href="/payouts"
-          className="flex shrink-0 items-center gap-2 rounded-full bg-[#FF6B4A] px-5 py-3 text-sm font-medium text-white shadow-sm hover:opacity-90"
+          className="flex shrink-0 items-center gap-2 rounded-full bg-[#155DFC] px-5 py-3 text-sm font-medium text-white shadow-sm hover:opacity-90"
         >
           Open payouts
           <ArrowRight size={16} />

@@ -38,8 +38,8 @@ export function StoreTypesSection() {
       <Text className="mb-4 px-5 text-[17px] font-bold text-ink/90">Shop by Store Type</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4 px-5">
-        <Pressable className="flex-row items-center gap-2 rounded-full bg-coral/10 px-4 py-2.5">
-          <AppIcon icon={Bookmark01Icon} size={18} color={colors.coral} fill={colors.coral} />
+        <Pressable className="flex-row items-center gap-2 rounded-full bg-primary/10 px-4 py-2.5">
+          <AppIcon icon={Bookmark01Icon} size={18} color={colors.primary} fill={colors.primary} />
           <Text className="text-[13px] font-semibold text-ink" numberOfLines={1}>
             Wishlist
           </Text>
