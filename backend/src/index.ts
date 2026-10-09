@@ -52,7 +52,8 @@ import { startBackgroundServices } from './server/background.js';
 import { closeDatabaseConnections } from './db/supabase.js';
 
 import { webhookAdmission } from './security/webhookAdmission.js';
-import { hookSecrets, sendSmsHookRoute } from './auth/sendSmsHook.js';
+import { sendSmsHookRoute } from './auth/sendSmsHook.js';
+import { testOtps } from './auth/loginOtp.js';
 import { msg91Config } from './lib/msg91.js';
 import { uploadBodyDeadline } from './security/bodyDeadline.js';
 import { requestAdmission, concurrentAdmission } from './security/admission.js';
@@ -122,8 +123,10 @@ app.use(
     },
   }),
 );
-// Supabase Auth's Send SMS hook (login OTPs via MSG91). Signed with Standard
-// Webhooks over the raw body, so it is mounted before the json() parser too.
+// Legacy Supabase Send SMS hook, kept so a project that still has the hook
+// enabled keeps working; login no longer depends on it (auth/loginOtp.ts).
+// Signed with Standard Webhooks over the raw body, so it is mounted before
+// the json() parser too.
 app.post('/auth/hooks/send-sms', concurrentAdmission(32), ...sendSmsHookRoute);
 for (const path of UPLOAD_PATHS) {
   const [auth, ...rest] = uploadAdmission;
@@ -204,20 +207,17 @@ try {
   try { stopMonitoring = await startMonitoring('api',() => !shuttingDown); }
   catch (error) { await runtime.stop(); throw error; }
   logger.info({ port: env.port, pid: process.pid }, 'Gloceries backend listening');
-  // Login SMS: Supabase calls this backend's Send SMS hook, which sends via
-  // MSG91. Local Supabase (Docker) can reach this machine; a hosted project
-  // only reaches the public URL in its dashboard, never a laptop.
+  // Login OTP: this backend sends (MSG91) and checks the code itself, then
+  // gets the session from Supabase (auth/loginOtp.ts). Same path locally and
+  // on Railway, against local or hosted Supabase.
   const msg91 = msg91Config();
-  const localSupabase = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(env.supabaseUrl);
-  logger.info({
-    msg91Configured: !!(msg91.authKey && msg91.templateId),
-    sendSmsHookSecret: hookSecrets().length > 0,
-    hookPath: '/auth/hooks/send-sms',
-  }, localSupabase
-    ? 'Login OTP SMS: local Supabase -> this backend -> MSG91 (test numbers skip SMS)'
-    : process.env.NODE_ENV === 'production'
-      ? 'Login OTP SMS: Supabase Send SMS hook -> MSG91'
-      : 'Login OTP SMS is sent via the hosted Supabase project\'s hook URL, not this machine. Use `npm run local:setup` for a fully local stack.');
+  const msg91Ready = !!(msg91.authKey && msg91.templateId);
+  logger.info({ msg91Configured: msg91Ready, testNumbers: testOtps().size },
+    msg91Ready
+      ? 'Login OTP: codes are sent by this backend through MSG91'
+      : process.env.NODE_ENV === 'production'
+        ? 'Login OTP: MSG91_AUTH_KEY / MSG91_OTP_TEMPLATE_ID missing, real numbers cannot log in'
+        : 'Login OTP: no MSG91 keys, so each code is printed in this log instead of sent')
   let stopping = false;
   const shutdown = (signal: string) => {
     if (stopping) return;

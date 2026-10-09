@@ -1,12 +1,10 @@
 // Sends one real login-OTP SMS through MSG91 using backend/.env.local, without
-// Supabase. Proves the auth key, DLT template, sender and IP whitelist work
-// before wiring the Supabase Send SMS hook.
+// Supabase. Proves the auth key, DLT template, sender and IP whitelist work.
 //
 //   pnpm sms:test 9876543210
 //
-// The login flow uses these keys only when Supabase's Send SMS hook reaches
-// this backend: local Supabase from `npm run local:setup` does, a hosted
-// project does not (see ENVIRONMENTS.md -> "How login OTP SMS works").
+// App login uses exactly this call (src/auth/loginOtp.ts), so if this SMS
+// arrives, login SMS works too (see ENVIRONMENTS.md -> "How login OTP SMS works").
 import { randomInt } from 'node:crypto';
 import { msg91Config, msg91Mobile, sendOtpSms, SmsDeliveryError } from '../src/lib/msg91.js';
 
