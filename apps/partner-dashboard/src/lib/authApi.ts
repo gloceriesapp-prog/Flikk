@@ -5,7 +5,6 @@
 // identity.
 
 import { apiRequest } from './api';
-import { setTokens } from './authStorage';
 
 // Real pre-flight gate — backend/src/routes/auth.ts's own POST
 // /otp/partner-check, called before requestOtp below. Throws ApiError
@@ -35,7 +34,6 @@ export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpR
     body: { phone, code },
     auth: false,
   });
-  setTokens(result.access_token, result.refresh_token);
   return result;
 }
 

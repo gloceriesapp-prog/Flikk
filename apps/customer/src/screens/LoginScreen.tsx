@@ -26,6 +26,7 @@
 // button.
 
 import { useState } from 'react';
+import { useOtpChallenge } from '@gloceries/shared';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { AppImage as Image } from '../components/AppImage';
@@ -54,7 +55,6 @@ function LegalLink({ label, url }: { label: string; url: string | null }) {
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-const PHONE_LENGTH = 10;
 // Hero pinned to the top at the image's OWN proportions: full device width,
 // height derived from the image's real width/height (aspectRatio), so it's
 // shown exactly as authored — no stretch, no crop. The real ratio comes from
@@ -67,31 +67,33 @@ export function LoginScreen({ navigation }: Props) {
   const continueAsGuest = useAuthStore((s) => s.continueAsGuest);
   const { legal } = useAppConfig();
   const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { busy: loading, run } = useOtpChallenge(false);
   const [error, setError] = useState<string | null>(null);
   // The image's true width:height, learned from expo-image's onLoad. Drives
   // the hero box height so it renders at the image's own proportions.
   const [heroRatio, setHeroRatio] = useState<number | null>(null);
 
-  const canContinue = phone.length === PHONE_LENGTH && !loading;
+  const canContinue = /^[6-9]\d{9}$/.test(phone) && !loading;
 
   async function handleContinue() {
-    setError(null);
-    setLoading(true);
-    try {
-      const fullPhone = `+91${phone}`;
-      await requestOtp(fullPhone);
-      navigation.navigate('OtpVerification', { phone: fullPhone });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        console.error('[LoginScreen] unexpected error requesting OTP:', err);
-        setError('Could not send OTP. Please try again.');
+    if (!/^[6-9]\d{9}$/.test(phone)) return;
+    await run(async (isCurrent) => {
+      setError(null);
+      try {
+        const fullPhone = `+91${phone}`;
+        await requestOtp(fullPhone);
+        if (!isCurrent()) return;
+        navigation.navigate('OtpVerification', { phone: fullPhone });
+      } catch (err) {
+        if (!isCurrent()) return;
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          console.error('[LoginScreen] unexpected error requesting OTP:', err);
+          setError('Could not send OTP. Please try again.');
+        }
       }
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   return (
@@ -174,7 +176,7 @@ export function LoginScreen({ navigation }: Props) {
                 in), so "Log in or sign up" is honest, not two separate flows. */}
           <Text className="-mt-4 text-[15px] font-medium text-ink/50">Log in or sign up</Text>
 
-          <PhoneInput value={phone} onChangeText={setPhone} autoFocus />
+          <PhoneInput value={phone} onChangeText={setPhone} editable={!loading} autoFocus />
           {error && <Text className="text-center text-[13px] text-danger">{error}</Text>}
 
           <PrimaryButton label="Continue" onPress={handleContinue} disabled={!canContinue} loading={loading} variant="blue" />

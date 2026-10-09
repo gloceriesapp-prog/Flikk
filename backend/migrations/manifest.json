@@ -484,6 +484,10 @@
     {
       "file": "20261008172854_customer_policy_and_content_sync.sql",
       "sha256": "1112f20900c08650c5b518f9e34f947bbc2f3ac6ed567ad6cc69e24a14586260"
+    },
+    {
+      "file": "20261009100545_msg91_sms_delivery_guards.sql",
+      "sha256": "2bc99842a910c8c1ea6fda8c0fcf5f1d665889d83e83fa209148f3a717ce7147"
     }
   ]
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useOtpChallenge } from '@gloceries/shared';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { Alert, Pressable, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -15,24 +16,27 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export function LoginScreen({ navigation }: Props) {
   const [digits, setDigits] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { busy: loading, run } = useOtpChallenge(false);
 
   async function handleContinue() {
-    setLoading(true);
-    try {
-      const phone = `+91${digits}`;
-      await requestOtp(phone);
-      navigation.navigate('OtpVerification', { phone });
-    } catch (err) {
-      Alert.alert('Could not send code', err instanceof Error ? err.message : 'Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    if (!/^[6-9]\d{9}$/.test(digits)) return;
+    await run(async (isCurrent) => {
+
+      try {
+        const phone = `+91${digits}`;
+        await requestOtp(phone);
+        if (!isCurrent()) return;
+        navigation.navigate('OtpVerification', { phone });
+      } catch (err) {
+        if (!isCurrent()) return;
+        Alert.alert('Could not send code', err instanceof Error ? err.message : 'Please try again.');
+      }
+    });
   }
 
   return (
     <DismissKeyboardView>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1 bg-white"
       >
@@ -52,10 +56,10 @@ export function LoginScreen({ navigation }: Props) {
               <Text className="text-[15px] font-medium text-ink/55">We’ll send a 6-digit code to verify it’s really you.</Text>
             </View>
 
-            <PhoneInput value={digits} onChangeText={setDigits} autoFocus />
+            <PhoneInput value={digits} onChangeText={setDigits} editable={!loading} autoFocus />
           </View>
 
-          <PrimaryButton label="Verify" onPress={handleContinue} loading={loading} disabled={digits.length !== 10} tone="blue" />
+          <PrimaryButton label="Verify" onPress={handleContinue} loading={loading} disabled={!/^[6-9]\d{9}$/.test(digits)} tone="blue" />
         </View>
       </KeyboardAvoidingView>
     </DismissKeyboardView>

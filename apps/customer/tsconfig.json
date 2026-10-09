@@ -2,15 +2,31 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "types": ["jest", "node"],
+    "types": [
+      "jest",
+      "node"
+    ],
     "paths": {
       "@gloceries/shared": [
         "../../packages/shared/src/index.ts"
       ],
       "expo-location": [
         "./node_modules/expo-location"
+      ],
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react/*": [
+        "./node_modules/@types/react/*"
       ]
     }
   },
-  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.setup.js", "android", "ios"]
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "metro.config.js",
+    "jest.setup.js",
+    "android",
+    "ios"
+  ]
 }

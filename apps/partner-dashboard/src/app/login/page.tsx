@@ -19,11 +19,12 @@
 // Google/email sign-in are UI only for now, per an explicit ask — real
 // phone OTP is the only path that actually authenticates today.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { checkPartnerPhone, requestOtp, verifyOtp } from '@/lib/authApi';
-import { clearTokens } from '@/lib/authStorage';
+import { setTokens } from '@/lib/authStorage';
 import { ApiError } from '@/lib/api';
+import { canStartPartnerSession } from '@/lib/partnerAccess';
 import { CheckCircle2, LayoutGrid, Package, Wallet } from 'lucide-react';
 
 type Step = 'phone' | 'otp';
@@ -43,49 +44,88 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fullPhone = `+91${phone}`;
+  const busy = useRef(false);
+  const mounted = useRef(true);
+  const resendAt = useRef(0);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  useEffect(() => {
+    mounted.current = true;
+    const timer = setInterval(() => setSecondsLeft(Math.max(0, Math.ceil((resendAt.current - Date.now()) / 1000))), 500);
+    return () => { mounted.current = false; clearInterval(timer); };
+  }, []);
+
+  function startCooldown() {
+    resendAt.current = Date.now() + 60_000;
+    setSecondsLeft(60);
+  }
 
   async function handleRequestOtp(e: React.FormEvent) {
     e.preventDefault();
-    if (phone.length !== 10 || isSubmitting) return;
+    if (!/^[6-9]\d{9}$/.test(phone) || busy.current) return;
+    busy.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
       await checkPartnerPhone(fullPhone);
       await requestOtp(fullPhone);
+      if (!mounted.current) return;
+      startCooldown();
       setStep('otp');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send the code.');
+      if (mounted.current) setError(err instanceof ApiError ? err.message : 'Could not send the code.');
     } finally {
-      setIsSubmitting(false);
+      busy.current = false;
+      if (mounted.current) setIsSubmitting(false);
     }
   }
 
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
-    if (!code || isSubmitting) return;
+    if (!/^\d{6}$/.test(code) || busy.current) return;
+    busy.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
       const result = await verifyOtp(fullPhone, code);
+      if (!mounted.current) return;
 
       // Defense-in-depth re-check of the same rule checkPartnerPhone
       // already enforced above — see this file's own header note on why
       // both passes exist.
-      if (result.role !== 'store_owner' && !result.application_submitted) {
-        clearTokens();
+      if (!canStartPartnerSession(result)) {
         setError("This number isn't registered on the Gloceries Partner app yet. Apply with your store there first.");
         return;
       }
 
+      setTokens(result.access_token, result.refresh_token);
       if (!result.has_store || !result.is_approved) {
         router.replace('/pending-approval');
         return;
       }
       router.replace('/');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Invalid or expired code.');
+      if (mounted.current) setError(err instanceof ApiError ? err.message : 'Invalid or expired code.');
     } finally {
-      setIsSubmitting(false);
+      busy.current = false;
+      if (mounted.current) setIsSubmitting(false);
+    }
+  }
+
+  async function handleResend() {
+    if (busy.current || Date.now() < resendAt.current) return;
+    busy.current = true;
+    setIsSubmitting(true);
+    setCode('');
+    setError(null);
+    startCooldown();
+    try {
+      await requestOtp(fullPhone);
+    } catch (err) {
+      if (mounted.current) setError(err instanceof ApiError ? err.message : 'Could not resend the code.');
+    } finally {
+      busy.current = false;
+      if (mounted.current) setIsSubmitting(false);
     }
   }
 
@@ -140,6 +180,7 @@ export default function LoginPage() {
                         inputMode="numeric"
                         maxLength={10}
                         required
+                        disabled={isSubmitting}
                         value={phone}
                         onChange={(e) => {
                           setPhone(e.target.value.replace(/\D/g, ''));
@@ -155,7 +196,7 @@ export default function LoginPage() {
 
                   <button
                     type="submit"
-                    disabled={phone.length !== 10 || isSubmitting}
+                    disabled={!/^[6-9]\d{9}$/.test(phone) || isSubmitting}
                     className="mt-2 flex h-11 w-full items-center justify-center rounded-lg border border-black/40 bg-black text-sm font-medium text-white transition-colors hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {isSubmitting ? 'Checking…' : 'Continue'}
@@ -177,7 +218,10 @@ export default function LoginPage() {
                       inputMode="numeric"
                       required
                       value={code}
-                      onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                      maxLength={6}
+                      autoComplete="one-time-code"
+                      disabled={isSubmitting}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="000000"
                       className="w-full bg-transparent text-sm text-black outline-none placeholder:text-black/30"
                     />
@@ -188,13 +232,18 @@ export default function LoginPage() {
 
                 <button
                   type="submit"
-                  disabled={!code || isSubmitting}
+                  disabled={code.length !== 6 || isSubmitting}
                   className="flex h-11 w-full items-center justify-center rounded-lg border border-black/40 bg-black text-sm font-medium text-white transition-colors hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isSubmitting ? 'Verifying…' : 'Verify & sign in'}
                 </button>
+                <button type="button" onClick={handleResend} disabled={secondsLeft > 0 || isSubmitting}
+                  className="w-full text-center text-sm font-medium text-black/50 disabled:opacity-50">
+                  {secondsLeft > 0 ? `Resend code in ${secondsLeft}s` : 'Resend code'}
+                </button>
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => {
                     setStep('phone');
                     setCode('');

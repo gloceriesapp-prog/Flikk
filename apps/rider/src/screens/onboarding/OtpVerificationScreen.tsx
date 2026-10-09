@@ -3,6 +3,7 @@
 // doesn't solve (no self-serve "become a rider" flow yet).
 
 import { useState } from 'react';
+import { useOtpChallenge } from '@gloceries/shared';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { Alert, Pressable, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -12,7 +13,7 @@ import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { OtpBoxInput } from '../../components/OtpBoxInput';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors } from '../../theme/tokens';
-import { verifyOtp } from '../../api/auth';
+import { requestOtp, verifyOtp } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
 import { roleMismatchMessage } from '../../utils/roleGuard';
 import type { AuthStackParamList } from '../../navigation/types';
@@ -22,36 +23,52 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
 export function OtpVerificationScreen({ navigation, route }: Props) {
   const { phone } = route.params;
   const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { busy: loading, secondsLeft, canResend, restartCooldown, run } = useOtpChallenge();
   const setSession = useAuthStore((s) => s.setSession);
 
   async function handleVerify() {
-    setLoading(true);
-    try {
-      const result = await verifyOtp(phone, code);
-      // One phone number, one role — checked BEFORE setSession ever
-      // persists anything, so an already-approved Partner account never
-      // gets a half-working session on this app (utils/roleGuard.ts's own
-      // note). 'customer' still passes through here — AccountStatusScreen
-      // is what tells that case apart from an actual approved rider.
-      const mismatch = roleMismatchMessage(result.role);
-      if (mismatch) {
-        Alert.alert('Could not sign in', mismatch);
-        return;
+    if (!/^\d{6}$/.test(code)) return;
+    await run(async (isCurrent) => {
+      try {
+        const result = await verifyOtp(phone, code);
+        if (!isCurrent()) return;
+        // One phone number, one role — checked BEFORE setSession ever
+        // persists anything, so an already-approved Partner account never
+        // gets a half-working session on this app (utils/roleGuard.ts's own
+        // note). 'customer' still passes through here — AccountStatusScreen
+        // is what tells that case apart from an actual approved rider.
+        const mismatch = roleMismatchMessage(result.role);
+        if (mismatch) {
+          Alert.alert('Could not sign in', mismatch);
+          return;
+        }
+        await setSession(result.accessToken, result.refreshToken, result.phone);
+        // No further navigation needed — RootNavigator swaps to AppNavigator
+        // the instant useAuthStore.accessToken becomes non-null.
+      } catch (err) {
+        if (!isCurrent()) return;
+        setCode('');
+        Alert.alert('Could not verify code', err instanceof Error ? err.message : 'Please try again.');
       }
-      await setSession(result.accessToken, result.refreshToken, result.phone);
-      // No further navigation needed — RootNavigator swaps to AppNavigator
-      // the instant useAuthStore.accessToken becomes non-null.
-    } catch (err) {
-      Alert.alert('Could not verify code', err instanceof Error ? err.message : 'Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    });
+  }
+
+  async function handleResend() {
+    if (!canResend()) return;
+    await run(async (isCurrent) => {
+      setCode('');
+      restartCooldown();
+      try {
+        await requestOtp(phone);
+      } catch (err) {
+        if (isCurrent()) Alert.alert('Could not resend code', err instanceof Error ? err.message : 'Please try again.');
+      }
+    });
   }
 
   return (
     <DismissKeyboardView>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1 bg-white"
       >
@@ -73,9 +90,14 @@ export function OtpVerificationScreen({ navigation, route }: Props) {
               </Text>
             </View>
 
-            <OtpBoxInput value={code} onChangeText={setCode} autoFocus />
+            <OtpBoxInput value={code} onChangeText={setCode} editable={!loading} autoFocus />
           </View>
 
+          <Pressable onPress={handleResend} disabled={secondsLeft > 0 || loading} className="py-4">
+            <Text className="text-center text-[13px] text-ink/55">
+              {secondsLeft > 0 ? `Resend code in ${secondsLeft}s` : 'Resend code'}
+            </Text>
+          </Pressable>
           <PrimaryButton label="Verify code" onPress={handleVerify} loading={loading} disabled={code.length !== 6} tone="blue" />
         </View>
       </KeyboardAvoidingView>

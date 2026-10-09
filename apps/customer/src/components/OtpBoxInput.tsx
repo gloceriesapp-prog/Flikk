@@ -3,7 +3,7 @@
 // bugs that come from managing N separate TextInputs).
 
 import { useRef } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 
 const OTP_LENGTH = 6;
 
@@ -11,9 +11,10 @@ interface Props {
   value: string;
   onChangeText: (digits: string) => void;
   autoFocus?: boolean;
+  editable?: boolean;
 }
 
-export function OtpBoxInput({ value, onChangeText, autoFocus }: Props) {
+export function OtpBoxInput({ value, onChangeText, autoFocus, editable = true }: Props) {
   const inputRef = useRef<TextInput>(null);
   const digits = value.padEnd(OTP_LENGTH, ' ').split('');
 
@@ -21,7 +22,7 @@ export function OtpBoxInput({ value, onChangeText, autoFocus }: Props) {
     // justify-between used to stretch 6 boxes across the full row width on wider
     // screens — fixed gap + centered instead, tighter and consistent regardless
     // of device width.
-    <Pressable onPress={() => inputRef.current?.focus()} className="flex-row justify-center gap-2.5">
+    <Pressable disabled={!editable} onPress={() => inputRef.current?.focus()} className="flex-row justify-center gap-2.5">
       {digits.map((digit, i) => (
         <View
           key={i}
@@ -36,6 +37,10 @@ export function OtpBoxInput({ value, onChangeText, autoFocus }: Props) {
         ref={inputRef}
         value={value}
         onChangeText={(text) => onChangeText(text.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH))}
+        editable={editable}
+        autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+        importantForAutofill="yes"
+        accessibilityLabel="6-digit verification code"
         keyboardType="number-pad"
         maxLength={OTP_LENGTH}
         autoFocus={autoFocus}

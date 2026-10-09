@@ -33,7 +33,7 @@ export const requestAdmission: RequestHandler = (req, res, next) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   // Signed provider webhooks have their own smaller parser and need provider
   // burst tolerance. Protect them with a separate edge/provider quota.
-  if (req.path !== '/payments/webhook') {
+  if (req.path !== '/payments/webhook' && req.path !== '/auth/hooks/send-sms') {
     let retry = publicBudget.claim(ip);
     if (!retry && (!['GET','HEAD','OPTIONS'].includes(req.method) || req.path.startsWith('/browse/'))) retry = costlyBudget.claim(ip);
     if (retry) {

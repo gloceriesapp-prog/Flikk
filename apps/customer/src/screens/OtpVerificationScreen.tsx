@@ -8,7 +8,8 @@
 // dropped here since there's no hero left to shrink. Same no-green rule
 // (OtpBoxInput.tsx's active box border is black, not lime).
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useOtpChallenge } from '@gloceries/shared';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
@@ -26,52 +27,42 @@ import type { AuthStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
 
-const RESEND_COOLDOWN_SECONDS = 30;
 
 export function OtpVerificationScreen({ route, navigation }: Props) {
   const { phone } = route.params;
   const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { busy: loading, secondsLeft, canResend, restartCooldown, run } = useOtpChallenge();
   const [error, setError] = useState<string | null>(null);
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS);
   const setSession = useAuthStore((s) => s.setSession);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setSecondsLeft((s) => Math.max(0, s - 1));
-    }, 1000);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
 
   const handleVerify = useCallback(
     async (otp: string) => {
-      setError(null);
-      setLoading(true);
-      try {
-        const { access_token, refresh_token, role } = await verifyOtp(phone, otp);
-        // One phone number, one role — checked BEFORE setSession ever
-        // persists anything, so a mismatched account (already an approved
-        // Partner/Rider elsewhere) never gets into a half-working logged-in
-        // state on this app (utils/roleGuard.ts's own note).
-        const mismatch = roleMismatchMessage(role);
-        if (mismatch) {
-          setError(mismatch);
+      if (!/^\d{6}$/.test(otp)) return;
+      await run(async (isCurrent) => {
+        setError(null);
+        try {
+          const { access_token, refresh_token, role } = await verifyOtp(phone, otp);
+          if (!isCurrent()) return;
+          // One phone number, one role — checked BEFORE setSession ever
+          // persists anything, so a mismatched account (already an approved
+          // Partner/Rider elsewhere) never gets into a half-working logged-in
+          // state on this app (utils/roleGuard.ts's own note).
+          const mismatch = roleMismatchMessage(role);
+          if (mismatch) {
+            setError(mismatch);
+            setCode('');
+            return;
+          }
+          await setSession(access_token, refresh_token);
+          // RootNavigator swaps to the app shell automatically once accessToken is set
+        } catch (err) {
+          if (!isCurrent()) return;
+          setError(err instanceof ApiError ? err.message : 'Invalid code. Please try again.');
           setCode('');
-          return;
         }
-        await setSession(access_token, refresh_token);
-        // RootNavigator swaps to the app shell automatically once accessToken is set
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Invalid code. Please try again.');
-        setCode('');
-      } finally {
-        setLoading(false);
-      }
+      });
     },
-    [phone, setSession],
+    [phone, setSession, run],
   );
 
   // auto-submit once all 6 digits are entered — one less tap for the user.
@@ -83,14 +74,18 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
   }
 
   async function handleResend() {
-    if (secondsLeft > 0) return;
-    setError(null);
-    setSecondsLeft(RESEND_COOLDOWN_SECONDS);
-    try {
-      await requestOtp(phone);
-    } catch {
-      setError('Could not resend code. Please try again.');
-    }
+    if (!canResend()) return;
+    await run(async (isCurrent) => {
+      setError(null);
+      setCode('');
+      // Start before sending: an interrupted response may still deliver SMS.
+      restartCooldown();
+      try {
+        await requestOtp(phone);
+      } catch (err) {
+        if (isCurrent()) setError(err instanceof ApiError ? err.message : 'Could not resend code. Please try again.');
+      }
+    });
   }
 
   return (
@@ -115,10 +110,10 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
             </Text>
           </View>
 
-          <OtpBoxInput value={code} onChangeText={handleCodeChange} autoFocus />
+          <OtpBoxInput value={code} onChangeText={handleCodeChange} editable={!loading} autoFocus />
           {error && <Text className="text-center text-[13px] text-danger">{error}</Text>}
 
-          <Pressable onPress={handleResend} disabled={secondsLeft > 0}>
+          <Pressable onPress={handleResend} disabled={secondsLeft > 0 || loading}>
             <Text className="text-center text-[13px] text-ink/55">
               {secondsLeft > 0
                 ? `Didn't receive the code? Retry in 00:${String(secondsLeft).padStart(2, '0')}`
@@ -132,8 +127,8 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
               visible next step for someone who pastes a code, or just
               expects a button to press like every other form. Disabled
               until 6 digits are in; pressing it while auto-submit has
-              already fired is harmless (handleVerify's own setLoading
-              guards against a second request). */}
+              already fired is harmless (the shared request guard
+              prevents a second request). */}
           <PrimaryButton
             label={loading ? 'Verifying…' : 'Continue'}
             onPress={() => handleVerify(code)}

@@ -8,14 +8,16 @@ interface Props {
   value: string;
   onChangeText: (digits: string) => void;
   autoFocus?: boolean;
+  editable?: boolean;
 }
 
-export function PhoneInput({ value, onChangeText, autoFocus }: Props) {
+export function PhoneInput({ value, onChangeText, autoFocus, editable = true }: Props) {
   return (
     <View className="h-[52px] flex-row items-center rounded-2xl border border-gray-200 bg-white px-4">
       <Text className="pr-3 text-base font-medium text-ink">🇮🇳 +91</Text>
       <View className="mr-3 h-6 w-px bg-gray-200" />
       <TextInput
+        editable={editable}
         value={value}
         onChangeText={(text) => onChangeText(text.replace(/[^0-9]/g, '').slice(0, 10))}
         placeholder="Enter mobile number"

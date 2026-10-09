@@ -34,3 +34,16 @@ it('keeps a wrong code as OTP_INVALID', async () => {
   auth.verifyOtp.mockResolvedValue({ data: { session: null }, error: { status: 403, code: 'otp_expired' } });
   expect(await post('/otp/verify', { phone: '9876543210', code: '123456' })).toMatchObject({ status: 401, code: 'OTP_INVALID' });
 });
+
+it.each([
+  ['/otp/request', 'signInWithOtp', { phone: '9876543210' }],
+  ['/otp/verify', 'verifyOtp', { phone: '9876543210', code: '123456' }],
+  ['/refresh', 'refreshSession', { refresh_token: 'r' }],
+] as const)('does not treat %s provider outages as bad credentials', async (path, method, body) => {
+  auth[method].mockResolvedValue({ data: { session: null }, error: { status: 503, code: 'unexpected_failure' } });
+  expect(await post(path, body)).toMatchObject({ status: 503, code: 'AUTH_TEMPORARILY_UNAVAILABLE' });
+  auth[method].mockResolvedValue({ data: { session: null }, error: { status: 429 } });
+  expect(await post(path, body)).toMatchObject({ status: 429, code: 'AUTH_RATE_LIMITED' });
+  auth[method].mockRejectedValue(new TypeError('fetch failed'));
+  expect(await post(path, body)).toMatchObject({ status: 503, code: 'AUTH_TEMPORARILY_UNAVAILABLE' });
+});

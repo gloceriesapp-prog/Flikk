@@ -78,3 +78,12 @@ export async function closeDatabaseConnections(): Promise<void> {
   await supabase.removeAllChannels();
   await agent.close();
 }
+
+// No shared mutable auth headers/session state across concurrent requests.
+// All clients reuse the bounded transport pool above.
+export function createRequestAuthClient(secretKey: string, clientIp: string) {
+  return createClient(env.supabaseUrl, secretKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { fetch: fetchWithAgent, headers: { 'Sb-Forwarded-For': clientIp } },
+  });
+}

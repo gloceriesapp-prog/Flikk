@@ -16,3 +16,12 @@ it('does not serialize provider error text or nested request secrets', () => {
   pino({...loggerOptions,transport:undefined},stream).error({err:error});
   expect(output).not.toContain('private-secret');expect(output).toContain('ECONNRESET');
 });
+
+it('redacts SMS provider keys and hook signing secrets', () => {
+  let output = '';
+  const stream = new Writable({ write(chunk, _encoding, done) { output += chunk.toString(); done(); } });
+  pino({ ...loggerOptions, transport: undefined }, stream).info({ authkey: 'private-provider-key',
+    MSG91_AUTH_KEY: 'private-env-key', SUPABASE_SEND_SMS_HOOK_SECRET: 'private-hook-secret',
+    sms: { authKey: 'private-nested-key', hookSecrets: ['private-rotation-key'] } });
+  expect(output).not.toContain('private-');
+});

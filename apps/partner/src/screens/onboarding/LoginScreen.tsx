@@ -19,6 +19,7 @@ import { AppImage as Image } from '../../components/AppImage';
 // avoiding the keyboard on Android at all.
 
 import { useState } from 'react';
+import { useOtpChallenge } from '@gloceries/shared';
 import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -30,7 +31,6 @@ import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-const PHONE_LENGTH = 10;
 const HERO_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/store-image.jpeg';
 // Fixed, real height — not measured/animated. Full device width, this
 // height; resizeMode="cover" keeps the real image's own aspect from
@@ -40,23 +40,25 @@ const HERO_HEIGHT = 240;
 
 export function LoginScreen({ navigation }: Props) {
   const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { busy: loading, run } = useOtpChallenge(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canContinue = phone.length === PHONE_LENGTH && !loading;
+  const canContinue = /^[6-9]\d{9}$/.test(phone) && !loading;
 
   async function handleContinue() {
-    setError(null);
-    setLoading(true);
-    try {
-      const fullPhone = `+91${phone}`;
-      const { devMode } = await requestOtp(fullPhone);
-      navigation.navigate('OtpVerification', { phone: fullPhone, devMode });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send OTP. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    if (!/^[6-9]\d{9}$/.test(phone)) return;
+    await run(async (isCurrent) => {
+      setError(null);
+      try {
+        const fullPhone = `+91${phone}`;
+        const { devMode } = await requestOtp(fullPhone);
+        if (!isCurrent()) return;
+        navigation.navigate('OtpVerification', { phone: fullPhone, devMode });
+      } catch (err) {
+        if (!isCurrent()) return;
+        setError(err instanceof ApiError ? err.message : 'Could not send OTP. Please try again.');
+      }
+    });
   }
 
   return (
@@ -78,7 +80,7 @@ export function LoginScreen({ navigation }: Props) {
         <View className="flex-1 gap-5 bg-white px-6 pb-safe pt-7">
           <Text className="text-2xl font-semibold leading-8 text-ink">Run your store from your pocket.</Text>
 
-          <PhoneInput value={phone} onChangeText={setPhone} autoFocus />
+          <PhoneInput value={phone} onChangeText={setPhone} editable={!loading} autoFocus />
           {error && <Text className="text-center text-[13px] text-danger">{error}</Text>}
 
           {/* Solid black CTA, not the blue variant — this app's own

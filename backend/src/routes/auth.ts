@@ -2,7 +2,10 @@ import { resolveStoreAccess } from '../stores/access.js';
 import { authBudget } from '../customer-experience/authBudget.js';
 // Shared across all 4 apps. Source: specs/00-foundation/auth-and-roles.md
 import { Router } from 'express';
-import { supabase, supabaseAuth } from '../db/supabase.js';
+import { supabase } from '../db/supabase.js';
+import { authForRequest } from '../auth/requestClient.js';
+import { authProviderError } from '../auth/providerErrors.js';
+import { verifiedUserProfile } from '../auth/provisionUser.js';
 import { AppError } from '../lib/errors.js';
 import { normalizePhone } from '../lib/phone.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
@@ -10,18 +13,12 @@ import { partnerSuspension } from '../auth/partnerSuspension.js';
 
 export const authRouter = Router();
 
-// Supabase Auth refuses a banned user (admin customer Block → ban_duration)
-// with code 'user_banned'. Say so plainly instead of "invalid code".
-const isBanned = (error: unknown) => (error as { code?: string } | null)?.code === 'user_banned';
-const accountBlocked = () => new AppError(403, 'ACCOUNT_BLOCKED', 'This account has been blocked. Contact Gloceries support.');
-
 authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
   try {
     const { phone } = req.body as { phone?: string };
     const canonical = normalizePhone(phone); // +91… — throws on a bad number
-    const { error } = await supabaseAuth.auth.signInWithOtp({ phone: canonical });
-    if (isBanned(error)) throw accountBlocked();
-    if (error) throw new AppError(400, 'OTP_SEND_FAILED', 'We couldn’t send a code. Please try again shortly.');
+    const { error } = await authForRequest(req.ip).auth.signInWithOtp({ phone: canonical }).catch(error => { throw authProviderError(error, 'send'); });
+    if (error) throw authProviderError(error, 'send');
     res.status(200).json({ ok: true });
   } catch (err) {
     next(err);
@@ -39,34 +36,28 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
     const { phone, code } = req.body as { phone?: string; code?: string };
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
     const canonical = normalizePhone(phone);
-    const { data, error } = await supabaseAuth.auth.verifyOtp({ phone: canonical, token: code, type: 'sms' });
-    if (isBanned(error)) throw accountBlocked();
-    if (error || !data.session) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
+    const { data, error } = await authForRequest(req.ip).auth.verifyOtp({ phone: canonical, token: code, type: 'sms' }).catch(error => { throw authProviderError(error, 'verify'); });
+    if (error) throw authProviderError(error, 'verify');
+    if (!data.session) throw authProviderError(null, 'verify');
 
     const userId = data.session.user.id;
     // Same lazy-provisioning as requireAuth (see that file's own note) —
     // verify is the very first authenticated call for a brand-new phone
     // number, so no public.users row exists yet either.
-    let { data: userRow } = await supabase.from('users').select('is_approved, role').eq('id', userId).single();
-    if (!userRow) {
-      const { data: created } = await supabase
-        .from('users')
-        .insert({ id: userId, phone: canonical, role: 'customer' })
-        .select('is_approved, role')
-        .single();
-      userRow = created;
-    }
-    const { count } = await supabase.from('stores').select('id', { count: 'exact', head: true }).eq('owner_user_id', userId);
+    const userRow = await verifiedUserProfile(userId, canonical);
+    const { count, error: storeError } = await supabase.from('stores').select('id', { count: 'exact', head: true }).eq('owner_user_id', userId);
+    if (storeError) throw new AppError(503, 'AUTH_TEMPORARILY_UNAVAILABLE', 'Sign-in is temporarily unavailable. Please retry.');
     // A real `stores` row only ever exists post-approval now (see
     // storeOnboarding.ts's own note) — a returning applicant with no store
     // yet still needs to know "you already submitted, don't restart the
     // wizard" vs. "you never finished it," which has_store alone can't
     // tell apart anymore.
-    const { data: draft } = await supabase
+    const { data: draft, error: draftError } = await supabase
       .from('store_onboarding_drafts')
       .select('submitted_at')
       .eq('user_id', userId)
       .maybeSingle();
+    if (draftError) throw new AppError(503, 'AUTH_TEMPORARILY_UNAVAILABLE', 'Sign-in is temporarily unavailable. Please retry.');
 
     res.status(200).json({
       access_token: data.session.access_token,
@@ -78,8 +69,8 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
       // invalid session and clears it, even though the person never asked
       // to log out. That's the exact "logs out on its own" bug this fixes.
       refresh_token: data.session.refresh_token,
-      is_approved: userRow?.is_approved ?? false,
-      has_store: (count ?? 0) > 0 || (userRow?.role === 'store_owner' && !!(await resolveStoreAccess(userId))),
+      is_approved: userRow.is_approved,
+      has_store: (count ?? 0) > 0 || (userRow.role === 'store_owner' && !!(await resolveStoreAccess(userId))),
       application_submitted: !!draft?.submitted_at,
       // One phone number, one role — real across all 4 apps since they
       // share this one users table (specs/00-foundation/auth-and-roles.md).
@@ -90,7 +81,7 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
       // handleVerify. Never mutated here: role only ever changes via a
       // real admin approval (apps/admin's own approve routes), same as
       // before this field was ever surfaced.
-      role: userRow?.role ?? 'customer',
+      role: userRow.role,
     });
   } catch (err) {
     next(err);
@@ -109,9 +100,9 @@ authRouter.post('/refresh', authBudget('refresh'), async (req, res, next) => {
     const { refresh_token } = req.body as { refresh_token?: string };
     if (!refresh_token) throw new AppError(400, 'MISSING_REFRESH_TOKEN', 'refresh_token is required.');
 
-    const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token });
-    if (isBanned(error)) throw accountBlocked();
-    if (error || !data.session) throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'Session could not be refreshed.');
+    const { data, error } = await authForRequest(req.ip).auth.refreshSession({ refresh_token }).catch(error => { throw authProviderError(error, 'refresh'); });
+    if (error) throw authProviderError(error, 'refresh');
+    if (!data.session) throw authProviderError(null, 'refresh');
 
     res.status(200).json({
       access_token: data.session.access_token,

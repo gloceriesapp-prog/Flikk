@@ -14,10 +14,9 @@ const config = getSentryExpoConfig(__dirname);
 // teach Metro where the package lives:
 //   - watchFolders: so Metro TRANSFORMS the raw-TS source (shared has no build).
 //   - extraNodeModules alias: so `@gloceries/shared` resolves to that dir.
-// react/react-native are untouched — customer's own node_modules still wins by
-// default resolution order, and shared imports NO react/react-native anyway, so
-// nothing pulls root's copy in. Its one peer dep (expo-location) resolves from
-// customer's own node_modules, which has it.
+// Shared OTP hooks import React; the explicit resolver below keeps them on
+// the same React instance as the customer app. Other dependencies keep their
+// existing resolution behavior.
 const sharedPkg = path.resolve(__dirname, '../../packages/shared');
 config.watchFolders = [...(config.watchFolders ?? []), sharedPkg, path.resolve(__dirname, '../../packages/home-content')];
 config.resolver.extraNodeModules = {
@@ -32,5 +31,19 @@ config.resolver.extraNodeModules = {
 // react 19.2.8 vs customer's 19.2.3, and adding root here would reintroduce the
 // dual-React-context hazard rider's metro.config documents.
 config.resolver.nodeModulesPaths = [path.resolve(__dirname, 'node_modules')];
+
+// nodeModulesPaths is a fallback, not an override of hierarchical resolution.
+// A shared file could otherwise find root React before customer's version,
+// causing invalid hook calls even though TypeScript and unit tests pass.
+const previousResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'react' || moduleName.startsWith('react/')) {
+    const customerReact = require.resolve(moduleName, { paths: [__dirname] });
+    return context.resolveRequest(context, customerReact, platform);
+  }
+  return previousResolveRequest
+    ? previousResolveRequest(context, moduleName, platform)
+    : context.resolveRequest(context, moduleName, platform);
+};
 
 module.exports = withNativeWind(config, { input: './global.css' });

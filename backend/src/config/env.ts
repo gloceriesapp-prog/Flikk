@@ -1,3 +1,5 @@
+import { readSmsHookConfig } from '../auth/sms/config.js';
+
 function required(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env var: ${name}`);
@@ -27,6 +29,7 @@ if (process.env.NODE_ENV !== 'production' && process.env.SUPABASE_URL?.includes(
 }
 
 export const env = {
+  sms: readSmsHookConfig(),
   port,
   // Production cannot silently fall back to stateless remote verification
   // when the session-revocation RPC is absent or a JWT has no session ID.

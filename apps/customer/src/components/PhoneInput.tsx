@@ -17,9 +17,10 @@ interface Props {
   value: string;
   onChangeText: (digits: string) => void;
   autoFocus?: boolean;
+  editable?: boolean;
 }
 
-export function PhoneInput({ value, onChangeText, autoFocus }: Props) {
+export function PhoneInput({ value, onChangeText, autoFocus, editable = true }: Props) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -30,6 +31,7 @@ export function PhoneInput({ value, onChangeText, autoFocus }: Props) {
       <Text className="pr-3 text-base font-medium text-ink">🇮🇳 +91</Text>
       <View className="mr-3 h-6 w-px bg-slate-200" />
       <TextInput
+        editable={editable}
         value={value}
         onChangeText={(text) => onChangeText(text.replace(/[^0-9]/g, '').slice(0, 10))}
         onFocus={() => setIsFocused(true)}

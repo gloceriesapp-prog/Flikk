@@ -35,6 +35,8 @@ export const loggerOptions: LoggerOptions = {
     paths: [
       'req.headers', 'req.headers.authorization', 'req.headers.cookie', 'req.headers["x-api-key"]',
       'res.headers["set-cookie"]', 'authorization', 'Authorization', 'password',
+      'authkey', 'MSG91_AUTH_KEY', 'SUPABASE_SEND_SMS_HOOK_SECRET', 'SUPABASE_AUTH_SECRET_KEY',
+      '*.authkey', '*.authKey', '*.hookSecrets', '*.webhook-signature',
       'otp', 'delivery_otp', 'code', 'access_token', 'refresh_token',
       '*.authorization', '*.Authorization', '*.password', '*.otp', '*.delivery_otp',
       '*.access_token', '*.refresh_token', '*.api_key', '*.apiKey', '*.client_secret', '*.secret', '*.cashfreeSecretKey', '*.cashfreeWebhookSecret', '*.cashfreeVerificationSecret',

@@ -18,6 +18,7 @@ import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { shortCache } from './middleware/shortCache.js';
+import { sendSmsRouter } from './auth/sms/router.js';
 import { authRouter } from './routes/auth.js';
 import { zonesRouter } from './routes/zones.js';
 import { categoriesRouter } from './routes/categories.js';
@@ -124,6 +125,7 @@ for (const path of UPLOAD_PATHS) {
   const [auth, ...rest] = uploadAdmission;
   app.post(path, auth!, ...(path === '/partner/product-photo' ? productUploadRole : []), ...rest);
 }
+app.use('/auth/hooks', sendSmsRouter);
 app.use(ordinaryJson);
 
 // No root route existed at all — visiting the backend's own URL in a

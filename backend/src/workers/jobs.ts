@@ -1,6 +1,7 @@
 import { runPromotions } from '../promotions/worker.js';
 import { cleanupMedia } from '../media/cleanup.js';
 import { runPushReceipts } from '../notifications/receipts.js';
+import { pruneSmsReceipts } from '../auth/sms/receipts.js';
 import { pruneAuthBudgets } from '../customer-experience/authBudget.js';
 import { pruneDeliveryCodes } from '../orders/deliveryCodes.js';
 import { runOrderRefunds } from '../payments/orderRefunds.js';
@@ -34,6 +35,7 @@ export const queues: Record<string, (shouldStop: () => boolean) => Promise<unkno
   orderRefunds: async () => { if (paymentsConfigured) await runOrderRefunds(); },
   deliveryCodes: pruneDeliveryCodes,
   authBudgets: pruneAuthBudgets,
+  smsReceipts: pruneSmsReceipts,
   customerNotifications: runCustomerNotifications,
   pushReceipts: runPushReceipts,
 };

@@ -1,29 +1,8 @@
-// Maps to POST /auth/otp/request, POST /auth/otp/verify, GET /auth/me, and
-// POST /auth/push-token — the actual HTTP contract for all four now lives
-// in one place (@gloceries/shared's auth module, packages/shared/src/auth/
-// otp.ts) instead of being hand-copied per app; this file wraps that
-// shared implementation with the two things that are genuinely specific to
-// this app: the devAuthFallback dev-mode stand-in below, and this app's
-// own richer VerifyOtpResponse/AccountStatus needs (is_approved/has_store/
-// application_submitted — customer's own copy of the shared contract only
-// needs "token exists = logged in", nothing else, so it stays on the
-// shared shape unwrapped).
-//
-// Every OTP/session function here falls back to devAuthFallback.ts when
-// the real backend is unreachable (not when it responds with a real error
-// — see isBackendUnreachable's own note) — that's what "OTP not receiving"
-// in this sandbox actually was: no backend/SMS provider reachable, same
-// situation every other screen in this app already handles via
-// placeholder data. The fallback disappears on its own the moment a real
-// backend answers; nothing here needs to change when that happens.
-
 import { createAuthApi, type AccountStatus, type VerifyOtpResponse } from '@gloceries/shared';
 import { apiRequest } from './client';
 import {
   devCheckAccountStatus,
-  devRequestOtp,
   devSubmitStoreApplication,
-  devVerifyOtp,
   isBackendUnreachable,
 } from './devAuthFallback';
 
@@ -36,24 +15,14 @@ export interface RequestOtpResult {
   devMode: boolean;
 }
 
+// SMS delivery is backend-only. A network failure must never manufacture a
+// local OTP/session, including in development builds used for device tests.
 export async function requestOtp(phone: string): Promise<RequestOtpResult> {
-  try {
-    const result = await authApi.requestOtp(phone);
-    return { ...result, devMode: false };
-  } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    const result = await devRequestOtp(phone);
-    return { ...result, devMode: true };
-  }
+  return { ...await authApi.requestOtp(phone), devMode: false };
 }
 
-export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpResponse> {
-  try {
-    return await authApi.verifyOtp(phone, code);
-  } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    return devVerifyOtp(phone, code);
-  }
+export function verifyOtp(phone: string, code: string): Promise<VerifyOtpResponse> {
+  return authApi.verifyOtp(phone, code);
 }
 
 export interface StoreApplication {
