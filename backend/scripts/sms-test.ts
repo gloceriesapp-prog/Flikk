@@ -4,9 +4,9 @@
 //
 //   pnpm sms:test 9876543210
 //
-// The login flow itself cannot use this machine's MSG91 keys: Supabase sends
-// the SMS from its own servers and can only call a public HTTPS hook URL
-// (see ENVIRONMENTS.md -> "Testing login OTP SMS").
+// The login flow uses these keys only when Supabase's Send SMS hook reaches
+// this backend: local Supabase from `npm run local:setup` does, a hosted
+// project does not (see ENVIRONMENTS.md -> "How login OTP SMS works").
 import { randomInt } from 'node:crypto';
 import { msg91Config, msg91Mobile, sendOtpSms, SmsDeliveryError } from '../src/lib/msg91.js';
 

@@ -23,6 +23,17 @@ enable_confirmations = true
 # Fixed OTPs so phone login works locally without sending SMS.
 # Log in with any of these numbers and the code shown.
 [auth.sms.test_otp]
-910000000001 = "123456"
-910000000002 = "123456"
-910000000003 = "123456"
+919100000001 = "123456"
+919100000002 = "123456"
+919100000003 = "123456"
+
+# Login SMS goes through the same path as production: Supabase calls our
+# backend's Send SMS hook, which sends through MSG91. Local Supabase runs in
+# Docker, so it reaches the backend on this machine via host.docker.internal.
+# The secret comes from supabase/.env (written by `npm run local:setup`) and
+# must equal SEND_SMS_HOOK_SECRET in backend/.env.local. The test numbers
+# above never trigger the hook, so they work without MSG91 or the backend.
+[auth.hook.send_sms]
+enabled = true
+uri = "http://host.docker.internal:4000/auth/hooks/send-sms"
+secrets = "env(SEND_SMS_HOOK_SECRET)"

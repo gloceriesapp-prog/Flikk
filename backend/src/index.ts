@@ -204,17 +204,20 @@ try {
   try { stopMonitoring = await startMonitoring('api',() => !shuttingDown); }
   catch (error) { await runtime.stop(); throw error; }
   logger.info({ port: env.port, pid: process.pid }, 'Gloceries backend listening');
-  // Login SMS is sent by Supabase's servers, which call this backend's hook
-  // only through the public URL set in the Supabase dashboard. Say so, since
-  // MSG91 keys in a laptop's .env.local are never used by a login there.
+  // Login SMS: Supabase calls this backend's Send SMS hook, which sends via
+  // MSG91. Local Supabase (Docker) can reach this machine; a hosted project
+  // only reaches the public URL in its dashboard, never a laptop.
   const msg91 = msg91Config();
+  const localSupabase = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(env.supabaseUrl);
   logger.info({
     msg91Configured: !!(msg91.authKey && msg91.templateId),
     sendSmsHookSecret: hookSecrets().length > 0,
     hookPath: '/auth/hooks/send-sms',
-  }, process.env.NODE_ENV === 'production'
-    ? 'Login OTP SMS: Supabase Send SMS hook -> MSG91'
-    : 'Login OTP SMS is sent by Supabase, not this machine: it only reaches this backend through a public hook URL (test MSG91 alone with `pnpm sms:test <mobile>`)');
+  }, localSupabase
+    ? 'Login OTP SMS: local Supabase -> this backend -> MSG91 (test numbers skip SMS)'
+    : process.env.NODE_ENV === 'production'
+      ? 'Login OTP SMS: Supabase Send SMS hook -> MSG91'
+      : 'Login OTP SMS is sent via the hosted Supabase project\'s hook URL, not this machine. Use `npm run local:setup` for a fully local stack.');
   let stopping = false;
   const shutdown = (signal: string) => {
     if (stopping) return;
