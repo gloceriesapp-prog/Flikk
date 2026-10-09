@@ -118,6 +118,15 @@ DATABASE_URL='<prod URI>' CONFIRM_PRODUCTION=bjlknohjdnemxwwoxcsv \
 
 After that, `--status` lists exactly what production is missing (113 onward).
 
+## Testing login OTP SMS
+
+Supabase generates the login code and sends the SMS **from its own servers**. With the Send SMS hook on, it calls `POST /auth/hooks/send-sms` at the public URL set in the Supabase dashboard, and that backend sends through MSG91. A backend on your laptop is never called for a login, so MSG91 keys in `backend/.env.local` are not used by the app's login.
+
+1. **Check MSG91 alone (any machine):** put `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID` in `backend/.env.local`, then run `pnpm sms:test 98XXXXXXXX`. It sends one real OTP SMS and prints the code it should contain. Fix the key, template, DLT or IP whitelist until this works.
+2. **Log in locally without SMS:** use Supabase test numbers (Authentication -> Phone -> test numbers, e.g. `919100000001=123456`). No SMS is sent for them.
+3. **Full SMS login against your laptop:** only with **flikk-staging**, never production. Expose the local backend with a tunnel (`cloudflared tunnel --url http://localhost:4000`), set flikk-staging's Send SMS hook to `https://<tunnel>/auth/hooks/send-sms`, and point `backend/.env.local` at flikk-staging with the same `SEND_SMS_HOOK_SECRET`. Pointing the production hook at a laptop would break every real customer's login.
+4. **Production:** the hook points at `https://flikk-production.up.railway.app/auth/hooks/send-sms`, with the three variables set on Railway.
+
 ## Rules to keep in mind
 
 **Database**

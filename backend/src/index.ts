@@ -52,7 +52,8 @@ import { startBackgroundServices } from './server/background.js';
 import { closeDatabaseConnections } from './db/supabase.js';
 
 import { webhookAdmission } from './security/webhookAdmission.js';
-import { sendSmsHookRoute } from './auth/sendSmsHook.js';
+import { hookSecrets, sendSmsHookRoute } from './auth/sendSmsHook.js';
+import { msg91Config } from './lib/msg91.js';
 import { uploadBodyDeadline } from './security/bodyDeadline.js';
 import { requestAdmission, concurrentAdmission } from './security/admission.js';
 import { UPLOAD_PATHS, uploadAdmission, ordinaryJson, productUploadRole } from './security/parsers.js';
@@ -203,6 +204,17 @@ try {
   try { stopMonitoring = await startMonitoring('api',() => !shuttingDown); }
   catch (error) { await runtime.stop(); throw error; }
   logger.info({ port: env.port, pid: process.pid }, 'Gloceries backend listening');
+  // Login SMS is sent by Supabase's servers, which call this backend's hook
+  // only through the public URL set in the Supabase dashboard. Say so, since
+  // MSG91 keys in a laptop's .env.local are never used by a login there.
+  const msg91 = msg91Config();
+  logger.info({
+    msg91Configured: !!(msg91.authKey && msg91.templateId),
+    sendSmsHookSecret: hookSecrets().length > 0,
+    hookPath: '/auth/hooks/send-sms',
+  }, process.env.NODE_ENV === 'production'
+    ? 'Login OTP SMS: Supabase Send SMS hook -> MSG91'
+    : 'Login OTP SMS is sent by Supabase, not this machine: it only reaches this backend through a public hook URL (test MSG91 alone with `pnpm sms:test <mobile>`)');
   let stopping = false;
   const shutdown = (signal: string) => {
     if (stopping) return;
