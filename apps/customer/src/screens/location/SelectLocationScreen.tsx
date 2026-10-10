@@ -158,7 +158,7 @@ export function SelectLocationScreen({ navigation }: Props) {
     try {
       const coords = currentCoords ?? (await getCurrentCoordinates());
       const { addressLabel, city } = await reverseGeocode(coords);
-      navigation.navigate('LocationSearch', { ...coords, addressLabel, city });
+      navigation.navigate('LocationSearch', { ...coords, addressLabel, city, fromGps: true });
     } catch {
       navigation.navigate('LocationSearch');
     } finally {
