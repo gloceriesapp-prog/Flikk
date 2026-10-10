@@ -46,6 +46,7 @@ import { distanceMeters } from '../../location/locationFilter';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
 import { LocationRequestGate } from '../../location/requestGate';
 import { useLiveLocation } from '../../location/useLiveLocation';
+import { withDeadline } from '../../utils/deadline';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLocationStore } from '../../store/useLocationStore';
 import { useRecentSearchesStore } from '../../store/useRecentSearchesStore';
@@ -90,6 +91,10 @@ const FOLLOW_MIN_INTERVAL_MS = 1500;
 const REGEOCODE_MIN_MOVE_M = 12;
 // Wait for the map to stay still this long before looking the address up.
 const GEOCODE_DEBOUNCE_MS = 350;
+// Upper bounds so the card can never spin forever: the address lookup
+// (backend + on-device fallback) and the native camera read.
+const GEOCODE_DEADLINE_MS = 12_000;
+const CAMERA_READ_DEADLINE_MS = 800;
 // Only worth warning about when the pin is clearly not where the person is.
 const FAR_FROM_DEVICE_KM = 0.1;
 // Shown next to "Use my current location" while the fix is still vague.
@@ -303,7 +308,9 @@ export function LocationSearchScreen({ navigation, route }: Props) {
     // The camera target is the point under the pin tip. The region's own
     // centre is the middle of the whole map view on Android, including the
     // strip behind the card, so it is half the card's height off the pin.
-    const camera = await mapRef.current?.getCamera().catch(() => null);
+    const camera = mapRef.current
+      ? await withDeadline(mapRef.current.getCamera(), CAMERA_READ_DEADLINE_MS).catch(() => null)
+      : null;
     const next = camera?.center
       ? { latitude: camera.center.latitude, longitude: camera.center.longitude }
       : { latitude: region.latitude, longitude: region.longitude };
@@ -324,17 +331,20 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   async function resolveAddress(next: Coordinates, ticket: number) {
     void fetchNearbyPlaces(next).then(places => { if (pinRequests.current.current(ticket)) setNearbyPlaces(places); });
     try {
-      const resolved = await reverseGeocode(next);
+      const resolved = await withDeadline(reverseGeocode(next), GEOCODE_DEADLINE_MS);
       if (!pinRequests.current.current(ticket)) return;
       resolvedAt.current = next;
       setError(null);
       setAddressLabel(resolved.addressLabel); setShortName(resolved.shortName); setCity(resolved.city);
     } catch {
       if (!pinRequests.current.current(ticket)) return;
-      // Never confirm a new coordinate with the previous address.
+      // Never confirm a new coordinate with the previous address. The pin
+      // itself is still exact, so it can be confirmed; the address form
+      // asks for the house/street details.
       resolvedAt.current = null;
-      setAddressLabel('Selected location'); setShortName('Selected location'); setCity('');
-      setError('Couldn’t resolve this address. Confirm the pin and enter the address manually.');
+      const pinned = `${next.latitude.toFixed(5)}, ${next.longitude.toFixed(5)}`;
+      setAddressLabel(pinned); setShortName('Pinned location'); setCity('');
+      setError('Couldn’t find the address for this pin. You can still confirm it and type the address next.');
     } finally {
       if (pinRequests.current.current(ticket)) setResolving(false);
     }
@@ -460,7 +470,13 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // the SDK positions its own built-in UI (logo, compass), not
           // just a visual crop.
           mapPadding={mapReady ? { top: 0, right: 0, bottom: bottomPadding, left: 0 } : undefined}
-          onMapReady={() => setMapReady(true)}
+          // Also resolves the starting point: the first "settled" event is
+          // not guaranteed on every device, and without it the card would
+          // wait for an address forever.
+          onMapReady={() => {
+            setMapReady(true);
+            void handleRegionSettled({ ...center, latitudeDelta: 0, longitudeDelta: 0 });
+          }}
           // initialCamera, not initialRegion — a Region has no pitch/zoom
           // concept at all, only a lat/lng delta "span", which is exactly
           // why the 3D buildings weren't showing regardless of how tight
