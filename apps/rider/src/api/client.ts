@@ -11,7 +11,10 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export { ApiError } from '@gloceries/shared';
 
-const API_URL = validateApiUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__);
+// Exported so screens that fetch authenticated byte-proxy assets directly via
+// RN Image (not apiRequest) can resolve a relative /rider/documents/:id path
+// against the same validated base. Trailing slash already stripped.
+export const API_URL = validateApiUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__);
 
 // Plain fetch, not apiRequest — apiRequest is what calls this on a 401 (via
 // the shared client's `refresh` option); routing it through apiRequest itself

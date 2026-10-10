@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Store, User } from 'lucide-react';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { privateDocUrls } from '@/lib/supabase/privateDocUrl';
 import { requireAdminPage } from '@/lib/auth/requireAdminPage';
 import {
   APPROVED_RIDER_SELECT,
@@ -33,15 +34,16 @@ const DOCUMENTS_BUCKET = 'rider-documents';
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 // photo_url (selfie) / aadhaar_photo_url / dl_photo_url are object PATHS on
-// the private rider-documents bucket — signed fresh on every page load, same
-// as app/api/approvals/riders/route.ts's own signPhotoUrls.
+// the private rider-documents bucket. KYC docs are AES-256-GCM encrypted at
+// rest (migration 119), so each path resolves to the admin decrypt-proxy URL
+// (/api/media/private/<id>); legacy unencrypted paths fall back to a signed
+// URL inside the helper. Same resolution as app/api/approvals/riders/route.ts.
 async function signRiderPhotos<T extends { photo_url: string | null; aadhaar_photo_url: string | null; dl_photo_url: string | null }>(row: T): Promise<T> {
   const paths = [row.photo_url, row.aadhaar_photo_url, row.dl_photo_url].filter((p): p is string => !!p);
   if (paths.length === 0) return row;
 
-  const { data } = await supabaseAdmin.storage.from(DOCUMENTS_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
-  const signedByPath = new Map((data ?? []).map((d) => [d.path, d.signedUrl]));
-  const sign = (path: string | null) => (path ? (signedByPath.get(path) ?? null) : null);
+  const urlByPath = await privateDocUrls(DOCUMENTS_BUCKET, paths, SIGNED_URL_TTL_SECONDS);
+  const sign = (path: string | null) => (path ? (urlByPath.get(path) ?? null) : null);
   return { ...row, photo_url: sign(row.photo_url), aadhaar_photo_url: sign(row.aadhaar_photo_url), dl_photo_url: sign(row.dl_photo_url) };
 }
 

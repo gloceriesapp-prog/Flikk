@@ -64,6 +64,12 @@ export const env = {
   // on-device geocoder) rather than the whole backend refusing to boot
   // over one enhancement-only key.
   googleGeocodingApiKey: process.env.GOOGLE_GEOCODING_API_KEY,
+  // Optional, not required(): KYC document envelope encryption key (base64, 32
+  // bytes) and KEK id. Only needed when a sensitive KYC upload happens —
+  // storePrivateDocument fails closed if a KYC kind is uploaded without this
+  // configured. Same value in backend (Railway) and admin (Vercel).
+  docEncryptionKey: process.env.DOC_ENCRYPTION_KEY || undefined,
+  docEncryptionKekId: process.env.DOC_ENCRYPTION_KEK_ID || 'v1',
   // apps/partner-dashboard (and any future web surface) calls this backend
   // directly from browser JS, unlike admin which only talks to Supabase/its
   // own Next API routes — the only client that actually needs CORS.
