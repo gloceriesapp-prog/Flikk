@@ -189,8 +189,20 @@ export default function Footer() {
 
         <div className="border-[#999C9E]/15 flex flex-col gap-2 text-xs sm:text-sm font-medium text-[#999C9E] leading-relaxed relative z-10">
           <p>
-            “Gloceries” is a technology platform owned &amp; managed by {LEGAL_ENTITY.legalName} that connects customers with independent local kirana &amp; pharmacy stores. Gloceries does not own inventory or sell products directly, all goods are sold by the respective partner stores. Prices, availability &amp; delivery times may vary by store and location.
+            “Gloceries” is a technology platform{LEGAL_ENTITY.legalName ? ` owned & managed by ${LEGAL_ENTITY.legalName}` : ""} that connects customers with independent local kirana &amp; pharmacy stores. Gloceries does not own inventory or sell products directly, all goods are sold by the respective partner stores. Prices, availability &amp; delivery times may vary by store and location.
           </p>
+          {LEGAL_ENTITY.supportPhone && (
+            <p>
+              Contact:{" "}
+              <a className="underline" href={`tel:${LEGAL_ENTITY.supportPhone}`}>
+                {LEGAL_ENTITY.supportPhone}
+              </a>
+              {" · "}
+              <a className="underline" href={`mailto:${LEGAL_ENTITY.supportEmail}`}>
+                {LEGAL_ENTITY.supportEmail}
+              </a>
+            </p>
+          )}
         </div>
 
         {/* Changed leading-[0.75] to leading-none and added pb-4 lg:pb-8 */}

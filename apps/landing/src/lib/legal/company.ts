@@ -17,11 +17,10 @@ const DEFAULT_SUPPORT_EMAIL = "hello@gloceries.com";
 
 export const COMPANY = {
   brand: SITE.name,
-  // The person who owns and operates the platform, exactly as on the
-  // payment gateway KYC (Cashfree checks the site against it). Gloceries is
-  // run as a sole proprietorship until a company is incorporated; switch
-  // this to the company's registered name (and set the CIN) then.
-  legalName: "NISHAL N POOJARY",
+  // Registered legal entity, once there is one (set it, and the CIN, when
+  // the company is incorporated). Until then the site names only the brand
+  // and identifies the business by its registered contact number.
+  legalName: null as string | null,
   website: SITE.url,
   region: SITE.region,
   jurisdiction: "Udupi, Karnataka",
