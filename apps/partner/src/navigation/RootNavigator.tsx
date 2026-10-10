@@ -34,7 +34,7 @@
 // easily be approved since the last time the app was open; trusting a
 // stale local flag would show the wrong screen).
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -89,17 +89,18 @@ export function RootNavigator() {
     clear,
   } = useAuthStore();
   const [statusChecked, setStatusChecked] = useState(false);
-  // Monotonic start of this mount + a one-shot re-render at the floor, so the
-  // gate re-evaluates with a real elapsed even if hydration finished first.
-  const startRef = useRef(Date.now());
-  const [, forceFloorTick] = useState(0);
+  // A short brand floor, flipped by a one-shot timer so the gate re-evaluates
+  // once the floor passes even if hydration finished first. Boolean-flag
+  // pattern (same as apps/customer's RootNavigator) — never read a ref's
+  // .current during render (react-hooks/refs forbids it).
+  const [minElapsed, setMinElapsed] = useState(false);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
   useEffect(() => {
-    const id = setTimeout(() => forceFloorTick((n) => n + 1), WELCOME_MIN_MS);
+    const id = setTimeout(() => setMinElapsed(true), WELCOME_MIN_MS);
     return () => clearTimeout(id);
   }, []);
 
@@ -177,7 +178,7 @@ export function RootNavigator() {
   // should flash on every login.
   const isColdStart = !computeColdStartDone({
     hydrated: isHydrated,
-    elapsedMs: Date.now() - startRef.current,
+    elapsedMs: minElapsed ? WELCOME_MIN_MS : 0,
     minMs: WELCOME_MIN_MS,
   });
 
