@@ -56,6 +56,7 @@ import { ApiError } from '../api/client';
 import { useAuthStore } from './useAuthStore';
 import { todayKey } from '../utils/date';
 import { carryOverActiveMs } from '../utils/activeTime';
+import { loopPlan, normalizeAppState } from './presenceLoops';
 
 export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'picked_up', 'arrived_at_customer', 'delivered'];
 
@@ -170,6 +171,11 @@ interface RiderOrdersState {
   hydrateHistory: () => Promise<void>;
   startSync: () => void;
   stopSync: () => void;
+  // Reconciles the foreground loops (12s assignment poll, 45s presence ping)
+  // and the background-location writer to the app's foreground phase + shift
+  // state — see presenceLoops.ts for the pure rule. Driven by the single
+  // AppState listener in useAutoOnline; `next` is the raw AppStateStatus.
+  syncLoopsToAppState: (next: string) => void;
   goOnline: () => Promise<boolean>;
   goOffline: () => void;
   acceptIncomingOrder: () => void;
@@ -216,7 +222,35 @@ function clearAutoDeclineTimer() {
   }
 }
 
-export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
+export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
+  // Foreground presence ping — hoisted out of goOnline so the AppState resume
+  // (syncLoopsToAppState) can restart it on returning to the foreground. One
+  // real ping-and-refresh loop covers both jobs: report this rider's current
+  // position (what nearby_online_riders reads) and pull a fresh nearbyOffers
+  // list from it (what nearby_dispatch_offers reads) — no reason to sample GPS
+  // twice for two purposes that both need the exact same fix.
+  async function pingAndRefresh() {
+    const coords = await getCurrentCoordinates().catch(() => null);
+    if (!coords) return; // permission denied / no fix yet — try again next tick
+    const suspendedNow = await updateRiderStatus({ status: 'online', lat: coords.latitude, lng: coords.longitude }).then(
+      () => false,
+      (err: unknown) => handleSuspended(err),
+    );
+    if (suspendedNow) {
+      get().goOffline();
+      return;
+    }
+    const offers = await fetchDispatchOffers(coords.latitude, coords.longitude).catch(() => null);
+    if (offers) set({ nearbyOffers: offers });
+  }
+
+  function startForegroundPing() {
+    stopLocationPing();
+    void pingAndRefresh();
+    locationPingTimer = setInterval(() => void pingAndRefresh(), LOCATION_PING_INTERVAL_MS);
+  }
+
+  return {
   isOnline: false,
   onlineSince: null,
   activeMsToday: 0,
@@ -404,34 +438,30 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
       };
     });
 
-    // One real ping-and-refresh loop covers both jobs: report this
-    // rider's current position (what nearby_online_riders reads) and pull
-    // a fresh nearbyOffers list from it (what nearby_dispatch_offers
-    // reads) — no reason to sample GPS twice for two purposes that both
-    // need the exact same fix.
-    async function pingAndRefresh() {
-      const coords = await getCurrentCoordinates().catch(() => null);
-      if (!coords) return; // permission denied / no fix yet — try again next tick
-      const suspendedNow = await updateRiderStatus({ status: 'online', lat: coords.latitude, lng: coords.longitude }).then(
-        () => false,
-        (err: unknown) => handleSuspended(err),
-      );
-      if (suspendedNow) {
-        get().goOffline();
-        return;
-      }
-      const offers = await fetchDispatchOffers(coords.latitude, coords.longitude).catch(() => null);
-      if (offers) set({ nearbyOffers: offers });
-    }
-
-    stopLocationPing();
-    void pingAndRefresh();
-    locationPingTimer = setInterval(() => void pingAndRefresh(), LOCATION_PING_INTERVAL_MS);
-    // Keeps presence alive once the OS suspends this JS runtime — the
-    // foreground loop above only ticks while the app is open. Best-effort:
-    // no-ops if the rider declined the "Always" location grant.
-    void startBackgroundLocation();
+    // One real ping-and-refresh loop (pingAndRefresh/startForegroundPing,
+    // hoisted above) reports position + pulls nearbyOffers. Dedupe rule: while
+    // FOREGROUNDED the foreground ping is the SOLE /rider/status writer, so the
+    // background-location task is NOT started here — it starts only when the
+    // app backgrounds (syncLoopsToAppState), never alongside the foreground
+    // ping. goOnline only ever runs foregrounded (a tap, or the boot resume),
+    // so this is always the foreground case.
+    startForegroundPing();
     return true;
+  },
+
+  syncLoopsToAppState: (next) => {
+    // ONE source of truth for which loops run (presenceLoops.loopPlan), driven
+    // by the single AppState listener in useAutoOnline. Pauses the 12s poll +
+    // 45s ping on background (battery/data), resumes on foreground, and flips
+    // the sole /rider/status writer between the foreground ping (foregrounded)
+    // and the background task (backgrounded) so there's never a double PATCH.
+    const plan = loopPlan(normalizeAppState(next), get().isOnline);
+    if (plan.assignmentPoll) get().startSync();
+    else get().stopSync();
+    if (plan.presencePing) startForegroundPing();
+    else stopLocationPing();
+    if (plan.backgroundWriter) void startBackgroundLocation();
+    else void stopBackgroundLocation();
   },
 
   goOffline: () => {
@@ -609,7 +639,8 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => ({
 
     void persistHistory(get().completedOrders);
   },
-}));
+  };
+});
 
 // Persist the in-hand and cancelled lists whenever they change, from any
 // mutation path — one place instead of a persist call at every mutation.

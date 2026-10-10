@@ -9,6 +9,9 @@
       ],
       "expo-location": [
         "./node_modules/expo-location"
+      ],
+      "@tanstack/react-query": [
+        "./node_modules/@tanstack/react-query"
       ]
     }
   },

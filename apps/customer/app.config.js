@@ -23,6 +23,12 @@ if (developmentApi || process.env.EAS_BUILD === 'true') {
 
 const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
 
+// EAS project @nishal777/customer. Not a secret: it ties builds, OTA updates
+// and Expo push tokens to this project, so it's fixed here (same shape as
+// apps/partner/app.config.js) rather than read from env — a build can never
+// ship without it.
+const easProjectId = 'a98e9f05-620b-4efb-8624-99d724667e7c';
+
 // Android push (FCM) config, shared by all three apps — see
 // packages/shared/config/google-services.cjs.
 const googleServicesFile = resolveGoogleServicesFile(__dirname, 'com.gloceries.customer');
@@ -35,6 +41,11 @@ module.exports = {
     slug: 'customer',
     scheme: 'gloceries',
     version: '1.0.0',
+    // OTA updates only reach builds with the same runtime version, so a JS
+    // update can never land on a binary missing the native code it needs.
+    // Bump `version` whenever native modules change (mirrors apps/partner).
+    runtimeVersion: { policy: 'appVersion' },
+    updates: { url: `https://u.expo.dev/${easProjectId}`, fallbackToCacheTimeout: 0 },
     orientation: 'portrait',
     // Brand placeholders (lime + Gilroy "g", generated) — replace with designer assets before store listing.
     icon: './assets/icon.png',
@@ -115,7 +126,7 @@ module.exports = {
     ],
     extra: {
       eas: {
-        projectId: 'a98e9f05-620b-4efb-8624-99d724667e7c',
+        projectId: easProjectId,
       },
       // A boolean, never the key itself — LocationSearchScreen.tsx reads
       // this (via expo-constants) to decide whether iOS gets real Google

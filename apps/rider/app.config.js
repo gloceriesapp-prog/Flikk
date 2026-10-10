@@ -46,6 +46,13 @@ module.exports = {
     slug: 'rider',
     owner: 'nishal777',
     version: '1.0.0',
+    // OTA updates only reach builds with the same runtime version, so a JS
+    // update can never land on a binary missing the native code it needs.
+    // Bump `version` whenever native modules change. url uses THIS app's EAS
+    // project id (easProjectId above). Mirrors apps/partner/app.config.js;
+    // eas.json already carries the per-profile channels.
+    runtimeVersion: { policy: 'appVersion' },
+    updates: { url: `https://u.expo.dev/${easProjectId}`, fallbackToCacheTimeout: 0 },
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',

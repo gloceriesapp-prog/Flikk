@@ -7,19 +7,26 @@
 // there's a real, approved session" block) — this hook owns the interval,
 // useOrdersStore.loadOrders() owns the actual fetch + genuinely-new-order
 // detection (see that store's own note on newlyArrivedOrderIds).
+//
+// Short interval (3.5s), not realtime: adding a Supabase realtime client is a
+// product decision this app hasn't taken (no @supabase/supabase-js, no anon
+// key shipped — only EXPO_PUBLIC_API_URL). Until then this is the audit's
+// named stopgap — a tight poll plus the app-root AppState refetch
+// (features/foreground-refresh) so a returning owner sees new orders at once
+// instead of up to a full tick later.
 
 import { useEffect } from 'react';
 import { useOrdersStore } from '../../store/useOrdersStore';
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 3_500;
 
 export function useOrderPolling(): void {
   const loadOrders = useOrdersStore((state) => state.loadOrders);
 
   useEffect(() => {
-    void loadOrders();
+    void loadOrders().catch(() => {});
     const interval = setInterval(() => {
-      void loadOrders();
+      void loadOrders().catch(() => {});
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [loadOrders]);

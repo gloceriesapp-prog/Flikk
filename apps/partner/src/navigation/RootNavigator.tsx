@@ -34,7 +34,7 @@
 // easily be approved since the last time the app was open; trusting a
 // stale local flag would show the wrong screen).
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -52,12 +52,17 @@ import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { useAuthStore } from '../store/useAuthStore';
 import { colors } from '../theme/tokens';
 import { navigationRef } from './navigationRef';
+import { computeColdStartDone } from './coldStart';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 
-// Same fixed duration apps/customer's own RootNavigator.tsx uses — shown
-// on every cold open, always, not just the first ever launch.
-const WELCOME_DURATION_MS = 2000;
+// Short brand floor, not a fixed wall: the splash is hydration-gated now —
+// WelcomeScreen reveals the real stack the instant SecureStore hydration is
+// done, as long as this minimum has elapsed so it never just flashes. Was a
+// flat 2000ms imposed on every cold open regardless of how fast hydration
+// resolved. computeColdStartDone (./coldStart, self-checked) is the gate; same
+// shape as the fix going into apps/customer.
+const WELCOME_MIN_MS = 650;
 
 // Dev-only: flip to true to jump straight into the onboarding wizard
 // (OnboardingIntro → StoreDetails → …) without a real token/no-store
@@ -84,14 +89,17 @@ export function RootNavigator() {
     clear,
   } = useAuthStore();
   const [statusChecked, setStatusChecked] = useState(false);
-  const [welcomeElapsed, setWelcomeElapsed] = useState(false);
+  // Monotonic start of this mount + a one-shot re-render at the floor, so the
+  // gate re-evaluates with a real elapsed even if hydration finished first.
+  const startRef = useRef(Date.now());
+  const [, forceFloorTick] = useState(0);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
   useEffect(() => {
-    const id = setTimeout(() => setWelcomeElapsed(true), WELCOME_DURATION_MS);
+    const id = setTimeout(() => forceFloorTick((n) => n + 1), WELCOME_MIN_MS);
     return () => clearTimeout(id);
   }, []);
 
@@ -158,16 +166,20 @@ export function RootNavigator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHydrated, accessToken]);
 
-  // Cold-start gate only — hydration + the fixed splash timer. This must
-  // NEVER also cover "just logged in, checking account status": accessToken
-  // changes every time OtpVerificationScreen calls setSession (a completely
-  // normal mid-session event, not a fresh app launch), and statusChecked
-  // resets to false on that same change (the effect above's own note on
-  // why) — folding that into this same condition was the actual bug behind
-  // "tapping Continue on OTP takes me back to the Welcome screen." Welcome
-  // is a real branded splash meant for app open, not something that should
-  // flash on every login.
-  const isColdStart = !isHydrated || !welcomeElapsed;
+  // Cold-start gate only — hydration + a short brand floor (computeColdStartDone,
+  // ./coldStart). This must NEVER also cover "just logged in, checking account
+  // status": accessToken changes every time OtpVerificationScreen calls
+  // setSession (a completely normal mid-session event, not a fresh app launch),
+  // and statusChecked resets to false on that same change (the effect above's
+  // own note on why) — folding that into this same condition was the actual bug
+  // behind "tapping Continue on OTP takes me back to the Welcome screen."
+  // Welcome is a real branded splash meant for app open, not something that
+  // should flash on every login.
+  const isColdStart = !computeColdStartDone({
+    hydrated: isHydrated,
+    elapsedMs: Date.now() - startRef.current,
+    minMs: WELCOME_MIN_MS,
+  });
 
   if (isColdStart) {
     return <WelcomeScreen />;

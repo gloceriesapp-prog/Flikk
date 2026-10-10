@@ -8,19 +8,39 @@ import { useCallback, useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider, onlineManager } from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
+import { createAppQueryClient } from './src/network/queryClient';
+import { wireOnlineManager, createNetInfoSubscriber, onlineStore } from './src/network/online';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
 import { useRiderOrdersStore } from './src/store/useRiderOrdersStore';
 import { IncomingOrderAlert } from './src/features/incoming-order-alert/IncomingOrderAlert';
+import { OfflineBanner } from './src/components/OfflineBanner';
 import { AEONIK_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { ReleaseGate } from './src/features/app-release/ReleaseGate';
 
 void SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+// One NetInfo subscription feeds BOTH react-query's onlineManager (pauses/
+// resumes queries offline — kills the ~85s retry hang on a dead network) and
+// the shared onlineStore (drives OfflineBanner), so the two never disagree.
+// Wired at module load, once — onlineManager invokes the subscribe lazily on
+// its first query subscriber. Same wiring as apps/customer's App.tsx.
+wireOnlineManager(onlineManager, (setOnline) =>
+  createNetInfoSubscriber(NetInfo)((online) => {
+    setOnline(online);
+    onlineStore.setOnline(online);
+  }),
+);
+
+// Shared base config (staleTime 60s, retry only transient/5xx twice, no
+// window-focus refetch) instead of bare `new QueryClient()` — see
+// @gloceries/shared createAppQueryClient. Per-query staleTime overrides go on
+// the individual useQuery, never by weakening this base.
+const queryClient = createAppQueryClient();
 
 export default function App() {
   // Loading the weights here registers them with the OS by font-family
@@ -55,6 +75,7 @@ export default function App() {
             {hasSession ? <IncomingOrderAlert /> : null}
           </ReleaseGate>
         </ErrorBoundary>
+        <OfflineBanner />
         <StatusBar style="dark" />
       </QueryClientProvider>
     </SafeAreaProvider>

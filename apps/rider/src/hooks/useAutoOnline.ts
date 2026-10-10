@@ -15,6 +15,13 @@
 // check, no network), and a minute of latency on "should be online now" is
 // invisible to a rider. Availability itself is only re-fetched on mount and on
 // foreground, not every tick.
+//
+// This hook also owns the SINGLE AppState listener for the authed app shell,
+// so it additionally drives the store's presence/assignment loop pause-resume
+// (syncLoopsToAppState): on background the 12s poll + 45s ping stop and the
+// background-location task takes over as the sole /rider/status writer; on
+// foreground they resume and the bg task stands down (see presenceLoops.ts).
+// Kept here rather than as a competing second listener — one source of truth.
 
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
@@ -61,13 +68,20 @@ export function useAutoOnline() {
       void goOnline();
     }
 
-    // Prime config, then evaluate once we (probably) have it.
+    // Prime config, then evaluate once we (probably) have it. Also reconcile
+    // the loops to the current foreground phase immediately on mount (e.g. a
+    // boot resume that went online in the foreground must have its bg task
+    // stood down right away).
+    useRiderOrdersStore.getState().syncLoopsToAppState(AppState.currentState);
     void refreshConfig().then(() => {
       if (!cancelled) void maybeGoOnline();
     });
 
     const interval = setInterval(() => void maybeGoOnline(), RECHECK_INTERVAL_MS);
     const sub = AppState.addEventListener('change', (next) => {
+      // Every transition reconciles the loops (background pauses + hands the
+      // sole presence writer to the bg task; foreground resumes + reclaims it).
+      useRiderOrdersStore.getState().syncLoopsToAppState(next);
       if (next === 'active') void refreshConfig().then(() => void maybeGoOnline());
     });
 

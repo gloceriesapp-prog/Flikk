@@ -14,7 +14,8 @@ import { useCallback, useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createAppQueryClient } from './src/network/queryClient';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
@@ -26,22 +27,20 @@ import { useOrderExpiryWatcher } from './src/features/order-expiry/useOrderExpir
 import { ReleaseGate } from './src/features/app-release/ReleaseGate';
 import { DeliveryEarnedBanner } from './src/features/delivery-earned-alert/DeliveryEarnedBanner';
 import { useDeliveryEarnedWatcher } from './src/features/delivery-earned-alert/useDeliveryEarnedWatcher';
+import { OfflineBanner } from './src/components/OfflineBanner';
+import { NotificationsOffBanner } from './src/features/push-notifications/NotificationsOffBanner';
+import { useForegroundRefresh } from './src/features/foreground-refresh/useForegroundRefresh';
+import { initOnlineWiring } from './src/network/onlineWiring';
 
 void SplashScreen.preventAutoHideAsync();
 
-// staleTime: 60s — every useQuery call (Payouts, PayoutOrderHistory) was
-// refetching on every single mount (default staleTime is 0, "always
-// stale"), same real bug apps/customer/App.tsx's own QueryClient already
-// had fixed — a payout settlement or its order breakdown barely changes
-// minute to minute, so this only skips the redundant automatic refetch
-// for data that's still fresh, not anything that needs to be live.
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60 * 1000,
-    },
-  },
-});
+// Shared TanStack Query config (packages/shared/src/query/queryClient.ts):
+// staleTime 60s (same base partner already ran — payouts/order-history barely
+// change minute to minute, so this skips the redundant automatic refetch for
+// data that's still fresh) PLUS the retry fix partner's inline client was
+// missing — queries retry only transient (network/5xx) failures twice instead
+// of blindly 3x, mutations never auto-retry. One instance, created once.
+const queryClient = createAppQueryClient();
 
 function App() {
   // Loading the weights here registers them with the OS by font-family
@@ -53,10 +52,20 @@ function App() {
   // work with NativeWind's cssInterop-wrapped Text.
   const [fontsLoaded, fontError] = useFonts(AEONIK_FONT_FILES);
   const hasFullAccess = useAuthStore((s) => !!s.accessToken && s.hasStore && s.isApproved);
+  const isLoggedIn = useAuthStore((s) => !!s.accessToken);
 
   const onRootLayout = useCallback(() => {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
+
+  // Teach react-query's onlineManager AND the offline-banner store about the
+  // network from one NetInfo subscription (src/network/onlineWiring.ts). Set up
+  // once at app root; torn down on unmount.
+  useEffect(() => initOnlineWiring(), []);
+
+  // Single app-root AppState listener: refetch the queue on return-to-foreground
+  // (only when a real approved session is polling) and re-check push permission.
+  useForegroundRefresh(hasFullAccess, isLoggedIn);
 
   // Grace-phase enforcer for the two-phase accept window (see
   // features/order-expiry/orderExpiry.ts). Called unconditionally — hooks
@@ -104,6 +113,12 @@ function App() {
               <DeliveryEarnedBanner />
             </>
           )}
+          {/* App-wide, not gated to hasFullAccess — connectivity loss and
+              notifications-off both matter on any screen (a store owner stuck
+              on Waiting-for-approval still needs to know push is off before
+              their first order ever lands). Last in the tree = painted on top. */}
+          <OfflineBanner />
+          <NotificationsOffBanner />
         </ReleaseGate>
         <StatusBar style="dark" />
       </QueryClientProvider>

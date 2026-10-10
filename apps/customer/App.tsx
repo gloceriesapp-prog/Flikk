@@ -10,13 +10,16 @@ import { useCallback } from 'react';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider, onlineManager } from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
+import { wireOnlineManager, createNetInfoSubscriber, onlineStore } from './src/network/online';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { GILROY_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { OfflineBanner } from './src/components/OfflineBanner';
 import { ReleaseGate } from './src/features/app-release/ReleaseGate';
 
 registerAccountReset(() => {
@@ -27,6 +30,17 @@ registerAccountReset(() => {
 });
 
 void SplashScreen.preventAutoHideAsync();
+
+// One NetInfo subscription feeds BOTH react-query's onlineManager (pauses/
+// resumes queries offline) and the shared onlineStore (drives OfflineBanner),
+// so the two never disagree. Wired at module load, once — onlineManager invokes
+// the subscribe lazily on its first query subscriber.
+wireOnlineManager(onlineManager, (setOnline) =>
+  createNetInfoSubscriber(NetInfo)((online) => {
+    setOnline(online);
+    onlineStore.setOnline(online);
+  }),
+);
 
 function App() {
   useAuthStore(state => state.sessionEpoch);
@@ -78,6 +92,8 @@ function App() {
                 <RootNavigator />
               </ReleaseGate>
             </ErrorBoundary>
+            {/* App-wide, overlays everything; renders null while online. */}
+            <OfflineBanner />
           </QueryClientProvider>
         </KeyboardProvider>
       </SafeAreaProvider>

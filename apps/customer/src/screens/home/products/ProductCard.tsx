@@ -9,23 +9,14 @@
 // their own nested Pressables and absorb the touch first) opens
 // ProductDetailSheet.
 //
-// Also where the detail sheet's "similar products" data/images get warmed
-// BEFORE the tap that needs them: RN's own <Modal> fully unmounts its
-// children while visible={false} (Modal.js's own _shouldShowModal — on
-// Android that's a hard `props.visible === true`, no grace period), so
-// ProductDetailSheet's useSimilarProducts call doesn't even exist yet at
-// this point — every open used to start that fetch from zero, which is
-// what made the peek-pager siblings and the "Similar products" row visibly
-// pop in a beat after the sheet itself appeared. This component, by
-// contrast, stays mounted for as long as the card is in the list, so
-// calling the same hook (same query key => same React Query cache entry)
-// here fires the request as soon as the card scrolls into view — usually
-// finished well before anyone taps it. Prefetching the resulting photos
-// too closes the other half of the gap: expo-image already caches the
-// product's OWN photo for free (it's the exact image already on-screen in
-// the grid), but the similar-products photos are ones the user hasn't
-// seen yet and would otherwise still cost a real network fetch at open
-// time.
+// Also warms the detail sheet's "similar products" data/images — but ONLY
+// once this card is tapped open (isDetailOpen), never on mount. RN's <Modal>
+// fully unmounts its children while visible={false}, so ProductDetailSheet's
+// own useSimilarProducts doesn't exist until it opens; this hook shares the
+// exact same query key, so when the sheet opens the two dedupe into one
+// request and the sibling list/photos are warmed in parallel with the sheet
+// mounting. Gating on isDetailOpen is deliberate: calling it unconditionally
+// here made a full Home grid fire ~36 similar-product requests on one open.
 
 import { useEffect, useState } from 'react';
 import { prefetchImages } from '../../../components/AppImage';
@@ -45,8 +36,13 @@ interface Props {
 export function ProductCard({ product, widthClassName, showDiscountBadge, compact, onDark }: Props) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  // Gated on isDetailOpen: this fires ONLY once the card is tapped open, not on
+  // mount — a whole Home grid of cards used to each fire this on mount (~36
+  // requests on one Home open). Once open, the sheet's own useSimilarProducts
+  // shares this exact query key, so the two dedupe into one request and the
+  // similar list still populates. prefetchImages then warms the sibling photos.
   const needsSimilar = !product.relatedProducts;
-  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId);
+  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId, isDetailOpen);
   useEffect(() => {
     if (similar.data) prefetchImages(similar.data.map((p) => p.imageUrl));
   }, [similar.data]);
