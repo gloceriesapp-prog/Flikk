@@ -474,6 +474,10 @@
       "sha256": "6cf0e4fa0d2088917ea38f9acc8d185e8a12215650f8fef1ecc96623bf5a3edc"
     },
     {
+      "file": "119_kyc_document_encryption.sql",
+      "sha256": "d01f06f0a95f7013470391ee2e7a93f1c79812a341b9e160f4a4a887dedb4f9f"
+    },
+    {
       "file": "20261008161055_rider_reviewed_profile_changes.sql",
       "sha256": "12450b2817586aa2c1ab66a29eb3602ec7dd2287d2bc5dc3d08fd483352a0f95"
     },

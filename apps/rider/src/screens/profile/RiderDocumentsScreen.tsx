@@ -5,10 +5,12 @@
 // emergency contact, and payout destination. All from GET /rider/profile
 // (useRiderProfile) — the same masked shape the profile screen uses.
 //
-// The raw Aadhaar/DL scan images live in the PRIVATE rider-documents bucket;
-// /rider/profile signs short-lived URLs for them (aadhaarPhotoUrl/dlPhotoUrl),
-// same as the profile photo. Null url (no scan on file) -> the image row is
-// simply omitted, numbers still show.
+// The raw Aadhaar/DL scans are now stored ENCRYPTED server-side; /rider/profile
+// returns photoUrl/aadhaarPhotoUrl/dlPhotoUrl pointing at the AUTHENTICATED
+// backend byte-proxy (GET /rider/documents/:id) instead of public signed URLs.
+// Each image fetch must carry the rider's bearer token (authSource below), and
+// a relative path is resolved against the API base. Null url (no scan on file)
+// -> the image row is simply omitted, numbers still show.
 
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
@@ -16,12 +18,22 @@ import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { useRiderProfile } from './useRiderProfile';
+import { API_URL } from '../../api/client';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useRiderProfile } from './useRiderProfile';
 import { RiderProfileChangeForm } from './RiderProfileChangeForm';
 import type { RiderProfile } from '../../api/profile';
 
 const CARD_BORDER = '#EAECEE';
+
+// Proxy URLs require Authorization; a relative /rider/documents/:id is resolved
+// against the API base. Returns the RN Image source for an authenticated asset.
+function authSource(uri: string, token: string | null) {
+  return {
+    uri: uri.startsWith('/') ? `${API_URL}${uri}` : uri,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  };
+}
 
 const VEHICLE_LABEL: Record<NonNullable<RiderProfile['vehicleType']>, string> = {
   bicycle: 'Bicycle',
@@ -42,6 +54,8 @@ export function RiderDocumentsScreen() {
   const navigation = useNavigation();
   const phone = useAuthStore((state) => state.phone);
   const { data: profile, isLoading } = useRiderProfile();
+  // Reactive so a token refresh re-renders the images with the new bearer.
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   if (isLoading && !profile) {
     return (
@@ -75,7 +89,7 @@ export function RiderDocumentsScreen() {
       <ScrollView contentContainerClassName="gap-4 px-5 pb-10 pt-2" showsVerticalScrollIndicator={false}>
         {profile?.photoUrl && (
           <View className="items-center">
-            <Image source={{ uri: profile.photoUrl }} className="h-24 w-24 rounded-full" resizeMode="cover" />
+            <Image source={authSource(profile.photoUrl, accessToken)} className="h-24 w-24 rounded-full" resizeMode="cover" />
             <Text className="mt-2 text-[13px] font-semibold text-ink/50">Profile photo</Text>
           </View>
         )}
@@ -88,9 +102,9 @@ export function RiderDocumentsScreen() {
 
         <Section title="Identity">
           <Field label="Aadhaar number" value={profile?.aadhaarMasked} verified />
-          <DocImage label="Aadhaar scan" uri={profile?.aadhaarPhotoUrl} />
+          <DocImage label="Aadhaar scan" uri={profile?.aadhaarPhotoUrl} token={accessToken} />
           <Field label="Driving licence" value={profile?.dlNumber} verified />
-          <DocImage label="Licence scan" uri={profile?.dlPhotoUrl} last />
+          <DocImage label="Licence scan" uri={profile?.dlPhotoUrl} token={accessToken} last />
         </Section>
 
         <Section title="Vehicle">
@@ -140,14 +154,15 @@ function Field({ label, value, verified, last }: { label: string; value?: string
   );
 }
 
-// The actual ID scan (signed URL). Omitted entirely when no scan is on file
+// The actual ID scan, fetched through the authenticated byte-proxy (bearer
+// token attached via authSource). Omitted entirely when no scan is on file
 // (uri null) — the number Field above already stands on its own.
-function DocImage({ label, uri, last }: { label: string; uri?: string | null; last?: boolean }) {
+function DocImage({ label, uri, token, last }: { label: string; uri?: string | null; token: string | null; last?: boolean }) {
   if (!uri) return null;
   return (
     <View className={`gap-2 py-3 ${last ? '' : 'border-b border-black/5'}`}>
       <Text className="text-[13px] font-medium text-ink/45">{label}</Text>
-      <Image source={{ uri }} className="h-44 w-full rounded-xl bg-black/5" resizeMode="cover" />
+      <Image source={authSource(uri, token)} className="h-44 w-full rounded-xl bg-black/5" resizeMode="cover" />
     </View>
   );
 }

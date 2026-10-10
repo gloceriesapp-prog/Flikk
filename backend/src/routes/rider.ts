@@ -11,6 +11,7 @@ import { createNotification } from '../lib/notifications.js';
 import { validateAvailability } from '../lib/riderSchedule.js';
 import { computeRiderStats } from '../lib/riderStats.js';
 import { DELIVERY_MONEY_COLUMNS, withDeliveryMoney, type DeliveryMoneyOrder } from '../lib/riderDeliveryMoney.js';
+import { readPrivateDocument } from '../media/privateDocuments.js';
 
 export const riderRouter = Router();
 
@@ -29,13 +30,29 @@ function maskAadhaar(full: string | null): string | null {
   return `XXXX XXXX ${full.replace(/\s/g, '').slice(-4)}`;
 }
 
-// Object paths on the PRIVATE rider-documents bucket -> short-lived signed
-// URLs. Only the rider's own service-role read can mint these (bucket is
-// never public). Null path -> null url so the app renders a placeholder.
-async function signRiderDoc(path: string | null): Promise<string | null> {
+// A stored rider-documents object PATH -> an absolute URL the app fetches the
+// bytes through (GET /rider/documents/:id below). KYC docs are now stored
+// ENCRYPTED (ciphertext, `.enc` object), so a Supabase signed URL can no
+// longer read them — the bytes have to go through readPrivateDocument, which
+// downloads and decrypts. Resolves the path to its newest ready media_assets
+// row owned by this rider; null path or no such asset -> null so the app
+// renders a placeholder.
+async function resolveRiderDocUrl(path: string | null, userId: string): Promise<string | null> {
   if (!path) return null;
-  const { data } = await supabase.storage.from('rider-documents').createSignedUrl(path, 60 * 60);
-  return data?.signedUrl ?? null;
+  const { data } = await supabase
+    .from('media_assets')
+    .select('id')
+    .eq('object_key', path)
+    .eq('uploaded_by', userId)
+    .eq('bucket', 'rider-documents')
+    .eq('status', 'ready')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  // Absolute when PUBLIC_API_URL is set; relative otherwise — the rider app
+  // resolves a relative path against its own configured API base.
+  return `${process.env.PUBLIC_API_URL ?? ''}/rider/documents/${data.id}`;
 }
 riderRouter.use(requireAuth, requireRole('rider'), requireApproved);
 
@@ -487,6 +504,43 @@ riderRouter.get('/payouts', async (req: AuthedRequest, res, next) => {
   }
 });
 
+// Streams the decrypted bytes of one of the rider's own rider-documents
+// assets (KYC photos). The /rider/profile photoUrl/aadhaarPhotoUrl/dlPhotoUrl
+// fields point here. Authorization is ownership + bucket + readiness: serve
+// only an asset uploaded_by this rider, in the rider-documents bucket, with
+// status 'ready'; any miss is a flat 404 so the endpoint never confirms that
+// some other rider's assetId exists. readPrivateDocument handles both
+// encrypted (decrypt) and legacy plaintext assets. Private, never cached.
+riderRouter.get('/documents/:assetId', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data: asset } = await supabase
+      .from('media_assets')
+      .select('bucket, object_key, content_type, encrypted, enc_iv, enc_tag, wrapped_dek, wrap_iv, wrap_tag, kek_id, uploaded_by, status')
+      .eq('id', req.params.assetId)
+      .maybeSingle();
+    if (!asset || asset.uploaded_by !== req.user!.id || asset.bucket !== 'rider-documents' || asset.status !== 'ready') {
+      throw new AppError(404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+    }
+
+    let bytes: Buffer;
+    let contentType: string;
+    try {
+      ({ bytes, contentType } = await readPrivateDocument(asset));
+    } catch (readErr) {
+      // Download/decrypt failure: log server-side, leak no detail to the client.
+      console.error('rider document read failed', req.params.assetId, readErr);
+      throw new AppError(500, 'DOCUMENT_READ_FAILED', 'Document could not be retrieved.');
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(bytes);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // The single sync source for the rider app's own profile screen. Post-
 // approval the onboarding draft is deleted (admin's approve route copies
 // draft -> riders then DROPs it), so the `riders` row is the ONLY place the
@@ -507,13 +561,14 @@ riderRouter.get('/profile', async (req: AuthedRequest, res, next) => {
     const { data: user } = await supabase.from('users').select('phone').eq('id', req.user!.id).single();
 
     // photo_url, aadhaar_photo_url, dl_photo_url are all object PATHs on the
-    // PRIVATE rider-documents bucket — sign short-lived URLs so the app can
-    // render them without the bucket ever being public. Same pattern admin's
-    // approvals route already uses (signPhotoUrls). Null path -> null url.
+    // PRIVATE rider-documents bucket. Resolve each to its media_assets row and
+    // return a /rider/documents/:id URL — the bytes stream through that
+    // endpoint (which decrypts the encrypted KYC docs); a Supabase signed URL
+    // can no longer read the ciphertext. Null path -> null url.
     const [photoUrl, aadhaarPhotoUrl, dlPhotoUrl] = await Promise.all([
-      signRiderDoc(rider.photo_url),
-      signRiderDoc(rider.aadhaar_photo_url),
-      signRiderDoc(rider.dl_photo_url),
+      resolveRiderDocUrl(rider.photo_url, req.user!.id),
+      resolveRiderDocUrl(rider.aadhaar_photo_url, req.user!.id),
+      resolveRiderDocUrl(rider.dl_photo_url, req.user!.id),
     ]);
 
     res.json({
