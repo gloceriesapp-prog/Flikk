@@ -13,11 +13,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../api/client';
 import { mapApiProduct, type ApiProduct } from '../../api/products';
+import { similarProductsEnabled } from './similarProductsEnabled';
 
-export function useSimilarProducts(category: string | undefined, excludeId: string, storeId?: string) {
+export { similarProductsEnabled } from './similarProductsEnabled';
+
+export function useSimilarProducts(category: string | undefined, excludeId: string, storeId?: string, shouldFetch = true) {
   return useQuery({
     queryKey: ['product-detail', 'similar', category, excludeId, storeId],
-    enabled: Boolean(category),
+    enabled: similarProductsEnabled(shouldFetch, category),
     queryFn: async () => {
       const params = new URLSearchParams({ category: category!, exclude: excludeId });
       if (storeId) params.set('storeId', storeId);

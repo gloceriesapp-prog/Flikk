@@ -36,6 +36,7 @@
 import { create } from 'zustand';
 import { fetchOrders, updateOrderStatus, type ApiOrder } from '../api/orders';
 import { buildSampleOrders, buildSimulatedIncomingOrder, mapApiOrder, type PartnerOrder } from '../screens/orders/data';
+import { computeNewlyArrivedIds, computeJustDeliveredIds } from './orderBaseline';
 
 // India-only single-zone app (CLAUDE.md) — 'Asia/Kolkata' explicitly, not
 // the device's own timezone, so this reads the real IST calendar day
@@ -137,23 +138,16 @@ export const useOrdersStore = create<OrdersState>((set) => ({
     }
 
     set((state) => {
-      const previousIds = new Set(state.orders.map((o) => o.id));
-      const previousStatusById = new Map(state.orders.map((o) => [o.id, o.status]));
-      const genuinelyNew = state.baselineEstablished
-        ? mapped.filter((o) => o.status === 'placed' && !previousIds.has(o.id)).map((o) => o.id)
-        : [];
+      // Baseline/diff logic lives in ./orderBaseline (pure, self-checked) —
+      // this is the money path (a missed 'placed' = an auto-rejected order).
+      const genuinelyNew = computeNewlyArrivedIds(state.orders, mapped, state.baselineEstablished);
       // Was present before with a real, DIFFERENT status — not "just
-      // appeared as delivered" (that's a stale/late poll catching up, not
-      // a fresh transition worth interrupting the owner about) and not on
-      // the very first load (baselineEstablished false — a store owner
-      // opening the app to 3 already-delivered orders from earlier today
-      // shouldn't get 3 "you earned" banners just because this was the
-      // first fetch, same reasoning as genuinelyNew above).
-      const genuinelyJustDelivered = state.baselineEstablished
-        ? mapped
-            .filter((o) => o.status === 'delivered' && previousStatusById.has(o.id) && previousStatusById.get(o.id) !== 'delivered')
-            .map((o) => o.id)
-        : [];
+      // appeared as delivered" (a stale/late poll catching up, not a fresh
+      // transition worth interrupting the owner about) and not on the very
+      // first load (baselineEstablished false — a store owner opening the app
+      // to 3 already-delivered orders from earlier today shouldn't get 3 "you
+      // earned" banners just because this was the first fetch).
+      const genuinelyJustDelivered = computeJustDeliveredIds(state.orders, mapped, state.baselineEstablished);
 
       return {
         orders: mapped,

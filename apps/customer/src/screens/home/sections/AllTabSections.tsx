@@ -42,8 +42,7 @@ import { TrendingSection } from '../trending/TrendingSection';
 import { useDealsProducts } from './useDealsProducts';
 import { useHomeSections, type HomeSectionConfig } from '../useHomeSections';
 import type { Product } from '../products/types';
-import { useNearbyGroceryInventory } from '../groceries/useNearbyGroceryInventory';
-import { BrowseLoadingText } from '../loading/BrowseLoadingText';
+import { SectionSkeleton } from '../loading/SectionSkeleton';
 import { FestivalPicksSection } from '../festival/picks/FestivalPicksSection';
 import { SeasonalSection } from '../seasonal/SeasonalSection';
 
@@ -122,13 +121,30 @@ export function AllTabSections({ onSelectCategory }: Props) {
   // Continue the exact final header colour rather than restarting its
   // gradient or maintaining a separate shortcut colour that can drift.
   const shortcutsBackground = useActiveHeaderGradient('all', false).bottomColor;
-  const { data: dealsProducts = [] } = useDealsProducts();
-  const { data: trending = [] } = usePopularProducts(7);
-  const { data: mostBought = [] } = usePopularProducts(30);
-  const { data: essentials = [] } = useEverydayEssentials();
+  const dealsQuery = useDealsProducts();
+  const trendingQuery = usePopularProducts(7);
+  const mostBoughtQuery = usePopularProducts(30);
+  const essentialsQuery = useEverydayEssentials();
+  const dealsProducts = dealsQuery.data ?? [];
+  const trending = trendingQuery.data ?? [];
+  const mostBought = mostBoughtQuery.data ?? [];
+  const essentials = essentialsQuery.data ?? [];
   const { data: sectionConfig } = useHomeSections();
-  const inventory = useNearbyGroceryInventory();
   const t = useCopyText();
+
+  // Per-section loading: a section whose product feed is still loading shows a
+  // SectionSkeleton (stable layout, paints in on arrival) instead of null.
+  // Only the feed-driven rows are listed here; every other section owns its
+  // own query and renders progressively on its own (nearby-stores,
+  // category-sections, etc.). No global gate — each section is independent.
+  const sectionLoading: Partial<Record<string, boolean>> = {
+    'price-drops': dealsQuery.isPending,
+    'todays-best-deals': dealsQuery.isPending,
+    'deals-for-you': dealsQuery.isPending,
+    trending: trendingQuery.isPending,
+    'most-bought': mostBoughtQuery.isPending,
+    'everyday-essentials': essentialsQuery.isPending,
+  };
 
   const ctx: SectionCtx = {
     rows: assignDistinctRows(ROW_PRIORITY, {
@@ -179,11 +195,18 @@ export function AllTabSections({ onSelectCategory }: Props) {
         <HomeWelcomeBanner backgroundColor={shortcutsBackground} />
       </View>
       {sections.map((cfg) => {
-        if (inventory.isLoading && cfg.key !== 'quick-categories') return null;
         const render = SECTION_REGISTRY[cfg.key];
         if (!render) return null; // config key with no code section yet
         const node = render(ctx, sectionCopy(cfg));
-        if (!node) return null; // section chose to render nothing (no data etc.)
+        if (!node) {
+          // Section rendered nothing. If its own feed is still loading, hold a
+          // fixed-height skeleton so the layout doesn't jump when data lands;
+          // if it's genuinely empty (loaded, no data), render nothing.
+          if (sectionLoading[cfg.key]) {
+            return <View key={cfg.key}><SectionSkeleton /></View>;
+          }
+          return null;
+        }
         return (
           <View key={cfg.key} style={cfg.key === 'quick-categories' && ctx.quickCategoriesLeading ? {
             backgroundColor: shortcutsBackground,
@@ -196,7 +219,6 @@ export function AllTabSections({ onSelectCategory }: Props) {
           </View>
         );
       })}
-      {inventory.isLoading && <BrowseLoadingText />}
     </View>
   );
 }

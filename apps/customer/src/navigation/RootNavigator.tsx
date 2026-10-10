@@ -7,13 +7,14 @@
 // isGuest is in-memory only (see useAuthStore.ts's own note) so it doesn't
 // need to wait on hydration the way accessToken does.
 //
-// WelcomeScreen (WELCOME_DURATION_MS) is a real timed gate, not just a
-// loading spinner with a logo slapped on — it shows on EVERY cold open,
-// for a fixed minimum, regardless of how fast hydration itself resolves
-// (near-instant from SecureStore in practice). Whichever finishes last —
-// the timer or hydration — is what actually reveals the real stack;
-// hydration taking longer than the timer (a slow device) still waits for
-// it rather than racing an unhydrated accessToken into the wrong branch.
+// WelcomeScreen shows on EVERY cold open until hydration completes, with a
+// small minimum floor (MIN_WELCOME_MS) so a near-instant hydration doesn't
+// flash the logo for one frame — it is NOT a fixed multi-second gate. Whichever
+// finishes last — the min floor or hydration — reveals the real stack;
+// hydration taking longer than the floor (a slow device) still waits for it
+// rather than racing an unhydrated accessToken into the wrong branch. The
+// pure decision lives in welcomeGate.ts (computeWelcomeVisible) so it's
+// unit-tested without a renderer.
 //
 // Also hydrates useLocationStore here, before AppNavigator ever mounts —
 // AppNavigator picks its initial route (LocationPermission vs. Home) off that
@@ -32,10 +33,13 @@ import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 import { linking } from './linking';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
+import { computeWelcomeVisible } from './welcomeGate';
 import { useNotifications } from '../features/notifications/useNotifications';
 import { notificationNavigation, flushOrderNotification } from '../features/notifications/navigation';
 
-const WELCOME_DURATION_MS = 5000;
+// Minimum floor the WelcomeScreen stays up (ms) — just long enough to avoid a
+// one-frame flash when SecureStore hydration resolves almost instantly.
+const MIN_WELCOME_MS = 700;
 
 export function RootNavigator() {
   useDeliverySettingsSync();
@@ -45,7 +49,7 @@ export function RootNavigator() {
   const [cartReady, setCartReady] = useState(false);
   const [cartError, setCartError] = useState(false);
   const [cartRetry, setCartRetry] = useState(0);
-  const [welcomeElapsed, setWelcomeElapsed] = useState(false);
+  const [minElapsed, setMinElapsed] = useState(false);
 
   useEffect(() => {
     hydrateAuth();
@@ -53,7 +57,7 @@ export function RootNavigator() {
   }, [hydrateAuth, hydrateLocation]);
 
   useEffect(() => {
-    const id = setTimeout(() => setWelcomeElapsed(true), WELCOME_DURATION_MS);
+    const id = setTimeout(() => setMinElapsed(true), MIN_WELCOME_MS);
     return () => clearTimeout(id);
   }, []);
 
@@ -70,7 +74,12 @@ export function RootNavigator() {
     return () => { mounted = false; stop(); };
   }, [authHydrated, authError, cartRetry]);
 
-  const isHydrated = authHydrated && locationHydrated && welcomeElapsed && (cartReady || !!authError);
+  const hydrated = authHydrated && locationHydrated && (cartReady || !!authError);
+  const welcomeVisible = computeWelcomeVisible({
+    hydrated,
+    elapsedMs: minElapsed ? MIN_WELCOME_MS : 0,
+    minMs: MIN_WELCOME_MS,
+  });
 
   // Wishlist is account-backed now (useWishlistStore's own note) — loaded
   // once per fresh login same as the push-token registration above, and
@@ -86,7 +95,7 @@ export function RootNavigator() {
     }
   }, [authHydrated, accessToken]);
 
-  if (!isHydrated) {
+  if (welcomeVisible) {
     return <WelcomeScreen />;
   }
 

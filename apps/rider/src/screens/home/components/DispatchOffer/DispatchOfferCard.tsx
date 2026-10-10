@@ -103,8 +103,9 @@ export function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = of
         </View>
       </View>
 
-      {/* Route preview — only when both ends have real coords. */}
-      {hasRoute ? <OfferRoutePreview storeCoords={offer.storeCoords!} dropCoords={offer.dropCoords!} /> : null}
+      {/* Static route preview — pins + distance, no MapView (see
+          OfferRoutePreview). Shown only when both ends are geocoded. */}
+      {hasRoute ? <OfferRoutePreview totalKm={offer.totalKm} /> : null}
 
       {/* Accept / Decline */}
       <View className="gap-2.5">
