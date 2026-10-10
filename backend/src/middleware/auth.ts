@@ -6,6 +6,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { accountAdmission } from '../security/admission.js';
 import { authenticate } from '../auth/authenticate.js';
 import { partnerSuspendedError, partnerSuspension } from '../auth/partnerSuspension.js';
+import { riderSuspendedError, riderSuspension } from '../auth/riderSuspension.js';
 import { AppError } from '../lib/errors.js';
 import type { Role } from '../lib/orderStateMachine.js';
 
@@ -59,6 +60,20 @@ export async function requireActivePartner(req: AuthedRequest, _res: Response, n
   try {
     const status = await partnerSuspension(req.user.id);
     if (status.suspended) return next(partnerSuspendedError(status.reason));
+    next();
+  } catch (error) { next(error); }
+}
+
+// rider only: the mirror of requireActivePartner. An admin-suspended rider
+// (migration 110's riders.is_active=false) is refused on every rider data
+// route with RIDER_SUSPENDED and the reason, so the rider app shows a
+// blocking "account suspended" screen instead of silently serving
+// assignments/earnings/profile to a rider the founder has taken offline.
+export async function requireActiveRider(req: AuthedRequest, _res: Response, next: NextFunction) {
+  if (req.user?.role !== 'rider') return next();
+  try {
+    const status = await riderSuspension(req.user.id);
+    if (status.suspended) return next(riderSuspendedError(status.reason));
     next();
   } catch (error) { next(error); }
 }

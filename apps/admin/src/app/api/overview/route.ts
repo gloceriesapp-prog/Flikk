@@ -4,10 +4,12 @@
 // PostgREST's 1,000-row page (all-time top-store totals and the week's
 // completion/average once volume grew); counting in Postgres has no cap.
 //
-// "Riders online" from the reference design doesn't exist as real data —
-// no rider app heartbeat/presence column exists yet (riders.is_active is
-// "approved and enabled", not "has the app open right now"). Reported
-// here as activeRiders and labelled honestly on the client.
+// "Riders online" is now REAL presence, not the approved-rider count the
+// admin_overview_stats RPC still returns as activeRiders. We count riders
+// whose status is 'online' with a position ping inside the dispatch freshness
+// window (lib/riderPresence) — the same "live now" rule the riders page and
+// the dispatch map use — so a killed app drops off instead of counting
+// forever. activeRiders from the RPC is ignored here.
 //
 // Days are IST calendar days. completionRate is delivered / (delivered +
 // cancelled) over the last 7 IST days plus today; avgDeliveryMinutes is the
@@ -17,6 +19,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { isFreshPing } from '@/lib/riderPresence';
 
 interface OverviewAggregate {
   totalOrdersToday: number;
@@ -34,9 +37,20 @@ export async function GET() {
   const { denied } = await requireAdmin();
   if (denied) return denied;
   try {
-    const { data, error } = await supabaseAdmin.rpc('admin_overview_stats', {});
-    if (error) throw error;
-    const stats = data as OverviewAggregate;
+    const now = Date.now();
+    const [statsRes, onlineRes] = await Promise.all([
+      supabaseAdmin.rpc('admin_overview_stats', {}),
+      supabaseAdmin
+        .from('riders')
+        .select('last_location_update')
+        .eq('status', 'online')
+        .not('current_lat', 'is', null)
+        .not('current_lng', 'is', null),
+    ]);
+    if (statsRes.error) throw statsRes.error;
+    if (onlineRes.error) throw onlineRes.error;
+    const stats = statsRes.data as OverviewAggregate;
+    const ridersOnline = (onlineRes.data ?? []).filter((r) => isFreshPing(r.last_location_update as string | null, now)).length;
     const today = Number(stats.totalOrdersToday ?? 0);
     const yesterday = Number(stats.ordersYesterday ?? 0);
     const delivered = Number(stats.weekDelivered ?? 0);
@@ -46,7 +60,7 @@ export async function GET() {
       ordersTodayChangePct: yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 1000) / 10 : undefined,
       pendingOrders: Number(stats.pendingOrders ?? 0),
       activeStores: Number(stats.activeStores ?? 0),
-      activeRiders: Number(stats.activeRiders ?? 0),
+      activeRiders: ridersOnline,
       avgDeliveryMinutes: Number(stats.avgDeliveryMinutes ?? 0),
       completionRate: delivered + cancelled > 0 ? (delivered / (delivered + cancelled)) * 100 : 100,
       topStores: (stats.topStores ?? []).map((s) => ({

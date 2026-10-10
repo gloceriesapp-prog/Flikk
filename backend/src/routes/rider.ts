@@ -4,7 +4,8 @@ import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
-import { requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
+import { requireActiveRider, requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
+import { riderSuspendedError } from '../auth/riderSuspension.js';
 import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../lib/payoutAccount.js';
 import { fetchRoute } from '../lib/routeDirections.js';
 import { createNotification } from '../lib/notifications.js';
@@ -37,15 +38,12 @@ async function signRiderDoc(path: string | null): Promise<string | null> {
   const { data } = await supabase.storage.from('rider-documents').createSignedUrl(path, 60 * 60);
   return data?.signedUrl ?? null;
 }
-riderRouter.use(requireAuth, requireRole('rider'), requireApproved);
-
-function riderSuspendedError(reason: string | null): AppError {
-  return new AppError(
-    403,
-    'RIDER_SUSPENDED',
-    reason ? `Your rider account is suspended: ${reason}` : 'Your rider account is suspended. Contact Gloceries support.',
-  );
-}
+// requireActiveRider mirrors partner.ts's requireActivePartner: a rider the
+// admin has suspended (riders.is_active=false, migration 110) is refused on
+// every data route below with RIDER_SUSPENDED, server-side, not just blocked
+// from going online. The per-handler go-online/accept checks stay as
+// defence in depth alongside the DB trigger.
+riderRouter.use(requireAuth, requireRole('rider'), requireApproved, requireActiveRider);
 
 // Real presence + location — riders.status/current_lat/current_lng
 // (migration 036, automated-dispatch scope override, CLAUDE.md). Called by

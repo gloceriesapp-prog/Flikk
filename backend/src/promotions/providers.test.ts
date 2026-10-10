@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { deliverPromotion, providerReady } from './providers.js';
+import { deliverPromotion, promotionChannelStatus, providerReady } from './providers.js';
 const message = { id: 'job-1', channel: 'email' as const, destination: 'test@example.com', subject: 'Offers', body: 'Savings' };
 beforeEach(() => {
   vi.stubEnv('PROMOTIONS_ENABLED', 'true'); vi.stubEnv('RESEND_API_KEY', 'test'); vi.stubEnv('PROMOTIONAL_EMAIL_FROM', 'test@example.com');
@@ -31,4 +31,18 @@ it('does not treat rejected or malformed provider replies as acceptance', async 
   await expect(deliverPromotion(message)).rejects.toMatchObject({ outcome: 'failed' });
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({})));
   await expect(deliverPromotion(message)).rejects.toMatchObject({ outcome: 'uncertain' });
+});
+
+it('classifies SMS as permanently not configured, even fully enabled', () => {
+  // Everything that would make email ready is stubbed on in beforeEach.
+  expect(promotionChannelStatus('sms')).toBe('sms_not_configured');
+  expect(providerReady('sms')).toBe(false);
+});
+
+it('classifies email by the kill switch and provider keys', () => {
+  expect(promotionChannelStatus('email')).toBe('ready');
+  vi.stubEnv('PROMOTIONS_ENABLED', 'false');
+  expect(promotionChannelStatus('email')).toBe('disabled');
+  vi.stubEnv('PROMOTIONS_ENABLED', 'true'); vi.stubEnv('RESEND_API_KEY', '');
+  expect(promotionChannelStatus('email')).toBe('disabled');
 });

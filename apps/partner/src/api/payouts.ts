@@ -52,6 +52,11 @@ export interface PartnerCommission {
   isStoreOverride: boolean;
 }
 
+// Shared so PayoutsScreen's useQuery and the foreground/focused refresh
+// (features/foreground-refresh) agree on the exact key to read/invalidate —
+// a drifting literal here would silently refetch nothing.
+export const COMMISSION_QUERY_KEY = ['partner-commission'] as const;
+
 export function fetchCommission(): Promise<PartnerCommission> {
   return apiRequest('/partner/commission');
 }

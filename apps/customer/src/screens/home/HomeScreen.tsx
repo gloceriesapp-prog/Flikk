@@ -28,7 +28,7 @@ import { UnavailableZoneScreen } from './unavailable-zone/UnavailableZoneScreen'
 import { HomeCategoryContent } from './category-page/HomeCategoryContent';
 import { useHomeBrowseScroll } from './category-page/useHomeBrowseScroll';
 import { AllTabSections } from './sections/AllTabSections';
-import { ALL_TAB } from './data/categoryTabs';
+import { ALL_TAB, shouldShowTabs } from './data/categoryTabs';
 import { useHomeTabs } from './data/useHomeTabs';
 import { homeTabBackground } from './data/homeTabBackground';
 import { useIsOutsideOperatingHours } from '../../utils/useOperatingHours';
@@ -131,10 +131,10 @@ export function HomeScreen({ navigation }: Props) {
           activeFestivalHeaderColor={selectedCategoryId === ALL_TAB.id ? undefined : activeTab?.festival?.headerColor}
           activeTabBackgroundColor={activeTabBackgroundColor}
           scrollY={scrollY}
-          // Header category row temporarily disabled. Restore this line
-          // to re-enable the original tab UI and selection logic:
-          // showCategoryTabs={true}
-          showCategoryTabs={false}
+          // Switcher only when admin has published >0 real tabs — an empty
+          // config stays All-only (no lone "All" capsule). While the tab
+          // list is still loading realTabs is [], so no empty bar flashes.
+          showCategoryTabs={shouldShowTabs(realTabs)}
           bottomSpacing={0}
           isClosed={isClosed}
         />

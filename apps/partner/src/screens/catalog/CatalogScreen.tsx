@@ -15,6 +15,7 @@ import { Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { useCatalogStore } from '../../store/useCatalogStore';
+import { useFocusedPoll } from '../../features/foreground-refresh/useFocusedPoll';
 import { CATALOG_LAST_UPDATED_LABEL } from './data';
 import { InventoryHeader } from './components/InventoryHeader';
 import { InventoryProductListCard } from './components/InventoryProductListCard';
@@ -38,6 +39,13 @@ export function CatalogScreen({ navigation }: Props) {
   useFocusEffect(useCallback(() => {
     void loadProducts();
   }, [loadProducts]));
+
+  // Admin can edit any store's catalog (price/stock), and a product add/edit
+  // comes back pending until approved. This list is otherwise fetch-on-focus
+  // only, so poll it while focused + foregrounded so those server-side changes
+  // show up without a manual pull. loadProducts is a no-op-on-failure
+  // best-effort read (see useCatalogStore).
+  useFocusedPoll(loadProducts, 25_000);
 
   const handlePressView = useCallback(
     (productId: string) => navigation.navigate('ProductDetail', { productId }),
