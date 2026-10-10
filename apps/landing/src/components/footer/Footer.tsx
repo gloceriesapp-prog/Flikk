@@ -2,6 +2,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { FavouriteIcon, ShoppingBag01Icon } from "@hugeicons/core-free-icons";
 import { AREAS } from "@/lib/seo/areas";
 import { POLICIES, POLICY_ORDER, policyHref } from "@/lib/legal/policies";
+import { COMPANY as LEGAL_ENTITY } from "@/lib/legal/company";
 
 // Footer doubles as the HTML sitemap: real crawlable <a href> to every
 // routed page. The delivery-area column is the SEO engine — it internal-
@@ -188,7 +189,7 @@ export default function Footer() {
 
         <div className="border-[#999C9E]/15 flex flex-col gap-2 text-xs sm:text-sm font-medium text-[#999C9E] leading-relaxed relative z-10">
           <p>
-            “Gloceries” is a technology platform owned &amp; managed by &quot;Tideline Ventures Private Limited&quot; that connects customers with independent local kirana &amp; pharmacy stores. Gloceries does not own inventory or sell products directly, all goods are sold by the respective partner stores. Prices, availability &amp; delivery times may vary by store and location.
+            “Gloceries” is a technology platform owned &amp; managed by {LEGAL_ENTITY.legalName} that connects customers with independent local kirana &amp; pharmacy stores. Gloceries does not own inventory or sell products directly, all goods are sold by the respective partner stores. Prices, availability &amp; delivery times may vary by store and location.
           </p>
         </div>
 

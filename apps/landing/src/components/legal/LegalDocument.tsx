@@ -60,7 +60,7 @@ export function LegalList({ items }: { items: ReactNode[] }) {
   );
 }
 
-// "Tideline Ventures Private Limited ("Gloceries", "we", "us")" — the
+// "<legal name> ("Gloceries", "we", "us")" — the
 // definition every document opens with.
 export function EntityDefinition() {
   return (
