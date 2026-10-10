@@ -496,6 +496,14 @@
     {
       "file": "20261010110000_admin_otp_challenges.sql",
       "sha256": "aaf8bd020e9c83178430a74ec3570422d4ab682b9667b15c9ed4f85b6e8e93f7"
+    },
+    {
+      "file": "20261010120000_fleet_push.sql",
+      "sha256": "4a4fcc6a05d05e469be097160ea019018e5ec53618634cca8f5781bb01a15042"
+    },
+    {
+      "file": "20261010120100_rider_earnings_correction.sql",
+      "sha256": "e08622c7e1bc58d212a8bd1e38e71f280058ac9c2dc5e2fe092171472bb67106"
     }
   ]
 }
