@@ -12,8 +12,14 @@ Sentry.init({
   enabled: !!dsn && !__DEV__,
   enableNative: !isRunningInExpoGo(),
   sendDefaultPii: false,
-  tracesSampleRate: 0,
-  maxBreadcrumbs: 0,
+  // 10% performance-trace sampling (#31) — enough signal on slow transactions
+  // without the full-rate overhead/quota. Still gated by `enabled` above, so
+  // it's off in dev and when no DSN is set.
+  tracesSampleRate: 0.1,
+  // Keep a ~50-entry breadcrumb ring for crash context (#31). beforeSend still
+  // strips them from the payload actually sent (privacy posture below), so this
+  // only affects the in-memory trail available to local/native handling.
+  maxBreadcrumbs: 50,
   beforeSend(event) {
     delete event.user;
     delete event.request;

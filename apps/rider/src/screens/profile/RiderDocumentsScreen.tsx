@@ -10,7 +10,8 @@
 // same as the profile photo. Null url (no scan on file) -> the image row is
 // simply omitted, numbers still show.
 
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { AppImage as Image } from '../../components/AppImage';
 import type { ReactNode } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';

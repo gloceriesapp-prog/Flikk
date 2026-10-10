@@ -5,7 +5,8 @@
 // and only the returned path rides on in the draft, never the image bytes.
 
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { AppImage as Image } from '../../components/AppImage';
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowRight01Icon, CheckmarkCircle02Icon, ImageUpload01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

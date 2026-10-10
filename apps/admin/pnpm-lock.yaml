@@ -17,9 +17,6 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.116.0
         version: 2.116.0
-      apexcharts:
-        specifier: ^6.10.0
-        version: 6.10.0
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -35,9 +32,6 @@ importers:
       react:
         specifier: 19.2.8
         version: 19.2.8
-      react-apexcharts:
-        specifier: ^2.1.1
-        version: 2.1.1(apexcharts@6.10.0)(react@19.2.8)
       react-dom:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
@@ -1070,13 +1064,6 @@ packages:
 
   any-base@1.1.0:
     resolution: {integrity: sha512-uMgjozySS8adZZYePpaWs8cxB9/kdzmpX6SgJZ+wbz1K5eYk5QMYDVJaZKhxyIHUdnnJkfR7SVgStgH7LkGUyg==}
-
-  apex-commons@0.5.0:
-    resolution: {integrity: sha512-xz83SgPREE1wGtoflvxjwJtcjzl5bKTz2/bDxWCZNL6QVjUNE47kMg/1Zqt0bSh6eOnmFCWlTDc3RU8o85N+wg==}
-
-  apexcharts@6.10.0:
-    resolution: {integrity: sha512-XkDW9pb5L5jrjox86Q20gR2w6YnU4hUpv+FjL1eKtYKQGtyTUSsnFeuUE8wVDz8hNNHbOEx7Sl9cjfCmhB3NVw==}
-    engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
@@ -2182,12 +2169,6 @@ packages:
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
-
-  react-apexcharts@2.1.1:
-    resolution: {integrity: sha512-aV25n+1ZdAzRG0KhODVC48K8WbhMKBAr3yWSeaaBqM1ySn22kSSKblsNCUvlwegsT+cdMLuOrK9xGZb+IK+OkQ==}
-    peerDependencies:
-      apexcharts: '>=5.10.1'
-      react: '>=16.8.0'
 
   react-dom@19.2.8:
     resolution: {integrity: sha512-rVprimfGBG3DR+Tq0IQG2DT5PxKth1WIGDmj5yPmlzr4YBe7uyE+Du4oVqTDXZSHGGGXRtTJEGSSePyQCMBglQ==}
@@ -3631,12 +3612,6 @@ snapshots:
 
   any-base@1.1.0: {}
 
-  apex-commons@0.5.0: {}
-
-  apexcharts@6.10.0:
-    dependencies:
-      apex-commons: 0.5.0
-
   argparse@2.0.1: {}
 
   aria-query@5.3.2: {}
@@ -4875,12 +4850,6 @@ snapshots:
   punycode@2.3.1: {}
 
   queue-microtask@1.2.3: {}
-
-  react-apexcharts@2.1.1(apexcharts@6.10.0)(react@19.2.8):
-    dependencies:
-      apexcharts: 6.10.0
-      prop-types: 15.8.1
-      react: 19.2.8
 
   react-dom@19.2.8(react@19.2.8):
     dependencies:

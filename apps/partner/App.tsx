@@ -50,13 +50,21 @@ function App() {
   // defaultProps mechanism. Same split as apps/customer/App.tsx's own
   // Aeonik setup — see that file's own note on why defaultProps doesn't
   // work with NativeWind's cssInterop-wrapped Text.
-  const [fontsLoaded, fontError] = useFonts(AEONIK_FONT_FILES);
+  //
+  // #28: we deliberately DON'T block the first paint on this. useFonts
+  // re-renders when the weights resolve and the system-font fallback swaps to
+  // Aeonik on its own — rendering nothing until then (the old `return null`)
+  // left the app stuck behind the splash, and bricked it entirely if the font
+  // load ever hung. Not destructured: the values aren't read anywhere now.
+  useFonts(AEONIK_FONT_FILES);
   const hasFullAccess = useAuthStore((s) => !!s.accessToken && s.hasStore && s.isApproved);
   const isLoggedIn = useAuthStore((s) => !!s.accessToken);
 
+  // Hide the splash on the first real layout (#28) — no longer waits for fonts,
+  // so the UI shows immediately in the system fallback and swaps when Aeonik loads.
   const onRootLayout = useCallback(() => {
-    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
+    void SplashScreen.hideAsync();
+  }, []);
 
   // Teach react-query's onlineManager AND the offline-banner store about the
   // network from one NetInfo subscription (src/network/onlineWiring.ts). Set up
@@ -87,8 +95,6 @@ function App() {
   useEffect(() => {
     if (hasFullAccess) void primeOrderAlertSound();
   }, [hasFullAccess]);
-
-  if (!fontsLoaded && !fontError) return null;
 
   return (
     // SafeAreaProvider is what powers NativeWind's pt-safe/pb-safe utilities

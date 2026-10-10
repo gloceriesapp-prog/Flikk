@@ -484,6 +484,14 @@
     {
       "file": "20261008172854_customer_policy_and_content_sync.sql",
       "sha256": "1112f20900c08650c5b518f9e34f947bbc2f3ac6ed567ad6cc69e24a14586260"
+    },
+    {
+      "file": "20261010090000_settle_payment_amount_guard.sql",
+      "sha256": "8ea41b14e3662b212bbb8cc51381330e218c6233ecc5c8577ee0906c81cc668a"
+    },
+    {
+      "file": "20261010090100_hot_query_indexes_and_stuck_state_alerts.sql",
+      "sha256": "5519870b981fcb44a06940e1c8358871ebfa20eed7dd9b9d0806672f49050006"
     }
   ]
 }

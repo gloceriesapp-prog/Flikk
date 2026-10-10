@@ -4,6 +4,7 @@
 // is a real RiderOrder field (mockOrders.ts) — no fabricated content.
 
 import { CancelCircleIcon, CheckmarkCircle02Icon, Location01Icon, PackageIcon, StarIcon } from '@hugeicons/core-free-icons';
+import { memo } from 'react';
 import { Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
@@ -14,7 +15,7 @@ interface Props { order: RiderOrder; }
 
 const CARD_BORDER = '#EAECEE';
 
-export function DeliveryHistoryRow({ order }: Props) {
+export const DeliveryHistoryRow = memo(function DeliveryHistoryRow({ order }: Props) {
   const isCancelled = order.status === 'cancelled';
   // True take-home for this order = fare + tip (same as EarningsScreen rows).
   const total = order.payout + (order.tip ?? 0);
@@ -78,4 +79,4 @@ export function DeliveryHistoryRow({ order }: Props) {
       </View>
     </View>
   );
-}
+});

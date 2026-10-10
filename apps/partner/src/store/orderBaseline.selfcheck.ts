@@ -1,7 +1,7 @@
 // Runnable self-check for the order baseline/diff logic. No framework:
 // `npx tsx src/store/orderBaseline.selfcheck.ts` from apps/partner.
 import assert from 'node:assert';
-import { computeNewlyArrivedIds, computeJustDeliveredIds, type BaselineRow } from './orderBaseline';
+import { computeNewlyArrivedIds, computeJustDeliveredIds, sameOrderList, type BaselineRow } from './orderBaseline';
 
 const r = (id: string, status: string): BaselineRow => ({ id, status });
 
@@ -75,6 +75,28 @@ assert.deepEqual(
   computeJustDeliveredIds([], [r('a', 'delivered')], false),
   [],
   'first poll must not fire delivered banners',
+);
+
+// --- sameOrderList (ref-preservation guard for the poll) ---
+
+const o = (id: string, status: string, total: number) => ({ id, status, total });
+
+// Identical content → true, so the store keeps the previous array ref.
+assert.equal(sameOrderList([o('a', 'placed', 100)], [o('a', 'placed', 100)]), true, 'identical content is unchanged');
+// Same ref → true (fast path).
+const shared = [o('a', 'placed', 100)];
+assert.equal(sameOrderList(shared, shared), true, 'same reference is unchanged');
+// A changed field (status) → false.
+assert.equal(sameOrderList([o('a', 'placed', 100)], [o('a', 'packed', 100)]), false, 'a status change is a change');
+// A changed display field (total) → false.
+assert.equal(sameOrderList([o('a', 'placed', 100)], [o('a', 'placed', 120)]), false, 'a total change is a change');
+// Different length → false.
+assert.equal(sameOrderList([o('a', 'placed', 100)], [o('a', 'placed', 100), o('b', 'placed', 50)]), false, 'added order is a change');
+// Reorder → false (positional compare; a reorder is a real re-render).
+assert.equal(
+  sameOrderList([o('a', 'placed', 100), o('b', 'placed', 50)], [o('b', 'placed', 50), o('a', 'placed', 100)]),
+  false,
+  'reorder is a change',
 );
 
 console.log('orderBaseline.selfcheck: all cases OK');

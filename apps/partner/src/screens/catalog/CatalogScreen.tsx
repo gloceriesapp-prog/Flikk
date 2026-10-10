@@ -11,7 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 // see that screen's own note on why a sheet stopped fitting the job.
 
 import { useCallback, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { useCatalogStore } from '../../store/useCatalogStore';
@@ -38,6 +38,11 @@ export function CatalogScreen({ navigation }: Props) {
   useFocusEffect(useCallback(() => {
     void loadProducts();
   }, [loadProducts]));
+
+  const handlePressView = useCallback(
+    (productId: string) => navigation.navigate('ProductDetail', { productId }),
+    [navigation],
+  );
 
   const inStockCount = products.filter((product) => product.isInStock).length;
   const visibleProducts = products.filter((product) => {
@@ -68,21 +73,19 @@ export function CatalogScreen({ navigation }: Props) {
         />
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="pb-28">
-        {visibleProducts.length > 0 ? (
-          <InventoryProductListCard
-            products={visibleProducts}
-            onPressView={(productId) => navigation.navigate('ProductDetail', { productId })}
-          />
-        ) : (
-          <View className="items-center gap-1 px-10 pt-16">
-            <Text className="text-[15px] font-semibold text-ink">No items here</Text>
-            <Text className="text-center text-[13px] text-ink/50 font-medium">
-              {stockFilter === 'out_of_stock' ? 'Nothing is marked out of stock right now.' : 'Nothing is in stock right now.'}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+      {/* FlatList is the scroller (not wrapped in a ScrollView — a
+          VirtualizedList inside a ScrollView loses windowing). Empty state is
+          a static view since there's nothing to scroll. */}
+      {visibleProducts.length > 0 ? (
+        <InventoryProductListCard products={visibleProducts} onPressView={handlePressView} />
+      ) : (
+        <View className="items-center gap-1 px-10 pt-16">
+          <Text className="text-[15px] font-semibold text-ink">No items here</Text>
+          <Text className="text-center text-[13px] text-ink/50 font-medium">
+            {stockFilter === 'out_of_stock' ? 'Nothing is marked out of stock right now.' : 'Nothing is in stock right now.'}
+          </Text>
+        </View>
+      )}
 
       <BottomNavBar />
     </View>

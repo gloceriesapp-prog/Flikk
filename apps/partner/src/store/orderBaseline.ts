@@ -40,3 +40,21 @@ export function computeJustDeliveredIds(
     .filter((o) => o.status === 'delivered' && previousStatusById.has(o.id) && previousStatusById.get(o.id) !== 'delivered')
     .map((o) => o.id);
 }
+
+// True when two order arrays have identical content (same length, same per-item
+// JSON by position). The 3.5s/10s poll rebuilds a fresh `orders` array every
+// cycle even when nothing actually changed; callers use this to keep the PREVIOUS
+// array reference on an unchanged poll, so a React.memo'd OrderCard list doesn't
+// re-render every tick. Positional (not set) comparison on purpose: a reorder is
+// a real change worth a re-render. JSON per item compares id+status+every display
+// field at once — stricter than listing fields by hand, and the queue is small.
+// ponytail: JSON.stringify per item is O(n) over a tiny queue; a field-list
+// signature only matters if the queue ever gets large, which it won't at MVP volume.
+export function sameOrderList<T>(prev: readonly T[], next: readonly T[]): boolean {
+  if (prev === next) return true;
+  if (prev.length !== next.length) return false;
+  for (let i = 0; i < prev.length; i++) {
+    if (JSON.stringify(prev[i]) !== JSON.stringify(next[i])) return false;
+  }
+  return true;
+}

@@ -14,6 +14,7 @@
 // declining isn't a server action.
 
 import { CheckmarkCircle02Icon, CreditCardIcon, PackageIcon } from '@hugeicons/core-free-icons';
+import { memo } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../../components/AppIcon';
 import { formatCash } from '../../../../components/CollectCashBanner';
@@ -46,7 +47,7 @@ interface Props {
   windowSeconds?: number;
 }
 
-export function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = offer.windowSeconds ?? DECISION_WINDOW_S }: Props) {
+export const DispatchOfferCard = memo(function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = offer.windowSeconds ?? DECISION_WINDOW_S }: Props) {
   const { state, handleAccept, handleDecline } = useOfferDecision(offer.orderId, onAccept, onClose);
   const hasRoute = offer.storeCoords != null && offer.dropCoords != null;
 
@@ -135,4 +136,4 @@ export function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = of
       </View>
     </View>
   );
-}
+});

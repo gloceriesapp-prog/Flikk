@@ -1,74 +1,46 @@
-// Adaptive compress-to-target for a picked photo — per an explicit ask:
-// only compress when the image is actually over the size limit, and when
-// it is, shrink dimensions before touching JPEG quality. A modern phone
-// camera photo (often 3000-4000px wide) is far larger than anything this
-// app ever displays it at, so downscaling the resolution is a "free" size
-// win with no visible clarity loss — cutting JPEG quality is the thing
-// that actually looks worse, so it's the last resort, not the first.
+// Resize-first compression for a picked photo. #23: the picker now hands us a
+// file URI WITHOUT base64 — a 12MP camera shot is multiple MB, and
+// materializing its base64 in JS *before* shrinking was the hot-path cost that
+// froze the UI. So we resize/re-encode first and produce base64 only from the
+// already-small JPEG.
 //
-// No expo-file-system dependency needed — base64.length * 0.75 is an
-// accurate-enough byte-size estimate (base64 encodes 3 bytes as 4
-// characters), so every size check here just reads the string already in
-// memory from ImagePicker/ImageManipulator's own base64 output.
+// A modern phone photo (3000-4000px wide) is far larger than anything this app
+// ever displays, so capping the resolution is a "free" size win with no visible
+// clarity loss. We only resize when the source is actually wider than
+// MAX_DIMENSION (resizing a smaller image would upscale it — bigger file, no
+// benefit); either way the output is re-encoded JPEG at a high quality.
+//
+// NOTE (deviation from the #23 brief): the brief asked for a multipart file
+// upload. The backend's /partner/product-photo endpoint only accepts
+// application/json with a `base64` field (backend/src/security/parsers.ts
+// returns 415 for anything else) and is out of scope to change, so we keep the
+// JSON+base64 contract — but the base64 is now of the SMALL resized image, not
+// the raw 12MP capture, which is the actual performance win here.
 
 import * as ImageManipulator from 'expo-image-manipulator';
 
-// Comfortably under the backend's 10mb JSON body limit (base64 inflates
-// the raw bytes by ~33%) while still generous for a storefront photo — see
-// backend/src/index.ts's own note on that limit.
-const TARGET_BYTES = 1_500_000;
-
-// Nothing displays a storefront photo anywhere near full camera
-// resolution — this is plenty for every card/detail view in the app.
+// Nothing displays a storefront photo anywhere near full camera resolution —
+// this is plenty for every card/detail view in the app, and keeps the encoded
+// base64 comfortably under the backend's 6mb JSON body limit.
 const MAX_DIMENSION = 1600;
-
-function estimateBytes(base64: string): number {
-  return base64.length * 0.75;
-}
 
 export interface CompressedImage {
   uri: string;
   base64: string;
 }
 
-// `originalBase64` is what ImagePicker already returned (quality: 1, no
-// resize) — reused directly when it's already under target, so a small
-// photo never gets needlessly re-encoded and loses nothing.
-export async function compressImageToTarget(uri: string, originalBase64: string): Promise<CompressedImage> {
-  if (estimateBytes(originalBase64) <= TARGET_BYTES) {
-    return { uri, base64: originalBase64 };
-  }
+// `sourceWidth` is ImagePicker's reported asset width (so we never upscale a
+// photo that's already small). When unknown, we resize anyway — a gallery photo
+// is almost always oversized.
+export async function compressImageToTarget(uri: string, sourceWidth?: number): Promise<CompressedImage> {
+  const operations =
+    sourceWidth == null || sourceWidth > MAX_DIMENSION ? [{ resize: { width: MAX_DIMENSION } }] : [];
 
-  // Pass 1: cap the resolution, keep quality high — this alone closes
-  // most of the gap for a typical oversized camera photo.
-  let result = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: MAX_DIMENSION } }], {
-    compress: 0.85,
+  const result = await ImageManipulator.manipulateAsync(uri, operations, {
+    compress: 0.8,
     base64: true,
     format: ImageManipulator.SaveFormat.JPEG,
   });
-  if (estimateBytes(result.base64!) <= TARGET_BYTES) {
-    return { uri: result.uri, base64: result.base64! };
-  }
 
-  // Pass 2: same resolution, quality stepped down — still well above the
-  // point where compression artifacts become visible on a phone screen.
-  result = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: MAX_DIMENSION } }], {
-    compress: 0.65,
-    base64: true,
-    format: ImageManipulator.SaveFormat.JPEG,
-  });
-  if (estimateBytes(result.base64!) <= TARGET_BYTES) {
-    return { uri: result.uri, base64: result.base64! };
-  }
-
-  // Pass 3 (rare — an unusually busy/high-detail photo): smaller
-  // resolution too. Whatever comes out of this is used regardless of
-  // whether it hits target — three passes is enough restraint, not an
-  // unbounded loop chasing a number.
-  result = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1200 } }], {
-    compress: 0.6,
-    base64: true,
-    format: ImageManipulator.SaveFormat.JPEG,
-  });
   return { uri: result.uri, base64: result.base64! };
 }

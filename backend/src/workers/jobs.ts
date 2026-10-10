@@ -13,10 +13,12 @@ import { expandDispatchOrRebroadcast } from '../lib/riderDispatch.js';
 import { runTripRefunds } from '../payments/tripRefunds.js';
 import { runCustomerNotifications } from '../notifications/worker.js';
 import { runStoreNoResponse } from '../jobs/storeNoResponse.js';
+import { runStuckStateAlerts } from '../jobs/stuckStateAlerts.js';
 export const jobs: Jobs = {
   weeklyPayouts: (date, guard) => runWeeklyPayoutJob(date, guard),
   weeklyRiderPayouts: (date, guard) => runWeeklyRiderPayoutJob(date, guard),
   riderDispatch: (_date, guard) => expandDispatchOrRebroadcast(new Date(), guard),
+  stuckStateAlerts: (date, guard) => runStuckStateAlerts(date, guard),
 };
 
 // These are item-claimed queues, not singleton schedules. Worker replicas

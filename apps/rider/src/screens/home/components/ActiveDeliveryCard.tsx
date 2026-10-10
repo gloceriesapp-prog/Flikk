@@ -9,6 +9,7 @@
 // pickup to the CUSTOMER — the same next-stop a rider actually needs.
 
 import { ArrowRight01Icon, MapPinIcon, Navigation03Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
+import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { CollectCashBanner } from '../../../components/CollectCashBanner';
@@ -35,7 +36,7 @@ interface Props {
   onPress: () => void;
 }
 
-export function ActiveDeliveryCard({ order, onPress }: Props) {
+export const ActiveDeliveryCard = memo(function ActiveDeliveryCard({ order, onPress }: Props) {
   const status = STATUS[order.status];
   // Leg-aware Navigate target: heading to the store until picked up, to the
   // customer after. delivered/cancelled aren't shown here.
@@ -119,4 +120,4 @@ export function ActiveDeliveryCard({ order, onPress }: Props) {
       </Pressable> */}
     </Pressable>
   );
-}
+});
