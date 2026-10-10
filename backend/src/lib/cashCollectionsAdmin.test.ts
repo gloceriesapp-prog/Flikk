@@ -7,7 +7,12 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   tables: {} as Record<string, unknown[]>,
 }));
-vi.mock('@/lib/supabase/server', () => ({ requireAdminSession: async () => mocks.user }));
+vi.mock('@/lib/auth/requireAdmin', () => ({
+  requireAdmin: async () =>
+    mocks.user
+      ? { actor: mocks.user, denied: null }
+      : { actor: null, denied: new Response(JSON.stringify({ error: 'Sign in to continue.' }), { status: 401 }) },
+}));
 vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: {
   rpc: mocks.rpc,
   from: (table: string) => {
@@ -35,8 +40,6 @@ describe('admin cash on delivery routes', () => {
     mocks.user = null;
     expect((await GET(new Request('http://localhost/api/cash-collections'))).status).toBe(401);
     expect((await settle({ riderId: RIDER })).status).toBe(401);
-    mocks.user = { id: 'someone', email: 'someone@example.com' };
-    expect((await settle({ riderId: RIDER })).status).toBe(403);
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 

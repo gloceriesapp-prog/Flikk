@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 const fixture = vi.hoisted(() => ({ authorized:true, written:null as Record<string,unknown>|null, fail:false,
   row:{ id:'00000000-0000-4000-8000-000000000001',name:'Store',category:'Kirana & Grocery',city:'Kaup',district:'Udupi',state:'Karnataka',country:'India',created_at:'2026-01-01',lat:13,lng:74,is_active:true,turnover_exceeds_gst_threshold:false,photo_url:'https://example.com/old.webp' } }));
-vi.mock('@/lib/supabase/server',()=>({requireAdminSession:async()=>fixture.authorized?{ id: 'admin', email: 'nishalpoojary810@gmail.com' }:null}));
+vi.mock('@/lib/auth/requireAdmin',()=>({requireAdmin:async()=>fixture.authorized?{actor:{ id: 'admin', email: 'nishalpoojary810@gmail.com' },denied:null}:{actor:null,denied:new Response(JSON.stringify({ error: 'Sign in to continue.' }),{ status: 401 })}}));
 vi.mock('@/lib/supabase/admin',()=>({supabaseAdmin:{from:vi.fn(()=>{
  const chain={select:()=>chain,eq:()=>chain,update:(data:Record<string,unknown>)=>{fixture.written=data;return chain;},maybeSingle:async()=>fixture.fail&&fixture.written?{data:null,error:new Error('Database unavailable')}:{data:{...fixture.row,...fixture.written},error:null}};return chain;
 })}}));

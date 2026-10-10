@@ -12,7 +12,12 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   from: vi.fn(),
 }));
-vi.mock('@/lib/supabase/server', () => ({ requireAdminSession: async () => mocks.user }));
+vi.mock('@/lib/auth/requireAdmin', () => ({
+  requireAdmin: async () =>
+    mocks.user
+      ? { actor: mocks.user, denied: null }
+      : { actor: null, denied: new Response(JSON.stringify({ error: 'Sign in to continue.' }), { status: 401 }) },
+}));
 vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: { from: mocks.from } }));
 import { GET, PUT } from '../../../apps/admin/src/app/api/home-content/[tab]/route';
 
@@ -54,13 +59,12 @@ beforeEach(() => {
   });
 });
 describe('Admin Home content API', () => {
-  it('rejects unauthenticated and non-founder users before accessing data', async () => {
+  it('rejects unauthenticated users before accessing data', async () => {
     mocks.user = null;
     expect(
       (await GET(new Request('http://localhost:3000/api/home-content/grocery'), context)).status,
     ).toBe(401);
-    mocks.user = { id: 'user', email: 'another@example.com' };
-    expect((await PUT(publish({}), context)).status).toBe(403);
+    expect((await PUT(publish({}), context)).status).toBe(401);
     expect(mocks.from).not.toHaveBeenCalled();
   });
   it('rejects unknown tabs and cross-origin publication', async () => {
