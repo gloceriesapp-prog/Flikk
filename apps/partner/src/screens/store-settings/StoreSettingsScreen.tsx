@@ -147,17 +147,18 @@ export function StoreSettingsScreen({ navigation }: Props) {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, base64: true });
+    // No base64 at pick time (#23) — resize/re-encode first, base64 only from
+    // the small output. Keeps compressImageToTarget's single signature.
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     if (result.canceled) return;
 
     const asset = result.assets[0];
-    if (!asset.base64) return;
+    if (!asset.uri) return;
 
     setUploadingPhoto(true);
     try {
-      const compressed = await compressImageToTarget(asset.uri, asset.base64);
-      const contentType = compressed.uri === asset.uri ? (asset.mimeType ?? 'image/jpeg') : 'image/jpeg';
-      const { url } = await uploadStorePhoto(compressed.base64, contentType, compressed.uri);
+      const compressed = await compressImageToTarget(asset.uri, asset.width);
+      const { url } = await uploadStorePhoto(compressed.base64, 'image/jpeg', compressed.uri);
       updateProfile({ photoUrl: url });
     } catch {
       // Best-effort, same tolerance as this screen's other background

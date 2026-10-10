@@ -1,4 +1,5 @@
 import { Alert02Icon, ArrowRight01Icon, CheckmarkCircle02Icon, Clock01Icon, DeliveryTruck01Icon, Time03Icon } from '@hugeicons/core-free-icons';
+import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { IconSvgElement } from '@hugeicons/react-native';
 import { AppIcon } from '../../../components/AppIcon';
@@ -47,7 +48,7 @@ const TIMER_STYLE: Record<UrgencyTier, { bg: string; text: string; icon: string 
   safe: { bg: 'bg-success/10', text: 'text-success', icon: colors.success },
 };
 
-export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: Props) {
+export const OrderCard = memo(function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: Props) {
   const isPlaced = order.status === 'placed';
   const isAccepted = useOrdersStore((state) => state.acknowledgedOrderIds.has(order.id));
   const isPending = isPlaced && !isAccepted;
@@ -63,7 +64,7 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
       ? `${order.items[0].quantity}x ${order.items[0].name}, ${order.items[1].quantity}x ${order.items[1].name} & ${totalItemTypes - 2} more`
       : order.items.map((item) => `${item.quantity}x ${item.name}`).join(', ');
 
-  const now = useNow();
+  const now = useNow(isPending);
   const remainingMs = getRemainingAcceptMs(order, now);
   const maxAcceptMinutes = Math.round(getOrderAcceptWindowMs() / 60000);
   const timerStyle = TIMER_STYLE[urgencyTier(remainingMs)];
@@ -209,4 +210,4 @@ export function OrderCard({ order, onAcknowledge, onMarkPacked, onViewOrder }: P
       </View>
     </Pressable>
   );
-}
+});

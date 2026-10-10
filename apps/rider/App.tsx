@@ -50,19 +50,24 @@ export default function App() {
   // apps/customer and apps/partner's own Aeonik setups — see those
   // files' App.tsx notes on why defaultProps doesn't work with
   // NativeWind's cssInterop-wrapped Text).
-  const [fontsLoaded, fontError] = useFonts(AEONIK_FONT_FILES);
+  //
+  // #28: don't block the first paint on fonts. useFonts re-renders when the
+  // weights resolve and the system-font fallback swaps to Aeonik on its own;
+  // the old `return null` left the app stuck behind the splash (and bricked it
+  // if the font load ever hung). Not destructured — the values aren't read now.
+  useFonts(AEONIK_FONT_FILES);
   const hasSession = useAuthStore((s) => !!s.accessToken);
   const hydrateHistory = useRiderOrdersStore((s) => s.hydrateHistory);
 
+  // Hide the splash on the first real layout (#28) — no longer waits for fonts,
+  // so the UI shows immediately in the system fallback and swaps when Aeonik loads.
   const onRootLayout = useCallback(() => {
-    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
+    void SplashScreen.hideAsync();
+  }, []);
 
   useEffect(() => {
     void hydrateHistory();
   }, [hydrateHistory]);
-
-  if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider onLayout={onRootLayout}>

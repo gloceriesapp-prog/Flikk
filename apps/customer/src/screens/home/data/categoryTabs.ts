@@ -46,6 +46,14 @@ export function iconForTabName(name: string): IconSvgElement {
   return ICON_BY_TAB_NAME[name.trim().toLowerCase()] ?? ShoppingBasket01Icon;
 }
 
+// Show the header tab switcher only when the admin has published at least one
+// real tab (useHomeTabs already resolves these — managed content and the
+// festival tab appear here only while enabled). With none, the switcher would
+// be a lone "All" capsule with nothing to switch to, so Home stays All-only.
+export function shouldShowTabs(tabs: RemoteHomeTab[]): boolean {
+  return tabs.length > 0;
+}
+
 // Header tabs and in-feed shortcuts must share IDs, labels, icons and
 // visibility, including admin-managed categories and festival fallbacks.
 export function buildHomeCategories(tabs: RemoteHomeTab[]): Category[] {

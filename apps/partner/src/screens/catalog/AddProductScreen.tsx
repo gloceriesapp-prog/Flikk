@@ -79,18 +79,21 @@ export function AddProductScreen({ navigation }: Props) {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, base64: true });
+    // No base64 at pick time (#23) — a 12MP photo's base64 is multiple MB and
+    // building it on the JS thread froze the UI. We pass the file URI straight
+    // to the resizer, which produces base64 only from the small output.
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     if (result.canceled) return;
 
     const asset = result.assets[0];
-    if (!asset.base64) return;
+    if (!asset.uri) return;
 
     setUploadingPhoto(true);
     setPhotoError(null);
     try {
-      const compressed = await compressImageToTarget(asset.uri, asset.base64);
-      const contentType = compressed.uri === asset.uri ? (asset.mimeType ?? 'image/jpeg') : 'image/jpeg';
-      const { url } = await uploadProductPhoto(compressed.base64, contentType);
+      const compressed = await compressImageToTarget(asset.uri, asset.width);
+      // Always re-encoded to JPEG by the resizer, so the content type is fixed.
+      const { url } = await uploadProductPhoto(compressed.base64, 'image/jpeg');
       setImageUrl(url);
     } catch (err) {
       setPhotoError(err instanceof ApiError ? err.message : 'Could not upload photo. Please try again.');

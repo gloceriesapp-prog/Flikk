@@ -66,7 +66,10 @@ export function OfferCountdownRing({ windowSeconds, onExpire, expiresAt, trackCo
       }
     };
     tick(); // fire immediately so an already-expired offer resolves at mount
-    const id = setInterval(tick, 250);
+    // #29: 1s tick — the label only ever changes once per second, so the old
+    // 250ms (4Hz) interval was re-rendering the ring three extra times a second
+    // for no visible change.
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
     // onExpire is stable (declared in the parent's render but only invoked
     // once via the expired guard) — intentionally not a dep to avoid

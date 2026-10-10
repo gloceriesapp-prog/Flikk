@@ -52,7 +52,7 @@ it('settles a late SUCCESS instead of cancelling or switching it', async () => {
   mocks.payments.mockResolvedValue([payment('SUCCESS')]);
   const { error } = await call('cod');
   expect(error).toMatchObject({ code: 'PAYMENT_CAPTURED' });
-  expect(mocks.settle).toHaveBeenCalledWith({ orderId: id }, 'cf_SUCCESS');
+  expect(mocks.settle).toHaveBeenCalledWith({ orderId: id }, 'cf_SUCCESS', 12345, 'INR');
   expect(mocks.rpc).not.toHaveBeenCalled();
 });
 it('still abandons when termination fails; a later SUCCESS takes the settle-then-refund path', async () => {

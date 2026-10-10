@@ -4,7 +4,7 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { promotionsSwitchOn } from '../lib/platformSettings.js';
 import { uuid } from '../support/contracts.js';
-import { providerReady } from './providers.js';
+import { promotionChannelStatus } from './providers.js';
 import { CampaignError, deliveryRows, parseCampaign } from '../../../packages/promotions/campaign.cjs';
 export const promotionsRouter = Router();
 promotionsRouter.use(requireAuth, requireRole('admin'));
@@ -18,7 +18,13 @@ promotionsRouter.post('/', async (req: AuthedRequest, res, next) => {
       if (error instanceof CampaignError) throw new AppError(400, error.code, error.message);
       throw error;
     }
-    if (!providerReady(campaign.channel)) throw new AppError(503, 'PROMOTIONS_DISABLED', 'Configure and enable the promotional provider first.');
+    // Fail loud at the source. SMS has no DLT-approved template, so reject the
+    // campaign up front with a clear reason the admin UI can show — never
+    // write rows that would only queue and die. Email keeps the generic
+    // "configure/enable the provider" path untouched.
+    const channelStatus = promotionChannelStatus(campaign.channel);
+    if (channelStatus === 'sms_not_configured') throw new AppError(422, 'SMS_NOT_CONFIGURED', 'Promotional SMS is not available: it needs an approved DLT template and header. Send this campaign over email instead.');
+    if (channelStatus === 'disabled') throw new AppError(503, 'PROMOTIONS_DISABLED', 'Configure and enable the promotional provider first.');
     if (!(await promotionsSwitchOn())) throw new AppError(503, 'PROMOTIONS_DISABLED', 'Turn promotions on in admin first.');
     const ids = campaign.customerIds;
     const { data: customers, error: customerError } = await supabase.from('users').select('id').in('id', ids).eq('role', 'customer');

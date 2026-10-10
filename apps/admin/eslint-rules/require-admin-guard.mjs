@@ -12,9 +12,13 @@ const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', '
 
 // Path suffix (relative to src/app/api) -> why it is public.
 export const PUBLIC_ROUTES = {
-  // Performs the sign-in itself, so no session can exist yet. It checks the
-  // allowed admin email before it ever sets a session cookie.
-  'auth/login/route.ts': 'sign-in endpoint (runs before any session exists)',
+  // Emails the sign-in code — the start of login, so no session exists yet.
+  // Throttled server-side (claim_auth_budget) and only ever emails the one
+  // configured admin address.
+  'auth/otp/send/route.ts': 'OTP send endpoint (starts sign-in, before any session exists)',
+  // Verifies the emailed code and, only on success, sets the admin session
+  // cookie. Rate-limited single-use codes; nothing else is exposed.
+  'auth/otp/verify/route.ts': 'OTP verify endpoint (performs sign-in, before any session exists)',
   // Only clears the caller's own session cookie; touches no data.
   'auth/logout/route.ts': 'sign-out endpoint (clears the caller\'s own session only)',
 };

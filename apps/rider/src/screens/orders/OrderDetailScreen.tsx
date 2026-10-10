@@ -19,8 +19,8 @@
 // to fire itself.
 
 import { useState } from 'react';
-import { ArrowLeft01Icon, Call02Icon, Navigation03Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
-import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { ArrowLeft01Icon, Call02Icon, MapPinIcon, Navigation03Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
+import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { CollectCashBanner } from '../../components/CollectCashBanner';
@@ -37,11 +37,11 @@ import type { RiderOrder } from '../../data/mockOrders';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OrderDetail'>;
 
-// User-supplied trip-line end markers (Pinterest-hosted, referenced by URL
-// like any other remote image — RN's Image fetches at render, no local
-// download step).
-const TRIP_START_ICON = 'https://i.pinimg.com/736x/d0/21/cc/d021cc669f8688a757199873421035f3.jpg';
-const TRIP_END_ICON = 'https://i.pinimg.com/1200x/a6/2a/df/a62adf699b6951ec9d0fa954f1edc5b3.jpg';
+// #30: trip-line endpoint markers. These were hotlinked i.pinimg.com images
+// (RN <Image> fetching on every render, and liable to 403/vanish). Replaced
+// with the app's own bundled icon system — the same lime-store / coral-pin
+// pairing ActiveDeliveryCard already uses for a route's two ends — so there's
+// no external dependency and nothing to re-download.
 
 const NEXT_ACTION_LABEL: Record<Exclude<RiderOrder['status'], 'delivered' | 'cancelled'>, string> = {
   assigned: 'Slide to start delivery',
@@ -346,9 +346,13 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             heavy full-ink bar. */}
         <View className="w-full gap-2">
           <View className="flex-row items-center gap-2">
-            <Image source={{ uri: TRIP_START_ICON }} className="h-8 w-8" resizeMode="contain" />
+            <View className="h-8 w-8 items-center justify-center rounded-full bg-lime-soft">
+              <AppIcon icon={Store01Icon} size={16} color={colors.limeDeep} />
+            </View>
             <View className="h-px flex-1 bg-gray-200" />
-            <Image source={{ uri: TRIP_END_ICON }} className="h-8 w-8" resizeMode="contain" />
+            <View className="h-8 w-8 items-center justify-center rounded-full bg-[#FFE9E3]">
+              <AppIcon icon={MapPinIcon} size={16} color={colors.coral} />
+            </View>
           </View>
           <View className="flex-row items-center justify-between">
             <Text className="text-[13px] font-semibold text-ink/60">Start</Text>

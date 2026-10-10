@@ -18,6 +18,7 @@ import Constants from 'expo-constants';
 import { savePushToken } from '../../api/auth';
 import { navigationRef } from '../../navigation/navigationRef';
 import { useNotificationStatusStore } from '../../store/useNotificationStatusStore';
+import { isAdminBroadcast } from './adminBroadcast';
 
 // Android channels: importance and sound are fixed by the OS the first time a
 // channel is created and can't be changed by later app versions — only the
@@ -107,6 +108,10 @@ function openFromTap(response: Notifications.NotificationResponse | null): void 
     return;
   }
   pendingTap = null;
+  // An admin fleet broadcast (adminBroadcast.ts) carries no order/trip and has
+  // no inbox to open — the OS already brought the app forward, so stop here
+  // rather than falling through to an order route.
+  if (isAdminBroadcast(data)) return;
   if (typeof data.orderId === 'string') navigationRef.navigate('OrderDetail', { orderId: data.orderId });
   else if (data.type === 'new_order') navigationRef.navigate('Orders');
 }

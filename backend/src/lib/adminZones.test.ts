@@ -7,8 +7,11 @@ const fx = vi.hoisted(() => ({
   storeUpdate: null as Record<string, unknown> | null,
   insertError: null as { code: string } | null,
 }));
-vi.mock('@/lib/supabase/server', () => ({
-  requireAdminSession: async () => (fx.authorized ? { id: 'admin', email: 'nishalpoojary810@gmail.com' } : null),
+vi.mock('@/lib/auth/requireAdmin', () => ({
+  requireAdmin: async () =>
+    fx.authorized
+      ? { actor: { id: 'admin', email: 'nishalpoojary810@gmail.com' }, denied: null }
+      : { actor: null, denied: new Response(JSON.stringify({ error: 'Sign in to continue.' }), { status: 401 }) },
 }));
 vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: { from: (table: string) => {
   let id = '';

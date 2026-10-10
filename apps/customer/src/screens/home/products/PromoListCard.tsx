@@ -20,6 +20,9 @@
 import { ScrollView, View } from 'react-native';
 import { ProductCard } from './ProductCard';
 import { SectionTitle } from '../components/SectionTitle';
+import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
+import { useBrowseClock } from '../../../utils/useBrowseClock';
+import { productAvailability } from '../../../utils/productAvailability';
 import type { Product } from './types';
 
 const VISIBLE_PRODUCTS = 6;
@@ -34,6 +37,10 @@ interface Props {
 
 export function PromoListCard({ title, products, subtitle }: Props) {
   const visibleProducts = products.slice(0, VISIBLE_PRODUCTS);
+  // Lifted once for the whole row (issue #22) — see ProductSection for the
+  // rationale: one clock + delivery-settings subscription, not one per card.
+  const estimatedMinutes = useDeliveryEstimateMinutes();
+  const date = new Date(useBrowseClock());
 
   return (
     <View>
@@ -47,9 +54,20 @@ export function PromoListCard({ title, products, subtitle }: Props) {
         snapToAlignment="start"
         decelerationRate="fast"
       >
-        {visibleProducts.map((product) => (
-          <ProductCard key={product.id} product={product} widthClassName={PRODUCT_CARD_WIDTH} showDiscountBadge />
-        ))}
+        {visibleProducts.map((product) => {
+          const availability = productAvailability(product, date);
+          return (
+            <ProductCard
+              key={product.id}
+              product={product}
+              widthClassName={PRODUCT_CARD_WIDTH}
+              showDiscountBadge
+              estimatedMinutes={estimatedMinutes}
+              isAvailable={availability.isAvailable}
+              availabilityLabel={availability.label}
+            />
+          );
+        })}
       </ScrollView>
     </View>
   );

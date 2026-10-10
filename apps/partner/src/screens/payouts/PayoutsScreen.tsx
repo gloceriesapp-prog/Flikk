@@ -16,7 +16,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { fetchCommission, fetchPayoutPage, formatCommissionPercent } from '../../api/payouts';
+import { fetchCommission, fetchPayoutPage, formatCommissionPercent, COMMISSION_QUERY_KEY } from '../../api/payouts';
 import { buildSamplePayouts, toWeeklyPayout } from './data';
 import { CurrentWeekPayoutCard } from './components/CurrentWeekPayoutCard';
 import { PayoutStatusFilter, type PayoutStatusFilterValue } from './components/PayoutStatusFilter';
@@ -32,7 +32,7 @@ export function PayoutsScreen({ navigation }: Props) {
   const query = useInfiniteQuery({ queryKey: ['payouts'], initialPageParam: '', queryFn: ({ pageParam }) => fetchPayoutPage(pageParam || undefined), getNextPageParam: page => page.nextCursor ?? undefined, refetchOnWindowFocus: false });
   const { isLoading } = query;
   // This store's real commission rate (GET /partner/commission).
-  const commission = useQuery({ queryKey: ['partner-commission'], queryFn: fetchCommission, refetchOnWindowFocus: false });
+  const commission = useQuery({ queryKey: COMMISSION_QUERY_KEY, queryFn: fetchCommission, refetchOnWindowFocus: false });
   const rows = query.data?.pages.flatMap(page => page.items);
   const realPayouts = (rows ?? []).map(toWeeklyPayout);
   // A brand-new store (zero delivered orders, zero real payouts yet) has

@@ -10,13 +10,22 @@
 // dispatch worker and accept path read on every pass.
 
 import { useCallback, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import clsx from 'clsx';
 import { AssignRiderRow } from '@/components/dispatch/AssignRiderRow';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { formatCurrency, formatDateTime, formatRelativeTime } from '@/lib/format';
 import { DISPATCH_LIMITS, type DispatchSettings } from '@/lib/dispatchSettings';
+import type { MapOrder, MapRider } from '@/lib/dispatchMap';
 import type { ActiveRider, DispatchBoardRow } from '@/lib/types';
+
+// Leaflet touches `window` at import, so the map is client-only — never in the
+// server bundle (ssr:false). Keeps the map code out of the initial RSC payload.
+const DispatchMap = dynamic(() => import('@/components/dispatch/DispatchMap'), {
+  ssr: false,
+  loading: () => <div className="h-[516px] animate-pulse rounded-3xl border border-border bg-accent" />,
+});
 
 type Filter = 'all' | 'out';
 
@@ -128,24 +137,31 @@ export default function DispatchPage() {
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [riders, setRiders] = useState<ActiveRider[]>([]);
+  const [mapRiders, setMapRiders] = useState<MapRider[]>([]);
+  const [mapOrders, setMapOrders] = useState<MapOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      const [boardRes, ridersRes] = await Promise.all([
+      const [boardRes, ridersRes, mapRes] = await Promise.all([
         fetch(`/api/dispatch-board?page=${page}${filter === 'out' ? '&outOfOffers=1' : ''}`),
         fetch('/api/riders'),
+        fetch('/api/dispatch-map'),
       ]);
       const board = await boardRes.json();
       if (!boardRes.ok) throw new Error(board.error ?? 'Could not load trips.');
       const riderList = await ridersRes.json();
       if (!ridersRes.ok) throw new Error(riderList.error ?? 'Could not load riders.');
+      const map = await mapRes.json();
+      if (!mapRes.ok) throw new Error(map.error ?? 'Could not load the live map.');
       setRows(board.items);
       setTotal(board.total);
       setPageSize(board.pageSize);
       setRiders(riderList);
+      setMapRiders(map.riders);
+      setMapOrders(map.orders);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load trips.');
     } finally {
@@ -166,6 +182,8 @@ export default function DispatchPage() {
         <h1 className="text-3xl font-bold text-ink">Trips &amp; dispatch</h1>
         <p className="text-sm text-muted">Live trips, who has them, and the ones automatic dispatch could not place.</p>
       </div>
+
+      <DispatchMap riders={mapRiders} orders={mapOrders} />
 
       <DispatchSettingsCard />
 

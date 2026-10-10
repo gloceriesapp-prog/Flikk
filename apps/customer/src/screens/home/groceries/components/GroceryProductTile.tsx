@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { ProductCard } from '../../products/ProductCard';
-import { ProductCardView } from '../../products/ProductCardView';
+import { SelfServiceProductCardView } from '../../products/ProductCardView';
 import type { Product } from '../../products/types';
 
 export function GroceryProductTile({ product, previewOnly = false }: { product: Product; previewOnly?: boolean }) {
@@ -11,7 +11,7 @@ export function GroceryProductTile({ product, previewOnly = false }: { product: 
   return (
     <View pointerEvents="none" accessible accessibilityLabel={`Design preview only: ${product.name}, ${product.weight}, sample price ${product.price} rupees`}>
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <ProductCardView product={product} widthClassName="w-full" showDiscountBadge />
+        <SelfServiceProductCardView product={product} widthClassName="w-full" showDiscountBadge />
       </View>
     </View>
   );

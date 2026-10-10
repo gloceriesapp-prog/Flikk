@@ -121,7 +121,9 @@ export async function reconcileProvider(target: Target, providerOrderId: string,
       throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'Payment amount or order could not be verified. Contact support.');
   }
   const success = payments.find((payment) => payment.payment_status === 'SUCCESS');
-  if (success) return await settleCheckoutPayment(target.target, String(success.cf_payment_id)) ? 'paid' : 'cancelled';
+  // The loop above already asserted every payment's amount equals this
+  // checkout's total; thread the captured paise into the settlement guard.
+  if (success) return await settleCheckoutPayment(target.target, String(success.cf_payment_id), toPaise(success.payment_amount), 'INR') ? 'paid' : 'cancelled';
   return openIsPending && payments.some((payment) => payment.payment_status === 'PENDING' || payment.payment_status === 'NOT_ATTEMPTED') ? 'pending' : 'unpaid';
 }
 export async function requirePaymentRetrySafe(target: Target, providerOrderId: string, total: number) {
