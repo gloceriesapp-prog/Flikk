@@ -23,7 +23,7 @@ export function OfflineBanner() {
       <View className="flex-row items-center gap-3 rounded-2xl bg-ink px-4 py-3 shadow-lg shadow-black/20">
         <AppIcon icon={WifiDisconnected01Icon} size={18} color="#FFFFFF" />
         <Text className="flex-1 text-sm font-medium text-white" numberOfLines={2}>
-          You're offline — orders may be out of date until you reconnect.
+          You are offline — orders may be out of date until you reconnect.
         </Text>
       </View>
     </View>
