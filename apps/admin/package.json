@@ -18,6 +18,7 @@
     "lucide-react": "^1.33.0",
     "next": "16.3.1",
     "node-vibrant": "^4.0.4",
+    "nodemailer": "^10.1.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

@@ -492,6 +492,10 @@
     {
       "file": "20261010090100_hot_query_indexes_and_stuck_state_alerts.sql",
       "sha256": "5519870b981fcb44a06940e1c8358871ebfa20eed7dd9b9d0806672f49050006"
+    },
+    {
+      "file": "20261010110000_admin_otp_challenges.sql",
+      "sha256": "aaf8bd020e9c83178430a74ec3570422d4ab682b9667b15c9ed4f85b6e8e93f7"
     }
   ]
 }
