@@ -17,8 +17,11 @@ const DEFAULT_SUPPORT_EMAIL = "hello@gloceries.com";
 
 export const COMPANY = {
   brand: SITE.name,
-  // Matches the footer disclaimer — the registered owner of the platform.
-  legalName: "Tideline Ventures Private Limited",
+  // The person who owns and operates the platform, exactly as on the
+  // payment gateway KYC (Cashfree checks the site against it). Gloceries is
+  // run as a sole proprietorship until a company is incorporated; switch
+  // this to the company's registered name (and set the CIN) then.
+  legalName: "NISHAL N POOJARY",
   website: SITE.url,
   region: SITE.region,
   jurisdiction: "Udupi, Karnataka",
