@@ -31,7 +31,9 @@ export type AppStackParamList = {
   // push to AddressForm (a real saved address) instead of its default
   // behavior (set useLocationStore's browsing location and reset to Home).
   LocationSearch:
-    | { latitude?: number; longitude?: number; addressLabel?: string; city?: string; intent?: 'address-book' }
+    // fromGps: the coordinates are the device's own GPS position, so the
+    // pin keeps following the live blue dot as the fix sharpens.
+    | { latitude?: number; longitude?: number; addressLabel?: string; city?: string; intent?: 'address-book'; fromGps?: boolean }
     | undefined;
   // Real map pin + reverse-geocoded starting text for a new saved address
   // — reached only via LocationSearch's own intent='address-book' branch,

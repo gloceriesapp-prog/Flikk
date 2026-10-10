@@ -24,7 +24,7 @@ import { BlurView } from 'expo-blur';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import MapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import MapView, { Circle, Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -42,8 +42,10 @@ import {
   type Coordinates,
   type NearbyPlace,
 } from '../../location/geocoding';
+import { distanceMeters } from '../../location/locationFilter';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
 import { LocationRequestGate } from '../../location/requestGate';
+import { useLiveLocation } from '../../location/useLiveLocation';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLocationStore } from '../../store/useLocationStore';
 import { useRecentSearchesStore } from '../../store/useRecentSearchesStore';
@@ -55,12 +57,6 @@ type Props = NativeStackScreenProps<AppStackParamList, 'LocationSearch'>;
 
 const BUTTON_ACCENT = '#1447e6';
 
-// ~130m span (tighter than the previous 0.004/~350m), per an explicit
-// "zoom in more" ask — used for animateToRegion calls after a search/
-// current-location fix, once the map's already showing (the INITIAL
-// zoom level is set via initialCamera's own `zoom` below instead, since
-// a Camera and a Region express zoom differently).
-const DELTA = 0.0015;
 // Straight-down (pitch 0), not tilted — an earlier pass tried a 45°
 // pitch to get Google's real 3D building EXTRUSION, but that's exactly
 // the wrong approach for a pin-precision screen: true 3D extrusion is
@@ -81,6 +77,23 @@ const INITIAL_ALTITUDE = 300;
 // Kaup/outer Udupi — this app's only launch zone (CLAUDE.md) — is the
 // sensible default center when no real coords were handed in yet.
 const DEFAULT_CENTER = { latitude: 13.2167, longitude: 74.7469 };
+// The pin follows the live blue dot (until the person drags the map or
+// picks a search result) whenever the dot has moved more than this…
+const FOLLOW_MIN_MOVE_M = 3;
+// …but at most this often, so a stream of small refinements is one smooth
+// glide, not a jittery map.
+const FOLLOW_MIN_INTERVAL_MS = 1500;
+// The address is looked up again only when the pin moved further than this
+// from the point the shown address belongs to. Smaller moves (dot
+// refinements, the map settling after the card resizes) keep the address,
+// which is what stops the card from reloading over and over.
+const REGEOCODE_MIN_MOVE_M = 12;
+// Wait for the map to stay still this long before looking the address up.
+const GEOCODE_DEBOUNCE_MS = 350;
+// Only worth warning about when the pin is clearly not where the person is.
+const FAR_FROM_DEVICE_KM = 0.1;
+// Shown next to "Use my current location" while the fix is still vague.
+const VAGUE_ACCURACY_M = 25;
 
 // Teardrop pin — replaces the old plain blue-dot-only marker, per an
 // explicit ask/reference (same Google-Maps-pin-drop look). The source
@@ -159,7 +172,6 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentCoords, setCurrentCoords] = useState<Coordinates | null>(null);
   // react-native-maps' Android native view doesn't reliably resize when
   // its RN parent is a flex:1 box that's itself nested inside another
   // flex:1 box (exactly this screen's map-area/sheet split) — the map
@@ -192,74 +204,59 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // asked). Requesting again when already granted is a harmless no-op —
   // this makes the dot work reliably regardless of which path got here.
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
-  // The native "my location" blue dot's own live coordinate (from
-  // onUserLocationChange below) — "Use my current location" used to call
-  // getCurrentCoordinates() fresh instead, a SEPARATE one-off GPS fetch
-  // that can genuinely differ from wherever the continuously-tracked blue
-  // dot is actually drawn (a new fix, drift, or just a slightly later/
-  // earlier sample), which is exactly why the pin could land visibly off
-  // from the blue dot despite the blue dot itself being accurate. A ref,
-  // not state — it updates many times a second and is only ever read once,
-  // on tap, not rendered from.
-  const liveUserLocation = useRef<Coordinates | null>(null);
-  // Guards the one-time auto-recenter below — the pin should already be
-  // exactly on the user's real position by default (per an explicit ask),
-  // not just after they manually tap "Use my current location". Fires at
-  // most once per screen visit, and only when the screen opened via a real
-  // GPS fix in the first place (see the effect below) — never yanks the
-  // map away from a location the user got to by searching or picking a
-  // saved address.
-  const hasAutoRecenteredRef = useRef(false);
+  // The live, filtered device position (useLiveLocation): the blue dot is
+  // drawn from it and the pin moves to exactly this coordinate, so the two
+  // always line up. Starts once location permission is granted.
+  const liveFix = useLiveLocation(hasLocationPermission);
+  const dotCoordinate = liveFix ? { latitude: liveFix.latitude, longitude: liveFix.longitude } : null;
+  // True while the pin should stay on the blue dot: the screen opened on the
+  // person's GPS position (or with no position at all) and they have not
+  // dragged the map or picked a search result yet. "Use my current
+  // location" turns it back on.
+  const followDot = useRef(startingPoint.latitude == null || startingPoint.fromGps === true);
+  const lastFollowMoveAt = useRef(0);
+  // The coordinate the address on the card belongs to.
+  const resolvedAt = useRef<Coordinates | null>(startingPoint.addressLabel && startingPoint.latitude != null && startingPoint.longitude != null
+    ? { latitude: startingPoint.latitude, longitude: startingPoint.longitude }
+    : null);
+  const geocodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Live place-name suggestions as the user types — searchPlaces
   // (geocoding.ts, backend's Mappls autosuggest proxy) was already built
   // server-side but never actually wired into this screen's search bar,
   // which is why no dropdown ever showed no matter what you typed.
   const pinRequests = useRef(new LocationRequestGate());
   const navigationRequests = useRef(new LocationRequestGate());
-  const hasMovedPin = useRef(false);
-  useEffect(() => () => { pinRequests.current.invalidate(); navigationRequests.current.invalidate(); }, []);
+  useEffect(() => () => {
+    pinRequests.current.invalidate();
+    navigationRequests.current.invalidate();
+    if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
+  }, []);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const setLocation = useLocationStore((s) => s.setLocation);
   const addRecentSearch = useRecentSearchesStore((s) => s.add);
 
-  // Best-effort, once — powers the "Xkm away from your current location"
-  // sanity-check line, and (per an explicit ask) also recenters the map on
-  // the user's real GPS position when this screen opened with no real
-  // starting point of its own (route.params.latitude/longitude unset —
-  // e.g. reached via SelectLocationScreen's "Select it manually", not
-  // LocationPermissionScreen or a saved-address tap, both of which already
-  // hand in real coords). Falling back to the default zone center in that
-  // case made the pin start somewhere the user has to notice and correct
-  // before it means anything, instead of already being right. Never blocks
-  // anything if it fails (permission denied, GPS off) — the map just stays
-  // wherever it already was.
+  // Best-effort, once: location permission powers the blue dot, the
+  // "Xkm away" warning and the pin following the person's real position.
+  // Never blocks anything if it is denied; the map stays where it is.
+  // requestLocationPermission (geocoding.ts) waits out the post-dialog
+  // settle window before any location call (its own note on the crash).
   useEffect(() => {
-    // Chained, not parallel — getCurrentCoordinates (native
-    // requestSingleLocation) used to fire in the same tick as
-    // requestLocationPermission, racing the OS permission dialog's own
-    // activity teardown/recreation on every mount of this screen (reached
-    // from BOTH LocationPermissionScreen's buttons — this useEffect runs
-    // regardless of which one was tapped). That race crashed natively
-    // (expo.modules.location.LocationHelpers.requestSingleLocation ->
-    // PromiseImpl.resolve NullPointerException), below the JS layer where
-    // the .catch below could never have caught it. Only fetching a fix
-    // once permission is confirmed granted — and requestLocationPermission
-    // (geocoding.ts) itself now waits out the post-dialog settle window —
-    // is what actually closes the race, not just papering over the crash.
     requestLocationPermission()
-      .then((granted) => {
-        setHasLocationPermission(granted);
-        if (!granted) return;
-        return getCurrentCoordinates().then((coords) => {
-          setCurrentCoords(coords);
-          if (startingPoint.latitude == null && !hasMovedPin.current) {
-            setCenter(coords);
-            mapRef.current?.animateToRegion({ ...coords, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
-          }
-        });
-      })
+      .then(setHasLocationPermission)
       .catch(() => setHasLocationPermission(false));
-  }, [startingPoint.latitude]);
+  }, []);
+
+  // Keep the pin on the blue dot while following: the first fix centres
+  // the map on it, later (filtered) refinements glide it there.
+  useEffect(() => {
+    if (!liveFix || !followDot.current || !mapReady) return;
+    const isFirstMove = lastFollowMoveAt.current === 0;
+    if (!isFirstMove && distanceMeters(center, liveFix) < FOLLOW_MIN_MOVE_M) return;
+    const now = Date.now();
+    if (!isFirstMove && now - lastFollowMoveAt.current < FOLLOW_MIN_INTERVAL_MS) return;
+    lastFollowMoveAt.current = now;
+    moveCameraTo(liveFix, isFirstMove);
+  }, [liveFix, mapReady, center]);
 
   // Debounced (300ms) — firing a request on every keystroke would spam
   // the backend/Mappls for no benefit; a short pause after the user stops
@@ -279,7 +276,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
     return () => { active = false; clearTimeout(timeout); };
   }, [query]);
 
-  const distanceFromCurrent = currentCoords ? distanceKm(currentCoords, center) : null;
+  const distanceFromCurrent = liveFix ? distanceKm(liveFix, center) : null;
 
   // Shared by mapPadding (below) and the pin's own vertical anchor — this
   // MUST be the same number in both places. mapPadding tells Google's
@@ -294,20 +291,50 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   const bottomPadding = cardHeight + insets.bottom + 16 + 16;
   const pinAnchorTop = (mapAreaHeight - bottomPadding) / 2;
 
+  // Moves the map so `coords` sits exactly under the pin tip. animateCamera
+  // centres the coordinate in the area above the card (mapPadding), which is
+  // exactly where the pin is drawn (pinAnchorTop).
+  function moveCameraTo(coords: Coordinates, resetZoom: boolean) {
+    const target = { latitude: coords.latitude, longitude: coords.longitude };
+    mapRef.current?.animateCamera(resetZoom ? { center: target, zoom: INITIAL_ZOOM, heading: 0, pitch: INITIAL_PITCH } : { center: target }, { duration: resetZoom ? 400 : 300 });
+  }
+
   async function handleRegionSettled(region: Region) {
-    const next = { latitude: region.latitude, longitude: region.longitude };
-    const ticket = pinRequests.current.begin();
+    // The camera target is the point under the pin tip. The region's own
+    // centre is the middle of the whole map view on Android, including the
+    // strip behind the card, so it is half the card's height off the pin.
+    const camera = await mapRef.current?.getCamera().catch(() => null);
+    const next = camera?.center
+      ? { latitude: camera.center.latitude, longitude: camera.center.longitude }
+      : { latitude: region.latitude, longitude: region.longitude };
     setCenter(next);
+    if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
+    if (resolvedAt.current && distanceMeters(resolvedAt.current, next) < REGEOCODE_MIN_MOVE_M) {
+      // Back within reach of the shown address: drop any lookup still
+      // running for a point further away.
+      pinRequests.current.invalidate();
+      setResolving(false);
+      return;
+    }
+    const ticket = pinRequests.current.begin();
     setResolving(true);
-    // Never combine a new coordinate with an old address label.
-    setAddressLabel('Selected location'); setShortName('Selected location'); setCity('');
+    geocodeTimer.current = setTimeout(() => { void resolveAddress(next, ticket); }, GEOCODE_DEBOUNCE_MS);
+  }
+
+  async function resolveAddress(next: Coordinates, ticket: number) {
     void fetchNearbyPlaces(next).then(places => { if (pinRequests.current.current(ticket)) setNearbyPlaces(places); });
     try {
       const resolved = await reverseGeocode(next);
       if (!pinRequests.current.current(ticket)) return;
+      resolvedAt.current = next;
+      setError(null);
       setAddressLabel(resolved.addressLabel); setShortName(resolved.shortName); setCity(resolved.city);
     } catch {
-      if (pinRequests.current.current(ticket)) setError('Couldn’t resolve this address. Confirm the pin and enter the address manually.');
+      if (!pinRequests.current.current(ticket)) return;
+      // Never confirm a new coordinate with the previous address.
+      resolvedAt.current = null;
+      setAddressLabel('Selected location'); setShortName('Selected location'); setCity('');
+      setError('Couldn’t resolve this address. Confirm the pin and enter the address manually.');
     } finally {
       if (pinRequests.current.current(ticket)) setResolving(false);
     }
@@ -323,7 +350,8 @@ export function LocationSearchScreen({ navigation, route }: Props) {
         setError("Couldn't find that location. Try a different search.");
         return;
       }
-      mapRef.current?.animateToRegion({ ...coords, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
+      followDot.current = false;
+      moveCameraTo(coords, true);
       // Typed/selected text stays the address label (that's what the
       // user actually searched for or picked) until the map settles and
       // reverse-geocodes the real pin position — onRegionChangeComplete
@@ -354,14 +382,19 @@ export function LocationSearchScreen({ navigation, route }: Props) {
     const ticket = navigationRequests.current.begin();
     setError(null);
     try {
-      // Prefer the blue dot's own live-tracked coordinate over a fresh
-      // getCurrentCoordinates() fetch — see liveUserLocation's own note on
-      // why those two can genuinely disagree. Falls back to a fresh fetch
-      // only if the blue dot hasn't emitted a position yet (e.g. tapped
-      // immediately on mount, before the first onUserLocationChange).
-      const coords = liveUserLocation.current ?? (await getCurrentCoordinates());
+      // Same filtered position the blue dot is drawn from, so the pin lands
+      // exactly on the dot. A one-off fix only before the first live fix.
+      let coords: Coordinates | null = liveFix;
+      if (!coords) {
+        const granted = hasLocationPermission || (await requestLocationPermission());
+        if (!granted) throw new Error('Location permission denied');
+        setHasLocationPermission(true);
+        coords = await getCurrentCoordinates();
+      }
       if (!navigationRequests.current.current(ticket)) return;
-      mapRef.current?.animateToRegion({ ...coords, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
+      followDot.current = true;
+      lastFollowMoveAt.current = Date.now();
+      moveCameraTo(coords, true);
     } catch {
       if (navigationRequests.current.current(ticket)) setError('Could not get your location. Please try searching instead.');
     }
@@ -441,42 +474,20 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // surrounding blocks, which is plenty for a pin-precision
           // confirm screen — nobody needs to zoom out to city-scale here.
           minZoomLevel={14}
-          onPanDrag={() => { hasMovedPin.current = true; navigationRequests.current.invalidate(); }}
-          onRegionChange={() => { pinRequests.current.invalidate(); setResolving(true); }}
-          onRegionChangeComplete={handleRegionSettled}
-          // Keeps liveUserLocation (handleGoToCurrentLocation's own note)
-          // in sync with wherever the native blue dot actually is,
-          // continuously — not just once on mount.
-          onUserLocationChange={(e) => {
-            const coordinate = e.nativeEvent.coordinate;
-            if (!coordinate) return;
-            const live = { latitude: coordinate.latitude, longitude: coordinate.longitude };
-            liveUserLocation.current = live;
-            // One-time auto-recenter onto the blue dot's own live fix —
-            // only when this screen opened via a real GPS-based flow
-            // (startingPoint.latitude set, e.g. LocationPermissionScreen)
-            // and only once, the first time the blue dot reports in. Same
-            // coordinate source handleGoToCurrentLocation already prefers
-            // (this file's own liveUserLocation note above on why it's
-            // more reliable than the one-off fetch startingPoint came
-            // from), just applied automatically instead of waiting for a
-            // manual tap.
-            if (!hasAutoRecenteredRef.current && startingPoint.latitude != null) {
-              hasAutoRecenteredRef.current = true;
-              mapRef.current?.animateToRegion({ ...live, latitudeDelta: DELTA, longitudeDelta: DELTA }, 400);
-            }
+          // A drag means the person is placing the pin themselves: stop
+          // following the blue dot and drop any pending address lookup.
+          onPanDrag={() => {
+            followDot.current = false;
+            navigationRequests.current.invalidate();
+            pinRequests.current.invalidate();
+            if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
+            setResolving(true);
           }}
-          // The real "my location" blue dot — GPS-anchored to the actual
-          // device position, native to the map (not a custom marker), so
-          // it stays fixed on the real coordinate as the map pans
-          // underneath it. Completely independent of the draggable
-          // teardrop pin below, which follows the MAP's center (the
-          // location being selected) — panning the map moves the pin,
-          // never this dot; only actually walking around moves this dot.
-          // showsMyLocationButton={false} because this screen already has
-          // its own "Current location" pill (handleGoToCurrentLocation)
-          // instead of the OS-default one.
-          showsUserLocation={hasLocationPermission}
+          onRegionChangeComplete={handleRegionSettled}
+          // The map SDK's own blue dot is off: it draws every raw fix (the
+          // jumping dot) from its own location source, so it never matched
+          // the pin. The dot below is drawn from useLiveLocation instead.
+          showsUserLocation={false}
           showsMyLocationButton={false}
           // Back on (was false) — per an explicit ask/reference (Blinkit/
           // Flipkart's own pin-confirm map shows real shaded building
@@ -486,7 +497,24 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // still disappeared at close zoom even at pitch: 0 — if that
           // recurs, it's this prop, not mapStyle.ts, to revisit.
           showsBuildings
-        />
+        >
+          {liveFix && dotCoordinate ? (
+            <>
+              {liveFix.accuracy > 8 ? (
+                <Circle
+                  center={dotCoordinate}
+                  radius={liveFix.accuracy}
+                  fillColor="rgba(20,71,230,0.12)"
+                  strokeColor="rgba(20,71,230,0.25)"
+                  strokeWidth={1}
+                />
+              ) : null}
+              <Marker coordinate={dotCoordinate} anchor={{ x: 0.5, y: 0.5 }} flat zIndex={1}>
+                <View style={styles.userDot} />
+              </Marker>
+            </>
+          ) : null}
+        </MapView>
 
         {/* Subtle scrim over the whole map — pure decoration (masking, not a
             real map layer), keeps the pin/callout/sheet as the visual focus
@@ -625,6 +653,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
             <AppIcon icon={GpsSignal01Icon} size={18} color={BUTTON_ACCENT} />
             <Text className="text-sm font-semibold" style={{ color: BUTTON_ACCENT }}>
               Use my current location
+              {liveFix && liveFix.accuracy > VAGUE_ACCURACY_M ? ` (±${Math.round(liveFix.accuracy)} m)` : ''}
             </Text>
           </Pressable>
         </View>
@@ -638,7 +667,10 @@ export function LocationSearchScreen({ navigation, route }: Props) {
             real left/right/bottom margin instead of sitting flush against
             the screen edges. */}
         <View
-          onLayout={(e) => setCardHeight(e.nativeEvent.layout.height)}
+          // Only grows: every change moves mapPadding and the camera, so a
+          // card that shrank and grew with each address re-centred the map
+          // (and re-loaded the address) again and again.
+          onLayout={(e) => { const h = Math.round(e.nativeEvent.layout.height); setCardHeight((prev) => (h > prev ? h : prev)); }}
           className="absolute bottom-0 left-4 right-4 overflow-hidden rounded-3xl shadow-lg shadow-black/25"
           style={{ marginBottom: insets.bottom + 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' }}
         >
@@ -698,11 +730,11 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                       and an empty subtitle line still took up its own
                       row, reading as "the address is broken" rather
                       than "there's just nothing more to show". */}
-                  {(addressLabel && addressLabel !== shortName) || city ? (
-                    <Text className="text-[13px] text-ink/45" numberOfLines={2}>
-                      {addressLabel && addressLabel !== shortName ? addressLabel : city}
-                    </Text>
-                  ) : null}
+                  {/* Fixed two-line height so the card keeps its size
+                      whichever address is shown. */}
+                  <Text className="text-[13px] leading-[18px] text-ink/45" numberOfLines={2} style={{ height: 36 }}>
+                    {addressLabel && addressLabel !== shortName ? addressLabel : city}
+                  </Text>
                 </View>
                 <Pressable
                   onPress={() => searchInputRef.current?.focus()}
@@ -715,7 +747,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                 </Pressable>
               </View>
 
-              {distanceFromCurrent !== null ? (
+              {distanceFromCurrent !== null && distanceFromCurrent > FAR_FROM_DEVICE_KM ? (
                 <Text className="mt-2.5 text-[12.5px] font-medium text-red-600">
                   This pin is {formatDistance(distanceFromCurrent)} from your current location
                 </Text>
@@ -778,3 +810,19 @@ export function LocationSearchScreen({ navigation, route }: Props) {
     </DismissKeyboardView>
   );
 }
+
+const styles = StyleSheet.create({
+  userDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: BUTTON_ACCENT,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+});
