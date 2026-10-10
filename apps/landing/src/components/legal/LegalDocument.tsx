@@ -60,9 +60,17 @@ export function LegalList({ items }: { items: ReactNode[] }) {
   );
 }
 
-// "<legal name> ("Gloceries", "we", "us")" — the
-// definition every document opens with.
+// "Gloceries ("we", "us")" — the definition every document opens with;
+// names the legal entity too once one is set.
 export function EntityDefinition() {
+  if (!COMPANY.legalName) {
+    return (
+      <>
+        <strong>{COMPANY.brand}</strong> (&quot;we&quot;, &quot;us&quot; or &quot;our&quot;) is a technology platform that connects
+        customers with independent local stores
+      </>
+    );
+  }
   return (
     <>
       {COMPANY.brand} is a technology platform owned and operated by <strong>{COMPANY.legalName}</strong> (&quot;

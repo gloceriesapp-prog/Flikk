@@ -127,7 +127,7 @@ export default function TermsPage() {
 
       <LegalSection title="11. Intellectual property">
         <p>
-          The {COMPANY.brand} name, logo, apps and website are owned by {COMPANY.legalName}. Product names and brands
+          The {COMPANY.brand} name, logo, apps and website are owned by {COMPANY.legalName ?? COMPANY.brand}. Product names and brands
           belong to their respective owners.
         </p>
       </LegalSection>

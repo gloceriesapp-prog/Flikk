@@ -66,7 +66,7 @@ export default function ContactPage() {
 
       <LegalSection title="Company details">
         <dl>
-          <DetailRow label="Legal name">{COMPANY.legalName}</DetailRow>
+          {COMPANY.legalName && <DetailRow label="Legal name">{COMPANY.legalName}</DetailRow>}
           <DetailRow label="Brand">{COMPANY.brand}</DetailRow>
           {registeredAddress && <DetailRow label="Registered address">{registeredAddress}</DetailRow>}
           {cin && <DetailRow label="CIN">{cin}</DetailRow>}

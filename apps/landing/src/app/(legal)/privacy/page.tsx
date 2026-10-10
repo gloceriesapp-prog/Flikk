@@ -146,7 +146,7 @@ export default function PrivacyPage() {
         )}
         {COMPANY.registeredAddress && (
           <p>
-            {COMPANY.legalName}, {COMPANY.registeredAddress}
+            {COMPANY.legalName ?? COMPANY.brand}, {COMPANY.registeredAddress}
           </p>
         )}
       </LegalSection>
