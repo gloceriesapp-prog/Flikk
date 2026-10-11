@@ -15,7 +15,8 @@ import NetInfo from '@react-native-community/netinfo';
 import { wireOnlineManager, createNetInfoSubscriber, onlineStore } from './src/network/online';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform, View } from 'react-native';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { GILROY_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -30,6 +31,25 @@ registerAccountReset(() => {
 });
 
 void SplashScreen.preventAutoHideAsync();
+
+// Android is mandatory edge-to-edge this SDK, so the system navigation bar
+// (3-button or gesture) is transparent and the app draws behind it — leaving
+// the home/back strip showing whatever happens to be under it. There is no
+// supported way to set a solid nav-bar background from JS anymore
+// (setBackgroundColorAsync is a no-op under edge-to-edge), so paint our own:
+// a white strip pinned to the bottom inset, below the OS buttons (the OS
+// always draws them on top) and pointerEvents="none" so it never eats a tap.
+// Height 0 (buttonless gesture nav with no inset) renders nothing.
+function AndroidNavBarScrim() {
+  const insets = useSafeAreaInsets();
+  if (Platform.OS !== 'android' || insets.bottom === 0) return null;
+  return (
+    <View
+      pointerEvents="none"
+      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: insets.bottom, backgroundColor: '#FFFFFF' }}
+    />
+  );
+}
 
 // One NetInfo subscription feeds BOTH react-query's onlineManager (pauses/
 // resumes queries offline) and the shared onlineStore (drives OfflineBanner),
@@ -101,6 +121,9 @@ function App() {
             <OfflineBanner />
           </QueryClientProvider>
         </KeyboardProvider>
+        {/* White backing for Android's transparent system nav bar — topmost so
+            it covers the inset strip on every screen, non-interactive. */}
+        <AndroidNavBarScrim />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
