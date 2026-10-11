@@ -1,7 +1,8 @@
-// Real login gate — this dashboard had ZERO auth before the OTP flow (anyone
-// with the URL had full founder access, including every app/api/* route
-// backed by the service-role client). Runs on every request and blocks
-// anything without a valid signed admin-session cookie (lib/adminSession.ts),
+// Real login gate (Next 16 "proxy" convention — formerly middleware; same
+// functionality, renamed file + export). This dashboard had ZERO auth before
+// the OTP flow (anyone with the URL had full founder access, including every
+// app/api/* route backed by the service-role client). Runs on every request
+// and blocks anything without a valid signed admin-session cookie (lib/adminSession.ts),
 // which is set only after the emailed OTP is verified:
 //  - a page request redirects to /login (the OTP entry page), with ?next= so
 //    sign-in returns you where you were headed;
@@ -19,7 +20,7 @@ import { ADMIN_SESSION_COOKIE, isValidAdminSessionCookie } from '@/lib/adminSess
 // else — page or API — needs a valid admin-session cookie.
 const PUBLIC_PATHS = ['/login', '/api/auth/otp', '/api/auth/logout'];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     return NextResponse.next();

@@ -26,8 +26,8 @@ import { productAvailability } from '../../../utils/productAvailability';
 import type { Product } from './types';
 
 const VISIBLE_PRODUCTS = 6;
-const PRODUCT_CARD_WIDTH = 'w-32';
-const CARD_SNAP_INTERVAL = 128 + 12; // w-32 (128px) + this row's own gap-3 (12px)
+const PRODUCT_CARD_WIDTH = 'w-36';
+const CARD_SNAP_INTERVAL = 144 + 12; // w-36 (144px) + this row's own gap-3 (12px)
 
 interface Props {
   title: string;

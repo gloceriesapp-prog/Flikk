@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { NavigationContext, NavigationRouteContext, type NavigationProp, type RouteProp } from '@react-navigation/native';
 import { useSharedValue } from 'react-native-reanimated';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
+import { ActiveOrderBar } from '../../features/active-order-tracker';
 import { useNearestStore } from '../../screens/home/useNearestStore';
 import type { AppStackParamList } from '../types';
 
@@ -28,6 +29,10 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
           <NavigationContext.Provider value={navigation}>
             <NavigationRouteContext.Provider value={route}>
               <BottomNavBar hidden={hidden} />
+              {/* Floats just above the nav bar; self-hides when there's no
+                  active order. Only mounted on surfaces where the bar shows
+                  so its background poll doesn't run off-surface. */}
+              {showBar && <ActiveOrderBar />}
             </NavigationRouteContext.Provider>
           </NavigationContext.Provider>
         </View>
