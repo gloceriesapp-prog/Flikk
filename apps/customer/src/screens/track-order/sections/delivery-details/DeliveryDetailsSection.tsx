@@ -17,6 +17,9 @@ export function DeliveryDetailsSection({ address }: Props) {
           {!!address.label && <Text className="mt-4 text-[13px] font-semibold text-ink/55">{address.label}</Text>}
           <Text className="mt-1 text-[15px] font-medium leading-[22px] text-ink">{address.line1}</Text>
           {!!address.landmark && <Text className="mt-1 text-[13px] leading-5 text-ink/55">{address.landmark}</Text>}
+          {!!address.map_address && address.map_address !== address.line1 && (
+            <Text className="mt-2 text-[13px] leading-5 text-ink/45">{address.map_address}</Text>
+          )}
           <View className="mt-4 gap-1 border-t border-ink/5 pt-3">
             <Text className="text-[14px] font-semibold text-ink">{address.recipient_name || 'Recipient name unavailable'}</Text>
             <Text className="text-[13px] font-medium text-ink/55">{phone ?? 'Contact number unavailable'}</Text>

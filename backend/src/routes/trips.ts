@@ -124,7 +124,7 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
 tripsRouter.get('/:id', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
   try {
     const { data: trip, error: tripErr } = await supabase.from('trips')
-      .select('*, addresses(label, line1, landmark, recipient_name, recipient_phone)')
+      .select('*, addresses(label, line1, landmark, recipient_name, recipient_phone, map_address)')
       .eq('id', req.params.id).eq('customer_id', req.user!.id).maybeSingle();
     if (tripErr) throw new AppError(503, 'TRACKING_UNAVAILABLE', 'Tracking is temporarily unavailable. Please retry.');
     if (!trip) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found.');

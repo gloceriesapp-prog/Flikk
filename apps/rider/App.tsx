@@ -44,10 +44,10 @@ const queryClient = createAppQueryClient();
 
 export default function App() {
   // Loading the weights here registers them with the OS by font-family
-  // name (e.g. "AeonikSoftPro-Regular") — the actual app-wide default is
+  // name (e.g. "Gilroy-Regular") — the actual app-wide default is
   // applied via global.css's `@layer base`/weight-utility mapping, not
   // from this hook or any React defaultProps mechanism (same split as
-  // apps/customer and apps/partner's own Aeonik setups — see those
+  // apps/customer and apps/partner's own Gilroy setups — see those
   // files' App.tsx notes on why defaultProps doesn't work with
   // NativeWind's cssInterop-wrapped Text).
   const [fontsLoaded, fontError] = useFonts(AEONIK_FONT_FILES);

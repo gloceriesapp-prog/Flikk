@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertCircle, Bell, Check, CheckCircle2, ChevronDown, Clock, ShoppingBag, Truck, X } from 'lucide-react';
 import { fetchMyOrders, updateOrderStatus, type OrderStatus, type PartnerOrder } from '@/lib/partnerApi';
+import { useLiveData } from '@/lib/useLiveData';
 import { DEMO_ORDERS } from '@/lib/demoOrders';
 import { OrdersFilterBar, ORDER_FILTERS, type DateRange } from '@/components/orders/OrdersFilterBar';
 import { OrdersTable } from '@/components/orders/OrdersTable';
@@ -22,6 +23,11 @@ const RANGE_MS: Record<Exclude<DateRange, 'all' | 'today'>, number> = {
 // the "vs last month" pills render like the rest of the dashboard; the real
 // trends replace them the instant a real order lands. Delete with DEMO_ORDERS.
 const DEMO_TRENDS = { total: 6.2, pending: 12.5, inTransit: 4.1, delivered: 8.3, failed: 2.1 };
+
+// Web poll cadence — an order accepted/cancelled on the phone shows here within
+// this window instead of staying "new to review" until a manual reload. Lighter
+// than the RN app's 3.5s; the hook pauses it entirely while the tab is hidden.
+const ORDERS_POLL_MS = 12_000;
 
 function inRange(iso: string, range: DateRange): boolean {
   if (range === 'all') return true;
@@ -51,8 +57,10 @@ function exportCsv(orders: PartnerOrder[]) {
 }
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<PartnerOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Live: fetch on mount, re-poll every ORDERS_POLL_MS while the tab is visible,
+  // and refetch on demand after a mutation (D1 — the page used to freeze on its
+  // mount fetch and never see phone-side status changes).
+  const { data: orders = [], isLoading, refetch } = useLiveData(fetchMyOrders, ORDERS_POLL_MS);
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [search, setSearch] = useState('');
@@ -66,12 +74,6 @@ export default function OrdersPage() {
   // New-order banner expand: down-chevron reveals the placed orders with
   // inline Accept/Reject, so the owner acts without leaving the banner.
   const [alertOpen, setAlertOpen] = useState(false);
-
-  useEffect(() => {
-    fetchMyOrders()
-      .then(setOrders)
-      .finally(() => setIsLoading(false));
-  }, []);
 
   // DEMO DATA — same isDemo convention as the Overview page: shown only while
   // the store has zero real orders, replaced the instant a real one lands.
@@ -88,7 +90,7 @@ export default function OrdersPage() {
     setActioningId(id);
     try {
       await updateOrderStatus(id, status, reason);
-      setOrders(await fetchMyOrders());
+      await refetch();
     } finally {
       setActioningId(null);
     }

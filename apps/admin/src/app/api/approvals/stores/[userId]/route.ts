@@ -75,7 +75,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
     const { data: draft, error: draftError } = await supabaseAdmin
       .from('store_onboarding_drafts')
       .select(
-        'store_name, category, district, address_line, manual_address, photo_url, gst_number, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, phone, udyam_number, drug_license_number, open_time, close_time',
+        'store_name, category, district, address_line, manual_address, photo_url, gst_number, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, phone, udyam_number, drug_license_number, open_time, close_time, profile_photo_path, aadhaar_photo_path, store_doc_path',
       )
       .eq('user_id', userId)
       .not('submitted_at', 'is', null)
@@ -143,6 +143,12 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/approvals/
       drug_license_number: draft.drug_license_number,
       open_time: draft.open_time,
       close_time: draft.close_time,
+      // Encrypted owner-only KYC photo paths carried through from the draft —
+      // without this the paths die with the draft (deleted below) and
+      // GET /partner/store returns null photo URLs for an approved store.
+      profile_photo_path: draft.profile_photo_path,
+      aadhaar_photo_path: draft.aadhaar_photo_path,
+      store_doc_path: draft.store_doc_path,
     });
     if (storeError?.code === 'P0409' && storeError.message === 'STORE_ALREADY_OWNED') {
       return NextResponse.json({ error: 'This applicant already owns a store.' }, { status: 409 });

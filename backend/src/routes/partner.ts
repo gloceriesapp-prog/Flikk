@@ -1,6 +1,7 @@
 import { validateStoreFields } from '../stores/validation.js';
 import { requireStoreAccess } from '../stores/access.js';
 import { storePublicImage } from '../media/publicImages.js';
+import { readPrivateDocument } from '../media/privateDocuments.js';
 import { readPage, cursorFilter, sendPage } from '../lib/cursorPagination.js';
 // Source: specs/02-partner-app/api.md — every query scoped to the caller's own store,
 // never trusting a store_id from the request body.
@@ -79,8 +80,33 @@ function maskAccountNumber(full: string | null): string | null {
   return `XXXXXXXX${full.slice(-4)}`;
 }
 
+// A stored store-documents object PATH -> an absolute URL the partner app
+// fetches the decrypted bytes through (GET /partner/documents/:id below).
+// Owner KYC photos are stored ENCRYPTED (ciphertext, `.enc` object), so a
+// Supabase signed URL can't read them — the bytes go through
+// readPrivateDocument, which downloads and decrypts. Resolves the path to its
+// newest ready media_assets row owned by this user; null path or no such asset
+// -> null so the app renders a placeholder. Mirrors rider's resolveRiderDocUrl.
+async function resolveStoreDocUrl(path: string | null, userId: string): Promise<string | null> {
+  if (!path) return null;
+  const { data } = await supabase
+    .from('media_assets')
+    .select('id')
+    .eq('object_key', path)
+    .eq('uploaded_by', userId)
+    .eq('bucket', 'store-documents')
+    .eq('status', 'ready')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  // Absolute when PUBLIC_API_URL is set; relative otherwise — the partner app
+  // resolves a relative path against its own configured API base.
+  return `${process.env.PUBLIC_API_URL ?? ''}/partner/documents/${data.id}`;
+}
+
 const STORE_SELECT =
-  'id, name, category, is_active, admin_suspended, suspended_reason, suspended_at, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number, drug_license_number';
+  'id, name, category, is_active, admin_suspended, suspended_reason, suspended_at, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number, drug_license_number, profile_photo_path, aadhaar_photo_path, store_doc_path';
 
 // Business documents are write-once from the owner's side — real, not
 // just a disabled input client-side (a raw PATCH call could otherwise
@@ -124,7 +150,10 @@ async function latestProfileChange(storeId: string): Promise<ProfileChange | nul
 }
 
 function toStoreResponse(data: Record<string, unknown>, phone: string | null, profileChange: ProfileChange | null = null) {
-  const { payout_bank_account_number, ...rest } = data;
+  // Raw KYC object paths never leave the server — GET /store resolves them to
+  // decrypt-proxy URLs (profilePhotoUrl/aadhaarPhotoUrl/storePhotoUrl) instead.
+  const { payout_bank_account_number, profile_photo_path, aadhaar_photo_path, store_doc_path, ...rest } = data;
+  void profile_photo_path; void aadhaar_photo_path; void store_doc_path;
   return {
     ...rest,
     payout_bank_account_number: maskAccountNumber(payout_bank_account_number as string | null),
@@ -268,13 +297,60 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     if (access.role !== 'owner') {
       for (const key of Object.keys(response)) if (key.startsWith('payout_') || ['pan_number', 'gst_number', 'fssai_number', 'shop_establishment_number', 'drug_license_number'].includes(key)) delete (response as Record<string, unknown>)[key];
     }
-    res.json({ ...response, access_role: access.role });
+    // Owner-only encrypted KYC photos, resolved to decrypt-proxy URLs the
+    // Settings screen renders through GET /partner/documents/:id. Managers
+    // never see owner PII, same as the payout/document-number strip above.
+    const [profilePhotoUrl, aadhaarPhotoUrl, storePhotoUrl] = access.role === 'owner'
+      ? await Promise.all([
+          resolveStoreDocUrl(data.profile_photo_path as string | null, req.user!.id),
+          resolveStoreDocUrl(data.aadhaar_photo_path as string | null, req.user!.id),
+          resolveStoreDocUrl(data.store_doc_path as string | null, req.user!.id),
+        ])
+      : [null, null, null];
+    res.json({ ...response, profilePhotoUrl, aadhaarPhotoUrl, storePhotoUrl, access_role: access.role });
   } catch (err) {
     next(err);
   }
 });
 
-// Payout destination (PAYOUTS.md). Saved as entered and paid manually; the
+// Streams the decrypted bytes of one of this owner's own store-documents
+// assets (profile/Aadhaar/store KYC photos). GET /partner/store's
+// profilePhotoUrl/aadhaarPhotoUrl/storePhotoUrl fields point here.
+// Authorization is ownership + bucket + readiness: serve only an asset
+// uploaded_by this owner, in the store-documents bucket, status 'ready'; any
+// miss is a flat 404 so the endpoint never confirms another user's assetId
+// exists. readPrivateDocument handles both encrypted (decrypt) and legacy
+// plaintext assets. Private, never cached. (requireAuth + role store_owner are
+// already enforced by partnerRouter.use above.)
+partnerRouter.get('/documents/:assetId', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data: asset } = await supabase
+      .from('media_assets')
+      .select('bucket, object_key, content_type, encrypted, enc_iv, enc_tag, wrapped_dek, wrap_iv, wrap_tag, kek_id, uploaded_by, status')
+      .eq('id', req.params.assetId)
+      .maybeSingle();
+    if (!asset || asset.uploaded_by !== req.user!.id || asset.bucket !== 'store-documents' || asset.status !== 'ready') {
+      throw new AppError(404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+    }
+
+    let bytes: Buffer;
+    let contentType: string;
+    try {
+      ({ bytes, contentType } = await readPrivateDocument(asset));
+    } catch (readErr) {
+      // Download/decrypt failure: log server-side, leak no detail to the client.
+      console.error('partner document read failed', req.params.assetId, readErr);
+      throw new AppError(500, 'DOCUMENT_READ_FAILED', 'Document could not be retrieved.');
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(bytes);
+  } catch (err) {
+    next(err);
+  }
+});
 // founder verifies the name in admin. Full account number never returned.
 partnerRouter.get('/payout-account', async (req: AuthedRequest, res, next) => {
   try {
@@ -371,7 +447,7 @@ partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
     const storeId = await ownStoreId(req.user!.id);
     const page = readPage(req, `partner-orders:${storeId}:${req.query.view ?? "history"}`);
     let query = supabase.from('orders')
-      .select('id, order_number, status, total, item_total, commission_amount, provider_payment_id, placed_at, packed_at, delivered_at, order_items(id, product_id, quantity, unit_price_at_order, unit_at_order, products(name, unit, image_url)), users!customer_id(name, phone), addresses(line1, landmark, recipient_name)')
+      .select('id, order_number, status, total, item_total, commission_amount, payment_method, provider_payment_id, placed_at, packed_at, delivered_at, order_items(id, product_id, quantity, unit_price_at_order, unit_at_order, products(name, unit, image_url)), users!customer_id(name, phone), addresses(line1, landmark, recipient_name)')
       .eq('store_id', storeId);
     let queueFilter: string | undefined;
     if (req.query.view === 'queue') {

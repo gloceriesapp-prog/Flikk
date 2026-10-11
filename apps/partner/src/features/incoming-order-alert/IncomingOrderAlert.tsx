@@ -63,14 +63,14 @@ export function IncomingOrderAlert() {
                   crowding this block anymore. */}
               <Image source={{ uri: HERO_IMAGE_URL }} className="h-64 w-64" resizeMode="contain" />
 
-              <View className="flex-row items-center gap-1.5 rounded-full bg-lime-soft px-3 py-1.5">
-                <View className="h-1.5 w-1.5 rounded-full bg-lime-deep" />
-                <Text className="text-base font-medium text-lime-deep">Order Confirmation</Text>
+              <View className="flex-row items-center gap-1.5 rounded-full bg-[#DCE6FF] px-3 py-1.5">
+                <View className="h-1.5 w-1.5 rounded-full bg-primary" />
+                <Text className="text-base font-medium text-primary">Order Confirmation</Text>
               </View>
 
               <View className="items-center">
                 <Text className="text-center text-[28px] font-medium text-ink">
-                  New Order <Text className="text-lime-deep">Received!</Text>
+                  New Order <Text className="text-primary">Received!</Text>
                 </Text>
                 <Text className="mt-1 max-w-[280px] text-center text-base font-medium text-ink/50">
                   You have a new order. Accept it to start packing.
@@ -186,13 +186,13 @@ function OrderAlertActions({ onAccept, onDecline }: OrderAlertActionsProps) {
         style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
       >
         <LinearGradient
-          // Three stops, not two — a flat lime→limeDeep sweep reads as a
+          // Three stops, not two — a flat blue sweep reads as a
           // solid tint from a distance; adding a brighter highlight near
-          // the top-left and letting it deepen past limeDeep on the way
+          // the top-left and letting it deepen past primary on the way
           // out is what gives it a lit, rounded surface instead of a flat
           // fill (the "why does this button look expensive" trick most
           // premium app CTAs use).
-          colors={['#aee637bd', colors.lime, colors.limeDeep]}
+          colors={['#4D82FFbd', colors.primary, '#0A3FC4']}
           locations={[0, 0.45, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -209,7 +209,7 @@ function OrderAlertActions({ onAccept, onDecline }: OrderAlertActionsProps) {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            shadowColor: colors.limeDeep,
+            shadowColor: colors.primary,
             shadowOffset: { width: 0, height: 6 },
             shadowOpacity: 0.35,
             shadowRadius: 12,
@@ -217,9 +217,9 @@ function OrderAlertActions({ onAccept, onDecline }: OrderAlertActionsProps) {
           }}
         >
           <View className="h-6 w-6 items-center justify-center">
-            <AppIcon icon={CheckmarkCircle02Icon} size={20} color={colors.limeDeep} />
+            <AppIcon icon={CheckmarkCircle02Icon} size={20} color="#FFFFFF" />
           </View>
-          <Text className="text-lg font-medium text-black">{justAccepted ? 'Accepted' : 'Accept Order'}</Text>
+          <Text className="text-lg font-medium text-white">{justAccepted ? 'Accepted' : 'Accept Order'}</Text>
         </LinearGradient>
       </Pressable>
     </View>

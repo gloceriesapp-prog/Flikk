@@ -204,7 +204,7 @@ ordersRouter.get('/:id', requireAuth, async (req: AuthedRequest, res, next) => {
     // here is filtered defensively so a route bug can't leak cross-role data.
     const { data, error } = await supabase
       .from('orders')
-      .select('*, order_items(*, products(name, image_url, unit)), stores(name, avg_prep_minutes), addresses(label, line1, landmark, recipient_name, recipient_phone)')
+      .select('*, order_items(*, products(name, image_url, unit)), stores(name, avg_prep_minutes), addresses(label, line1, landmark, recipient_name, recipient_phone, map_address)')
       .eq('id', req.params.id)
       .maybeSingle();
     if (error) throw new AppError(503, 'TRACKING_UNAVAILABLE', 'Tracking is temporarily unavailable. Please retry.');

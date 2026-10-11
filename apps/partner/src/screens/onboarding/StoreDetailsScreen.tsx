@@ -9,20 +9,37 @@ import { Text, TextInput } from 'react-native';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { saveStoreDraft } from '../../api/auth';
+import { ApiError } from '../../api/client';
+import { uploadStoreDocument } from '../../api/payouts';
+import { pickAndCompressImage } from '../../media/pickAndCompressImage';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { categoryNeedsDrugLicense, StoreCategoryPicker, useStoreCategories } from '../store-settings/components/StoreCategoryPicker';
+import { DocPickerCard } from './components/DocPickerCard';
 import { FieldCard, INPUT_CLASS, OnboardingScaffold } from './components/OnboardingScaffold';
-import type { AuthStackParamList } from '../../navigation/types';
+import type { AuthStackParamList, StoreDraft } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'StoreDetails'>;
 
+// Step 1 is now the wizard's entry point (the old "Get Started" intro screen
+// was removed), so it can be reached with no params — start from a blank
+// draft in that case.
+const EMPTY_STORE_DRAFT: StoreDraft = {
+  storeName: '', category: '', phone: '', district: null, addressLine: null, manualAddress: '',
+  coordinates: null, photoUrl: null, gstNumber: '', ownerName: '', ownerEmail: '',
+  shopLicenseNumber: '', fssaiNumber: '', panNumber: '', udyamNumber: '', drugLicenseNumber: '',
+  openTime: '', closeTime: '',
+  profilePhotoPath: null, aadhaarPhotoPath: null, storePhotoPath: null,
+};
+
 export function StoreDetailsScreen({ navigation, route }: Props) {
-  const { draft } = route.params;
+  const draft = route.params?.draft ?? EMPTY_STORE_DRAFT;
   const [storeName, setStoreName] = useState(draft.storeName);
   const [category, setCategory] = useState(draft.category);
   const [phone, setPhone] = useState(draft.phone);
   const [drugLicenseNumber, setDrugLicenseNumber] = useState(draft.drugLicenseNumber ?? '');
-  const [saving, setSaving] = useState(false);
+  const [storePhotoPath, setStorePhotoPath] = useState(draft.storePhotoPath);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const categories = useStoreCategories();
   const needsDrugLicense = categoryNeedsDrugLicense(categories, category);
   const isKnownCategory = categories.some((option) => option.name === category);
@@ -30,24 +47,37 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
   const canContinue =
     storeName.trim().length > 0 && isKnownCategory && phone.trim().length >= 10 && (!needsDrugLicense || drugLicenseNumber.trim().length > 0);
 
-  async function handleNext() {
+  async function handlePickStorePhoto() {
+    const picked = await pickAndCompressImage();
+    if (!picked) return;
+    setUploadingPhoto(true);
+    setPhotoError(null);
+    try {
+      const { path } = await uploadStoreDocument(picked.base64, 'store');
+      setStorePhotoPath(path);
+    } catch (err) {
+      setPhotoError(err instanceof ApiError ? err.message : 'Could not upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  function handleNext() {
     if (!canContinue) return;
     const trimmedName = storeName.trim();
     const trimmedPhone = phone.trim();
     const trimmedLicense = needsDrugLicense ? drugLicenseNumber.trim() : '';
 
-    setSaving(true);
-    try {
-      await saveStoreDraft({ storeName: trimmedName, category, phone: trimmedPhone, drugLicenseNumber: trimmedLicense });
-    } catch {
-      // Best-effort autosave — a failed save just costs a resume, not a
-      // blocked flow (fetchStoreDraft's own note in api/auth.ts).
-    } finally {
-      setSaving(false);
-    }
+    // Best-effort autosave — fire-and-forget so it never blocks navigation.
+    // A failed save just costs a resume, not a blocked flow (fetchStoreDraft's
+    // own note in api/auth.ts). warn (not error) so a transient network blip
+    // shows a yellow warning, not a red "Console Error" box that reads as a crash.
+    void saveStoreDraft({ storeName: trimmedName, category, phone: trimmedPhone, drugLicenseNumber: trimmedLicense, storePhotoPath: storePhotoPath ?? undefined }).catch(
+      (err) => console.warn('[StoreDetails] saveStoreDraft failed (best-effort)', err),
+    );
 
     navigation.navigate('StoreLocation', {
-      draft: { ...draft, storeName: trimmedName, category, phone: trimmedPhone, drugLicenseNumber: trimmedLicense },
+      draft: { ...draft, storeName: trimmedName, category, phone: trimmedPhone, drugLicenseNumber: trimmedLicense, storePhotoPath },
     });
   }
 
@@ -57,7 +87,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
       title="Store details"
       subheading="What's your store called, and how can customers reach it?"
       onBack={() => navigation.goBack()}
-      footer={<PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} loading={saving} trailingIcon={ArrowRight01Icon} />}
+      footer={<PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} trailingIcon={ArrowRight01Icon} />}
     >
       <FieldCard label="Store name">
         <TextInput
@@ -68,6 +98,15 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
           className={INPUT_CLASS}
         />
       </FieldCard>
+
+      <DocPickerCard
+        label="Store photo"
+        hint="A clear photo of your storefront. Kept private for verification."
+        hasPhoto={!!storePhotoPath}
+        uploading={uploadingPhoto}
+        onPick={() => void handlePickStorePhoto()}
+        error={photoError}
+      />
 
       <FieldCard label="Category">
         <StoreCategoryPicker selected={category} onSelect={setCategory} />

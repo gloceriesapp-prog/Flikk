@@ -15,6 +15,7 @@ export interface ApiAddress {
   delivery_instructions: string | null;
   latitude: number | null;
   longitude: number | null;
+  map_address: string | null;
   is_default: boolean;
 }
 
@@ -27,6 +28,8 @@ export interface CreateAddressInput {
   delivery_instructions?: string;
   latitude: number;
   longitude: number;
+  // Full reverse-geocoded address from the map pin (distinct from line1).
+  map_address?: string;
   // Create only: becomes the default in the same server transaction.
   make_default?: boolean;
 }

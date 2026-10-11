@@ -478,6 +478,10 @@
       "sha256": "d01f06f0a95f7013470391ee2e7a93f1c79812a341b9e160f4a4a887dedb4f9f"
     },
     {
+      "file": "120_partner_kyc_document_paths.sql",
+      "sha256": "f77c387fbe88a577b0e5cbc3eea45e5437ffdf642e23614a5e517292e593696d"
+    },
+    {
       "file": "20261008161055_rider_reviewed_profile_changes.sql",
       "sha256": "12450b2817586aa2c1ab66a29eb3602ec7dd2287d2bc5dc3d08fd483352a0f95"
     },
@@ -488,6 +492,10 @@
     {
       "file": "20261008172854_customer_policy_and_content_sync.sql",
       "sha256": "1112f20900c08650c5b518f9e34f947bbc2f3ac6ed567ad6cc69e24a14586260"
+    },
+    {
+      "file": "20261011000000_delivery_map_address.sql",
+      "sha256": "60c764a32a6cb781c9fc06b40693ee9346be88844ee1b5dca14e87d252ac2c09"
     }
   ]
 }

@@ -39,6 +39,9 @@ interface CreateAddressBody {
   delivery_instructions?: string;
   latitude: number;
   longitude: number;
+  // Full reverse-geocoded address from the map pin (distinct from line1, which
+  // is the user-typed building/street). Shown on Track Order / receipts.
+  map_address?: string;
   // Create only: make this the default in the same transaction, so a retry
   // never leaves a duplicate behind a failed follow-up "set default" call.
   make_default?: boolean;
@@ -70,6 +73,7 @@ export function validateAddressBody(raw: unknown) {
     delivery_instructions: optionalText(body.delivery_instructions, 300, 'delivery_instructions'),
     latitude: body.latitude!,
     longitude: body.longitude!,
+    map_address: optionalText(body.map_address, 300, 'map_address'),
   };
 }
 

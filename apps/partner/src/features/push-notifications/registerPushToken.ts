@@ -15,6 +15,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
 import { savePushToken } from '../../api/auth';
 import { navigationRef } from '../../navigation/navigationRef';
 import { useNotificationStatusStore } from '../../store/useNotificationStatusStore';
@@ -87,10 +88,17 @@ export async function registerPushToken(): Promise<void> {
 // rotation so the backend never keeps pushing to a dead token. Returns the
 // unsubscribe for RootNavigator's effect cleanup.
 export function watchPushTokenRotation(): () => void {
-  const subscription = Notifications.addPushTokenListener(() => {
-    void registerPushToken();
-  });
-  return () => subscription.remove();
+  // Expo Go removed the push-token native API — calling it throws. Remote push
+  // can't work there anyway, so no-op. Try/catch keeps the never-throw posture.
+  if (isRunningInExpoGo()) return () => {};
+  try {
+    const subscription = Notifications.addPushTokenListener(() => {
+      void registerPushToken();
+    });
+    return () => subscription.remove();
+  } catch {
+    return () => {};
+  }
 }
 
 // Tapping an order push opens that order (or the Orders list when the push
@@ -116,7 +124,14 @@ export function flushPendingNotificationTap(): void {
 }
 
 export function watchNotificationTaps(): () => void {
-  void Notifications.getLastNotificationResponseAsync().then(openFromTap).catch(() => {});
-  const subscription = Notifications.addNotificationResponseReceivedListener(openFromTap);
-  return () => subscription.remove();
+  // Same Expo-Go guard as watchPushTokenRotation — the notification-response
+  // APIs are among the ones Expo Go strips out. Never throws.
+  if (isRunningInExpoGo()) return () => {};
+  try {
+    void Notifications.getLastNotificationResponseAsync().then(openFromTap).catch(() => {});
+    const subscription = Notifications.addNotificationResponseReceivedListener(openFromTap);
+    return () => subscription.remove();
+  } catch {
+    return () => {};
+  }
 }

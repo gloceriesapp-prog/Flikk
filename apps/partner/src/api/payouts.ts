@@ -82,5 +82,15 @@ export const { fetchPayoutAccount, savePayoutAccount } = createPayoutAccountApi(
 // Cancelled cheque / passbook photo — private store-documents bucket, object
 // PATH out (never a public URL), sent back as PUT's proofPath.
 export function uploadPayoutProof(base64: string): Promise<{ path: string }> {
-  return apiRequest('/partner/store-document-photo', { method: 'POST', body: { base64, kind: 'payout-proof' } });
+  return uploadStoreDocument(base64, 'payout-proof');
+}
+
+// Generalized private-document upload — same endpoint/bucket as the payout
+// proof above, just parameterized by `kind`. Returns an object PATH (never a
+// public URL); onboarding carries these as path strings, exactly like proofPath.
+export function uploadStoreDocument(
+  base64: string,
+  kind: 'profile' | 'aadhaar' | 'store' | 'payout-proof',
+): Promise<{ path: string }> {
+  return apiRequest('/partner/store-document-photo', { method: 'POST', body: { base64, kind } });
 }

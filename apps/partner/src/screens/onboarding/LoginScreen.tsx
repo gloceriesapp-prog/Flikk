@@ -31,7 +31,7 @@ import type { AuthStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 const PHONE_LENGTH = 10;
-const HERO_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/store-image.jpeg';
+const HERO_IMAGE_URI = 'https://images.gloceries.com/appsui/patner-login.png';
 // Fixed, real height — not measured/animated. Full device width, this
 // height; resizeMode="cover" keeps the real image's own aspect from
 // looking stretched at that width without needing its actual pixel

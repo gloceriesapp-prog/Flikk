@@ -64,11 +64,16 @@ export interface PartnerOrder {
   // How many orders this customer has placed at this store, this one
   // included — a repeat-customer signal for the store owner.
   orderCount: number;
-  // 'cod' means the store owner collects cash on delivery — 'prepaid'
-  // means the online payment (Cashfree) already settled it, nothing to collect. Shown up top in
-  // OrderDetailScreen since it changes what the store owner does when the
-  // order goes out, unlike the relative placedAtLabel it replaced there.
-  paymentMode: 'prepaid' | 'cod';
+  // What the store owner must do about payment when the order goes out —
+  // the real-money/operational instruction shown up top in
+  // OrderDetailScreen. Driven off the authoritative orders.payment_method
+  // (cod vs online) plus provider_payment_id (whether an online payment has
+  // settled), NEVER a provider_payment_id-only guess:
+  //   'cod'              — customer pays cash on delivery, owner collects it
+  //   'paid_online'      — online payment already settled, nothing to collect
+  //   'awaiting_payment' — online order whose payment hasn't settled; owner
+  //                        must NOT collect cash (it is not a COD order)
+  paymentMode: 'cod' | 'paid_online' | 'awaiting_payment';
   // Two-line drop-off — shown on the incoming-order alert's "Deliver to"
   // section (features/incoming-order-alert/). Not the full addresses
   // table shape from specs/00-foundation/data-model.md (label, landmark,
@@ -164,7 +169,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
       placedAtLabel: '4 min ago',
       placedAtTime: new Date(now - 4 * 60_000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       orderCount: 2,
-      paymentMode: 'prepaid',
+      paymentMode: 'paid_online',
       deliveryAddress: ['4th Cross, Malpe Road', ''],
       customerPhone: '+919900022233',
       placedAtTimestamp: now - 4 * 60_000, // 4 mins elapsed
@@ -205,7 +210,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
       placedAtLabel: '55 min ago',
       placedAtTime: new Date(now - 55 * 60_000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       orderCount: 4,
-      paymentMode: 'prepaid',
+      paymentMode: 'paid_online',
       deliveryAddress: ['Hotel Sea Rock Road', 'Near Kaup Beach'],
       customerPhone: '+919900044455',
       placedAtTimestamp: now - 55 * 60_000,
@@ -304,13 +309,18 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     placedAtLabel: formatRelativeTime(order.placed_at),
     placedAtTime: new Date(order.placed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
     orderCount,
-    // No real payment_mode column on `orders` yet — a captured provider
-    // payment id is the honest proxy available today (see backend's own
-    // POST /payments/confirm-simulated note): if one exists, the order was
-    // paid online; if not, it's COD. A real payment_mode field belongs on
-    // the schema once COD stops routing through the same simulated-payment
-    // call prepaid orders do — a real, separate gap, not invented here.
-    paymentMode: order.provider_payment_id ? 'prepaid' : 'cod',
+    // Authoritative: orders.payment_method is the real COD-vs-online signal
+    // (set at order creation from the customer's chosen method), and
+    // provider_payment_id tells whether an online payment has actually
+    // settled. The old `provider_payment_id ? 'prepaid' : 'cod'` guess was
+    // wrong for an online order still awaiting payment (null id) — it told
+    // the owner to collect cash on an order that is not COD.
+    paymentMode:
+      order.payment_method === 'cod'
+        ? 'cod'
+        : order.provider_payment_id
+          ? 'paid_online'
+          : 'awaiting_payment',
     deliveryAddress: [order.addresses?.line1 ?? 'Address unavailable', order.addresses?.landmark ?? ''],
     customerPhone: order.users?.phone ?? '',
     placedAtTimestamp: new Date(order.placed_at).getTime(),

@@ -102,16 +102,37 @@ export function consumeLoginOtp(phone: string) { pending.delete(phone); }
 
 const authDigits = (phone: string) => phone.replace(/\D/g, '');
 
+// A Supabase/GoTrue call that fails because the service is UNREACHABLE (local
+// stack down, network blip, bad gateway) must surface as a retryable 503 —
+// not a generic "we couldn't sign you in", which hides a dead dependency
+// behind what looks like an auth-logic failure.
+type SupabaseErr = { code?: string; status?: number; message?: string } | null | undefined;
+function isDependencyUnreachable(error: SupabaseErr): boolean {
+  if (!error) return false;
+  if (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504) return true;
+  if ((error.code || '').toLowerCase() === 'unexpected_failure') return true;
+  return /fetch failed|econnrefused|enotfound|network|socket hang ?up|etimedout|timeout/i.test(error.message || '');
+}
+const unavailable = () => new AppError(503, 'AUTH_UNAVAILABLE', 'Sign-in is temporarily unavailable. Please try again in a moment.');
+
 // Existing account first (public.users has every signed-in phone), then
 // create, then, for a phone that exists only in auth (an older unfinished
 // sign-in), search auth users.
 async function findOrCreateAuthUser(phone: string): Promise<string> {
-  const { data: row } = await supabase.from('users').select('id').in('phone', phoneVariants(phone)).limit(1).maybeSingle();
+  const { data: row, error: readError } = await supabase.from('users').select('id').in('phone', phoneVariants(phone)).limit(1).maybeSingle();
   if (row?.id) return row.id as string;
+  if (isDependencyUnreachable(readError)) {
+    logger.error({ reason: readError?.message?.slice(0, 200) }, 'Login: users lookup failed (Supabase unreachable)');
+    throw unavailable();
+  }
   const created = await supabase.auth.admin.createUser({ phone, phone_confirm: true });
   if (created.data.user) return created.data.user.id;
   const existing = await findAuthUserByPhone(phone);
   if (existing) return existing;
+  if (isDependencyUnreachable(created.error)) {
+    logger.error({ code: created.error?.code, reason: created.error?.message?.slice(0, 200) }, 'Login: auth createUser failed (Supabase unreachable)');
+    throw unavailable();
+  }
   logger.error({ code: created.error?.code, reason: created.error?.message?.slice(0, 200) }, 'Could not create or find the auth user for a verified phone');
   throw new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
 }
@@ -138,7 +159,7 @@ async function findAuthUserByPhone(phone: string): Promise<string | undefined> {
 
 const failure = (where: string, error: { code?: string; status?: number; message?: string } | null | undefined) => {
   logger.error({ step: where, code: error?.code, status: error?.status, reason: error?.message?.slice(0, 200) }, 'Login: could not issue a session after a correct code');
-  return new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
+  return isDependencyUnreachable(error) ? unavailable() : new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
 };
 
 /**

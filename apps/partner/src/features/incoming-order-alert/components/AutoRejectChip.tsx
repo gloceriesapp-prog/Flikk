@@ -22,9 +22,9 @@ function formatCountdown(totalSeconds: number): string {
 export function AutoRejectChip({ secondsLeft }: Props) {
   return (
     <View className="items-end gap-1">
-      <View className="flex-row items-center gap-1.5 rounded-full bg-lime-soft px-3 py-1.5">
-        <AppIcon icon={Clock01Icon} size={13} color={colors.limeDeep} />
-        <Text className="text-sm font-bold text-lime-deep" style={{ fontVariant: ['tabular-nums'] }}>
+      <View className="flex-row items-center gap-1.5 rounded-full bg-[#DCE6FF] px-3 py-1.5">
+        <AppIcon icon={Clock01Icon} size={13} color={colors.primary} />
+        <Text className="text-sm font-bold text-primary" style={{ fontVariant: ['tabular-nums'] }}>
           {formatCountdown(secondsLeft)}
         </Text>
       </View>

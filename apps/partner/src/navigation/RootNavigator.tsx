@@ -201,7 +201,7 @@ export function RootNavigator() {
   return (
     <NavigationContainer ref={navigationRef} onReady={flushPendingNotificationTap}>
       {__DEV__ && DEV_FORCE_ONBOARDING ? (
-        <AuthNavigator key="dev-onboarding" initialRouteName="OnboardingIntro" />
+        <AuthNavigator key="dev-onboarding" initialRouteName="StoreDetails" />
       ) : !accessToken ? (
         // Keyed by accessToken so a session clear (missing/expired token —
         // see api/client.ts's own note on the exact bug this fixes) always
@@ -224,7 +224,7 @@ export function RootNavigator() {
       ) : applicationSubmitted ? (
         <WaitingApprovalGate />
       ) : (
-        <AuthNavigator key={accessToken} initialRouteName="OnboardingIntro" />
+        <AuthNavigator key={accessToken} initialRouteName="StoreDetails" />
       )}
     </NavigationContainer>
   );

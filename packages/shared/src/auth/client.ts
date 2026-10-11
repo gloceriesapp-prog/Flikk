@@ -97,39 +97,62 @@ export function createApiClient({ baseUrl, getAccessToken, refresh, onSessionExp
     }
   }
 
+  // A 429 is the backend's per-account/per-IP token bucket (auth.ts
+  // ACCOUNT_RATE_LIMITED / admission.ts RATED_LIMITED) rejecting the request
+  // BEFORE it executed — so the request never ran and retrying is safe for
+  // any method, not just idempotent ones. Bounded hard so a sustained bucket
+  // can't turn into an unbounded retry storm; past the cap we throw the raw
+  // 429 exactly as before so the caller can show a friendly message.
+  const MAX_429_RETRIES = 2;
+
   async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { method = 'GET', body, auth = true } = options;
 
-    // Captured before the request so the dead-session guard below fires only
-    // when a real token was actually sent (guest guard — see onSessionExpired).
-    const token = auth ? getAccessToken() : null;
-    let { res, json } = await send(path, method, body, token, options.signal);
+    for (let attempt = 0; ; attempt++) {
+      // Captured before the request so the dead-session guard below fires only
+      // when a real token was actually sent (guest guard — see onSessionExpired).
+      // Re-read each attempt so a 429 retry picks up a token a sibling 401
+      // refresh may have rotated in the meantime.
+      const token = auth ? getAccessToken() : null;
+      let { res, json } = await send(path, method, body, token, options.signal);
 
-    // A real 401 doesn't automatically mean "log this person out" anymore
-    // — it might just mean the access token expired (they're short-lived,
-    // see backend's own note on POST /otp/verify). One silent
-    // refresh-and-retry before surfacing the error at all — only the
-    // caller's own eventual 401 (refresh also failed) reads as a genuinely
-    // dead session worth logging out over.
-    if (res.status === 401 && auth) {
-      const newToken = refresh ? await refresh() : null;
-      if (newToken) {
-        ({ res, json } = await send(path, method, body, newToken, options.signal));
-      } else if (res.status === 401 && token && onSessionExpired) {
-        // Refresh genuinely couldn't recover a session that HAD a token —
-        // hand it back to the app to clear so RootNavigator bounces to login
-        // instead of the shell staying up while every future call 401s.
-        await onSessionExpired();
+      // A real 401 doesn't automatically mean "log this person out" anymore
+      // — it might just mean the access token expired (they're short-lived,
+      // see backend's own note on POST /otp/verify). One silent
+      // refresh-and-retry before surfacing the error at all — only the
+      // caller's own eventual 401 (refresh also failed) reads as a genuinely
+      // dead session worth logging out over.
+      if (res.status === 401 && auth) {
+        const newToken = refresh ? await refresh() : null;
+        if (newToken) {
+          ({ res, json } = await send(path, method, body, newToken, options.signal));
+        } else if (res.status === 401 && token && onSessionExpired) {
+          // Refresh genuinely couldn't recover a session that HAD a token —
+          // hand it back to the app to clear so RootNavigator bounces to login
+          // instead of the shell staying up while every future call 401s.
+          await onSessionExpired();
+        }
       }
-    }
 
-    if (!res.ok) {
-      const code = json?.error?.code ?? 'UNKNOWN_ERROR';
-      const message = json?.error?.message ?? 'Something went wrong. Please try again.';
-      throw new ApiError(res.status, code, message);
-    }
+      // Rate-limited: honor Retry-After (seconds), falling back to a linear
+      // 1s, 2s backoff when it's missing/garbage, capped at 4s so a wild
+      // header value can't hang a screen. Then re-run the loop.
+      if (res.status === 429 && attempt < MAX_429_RETRIES) {
+        const header = Number(res.headers.get('Retry-After'));
+        const base = Number.isFinite(header) && header > 0 ? header : attempt + 1;
+        const waitMs = Math.min(base, 4) * 1000;
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        continue;
+      }
 
-    return json as T;
+      if (!res.ok) {
+        const code = json?.error?.code ?? 'UNKNOWN_ERROR';
+        const message = json?.error?.message ?? 'Something went wrong. Please try again.';
+        throw new ApiError(res.status, code, message);
+      }
+
+      return json as T;
+    }
   }
 
   return { apiRequest };

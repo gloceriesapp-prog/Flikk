@@ -60,6 +60,7 @@ export interface OrderDeliveryAddress {
   landmark: string | null;
   recipient_name: string;
   recipient_phone: string | null;
+  map_address?: string | null;
 }
 
 export interface ApiOrder {

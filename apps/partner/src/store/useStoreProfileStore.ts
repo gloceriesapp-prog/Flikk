@@ -52,11 +52,28 @@ interface StoreRow {
   fssai_number: string | null;
   pan_number: string | null;
   drug_license_number?: string | null;
+  // The owner's three private, encrypted KYC photos — each a decrypt-proxy
+  // URL (GET /partner/documents/:id, bearer-auth required) or null when not
+  // uploaded. camelCase, unlike the snake_case columns above, because the
+  // backend derives these per-request rather than storing them as columns.
+  profilePhotoUrl?: string | null;
+  aadhaarPhotoUrl?: string | null;
+  storePhotoUrl?: string | null;
   pending_change?: ChangeRow | null;
   last_change_review?: ChangeRow | null;
 }
 
-function fromRow(row: StoreRow): StoreProfile {
+// GET /partner/store now also returns the owner's three private, encrypted
+// KYC photos as decrypt-proxy URLs. Extended here, not in data.ts's canonical
+// StoreProfile, since only Settings' "My documents" viewer reads them —
+// everything else in the app works off the plain StoreProfile shape.
+export interface StoreProfileWithDocs extends StoreProfile {
+  profilePhotoUrl: string | null;
+  aadhaarPhotoUrl: string | null;
+  storePhotoUrl: string | null;
+}
+
+function fromRow(row: StoreRow): StoreProfileWithDocs {
   return {
     id: row.id,
     accessRole: row.access_role ?? 'owner',
@@ -89,6 +106,9 @@ function fromRow(row: StoreRow): StoreProfile {
     drugLicenseNumber: row.drug_license_number ?? '',
     pendingChange: fromChange(row.pending_change),
     lastChangeReview: fromChange(row.last_change_review),
+    profilePhotoUrl: row.profilePhotoUrl ?? null,
+    aadhaarPhotoUrl: row.aadhaarPhotoUrl ?? null,
+    storePhotoUrl: row.storePhotoUrl ?? null,
   };
 }
 
@@ -103,14 +123,14 @@ function fromRow(row: StoreRow): StoreProfile {
 export type ProfileSaveResult = { ok: true; pendingReview: boolean } | { ok: false; error: string };
 
 interface StoreProfileState {
-  profile: StoreProfile;
+  profile: StoreProfileWithDocs;
   loadProfile: () => Promise<void>;
   updateProfile: (patch: Partial<StoreProfile>) => Promise<ProfileSaveResult>;
   toggleOpen: () => void;
 }
 
 export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
-  profile: EMPTY_STORE_PROFILE,
+  profile: { ...EMPTY_STORE_PROFILE, profilePhotoUrl: null, aadhaarPhotoUrl: null, storePhotoUrl: null },
 
   loadProfile: async () => {
     try {

@@ -34,6 +34,11 @@ export interface ApiOrder {
   // percent locally).
   item_total: number;
   commission_amount: number;
+  // Authoritative COD-vs-online, set at order creation from the customer's
+  // actual chosen method (migrations/034_order_payment_method.sql), never
+  // inferred. 'cod' = customer pays cash on delivery; 'online' = customer
+  // chose to pay online (settled only once provider_payment_id is set).
+  payment_method: 'cod' | 'online';
   provider_payment_id: string | null;
   placed_at: string;
   // migration 109 — when the order reached the store (accept window start).
