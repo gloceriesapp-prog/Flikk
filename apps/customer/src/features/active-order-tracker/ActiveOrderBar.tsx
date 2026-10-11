@@ -70,10 +70,9 @@ export function ActiveOrderBar() {
         // the deep-link path (navigation/linking.ts) already passes.
         onPress={() => navigation.navigate('TrackOrder', { orderId, isTrip, paymentMethodLabel: '' })}
         className={`w-full flex-row items-center gap-3 self-center rounded-[18px] border bg-white px-2.5 py-2.5 active:opacity-90 ${Platform.OS === 'android' ? 'border-gray-100' : 'border-ink/5'}`}
-        // Android: soft all-around elevation shadow so the floating card lifts
-        // off the content behind it; iOS keeps its own soft drop shadow. The
-        // subtle gray/ink border stays on both for a crisp edge.
-        style={{ maxWidth: 360, shadowColor: '#101C10', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: Platform.OS === 'android' ? 6 : 8 }}
+        // Android: no elevation shadow — a flat gray-100 border is the only
+        // edge treatment. iOS keeps its own soft drop shadow + ink border.
+        style={{ maxWidth: 360, shadowColor: '#101C10', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: Platform.OS === 'android' ? 0 : 8 }}
       >
         {/* ETA badge — lime→deep diagonal gradient with ink text (white on
             lime fails AA, per the design system). Live countdown via
