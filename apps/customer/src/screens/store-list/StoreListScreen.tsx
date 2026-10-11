@@ -25,7 +25,7 @@ import { StoreHeader } from './components/StoreHeader';
 import { StorePromoBanner } from './components/StorePromoBanner';
 import { NearestToYouSection } from './nearest/NearestToYouSection';
 import { PopularThisWeekSection } from './popular/PopularThisWeekSection';
-import { getStoreImageUri, PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
+import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { useLikedStoresStore } from '../../store/useLikedStoresStore';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -34,20 +34,14 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Store'>;
 export function StoreListScreen({ navigation }: Props) {
   const { data: allStores = [] } = useAllStores();
 
-  // Each card fetches 3 photos (StoreCard.tsx) from picsum.photos, a slow
-  // third-party random-image generator with no real CDN edge — on Android,
-  // waiting for each card's own request to start only once it scrolls into
-  // view is what read as "images take forever to load". Firing all of them
-  // the moment the list resolves overlaps that latency with everything else
-  // the screen is already doing, so most tiles are warm by the time they're
-  // actually scrolled to. Same pattern AppImage.tsx's own prefetchImages
-  // already documents for ProductCard.
+  // Each StoreCard renders exactly one image — store.photoUrl, or the local
+  // placeholder when a store has no photo yet. Prefetch that one URI per store
+  // the moment the list resolves so tiles are warm by the time they scroll
+  // into view, overlapping the fetch with the rest of the screen's work (same
+  // pattern AppImage.tsx's own prefetchImages documents for ProductCard). No
+  // third-party picsum images here anymore — only real/placeholder photos.
   useEffect(() => {
-    const uris = allStores.flatMap((store) => [
-      store.photoUrl || PLACEHOLDER_IMAGE_URI,
-      getStoreImageUri(`${store.id}-b`),
-      getStoreImageUri(`${store.id}-c`),
-    ]);
+    const uris = allStores.map((store) => store.photoUrl || PLACEHOLDER_IMAGE_URI);
     prefetchImages(uris);
   }, [allStores]);
   const [selectedCategory, setSelectedCategory] = useState('All');
