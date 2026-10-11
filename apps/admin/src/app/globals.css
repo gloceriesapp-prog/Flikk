@@ -19,10 +19,11 @@
   --color-danger: #dc2626;
   --color-warning: #f59e0b;
   --color-accent: #eef1f5;
-  --font-sans: var(--font-sohne);
-  --font-sohne-breit: var(--font-sohne-breit);
-  --font-sohne-mono: var(--font-sohne-mono);
-  --font-sohne-schmal: var(--font-sohne-schmal);
+  /* Gilroy is the one typeface (see src/theme/fonts.ts). The old Söhne
+     extended/condensed widths collapsed into it; `font-mono` in the pages
+     falls back to a system monospace stack since Gilroy has no mono cut. */
+  --font-sans: var(--font-gilroy);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {

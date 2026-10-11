@@ -6,25 +6,23 @@
 // current single-store order volume; move to a real backend rollup if a
 // store's order count grows large enough for this to matter.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Ban, ListOrdered, Receipt, Wallet } from 'lucide-react';
-import { fetchMyOrders, type PartnerOrder } from '@/lib/partnerApi';
+import { fetchMyOrders } from '@/lib/partnerApi';
+import { orderNetRevenue, lineNetRevenue } from '@/lib/orderRevenue';
+import { useLiveData } from '@/lib/useLiveData';
 import { SectionCard } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
 import { formatInr } from '@/lib/format';
 
 const DAYS_WINDOW = 14;
+// Historical rollups move slowly — poll lightly, and the hook pauses it while
+// the tab is hidden.
+const ANALYTICS_POLL_MS = 60_000;
 
 export default function AnalyticsPage() {
-  const [orders, setOrders] = useState<PartnerOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchMyOrders()
-      .then(setOrders)
-      .finally(() => setIsLoading(false));
-  }, []);
+  const { data: orders = [], isLoading } = useLiveData(fetchMyOrders, ANALYTICS_POLL_MS);
 
   const delivered = useMemo(() => orders.filter((o) => o.status !== 'cancelled'), [orders]);
 
@@ -41,7 +39,9 @@ export default function AnalyticsPage() {
       const key = new Date(order.placed_at).toDateString();
       const bucket = byDate.get(key);
       if (bucket) {
-        bucket.revenue += order.total;
+        // NET store revenue (item_total − commission_amount), not the gross
+        // customer-paid total — see orderRevenue.ts.
+        bucket.revenue += orderNetRevenue(order);
         bucket.orders += 1;
       }
     }
@@ -54,7 +54,10 @@ export default function AnalyticsPage() {
       for (const item of order.order_items) {
         const name = item.products?.name ?? 'Item';
         const existing = totals.get(name) ?? { name, revenue: 0, units: 0 };
-        existing.revenue += item.unit_price_at_order * item.quantity;
+        // NET revenue for this line: gross line value with the order's
+        // commission apportioned out, so top-product revenue is store income
+        // on the same basis as the totals above (orderRevenue.ts).
+        existing.revenue += lineNetRevenue(order, item.unit_price_at_order * item.quantity);
         existing.units += item.quantity;
         totals.set(name, existing);
       }
@@ -62,7 +65,9 @@ export default function AnalyticsPage() {
     return [...totals.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 8);
   }, [delivered]);
 
-  const totalRevenue = delivered.reduce((sum, o) => sum + o.total, 0);
+  // All-time store NET revenue (what the store keeps), and AOV on that same net
+  // basis so the two figures agree.
+  const totalRevenue = delivered.reduce((sum, o) => sum + orderNetRevenue(o), 0);
   const avgOrderValue = delivered.length ? totalRevenue / delivered.length : 0;
   const cancelledCount = orders.length - delivered.length;
 
@@ -71,9 +76,9 @@ export default function AnalyticsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline md:grid-cols-4 md:divide-y-0">
-          <StatTile label="Total revenue" value={formatInr(totalRevenue)} sublabel="all-time" icon={Wallet} />
+          <StatTile label="Net revenue" value={formatInr(totalRevenue)} sublabel="all-time, net of commission" icon={Wallet} />
           <StatTile label="Orders" value={String(delivered.length)} sublabel="all-time, excl. cancelled" icon={ListOrdered} />
-          <StatTile label="Avg. order value" value={formatInr(avgOrderValue)} icon={Receipt} />
+          <StatTile label="Avg. order value" value={formatInr(avgOrderValue)} sublabel="net" icon={Receipt} />
           <StatTile label="Cancelled" value={String(cancelledCount)} icon={Ban} />
         </div>
 

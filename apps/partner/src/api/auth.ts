@@ -100,9 +100,12 @@ export interface StoreApplication {
   drugLicenseNumber?: string;
   openTime?: string;
   closeTime?: string;
+  // Private encrypted KYC document PATHs (never URLs) — uploaded ahead of
+  // submit via POST /partner/store-document-photo, carried here as strings.
+  profilePhotoPath?: string;
+  aadhaarPhotoPath?: string;
+  storePhotoPath?: string;
 }
-
-// Partner-only endpoint (Store Setup submission) — not part of the shared
 // auth contract, stays local to this app.
 export async function submitStoreApplication(application: StoreApplication): Promise<{ ok: true }> {
   try {
@@ -168,6 +171,9 @@ export interface StoreDraftPatch {
   drugLicenseNumber?: string;
   openTime?: string;
   closeTime?: string;
+  profilePhotoPath?: string;
+  aadhaarPhotoPath?: string;
+  storePhotoPath?: string;
 }
 
 export interface SavedStoreDraft {
@@ -190,6 +196,9 @@ export interface SavedStoreDraft {
   drug_license_number?: string | null;
   open_time: string | null;
   close_time: string | null;
+  profile_photo_path?: string | null;
+  aadhaar_photo_path?: string | null;
+  store_doc_path?: string | null;
 }
 
 export async function fetchStoreDraft(): Promise<SavedStoreDraft | null> {

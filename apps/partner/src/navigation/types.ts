@@ -62,6 +62,12 @@ export interface StoreDraft {
   // afterward.
   openTime: string;
   closeTime: string;
+  // Private encrypted KYC document PATHs (object paths, never URLs) — set
+  // once their respective step uploads via POST /partner/store-document-photo.
+  // null until picked, same shape as the payout proof's proofPath.
+  profilePhotoPath: string | null;
+  aadhaarPhotoPath: string | null;
+  storePhotoPath: string | null;
 }
 
 export type AuthStackParamList = {
@@ -75,17 +81,13 @@ export type AuthStackParamList = {
   // show the fixed demo code instead of leaving "why doesn't my real SMS
   // arrive" a mystery.
   OtpVerification: { phone: string; devMode: boolean };
-  // Only reached when the verify response says has_store: false — an
-  // existing, already-onboarded owner skips straight past this. Screen 1
-  // of the wizard: no fields, just "Get Started" — that tap is what
-  // fetches the saved draft and decides which real step to resume at
-  // (OnboardingIntroScreen.tsx's own note), not a cold-start effect the
-  // way the old StoreSetupScreen did it. `draft` is only set when reached
-  // via an "Edit" tap from StoreReviewScreen.
-  OnboardingIntro: { draft?: StoreDraft } | undefined;
-  // Store name, category, store's own contact phone — no address/photo
-  // here anymore, each now has its own dedicated step.
-  StoreDetails: { draft: StoreDraft };
+  // Step 1 of the onboarding wizard and its entry point (the old
+  // "Get Started" / OnboardingIntro screen was removed, so after OTP a
+  // store-less session lands here directly). Reached with no params on a
+  // fresh start; `draft` is set when reached via an "Edit" tap from
+  // StoreReviewScreen. Store name, category, store's own contact phone —
+  // no address/photo here, each has its own dedicated step.
+  StoreDetails: { draft?: StoreDraft } | undefined;
   // Dedicated "mark your store on the map" step — wraps the same real
   // map-pin flow LocationPin already is (reused, not reinvented), just as
   // its own linear wizard step instead of a sub-action buried inside

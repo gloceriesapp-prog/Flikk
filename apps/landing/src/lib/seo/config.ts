@@ -21,7 +21,9 @@ export const SITE = {
   // LocalBusiness telephone) and NAP consistency with Google Business Profile.
   // Env-backed so no number is committed; schema omits `telephone` until set.
   // E.164 format, e.g. "+919876543210". Set NEXT_PUBLIC_SUPPORT_PHONE in .env.
-  supportPhone: process.env.NEXT_PUBLIC_SUPPORT_PHONE ?? "",
+  // Defaults to the registered business number (the one on the payment
+  // gateway KYC), so it is on the site even when the env var is unset.
+  supportPhone: process.env.NEXT_PUBLIC_SUPPORT_PHONE?.trim() || "+919741793580",
   // Brand logo (reused from the Navbar's hosted asset) — used as
   // Organization logo, LocalBusiness image, and manifest icon.
   logo: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/All_Right-removebg-preview.png",

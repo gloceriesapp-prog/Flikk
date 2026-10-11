@@ -11,23 +11,31 @@
 // the scaffold's ScrollView body — a map wants to fill fixed space, not
 // scroll — so the chrome is composed here directly.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { isRunningInExpoGo } from 'expo';
 import MapView, { Marker } from 'react-native-maps';
 import { ArrowLeft01Icon, ArrowRight01Icon, Location05Icon, PinLocation01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { saveStoreDraft } from '../../api/auth';
 import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { getCurrentCoordinates, requestLocationPermission, reverseGeocode, type Coordinates } from '../../location/geocoding';
+import { getCurrentCoordinates, hasLocationPermission, requestLocationPermission, reverseGeocode, type Coordinates } from '../../location/geocoding';
 import { colors } from '../../theme/tokens';
+import { LocationPermissionScreen } from './LocationPermissionScreen';
 import { PAGE_BG, WizardProgress } from './components/OnboardingScaffold';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'StoreLocation'>;
 
 const PREVIEW_DELTA = 0.006;
+
+// react-native-maps' native view isn't in the Expo Go runtime — mounting
+// <MapView> hard-crashes there. The pin itself is still set via LocationPin
+// (which has its own Expo-Go fallback) and current-location; only this preview
+// swaps to a mapless card in Expo Go. Real builds render the map as before.
+const IN_EXPO_GO = isRunningInExpoGo();
 
 export function StoreLocationScreen({ navigation, route }: Props) {
   const { draft } = route.params;
@@ -36,18 +44,28 @@ export function StoreLocationScreen({ navigation, route }: Props) {
   const [coordinates, setCoordinates] = useState<Coordinates | null>(draft.coordinates);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  // Dedicated "allow live location" step shown BEFORE the map opens — the
+  // real crash fix: permission is requested (and its OS dialog fully
+  // dismissed) while this stable screen is still mounted, so no
+  // getCurrentPositionAsync ever fires against the Activity mid-recreation
+  // (geocoding.ts's note on that native crash). Mirrors apps/customer's own
+  // LocationPermissionScreen-before-the-map sequence.
+  const [granted, setGranted] = useState(false);
+  const [permissionPrompt, setPermissionPrompt] = useState<null | 'map' | 'current'>(null);
+  const [permissionLoading, setPermissionLoading] = useState(false);
+
+  useEffect(() => {
+    hasLocationPermission().then(setGranted).catch(() => setGranted(false));
+  }, []);
 
   const canContinue = district !== null && coordinates !== null;
 
-  async function handleUseCurrentLocation() {
+  // Permission is already resolved by the time this runs (the gate below only
+  // calls it once granted), so it goes straight to a hardened one-off read.
+  async function runCurrentLocation() {
     setLocationError(null);
     setLocating(true);
     try {
-      const granted = await requestLocationPermission();
-      if (!granted) {
-        setLocationError('Location access was denied — you can still mark your store on the map manually.');
-        return;
-      }
       const coords = await getCurrentCoordinates();
       const { addressLabel, city } = await reverseGeocode(coords);
       setCoordinates(coords);
@@ -60,7 +78,7 @@ export function StoreLocationScreen({ navigation, route }: Props) {
     }
   }
 
-  function handleOpenLocationPin() {
+  function openMap() {
     navigation.navigate('LocationPin', {
       initialCoordinates: coordinates,
       onConfirm: (nextCoordinates, nextDistrict, nextAddressLine) => {
@@ -71,6 +89,40 @@ export function StoreLocationScreen({ navigation, route }: Props) {
     });
   }
 
+  function handleOpenLocationPin() {
+    if (granted) openMap();
+    else setPermissionPrompt('map');
+  }
+
+  function handleUseCurrentLocation() {
+    if (granted) void runCurrentLocation();
+    else setPermissionPrompt('current');
+  }
+
+  async function handlePermissionAllow() {
+    setPermissionLoading(true);
+    const ok = await requestLocationPermission().catch(() => false);
+    setPermissionLoading(false);
+    setGranted(ok);
+    const action = permissionPrompt;
+    setPermissionPrompt(null);
+    if (action === 'map') {
+      // The map works for manual pinning even if location was denied.
+      openMap();
+    } else if (action === 'current') {
+      if (ok) void runCurrentLocation();
+      else setLocationError('Location access was denied — you can still mark your store on the map manually.');
+    }
+  }
+
+  function handlePermissionDismiss() {
+    const action = permissionPrompt;
+    setPermissionPrompt(null);
+    // "Not now" from the map entry still opens the map (manual pinning); from
+    // the inline "use current location" it just backs out.
+    if (action === 'map') openMap();
+  }
+
   function handleNext() {
     if (!canContinue) return;
     saveStoreDraft({
@@ -78,7 +130,11 @@ export function StoreLocationScreen({ navigation, route }: Props) {
       addressLine: addressLine ?? undefined,
       lat: coordinates?.latitude,
       lng: coordinates?.longitude,
-    }).catch(() => {});
+    }).catch((err) => {
+      // Best-effort autosave — log the error (an ApiError carries status/code)
+      // so a 429/4xx during onboarding is diagnosable instead of invisible.
+      console.error('[StoreLocation] saveStoreDraft failed', err);
+    });
 
     navigation.navigate('OwnerDetails', { draft: { ...draft, district, addressLine, coordinates } });
   }
@@ -109,26 +165,38 @@ export function StoreLocationScreen({ navigation, route }: Props) {
         >
           {coordinates ? (
             <View>
-              <MapView
-                style={{ height: 220, width: '100%' }}
-                pointerEvents="none"
-                region={{ ...coordinates, latitudeDelta: PREVIEW_DELTA, longitudeDelta: PREVIEW_DELTA }}
-                showsPointsOfInterests={false}
-                showsCompass={false}
-              >
-                <Marker coordinate={coordinates}>
-                  <View className="h-9 w-9 items-center justify-center rounded-full bg-ink shadow-lg">
-                    <AppIcon icon={PinLocation01Icon} size={17} color="#FFFFFF" strokeWidth={2} />
+              {IN_EXPO_GO ? (
+                <View style={{ height: 220, width: '100%' }} className="items-center justify-center gap-2 bg-[#EEF0F2]">
+                  <View className="h-12 w-12 items-center justify-center rounded-full" style={{ backgroundColor: `${colors.primary}14` }}>
+                    <AppIcon icon={PinLocation01Icon} size={22} color={colors.primary} />
                   </View>
-                </Marker>
-              </MapView>
+                  <Text className="text-[13.5px] font-semibold text-ink">Location pinned</Text>
+                  <Text className="max-w-[240px] text-center text-[11.5px] font-medium text-ink/45">
+                    Map preview needs a development build. Tap to adjust the pin.
+                  </Text>
+                </View>
+              ) : (
+                <MapView
+                  style={{ height: 220, width: '100%' }}
+                  pointerEvents="none"
+                  region={{ ...coordinates, latitudeDelta: PREVIEW_DELTA, longitudeDelta: PREVIEW_DELTA }}
+                  showsPointsOfInterests={false}
+                  showsCompass={false}
+                >
+                  <Marker coordinate={coordinates}>
+                    <View className="h-9 w-9 items-center justify-center rounded-full bg-ink shadow-lg">
+                      <AppIcon icon={PinLocation01Icon} size={17} color="#FFFFFF" strokeWidth={2} />
+                    </View>
+                  </Marker>
+                </MapView>
+              )}
               <View className="gap-2 border-t border-black/5 p-4">
                 <Text className="text-[14.5px] font-semibold text-ink" numberOfLines={2}>
                   {addressLine ?? 'Pinned location'}
                 </Text>
                 <View className="flex-row items-center justify-between">
                   {district && <Text className="text-[12.5px] font-medium text-ink/50">{district}</Text>}
-                  <Text className="text-[13px] font-bold" style={{ color: colors.limeDeep }}>
+                  <Text className="text-[13px] font-bold" style={{ color: colors.primary }}>
                     Adjust pin
                   </Text>
                 </View>
@@ -136,8 +204,8 @@ export function StoreLocationScreen({ navigation, route }: Props) {
             </View>
           ) : (
             <View className="h-[260px] items-center justify-center gap-3">
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-lime-soft">
-                <AppIcon icon={PinLocation01Icon} size={24} color={colors.limeDeep} />
+              <View className="h-14 w-14 items-center justify-center rounded-full" style={{ backgroundColor: `${colors.primary}14` }}>
+                <AppIcon icon={PinLocation01Icon} size={24} color={colors.primary} />
               </View>
               <Text className="text-[14.5px] font-semibold text-ink">No location set yet</Text>
               <Text className="max-w-[240px] text-center text-[12.5px] font-medium text-ink/45">
@@ -168,6 +236,13 @@ export function StoreLocationScreen({ navigation, route }: Props) {
       <View className="bg-white px-6 pb-safe-offset-4 pt-3">
         <PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} trailingIcon={ArrowRight01Icon} />
       </View>
+
+      <LocationPermissionScreen
+        visible={permissionPrompt !== null}
+        loading={permissionLoading}
+        onAllow={handlePermissionAllow}
+        onDismiss={handlePermissionDismiss}
+      />
     </View>
   );
 }

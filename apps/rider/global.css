@@ -10,43 +10,41 @@
    same gotcha apps/customer and apps/partner's own global.css document). */
 @layer base {
   * {
-    font-family: 'AeonikSoftPro-Regular';
+    font-family: 'Gilroy-Regular';
   }
 }
 
 /* Tailwind's font-weight utilities (font-bold, font-semibold, etc.) only
-   set numeric fontWeight, which RN can't use to pick a different Aeonik
-   Soft Pro file — each weight is its own separate font file, not one
-   variable font. All 8 non-italic faces the vault ships map one-to-one
-   onto Tailwind's 9-step weight scale (extralight and black/extrabold
-   double up, since Aeonik has no separate face at exactly those steps),
-   same mapping as apps/customer and apps/partner's own global.css — full
-   coverage top to bottom, not capped partway up the scale the way the
-   previous Suisse Int'l setup had to be (only 4 faces existed there). */
+   set numeric fontWeight, which RN can't use to pick a different Gilroy
+   file — each weight is its own separate font file, not one variable font.
+   Gilroy ships 5 static weights, so the 9-step Tailwind scale collapses
+   onto them: everything at or below `normal` uses Regular (Gilroy has no
+   lighter face), and extrabold/black share ExtraBold. Keep in sync with
+   src/theme/fonts.ts's AEONIK map. */
 @layer utilities {
   .font-thin {
-    font-family: 'AeonikSoftPro-Thin';
+    font-family: 'Gilroy-Regular';
   }
   .font-extralight {
-    font-family: 'AeonikSoftPro-Air';
+    font-family: 'Gilroy-Regular';
   }
   .font-light {
-    font-family: 'AeonikSoftPro-Light';
+    font-family: 'Gilroy-Regular';
   }
   .font-normal {
-    font-family: 'AeonikSoftPro-Regular';
+    font-family: 'Gilroy-Regular';
   }
   .font-medium {
-    font-family: 'AeonikSoftPro-Medium';
+    font-family: 'Gilroy-Medium';
   }
   .font-semibold {
-    font-family: 'AeonikSoftPro-SemiBold';
+    font-family: 'Gilroy-SemiBold';
   }
   .font-bold {
-    font-family: 'AeonikSoftPro-Bold';
+    font-family: 'Gilroy-Bold';
   }
   .font-extrabold,
   .font-black {
-    font-family: 'AeonikSoftPro-Black';
+    font-family: 'Gilroy-ExtraBold';
   }
 }

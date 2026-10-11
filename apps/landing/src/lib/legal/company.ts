@@ -17,8 +17,10 @@ const DEFAULT_SUPPORT_EMAIL = "hello@gloceries.com";
 
 export const COMPANY = {
   brand: SITE.name,
-  // Matches the footer disclaimer — the registered owner of the platform.
-  legalName: "Tideline Ventures Private Limited",
+  // Registered legal entity, once there is one (set it, and the CIN, when
+  // the company is incorporated). Until then the site names only the brand
+  // and identifies the business by its registered contact number.
+  legalName: null as string | null,
   website: SITE.url,
   region: SITE.region,
   jurisdiction: "Udupi, Karnataka",

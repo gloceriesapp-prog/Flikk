@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { sohne, sohneBreit, sohneMono, sohneSchmal } from '@/theme/fonts';
+import { gilroy } from '@/theme/fonts';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
     // the app's own markup.
     <html
       lang="en"
-      className={`${sohne.variable} ${sohneBreit.variable} ${sohneMono.variable} ${sohneSchmal.variable}`}
+      className={gilroy.variable}
       suppressHydrationWarning
     >
       <body className="font-sans antialiased" suppressHydrationWarning>

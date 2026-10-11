@@ -13,7 +13,9 @@ import { round2 } from './pricing.js';
 type Money = number | string | null | undefined;
 
 // The order columns this needs (routes select them alongside their own).
-export const DELIVERY_MONEY_COLUMNS = 'payment_method, total, delivery_fee, store_id, trips(delivery_fee, total)';
+// The trips embed names its foreign key: trips.cancel_origin_order_id also
+// links the two tables, and an unnamed trips(...) fails with PGRST201.
+export const DELIVERY_MONEY_COLUMNS = 'payment_method, total, delivery_fee, store_id, trips!orders_trip_id_fkey(delivery_fee, total)';
 
 export interface DeliveryMoneyOrder {
   id: string;

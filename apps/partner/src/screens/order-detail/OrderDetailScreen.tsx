@@ -39,7 +39,7 @@ const STATUS_BADGE_LABEL = {
   failed: 'Delivery failed',
 } as const;
 
-const PAYMENT_MODE_LABEL = { prepaid: 'Paid online', cod: 'Cash on delivery' } as const;
+const PAYMENT_MODE_LABEL = { paid_online: 'Paid online', cod: 'Cash on delivery', awaiting_payment: 'Payment pending' } as const;
 
 // "Sep 19, 2:30 PM" — date + time together, unlike order.placedAtTime
 // (time-only, shared with IncomingOrderAlert's own "Time" row) since this
@@ -80,11 +80,13 @@ export function OrderDetailScreen({ route, navigation }: Props) {
 
   const isPlaced = order.status === 'placed';
   // Real orders.item_total/commission_amount (screens/orders/data.ts's own
-  // mapApiOrder) — never recomputed here. commissionPercent is DERIVED
-  // from those two real numbers (not a hardcoded label) so it can never
-  // silently drift from backend/src/lib/pricing.ts's own COMMISSION_RATE
-  // the way this screen's old local 12%-flat guess already had.
-  const commissionPercent = order.itemTotal > 0 ? Math.round((order.commissionAmount / order.itemTotal) * 100) : 0;
+  // mapApiOrder) — never recomputed here. commissionRate is DERIVED from
+  // those two real numbers (not a hardcoded label) so it can never silently
+  // drift from backend/src/lib/pricing.ts's own COMMISSION_RATE the way this
+  // screen's old local 12%-flat guess already had. Kept as a 0–1 fraction and
+  // formatted by payouts' formatCommissionPercent in the breakdown, so a 4.5%
+  // store reads "4.5%" instead of being rounded to a wrong-looking "5%".
+  const commissionRate = order.itemTotal > 0 ? order.commissionAmount / order.itemTotal : 0;
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: PAGE_BG }} edges={['top']}>
@@ -112,7 +114,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             <Text className="text-[18px] font-semibold text-black">{order.customerName}</Text>
             <View className="mt-1 flex-row items-center gap-1.5">
               <AppIcon
-                icon={order.paymentMode === 'prepaid' ? Wallet01Icon : Cash01Icon}
+                icon={order.paymentMode === 'paid_online' ? Wallet01Icon : order.paymentMode === 'awaiting_payment' ? Alert02Icon : Cash01Icon}
                 size={13}
                 color={`${colors.ink}80`}
               />
@@ -138,8 +140,8 @@ export function OrderDetailScreen({ route, navigation }: Props) {
         </View>
 
         <OrderPayoutBreakdown
-          orderTotal={order.itemTotal}
-          commissionPercent={commissionPercent}
+          itemTotal={order.itemTotal}
+          commissionRate={commissionRate}
           commissionAmount={order.commissionAmount}
           netPayout={order.netPayout}
           delivered={order.status === 'delivered'}

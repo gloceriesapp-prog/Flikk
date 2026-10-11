@@ -24,9 +24,10 @@ export interface RiderProfile {
   dateOfBirth: string | null;
   homeAddress: string | null;
   aadhaarMasked: string | null;
-  // Signed short-lived URLs to the raw Aadhaar/DL scan images on the private
-  // rider-documents bucket — null when no scan is on file. See RiderDocuments
-  // Screen for how they render.
+  // URLs to the raw Aadhaar/DL scans, now served through the authenticated
+  // backend byte-proxy (encrypted at rest) rather than public signed URLs —
+  // null when no scan is on file. See RiderDocumentsScreen for how they render
+  // (bearer token attached, relative paths resolved against the API base).
   aadhaarPhotoUrl: string | null;
   dlNumber: string | null;
   dlPhotoUrl: string | null;

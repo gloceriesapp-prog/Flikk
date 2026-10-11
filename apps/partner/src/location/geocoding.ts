@@ -12,8 +12,34 @@
 // changes.
 
 import * as Location from 'expo-location';
+import { AppState } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+
+// Resolves once the app is really in the foreground ('active'), or after a
+// hard cap so a caller can never hang forever on it. The OS permission
+// dialog puts the host Activity through a background/recreate cycle (New
+// Architecture); a single-shot getCurrentPositionAsync fired while it is
+// still settling resolves against a stale native bridge and crashes the
+// whole process natively (requestLocationPermission's own note). Gating the
+// GPS read on the real 'active' state — not just a fixed delay — is what
+// actually waits out that recreation.
+function waitUntilActive(timeoutMs = 3000): Promise<void> {
+  if (AppState.currentState === 'active') return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      sub.remove();
+      resolve();
+    }, timeoutMs);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        clearTimeout(timer);
+        sub.remove();
+        resolve();
+      }
+    });
+  });
+}
 
 export interface Coordinates {
   latitude: number;
@@ -26,8 +52,15 @@ export class LocationPermissionDeniedError extends Error {
   }
 }
 
-export async function requestLocationPermission(): Promise<boolean> {
-  const { status } = await Location.requestForegroundPermissionsAsync();
+// Current foreground permission WITHOUT prompting — lets a screen decide
+// whether to show the explanatory "allow live location" step + request, or go
+// straight to the map because it's already granted.
+export async function hasLocationPermission(): Promise<boolean> {
+  const { status } = await Location.getForegroundPermissionsAsync();
+  return status === 'granted';
+}
+
+export async function requestLocationPermission(): Promise<boolean> {  const { status } = await Location.requestForegroundPermissionsAsync();
   // Real crash this works around, not a defensive-programming guess: the
   // OS permission dialog tears down and recreates the host Activity: on
   // React Native's New Architecture, a getCurrentPositionAsync call fired
@@ -36,17 +69,35 @@ export async function requestLocationPermission(): Promise<boolean> {
   // NullPointerException (expo.modules.location.LocationHelpers.
   // requestSingleLocation -> PromiseImpl.resolve), unrecoverable by any
   // JS try/catch since the whole process crashes below the JS layer.
-  // Every caller of this function goes straight into a
-  // getCurrentPositionAsync call once permission is granted, so the wait
-  // belongs here once, not duplicated at each call site. 400ms is
-  // comfortably past the activity-recreation window on real hardware
-  // without being a noticeable pause to the user waiting on a permission
-  // prompt.
-  if (status === 'granted') await new Promise((resolve) => setTimeout(resolve, 400));
+  // The real structural fix is requesting permission on a dedicated step
+  // BEFORE the map opens (StoreLocationScreen / useChangeStoreLocation),
+  // so this resolves while that activity is still fully alive; this wait
+  // is belt-and-suspenders for the single-screen case. Gate on the app
+  // actually being 'active' again (not just a fixed delay — that only
+  // ever raced the recreation) plus a short settle past it.
+  if (status === 'granted') {
+    await waitUntilActive();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
   return status === 'granted';
 }
 
 export async function getCurrentCoordinates(): Promise<Coordinates> {
+  // Wait out any just-dismissed permission dialog's activity recreation
+  // before touching the native location module at all (waitUntilActive's
+  // own note on the native crash this prevents).
+  await waitUntilActive();
+  // Last-known first: returns an already-cached OS fix instantly with no
+  // fresh single-shot read against a possibly-still-settling native bridge,
+  // which is both faster and the safer call right after a permission grant.
+  // Only fall through to a live High-accuracy read when the OS has no cached
+  // fix at all.
+  try {
+    const last = await Location.getLastKnownPositionAsync();
+    if (last) return { latitude: last.coords.latitude, longitude: last.coords.longitude };
+  } catch {
+    // No cached fix / module not ready — fall through to a live read.
+  }
   // High, not Balanced — this fix becomes the map's starting pin position
   // and, once confirmed, the store's actual pickup point. A rider follows
   // this exact point, so it's worth the extra second+battery over a
@@ -71,7 +122,7 @@ export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocod
   const fromGoogle = await reverseGeocodeViaGoogle(coords);
   if (fromGoogle) return fromGoogle;
 
-  const results = await Location.reverseGeocodeAsync(coords);
+  const results = await Location.reverseGeocodeAsync(coords).catch(() => []);
   const first = results[0];
   if (!first) return { addressLabel: 'Selected location', city: '', shortName: 'Selected location' };
 
@@ -100,9 +151,10 @@ async function reverseGeocodeViaGoogle(coords: Coordinates): Promise<ReverseGeoc
   }
 }
 
-// Free-text address -> coordinates, for the manual-search fallback.
+// Free-text address -> coordinates, for the manual-search fallback. Never
+// throws — a geocoder failure degrades to "no match" (null), not a crash.
 export async function geocodeAddress(query: string): Promise<Coordinates | null> {
-  const results = await Location.geocodeAsync(query);
+  const results = await Location.geocodeAsync(query).catch(() => []);
   const first = results[0];
   return first ? { latitude: first.latitude, longitude: first.longitude } : null;
 }
@@ -111,18 +163,18 @@ export async function geocodeAddress(query: string): Promise<Coordinates | null>
 // LocationPinScreen.tsx's own callers (this app's map-pin flow predates
 // customer's own richer reverseGeocode above and still uses this narrower
 // shape in a couple of places; not worth rewriting those call sites just
-// to remove this).
+// to remove this). Never throws.
 export async function reverseGeocodeDistrict(coords: Coordinates): Promise<string | null> {
-  const results = await Location.reverseGeocodeAsync(coords);
+  const results = await Location.reverseGeocodeAsync(coords).catch(() => []);
   const first = results[0];
   if (!first) return null;
   return first.district ?? first.subregion ?? first.region ?? first.city ?? null;
 }
 
 // Fuller "building/street, district" label for the map-pin confirm
-// screen — same reasoning as reverseGeocodeDistrict above.
+// screen — same reasoning as reverseGeocodeDistrict above. Never throws.
 export async function reverseGeocodeAddress(coords: Coordinates): Promise<string | null> {
-  const results = await Location.reverseGeocodeAsync(coords);
+  const results = await Location.reverseGeocodeAsync(coords).catch(() => []);
   const first = results[0];
   if (!first) return null;
   const landmark = first.name ?? first.street;

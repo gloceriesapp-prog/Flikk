@@ -9,10 +9,11 @@
 
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { submitStoreApplication } from '../../api/auth';
 import { ApiError } from '../../api/client';
+import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useAuthStore } from '../../store/useAuthStore';
 import { colors } from '../../theme/tokens';
@@ -30,29 +31,52 @@ export function StoreReviewScreen({ navigation, route }: Props) {
   const setApplicationSubmitted = useAuthStore((s) => s.setApplicationSubmitted);
   const clearSession = useAuthStore((s) => s.clear);
 
+  async function submitApplication() {
+    await submitStoreApplication({
+      storeName: draft.storeName,
+      category: draft.category,
+      phone: draft.phone || undefined,
+      district: draft.district ?? 'Udupi',
+      addressLine: draft.addressLine || undefined,
+      manualAddress: draft.manualAddress || undefined,
+      gstNumber: draft.gstNumber || undefined,
+      ownerName: draft.ownerName || undefined,
+      ownerEmail: draft.ownerEmail || undefined,
+      shopLicenseNumber: draft.shopLicenseNumber || undefined,
+      fssaiNumber: draft.fssaiNumber || undefined,
+      panNumber: draft.panNumber || undefined,
+      udyamNumber: draft.udyamNumber || undefined,
+      drugLicenseNumber: draft.drugLicenseNumber || undefined,
+      openTime: draft.openTime || undefined,
+      closeTime: draft.closeTime || undefined,
+      profilePhotoPath: draft.profilePhotoPath || undefined,
+      aadhaarPhotoPath: draft.aadhaarPhotoPath || undefined,
+      storePhotoPath: draft.storePhotoPath || undefined,
+    });
+  }
+
   async function handleSubmit() {
     setError(null);
     setLoading(true);
     try {
-      await submitStoreApplication({
-        storeName: draft.storeName,
-        category: draft.category,
-        phone: draft.phone || undefined,
-        district: draft.district ?? 'Udupi',
-        addressLine: draft.addressLine || undefined,
-        manualAddress: draft.manualAddress || undefined,
-        gstNumber: draft.gstNumber || undefined,
-        ownerName: draft.ownerName || undefined,
-        ownerEmail: draft.ownerEmail || undefined,
-        shopLicenseNumber: draft.shopLicenseNumber || undefined,
-        fssaiNumber: draft.fssaiNumber || undefined,
-        panNumber: draft.panNumber || undefined,
-        udyamNumber: draft.udyamNumber || undefined,
-        drugLicenseNumber: draft.drugLicenseNumber || undefined,
-        openTime: draft.openTime || undefined,
-        closeTime: draft.closeTime || undefined,
-      });
+      try {
+        await submitApplication();
+      } catch (err) {
+        // The shared client already retries a 429 honoring Retry-After; a
+        // 429 surfacing here means it's still rate-limited. Don't dead-end
+        // the user on a raw "try again" — show a friendly note and auto-retry
+        // once more after a short backoff. A second failure falls through to
+        // the outer catch.
+        if (err instanceof ApiError && err.status === 429) {
+          setError('You’re going a bit fast — retrying in a moment…');
+          await new Promise((resolve) => setTimeout(resolve, 2500));
+          await submitApplication();
+        } else {
+          throw err;
+        }
+      }
       setApplicationSubmitted(true);
+      setError(null);
     } catch (err) {
       // A 401 here means the stored session token is stale/invalid — the
       // only real fix is signing in again, so clear the bad session and let
@@ -64,6 +88,10 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         }, 1500);
         return;
       }
+      if (err instanceof ApiError && err.status === 429) {
+        setError('Still busy right now — please wait a moment and tap again.');
+        return;
+      }
       setError(err instanceof ApiError ? err.message : 'Could not submit your application. Please try again.');
     } finally {
       setLoading(false);
@@ -73,7 +101,7 @@ export function StoreReviewScreen({ navigation, route }: Props) {
   return (
     <View className="flex-1 bg-white pb-safe pt-safe">
       <View className="px-6 pt-4">
-        <Text className="text-[13px] font-bold uppercase tracking-wide" style={{ color: colors.limeDeep }}>
+        <Text className="text-[13px] font-bold uppercase tracking-wide" style={{ color: colors.primary }}>
           Review & submit
         </Text>
         <Text className="mt-1 text-[28px] font-bold text-ink">{draft.storeName || 'Your store'}</Text>
@@ -115,6 +143,11 @@ export function StoreReviewScreen({ navigation, route }: Props) {
           onEdit={() => navigation.navigate('StoreHours', { draft })}
         />
 
+        <SectionLabel label="Verification photos" />
+        <PhotoStatusRow label="Store photo" uploaded={!!draft.storePhotoPath} onEdit={() => navigation.navigate('StoreDetails', { draft })} />
+        <PhotoStatusRow label="Owner photo" uploaded={!!draft.profilePhotoPath} onEdit={() => navigation.navigate('OwnerDetails', { draft })} />
+        <PhotoStatusRow label="Aadhaar photo" uploaded={!!draft.aadhaarPhotoPath} onEdit={() => navigation.navigate('BusinessDocuments', { draft })} />
+
         {error && <Text className="mt-3 text-[13px] font-medium text-danger">{error}</Text>}
       </ScrollView>
 
@@ -141,8 +174,7 @@ interface RowProps {
   onEdit?: () => void;
 }
 
-function Row({ label, value, onEdit }: RowProps) {
-  return (
+function Row({ label, value, onEdit }: RowProps) {  return (
     <View className="flex-row items-center justify-between border-b border-black/5 py-3.5">
       <View className="flex-1 pr-3">
         <Text className="text-[13px] font-medium text-ink/45">{label}</Text>
@@ -152,11 +184,34 @@ function Row({ label, value, onEdit }: RowProps) {
       </View>
       {onEdit && (
         <Pressable onPress={onEdit} hitSlop={10} className="rounded-full border border-black/10 px-3 py-1.5">
-          <Text className="text-[13px] font-bold" style={{ color: colors.limeDeep }}>
+          <Text className="text-[13px] font-bold" style={{ color: colors.primary }}>
             Edit
           </Text>
         </Pressable>
       )}
+    </View>
+  );
+}
+
+// Encrypted KYC photos can't be previewed inline — just a status + Edit that
+// routes back to the step that owns the upload.
+function PhotoStatusRow({ label, uploaded, onEdit }: { label: string; uploaded: boolean; onEdit: () => void }) {
+  return (
+    <View className="flex-row items-center justify-between border-b border-black/5 py-3.5">
+      <View className="flex-1 pr-3">
+        <Text className="text-[13px] font-medium text-ink/45">{label}</Text>
+        <View className="mt-0.5 flex-row items-center gap-1.5">
+          {uploaded && <AppIcon icon={CheckmarkCircle02Icon} size={15} color={colors.success} />}
+          <Text className="text-[16px] font-semibold" style={{ color: uploaded ? colors.success : colors.ink + '70' }}>
+            {uploaded ? 'Uploaded' : 'Not added'}
+          </Text>
+        </View>
+      </View>
+      <Pressable onPress={onEdit} hitSlop={10} className="rounded-full border border-black/10 px-3 py-1.5">
+        <Text className="text-[13px] font-bold" style={{ color: colors.primary }}>
+          Edit
+        </Text>
+      </Pressable>
     </View>
   );
 }

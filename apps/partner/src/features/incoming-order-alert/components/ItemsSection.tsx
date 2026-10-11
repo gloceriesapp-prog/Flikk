@@ -29,7 +29,7 @@ export function ItemsSection({ items }: Props) {
         <Text className="text-sm font-medium text-ink/40">Items ({items.length})</Text>
         <Text className="mt-0.5 text-base font-medium leading-5 text-ink">
           {visible.map((item) => item.name).join(', ')}
-          {remaining > 0 && <Text className="font-medium text-lime-deep"> &amp; {remaining} more</Text>}
+          {remaining > 0 && <Text className="font-medium text-primary"> &amp; {remaining} more</Text>}
         </Text>
       </View>
     </View>

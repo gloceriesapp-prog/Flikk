@@ -28,7 +28,7 @@ export function CurrentWeekPayoutCard({ payout }: Props) {
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2.5">
           <View className="h-9 w-9 items-center justify-center rounded-full bg-white/10">
-            <AppIcon icon={Wallet01Icon} size={16} color={colors.lime} />
+            <AppIcon icon={Wallet01Icon} size={16} color={colors.primary} />
           </View>
           <Text className="text-base font-medium text-white/60 tracking-tight">{payout.weekLabel}</Text>
         </View>
@@ -57,7 +57,7 @@ export function CurrentWeekPayoutCard({ payout }: Props) {
 
       {payout.status === 'pending' && (
         <View className="flex-row items-center gap-2 border-t border-white/10 pt-4">
-          <AppIcon icon={CalendarCheckIn01Icon} size={14} color={`${colors.lime}CC`} />
+          <AppIcon icon={CalendarCheckIn01Icon} size={14} color={`${colors.primary}CC`} />
           <Text className="text-[14px] font-medium text-white/50">{PAYOUT_POLICY}</Text>
         </View>
       )}

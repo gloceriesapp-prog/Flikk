@@ -125,6 +125,11 @@ export function AddressFormScreen({ route, navigation }: Props) {
         delivery_instructions: instructions.trim() || undefined,
         latitude,
         longitude,
+        // Full address the map resolved for this pin — kept whole alongside
+        // the typed building/street (line1). Re-picking on the map refreshes
+        // addressLabel; editing other fields without re-picking keeps the
+        // address's existing map_address.
+        map_address: addressLabel?.trim() || editing?.map_address || undefined,
       };
       // A new address becomes the default in the same server transaction
       // (make_default) — picking a new location from Checkout's "Change"

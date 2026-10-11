@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Bell, X } from 'lucide-react';
-import { fetchMyOrders, type PartnerOrder } from '@/lib/partnerApi';
+import { fetchOrderQueue, type PartnerOrder } from '@/lib/partnerApi';
 
 // Accept-time SLA depends on the owner noticing a 'placed' order fast. There's
 // no realtime channel wired into this web dashboard, so this polls on an
@@ -50,7 +50,7 @@ export function NewOrderAlert({ onCountChange }: { onCountChange?: (n: number) =
   const check = useCallback(async () => {
     let orders: PartnerOrder[];
     try {
-      orders = await fetchMyOrders();
+      orders = await fetchOrderQueue();
     } catch {
       return; // transient network error — try again next tick
     }

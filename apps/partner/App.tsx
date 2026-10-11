@@ -10,7 +10,9 @@
 
 import { withCrashReporting } from './src/observability/crashReporting';
 import './global.css';
+import * as Sentry from '@sentry/react-native';
 import { useCallback, useEffect } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -31,8 +33,40 @@ import { OfflineBanner } from './src/components/OfflineBanner';
 import { NotificationsOffBanner } from './src/features/push-notifications/NotificationsOffBanner';
 import { useForegroundRefresh } from './src/features/foreground-refresh/useForegroundRefresh';
 import { initOnlineWiring } from './src/network/onlineWiring';
+import { colors } from './src/theme/tokens';
 
 void SplashScreen.preventAutoHideAsync();
+
+// Last-resort UI when a render/effect throws anywhere below the navigator.
+// Without a boundary, a throw white-screens the whole tree — Sentry.wrap
+// reports it but renders nothing. Sentry.ErrorBoundary still reports (it wraps
+// componentDidCatch) and this branded fallback replaces the blank screen with a
+// retry that resets the boundary and re-renders the navigator.
+function AppErrorFallback({ resetError }: { resetError: () => void }) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#FFFFFF' }}>
+      <Text style={{ fontSize: 20, fontWeight: '600', color: colors.ink, textAlign: 'center' }}>
+        Something went wrong
+      </Text>
+      <Text style={{ marginTop: 10, fontSize: 15, color: `${colors.ink}99`, textAlign: 'center' }}>
+        The app hit an unexpected error. Try again — your progress is saved.
+      </Text>
+      <Pressable
+        onPress={resetError}
+        style={({ pressed }) => ({
+          marginTop: 24,
+          backgroundColor: colors.primary,
+          paddingHorizontal: 28,
+          paddingVertical: 14,
+          borderRadius: 999,
+          opacity: pressed ? 0.9 : 1,
+        })}
+      >
+        <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Try again</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 // Shared TanStack Query config (packages/shared/src/query/queryClient.ts):
 // staleTime 60s (same base partner already ran — payouts/order-history barely
@@ -44,11 +78,11 @@ const queryClient = createAppQueryClient();
 
 function App() {
   // Loading the weights here registers them with the OS by font-family
-  // name (e.g. "AeonikSoftPro-Regular") — the actual app-wide default is
+  // name (e.g. "Gilroy-Regular") — the actual app-wide default is
   // applied via global.css's `@layer base { * { font-family: ... } }` and
   // its font-weight-utility mapping, not from this hook or any React
   // defaultProps mechanism. Same split as apps/customer/App.tsx's own
-  // Aeonik setup — see that file's own note on why defaultProps doesn't
+  // Gilroy setup — see that file's own note on why defaultProps doesn't
   // work with NativeWind's cssInterop-wrapped Text.
   //
   // #28: we deliberately DON'T block the first paint on this. useFonts
@@ -107,24 +141,28 @@ function App() {
         {/* Admin App settings: maintenance / required update replace the
             whole app (features/app-release/ReleaseGate.tsx). */}
         <ReleaseGate>
-          <RootNavigator />
-          {hasFullAccess && (
-            <>
-              {/* Mounted outside AppNavigator's own tree — a new order
-                  needs to interrupt whichever tab is focused. See
-                  src/features/incoming-order-alert/IncomingOrderAlert.tsx's
-                  own note. */}
-              <IncomingOrderAlert />
-              <OrderReminderBanner />
-              <DeliveryEarnedBanner />
-            </>
-          )}
-          {/* App-wide, not gated to hasFullAccess — connectivity loss and
-              notifications-off both matter on any screen (a store owner stuck
-              on Waiting-for-approval still needs to know push is off before
-              their first order ever lands). Last in the tree = painted on top. */}
-          <OfflineBanner />
-          <NotificationsOffBanner />
+          {/* Boundary around the navigator subtree so a render/effect throw
+              shows the branded fallback above instead of a white screen. */}
+          <Sentry.ErrorBoundary fallback={({ resetError }) => <AppErrorFallback resetError={resetError} />}>
+            <RootNavigator />
+            {hasFullAccess && (
+              <>
+                {/* Mounted outside AppNavigator's own tree — a new order
+                    needs to interrupt whichever tab is focused. See
+                    src/features/incoming-order-alert/IncomingOrderAlert.tsx's
+                    own note. */}
+                <IncomingOrderAlert />
+                <OrderReminderBanner />
+                <DeliveryEarnedBanner />
+              </>
+            )}
+            {/* App-wide, not gated to hasFullAccess — connectivity loss and
+                notifications-off both matter on any screen (a store owner stuck
+                on Waiting-for-approval still needs to know push is off before
+                their first order ever lands). Last in the tree = painted on top. */}
+            <OfflineBanner />
+            <NotificationsOffBanner />
+          </Sentry.ErrorBoundary>
         </ReleaseGate>
         <StatusBar style="dark" />
       </QueryClientProvider>

@@ -21,14 +21,16 @@ jest.mock('cashfree-pg-api-contract', () => ({
 jest.mock('react-native-maps', () => {
   const { View } = require('react-native');
   const Stub = props => require('react').createElement(View, props);
-  return { __esModule: true, default: Stub, Marker: Stub, Polyline: Stub, PROVIDER_GOOGLE: 'google', PROVIDER_DEFAULT: null };
+  return { __esModule: true, default: Stub, Marker: Stub, Circle: Stub, Polyline: Stub, PROVIDER_GOOGLE: 'google', PROVIDER_DEFAULT: null };
 });
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
   getForegroundPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
   getCurrentPositionAsync: jest.fn(),
   reverseGeocodeAsync: jest.fn(async () => []),
-  Accuracy: { Balanced: 3, High: 4 },
+  watchPositionAsync: jest.fn(async () => ({ remove: jest.fn() })),
+  enableNetworkProviderAsync: jest.fn(async () => {}),
+  Accuracy: { Balanced: 3, High: 4, BestForNavigation: 6 },
 }));
 jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(),

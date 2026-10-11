@@ -12,6 +12,7 @@ import { useMemo, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Calendar, ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
 import type { PartnerOrder } from '@/lib/partnerApi';
+import { orderNetRevenue } from '@/lib/orderRevenue';
 import { formatInr, formatInrCompact } from '@/lib/format';
 
 type Timeframe = '1d' | '7d' | '30d' | '16m' | 'max';
@@ -122,11 +123,15 @@ export function SalesReportChart({ orders }: { orders: PartnerOrder[] }) {
     for (const o of orders) {
       const d = new Date(o.placed_at);
       const idx = bucketIndex(unit, bases[0], d, bases.length);
+      // "Sales" here is NET store revenue (item_total − commission_amount), the
+      // money the store actually keeps — not the gross customer-paid total,
+      // which bundles in the platform commission and the delivery fee (see
+      // orderRevenue.ts). Cancelled orders never count toward sales.
       if (idx >= 0) {
         buckets[idx].orders += 1;
-        if (o.status !== 'cancelled') buckets[idx].sales += o.total;
+        if (o.status !== 'cancelled') buckets[idx].sales += orderNetRevenue(o);
       } else if (d >= prevStart && d < bases[0] && o.status !== 'cancelled') {
-        prevSum += o.total;
+        prevSum += orderNetRevenue(o);
       }
     }
 

@@ -33,7 +33,7 @@ export function LocationPermissionScreen({ navigation }: Props) {
       const coords = await getCurrentCoordinates();
       if (!navigation.isFocused()) return;
       const { addressLabel, city } = await reverseGeocode(coords);
-      if (navigation.isFocused()) navigation.replace('LocationSearch', { ...coords, addressLabel, city });
+      if (navigation.isFocused()) navigation.replace('LocationSearch', { ...coords, addressLabel, city, fromGps: true });
     } catch {
       if (navigation.isFocused()) setError('Could not get your location. You can search for it instead.');
     } finally {

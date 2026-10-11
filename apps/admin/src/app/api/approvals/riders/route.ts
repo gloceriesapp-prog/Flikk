@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { privateDocUrls } from '@/lib/supabase/privateDocUrl';
 import {
   APPROVED_RIDER_SELECT,
   RIDER_DRAFT_SELECT,
@@ -30,9 +31,11 @@ async function signPhotoUrls<T extends { photo_url: string | null; aadhaar_photo
   const paths = [row.photo_url, row.aadhaar_photo_url, row.dl_photo_url].filter((p): p is string => !!p);
   if (paths.length === 0) return row;
 
-  const { data } = await supabaseAdmin.storage.from(DOCUMENTS_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
-  const signedByPath = new Map((data ?? []).map((d) => [d.path, d.signedUrl]));
-  const sign = (path: string | null) => (path ? (signedByPath.get(path) ?? null) : null);
+  // KYC docs are AES-256-GCM encrypted at rest (migration 119): resolve each
+  // path to the decrypt-proxy URL (/api/media/private/<id>). The helper falls
+  // back to a signed URL only for legacy, pre-ledger unencrypted paths.
+  const urlByPath = await privateDocUrls(DOCUMENTS_BUCKET, paths, SIGNED_URL_TTL_SECONDS);
+  const sign = (path: string | null) => (path ? (urlByPath.get(path) ?? null) : null);
 
   return { ...row, photo_url: sign(row.photo_url), aadhaar_photo_url: sign(row.aadhaar_photo_url), dl_photo_url: sign(row.dl_photo_url) };
 }

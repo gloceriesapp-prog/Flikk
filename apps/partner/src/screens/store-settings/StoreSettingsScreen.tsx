@@ -32,7 +32,7 @@ import {
   TagsIcon,
   Tick02Icon,
 } from '@hugeicons/core-free-icons';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -43,6 +43,7 @@ import { BrandFooter } from '../../components/BrandFooter';
 import { colors } from '../../theme/tokens';
 import { getAvatarImageUri } from '../../theme/placeholderImage';
 import { uploadStorePhoto } from '../../api/auth';
+import { API_BASE_URL } from '../../api/baseUrl';
 import { compressImageToTarget } from '../../media/compressImage';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useStoreProfileStore } from '../../store/useStoreProfileStore';
@@ -79,10 +80,28 @@ function describeChange(changes: Record<string, unknown>): string {
 // per an explicit ask to match it here too.
 const PAGE_BG = '#F1F2F4';
 
+// The three "My documents" photos below come from the authenticated
+// decrypt-proxy (GET /partner/documents/:id) — the bytes are decrypted
+// server-side per request, so every fetch must carry the owner's bearer
+// token. A relative "/partner/documents/:id" is resolved against the API
+// base; an absolute URL is used as-is. Mirrors the rider pattern
+// (RiderDocumentsScreen's own authSource).
+function authSource(uri: string, token: string | null) {
+  return {
+    uri: uri.startsWith('/') ? `${API_BASE_URL}${uri}` : uri,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  };
+}
+
 export function StoreSettingsScreen({ navigation }: Props) {
   const profile = useStoreProfileStore((state) => state.profile);
   const updateProfile = useStoreProfileStore((state) => state.updateProfile);
   const clearSession = useAuthStore((state) => state.clear);
+  // Read the token reactively so a silent refresh (api/client.ts) re-renders
+  // the private doc images with the new bearer instead of leaving a stale 401.
+  const accessToken = useAuthStore((state) => state.accessToken);
+  // Which private doc (raw url) is open in the full-screen viewer, or null.
+  const [enlargedDoc, setEnlargedDoc] = useState<string | null>(null);
 
   // Reviewed fields start from the pending request (if any), so saving again
   // keeps it instead of reverting it to the live values.
@@ -518,6 +537,26 @@ export function StoreSettingsScreen({ navigation }: Props) {
                 </Text>
               </Text>
             </View>
+
+            {/* My documents — the owner's three private, encrypted KYC photos,
+                fetched through the authenticated decrypt-proxy (bearer token
+                attached per request via authSource). Only this owner can see
+                them; the proxy enforces ownership server-side. Separate from
+                the PUBLIC storefront photo up top (profile.photoUrl). */}
+            <View className="gap-3 border-t border-black/5 pt-4">
+              <View className="flex-row items-center gap-1.5">
+                <AppIcon icon={SquareLock01Icon} size={14} color={colors.primary} />
+                <Text className="text-[13px] font-semibold text-ink">My documents</Text>
+              </View>
+              <Text className="text-[12px] font-medium leading-[16px] text-ink/45">
+                Only you can see these — decrypted just for your account.
+              </Text>
+              <View className="flex-row gap-3">
+                <PrivateDoc label="Store photo" uri={profile.storePhotoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
+                <PrivateDoc label="Owner photo" uri={profile.profilePhotoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
+                <PrivateDoc label="Aadhaar" uri={profile.aadhaarPhotoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
+              </View>
+            </View>
           </SettingsCard>
 
           {/* Payout details — UPI or bank account, saved through its own
@@ -538,8 +577,52 @@ export function StoreSettingsScreen({ navigation }: Props) {
 
           <BrandFooter />
         </ScrollView>
+
+        {/* Full-screen viewer for a tapped private doc — an Aadhaar scan is
+            unreadable as a thumbnail, so tap-to-enlarge is the point. Uses the
+            same authenticated source; tap anywhere to dismiss. */}
+        <Modal visible={enlargedDoc !== null} transparent animationType="fade" onRequestClose={() => setEnlargedDoc(null)}>
+          <Pressable onPress={() => setEnlargedDoc(null)} className="flex-1 items-center justify-center bg-black/90 px-5">
+            {enlargedDoc !== null && (
+              <Image source={authSource(enlargedDoc, accessToken)} className="h-3/4 w-full rounded-2xl" resizeMode="contain" />
+            )}
+            <Text className="mt-4 text-[13px] font-medium text-white/70">Tap anywhere to close</Text>
+          </Pressable>
+        </Modal>
       </SafeAreaView>
     </KeyboardAvoidingView>
+  );
+}
+
+// One private KYC photo in the "My documents" row: an authenticated
+// thumbnail that opens the full-screen viewer on tap, or a graceful dashed
+// "Not uploaded" placeholder when the owner hasn't supplied one. The byte
+// fetch carries the owner's bearer token (authSource); null uri never hits
+// the network.
+function PrivateDoc({
+  label,
+  uri,
+  token,
+  onEnlarge,
+}: {
+  label: string;
+  uri: string | null;
+  token: string | null;
+  onEnlarge: (uri: string) => void;
+}) {
+  return (
+    <View className="flex-1 gap-1.5">
+      {uri ? (
+        <Pressable onPress={() => onEnlarge(uri)} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+          <Image source={authSource(uri, token)} className="h-24 w-full rounded-xl bg-black/5" resizeMode="cover" />
+        </Pressable>
+      ) : (
+        <View className="h-24 w-full items-center justify-center rounded-xl border border-dashed border-black/15 bg-mist">
+          <Text className="px-1 text-center text-[11px] font-medium text-ink/35">Not uploaded</Text>
+        </View>
+      )}
+      <Text className="text-center text-[11px] font-medium text-ink/50">{label}</Text>
+    </View>
   );
 }
 

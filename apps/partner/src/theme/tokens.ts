@@ -22,13 +22,13 @@ export const radius = {
   button: 13,
 } as const;
 
-// Söhne (base weight, "Buch") app-wide — see ./fonts.ts for the full weight
+// Gilroy (base weight) app-wide — see ./fonts.ts for the full weight
 // map and global.css for how it's actually applied (NativeWind's CSS
 // engine, not this constant — nothing in this app reads `fontFamily`
 // directly, same as apps/customer's own Gilroy setup). Deliberate
 // departure from design-system.md's system-font-stack default, per an
 // explicit ask that this app "strictly use that font only."
-export const fontFamily = 'AeonikSoftPro-Regular';
+export const fontFamily = 'Gilroy-Regular';
 
 export const fontWeight = {
   regular: '400' as const,

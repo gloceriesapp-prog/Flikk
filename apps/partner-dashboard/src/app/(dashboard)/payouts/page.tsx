@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Calendar, HandCoins, Percent, Wallet } from 'lucide-react';
-import { fetchMyCommission, fetchMyPayouts, fetchMyStore, type PartnerCommission, type Payout, type Store } from '@/lib/partnerApi';
+import { fetchMyCommission, fetchMyPayouts, fetchMyStore, type PartnerCommission, type Store } from '@/lib/partnerApi';
+import { useLiveData } from '@/lib/useLiveData';
 import { DEMO_PAYOUTS } from '@/lib/demoPayouts';
 import { Card } from '@/components/ui/Card';
 import { StatTile } from '@/components/ui/StatTile';
@@ -12,21 +13,24 @@ import { PayoutsFilterBar, PAYOUT_FILTERS, type PayoutFilter } from '@/component
 import { PayoutsTable } from '@/components/payouts/PayoutsTable';
 import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
+// Payouts move at most once a week — a slow poll keeps a newly-marked-paid row
+// in sync without hammering the endpoint. The hook pauses it while hidden.
+const PAYOUTS_POLL_MS = 60_000;
+
 export default function PayoutsPage() {
-  const [payouts, setPayouts] = useState<Payout[]>([]);
+  const { data: payoutsRaw = [], isLoading } = useLiveData(fetchMyPayouts, PAYOUTS_POLL_MS);
+  const payouts = useMemo(
+    () => [...payoutsRaw].sort((a, b) => +new Date(b.week_start) - +new Date(a.week_start)),
+    [payoutsRaw],
+  );
   const [store, setStore] = useState<Store | null>(null);
   const [commission, setCommission] = useState<PartnerCommission | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<PayoutFilter>('all');
 
   useEffect(() => {
-    Promise.all([fetchMyPayouts(), fetchMyStore()])
-      .then(([payoutsRes, storeRes]) => {
-        setPayouts([...payoutsRes].sort((a, b) => +new Date(b.week_start) - +new Date(a.week_start)));
-        setStore(storeRes);
-      })
-      .finally(() => setIsLoading(false));
-    // Best-effort: the rate line just stays hidden if this fails.
+    // Store + rate change rarely — one-time fetch, best-effort (the rate line
+    // just stays hidden if it fails).
+    fetchMyStore().then(setStore).catch(() => setStore(null));
     fetchMyCommission().then(setCommission).catch(() => setCommission(null));
   }, []);
 

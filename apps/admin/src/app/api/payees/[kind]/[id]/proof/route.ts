@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { privateDocUrl } from '@/lib/supabase/privateDocUrl';
 import { parseKindAndId } from '@/lib/payoutValidation';
 
 export async function GET(_request: Request, context: { params: Promise<{ kind: string; id: string }> }) {
@@ -27,7 +28,9 @@ export async function GET(_request: Request, context: { params: Promise<{ kind: 
   if (!path) return NextResponse.json({ error: 'No proof uploaded.' }, { status: 404, headers });
 
   const bucket = target.kind === 'store' ? 'store-documents' : 'rider-documents';
-  const signed = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, 60);
-  if (signed.error || !signed.data) return NextResponse.json({ error: 'Proof unavailable. Retry shortly.' }, { status: 503, headers });
-  return NextResponse.json({ url: signed.data.signedUrl, expiresIn: 60 }, { headers });
+  // Prefer the decrypt-proxy (handles encrypted KYC proofs); only legacy paths
+  // with no media_assets row fall back to a 60s signed URL.
+  const url = await privateDocUrl(bucket, path, 60);
+  if (!url) return NextResponse.json({ error: 'Proof unavailable. Retry shortly.' }, { status: 503, headers });
+  return NextResponse.json({ url, expiresIn: 60 }, { headers });
 }
