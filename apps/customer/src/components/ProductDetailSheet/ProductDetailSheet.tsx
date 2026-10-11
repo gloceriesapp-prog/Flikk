@@ -74,7 +74,7 @@
 // with; the jank this file actually had was animation/gesture-thread work,
 // which is what the Reanimated/gesture-handler rewrite above addresses.
 
-import { ArrowDown01Icon, Bookmark01Icon, Share03Icon, StarIcon } from '@hugeicons/core-free-icons';
+import { ArrowDown01Icon, Bookmark01Icon, StarIcon } from '@hugeicons/core-free-icons';
 import { useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -289,6 +289,9 @@ function ProductDetailSheetContent({ product, visible, onClose }: Props) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View className="flex-1">
+        {/* Black status-bar icons on the product page — matches Android's own
+            dark-content bar; the white top header reads light enough for them. */}
+        <StatusBar barStyle="dark-content" />
         {/* BlurView isn't one of NativeWind's auto-patched components — a
             className here is silently ignored, same as elsewhere in this
             app (BottomNavBar.tsx's own note). Android has no native blur
@@ -765,9 +768,9 @@ const headerTitleStyle = useAnimatedStyle(() => ({
   // ask. iOS keeps the translucent dark/25 pills + white icons (legible on any
   // hero photo without a shadow).
   const isAndroid = Platform.OS === 'android';
-  // Android: thin white top header (just backs the status bar) so the controls
-  // sit just below it over the hero, not inside a tall white slab.
-  const headerHeight = insets.top + (isAndroid ? 44 : 64);
+  // Android: thin white top header just a hair taller than the status bar so it
+  // reads as a clean status-bar backing; the controls float just below it.
+  const headerHeight = insets.top + (isAndroid ? 6 : 64);
   const pillClass = isAndroid
     ? 'h-10 w-10 items-center justify-center rounded-full bg-white'
     : 'h-10 w-10 items-center justify-center rounded-full bg-black/25';
@@ -823,7 +826,7 @@ const headerTitleStyle = useAnimatedStyle(() => ({
         <GestureDetector gesture={panGesture}>
           <Animated.View style={[{ position: 'absolute' }, headerRowStyle]} className="left-4 right-4 z-10">
             {/* Floating controls over the full-bleed hero (ref #106/#107):
-                close (chevron-down) top-left, bookmark + share top-right.
+                close (chevron-down) top-left, bookmark top-right.
                 Translucent DARK pills + white icons rather than the ref's
                 light pills — the hero photo can be light (milk carton) or
                 dark (ice cream), and dark/25 stays legible on both where a
@@ -849,9 +852,6 @@ const headerTitleStyle = useAnimatedStyle(() => ({
                     fill={isBookmarked ? pillIconColor : undefined}
                     strokeWidth={2}
                   />
-                </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel="Share product" hitSlop={10} className={pillClass} style={pillStyle}>
-                  <AppIcon icon={Share03Icon} size={18} color={pillIconColor} strokeWidth={2} />
                 </Pressable>
               </View>
             </View>
