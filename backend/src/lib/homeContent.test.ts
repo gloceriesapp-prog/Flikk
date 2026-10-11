@@ -30,7 +30,7 @@ describe('Home content publication contract', () => {
   it('validates all seeded tabs and preserves the existing 30-section order', () => {
     expect(
       Object.values(DEFAULT_CONTENT).map((doc) => validateContent(doc).sections.length),
-    ).toEqual([11, 9, 10]);
+    ).toEqual([11, 9, 10, 3, 3]);
     expect(DEFAULT_CONTENT.fresh.sections[4]?.id).toBe('home-grown-nearby');
   });
   it('rejects unknown renderers, duplicate keys, and non-boolean visibility', () => {

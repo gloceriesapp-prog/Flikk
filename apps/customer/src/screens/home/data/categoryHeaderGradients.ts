@@ -47,7 +47,7 @@ const GRADIENT_BY_TAB_NAME: Record<string, CategoryHeaderGradient> = {
   // tabs use), so the header text/icons flip to dark on this tab only
   // (HomeHeader threads an isLightHeader flag down for exactly this). Reads
   // airy/premium rather than moody.
-all: gradient(['#58A754', '#2A8A41', '#237036', '#205E2F']),
+all: gradient(['#155DFC', '#1752D6', '#1947B1', '#193C8C']),
 
 groceries: gradient([
   '#D7BD9D',

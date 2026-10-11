@@ -36,3 +36,44 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[
     return NextResponse.json({ error: message }, { status: catalogueErrorStatus(err) });
   }
 }
+
+const HAS_ORDERS_MESSAGE =
+  "This product has past orders and can't be deleted — set it to Out of stock instead.";
+
+export async function DELETE(_request: Request, ctx: RouteContext<'/api/products/[id]'>) {
+  const { denied } = await requireAdmin();
+  if (denied) return denied;
+  const { id } = await ctx.params;
+
+  try {
+    // order_items.product_id references products(id) with NO cascade — a
+    // product that's ever been ordered is audit/financial history and must
+    // never be hard-deleted (same real-history reasoning as the promo-codes
+    // route's note on promo_redemptions). Deactivating via Out of stock is the
+    // real fix for "stop selling this."
+    const { count, error: countError } = await supabaseAdmin
+      .from('order_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('product_id', id);
+    if (countError) throw countError;
+    if ((count ?? 0) > 0) return NextResponse.json({ error: HAS_ORDERS_MESSAGE }, { status: 409 });
+
+    // product_variants.product_id also has no cascade, so clear the packs
+    // first; festival/wishlist references do cascade and need no handling.
+    const { error: variantError } = await supabaseAdmin.from('product_variants').delete().eq('product_id', id);
+    if (variantError) throw variantError;
+
+    const { error } = await supabaseAdmin.from('products').delete().eq('id', id);
+    if (error) {
+      // Any other no-cascade reference (e.g. inventory_reservations,
+      // product_popularity_daily) means real history too — treat as 409.
+      if (error.code === '23503') return NextResponse.json({ error: HAS_ORDERS_MESSAGE }, { status: 409 });
+      throw error;
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Could not delete product.';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}

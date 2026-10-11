@@ -514,8 +514,16 @@
       "sha256": "e08622c7e1bc58d212a8bd1e38e71f280058ac9c2dc5e2fe092171472bb67106"
     },
     {
+      "file": "20261011000000_account_type_pin.sql",
+      "sha256": "865b43bfa459f6253621f10cdf5bd950997f8982f3cc3d211ee1386da27435c9"
+    },
+    {
       "file": "20261011000000_delivery_map_address.sql",
       "sha256": "60c764a32a6cb781c9fc06b40693ee9346be88844ee1b5dca14e87d252ac2c09"
+    },
+    {
+      "file": "20261011140000_home_content_festivals_meat.sql",
+      "sha256": "d8220cdac155fb6f7f9868e997fb7e08735cd6afc2417e5eb6c495e9434c8dcf"
     }
   ]
 }

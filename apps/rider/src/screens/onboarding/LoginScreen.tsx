@@ -18,9 +18,16 @@ export function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleContinue() {
+    if (loading) return;
+    const phone = `+91${digits}`;
+    // Catch a bad number locally (right digit count but not a real Indian
+    // mobile prefix) instead of burning a server round-trip on it.
+    if (!/^[6-9]\d{9}$/.test(digits)) {
+      Alert.alert('Check your number', 'Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.');
+      return;
+    }
     setLoading(true);
     try {
-      const phone = `+91${digits}`;
       await requestOtp(phone);
       navigation.navigate('OtpVerification', { phone });
     } catch (err) {

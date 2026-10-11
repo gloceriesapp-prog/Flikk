@@ -1,4 +1,4 @@
-export const TAB_KEYS = ['grocery', 'fresh', 'regional'];
+export const TAB_KEYS = ['grocery', 'fresh', 'regional', 'festivals', 'meat'];
 export const SECTION_KINDS = [
   'products',
   'categories',
@@ -6,6 +6,11 @@ export const SECTION_KINDS = [
   'stores',
   'banner',
   'hero',
+  // Festival block for a category tab: an optional title + background image
+  // (edited here) over the shared global Festival Section product shelf
+  // (admin "Festival products" page → GET /home/festival-section). Carries no
+  // own product selection — products come from that one shared list.
+  'festival',
   'footer',
 ];
 export const createSelection = () => ({

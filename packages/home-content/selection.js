@@ -65,6 +65,8 @@ export function tabKeyForName(name) {
   if (['grocery', 'groceries'].includes(normalized)) return 'grocery';
   if (['fresh', 'fruit & veg', 'fruits & veg'].includes(normalized)) return 'fresh';
   if (normalized === 'regional') return 'regional';
+  if (['festivals', 'festival'].includes(normalized)) return 'festivals';
+  if (['meat', 'meat & fish', 'fish & meat', 'meat and fish'].includes(normalized)) return 'meat';
 }
 export function referencedIds(content) {
   const rules = content.sections.flatMap((s) => [s.selection, ...s.items.map((i) => i.selection)]);

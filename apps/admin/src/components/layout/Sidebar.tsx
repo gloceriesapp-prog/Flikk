@@ -8,9 +8,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronsUpDown, HelpCircle, PanelLeftClose, PanelLeftOpen, Search, Settings } from 'lucide-react';
+import { ChevronDown, HelpCircle, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import clsx from 'clsx';
-import { INSIGHTS_ITEMS, MENU_ITEMS, type NavItem } from '@/lib/nav';
+import { NAV_GROUPS, OVERVIEW_ITEM, type NavItem } from '@/lib/nav';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { SidebarSearch } from './SidebarSearch';
 
@@ -19,6 +19,10 @@ interface AttentionItem { key: string; label: string; count: number; href: strin
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  // Which groups are folded shut (by title). Default: all open. Clicking a
+  // group header toggles it; the group holding the active route is forced
+  // open so the current page is always visible.
+  const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
   // Bumped by the collapsed rail's search button so SidebarSearch focuses
   // its input once the sidebar has expanded.
   const [searchFocus, setSearchFocus] = useState(0);
@@ -57,8 +61,10 @@ export function Sidebar() {
     return () => clearInterval(id);
   }, [loadCounts]);
 
+  const isActiveHref = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
   function renderItem(item: NavItem) {
-    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+    const isActive = isActiveHref(item.href);
     const Icon = item.icon;
     const count = counts[item.href] ?? 0;
     return (
@@ -132,15 +138,38 @@ export function Sidebar() {
         </button>
       )}
 
-      <nav className="flex flex-1 flex-col gap-5 overflow-y-auto">
-        <div className="flex flex-col gap-1">
-          {!collapsed && <p className="px-3 pb-1 text-xs font-semibold text-muted">Menu</p>}
-          {MENU_ITEMS.map(renderItem)}
-        </div>
-        <div className="flex flex-col gap-1">
-          {!collapsed && <p className="px-3 pb-1 text-xs font-semibold text-muted">Insights</p>}
-          {INSIGHTS_ITEMS.map(renderItem)}
-        </div>
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
+        {/* Overview — standalone, above the groups */}
+        {renderItem(OVERVIEW_ITEM)}
+
+        {NAV_GROUPS.map((group) => {
+          const hasActive = group.items.some((i) => isActiveHref(i.href));
+          const open = collapsed || hasActive || !closedGroups[group.title];
+          const groupCount = group.items.reduce((n, i) => n + (counts[i.href] ?? 0), 0);
+          return (
+            <div key={group.title} className="flex flex-col gap-1">
+              {!collapsed ? (
+                <button
+                  type="button"
+                  onClick={() => setClosedGroups((g) => ({ ...g, [group.title]: !g[group.title] }))}
+                  className="mt-3 flex items-center justify-between px-3 pb-1 text-xs font-semibold text-muted hover:text-ink"
+                >
+                  <span className="flex items-center gap-1.5">
+                    {group.title}
+                    {!open && groupCount > 0 && (
+                      <span className="rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-danger">{groupCount}</span>
+                    )}
+                  </span>
+                  <ChevronDown size={13} className={clsx('transition-transform', !open && '-rotate-90')} />
+                </button>
+              ) : (
+                // Collapsed rail: a thin divider stands in for each group header.
+                <div className="mx-auto my-1.5 h-px w-5 bg-border" />
+              )}
+              {open && group.items.map(renderItem)}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="flex flex-col gap-1 border-t border-border pt-3">
@@ -155,18 +184,6 @@ export function Sidebar() {
           <HelpCircle size={17} />
           {!collapsed && 'Help Center'}
         </Link>
-        <Link
-          href="/settings"
-          title={collapsed ? 'Settings' : undefined}
-          className={clsx(
-            'flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-            collapsed && 'justify-center px-0',
-            pathname.startsWith('/settings') ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:bg-card hover:text-ink'
-          )}
-        >
-          <Settings size={17} />
-          {!collapsed && 'Settings'}
-        </Link>
 
         <div
           className={clsx(
@@ -176,13 +193,10 @@ export function Sidebar() {
         >
           <div className="h-8 w-8 shrink-0 rounded-full bg-accent" />
           {!collapsed && (
-            <>
-              <div className="min-w-0 flex-1 leading-tight">
-                <p className="truncate text-xs font-semibold text-ink">Founder</p>
-                <p className="truncate text-[10px] text-muted">founder@flikk.app</p>
-              </div>
-              <ChevronsUpDown size={14} className="shrink-0 text-muted" />
-            </>
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="truncate text-xs font-semibold text-ink">Founder</p>
+              <p className="truncate text-[10px] text-muted">founder@flikk.app</p>
+            </div>
           )}
         </div>
       </div>

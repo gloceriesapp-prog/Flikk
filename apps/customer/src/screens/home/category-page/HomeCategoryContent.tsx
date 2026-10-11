@@ -4,6 +4,7 @@ import { GroceriesTab } from '../groceries/GroceriesTab';
 import { FreshTab } from '../fresh/FreshTab';
 import { RegionalTab } from '../regional/RegionalTab';
 import { FestivalTab } from '../festival/FestivalTab';
+import { ManagedHomeTab } from '../content/ManagedHomeTab';
 import { HomeTabExtras, HomeTabTileGrid } from '../hometab/HomeTabTileGrid';
 
 // Resolve by managed identity first, so admin display-name changes cannot
@@ -34,6 +35,10 @@ export function HomeCategoryContent({ tab }: { tab: RemoteHomeTab }) {
     // Bakery/Protein/Meat & Fish: admin tiles + real category browse.
     case 'bakery': return <><BakeryFreshnessBanner /><HomeTabTileGrid tab={tab} /></>;
     case 'regional': return <><HomeTabExtras tab={tab} /><RegionalTab /></>;
+    // Festivals & Meat: managed Home-Tab-Content tabs, same pattern as
+    // Grocery/Fresh/Regional (admin tiles above the managed section layout).
+    case 'festivals': return <><HomeTabExtras tab={tab} /><ManagedHomeTab tabKey="festivals" /></>;
+    case 'meat': return <><HomeTabExtras tab={tab} /><ManagedHomeTab tabKey="meat" /></>;
     case 'festival': return <FestivalTab tab={tab} />;
     default: return <HomeTabTileGrid tab={tab} />;
   }

@@ -12,7 +12,7 @@
 // sort order actually render there (backend's own GET route limits(4)).
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import clsx from 'clsx';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 
@@ -41,6 +41,7 @@ export default function SeasonalSectionPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editingTile, setEditingTile] = useState<Tile | null>(null);
   const [draft, setDraft] = useState({ title: '', imageUrl: '', bgColor: DEFAULT_BG });
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -83,23 +84,54 @@ export default function SeasonalSectionPage() {
     }
   }
 
-  async function handleCreateTile(e: React.FormEvent) {
+  function openCreate() {
+    setEditingTile(null);
+    setDraft({ title: '', imageUrl: '', bgColor: DEFAULT_BG });
+    setFormError(null);
+    setAdding(true);
+  }
+
+  function openEdit(tile: Tile) {
+    setEditingTile(tile);
+    setDraft({ title: tile.title, imageUrl: tile.imageUrl ?? '', bgColor: tile.bgColor });
+    setFormError(null);
+    setAdding(true);
+  }
+
+  function closeForm() {
+    setAdding(false);
+    setEditingTile(null);
+    setDraft({ title: '', imageUrl: '', bgColor: DEFAULT_BG });
+    setFormError(null);
+  }
+
+  async function handleSubmitTile(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
     setSaving(true);
     try {
-      const res = await fetch('/api/seasonal-section', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...draft, sortOrder: tiles.length }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? 'Could not add tile.');
-      setTiles((prev) => [...prev, body as Tile]);
-      setDraft({ title: '', imageUrl: '', bgColor: DEFAULT_BG });
-      setAdding(false);
+      if (editingTile) {
+        const res = await fetch(`/api/seasonal-section/${editingTile.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...draft, sortOrder: editingTile.sortOrder, isActive: editingTile.isActive }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error ?? 'Could not save tile.');
+        setTiles((prev) => prev.map((t) => (t.id === editingTile.id ? (body as Tile) : t)));
+      } else {
+        const res = await fetch('/api/seasonal-section', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...draft, sortOrder: tiles.length }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error ?? 'Could not add tile.');
+        setTiles((prev) => [...prev, body as Tile]);
+      }
+      closeForm();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not add tile.');
+      setFormError(err instanceof Error ? err.message : 'Could not save tile.');
     } finally {
       setSaving(false);
     }
@@ -167,7 +199,7 @@ export default function SeasonalSectionPage() {
         </div>
         <button
           type="button"
-          onClick={() => setAdding((v) => !v)}
+          onClick={() => (adding && !editingTile ? closeForm() : openCreate())}
           className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
         >
           <Plus size={15} />
@@ -176,7 +208,7 @@ export default function SeasonalSectionPage() {
       </div>
 
       {adding && (
-        <form onSubmit={handleCreateTile} className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5">
+        <form onSubmit={handleSubmitTile} className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-ink-soft">Title</span>
@@ -209,11 +241,11 @@ export default function SeasonalSectionPage() {
           </div>
           {formError && <p className="text-xs font-medium text-danger">{formError}</p>}
           <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
-            <button type="button" onClick={() => setAdding(false)} className="text-sm font-medium text-muted">
+            <button type="button" onClick={closeForm} className="text-sm font-medium text-muted">
               Cancel
             </button>
             <button type="submit" disabled={saving} className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
-              {saving ? 'Adding…' : 'Add tile'}
+              {editingTile ? (saving ? 'Saving…' : 'Save tile') : saving ? 'Adding…' : 'Add tile'}
             </button>
           </div>
         </form>
@@ -241,9 +273,14 @@ export default function SeasonalSectionPage() {
               >
                 {tile.isActive ? 'Active' : 'Inactive'}
               </button>
-              <button type="button" onClick={() => handleDelete(tile.id)} className="text-muted hover:text-danger" aria-label={`Delete ${tile.title}`}>
-                <Trash2 size={15} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => openEdit(tile)} className="text-muted hover:text-ink" aria-label={`Edit ${tile.title}`}>
+                  <Pencil size={15} />
+                </button>
+                <button type="button" onClick={() => handleDelete(tile.id)} className="text-muted hover:text-danger" aria-label={`Delete ${tile.title}`}>
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </div>
           </div>
         ))}

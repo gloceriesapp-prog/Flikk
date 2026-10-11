@@ -10,9 +10,11 @@
 // ApplicationRow so both tabs read the same.
 
 import { useState } from 'react';
-import { Check, Package, X } from 'lucide-react';
+import { Check, Package, Pencil, X } from 'lucide-react';
 import clsx from 'clsx';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
+import { EditProductModal } from '@/components/inventory/EditProductModal';
+import type { StoreOption } from '@/lib/supabase/products';
 import type { Product, ProductVariant } from '@/lib/types';
 
 const UNIT_LABEL: Record<ProductVariant['unitType'], string> = { g: 'g', kg: 'kg', ml: 'ml', l: 'L', pc: 'pc' };
@@ -60,9 +62,44 @@ function Img({ src, className }: { src?: string; className: string }) {
   return <img src={src} alt="" className={className} />;
 }
 
-export function ProductReviewRow({ product, mode, onDone }: { product: Product; mode: 'new' | 'image' | 'changes'; onDone: () => void }) {
+export function ProductReviewRow({
+  product,
+  mode,
+  stores,
+  onDone,
+}: {
+  product: Product;
+  mode: 'new' | 'image' | 'changes';
+  // Only consumed by the mode 'new' Edit flow (the EditProductModal's store
+  // picker). Empty for the image/changes rows, which have no Edit button.
+  stores: StoreOption[];
+  onDone: () => void;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  // Edit-before-approve, mode 'new' only: a brand-new partner product's row IS
+  // the pending row (approval_status 'pending'), so the inventory editor writes
+  // straight to it through the same full PATCH /api/products/[id] rewrite
+  // Inventory uses (packs matched by id, pending photo cleared) — it never
+  // touches approval_status, so the product stays pending and the founder still
+  // presses Approve after. The 'changes' row's proposed values live in
+  // pending_changes (a separate queue the editor wouldn't see), and 'image'
+  // already has Replace, so Edit is deliberately scoped to 'new'.
+  async function saveEdits(updated: Product) {
+    const res = await fetch(`/api/products/${product.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    });
+    if (!res.ok) {
+      const b = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(b?.error ?? 'Could not save changes.');
+    }
+    setEditing(false);
+    onDone();
+  }
 
   async function call(url: string, body: unknown) {
     if (busy) return;
@@ -131,6 +168,17 @@ export function ProductReviewRow({ product, mode, onDone }: { product: Product; 
       {!!error && <p role="alert" className="text-sm text-danger">{error}</p>}
       <div className="flex shrink-0 items-center gap-2">
         {mode === 'image' && <ProductImageUpload imageUrl={undefined} onChange={replace} />}
+        {mode === 'new' && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            disabled={busy}
+            className="flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-sm font-medium text-ink hover:bg-accent disabled:opacity-40"
+          >
+            <Pencil size={14} />
+            Edit
+          </button>
+        )}
         <button
           type="button"
           onClick={() => call(endpoint, rejectBody)}
@@ -150,6 +198,15 @@ export function ProductReviewRow({ product, mode, onDone }: { product: Product; 
           Approve
         </button>
       </div>
+
+      {editing && (
+        <EditProductModal
+          product={product}
+          stores={stores}
+          onClose={() => setEditing(false)}
+          onSave={saveEdits}
+        />
+      )}
     </div>
   );
 }

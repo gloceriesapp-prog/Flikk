@@ -1,10 +1,12 @@
 import { StyleSheet, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
-import { storageUrl } from '../../../utils/storageUrl';
 import { useCopy, useCopyImage } from '../../../api/appConfig';
 
-// Admin App content: home.welcome.imageUrl / home.welcome.label.
-const WELCOME_ARTWORK_URI = storageUrl('Images/Your%20District,%20Your%20Shop%20tras.png');
+// Admin App content: home.welcome.imageUrl / home.welcome.label. The new
+// Your Shops artwork is the default; admin can still override it from App
+// content (that override read is also what keeps home.welcome.imageUrl a
+// consumed copy key — see backend copyKeys.test.ts).
+const WELCOME_ARTWORK_URI = 'https://images.gloceries.com/appsui/Your%20Shops.png';
 
 export function HomeWelcomeBanner({
   backgroundColor,
@@ -13,6 +15,7 @@ export function HomeWelcomeBanner({
 }) {
   const uri = useCopyImage('home.welcome.imageUrl', WELCOME_ARTWORK_URI);
   const label = useCopy('home.welcome.label');
+
   return (
     <View
       style={{

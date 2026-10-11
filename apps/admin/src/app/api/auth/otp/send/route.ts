@@ -34,7 +34,12 @@ export async function POST() {
   try {
     await issueOtp(userId, recipient);
   } catch (err) {
-    console.error('Admin OTP send failed', { message: err instanceof Error ? err.message : 'unknown' });
+    // Log the real SMTP failure so it's visible in the server terminal:
+    // nodemailer sets .code (EAUTH = bad user/app-password, ETIMEDOUT/ESOCKET
+    // = network/port 465 blocked) and .response (Gmail's reply). The client
+    // message stays generic on purpose.
+    const e = err as { message?: string; code?: string; responseCode?: number; response?: string };
+    console.error('Admin OTP send failed', { message: e.message, code: e.code, responseCode: e.responseCode, response: e.response });
     return NextResponse.json({ error: 'Could not send the code. Check the Gmail SMTP settings.' }, { status: 502 });
   }
   return NextResponse.json({ sentTo: maskEmail(recipient), expiresInMinutes: OTP_TTL_MINUTES });

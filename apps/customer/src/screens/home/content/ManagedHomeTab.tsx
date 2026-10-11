@@ -20,6 +20,7 @@ import { ContentProducts } from './ContentProducts';
 import { ContentTiles } from './ContentTiles';
 import { mapContentProduct } from './productMapping';
 import { HomeGrownBackground } from '../fresh/home-grown-nearby/HomeGrownBackground';
+import { FestivalPicksSection } from '../festival/picks/FestivalPicksSection';
 import { BROWSE_LOADING_COPY } from '../loading/BrowseLoadingText';
 
 type Inventory = ReturnType<typeof useNearbyGroceryInventory>;
@@ -68,6 +69,7 @@ function ManagedSection({
   if (
     section.hideWhenEmpty &&
     section.kind !== 'footer' &&
+    section.kind !== 'festival' &&
     !(section.kind === 'banner' && section.imageUrl) &&
     !hasItems &&
     !inventory.isLoading &&
@@ -85,6 +87,22 @@ function ManagedSection({
         {section.subtitle && (
           <Text className="mt-2 text-sm font-medium text-ink/50">{section.subtitle}</Text>
         )}
+      </View>
+    );
+  // Festival: an optional admin-set banner image + title over the one shared
+  // global Festival Section shelf (festival_sections → /home/festival-section).
+  // Products are managed on the admin "Festival products" page, not per-section;
+  // FestivalPicksSection self-hides when no festival is active, so the whole
+  // block collapses cleanly when there's nothing to show.
+  if (section.kind === 'festival')
+    return (
+      <View className="mt-8" style={{ backgroundColor: section.backgroundColor || undefined }}>
+        {section.imageUrl ? (
+          <View className="mx-5 mb-1 overflow-hidden rounded-[28px]">
+            <ContentImage section={section} />
+          </View>
+        ) : null}
+        <FestivalPicksSection title={section.title || undefined} />
       </View>
     );
   const heading =

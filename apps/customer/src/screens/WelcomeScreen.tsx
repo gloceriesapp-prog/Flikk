@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AppImage as Image } from '../components/AppImage';
 
 // Bundle the artwork so the brief welcome screen never waits for a download.
-const WELCOME_IMAGE = require('../../assets/welcome-welcome.png');
+const WELCOME_IMAGE = require('../../assets/customer-welcome-launch.png');
 
 export function WelcomeScreen() {
   return (

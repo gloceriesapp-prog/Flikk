@@ -2,7 +2,7 @@
 // /auth/otp/verify) — see api/auth.ts's own note on the one real gap this
 // doesn't solve (no self-serve "become a rider" flow yet).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { Alert, Pressable, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -12,18 +12,41 @@ import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { OtpBoxInput } from '../../components/OtpBoxInput';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors } from '../../theme/tokens';
-import { verifyOtp } from '../../api/auth';
+import { requestOtp, verifyOtp } from '../../api/auth';
+import { ApiError } from '../../api/client';
 import { useAuthStore } from '../../store/useAuthStore';
 import { roleMismatchMessage } from '../../utils/roleGuard';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
 
+const RESEND_COOLDOWN_S = 30;
+
+// Backend throttles OTP sends (authBudget.ts: 429 AUTH_RATE_LIMITED). The
+// shared ApiError only carries status + message, not the Retry-After header,
+// so parse an explicit "N seconds" from the message if present, else fall
+// back to a minute (the backend's own "wait a minute" wording).
+function cooldownSeconds(message: string): number {
+  const m = message.match(/(\d+)\s*second/i);
+  return m ? Number(m[1]) : 60;
+}
+
 export function OtpVerificationScreen({ navigation, route }: Props) {
   const { phone } = route.params;
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  // Starts > 0 on mount — the code was already sent from LoginScreen, so the
+  // rider waits out one cooldown before the first resend is offered.
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_S);
+  const [sent, setSent] = useState(false);
   const setSession = useAuthStore((s) => s.setSession);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
 
   async function handleVerify() {
     if (loading) return;
@@ -44,9 +67,32 @@ export function OtpVerificationScreen({ navigation, route }: Props) {
       // No further navigation needed — RootNavigator swaps to AppNavigator
       // the instant useAuthStore.accessToken becomes non-null.
     } catch (err) {
+      setCode('');
       Alert.alert('Could not verify code', err instanceof Error ? err.message : 'Please try again.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    if (resending || cooldown > 0) return;
+    setResending(true);
+    try {
+      await requestOtp(phone);
+      setCode('');
+      setSent(true);
+      setCooldown(RESEND_COOLDOWN_S);
+    } catch (err) {
+      // Respect the backend's own throttle window instead of letting the
+      // rider keep hammering resend into more 429s.
+      if (err instanceof ApiError && err.status === 429) {
+        setSent(false);
+        setCooldown(cooldownSeconds(err.message));
+      } else {
+        Alert.alert('Could not resend code', err instanceof Error ? err.message : 'Please try again.');
+      }
+    } finally {
+      setResending(false);
     }
   }
 
@@ -75,6 +121,20 @@ export function OtpVerificationScreen({ navigation, route }: Props) {
             </View>
 
             <OtpBoxInput value={code} onChangeText={setCode} autoFocus />
+
+            <View className="items-center">
+              {cooldown > 0 ? (
+                <Text className="text-[15px] font-medium text-ink/45">
+                  {sent ? 'Code sent · ' : ''}Resend in {cooldown}s
+                </Text>
+              ) : (
+                <Pressable onPress={handleResend} disabled={resending} hitSlop={12}>
+                  <Text className="text-[15px] font-semibold text-[#1447E6]">
+                    {resending ? 'Sending…' : 'Resend code'}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           </View>
 
           <PrimaryButton label="Verify code" onPress={handleVerify} loading={loading} disabled={code.length !== 6} tone="blue" />

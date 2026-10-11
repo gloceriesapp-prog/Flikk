@@ -12,7 +12,7 @@
 // for, not a single flat list mixing tabs and tiles together.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { HomeTab, HomeTabBanner, HomeTabTile, HomeTabTileLinkType } from '@/lib/types';
 import { fetchHomeTabBanners, fetchHomeTabs, fetchHomeTabTiles } from '@/lib/supabase/homeTabs';
 import { fetchCategories } from '@/lib/supabase/categories';
@@ -79,10 +79,14 @@ export default function HomeCategoriesPage() {
 
   const [newTabName, setNewTabName] = useState('');
   const [addingTab, setAddingTab] = useState(false);
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editingTabName, setEditingTabName] = useState('');
 
   const [newTileName, setNewTileName] = useState('');
   const [newTileImage, setNewTileImage] = useState<string | undefined>(undefined);
   const [addingTile, setAddingTile] = useState(false);
+  const [editingTileId, setEditingTileId] = useState<string | null>(null);
+  const [editingTileName, setEditingTileName] = useState('');
   const [newTileLink, setNewTileLink] = useState<TileLink>({ linkType: null, linkId: null });
   const [linkOptions, setLinkOptions] = useState<LinkOptions>({ category: [], subcategory: [], store: [] });
 
@@ -181,6 +185,29 @@ export default function HomeCategoriesPage() {
     }
   }
 
+  async function handleRenameTab(tab: HomeTab) {
+    const name = editingTabName.trim();
+    if (!name) return;
+    setError(null);
+    try {
+      const res = await fetch(`/api/home-tabs/${tab.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        // sortOrder/isActive sent too — the tabs PATCH defaults both (sort_order->0,
+        // is_active->true) when omitted, so a name-only body would silently reset them.
+        body: JSON.stringify({ name, sortOrder: tab.sortOrder, isActive: tab.isActive }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Rename failed.');
+      }
+      setEditingTabId(null);
+      await loadTabs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not rename tab — try again.');
+    }
+  }
+
   async function handleDeleteTab(id: string) {
     setError(null);
     try {
@@ -220,6 +247,29 @@ export default function HomeCategoriesPage() {
       setError(err instanceof Error ? err.message : 'Could not add tile — try again.');
     } finally {
       setAddingTile(false);
+    }
+  }
+
+  async function handleRenameTile(tile: HomeTabTile) {
+    const name = editingTileName.trim();
+    if (!name) return;
+    setError(null);
+    try {
+      const res = await fetch(`/api/home-tab-tiles/${tile.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        // Only name + imageUrl — linkType isn't in the body, so the tile PATCH
+        // leaves the existing link untouched (see its own note).
+        body: JSON.stringify({ name, imageUrl: tile.imageUrl ?? null }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Rename failed.');
+      }
+      setEditingTileId(null);
+      if (selectedTabId) await loadTiles(selectedTabId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not rename tile — try again.');
     }
   }
 
@@ -356,7 +406,51 @@ export default function HomeCategoriesPage() {
                   tab.id === selectedTabId ? 'border-ink bg-accent' : 'border-border hover:bg-accent/60'
                 }`}
               >
-                <span className="flex-1 truncate text-sm font-medium text-ink">{tab.name}</span>
+                {editingTabId === tab.id ? (
+                  <input
+                    autoFocus
+                    value={editingTabName}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setEditingTabName(e.target.value)}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleRenameTab(tab);
+                      }
+                      if (e.key === 'Escape') setEditingTabId(null);
+                    }}
+                    className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+                  />
+                ) : (
+                  <span className="flex-1 truncate text-sm font-medium text-ink">{tab.name}</span>
+                )}
+                {editingTabId === tab.id ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRenameTab(tab);
+                    }}
+                    className="text-muted hover:text-success"
+                    aria-label={`Save ${tab.name}`}
+                  >
+                    <Check size={14} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingTabId(tab.id);
+                      setEditingTabName(tab.name);
+                    }}
+                    className="text-muted hover:text-ink"
+                    aria-label={`Rename ${tab.name}`}
+                  >
+                    <Pencil size={13} />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -429,9 +523,48 @@ export default function HomeCategoriesPage() {
                         <Trash2 size={12} />
                       </button>
                     </div>
-                    <p className="truncate text-center text-xs font-medium text-ink" title={tile.name}>
-                      {tile.name}
-                    </p>
+                    {editingTileId === tile.id ? (
+                      <div className="flex w-full items-center gap-1">
+                        <input
+                          autoFocus
+                          value={editingTileName}
+                          onChange={(e) => setEditingTileName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleRenameTile(tile);
+                            }
+                            if (e.key === 'Escape') setEditingTileId(null);
+                          }}
+                          className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRenameTile(tile)}
+                          aria-label={`Save ${tile.name}`}
+                          className="text-muted hover:text-success"
+                        >
+                          <Check size={13} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex w-full items-center justify-center gap-1">
+                        <p className="truncate text-center text-xs font-medium text-ink" title={tile.name}>
+                          {tile.name}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingTileId(tile.id);
+                            setEditingTileName(tile.name);
+                          }}
+                          aria-label={`Rename ${tile.name}`}
+                          className="shrink-0 text-muted hover:text-ink"
+                        >
+                          <Pencil size={11} />
+                        </button>
+                      </div>
+                    )}
                     <TileLinkPicker
                       value={{ linkType: tile.linkType, linkId: tile.linkId }}
                       options={linkOptions}

@@ -22,7 +22,10 @@ function hashCode(userId: string, code: string): string {
 
 function mailer() {
   const user = process.env.GMAIL_SMTP_USER;
-  const pass = process.env.GMAIL_SMTP_APP_PASSWORD;
+  // Gmail shows App Passwords grouped as "abcd efgh ijkl mnop" — people paste
+  // them with the spaces, but SMTP auth needs the raw 16 chars. Strip any
+  // whitespace so a copy-pasted-with-spaces password still authenticates.
+  const pass = process.env.GMAIL_SMTP_APP_PASSWORD?.replace(/\s+/g, '');
   if (!user || !pass) throw new Error('Gmail SMTP is not configured.');
   return {
     from: user,

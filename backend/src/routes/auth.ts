@@ -4,12 +4,36 @@ import { authBudget } from '../customer-experience/authBudget.js';
 import { Router } from 'express';
 import { supabase, supabaseAuth } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
-import { normalizePhone } from '../lib/phone.js';
+import { normalizePhone, phoneVariants } from '../lib/phone.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { partnerSuspension } from '../auth/partnerSuspension.js';
-import { CODE_TTL_MINUTES, checkLoginOtp, consumeLoginOtp, isPhoneBanned, requestLoginOtp, sessionForVerifiedPhone } from '../auth/loginOtp.js';
+import { CODE_TTL_MINUTES, checkLoginOtp, consumeLoginOtp, isPhoneBanned, requestLoginOtp, sessionForVerifiedPhone, testOtps } from '../auth/loginOtp.js';
 
 export const authRouter = Router();
+
+// One phone number, one app. Each app sends `app` on /otp/request + /otp/verify;
+// account_type (migration 20261011000000) pins a number to the first app it
+// signed in through and this rejects any later sign-in through a different app.
+// role is NOT touched here — it still only flips at admin approval; account_type
+// is the permanent identity, so a pending rider (role still 'customer') can no
+// longer also sign into the customer/partner app. LOGIN_TEST_OTPS numbers skip
+// the pin so one number can test every app; admin can change account_type.
+type AppKind = 'customer' | 'rider' | 'partner';
+type AccountType = 'customer' | 'rider' | 'store_owner';
+const APP_TO_ACCOUNT_TYPE: Record<AppKind, AccountType> = { customer: 'customer', rider: 'rider', partner: 'store_owner' };
+const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { customer: 'Customer', rider: 'Rider', store_owner: 'Partner' };
+const wantedAccountType = (app: unknown): AccountType | undefined =>
+  typeof app === 'string' && app in APP_TO_ACCOUNT_TYPE ? APP_TO_ACCOUNT_TYPE[app as AppKind] : undefined;
+const wrongAppError = (registered: AccountType) =>
+  new AppError(403, 'ACCOUNT_WRONG_APP',
+    `This number is registered as a Gloceries ${ACCOUNT_TYPE_LABEL[registered]} account. Please use the ${ACCOUNT_TYPE_LABEL[registered]} app, or sign in with a different number.`);
+
+// Reads the pinned account_type of an existing number (null if the number has
+// never signed in). Exempts LOGIN_TEST_OTPS numbers from the pin entirely.
+async function pinnedAccountType(canonical: string): Promise<AccountType | null> {
+  const { data } = await supabase.from('users').select('account_type').in('phone', phoneVariants(canonical)).limit(1).maybeSingle();
+  return (data?.account_type as AccountType | undefined) ?? null;
+}
 
 // Supabase Auth refuses a banned user (admin customer Block → ban_duration)
 // with code 'user_banned'. Say so plainly instead of "invalid code".
@@ -18,9 +42,16 @@ const accountBlocked = () => new AppError(403, 'ACCOUNT_BLOCKED', 'This account 
 
 authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
   try {
-    const { phone } = req.body as { phone?: string };
+    const { phone, app } = req.body as { phone?: string; app?: string };
     const canonical = normalizePhone(phone); // +91… — throws on a bad number
     if (await isPhoneBanned(canonical)) throw accountBlocked();
+    // Reject a cross-app number before spending an SMS. A brand-new number has
+    // no pin yet and claims it at verify. Test numbers skip the pin.
+    const want = wantedAccountType(app);
+    if (want && !testOtps().has(canonical)) {
+      const pinned = await pinnedAccountType(canonical);
+      if (pinned && pinned !== want) throw wrongAppError(pinned);
+    }
     // The backend sends and checks the code itself (auth/loginOtp.ts); a
     // failed send is logged there with MSG91's reason.
     await requestLoginOtp(canonical);
@@ -38,10 +69,21 @@ authRouter.post('/otp/partner-check', authBudget('partner-check'), (_req, res) =
 
 authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
   try {
-    const { phone, code } = req.body as { phone?: string; code?: string };
+    const { phone, code, app } = req.body as { phone?: string; code?: string; app?: string };
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
     const canonical = normalizePhone(phone);
     if (!checkLoginOtp(canonical, code)) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
+
+    // One phone, one app: reject a number pinned to a DIFFERENT app before we
+    // mint a session for it. A brand-new number has no pin and claims it on
+    // creation below. Test numbers are exempt (testOtps only consulted when an
+    // app pin is actually requested).
+    const want = wantedAccountType(app);
+    if (want && !testOtps().has(canonical)) {
+      const pinned = await pinnedAccountType(canonical);
+      if (pinned && pinned !== want) throw wrongAppError(pinned);
+    }
+
     const { data, error } = await sessionForVerifiedPhone(canonical);
     if (isBanned(error)) throw accountBlocked();
     if (error || !data.session) throw new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
@@ -51,13 +93,14 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
     const userId = data.session.user.id;
     // Same lazy-provisioning as requireAuth (see that file's own note) —
     // verify is the very first authenticated call for a brand-new phone
-    // number, so no public.users row exists yet either.
-    let { data: userRow } = await supabase.from('users').select('is_approved, role').eq('id', userId).single();
+    // number, so no public.users row exists yet either. A new row claims its
+    // account_type pin from the app it signed in through (default customer).
+    let { data: userRow } = await supabase.from('users').select('is_approved, role, account_type').eq('id', userId).single();
     if (!userRow) {
       const { data: created } = await supabase
         .from('users')
-        .insert({ id: userId, phone: canonical, role: 'customer' })
-        .select('is_approved, role')
+        .insert({ id: userId, phone: canonical, role: 'customer', account_type: want ?? 'customer' })
+        .select('is_approved, role, account_type')
         .single();
       userRow = created;
     }
@@ -96,6 +139,10 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
       // real admin approval (apps/admin's own approve routes), same as
       // before this field was ever surfaced.
       role: userRow?.role ?? 'customer',
+      // The permanent one-app pin (migration 20261011000000). Each app also
+      // checks this for a clean message, but the server reject above is
+      // authoritative.
+      account_type: userRow?.account_type ?? 'customer',
     });
   } catch (err) {
     next(err);

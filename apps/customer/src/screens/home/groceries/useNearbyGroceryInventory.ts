@@ -2,10 +2,11 @@ import { useQueries } from '@tanstack/react-query';
 import { useLocationStore } from '../../../store/useLocationStore';
 import { useNearbyStores } from '../nearby-stores/useNearbyStores';
 import { inventoryPreviewQuery } from '../loading/inventoryQuery';
+import type { HomeContentKey } from '../content/contracts';
 
 // Shared by the local-shop previews and grocery collections. Coordinates key
 // the nearby-store query; per-store stock is fetched once through query cache.
-export function useNearbyGroceryInventory(tabKey?: 'grocery' | 'fresh' | 'regional') {
+export function useNearbyGroceryInventory(tabKey?: HomeContentKey) {
   const location = useLocationStore((state) => state.location);
   const nearby = useNearbyStores();
   const candidates = nearby.data.slice(0, 5);

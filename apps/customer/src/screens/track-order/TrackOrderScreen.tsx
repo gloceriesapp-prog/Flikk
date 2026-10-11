@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { ArrowLeft01Icon, Cancel01Icon, CustomerService01Icon, EllipsisVerticalIcon } from '@hugeicons/core-free-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -30,6 +32,7 @@ function isCancellable(status: string): boolean {
 function TrackingDetails({ navigation, route }: Props) {
   const customerId = useAuthStore(state => state.customerId);
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const { orderId, isTrip } = route.params;
 
   const tracking = useTracking(orderId, !!isTrip);
@@ -81,6 +84,11 @@ function TrackingDetails({ navigation, route }: Props) {
 
   return (
     <View className="flex-1 bg-[#F1F2F4]">
+      {/* Dark (black) status-bar icons on both iOS and Android — the screen's
+          light grey background needs them, overriding the app-global
+          style="light". expo-status-bar drives Android too, so this is not
+          iOS-only. */}
+      {isFocused && <StatusBar style="dark" />}
       <View className="flex-row items-center bg-[#F1F2F4] px-4 pb-2 pt-safe-offset-2">
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />

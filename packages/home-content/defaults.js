@@ -251,6 +251,26 @@ export const DEFAULT_CONTENT = {
       footer(),
     ],
   },
+  festivals: {
+    schemaVersion: 1,
+    tabTitle: 'Festivals',
+    enabled: true,
+    sections: [
+      section('festival', 'festival-shelf', 'Festival picks', ''),
+      section('products', 'festive-essentials', 'Festive essentials', 'sweets,laddu,diya,candle,gift,dry fruits,nuts'),
+      footer(),
+    ],
+  },
+  meat: {
+    schemaVersion: 1,
+    tabTitle: 'Meat',
+    enabled: true,
+    sections: [
+      section('products', 'fresh-meat', 'Fresh meat & fish', 'chicken,mutton,fish,prawn,egg,meat'),
+      section('stores', 'meat-shops', 'From nearby shops', 'chicken,mutton,fish,prawn,egg,meat'),
+      footer(),
+    ],
+  },
 };
 DEFAULT_CONTENT.regional.sections.find((s) => s.id === 'coconut-oil').selection.excludeTerms =
   terms('hair,skin,body,massage,cosmetic,shampoo,conditioner');

@@ -5,8 +5,15 @@
 import { apiRequest } from './client';
 import type { AccountRole } from '../utils/roleGuard';
 
+// This is the customer app — the backend pins a phone number to the first
+// app kind it signs in through, and rejects a number already pinned to a
+// different app with 403 ACCOUNT_WRONG_APP (its message names the right app,
+// surfaced as-is by OtpVerificationScreen.tsx). Module constant: no call-site
+// signatures change.
+const APP_KIND = 'customer' as const;
+
 export function requestOtp(phone: string): Promise<{ ok: true }> {
-  return apiRequest('/auth/otp/request', { method: 'POST', body: { phone }, auth: false });
+  return apiRequest('/auth/otp/request', { method: 'POST', body: { phone, app: APP_KIND }, auth: false });
 }
 
 export interface VerifyOtpResult {
@@ -15,10 +22,13 @@ export interface VerifyOtpResult {
   // One phone number, one role (utils/roleGuard.ts's own note) — checked
   // by OtpVerificationScreen.tsx before ever persisting this session.
   role: AccountRole;
+  // Server-side app-kind pin: customer->customer, rider->rider,
+  // partner->store_owner (never 'admin' here).
+  account_type: 'customer' | 'rider' | 'store_owner';
 }
 
 export function verifyOtp(phone: string, code: string): Promise<VerifyOtpResult> {
-  return apiRequest('/auth/otp/verify', { method: 'POST', body: { phone, code }, auth: false });
+  return apiRequest('/auth/otp/verify', { method: 'POST', body: { phone, code, app: APP_KIND }, auth: false });
 }
 
 // Exchanges a still-valid refresh token for a new access/refresh pair — see

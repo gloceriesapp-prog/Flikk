@@ -5,6 +5,8 @@ export const BROWSE_LOADING_COPY = {
   fresh: 'Gathering the freshest picks…',
   regional: 'Finding local favourites…',
   festival: 'Getting festival-ready…',
+  festivals: 'Getting festival-ready…',
+  meat: 'Rounding up fresh cuts…',
   all: 'A little local goodness, coming up…',
 } as const;
 
