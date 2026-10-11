@@ -37,6 +37,7 @@ const ICON_BY_TAB_NAME: Record<string, IconSvgElement> = {
   groceries: ShoppingCart01Icon,
   fresh: CarrotIcon,
   'meat & fish': FishIcon,
+  meat: FishIcon,
   bakery: Bread01Icon,
   regional: Store03Icon,
   household: KitchenUtensilsIcon,

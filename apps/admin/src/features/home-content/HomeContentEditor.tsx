@@ -15,7 +15,7 @@ import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { Field, inputClass, Toggle } from './Fields';
 import { SectionEditor } from './SectionEditor';
 
-const LABELS = { grocery: 'Grocery', fresh: 'Fruit & Veg', regional: 'Regional' };
+const LABELS = { grocery: 'Grocery', fresh: 'Fruit & Veg', regional: 'Regional', festivals: 'Festivals', meat: 'Meat' };
 // Human labels for the section-kind picker + the section list. Unlisted kinds
 // fall back to the raw key, so this never has to stay exhaustive.
 const KIND_LABELS: Record<string, string> = {

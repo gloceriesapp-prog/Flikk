@@ -1,4 +1,4 @@
-export const TAB_KEYS = ['grocery', 'fresh', 'regional'];
+export const TAB_KEYS = ['grocery', 'fresh', 'regional', 'festivals', 'meat'];
 export const SECTION_KINDS = [
   'products',
   'categories',

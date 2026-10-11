@@ -25,12 +25,7 @@ export function mergeManagedTabs(
     if (!seen.has(config.tabKey) && config.content.enabled)
       result.push({
         id: config.homeTabId ?? `home-content-${config.tabKey}`,
-        name:
-          config.tabKey === 'grocery'
-            ? 'Groceries'
-            : config.tabKey === 'fresh'
-              ? 'Fresh'
-              : 'Regional',
+        name: SYNTHETIC_TAB_NAME[config.tabKey] ?? config.content.tabTitle,
         contentKey: config.tabKey,
         label: config.content.tabTitle,
         tiles: [],
@@ -39,3 +34,14 @@ export function mergeManagedTabs(
   }
   return result;
 }
+
+// Internal name for a content tab with no linked home_tabs row — drives the
+// icon/gradient lookup (keyed by lowercase name). contentKey drives the actual
+// body template, so this only affects the tab-strip chrome.
+const SYNTHETIC_TAB_NAME: Record<string, string> = {
+  grocery: 'Groceries',
+  fresh: 'Fresh',
+  regional: 'Regional',
+  festivals: 'Festivals',
+  meat: 'Meat',
+};

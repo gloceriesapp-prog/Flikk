@@ -1,4 +1,4 @@
-export type HomeContentKey = 'grocery' | 'fresh' | 'regional';
+export type HomeContentKey = 'grocery' | 'fresh' | 'regional' | 'festivals' | 'meat';
 export type SectionKind =
   'products' | 'categories' | 'brands' | 'stores' | 'banner' | 'hero' | 'festival' | 'footer';
 export interface ContentSelection {
