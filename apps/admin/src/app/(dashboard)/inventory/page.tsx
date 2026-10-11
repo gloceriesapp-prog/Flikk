@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Check, ChevronDown, Image as ImageIcon, IndianRupee, Pencil, Plus, Search, X } from 'lucide-react';
+import { Check, ChevronDown, Image as ImageIcon, IndianRupee, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import clsx from 'clsx';
 import { formatNumber } from '@/lib/format';
 import type { NewProductInput, Product, StockStatus } from '@/lib/types';
@@ -46,6 +46,11 @@ export default function InventoryPage() {
   const [storeId, setStoreId] = useState('all');
   const [editing, setEditing] = useState<Product | null>(null);
   const [adding, setAdding] = useState(false);
+  // Two-step inline delete: first click arms, second click (while armed)
+  // commits — no window.confirm. deleteError surfaces the 409 per row.
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null);
 
   const loadData = useCallback(async () => {
     setLoadError(null);
@@ -148,6 +153,31 @@ export default function InventoryPage() {
       throw new Error(body?.error ?? 'Could not update approval status.');
     }
     await loadData();
+  }
+
+  async function handleDelete(id: string) {
+    // First click arms, second click (while armed) commits.
+    if (confirmingDelete !== id) {
+      setConfirmingDelete(id);
+      setDeleteError(null);
+      return;
+    }
+    setDeleting(id);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setDeleteError({ id, message: body?.error ?? 'Could not delete product.' });
+        return;
+      }
+      await loadData();
+    } catch {
+      setDeleteError({ id, message: 'Could not delete product.' });
+    } finally {
+      setDeleting(null);
+      setConfirmingDelete(null);
+    }
   }
 
   async function handleAdd(newProduct: NewProductInput) {
@@ -358,8 +388,26 @@ export default function InventoryPage() {
                     <Pencil size={12} />
                     Edit
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(product.id)}
+                    disabled={deleting === product.id}
+                    className={clsx(
+                      'flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold disabled:opacity-40',
+                      confirmingDelete === product.id
+                        ? 'border-danger bg-red-50 text-danger'
+                        : 'border-border text-ink-soft hover:bg-accent hover:text-danger',
+                    )}
+                    aria-label={`Delete ${product.name}`}
+                  >
+                    <Trash2 size={12} />
+                    {confirmingDelete === product.id ? (deleting === product.id ? 'Deleting…' : 'Confirm') : 'Delete'}
+                  </button>
                 </div>
               </div>
+              {deleteError?.id === product.id && (
+                <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[11px] font-medium text-danger">{deleteError.message}</p>
+              )}
             </div>
           </div>
         ))}

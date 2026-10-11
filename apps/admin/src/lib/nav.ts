@@ -12,6 +12,7 @@ import {
   FileText,
   ImageIcon,
   LayoutGrid,
+  LayoutDashboard,
   Map,
   Megaphone,
   Package,
@@ -19,11 +20,14 @@ import {
   PartyPopper,
   RotateCcw,
   Route,
-  Settings,
-  Smartphone,
+  Rocket,
+  Snowflake,
+  Sparkles,
   Tag,
   Ticket,
+  Truck,
   UserCheck,
+  UserX,
   Users,
   Star,
   Store,
@@ -32,58 +36,107 @@ import {
   HandCoins,
 } from 'lucide-react';
 
-// Grouped sidebar sections, same "Menu" / "Insights" split as the
-// reference — Menu is the day-to-day operational stuff (what needs
-// action right now), Insights is the read-mostly reporting layer.
+// Sidebar information architecture. One standalone Overview link, then a
+// handful of task-named groups (Operations / Catalogue / Network / …) in
+// place of the old flat 22-item "Menu" + 14-item "Insights" split, which
+// mixed day-to-day actions with reports and had three near-identical "Home"
+// labels. Labels here are the clean, unambiguous names; the route paths are
+// unchanged, so nothing else has to move.
 export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
 }
 
-export const MENU_ITEMS: NavItem[] = [
-  { href: '/overview', label: 'Overview', icon: LayoutGrid },
-  { href: '/approvals', label: 'Approvals', icon: UserCheck },
-  { href: '/stores', label: 'Stores', icon: Store },
-  { href: '/riders', label: 'Riders', icon: Bike },
-  { href: '/dispatch', label: 'Trips & dispatch', icon: Route },
-  { href: '/customers', label: 'Customers', icon: Users },
-  { href: '/inventory', label: 'Inventory', icon: Boxes },
-  { href: '/inventory-pack-stock', label: 'Available packs', icon: Package },
-  { href: '/promo-codes', label: 'Promo Codes', icon: Ticket },
-  { href: '/promotions', label: 'Promotions', icon: Megaphone },
-  { href: '/media', label: 'Media Library', icon: ImageIcon },
-  { href: '/categories', label: 'Categories', icon: Tag },
-  { href: '/home-categories', label: 'Home Categories', icon: Home },
-  { href: '/home-sections', label: 'Home Sections', icon: LayoutGrid },
-  { href: '/home-content', label: 'Home Tab Content', icon: Home },
-  { href: '/festival-section', label: 'Festival Section', icon: PartyPopper },
-  { href: '/festival-greeting', label: 'Festival Greeting', icon: PartyPopper },
-  { href: '/seasonal-section', label: 'Seasonal Section', icon: ImageIcon },
-  { href: '/app-content', label: 'App content', icon: FileText },
-  { href: '/app-settings', label: 'App settings', icon: Smartphone },
-  { href: '/checkout-settings', label: 'Checkout settings', icon: CreditCard },
-  { href: '/notifications', label: 'Customer notifications', icon: Bell },
+export interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+// Rendered on its own above the groups — the one dashboard-wide snapshot.
+export const OVERVIEW_ITEM: NavItem = { href: '/overview', label: 'Overview', icon: LayoutDashboard };
+
+export const NAV_GROUPS: NavGroup[] = [
+  {
+    title: 'Operations',
+    items: [
+      { href: '/approvals', label: 'Approvals', icon: UserCheck },
+      { href: '/orders', label: 'Orders', icon: Package },
+      { href: '/dispatch', label: 'Trips & dispatch', icon: Route },
+    ],
+  },
+  {
+    title: 'Catalogue',
+    items: [
+      { href: '/inventory', label: 'Products', icon: Boxes },
+      { href: '/inventory-pack-stock', label: 'Pack stock', icon: Package },
+      { href: '/categories', label: 'Categories', icon: Tag },
+    ],
+  },
+  {
+    title: 'Network',
+    items: [
+      { href: '/stores', label: 'Stores', icon: Store },
+      { href: '/riders', label: 'Riders', icon: Bike },
+      { href: '/zones', label: 'Zones', icon: Map },
+    ],
+  },
+  {
+    title: 'Customers',
+    items: [
+      { href: '/customers', label: 'Customers', icon: Users },
+      { href: '/reviews', label: 'Store reviews', icon: Star },
+      { href: '/support', label: 'Support', icon: Ticket },
+      { href: '/customer-deletions', label: 'Account deletions', icon: UserX },
+    ],
+  },
+  {
+    title: 'Customer home',
+    items: [
+      { href: '/home-categories', label: 'Home tabs & tiles', icon: Home },
+      { href: '/home-sections', label: '“All” tab layout', icon: LayoutGrid },
+      { href: '/home-content', label: 'Category-tab content', icon: LayoutGrid },
+      { href: '/festival-section', label: 'Festival products', icon: PartyPopper },
+      { href: '/festival-greeting', label: 'Festival tab & greeting', icon: Sparkles },
+      { href: '/seasonal-section', label: 'Seasonal section', icon: Snowflake },
+      { href: '/media', label: 'Image library', icon: ImageIcon },
+    ],
+  },
+  {
+    title: 'Marketing',
+    items: [
+      { href: '/promotions', label: 'SMS & email campaigns', icon: Megaphone },
+      { href: '/promo-codes', label: 'Discount codes', icon: Ticket },
+      { href: '/referrals', label: 'Referrals', icon: Gift },
+      { href: '/notifications', label: 'Messaging templates', icon: Bell },
+      { href: '/push-outbox', label: 'Push log', icon: Send },
+    ],
+  },
+  {
+    title: 'Finance',
+    items: [
+      { href: '/revenue', label: 'Revenue', icon: Banknote },
+      { href: '/payouts', label: 'Payouts', icon: Wallet },
+      { href: '/rider-earnings', label: 'Rider earnings', icon: Coins },
+      { href: '/cash-on-delivery', label: 'Cash on delivery', icon: HandCoins },
+      { href: '/refunds', label: 'Refunds', icon: RotateCcw },
+      { href: '/failed-deliveries', label: 'Failed deliveries', icon: PackageX },
+      { href: '/stuck-payments', label: 'Stuck checkouts', icon: AlarmClock },
+    ],
+  },
+  {
+    title: 'Settings',
+    items: [
+      { href: '/settings', label: 'Delivery & fees', icon: Truck },
+      { href: '/checkout-settings', label: 'Payments & checkout', icon: CreditCard },
+      { href: '/app-content', label: 'App copy & contacts', icon: FileText },
+      { href: '/app-settings', label: 'App releases', icon: Rocket },
+    ],
+  },
 ];
 
-export const INSIGHTS_ITEMS: NavItem[] = [
-  { href: '/orders', label: 'Orders', icon: Package },
-  { href: '/support', label: 'Support', icon: Ticket },
-  { href: '/customer-deletions', label: 'Account Deletions', icon: Users },
-  { href: '/revenue', label: 'Revenue', icon: Banknote },
-  { href: '/payouts', label: 'Payouts', icon: Wallet },
-  { href: '/rider-earnings', label: 'Rider earnings', icon: Coins },
-  { href: '/cash-on-delivery', label: 'Cash on delivery', icon: HandCoins },
-  { href: '/refunds', label: 'Refunds', icon: RotateCcw },
-  { href: '/stuck-payments', label: 'Stuck checkouts', icon: AlarmClock },
-  { href: '/push-outbox', label: 'Push outbox', icon: Send },
-  { href: '/referrals', label: 'Referrals', icon: Gift },
-  { href: '/failed-deliveries', label: 'Failed Deliveries', icon: PackageX },
-  { href: '/reviews', label: 'Reviews', icon: Star },
-  { href: '/zones', label: 'Zones', icon: Map },
-];
-
-export const ALL_NAV_ITEMS: NavItem[] = [...MENU_ITEMS, ...INSIGHTS_ITEMS, { href: '/settings', label: 'Settings', icon: Settings }];
+// Flat list for TopNav's "which section am I in" lookup and SidebarSearch.
+export const ALL_NAV_ITEMS: NavItem[] = [OVERVIEW_ITEM, ...NAV_GROUPS.flatMap((g) => g.items)];
 
 // TopNav's contextual quick action per section — only where a real flow
 // exists behind it. Pages that already carry their own create button

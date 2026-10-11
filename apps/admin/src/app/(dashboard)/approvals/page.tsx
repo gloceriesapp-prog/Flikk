@@ -10,6 +10,7 @@ import clsx from 'clsx';
 import { ApplicationRow } from '@/components/approvals/ApplicationRow';
 import { ProductReviewRow } from '@/components/approvals/ProductReviewRow';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
+import { fetchStoreOptions, type StoreOption } from '@/lib/supabase/products';
 import type { Application, Product } from '@/lib/types';
 
 const TABS = [
@@ -25,6 +26,7 @@ export default function ApprovalsPage() {
   const [stores, setStores] = useState<Application[]>([]);
   const [riders, setRiders] = useState<Application[]>([]);
   const [products, setProducts] = useState<{ pending: Product[]; imageChanges: Product[]; edits: Product[] }>({ pending: [], imageChanges: [], edits: [] });
+  const [storeOptions, setStoreOptions] = useState<StoreOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +53,12 @@ export default function ApprovalsPage() {
   useEffect(() => {
     Promise.resolve().then(load);
   }, [load]);
+
+  // Stores change rarely — load once for the Products tab's Edit modal (its
+  // store picker), not on every 10s poll of load().
+  useEffect(() => {
+    fetchStoreOptions().then(setStoreOptions).catch(() => {});
+  }, []);
 
   // Live-refresh the instant a store/rider submits (or an approval/rejection
   // lands) — the SSE stream fires on writes to the onboarding-draft/users
@@ -140,7 +148,7 @@ export default function ApprovalsPage() {
                 <div className="flex flex-col gap-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted">New products</p>
                   {products.pending.map((p) => (
-                    <ProductReviewRow key={p.id} product={p} mode="new" onDone={load} />
+                    <ProductReviewRow key={p.id} product={p} mode="new" stores={storeOptions} onDone={load} />
                   ))}
                 </div>
               )}
@@ -148,7 +156,7 @@ export default function ApprovalsPage() {
                 <div className="flex flex-col gap-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted">Image changes</p>
                   {products.imageChanges.map((p) => (
-                    <ProductReviewRow key={p.id} product={p} mode="image" onDone={load} />
+                    <ProductReviewRow key={p.id} product={p} mode="image" stores={storeOptions} onDone={load} />
                   ))}
                 </div>
               )}
@@ -156,7 +164,7 @@ export default function ApprovalsPage() {
                 <div className="flex flex-col gap-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted">Name &amp; price changes</p>
                   {products.edits.map((p) => (
-                    <ProductReviewRow key={p.id} product={p} mode="changes" onDone={load} />
+                    <ProductReviewRow key={p.id} product={p} mode="changes" stores={storeOptions} onDone={load} />
                   ))}
                 </div>
               )}

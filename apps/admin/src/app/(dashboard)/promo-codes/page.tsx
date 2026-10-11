@@ -12,7 +12,7 @@
 // own note on the FK restrict that makes a redeemed code undeletable).
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import type { PromoCode } from '@/lib/supabase/promoCodes';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
@@ -46,11 +46,40 @@ function formatExpiry(iso: string | null): string {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function toDateInputValue(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function toDatetimeLocalValue(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function promoToDraft(promo: PromoCode): DraftForm {
+  return {
+    code: promo.code,
+    discountType: promo.discountType,
+    discountValue: String(promo.discountValue),
+    maxDiscountAmount: promo.maxDiscountAmount != null ? String(promo.maxDiscountAmount) : '',
+    minOrderValue: String(promo.minOrderValue),
+    usageLimit: promo.usageLimit != null ? String(promo.usageLimit) : '',
+    expiresAt: toDateInputValue(promo.expiresAt),
+    startsAt: toDatetimeLocalValue(promo.startsAt),
+    perCustomerLimit: String(promo.perCustomerLimit),
+  };
+}
+
 export default function PromoCodesPage() {
   const [codes, setCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftForm>(EMPTY_DRAFT);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -74,33 +103,64 @@ export default function PromoCodesPage() {
   }, [loadCodes]);
   useAdminRealtime(loadCodes);
 
-  async function handleCreate(e: React.FormEvent) {
+  function closeForm() {
+    setAdding(false);
+    setEditingId(null);
+    setDraft(EMPTY_DRAFT);
+    setFormError(null);
+  }
+
+  function startEdit(promo: PromoCode) {
+    setDraft(promoToDraft(promo));
+    setEditingId(promo.id);
+    setAdding(false);
+    setFormError(null);
+    setRowError(null);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
     setSaving(true);
+    const payload = {
+      code: draft.code,
+      discountType: draft.discountType,
+      discountValue: Number(draft.discountValue),
+      maxDiscountAmount: draft.maxDiscountAmount ? Number(draft.maxDiscountAmount) : null,
+      minOrderValue: draft.minOrderValue ? Number(draft.minOrderValue) : 0,
+      usageLimit: draft.usageLimit ? Number(draft.usageLimit) : null,
+      perCustomerLimit: Number(draft.perCustomerLimit),
+      startsAt: draft.startsAt ? new Date(draft.startsAt).toISOString() : null,
+      expiresAt: draft.expiresAt ? new Date(draft.expiresAt).toISOString() : null,
+    };
     try {
-      const res = await fetch('/api/promo-codes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: draft.code,
-          discountType: draft.discountType,
-          discountValue: Number(draft.discountValue),
-          maxDiscountAmount: draft.maxDiscountAmount ? Number(draft.maxDiscountAmount) : null,
-          minOrderValue: draft.minOrderValue ? Number(draft.minOrderValue) : 0,
-          usageLimit: draft.usageLimit ? Number(draft.usageLimit) : null,
-          perCustomerLimit: Number(draft.perCustomerLimit),
-          startsAt: draft.startsAt ? new Date(draft.startsAt).toISOString() : null,
-          expiresAt: draft.expiresAt ? new Date(draft.expiresAt).toISOString() : null,
-        }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? 'Could not create promo code.');
-      setCodes((prev) => [body as PromoCode, ...prev]);
-      setDraft(EMPTY_DRAFT);
-      setAdding(false);
+      if (editingId) {
+        // Preserve the row's current active state — the PATCH is a full
+        // update, and the active toggle stays the separate "stop this code"
+        // action, so editing fields must not flip it.
+        const current = codes.find((c) => c.id === editingId);
+        const res = await fetch(`/api/promo-codes/${editingId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, isActive: current?.isActive ?? true }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error ?? 'Could not save changes.');
+        closeForm();
+        await loadCodes();
+      } else {
+        const res = await fetch('/api/promo-codes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error ?? 'Could not create promo code.');
+        setCodes((prev) => [body as PromoCode, ...prev]);
+        closeForm();
+      }
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not create promo code.');
+      setFormError(err instanceof Error ? err.message : 'Could not save changes.');
     } finally {
       setSaving(false);
     }
@@ -150,7 +210,7 @@ export default function PromoCodesPage() {
         </div>
         <button
           type="button"
-          onClick={() => setAdding((v) => !v)}
+          onClick={() => (adding || editingId ? closeForm() : setAdding(true))}
           className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
         >
           <Plus size={15} />
@@ -160,8 +220,8 @@ export default function PromoCodesPage() {
 
       {loadError && <p className="text-sm text-danger">{loadError}</p>}
 
-      {adding && (
-        <form onSubmit={handleCreate} className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5">
+      {(adding || editingId !== null) && (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Code">
               <input
@@ -247,11 +307,7 @@ export default function PromoCodesPage() {
           <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
             <button
               type="button"
-              onClick={() => {
-                setAdding(false);
-                setDraft(EMPTY_DRAFT);
-                setFormError(null);
-              }}
+              onClick={closeForm}
               className="text-sm font-medium text-muted"
             >
               Cancel
@@ -261,7 +317,7 @@ export default function PromoCodesPage() {
               disabled={saving}
               className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
-              {saving ? 'Creating…' : 'Create code'}
+              {editingId ? (saving ? 'Saving…' : 'Save changes') : saving ? 'Creating…' : 'Create code'}
             </button>
           </div>
         </form>
@@ -306,16 +362,26 @@ export default function PromoCodesPage() {
                     {promo.isActive ? 'Active' : 'Inactive'}
                   </button>
                 </td>
-                <td className="p-4 text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(promo.id)}
-                    className="text-muted hover:text-danger"
-                    aria-label={`Delete ${promo.code}`}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                  {rowError?.id === promo.id && <p className="mt-1 text-xs text-danger">{rowError.message}</p>}
+                <td className="p-4">
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(promo)}
+                      className="text-muted hover:text-ink"
+                      aria-label={`Edit ${promo.code}`}
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(promo.id)}
+                      className="text-muted hover:text-danger"
+                      aria-label={`Delete ${promo.code}`}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                  {rowError?.id === promo.id && <p className="mt-1 text-right text-xs text-danger">{rowError.message}</p>}
                 </td>
               </tr>
             ))}
