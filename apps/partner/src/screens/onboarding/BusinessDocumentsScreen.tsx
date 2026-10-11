@@ -8,8 +8,12 @@ import { Text, TextInput, View } from 'react-native';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { saveStoreDraft } from '../../api/auth';
+import { ApiError } from '../../api/client';
+import { uploadStoreDocument } from '../../api/payouts';
+import { pickAndCompressImage } from '../../media/pickAndCompressImage';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { isValidPanFormat } from '../../utils/documentValidation';
+import { DocPickerCard } from './components/DocPickerCard';
 import { FieldCard, INPUT_CLASS, OnboardingScaffold } from './components/OnboardingScaffold';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -20,28 +24,43 @@ export function BusinessDocumentsScreen({ navigation, route }: Props) {
   const [panNumber, setPanNumber] = useState(draft.panNumber);
   const [gstNumber, setGstNumber] = useState(draft.gstNumber);
   const [udyamNumber, setUdyamNumber] = useState(draft.udyamNumber);
-  const [saving, setSaving] = useState(false);
+  const [aadhaarPhotoPath, setAadhaarPhotoPath] = useState(draft.aadhaarPhotoPath);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const panValid = isValidPanFormat(panNumber);
   const canContinue = panValid;
 
-  async function handleNext() {
+  async function handlePickAadhaarPhoto() {
+    const picked = await pickAndCompressImage();
+    if (!picked) return;
+    setUploadingPhoto(true);
+    setPhotoError(null);
+    try {
+      const { path } = await uploadStoreDocument(picked.base64, 'aadhaar');
+      setAadhaarPhotoPath(path);
+    } catch (err) {
+      setPhotoError(err instanceof ApiError ? err.message : 'Could not upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  function handleNext() {
     if (!canContinue) return;
     const trimmedPan = panNumber.trim().toUpperCase();
     const trimmedGst = gstNumber.trim();
     const trimmedUdyam = udyamNumber.trim();
 
-    setSaving(true);
-    try {
-      await saveStoreDraft({ panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam });
-    } catch {
-      // Best-effort autosave.
-    } finally {
-      setSaving(false);
-    }
+    // Best-effort autosave — fire-and-forget so it never blocks navigation.
+    // warn (not error) so a transient network blip shows a yellow warning,
+    // not a red "Console Error" box that reads as a crash.
+    void saveStoreDraft({ panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam, aadhaarPhotoPath: aadhaarPhotoPath ?? undefined }).catch(
+      (err) => console.warn('[BusinessDocuments] saveStoreDraft failed (best-effort)', err),
+    );
 
     navigation.navigate('StoreHours', {
-      draft: { ...draft, panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam },
+      draft: { ...draft, panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam, aadhaarPhotoPath },
     });
   }
 
@@ -49,9 +68,9 @@ export function BusinessDocumentsScreen({ navigation, route }: Props) {
     <OnboardingScaffold
       step={4}
       title="Business documents"
-      subheading="Only PAN is required — no document upload needed."
+      subheading="PAN is required. Add a photo of the owner's Aadhaar for verification."
       onBack={() => navigation.goBack()}
-      footer={<PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} loading={saving} trailingIcon={ArrowRight01Icon} />}
+      footer={<PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} trailingIcon={ArrowRight01Icon} />}
     >
       {/* PAN keeps its own label row so the required-star marker survives —
           FieldCard's label is plain text. */}
@@ -96,6 +115,15 @@ export function BusinessDocumentsScreen({ navigation, route }: Props) {
           className={INPUT_CLASS}
         />
       </FieldCard>
+
+      <DocPickerCard
+        label="Aadhaar photo"
+        hint="A clear photo of the owner's Aadhaar card. Encrypted and kept private."
+        hasPhoto={!!aadhaarPhotoPath}
+        uploading={uploadingPhoto}
+        onPick={() => void handlePickAadhaarPhoto()}
+        error={photoError}
+      />
     </OnboardingScaffold>
   );
 }

@@ -1,35 +1,43 @@
-// Single source of truth for Aeonik Soft Pro — every font-family name used
+// Single source of truth for the app font — every font-family name used
 // anywhere in this app, and the exact file map expo-font needs to load
-// them, live here. Replaces the earlier Suisse Int'l setup entirely (that
-// vault/its assets are gone — see git history if it's ever needed again).
-// Same pattern as apps/customer and apps/partner's own Aeonik setups —
-// copied, not shared (specs/00-foundation/repo-structure.md).
+// them, live here. Same copied-not-shared pattern as apps/customer and
+// apps/partner (specs/00-foundation/repo-structure.md).
 //
-// Source files: apps/font/Aeonik Soft Pro/ (repo-root font vault) — copied
-// into assets/fonts/ below, same as every sibling app copies its own font
-// vault in rather than requiring across app boundaries. All 8 non-italic
-// weights the vault ships (Thin/Air/Light/Regular/Medium/SemiBold/Bold/
-// Black) — italics dropped entirely, same convention as customer/partner;
-// nothing in this app sets fontStyle: 'italic' so there's no gap to fill.
+// Font is Gilroy (apps/customer/assets/fonts/Gilroy-*.ttf, copied in),
+// unified across all apps per user decision. The prior Aeonik Soft Pro
+// faces were TRIAL-licensed ("All Rights Reserved", internal name
+// AeonikSoftProTRIAL) and have been removed — do not reintroduce them.
+//
+// The exported symbol names (AEONIK, AEONIK_FONT_FILES) and the 8 weight
+// keys are kept deliberately UNCHANGED so no call site, App.tsx useFonts,
+// or global.css class churns — only the family-name string values and the
+// loaded files switched to Gilroy. Gilroy ships 5 static weights, so the 8
+// keys collapse onto them (see mapping below); AEONIK_FONT_FILES registers
+// each of the 5 real faces exactly once, and the aliased lighter keys reuse
+// the already-registered 'Gilroy-Regular' name.
+//
+// 8 key -> Gilroy face mapping:
+//   thin / air / light / regular -> Gilroy-Regular (Gilroy has no face lighter than Regular)
+//   medium                        -> Gilroy-Medium
+//   semiBold                      -> Gilroy-SemiBold
+//   bold                          -> Gilroy-Bold
+//   black                         -> Gilroy-ExtraBold (heaviest Gilroy static)
 
 export const AEONIK = {
-  thin: 'AeonikSoftPro-Thin',
-  air: 'AeonikSoftPro-Air',
-  light: 'AeonikSoftPro-Light',
-  regular: 'AeonikSoftPro-Regular',
-  medium: 'AeonikSoftPro-Medium',
-  semiBold: 'AeonikSoftPro-SemiBold',
-  bold: 'AeonikSoftPro-Bold',
-  black: 'AeonikSoftPro-Black',
+  thin: 'Gilroy-Regular',
+  air: 'Gilroy-Regular',
+  light: 'Gilroy-Regular',
+  regular: 'Gilroy-Regular',
+  medium: 'Gilroy-Medium',
+  semiBold: 'Gilroy-SemiBold',
+  bold: 'Gilroy-Bold',
+  black: 'Gilroy-ExtraBold',
 } as const;
 
 export const AEONIK_FONT_FILES = {
-  [AEONIK.thin]: require('../../assets/fonts/AeonikSoftPro-Thin.otf'),
-  [AEONIK.air]: require('../../assets/fonts/AeonikSoftPro-Air.otf'),
-  [AEONIK.light]: require('../../assets/fonts/AeonikSoftPro-Light.otf'),
-  [AEONIK.regular]: require('../../assets/fonts/AeonikSoftPro-Regular.otf'),
-  [AEONIK.medium]: require('../../assets/fonts/AeonikSoftPro-Medium.otf'),
-  [AEONIK.semiBold]: require('../../assets/fonts/AeonikSoftPro-SemiBold.otf'),
-  [AEONIK.bold]: require('../../assets/fonts/AeonikSoftPro-Bold.otf'),
-  [AEONIK.black]: require('../../assets/fonts/AeonikSoftPro-Black.otf'),
+  [AEONIK.regular]: require('../../assets/fonts/Gilroy-Regular.ttf'),
+  [AEONIK.medium]: require('../../assets/fonts/Gilroy-Medium.ttf'),
+  [AEONIK.semiBold]: require('../../assets/fonts/Gilroy-SemiBold.ttf'),
+  [AEONIK.bold]: require('../../assets/fonts/Gilroy-Bold.ttf'),
+  [AEONIK.black]: require('../../assets/fonts/Gilroy-ExtraBold.ttf'),
 } as const;

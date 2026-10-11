@@ -129,8 +129,65 @@ export interface PartnerOrder {
   addresses: { line1: string; landmark: string | null; recipient_name: string } | null;
 }
 
-export function fetchMyOrders(): Promise<PartnerOrder[]> {
-  return apiRequest('/partner/orders');
+// Envelope returned by the paginated list endpoints (backend lib/
+// cursorPagination.ts sendPage) once `page=1` is passed: without it the
+// endpoint answers with only the first ~20 rows and no cursor.
+interface Page<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+// Page through the FULL order history — the backend caps a single response at
+// 100 rows, so without this loop every all-time figure (revenue, top products,
+// counts) silently truncated past ~20 orders. Matches the RN app's cursor loop
+// (apps/partner/src/api/orders.ts): `?page=1&limit=100&cursor=<nextCursor>`
+// until nextCursor is null. No `view` param = the default `history` view, i.e.
+// every order (the RN loop uses `view=queue` because the phone only renders the
+// live queue; the dashboard needs all of it).
+export async function fetchMyOrders(): Promise<PartnerOrder[]> {
+  const result: PartnerOrder[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: Page<PartnerOrder> = await apiRequest(
+      `/partner/orders?page=1&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+    );
+    result.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor);
+  return result;
+}
+
+// Lightweight twin of fetchMyOrders for the new-order poller only: the active
+// queue (placed / packed / out_for_delivery + today's delivered/failed), the
+// same `view=queue` set the RN app's queue uses. A 'placed' order always lives
+// here, so NewOrderAlert can detect fresh orders without scanning the whole
+// history every 20s.
+export async function fetchOrderQueue(): Promise<PartnerOrder[]> {
+  const result: PartnerOrder[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: Page<PartnerOrder> = await apiRequest(
+      `/partner/orders?view=queue&page=1&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+    );
+    result.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor);
+  return result;
+}
+
+// GET /partner/stats/today — the server's own figures for today, scoped IST.
+// earningToday is NET (item_total − commission_amount) over delivered orders
+// only, the exact money the store keeps — see backend/src/routes/partner.ts.
+// Used so the dashboard's "today" numbers match the RN app's TodayStatsCard
+// instead of being re-derived (differently) from the client order list.
+export interface TodayStats {
+  ordersToday: number;
+  pendingToday: number;
+  earningToday: number;
+}
+
+export function fetchTodayStats(): Promise<TodayStats> {
+  return apiRequest('/partner/stats/today');
 }
 
 // Not under /partner — this is backend's shared order-status endpoint
@@ -288,8 +345,22 @@ export function fetchMyCommission(): Promise<PartnerCommission> {
   return apiRequest('/partner/commission');
 }
 
-export function fetchMyPayouts(): Promise<Payout[]> {
-  return apiRequest('/partner/payouts');
+// Page through the FULL payout history (same reason as fetchMyOrders: the
+// backend caps a response at ~20/100 rows). Matches the RN app's payout cursor
+// loop (apps/partner/src/api/payouts.ts fetchPayoutPage): `?page=1&cursor=…`
+// until nextCursor is null. Without this, "lifetime paid" and "pending"
+// truncated past the most-recent page.
+export async function fetchMyPayouts(): Promise<Payout[]> {
+  const result: Payout[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: Page<Payout> = await apiRequest(
+      `/partner/payouts?page=1&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+    );
+    result.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor);
+  return result;
 }
 
 // GET /partner/reviews is RLS-scoped to the caller's own store. owner_reply/

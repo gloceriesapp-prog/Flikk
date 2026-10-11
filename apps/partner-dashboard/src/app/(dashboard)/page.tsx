@@ -6,12 +6,14 @@ import {
   fetchMyOrders,
   fetchMyProducts,
   fetchMyStore,
+  fetchTodayStats,
   updateMyStore,
   updateOrderStatus,
   type PartnerOrder,
   type PartnerProduct,
   type Store,
 } from '@/lib/partnerApi';
+import { useLiveData } from '@/lib/useLiveData';
 import {
   ArrowRight,
   Boxes,
@@ -19,6 +21,7 @@ import {
   CreditCard,
   ListChecks,
   Package,
+  Wallet,
   XCircle,
 } from 'lucide-react';
 import { WelcomeBanner } from '@/components/WelcomeBanner';
@@ -39,6 +42,10 @@ import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 // button is disabled (never sent to the backend) since there's no real
 // order behind it. Delete this the moment real order volume exists.
 const DUMMY_PREVIEW_ITEM_COUNT = 3;
+
+// Live-poll cadence for the Overview's orders + today stats (D1/D4) — matches
+// the Orders page; the hook pauses it while the tab is hidden.
+const OVERVIEW_POLL_MS = 12_000;
 
 // Column widths for the Recent orders bordered-grid table (Order/Customer/
 // Items/Amount/Payment/Status) — same bordered-grid pattern as OrdersTable.
@@ -75,21 +82,25 @@ const DEMO_OUT_OF_STOCK_ITEMS = [
 ];
 export default function OverviewPage() {
   const [store, setStore] = useState<Store | null>(null);
-  const [orders, setOrders] = useState<PartnerOrder[]>([]);
   const [products, setProducts] = useState<PartnerProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTogglingActive, setIsTogglingActive] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
-  function reloadOrders() {
-    return fetchMyOrders().then(setOrders);
-  }
+  // Orders + today's server stats are LIVE (D1/D4): poll on an interval while
+  // the tab is visible so the recent/active lists and the "today" tile track
+  // phone-side changes instead of freezing on the mount fetch. Store and
+  // product catalog change rarely, so they stay a one-time fetch below.
+  const { data: orders = [], isLoading: ordersLoading, refetch: refetchOrders } = useLiveData(
+    fetchMyOrders,
+    OVERVIEW_POLL_MS,
+  );
+  const { data: today } = useLiveData(fetchTodayStats, OVERVIEW_POLL_MS);
 
   useEffect(() => {
-    Promise.all([fetchMyStore(), fetchMyOrders(), fetchMyProducts()])
-      .then(([storeRes, ordersRes, productsRes]) => {
+    Promise.all([fetchMyStore(), fetchMyProducts()])
+      .then(([storeRes, productsRes]) => {
         setStore(storeRes);
-        setOrders(ordersRes);
         setProducts(productsRes);
       })
       .finally(() => setIsLoading(false));
@@ -116,13 +127,13 @@ export default function OverviewPage() {
     setAcceptingId(orderId);
     try {
       await updateOrderStatus(orderId, 'packed');
-      await reloadOrders();
+      await refetchOrders();
     } finally {
       setAcceptingId(null);
     }
   }
 
-  if (isLoading) return <p className="text-sm text-neutral-400">Loading…</p>;
+  if (isLoading || ordersLoading) return <p className="text-sm text-neutral-400">Loading…</p>;
 
   const activeOrders = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
   const completedOrders = orders.filter((o) => o.status === 'delivered');
@@ -193,6 +204,17 @@ export default function OverviewPage() {
           onToggle={handleToggleActive}
           toggling={isTogglingActive}
         />
+      )}
+
+      {/* Today — the server's own figures (GET /partner/stats/today), so these
+          match the RN app's TodayStatsCard exactly instead of being re-derived
+          from the client order list. Earning today is NET of commission. */}
+      {today && (
+        <div className="grid grid-cols-3 divide-x divide-hairline overflow-hidden rounded-xl border border-hairline bg-white">
+          <StatTile label="Orders today" value={String(today.ordersToday)} icon={ListChecks} />
+          <StatTile label="Pending today" value={String(today.pendingToday)} icon={Package} />
+          <StatTile label="Earning today" value={formatInr(today.earningToday)} icon={Wallet} sublabel="net of commission" />
+        </div>
       )}
 
       <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">

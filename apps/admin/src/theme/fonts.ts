@@ -1,87 +1,35 @@
-// Single source of truth for Söhne in this app — same ask, same pattern as
-// apps/partner/src/theme/fonts.ts's expo-font setup: all 4 family widths
-// (Sohne/regular, SohneBreit/extended, SohneMono/monospace, SohneSchmal/
-// condensed) × all 8 weights loaded ("import everything" per the ask),
-// but only base Sohne is wired as the page-wide default (see
-// app/layout.tsx). Breit/Mono/Schmal are loaded and available via their
-// own CSS variables for anything that wants to opt in explicitly — nothing
-// currently does.
+// Single source of truth for the admin app's typeface.
 //
-// Italics excluded entirely, per the ask — Söhne's own naming calls them
-// "Kursiv"; none of those files were copied into src/fonts/.
+// Was Klim "Söhne" (TEST edition — not licensed for production, legal P0),
+// loaded in four width/mono variants. Replaced by Gilroy (the same family
+// the customer app ships, apps/customer/assets/fonts/Gilroy-*.ttf) so the
+// product unifies on one licensed typeface.
 //
-// German weight names, kept as-is rather than translated — Extraleicht
-// (200), Leicht (300), Buch ("book", 400 — the family's roman/regular),
-// Kraftig ("vigorous", 500), Halbfett ("semi-bold", 600), Dreiviertelfett
-// ("three-quarter-bold", 700), Fett ("bold", 800), Extrafett (900).
+// Old Söhne roles → Gilroy mapping:
+//   base Sohne         → Gilroy (the real app-wide default, via --font-gilroy)
+//   SohneBreit (ext.)  → collapsed into Gilroy — admin is a founder-only
+//   SohneSchmal (cond.)  internal tool; it never actually used the extended
+//                        or condensed cuts (both were "loaded, not applied"),
+//                        so there's no reason to source real Gilroy width cuts
+//   SohneMono          → CSS system monospace stack (set as --font-mono in
+//                        globals.css); Gilroy has no monospace cut, and
+//                        `font-mono` in the pages only needs a mono fallback
 //
-// next/font/local requires `src` as a literal array at each call site
-// (it's statically analyzed at build time, not a value a helper function
-// can return) — that's why the same 8-weight list is written out 4 times
-// below instead of factored into one shared array-builder.
+// Gilroy ships 5 static weights (400/500/600/700/800). Lighter Söhne weights
+// (200 Extraleicht / 300 Leicht) map up to 400 — nothing in admin used them.
 
 import localFont from 'next/font/local';
 
-// The default — applied app-wide in layout.tsx.
-export const sohne = localFont({
+// The default — applied app-wide in layout.tsx via `.variable`, consumed as
+// `--font-sans` (see globals.css) and the `font-sans` Tailwind class.
+export const gilroy = localFont({
   src: [
-    { path: '../fonts/Sohne-Extraleicht.otf', weight: '200', style: 'normal' },
-    { path: '../fonts/Sohne-Leicht.otf', weight: '300', style: 'normal' },
-    { path: '../fonts/Sohne-Buch.otf', weight: '400', style: 'normal' },
-    { path: '../fonts/Sohne-Kraftig.otf', weight: '500', style: 'normal' },
-    { path: '../fonts/Sohne-Halbfett.otf', weight: '600', style: 'normal' },
-    { path: '../fonts/Sohne-Dreiviertelfett.otf', weight: '700', style: 'normal' },
-    { path: '../fonts/Sohne-Fett.otf', weight: '800', style: 'normal' },
-    { path: '../fonts/Sohne-Extrafett.otf', weight: '900', style: 'normal' },
+    { path: '../fonts/Gilroy-Regular.ttf', weight: '400', style: 'normal' },
+    { path: '../fonts/Gilroy-Medium.ttf', weight: '500', style: 'normal' },
+    { path: '../fonts/Gilroy-SemiBold.ttf', weight: '600', style: 'normal' },
+    { path: '../fonts/Gilroy-Bold.ttf', weight: '700', style: 'normal' },
+    { path: '../fonts/Gilroy-ExtraBold.ttf', weight: '800', style: 'normal' },
   ],
-  variable: '--font-sohne',
-  display: 'swap',
-});
-
-// Loaded, not currently applied anywhere — available via var(--font-sohne-breit).
-export const sohneBreit = localFont({
-  src: [
-    { path: '../fonts/SohneBreit-Extraleicht.otf', weight: '200', style: 'normal' },
-    { path: '../fonts/SohneBreit-Leicht.otf', weight: '300', style: 'normal' },
-    { path: '../fonts/SohneBreit-Buch.otf', weight: '400', style: 'normal' },
-    { path: '../fonts/SohneBreit-Kraftig.otf', weight: '500', style: 'normal' },
-    { path: '../fonts/SohneBreit-Halbfett.otf', weight: '600', style: 'normal' },
-    { path: '../fonts/SohneBreit-Dreiviertelfett.otf', weight: '700', style: 'normal' },
-    { path: '../fonts/SohneBreit-Fett.otf', weight: '800', style: 'normal' },
-    { path: '../fonts/SohneBreit-Extrafett.otf', weight: '900', style: 'normal' },
-  ],
-  variable: '--font-sohne-breit',
-  display: 'swap',
-});
-
-// Loaded, not currently applied anywhere — available via var(--font-sohne-mono).
-export const sohneMono = localFont({
-  src: [
-    { path: '../fonts/SohneMono-Extraleicht.otf', weight: '200', style: 'normal' },
-    { path: '../fonts/SohneMono-Leicht.otf', weight: '300', style: 'normal' },
-    { path: '../fonts/SohneMono-Buch.otf', weight: '400', style: 'normal' },
-    { path: '../fonts/SohneMono-Kraftig.otf', weight: '500', style: 'normal' },
-    { path: '../fonts/SohneMono-Halbfett.otf', weight: '600', style: 'normal' },
-    { path: '../fonts/SohneMono-Dreiviertelfett.otf', weight: '700', style: 'normal' },
-    { path: '../fonts/SohneMono-Fett.otf', weight: '800', style: 'normal' },
-    { path: '../fonts/SohneMono-Extrafett.otf', weight: '900', style: 'normal' },
-  ],
-  variable: '--font-sohne-mono',
-  display: 'swap',
-});
-
-// Loaded, not currently applied anywhere — available via var(--font-sohne-schmal).
-export const sohneSchmal = localFont({
-  src: [
-    { path: '../fonts/SohneSchmal-Extraleicht.otf', weight: '200', style: 'normal' },
-    { path: '../fonts/SohneSchmal-Leicht.otf', weight: '300', style: 'normal' },
-    { path: '../fonts/SohneSchmal-Buch.otf', weight: '400', style: 'normal' },
-    { path: '../fonts/SohneSchmal-Kraftig.otf', weight: '500', style: 'normal' },
-    { path: '../fonts/SohneSchmal-Halbfett.otf', weight: '600', style: 'normal' },
-    { path: '../fonts/SohneSchmal-Dreiviertelfett.otf', weight: '700', style: 'normal' },
-    { path: '../fonts/SohneSchmal-Fett.otf', weight: '800', style: 'normal' },
-    { path: '../fonts/SohneSchmal-Extrafett.otf', weight: '900', style: 'normal' },
-  ],
-  variable: '--font-sohne-schmal',
+  variable: '--font-gilroy',
   display: 'swap',
 });

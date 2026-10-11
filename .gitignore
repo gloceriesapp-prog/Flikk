@@ -28,3 +28,15 @@ graphify-out/
 .DS_Store
 *.log
 .expo/
+.vercel
+.env*
+
+# AI-tool local artifacts (ruvector / agentdb) — never commit
+*.rvf
+*.rvf.lock
+ruvector.db
+**/ruvector.db
+agentdb.rvf
+# Supabase CLI local state
+supabase/.branches/
+supabase/.temp/

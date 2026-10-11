@@ -85,8 +85,31 @@ export function OrdersScreen({ navigation }: Props) {
   // queue, which had no date scoping at all (see TodayStatsCard.tsx's own
   // former header note on that bug).
   const queryClient = useQueryClient();
-  const { data: todayStats } = useQuery({ queryKey: ['stats-today'], queryFn: fetchTodayStats });
+  const { data: todayStats } = useQuery({
+    queryKey: ['stats-today'],
+    queryFn: fetchTodayStats,
+    // Cheap server aggregate — a periodic refetch so these numbers never sit
+    // at the global 60s staleTime while the queue below updates every 3.5s
+    // (useOrderPolling). Event-based invalidation (the effect further down)
+    // covers the instant case; this is only the safety net. No AppState
+    // special-casing on purpose: a plain interval, same convention as
+    // useOrderPolling — the OS suspends JS (and this timer) while
+    // backgrounded, and useForegroundRefresh refetches on return.
+    refetchInterval: 30_000,
+  });
   const { data: payoutAccount } = useQuery({ queryKey: PAYOUT_ACCOUNT_QUERY_KEY, queryFn: fetchPayoutAccount });
+
+  // Stats-affecting projection of the queue — each order's id + status. This
+  // string changes exactly when an event that moves TodayStatsCard's numbers
+  // happens: a new order (pending++), markPacked/reject (pending−−), or an
+  // order reaching 'delivered' (earning + orders-today — useOrdersStore's own
+  // justDelivered transition is what flips that status here). zustand only
+  // re-renders this selector when the string genuinely changes, so the
+  // invalidate effect below fires on those transitions, not on every poll
+  // that returns an unchanged queue.
+  const orderStatusSignature = useOrdersStore((state) =>
+    state.orders.map((order) => `${order.id}:${order.status}`).join('|'),
+  );
 
   // Real day-boundary refresh, not a periodic poll — schedules exactly at
   // the next real IST midnight (utils/nextIstMidnight.ts) and reschedules
@@ -105,6 +128,17 @@ export function OrdersScreen({ navigation }: Props) {
     scheduleMidnightRefresh();
     return () => clearTimeout(timer);
   }, [queryClient]);
+
+  // Keep ['stats-today'] in step with the queue the instant it changes, not
+  // only on the 30s refetchInterval above — Pending drops the moment an order
+  // is packed/rejected, and Today's earning jumps the moment a delivery lands.
+  // Driven off orderStatusSignature (above), so it reacts to exactly the
+  // mark-packed/reject mutations and the just-delivered transition. Separate
+  // from the IST-midnight invalidate above, which owns the day rollover, not
+  // intra-day transitions.
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: ['stats-today'] });
+  }, [orderStatusSignature, queryClient]);
 
   // OrderCard's own onMarkPacked expects a plain (orderId) => void — this
   // wraps the store's real, throwing action so a failed PATCH surfaces as

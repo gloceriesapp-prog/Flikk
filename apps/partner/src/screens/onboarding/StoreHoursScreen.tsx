@@ -20,20 +20,18 @@ export function StoreHoursScreen({ navigation, route }: Props) {
   const { draft } = route.params;
   const [openTime, setOpenTime] = useState(draft.openTime);
   const [closeTime, setCloseTime] = useState(draft.closeTime);
-  const [saving, setSaving] = useState(false);
 
   const canContinue = openTime.length > 0 && closeTime.length > 0;
 
-  async function handleNext() {
+  function handleNext() {
     if (!canContinue) return;
-    setSaving(true);
-    try {
-      await saveStoreDraft({ openTime, closeTime });
-    } catch {
-      // Best-effort autosave.
-    } finally {
-      setSaving(false);
-    }
+
+    // Best-effort autosave — fire-and-forget so it never blocks navigation.
+    // warn (not error) so a transient network blip shows a yellow warning,
+    // not a red "Console Error" box that reads as a crash.
+    void saveStoreDraft({ openTime, closeTime }).catch(
+      (err) => console.warn('[StoreHours] saveStoreDraft failed (best-effort)', err),
+    );
 
     navigation.navigate('StoreReview', { draft: { ...draft, openTime, closeTime } });
   }
@@ -44,7 +42,7 @@ export function StoreHoursScreen({ navigation, route }: Props) {
       title="Store hours"
       subheading="When are you open to take orders?"
       onBack={() => navigation.goBack()}
-      footer={<PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} loading={saving} trailingIcon={ArrowRight01Icon} />}
+      footer={<PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} trailingIcon={ArrowRight01Icon} />}
     >
       <View className="gap-2.5">
         <View className="flex-row gap-3">

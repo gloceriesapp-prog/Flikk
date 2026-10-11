@@ -3,9 +3,13 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { isEncryptionConfigured, encryptDocument, decryptDocument } from '../../../packages/server-media/encryption.cjs';
 
-// Sensitive KYC kinds whose bytes must never be stored as plaintext. Rider
-// 'profile' (avatar) is intentionally absent — it is not sensitive.
-const ENCRYPTED_KINDS = new Set(['aadhaar', 'dl', 'payout-proof', 'pan', 'gst', 'fssai', 'shop-license', 'udyam']);
+// Sensitive KYC kinds whose bytes must never be stored as plaintext. Partner
+// onboarding's 'profile' (owner photo) and 'store' (storefront KYC photo) join
+// 'aadhaar' here — all three are owner-only PII read back through the
+// decrypt-proxy. Note 'profile' is a shared kind string: the rider avatar now
+// encrypts at rest too, which is harmless (readPrivateDocument serves both
+// encrypted and legacy plaintext assets transparently).
+const ENCRYPTED_KINDS = new Set(['aadhaar', 'dl', 'payout-proof', 'pan', 'gst', 'fssai', 'shop-license', 'udyam', 'profile', 'store']);
 
 export async function storePrivateDocument(input: { bucket: 'rider-documents' | 'store-documents'; ownerId: string; kind: string; bytes: Buffer }) {
   if (!/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(input.ownerId) ||
