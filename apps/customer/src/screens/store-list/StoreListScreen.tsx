@@ -134,6 +134,13 @@ export function StoreListScreen({ navigation }: Props) {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         stickyHeaderIndices={[0]}
+        // Same as HomeScreen: stickyHeaderIndices pins the header during a
+        // normal scroll, but iOS elastic overscroll still lets a pull-down-
+        // past-the-top gesture drag/stretch the sticky header before it snaps
+        // back. bounces={false} removes that rubber-banding; overScrollMode=
+        // "never" is the Android equivalent — so the top no longer drags.
+        bounces={false}
+        overScrollMode="never"
       >
         <StoreHeader
           onChangeLocation={() => navigation.navigate('SelectLocation')}
