@@ -3,18 +3,20 @@ import { Call02Icon, Message01Icon } from '@hugeicons/core-free-icons';
 import { Linking, Pressable, Text, View } from 'react-native';
 import type { ApiOrder } from '../../../api/orders';
 import { AppIcon } from '../../../components/AppIcon';
+import { AppImage as Image } from '../../../components/AppImage';
 import { colors } from '../../../theme/tokens';
 
 interface Props {
   order: ApiOrder;
 }
 
-// No rider rating source exists and riders.photo_url is an unvalidated path
-// in the private rider-documents bucket (also holds Aadhaar/DL scans), so
-// the card shows initials and no rating — never fabricated data.
-function initials(name: string): string {
-  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || '?';
-}
+// Fixed generic rider avatar — deliberately NOT the rider's real photo:
+// riders.photo_url is an unvalidated path in the private rider-documents
+// bucket (also holds Aadhaar/DL scans), so it's never surfaced to customers.
+// Same image for every assigned rider; the real identity is name + phone
+// below. No rider rating source exists either, so the card shows no rating.
+const RIDER_AVATAR =
+  'https://images.gloceries.com/appsui/rider-profile.png';
 
 function digitsOnly(phone: string): string {
   return phone.replace(/[^0-9]/g, '');
@@ -60,15 +62,37 @@ export function DeliveryRiderCard({ order }: Props) {
       ) : null}
 
       <View className="mt-4 flex-row items-center gap-3">
-        <View className="h-11 w-11 items-center justify-center rounded-full bg-lime-soft">
-          <Text className="text-[15px] font-semibold text-ink">{rider ? initials(rider.name) : '?'}</Text>
-        </View>
-        <View>
-          <Text className="text-[14px] font-medium text-ink">{rider?.name ?? 'Your delivery partner'}</Text>
-          {rider ? <View className="mt-0.5 flex-row items-center gap-1">
-            <Text className="text-[12.5px] font-medium text-ink/60">{rider.deliveries.toLocaleString('en-IN')} deliveries</Text>
-          </View> : <Text className="mt-0.5 text-[12.5px] font-medium text-ink/50">Rider assignment pending</Text>}
-          {rider ? <Text className="mt-0.5 text-[12.5px] font-medium text-ink/40">{rider.phone}</Text> : null}
+        <Image
+          source={{ uri: RIDER_AVATAR }}
+          style={{
+            height: 44,
+            width: 44,
+            borderRadius: 22,
+          }}
+          contentFit="cover"
+          className="bg-gray-200 border border-gray-100"
+        />
+
+        <View className="flex-1">
+          <Text className="text-[14px] font-medium text-ink">
+            {rider?.name ?? 'Your delivery partner'}
+          </Text>
+
+          {rider ? (
+            <>
+              <Text className="mt-0.5 text-[12.5px] font-medium text-ink/60">
+                {rider.deliveries.toLocaleString('en-IN')} deliveries
+              </Text>
+
+              <Text className="mt-0.5 text-[12.5px] font-medium text-ink/40">
+                {rider.phone}
+              </Text>
+            </>
+          ) : (
+            <Text className="mt-1 text-[13px] font-medium text-ink/50">
+              Rider assignment pending
+            </Text>
+          )}
         </View>
       </View>
 

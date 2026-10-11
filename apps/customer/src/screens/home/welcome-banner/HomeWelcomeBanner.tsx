@@ -1,17 +1,17 @@
 import { StyleSheet, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
-import { useCopy, useCopyImage } from '../../../api/appConfig';
+import { useCopy } from '../../../api/appConfig';
 
-// Admin App content: home.welcome.imageUrl / home.welcome.label.
-const WELCOME_ARTWORK_URI = 'https://images.gloceries.com/appsui/Your%20Shops.png';
+const WELCOME_ARTWORK_URI =
+  'https://images.gloceries.com/appsui/Your%20Shops.png';
 
 export function HomeWelcomeBanner({
   backgroundColor,
 }: {
   backgroundColor: string;
 }) {
-  const uri = useCopyImage('home.welcome.imageUrl', WELCOME_ARTWORK_URI);
   const label = useCopy('home.welcome.label');
+
   return (
     <View
       style={{
@@ -21,7 +21,7 @@ export function HomeWelcomeBanner({
       }}
     >
       <Image
-        source={{ uri }}
+        source={{ uri: WELCOME_ARTWORK_URI }}
         style={StyleSheet.absoluteFill}
         resizeMode="contain"
         transition={0}

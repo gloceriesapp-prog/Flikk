@@ -1,8 +1,11 @@
 import { useAuthStore } from '../../store/useAuthStore';
 import { useState } from 'react';
-import { ArrowLeft01Icon, CustomerService01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, Cancel01Icon, CustomerService01Icon, EllipsisVerticalIcon } from '@hugeicons/core-free-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useIsFocused } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
@@ -12,7 +15,6 @@ import { useTracking } from './state/useTracking';
 import { TrackingFeedback } from './components/TrackingFeedback';
 import { TripCancellationResult } from './components/TripCancellationResult';
 import { representativeLeg } from '../../utils/tripLegs';
-import { CancelOrderCard } from './components/CancelOrderCard';
 import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryRiderCard } from './components/DeliveryRiderCard';
 import { OrderInfoCard } from './components/OrderInfoCard';
@@ -29,6 +31,8 @@ function isCancellable(status: string): boolean {
 
 function TrackingDetails({ navigation, route }: Props) {
   const customerId = useAuthStore(state => state.customerId);
+  const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const { orderId, isTrip } = route.params;
 
   const tracking = useTracking(orderId, !!isTrip);
@@ -36,6 +40,14 @@ function TrackingDetails({ navigation, route }: Props) {
   const legs = trip?.orders ?? [];
   const [cancellationResult, setCancellationResult] = useState<TripCancellation>();
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Mirrors the old CancelOrderCard render guards: a single order is
+  // cancellable while placed/packed; a trip while at least one leg is still
+  // cancellable and no leg has moved past that window (bar already-cancelled
+  // legs). Drives whether the 3-dot menu offers Cancel at all.
+  const canCancel = isTrip
+    ? legs.some((l) => isCancellable(l.status)) && legs.every((l) => isCancellable(l.status) || l.status === 'cancelled')
+    : !!order && isCancellable(order.status);
   const queryClient = useQueryClient();
   const cancellationDetails: TripCancellation | undefined = cancellationResult || legs.some(leg => leg.status === 'cancelled') ? {
     outcome: legs.every(leg => leg.status === 'cancelled') ? 'cancelled' : 'blocked',
@@ -72,13 +84,18 @@ function TrackingDetails({ navigation, route }: Props) {
 
   return (
     <View className="flex-1 bg-[#F1F2F4]">
+      {/* Dark (black) status-bar icons on both iOS and Android — the screen's
+          light grey background needs them, overriding the app-global
+          style="light". expo-status-bar drives Android too, so this is not
+          iOS-only. */}
+      {isFocused && <StatusBar style="dark" />}
       <View className="flex-row items-center bg-[#F1F2F4] px-4 pb-2 pt-safe-offset-2">
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
         <Text className="flex-1 text-center text-[17px] font-semibold text-ink">Track Order</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Get help with this order" onPress={() => navigation.navigate('Support', { target: { orderId, isTrip }, category: 'delivery' })} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
-          <AppIcon icon={CustomerService01Icon} size={22} color={colors.ink} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Order options" onPress={() => setMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
+          <AppIcon icon={EllipsisVerticalIcon} size={22} color={colors.ink} />
         </Pressable>
       </View>
 
@@ -96,10 +113,6 @@ function TrackingDetails({ navigation, route }: Props) {
             <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
               <OrderInfoCard order={leg} hideRefund />
               <TripCancellationResult result={cancellationDetails} refund={trip?.cancellation_refund} />
-
-              {legs.some((l) => isCancellable(l.status)) && legs.every((l) => isCancellable(l.status) || l.status === 'cancelled') ? (
-                <CancelOrderCard onPress={() => setIsCancelModalOpen(true)} />
-              ) : null}
 
               <DeliveryRiderCard order={leg} />
               <DeliveryDetailsSection address={trip!.addresses} />
@@ -123,15 +136,6 @@ function TrackingDetails({ navigation, route }: Props) {
         <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
           <OrderInfoCard order={order!} />
 
-          {/* Right below the estimate card, per an explicit ask — and
-              naturally mutually exclusive with DeliveryRiderCard just
-              below: isCancellable is true for exactly 'placed'/'packed',
-              DeliveryRiderCard now only renders for 'out_for_delivery'
-              (that component's own note on the fix), so exactly one of
-              the two ever shows, never both, with no shared state needed
-              to coordinate it. */}
-          {isCancellable(order!.status) ? <CancelOrderCard onPress={() => setIsCancelModalOpen(true)} /> : null}
-
           <DeliveryRiderCard order={order!} />
 
           <DeliveryDetailsSection address={order!.addresses} />
@@ -150,6 +154,26 @@ function TrackingDetails({ navigation, route }: Props) {
           </Text>
         </ScrollView>
       )}
+
+      {/* Anchored dropdown off the header 3-dot: Cancel (only while the
+          order/trip is still cancellable) + Support. Overlay tap dismisses;
+          taps on the items fire their own handler, not the overlay. */}
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable className="flex-1" onPress={() => setMenuOpen(false)}>
+          <View style={{ position: 'absolute', top: insets.top + 52, right: 16 }} className="min-w-[190px] overflow-hidden rounded-2xl bg-white py-1.5 shadow-xl shadow-black/20">
+            {canCancel ? (
+              <Pressable onPress={() => { setMenuOpen(false); setIsCancelModalOpen(true); }} className="flex-row items-center gap-3 px-4 py-3 active:bg-gray-50">
+                <AppIcon icon={Cancel01Icon} size={18} color={colors.danger} />
+                <Text className="text-[15px] font-semibold text-danger">Cancel order</Text>
+              </Pressable>
+            ) : null}
+            <Pressable onPress={() => { setMenuOpen(false); navigation.navigate('Support', { target: { orderId, isTrip }, category: 'delivery' }); }} className="flex-row items-center gap-3 px-4 py-3 active:bg-gray-50">
+              <AppIcon icon={CustomerService01Icon} size={18} color={colors.ink} />
+              <Text className="text-[15px] font-semibold text-ink">Support</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
       {order || trip ? (
         <CancelOrderModal
