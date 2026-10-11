@@ -191,7 +191,9 @@ export function AllTabSections({ onSelectCategory }: Props) {
   return (
     // pb-32 — floating-CartBar clearance, same as every tab body.
     <View className="pb-32">
-      <View style={{ backgroundColor: shortcutsBackground }}>
+      {/* marginBottom pulls the next section up to trim the empty space under
+          the welcome banner image (same bg, so it just tightens the gap). */}
+      <View style={{ backgroundColor: shortcutsBackground, marginBottom: -8 }}>
         <HomeWelcomeBanner backgroundColor={shortcutsBackground} />
       </View>
       {sections.map((cfg) => {
