@@ -25,8 +25,11 @@ import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
 import * as TaskManager from 'expo-task-manager';
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../store/useAuthStore';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+// Same validated, Metro-host-following URL the foreground client uses, so a
+// background ping can never go somewhere the foreground app doesn't (it used
+// to read the raw env var with a localhost fallback, which on a phone is the
+// phone itself). baseUrl.ts imports no store, so it is safe in a headless task.
+import { API_BASE_URL as API_URL } from '../api/baseUrl';
 
 // Must match the string TaskManager.defineTask registers under — the OS
 // relaunches into the task by this name.
