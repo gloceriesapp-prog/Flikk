@@ -749,8 +749,10 @@ const headerTitleStyle = useAnimatedStyle(() => ({
     },
   ],
 }));
+  // Grown-state resting top for the floating controls (below the status bar).
+  const grownHeaderTop = insets.top + 14;
   const headerRowStyle = useAnimatedStyle(() => ({
-    top: interpolate(grow.value, [0, 1], [14, insets.top + 14]),
+    top: interpolate(grow.value, [0, 1], [14, grownHeaderTop]),
   }));
 
   const footerStyle = useAnimatedStyle(() => ({
@@ -758,11 +760,14 @@ const headerTitleStyle = useAnimatedStyle(() => ({
   }));
 
   // Android: the hero controls (close/bookmark/share) read as solid WHITE pills
-  // with ink icons + a soft elevation, and the grown-state solid header is a
-  // touch taller — per an explicit ask. iOS keeps the translucent dark/25 pills
-  // + white icons (which stay legible on any hero photo without a shadow).
+  // with ink icons + a soft elevation, and the grown-state white top header is
+  // a thin status-bar backing (controls sit just below it) — per an explicit
+  // ask. iOS keeps the translucent dark/25 pills + white icons (legible on any
+  // hero photo without a shadow).
   const isAndroid = Platform.OS === 'android';
-  const headerHeight = insets.top + (isAndroid ? 72 : 64);
+  // Android: thin white top header (just backs the status bar) so the controls
+  // sit just below it over the hero, not inside a tall white slab.
+  const headerHeight = insets.top + (isAndroid ? 44 : 64);
   const pillClass = isAndroid
     ? 'h-10 w-10 items-center justify-center rounded-full bg-white'
     : 'h-10 w-10 items-center justify-center rounded-full bg-black/25';
