@@ -15,12 +15,7 @@ import { HomeSearchBar } from '../../home/components/HomeSearchBar';
 import { useIsOutsideOperatingHours } from '../../../utils/useOperatingHours';
 
 const STORE_HEADER_GRADIENT = {
-  colors: [
-    '#83AFE0',
-    '#9BC0E8',
-    '#B7D2EF',
-    '#D5E5F7',
-  ] as const,
+  colors: ['#A5BA98', '#99AF8C', '#8EA480', '#849B76'] as const,
   stops: [0, 0.35, 0.68, 1] as const,
 };
 
@@ -64,7 +59,19 @@ export function StoreHeader({
     opacity: interpolate(
       scrollY.value,
       [0, COLLAPSE_DISTANCE],
-      [1, 0.12],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
+  }));
+
+  // White backing fades IN as the gradient fades out, so the pinned search bar
+  // sits on a clean white header once scrolled (per request). Same scroll
+  // window as the collapsing location row, so both finish together.
+  const frostedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [0, COLLAPSE_DISTANCE],
+      [0, 1],
       Extrapolation.CLAMP,
     ),
   }));
@@ -90,6 +97,11 @@ export function StoreHeader({
         />
       </Animated.View>
 
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, frostedStyle, { backgroundColor: '#FFFFFF' }]}
+      />
+
       <View className="px-6 pb-5 pt-safe-offset-3">
         <Animated.View
           onLayout={onRowLayout}
@@ -108,7 +120,7 @@ export function StoreHeader({
           </View>
         </Animated.View>
 
-        <HomeSearchBar onPress={onOpenSearch} />
+        <HomeSearchBar onPress={onOpenSearch} borderClassName="border border-gray-200" />
       </View>
     </View>
   );

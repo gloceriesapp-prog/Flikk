@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
-import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedReaction, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { BrandFooter } from '../../components/BrandFooter';
@@ -99,6 +99,18 @@ export function StoreListScreen({ navigation }: Props) {
   const navHidden = useSharedValue(0);
   const SCROLL_HIDE_THRESHOLD = 6;
 
+  // Status bar flips light→dark as the header scrolls from its green gradient
+  // onto the white frosted state (StoreHeader), so the clock/battery stay
+  // legible on both. 40px matches the header's own collapse window.
+  const [statusBarStyle, setStatusBarStyle] = useState<'light' | 'dark'>('light');
+  useAnimatedReaction(
+    () => scrollY.value > 40,
+    (scrolled, prev) => {
+      if (scrolled !== prev) runOnJS(setStatusBarStyle)(scrolled ? 'dark' : 'light');
+    },
+    [],
+  );
+
   const scrollHandler = useAnimatedScrollHandler((event) => {
     const y = event.contentOffset.y;
     scrollY.value = y;
@@ -116,12 +128,10 @@ export function StoreListScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 bg-[#F6F6F6]">
-      {/* Dark (black) status-bar icons — this screen's header is a light
-          blue gradient (#69A9D4→#D9EDF6), so the device clock/wifi read
-          against it only in black; light would wash out. A screen that set
-          "light" before must reset here on arrival, same fix class as the
-          other tabs' own note, opposite value. */}
-      <StatusBar style="dark" />
+      {/* Status-bar icons flip with scroll: light over the green header at the
+          top, dark once it collapses to the white frosted search bar — driven
+          by the useAnimatedReaction above. */}
+      <StatusBar style={statusBarStyle} />
 
       {/* StoreHeader is item 0 inside this same ScrollView now (was a
           fixed sibling above it) with stickyHeaderIndices={[0]} — same
