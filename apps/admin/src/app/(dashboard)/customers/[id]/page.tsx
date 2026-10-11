@@ -15,6 +15,8 @@ import { ReasonModal } from '@/components/ui/ReasonModal';
 import { BLOCK_DURATIONS } from '@/lib/customerBlocks';
 import type { OrderStatus } from '@/lib/types';
 
+type AccountType = 'customer' | 'rider' | 'store_owner';
+
 interface CustomerDetail {
   id: string;
   name: string | null;
@@ -36,6 +38,9 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [editing, setEditing] = useState<{ name: string; email: string } | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [accountType, setAccountType] = useState<AccountType>('customer');
+  const [savingAccountType, setSavingAccountType] = useState(false);
+  const [accountMsg, setAccountMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(() => {
     return fetch(`/api/customers/${id}`)
@@ -79,6 +84,26 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       setProfileError(err instanceof Error ? err.message : 'Could not save this customer.');
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  // Admin override for the account_type pin — moves a mis-pinned phone number
+  // to the right app (PATCH /api/users/[id]/account-type).
+  async function saveAccountType() {
+    setSavingAccountType(true);
+    setAccountMsg(null);
+    try {
+      const res = await fetch(`/api/users/${id}/account-type`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_type: accountType }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Could not update account type.');
+      setAccountMsg({ ok: true, text: 'Account type updated.' });
+    } catch (err) {
+      setAccountMsg({ ok: false, text: err instanceof Error ? err.message : 'Could not update account type.' });
+    } finally {
+      setSavingAccountType(false);
     }
   }
 
@@ -218,6 +243,40 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 </ul>
               </div>
             )}
+          </div>
+
+          <div className="rounded-3xl border border-border bg-card p-6">
+            <h3 className="mb-1 text-sm font-semibold text-ink">Account type override</h3>
+            <p className="mb-4 text-xs text-muted">
+              Which app this phone number is pinned to. A number is locked to the first app it signs in through — change it here to move the number to a different app.
+            </p>
+            <form
+              className="flex flex-wrap items-end gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveAccountType();
+              }}
+            >
+              <label className="flex flex-col gap-1 text-xs font-semibold text-ink">
+                Account type
+                <select
+                  value={accountType}
+                  onChange={(event) => {
+                    setAccountMsg(null);
+                    setAccountType(event.target.value as AccountType);
+                  }}
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-ink"
+                >
+                  <option value="customer">Customer</option>
+                  <option value="rider">Rider</option>
+                  <option value="store_owner">Store owner</option>
+                </select>
+              </label>
+              <button type="submit" disabled={savingAccountType} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                {savingAccountType ? 'Saving…' : 'Save'}
+              </button>
+            </form>
+            {accountMsg && <p className={`mt-2 text-sm ${accountMsg.ok ? 'text-success' : 'text-danger'}`}>{accountMsg.text}</p>}
           </div>
 
           <div className="rounded-3xl border border-border bg-card p-6">

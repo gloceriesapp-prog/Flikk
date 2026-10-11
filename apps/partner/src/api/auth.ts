@@ -17,7 +17,7 @@
 // placeholder data. The fallback disappears on its own the moment a real
 // backend answers; nothing here needs to change when that happens.
 
-import { createAuthApi, type AccountStatus, type VerifyOtpResponse } from '@gloceries/shared';
+import { createAuthApi, type AccountStatus, type VerifyOtpResponse as SharedVerifyOtpResponse } from '@gloceries/shared';
 import { ApiError, apiRequest } from './client';
 import { API_BASE_URL } from './baseUrl';
 import {
@@ -26,9 +26,21 @@ import {
   isBackendUnreachable,
 } from './devAuthFallback';
 
+// Which of the four apps this is — sent on OTP request/verify so the
+// backend can pin a number to one app and 403 ACCOUNT_WRONG_APP a number
+// that already belongs to a different one (backend/src/routes/auth.ts).
+// A module constant, so no call-site signature changes.
+const APP = 'partner' as const;
+
 const authApi = createAuthApi({ apiRequest });
 
-export type { AccountStatus, VerifyOtpResponse };
+// Shared verify contract plus account_type, which the one-phone-one-app
+// backend now returns on verify (store_owner for this app).
+export interface VerifyOtpResponse extends SharedVerifyOtpResponse {
+  account_type: 'customer' | 'rider' | 'store_owner';
+}
+
+export type { AccountStatus };
 
 export interface RequestOtpResult {
   ok: true;
@@ -47,7 +59,7 @@ function unreachable(err: unknown): never {
 
 export async function requestOtp(phone: string): Promise<RequestOtpResult> {
   try {
-    const result = await authApi.requestOtp(phone);
+    const result = await apiRequest<{ ok: true }>('/auth/otp/request', { method: 'POST', body: { phone, app: APP }, auth: false });
     return { ...result, devMode: false };
   } catch (err) {
     return unreachable(err);
@@ -56,7 +68,7 @@ export async function requestOtp(phone: string): Promise<RequestOtpResult> {
 
 export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpResponse> {
   try {
-    return await authApi.verifyOtp(phone, code);
+    return await apiRequest<VerifyOtpResponse>('/auth/otp/verify', { method: 'POST', body: { phone, code, app: APP }, auth: false });
   } catch (err) {
     return unreachable(err);
   }

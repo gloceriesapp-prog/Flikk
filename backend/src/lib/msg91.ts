@@ -9,13 +9,22 @@
 // variable. MSG91's OTP API only applies templates made under MSG91 -> OTP;
 // given an SMS template it sends without one, which operators drop.
 // MSG91_API=otp switches to the OTP API for an OTP-section template.
-//
+import { logger } from './logger.js';
+
 // Endpoint hosts are fixed, so configuration cannot redirect the request.
 const MSG91_FLOW_URL = 'https://control.msg91.com/api/v5/flow';
 const MSG91_OTP_URL = 'https://control.msg91.com/api/v5/otp';
 
+// A dropped SMS looks identical to success in MSG91's logs, so one short retry
+// covers a transient blip: a timeout, a network drop, a 5xx or a 429. A
+// 400/401/validation error is deterministic — retrying wastes time and risks a
+// double-send — so those throw at once. Worst case is 4s + 0.5s + 4s; the
+// retry only fires off the happy path.
+const RETRY_BACKOFF_MS = 500;
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export class SmsDeliveryError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(public readonly status: number, message: string, public readonly transient = false) {
     super(message);
     this.name = 'SmsDeliveryError';
   }
@@ -56,7 +65,7 @@ export function msg91Mobile(phone: unknown): string {
 export async function sendOtpSms(phone: unknown, otp: string, config = msg91Config()): Promise<string> {
   if (!config.authKey || !config.templateId) throw new SmsDeliveryError(503, 'SMS provider is not configured.');
   if (!/^\d{4,10}$/.test(otp)) throw new SmsDeliveryError(400, 'Invalid one-time code.');
-  const mobile = msg91Mobile(phone);
+  const mobile = msg91Mobile(phone); // throws 400 for a non-Indian number — deterministic, never retried
   let url: URL;
   let body: string;
   if (config.api === 'otp') {
@@ -73,22 +82,40 @@ export async function sendOtpSms(phone: unknown, otp: string, config = msg91Conf
       recipients: [{ mobiles: mobile, [config.otpVariable]: otp }],
     });
   }
+  const authKey = config.authKey;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await sendOnce(url, body, authKey);
+    } catch (error) {
+      if (attempt > 1 || !(error instanceof SmsDeliveryError) || !error.transient) throw error;
+      // Phone/code are never logged; status + MSG91's message are enough to trace a blip.
+      logger.warn({ status: error.status, reason: error.message }, 'Login OTP SMS attempt failed; retrying once');
+      await sleep(RETRY_BACKOFF_MS);
+    }
+  }
+}
+
+// One POST to MSG91. The thrown error's `transient` flag drives the retry above.
+async function sendOnce(url: URL, body: string, authKey: string): Promise<string> {
   let response: Response;
   try {
     response = await fetch(url, {
       method: 'POST',
       signal: AbortSignal.timeout(4000), // inside Supabase's hook timeout
-      headers: { authkey: config.authKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: { authkey: authKey, 'Content-Type': 'application/json', Accept: 'application/json' },
       body,
     });
   } catch {
-    throw new SmsDeliveryError(504, 'SMS provider did not respond.');
+    throw new SmsDeliveryError(504, 'SMS provider did not respond.', true);
   }
   const data = await response.json().catch(() => null) as { type?: unknown; request_id?: unknown; message?: unknown } | null;
   if (!response.ok || data?.type !== 'success') {
-    // HTTP 401 here is almost always the authkey's IP whitelist in MSG91.
+    // A 5xx or 429 is worth one retry; a 4xx (bad template, or 401 = authkey IP
+    // not whitelisted) or an HTTP-200 `type:"error"` is deterministic and is not.
+    const transient = response.status >= 500 || response.status === 429;
     throw new SmsDeliveryError(502,
-      `SMS provider rejected the message (HTTP ${response.status}${typeof data?.message === 'string' ? `: ${data.message.slice(0, 120)}` : ''}).`);
+      `SMS provider rejected the message (HTTP ${response.status}${typeof data?.message === 'string' ? `: ${data.message.slice(0, 120)}` : ''}).`,
+      transient);
   }
   // Flow returns the request id in `message`; the OTP API in `request_id`.
   const id = typeof data.request_id === 'string' ? data.request_id : typeof data.message === 'string' ? data.message : '';

@@ -17,6 +17,17 @@
 import { apiRequest } from './client';
 import type { AccountRole } from '../store/useAuthStore';
 
+// Which app this is — the backend pins a phone number to the first app it
+// signs in through and 403s (ACCOUNT_WRONG_APP) a number trying a different
+// one, at BOTH /auth/otp/request and /auth/otp/verify. Constant, so no
+// call-site signature changes.
+const APP_KIND = 'rider' as const;
+
+// Server-reported account type (never 'admin' here — admins use the
+// dashboard). Subset of AccountRole so roleGuard/useAuthStore stay the one
+// source of truth for the role union.
+export type AccountType = Exclude<AccountRole, 'admin'>;
+
 export interface VerifyOtpResult {
   accessToken: string;
   refreshToken: string;
@@ -24,18 +35,27 @@ export interface VerifyOtpResult {
   // One phone number, one role (utils/roleGuard.ts's own note) — checked
   // by OtpVerificationScreen.tsx before ever persisting this session.
   role: AccountRole;
+  // Backend's app<->account pin (see APP_KIND) — same value as `role` for a
+  // rider, surfaced for any caller that wants it; OtpVerificationScreen's
+  // existing roleGuard check still runs off `role`.
+  account_type: AccountType;
 }
 
 export async function requestOtp(phone: string): Promise<{ ok: true }> {
-  return apiRequest('/auth/otp/request', { method: 'POST', body: { phone }, auth: false });
+  return apiRequest('/auth/otp/request', { method: 'POST', body: { phone, app: APP_KIND }, auth: false });
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpResult> {
-  const { access_token, refresh_token, role } = await apiRequest<{ access_token: string; refresh_token: string; role: AccountRole }>(
+  const { access_token, refresh_token, role, account_type } = await apiRequest<{
+    access_token: string;
+    refresh_token: string;
+    role: AccountRole;
+    account_type: AccountType;
+  }>(
     '/auth/otp/verify',
-    { method: 'POST', body: { phone, code }, auth: false },
+    { method: 'POST', body: { phone, code, app: APP_KIND }, auth: false },
   );
-  return { accessToken: access_token, refreshToken: refresh_token, phone, role };
+  return { accessToken: access_token, refreshToken: refresh_token, phone, role, account_type };
 }
 
 export interface AccountStatus {
