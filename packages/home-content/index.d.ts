@@ -1,6 +1,6 @@
 export type HomeContentKey = 'grocery' | 'fresh' | 'regional';
 export type SectionKind =
-  'products' | 'categories' | 'brands' | 'stores' | 'banner' | 'hero' | 'footer';
+  'products' | 'categories' | 'brands' | 'stores' | 'banner' | 'hero' | 'festival' | 'footer';
 export interface ContentSelection {
   mode: 'automatic' | 'manual';
   productIds: string[];

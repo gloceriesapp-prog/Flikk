@@ -16,6 +16,19 @@ import { Field, inputClass, Toggle } from './Fields';
 import { SectionEditor } from './SectionEditor';
 
 const LABELS = { grocery: 'Grocery', fresh: 'Fruit & Veg', regional: 'Regional' };
+// Human labels for the section-kind picker + the section list. Unlisted kinds
+// fall back to the raw key, so this never has to stay exhaustive.
+const KIND_LABELS: Record<string, string> = {
+  products: 'Products',
+  categories: 'Category tiles',
+  brands: 'Brands',
+  stores: 'Shops',
+  banner: 'Image banner',
+  hero: 'Hero',
+  festival: 'Festival shelf',
+  footer: 'Footer',
+};
+const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind;
 type HistoryEntry = { revision: number; changed_at: string; content: HomeContentDocument };
 export function HomeContentEditor() {
   const [tab, setTab] = useState<HomeContentKey>('grocery');
@@ -279,8 +292,7 @@ export function HomeContentEditor() {
                       <span
                         className={`block text-sm font-semibold ${section.enabled ? 'text-slate-800' : 'text-slate-400'}`}
                       >
-                        {section.title ||
-                          (section.kind === 'categories' ? 'Category tiles' : 'Image banner')}
+                        {section.title || kindLabel(section.kind)}
                       </span>
                       <span className="mt-1 block text-xs text-slate-400">
                         {section.kind} · {section.enabled ? 'visible' : 'hidden'}
@@ -343,7 +355,7 @@ export function HomeContentEditor() {
                 >
                   {SECTION_KINDS.map((kind) => (
                     <option key={kind} value={kind}>
-                      {kind}
+                      {kindLabel(kind)}
                     </option>
                   ))}
                 </select>

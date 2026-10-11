@@ -66,7 +66,7 @@ export function SectionEditor({
             className={inputClass}
           />
         </Field>
-        {section.kind !== 'footer' && (
+        {section.kind !== 'footer' && section.kind !== 'festival' && (
           <Field label="Visible items" hint="Maximum 24 products, shops or tiles per section.">
             <input
               type="number"
@@ -112,7 +112,20 @@ export function SectionEditor({
           </>
         )}
       </div>
-      {['banner', 'hero'].includes(section.kind) && (
+      {section.kind === 'festival' && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-semibold">Products come from the Festival products page.</p>
+          <p className="mt-1 text-amber-800">
+            This section shows the one shared festival product shelf — edit its products and
+            activate it under <span className="font-medium">Festival products</span> in the sidebar.
+            Here you set the optional <span className="font-medium">title</span> and{' '}
+            <span className="font-medium">background image</span> shown above that shelf, and the{' '}
+            <span className="font-medium">Visible in app</span> toggle. The whole block hides
+            automatically in the app when no festival is active.
+          </p>
+        </div>
+      )}
+      {['banner', 'hero', 'festival'].includes(section.kind) && (
         <div className="space-y-4 rounded-2xl bg-slate-50 p-4">
           <ProductImageUpload imageUrl={section.imageUrl} bucket="banners" onChange={(url) => update({ imageUrl: url })} />
           <Field
