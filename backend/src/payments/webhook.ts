@@ -59,8 +59,8 @@ export async function handleWebhook(req: Request, res: Response, next: NextFunct
       // A late payment still settles: the SQL rejects it against the closed
       // checkout and the refund trigger/queue returns the money.
       if (target) {
-        await validateCapturedPayment(target, paymentId, providerOrderId);
-        await settleCheckoutPayment(target, paymentId);
+        const capturedPaise = await validateCapturedPayment(target, paymentId, providerOrderId);
+        await settleCheckoutPayment(target, paymentId, capturedPaise, 'INR');
       } else logger.warn({ paymentId, providerOrderId }, 'Successful payment has no matching checkout');
     }
     // PAYMENT_FAILED / PAYMENT_USER_DROPPED are attempt results, not checkout

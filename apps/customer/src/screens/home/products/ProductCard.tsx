@@ -18,11 +18,13 @@
 // mounting. Gating on isDetailOpen is deliberate: calling it unconditionally
 // here made a full Home grid fire ~36 similar-product requests on one open.
 
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { prefetchImages } from '../../../components/AppImage';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
 import { useSimilarProducts } from '../../../components/ProductDetailSheet/useSimilarProducts';
 import { ProductCardView } from './ProductCardView';
+import { useProductAvailability } from './useProductAvailability';
+import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import type { Product } from './types';
 
 interface Props {
@@ -31,9 +33,40 @@ interface Props {
   showDiscountBadge?: boolean;
   compact?: boolean;
   onDark?: boolean;
+  // Perf (issue #22): a parent section can compute the shared delivery
+  // estimate + this product's availability ONCE (one browse-clock /
+  // delivery-settings subscription for the whole row) and pass them down, so a
+  // 30s clock tick re-renders the section node rather than every card. Omit
+  // them and the card self-subscribes below — fine for one-off placements
+  // (wishlist, cart, search) that aren't a big grid.
+  estimatedMinutes?: number;
+  isAvailable?: boolean;
+  availabilityLabel?: string;
 }
 
-export function ProductCard({ product, widthClassName, showDiscountBadge, compact, onDark }: Props) {
+// The per-card shell: owns tap-to-open detail state + similar-product warming
+// (both must survive browse-clock ticks, so they live here, above the
+// memoized view). It receives the delivery estimate + availability as plain
+// values and never subscribes to the clock/query itself.
+const ProductCardShell = memo(function ProductCardShell({
+  product,
+  widthClassName,
+  showDiscountBadge,
+  compact,
+  onDark,
+  estimatedMinutes,
+  isAvailable,
+  availabilityLabel,
+}: {
+  product: Product;
+  widthClassName?: string;
+  showDiscountBadge?: boolean;
+  compact?: boolean;
+  onDark?: boolean;
+  estimatedMinutes: number;
+  isAvailable: boolean;
+  availabilityLabel?: string;
+}) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Gated on isDetailOpen: this fires ONLY once the card is tapped open, not on
@@ -47,6 +80,10 @@ export function ProductCard({ product, widthClassName, showDiscountBadge, compac
     if (similar.data) prefetchImages(similar.data.map((p) => p.imageUrl));
   }, [similar.data]);
 
+  // Stable so the memoized ProductCardView doesn't re-render just because the
+  // shell did.
+  const onPress = useCallback(() => setIsDetailOpen(true), []);
+
   return (
     <>
       <ProductCardView
@@ -55,9 +92,53 @@ export function ProductCard({ product, widthClassName, showDiscountBadge, compac
         showDiscountBadge={showDiscountBadge}
         compact={compact}
         onDark={onDark}
-        onPress={() => setIsDetailOpen(true)}
+        onPress={onPress}
+        estimatedMinutes={estimatedMinutes}
+        isAvailable={isAvailable}
+        availabilityLabel={availabilityLabel}
       />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>
   );
+});
+
+// Self-subscribing variant: one clock + delivery-settings subscription PER
+// card. Used wherever a section didn't lift them (hook rules forbid calling
+// these conditionally inside ProductCard, hence the separate component).
+function SelfSubscribedProductCard({ product, widthClassName, showDiscountBadge, compact, onDark }: Props) {
+  const estimatedMinutes = useDeliveryEstimateMinutes();
+  const availability = useProductAvailability(product);
+  return (
+    <ProductCardShell
+      product={product}
+      widthClassName={widthClassName}
+      showDiscountBadge={showDiscountBadge}
+      compact={compact}
+      onDark={onDark}
+      estimatedMinutes={estimatedMinutes}
+      isAvailable={availability.isAvailable}
+      availabilityLabel={availability.label}
+    />
+  );
+}
+
+export function ProductCard(props: Props) {
+  // Lifted by a parent section → render the shell directly with no per-card
+  // subscription. Otherwise self-subscribe. The branch is stable per call site
+  // (a section always lifts; a one-off never does), so card state persists.
+  if (props.estimatedMinutes !== undefined && props.isAvailable !== undefined) {
+    return (
+      <ProductCardShell
+        product={props.product}
+        widthClassName={props.widthClassName}
+        showDiscountBadge={props.showDiscountBadge}
+        compact={props.compact}
+        onDark={props.onDark}
+        estimatedMinutes={props.estimatedMinutes}
+        isAvailable={props.isAvailable}
+        availabilityLabel={props.availabilityLabel}
+      />
+    );
+  }
+  return <SelfSubscribedProductCard {...props} />;
 }

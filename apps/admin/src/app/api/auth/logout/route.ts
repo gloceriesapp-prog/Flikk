@@ -1,13 +1,13 @@
-// Signs out the current session (clears the auth cookies) and sends the
-// browser back to /login. POST, not GET — a logout that fires on a plain
-// link/prefetch would be a real footgun (any request to it ends the
-// session).
+// Ends the admin session by clearing the signed session cookie
+// (lib/adminSession.ts) and sending the browser back to /login (the OTP
+// entry page). POST, not GET — a logout that fired on a plain link/prefetch
+// would be a footgun (any request to it would end the session).
 
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { ADMIN_SESSION_COOKIE, adminSessionCookieOptions } from '@/lib/adminSession';
 
 export async function POST(request: Request) {
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut();
-  return NextResponse.redirect(new URL('/login', request.url));
+  const response = NextResponse.redirect(new URL('/login', request.url));
+  response.cookies.set(ADMIN_SESSION_COOKIE, '', { ...adminSessionCookieOptions, maxAge: 0 });
+  return response;
 }

@@ -11,6 +11,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { formatDateTime, formatRupees } from '@/lib/format';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
+import { CorrectEarningModal } from '@/components/riders/CorrectEarningModal';
 import type { ActiveRider, RiderEarningPaidStatus, RiderEarningRow, RiderEarningWeek } from '@/lib/types';
 
 const STATUS_STYLE: Record<RiderEarningPaidStatus, { label: string; className: string }> = {
@@ -44,6 +45,7 @@ export default function RiderEarningsPage() {
   const [data, setData] = useState<LedgerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [correcting, setCorrecting] = useState<RiderEarningRow | null>(null);
 
   useEffect(() => {
     fetch('/api/riders')
@@ -187,6 +189,7 @@ export default function RiderEarningsPage() {
               <th className="p-4 text-right font-medium">Extra stops</th>
               <th className="p-4 text-right font-medium">Amount</th>
               <th className="p-4 font-medium">Status</th>
+              <th className="p-4 text-right font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -209,11 +212,20 @@ export default function RiderEarningsPage() {
                   </span>
                   {e.paidAt && <p className="mt-1 text-xs text-muted">{formatDateTime(e.paidAt)}</p>}
                 </td>
+                <td className="p-4 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setCorrecting(e)}
+                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent"
+                  >
+                    Correct
+                  </button>
+                </td>
               </tr>
             ))}
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-sm text-muted">
+                <td colSpan={8} className="py-8 text-center text-sm text-muted">
                   No rider earnings for this selection.
                 </td>
               </tr>
@@ -238,6 +250,10 @@ export default function RiderEarningsPage() {
           </div>
         )}
       </div>
+
+      {correcting && (
+        <CorrectEarningModal row={correcting} onClose={() => setCorrecting(null)} onCorrected={load} />
+      )}
     </div>
   );
 }

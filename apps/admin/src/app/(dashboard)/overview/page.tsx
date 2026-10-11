@@ -13,9 +13,10 @@
 // Supabase Realtime subscription), so this page stays live without a
 // manual refresh — see specs/05-platform/realtime.md.
 //
-// "Riders online" from the original reference isn't real (no rider
-// presence/heartbeat exists yet) — labelled "Active riders" here instead
-// of a fabricated live count. The App downloads card was removed: its
+// "Active riders" is now REAL live presence — app/api/overview counts riders
+// whose status is 'online' with a fresh position ping (lib/riderPresence),
+// the same rule the dispatch map uses — not the old approved-rider count.
+// The App downloads card was removed: its
 // numbers were fixed placeholders and no App Store / Play Console source is
 // wired; it can return once a real install source exists. The old Live Delivery card (a mock rider map) was
 // removed and replaced with LiveTrafficCard — real order-placement volume

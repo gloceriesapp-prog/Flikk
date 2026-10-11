@@ -12,6 +12,9 @@
 import { View } from 'react-native';
 import { ProductCard } from './ProductCard';
 import { SectionTitle } from '../components/SectionTitle';
+import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
+import { useBrowseClock } from '../../../utils/useBrowseClock';
+import { productAvailability } from '../../../utils/productAvailability';
 import type { Product } from './types';
 
 // Same fixed width every fixed-width product card row in this app uses
@@ -29,13 +32,31 @@ interface Props {
 }
 
 export function ProductSection({ title, products, showDiscountBadge = false }: Props) {
+  // Lifted once for the whole section (issue #22): a single delivery-settings
+  // query + a single browse-clock subscription, instead of one per card. The
+  // 30s tick re-renders this node, which recomputes each product's (cheap,
+  // pure) availability and passes primitives down; the memoized cards only
+  // re-render for a product whose availability actually changed.
+  const estimatedMinutes = useDeliveryEstimateMinutes();
+  const date = new Date(useBrowseClock());
   return (
     <View className="pt-8">
       <SectionTitle>{title}</SectionTitle>
       <View className="flex-row flex-wrap gap-x-2.5 gap-y-5 px-5">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} showDiscountBadge={showDiscountBadge} widthClassName={CARD_WIDTH} />
-        ))}
+        {products.map((product) => {
+          const availability = productAvailability(product, date);
+          return (
+            <ProductCard
+              key={product.id}
+              product={product}
+              showDiscountBadge={showDiscountBadge}
+              widthClassName={CARD_WIDTH}
+              estimatedMinutes={estimatedMinutes}
+              isAvailable={availability.isAvailable}
+              availabilityLabel={availability.label}
+            />
+          );
+        })}
       </View>
     </View>
   );

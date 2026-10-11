@@ -172,13 +172,14 @@ function PayoutForm({
       Alert.alert('Permission needed', 'Allow photo access to add your cheque or passbook photo.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, base64: true });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     if (result.canceled) return;
     const asset = result.assets[0];
-    if (!asset?.base64) return;
+    if (!asset?.uri) return;
     setUploadingProof(true);
     try {
-      const compressed = await compressImageToTarget(asset.uri, asset.base64);
+      // No base64 at pick time (#23) — resize/re-encode first, base64 only from the small output.
+      const compressed = await compressImageToTarget(asset.uri, asset.width);
       const { path } = await uploadPayoutProof(compressed.base64);
       set('proofPath', path);
     } catch (err) {

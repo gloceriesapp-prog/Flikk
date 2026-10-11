@@ -5,11 +5,17 @@ export class DeliveryError extends Error {
 }
 // Promotional SMS has no provider. Indian DLT rules only allow pre-approved
 // promotional templates from a registered promotional header, and campaigns
-// here are free text, so SMS stays "not configured" until a template-based
-// MSG91 promotional flow exists. Login OTPs use lib/msg91.ts instead.
+// here are free text, so SMS is permanently "not configured" until a
+// template-based MSG91 promotional flow exists — distinct from email merely
+// being switched off. Login OTPs use lib/msg91.ts instead.
+export type ChannelStatus = 'ready' | 'disabled' | 'sms_not_configured';
+export function promotionChannelStatus(channel: Channel): ChannelStatus {
+  if (channel === 'sms') return 'sms_not_configured';
+  if (process.env.PROMOTIONS_ENABLED !== 'true') return 'disabled';
+  return !!process.env.RESEND_API_KEY && !!process.env.PROMOTIONAL_EMAIL_FROM ? 'ready' : 'disabled';
+}
 export function providerReady(channel: Channel): boolean {
-  if (process.env.PROMOTIONS_ENABLED !== 'true') return false;
-  return channel === 'email' && !!process.env.RESEND_API_KEY && !!process.env.PROMOTIONAL_EMAIL_FROM;
+  return promotionChannelStatus(channel) === 'ready';
 }
 // Endpoint hosts are fixed; configuration cannot turn this into an SSRF proxy.
 export async function deliverPromotion(message: PromotionalMessage): Promise<string> {

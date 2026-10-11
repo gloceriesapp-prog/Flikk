@@ -12,7 +12,8 @@
 // Placeholder "coming soon" rows (Language / Radius / Insurance / Settings)
 // were removed — they'll return as real features, not fake status.
 
-import { Alert, ActivityIndicator, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { AppImage as Image } from '../../components/AppImage';
 import { useState } from 'react';
 import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';

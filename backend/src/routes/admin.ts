@@ -18,6 +18,7 @@ import {
 } from '../lib/products.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { sendPushNotification } from '../lib/pushNotifications.js';
+import { isFleetAudience, sendFleetPush } from '../lib/fleetPush.js';
 import { createNotification } from '../lib/notifications.js';
 
 export const adminRouter = Router();
@@ -268,5 +269,68 @@ adminRouter.post('/trips/:id/failure-refund', async (req: AuthedRequest, res, ne
     const { error } = await supabase.rpc('approve_failed_trip_refund', { p_trip: req.params.id, p_amount_paise: amount });
     if (error) throw new AppError(409, 'REFUND_UNAVAILABLE', 'This trip cannot accept that refund amount.');
     res.json({ queued: true });
+  } catch (error) { next(error); }
+});
+
+// The admin's own email, for the audit trail every admin RPC records. The
+// admin signs in by emailed OTP (migration 20261010110000), so their users
+// row carries the email; no body-supplied identity is trusted here.
+async function adminEmail(req: AuthedRequest): Promise<string> {
+  const { data } = await supabase.from('users').select('email').eq('id', req.user!.id).single();
+  const email = data?.email?.trim();
+  if (!email) throw new AppError(400, 'ADMIN_EMAIL_MISSING', 'Your admin account has no email on file.');
+  return email;
+}
+
+// Maps the SECURITY DEFINER RPCs' SQLSTATEs to HTTP. P0422 bad input, P0404
+// missing row, P0409 state conflict, P0429 rate limited.
+function rpcError(code: string | undefined, fallbackMessage: string, message: string): AppError {
+  switch (code) {
+    case 'P0422': return new AppError(400, 'VALIDATION', message);
+    case 'P0404': return new AppError(404, 'NOT_FOUND', message);
+    case 'P0409': return new AppError(409, 'CONFLICT', message);
+    case 'P0429': return new AppError(429, 'RATE_LIMITED', message);
+    default: return new AppError(400, 'RPC_ERROR', fallbackMessage);
+  }
+}
+
+// Broadcast an Expo push to the rider or partner fleet. audience is one of
+// all_riders / online_riders / partners (see lib/fleetPush.ts). Best-effort
+// send; the audited admin_push_messages row is written whether or not Expo
+// accepts every token.
+adminRouter.post('/fleet-push', async (req: AuthedRequest, res, next) => {
+  try {
+    const { audience, title, body } = req.body as { audience?: unknown; title?: unknown; body?: unknown };
+    if (!isFleetAudience(audience)) throw new AppError(400, 'INVALID_AUDIENCE', 'audience must be all_riders, online_riders or partners.');
+    if (typeof title !== 'string' || title.trim().length < 1 || title.trim().length > 80) throw new AppError(400, 'INVALID_TITLE', 'Title must be 1-80 characters.');
+    if (typeof body !== 'string' || body.trim().length < 1 || body.trim().length > 240) throw new AppError(400, 'INVALID_BODY', 'Message must be 1-240 characters.');
+    try {
+      const result = await sendFleetPush(audience, title.trim(), body.trim(), await adminEmail(req));
+      res.json({ messageId: result.messageId, recipientCount: result.recipientCount, audience: result.audience });
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code) throw rpcError(code, 'Could not send the broadcast.', (err as { message?: string }).message ?? 'Could not send the broadcast.');
+      throw err;
+    }
+  } catch (error) { next(error); }
+});
+
+// Correct a single mis-recorded rider earning. amountPaise is the corrected
+// total in integer paise; reason is required for the audit trail. A
+// settled (paid-out) earning is refused unless allowSettled is true.
+adminRouter.post('/rider-earnings/:id/correct', async (req: AuthedRequest, res, next) => {
+  try {
+    const { amountPaise, reason, allowSettled } = req.body as { amountPaise?: unknown; reason?: unknown; allowSettled?: unknown };
+    if (!Number.isSafeInteger(amountPaise) || (amountPaise as number) <= 0) throw new AppError(400, 'INVALID_AMOUNT', 'Enter the corrected amount in paise (a positive whole number).');
+    if (typeof reason !== 'string' || reason.trim().length < 1 || reason.trim().length > 300) throw new AppError(400, 'INVALID_REASON', 'A reason of 1-300 characters is required.');
+    const { data, error } = await supabase.rpc('admin_correct_rider_earning', {
+      p_earning: req.params.id,
+      p_new_amount_paise: amountPaise,
+      p_reason: reason.trim(),
+      p_admin_email: await adminEmail(req),
+      p_allow_settled: allowSettled === true,
+    });
+    if (error) throw rpcError(error.code, 'Could not correct this earning.', error.message ?? 'Could not correct this earning.');
+    res.json(data);
   } catch (error) { next(error); }
 });

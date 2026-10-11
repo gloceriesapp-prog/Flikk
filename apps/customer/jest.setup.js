@@ -10,7 +10,7 @@ jest.mock('expo-secure-store', () => {
   };
 });
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
-jest.mock('@sentry/react-native', () => ({ init: jest.fn(), wrap: c => c, captureException: jest.fn(), captureMessage: jest.fn() }));
+jest.mock('@sentry/react-native', () => ({ init: jest.fn(), wrap: c => c, captureException: jest.fn(), captureMessage: jest.fn(), reactNavigationIntegration: () => ({ name: 'ReactNavigation', setupOnce: jest.fn(), registerNavigationContainer: jest.fn() }) }));
 jest.mock('react-native-cashfree-pg-sdk', () => ({
   CFPaymentGatewayService: { setCallback: jest.fn(), removeCallback: jest.fn(), doWebPayment: jest.fn(), doPayment: jest.fn() },
 }));

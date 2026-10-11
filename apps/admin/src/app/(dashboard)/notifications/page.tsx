@@ -7,6 +7,7 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { FLEET_AUDIENCE_LABEL, FLEET_AUDIENCES, type FleetAudience } from '@/lib/fleetPush';
 
 const inputClass = 'w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10';
 
@@ -161,6 +162,108 @@ function SendPushCard({ initialCustomerId, onSent }: { initialCustomerId: string
   );
 }
 
+interface FleetMessage {
+  id: string;
+  audience: FleetAudience;
+  title: string;
+  body: string;
+  recipients: number;
+  adminEmail: string;
+  createdAt: string;
+}
+
+// Free-text operational broadcast to the rider/partner fleet (not customers).
+// Fire-and-forget OS push — there is no per-device outbox, so delivery is not
+// tracked here the way customer sends are.
+function FleetBroadcastCard() {
+  const [audience, setAudience] = useState<FleetAudience>('all_riders');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const [sent, setSent] = useState<FleetMessage[]>([]);
+
+  const loadSent = useCallback(async () => {
+    try {
+      const res = await fetch('/api/fleet-push');
+      if (res.ok) setSent((await res.json()) as FleetMessage[]);
+    } catch {
+      // The compose form still works without the history.
+    }
+  }, []);
+
+  useEffect(() => {
+    Promise.resolve().then(loadSent);
+  }, [loadSent]);
+
+  async function send() {
+    if (!window.confirm(`Send this broadcast to ${FLEET_AUDIENCE_LABEL[audience].toLowerCase()}? Everyone gets an immediate notification.`)) return;
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await fetch('/api/fleet-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audience, title, body }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? 'Could not send.');
+      setResult(`Sent to ${data.recipientCount} device${data.recipientCount === 1 ? '' : 's'}.`);
+      setTitle('');
+      setBody('');
+      await loadSent();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-3xl border border-border bg-card p-5">
+      <h2 className="mb-1 text-sm font-semibold text-ink">Broadcast to riders &amp; partners</h2>
+      <p className="mb-4 text-xs text-muted">
+        A one-off operational message straight to their phones. Online riders only reaches riders currently on shift. One send per audience per minute, 20 per hour.
+      </p>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap gap-4 text-sm text-ink">
+          {FLEET_AUDIENCES.map((a) => (
+            <label key={a} className="flex items-center gap-2">
+              <input type="radio" name="fleet-audience" checked={audience === a} onChange={() => setAudience(a)} /> {FLEET_AUDIENCE_LABEL[a]}
+            </label>
+          ))}
+        </div>
+        <input aria-label="Broadcast title" value={title} maxLength={80} placeholder="Title (up to 80 characters)" onChange={(e) => setTitle(e.target.value)} className={inputClass} />
+        <textarea aria-label="Broadcast message" value={body} maxLength={240} rows={3} placeholder="Message (up to 240 characters)" onChange={(e) => setBody(e.target.value)} className={inputClass} />
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => void send()} disabled={busy || !title.trim() || !body.trim()}
+            className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white disabled:opacity-40">
+            {busy ? 'Sending…' : 'Send broadcast'}
+          </button>
+          {result && <span role="status" className="text-xs text-green-700">{result}</span>}
+        </div>
+        {error && <p className="text-xs font-medium text-danger">{error}</p>}
+      </div>
+
+      {sent.length > 0 && (
+        <ul className="mt-5 flex flex-col gap-3 border-t border-border pt-4">
+          {sent.map((m) => (
+            <li key={m.id} className="border-b border-border pb-3 last:border-0 last:pb-0">
+              <p className="text-sm font-medium text-ink">{m.title}</p>
+              <p className="text-xs text-muted">{m.body}</p>
+              <p className="mt-1 text-xs text-muted">
+                {FLEET_AUDIENCE_LABEL[m.audience] ?? m.audience} · {m.recipients} recipient{m.recipients === 1 ? '' : 's'} · {m.adminEmail} · {new Date(m.createdAt).toLocaleString('en-IN')}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function NotificationsPage({ searchParams }: { searchParams: Promise<{ customerId?: string }> }) {
   const { customerId } = use(searchParams);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -197,6 +300,8 @@ export default function NotificationsPage({ searchParams }: { searchParams: Prom
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
 
       <SendPushCard initialCustomerId={customerId && /^[0-9a-f-]{36}$/i.test(customerId) ? customerId : null} onSent={load} />
+
+      <FleetBroadcastCard />
 
       <div className="rounded-3xl border border-border bg-card p-5">
         <h2 className="mb-1 text-sm font-semibold text-ink">Order update messages</h2>

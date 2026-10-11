@@ -30,7 +30,7 @@ async function run(req: Request) {
   return { res, next };
 }
 beforeEach(() => {
-  vi.clearAllMocks(); mocks.validate.mockReset(); mocks.config.configured = true;
+  vi.clearAllMocks(); mocks.validate.mockReset(); mocks.validate.mockResolvedValue(10000); mocks.config.configured = true;
   mocks.session.mockResolvedValue({ data: null, error: null });
 });
 
@@ -39,12 +39,12 @@ it('settles a verified payment via the stored Cashfree order id, re-validating w
   const { res, next } = await run(success());
   expect(next).not.toHaveBeenCalled();
   expect(mocks.validate).toHaveBeenCalledWith({ orderId: 'local-order' }, '1453002795', 'gl_abc');
-  expect(mocks.settle).toHaveBeenCalledWith({ orderId: 'local-order' }, '1453002795');
+  expect(mocks.settle).toHaveBeenCalledWith({ orderId: 'local-order' }, '1453002795', 10000, 'INR');
   expect(res.status).toHaveBeenCalledWith(200);
 });
 it('falls back to order_tags when the session write was lost', async () => {
   await run(success({ order_tags: { gloceries_trip_id: 'local-trip' } }));
-  expect(mocks.settle).toHaveBeenCalledWith({ tripId: 'local-trip' }, '1453002795');
+  expect(mocks.settle).toHaveBeenCalledWith({ tripId: 'local-trip' }, '1453002795', 10000, 'INR');
 });
 it('acknowledges payments that belong to no checkout without settling', async () => {
   const { res } = await run(success());
@@ -70,7 +70,7 @@ it('settles the same webhook twice through the idempotent RPC only', async () =>
   mocks.session.mockResolvedValue({ data: { kind: 'order', target_id: 'local-order' }, error: null });
   const req = success();
   await run(req); await run(req);
-  expect(mocks.settle).toHaveBeenNthCalledWith(2, { orderId: 'local-order' }, '1453002795');
+  expect(mocks.settle).toHaveBeenNthCalledWith(2, { orderId: 'local-order' }, '1453002795', 10000, 'INR');
 });
 it('applies final refund statuses only to rows still processing', async () => {
   await run(signed({ type: 'REFUND_STATUS_WEBHOOK', data: { refund: { refund_id: 'rf_1', refund_status: 'SUCCESS' } } }));

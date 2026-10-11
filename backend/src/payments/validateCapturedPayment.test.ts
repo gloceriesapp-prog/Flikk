@@ -16,8 +16,8 @@ beforeEach(() => {
     return query;
   });
 });
-it('accepts only a SUCCESS payment bound to this checkout and its saved total', async () => {
-  await expect(validateCapturedPayment(target, '77', cfId)).resolves.toBeUndefined();
+it('accepts only a SUCCESS payment bound to this checkout and returns its captured paise', async () => {
+  await expect(validateCapturedPayment(target, '77', cfId)).resolves.toBe(3000);
 });
 it('rejects a payment from another Cashfree order', async () => {
   await expect(validateCapturedPayment(target, '77', 'gl_someoneelse')).rejects.toMatchObject({ code: 'PAYMENT_MISMATCH' });

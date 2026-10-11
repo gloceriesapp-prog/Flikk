@@ -8,7 +8,8 @@
 // changes it with the button. One component = one fix point, same
 // consistency rule CLAUDE.md sets for the three RN apps.
 
-import { Alert, Image, Linking, Pressable, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, Text, View } from 'react-native';
+import { AppImage as Image } from '../../../components/AppImage';
 import { useNavigation } from '@react-navigation/native';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';

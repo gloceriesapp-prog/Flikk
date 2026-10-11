@@ -36,6 +36,7 @@ import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { computeWelcomeVisible } from './welcomeGate';
 import { useNotifications } from '../features/notifications/useNotifications';
 import { notificationNavigation, flushOrderNotification } from '../features/notifications/navigation';
+import { navigationIntegration } from '../observability/crashReporting';
 
 // Minimum floor the WelcomeScreen stays up (ms) — just long enough to avoid a
 // one-frame flash when SecureStore hydration resolves almost instantly.
@@ -110,7 +111,18 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer key={customerId ?? 'guest'} linking={linking} ref={notificationNavigation} onReady={() => void flushOrderNotification()}>
+    <NavigationContainer
+      key={customerId ?? 'guest'}
+      linking={linking}
+      ref={notificationNavigation}
+      onReady={() => {
+        // Hook Sentry route-change tracing to the real container (issue #31).
+        // onReady re-fires when the container remounts on login/logout (the
+        // `key` change), which re-registers against the new container — safe.
+        navigationIntegration.registerNavigationContainer(notificationNavigation);
+        void flushOrderNotification();
+      }}
+    >
       {accessToken || isGuest ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

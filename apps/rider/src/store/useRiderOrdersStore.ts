@@ -85,6 +85,23 @@ const dedupById = (orders: RiderOrder[]): RiderOrder[] => {
   });
 };
 
+// #22: true when two arrays have identical content (same length, same per-item
+// JSON by position). The 12s assignment poll and 45s dispatch-offer refresh
+// rebuild fresh arrays every tick even when nothing actually changed; callers
+// use this to keep the PREVIOUS array reference on an unchanged poll, so Home's
+// store subscribers (and the memoized cards) don't re-render every tick.
+// Positional on purpose — a reorder is a real change. JSON per item compares
+// id+status+every field at once; both lists are small (a handful of active
+// orders / nearby offers), so the cost is negligible.
+function sameList<T>(prev: readonly T[], next: readonly T[]): boolean {
+  if (prev === next) return true;
+  if (prev.length !== next.length) return false;
+  for (let i = 0; i < prev.length; i++) {
+    if (JSON.stringify(prev[i]) !== JSON.stringify(next[i])) return false;
+  }
+  return true;
+}
+
 // Real rider apps give ~15-30s to accept before auto-reassigning — kept as
 // a local UX device (see this file's own header note on why there's
 // nothing real to "reassign" yet) so the interrupt still has urgency
@@ -241,7 +258,10 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       return;
     }
     const offers = await fetchDispatchOffers(coords.latitude, coords.longitude).catch(() => null);
-    if (offers) set({ nearbyOffers: offers });
+    // #22: keep the previous nearbyOffers ref when the refreshed list is
+    // identical, so Home's "Pickups near you" subscribers don't re-render on a
+    // 45s tick that changed nothing.
+    if (offers) set((s) => ({ nearbyOffers: sameList(s.nearbyOffers, offers) ? s.nearbyOffers : offers }));
   }
 
   function startForegroundPing() {
@@ -369,7 +389,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       }
 
       set({
-        activeOrders: nextActive,
+        activeOrders: sameList(state.activeOrders, nextActive) ? state.activeOrders : nextActive,
         completedOrders: newlyDelivered.length ? [...newlyDelivered, ...state.completedOrders] : state.completedOrders,
         cancelledOrders: newlyCancelled.length ? [...newlyCancelled, ...state.cancelledOrders] : state.cancelledOrders,
         incomingOrder: nextIncoming,
@@ -651,3 +671,14 @@ useRiderOrdersStore.subscribe((state, prev) => {
   if (state.activeOrders !== prev.activeOrders) void persistActive(state.activeOrders);
   if (state.cancelledOrders !== prev.cancelledOrders) void persistCancelled(state.cancelledOrders);
 });
+
+// Runnable self-check for sameList (the #22 ref-preservation guard). No test
+// runner here — a __DEV__ assert block is the smallest thing that fails loudly
+// if the comparison regresses. Stripped from production bundles.
+if (__DEV__) {
+  const a = [{ id: 'x', status: 'assigned' }];
+  console.assert(sameList(a, a) === true, 'same reference is unchanged');
+  console.assert(sameList([{ id: 'x', status: 'assigned' }], [{ id: 'x', status: 'assigned' }]) === true, 'identical content is unchanged');
+  console.assert(sameList([{ id: 'x', status: 'assigned' }], [{ id: 'x', status: 'picked_up' }]) === false, 'a status change is a change');
+  console.assert(sameList([{ id: 'x' }], [{ id: 'x' }, { id: 'y' }]) === false, 'added item is a change');
+}

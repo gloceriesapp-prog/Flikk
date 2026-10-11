@@ -14,6 +14,17 @@ import { sendPushNotifications } from './pushNotifications.js';
 // Best-effort per-rider (sendPushNotification itself never throws) — one
 // rider with a stale/invalid token must never block the rest of the
 // broadcast.
+// Dispatch is pure Haversine distance (nearby_online_riders, migration 110 →
+// nearby_dispatchable_riders, migration 113): the push audience is every
+// online rider within the current radius, under their active-trip cap. It
+// deliberately does NOT read riders.zone_id. That column (migration
+// 20261008161055) is an admin bookkeeping/record field, backfilled to the one
+// active zone — advisory only, it does not gate or affect routing. v1 is
+// single-zone by scope (CLAUDE.md: multi-zone is explicitly out of scope), so
+// a zone filter would be a no-op today and premature multi-zone work. If/when
+// multi-zone ships, add `AND r.zone_id = <order zone>` inside those two SQL
+// RPCs (a migration) and pass the order's store zone through here — until
+// then nothing should present zone_id as influencing dispatch.
 async function broadcastToRadius(orderId: string, lat: number, lng: number, storeName: string, radiusM: number): Promise<number> {
   const { data: nearby, error } = await supabase.rpc('nearby_dispatchable_riders', {
     p_store_lat: lat,

@@ -50,13 +50,18 @@ function App() {
   // (e.g. "Gilroy-Regular") — the actual global default is applied via
   // global.css's `@layer base { * { font-family: ... } }`, not from this
   // hook or any React defaultProps mechanism.
-  const [fontsLoaded, fontError] = useFonts({ ...GILROY_FONT_FILES });
+  //
+  // We intentionally do NOT gate first paint on this (issue #28): the tree
+  // renders immediately with the system-font fallback and Gilroy swaps in once
+  // useFonts resolves (it re-renders on completion). Nothing crashes if a face
+  // isn't registered yet — RN falls back to the system font for an unknown
+  // fontFamily. The native splash is hidden on first layout below, not on
+  // fonts, so slow font decode never holds a blank screen.
+  useFonts({ ...GILROY_FONT_FILES });
 
   const onRootLayout = useCallback(() => {
-    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
-
-  if (!fontsLoaded && !fontError) return null;
+    void SplashScreen.hideAsync();
+  }, []);
 
   return (
     // GestureHandlerRootView must wrap everything that uses

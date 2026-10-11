@@ -12,6 +12,7 @@ import { AppImage as Image } from '../../../components/AppImage';
 // variant) since a single number would otherwise misreport what it
 // actually costs — see summarizeVariants in ../data.ts.
 
+import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
@@ -24,7 +25,7 @@ interface Props {
   onPressView: (productId: string) => void;
 }
 
-export function ProductRow({ product, onPressView }: Props) {
+export const ProductRow = memo(function ProductRow({ product, onPressView }: Props) {
   const hasMultipleSizes = product.variants.length > 1;
   const priceLabel = hasMultipleSizes ? `From ₹${product.price}` : `₹${product.price}`;
 
@@ -87,4 +88,4 @@ export function ProductRow({ product, onPressView }: Props) {
       </View>
     </Pressable>
   );
-}
+});

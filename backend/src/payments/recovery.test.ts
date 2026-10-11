@@ -70,7 +70,7 @@ it('refuses legacy (non-Cashfree) sessions', async () => {
 it('settles a SUCCESS payment before another payment launch', async () => {
   mocks.payments.mockResolvedValue([pay('FAILED'), pay('SUCCESS')]);
   await expect(requirePaymentRetrySafe(target, cfId, 30)).rejects.toMatchObject({ code: 'PAYMENT_RECONCILING' });
-  expect(mocks.settle).toHaveBeenCalledWith({ orderId: id }, 'cf_SUCCESS');
+  expect(mocks.settle).toHaveBeenCalledWith({ orderId: id }, 'cf_SUCCESS', 3000, 'INR');
 });
 it('blocks a second payment while an attempt is still pending, allows one after failures', async () => {
   mocks.payments.mockResolvedValue([pay('PENDING')]);

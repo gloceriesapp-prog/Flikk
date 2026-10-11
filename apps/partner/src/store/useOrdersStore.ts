@@ -36,7 +36,7 @@
 import { create } from 'zustand';
 import { fetchOrders, updateOrderStatus, type ApiOrder } from '../api/orders';
 import { buildSampleOrders, buildSimulatedIncomingOrder, mapApiOrder, type PartnerOrder } from '../screens/orders/data';
-import { computeNewlyArrivedIds, computeJustDeliveredIds } from './orderBaseline';
+import { computeNewlyArrivedIds, computeJustDeliveredIds, sameOrderList } from './orderBaseline';
 
 // India-only single-zone app (CLAUDE.md) — 'Asia/Kolkata' explicitly, not
 // the device's own timezone, so this reads the real IST calendar day
@@ -149,8 +149,14 @@ export const useOrdersStore = create<OrdersState>((set) => ({
       // earned" banners just because this was the first fetch).
       const genuinelyJustDelivered = computeJustDeliveredIds(state.orders, mapped, state.baselineEstablished);
 
+      // Keep the previous array REFERENCE when this poll changed nothing — a
+      // new `mapped` every 10s otherwise re-renders every OrderCard even though
+      // the content is identical. Diffing still runs against the real `mapped`
+      // above; only the stored value falls back to the old ref.
+      const nextOrders = sameOrderList(state.orders, mapped) ? state.orders : mapped;
+
       return {
-        orders: mapped,
+        orders: nextOrders,
         baselineEstablished: true,
         newlyArrivedOrderIds: genuinelyNew.length > 0 ? new Set([...state.newlyArrivedOrderIds, ...genuinelyNew]) : state.newlyArrivedOrderIds,
         justDeliveredOrderIds:

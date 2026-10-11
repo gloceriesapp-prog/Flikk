@@ -15,7 +15,7 @@
 // doesn't open a second, nested detail sheet.
 
 import { Text, View } from 'react-native';
-import { ProductCardView } from '../../screens/home/products/ProductCardView';
+import { SelfServiceProductCardView } from '../../screens/home/products/ProductCardView';
 import type { Product } from '../../screens/home/products/types';
 
 const MAX_PRODUCTS = 9;
@@ -30,7 +30,7 @@ export function SimilarProductsRow({ products }: Props) {
       <Text className="text-[17px] font-bold text-ink">Similar products</Text>
       <View className="flex-row flex-wrap gap-x-3 gap-y-4">
         {products.slice(0, MAX_PRODUCTS).map((product) => (
-          <ProductCardView key={product.id} product={product} widthClassName="w-[31%]" />
+          <SelfServiceProductCardView key={product.id} product={product} widthClassName="w-[31%]" />
         ))}
       </View>
     </View>

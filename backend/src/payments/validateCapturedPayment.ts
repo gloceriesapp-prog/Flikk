@@ -5,8 +5,10 @@ import type { OrderIdBody } from './types.js';
 
 // A webhook (or any client claim) is not enough: re-read Cashfree and require
 // that the payment belongs to THIS checkout's Cashfree order, succeeded, and
-// is for this exact saved amount.
-export async function validateCapturedPayment(target: OrderIdBody, paymentId: string, expectedOrderId?: string) {
+// is for this exact saved amount. Returns the captured amount in paise (equal
+// to this checkout's total) so the caller can thread it into the settlement
+// write boundary (settle_checkout_payment's own amount guard).
+export async function validateCapturedPayment(target: OrderIdBody, paymentId: string, expectedOrderId?: string): Promise<number> {
   if (Boolean(target.orderId) === Boolean(target.tripId)) throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'Choose exactly one payment target.');
   const id = (target.tripId ?? target.orderId)!;
   const providerOrderId = cashfreeOrderId(id);
@@ -24,4 +26,5 @@ export async function validateCapturedPayment(target: OrderIdBody, paymentId: st
     || payment.order_id !== providerOrderId || payment.payment_currency !== 'INR' || toPaise(payment.payment_amount) !== expected)
     throw new AppError(409, 'PAYMENT_MISMATCH', 'Payment does not match this checkout. Contact support.');
   if (payment.payment_status !== 'SUCCESS') throw new AppError(409, 'PAYMENT_RECONCILING', 'Your payment is still being confirmed. Please wait before paying again.');
+  return expected;
 }

@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { monitorEventLoopDelay, performance } from 'node:perf_hooks';
 import { metrics } from './metrics.js';
+import { workerHealthFromHeartbeat } from './workerHealth.js';
 import { supabase } from '../db/supabase.js';
 import { logger } from '../lib/logger.js';
 export function authorizedMetrics(req: IncomingMessage, token: string | undefined) {
@@ -52,6 +53,25 @@ export async function startMonitoring(role: 'api' | 'worker', ready: () => boole
         if (/^[a-z_]+$/.test(name) && typeof value === 'number') metrics.gauge(`flikk_database_${name}`,value,{role});
       metrics.gauge('flikk_database_collector_success',1,{role});
     } catch(err) { metrics.gauge('flikk_database_collector_success',0,{role}); logger.warn({err},'Capacity collector unavailable; apply migration 077'); }
+    // Worker liveness, surfaced only from the API side (the worker stamps the
+    // heartbeat we read here, so it never needs to grade itself). The freshest
+    // scheduled_work.last_success_at is a free worker heartbeat — see
+    // observability/workerHealth.ts. Exposed as a metric + WARN so "workers
+    // down" is detectable, never silent; deliberately NOT folded into /readyz,
+    // which must keep reporting this API process healthy even when the
+    // separate worker is down (failing readyz would evict a serving API).
+    if (role === 'api') {
+      try {
+        const { data, error } = await supabase.from('scheduled_work')
+          .select('last_success_at').order('last_success_at',{ascending:false,nullsFirst:false}).limit(1).maybeSingle();
+        if (error) throw error;
+        const lastRunMs = data?.last_success_at ? Date.parse(data.last_success_at) : null;
+        const health = workerHealthFromHeartbeat(Number.isFinite(lastRunMs as number) ? lastRunMs : null, Date.now());
+        metrics.gauge('flikk_worker_healthy', health.healthy ? 1 : 0);
+        if (health.ageSeconds !== null) metrics.gauge('flikk_worker_heartbeat_age_seconds', health.ageSeconds);
+        if (health.warn) logger.warn({ ageSeconds: health.ageSeconds }, 'Background worker heartbeat is stale; dispatch, payouts and stuck-state alerts may not be running');
+      } catch(err) { metrics.gauge('flikk_worker_healthy',0); logger.warn({err},'Worker heartbeat check unavailable'); }
+    }
   };
   const sample = () => { if (!collecting) collecting = collect().finally(() => {collecting=undefined;}); };
   sample();

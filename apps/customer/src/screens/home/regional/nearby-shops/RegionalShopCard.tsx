@@ -2,7 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 import { ArrowRight01Icon, Store03Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../../components/AppIcon';
 import { GroceryProductTile } from '../../groceries/components/GroceryProductTile';
-import { ProductCardView } from '../../products/ProductCardView';
+import { SelfServiceProductCardView } from '../../products/ProductCardView';
 import type { Product } from '../../products/types';
 
 interface Props {
@@ -36,7 +36,7 @@ export function RegionalShopCard({ name, products, isOpen, distanceLabel, previe
             {!previewOnly && isOpen === false ? (
               <View pointerEvents="none" accessible accessibilityLabel={`${product.name}, ${product.weight}. Store closed; open the store to browse.`}>
                 <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                  <ProductCardView product={product} widthClassName="w-full" showDiscountBadge />
+                  <SelfServiceProductCardView product={product} widthClassName="w-full" showDiscountBadge />
                 </View>
               </View>
             ) : <GroceryProductTile product={product} previewOnly={previewOnly} />}

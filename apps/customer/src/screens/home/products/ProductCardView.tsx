@@ -1,6 +1,4 @@
-import { useProductAvailability } from './useProductAvailability';
-import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Add01Icon, FlashIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
@@ -14,6 +12,8 @@ import { getPerUnitPriceLabel } from '../../../utils/perUnitPrice';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
 import { useWishlistStore } from '../../../store/useWishlistStore';
+import { useProductAvailability } from './useProductAvailability';
+import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import type { Product } from './types';
 
 // Categories where a veg/non-veg mark is meaningful — only these show the dot.
@@ -31,10 +31,19 @@ interface Props {
   // Everything with its own light chip/pill bg is left untouched.
   onDark?: boolean;
   onPress?: () => void;
+  // Lifted from the parent section so one shared 30s browse-clock tick / a
+  // delivery-settings refetch re-renders the section node once instead of
+  // every card. ProductCard supplies these — either passing a section's
+  // lifted values straight through, or self-subscribing for standalone
+  // placements outside a big grid. Passed as primitives (not the availability
+  // object) so React.memo's default shallow compare bails on a tick that
+  // didn't actually change this card's availability.
+  estimatedMinutes: number;
+  isAvailable: boolean;
+  availabilityLabel?: string;
 }
 
-export function ProductCardView({ product, widthClassName = 'w-[32%]', showDiscountBadge = false, compact = false, onDark = false, onPress }: Props) {
-  const estimatedMinutes = useDeliveryEstimateMinutes();
+function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscountBadge = false, compact = false, onDark = false, onPress, estimatedMinutes, isAvailable, availabilityLabel }: Props) {
   const {
     id,
     name,
@@ -49,7 +58,6 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
     isVeg = true,
   } = product;
 
-  const availability = useProductAvailability(product);
   const discountPercent = showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
   const perUnitLabel = getPerUnitPriceLabel(weight, price);
 
@@ -97,12 +105,12 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
         <View
           className="absolute bottom-0 right-0 z-10"
         >
-          {!availability.isAvailable ? (
-            <View className="rounded-lg bg-[#FFF0EE] px-2 py-2"><Text className="text-[10px] font-bold text-[#B42318]">{availability.label}</Text></View>
+          {!isAvailable ? (
+            <View className="rounded-lg bg-[#FFF0EE] px-2 py-2"><Text className="text-[10px] font-bold text-[#B42318]">{availabilityLabel}</Text></View>
           ) : quantity === 0 ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
               onPress={() =>
-                addToCart({ isAvailable: availability.isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
+                addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
               }
               className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
             >
@@ -181,5 +189,37 @@ export function ProductCardView({ product, widthClassName = 'w-[32%]', showDisco
         </View>
       </View>
     </Pressable>
+  );
+}
+
+// Memoized: this is the heavy presentational node (full View/Text tree +
+// NativeWind class processing + icons). Default shallow compare is correct —
+// every prop is a primitive or a referentially-stable value: `product` keeps
+// its identity across browse-clock ticks (the list array isn't rebuilt), and
+// `onPress` is a useCallback in ProductCard. The per-card cart/wishlist store
+// subscriptions still live inside, so quantity/bookmark changes re-render as
+// before; only the shared clock + delivery-settings subscriptions were lifted
+// out to the section.
+export const ProductCardView = memo(ProductCardViewImpl);
+
+// Self-subscribing presentational card: for the few places that render the
+// card WITHOUT ProductCard's tap-to-open detail sheet (preview/sample tiles,
+// the similar-products grid inside the detail sheet). It owns the clock +
+// delivery-settings subscription so those call sites don't duplicate it, and
+// still feeds the memoized view primitives (so a tick that doesn't change this
+// product's availability won't re-render the heavy node). NOT for big grids —
+// there a section lifts the subscription once and feeds ProductCard.
+export function SelfServiceProductCardView(
+  props: Omit<Props, 'estimatedMinutes' | 'isAvailable' | 'availabilityLabel'>,
+) {
+  const estimatedMinutes = useDeliveryEstimateMinutes();
+  const availability = useProductAvailability(props.product);
+  return (
+    <ProductCardView
+      {...props}
+      estimatedMinutes={estimatedMinutes}
+      isAvailable={availability.isAvailable}
+      availabilityLabel={availability.label}
+    />
   );
 }

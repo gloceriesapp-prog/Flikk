@@ -20,6 +20,7 @@ import { fetchTodayStats } from '../../api/stats';
 import { useChangeStoreLocation } from '../../hooks/useChangeStoreLocation';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { useStoreProfileStore } from '../../store/useStoreProfileStore';
+import { useFocusedPoll } from '../../features/foreground-refresh/useFocusedPoll';
 import { msUntilNextIstMidnight } from '../../utils/nextIstMidnight';
 import type { PartnerOrderStatus } from './data';
 import { OrderCard } from './components/OrderCard';
@@ -71,6 +72,13 @@ export function OrdersScreen({ navigation }: Props) {
     void loadProfile();
     void loadOrders();
   }, [loadProfile, loadOrders]));
+
+  // Orders are already polled at 3.5s (features/incoming-order-alert/
+  // useOrderPolling, mounted app-wide for an approved session), but the store
+  // profile — the Open/Closed state and admin-suspension banner this screen's
+  // header shows — is otherwise fetch-on-focus only. Poll it while focused so
+  // a suspension / re-activation done in admin lands without a manual pull.
+  useFocusedPoll(loadProfile, 25_000);
 
   // Real IST-calendar-day-scoped stats (api/stats.ts, GET /partner/stats/
   // today) — replaces the old client-side derivation from useOrdersStore's

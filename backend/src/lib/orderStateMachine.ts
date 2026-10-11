@@ -33,6 +33,15 @@
 export type OrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'failed';
 export type Role = 'customer' | 'store_owner' | 'rider' | 'admin';
 
+// ALLOWED_TRANSITIONS is the single source of truth for which status moves are
+// *valid at all*. The admin SQL RPCs (admin_advance_order_status,
+// admin_cancel_order — migration 109) are a SECURITY DEFINER role-override that
+// lets a founder drive placed->packed, packed->out_for_delivery and
+// placed/packed->cancelled. Those are deliberately NOT merged into this table
+// (merging a role-override into a DEFINER RPC is risky), so the two can drift.
+// orderStateMachineAdminConsistency.test.ts pins them together: every move the
+// admin SQL permits must stay a valid transition here, and the admin RPC must
+// never reach the rider-only out_for_delivery->delivered/failed moves.
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   placed: ['packed', 'cancelled'],
   packed: ['out_for_delivery', 'cancelled'],

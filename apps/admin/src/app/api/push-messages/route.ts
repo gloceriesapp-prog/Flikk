@@ -16,6 +16,7 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from('admin_push_messages')
     .select('id, audience, customer_id, title, body, recipient_count, admin_email, created_at, users(name, phone)')
+    .in('audience', ['customer', 'all_customers'])
     .order('created_at', { ascending: false })
     .limit(20);
   if (error) return NextResponse.json({ error: 'Could not load sent messages.' }, { status: 500 });
