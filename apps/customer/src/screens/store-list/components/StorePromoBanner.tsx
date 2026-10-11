@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   StyleSheet,
   useWindowDimensions,
@@ -6,17 +5,19 @@ import {
 } from 'react-native';
 
 import { AppImage as Image } from '../../../components/AppImage';
-import { storageUrl } from '../../../utils/storageUrl';
 import { useCopyImage } from '../../../api/appConfig';
 
 const PROMO_IMAGE_URI =
-  storageUrl('Images/Indian%20neighbourhood%20shop%20parade.png');
+  'https://images.gloceries.com/appsui/store-welcome.png';
 
-const PROMO_BACKGROUND = '#D5E5F7';
+const PROMO_BACKGROUND = '#849B76';
 
 export function StorePromoBanner() {
   const { width: screenWidth } = useWindowDimensions();
-  // Admin App content: stores.promo.imageUrl.
+  // Admin App content: stores.promo.imageUrl. Kept read here (with the hosted
+  // default as fallback) so admin can still swap the promo image AND the
+  // backend copyKeys invariant — every registered key must be read by the
+  // customer app — stays satisfied.
   const imageUri = useCopyImage('stores.promo.imageUrl', PROMO_IMAGE_URI);
 
   return (
@@ -35,23 +36,6 @@ export function StorePromoBanner() {
         style={StyleSheet.absoluteFill}
         contentFit="cover"
         contentPosition="bottom center"
-      />
-
-      <LinearGradient
-        colors={[
-          PROMO_BACKGROUND,
-          'rgba(213,229,247,0)',
-        ]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 40,
-        }}
-        pointerEvents="none"
       />
     </View>
   );

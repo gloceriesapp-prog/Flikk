@@ -12,10 +12,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
-import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Easing, runOnJS, useAnimatedReaction, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { BrandFooter } from '../../components/BrandFooter';
 import { prefetchImages } from '../../components/AppImage';
 import { AllStoresSection } from './all-stores/AllStoresSection';
 import { useAllStores } from './all-stores/useAllStores';
@@ -25,29 +24,23 @@ import { StoreHeader } from './components/StoreHeader';
 import { StorePromoBanner } from './components/StorePromoBanner';
 import { NearestToYouSection } from './nearest/NearestToYouSection';
 import { PopularThisWeekSection } from './popular/PopularThisWeekSection';
-import { getStoreImageUri, PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
+import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { useLikedStoresStore } from '../../store/useLikedStoresStore';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Store'>;
 
 export function StoreListScreen({ navigation }: Props) {
-  const { data: allStores = [] } = useAllStores();
+  const { data: allStores = [], isError, isRefetching, refetch } = useAllStores();
 
-  // Each card fetches 3 photos (StoreCard.tsx) from picsum.photos, a slow
-  // third-party random-image generator with no real CDN edge — on Android,
-  // waiting for each card's own request to start only once it scrolls into
-  // view is what read as "images take forever to load". Firing all of them
-  // the moment the list resolves overlaps that latency with everything else
-  // the screen is already doing, so most tiles are warm by the time they're
-  // actually scrolled to. Same pattern AppImage.tsx's own prefetchImages
-  // already documents for ProductCard.
+  // Each StoreCard renders exactly one image — store.photoUrl, or the local
+  // placeholder when a store has no photo yet. Prefetch that one URI per store
+  // the moment the list resolves so tiles are warm by the time they scroll
+  // into view, overlapping the fetch with the rest of the screen's work (same
+  // pattern AppImage.tsx's own prefetchImages documents for ProductCard). No
+  // third-party picsum images here anymore — only real/placeholder photos.
   useEffect(() => {
-    const uris = allStores.flatMap((store) => [
-      store.photoUrl || PLACEHOLDER_IMAGE_URI,
-      getStoreImageUri(`${store.id}-b`),
-      getStoreImageUri(`${store.id}-c`),
-    ]);
+    const uris = allStores.map((store) => store.photoUrl || PLACEHOLDER_IMAGE_URI);
     prefetchImages(uris);
   }, [allStores]);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -99,6 +92,18 @@ export function StoreListScreen({ navigation }: Props) {
   const navHidden = useSharedValue(0);
   const SCROLL_HIDE_THRESHOLD = 6;
 
+  // Status bar flips light→dark as the header scrolls from its green gradient
+  // onto the white frosted state (StoreHeader), so the clock/battery stay
+  // legible on both. 40px matches the header's own collapse window.
+  const [statusBarStyle, setStatusBarStyle] = useState<'light' | 'dark'>('light');
+  useAnimatedReaction(
+    () => scrollY.value > 40,
+    (scrolled, prev) => {
+      if (scrolled !== prev) runOnJS(setStatusBarStyle)(scrolled ? 'dark' : 'light');
+    },
+    [],
+  );
+
   const scrollHandler = useAnimatedScrollHandler((event) => {
     const y = event.contentOffset.y;
     scrollY.value = y;
@@ -116,46 +121,50 @@ export function StoreListScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 bg-[#F6F6F6]">
-      {/* Dark (black) status-bar icons — this screen's header is a light
-          blue gradient (#69A9D4→#D9EDF6), so the device clock/wifi read
-          against it only in black; light would wash out. A screen that set
-          "light" before must reset here on arrival, same fix class as the
-          other tabs' own note, opposite value. */}
-      <StatusBar style="dark" />
+      {/* Status-bar icons flip with scroll: light over the green header at the
+          top, dark once it collapses to the white frosted search bar — driven
+          by the useAnimatedReaction above. */}
+      <StatusBar style={statusBarStyle} />
 
-      {/* StoreHeader is item 0 inside this same ScrollView now (was a
-          fixed sibling above it) with stickyHeaderIndices={[0]} — same
-          mechanism HomeHeader.tsx uses to stay pinned at the top while
-          scrolling, per an explicit ask (drag down: header collapses to
-          just the search bar, with a blur showing through). */}
-      <Animated.ScrollView
-        className="flex-1"
-        contentContainerClassName="pb-28"
+      {/* StoreHeader stays pinned above the one virtualized list. It was a
+          sticky index-0 child of an Animated.ScrollView; FlashList v2 has no
+          stickyHeaderIndices, so the same always-at-top behaviour is a pinned
+          sibling here (bounces are off, so there's no overscroll difference).
+          Its collapse and the status-bar flip are still driven by scrollY from
+          the list's own scroll handler. */}
+      <StoreHeader
+        onChangeLocation={() => navigation.navigate('SelectLocation')}
+        onOpenSearch={() => navigation.navigate('Search')}
+        scrollY={scrollY}
+      />
+
+      {/* The whole screen below the header is now one FlashList (M3): promo +
+          filter + Nearest + Popular ride along as its header, BrandFooter as
+          its footer, and only the store cards virtualize. */}
+      <AllStoresSection
+        stores={filteredStores}
         onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        stickyHeaderIndices={[0]}
-      >
-        <StoreHeader
-          onChangeLocation={() => navigation.navigate('SelectLocation')}
-          onOpenSearch={() => navigation.navigate('Search')}
-          scrollY={scrollY}
-        />
-        <StorePromoBanner />
-        <StoreFilterBar
-          sort={sort}
-          minRating={minRating}
-          selectedCategory={selectedCategory}
-          openNowOnly={openNowOnly}
-          likedOnly={likedOnly}
-          onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
-          onToggleOpenNow={() => setOpenNowOnly((prev) => !prev)}
-          onToggleLikedOnly={() => setLikedOnly((prev) => !prev)}
-        />
-        <NearestToYouSection />
-        <PopularThisWeekSection />
-        <AllStoresSection stores={filteredStores} />
-        <BrandFooter />
-      </Animated.ScrollView>
+        isError={isError}
+        isRefetching={isRefetching}
+        onRefresh={() => void refetch()}
+        header={
+          <>
+            <StorePromoBanner />
+            <StoreFilterBar
+              sort={sort}
+              minRating={minRating}
+              selectedCategory={selectedCategory}
+              openNowOnly={openNowOnly}
+              likedOnly={likedOnly}
+              onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
+              onToggleOpenNow={() => setOpenNowOnly((prev) => !prev)}
+              onToggleLikedOnly={() => setLikedOnly((prev) => !prev)}
+            />
+            <NearestToYouSection />
+            <PopularThisWeekSection />
+          </>
+        }
+      />
 
       <BottomNavBar hidden={navHidden} />
 

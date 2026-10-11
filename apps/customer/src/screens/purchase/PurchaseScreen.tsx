@@ -29,19 +29,20 @@ import { useAuthStore } from '../../store/useAuthStore';
 // real calendar year back to the account's own creation year, from GET
 // /auth/me's created_at).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
-import { AppState, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import { FlashList, type FlashListProps } from '@shopify/flash-list';
 import { AppImage as Image } from '../../components/AppImage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { fetchAccountInfo } from '../../api/auth';
 import { fetchOrderHistoryStatuses } from '../../api/orders';
 import { groupOrdersByTrip } from '../../utils/tripLegs';
-import { mapOrderGroup } from './data';
+import { mapOrderGroup, type PurchaseOrder } from './data';
 import { OrderRow } from './components/OrderRow';
 import { OrderFilterSheet, type OrderStatusFilter, type OrderTimeFilter } from './components/OrderFilterSheet';
 import { PurchaseRecommendations } from './components/PurchaseRecommendations';
@@ -61,6 +62,13 @@ const ORDER_STATUS_REFRESH_MS = 8_000;
 function isLive(status: string): boolean {
   return status === 'placed' || status === 'packed' || status === 'out_for_delivery';
 }
+
+// Reanimated-driven FlashList: plain FlashList can't take useAnimatedScrollHandler's
+// worklet onScroll, and the lib's own AnimatedFlashList wraps RN's Animated (not
+// reanimated) and is typed <any>. Re-apply the PurchaseOrder generic the cast erases.
+const AnimatedOrderList = Animated.createAnimatedComponent(
+  FlashList as unknown as ComponentType<FlashListProps<PurchaseOrder>>,
+);
 
 export function PurchaseScreen({ navigation }: Props) {
   const client = useQueryClient();
@@ -121,13 +129,11 @@ export function PurchaseScreen({ navigation }: Props) {
   const accountCreatedYear = accountInfo ? new Date(accountInfo.created_at).getFullYear() : new Date().getFullYear();
 
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
-  const [showAllOrders, setShowAllOrders] = useState(false);
   const [previewOrder] = useState(() => __DEV__ ? createCompletedOrderPreview() : null);
   const waitingForFirstOrders = !history.isError && (history.isPending || (history.isFetching && rawOrders.length === 0));
   const displayOrders = useMemo(() => previewOrder && history.data && !waitingForFirstOrders
     ? [...(fetchedOrders ?? []), previewOrder]
     : fetchedOrders ?? [], [fetchedOrders, previewOrder, history.data, waitingForFirstOrders]);
-  const VISIBLE_ORDER_LIMIT = 5;
 
   // Refresh on entry; active orders also refresh while this screen is
   // visible so packing changes to arriving after the rider marks pickup.
@@ -191,15 +197,6 @@ export function PurchaseScreen({ navigation }: Props) {
     return new Date(b.placedAtIso).getTime() - new Date(a.placedAtIso).getTime();
   });
   const hasFilteredResults = sortedOrders.length > 0;
-  const matchingPreview = sortedOrders.find((order) => order.orderId === COMPLETED_ORDER_PREVIEW_ID);
-  // Keep the requested sample visible even when live orders fill the
-  // collapsed list. View more still reveals every real order normally.
-  const visibleOrders = showAllOrders
-    ? sortedOrders
-    : matchingPreview
-      ? [...sortedOrders.filter((order) => order.orderId !== COMPLETED_ORDER_PREVIEW_ID).slice(0, VISIBLE_ORDER_LIMIT - 1), matchingPreview]
-      : sortedOrders.slice(0, VISIBLE_ORDER_LIMIT);
-  const hasMoreOrders = sortedOrders.length > visibleOrders.length || Boolean(history.hasNextPage);
 
   // Same direction-based hide/show BottomNavBar logic as StoreListScreen.tsx
   // (itself copied from HomeScreen.tsx) — direction-based, not a plain
@@ -228,121 +225,108 @@ export function PurchaseScreen({ navigation }: Props) {
           deleted) to keep light icons legible against. */}
       <StatusBar style="dark" />
 
-      <Animated.ScrollView
-        className="flex-1"
-        contentContainerClassName="flex-grow pb-28"
+      <AnimatedOrderList
+        data={sortedOrders}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="never"
-        stickyHeaderIndices={hasAnyOrder ? [1] : []}
-      >
-        {/* Title scrolls away; only the following search row stays pinned
-            beneath the status bar, with an opaque surface behind it. */}
-        <View className="px-6 pb-1 pt-3">
-          <View className="h-10 items-center justify-center">
-            <Text accessibilityRole="header" className="text-center text-[20px] font-bold text-ink">Purchase History</Text>
+        contentContainerStyle={{ paddingBottom: 112 }}
+        keyExtractor={(order) => order.orderId}
+        // Scroll-driven pagination: pull the next history page as the list nears
+        // its end, mirroring CategoryProductPane's onEndReached convention. The
+        // infinite query's own flags gate it — no fetch while one is in flight
+        // or when there is nothing left — and the footer shows a spinner mid-fetch.
+        onEndReached={() => {
+          if (history.hasNextPage && !history.isFetchingNextPage) void history.fetchNextPage();
+        }}
+        onEndReachedThreshold={0.4}
+        ListHeaderComponent={
+          <View>
+            <View className="px-6 pb-1 pt-3">
+              <View className="h-10 items-center justify-center">
+                <Text accessibilityRole="header" className="text-center text-[20px] font-bold text-ink">Purchase History</Text>
+              </View>
+            </View>
+            {hasAnyOrder && (
+              <View className="bg-[#F8F8F8] px-6 py-3">
+                <PurchaseSearchBar
+                  value={query}
+                  onChangeText={setQuery}
+                  onOpenFilter={() => setIsFilterSheetOpen(true)}
+                  isFilterActive={statusFilter !== 'all' || timeFilter !== 'all'}
+                />
+              </View>
+            )}
           </View>
-        </View>
-        {hasAnyOrder && (
-          <View className="bg-[#F8F8F8] px-6 py-3">
-            <PurchaseSearchBar
-              value={query}
-              onChangeText={(text) => {
-                setQuery(text);
-                setShowAllOrders(false);
+        }
+        ListEmptyComponent={
+          waitingForFirstOrders ? (
+            <PurchaseLoadingMessage />
+          ) : history.isError && !history.data ? (
+            <View className="items-center gap-3 py-16">
+              <Text className="text-ink">Couldn’t load your purchases.</Text>
+              <Pressable onPress={() => { void refetch(); }}><Text className="font-semibold text-[#155DFC]">Try again</Text></Pressable>
+            </View>
+          ) : hasAnyOrder ? (
+            <View className="flex-1 items-center justify-center gap-1 px-10 py-24">
+              <Text className="text-center text-base font-semibold text-ink">No matching orders</Text>
+              <Text className="text-center text-sm text-ink/50">Try a different search or filter.</Text>
+            </View>
+          ) : (
+            // ponytail: FlashList can't flex-grow an empty component to full height,
+            // so the tagline sits under the copy instead of pinned to the bottom.
+            <View className="px-0">
+              <View>
+                <Image source={{ uri: FEATURE_IMAGE_URI }} className="mt-6 aspect-[4/5] w-3/5 self-center" resizeMode="cover" />
+                <Text className="mt-5 px-8 text-center text-[17px] font-semibold text-ink">{emptyTitle}</Text>
+                <Text className="mt-1 px-8 text-center text-sm font-medium text-ink/50">
+                  Looks like you haven&apos;t placed orders yet.
+                </Text>
+              </View>
+
+              <Text className="mt-10 px-6 text-left text-[25px] font-semibold leading-8 text-gray-500">
+                You&apos;re not just ordering. You&apos;re keeping
+                local shops open. 🌾
+              </Text>
+            </View>
+          )
+        }
+        ListFooterComponent={
+          hasFilteredResults ? (
+            <View className="px-6">
+              {history.isFetchingNextPage && <ActivityIndicator className="py-4" color="#155DFC" />}
+              <PurchaseRecommendations />
+              <View className="mt-8 gap-2 pb-44 pt-10">
+                <Text className="text-5xl font-bold tracking-tight text-ink/10">Every order, a small win.</Text>
+                <View className="flex-row items-center gap-1.5">
+                  <Text className="text-sm font-medium text-ink/50">#GloceriesApp</Text>
+                  {/* <AppIcon icon={HeartIcon} size={14} color={colors.danger} fill={colors.danger} />
+                  <Text className="text-sm font-medium text-ink/50">for your neighborhood</Text> */}
+                </View>
+              </View>
+            </View>
+          ) : null
+        }
+        renderItem={({ item: order }) => (
+          <View className="px-6">
+            <OrderRow
+              order={order}
+              now={now}
+              previewOnly={order.orderId === COMPLETED_ORDER_PREVIEW_ID}
+              // Every order opens Track Order now, live or finished —
+              // the card itself no longer shows an items list inline
+              // (an explicit ask), so this is the only place left to
+              // see what was actually in a past order too, not just a
+              // live one. TrackOrderScreen's own timeline already reads
+              // fine for a terminal (delivered/cancelled) status.
+              onPress={() => {
+                if (order.orderId === COMPLETED_ORDER_PREVIEW_ID) return;
+                navigation.navigate('TrackOrder', { orderId: order.orderId, paymentMethodLabel: 'UPI', isTrip: order.isTrip });
               }}
-              onOpenFilter={() => setIsFilterSheetOpen(true)}
-              isFilterActive={statusFilter !== 'all' || timeFilter !== 'all'}
             />
           </View>
         )}
-
-        {waitingForFirstOrders ? (
-          <PurchaseLoadingMessage />
-        ) : history.isError && !history.data ? (
-          <View className="items-center gap-3 py-16">
-            <Text className="text-ink">Couldn’t load your purchases.</Text>
-            <Pressable onPress={() => { void refetch(); }}><Text className="font-semibold text-[#155DFC]">Try again</Text></Pressable>
-          </View>
-        ) : hasAnyOrder && !hasFilteredResults ? (
-          <View className="flex-1 items-center justify-center gap-1 px-10 py-24">
-            <Text className="text-center text-base font-semibold text-ink">No matching orders</Text>
-            <Text className="text-center text-sm text-ink/50">Try a different search or filter.</Text>
-          </View>
-        ) : hasAnyOrder ? (
-          <View className="px-6 pt-3">
-            {visibleOrders.map((order) => (
-              <OrderRow
-                key={order.orderId}
-                order={order}
-                now={now}
-                previewOnly={order.orderId === COMPLETED_ORDER_PREVIEW_ID}
-                // Every order opens Track Order now, live or finished —
-                // the card itself no longer shows an items list inline
-                // (an explicit ask), so this is the only place left to
-                // see what was actually in a past order too, not just a
-                // live one. TrackOrderScreen's own timeline already reads
-                // fine for a terminal (delivered/cancelled) status.
-                onPress={() => {
-                  if (order.orderId === COMPLETED_ORDER_PREVIEW_ID) return;
-                  navigation.navigate('TrackOrder', { orderId: order.orderId, paymentMethodLabel: 'UPI', isTrip: order.isTrip });
-                }}
-              />
-            ))}
-
-            {hasMoreOrders ? (
-              <Pressable
-                disabled={history.isFetchingNextPage}
-                onPress={() => { setShowAllOrders(true); if (showAllOrders || sortedOrders.length <= visibleOrders.length) void history.fetchNextPage(); }}
-                className="mb-1 items-center rounded-xl  bg-[#FFFFFF] border border-[#E8E8E8] py-3.5 "
-              >
-                <Text className="text-[14px] font-semibold text-ink">
-                  {history.isFetchingNextPage ? 'Loading…' : history.isFetchNextPageError ? 'Retry loading more' : 'View more orders'}
-                </Text>
-              </Pressable>
-            ) : (
-              showAllOrders &&
-              sortedOrders.length > VISIBLE_ORDER_LIMIT && (
-                <Pressable
-                  onPress={() => setShowAllOrders(false)}
-                  className="mb-1 items-center rounded-full border border-ink/10 bg-white py-3.5 shadow-sm shadow-black/5"
-                >
-                  <Text className="text-[14px] font-semibold text-ink">View less</Text>
-                </Pressable>
-              )
-            )}
-
-            <PurchaseRecommendations />
-
-            <View className="mt-8 gap-2 pb-44 pt-10">
-              <Text className="text-5xl font-bold tracking-tight text-ink/10">Every order, a small win.</Text>
-              <View className="flex-row items-center gap-1.5">
-                <Text className="text-sm font-medium text-ink/50">#GloceriesApp</Text>
-                {/* <AppIcon icon={HeartIcon} size={14} color={colors.danger} fill={colors.danger} />
-                <Text className="text-sm font-medium text-ink/50">for your neighborhood</Text> */}
-              </View>
-            </View>
-
-            {/* <BrandFooter /> */}
-          </View>
-        ) : (
-          <View className="flex-grow justify-between">
-            <View>
-              <Image source={{ uri: FEATURE_IMAGE_URI }} className="mt-6 aspect-[4/5] w-3/5 self-center" resizeMode="cover" />
-              <Text className="mt-5 px-8 text-center text-[17px] font-semibold text-ink">{emptyTitle}</Text>
-              <Text className="mt-1 px-8 text-center text-sm font-medium text-ink/50">
-                Looks like you haven&apos;t placed orders yet.
-              </Text>
-            </View>
-
-            <Text className="px-6 text-left text-[25px] font-semibold leading-8 text-gray-500">
-              You&apos;re not just ordering. You&apos;re keeping
-              local shops open. 🌾
-            </Text>
-          </View>
-        )}
-      </Animated.ScrollView>
+      />
 
       <BottomNavBar hidden={navHidden} />
 
@@ -353,11 +337,9 @@ export function PurchaseScreen({ navigation }: Props) {
         accountCreatedYear={accountCreatedYear}
         onSelectStatus={(filter) => {
           setStatusFilter(filter);
-          setShowAllOrders(false);
         }}
         onSelectTime={(filter) => {
           setTimeFilter(filter);
-          setShowAllOrders(false);
         }}
         onClose={() => setIsFilterSheetOpen(false)}
       />

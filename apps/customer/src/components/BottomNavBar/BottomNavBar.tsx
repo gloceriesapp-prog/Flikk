@@ -37,6 +37,7 @@
 
 import { Platform, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -171,6 +172,16 @@ export function BottomNavBar({ hidden }: Props) {
             elevation: 12,
           }}
         >
+          {/* Android elevation casts its shadow DOWNWARD, which is off-screen
+              for a bar flush at the bottom edge — so the top edge gets no
+              visible lift. A thin transparent→ink gradient riding just above
+              the bar's top edge paints a soft upward shadow onto the scrolled
+              content, giving the bar a clean floating separation. */}
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(16,28,16,0)', 'rgba(16,28,16,0.07)']}
+            style={{ position: 'absolute', left: 0, right: 0, top: -12, height: 12 }}
+          />
           <View className="flex-row items-center justify-around px-2 py-2.5">
             {BOTTOM_NAV_TABS.map((tab) => (
               <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />

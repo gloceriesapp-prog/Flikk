@@ -12,9 +12,12 @@ import { RotatingSearchHint } from './RotatingSearchHint';
 
 interface Props {
   onPress: () => void;
+  // Override the default border (e.g. StoreHeader passes a gray-200 border for
+  // its white scrolled header). Defaults to the Home header's own light border.
+  borderClassName?: string;
 }
 
-export function HomeSearchBar({ onPress }: Props) {
+export function HomeSearchBar({ onPress, borderClassName = 'border-[0.7px] border-[#B9C3CC]' }: Props) {
   // Admin App content: home.search.placeholder replaces the rolling hints.
   const placeholder = useCopy('home.search.placeholder');
   return (
@@ -23,15 +26,7 @@ export function HomeSearchBar({ onPress }: Props) {
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel="Search products"
-        className="
-          h-[52px] w-full
-          flex-row items-center
-          rounded-[17px]
-          border-[0.7px] border-[#B9C3CC]
-          bg-white
-          px-4
-          active:opacity-80
-        "
+        className={`h-[52px] w-full flex-row items-center rounded-[17px] ${borderClassName} bg-white px-4 active:opacity-80`}
       >
         <View className="pr-2">
           <AppIcon

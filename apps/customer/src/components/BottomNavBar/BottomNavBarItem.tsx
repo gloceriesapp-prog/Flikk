@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { IconlyHome, IconlyBag, IconlyCategory, type IconlyIconProps } from '../icons/iconly';
 import type { NavTab } from './data';
 
@@ -21,10 +21,12 @@ export function BottomNavBarItem({ tab, isActive, onPress }: Props) {
   const Icon = ICON_BY_TAB[tab.id] ?? IconlyHome;
   return (
     <Pressable onPress={onPress} className="items-center px-0">
+      {/* Android: drop the gray active pill per request — the active state
+          still reads via the filled icon + bold label. iOS keeps the pill. */}
       <View
-        className={`items-center justify-center gap-1 rounded-full ${isActive
-            ? 'h-[54px] w-[72px] bg-black/10'
-            : 'h-[54px] w-[72px] bg-transparent'
+        className={`items-center justify-center gap-1 rounded-full h-[54px] w-[72px] ${isActive && Platform.OS !== 'android'
+            ? 'bg-black/10'
+            : 'bg-transparent'
           }`}
       >
         <Icon size={20} color={isActive ? '#101C10' : '#101C1099'} active={isActive} />

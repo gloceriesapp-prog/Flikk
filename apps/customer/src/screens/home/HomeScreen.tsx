@@ -90,6 +90,9 @@ export function HomeScreen({ navigation }: Props) {
           onOpenSearch={() => navigation.navigate('Search')}
           activeCategoryName="all"
           scrollY={scrollY}
+          // Tighter gap between the search bar and the welcome banner below
+          // (was the 28 default). Nudge this to taste.
+          bottomSpacing={10}
           isClosed={isClosed}
         />
 

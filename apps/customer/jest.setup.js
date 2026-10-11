@@ -45,6 +45,19 @@ jest.mock('expo-notifications', () => ({
 }));
 jest.mock('react-native-keyboard-controller', () => require('react-native-keyboard-controller/jest'));
 jest.mock('expo-font', () => ({ useFonts: () => [true, null], loadAsync: jest.fn(async () => {}), isLoaded: () => true }));
+// NetInfo's real module starts an async internet-reachability probe on
+// addEventListener; under jest's fake timers that probe fires with no native
+// backend and throws. Stub it to a stable "online" source — the app only reads
+// isConnected/isInternetReachable (src/network/online.ts).
+jest.mock('@react-native-community/netinfo', () => {
+  const state = { isConnected: true, isInternetReachable: true };
+  const api = {
+    addEventListener: jest.fn(() => jest.fn()),
+    fetch: jest.fn(async () => state),
+    configure: jest.fn(),
+  };
+  return { __esModule: true, default: api, ...api };
+});
 global.fetch = jest.fn(async () => ({ ok: false, status: 503, json: async () => ({}), text: async () => '' }));
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));

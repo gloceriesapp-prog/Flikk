@@ -109,8 +109,12 @@ export function AddressFormScreen({ route, navigation }: Props) {
 
   const line1 = [building.trim(), street.trim()].filter(Boolean).join(', ');
   const savedLabel = label === 'Other' ? customName.trim() || 'Other' : label;
+  // Receiver phone must be a full 10-digit number (stored as +91XXXXXXXXXX),
+  // same bar as LoginScreen — a non-empty check let 2-3 digit numbers through
+  // and saved a broken delivery contact.
+  const recipientPhoneValid = recipientPhone.replace(/^\+91/, '').length === 10;
   const canReview =
-    building.trim().length > 0 && recipientName.trim().length > 0 && recipientPhone.trim().length > 0 && (label !== 'Other' || customName.trim().length > 0);
+    building.trim().length > 0 && recipientName.trim().length > 0 && recipientPhoneValid && (label !== 'Other' || customName.trim().length > 0);
 
   async function handleConfirmSave() {
     setError(null);

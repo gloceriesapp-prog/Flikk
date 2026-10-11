@@ -157,24 +157,22 @@ export function HomeHeader({
           "none" so it never steals a touch meant for whatever's beneath
           it. */}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, frostedStyle]}>
-        {/* intensity caps at 100 — stronger blur comes from (1) experimental
-            Gaussian method so Android actually blurs instead of just tinting,
-            and (2) a second stacked pass that re-blurs the already-blurred
-            output for a visibly deeper frost on both platforms. */}
-        <BlurView
-          intensity={100}
-          tint="light"
-          experimentalBlurMethod="dimezisBlurView"
-          style={StyleSheet.absoluteFill}
-        />
-        <BlurView
-          intensity={100}
-          tint="light"
-          experimentalBlurMethod="dimezisBlurView"
-          style={StyleSheet.absoluteFill}
-        />
-        {Platform.OS === 'ios' && (
-          <GlassView glassEffectStyle="regular" colorScheme="light" style={StyleSheet.absoluteFill} />
+        {Platform.OS === 'android' ? (
+          // Android: expo-blur's dimezisBlurView falls back to "none" (no real
+          // blur), which left scrolled content bleeding through behind the
+          // search bar. Use a solid white backing instead — it fades in on
+          // scroll via frostedStyle, so the header reads clean + white. Per
+          // request, Android-only; iOS keeps the real blur + liquid glass.
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }]} />
+        ) : (
+          <>
+            {/* intensity caps at 100 — stronger blur comes from (1) experimental
+                Gaussian method and (2) a second stacked pass re-blurring the
+                already-blurred output for a visibly deeper frost. */}
+            <BlurView intensity={100} tint="light" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={100} tint="light" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+            <GlassView glassEffectStyle="regular" colorScheme="light" style={StyleSheet.absoluteFill} />
+          </>
         )}
       </Animated.View>
 
