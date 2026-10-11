@@ -25,21 +25,26 @@ export function useHomeContent() {
     queryKey: ['home-content'],
     queryFn: async () => {
       const rows = await apiRequest<HomeContentRecord[]>('/home/content', { auth: false });
-      if (
-        !Array.isArray(rows) ||
-        rows.length !== TAB_KEYS.length ||
-        new Set(rows.map((row) => row.tabKey)).size !== TAB_KEYS.length
-      )
-        throw new Error('Home content is not configured.');
-      return rows.map((row) => {
-        if (
-          !TAB_KEYS.includes(row.tabKey) ||
-          !Number.isSafeInteger(row.revision) ||
-          row.revision < 1
-        )
-          throw new Error('Invalid Home content.');
-        return { ...row, content: validateContent(row.content) };
-      });
+      if (!Array.isArray(rows)) throw new Error('Home content is not configured.');
+      // Tolerant by design: keep every valid row whose tabKey this app build
+      // knows about, and skip the rest. A tab added on one side (DB vs the
+      // bundled TAB_KEYS) or a single malformed doc must NOT blank the whole
+      // home — unknown tabs are ignored, missing ones just don't render their
+      // managed layout. (Previously this hard-threw on any count mismatch,
+      // which is what made every tab + quick-categories vanish on drift.)
+      const seen = new Set<string>();
+      const result: HomeContentRecord[] = [];
+      for (const row of rows) {
+        if (!TAB_KEYS.includes(row.tabKey) || seen.has(row.tabKey)) continue;
+        if (!Number.isSafeInteger(row.revision) || row.revision < 1) continue;
+        try {
+          result.push({ ...row, content: validateContent(row.content) });
+          seen.add(row.tabKey);
+        } catch {
+          // Malformed tab content — drop just this tab, keep the rest.
+        }
+      }
+      return result;
     },
     staleTime: 300_000,
     gcTime: 30 * 60_000,
