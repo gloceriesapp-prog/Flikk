@@ -1,10 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 import { AppImage as Image } from '../../../components/AppImage';
-import { storageUrl } from '../../../utils/storageUrl';
 import { useCopy, useCopyImage } from '../../../api/appConfig';
 
 // Admin App content: home.welcome.imageUrl / home.welcome.label.
-const WELCOME_ARTWORK_URI = storageUrl('Images/Your%20District,%20Your%20Shop%20tras.png');
+const WELCOME_ARTWORK_URI = 'https://images.gloceries.com/appsui/Your%20Shops.png';
 
 export function HomeWelcomeBanner({
   backgroundColor,
