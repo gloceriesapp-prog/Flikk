@@ -82,7 +82,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
 
         {freshnessTag && (
           <View className="absolute left-0 top-2 rounded-r-full bg-gold py-0.5 pl-1.5 pr-2">
-            <Text className="text-[9px] font-semibold text-white">{freshnessTag}</Text>
+            <Text className="text-[9px] font-semibold text-ink">{freshnessTag}</Text>
           </View>
         )}
 

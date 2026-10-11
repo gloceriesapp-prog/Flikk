@@ -12,10 +12,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedReaction, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Easing, runOnJS, useAnimatedReaction, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { BrandFooter } from '../../components/BrandFooter';
 import { prefetchImages } from '../../components/AppImage';
 import { AllStoresSection } from './all-stores/AllStoresSection';
 import { useAllStores } from './all-stores/useAllStores';
@@ -32,7 +31,7 @@ import type { AppStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'Store'>;
 
 export function StoreListScreen({ navigation }: Props) {
-  const { data: allStores = [] } = useAllStores();
+  const { data: allStores = [], isError, isRefetching, refetch } = useAllStores();
 
   // Each StoreCard renders exactly one image — store.photoUrl, or the local
   // placeholder when a store has no photo yet. Prefetch that one URI per store
@@ -127,46 +126,45 @@ export function StoreListScreen({ navigation }: Props) {
           by the useAnimatedReaction above. */}
       <StatusBar style={statusBarStyle} />
 
-      {/* StoreHeader is item 0 inside this same ScrollView now (was a
-          fixed sibling above it) with stickyHeaderIndices={[0]} — same
-          mechanism HomeHeader.tsx uses to stay pinned at the top while
-          scrolling, per an explicit ask (drag down: header collapses to
-          just the search bar, with a blur showing through). */}
-      <Animated.ScrollView
-        className="flex-1"
-        contentContainerClassName="pb-28"
+      {/* StoreHeader stays pinned above the one virtualized list. It was a
+          sticky index-0 child of an Animated.ScrollView; FlashList v2 has no
+          stickyHeaderIndices, so the same always-at-top behaviour is a pinned
+          sibling here (bounces are off, so there's no overscroll difference).
+          Its collapse and the status-bar flip are still driven by scrollY from
+          the list's own scroll handler. */}
+      <StoreHeader
+        onChangeLocation={() => navigation.navigate('SelectLocation')}
+        onOpenSearch={() => navigation.navigate('Search')}
+        scrollY={scrollY}
+      />
+
+      {/* The whole screen below the header is now one FlashList (M3): promo +
+          filter + Nearest + Popular ride along as its header, BrandFooter as
+          its footer, and only the store cards virtualize. */}
+      <AllStoresSection
+        stores={filteredStores}
         onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        stickyHeaderIndices={[0]}
-        // Same as HomeScreen: stickyHeaderIndices pins the header during a
-        // normal scroll, but iOS elastic overscroll still lets a pull-down-
-        // past-the-top gesture drag/stretch the sticky header before it snaps
-        // back. bounces={false} removes that rubber-banding; overScrollMode=
-        // "never" is the Android equivalent — so the top no longer drags.
-        bounces={false}
-        overScrollMode="never"
-      >
-        <StoreHeader
-          onChangeLocation={() => navigation.navigate('SelectLocation')}
-          onOpenSearch={() => navigation.navigate('Search')}
-          scrollY={scrollY}
-        />
-        <StorePromoBanner />
-        <StoreFilterBar
-          sort={sort}
-          minRating={minRating}
-          selectedCategory={selectedCategory}
-          openNowOnly={openNowOnly}
-          likedOnly={likedOnly}
-          onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
-          onToggleOpenNow={() => setOpenNowOnly((prev) => !prev)}
-          onToggleLikedOnly={() => setLikedOnly((prev) => !prev)}
-        />
-        <NearestToYouSection />
-        <PopularThisWeekSection />
-        <AllStoresSection stores={filteredStores} />
-        <BrandFooter />
-      </Animated.ScrollView>
+        isError={isError}
+        isRefetching={isRefetching}
+        onRefresh={() => void refetch()}
+        header={
+          <>
+            <StorePromoBanner />
+            <StoreFilterBar
+              sort={sort}
+              minRating={minRating}
+              selectedCategory={selectedCategory}
+              openNowOnly={openNowOnly}
+              likedOnly={likedOnly}
+              onOpenFilterSheet={() => setIsFilterSheetOpen(true)}
+              onToggleOpenNow={() => setOpenNowOnly((prev) => !prev)}
+              onToggleLikedOnly={() => setLikedOnly((prev) => !prev)}
+            />
+            <NearestToYouSection />
+            <PopularThisWeekSection />
+          </>
+        }
+      />
 
       <BottomNavBar hidden={navHidden} />
 

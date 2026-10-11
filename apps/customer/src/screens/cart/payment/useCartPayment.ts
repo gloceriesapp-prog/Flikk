@@ -189,7 +189,12 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       const paymentRecord = isMultiStore ? await createTrip(common) : await createOrder(orderInput);
 
       const confirmedAmount = Number(paymentRecord.total);
-      if (confirmedAmount !== freshQuote.bill.total) throw new Error('The order total could not be verified. Contact support before paying.');
+      // Compare in paise, not raw rupee floats — the persisted order/trip total
+      // and the quote total are JSON floats that can differ by a sub-paisa
+      // representation error (most likely on the multi-store trip path, where
+      // the total is summed from per-leg fees). A strict !== there would throw
+      // a false "contact support" on a legitimately-created order.
+      if (Math.round(confirmedAmount * 100) !== Math.round(freshQuote.bill.total * 100)) throw new Error('The order total could not be verified. Contact support before paying.');
       const orderSummary = isMultiStore
         ? {
             orderId: paymentRecord.id,
