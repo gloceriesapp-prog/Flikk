@@ -65,35 +65,25 @@ import { GlassView } from 'expo-glass-effect';
 import Animated, {
   Extrapolation,
   interpolate,
-  interpolateColor,
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated';
 import { CollapsibleHeaderTop, COLLAPSE_DISTANCE } from './CollapsibleHeaderTop';
 import { HeaderBackgroundGradient } from './HeaderBackgroundGradient';
 import { HomeSearchBar } from './HomeSearchBar';
-import { CategoryTabs } from './CategoryTabs';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
-import { HOME_BODY_BACKGROUND } from '../data/homeTabBackground';
 import { RegionalHeaderArtwork } from '../regional/header/RegionalHeaderArtwork';
 
 interface Props {
   onBack?: () => void;
   onChangeLocation: () => void;
   onOpenSearch: () => void;
-  selectedCategoryId: string;
-  onSelectCategory: (id: string) => void;
-  // Resolved by HomeScreen.tsx from its own real tab list — 'all' when
-  // the All tab is selected. Drives which gradient renders.
+  // Resolved by HomeScreen.tsx — 'all' for the Home discovery view. Drives
+  // which gradient renders.
   activeCategoryName: string;
   // The admin festival tab's header colour when that tab is selected.
   activeFestivalHeaderColor?: string;
-  activeTabBackgroundColor?: string;
   scrollY: SharedValue<number>;
-  // Home shows the category tabs row; other screens reusing this header
-  // (e.g. store-list/StoreListScreen.tsx) may not want it — there's nothing
-  // for the tabs to filter there.
-  showCategoryTabs?: boolean;
   // Screens with artwork immediately below can join it to the header.
   bottomSpacing?: number;
   // 10:30 PM–6:00 AM IST (utils/operatingHours.ts) — still drives
@@ -108,13 +98,9 @@ export function HomeHeader({
   onBack,
   onChangeLocation,
   onOpenSearch,
-  selectedCategoryId,
-  onSelectCategory,
   activeCategoryName,
   activeFestivalHeaderColor,
-  activeTabBackgroundColor = HOME_BODY_BACKGROUND,
   scrollY,
-  showCategoryTabs = true,
   bottomSpacing = 28,
   isClosed = false,
 }: Props) {
@@ -143,20 +129,6 @@ export function HomeHeader({
   // just be blurring this color instead of the real content behind it.
   const gradientStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, COLLAPSE_DISTANCE], [1, 0], Extrapolation.CLAMP),
-  }));
-  const inactiveCategoryStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      Math.min(Math.max(scrollY.value / COLLAPSE_DISTANCE, 0), 1),
-      [0, 1],
-      [
-        // Artwork needs an opaque surface; blend the palette with white
-        // rather than showing the photo through the category labels.
-        hasHeaderArtwork
-          ? interpolateColor(0.24, [0, 1], [gradient.bottomColor, '#FFFFFF'])
-          : 'rgba(255,255,255,0.25)',
-        '#E4E7EB',
-      ],
-    ),
   }));
 
   return (
@@ -221,20 +193,11 @@ export function HomeHeader({
           <CollapsibleHeaderTop scrollY={scrollY} onChangeLocation={onChangeLocation} isClosed={isClosed} light={isLightHeader} />
         </View>
 
-        {/* CategoryTabs owns its spacing when visible. Otherwise, the
-            screen controls the gap before the content below the header. */}
-        <View className="px-6" style={{ paddingBottom: showCategoryTabs ? 0 : bottomSpacing }}>
+        {/* Search bar owns the gap before the content below the header now
+            that the category-tabs row is gone. */}
+        <View className="px-6" style={{ paddingBottom: bottomSpacing }}>
           <HomeSearchBar onPress={onOpenSearch} />
         </View>
-
-        {showCategoryTabs && (
-          <CategoryTabs
-            selectedId={selectedCategoryId}
-            onSelect={onSelectCategory}
-            activeBackgroundColor={activeTabBackgroundColor}
-            inactiveBackgroundStyle={inactiveCategoryStyle}
-          />
-        )}
       </View>
     </View>
   );
