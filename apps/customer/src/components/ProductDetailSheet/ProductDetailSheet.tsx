@@ -757,6 +757,20 @@ const headerTitleStyle = useAnimatedStyle(() => ({
     paddingBottom: interpolate(grow.value, [0, 1], [FOOTER_REST_PADDING, insets.bottom]),
   }));
 
+  // Android: the hero controls (close/bookmark/share) read as solid WHITE pills
+  // with ink icons + a soft elevation, and the grown-state solid header is a
+  // touch taller — per an explicit ask. iOS keeps the translucent dark/25 pills
+  // + white icons (which stay legible on any hero photo without a shadow).
+  const isAndroid = Platform.OS === 'android';
+  const headerHeight = insets.top + (isAndroid ? 72 : 64);
+  const pillClass = isAndroid
+    ? 'h-10 w-10 items-center justify-center rounded-full bg-white'
+    : 'h-10 w-10 items-center justify-center rounded-full bg-black/25';
+  const pillStyle = isAndroid
+    ? { elevation: 3, shadowColor: '#101C10', shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }
+    : undefined;
+  const pillIconColor = isAndroid ? '#101C10' : '#FFFFFF';
+
   return (
     <View style={{ flex: 1 }} pointerEvents="box-none">
       <Animated.View
@@ -788,7 +802,7 @@ const headerTitleStyle = useAnimatedStyle(() => ({
       top: 0,
       left: 0,
       right: 0,
-      height: insets.top + 64,
+      height: headerHeight,
 
       backgroundColor: '#FFFFFF',
 
@@ -812,26 +826,27 @@ const headerTitleStyle = useAnimatedStyle(() => ({
                 ponytail: fixed tint; swap to a per-button BlurView glass pill
                 if a truly adaptive frost is wanted. */}
             <View className="w-full flex-row items-center justify-between">
-              <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-black/25">
-                <AppIcon icon={ArrowDown01Icon} size={20} color="#FFFFFF" strokeWidth={2} />
+              <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10} className={pillClass} style={pillStyle}>
+                <AppIcon icon={ArrowDown01Icon} size={20} color={pillIconColor} strokeWidth={2} />
               </Pressable>
 
               <View className="flex-row gap-2.5">
                 <Pressable accessibilityRole="button" accessibilityLabel="Toggle wishlist"
                   hitSlop={10}
                   onPress={() => setIsBookmarked((v) => !v)}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-black/25"
+                  className={pillClass}
+                  style={pillStyle}
                 >
                   <AppIcon
                     icon={Bookmark01Icon}
                     size={18}
-                    color="#FFFFFF"
-                    fill={isBookmarked ? '#FFFFFF' : undefined}
+                    color={pillIconColor}
+                    fill={isBookmarked ? pillIconColor : undefined}
                     strokeWidth={2}
                   />
                 </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel="Share product" hitSlop={10} className="h-10 w-10 items-center justify-center rounded-full bg-black/25">
-                  <AppIcon icon={Share03Icon} size={18} color="#FFFFFF" strokeWidth={2} />
+                <Pressable accessibilityRole="button" accessibilityLabel="Share product" hitSlop={10} className={pillClass} style={pillStyle}>
+                  <AppIcon icon={Share03Icon} size={18} color={pillIconColor} strokeWidth={2} />
                 </Pressable>
               </View>
             </View>
@@ -844,7 +859,7 @@ const headerTitleStyle = useAnimatedStyle(() => ({
           showsVerticalScrollIndicator={false}
           onScroll={scrollHandler}
           scrollEventThrottle={16}
-          contentContainerStyle={{ paddingTop: fullScreen ? insets.top + 64 : 0,
+          contentContainerStyle={{ paddingTop: fullScreen ? headerHeight : 0,
             paddingBottom: FOOTER_SPACER + (fullScreen ? insets.bottom : 0) }}
         >
           <View className="relative h-80 w-full" style={{ backgroundColor: '#FAFAFA' }}>
