@@ -20,13 +20,16 @@ export async function pickAndCompressImage(): Promise<PickedImage | null> {
     return null;
   }
 
-  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, base64: true });
+  // No base64 from the picker — compressImageToTarget resizes first and
+  // produces base64 only from the small image (its own note on why eagerly
+  // materializing a 12MP shot's base64 froze the UI).
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
   if (result.canceled) return null;
 
   const asset = result.assets[0];
-  if (!asset?.base64) return null;
+  if (!asset?.uri) return null;
 
-  const compressed = await compressImageToTarget(asset.uri, asset.base64);
+  const compressed = await compressImageToTarget(asset.uri, asset.width);
   // Only the original (un-recompressed) pass keeps the source mime type;
   // every compress pass re-encodes to JPEG (see compressImage.ts).
   const contentType = compressed.uri === asset.uri ? (asset.mimeType ?? 'image/jpeg') : 'image/jpeg';
