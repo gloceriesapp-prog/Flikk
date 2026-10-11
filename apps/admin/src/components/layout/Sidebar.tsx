@@ -12,8 +12,9 @@ import { ChevronsUpDown, HelpCircle, PanelLeftClose, PanelLeftOpen, Search, Sett
 import clsx from 'clsx';
 import { INSIGHTS_ITEMS, MENU_ITEMS, type NavItem } from '@/lib/nav';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
-import type { Application } from '@/lib/types';
 import { SidebarSearch } from './SidebarSearch';
+
+interface AttentionItem { key: string; label: string; count: number; href: string }
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -22,44 +23,23 @@ export function Sidebar() {
   // its input once the sidebar has expanded.
   const [searchFocus, setSearchFocus] = useState(0);
   // "Needs attention" counts, keyed by nav href — a red badge next to any
-  // item with a non-zero count. Real numbers from the same endpoints each
-  // page reads, refreshed live via the realtime stream + polling below.
+  // item with a non-zero count. Same source as the TopNav bell: the single
+  // /api/attention aggregate (admin_attention_counts RPC, one SQL call),
+  // instead of pulling every row from four endpoints just to count them.
+  // Several attention keys share a href (store/rider/product approvals all
+  // land on /approvals), so counts are grouped by href and summed.
   const [counts, setCounts] = useState<Record<string, number>>({});
 
   const loadCounts = useCallback(async () => {
     try {
-      const [storesRes, ridersRes, ordersRes, refundsRes] = await Promise.all([
-        fetch('/api/approvals/stores'),
-        fetch('/api/approvals/riders'),
-        fetch('/api/orders?status=active'),
-        fetch('/api/refunds'),
-      ]);
+      const res = await fetch('/api/attention', { cache: 'no-store' });
+      if (!res.ok) return; // keep last-known counts on a failed round
+      const { items } = (await res.json()) as { items: AttentionItem[] };
       const next: Record<string, number> = {};
-
-      if (storesRes.ok && ridersRes.ok) {
-        const stores = (await storesRes.json()) as Application[];
-        const riders = (await ridersRes.json()) as Application[];
-        next['/approvals'] = [...stores, ...riders].filter((a) => a.status === 'pending').length;
+      for (const item of items) {
+        next[item.href] = (next[item.href] ?? 0) + item.count;
       }
-      if (ordersRes.ok) {
-        // Anything not yet finished (placed/packed/out for delivery) — the
-        // live queue the founder may need to act on.
-        const orders = (await ordersRes.json()) as { status: string }[];
-        next['/orders'] = orders.length;
-      }
-      if (refundsRes.ok) {
-        const refunds = (await refundsRes.json()) as { refundStatus: string }[];
-        // Needs a human: a provider refund that failed (retry) or one that
-        // must be refunded by hand (manual_required). Trip legs share one
-        // refund, so they are counted once per trip.
-        const needsAction = (refunds as { refundStatus: string; tripId?: string | null; id?: string }[])
-          .filter((r) => r.refundStatus === 'failed' || r.refundStatus === 'manual_required');
-        next['/refunds'] = new Set(needsAction.map((r) => r.tripId ?? r.id)).size;
-      }
-
-      // Merge, don't replace — a request that failed this round keeps its
-      // last known count instead of dropping to nothing.
-      setCounts((prev) => ({ ...prev, ...next }));
+      setCounts(next);
     } catch {
       // Best-effort — a failed fetch just leaves the badges at their last
       // known counts.
