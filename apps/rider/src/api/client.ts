@@ -1,4 +1,3 @@
-import { validateApiUrl } from '../../../../packages/shared/config/api-url.cjs';
 // Thin instantiation of @gloceries/shared's createApiClient — the request/error/
 // 401-refresh/network-error logic lives in one place (packages/shared/src/
 // auth/client.ts), same as apps/customer and apps/partner. A bug fixed once
@@ -8,13 +7,14 @@ import { validateApiUrl } from '../../../../packages/shared/config/api-url.cjs';
 
 import { createApiClient } from '@gloceries/shared';
 import { useAuthStore } from '../store/useAuthStore';
+import { API_BASE_URL } from './baseUrl';
 
 export { ApiError } from '@gloceries/shared';
 
 // Exported so screens that fetch authenticated byte-proxy assets directly via
 // RN Image (not apiRequest) can resolve a relative /rider/documents/:id path
 // against the same validated base. Trailing slash already stripped.
-export const API_URL = validateApiUrl(process.env.EXPO_PUBLIC_API_URL, __DEV__);
+export const API_URL = API_BASE_URL;
 
 // Plain fetch, not apiRequest — apiRequest is what calls this on a 401 (via
 // the shared client's `refresh` option); routing it through apiRequest itself
