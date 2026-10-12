@@ -74,6 +74,11 @@ module.exports = {
       },
       predictiveBackGestureEnabled: false,
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
+      // No ads: keep the advertising-ID permission a Google library may merge
+      // in out of the manifest, matching the Play "Advertising ID: No" answer.
+      // RECORD_AUDIO comes from expo-image-picker's video capture; the app
+      // only takes photos, so it would be an unexplained microphone permission.
+      blockedPermissions: ['com.google.android.gms.permission.AD_ID', 'android.permission.RECORD_AUDIO'],
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_API_KEY,
@@ -88,7 +93,11 @@ module.exports = {
       'expo-font',
       'expo-splash-screen',
       'expo-location',
-      'expo-audio',
+      // The order alert only plays in the foreground (playOrderAlertSound.ts:
+      // shouldPlayInBackground false) and never records. The plugin's
+      // defaults would add FOREGROUND_SERVICE(_MEDIA_PLAYBACK) and
+      // RECORD_AUDIO, which Play then requires us to declare and justify.
+      ['expo-audio', { enableBackgroundPlayback: false, recordAudioAndroid: false }],
       'expo-secure-store',
       'expo-notifications',
       [
