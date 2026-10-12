@@ -33,9 +33,18 @@ export function DeliveryAddressCard({ address, onChange }: Props) {
       <View className="flex-1">
         <Text className="text-[13px] font-medium text-ink/45">Delivering to</Text>
         {address ? (
-          <Text className="text-[14.5px] font-semibold text-ink" numberOfLines={1}>
-            {address.label} · {address.line1}
-          </Text>
+          <>
+            <Text className="text-[14.5px] font-semibold text-ink" numberOfLines={1}>
+              {address.label} · {address.line1}
+            </Text>
+            {/* Full reverse-geocoded address (area/city/pincode) beneath the
+                typed flat/building, so checkout shows the complete address. */}
+            {address.map_address ? (
+              <Text className="text-[12.5px] font-medium text-ink/50" numberOfLines={2}>
+                {address.map_address}
+              </Text>
+            ) : null}
+          </>
         ) : (
           <Text className="text-[14.5px] font-semibold text-danger">Add a delivery address</Text>
         )}

@@ -163,6 +163,19 @@ export function AddressListScreen({ navigation }: Props) {
                           {address.landmark}
                         </Text>
                       ) : null}
+
+                      {/* Full reverse-geocoded address (map_address) — the
+                          complete line with area/city/pincode, shown beneath
+                          the typed flat/building so the saved address reads in
+                          full, not just what the user typed. */}
+                      {address.map_address ? (
+                        <Text
+                          className="mt-0.5 text-[12px] leading-[17px] text-[#9A9AA0]"
+                          numberOfLines={2}
+                        >
+                          {address.map_address}
+                        </Text>
+                      ) : null}
                     </View>
 
                     {/* Selected indicator */}
