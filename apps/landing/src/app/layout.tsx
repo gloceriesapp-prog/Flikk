@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { lexend } from "./fonts";
+import { interTight } from "./fonts";
 import "./globals.css";
 import SmoothScroll from "@/components/providers/SmoothScroll";
 import JsonLd from "@/components/seo/JsonLd";
@@ -14,6 +14,10 @@ export const metadata: Metadata = {
   },
   description: SITE.description,
   applicationName: SITE.name,
+  icons: {
+    icon: { url: SITE.logoPath, type: "image/png" },
+    apple: { url: SITE.logoPath, type: "image/png" },
+  },
   keywords: [
     "grocery delivery near me",
     "online grocery delivery",
@@ -54,8 +58,6 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-  // Icon auto-wired from src/app/icon.svg (Next file convention) — no manual
-  // icons entry, so the tab icon can never point at a missing /favicon.ico.
   manifest: "/manifest.webmanifest",
   verification: {
     // IDs live in env, never committed (see .env.example). Undefined =
@@ -73,7 +75,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={lexend.variable}>
+    <html lang="en" className={interTight.variable}>
       <body className="font-sans antialiased bg-white text-slate-900">
         <JsonLd data={organizationSchema()} />
         <JsonLd data={websiteSchema()} />
