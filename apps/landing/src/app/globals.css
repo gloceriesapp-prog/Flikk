@@ -1,40 +1,26 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: var(--font-lexend), "Lexend", sans-serif;
-  --font-lexend: var(--font-lexend), "Lexend", sans-serif;
+/* All font utilities resolve to the same locally hosted family. */
+@theme inline {
+  --font-sans: var(--font-inter-tight), sans-serif;
+  --font-serif: var(--font-inter-tight), sans-serif;
+  --font-mono: var(--font-inter-tight), sans-serif;
 }
 
 @utility font-regular {
-  font-weight: 400 !important;
-}
-
-@utility font-medium {
-  font-weight: 500 !important;
-}
-
-@utility font-semibold {
-  font-weight: 600 !important;
-}
-
-@utility font-bold {
-  font-weight: 700 !important;
+  font-weight: 400;
 }
 
 @layer base {
-  *,
-  ::before,
-  ::after {
-    font-family: var(--font-lexend), "Lexend", sans-serif !important;
-  }
-
   html {
     scroll-behavior: initial !important;
   }
 
   html,
   body {
-    font-family: var(--font-lexend), "Lexend", sans-serif !important;
+    font-family: var(--font-inter-tight), sans-serif;
+    font-synthesis: none;
+    font-optical-sizing: auto;
     background-color: #ffffff !important;
     color: #0f172a;
   }

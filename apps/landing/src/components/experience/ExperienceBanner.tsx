@@ -1,137 +1,79 @@
-import React from "react";
 import Image from "next/image";
+import { APP_DOWNLOAD_HREF } from "@/lib/links";
 
-// Two-card promo band above the hero.
-// Left: headline + app download buttons. Right: full-bleed image with text overlaid.
+const COLLECTIONS = [
+  {
+    id: "home-care", label: "HOME CARE", title: "A fresh start for your home.",
+    description: "Laundry, cleaning & everyday care.", image: "/images/essentials/home-care.png",
+    alt: "Laundry detergent, fabric conditioner and fresh towels",
+    className: "bg-[#81346F] text-white lg:col-start-2 lg:row-start-1",
+  },
+  {
+    id: "dairy", label: "DAILY DAIRY", title: "Good mornings start here.",
+    description: "Milk, butter, curd & more.", image: "/images/essentials/dairy.png",
+    alt: "Milk, yogurt, butter and eggs for everyday breakfasts",
+    className: "bg-[#0789B6] text-white lg:col-start-2 lg:row-start-2",
+  },
+] as const;
 
-const CheckIcon = () => (
-  <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" fill="none" aria-hidden="true">
-    <circle cx="12" cy="12" r="10" fill="#0052FF" />
-    <path
-      d="M8 12.5l2.5 2.5L16 9.5"
-      stroke="#fff"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
+function RightArrowIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0" aria-hidden="true" focusable="false">
+      <path d="M19.75 11.7257L4.75 11.7257" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.6997 5.70124C13.6997 5.70124 19.7497 8.96224 19.7497 11.7242C19.7497 14.4882 13.6997 17.7502 13.6997 17.7502" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-const FEATURES = ["No extra fees", "Verified shops", "Same store prices"];
+function CollectionLink() {
+  return (
+    <span className="inline-flex items-center gap-2 text-[12px] font-semibold text-white underline decoration-white/40 underline-offset-4">
+      Explore on app
+      <RightArrowIcon />
+    </span>
+  );
+}
 
 export default function ExperienceBanner() {
   return (
-    <section className="w-full bg-white pt-4 pb-2">
-      <div className="max-w-[1280px] mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 items-stretch">
-          {/* LEFT — headline + download buttons */}
-          <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 flex flex-col justify-center gap-5">
+    <section className="bg-white pb-6 pt-5" aria-label="Everyday essentials from local stores">
+      <div className="mx-auto max-w-[1280px] px-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.35fr_1.07fr_0.79fr] lg:grid-rows-[224px_224px] xl:grid-rows-[196px_196px]">
+          <a href={APP_DOWNLOAD_HREF} className="relative isolate flex min-h-[440px] flex-col overflow-hidden rounded-[16px] bg-[radial-gradient(ellipse_at_50%_10%,#D2F7FA_0%,#86D7E6_52%,#226C87_100%)] p-6 text-[#103C51] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0052FF] sm:col-span-2 sm:p-7 lg:col-span-1 lg:row-span-2 lg:min-h-0">
 
-            {/* full-bleed background image */}
-            <Image
-              src="https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card1-landing.png"
-              alt=""
-              aria-hidden="true"
-              fill
-              sizes="(max-width: 1024px) 100vw, 640px"
-              priority={false}
-              className="pointer-events-none select-none object-cover z-0"
-            />
-
-            {/* Legibility stack: even deep-green veil guarantees min contrast everywhere,
-                then a stronger left-to-right ramp anchors the text column. */}
-            <div className="pointer-events-none absolute inset-0 z-0 bg-[#052B1F]/45" />
-            <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-[#052B1F]/90 via-[#0A402B]/60 to-transparent" />
-
-            <span className="relative z-10 inline-flex items-center gap-1.5 w-fit text-[12px] font-medium text-[#FFFFFF] bg-white/20 backdrop-blur-sm ring-1 ring-[#2E7D32]/15 px-3 py-1 rounded-full">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#2E7D32]" />
-              Now live in Kaup &amp; Udupi
-            </span>
-
-            <span className="relative z-10 text-2xl sm:text-3xl lg:text-[36px] font-semibold leading-[1.1] tracking-tight text-[#FFFFFF] drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)]">
-              All your local favorites <br /> at your door in 30min
-            </span>
-
-
-
-            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3 w-full">
-              <a
-                href="#download-android"
-                className="w-full sm:w-auto bg-white text-[#0F172A] px-5 py-2.5 rounded-2xl  flex items-center justify-center gap-2.5 group"
-              >
-                <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" xmlns="http://www.w3.org/2000/svg">
-                  <path fill="#4285F4" d="M3.609 1.814L13.792 12 3.61 22.186a2.36 2.36 0 0 1-.61-1.614V3.428c0-.624.225-1.205.609-1.614z" />
-                  <path fill="#34A853" d="M17.153 8.639L13.792 12l3.361 3.361 4.542-2.555c.784-.441.784-1.171 0-1.612l-4.542-2.555z" />
-                  <path fill="#FBBC04" d="M3.609 1.814L13.792 12 17.153 8.639 5.378 1.989A2.296 2.296 0 0 0 3.609 1.814z" />
-                  <path fill="#EA4335" d="M17.153 15.361L13.792 12 3.609 22.186c.535-.068 1.128-.27 1.769-.631l11.775-6.194z" />
-                </svg>
-                <div className="flex flex-col text-left leading-tight">
-                  <span className="text-[11px] font-medium tracking-tight opacity-70">Get it on</span>
-                  <span className="text-[15px] font-medium tracking-tight -mt-0.5">Google Play</span>
-                </div>
-              </a>
-
-              <a
-                href="#download-ios"
-                className="w-full sm:w-auto bg-white text-[#0F172A] px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2.5 group"
-              >
-                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.12-1.95.99-3.09-1 .04-2.17.67-2.88 1.5-.64.74-1.2 1.91-1.05 3.05 1.11.09 2.25-.56 2.94-1.46z" />
-                </svg>
-                <div className="flex flex-col text-left leading-tight">
-                  <span className="text-[11px] font-medium tracking-tight opacity-70">Download on the</span>
-                  <span className="text-[15px] font-medium tracking-tight -mt-0.5">App Store</span>
-                </div>
-              </a>
+            <div className="relative z-10 mt-1 max-w-[360px]">
+              <h1 className="mt-2 text-[30px] font-semibold leading-[1.08] tracking-tight sm:text-[34px]">Everything from Your Local Stores, Delivered in 30 Minutes.</h1>
+              <p className="mt-3 max-w-[290px] text-[13px] font-medium leading-relaxed">Fresh groceries, pantry favourites and more from stores you know.</p>
             </div>
-          </div>
+            <div className="pointer-events-none absolute inset-x-1 bottom-0 h-[45%] sm:inset-x-8 sm:h-[53%] lg:inset-x-1 lg:h-[48%]">
+              <Image src="/images/essentials/grocery-staples.png" alt="Rice, lentils, flour, oil and fresh produce from your local grocery stores" fill sizes="(max-width: 640px) 90vw, (max-width: 1024px) 80vw, 510px" className="object-contain object-bottom" />
+            </div>
+            <span className="relative z-10 mt-auto inline-flex w-fit items-center gap-2 rounded-full border border-white/70 bg-[#15566F] px-4 py-2.5 text-[12px] font-semibold text-white">Shop on app <RightArrowIcon /></span>
+          </a>
 
-          {/* RIGHT — full-bleed image with text overlaid */}
-          <div className="relative overflow-hidden rounded-3xl min-h-[220px] sm:min-h-[280px] p-6 sm:p-8 flex flex-col justify-center gap-5">
-            <Image
-              src="https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card2-image.png"
-              alt=""
-              aria-hidden="true"
-              fill
-              sizes="(max-width: 1024px) 100vw, 640px"
-              className="pointer-events-none select-none object-cover z-0"
-            />
-
-            <span className="relative z-10 text-3xl sm:text-4xl lg:text-[38px] font-semibold leading-[1.1] tracking-tight text-[#000000]">
-              Direct from stores <br /> near you
-            </span>
-
-            <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="rounded-2xl bg-white/70 backdrop-blur-sm ring-1 ring-white/80 px-4 py-5 flex items-center gap-3">
-                <span className="text-2xl sm:text-3xl">🏪</span>
-                <span className="text-sm sm:text-base font-medium text-[#0F172A] leading-tight tracking-tight">
-                  Stores you
-                  <br />
-                  already trust
-                </span>
+          {COLLECTIONS.map((collection) => (
+            <a key={collection.id} href={APP_DOWNLOAD_HREF} className={`relative isolate flex min-h-[260px] flex-col sm:min-h-[234px] overflow-hidden rounded-[16px] p-5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0052FF] lg:min-h-0 ${collection.className}`}>
+              <div className="relative z-10 max-w-[50%] sm:max-w-[48%]">
+                <p className="text-[10px] font-semibold tracking-[0.12em] text-white/85">{collection.label}</p>
+                <h2 className="mt-3 text-[22px] font-semibold leading-[1.08] tracking-tight lg:text-[23px]">{collection.title}</h2>
+                <p className="mt-2 text-[12px] font-medium leading-snug text-white/90">{collection.description}</p>
               </div>
-              <div className="rounded-2xl bg-white/70 backdrop-blur-sm ring-1 ring-white/80 px-4 py-5 flex items-center gap-3">
-                <span className="text-2xl sm:text-3xl">🤝</span>
-                <span className="text-sm sm:text-base font-medium text-[#0F172A] leading-tight tracking-tight">
-                  Every order backs
-                  <br />
-                  a local shopkeeper
-                </span>
+              <div className="pointer-events-none absolute -right-3 bottom-0 h-[58%] w-[55%] sm:h-[78%] sm:w-[65%] lg:h-[85%] lg:w-[58%]">
+                <Image src={collection.image} alt={collection.alt} fill sizes="(max-width: 640px) 60vw, 260px" className="object-contain object-bottom" />
               </div>
-            </div>
+              <div className="relative z-10 mt-auto pt-5"><CollectionLink /></div>
+            </a>
+          ))}
 
-            <div className="relative z-10 flex flex-nowrap items-center gap-x-4 gap-y-2">
-              {FEATURES.map((f) => (
-                <span
-                  key={f}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0F172A] whitespace-nowrap"
-                >
-                  <CheckIcon />
-                  {f}
-                </span>
-              ))}
+          <a href={APP_DOWNLOAD_HREF} className="relative isolate flex min-h-[400px] flex-col overflow-hidden rounded-[16px] bg-[#F4D3D2] px-6 pb-5 pt-7 text-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0052FF] sm:col-span-2 lg:col-span-1 lg:col-start-3 lg:row-span-2 lg:row-start-1">
+
+            <h2 className="mx-auto mt-3 max-w-[230px] font-medium text-[31px] leading-[1.05] tracking-tight text-[#A52E40]">A little care.<br />A better day.</h2>
+            <p className="mt-3 text-[13px] font-medium text-[#456253]">Personal care, made effortless.</p>
+            <div className="pointer-events-none absolute inset-x-2 bottom-0 h-[61%]">
+              <Image src="/images/essentials/personal-care.png" alt="Shampoo, body lotion, handwash and soaps on a sage display" fill sizes="(max-width: 1024px) 340px, 300px" className="object-contain object-bottom" />
             </div>
-          </div>
+            <span className="relative z-10 mt-auto inline-flex w-fit items-center gap-2 rounded-full bg-[#9F263A] px-4 py-2.5 text-[12px] font-semibold text-white">Explore on app <RightArrowIcon /></span>
+          </a>
         </div>
       </div>
     </section>

@@ -1,10 +1,10 @@
-import { Lexend } from "next/font/google";
+import { Inter_Tight } from "next/font/google";
 
-// Lexend, loaded via next/font (self-hosted at build, zero layout shift, no
-// render-blocking @import). Variable font — the full 100–900 weight range is
-// available through the one --font-lexend variable, so no per-weight entries.
-export const lexend = Lexend({
+// One variable family for all landing routes. Next.js self-hosts the font;
+// weights 100–900 and real italics are available without browser CSS imports.
+export const interTight = Inter_Tight({
   subsets: ["latin"],
-  variable: "--font-lexend",
+  style: ["normal", "italic"],
+  variable: "--font-inter-tight",
   display: "swap",
 });

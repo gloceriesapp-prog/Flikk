@@ -22,41 +22,41 @@ interface PromoCard {
 const PROMO_CARDS: PromoCard[] = [
   {
     id: "festive-navaratri",
-    title: "Get Ready for Navaratri",
-    subtitle: "Local puja items and fresh sweets, from your neighbourhood shops",
+    title: "Freshness starts here.",
+    subtitle: "Farm-fresh picks from your nearby stores.",
     bgGradient: "from-[#FDF4E2] via-[#F4DFAC] to-[#E6BE72]",
     borderColor: "border-amber-200/80",
     titleColor: "text-slate-900",
     subtitleColor: "text-slate-800",
     image: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/landing-promo.png",
-    alt: "Navaratri puja essentials, flowers & sweets",
-    proof: "Order early",
+    alt: "Fresh Fruits & Vegetables",
+    proof: "FRESH PICKS",
     bgImage: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card4-landing.png",
   },
   {
     id: "local-kirana",
-    title: "Your Trusted Kirana",
-    subtitle: "Daily pantry staples from stores you already know.",
+    title: "Your trusted Local Kirana, Online",
+    subtitle: "Groceries, snacks and household essentials.",
     bgGradient: "from-[#EEF3FF] via-[#D5E2FF] to-[#B2C9FF]",
     borderColor: "border-sky-200/60",
     titleColor: "text-slate-900",
     subtitleColor: "text-slate-800",
     image: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/landing-promo2.png",
     alt: "Everyday grocery staples from local kirana stores",
-    proof: "Shops near you",
+    proof: "DAILY ESSENTIALS",
     bgImage: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card3-landing.png",
   },
   {
     id: "fresh-produce",
-    title: "Fresh in 30 Minutes",
-    subtitle: "Crisp veggies and dairy straight to your door.",
+    title: "Festive Shopping, Made Easy",
+    subtitle: "Flowers, puja essentials and festive favourites.",
     bgGradient: "from-[#EAF5E4] via-[#CFE8C6] to-[#A9D69A]",
     borderColor: "border-emerald-200/70",
     titleColor: "text-slate-900",
     subtitleColor: "text-slate-800",
     image: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/landing-promo3.png",
-    alt: "Fresh local produce, fruits & dairy",
-    proof: "Avg 30 min",
+    alt: "Festive Shopping, Made Easy",
+    proof: "FESTIVE SPECIALS",
     bgImage: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card5-landing.png",
   },
 ];
@@ -160,19 +160,24 @@ export default function PromoBanners() {
             <div
               key={card.id}
               className={`w-[240px] sm:w-[280px] lg:w-auto shrink-0 lg:shrink snap-start
- h-[196px] sm:h-[206px] lg:h-[214px] rounded-[24px] p-4 lg:p-5 flex flex-col j
-ustify-between relative overflow-hidden ${card.bgImage ? "" : `bg-gradient-to-br ${card.bgGradient}`} s
-elect-none ring-1 ring-black/[0.06]`}
+ h-[196px] sm:h-[206px] lg:h-[214px] rounded-[24px] p-4 lg:p-5 flex flex-col justify-between relative overflow-hidden ${card.bgImage ? "" : `bg-gradient-to-br ${card.bgGradient}`} select-none ring-1 ring-black/[0.06]`}
             >
               {/* Full-bleed background image (only for cards that opt in) */}
               {card.bgImage && (
-                <Image
-                  src={card.bgImage}
-                  alt={card.alt}
-                  fill
-                  sizes="(max-width: 1024px) 280px, 368px"
-                  className="pointer-events-none select-none object-cover z-0"
-                />
+                <>
+                  <Image
+                    src={card.bgImage}
+                    alt={card.alt}
+                    fill
+                    sizes="(max-width: 1024px) 280px, 400px"
+                    className="pointer-events-none select-none object-cover saturate-[0.9] z-0"
+                  />
+                  {/* Light veil behind the copy keeps the artwork colourful and readable. */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(90deg,rgba(248,250,247,0.7)_0%,rgba(248,250,247,0.52)_38%,rgba(248,250,247,0.12)_62%,rgba(248,250,247,0)_100%)]"
+                  />
+                </>
               )}
 
               {/* Soft top sheen for depth — premium dimensional finish */}
@@ -193,7 +198,7 @@ elect-none ring-1 ring-black/[0.06]`}
                   }`}
               >
                 <span
-                  className={`text-[19px] lg:text-[23px] font-semibold ${card.titleColor} leading-tight tracking-tight drop-shadow-xs`}
+                  className={`text-[19px] lg:text-[23px] font-semibold ${card.titleColor} leading-tight tracking-tight`}
                 >
                   {card.title}
                 </span>

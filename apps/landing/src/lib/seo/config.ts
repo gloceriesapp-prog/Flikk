@@ -9,7 +9,7 @@ export const SITE = {
   url: "https://gloceries.com",
   domain: "gloceries.com",
   // Used as the metadata title template default + OG site name.
-  tagline: "Grocery Delivery from Local Stores You Love",
+  tagline: "Groceries & Essentials Delivered in 30 Min",
   description:
     "Gloceries delivers groceries, fresh produce, dairy, meat, medicines and daily essentials to your doorstep from local kirana stores near you — fast, honestly priced, no dark stores.",
   // AEO/GEO: a plain-language, factual one-liner AI answer engines quote.
@@ -24,9 +24,10 @@ export const SITE = {
   // Defaults to the registered business number (the one on the payment
   // gateway KYC), so it is on the site even when the env var is unset.
   supportPhone: process.env.NEXT_PUBLIC_SUPPORT_PHONE?.trim() || "+919741793580",
-  // Brand logo (reused from the Navbar's hosted asset) — used as
-  // Organization logo, LocalBusiness image, and manifest icon.
-  logo: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/All_Right-removebg-preview.png",
+  // Header and browser icons use the bundled asset; structured data uses
+  // its public CDN URL so crawlers receive an absolute brand-image URL.
+  logoPath: "/gloceries-main.png",
+  logo: "https://images.gloceries.com/appsui/gloceries-main.png",
   // App store links — placeholders until store listings exist. Kept in one
   // place so every "download" surface + schema updates at once.
   androidUrl: "https://play.google.com/store/apps/details?id=com.gloceries.customer",

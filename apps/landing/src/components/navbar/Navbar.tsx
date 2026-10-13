@@ -2,18 +2,14 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import AnnouncementBanner from "./AnnouncementBanner";
+import Image from "next/image";
+import { SITE } from "@/lib/seo/config";
 import LocationModal from "../location/LocationModal";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Search01Icon,
   ArrowDown01Icon,
   ShoppingBag01Icon,
-  QrCodeIcon,
-  FireIcon,
-  FlashIcon,
-  Cancel01Icon,
-  TrendingUpIcon,
   AutoConversationsIcon,
 } from "@hugeicons/core-free-icons";
 
@@ -49,7 +45,6 @@ export default function Navbar({ promptLocation = true }: { promptLocation?: boo
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [modalSearchTerm, setModalSearchTerm] = useState<string | null>(null);
 
   // User Location State & First-Load Prompt Modal State
   const [userLocation, setUserLocation] = useState<string>("Kodialbail, Mangalore");
@@ -153,7 +148,7 @@ export default function Navbar({ promptLocation = true }: { promptLocation?: boo
   return (
     <header className="w-full bg-white border-b border-slate-200/80 sticky top-0 z-50">
       {/* Top Announcement Banner */}
-      <AnnouncementBanner />
+      {/* <AnnouncementBanner /> */}
 
       {/* Increased max-width to 1280px to align with the rest of the page layout */}
       {/* Below md the row wraps: brand + location on top, search + app CTA
@@ -166,11 +161,15 @@ export default function Navbar({ promptLocation = true }: { promptLocation?: boo
             className="flex items-center gap-2 cursor-pointer select-none group"
             aria-label="Gloceries Home"
           >
-            <div className="flex flex-col leading-[0.95]">
-              <span className="text-[30px] sm:text-[34px] font-semibold text-[#000000] tracking-tight">
-                gloceries <span className="text-[#155dfc] h-2 w-2 rounded-full inline-block bg-[#155dfc]"></span>
-              </span>
-            </div>
+            <Image
+              src={SITE.logoPath}
+              alt="Gloceries"
+              width={52}
+              height={52}
+              sizes="52px"
+              priority
+              className="h-11 w-11 rounded-xl object-contain sm:h-13 sm:w-13"
+            />
           </Link>
 
           <div className="hidden md:block w-px h-7 bg-slate-200" />
@@ -210,8 +209,8 @@ export default function Navbar({ promptLocation = true }: { promptLocation?: boo
         <div className="flex-1 min-w-0 md:max-w-[460px] relative" ref={searchRef}>
           <div
             className={`flex items-center bg-[#F1F3F6] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0052FF]/20 focus-within:border-[#0052FF] border rounded-xl px-4 sm:px-5 h-12 md:h-[54px] transition-all ${isSearchFocused
-                ? "border-[#0052FF] bg-white ring-2 ring-[#0052FF]/20 shadow-md"
-                : "border-transparent"
+              ? "border-[#0052FF] bg-white ring-2 ring-[#0052FF]/20 shadow-md"
+              : "border-transparent"
               }`}
           >
             <input
@@ -240,7 +239,6 @@ export default function Navbar({ promptLocation = true }: { promptLocation?: boo
                     key={item.term}
                     type="button"
                     onClick={() => {
-                      setModalSearchTerm(item.term);
                       setIsSearchFocused(false);
                       setIsDropdownOpen(true);
                     }}
@@ -293,8 +291,8 @@ export default function Navbar({ promptLocation = true }: { promptLocation?: boo
             onClick={() => setIsDropdownOpen((prev) => !prev)}
             className="flex items-center gap-2 bg-gradient-to-r from-[#0052FF] to-[#0040E0] hover:from-[#0048E5] hover:to-[#0036C7] active:scale-[0.98] text-white px-4 sm:px-6 py-3 md:py-3.5 rounded-xl font-semibold text-sm sm:text-base shadow-md hover:shadow-lg transition-all cursor-pointer group shrink-0"
           >
-            <HugeiconsIcon icon={ShoppingBag01Icon} className="w-5 h-5 text-white shrink-0 group-hover:scale-110 transition-transform" />
-            <span className="hidden lg:inline">Order on Gloceries App</span>
+            <HugeiconsIcon icon={ShoppingBag01Icon} className="w-5 h-5 text-white shrink-0" />
+            <span className="hidden lg:inline">Get the App </span>
             <span className="lg:hidden">Get App</span>
             <HugeiconsIcon
               icon={ArrowDown01Icon}
@@ -324,7 +322,7 @@ export default function Navbar({ promptLocation = true }: { promptLocation?: boo
 
                 <span className="text-[12px] font-medium text-slate-500 flex items-center gap-1.5">
                   {/* <HugeiconsIcon icon={QrCodeIcon} className="w-3.5 h-3.5 text-[#0052FF]" /> */}
-                Get it on Android & iOS
+                  Get it on Android & iOS
                 </span>
               </div>
             </div>

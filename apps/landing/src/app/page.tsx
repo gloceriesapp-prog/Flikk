@@ -1,11 +1,8 @@
 import Navbar from "@/components/navbar/Navbar";
 import ExperienceBanner from "@/components/experience/ExperienceBanner";
-import PromoBanners from "@/components/promo/PromoBanners";
 import NearbyStores from "@/components/stores/NearbyStores";
-import CategoryGrid from "@/components/categories/CategoryGrid";
 import SubcategoriesGrid from "@/components/subcategories/SubcategoriesGrid";
 import ProductCarousel from "@/components/products/ProductCarousel";
-import AppDownloadBanner from "@/components/download/AppDownloadBanner";
 import AreaStrip from "@/components/location/AreaStrip";
 import Footer from "@/components/footer/Footer";
 import JsonLd from "@/components/seo/JsonLd";
@@ -39,12 +36,9 @@ export default async function Home({
       <main>
         {activeArea && <AreaStrip area={activeArea.area} />}
         <ExperienceBanner />
-        <PromoBanners />
         <NearbyStores />
-        {/* <CategoryGrid /> */}
         <SubcategoriesGrid />
         <ProductCarousel products={products} />
-        <AppDownloadBanner />
       </main>
       <Footer />
     </div>
