@@ -60,7 +60,7 @@ export async function promotionsSwitchOn(): Promise<boolean> {
 // the admin has switched on and the platform-wide minimum order value (item
 // subtotal, rupees). Read fresh on every checkout, like the commission rate.
 // A read error or a pre-117 schema falls back to the old behaviour: both
-// methods on (env and Cashfree keys still decide) and no minimum.
+// methods on (env and Razorpay keys still decide) and no minimum.
 export interface CheckoutControls {
   codEnabled: boolean;
   onlinePaymentsEnabled: boolean;

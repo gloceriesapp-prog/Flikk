@@ -524,6 +524,10 @@
     {
       "file": "20261011140000_home_content_festivals_meat.sql",
       "sha256": "d8220cdac155fb6f7f9868e997fb7e08735cd6afc2417e5eb6c495e9434c8dcf"
+    },
+    {
+      "file": "20261013105118_razorpay_provider_checkout.sql",
+      "sha256": "add01d5eb0c30b4090f59fab7d9764396b921bae9ab7904f7a7d5a577a4af7f0"
     }
   ]
 }

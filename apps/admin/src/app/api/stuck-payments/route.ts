@@ -2,7 +2,7 @@
 // (default 30, 5..1440):
 // - unpaid online checkouts: orders/trips still 'placed' with no recorded
 //   payment. The expiry worker normally releases them 20 minutes after
-//   placement (50 minutes at most while a Cashfree order is being
+//   placement (50 minutes at most while a provider order is being
 //   reconciled), so anything older means the worker or provider check is
 //   stuck. Actions: open the order (admin cancel lives there).
 // - refunds not completed: order_refund_jobs / trip_refunds still queued,
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   const cutoff = new Date(Date.now() - minutes * 60_000).toISOString();
 
   try {
-    const [ordersRes, tripsRes, orderRefundsRes, tripRefundsRes] = await Promise.all([
+    const [ordersRes, tripsRes, orderRefundsRes, tripRefundsRes, incidentsRes] = await Promise.all([
       supabaseAdmin
         .from('orders')
         .select('id, order_number, total, placed_at, customer_id, users!customer_id(name, phone)')
@@ -57,8 +57,14 @@ export async function GET(request: Request) {
         .lt('updated_at', cutoff)
         .order('updated_at', { ascending: true })
         .limit(100),
+      supabaseAdmin
+        .from('checkout_payment_incidents')
+        .select('id,kind,target_id,provider_order_id,payment_id,canonical_payment_id,amount_paise,currency,reason,created_at')
+        .eq('status', 'manual_required')
+        .order('created_at', { ascending: true })
+        .limit(100),
     ]);
-    for (const res of [ordersRes, tripsRes, orderRefundsRes, tripRefundsRes]) if (res.error) throw res.error;
+    for (const res of [ordersRes, tripsRes, orderRefundsRes, tripRefundsRes, incidentsRes]) if (res.error) throw res.error;
 
     // Legs fetched separately: trips and orders are linked by more than one foreign key.
     const tripIds = (tripsRes.data ?? []).map((t) => t.id);
@@ -137,7 +143,11 @@ export async function GET(request: Request) {
       })),
     ].sort((a, b) => a.since.localeCompare(b.since));
 
-    return NextResponse.json({ minutes, checkouts, refunds });
+    return NextResponse.json({ minutes, checkouts, refunds, incidents: (incidentsRes.data ?? []).map((row) => ({
+      id: row.id, kind: row.kind, targetId: row.target_id, providerOrderId: row.provider_order_id,
+      paymentId: row.payment_id, canonicalPaymentId: row.canonical_payment_id,
+      amount: Number(row.amount_paise) / 100, currency: row.currency, reason: row.reason, since: row.created_at,
+    })) });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not load stuck payments.';
     return NextResponse.json({ error: message }, { status: 500 });

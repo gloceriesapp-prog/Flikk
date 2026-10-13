@@ -107,7 +107,7 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
     // alert once paid (settleCheckoutPayment), same rule as POST /orders.
     if ((body.payment_method ?? 'cod') === 'cod') void notifyStoresOfNewOrder({ tripId: trip.id });
 
-    // Cashfree payment initiated by the caller once the trip id is
+    // Razorpay payment initiated by the caller once the trip id is
     // known — same separation POST /orders already documents (a second
     // external-service failure mode kept out of this handler).
     res.status(201).json(trip);

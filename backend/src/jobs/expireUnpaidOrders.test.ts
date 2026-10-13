@@ -4,9 +4,6 @@ vi.mock('../db/supabase.js',()=>({supabase:{rpc}}));
 // Default provider reader for runReservationExpiry: an outage, never the network.
 vi.mock('../payments/recovery.js', async (load) => ({ ...await load<typeof import('../payments/recovery.js')>(),
   reconcileProvider: vi.fn().mockRejectedValue(new Error('provider down')) }));
-// Never terminate a real Cashfree order from tests.
-const terminate = vi.hoisted(() => vi.fn().mockResolvedValue('TERMINATED'));
-vi.mock('../payments/cashfreeClient.js', async (load) => ({ ...await load<typeof import('../payments/cashfreeClient.js')>(), terminateCfOrder: terminate }));
 import { drainExpiredReservations, reconcileBeforeExpiry, runReservationExpiry, RECONCILE_BATCH } from './expireUnpaidOrders.js';
 import { AppError } from '../lib/errors.js';
 beforeEach(() => vi.clearAllMocks());
@@ -41,14 +38,6 @@ it('settles captured payments and lets authorized ones lapse before marking them
   expect(reconcile).toHaveBeenNthCalledWith(1, expect.objectContaining({ target: { orderId: ORDER } }), 'order_a', 120.5);
   expect(reconcile).toHaveBeenNthCalledWith(2, expect.objectContaining({ target: { tripId: TRIP } }), 'order_b', 300);
   expect(marked()).toEqual([{ p_kind: 'order', p_target_id: ORDER }, { p_kind: 'trip', p_target_id: TRIP }]);
-});
-
-it('terminates the Cashfree order before the final provider read', async () => {
-  claim([{ kind: 'order', target_id: ORDER, provider_order_id: 'gl_a', total: 10 }]);
-  const reconcile = vi.fn().mockResolvedValue('unpaid');
-  await reconcileBeforeExpiry(reconcile);
-  expect(terminate).toHaveBeenCalledWith('gl_a');
-  expect(terminate.mock.invocationCallOrder[0]).toBeLessThan(reconcile.mock.invocationCallOrder[0]);
 });
 
 it('marks a late capture the SQL rejected (refund path) and an unpaid checkout as checked', async () => {

@@ -13,15 +13,15 @@ import { createOrder } from '../../../api/orders';
 import { createTrip } from '../../../api/trips';
 import type { ApiAddress } from '../../../api/addresses';
 import { useAuthStore } from '../../../store/useAuthStore';
-import { fetchPendingPayments, recoverPayment, createPaymentOrder, createUpiIntentPayment, createUpiCollectPayment, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
-import { openCashfreeCheckout, type CheckoutMode } from '../../../payments/openCashfreeCheckout';
+import { fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
+import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
 import type { UpiApp } from '../../../payments/upiApps';
-import { canLaunchUpiApp, detectInstalledUpiApps, openUpiApp, UPI_ID_SUPPORTED } from '../../../payments/upiIntent';
+import { detectInstalledUpiApps } from '../../../payments/installedUpiApps';
 import { keepsCheckoutAttempt } from './attemptPolicy';
 import { selectCartStoreCount, useCartStore } from '../../../store/useCartStore';
 import { formatIstMinute, isOutsideOperatingHours } from '../../../utils/operatingHours';
 import { useOrderingHours } from '../../../utils/useOperatingHours';
-import { availablePaymentMethod, paymentMethodLabel, type PaymentMethod } from '../../../payments/paymentMethod';
+import { availablePaymentMethod, type PaymentMethod } from '../../../payments/paymentMethod';
 import { usePaymentAvailability } from '../../../payments/usePaymentAvailability';
 import type { AppStackParamList } from '../../../navigation/types';
 
@@ -31,11 +31,9 @@ interface Props {
   quote?: CheckoutQuote;
   onQuoteChanged: () => void;
   selectedPaymentMethod?: PaymentMethod;
-  // Verified UPI ID for 'upi_id' (PaymentMethod screen). Navigation state only.
-  upiVpa?: string;
 }
 
-export function useCartPayment({ navigation, selectedAddress, selectedPaymentMethod, upiVpa, quote, onQuoteChanged }: Props) {
+export function useCartPayment({ navigation, selectedAddress, selectedPaymentMethod, quote, onQuoteChanged }: Props) {
   const items = useCartStore((state) => state.items);
   const orderingHours = useOrderingHours();
   const storeCount = useCartStore(selectCartStoreCount);
@@ -68,12 +66,12 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   const chosenMethod = selectedPaymentMethod;
   // A method admin switched off is dropped, so the cart asks for another one.
   const { allowed } = usePaymentAvailability();
-  const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, !!upiVpa, UPI_ID_SUPPORTED, allowed);
+  const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, allowed);
   const latestSelection = useRef({ addressId: selectedAddress?.id, paymentMethod });
   useLayoutEffect(() => {
     latestSelection.current = { addressId: selectedAddress?.id, paymentMethod };
   }, [selectedAddress?.id, paymentMethod]);
-  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod, upiVpa });
+  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod });
 
   async function goToReceipt(order: { orderId: string; orderNumber: string; placedAt: string; avgPrepMinutes: number | null; estimatedDeliveryMinutes?: number | null; estimatedDeliveryAt?: string | null; amount: number; items: CartItem[] }, methodLabel: string, successfulMethod: PaymentMethod) {
     if (!stillOwner()) return;
@@ -224,52 +222,23 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
 
       const payTarget = isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id };
       const deliveryAddress = selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address';
-      const toProcessing = (appName: string, collect?: { vpa: string; expiresAt: string | null }) => navigation.navigate('PaymentProcessing', {
-        target: payTarget, appName, paymentMethod, amount: confirmedAmount, order: orderSummary,
-        items: orderedItems, deliveryAddress, isTrip: isMultiStore, collect,
+      // The SDK owns UPI app hand-off, card entry and bank selection. Its
+      // callback is never enough to show a receipt: verify captured state.
+      const providerOrder = await createPaymentOrder(payTarget);
+      if (!stillOwner()) return;
+      // Customers can change methods inside secure checkout, so the receipt
+      // must not falsely claim that a preferred UPI app/card actually charged.
+      const label = 'Online payment';
+      const result = await openRazorpayCheckout(providerOrder, paymentMethod);
+      if (!stillOwner()) return;
+      const verified = await verifyPayment(payTarget, result).catch(() => ({ ok: false }));
+      if (!stillOwner()) return;
+      if (verified.ok) await goToReceipt(orderSummary, label, paymentMethod);
+      else navigation.navigate('PaymentProcessing', {
+        target: payTarget, appName: 'your payment provider', paymentMethod,
+        amount: confirmedAmount, order: orderSummary, items: orderedItems,
+        deliveryAddress, isTrip: isMultiStore, expiresAt: providerOrder.expiresAt,
       });
-
-      // Card / netbanking / anything else, and every UPI fallback. onVerify
-      // only means the hosted checkout closed; the server re-fetches Cashfree.
-      // Not confirmed yet → the processing screen keeps polling.
-      async function payViaCashfreeCheckout(label: string, modes?: CheckoutMode[]) {
-        const order = await createPaymentOrder(payTarget);
-        if (!stillOwner()) throw new Error('Session changed.');
-        await openCashfreeCheckout(order, modes);
-        if (!stillOwner()) throw new Error('Session changed.');
-        const verified = await verifyPayment(payTarget).catch(() => ({ ok: false }));
-        if (!stillOwner()) return;
-        if (verified.ok) await goToReceipt(orderSummary, label, paymentMethod!);
-        else toProcessing(label);
-      }
-
-      if (paymentMethod === 'upi_id') {
-        if (!upiVpa) throw new Error('Verify your UPI ID before paying.');
-        const collect = await createUpiCollectPayment(payTarget, upiVpa);
-        if (!stillOwner()) return;
-        toProcessing('UPI ID', { vpa: upiVpa, expiresAt: collect.expiresAt ?? null });
-        return;
-      }
-
-      const upiApp = paymentMethod.startsWith('upi_app:') ? upiApps.find((a) => a.id === paymentMethod.slice('upi_app:'.length)) : undefined;
-      if (paymentMethod.startsWith('upi_app:') && !upiApp) throw new Error('This UPI app is no longer available. Please choose another payment method.');
-      // An app whose scheme cannot open goes straight to Cashfree checkout,
-      // BEFORE any intent payment is created (see canLaunchUpiApp).
-      if (upiApp && await canLaunchUpiApp(upiApp)) {
-        const { links } = await createUpiIntentPayment(payTarget, upiApp.id);
-        if (!stillOwner()) return;
-        // Launch, then poll from the processing screen; returning to the
-        // foreground triggers an immediate status check (pollOrderPaid).
-        if (await openUpiApp(upiApp, links)) {
-          toProcessing(upiApp.name);
-          return;
-        }
-      }
-
-      // An app that couldn't be launched falls back to Cashfree's UPI checkout.
-      const modes: CheckoutMode[] | undefined = upiApp ? ['UPI']
-        : paymentMethod === 'card' ? ['CARD'] : paymentMethod === 'netbanking' ? ['NB'] : undefined;
-      await payViaCashfreeCheckout(paymentMethod === 'online' || upiApp ? 'Online payment' : paymentMethodLabel(paymentMethod, upiApps), modes);
     } catch (err) {
       if (!stillOwner()) return;
       // A lost create/payment response keeps the attempt durable. Never

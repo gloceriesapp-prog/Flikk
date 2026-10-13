@@ -32,7 +32,7 @@ beforeEach(() => {
 describe('payment preference', () => {
   it('accepts supported methods and never stores an arbitrary app or VPA', () => {
     expect(normalizePaymentPreference('upi_app:gpay')).toBe('upi_app:gpay');
-    expect(normalizePaymentPreference('upi_id')).toBe('upi_id');
+    expect(normalizePaymentPreference('upi_id')).toBeNull();
     expect(normalizePaymentPreference('upi_app:amazonpay')).toBe('upi_app:amazonpay');
     expect(normalizePaymentPreference('upi_app:unknown')).toBeNull();
     expect(normalizePaymentPreference('name@bank')).toBeNull();

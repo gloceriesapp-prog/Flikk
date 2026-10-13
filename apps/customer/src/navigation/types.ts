@@ -67,36 +67,13 @@ export type AppStackParamList = {
   RegionalCategory: { categoryId: string };
   CoconutOilCollection: undefined;
   StoreDetail: { storeId: string; storeName: string };
-  // upiVpa: the UPI ID verified on PaymentMethod (only with 'upi_id'). Kept
-  // in navigation state only — never persisted remotely.
-  Cart: { selectedPaymentMethod?: PaymentMethod; upiVpa?: string } | undefined;
-  PaymentMethod: { selectedMethod: PaymentMethod | null; source?: 'profile'; upiVpa?: string };
-  // Real failure/timeout destination for the UPI Intent flow (below) — a
-  // Standard Checkout (card/online) failure is still handled inline on
-  // Checkout itself (Cashfree's own checkout already shows the failure inside
-  // its hosted UI before ever returning control here), so only the async
-  // UPI-app path — which has no such built-in UI — routes here.
+  Cart: { selectedPaymentMethod?: PaymentMethod } | undefined;
+  PaymentMethod: { selectedMethod: PaymentMethod | null; source?: 'profile' };
   CheckoutAttemptRecovery: undefined;
   PaymentRecovery: { target: import('../api/payments').PaymentTarget };
   PaymentStatus: { amount: number };
-  // The real waiting room for the UPI Intent flow (CheckoutScreen's own
-  // handlePay, payments/pollOrderPaid.ts) — launching a UPI app and
-  // getting control back only means the customer finished interacting
-  // with it, never that the payment settled (backend/src/payments/
-  // webhook.ts is the only real source of truth). This screen owns that
-  // wait: a live countdown matching pollOrderPaid's own real timeout
-  // budget, replacing itself with Receipt on confirmed success or
-  // PaymentStatus on timeout — never both, and never Receipt on anything
-  // but a confirmed webhook.
-  //
-  // Everything Receipt needs is threaded straight through as params
-  // (same shape CheckoutScreen's own goToReceipt already assembles for
-  // every other payment path) since this screen — not CheckoutScreen —
-  // is what actually navigates to Receipt for this one path, and the
-  // cart must stay uncleared until payment is actually confirmed (a
-  // timeout leaves the order sitting unpaid, same as before this screen
-  // existed — jobs/expireUnpaidOrders.ts cleans it up backend-side; the
-  // customer's cart itself should still be there to retry with).
+  // Native SDK success still waits for server-confirmed capture. Navigation
+  // carries the first receipt snapshot; restart recovery reads backend state.
   PaymentProcessing: {
     target: { orderId: string } | { tripId: string };
     appName: string;
@@ -113,9 +90,7 @@ export type AppStackParamList = {
     items: CartItem[];
     deliveryAddress: string;
     isTrip?: boolean;
-    // UPI collect: the customer must approve a request inside their UPI app
-    // before this time (ISO). Drives the countdown and the poll deadline.
-    collect?: { vpa: string; expiresAt: string | null };
+    expiresAt?: string;
   };
   // orderId is the real backend orders.id (UUID, from POST /orders) —
   // used only for navigation (TrackOrder's own real lookup), never shown.

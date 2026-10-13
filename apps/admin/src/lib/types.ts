@@ -550,11 +550,15 @@ export type NewHomeTabInput = Omit<HomeTab, 'id'>;
 export type NewHomeTabTileInput = Omit<HomeTabTile, 'id'>;
 export type NewHomeTabBannerInput = Omit<HomeTabBanner, 'id'>;
 
-// Payments run on Cashfree; 'razorpay' marks legacy rows (migration 103) that
-// can't be refunded through Cashfree and land in 'manual_required'.
-export type PaymentProvider = 'cashfree' | 'razorpay';
+// Provider ownership is immutable: historic payments remain with the account
+// that collected them. New checkouts use Razorpay; unknown rows fail closed.
+export type PaymentProvider = 'razorpay' | 'cashfree' | 'unknown';
 export type RefundStatus = 'none' | 'processing' | 'completed' | 'failed' | 'manual_required';
 
-// Cashfree documents no per-order deep link — this opens the merchant
-// dashboard; search Payments by the order id shown next to it.
-export const CASHFREE_DASHBOARD_URL = 'https://merchant.cashfree.com/';
+export const RAZORPAY_DASHBOARD_URL = 'https://dashboard.razorpay.com/app/payments';
+
+export function paymentProviderLabel(provider: unknown): string {
+  if (provider === 'razorpay') return 'Razorpay';
+  if (provider === 'cashfree') return 'Previous provider (Cashfree)';
+  return 'Unknown provider — review required';
+}

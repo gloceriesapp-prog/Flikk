@@ -1,5 +1,5 @@
 import { supabase } from '../db/supabase.js';
-import { cashfreeRefundId } from './cashfreeClient.js';
+import { refundRequestKey } from './razorpayClient.js';
 import { createOrAdoptRefund, isDefinitiveRejection, LEGACY_REFUND_NOTE, listRefunds, refundProgress, refundSource } from './refundPayment.js';
 import { logger } from '../lib/logger.js';
 export { refundProgress };
@@ -29,15 +29,15 @@ async function save(job: TripRefundJob, patch: Record<string, unknown>) {
 export const TRIP_REFUND_MANUAL_NOTE = 'Provider rejected the refund: refund manually';
 export async function processTripRefund(job: TripRefundJob): Promise<void> {
     try {
-        const source = await refundSource('trip', job.trip_id);
-        if (source.provider === 'legacy') {
+        const source = await refundSource('trip', job.trip_id, job.payment_id);
+        if (source.provider === 'legacy' || source.paymentId !== job.payment_id) {
             await save(job, { status: 'manual_required', last_error: LEGACY_REFUND_NOTE, release: true });
             return;
         }
-        const refundId = cashfreeRefundId(job.id);
-        const existing = await listRefunds(source.providerOrderId);
+        const refundId = refundRequestKey(job.id);
+        const existing = await listRefunds(source.paymentId);
         const progress = refundProgress(existing, Number(job.target_paise));
-        const own = existing.find(r => r.id === refundId);
+        const own = existing.find(r => r.requestKey === refundId);
         let status = progress.settled ? 'completed' : own?.status === 'failed' ? 'failed' : 'processing';
         let providerId = own?.id ?? job.provider_refund_id;
         if (!progress.settled && status !== 'failed' && !own && (job.request_paise || progress.remaining > 0)) {
@@ -46,7 +46,7 @@ export async function processTripRefund(job: TripRefundJob): Promise<void> {
             const amount = Number(job.request_paise ?? progress.remaining);
             if (!await save(job, { request_paise: amount }))
                 return;
-            const refund = await createOrAdoptRefund(source.providerOrderId, refundId, amount, 'Gloceries trip refund');
+            const refund = await createOrAdoptRefund(source.paymentId, refundId, amount, 'Gloceries trip refund');
             providerId = refund.id;
             status = refund.status === 'failed' ? 'failed' : 'processing';
             // Confirm all partial refunds, including earlier shop refunds, before

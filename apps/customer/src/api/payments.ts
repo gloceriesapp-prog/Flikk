@@ -1,8 +1,6 @@
-// Customer payment endpoints (backend/PAYMENTS.md, Cashfree). The client
-// holds no provider secret and never self-reports success: POST /verify makes
-// the server re-fetch the payment from Cashfree before settling anything.
+// Customer payment endpoints. Provider credentials and final settlement stay
+// on the server; a native checkout callback is only evidence to verify.
 
-import { Platform } from 'react-native';
 import { apiRequest } from './client';
 import type { PaymentMethod } from '../payments/paymentMethod';
 
@@ -34,52 +32,33 @@ export async function rememberPaymentMethod(method: PaymentMethod, target: { ord
 
 export type PaymentTarget = { orderId: string } | { tripId: string };
 
-export interface CashfreeOrder {
-  provider: 'cashfree';
+export interface RazorpayOrder {
+  provider: 'razorpay';
   providerOrderId: string;
-  paymentSessionId: string;
-  amount: number;
+  keyId: string;
+  amount: number; // rupees, for display only
+  amountPaise: number; // server-calculated checkout amount
+  currency: 'INR';
   environment: 'sandbox' | 'production';
+  expiresAt: string;
+  customer?: { contact?: string; email?: string; name?: string };
 }
 
-// Reuses the SAME provider order for a given order/trip (server-side claim),
-// so retrying never creates a second charge target.
-export function createPaymentOrder(target: PaymentTarget): Promise<CashfreeOrder> {
-  return apiRequest('/payments/create-order', { method: 'POST', body: target });
+export interface RazorpayPaymentResult {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
 }
 
-// Per-app UPI links from Cashfree "Order Pay" (channel 'link'). `default` is
-// the generic upi://pay link; per-app keys are only present when Cashfree
-// returned them. Opened exactly as received (payments/upiIntent.ts).
-export interface UpiIntentLinks {
-  default: string;
-  [app: string]: string | undefined;
-}
-export interface UpiIntentPayment {
-  providerOrderId: string;
-  links: UpiIntentLinks;
-}
-export function createUpiIntentPayment(target: PaymentTarget, app: string): Promise<UpiIntentPayment> {
-  return apiRequest('/payments/upi/intent', { method: 'POST', body: { ...target, app, platform: Platform.OS === 'ios' ? 'ios' : 'android' } });
+// Backend reconciles and returns the same provider order on retries.
+export function createPaymentOrder(target: PaymentTarget): Promise<RazorpayOrder> {
+  return apiRequest('/payments/create-order', { method: 'POST', body: { ...target, provider: 'razorpay' } });
 }
 
-// Format check always; name lookup only when the backend has the Cashfree
-// verification suite configured (name may be null even when valid).
-export function validateVpa(vpa: string): Promise<{ valid: boolean; name: string | null }> {
-  return apiRequest('/payments/upi/validate', { method: 'POST', body: { vpa } });
-}
-
-// UPI collect request: the customer approves it inside their UPI app.
-// expiresAt is optional in the contract; the processing screen falls back to
-// its own poll budget when absent.
-export function createUpiCollectPayment(target: PaymentTarget, vpa: string): Promise<{ providerOrderId?: string; expiresAt?: string | null }> {
-  return apiRequest('/payments/upi/collect', { method: 'POST', body: { ...target, vpa, platform: Platform.OS } });
-}
-
-// Server fetches the order + payments from Cashfree and settles only on a
-// SUCCESS payment with a matching amount. ok:false = not paid (yet).
-export function verifyPayment(target: PaymentTarget): Promise<{ ok: boolean }> {
-  return apiRequest('/payments/verify', { method: 'POST', body: target });
+// The server verifies a complete SDK signature (when provided), then fetches
+// captured payment, amount, currency and ownership before committing success.
+export function verifyPayment(target: PaymentTarget, result?: RazorpayPaymentResult): Promise<{ ok: boolean }> {
+  return apiRequest('/payments/verify', { method: 'POST', body: { ...target, ...result } });
 }
 
 export interface PaymentRecovery {
@@ -91,7 +70,7 @@ export function recoverPayment(target: PaymentTarget): Promise<PaymentRecovery> 
   return apiRequest('/payments/recovery', { method: 'POST', body: target });
 }
 // POST /payments/abandon — cancel an unpaid checkout or switch it to cash on
-// delivery. The server re-reads Cashfree first: a captured payment is settled
+// delivery. The server re-reads the provider first: a captured payment is settled
 // (409 PAYMENT_CAPTURED), an authorized one is waited for (409
 // PAYMENT_RECONCILING); any capture landing later is refunded automatically.
 export function abandonCheckout(target: PaymentTarget, action: 'cancel' | 'cod'): Promise<{ target: PaymentTarget; state: 'paid' | 'cancelled' }> {

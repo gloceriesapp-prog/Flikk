@@ -24,7 +24,7 @@ export function failedDeliveryRefundEligibility(order: RefundableOrder): RefundE
 }
 
 // "Mark refunded manually" — only for refunds the system can't send through
-// Cashfree (legacy-provider payments). The reference is the bank/UPI UTR the
+// the active payment provider (legacy-provider payments). The reference is the bank/UPI UTR the
 // founder paid with; trimmed, 4-64 chars, no free-form notes.
 export function manualRefundReference(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;

@@ -1,14 +1,11 @@
-// Money-path guard: CANCELLED/REJECTED refunds carry an amount but moved no
-// money, so they must never count as "already refunded".
-import { expect, it } from 'vitest';
-import { mapRefundStatus, normalizeRefund, refundProgress } from './refundPayment.js';
-it('maps every Cashfree refund status', () => {
-  expect(mapRefundStatus('SUCCESS')).toBe('completed');
-  for (const s of ['PENDING', 'PENDING_APPROVAL', 'ONHOLD']) expect(mapRefundStatus(s)).toBe('processing');
-  for (const s of ['CANCELLED', 'REJECTED']) expect(mapRefundStatus(s)).toBe('failed');
+import { expect, it, vi } from 'vitest';
+vi.mock('../db/supabase.js',()=>({supabase:{}}));
+import { normalizeRefund,mapRefundStatus,refundProgress } from './refundPayment.js';
+it('normalizes Razorpay integer paise and keeps request key distinct from provider ID',()=>{
+ expect(normalizeRefund({id:'rfnd_one',payment_id:'pay_one',amount:1000,status:'processed',receipt:'gl_job'})).toEqual({id:'rfnd_one',requestKey:'gl_job',amount:1000,status:'completed'});
+ expect(()=>normalizeRefund({id:'',payment_id:'pay_one',amount:1000,status:'processed'})).toThrow();
 });
-it('ignores failed refunds when deciding what is still owed', () => {
-  const items = [{ refund_id: 'rf_a', refund_amount: 500, refund_status: 'CANCELLED' }, { refund_id: 'rf_b', refund_amount: 499.99, refund_status: 'SUCCESS' }].map(normalizeRefund);
-  expect(refundProgress(items, 50000)).toEqual({ remaining: 1, completed: 49999, settled: false });
-  expect(() => normalizeRefund({ refund_id: '', refund_amount: 1, refund_status: 'SUCCESS' })).toThrow();
+it('failed refunds do not reserve money but pending refunds do',()=>{
+ expect(mapRefundStatus('processed')).toBe('completed');expect(mapRefundStatus('failed')).toBe('failed');expect(mapRefundStatus('pending')).toBe('processing');
+ expect(refundProgress([{id:'a',amount:100,status:'failed'},{id:'b',amount:200,status:'processing'},{id:'c',amount:300,status:'completed'}],1000)).toEqual({remaining:500,completed:300,settled:false});
 });

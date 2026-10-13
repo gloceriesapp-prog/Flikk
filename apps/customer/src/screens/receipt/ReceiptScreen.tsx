@@ -1,6 +1,6 @@
 // Reached once CheckoutScreen's own handlePay finishes — either
 // immediately (Cash on Delivery) or after the server confirmed the online
-// payment with Cashfree (POST /payments/verify or the processing poll). The cart is
+// payment with the payment provider (POST /payments/verify or the processing poll). The cart is
 // already cleared by then, so `items`/`amount`/`paymentMethodLabel` arrive
 // as a route-param snapshot, not read live from useCartStore.
 //

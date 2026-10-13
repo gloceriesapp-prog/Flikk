@@ -1,30 +1,34 @@
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
-import { cashfreeOrderId, getCfOrder, getCfOrderPayments, toPaise } from './cashfreeClient.js';
+import { checkoutReceipt, getProviderOrder, getProviderPayment, toPaise } from './razorpayClient.js';
 import type { OrderIdBody } from './types.js';
-
-// A webhook (or any client claim) is not enough: re-read Cashfree and require
-// that the payment belongs to THIS checkout's Cashfree order, succeeded, and
-// is for this exact saved amount. Returns the captured amount in paise (equal
-// to this checkout's total) so the caller can thread it into the settlement
-// write boundary (settle_checkout_payment's own amount guard).
 export async function validateCapturedPayment(target: OrderIdBody, paymentId: string, expectedOrderId?: string): Promise<number> {
-  if (Boolean(target.orderId) === Boolean(target.tripId)) throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'Choose exactly one payment target.');
+  if (Boolean(target.orderId) === Boolean(target.tripId) || !/^pay_[A-Za-z0-9]+$/.test(paymentId)) throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'Invalid payment target.');
   const id = (target.tripId ?? target.orderId)!;
-  const providerOrderId = cashfreeOrderId(id);
-  if (expectedOrderId && expectedOrderId !== providerOrderId) throw new AppError(409, 'PAYMENT_MISMATCH', 'Payment belongs to a different order.');
-  const [order, payments, local] = await Promise.all([
-    getCfOrder(providerOrderId),
-    getCfOrderPayments(providerOrderId),
-    supabase.from(target.tripId ? 'trips' : 'orders').select('total').eq('id', id).single(),
-  ]);
+  const kind = target.tripId ? 'trip' : 'order';
+  const { data: session, error: sessionError } = await supabase.from('checkout_payment_sessions').select('provider_order_id,payment_provider').eq('kind', kind).eq('target_id', id).single();
+  if (sessionError) throw sessionError;
+  const providerId = session.provider_order_id;
+  if (session.payment_provider !== 'razorpay' || !providerId || (expectedOrderId && providerId !== expectedOrderId)) throw new AppError(409, 'PAYMENT_MISMATCH', 'Payment belongs to a different checkout.');
+  const [order, payment, local] = await Promise.all([ getProviderOrder(providerId), getProviderPayment(paymentId), supabase.from(target.tripId ? 'trips' : 'orders').select('total,payment_provider,provider_payment_id').eq('id', id).single() ]);
   if (local.error) throw local.error;
-  const expected = toPaise(Number(local.data.total));
-  const tag = target.tripId ? order?.order_tags?.gloceries_trip_id : order?.order_tags?.gloceries_order_id;
-  const payment = payments.find((item) => String(item.cf_payment_id) === paymentId);
-  if (!order || !payment || tag !== id || order.order_currency !== 'INR' || toPaise(order.order_amount) !== expected
-    || payment.order_id !== providerOrderId || payment.payment_currency !== 'INR' || toPaise(payment.payment_amount) !== expected)
+  const expected = toPaise(local.data.total);
+  const tag = target.tripId ? order?.notes?.gloceries_trip_id : order?.notes?.gloceries_order_id;
+  if (!order || local.data.payment_provider !== 'razorpay' || tag !== id || order.receipt !== checkoutReceipt(id)
+    || order.currency !== 'INR' || order.amount !== expected || payment.id !== paymentId || payment.order_id !== providerId || payment.currency !== 'INR' || payment.amount !== expected)
     throw new AppError(409, 'PAYMENT_MISMATCH', 'Payment does not match this checkout. Contact support.');
-  if (payment.payment_status !== 'SUCCESS') throw new AppError(409, 'PAYMENT_RECONCILING', 'Your payment is still being confirmed. Please wait before paying again.');
+  let alreadyRecordedRefund = false;
+  if (payment.status === 'refunded' && payment.captured === true) {
+    alreadyRecordedRefund = local.data.provider_payment_id === paymentId;
+    if (!alreadyRecordedRefund) {
+      const { data: refundJob, error: refundError } = await supabase.from(target.tripId ? 'trip_refunds' : 'order_refund_jobs')
+        .select('payment_id').eq(target.tripId ? 'trip_id' : 'order_id', id).maybeSingle();
+      if (refundError) throw refundError;
+      alreadyRecordedRefund = refundJob?.payment_id === paymentId;
+    }
+  }
+  // A delayed authentic capture event may arrive after a full refund. Only
+  // previously recorded money can take the idempotent settlement path then.
+  if ((payment.status !== 'captured' && !alreadyRecordedRefund) || payment.captured !== true) throw new AppError(409, 'PAYMENT_RECONCILING', 'Your payment is still being confirmed. Please wait before paying again.');
   return expected;
 }

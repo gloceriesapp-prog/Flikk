@@ -129,7 +129,7 @@ export function CartScreen({ navigation, route }: Props) {
       return priced ? { ...item, price: priced.price, originalPrice: priced.originalPrice, weight: priced.weight } : item;
     }));
   }, [items, quote]);
-  const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod, upiVpa: route.params?.upiVpa,
+  const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod,
     quote, onQuoteChanged: () => { void quoteQuery.refetch(); void availabilityQuery.refetch(); } });
   function choosePayment() {
     if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }

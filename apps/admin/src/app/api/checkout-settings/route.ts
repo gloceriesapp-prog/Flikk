@@ -5,7 +5,7 @@
 // switched-off method, POST /payments/create-order and the UPI routes refuse to
 // start an online payment while online is off, and the quote/order routes
 // enforce the minimum on the item subtotal. The backend env stays a hard kill
-// (no Cashfree keys or ONLINE_PAYMENTS_DISABLED=true / COD_DISABLED=true).
+// (no Razorpay keys or ONLINE_PAYMENTS_DISABLED=true / COD_DISABLED=true).
 // Writes go through admin_update_checkout_settings, audited in
 // admin_control_audit.
 

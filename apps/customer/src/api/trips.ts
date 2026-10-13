@@ -53,7 +53,7 @@ export interface ApiTrip {
   discount_amount: number;
   promo_code_id: string | null;
   provider_payment_id: string | null;
-  payment_provider?: 'cashfree' | 'razorpay';
+  payment_provider?: string;
   status: 'placed' | 'delivered' | 'cancelled' | 'failed';
   created_at: string;
   // Only present on GET /trips/:id — POST /trips' own response is just the

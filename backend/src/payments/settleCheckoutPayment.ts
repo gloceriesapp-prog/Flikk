@@ -1,5 +1,6 @@
 import { enqueueTripRefund } from './tripRefunds.js';
 import { notifyStoresOfNewOrder } from './newOrderPush.js';
+import { logger } from '../lib/logger.js';
 import { supabase } from '../db/supabase.js';
 
 // Shared by signed SDK verification, authenticated provider webhooks and
@@ -14,12 +15,26 @@ import { supabase } from '../db/supabase.js';
 // settle_checkout_payment (migration 20261010090000) RAISEs if it does not
 // equal the order/trip's own stored total, so a caller bug can never settle
 // an order against a payment for the wrong amount.
-export async function settleCheckoutPayment(target: { orderId?: string; tripId?: string }, paymentId: string, expectedPaise: number, currency = 'INR'): Promise<boolean> {
+export async function settleCheckoutPayment(target: { orderId?: string; tripId?: string }, paymentId: string, expectedPaise: number, currency: string, providerOrderId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('settle_checkout_payment', {
     p_order_id: target.orderId ?? null, p_trip_id: target.tripId ?? null, p_payment_id: paymentId,
-    p_expected_paise: expectedPaise, p_currency: currency,
+    p_expected_paise: expectedPaise, p_currency: currency, p_provider_order_id: providerOrderId, p_provider: 'razorpay',
   });
-  if (error) throw error;
+  if (error) {
+    if (error.code === 'P0001' && error.message === 'Payment conflict' && providerOrderId) {
+      // Preserve the original capture. A second genuine captured payment is
+      // an incident, not a replacement order payment or a duplicate refund job.
+      const { error: incidentError } = await supabase.rpc('record_checkout_payment_incident', {
+        p_kind: target.tripId ? 'trip' : 'order', p_target_id: target.tripId ?? target.orderId,
+        p_provider_order_id: providerOrderId, p_payment_id: paymentId,
+        p_amount_paise: expectedPaise, p_currency: currency, p_reason: 'extra_capture',
+      });
+      if (incidentError) throw incidentError;
+      logger.error({ paymentId, providerOrderId, target }, 'Extra captured payment recorded for manual refund review');
+      return false;
+    }
+    throw error;
+  }
   const result = data as { accepted: boolean; total: number; settled_now?: boolean };
   if (result.accepted) {
     // settled_now (migration 096) keeps webhook + verify from double-pushing;

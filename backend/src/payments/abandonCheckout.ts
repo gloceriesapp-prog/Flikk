@@ -2,7 +2,7 @@
 // paid) and chooses to cancel the checkout or switch it to cash on delivery.
 //
 // Order of operations is what makes this safe:
-// 1. Terminate the Cashfree order (best effort) so no new payment can land,
+// 1. Razorpay orders cannot be terminated. Read the provider before closing locally,
 //    then read the provider. A SUCCESS payment is SETTLED instead (the
 //    customer already paid — never cancel or flip that to COD).
 // 2. abandon_unpaid_checkout (migration 101) re-checks "still awaiting payment"
@@ -16,7 +16,7 @@ import type { Response, NextFunction } from 'express';
 import type { AuthedRequest } from '../middleware/auth.js';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
-import { cashfreeOrderId, paymentsConfigured, terminateCfOrder } from './cashfreeClient.js';
+import { paymentsConfigured } from './razorpayClient.js';
 import { paymentTarget, recoverProviderOrder, reconcileProvider } from './recovery.js';
 import { notifyStoresOfNewOrder } from './newOrderPush.js';
 import { assertPaymentMethodAvailable } from './availability.js';
@@ -44,10 +44,10 @@ export async function abandonCheckout(req: AuthedRequest, res: Response, next: N
       // Without keys no provider order can exist (create-order is gated), so
       // there is nothing to reconcile; a session row means keys were removed.
       if (paymentsConfigured || session) {
-        const providerId = session?.provider_order_id ?? (await recoverProviderOrder(target, Number(record.total)))?.order_id;
+        const providerId = session?.provider_order_id ?? (await recoverProviderOrder(target, Number(record.total)))?.id;
         if (providerId) {
-          if (providerId === cashfreeOrderId(target.id)) await terminateCfOrder(providerId);
           const state = await reconcileProvider(target, providerId, Number(record.total), false);
+          if (state === 'pending') throw new AppError(409, 'PAYMENT_RECONCILING', 'Your payment is being confirmed. Please wait before cancelling or switching payment method.');
           if (state === 'paid') throw new AppError(409, 'PAYMENT_CAPTURED', 'Your payment went through. Open your order.');
           // 'cancelled': the capture was rejected and is refunding; fall through
           // so the RPC reports the checkout as no longer awaiting payment.

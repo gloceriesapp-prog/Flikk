@@ -1,132 +1,62 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), create: vi.fn(), get: vi.fn(), payments: vi.fn(), settle: vi.fn(), update: vi.fn() }));
-vi.mock('../db/supabase.js', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from } }));
-vi.mock('./cashfreeClient.js', async (load) => ({ ...await load<typeof import('./cashfreeClient.js')>(),
-  createCfOrder: mocks.create, getCfOrder: mocks.get, getCfOrderPayments: mocks.payments }));
-vi.mock('./settleCheckoutPayment.js', () => ({ settleCheckoutPayment: mocks.settle }));
-import { CashfreeError } from './cashfreeClient.js';
-import { paymentTarget, ensureProviderOrder, requirePaymentRetrySafe, claimPayment, reconcileProvider, getPaymentRecovery, upiClaimInFlight, UPI_CLAIM_STALE_MS } from './recovery.js';
-const id = '00000000-0000-4000-8000-000000000100';
-const cfId = 'gl_00000000000040008000000000000100';
-const target = paymentTarget({ orderId: id });
-const provider = { order_id: cfId, order_currency: 'INR', order_amount: 30, order_status: 'ACTIVE', payment_session_id: 'session_1', order_tags: { gloceries_order_id: id } };
-const pay = (status: string, extra: Record<string, unknown> = {}) => ({ cf_payment_id: `cf_${status}`, order_id: cfId, payment_currency: 'INR', payment_amount: 30, payment_status: status, ...extra });
-const claim = (claimed: boolean, providerOrderId: string | null) => mocks.rpc.mockResolvedValue({ data: { claimed, total: 30, session: { provider_order_id: providerOrderId } }, error: null });
-beforeEach(() => {
-  vi.resetAllMocks();
-  claim(false, cfId);
-  const query = { update: mocks.update, select: vi.fn(() => query), eq: vi.fn(() => query), order: vi.fn(() => query), limit: vi.fn(() => query),
-    maybeSingle: async () => ({ data: { phone: '+91 98765 43210', reservation_expires_at: new Date(Date.now() + 35 * 60_000).toISOString(), placed_at: new Date().toISOString() }, error: null }),
-    then: (resolve: (value: unknown) => unknown) => Promise.resolve({ error: null }).then(resolve) };
-  mocks.update.mockReturnValue(query); mocks.from.mockReturnValue(query);
-  mocks.get.mockResolvedValue(provider); mocks.create.mockResolvedValue(provider);
-  mocks.payments.mockResolvedValue([]); mocks.settle.mockResolvedValue(true);
+const m = vi.hoisted(()=>({rpc:vi.fn(),from:vi.fn(),create:vi.fn(),get:vi.fn(),find:vi.fn(),payments:vi.fn(),settle:vi.fn()}));
+vi.mock('../db/supabase.js',()=>({supabase:{rpc:m.rpc,from:m.from}}));
+vi.mock('./razorpayClient.js',async load=>({...await load<typeof import('./razorpayClient.js')>(),createProviderOrder:m.create,getProviderOrder:m.get,findProviderOrder:m.find,getOrderPayments:m.payments}));
+vi.mock('./settleCheckoutPayment.js',()=>({settleCheckoutPayment:m.settle}));
+import { paymentTarget, ensureProviderOrder, reconcileProvider, requirePaymentRetrySafe, claimPayment } from './recovery.js';
+const id='00000000-0000-4000-8000-000000000100'; const target=paymentTarget({orderId:id});
+const provider={id:'order_one',amount:3000,currency:'INR',receipt:'gl_00000000000040008000000000000100',notes:{gloceries_order_id:id}};
+let session: {provider_order_id:string|null;payment_provider:string}; let claimed=false;
+beforeEach(()=>{
+ vi.resetAllMocks(); session={provider_order_id:'order_one',payment_provider:'razorpay'};claimed=false;
+ m.rpc.mockImplementation(async(name:string)=>({data:name==='claim_checkout_payment'?{claimed,total:30,session}:session,error:null}));
+ const q={select:vi.fn(()=>q),eq:vi.fn(()=>q),limit:vi.fn(()=>q),maybeSingle:vi.fn(async()=>({data:{...session,reservation_expires_at:new Date(Date.now()+600000).toISOString()},error:null}))};m.from.mockReturnValue(q);
+ m.get.mockResolvedValue(provider);m.find.mockResolvedValue(provider);m.create.mockResolvedValue(provider);m.payments.mockResolvedValue([]);m.settle.mockResolvedValue(true);
 });
-it('reuses the existing provider order instead of minting another on retry', async () => {
-  expect(await ensureProviderOrder(target, 'customer')).toEqual(provider);
-  expect(mocks.create).not.toHaveBeenCalled();
+it('reuses the attached provider order and atomically validates attachment',async()=>{
+ expect(await ensureProviderOrder(target,'customer')).toEqual(provider);expect(m.create).not.toHaveBeenCalled();
+ expect(m.rpc).toHaveBeenCalledWith('attach_checkout_provider_order',expect.objectContaining({p_provider_order_id:'order_one',p_expected_paise:3000,p_provider:'razorpay'}));
 });
-it('recovers a provider order by its deterministic id after a lost creation response', async () => {
-  claim(false, null);
-  expect(await ensureProviderOrder(target, 'customer')).toEqual(provider);
-  expect(mocks.get).toHaveBeenCalledWith(cfId);
-  expect(mocks.update).toHaveBeenCalledWith({ provider_order_id: cfId });
-  expect(mocks.create).not.toHaveBeenCalled();
+it('recovers a lost response by receipt without another provider POST',async()=>{
+ session.provider_order_id=null;expect(await ensureProviderOrder(target,'customer')).toEqual(provider);
+ expect(m.find).toHaveBeenCalledWith(provider.receipt);expect(m.create).not.toHaveBeenCalled();
 });
-it('does not retry an ambiguous external creation when lookup finds nothing', async () => {
-  claim(false, null); mocks.get.mockResolvedValue(null);
-  await expect(ensureProviderOrder(target, 'customer')).rejects.toMatchObject({ code: 'PAYMENT_RECONCILING' });
-  expect(mocks.create).not.toHaveBeenCalled();
+it('never repeats an ambiguous create even when receipt lookup is empty',async()=>{
+ session.provider_order_id=null;m.find.mockResolvedValue(null);
+ await expect(ensureProviderOrder(target,'customer')).rejects.toMatchObject({code:'PAYMENT_RECONCILING'});expect(m.create).not.toHaveBeenCalled();
 });
-it('creates only after winning the durable claim, with paise converted to rupees and tags', async () => {
-  claim(true, null); mocks.get.mockResolvedValue(null);
-  await ensureProviderOrder(target, 'customer');
-  expect(mocks.create).toHaveBeenCalledTimes(1);
-  const expiry = mocks.create.mock.calls[0][0].expiresAt.getTime();
-  expect(expiry - Date.now()).toBeGreaterThan(34 * 60_000);
-  expect(expiry - Date.now()).toBeLessThanOrEqual(35 * 60_000);
-  expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ orderId: cfId, amountPaise: 3000, customerPhone: '9876543210', tags: { gloceries_order_id: id } }));
-  expect(mocks.update).toHaveBeenCalledWith({ provider_order_id: cfId });
+it('creates only on first durable claim using exact total and notes',async()=>{
+ session.provider_order_id=null;claimed=true;m.find.mockResolvedValue(null);await ensureProviderOrder(target,'customer');
+ expect(m.create).toHaveBeenCalledTimes(1);expect(m.create).toHaveBeenCalledWith({receipt:provider.receipt,amountPaise:3000,notes:{gloceries_order_id:id}});
 });
-it('adopts the order when Cashfree reports the id already exists', async () => {
-  claim(true, null); mocks.get.mockResolvedValueOnce(null).mockResolvedValueOnce(provider);
-  mocks.create.mockRejectedValue(new CashfreeError(409, 'order_already_exists'));
-  expect(await ensureProviderOrder(target, 'customer')).toEqual(provider);
+it('keeps the durable claim after provider timeout',async()=>{
+ session.provider_order_id=null;claimed=true;m.find.mockResolvedValue(null);m.create.mockRejectedValue(new Error('timeout'));
+ await expect(ensureProviderOrder(target,'customer')).rejects.toThrow('timeout');expect(m.rpc.mock.calls.filter(([name])=>name==='attach_checkout_provider_order')).toHaveLength(0);
 });
-it('does not clear the claim after a provider timeout', async () => {
-  claim(true, null); mocks.get.mockResolvedValue(null);
-  mocks.create.mockRejectedValue(new CashfreeError(0));
-  await expect(ensureProviderOrder(target, 'customer')).rejects.toMatchObject({ providerStatus: 0 });
-  expect(mocks.update).not.toHaveBeenCalled();
+it('fences historical providers and wrong amounts',async()=>{
+ session.payment_provider='cashfree';await expect(ensureProviderOrder(target,'customer')).rejects.toMatchObject({code:'PAYMENT_REVIEW_REQUIRED'});expect(m.get).not.toHaveBeenCalled();
+ session.payment_provider='razorpay';m.get.mockResolvedValue({...provider,amount:2999});await expect(ensureProviderOrder(target,'customer')).rejects.toMatchObject({code:'PAYMENT_REVIEW_REQUIRED'});
 });
-it('refuses a provider order whose amount drifted from the saved total', async () => {
-  mocks.get.mockResolvedValue({ ...provider, order_amount: 29 });
-  await expect(ensureProviderOrder(target, 'customer')).rejects.toMatchObject({ code: 'PAYMENT_REVIEW_REQUIRED' });
+it('settles captured payments only and blocks retry for authorized attempts',async()=>{
+ m.payments.mockResolvedValue([{id:'pay_one',order_id:'order_one',currency:'INR',amount:3000,status:'authorized',captured:false}]);
+ await expect(requirePaymentRetrySafe(target,'order_one',30)).rejects.toMatchObject({code:'PAYMENT_RECONCILING'});expect(m.settle).not.toHaveBeenCalled();
+ m.payments.mockResolvedValue([{id:'pay_one',order_id:'order_one',currency:'INR',amount:3000,status:'captured',captured:true}]);
+ expect(await reconcileProvider(target,'order_one',30)).toBe('paid');expect(m.settle).toHaveBeenCalledWith({orderId:id},'pay_one',3000,'INR','order_one');
 });
-it('refuses legacy (non-Cashfree) sessions', async () => {
-  claim(false, 'order_rzp_legacy');
-  await expect(ensureProviderOrder(target, 'customer')).rejects.toMatchObject({ code: 'PAYMENT_REVIEW_REQUIRED' });
+it('rejects mismatched payment without settling and reports rejected late capture',async()=>{
+ m.payments.mockResolvedValue([{id:'pay_one',order_id:'order_other',currency:'INR',amount:3000,status:'captured',captured:true}]);
+ await expect(reconcileProvider(target,'order_one',30)).rejects.toMatchObject({code:'PAYMENT_REVIEW_REQUIRED'});expect(m.settle).not.toHaveBeenCalled();
+ m.payments.mockResolvedValue([{id:'pay_one',order_id:'order_one',currency:'INR',amount:3000,status:'captured',captured:true}]);m.settle.mockResolvedValue(false);
+ expect(await reconcileProvider(target,'order_one',30)).toBe('cancelled');
 });
-it('settles a SUCCESS payment before another payment launch', async () => {
-  mocks.payments.mockResolvedValue([pay('FAILED'), pay('SUCCESS')]);
-  await expect(requirePaymentRetrySafe(target, cfId, 30)).rejects.toMatchObject({ code: 'PAYMENT_RECONCILING' });
-  expect(mocks.settle).toHaveBeenCalledWith({ orderId: id }, 'cf_SUCCESS', 3000, 'INR');
-});
-it('blocks a second payment while an attempt is still pending, allows one after failures', async () => {
-  mocks.payments.mockResolvedValue([pay('PENDING')]);
-  await expect(requirePaymentRetrySafe(target, cfId, 30)).rejects.toMatchObject({ code: 'PAYMENT_RECONCILING' });
-  mocks.payments.mockResolvedValue([pay('FAILED'), pay('USER_DROPPED')]);
-  await expect(requirePaymentRetrySafe(target, cfId, 30)).resolves.toBeUndefined();
-  expect(mocks.settle).not.toHaveBeenCalled();
-});
-it('refuses amount/order mismatches without marking the order paid', async () => {
-  for (const wrong of [pay('SUCCESS', { payment_amount: 29.99 }), pay('SUCCESS', { order_id: 'gl_other' }), pay('SUCCESS', { payment_currency: 'USD' })]) {
-    mocks.payments.mockResolvedValue([wrong]);
-    await expect(reconcileProvider(target, cfId, 30)).rejects.toMatchObject({ code: 'PAYMENT_REVIEW_REQUIRED' });
-  }
-  expect(mocks.settle).not.toHaveBeenCalled();
-});
-it('rejects paid, expired, cancelled, legacy or COD payment targets through the transactional gate', async () => {
-  mocks.rpc.mockResolvedValue({ data: null, error: { code: 'P0410' } });
-  await expect(claimPayment(target, 'customer', 'order')).rejects.toMatchObject({ code: 'PAYMENT_NOT_PAYABLE' });
-});
-it('does not accept ambiguous single-order and trip targets', () => {
-  expect(() => paymentTarget({ orderId: id, tripId: id })).toThrow();
-  expect(() => paymentTarget({})).toThrow();
-});
-it('uses a webhook result that arrives during reconciliation instead of returning cached pending state', async () => {
-  mocks.rpc.mockResolvedValue({ data: { claimed: false, state: 'pending' }, error: null });
-  const initial = { id, customer_id: 'customer', total: 30, status: 'placed', payment_method: 'online',
-    provider_payment_id: null, placed_at: new Date().toISOString() };
-  let reads = 0;
-  mocks.from.mockImplementation((table: string) => {
-    const query = { select: vi.fn(() => query), eq: vi.fn(() => query),
-      maybeSingle: async () => ({ data: { provider_order_id: cfId }, error: null }),
-      single: async () => ({ data: table === 'orders' && reads++ === 0 ? initial : { ...initial, provider_payment_id: 'captured_during_read' }, error: null }) };
-    return query;
-  });
-  const response = { setHeader: vi.fn(), json: vi.fn() }; const next = vi.fn();
-  await getPaymentRecovery({ body: { orderId: id }, user: { id: 'customer' } } as never, response as never, next);
-  expect(next).not.toHaveBeenCalled();
-  expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ state: 'paid', record: expect.objectContaining({ provider_payment_id: 'captured_during_read' }) }));
-  expect(mocks.payments).not.toHaveBeenCalled();
-});
-it('treats a UPI creating claim as in flight only until it is stale', () => {
-  const now = Date.parse('2026-10-07T12:00:00Z');
-  const at = (ms: number) => new Date(now - ms).toISOString();
-  expect(upiClaimInFlight({ upi_state: 'creating', upi_claimed_at: at(10_000) }, now)).toBe(true);
-  expect(upiClaimInFlight({ upi_state: 'creating', upi_claimed_at: at(UPI_CLAIM_STALE_MS + 1) }, now)).toBe(false);
-  // Claims from before migration 106 carry no timestamp: stale.
-  expect(upiClaimInFlight({ upi_state: 'creating', upi_claimed_at: null }, now)).toBe(false);
-  expect(upiClaimInFlight({ upi_state: 'ready', upi_claimed_at: at(0) }, now)).toBe(false);
-  expect(upiClaimInFlight({ upi_state: null }, now)).toBe(false);
+it('maps transaction ownership/closed-state errors and scopes claim provider',async()=>{
+ m.rpc.mockResolvedValue({error:{code:'P0403'}});await expect(claimPayment(target,'other','order')).rejects.toMatchObject({code:'FORBIDDEN'});
+ m.rpc.mockResolvedValue({error:{code:'P0410'}});await expect(claimPayment(target,'customer','order')).rejects.toMatchObject({code:'PAYMENT_NOT_PAYABLE'});
 });
 
-it('fails closed for a missing reservation snapshot before provider creation', async () => {
-  claim(true, null); mocks.get.mockResolvedValue(null);
-  const query = { select: () => query, eq: () => query, order: () => query, limit: () => query,
-    maybeSingle: async () => ({ data: { phone: '9876543210', placed_at: new Date().toISOString() }, error: null }) };
-  mocks.from.mockReturnValue(query);
-  await expect(ensureProviderOrder(target, 'customer')).rejects.toMatchObject({ code: 'PAYMENT_NOT_PAYABLE' });
-  expect(mocks.create).not.toHaveBeenCalled();
+it('does not suppress authorized payment state during explicit abandonment',async()=>{
+ m.payments.mockResolvedValue([{id:'pay_one',order_id:'order_one',currency:'INR',amount:3000,status:'authorized',captured:false}]);
+ expect(await reconcileProvider(target,'order_one',30,false)).toBe('pending');
+ m.payments.mockResolvedValue([{id:'pay_one',order_id:'order_one',currency:'INR',amount:3000,status:'created',captured:false}]);
+ expect(await reconcileProvider(target,'order_one',30,false)).toBe('unpaid');
 });

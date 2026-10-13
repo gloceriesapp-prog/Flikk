@@ -114,7 +114,7 @@ export interface PartnerOrder {
   delivery_fee: number;
   commission_amount: number;
   total: number;
-  // Set once the payment provider (Cashfree) actually captures payment — orders.ts creates the
+  // Set once the payment provider (Razorpay) actually captures payment — orders.ts creates the
   // order row before payment completes (see that route's own note), so a
   // freshly placed order can briefly have this still null. Null does NOT
   // mean COD; this product is online-payment-only (no COD support exists in
