@@ -40,3 +40,6 @@ agentdb.rvf
 # Supabase CLI local state
 supabase/.branches/
 supabase/.temp/
+
+# Claude Code worktrees: full repo copies (1 GB+); never commit or upload to EAS
+.claude/worktrees/
