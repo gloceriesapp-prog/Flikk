@@ -40,7 +40,7 @@ module.exports = {
     // renaming it would detach the EAS project (builds/updates/credentials).
     slug: 'customer',
     scheme: 'gloceries',
-    version: '1.0.1',
+    version: '1.0.2',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change (mirrors apps/partner).
@@ -58,8 +58,8 @@ module.exports = {
         // Keep native-stack statusBar options unset to avoid competing owners.
         UIViewControllerBasedStatusBarAppearance: false,
         NSLocationWhenInUseUsageDescription: 'Gloceries uses your location to find stores near you and set your delivery address.',
-        // Our UPI app list (payments/upiApps.ts) + Cashfree SDK's documented
-        // UPI schemes, so both our detection and Cashfree checkout can see them.
+        // Installed-app discovery plus Razorpay's documented iOS UPI schemes.
+        // The native checkout owns secure app hand-off.
         LSApplicationQueriesSchemes: ['upi', 'tez', 'phonepe', 'paytmmp', 'bhim', 'credpay', 'amazonpay', 'whatsapp',
           'navipay', 'mobikwik', 'myairtel', 'popclubapp', 'super', 'kiwi', 'simplypayupi'],
         ITSAppUsesNonExemptEncryption: false,

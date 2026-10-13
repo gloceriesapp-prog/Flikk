@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { isNativeCheckoutOpen } from '../../payments/openRazorpayCheckout';
 import { AppState } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,13 +19,13 @@ export function useCheckoutRecovery() {
     let stopped = false, running = false;
     const seen = new Set<string>();
     async function check() {
-      if (running || stopped || AppState.currentState !== 'active') return;
+      if (running || stopped || isNativeCheckoutOpen() || AppState.currentState !== 'active') return;
       running = true;
       try {
         const saved = await readAttempt();
-        if (stopped || useAuthStore.getState().sessionEpoch !== epoch) return;
+        if (stopped || isNativeCheckoutOpen() || useAuthStore.getState().sessionEpoch !== epoch) return;
         const resolved = saved ? await findAttempt(saved.id) : null;
-        if (stopped || useAuthStore.getState().sessionEpoch !== epoch) return;
+        if (stopped || isNativeCheckoutOpen() || useAuthStore.getState().sessionEpoch !== epoch) return;
         if (resolved?.abandoned && saved) { await clearAttempt(saved.id); }
         if (saved && !resolved && !stopped) {
           const state = navigation.getState();
@@ -35,7 +36,7 @@ export function useCheckoutRecovery() {
           return;
         }
         const target = resolved?.result ? attemptTarget({ ...resolved, result: resolved.result }) : (await fetchPendingPayments())[0];
-        if (!target || stopped) return;
+        if (!target || stopped || isNativeCheckoutOpen() || useAuthStore.getState().sessionEpoch !== epoch) return;
         const key = JSON.stringify(target);
         if (seen.has(key)) return;
         const state = navigation.getState();

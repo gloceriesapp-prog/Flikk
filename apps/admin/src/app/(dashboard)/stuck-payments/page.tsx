@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/format';
+import { RAZORPAY_DASHBOARD_URL } from '@/lib/types';
 
 interface StuckCheckout {
   kind: 'order' | 'trip';
@@ -33,6 +34,19 @@ interface StuckRefund {
   since: string;
 }
 
+interface PaymentIncident {
+  id: string;
+  kind: 'order' | 'trip';
+  targetId: string;
+  providerOrderId: string;
+  paymentId: string;
+  canonicalPaymentId: string | null;
+  amount: number;
+  currency: string;
+  reason: string;
+  since: string;
+}
+
 const MINUTE_OPTIONS = [15, 30, 60, 180, 1440];
 
 function age(iso: string): string {
@@ -44,8 +58,9 @@ function age(iso: string): string {
 
 export default function StuckPaymentsPage() {
   const [minutes, setMinutes] = useState(30);
-  const [data, setData] = useState<{ checkouts: StuckCheckout[]; refunds: StuckRefund[] } | null>(null);
+  const [data, setData] = useState<{ checkouts: StuckCheckout[]; refunds: StuckRefund[]; incidents: PaymentIncident[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [incidentReferences, setIncidentReferences] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async (m: number) => {
@@ -77,12 +92,31 @@ export default function StuckPaymentsPage() {
     }
   }
 
+  async function resolveIncident(incident: PaymentIncident) {
+    const reference = incidentReferences[incident.id]?.trim();
+    if (!reference || reference.length < 4 || reference.length > 64) {
+      setError('Enter the provider investigation or refund reference (4–64 characters).');
+      return;
+    }
+    setBusyId(incident.id);
+    try {
+      const res = await fetch('/api/payment-incidents', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incidentId: incident.id, reference }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Could not record incident resolution.');
+      await load(minutes);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not record incident resolution.');
+    } finally { setBusyId(null); }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold text-ink">Stuck checkouts and payments</h1>
         <p className="text-sm text-muted">
-          Unpaid online checkouts are normally released 20 minutes after placement (at most 50 while Cashfree is checked). Anything listed here is older than that window or than the age you pick.
+          Unpaid online checkouts are normally released 20 minutes after placement (at most 50 while the provider is checked). Anything listed here is older than that window or than the age you pick.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm text-ink">
@@ -98,6 +132,28 @@ export default function StuckPaymentsPage() {
       {!data && !error && <p className="text-sm text-muted">Loading…</p>}
       {data && (
         <>
+          <div className="rounded-3xl border border-amber-300 bg-card p-5">
+            <h2 className="mb-1 text-sm font-semibold text-ink">Payment incidents requiring review ({data.incidents.length})</h2>
+            <p className="mb-4 text-xs text-muted">These captures were kept separate from the order payment. Check the original payment and refund history in Razorpay before resolving; this action records your review and does not send money.</p>
+            {data.incidents.length === 0 ? <p className="text-sm text-muted">No unresolved incidents.</p> : data.incidents.map((incident) => (
+              <div key={incident.id} className="flex flex-col gap-3 border-b border-border py-3 last:border-0">
+                <div className="flex flex-wrap justify-between gap-3">
+                  <div className="min-w-0 break-words text-xs text-muted">
+                    <p className="text-sm font-semibold text-ink">{incident.reason.replaceAll('_', ' ')} · {formatCurrency(incident.amount)} {incident.currency}</p>
+                    <p>Payment: {incident.paymentId} · {age(incident.since)}</p>
+                    <p>Original payment: {incident.canonicalPaymentId ?? 'not settled'} · {incident.kind} {incident.targetId}</p>
+                  </div>
+                  <a href={RAZORPAY_DASHBOARD_URL} target="_blank" rel="noreferrer" className="text-sm font-semibold text-ink underline">Review in Razorpay</a>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input aria-label={`Resolution reference for ${incident.paymentId}`} placeholder="Investigation or refund reference" maxLength={64}
+                    value={incidentReferences[incident.id] ?? ''} onChange={(event) => setIncidentReferences((previous) => ({ ...previous, [incident.id]: event.target.value }))}
+                    className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2 text-sm" />
+                  <button type="button" disabled={busyId === incident.id} onClick={() => void resolveIncident(incident)} className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-ink disabled:opacity-40">Record resolved review</button>
+                </div>
+              </div>
+            ))}
+          </div>
           <div className="rounded-3xl border border-border bg-card p-5">
             <h2 className="mb-1 text-sm font-semibold text-ink">Checkouts waiting for online payment ({data.checkouts.length})</h2>
             <p className="mb-4 text-xs text-muted">Stock is held for these. Open the order to cancel it; a payment that arrives later is refunded automatically.</p>
@@ -113,7 +169,7 @@ export default function StuckPaymentsPage() {
                       </p>
                       <p className="text-xs text-muted">
                         <Link href={`/customers/${c.customerId}`} className="hover:underline">{c.customer}</Link> · waiting {age(c.since)} ·{' '}
-                        {c.providerOrderId ? `Cashfree ${c.providerOrderId}${c.providerChecked ? ' (checked, unpaid)' : ' (not checked yet)'}` : 'payment never started'}
+                        {c.providerOrderId ? `Provider order ${c.providerOrderId}${c.providerChecked ? ' (checked, unpaid)' : ' (not checked yet)'}` : 'payment never started'}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">

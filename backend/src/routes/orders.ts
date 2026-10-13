@@ -116,7 +116,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     // and never for a checkout the customer abandons.
     if ((body.payment_method ?? 'cod') === 'cod') void notifyStoresOfNewOrder({ orderId: created.id });
 
-    // Cashfree payment initiated by the caller once the order id is known —
+    // Razorpay payment initiated by the caller once the order id is known —
     // kept out of this handler to avoid a second external-service failure mode
     // inside the same transaction boundary. See specs/05-platform/payments.md.
     res.status(201).json({ ...created, avg_prep_minutes: store?.avg_prep_minutes ?? null });

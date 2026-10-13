@@ -56,7 +56,7 @@ export default function FailedDeliveriesPage() {
 
   async function handleRefund(id: string, amountPaise?: number) {
     // Optimistic disable — the server guard + the unique refund job (with its
-    // Cashfree idempotency key) are the real double-refund protection; this just stops a double-click racing itself.
+    // Razorpay idempotency key) are the real double-refund protection; this just stops a double-click racing itself.
     setRefundingId(id);
     setLoadError(null);
     try {

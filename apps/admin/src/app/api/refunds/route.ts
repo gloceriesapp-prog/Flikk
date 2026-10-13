@@ -1,8 +1,8 @@
 // Real refund visibility for the founder — every order whose refund_status is
 // anything other than 'none'. Ordered by what needs a human first:
 // manual_required (legacy-provider payment the system can't refund through
-// Cashfree), failed, processing, completed. Admin only reads here; the
-// backend refund worker is the single place that talks to Cashfree.
+// the original provider), failed, processing, completed. Admin only reads
+// here; the backend refund worker is the only place that calls Razorpay.
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
@@ -14,7 +14,7 @@ export interface RefundOrder {
   total: number;
   refundStatus: Exclude<RefundStatus, 'none'>;
   paymentProvider: PaymentProvider;
-  // Cashfree order id (gl_<checkout session>) from checkout_payment_sessions.
+  // Original provider order id from checkout_payment_sessions.
   providerOrderId: string | null;
   providerPaymentId: string | null;
   // For a manual refund this holds the bank/UPI reference the founder entered.
@@ -53,7 +53,7 @@ export async function GET() {
         orderNumber: row.order_number,
         total: row.total,
         refundStatus: row.refund_status as RefundOrder['refundStatus'],
-        paymentProvider: (row.payment_provider ?? 'cashfree') as PaymentProvider,
+        paymentProvider: (row.payment_provider === 'razorpay' || row.payment_provider === 'cashfree' ? row.payment_provider : 'unknown') as PaymentProvider,
         providerOrderId: providerOrderIds.get(row.id) ?? null,
         providerPaymentId: row.provider_payment_id,
         providerRefundId: row.provider_refund_id,

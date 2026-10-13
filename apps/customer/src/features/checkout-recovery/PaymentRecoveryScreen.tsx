@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment, rememberPaymentMethod } from '../../api/payments';
 import { ApiError } from '../../api/client';
-import { openCashfreeCheckout } from '../../payments/openCashfreeCheckout';
+import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
 import { useCartStore } from '../../store/useCartStore';
 import { checkoutItems } from '../../store/cartIdentity';
 import { clearAttempt, readAttempt } from './attemptStorage';
@@ -15,6 +15,8 @@ import type { AppStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'PaymentRecovery'>;
 export function PaymentRecoveryScreen({ route, navigation }: Props) {
   const customerId = useAuthStore(state => state.customerId);
+  const ownerEpoch = useRef(useAuthStore.getState().sessionEpoch).current;
+  const stillOwner = () => useAuthStore.getState().sessionEpoch === ownerEpoch;
   const { target } = route.params;
   const focused = useIsFocused();
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
@@ -25,11 +27,13 @@ export function PaymentRecoveryScreen({ route, navigation }: Props) {
     return () => listener.remove();
   }, []);
   const query = useQuery({ queryKey: ['payment-recovery', target, customerId], queryFn: () => recoverPayment(target),
-    enabled: focused && foreground, refetchInterval: focused && foreground ? 8_000 : false,
+    enabled: focused && foreground && !busy, refetchInterval: focused && foreground && !busy ? 8_000 : false,
     refetchIntervalInBackground: false });
   const state = query.data?.state;
   async function finish() {
+    if (!stillOwner()) return;
     const saved = await readAttempt();
+    if (!stillOwner()) return;
     if (saved) {
       const cart = useCartStore.getState();
       const key = JSON.stringify({ items: checkoutItems(cart.items), promo: cart.appliedPromo?.code ?? null });
@@ -37,40 +41,47 @@ export function PaymentRecoveryScreen({ route, navigation }: Props) {
       const resolvedId = 'tripId' in target ? target.tripId : target.orderId;
       const { findAttempt } = await import('./attemptStorage');
       const resolved = await findAttempt(saved.id);
+      if (!stillOwner()) return;
       if (resolved?.result?.id === resolvedId) {
         if (state === 'paid' && saved.cartKey === key) cart.clear();
         await clearAttempt(saved.id);
       }
     }
+    if (!stillOwner()) return;
     if (state === 'paid') navigation.replace('OrderSummary', { orderId: 'tripId' in target ? target.tripId : target.orderId, isTrip: 'tripId' in target });
     else navigation.replace('Cart');
   }
   async function continuePayment() {
-    if (lock.current) return;
+    if (lock.current || !stillOwner()) return;
     lock.current = true; setBusy(true);
     try {
       // Endpoint reconciles provider state before returning the SAME order.
       const order = await createPaymentOrder(target);
-      await openCashfreeCheckout(order);
+      if (!stillOwner()) return;
+      const result = await openRazorpayCheckout(order);
+      if (!stillOwner()) return;
       // Not settled yet is fine: the polling query below keeps checking.
-      if ((await verifyPayment(target)).ok) void rememberPaymentMethod('online', target);
+      if ((await verifyPayment(target, result)).ok && stillOwner()) void rememberPaymentMethod('online', target);
     } catch (error) {
+      if (!stillOwner()) return;
       Alert.alert('Checking your payment', error instanceof Error ? error.message : 'Your order is saved. Check its payment status before trying again.');
-    } finally { await query.refetch(); lock.current = false; setBusy(false); }
+    } finally { if (stillOwner()) { await query.refetch(); setBusy(false); } lock.current = false; }
   }
-  // Server-side atomic: re-reads Cashfree, settles a capture instead, and
+  // Server-side atomic: re-reads the provider, settles a capture instead, and
   // refunds any capture that lands afterwards. Works from 'pending' too, so a
   // customer who backed out of the UPI app is never stuck waiting.
   async function abandon(action: 'cancel' | 'cod') {
-    if (lock.current) return;
+    if (lock.current || !stillOwner()) return;
     lock.current = true; setBusy(true);
     try {
       await abandonCheckout(target, action);
+      if (!stillOwner()) return;
       if (action === 'cod') void rememberPaymentMethod('cod', target);
     } catch (error) {
+      if (!stillOwner()) return;
       if (!(error instanceof ApiError && error.code === 'PAYMENT_CAPTURED'))
         Alert.alert(action === 'cod' ? 'Could not switch to cash' : 'Could not cancel', error instanceof Error ? error.message : 'Check your order status.');
-    } finally { await query.refetch(); lock.current = false; setBusy(false); }
+    } finally { if (stillOwner()) { await query.refetch(); setBusy(false); } lock.current = false; }
   }
   const awaitingPayment = state === 'unpaid' || state === 'pending' || state === 'reconciling';
   const heading = state === 'paid' ? 'Payment confirmed' : state === 'cancelled' || state === 'expired'

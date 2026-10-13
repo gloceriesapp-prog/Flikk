@@ -7,12 +7,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { detectInstalledUpiApps } from '../../payments/upiIntent';
+import { detectInstalledUpiApps } from '../../payments/installedUpiApps';
 import type { UpiApp } from '../../payments/upiApps';
 import type { AppStackParamList } from '../../navigation/types';
 import { PaymentMethodList } from './components/PaymentMethodList';
 import type { PaymentMethod } from '../../payments/paymentMethod';
-import { loadRememberedVpa, saveRememberedVpa } from '../../payments/vpa';
 import { usePaymentAvailability } from '../../payments/usePaymentAvailability';
 import { fetchAddresses } from '../../api/addresses';
 import { useCheckoutQuote } from '../cart/quote/useCheckoutQuote';
@@ -44,17 +43,6 @@ export function PaymentMethodScreen({ route, navigation }: Props) {
       .catch(() => {}).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, []);
-  // undefined = still loading; the UPI ID form mounts only once this resolves.
-  const [rememberedVpa, setRememberedVpa] = useState<string | null | undefined>(fromProfile ? null : undefined);
-  useEffect(() => {
-    let alive = true;
-    if (!fromProfile) void loadRememberedVpa(customerId).then((vpa) => { if (alive) setRememberedVpa(vpa); });
-    return () => { alive = false; };
-  }, [customerId, fromProfile]);
-  async function chooseUpiId(vpa: string, remember: boolean) {
-    await saveRememberedVpa(customerId, remember ? vpa : null);
-    navigation.popTo('Cart', { selectedPaymentMethod: 'upi_id', upiVpa: vpa });
-  }
   const preference = useQuery({ queryKey: ['payment-preference', customerId], queryFn: fetchPaymentPreference, enabled: fromProfile && !!customerId });
   async function select(method: PaymentMethod) {
     if (saving) return;
@@ -94,9 +82,8 @@ export function PaymentMethodScreen({ route, navigation }: Props) {
         {!!error && <Text className="text-red-600">{error}</Text>}
         {saving && <Text className="text-ink/60">Saving your preference…</Text>}
         <View pointerEvents={saving ? "none" : "auto"}>
-        {loading || rememberedVpa === undefined ? <ActivityIndicator color={colors.limeDeep} /> :
-          <PaymentMethodList method={fromProfile ? preference.data?.method ?? null : route.params.selectedMethod} upiApps={apps} onSelect={select} allowed={allowed}
-            upiId={fromProfile ? undefined : { initialVpa: route.params.upiVpa ?? rememberedVpa ?? undefined, remembered: !!rememberedVpa, onUse: (vpa, remember) => void chooseUpiId(vpa, remember) }} />}
+        {loading ? <ActivityIndicator color={colors.limeDeep} /> :
+          <PaymentMethodList method={fromProfile ? preference.data?.method ?? null : route.params.selectedMethod} upiApps={apps} onSelect={select} allowed={allowed} />}
         </View>
       </KeyboardAwareScrollView>
     </View>

@@ -1,5 +1,5 @@
 // "Mark refunded manually" — for refunds in 'manual_required' (legacy-provider
-// payments Cashfree can't refund). The founder pays the customer by bank/UPI
+// payments the active payment provider can't refund). The founder pays the customer by bank/UPI
 // outside the system and records the reference here. The RPC does the
 // guarded transition (manual_required -> completed) and closes the refund job
 // in one transaction, so a double-submit can't record two refunds.

@@ -89,8 +89,7 @@ export interface ApiOrder {
   discount_amount: number;
   promo_code_id: string | null;
   provider_payment_id: string | null;
-  // 'razorpay' only on legacy rows paid before the Cashfree switch.
-  payment_provider?: 'cashfree' | 'razorpay';
+  payment_provider?: string;
   // Real orders.payment_method (migration 034) — 'cod' for every order
   // created before this column existed (its own default).
   payment_method: 'cod' | 'online';
@@ -103,7 +102,7 @@ export interface ApiOrder {
   // refunded_at are only set once a real online-payment refund exists.
   cancel_reason: string | null;
   // manual_required: the provider refund can't be automated (e.g. legacy
-  // pre-Cashfree payments) and our team is processing it by hand.
+  // legacy provider payments) and our team is processing it by hand.
   refund_status: 'none' | 'processing' | 'completed' | 'failed' | 'manual_required';
   provider_refund_id: string | null;
   refunded_at: string | null;

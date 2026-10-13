@@ -4,7 +4,7 @@
 // platform-wide minimum order value. Backed by platform_settings (migration
 // 117) via app/api/checkout-settings/route.ts; the backend reads the row on
 // every checkout, so a save applies to the next order. The backend env stays
-// a hard kill: online payment also needs Cashfree keys on the server.
+// a hard kill: online payment also needs Razorpay keys on the server.
 
 import { useCallback, useEffect, useState } from 'react';
 
@@ -111,7 +111,7 @@ export default function CheckoutSettingsPage() {
               </label>
               <p className="text-xs text-muted">
                 A switched-off method disappears from the customer app and new orders with it are refused. Payments already started still settle and refund normally.
-                Online payment also needs the Cashfree keys on the server; the server can force either method off with COD_DISABLED / ONLINE_PAYMENTS_DISABLED.
+                Online payment also needs the Razorpay keys on the server; the server can force either method off with COD_DISABLED / ONLINE_PAYMENTS_DISABLED.
               </p>
             </div>
             <h2 className="mb-3 mt-6 text-sm font-semibold text-ink">Minimum order value</h2>

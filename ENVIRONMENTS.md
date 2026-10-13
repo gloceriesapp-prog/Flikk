@@ -68,7 +68,7 @@ Then, each in its own terminal:
   - Test numbers `9100000001`, `9100000002` and `9100000003` with OTP `123456` work with no SMS.
   - Any real number gets a real SMS through MSG91, provided `MSG91_AUTH_KEY` and `MSG91_OTP_TEMPLATE_ID` are in `backend/.env.local` and the backend is running. Without them the backend prints the code in its terminal.
 - Local test data is the fake Kaup zone with 2 stores and 20 products. Set your delivery location to Kaup, Udupi.
-- `CASHFREE_ENV=sandbox` in `backend/.env.local`. Never put live Cashfree keys on a laptop.
+- `RAZORPAY_ENV=test` in `backend/.env.local`. Never put live Razorpay keys on a laptop.
 
 ### Staging database (once)
 
@@ -88,7 +88,7 @@ Then, each in its own terminal:
 3. Change these **Variables** in staging. Everything else can stay the same:
    - `SUPABASE_URL=https://qgbuvydwcgjthwqxqylk.supabase.co`
    - `SUPABASE_SERVICE_ROLE_KEY` = staging service_role key (Supabase → flikk-staging → Settings → API)
-   - `CASHFREE_ENV=sandbox`, plus sandbox `CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY`
+   - `RAZORPAY_ENV=test`, plus test `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` plus a separate `RAZORPAY_WEBHOOK_SECRET`
    - `PUBLIC_API_URL` = the staging service's Railway domain
 4. **Settings → Networking → Generate domain**, giving something like `flikk-staging.up.railway.app`.
 
@@ -97,7 +97,7 @@ Then, each in its own terminal:
 On expo.dev, open each project → Environment variables → **preview**:
 - `EXPO_PUBLIC_API_URL=https://<staging railway domain>`
 - `EXPO_PUBLIC_SUPABASE_URL=https://qgbuvydwcgjthwqxqylk.supabase.co`
-- `EXPO_PUBLIC_CASHFREE_ENV=sandbox`
+- No payment secrets or gateway environment are configured in the app; use the server-returned Razorpay key and environment.
 - `GOOGLE_MAPS_API_KEY` (the same key is fine)
 
 Account-wide (Global) variables apply to every environment you tick, so make sure the **preview** values point at staging and not production.

@@ -1,6 +1,6 @@
 // Which payment methods a new checkout may use. Admin switches them in the
 // admin "Checkout settings" page (platform_settings, migration 117); the env
-// is the hard kill on top: online payment also needs Cashfree keys
+// is the hard kill on top: online payment also needs Razorpay keys
 // (paymentsConfigured) and ONLINE_PAYMENTS_DISABLED unset, COD needs
 // COD_DISABLED unset. Verify/webhook/refunds are not gated here: a payment
 // already started must still settle when online checkout is switched off.

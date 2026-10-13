@@ -4,11 +4,16 @@ function required(name: string): string {
   return value;
 }
 
-// Anything but exactly 'production'/'sandbox' is a typo; in production a
-// typo must not silently send live checkouts to the sandbox host.
-const cashfreeEnvRaw = process.env.CASHFREE_ENV?.trim().toLowerCase() || 'sandbox';
-if (cashfreeEnvRaw !== 'production' && cashfreeEnvRaw !== 'sandbox') {
-  throw new Error(`CASHFREE_ENV must be 'production' or 'sandbox', got '${process.env.CASHFREE_ENV}'.`);
+// Razorpay uses the same API host for test and live accounts. Keep the key
+// prefix and explicit environment consistent so a typo cannot charge live.
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID?.trim() || undefined;
+const razorpayEnv = process.env.RAZORPAY_ENV?.trim().toLowerCase()
+  || (razorpayKeyId?.startsWith('rzp_live_') ? 'live' : 'test');
+if (razorpayEnv !== 'test' && razorpayEnv !== 'live') {
+  throw new Error('RAZORPAY_ENV must be test or live.');
+}
+if (razorpayKeyId && !razorpayKeyId.startsWith(`rzp_${razorpayEnv}_`)) {
+  throw new Error('RAZORPAY_KEY_ID must match RAZORPAY_ENV (rzp_test_ or rzp_live_).');
 }
 
 const port = Number(process.env.PORT ?? 3000);
@@ -34,27 +39,15 @@ export const env = {
   requireSessionContext: process.env.AUTH_REQUIRE_SESSION_CONTEXT === 'true' || process.env.NODE_ENV === 'production',
   supabaseUrl: required('SUPABASE_URL'),
   supabaseServiceRoleKey: required('SUPABASE_SERVICE_ROLE_KEY'),
-  // Optional, not required(): the backend boots COD-only until Cashfree is
-  // live. App id + secret together turn online payment on; without them
-  // payments/cashfreeClient.ts's requirePaymentsConfigured answers 503
-  // PAYMENTS_NOT_CONFIGURED. CASHFREE_CLIENT_ID/CLIENT_SECRET are accepted
-  // aliases (Cashfree's dashboard calls the same values "client id/secret").
-  cashfreeAppId: process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || undefined,
-  cashfreeSecretKey: process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || undefined,
-  cashfreeEnv: cashfreeEnvRaw as 'production' | 'sandbox',
-  // Hard kill switches over the admin checkout settings (platform_settings,
-  // migration 117): 'true' turns the method off whatever admin saved.
+  // Missing credentials leave the backend COD-only. Checkout, reconciliation
+  // and refunds share the same account; the webhook secret is separate from
+  // the API key secret and must never fall back to it.
+  razorpayKeyId,
+  razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET?.trim() || undefined,
+  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET?.trim() || undefined,
+  razorpayEnv: razorpayEnv as 'test' | 'live',
   codDisabled: process.env.COD_DISABLED === 'true',
   onlinePaymentsDisabled: process.env.ONLINE_PAYMENTS_DISABLED === 'true',
-  // Cashfree signs PG webhooks with the PG secret key; override only if
-  // Cashfree issues a separate one.
-  cashfreeWebhookSecret: process.env.CASHFREE_WEBHOOK_SECRET || process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || undefined,
-  // Secure ID (verification suite) credentials for UPI ID name lookup.
-  // Absent: POST /payments/upi/validate is format-only (name: null).
-  cashfreeVerificationClientId: process.env.CASHFREE_VERIFICATION_CLIENT_ID || undefined,
-  cashfreeVerificationSecret: process.env.CASHFREE_VERIFICATION_SECRET || undefined,
-  // Public base URL of this API, used as Cashfree order_meta.notify_url.
-  // Absent: rely on the webhook endpoint configured in the Cashfree dashboard.
   publicApiUrl: process.env.PUBLIC_API_URL?.replace(/\/+$/, '') || undefined,
   // Optional: only routes/location.ts /search uses it, and answers 503
   // LOCATION_PROVIDER_UNAVAILABLE without it. The worker never needs it.
@@ -80,4 +73,4 @@ export const env = {
     .filter(Boolean),
 };
 
-export const paymentsConfigured = Boolean(env.cashfreeAppId && env.cashfreeSecretKey && env.cashfreeWebhookSecret);
+export const paymentsConfigured = Boolean(env.razorpayKeyId && env.razorpayKeySecret && env.razorpayWebhookSecret);

@@ -1,28 +1,19 @@
-// Shared Cashfree refund mechanics for the durable refund workers
-// (orderRefunds.ts, tripRefunds.ts). API routes and the admin app only
-// enqueue database intents; only these workers move money.
-//
-// Idempotency: every refund request carries a deterministic refund_id
-// (cashfreeRefundId) that is also the x-idempotency-key. Before creating,
-// the order's refunds are listed and a refund with our id is ADOPTED instead
-// of re-requested — a lost response can never refund twice.
 import { supabase } from '../db/supabase.js';
-import { CashfreeError, cashfreeOrderId, createCfRefund, getCfRefunds, toPaise, type CfRefund } from './cashfreeClient.js';
+import { RazorpayError, createProviderRefund, getPaymentRefunds, getProviderPayment, toPaise, type RazorpayRefund } from './razorpayClient.js';
 
 export type RefundState = 'processing' | 'completed' | 'failed';
-export interface ProviderRefund { id: string; amount: number; status: RefundState }
+export interface ProviderRefund { id: string; requestKey?: string; amount: number; status: RefundState }
 
-// SUCCESS moved money; CANCELLED/REJECTED moved none (never count them as
-// "already refunded"); everything else is still in flight and reserves money.
+// Processed refunds moved money; failed refunds reserve none. Pending
+// refunds reserve their amount until the provider confirms the outcome.
 export function mapRefundStatus(status: string): RefundState {
-  if (status === 'SUCCESS') return 'completed';
-  if (status === 'CANCELLED' || status === 'REJECTED') return 'failed';
+  if (status === 'processed') return 'completed';
+  if (status === 'failed') return 'failed';
   return 'processing';
 }
-export function normalizeRefund(refund: CfRefund): ProviderRefund {
-  const amount = toPaise(refund.refund_amount);
-  if (!refund.refund_id || amount <= 0) throw new Error('Invalid provider refund');
-  return { id: refund.refund_id, amount, status: mapRefundStatus(String(refund.refund_status)) };
+export function normalizeRefund(refund: RazorpayRefund): ProviderRefund {
+  if (!refund.id || !Number.isSafeInteger(refund.amount) || refund.amount <= 0) throw new Error('Invalid provider refund');
+  return { id: refund.id, requestKey: refund.notes?.gloceries_refund_key ?? refund.receipt, amount: refund.amount, status: mapRefundStatus(refund.status) };
 }
 export function refundProgress(items: ProviderRefund[], target: number) {
   const reserved = items.filter(r => r.status !== 'failed').reduce((n, r) => n + r.amount, 0);
@@ -30,41 +21,37 @@ export function refundProgress(items: ProviderRefund[], target: number) {
   return { remaining: Math.max(0, target - reserved), completed, settled: completed >= target };
 }
 
-export async function listRefunds(providerOrderId: string): Promise<ProviderRefund[]> {
-  return [...new Map((await getCfRefunds(providerOrderId)).map(normalizeRefund).map(r => [r.id, r])).values()];
+export async function listRefunds(paymentId: string): Promise<ProviderRefund[]> {
+  return [...new Map((await getPaymentRefunds(paymentId)).map(normalizeRefund).map(refund => [refund.id, refund])).values()];
 }
-// Create, or adopt an existing refund with the same id (concurrent worker /
-// lost response that the earlier list missed).
-export async function createOrAdoptRefund(providerOrderId: string, refundId: string, amountPaise: number, note: string): Promise<ProviderRefund> {
-  try {
-    const created = normalizeRefund(await createCfRefund(providerOrderId, { refundId, amountPaise, note }));
-    if (created.id !== refundId || created.amount !== amountPaise) throw new Error('Provider refund mismatch');
-    return created;
-  } catch (error) {
-    if (error instanceof CashfreeError && (error.providerStatus === 409 || error.providerStatus === 400)) {
-      const adopted = (await listRefunds(providerOrderId)).find(r => r.id === refundId);
-      if (adopted) return adopted;
-    }
-    throw error;
+export async function createOrAdoptRefund(paymentId: string, requestKey: string, amountPaise: number, note: string): Promise<ProviderRefund> {
+  // Reuse the exact idempotency key and body even after timeout. Adopt by our
+  // receipt/notes while storing Razorpay's actual rfnd_ ID for reconciliation.
+  const existing = (await listRefunds(paymentId)).find(refund => refund.requestKey === requestKey);
+  if (existing) {
+    if (existing.amount !== amountPaise) throw new Error('Provider refund mismatch');
+    return existing;
   }
+  const created = normalizeRefund(await createProviderRefund(paymentId, { requestKey, amountPaise, note }));
+  if (created.requestKey !== requestKey || created.amount !== amountPaise) throw new Error('Provider refund mismatch');
+  return created;
 }
-
-// Which Cashfree order a refund belongs to. Legacy Razorpay-paid rows are
-// never sent to Cashfree: the worker flags them manual_required for admin.
-export type RefundSource = { provider: 'cashfree'; providerOrderId: string } | { provider: 'legacy' };
-export async function refundSource(kind: 'order' | 'trip', targetId: string): Promise<RefundSource> {
+export type RefundSource = { provider: 'razorpay'; paymentId: string } | { provider: 'legacy' };
+export async function refundSource(kind: 'order' | 'trip', targetId: string, capturedPaymentId: string): Promise<RefundSource> {
   const [{ data: record, error }, { data: session, error: sessionError }] = await Promise.all([
-    supabase.from(kind === 'trip' ? 'trips' : 'orders').select('payment_provider').eq('id', targetId).maybeSingle(),
-    supabase.from('checkout_payment_sessions').select('provider_order_id').eq('kind', kind).eq('target_id', targetId).maybeSingle(),
+    supabase.from(kind === 'trip' ? 'trips' : 'orders').select('payment_provider,provider_payment_id,total').eq('id', targetId).maybeSingle(),
+    supabase.from('checkout_payment_sessions').select('payment_provider,provider_order_id').eq('kind', kind).eq('target_id', targetId).maybeSingle(),
   ]);
   if (error || sessionError) throw error ?? sessionError;
-  const stored = session?.provider_order_id as string | null | undefined;
-  if (record?.payment_provider === 'razorpay' || (stored && stored !== cashfreeOrderId(targetId))) return { provider: 'legacy' };
-  return { provider: 'cashfree', providerOrderId: cashfreeOrderId(targetId) };
+  if (record?.payment_provider !== 'razorpay' || session?.payment_provider !== 'razorpay' || !session.provider_order_id
+    || !/^pay_[A-Za-z0-9]+$/.test(capturedPaymentId) || (record.provider_payment_id && record.provider_payment_id !== capturedPaymentId)) return { provider: 'legacy' };
+  // A checkout switched to COD deliberately has no canonical online payment.
+  // Its durable refund job owns the late capture; verify that capture against
+  // the attached provider order rather than marking it a historic payment.
+  const payment = await getProviderPayment(capturedPaymentId);
+  if (payment.id !== capturedPaymentId || payment.order_id !== session.provider_order_id || payment.currency !== 'INR'
+    || payment.amount !== toPaise(record.total) || payment.captured !== true || !['captured', 'refunded'].includes(payment.status)) return { provider: 'legacy' };
+  return { provider: 'razorpay', paymentId: capturedPaymentId };
 }
-export const LEGACY_REFUND_NOTE = 'Legacy Razorpay payment: refund manually';
-// 401/403 are our credentials or environment (key rotation, CASHFREE_ENV vs
-// keys), not a verdict on the refund: keep retrying with backoff.
-export function isDefinitiveRejection(error: unknown) {
-  return error instanceof CashfreeError && [400, 404, 422].includes(error.providerStatus);
-}
+export const LEGACY_REFUND_NOTE = 'Historic or unidentified payment provider: refund manually through the original provider';
+export function isDefinitiveRejection(error: unknown) { return error instanceof RazorpayError && [400, 404, 422].includes(error.providerStatus); }

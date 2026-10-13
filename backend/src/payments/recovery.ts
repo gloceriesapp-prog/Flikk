@@ -2,37 +2,26 @@ import type { Response, NextFunction } from 'express';
 import type { AuthedRequest } from '../middleware/auth.js';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
-import { CashfreeError, cashfreeOrderId, createCfOrder, getCfOrder, getCfOrderPayments, toPaise, type CfOrder } from './cashfreeClient.js';
+import { checkoutReceipt, createProviderOrder as createRazorpayOrder, findProviderOrder, getProviderOrder, getOrderPayments, toPaise, type RazorpayOrder } from './razorpayClient.js';
 import { settleCheckoutPayment } from './settleCheckoutPayment.js';
 import type { OrderIdBody } from './types.js';
 
 export function paymentTarget(input: OrderIdBody) {
   if (Boolean(input.orderId) === Boolean(input.tripId)) throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'Choose exactly one order or trip.');
-  const id = (input.tripId ?? input.orderId)!;
-  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'Invalid order ID.');
-  return { id, kind: input.tripId ? 'trip' as const : 'order' as const, table: input.tripId ? 'trips' as const : 'orders' as const, target: input };
+  const rawId = (input.tripId ?? input.orderId)!;
+  if (typeof rawId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId)) throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'Invalid order ID.');
+  const id = rawId.toLowerCase();
+  return { id, kind: input.tripId ? 'trip' as const : 'order' as const, table: input.tripId ? 'trips' as const : 'orders' as const, target: input.tripId ? { tripId: id } : { orderId: id } };
 }
 export type Target = ReturnType<typeof paymentTarget>;
 export interface PaymentSession {
   provider_order_id: string | null;
-  upi_state: 'creating' | 'ready' | null;
-  upi_payment_id: string | null;
-  upi_link: string | null;
-  upi_claimed_at?: string | null;
+  payment_provider?: string;
   reconcile_state?: string;
 }
-// A 'creating' UPI claim older than this is past the provider call's timeout;
-// claim_checkout_payment (migration 106) lets a caller that has just seen no
-// live provider attempt reclaim it. Keep in sync with that SQL interval.
-export const UPI_CLAIM_STALE_MS = 2 * 60_000;
-export function upiClaimInFlight(session: Pick<PaymentSession, 'upi_state' | 'upi_claimed_at'>, now = Date.now()) {
-  if (session.upi_state !== 'creating') return false;
-  const at = session.upi_claimed_at ? Date.parse(session.upi_claimed_at) : NaN;
-  return Number.isFinite(at) && at > now - UPI_CLAIM_STALE_MS;
-}
-export async function claimPayment(target: Target, customerId: string, mode: 'order' | 'upi') {
+export async function claimPayment(target: Target, customerId: string, mode: 'order') {
   const { data, error } = await supabase.rpc('claim_checkout_payment', {
-    p_customer_id: customerId, p_kind: target.kind, p_target_id: target.id, p_mode: mode,
+    p_customer_id: customerId, p_kind: target.kind, p_target_id: target.id, p_mode: mode, p_provider: 'razorpay',
   });
   if (error?.code === 'P0410') throw new AppError(409, 'PAYMENT_NOT_PAYABLE', 'This checkout is paid, expired or cancelled. Check your order status.');
   if (error?.code === 'P0403') throw new AppError(403, 'FORBIDDEN', 'Not your checkout.');
@@ -43,88 +32,71 @@ export async function saveSession(target: Target, patch: Partial<PaymentSession>
   const { error } = await supabase.from('checkout_payment_sessions').update(patch).eq('kind', target.kind).eq('target_id', target.id);
   if (error) throw error;
 }
-// The Cashfree order id is deterministic per target (cashfreeOrderId), so a
-// provider order accepted just before a process crash is recovered with a GET
-// on that id. An absent result NEVER authorizes another creation by itself;
-// creation also needs the durable claim (and Cashfree refuses a duplicate id).
-const MIN_PROVIDER_EXPIRY_MS = 16 * 60_000; // Cashfree rejects near-term expiries
-function tagsFor(target: Target): Record<string, string> {
-  return target.kind === 'trip' ? { gloceries_trip_id: target.id } : { gloceries_order_id: target.id };
-}
-function checkProviderOrder(target: Target, order: CfOrder, total: number) {
-  const tag = target.kind === 'trip' ? order.order_tags?.gloceries_trip_id : order.order_tags?.gloceries_order_id;
-  if (order.order_id !== cashfreeOrderId(target.id) || tag !== target.id || order.order_currency !== 'INR'
-    || toPaise(order.order_amount) !== toPaise(total))
+// A receipt identifies the checkout across a crash. Razorpay's order creation
+// is NOT assumed idempotent: the durable claim permits only the first POST.
+// Unknown outcomes recover by receipt; an empty lookup never permits another POST.
+function checkProviderOrder(target: Target, order: RazorpayOrder, total: number) {
+  const tag = target.kind === 'trip' ? order.notes?.gloceries_trip_id : order.notes?.gloceries_order_id;
+  if (!/^order_[A-Za-z0-9]+$/.test(order.id) || order.receipt !== checkoutReceipt(target.id) || tag !== target.id
+    || order.currency !== 'INR' || order.amount !== toPaise(total))
     throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'Payment records need review. Contact support before paying again.');
   return order;
 }
+async function attachProviderOrder(target: Target, order: RazorpayOrder, total: number) {
+  const { error } = await supabase.rpc('attach_checkout_provider_order', {
+    p_kind: target.kind, p_target_id: target.id, p_provider_order_id: order.id, p_expected_paise: toPaise(total), p_provider: 'razorpay',
+  });
+  if (error) throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'Payment records need support review.');
+  return order;
+}
 export async function recoverProviderOrder(target: Target, total: number) {
-  const order = await getCfOrder(cashfreeOrderId(target.id));
+  const { data: session, error } = await supabase.from('checkout_payment_sessions').select('provider_order_id,payment_provider').eq('kind', target.kind).eq('target_id', target.id).maybeSingle();
+  if (error) throw error;
+  if (!session) return undefined; // Never reinterpret a historic provider's checkout.
+  if (session.payment_provider !== 'razorpay') throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'This checkout used an earlier payment system. Contact support.');
+  const order = session.provider_order_id ? await getProviderOrder(session.provider_order_id) : await findProviderOrder(checkoutReceipt(target.id));
   if (!order) return undefined;
   checkProviderOrder(target, order, total);
-  await saveSession(target, { provider_order_id: order.order_id });
+  await attachProviderOrder(target, order, total);
   return order;
 }
-async function createProviderOrder(target: Target, customerId: string, total: number): Promise<CfOrder> {
-  const [{ data: customer, error }, { data: leg, error: legError }] = await Promise.all([
-    supabase.from('users').select('phone').eq('id', customerId).maybeSingle(),
-    supabase.from('orders').select('placed_at,reservation_expires_at').eq(target.kind === 'trip' ? 'trip_id' : 'id', target.id).order('placed_at').limit(1).maybeSingle(),
-  ]);
-  if (error || legError) throw error ?? legError;
-  const phone = String(customer?.phone ?? '').replace(/\D/g, '').slice(-10);
-  if (phone.length !== 10) throw new AppError(409, 'PAYMENT_PHONE_REQUIRED', 'Add a mobile number to your account to pay online.');
-  // Reservation expiry, but never sooner than Cashfree accepts; expiry
-  // reconciliation terminates the order when the reservation lapses first.
-  const deadline = Date.parse(leg?.reservation_expires_at ?? '');
-  if (!Number.isFinite(deadline) || deadline <= Date.now()) throw new AppError(409, 'PAYMENT_NOT_PAYABLE', 'This checkout has expired.');
-  const expiresAt = new Date(Math.max(deadline, Date.now() + MIN_PROVIDER_EXPIRY_MS));
-  const orderId = cashfreeOrderId(target.id);
-  try {
-    return await createCfOrder({ orderId, amountPaise: toPaise(total), customerId, customerPhone: phone, tags: tagsFor(target), expiresAt });
-  } catch (err) {
-    // order_already_exists: an earlier attempt landed; adopt it.
-    if (err instanceof CashfreeError && err.providerStatus === 409) {
-      const existing = await getCfOrder(orderId);
-      if (existing) return existing;
-    }
-    throw err;
-  }
-}
-export async function ensureProviderOrder(target: Target, customerId: string): Promise<CfOrder> {
+export async function ensureProviderOrder(target: Target, customerId: string): Promise<RazorpayOrder> {
   const claim = await claimPayment(target, customerId, 'order');
-  if (claim.session.provider_order_id) {
-    if (claim.session.provider_order_id !== cashfreeOrderId(target.id))
-      throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'This checkout used an earlier payment system. Contact support before paying again.');
-    const order = await getCfOrder(claim.session.provider_order_id);
-    if (!order) throw new AppError(409, 'PAYMENT_RECONCILING', 'We are checking your previous payment request. Please retry shortly.');
-    return checkProviderOrder(target, order, claim.total);
-  }
+  if (claim.session.payment_provider !== 'razorpay') throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'This checkout used an earlier payment system. Contact support.');
   const recovered = await recoverProviderOrder(target, claim.total);
   if (recovered) return recovered;
-  if (!claim.claimed)
-    throw new AppError(409, 'PAYMENT_RECONCILING', 'We are checking your previous payment request. Please retry shortly without starting another checkout.');
-  // Persist the claim BEFORE the external side effect. Do not clear it on
-  // timeout: we cannot know whether Cashfree accepted that request.
-  const order = checkProviderOrder(target, await createProviderOrder(target, customerId, claim.total), claim.total);
-  await saveSession(target, { provider_order_id: order.order_id });
-  return order;
+  if (!claim.claimed) throw new AppError(409, 'PAYMENT_RECONCILING', 'We are checking your previous payment request. Please retry shortly without starting another checkout.');
+  const { data: leg, error } = await supabase.from('orders').select('reservation_expires_at').eq(target.kind === 'trip' ? 'trip_id' : 'id', target.id).limit(1).maybeSingle();
+  if (error) throw error;
+  const deadline = Date.parse(leg?.reservation_expires_at ?? '');
+  if (!Number.isFinite(deadline) || deadline <= Date.now()) throw new AppError(409, 'PAYMENT_NOT_PAYABLE', 'This checkout has expired.');
+  const notes: Record<string,string> = target.kind === 'trip' ? { gloceries_trip_id: target.id } : { gloceries_order_id: target.id };
+  const order = checkProviderOrder(target, await createRazorpayOrder({ receipt: checkoutReceipt(target.id), amountPaise: toPaise(claim.total), notes }), claim.total);
+  return attachProviderOrder(target, order, claim.total);
 }
-// PENDING/NOT_ATTEMPTED are UPI attempts the customer has not completed (often
-// backed out of the UPI app). They block a NEW payment launch, but not an
-// explicit abandon: a late SUCCESS after cancel/COD is settled-then-refunded.
 export async function reconcileProvider(target: Target, providerOrderId: string, total: number, openIsPending = true) {
-  if (providerOrderId !== cashfreeOrderId(target.id))
+  const { data: session, error } = await supabase.from('checkout_payment_sessions').select('provider_order_id,payment_provider').eq('kind', target.kind).eq('target_id', target.id).maybeSingle();
+  if (error) throw error;
+  if (session?.payment_provider !== 'razorpay' || session.provider_order_id !== providerOrderId)
     throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'Payment could not be verified. Contact support.');
-  const payments = await getCfOrderPayments(providerOrderId);
+  const order = await getProviderOrder(providerOrderId);
+  if (!order) throw new AppError(409, 'PAYMENT_RECONCILING', 'Payment is being confirmed.');
+  checkProviderOrder(target, order, total);
+  const payments = await getOrderPayments(providerOrderId);
   for (const payment of payments) {
-    if (payment.order_id !== providerOrderId || payment.payment_currency !== 'INR' || toPaise(payment.payment_amount) !== toPaise(total))
+    if (payment.order_id !== providerOrderId || payment.currency !== 'INR' || payment.amount !== toPaise(total))
       throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'Payment amount or order could not be verified. Contact support.');
   }
-  const success = payments.find((payment) => payment.payment_status === 'SUCCESS');
-  // The loop above already asserted every payment's amount equals this
-  // checkout's total; thread the captured paise into the settlement guard.
-  if (success) return await settleCheckoutPayment(target.target, String(success.cf_payment_id), toPaise(success.payment_amount), 'INR') ? 'paid' : 'cancelled';
-  return openIsPending && payments.some((payment) => payment.payment_status === 'PENDING' || payment.payment_status === 'NOT_ATTEMPTED') ? 'pending' : 'unpaid';
+  const captured = payments.filter(payment => payment.status === 'captured' && payment.captured === true);
+  let accepted = false;
+  for (const payment of captured) {
+    // Settlement records duplicate captures as durable incidents for review.
+    accepted = await settleCheckoutPayment(target.target, payment.id, payment.amount, 'INR', providerOrderId) || accepted;
+  }
+  if (captured.length) return accepted ? 'paid' : 'cancelled';
+  // Authorized funds can still capture: never permit COD/cancellation to
+  // race a known authorization. A merely created attempt may be abandoned.
+  return payments.some(payment => payment.status === 'authorized' || (openIsPending && payment.status === 'created')) ? 'pending' : 'unpaid';
 }
 export async function requirePaymentRetrySafe(target: Target, providerOrderId: string, total: number) {
   const state = await reconcileProvider(target, providerOrderId, total);
@@ -152,16 +124,14 @@ export async function getPaymentRecovery(req: AuthedRequest, res: Response, next
         const { data: lease, error: leaseError } = await supabase.rpc('claim_payment_reconciliation', { p_kind: target.kind, p_target_id: target.id });
         if (leaseError) throw leaseError;
         if (lease.claimed) {
-          const providerId = session.provider_order_id ?? (await recoverProviderOrder(target, record.total))?.order_id;
+          const providerId = session.provider_order_id ?? (await recoverProviderOrder(target, record.total))?.id;
           state = providerId ? await reconcileProvider(target, providerId, record.total) : 'reconciling';
-          if (state === 'unpaid' && upiClaimInFlight(session)) state = 'reconciling';
           await saveSession(target, { reconcile_state: state });
         } else state = lease.state;
       } else {
-        // Older checkouts may have no session row. The deterministic-id lookup checks delayed
-        // success before exposing a retry; create-order adopts the same ID.
+        // A session is required to identify the provider; legacy rows require support.
         const provider = await recoverProviderOrder(target, record.total);
-        if (provider) state = await reconcileProvider(target, provider.order_id, record.total);
+        if (provider) state = await reconcileProvider(target, provider.id, record.total);
       }
       if (state !== 'paid' && (record.checkout_payment_rejected || record.status === 'cancelled' || record.status === 'failed')) state = 'cancelled';
     }

@@ -11,18 +11,23 @@ afterEach(() => {
 });
 
 describe('env', () => {
-  it('rejects a mistyped CASHFREE_ENV instead of silently using sandbox', async () => {
-    await expect(loadEnv({ CASHFREE_ENV: 'prod' })).rejects.toThrow(/CASHFREE_ENV/);
+  it('rejects an invalid Razorpay environment', async () => {
+    await expect(loadEnv({ RAZORPAY_ENV: 'prod' })).rejects.toThrow(/RAZORPAY_ENV/);
   });
 
-  it('accepts production in any case and with whitespace', async () => {
-    const { env } = await loadEnv({ CASHFREE_ENV: ' Production ' });
-    expect(env.cashfreeEnv).toBe('production');
+  it('rejects mismatched live credentials and test mode', async () => {
+    await expect(loadEnv({ RAZORPAY_ENV: 'test', RAZORPAY_KEY_ID: 'rzp_live_dummy' })).rejects.toThrow(/must match/);
   });
 
-  it('defaults an unset CASHFREE_ENV to sandbox', async () => {
-    const { env } = await loadEnv({ CASHFREE_ENV: '' });
-    expect(env.cashfreeEnv).toBe('sandbox');
+  it('infers the environment from the API key when not explicitly configured', async () => {
+    const { env } = await loadEnv({ RAZORPAY_ENV: '', RAZORPAY_KEY_ID: 'rzp_live_dummy' });
+    expect(env.razorpayEnv).toBe('live');
+  });
+
+  it('requires a separate webhook secret and leaves missing configuration disabled', async () => {
+    const result = await loadEnv({ RAZORPAY_KEY_ID: 'rzp_test_dummy', RAZORPAY_ENV: 'test', RAZORPAY_WEBHOOK_SECRET: '' });
+    expect(result.env.razorpayWebhookSecret).toBeUndefined();
+    expect(result.paymentsConfigured).toBe(false);
   });
 
   it('refuses the production Supabase project from a non-production backend', async () => {

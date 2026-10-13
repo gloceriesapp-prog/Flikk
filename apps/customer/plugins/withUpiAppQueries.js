@@ -1,21 +1,5 @@
-// Android 11+ (API 30+) package visibility: an app can't see whether
-// another specific package is installed, or explicitly target it with an
-// intent, unless it's declared in a <queries> block — silently returns
-// "not installed"/fails to resolve otherwise, no error, just wrong
-// behavior. Two separate concerns here:
-//   - A package-name list, for openUpiApp's explicit-package launch
-//     (payments/upiIntent.ts) — needs to name each target app it might
-//     ever launch.
-//   - A generic upi:// scheme intent query, for UpiAppsModule.kt's
-//     PackageManager.queryIntentActivities detection — this is what
-//     makes detection see EVERY installed UPI app (any app declaring the
-//     standard NPCI intent-filter), not just the four named below.
-//     Without this specific entry, that query silently returns empty.
-//
-// iOS has the equivalent restriction but a different mechanism, and no
-// generic-scheme equivalent — LSApplicationQueriesSchemes in Info.plist
-// (already set directly in app.config.js, plain JSON, no plugin needed)
-// only ever covers named apps, one by one.
+// Package visibility for installed UPI app preference discovery. Razorpay's
+// SDK performs payment hand-off; no app payment URLs are built here.
 const { withAndroidManifest } = require('@expo/config-plugins');
 
 // App schemes (payments/upiApps.ts `scheme`) — lets Linking.canOpenURL work as

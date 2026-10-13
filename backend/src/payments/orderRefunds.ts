@@ -1,6 +1,6 @@
 import { supabase } from '../db/supabase.js';
 import { logger } from '../lib/logger.js';
-import { CashfreeError, cashfreeRefundId } from './cashfreeClient.js';
+import { RazorpayError, refundRequestKey } from './razorpayClient.js';
 import { createOrAdoptRefund, isDefinitiveRejection, LEGACY_REFUND_NOTE, listRefunds, refundSource } from './refundPayment.js';
 
 export interface OrderRefundJob {
@@ -24,16 +24,16 @@ async function save(job: OrderRefundJob, patch: Record<string, unknown>) {
 }
 export async function processOrderRefund(job: OrderRefundJob): Promise<void> {
   try {
-    const source = await refundSource('order', job.order_id);
-    if (source.provider === 'legacy') {
+    const source = await refundSource('order', job.order_id, job.payment_id);
+    if (source.provider === 'legacy' || source.paymentId !== job.payment_id) {
       await save(job, { status: 'manual_required', last_error: LEGACY_REFUND_NOTE, release: true });
       return;
     }
-    const refundId = cashfreeRefundId(job.request_key);
-    const existing = await listRefunds(source.providerOrderId);
+    const refundId = refundRequestKey(job.request_key);
+    const existing = await listRefunds(source.paymentId);
     const completed = existing.filter(r => r.status === 'completed').reduce((sum, r) => sum + r.amount, 0);
     const reserved = existing.filter(r => r.status !== 'failed').reduce((sum, r) => sum + r.amount, 0);
-    let own = existing.find(r => r.id === refundId);
+    let own = existing.find(r => r.requestKey === refundId);
     if (completed >= Number(job.target_paise)) {
       await save(job, { status: 'completed', provider_refund_id: job.provider_refund_id ?? own?.id ?? existing.find(r => r.status === 'completed')?.id, release: true });
       return;
@@ -49,14 +49,14 @@ export async function processOrderRefund(job: OrderRefundJob): Promise<void> {
       // Freeze before provider call; lost responses retry the same id/body.
       if (!await save(job, { request_paise: amount }))
         return;
-      own = await createOrAdoptRefund(source.providerOrderId, refundId, amount, 'Gloceries order refund');
+      own = await createOrAdoptRefund(source.paymentId, refundId, amount, 'Gloceries order refund');
     }
     const finished = own?.status === 'completed' && completed + (existing.some(r => r.id === own!.id) ? 0 : own.amount) >= Number(job.target_paise);
     await save(job, { status: own?.status === 'failed' ? 'failed' : finished ? 'completed' : 'processing', provider_refund_id: own?.id ?? job.provider_refund_id,
       last_error: own?.status === 'failed' ? 'Provider refund failed' : null, release: true, next_attempt_at: new Date(Date.now() + 60000).toISOString() });
   }
   catch (error) {
-    logger.warn({ refundJobId: job.id, providerStatus: error instanceof CashfreeError ? error.providerStatus : undefined }, 'Order refund reconciliation delayed');
+    logger.warn({ refundJobId: job.id, providerStatus: error instanceof RazorpayError ? error.providerStatus : undefined }, 'Order refund reconciliation delayed');
     await save(job, { status: isDefinitiveRejection(error) ? 'failed' : 'processing', last_error: 'Provider reconciliation delayed', release: true,
       next_attempt_at: new Date(Date.now() + Math.min(900000, 15000 * 2 ** Math.min(job.attempts, 6))).toISOString() });
   }

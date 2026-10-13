@@ -3,9 +3,9 @@
 // Real refund visibility — every cancelled/failed-and-paid order's own
 // refund_status. 'failed' rows get Retry (POST /api/orders/[id]/retry-refund),
 // which only re-queues the durable refund job; the backend worker is the one
-// place that calls Cashfree, with a deterministic refund_id as idempotency key,
+// place that calls Razorpay with a deterministic refund idempotency key,
 // so a retry can't double-refund. 'manual_required' rows (legacy-provider
-// payments Cashfree can't refund) get "Mark refunded manually", which needs
+// payments the active provider cannot refund) get "Mark refunded manually", which needs
 // the bank/UPI reference of the payout the founder sent.
 // Trip legs share one combined refund (trip_refunds), shown in the "Trip
 // refunds" section below with its legs; its manual refund closes every leg.
@@ -16,7 +16,7 @@ import { ExternalLink, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
 import type { RefundOrder } from '@/app/api/refunds/route';
 import type { TripRefundRow } from '@/app/api/refunds/trips/route';
-import { CASHFREE_DASHBOARD_URL } from '@/lib/types';
+import { RAZORPAY_DASHBOARD_URL, paymentProviderLabel } from '@/lib/types';
 import { cancelReasonLabel } from '@/lib/orders/cancelReasons';
 import { formatDateTime } from '@/lib/format';
 
@@ -156,14 +156,14 @@ export default function RefundsPage() {
                   <td className="max-w-xs truncate px-4 py-3 text-muted">{cancelReasonLabel(refund.cancelReason)}</td>
                   <td className="px-4 py-3 text-xs text-muted">
                     <p className="font-semibold capitalize text-ink">
-                      {refund.paymentProvider === 'cashfree' ? 'Cashfree' : 'Legacy provider'}
+                      {paymentProviderLabel(refund.paymentProvider)}
                     </p>
-                    {refund.providerOrderId && refund.paymentProvider === 'cashfree' ? (
+                    {refund.providerOrderId && refund.paymentProvider === 'razorpay' ? (
                       <a
-                        href={CASHFREE_DASHBOARD_URL}
+                        href={RAZORPAY_DASHBOARD_URL}
                         target="_blank"
                         rel="noreferrer"
-                        title="Open Cashfree dashboard — search Payments by this order id"
+                        title="Open Razorpay dashboard — search Payments by this order id"
                         className="inline-flex items-center gap-1 font-mono hover:text-ink"
                       >
                         {refund.providerOrderId}
@@ -291,7 +291,7 @@ export default function RefundsPage() {
                     {trip.refundedPaise > 0 && <span className="block text-xs text-muted">refunded ₹{(trip.refundedPaise / 100).toFixed(2)}</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted">
-                    <p className="font-semibold text-ink">{trip.paymentProvider === 'razorpay' ? 'Legacy provider' : 'Cashfree'}</p>
+                    <p className="font-semibold text-ink">{paymentProviderLabel(trip.paymentProvider)}</p>
                     <p className="font-mono">pay: {trip.paymentId}</p>
                     {trip.providerRefundId && <p className="font-mono">ref: {trip.providerRefundId}</p>}
                     {trip.lastError && <p>{trip.lastError}</p>}

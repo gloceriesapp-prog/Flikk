@@ -1,22 +1,21 @@
-// Poll current backend state while UPI is processing. Timeout means unknown,
-// so the caller opens recovery and reconciles with the provider rather than
-// starting a new checkout. Created/authorized payment failures do not cancel
-// the checkout; explicit cancellation and reservation expiry own that state.
+// Wall-clock reconciliation budget: backgrounding never restarts the timer.
+// Timeout means unknown and opens backend recovery, never a new payment.
 import { AppState } from 'react-native';
-import { recoverPayment } from '../api/payments';
+import { recoverPayment, type PaymentTarget } from '../api/payments';
 
 const POLL_INTERVAL_MS = 4000;
-const MAX_ATTEMPTS = 30; // 30 * 4s = 120s
+export const POLL_TIMEOUT_SECONDS = 120;
 
-// Exported so PaymentProcessingScreen's own countdown always matches this
-// function's real timeout budget exactly — a hardcoded duplicate number
-// there could silently drift from this one if either ever changes.
-export const POLL_TIMEOUT_SECONDS = (MAX_ATTEMPTS * POLL_INTERVAL_MS) / 1000;
+export function paymentCheckDeadline(expiresAt?: string, nowMs = Date.now()): number {
+  const expiry = expiresAt ? Date.parse(expiresAt) : NaN;
+  const budget = nowMs + POLL_TIMEOUT_SECONDS * 1000;
+  return Number.isFinite(expiry) ? Math.min(expiry, budget) : budget;
+}
 
-function waitForNextCheck(ms: number): Promise<void> {
+function waitForNextCheck(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     let settled = false;
-    const timer = setTimeout(finish, ms);
+    const timer = setTimeout(finish, Math.max(0, ms));
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') finish();
     });
@@ -25,20 +24,30 @@ function waitForNextCheck(ms: number): Promise<void> {
       settled = true;
       clearTimeout(timer);
       subscription.remove();
+      signal?.removeEventListener('abort', finish);
       resolve();
     }
+    signal?.addEventListener('abort', finish, { once: true });
+    if (signal?.aborted) finish();
   });
 }
 
-// deadlineMs (UPI collect): keep polling until the request expires instead of
-// the default 120s budget — the customer may approve it minutes later.
-export async function pollOrderPaid(id: { orderId: string } | { tripId: string }, deadlineMs?: number): Promise<boolean> {
-  const attempts = deadlineMs ? Math.max(MAX_ATTEMPTS, Math.ceil((deadlineMs - Date.now()) / POLL_INTERVAL_MS) + 1) : MAX_ATTEMPTS;
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const recovery = await recoverPayment(id);
-    if (recovery.state === 'paid') return true;
-    if (recovery.state === 'cancelled' || recovery.state === 'expired' || recovery.state === 'unpaid') return false;
-    await waitForNextCheck(POLL_INTERVAL_MS);
+export async function pollOrderPaid(target: PaymentTarget, deadlineMs = paymentCheckDeadline(), signal?: AbortSignal): Promise<boolean> {
+  // A bounded wall-clock deadline replaces attempt-count timeouts, which
+  // accidentally stretched when requests were slow or the app was suspended.
+  while (!signal?.aborted && Date.now() < deadlineMs) {
+    if (AppState.currentState == null || AppState.currentState === 'active') {
+      try {
+        const recovery = await recoverPayment(target);
+        if (signal?.aborted) return false;
+        if (recovery.state === 'paid') return true;
+        if (recovery.state === 'cancelled' || recovery.state === 'expired' || recovery.state === 'unpaid') return false;
+      } catch {
+        // Temporary connection errors keep the saved order and retry within
+        // this same budget; restart recovery still comes from backend state.
+      }
+    }
+    await waitForNextCheck(Math.min(POLL_INTERVAL_MS, deadlineMs - Date.now()), signal);
   }
   return false;
 }

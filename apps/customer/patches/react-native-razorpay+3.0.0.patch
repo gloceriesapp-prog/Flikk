@@ -1,0 +1,60 @@
+diff --git a/node_modules/react-native-razorpay/android/build.gradle b/node_modules/react-native-razorpay/android/build.gradle
+--- a/node_modules/react-native-razorpay/android/build.gradle
++++ b/node_modules/react-native-razorpay/android/build.gradle
+@@ -19,6 +19,7 @@
+ }
+ 
+ android {
++    namespace "com.razorpay.rn"
+     compileSdkVersion safeExtGet('compileSdkVersion', 28)
+ 
+     defaultConfig {
+diff --git a/node_modules/react-native-razorpay/android/src/main/AndroidManifest.xml b/node_modules/react-native-razorpay/android/src/main/AndroidManifest.xml
+--- a/node_modules/react-native-razorpay/android/src/main/AndroidManifest.xml
++++ b/node_modules/react-native-razorpay/android/src/main/AndroidManifest.xml
+@@ -1,6 +1,5 @@
+ 
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.razorpay.rn">
++<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ 
+ 	<application>
+ 		<activity android:name="com.razorpay.CheckoutActivity" 
+diff --git a/node_modules/react-native-razorpay/android/src/main/java/com/razorpay/rn/RazorpayModuleImpl.java b/node_modules/react-native-razorpay/android/src/main/java/com/razorpay/rn/RazorpayModuleImpl.java
+--- a/node_modules/react-native-razorpay/android/src/main/java/com/razorpay/rn/RazorpayModuleImpl.java
++++ b/node_modules/react-native-razorpay/android/src/main/java/com/razorpay/rn/RazorpayModuleImpl.java
+@@ -36,6 +36,7 @@
+     public void open(ReadableMap options) {
+         Activity currentActivity = reactContext.getCurrentActivity();
+         if (currentActivity == null) {
++            sendLaunchError("app_not_active");
+             return;
+         }
+ 
+@@ -46,8 +47,15 @@
+             intent.putExtra("FRAMEWORK", "react_native");
+             currentActivity.startActivityForResult(intent, Checkout.RZP_REQUEST_CODE);
+         } catch (Exception e) {
+-            // Silently fail as per original implementation
++            sendLaunchError("checkout_launch_failed");
+         }
++    }
++
++    private void sendLaunchError(String reason) {
++        WritableMap error = Arguments.createMap();
++        error.putString("reason", reason);
++        error.putString("description", "Could not open secure checkout. Your order is saved.");
++        sendEvent("Razorpay::PAYMENT_ERROR", error);
+     }
+ 
+     /**
+@@ -62,7 +70,8 @@
+      */
+     public void onPaymentError(int code, String description, PaymentData paymentData) {
+         WritableMap errorParams = Arguments.createMap();
+-        JSONObject paymentDataJson = paymentData.getData();
++        JSONObject paymentDataJson = paymentData == null || paymentData.getData() == null
++            ? new JSONObject() : paymentData.getData();
+         try {
+             paymentDataJson.put(MAP_KEY_ERROR_CODE, code);
+             paymentDataJson.put(MAP_KEY_ERROR_DESC, description);

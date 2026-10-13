@@ -5,9 +5,8 @@ try { validateApiUrl(process.env.EXPO_PUBLIC_API_URL, false); } catch { failures
 for (const name of ['EXPO_PUBLIC_SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN', 'GOOGLE_MAPS_API_KEY']) {
   if (!process.env[name]?.trim()) failures.push(`Missing ${name}.`);
 }
-if (process.env.EXPO_PUBLIC_CASHFREE_ENV !== 'production') failures.push('EXPO_PUBLIC_CASHFREE_ENV must be "production" for release builds.');
 for (const name of Object.keys(process.env)) {
-  if (/^EXPO_PUBLIC_(CASHFREE_(APP_ID|SECRET|CLIENT)|.*SECRET)/.test(name)) failures.push(`${name} must not be a public (bundled) variable.`);
+  if (/^EXPO_PUBLIC_(RAZORPAY_(KEY_SECRET|WEBHOOK_SECRET)|.*SECRET)/.test(name)) failures.push(`${name} must not be a public (bundled) variable.`);
 }
 if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
   try { if (new URL(process.env.EXPO_PUBLIC_SENTRY_DSN).protocol !== 'https:') throw new Error(); }

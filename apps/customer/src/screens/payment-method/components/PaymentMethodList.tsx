@@ -1,16 +1,8 @@
-// Payment groups, selection-only (Cart places the order). Only modes enabled
-// on the Cashfree account are offered (UPI, Visa/RuPay cards, netbanking);
-// wallets and pay-later are not enabled. UPI apps (only those actually
-// installed) use Cashfree UPI intent; UPI ID (iOS only, NPCI withdrew collect
-// on Android) uses a verified collect request; cards and netbanking open
-// Cashfree checkout limited to that mode.
 import { Image, Pressable, Text, View } from 'react-native';
 import { BankIcon, CreditCardIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage } from '../../../components/AppImage';
 import { colors, minTouchTarget } from '../../../theme/tokens';
-import { UpiIdSection } from './UpiIdSection';
-import { UPI_ID_SUPPORTED } from '../../../payments/upiIntent';
 import type { UpiApp } from '../../../payments/upiApps';
 
 import type { AllowedPaymentMethods, PaymentMethod } from '../../../payments/paymentMethod';
@@ -72,8 +64,6 @@ interface Props {
   method: PaymentMethod | null;
   onSelect: (method: PaymentMethod) => void;
   upiApps: UpiApp[];
-  // Omitted (profile preference mode): a saved preference can't carry a VPA.
-  upiId?: { initialVpa?: string; remembered: boolean; onUse: (vpa: string, remember: boolean) => void };
   // Methods switched off by admin are not offered (GET /payments/availability).
   allowed?: AllowedPaymentMethods;
 }
@@ -84,7 +74,7 @@ export function orderUpiApps(apps: UpiApp[], method: PaymentMethod | null): UpiA
   return [...apps].sort((a, b) => Number(b.id === lastId) - Number(a.id === lastId));
 }
 
-export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, upiId, allowed = { cod: true, online: true } }: Props) {
+export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, allowed = { cod: true, online: true } }: Props) {
   const selectedUpiAppId = method?.startsWith('upi_app:') ? method.slice('upi_app:'.length) : null;
   const upiApps = allowed.online ? orderUpiApps(detectedApps, method) : [];
 
@@ -98,6 +88,7 @@ export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, upi
       {upiApps.length > 0 ? (
         <View>
           <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Pay with UPI app</Text>
+          <Text className="mb-3 px-1 text-[12.5px] text-ink/60">Choose your app again in secure checkout to approve payment.</Text>
           <View className="bg-white p-4" style={{ borderRadius: 12 }}>
             {upiApps.map((app, index) => {
               const isSelected = selectedUpiAppId === app.id;
@@ -126,19 +117,21 @@ export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, upi
         </View>
       ) : null}
 
-      {upiId && UPI_ID_SUPPORTED && allowed.online ? <UpiIdSection initialVpa={upiId.initialVpa} rememberedByDefault={upiId.remembered}
-        selected={method === 'upi_id'} onUse={upiId.onUse} /> : null}
-
       {allowed.online && <View>
         <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">{'Cards & netbanking'}</Text>
         <View className="bg-white p-4" style={{ borderRadius: 12 }}>
           <View className="mb-3 border-b border-dashed border-gray-100 pb-3">
-            <MethodRow icon={CreditCardIcon} title="Credit / Debit Card" subtitle="Visa and RuPay cards"
+            <MethodRow icon={CreditCardIcon} title="Credit / Debit Card" subtitle="Enter card details in secure checkout"
               selected={method === 'card'} onPress={() => onSelect('card')} label="Pay with credit or debit card" />
           </View>
-          <MethodRow icon={BankIcon} title="Netbanking" subtitle="Karnataka Bank, Canara, Union Bank and more"
+          <MethodRow icon={BankIcon} title="Netbanking" subtitle="Choose your bank in secure checkout"
             selected={method === 'netbanking'} onPress={() => onSelect('netbanking')} label="Pay with netbanking" />
         </View>
+      </View>}
+
+      {allowed.online && <View className="bg-white p-4" style={{ borderRadius: 12 }}>
+        <MethodRow icon={CreditCardIcon} title="More payment options" subtitle="See all available methods in secure checkout"
+          selected={method === 'online'} onPress={() => onSelect('online')} label="More online payment options" />
       </View>}
 
       {allowed.cod && <View>

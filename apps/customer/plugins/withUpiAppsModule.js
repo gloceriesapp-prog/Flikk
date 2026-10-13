@@ -1,4 +1,4 @@
-// The Android half of payments/upiIntent.ts's detection: a real native
+// The Android half of payments/installedUpiApps.ts's detection: a real native
 // module (UpiAppsModule.kt) that queries PackageManager for every
 // installed app declaring the standard NPCI `upi://` intent-filter,
 // returning real name/package/launcher-icon data — not a hardcoded list.
@@ -65,16 +65,6 @@ class UpiAppsModule(reactContext: ReactApplicationContext) : ReactContextBaseJav
         val map: WritableMap = Arguments.createMap()
         map.putString("name", label)
         map.putString("packageName", packageName)
-        // The actual activity that resolved this intent — payments/
-        // upiIntent.ts's openUpiApp needs BOTH packageName and this to
-        // set an explicit Intent.component (via expo-intent-launcher's
-        // className param). packageName alone does nothing there —
-        // IntentLauncherModule.kt only ever sets intent.component when
-        // className is also given, so without it the intent stays a
-        // plain generic ACTION_VIEW and Android shows its own "Open
-        // with" chooser instead of jumping straight into the one app
-        // the customer actually tapped.
-        map.putString("className", info.activityInfo.name)
         map.putString("icon", icon)
         result.pushMap(map)
       }

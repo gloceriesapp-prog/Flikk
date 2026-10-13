@@ -11,13 +11,7 @@ jest.mock('expo-secure-store', () => {
 });
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 jest.mock('@sentry/react-native', () => ({ init: jest.fn(), wrap: c => c, captureException: jest.fn(), captureMessage: jest.fn(), reactNavigationIntegration: () => ({ name: 'ReactNavigation', setupOnce: jest.fn(), registerNavigationContainer: jest.fn() }) }));
-jest.mock('react-native-cashfree-pg-sdk', () => ({
-  CFPaymentGatewayService: { setCallback: jest.fn(), removeCallback: jest.fn(), doWebPayment: jest.fn(), doPayment: jest.fn() },
-}));
-jest.mock('cashfree-pg-api-contract', () => ({
-  CFEnvironment: { PRODUCTION: 'PRODUCTION', SANDBOX: 'SANDBOX' },
-  CFSession: function CFSession(id, orderID, environment) { this.payment_session_id = id; this.orderID = orderID; this.environment = environment; },
-}));
+jest.mock('react-native-razorpay', () => ({ __esModule: true, default: { open: jest.fn() } }), { virtual: true });
 jest.mock('react-native-maps', () => {
   const { View } = require('react-native');
   const Stub = props => require('react').createElement(View, props);

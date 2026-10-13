@@ -1,40 +1,26 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ from: vi.fn(), payments: vi.fn(), order: vi.fn() }));
-vi.mock('../db/supabase.js', () => ({ supabase: { from: mocks.from } }));
-vi.mock('./cashfreeClient.js', async (load) => ({ ...await load<typeof import('./cashfreeClient.js')>(), getCfOrder: mocks.order, getCfOrderPayments: mocks.payments }));
+const m=vi.hoisted(()=>({from:vi.fn(),order:vi.fn(),payment:vi.fn()}));
+vi.mock('../db/supabase.js',()=>({supabase:{from:m.from}}));
+vi.mock('./razorpayClient.js',async load=>({...await load<typeof import('./razorpayClient.js')>(),getProviderOrder:m.order,getProviderPayment:m.payment}));
 import { validateCapturedPayment } from './validateCapturedPayment.js';
-const id = '00000000-0000-4000-8000-000000000300';
-const cfId = 'gl_00000000000040008000000000000300';
-const target = { orderId: id };
-const payment = { cf_payment_id: 77, order_id: cfId, payment_amount: 30, payment_currency: 'INR', payment_status: 'SUCCESS' };
-beforeEach(() => {
-  vi.clearAllMocks();
-  mocks.payments.mockResolvedValue([payment]);
-  mocks.order.mockResolvedValue({ order_id: cfId, order_amount: 30, order_currency: 'INR', order_status: 'PAID', order_tags: { gloceries_order_id: id } });
-  mocks.from.mockImplementation(() => {
-    const query = { select: vi.fn(() => query), eq: vi.fn(() => query), single: async () => ({ data: { total: 30 }, error: null }) };
-    return query;
-  });
+const id='00000000-0000-4000-8000-000000000100';
+const payment={id:'pay_one',order_id:'order_one',amount:3000,currency:'INR',status:'captured',captured:true};
+beforeEach(()=>{
+ vi.resetAllMocks();const q={select:vi.fn(()=>q),eq:vi.fn(()=>q),single:vi.fn(async()=>({data:{total:30,payment_provider:'razorpay',provider_order_id:'order_one',provider_payment_id:'pay_one'},error:null}))};m.from.mockReturnValue(q);
+ m.order.mockResolvedValue({id:'order_one',receipt:'gl_00000000000040008000000000000100',amount:3000,currency:'INR',notes:{gloceries_order_id:id}});m.payment.mockResolvedValue(payment);
 });
-it('accepts only a SUCCESS payment bound to this checkout and returns its captured paise', async () => {
-  await expect(validateCapturedPayment(target, '77', cfId)).resolves.toBe(3000);
+it('returns exact captured paise after validating provider identity and local total',async()=>{expect(await validateCapturedPayment({orderId:id},'pay_one','order_one')).toBe(3000);});
+it('rejects arbitrary or historic payment IDs and wrong provider order',async()=>{
+ await expect(validateCapturedPayment({orderId:id},'cf_123')).rejects.toMatchObject({code:'INVALID_PAYMENT_REQUEST'});
+ await expect(validateCapturedPayment({orderId:id},'pay_one','order_other')).rejects.toMatchObject({code:'PAYMENT_MISMATCH'});
 });
-it('rejects a payment from another Cashfree order', async () => {
-  await expect(validateCapturedPayment(target, '77', 'gl_someoneelse')).rejects.toMatchObject({ code: 'PAYMENT_MISMATCH' });
-  await expect(validateCapturedPayment(target, '78')).rejects.toMatchObject({ code: 'PAYMENT_MISMATCH' });
+it('rejects authorized-only, amount, currency, checkout-note and payment-order mismatch',async()=>{
+ for(const wrong of [{amount:2999},{currency:'USD'},{order_id:'order_other'}]){m.payment.mockResolvedValue({...payment,...wrong});await expect(validateCapturedPayment({orderId:id},'pay_one')).rejects.toMatchObject({code:'PAYMENT_MISMATCH'});}
+ m.payment.mockResolvedValue({...payment,status:'authorized',captured:false});await expect(validateCapturedPayment({orderId:id},'pay_one')).rejects.toMatchObject({code:'PAYMENT_RECONCILING'});
+ m.payment.mockResolvedValue(payment);m.order.mockResolvedValue({id:'order_one',receipt:'gl_wrong',amount:3000,currency:'INR',notes:{gloceries_order_id:id}});await expect(validateCapturedPayment({orderId:id},'pay_one')).rejects.toMatchObject({code:'PAYMENT_MISMATCH'});
 });
-it('does not treat a pending payment as paid', async () => {
-  mocks.payments.mockResolvedValue([{ ...payment, payment_status: 'PENDING' }]);
-  await expect(validateCapturedPayment(target, '77')).rejects.toMatchObject({ code: 'PAYMENT_RECONCILING' });
-});
-it('rejects amount, currency and tag mismatches', async () => {
-  for (const changed of [{ payment_amount: 29.99 }, { payment_currency: 'USD' }]) {
-    mocks.payments.mockResolvedValue([{ ...payment, ...changed }]);
-    await expect(validateCapturedPayment(target, '77')).rejects.toMatchObject({ code: 'PAYMENT_MISMATCH' });
-  }
-  mocks.payments.mockResolvedValue([payment]);
-  mocks.order.mockResolvedValue({ order_id: cfId, order_amount: 30, order_currency: 'INR', order_tags: { gloceries_order_id: 'another' } });
-  await expect(validateCapturedPayment(target, '77')).rejects.toMatchObject({ code: 'PAYMENT_MISMATCH' });
-  mocks.order.mockResolvedValue({ order_id: cfId, order_amount: 31, order_currency: 'INR', order_tags: { gloceries_order_id: id } });
-  await expect(validateCapturedPayment(target, '77')).rejects.toMatchObject({ code: 'PAYMENT_MISMATCH' });
+
+it('accepts delayed capture replay after a known payment is fully refunded without treating new refunded money as fresh',async()=>{
+ m.payment.mockResolvedValue({...payment,status:'refunded'});
+ expect(await validateCapturedPayment({orderId:id},'pay_one')).toBe(3000);
 });

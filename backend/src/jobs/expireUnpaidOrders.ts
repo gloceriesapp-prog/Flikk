@@ -2,7 +2,7 @@ import { supabase } from '../db/supabase.js';
 import { logger } from '../lib/logger.js';
 import { metrics } from '../observability/metrics.js';
 import { AppError } from '../lib/errors.js';
-import { paymentsConfigured, terminateCfOrder } from '../payments/cashfreeClient.js';
+import { paymentsConfigured } from '../payments/razorpayClient.js';
 import { paymentTarget, reconcileProvider } from '../payments/recovery.js';
 export interface ExpiryBatch { cancelled_orders: number; single_targets: number; trip_targets: number }
 
@@ -40,20 +40,16 @@ const PROVIDER_TIMEOUT_MS = 10_000;
 interface ReconcileRow { kind: 'order' | 'trip'; target_id: string; provider_order_id: string; total: number | string }
 let warnedUnconfigured = false;
 
-// Before expiry releases a checkout that has a Cashfree order, terminate it
-// (best effort, so no new payment can start) and read the provider once AFTER
-// the deadline: a SUCCESS payment settles (and one the SQL now rejects is
-// refunded by the existing late-payment path); a still-PENDING attempt is left
-// to lapse — if it succeeds later the webhook settles-then-refunds. Only a
-// checked session becomes expirable (migration 096); a provider outage
-// leaves the lease to expire for retry, bounded by 096's 30-minute ceiling.
+// Razorpay orders cannot be terminated. Read the provider after the local
+// reservation deadline, then let SQL close the checkout and release stock.
+// A late capture cannot reopen it: settlement records a durable refund intent.
+// A provider outage leaves reconciliation leased for retry with a bounded wait.
 export async function reconcileBeforeExpiry(
   reconcile: typeof reconcileProvider = reconcileProvider,
   shouldStop: () => boolean = () => false,
-  terminate: (providerOrderId: string) => Promise<unknown> = terminateCfOrder,
 ): Promise<{ claimed: number }> {
   if (!paymentsConfigured) {
-    if (!warnedUnconfigured) logger.warn('Cashfree keys not configured; skipping pre-expiry payment reconciliation');
+    if (!warnedUnconfigured) logger.warn('Razorpay keys not configured; skipping pre-expiry payment reconciliation');
     warnedUnconfigured = true;
     return { claimed: 0 };
   }
@@ -66,7 +62,7 @@ export async function reconcileBeforeExpiry(
     try {
       let timer: NodeJS.Timeout | undefined;
       const state = await Promise.race([
-        terminate(row.provider_order_id).then(() => reconcile(target, row.provider_order_id, Number(row.total))),
+        reconcile(target, row.provider_order_id, Number(row.total)),
         new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Provider read timed out')), PROVIDER_TIMEOUT_MS); }),
       ]).finally(() => clearTimeout(timer));
       if (state === 'paid') logger.info({ target: target.target }, 'Settled captured payment before expiry');
