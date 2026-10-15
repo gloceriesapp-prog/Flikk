@@ -221,7 +221,7 @@ export default function LoginPage() {
                     <button
                       type="submit"
                       disabled={!phoneReady || isSubmitting}
-                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#a3d65c] text-[15px] font-semibold text-[#1d2b22] transition-colors hover:bg-[#95cc4b] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#155dfc] text-[15px] font-semibold text-white transition-colors hover:bg-[#0f4ad1] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isSubmitting ? 'Sending code…' : 'Send OTP'}
                     </button>
@@ -261,7 +261,7 @@ export default function LoginPage() {
                     <button
                       type="submit"
                       disabled={code.length !== CODE_LENGTH || isSubmitting}
-                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#a3d65c] text-[15px] font-semibold text-[#1d2b22] transition-colors hover:bg-[#95cc4b] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#155dfc] text-[15px] font-semibold text-white transition-colors hover:bg-[#0f4ad1] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isSubmitting ? 'Verifying…' : 'Verify & sign in'}
                     </button>
