@@ -23,6 +23,8 @@ const RANGES: { value: Range; label: string }[] = [
 
 const ACCENT = '#155dfc';
 const HATCH_ID = 'revenue-hatch';
+// Must match the YAxis width below: the bubble is placed over the plot area.
+const Y_AXIS_WIDTH = 48;
 
 export function RevenueCard({ orders, now }: { orders: PartnerOrder[]; now: number }) {
   const [range, setRange] = useState<Range>('7');
@@ -53,11 +55,14 @@ export function RevenueCard({ orders, now }: { orders: PartnerOrder[]; now: numb
 
       {/* min-h, not h: flex-1's zero basis would collapse a fixed height when
           the card isn't stretched (single column on phones). */}
-      <div className="relative mt-5 min-h-[248px] flex-1">
+      <div className="relative mt-16 min-h-[248px] flex-1">
         {total === 0 && (
           <p className="absolute inset-x-0 top-[38%] z-10 text-center text-sm text-slate-400">
             No delivered orders in this period yet
           </p>
+        )}
+        {activeIndex >= 0 && total > 0 && (
+          <BarBubble bucket={buckets[activeIndex]} index={activeIndex} count={buckets.length} />
         )}
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -90,18 +95,14 @@ export function RevenueCard({ orders, now }: { orders: PartnerOrder[]; now: numb
               tickFormatter={(v: number) => formatInrCompact(v)}
               tickLine={false}
               axisLine={false}
-              width={48}
+              width={Y_AXIS_WIDTH}
               allowDecimals={false}
               tick={{ fontSize: 12, fill: '#94a3b8' }}
             />
-            <Tooltip
-              content={<ChartTooltip />}
-              cursor={false}
-              // Pinned to the top of the plot so it never sits on the bars.
-              position={{ y: 0 }}
-              defaultIndex={todayIndex >= 0 ? todayIndex : undefined}
-              isAnimationActive={false}
-            />
+            {/* Only tracks the hovered bar; the bubble is drawn by BarBubble.
+                Recharts' own tooltip flips left at the right edge, which put
+                "Today" over yesterday's bar. */}
+            <Tooltip content={() => null} cursor={false} isAnimationActive={false} />
             <Bar dataKey="net" radius={days > 7 ? [6, 6, 6, 6] : [12, 12, 12, 12]} minPointSize={total > 0 ? 3 : 0}>
               {buckets.map((b, i) => (
                 <Cell key={b.key} fill={i === activeIndex ? ACCENT : `url(#${HATCH_ID})`} />
@@ -140,18 +141,35 @@ function DayTick({
   );
 }
 
-function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: RevenueBucket }[] }) {
-  const bucket = payload?.[0]?.payload;
-  if (!active || !bucket) return null;
+// Value bubble above the highlighted bar, with a pointer at the bar's centre.
+// Positioned from the bar's index over the plot area (container width minus
+// the y-axis). At the first/last bar the bubble aligns to that edge instead of
+// centring, so it stays inside the card and still sits over the right bar.
+function BarBubble({ bucket, index, count }: { bucket: RevenueBucket; index: number; count: number }) {
+  const center = `calc(${Y_AXIS_WIDTH}px + (100% - ${Y_AXIS_WIDTH}px) * ${(index + 0.5) / count})`;
+  const barStart = `calc(${Y_AXIS_WIDTH}px + (100% - ${Y_AXIS_WIDTH}px) * ${index / count})`;
+  const placement =
+    index === count - 1
+      ? { right: 0 }
+      : index === 0
+        ? { left: barStart }
+        : { left: center, transform: 'translateX(-50%)' };
   return (
-    <div className="rounded-xl bg-ink px-3 py-2 text-white shadow-lg">
-      <p className="text-[11px] text-slate-300">
-        {bucket.isToday ? 'Today' : bucket.fullLabel}
-      </p>
-      <p className="tnum text-sm font-semibold">{formatInr(bucket.net)}</p>
-      <p className="tnum text-[11px] text-slate-300">
-        {bucket.orders} delivered
-      </p>
-    </div>
+    <>
+      <div
+        className="pointer-events-none absolute -top-14 z-10 rounded-xl bg-ink px-3 py-1.5 whitespace-nowrap text-white shadow-lg"
+        style={placement}
+      >
+        <p className="text-[11px] text-slate-300">{bucket.isToday ? 'Today' : bucket.fullLabel}</p>
+        <p className="tnum text-sm font-semibold">
+          {formatInr(bucket.net)} <span className="text-[11px] font-normal text-slate-300">· {bucket.orders} delivered</span>
+        </p>
+      </div>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-[9px] z-10 h-0 w-0 -translate-x-1/2 border-x-[6px] border-t-[7px] border-x-transparent border-t-ink"
+        style={{ left: center }}
+      />
+    </>
   );
 }
