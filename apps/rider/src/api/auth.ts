@@ -15,7 +15,8 @@
 // forever on every backend/src/routes/rider.ts call.
 
 import { apiRequest } from './client';
-import type { AccountRole } from '../store/useAuthStore';
+import { useAuthStore, type AccountRole } from '../store/useAuthStore';
+import { useRiderOrdersStore } from '../store/useRiderOrdersStore';
 
 // Which app this is — the backend pins a phone number to the first app it
 // signs in through and 403s (ACCOUNT_WRONG_APP) a number trying a different
@@ -92,4 +93,27 @@ export function fetchAccountStatus(): Promise<AccountStatus> {
 // own 12s poll (useRiderOrdersStore.ts) still covers it.
 export function savePushToken(token: string): Promise<void> {
   return apiRequest('/auth/push-token', { method: 'POST', body: { token } });
+}
+
+// Sign-out: stop pushes to this device for this account, go offline and wipe
+// the cached orders (useRiderOrdersStore.resetForSignOut), then drop the local
+// session. The network part is best-effort with a short cap so a slow or
+// offline network never blocks signing out; if it fails, the next account to
+// register this device takes the token over server-side anyway
+// (POST /auth/push-token releases it from every other account).
+const SIGN_OUT_PUSH_TIMEOUT_MS = 3000;
+
+export async function signOut(): Promise<void> {
+  if (useAuthStore.getState().accessToken) {
+    await Promise.race([
+      Promise.all([
+        apiRequest('/auth/push-token', { method: 'DELETE' }).catch(() => undefined),
+        useRiderOrdersStore.getState().resetForSignOut(),
+      ]),
+      new Promise((resolve) => setTimeout(resolve, SIGN_OUT_PUSH_TIMEOUT_MS)),
+    ]);
+  } else {
+    await useRiderOrdersStore.getState().resetForSignOut();
+  }
+  await useAuthStore.getState().clear();
 }

@@ -10,7 +10,7 @@ import { loopPlan, normalizeAppState, shouldRunForegroundLoops } from './presenc
 {
   const p = loopPlan('active', true);
   assert.equal(p.assignmentPoll, true, 'fg+online: 12s poll runs');
-  assert.equal(p.presencePing, true, 'fg+online: 45s foreground ping runs');
+  assert.equal(p.presencePing, true, 'fg+online: 20s foreground ping runs');
   assert.equal(p.backgroundWriter, false, 'fg+online: bg task suppressed → no double PATCH');
   assert.equal(shouldRunForegroundLoops('active', true), true);
 }

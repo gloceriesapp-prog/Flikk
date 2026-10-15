@@ -5,7 +5,7 @@
 // listener (useAutoOnline) read from ONE source of truth.
 //
 // THE DEDUPE RULE (one /rider/status writer at a time, never a double PATCH):
-//  - Foregrounded + online → the in-app 45s foreground ping is the writer;
+//  - Foregrounded + online → the in-app 20s foreground ping is the writer;
 //    the OS background-location task is suppressed.
 //  - Backgrounded + online → the background-location task is the SOLE writer;
 //    the foreground loops are stopped.
@@ -28,7 +28,7 @@ export interface LoopPlan {
   // POLL_INTERVAL_MS). Foreground-only: paused in background regardless of
   // shift state, resumed on foreground.
   assignmentPoll: boolean;
-  // The 45s foreground /rider/status ping + nearby-offers refresh
+  // The 20s foreground /rider/status ping + nearby-offers refresh
   // (LOCATION_PING_INTERVAL_MS). Runs only while foregrounded AND online.
   presencePing: boolean;
   // The expo background-location task (backgroundLocation.ts) acting as the

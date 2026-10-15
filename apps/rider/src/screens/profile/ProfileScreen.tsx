@@ -40,7 +40,7 @@ import type { IconSvgElement } from '@hugeicons/react-native';
 import { AppIcon } from '../../components/AppIcon';
 import { PerformanceRow } from '../../components/PerformanceRow';
 import { colors } from '../../theme/tokens';
-import { useAuthStore } from '../../store/useAuthStore';
+import { signOut } from '../../api/auth';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import { supportCallUrl } from '@gloceries/shared';
 import { EMERGENCY_PHONE } from '../../data/support';
@@ -80,7 +80,6 @@ const VEHICLE_LABEL: Record<NonNullable<RiderProfile['vehicleType']>, string> = 
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNav>();
   const goOffline = useRiderOrdersStore((s) => s.goOffline);
-  const clear = useAuthStore((s) => s.clear);
   const { data: profile, isLoading } = useRiderProfile();
   const { data: stats } = useRiderStats();
   const { data: contacts } = useSupportContacts();
@@ -135,7 +134,7 @@ export function ProfileScreen() {
         style: 'destructive',
         onPress: () => {
           void goOffline();
-          void clear();
+          void signOut();
         },
       },
     ]);

@@ -156,3 +156,12 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     cashToCollect: Number(row.cash_to_collect) || 0,
   };
 }
+
+// The rider's own delivery history from the server (GET /rider/assignments
+// without view=sync, newest first): the source of truth, so a reinstall or a
+// new phone still shows past deliveries. One page of up to `limit` rows.
+export async function fetchAssignmentHistory(limit = 100): Promise<RawAssignment[]> {
+  const { apiRequest } = await import('./client');
+  const page: { items: RawAssignment[] } = await apiRequest(`/rider/assignments?page=1&limit=${limit}`);
+  return page.items;
+}
