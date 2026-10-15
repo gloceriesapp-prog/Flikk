@@ -25,7 +25,7 @@ export function StatusPill({ status, className }: { status: PartnerOrder['status
   );
 }
 
-export function PaymentBadge({ order }: { order: Pick<PartnerOrder, 'provider_payment_id'> }) {
+export function PaymentBadge({ order }: { order: Pick<PartnerOrder, 'provider_payment_id' | 'payment_method'> }) {
   const pay = paymentInfo(order);
   return (
     <span className={clsx('inline-flex w-fit whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium', pay.className)}>

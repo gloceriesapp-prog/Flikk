@@ -24,9 +24,13 @@ export function customerName(order: PartnerOrder): string {
   return order.addresses?.recipient_name ?? order.users?.name ?? 'Customer';
 }
 
-// provider_payment_id is set when Razorpay captures payment. The product is
-// online-payment-only, so null means "capture hasn't landed yet", never COD.
-export function paymentInfo(order: Pick<PartnerOrder, 'provider_payment_id'>): { label: string; className: string } {
+// Cash on delivery: the rider collects cash at the door, so there is no
+// payment id to wait for. Online: provider_payment_id is set once Razorpay
+// captures the payment; until then it is "Awaiting payment".
+export function paymentInfo(
+  order: Pick<PartnerOrder, 'provider_payment_id' | 'payment_method'>,
+): { label: string; className: string } {
+  if (order.payment_method === 'cod') return { label: 'Cash on delivery', className: 'bg-slate-100 text-slate-700' };
   return order.provider_payment_id
     ? { label: 'Paid', className: 'bg-emerald-50 text-emerald-700' }
     : { label: 'Awaiting payment', className: 'bg-amber-50 text-amber-700' };

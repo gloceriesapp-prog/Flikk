@@ -116,10 +116,12 @@ export interface PartnerOrder {
   total: number;
   // Set once the payment provider (Razorpay) actually captures payment — orders.ts creates the
   // order row before payment completes (see that route's own note), so a
-  // freshly placed order can briefly have this still null. Null does NOT
-  // mean COD; this product is online-payment-only (no COD support exists in
-  // the schema at all), it means payment capture hasn't landed yet.
+  // freshly placed online order can briefly have this still null. Cash on
+  // delivery orders never get one; see payment_method.
   provider_payment_id: string | null;
+  // 'cod' = the rider collects cash at the door, so there is never a
+  // provider_payment_id. Optional: older backends don't send it.
+  payment_method?: 'cod' | 'online' | null;
   placed_at: string;
   packed_at: string | null;
   picked_up_at: string | null;
