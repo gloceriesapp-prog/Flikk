@@ -1,20 +1,22 @@
 'use client';
 
 import { Camera, Package, Pencil } from 'lucide-react';
+import clsx from 'clsx';
 import type { PartnerProduct, StockStatus } from '@/lib/partnerApi';
 import { deriveStockStatus } from '@/lib/partnerApi';
 import { formatInr, formatVariantSize } from '@/lib/format';
+import { BUTTON } from './DataStates';
 
 // minmax(0,…) not bare fr: each row is its own grid sharing this string, and
 // a bare fr track (min-width:auto) lets an overflowing cell widen its column,
-// drifting the vertical borders row-to-row. minmax(0,…) pins every track.
-const COLUMNS = 'minmax(0,1.8fr) minmax(0,0.9fr) minmax(0,1.4fr) minmax(0,1.3fr) minmax(0,1fr) 96px';
+// drifting cells row-to-row. minmax(0,…) pins every track.
+const COLUMNS = 'minmax(0,2fr) minmax(0,0.9fr) minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1fr) 88px';
 
 // Three-level stock, driven by the REAL stock_status enum (falls back to the
 // is_in_stock bool for older rows that predate the enum).
 const STOCK: Record<StockStatus, { label: string; text: string; bar: string }> = {
   in_stock: { label: 'In stock', text: 'text-emerald-600', bar: 'bg-emerald-500' },
-  low_stock: { label: 'Low stock', text: 'text-amber-500', bar: 'bg-amber-400' },
+  low_stock: { label: 'Low stock', text: 'text-amber-600', bar: 'bg-amber-400' },
   out_of_stock: { label: 'Out of stock', text: 'text-red-600', bar: 'bg-red-500' },
 };
 const STOCK_FULL_SCALE = 44; // nominal "full shelf" the bar fills against
@@ -41,24 +43,28 @@ function hasRealQuantity(product: PartnerProduct): boolean {
   return !(q === 0 && product.stock_status !== 'out_of_stock');
 }
 
-function StockCell({ product }: { product: PartnerProduct }) {
+function stockFor(product: PartnerProduct) {
   const real = hasRealQuantity(product);
   // When a real count exists, status is derived from it so the number and
   // label can never disagree; otherwise fall back to the stored/legacy status.
   const status: StockStatus = real
     ? deriveStockStatus(product.stock_quantity as number)
     : product.stock_status ?? (product.is_in_stock ? 'in_stock' : 'out_of_stock');
-  const cfg = STOCK[status];
   const count = real ? (product.stock_quantity as number) : cosmeticStock(product, status);
-  const fill = Math.min(100, Math.round((count / STOCK_FULL_SCALE) * 100));
+  return { status, count, fill: Math.min(100, Math.round((count / STOCK_FULL_SCALE) * 100)) };
+}
+
+function StockCell({ product }: { product: PartnerProduct }) {
+  const { status, count, fill } = stockFor(product);
+  const cfg = STOCK[status];
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
+    <div className="flex w-full min-w-0 flex-col gap-1.5">
       <div className="flex items-baseline gap-1.5">
-        <span className="tnum text-[15px] font-semibold text-neutral-900">{count}</span>
+        <span className="tnum text-[15px] font-semibold text-ink">{count}</span>
         <span className={`text-xs font-semibold ${cfg.text}`}>{cfg.label}</span>
       </div>
-      <div className="h-2.5 w-full max-w-[200px] overflow-hidden rounded-full bg-neutral-100">
-        <div className={`h-full rounded-full ${cfg.bar}`} style={{ width: `${fill}%` }} />
+      <div className="h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full rounded-full ${cfg.bar}`} style={{ width: `${Math.max(fill, status === 'out_of_stock' ? 0 : 4)}%` }} />
       </div>
     </div>
   );
@@ -74,9 +80,9 @@ function VariantPrices({ product }: { product: PartnerProduct }) {
   if (!variants) {
     return (
       <div className="flex items-baseline gap-1.5">
-        <span className="text-[15px] font-semibold whitespace-nowrap text-neutral-900">{formatInr(product.price)}</span>
+        <span className="tnum text-[15px] font-semibold whitespace-nowrap text-ink">{formatInr(product.price)}</span>
         {product.original_price && product.original_price > product.price && (
-          <span className="text-xs whitespace-nowrap text-neutral-400 line-through">{formatInr(product.original_price)}</span>
+          <span className="tnum text-xs whitespace-nowrap text-slate-400 line-through">{formatInr(product.original_price)}</span>
         )}
       </div>
     );
@@ -89,11 +95,14 @@ function VariantPrices({ product }: { product: PartnerProduct }) {
     v.unit_type === 'kg' || v.unit_type === 'l' ? v.quantity * 1000 : v.quantity;
   const sorted = [...variants].sort((a, b) => baseQuantity(a) - baseQuantity(b));
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+    <div className="flex flex-wrap items-center gap-1.5">
       {sorted.map((v) => (
-        <span key={v.id} className="inline-flex items-baseline gap-1 rounded-md bg-neutral-50 px-1.5 py-0.5 text-xs whitespace-nowrap text-neutral-600">
-          <span className="font-medium text-neutral-800">{formatVariantSize(v.quantity, v.unit_type)}</span>
-          <span className="text-neutral-900">{formatInr(v.price)}</span>
+        <span
+          key={v.id}
+          className="inline-flex items-baseline gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs whitespace-nowrap text-slate-500"
+        >
+          <span className="font-medium text-slate-600">{formatVariantSize(v.quantity, v.unit_type)}</span>
+          <span className="tnum font-semibold text-ink">{formatInr(v.price)}</span>
         </span>
       ))}
     </div>
@@ -105,22 +114,74 @@ function VariantPrices({ product }: { product: PartnerProduct }) {
 // decorative.
 function VegMark({ isVeg }: { isVeg: boolean }) {
   return (
-    <div
-      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border ${isVeg ? 'border-emerald-600' : 'border-red-600'}`}
+    <span
+      title={isVeg ? 'Veg' : 'Non-veg'}
+      className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border ${isVeg ? 'border-emerald-600' : 'border-red-600'}`}
     >
-      <div className={`h-1.5 w-1.5 rounded-full ${isVeg ? 'bg-emerald-600' : 'bg-red-600'}`} />
-    </div>
+      <span className={`h-1.5 w-1.5 rounded-full ${isVeg ? 'bg-emerald-600' : 'bg-red-600'}`} />
+    </span>
   );
 }
 
+const PILL = 'inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap';
+
 function ApprovalBadge({ status }: { status: PartnerProduct['approval_status'] }) {
-  if (status === 'pending') {
-    return <span className="inline-flex w-fit items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-amber-600">Pending approval</span>;
+  if (status === 'pending') return <span className={clsx(PILL, 'bg-amber-50 text-amber-700')}>Pending approval</span>;
+  if (status === 'rejected') return <span className={clsx(PILL, 'bg-red-50 text-red-600')}>Rejected</span>;
+  return (
+    <span className={clsx(PILL, 'bg-emerald-50 text-emerald-700')}>
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live
+    </span>
+  );
+}
+
+// A newly-submitted photo / name-price edit waiting on admin — the row still
+// shows the LIVE values; these only flag that a replacement is queued. Same
+// amber "pending" language as ApprovalBadge.
+function ReviewFlags({ product }: { product: PartnerProduct }) {
+  return (
+    <>
+      {product.pending_image_url && (
+        <span className={clsx(PILL, 'bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700')}>
+          <Camera size={11} /> Photo in review
+        </span>
+      )}
+      {product.pending_changes && (
+        <span className={clsx(PILL, 'bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700')}>
+          <Pencil size={11} /> Edits in review
+        </span>
+      )}
+    </>
+  );
+}
+
+// Product photo, or a tidy soft-blue tile with a package glyph when there
+// isn't one yet (most kirana rows start without a photo).
+export function ProductThumb({ src, size = 'md' }: { src: string | null; size?: 'md' | 'lg' }) {
+  const box = size === 'lg' ? 'h-14 w-14 rounded-2xl' : 'h-11 w-11 rounded-xl';
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" className={clsx(box, 'shrink-0 bg-slate-100 object-cover')} />;
   }
-  if (status === 'rejected') {
-    return <span className="inline-flex w-fit items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-red-600">Rejected</span>;
-  }
-  return <span className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-emerald-600">Live</span>;
+  return (
+    <span className={clsx(box, 'flex shrink-0 items-center justify-center bg-accent-soft text-accent/60')}>
+      <Package size={size === 'lg' ? 22 : 19} strokeWidth={1.75} />
+    </span>
+  );
+}
+
+function ProductName({ product }: { product: PartnerProduct }) {
+  return (
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <VegMark isVeg={product.is_veg} />
+        <p className="truncate text-[15px] font-medium text-ink" title={product.name}>
+          {product.name}
+        </p>
+      </div>
+      {product.freshness_tag && <p className="mt-0.5 truncate text-xs text-slate-400">{product.freshness_tag}</p>}
+    </div>
+  );
 }
 
 interface Props {
@@ -128,100 +189,95 @@ interface Props {
   onEdit: (product: PartnerProduct) => void;
 }
 
+// Rows only — the page wraps this in its Card (with the filter bar above) and
+// owns the empty / loading / error states.
 export function InventoryTable({ products, onEdit }: Props) {
-  if (products.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-1.5 card-shadow rounded-xl border border-hairline bg-white py-20">
-        <p className="text-sm font-medium text-neutral-700">No products match this view.</p>
-        <p className="text-sm text-neutral-400">Try a different filter or search term.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="overflow-x-auto rounded-xl border border-hairline bg-white">
-      <div className="min-w-[880px]">
-        {/* Header */}
-        <div
-          className="grid items-center border-b border-hairline bg-neutral-50 text-[13px] font-medium text-neutral-500"
-          style={{ gridTemplateColumns: COLUMNS }}
-        >
-          <span className="border-r border-hairline px-4 py-3">Product</span>
-          <span className="border-r border-hairline px-4 py-3">Category</span>
-          <span className="border-r border-hairline px-4 py-3">Sizes & price</span>
-          <span className="border-r border-hairline px-4 py-3">Stock</span>
-          <span className="border-r border-hairline px-4 py-3">Approval</span>
-          <span className="px-4 py-3" />
+    <>
+      {/* ≥ md: a roomy grid table */}
+      <div className="hidden md:block">
+        <div className="overflow-x-auto">
+          <div className="min-w-[860px]">
+            <div
+              className="grid items-center border-y border-slate-100 bg-slate-50/70 text-[13px] font-medium text-slate-500"
+              style={{ gridTemplateColumns: COLUMNS }}
+            >
+              <span className="px-5 py-3">Product</span>
+              <span className="px-4 py-3">Category</span>
+              <span className="px-4 py-3">Sizes & price</span>
+              <span className="px-4 py-3">Stock</span>
+              <span className="px-4 py-3">Status</span>
+              <span className="px-5 py-3 text-right">
+                <span className="sr-only">Actions</span>
+              </span>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  className="grid items-center transition-colors hover:bg-slate-50/80"
+                  style={{ gridTemplateColumns: COLUMNS }}
+                >
+                  <div className="flex min-w-0 items-center gap-3 px-5 py-4">
+                    <ProductThumb src={product.image_url} />
+                    <ProductName product={product} />
+                  </div>
+                  <span className="truncate px-4 py-4 text-sm text-slate-500">{product.category}</span>
+                  <div className="px-4 py-4">
+                    <VariantPrices product={product} />
+                  </div>
+                  <div className="px-4 py-4">
+                    <StockCell product={product} />
+                  </div>
+                  <div className="flex flex-col items-start gap-1.5 px-4 py-4">
+                    <ApprovalBadge status={product.approval_status} />
+                    <ReviewFlags product={product} />
+                  </div>
+                  <div className="flex justify-end px-5 py-4">
+                    <button type="button" onClick={() => onEdit(product)} className={clsx(BUTTON.secondary, 'px-3.5 py-1.5 text-[13px]')}>
+                      <Pencil size={13} /> Edit
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* Rows */}
+      {/* < md: stacked product cards — no sideways scrolling on a phone */}
+      <ul className="divide-y divide-slate-100 border-t border-slate-100 md:hidden">
         {products.map((product) => (
-          <div
-            key={product.id}
-            className="grid items-stretch border-b border-hairline transition-colors last:border-b-0 hover:bg-neutral-50/70"
-            style={{ gridTemplateColumns: COLUMNS }}
-          >
-            <div className="flex min-w-0 items-center gap-3 border-r border-hairline px-4 py-3.5">
-              {product.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.image_url} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-hairline object-cover" />
-              ) : (
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-300">
-                  <Package size={18} />
-                </div>
-              )}
-              <div className="flex min-w-0 items-center gap-2">
-                <VegMark isVeg={product.is_veg} />
-                <div className="min-w-0">
-                  <p className="truncate text-[15px] font-medium text-neutral-900">{product.name}</p>
-                  {product.freshness_tag && <p className="truncate text-xs text-neutral-400">{product.freshness_tag}</p>}
-                </div>
+          <li key={product.id} className="flex flex-col gap-3 px-4 py-4">
+            <div className="flex items-start gap-3">
+              <ProductThumb src={product.image_url} />
+              <div className="min-w-0 flex-1">
+                <ProductName product={product} />
+                <p className="mt-0.5 truncate text-xs text-slate-500">{product.category}</p>
               </div>
-            </div>
-
-            <span className="flex items-center truncate border-r border-hairline px-4 py-3.5 text-sm text-neutral-500">
-              {product.category}
-            </span>
-
-            <div className="flex items-center border-r border-hairline px-4 py-3.5">
-              <VariantPrices product={product} />
-            </div>
-
-            <div className="flex items-center border-r border-hairline px-4 py-3.5">
-              <StockCell product={product} />
-            </div>
-
-            <div className="flex flex-col items-start justify-center gap-1.5 border-r border-hairline px-4 py-3.5">
-              <ApprovalBadge status={product.approval_status} />
-              {/* A newly-submitted photo waiting on admin — the row still shows
-                  the LIVE image_url above; this only flags that a replacement
-                  is queued. Same amber "pending" language as ApprovalBadge. */}
-              {product.pending_image_url && (
-                <span className="inline-flex w-fit items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-amber-600">
-                  <Camera size={11} /> Photo in review
-                </span>
-              )}
-              {/* Name/price edits to a live product wait for admin; the row
-                  still shows the approved values customers see. */}
-              {product.pending_changes && (
-                <span className="inline-flex w-fit items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-amber-600">
-                  <Pencil size={11} /> Edits in review
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center px-4 py-3.5">
               <button
                 type="button"
                 onClick={() => onEdit(product)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50 active:bg-neutral-100"
+                aria-label={`Edit ${product.name}`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               >
-                <Pencil size={13} /> Edit
+                <Pencil size={15} />
               </button>
             </div>
-          </div>
+            <VariantPrices product={product} />
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <StockCell product={product} />
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <ApprovalBadge status={product.approval_status} />
+                <ReviewFlags product={product} />
+              </div>
+            </div>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </>
   );
 }

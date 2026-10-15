@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { ImagePlus, Loader2, Package, Plus, Trash2 } from 'lucide-react';
 import type { PartnerProduct, ProductInput, StockStatus, UnitType, VariantInput } from '@/lib/partnerApi';
 import { deriveStockStatus, uploadProductPhoto } from '@/lib/partnerApi';
 import { formatVariantSize } from '@/lib/format';
@@ -155,18 +155,18 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Field label="Name">
-        <input required value={name} onChange={(e) => setName(e.target.value)} className="input" />
+        <input required value={name} onChange={(e) => setName(e.target.value)} className="input min-w-0 bg-white" />
       </Field>
       <Field label="Category">
-        <input required value={category} onChange={(e) => setCategory(e.target.value)} className="input" />
+        <input required value={category} onChange={(e) => setCategory(e.target.value)} className="input min-w-0 bg-white" />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Stock (all sizes)">
           {(() => {
             const counts = variants.map((v) => parseStock(v.stock));
             if (counts.some((c) => c == null)) {
-              return <span className="flex h-[42px] items-center text-xs text-neutral-400">Enter packs in stock for each size below.</span>;
+              return <span className="flex h-[42px] items-center text-xs font-normal text-slate-400">Enter packs in stock for each size below.</span>;
             }
             const total = counts.reduce<number>((sum, c) => sum + (c ?? 0), 0);
             const status = STATUS_DISPLAY[deriveStockStatus(total)];
@@ -180,11 +180,11 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
         </Field>
         <Field label="Veg / non-veg">
           <div className="flex h-[42px] items-center gap-4">
-            <label className="flex items-center gap-1.5 text-sm text-neutral-700">
-              <input type="radio" checked={isVeg} onChange={() => setIsVeg(true)} /> Veg
+            <label className="flex items-center gap-1.5 text-sm font-normal text-slate-700">
+              <input type="radio" checked={isVeg} onChange={() => setIsVeg(true)} className="accent-accent" /> Veg
             </label>
-            <label className="flex items-center gap-1.5 text-sm text-neutral-700">
-              <input type="radio" checked={!isVeg} onChange={() => setIsVeg(false)} /> Non-veg
+            <label className="flex items-center gap-1.5 text-sm font-normal text-slate-700">
+              <input type="radio" checked={!isVeg} onChange={() => setIsVeg(false)} className="accent-accent" /> Non-veg
             </label>
           </div>
         </Field>
@@ -192,8 +192,30 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
 
       <Field label="Photo">
         <div className="flex items-center gap-3">
-          {imageUrl && <img src={imageUrl} alt="" className="h-14 w-14 rounded-lg object-cover" />}
-          <input type="file" accept="image/*" onChange={handlePhoto} disabled={isUploading} className="text-sm text-neutral-500" />
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-2xl bg-slate-100 object-cover" />
+          ) : (
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent/60">
+              <Package size={22} strokeWidth={1.75} />
+            </span>
+          )}
+          {/* The native file input stays (real, keyboard-accessible) but is
+              visually replaced by a secondary pill button. */}
+          <span
+            className={`relative inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors focus-within:border-accent hover:bg-slate-50 ${isUploading ? 'opacity-60' : 'cursor-pointer'}`}
+          >
+            {isUploading ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} className="text-slate-500" />}
+            {isUploading ? 'Uploading…' : imageUrl ? 'Change photo' : 'Upload photo'}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhoto}
+              disabled={isUploading}
+              aria-label="Product photo"
+              className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-default"
+            />
+          </span>
         </div>
       </Field>
 
@@ -203,7 +225,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
           product that has one queued. When both exist we label them so the
           owner can tell the current live photo from the one in review. */}
       {initial?.pending_image_url && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-amber-50 p-3">
           {initial.image_url && (
             <div className="flex flex-col items-center gap-1">
               <img src={initial.image_url} alt="" className="h-14 w-14 rounded-lg object-cover" />
@@ -221,7 +243,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
       {/* Name/price edits to a live product (migration 115) wait for admin;
           the form shows the live values customers currently see. */}
       {initial?.pending_changes && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-700">
+        <div className="rounded-2xl bg-amber-50 p-3 text-xs font-medium text-amber-700">
           <p>Your last name or price change is awaiting admin approval — customers see the current values until it&apos;s approved.</p>
           {initial.pending_changes.name && <p className="mt-1">New name: {initial.pending_changes.name}</p>}
           {initial.pending_changes.variants && (
@@ -234,22 +256,29 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
       )}
 
       <div>
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-medium text-neutral-700">
-            Sizes <span className="text-neutral-400">— every weight/pack this product comes in, one product</span>
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <p className="text-sm font-medium text-slate-700">
+            Sizes <span className="font-normal text-slate-400">— every weight/pack this product comes in, one product</span>
           </p>
-          <button type="button" onClick={addVariant} className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+          <button
+            type="button"
+            onClick={addVariant}
+            className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium text-accent hover:bg-accent-soft"
+          >
             <Plus size={14} /> Add size
           </button>
         </div>
 
         <div className="flex flex-col gap-2">
           {variants.map((v) => (
-            <div key={v.key} className="grid grid-cols-[0.9fr_1fr_1fr_1fr_1fr_28px] items-center gap-2">
+            <div
+              key={v.key}
+              className="grid grid-cols-2 items-center gap-2 rounded-2xl bg-slate-50 p-2 sm:grid-cols-[0.9fr_1fr_1fr_1fr_1fr_28px] sm:rounded-none sm:bg-transparent sm:p-0"
+            >
               <select
                 value={v.unitType}
                 onChange={(e) => updateVariant(v.key, { unitType: e.target.value as UnitType })}
-                className="input"
+                className="input min-w-0 bg-white"
               >
                 {UNIT_TYPES.map((u) => (
                   <option key={u} value={u}>
@@ -264,7 +293,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
                 placeholder="Qty"
                 value={v.quantity}
                 onChange={(e) => updateVariant(v.key, { quantity: e.target.value })}
-                className="input"
+                className="input min-w-0 bg-white"
               />
               <input
                 type="number"
@@ -273,7 +302,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
                 placeholder="Price ₹"
                 value={v.price}
                 onChange={(e) => updateVariant(v.key, { price: e.target.value })}
-                className="input"
+                className="input min-w-0 bg-white"
               />
               <input
                 type="number"
@@ -282,7 +311,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
                 placeholder="MRP ₹ (optional)"
                 value={v.originalPrice}
                 onChange={(e) => updateVariant(v.key, { originalPrice: e.target.value })}
-                className="input"
+                className="input min-w-0 bg-white"
               />
               <input
                 type="number"
@@ -292,33 +321,40 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
                 placeholder="Packs in stock"
                 value={v.stock}
                 onChange={(e) => updateVariant(v.key, { stock: e.target.value })}
-                className="input"
+                className="input min-w-0 bg-white"
               />
               <button
                 type="button"
                 onClick={() => removeVariant(v.key)}
                 disabled={variants.length === 1}
-                className="flex h-full items-center justify-center text-neutral-400 hover:text-red-600 disabled:opacity-30"
+                aria-label="Remove size"
+                className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-xl text-xs font-medium text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:hover:bg-transparent sm:col-span-1 sm:h-full sm:rounded-lg"
               >
                 <Trash2 size={15} />
+                <span className="sm:hidden">Remove size</span>
               </button>
             </div>
           ))}
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-2 flex gap-3">
+      <div className="mt-2 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+        >
+          Cancel
+        </button>
         <button
           type="submit"
           disabled={isSubmitting || isUploading}
-          className="rounded-full bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? 'Saving…' : 'Save'}
-        </button>
-        <button type="button" onClick={onCancel} className="rounded-full border border-neutral-300 px-5 py-2.5 text-sm font-medium text-neutral-700">
-          Cancel
+          {isSubmitting && <Loader2 size={15} className="animate-spin" />}
+          {isSubmitting ? 'Saving…' : initial ? 'Save changes' : 'Add product'}
         </button>
       </div>
     </form>
@@ -327,7 +363,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: Props) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-700">
+    <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700">
       {label}
       {children}
     </label>

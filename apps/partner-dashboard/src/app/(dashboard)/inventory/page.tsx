@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Boxes, Package, PackageX, ShieldAlert } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Boxes, Package, PackageSearch, PackageX, Plus, ShieldAlert } from 'lucide-react';
 import { createProduct, fetchMyProducts, updateProduct, type PartnerProduct, type ProductInput } from '@/lib/partnerApi';
 import { DEMO_PRODUCTS } from '@/lib/demoProducts';
 import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from '@/components/ui/Toast';
-import { StatTile } from '@/components/ui/StatTile';
 import { ProductForm } from '@/components/ProductForm';
 import { InventoryFilterBar, type StockFilter } from '@/components/inventory/InventoryFilterBar';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { InventoryToolbar, type SortKey } from '@/components/inventory/InventoryToolbar';
+import { MetricCard, MetricGrid } from '@/components/inventory/MetricCard';
+import { BUTTON, EmptyState, ErrorState, MetricGridSkeleton, RowsSkeleton } from '@/components/inventory/DataStates';
 import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 type Editing = { mode: 'create' } | { mode: 'edit'; product: PartnerProduct } | null;
@@ -31,6 +32,7 @@ export default function InventoryPage() {
   // the Orders detail page's demo-order override.
   const [demoProducts, setDemoProducts] = useState(DEMO_PRODUCTS);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
   const [filter, setFilter] = useState<StockFilter>('all');
   const [search, setSearch] = useState('');
@@ -43,15 +45,25 @@ export default function InventoryPage() {
   }
 
   useEffect(() => {
-    reload().finally(() => setIsLoading(false));
+    reload()
+      .catch(() => setLoadError(true))
+      .finally(() => setIsLoading(false));
   }, []);
+
+  function retryLoad() {
+    setIsLoading(true);
+    setLoadError(false);
+    reload()
+      .catch(() => setLoadError(true))
+      .finally(() => setIsLoading(false));
+  }
 
   // DEMO DATA — this store has zero real products, so the table/filters/
   // stat strip would render entirely empty. Same isDemo convention as
   // Overview/Orders: shown only while products.length === 0, and replaced
   // outright the instant a real product is added (isDemo flips false on
   // the next reload(), demo rows are dropped rather than merged).
-  const isDemo = DEMO_DATA_ENABLED && !isLoading && products.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && !loadError && products.length === 0;
   const sourceProducts = isDemo ? demoProducts : products;
 
   async function handleSubmit(input: ProductInput) {
@@ -139,8 +151,55 @@ export default function InventoryPage() {
     URL.revokeObjectURL(url);
   }
 
+  const openCreate = () => setEditing({ mode: 'create' });
+  const hasFilters = filter !== 'all' || search.trim() !== '';
+
+  let body: ReactNode;
+  if (isLoading) {
+    body = <RowsSkeleton rows={6} />;
+  } else if (loadError) {
+    body = <ErrorState title="Couldn’t load your products" onRetry={retryLoad} />;
+  } else if (sourceProducts.length === 0) {
+    body = (
+      <EmptyState
+        icon={Package}
+        title="No products yet"
+        description="Add your first product so customers nearby can order it."
+        action={
+          <button type="button" onClick={openCreate} className={BUTTON.primary}>
+            <Plus size={16} /> Add product
+          </button>
+        }
+      />
+    );
+  } else if (filtered.length === 0) {
+    body = (
+      <EmptyState
+        icon={PackageSearch}
+        title="No products match this view"
+        description="Try a different filter or search term."
+        action={
+          hasFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setFilter('all');
+                setSearch('');
+              }}
+              className={BUTTON.secondary}
+            >
+              Clear filters
+            </button>
+          )
+        }
+      />
+    );
+  } else {
+    body = <InventoryTable products={filtered} onEdit={(product) => setEditing({ mode: 'edit', product })} />;
+  }
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <InventoryToolbar
         showStats={showStats}
         onToggleStats={() => setShowStats((v) => !v)}
@@ -149,17 +208,19 @@ export default function InventoryPage() {
         sort={sort}
         onSortChange={setSort}
         onExport={handleExport}
-        onAddProduct={() => setEditing({ mode: 'create' })}
+        onAddProduct={openCreate}
       />
 
-      {showStats && (
-        <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white md:grid-cols-4 md:divide-y-0">
-          <StatTile label="Total products" value={String(counts.all)} icon={Boxes} deltaPercent={INVENTORY_TRENDS.total} />
-          <StatTile label="In stock" value={String(counts.in_stock)} icon={Package} deltaPercent={INVENTORY_TRENDS.inStock} />
-          <StatTile label="Out of stock" value={String(counts.out_of_stock)} icon={PackageX} deltaPercent={INVENTORY_TRENDS.outOfStock} invertTone />
-          <StatTile label="Pending approval" value={String(counts.pending)} icon={ShieldAlert} deltaPercent={INVENTORY_TRENDS.pending} invertTone />
-        </div>
-      )}
+      {showStats && !loadError && (isLoading ? (
+        <MetricGridSkeleton />
+      ) : (
+        <MetricGrid>
+          <MetricCard label="Total products" value={counts.all} icon={Boxes} tone="blue" deltaPercent={INVENTORY_TRENDS.total} />
+          <MetricCard label="In stock" value={counts.in_stock} icon={Package} tone="green" deltaPercent={INVENTORY_TRENDS.inStock} />
+          <MetricCard label="Out of stock" value={counts.out_of_stock} icon={PackageX} tone="red" deltaPercent={INVENTORY_TRENDS.outOfStock} invertTone />
+          <MetricCard label="Pending approval" value={counts.pending} icon={ShieldAlert} tone="amber" deltaPercent={INVENTORY_TRENDS.pending} invertTone />
+        </MetricGrid>
+      ))}
 
       <Modal
         open={!!editing}
@@ -175,15 +236,19 @@ export default function InventoryPage() {
         )}
       </Modal>
 
-      {showFilter && (
-        <InventoryFilterBar filter={filter} onFilterChange={setFilter} search={search} onSearchChange={setSearch} counts={counts} />
-      )}
-
-      {isLoading ? (
-        <Card className="py-20 text-center text-sm text-neutral-400">Loading inventory…</Card>
-      ) : (
-        <InventoryTable products={filtered} onEdit={(product) => setEditing({ mode: 'edit', product })} />
-      )}
+      <Card className="overflow-hidden">
+        <div className="p-4 sm:p-5">
+          {showFilter && !isLoading && !loadError ? (
+            <InventoryFilterBar filter={filter} onFilterChange={setFilter} search={search} onSearchChange={setSearch} counts={counts} />
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-lg font-semibold text-ink">Products</h2>
+              {!isLoading && !loadError && <span className="tnum text-sm text-slate-400">{filtered.length}</span>}
+            </div>
+          )}
+        </div>
+        {body}
+      </Card>
     </div>
   );
 }
