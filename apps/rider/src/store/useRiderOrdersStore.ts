@@ -144,6 +144,9 @@ const ACTIVE_MS_KEY = 'gloceries_rider_active_ms_today';
 // first-come, so a rider who only hears about one 45s late usually loses it;
 // pushes trigger an immediate refresh on top of this (refreshOffers).
 const LOCATION_PING_INTERVAL_MS = 20_000;
+const DELIVERY_PING_INTERVAL_MS = 10_000;
+// Timers drift; without slack a 20s cadence on a 10s tick slips to 30s.
+const PING_TICK_SLACK_MS = 1_000;
 
 // Played in-app when an offer the rider hasn't seen appears while the app is
 // open. The OS push (channel 'offers') covers the app-closed case.
@@ -242,6 +245,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let autoDeclineTimer: ReturnType<typeof setTimeout> | null = null;
 let locationPingTimer: ReturnType<typeof setInterval> | null = null;
 let historyPulled = false;
+let lastPingAt = 0;
 
 function stopLocationPing() {
   if (locationPingTimer) {
@@ -265,6 +269,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
   // list from it (what nearby_dispatch_offers reads) — no reason to sample GPS
   // twice for two purposes that both need the exact same fix.
   async function pingAndRefresh() {
+    lastPingAt = Date.now();
     const coords = await getCurrentCoordinates().catch(() => null);
     if (!coords) return; // permission denied / no fix yet — try again next tick
     const suspendedNow = await updateRiderStatus({ status: 'online', lat: coords.latitude, lng: coords.longitude }).then(
@@ -403,10 +408,17 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     void persistHistory(merged);
   }
 
+  // With an order in hand the customer is watching the rider on a live map
+  // (backend tracking/riderLocation.ts), so report every 10s instead of 20s.
+  // One 10s tick drives both cadences; an idle rider still pings every 20s.
   function startForegroundPing() {
     stopLocationPing();
     void pingAndRefresh();
-    locationPingTimer = setInterval(() => void pingAndRefresh(), LOCATION_PING_INTERVAL_MS);
+    locationPingTimer = setInterval(() => {
+      const onDelivery = get().activeOrders.some((o) => o.status === 'picked_up' || o.status === 'arrived_at_customer');
+      const due = onDelivery ? DELIVERY_PING_INTERVAL_MS : LOCATION_PING_INTERVAL_MS;
+      if (Date.now() - lastPingAt >= due - PING_TICK_SLACK_MS) void pingAndRefresh();
+    }, DELIVERY_PING_INTERVAL_MS);
   }
 
   return {
