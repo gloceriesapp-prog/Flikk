@@ -33,7 +33,7 @@ interface RawAssignment {
   trip_id: string | null;
   order_items: RawOrderItem[];
   stores: { name: string; phone: string | null; lat: number | null; lng: number | null; manual_address: string | null; address_line: string | null; zones: { name: string } | null } | null;
-  users: { name: string | null; phone: string } | null;
+  users: { name: string | null; phone: string | null } | null;
   addresses: { line1: string; landmark: string | null; latitude: number | null; longitude: number | null; delivery_instructions: string | null } | null;
   // Backend-derived (lib/riderDeliveryMoney.ts): how the customer pays and,
   // for cash on delivery, how much to collect for the whole order/trip.
@@ -155,4 +155,13 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     paymentMethod: row.payment_method === 'online' ? 'online' : 'cod',
     cashToCollect: Number(row.cash_to_collect) || 0,
   };
+}
+
+// The rider's own delivery history from the server (GET /rider/assignments
+// without view=sync, newest first): the source of truth, so a reinstall or a
+// new phone still shows past deliveries. One page of up to `limit` rows.
+export async function fetchAssignmentHistory(limit = 100): Promise<RawAssignment[]> {
+  const { apiRequest } = await import('./client');
+  const page: { items: RawAssignment[] } = await apiRequest(`/rider/assignments?page=1&limit=${limit}`);
+  return page.items;
 }

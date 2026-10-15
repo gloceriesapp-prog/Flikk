@@ -27,7 +27,7 @@ import { AlertCircleIcon, Clock01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { DeleteAccountLink } from '../../components/DeleteAccountLink';
 import { colors } from '../../theme/tokens';
-import { fetchAccountStatus } from '../../api/auth';
+import { fetchAccountStatus, signOut } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
 
 const POLL_INTERVAL_MS = 10_000;
@@ -36,7 +36,6 @@ export function AccountStatusScreen() {
   const role = useAuthStore((s) => s.role);
   const applicationSubmitted = useAuthStore((s) => s.applicationSubmitted);
   const setAccountStatus = useAuthStore((s) => s.setAccountStatus);
-  const clear = useAuthStore((s) => s.clear);
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
@@ -94,10 +93,10 @@ export function AccountStatusScreen() {
             Contact Gloceries ops to get this phone number set up as a rider account, then come back and log in again.
           </Text>
         </View>
-        <Pressable onPress={() => void clear()} className="rounded-full bg-ink px-6 py-3.5">
+        <Pressable onPress={() => void signOut()} className="rounded-full bg-ink px-6 py-3.5">
           <Text className="text-sm font-semibold text-white">Log out</Text>
         </Pressable>
-          <DeleteAccountLink />
+        <DeleteAccountLink />
       </View>
     );
   }

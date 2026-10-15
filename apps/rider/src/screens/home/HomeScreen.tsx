@@ -55,6 +55,7 @@ const DEMO_OFFER: DispatchOffer = {
   expiresAt: null, // no server deadline for a demo offer → ring uses its windowSeconds fallback
   paymentMethod: 'cod',
   cashToCollect: 420,
+  cashLimitBlocked: false,
 };
 
 // Same page + earnings card as OfflineHomeScreen (one visual language across

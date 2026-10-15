@@ -7,6 +7,7 @@ import { measureHttp } from './observability/http.js';
 import { customerHistoryRouter } from './history/customerHistory.js';
 import { collectionRouter } from './catalogue/collections.js';
 import { liveOrdersRouter, liveTripsRouter } from './tracking/live.js';
+import { riderLocationOrdersRouter, riderLocationTripsRouter } from './tracking/riderLocation.js';
 import { notificationsRouter } from './notifications/router.js';
 import { supportRouter } from './support/router.js';
 import { staffSupportRouter } from './support/staffRouter.js';
@@ -34,6 +35,7 @@ import { ordersRouter } from './routes/orders.js';
 import { tripsRouter } from './routes/trips.js';
 import { addressesRouter } from './routes/addresses.js';
 import { partnerRouter } from './routes/partner.js';
+import { partnerAccountRouter } from './routes/partnerAccount.js';
 import { riderRouter } from './routes/rider.js';
 import { riderAccountRouter } from './routes/riderAccount.js';
 import { adminRouter } from './routes/admin.js';
@@ -169,8 +171,10 @@ app.use('/notifications', notificationsRouter);
 app.use('/admin/promotions', promotionsRouter);
 app.use('/orders', customerHistoryRouter);
 app.use('/orders', liveOrdersRouter);
+app.use('/orders', riderLocationOrdersRouter);
 app.use('/orders', ordersRouter);
 app.use('/trips', liveTripsRouter);
+app.use('/trips', riderLocationTripsRouter);
 app.use('/trips', tripsRouter);
 app.use('/addresses', addressesRouter);
 app.use('/promos', promosRouter);
@@ -185,6 +189,9 @@ app.use('/area-upvotes', areaUpvotesRouter);
 // requireRole('store_owner')/requireApproved gate (see that file's own
 // note on why). Express falls through to partnerRouter for any /partner/*
 // path this router doesn't itself define.
+// Account deletion must work for pending and suspended store owners too, so
+// it sits ahead of both (routes/partnerAccount.ts).
+app.use('/partner/account', partnerAccountRouter);
 app.use('/partner', storeOnboardingRouter);
 app.use('/partner', partnerRouter);
 // Mounted before riderRouter for the same reason storeOnboardingRouter is

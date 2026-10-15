@@ -75,14 +75,29 @@ describe('GET /rider/assignments money fields', () => {
     expect(db.filters).toContainEqual(['orders', 'eq:rider_id', 'rider-1']);
     expect(db.filters).toContainEqual(['rider_earnings', 'eq:rider_id', 'rider-1']);
   });
+
+  it('withholds the customer phone once the order is finished', async () => {
+    db.tables.orders = [
+      { id: 'o1', trip_id: null, status: 'out_for_delivery', placed_at: '2026-10-07T10:00:00Z', payment_method: 'online', total: 100, delivery_fee: 0, users: { name: 'Asha', phone: '+919000000001' } },
+      { id: 'o2', trip_id: null, status: 'delivered', placed_at: '2026-10-07T09:00:00Z', payment_method: 'online', total: 100, delivery_fee: 0, users: { name: 'Ravi', phone: '+919000000002' } },
+      { id: 'o3', trip_id: null, status: 'cancelled', placed_at: '2026-10-07T08:00:00Z', payment_method: 'online', total: 100, delivery_fee: 0, users: { name: 'Mala', phone: '+919000000003' } },
+    ];
+    const { body } = await get('/assignments', { page: '1', limit: '100' });
+    expect(body.items.map((o: { users: { name: string; phone: string | null } }) => o.users)).toEqual([
+      { name: 'Asha', phone: '+919000000001' },
+      { name: 'Ravi', phone: null },
+      { name: 'Mala', phone: null },
+    ]);
+  });
 });
 
 describe('GET /rider/cash-balance', () => {
   it('sums only the caller\'s unsettled cash', async () => {
-    db.tables.rider_cash_collections = [{ amount: '150.50' }, { amount: 49.5 }];
+    db.tables.rider_cash_collections = [{ id: 'c1', amount: '150.50' }, { id: 'c2', amount: 49.5 }];
     const { body, err } = await get('/cash-balance');
     expect(err).toBeUndefined();
-    expect(body).toEqual({ outstanding: 200, count: 2 });
+    expect(body).toMatchObject({ outstanding: 200, count: 2, limit: 2000 });
+    expect(body.items.map((i: { amount: number }) => i.amount)).toEqual([150.5, 49.5]);
     expect(db.filters).toEqual([['rider_cash_collections', 'eq:rider_id', 'rider-1'], ['rider_cash_collections', 'is:settled_at', null]]);
   });
 });

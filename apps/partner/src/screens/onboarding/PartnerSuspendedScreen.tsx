@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { AlertCircleIcon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
+import { DeleteAccountLink } from '../../components/DeleteAccountLink';
 import { colors } from '../../theme/tokens';
 import { checkAccountStatus } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -63,6 +64,7 @@ export function PartnerSuspendedScreen() {
       <Pressable onPress={() => void clear()} className="rounded-full bg-ink px-6 py-3.5">
         <Text className="text-sm font-semibold text-white">Log out</Text>
       </Pressable>
+      <DeleteAccountLink />
     </View>
   );
 }

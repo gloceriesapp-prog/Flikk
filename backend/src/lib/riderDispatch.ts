@@ -1,5 +1,5 @@
 import { supabase } from '../db/supabase.js';
-import { sendPushNotifications } from './pushNotifications.js';
+import { riderOfferPush, sendPushNotifications } from './pushNotifications.js';
 
 // Expanding search — the rings (delivery_settings.dispatch_radius_steps_m)
 // and how long each ring is offered (dispatch_step_seconds) are admin
@@ -44,7 +44,7 @@ async function broadcastToRadius(orderId: string, lat: number, lng: number, stor
   const messages = (riderUsers ?? [])
     .map((u) => u.expo_push_token)
     .filter((token): token is string => !!token)
-    .map((to) => ({ to, title: 'New pickup available', body: `${storeName} — tap to accept before another rider does.`, priority: 'high' as const }));
+    .map((to) => ({ to, title: 'New pickup available', body: `${storeName} — tap to accept before another rider does.`, ...riderOfferPush(orderId) }));
   await sendPushNotifications(messages);
   return riderUserIds.length;
 }

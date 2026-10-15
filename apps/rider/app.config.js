@@ -38,6 +38,12 @@ const easProjectId = '35911db7-6e35-402b-b16b-6e13019a31ae';
 
 // Android push (FCM) config, shared by all three apps — see
 // packages/shared/config/google-services.cjs.
+// Sentry's build plugin uploads source maps; only wired when its org/project
+// are configured, same as apps/partner and apps/customer.
+const sentryPlugin = process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
+  ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]]
+  : [];
+
 const googleServicesFile = resolveGoogleServicesFile(__dirname, 'com.gloceries.rider');
 
 module.exports = {
@@ -105,6 +111,7 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: [
+      ...sentryPlugin,
       'expo-secure-store',
       'expo-notifications',
       'expo-font',

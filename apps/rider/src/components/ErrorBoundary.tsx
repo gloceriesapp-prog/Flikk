@@ -11,6 +11,7 @@
 
 import { Component, type ReactNode } from 'react';
 import { ErrorFallback } from './ErrorFallback';
+import { reportRenderError } from '../observability/crashReporting';
 
 interface Props {
   children: ReactNode;
@@ -30,6 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: { componentStack?: string | null }) {
     console.error('[ErrorBoundary] caught render error:\n', error, '\ncomponentStack:', errorInfo.componentStack);
+    reportRenderError(error, errorInfo.componentStack);
     this.setState({ componentStack: errorInfo.componentStack ?? null });
   }
 

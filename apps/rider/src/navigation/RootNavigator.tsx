@@ -38,7 +38,8 @@ import { AccountStatusScreen } from '../screens/onboarding/AccountStatusScreen';
 import { BankDetailsScreen } from '../screens/onboarding/BankDetailsScreen';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { RiderSuspendedScreen } from '../screens/onboarding/RiderSuspendedScreen';
-import { registerPushToken } from '../features/push-notifications/registerPushToken';
+import { flushPendingNotificationTap, registerPushToken, watchNotificationTaps, watchOfferPushes } from '../features/push-notifications/registerPushToken';
+import { navigationRef } from './navigationRef';
 
 const WELCOME_DURATION_MS = 2000;
 
@@ -141,6 +142,17 @@ export function RootNavigator() {
     if (accessToken) void registerPushToken();
   }, [accessToken]);
 
+  // Offer/assignment pushes: refresh immediately when one lands in the
+  // foreground, and open the right screen when one is tapped.
+  useEffect(() => {
+    const stopTaps = watchNotificationTaps();
+    const stopPushes = watchOfferPushes();
+    return () => {
+      stopTaps();
+      stopPushes();
+    };
+  }, []);
+
   // Real order sync only ever runs for a real, approved rider — polling
   // GET /rider/assignments before that would just 403 every 12s for no
   // reason (backend's own requireRole('rider')/requireApproved gate). Also
@@ -192,7 +204,7 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} onReady={flushPendingNotificationTap}>
       {!accessToken ? (
         // Keyed by "anon" (a fixed, distinct key from the accessToken
         // branch below) — same remount-forcing trick apps/partner's own
