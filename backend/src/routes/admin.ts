@@ -17,7 +17,7 @@ import {
   type ProductInput,
 } from '../lib/products.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
-import { sendPushNotification } from '../lib/pushNotifications.js';
+import { riderAssignmentPush, sendPushNotification } from '../lib/pushNotifications.js';
 import { isFleetAudience, sendFleetPush } from '../lib/fleetPush.js';
 import { createNotification } from '../lib/notifications.js';
 
@@ -178,7 +178,7 @@ adminRouter.patch('/orders/:id/assign-rider', async (req, res, next) => {
     // the push still sees the real assignment next time their own app
     // polls GET /rider/assignments (apps/rider's useRiderOrdersStore.ts).
     const { data: rider } = await supabase.from('users').select('expo_push_token').eq('id', rider_id).single();
-    void sendPushNotification(rider?.expo_push_token, 'New delivery assigned', `Order ${data.id.slice(0, 6).toUpperCase()} is ready for pickup.`);
+    void sendPushNotification(rider?.expo_push_token, 'New delivery assigned', `Order ${data.id.slice(0, 6).toUpperCase()} is ready for pickup.`, riderAssignmentPush(data.id));
     // Same event, persisted to the rider's feed (migration 054) — durable
     // behind the push. orderId links this single assignment to its one order.
     void createNotification({
@@ -223,6 +223,7 @@ adminRouter.patch('/trips/:id/assign-rider', async (req, res, next) => {
       rider?.expo_push_token,
       'New delivery assigned',
       `A ${data.length}-stop pickup is ready for you.`,
+      riderAssignmentPush(null),
     );
     // Feed row for the same trip assignment. orderId is null — a multi-store
     // trip spans N orders, so no single order id belongs on the notification.
