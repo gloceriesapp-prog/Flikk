@@ -170,7 +170,7 @@ export default function LoginPage() {
             <div className="mx-auto flex w-full max-w-[340px] flex-1 flex-col justify-center py-10">
               {step === 'phone' ? (
                 <>
-                  <h1 className="text-center font-[family-name:var(--font-ibm-plex)] text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
+                  <h1 className="text-center text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
                     Partner
                     <br />
                     sign in
@@ -236,7 +236,7 @@ export default function LoginPage() {
                   >
                     <ArrowLeft className="h-4 w-4" /> Change number
                   </button>
-                  <h1 className="text-center font-[family-name:var(--font-ibm-plex)] text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
+                  <h1 className="text-center text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
                     Verify
                     <br />
                     OTP
