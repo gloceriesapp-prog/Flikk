@@ -30,7 +30,7 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
 vi.mock('../orders/deliveryCodes.js', () => ({ customerDeliveryCodes: vi.fn(), completeDelivery: vi.fn(), verifyDelivery: db.verifyDelivery }));
 vi.mock('../orders/deliveredPush.js', () => ({ notifyStoresOfDelivery: db.notifyStores }));
 vi.mock('../lib/riderDispatch.js', () => ({ triggerDispatch: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('../lib/pushNotifications.js', () => ({ sendPushNotification: vi.fn(), sendPushNotifications: vi.fn(), embeddedPushToken: vi.fn() }));
+vi.mock('../lib/pushNotifications.js', () => ({ sendPushNotification: vi.fn(), sendPushNotifications: vi.fn(), embeddedPushToken: vi.fn(), riderAssignmentPush: (orderId: string | null) => ({ channelId: 'offers', priority: 'high', data: { type: 'assignment', orderId } }) }));
 vi.mock('../lib/notifications.js', () => ({ createNotification: vi.fn() }));
 import { ordersRouter } from './orders.js';
 import { adminRouter } from './admin.js';
