@@ -20,6 +20,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AddProductScreen } from '../screens/catalog/AddProductScreen';
 import { CatalogScreen } from '../screens/catalog/CatalogScreen';
+import { DeleteAccountScreen } from '../screens/store-settings/DeleteAccountScreen';
 import { LocationPinScreen } from '../screens/onboarding/LocationPinScreen';
 import { OrderDetailScreen } from '../screens/order-detail/OrderDetailScreen';
 import { OrdersScreen } from '../screens/orders/OrdersScreen';
@@ -53,6 +54,7 @@ export function AppNavigator() {
       <Stack.Screen name="StoreSettings" component={StoreSettingsScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="Support" component={SupportScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="SupportTicket" component={SupportTicketScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ presentation: 'card' }} />
       {/* Same real map-pin screen onboarding's own AuthNavigator already
           registers — StoreSettingsScreen's "Change on map" is the one
           post-approval way to reach it, updating the store's real

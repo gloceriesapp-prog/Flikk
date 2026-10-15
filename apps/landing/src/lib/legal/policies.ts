@@ -61,7 +61,7 @@ export const POLICIES: Record<PolicySlug, Policy> = {
     label: "Delete Account",
     description:
       "How to request deletion of your Gloceries account, what data is deleted, and what is kept for legal reasons.",
-    lastUpdated: "2026-10-09",
+    lastUpdated: "2026-10-15",
   },
 };
 

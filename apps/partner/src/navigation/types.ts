@@ -160,6 +160,10 @@ export type AppStackParamList = {
   // (reached from Store settings' "Help & support" row and Payouts' headset).
   Support: { compose?: boolean } | undefined;
   SupportTicket: { ticketId: string };
+  // Account deletion request (Google Play requires one in the app) —
+  // reached from Store settings' "Delete account" row. No params; reads its
+  // own status from GET /partner/account/deletion-request.
+  DeleteAccount: undefined;
   // Same real map-pin screen onboarding's own AuthStackParamList already
   // registers (LocationPinScreen) — registered again here so
   // StoreSettingsScreen's own "Change on map" can reach it post-approval;
