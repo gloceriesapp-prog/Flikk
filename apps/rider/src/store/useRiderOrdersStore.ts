@@ -149,12 +149,16 @@ const LOCATION_PING_INTERVAL_MS = 20_000;
 // open. The OS push (channel 'offers') covers the app-closed case.
 const NEW_OFFER_VIBRATION = [0, 400, 200, 400];
 
+// Finished orders are stored without the customer's number: the rider no
+// longer needs it, and the server withholds it for them too.
+const withoutPhone = (order: RiderOrder): RiderOrder => (order.customerPhone ? { ...order, customerPhone: '' } : order);
+
 async function persistHistory(orders: RiderOrder[]): Promise<void> {
-  await SecureStore.setItemAsync(HISTORY_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY)));
+  await SecureStore.setItemAsync(HISTORY_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY).map(withoutPhone)));
 }
 
 async function persistCancelled(orders: RiderOrder[]): Promise<void> {
-  await SecureStore.setItemAsync(CANCELLED_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY)));
+  await SecureStore.setItemAsync(CANCELLED_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY).map(withoutPhone)));
 }
 
 async function persistActive(orders: RiderOrder[]): Promise<void> {

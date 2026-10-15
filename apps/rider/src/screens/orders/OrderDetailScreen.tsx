@@ -286,12 +286,15 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             >
               <AppIcon icon={Navigation03Icon} size={20} color={colors.ink} />
             </Pressable>
-            <Pressable
-              onPress={() => void Linking.openURL(`tel:${order.customerPhone}`)}
-              className="h-[56px] w-[56px] items-center justify-center rounded-2xl border border-gray-200"
-            >
-              <AppIcon icon={Call02Icon} size={20} color={colors.ink} />
-            </Pressable>
+            {/* The server withholds the number once a delivery is finished. */}
+            {order.customerPhone ? (
+              <Pressable
+                onPress={() => void Linking.openURL(`tel:${order.customerPhone}`)}
+                className="h-[56px] w-[56px] items-center justify-center rounded-2xl border border-gray-200"
+              >
+                <AppIcon icon={Call02Icon} size={20} color={colors.ink} />
+              </Pressable>
+            ) : null}
           </View>
 
           {canFail && (

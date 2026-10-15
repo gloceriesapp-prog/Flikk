@@ -4,14 +4,21 @@ import type { Request, RequestHandler, Response } from 'express';
 const db = vi.hoisted(() => ({
   rpc: vi.fn(),
   orders: [] as Record<string, unknown>[],
+  cash: [] as Record<string, unknown>[],
   notify: vi.fn(),
 }));
 vi.mock('../db/supabase.js', () => ({ supabase: {
   rpc: db.rpc,
-  from: () => {
+  from: (table: string) => {
+    const rows = () => (table === 'rider_cash_collections' ? db.cash : db.orders);
     const builder = {
       select: () => builder,
+      eq: () => builder,
+      is: () => builder,
+      order: () => builder,
       in: () => Promise.resolve({ data: db.orders, error: null }),
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      then: (resolve: (value: unknown) => unknown) => resolve({ data: rows(), error: null }),
     };
     return builder;
   },
@@ -31,7 +38,7 @@ async function call(path: string, method: 'get' | 'post', req: Partial<Request>)
 }
 const accept = (id = 'order-1') => call('/orders/:id/accept', 'post', { params: { id } });
 
-beforeEach(() => { vi.clearAllMocks(); db.orders = []; });
+beforeEach(() => { vi.clearAllMocks(); db.orders = []; db.cash = []; });
 
 it('lists offers from the server-side rider position, ignoring client position and radius', async () => {
   db.rpc.mockImplementation(async (name: string) => name === 'dispatch_config'
@@ -43,7 +50,21 @@ it('lists offers from the server-side rider position, ignoring client position a
   expect(db.rpc).toHaveBeenCalledWith('rider_dispatch_offers', { p_rider: 'rider-1' });
   // Free delivery still offers the admin minimum payout; COD shows the cash to collect.
   expect(res.json).toHaveBeenCalledWith([{ ...db.orders[0], distance_m: 1200, cash_to_collect: 150,
-    rider_payout: 30, rider_payout_base: 30, rider_payout_extra_stop: 0, offer_window_seconds: 30 }]);
+    rider_payout: 30, rider_payout_base: 30, rider_payout_extra_stop: 0, offer_window_seconds: 30, cash_limit_blocked: false }]);
+});
+
+it('flags cash offers the rider cannot take until they hand over cash', async () => {
+  db.rpc.mockImplementation(async (name: string) => name === 'dispatch_config'
+    ? { data: [{ step_seconds: 30 }], error: null }
+    : { data: [{ order_id: 'o1', distance_m: 500 }, { order_id: 'o2', distance_m: 900 }], error: null });
+  db.orders = [
+    { id: 'o1', trip_id: null, payment_method: 'cod', total: '400', delivery_fee: '0' },
+    { id: 'o2', trip_id: null, payment_method: 'online', total: '400', delivery_fee: '0' },
+  ];
+  db.cash = [{ id: 'c1', amount: '1800' }];
+  const { res } = await call('/dispatch-offers', 'get', {});
+  const offers = (res.json as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { id: string; cash_limit_blocked: boolean }[];
+  expect(offers.map((o) => [o.id, o.cash_limit_blocked])).toEqual([['o1', true], ['o2', false]]);
 });
 
 it('returns no offers (not 400) when the client sends no position', async () => {

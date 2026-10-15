@@ -104,6 +104,12 @@ export const DispatchOfferCard = memo(function DispatchOfferCard({ offer, onAcce
         </View>
       </View>
 
+      {offer.cashLimitBlocked ? (
+        <Text className="text-center text-[12px] font-semibold text-[#fe9a00]">
+          Cash limit reached. Hand over the cash you hold to take cash orders.
+        </Text>
+      ) : null}
+
       {/* Static route preview — pins + distance, no MapView (see
           OfferRoutePreview). Shown only when both ends are geocoded. */}
       {hasRoute ? <OfferRoutePreview totalKm={offer.totalKm} /> : null}
