@@ -25,6 +25,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { AlertCircleIcon, Clock01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
+import { DeleteAccountLink } from '../../components/DeleteAccountLink';
 import { colors } from '../../theme/tokens';
 import { fetchAccountStatus } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -96,6 +97,7 @@ export function AccountStatusScreen() {
         <Pressable onPress={() => void clear()} className="rounded-full bg-ink px-6 py-3.5">
           <Text className="text-sm font-semibold text-white">Log out</Text>
         </Pressable>
+          <DeleteAccountLink />
       </View>
     );
   }
@@ -116,6 +118,7 @@ export function AccountStatusScreen() {
         {checking ? <ActivityIndicator size="small" color={colors.ink} /> : <View className="h-2 w-2 rounded-full bg-gold" />}
         <Text className="text-xs font-semibold text-ink/60">{checking ? 'Checking status…' : 'Waiting for approval'}</Text>
       </View>
+      <DeleteAccountLink />
     </View>
   );
 }

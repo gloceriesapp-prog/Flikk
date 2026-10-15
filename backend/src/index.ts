@@ -35,6 +35,7 @@ import { tripsRouter } from './routes/trips.js';
 import { addressesRouter } from './routes/addresses.js';
 import { partnerRouter } from './routes/partner.js';
 import { riderRouter } from './routes/rider.js';
+import { riderAccountRouter } from './routes/riderAccount.js';
 import { adminRouter } from './routes/admin.js';
 import { paymentsRouter } from './payments/router.js';
 import { locationRouter } from './routes/location.js';
@@ -193,6 +194,9 @@ app.use('/partner', partnerRouter);
 // (/application, /draft, /document-photo) each guard with requireAuth only
 // and must be reachable first; Express falls through to the gated
 // riderRouter for any /rider/* path this router doesn't itself define.
+// Account deletion must work for pending and suspended riders too, so it
+// sits ahead of riderRouter's approved/active gate (routes/riderAccount.ts).
+app.use('/rider/account', riderAccountRouter);
 app.use('/rider', riderOnboardingRouter);
 app.use('/rider', riderRouter);
 app.use('/admin', adminRouter);

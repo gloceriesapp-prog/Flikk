@@ -21,8 +21,8 @@ export default function DeleteAccountPage() {
       slug="delete-account"
       intro={
         <p>
-          <EntityDefinition />. This page explains how to delete your account on the {COMPANY.brand} app (published on
-          Google Play by {COMPANY.brand}) and what happens to your data when you do.
+          <EntityDefinition />. This page explains how to delete your account on the {COMPANY.brand} app and the Gloceries Rider app (both
+          published on Google Play by {COMPANY.brand}) and what happens to your data when you do.
         </p>
       }
     >
@@ -66,7 +66,31 @@ export default function DeleteAccountPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="3. What happens next">
+      <LegalSection title="3. Delivery partners (Gloceries Rider app)">
+        <LegalList
+          items={[
+            <>Open the Gloceries Rider app and sign in with your mobile number.</>,
+            <>
+              Go to <strong>Profile → Delete account</strong>. If your account is under review or suspended, tap{" "}
+              <strong>Delete my account</strong> on the status screen instead.
+            </>,
+            <>
+              Add a reason if you like and tap <strong>Request account deletion</strong>. You are taken offline straight
+              away and stop receiving delivery offers.
+            </>,
+            "Finish or hand back any active delivery and deposit any cash you collected first; the app tells you if something is still open.",
+          ]}
+        />
+        <p>
+          We delete your rider profile and login, your ID documents (Aadhaar, driving licence) and photos, your bank or
+          UPI payout details, and your saved working hours within 30 days of verifying the request. Any earnings still
+          due are paid to your account on file first. Delivery, earnings, payout and tax records are kept for up to 8
+          years where Indian law requires it, and are not used for anything else. Without the app, use the steps in
+          section 2 and mention that you are a delivery partner.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="4. What happens next">
         <p>
           Our team reviews each request. Any order that is still being delivered, refund that is still being processed
           or open support ticket is completed first, so you do not lose money owed to you. Once the request is
@@ -74,7 +98,7 @@ export default function DeleteAccountPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="4. Data we delete">
+      <LegalSection title="5. Data we delete">
         <LegalList
           items={[
             "Your name, date of birth and the mobile number linked to your account.",
@@ -86,7 +110,7 @@ export default function DeleteAccountPage() {
         />
       </LegalSection>
 
-      <LegalSection title="5. Data we keep, and why">
+      <LegalSection title="6. Data we keep, and why">
         <LegalList
           items={[
             "Order, invoice, payment and refund records, including the delivery address used for each past order. Indian tax and accounting laws require us to keep these, for up to 8 years from the end of the financial year in which the order was placed. They are no longer linked to your name or phone number.",
@@ -99,7 +123,7 @@ export default function DeleteAccountPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Questions">
+      <LegalSection title="7. Questions">
         <p>
           For anything about deleting your data, reach us <SupportContact />. You can read more about how we handle
           personal information in our <a className="underline" href={policyHref("privacy")}>Privacy Policy</a>.

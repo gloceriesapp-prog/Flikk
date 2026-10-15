@@ -60,7 +60,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "find src -name '*.selfcheck.ts' -print0 | sort -z | xargs -0 -n1 npx -y tsx@4.20.6"
   },
   "private": true,
   "expo": {
