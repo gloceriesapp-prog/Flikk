@@ -8,10 +8,10 @@ import { DEMO_PAYOUTS } from '@/lib/demoPayouts';
 import { Card } from '@/components/ui/Card';
 import { MetricCard, MetricGrid } from '@/components/inventory/MetricCard';
 import { EmptyState, ErrorState, MetricGridSkeleton, RowsSkeleton, Skeleton } from '@/components/inventory/DataStates';
-import { formatInr, formatDate } from '@/lib/format';
+import { formatInr } from '@/lib/format';
 import { PayoutDestinationCard } from '@/components/payouts/PayoutDestinationCard';
 import { PayoutsFilterBar, PAYOUT_FILTERS, type PayoutFilter } from '@/components/payouts/PayoutsFilterBar';
-import { PayoutsTable } from '@/components/payouts/PayoutsTable';
+import { PayoutsTable, formatWeek } from '@/components/payouts/PayoutsTable';
 import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 // Payouts move at most once a week — a slow poll keeps a newly-marked-paid row
@@ -68,7 +68,13 @@ export default function PayoutsPage() {
   const pendingAmount = sourcePayouts
     .filter((p) => p.status === 'pending' || p.status === 'processing')
     .reduce((sum, p) => sum + p.net_payout, 0);
-  const nextPayout = sourcePayouts.find((p) => p.status === 'pending' || p.status === 'processing');
+  // The settlement Gloceries will pay next: one already processing first,
+  // otherwise the oldest pending week. Payouts carry no payment date, so the
+  // tile shows the amount and the week it covers, never a guessed date.
+  const queued = sourcePayouts
+    .filter((p) => p.status === 'pending' || p.status === 'processing')
+    .sort((a, b) => (a.status === b.status ? a.week_start.localeCompare(b.week_start) : a.status === 'processing' ? -1 : 1));
+  const nextPayout = queued[0];
   const needsAttention = counts.blocked + counts.failed;
 
   const ratePercent = commission ? Math.round(commission.commissionRate * 10000) / 100 : null;
@@ -148,10 +154,14 @@ export default function PayoutsPage() {
             <MetricCard label="Pending" value={formatInr(pendingAmount)} icon={HandCoins} tone="amber" sublabel="Pending + processing" />
             <MetricCard
               label="Next payout"
-              value={nextPayout ? formatDate(nextPayout.week_end) : '—'}
+              value={nextPayout ? formatInr(nextPayout.net_payout) : '—'}
               icon={Calendar}
               tone="blue"
-              sublabel={nextPayout ? `${formatInr(nextPayout.net_payout)} for that week` : 'Nothing queued'}
+              sublabel={
+                nextPayout
+                  ? `For ${formatWeek(nextPayout.week_start, nextPayout.week_end)} · ${nextPayout.status === 'processing' ? 'Processing' : 'Pending'}`
+                  : 'Nothing queued'
+              }
             />
             <MetricCard
               label="Needs attention"

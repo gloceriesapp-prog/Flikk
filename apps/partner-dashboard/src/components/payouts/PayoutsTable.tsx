@@ -5,7 +5,7 @@ import { formatInr, formatDate, statusColor, statusLabel } from '@/lib/format';
 const COLUMNS = 'minmax(0,1.5fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.5fr)';
 
 // "5 – 11 Oct 2026" when the week sits inside one month, else the full pair.
-function formatWeek(startIso: string, endIso: string): string {
+export function formatWeek(startIso: string, endIso: string): string {
   const s = new Date(startIso);
   const e = new Date(endIso);
   if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) {

@@ -17,13 +17,6 @@ import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 type Editing = { mode: 'create' } | { mode: 'edit'; product: PartnerProduct } | null;
 
-// DUMMY month-over-month deltas for the stat strip. There's no product-count
-// history table yet, so these are placeholders (same "UI exists, data not
-// wired" convention as the rest of the dashboard). Wire to a real snapshot
-// once inventory history is tracked. Signs match tone: out-of-stock / pending
-// rising is bad (invertTone on those tiles flips the pill red).
-const INVENTORY_TRENDS = { total: 3.4, inStock: 5.1, outOfStock: 12.5, pending: 8.0 };
-
 export default function InventoryPage() {
   const [products, setProducts] = useState<PartnerProduct[]>([]);
   // Local-only override for demo rows: editing a demo product must never
@@ -215,10 +208,10 @@ export default function InventoryPage() {
         <MetricGridSkeleton />
       ) : (
         <MetricGrid>
-          <MetricCard label="Total products" value={counts.all} icon={Boxes} tone="blue" deltaPercent={INVENTORY_TRENDS.total} />
-          <MetricCard label="In stock" value={counts.in_stock} icon={Package} tone="green" deltaPercent={INVENTORY_TRENDS.inStock} />
-          <MetricCard label="Out of stock" value={counts.out_of_stock} icon={PackageX} tone="red" deltaPercent={INVENTORY_TRENDS.outOfStock} invertTone />
-          <MetricCard label="Pending approval" value={counts.pending} icon={ShieldAlert} tone="amber" deltaPercent={INVENTORY_TRENDS.pending} invertTone />
+          <MetricCard label="Total products" value={counts.all} icon={Boxes} tone="blue" />
+          <MetricCard label="In stock" value={counts.in_stock} icon={Package} tone="green" />
+          <MetricCard label="Out of stock" value={counts.out_of_stock} icon={PackageX} tone="red" />
+          <MetricCard label="Pending approval" value={counts.pending} icon={ShieldAlert} tone="amber" />
         </MetricGrid>
       ))}
 
