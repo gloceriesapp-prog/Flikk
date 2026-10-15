@@ -25,6 +25,7 @@ import {
   ArrowLeft01Icon,
   Clock01Icon,
   CustomerService01Icon,
+  Delete02Icon,
   IdentityCardIcon,
   Invoice01Icon,
   Logout01Icon,
@@ -231,6 +232,7 @@ export function ProfileScreen() {
             <MenuRow icon={IdentityCardIcon} label="Payout method" onPress={() => setEditingPayout(true)} />
             <MenuRow icon={MessageQuestionIcon} label="Report a problem" onPress={reportProblem} />
             <MenuRow icon={Logout01Icon} label="Log out" danger onPress={handleLogout} />
+            <MenuRow icon={Delete02Icon} label="Delete account" danger onPress={() => navigation.navigate('DeleteAccount')} />
           </View>
 
           <View className="mt-6 items-center gap-1">

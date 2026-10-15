@@ -99,4 +99,7 @@ export type AppStackParamList = {
   // compose opens the new-request form directly (Profile's "Report a problem").
   Support: { compose?: boolean } | undefined;
   SupportTicket: { ticketId: string };
+  // In-app account deletion request (Play requirement). Reached from
+  // Profile's "Delete account" row.
+  DeleteAccount: undefined;
 };
