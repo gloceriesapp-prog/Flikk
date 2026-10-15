@@ -6,6 +6,10 @@ The customer tracker distinguishes initial loading, a connection failure, a fail
 
 Polling runs every eight seconds while the screen is focused and the app is active. It stops when every order is terminal, unless a combined refund is queued or processing. Returning to the screen refreshes tracking. Database read failures return a service error rather than pretending the order does not exist.
 
+## Live rider location
+
+`GET /orders/:id/rider-location` and `GET /trips/:id/rider-location` (`src/tracking/riderLocation.ts`) return `{ active, rider_location, destination, stale_after_seconds }` to the owning customer only (404 otherwise). `rider_location` is non-null only while the order, or a trip leg, is `out_for_delivery`, and only for a ping taken at or after that leg's `picked_up_at`. It reads the existing `riders.current_lat/current_lng/last_location_update`; positions older than 180 s (the dispatch freshness window from migrations 107/110/113) are returned with `stale: true`. No rider identity is included. Responses are `Cache-Control: private, no-store`. The track screen polls it every 10 seconds while focused, foregrounded and out for delivery, and hides the rider marker when the position is stale or missing.
+
 ## Cancellation contract
 
 `POST /trips/:id/cancel` takes `{ reason }`. Customer ownership is checked within `cancel_customer_trip`. A 200 response contains `outcome: cancelled | blocked`, one `shops` entry per shop, and the combined `refund` summary. A blocked business outcome is distinct from an unconfirmed network outcome.

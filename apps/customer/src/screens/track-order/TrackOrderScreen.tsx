@@ -17,6 +17,8 @@ import { TripCancellationResult } from './components/TripCancellationResult';
 import { representativeLeg } from '../../utils/tripLegs';
 import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryRiderCard } from './components/DeliveryRiderCard';
+import { RiderLiveMap } from './components/RiderLiveMap';
+import { useRiderLocation } from './state/useRiderLocation';
 import { OrderInfoCard } from './components/OrderInfoCard';
 import { DeliveryDetailsSection } from './sections/delivery-details/DeliveryDetailsSection';
 import { OrderSummarySection } from './sections/order-summary/OrderSummarySection';
@@ -38,6 +40,11 @@ function TrackingDetails({ navigation, route }: Props) {
   const tracking = useTracking(orderId, !!isTrip);
   const { order, trip } = tracking;
   const legs = trip?.orders ?? [];
+  // Any leg out for delivery means a rider is carrying something to this
+  // customer; the endpoint itself re-checks status and ownership.
+  const outForDelivery = isTrip ? legs.some(l => l.status === 'out_for_delivery') : order?.status === 'out_for_delivery';
+  const riderLocation = useRiderLocation(orderId, !!isTrip, outForDelivery);
+  const liveMap = outForDelivery ? <RiderLiveMap response={riderLocation.data} fetchedAt={riderLocation.fetchedAt} /> : null;
   const [cancellationResult, setCancellationResult] = useState<TripCancellation>();
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -114,6 +121,7 @@ function TrackingDetails({ navigation, route }: Props) {
               <OrderInfoCard order={leg} hideRefund />
               <TripCancellationResult result={cancellationDetails} refund={trip?.cancellation_refund} />
 
+              {liveMap}
               <DeliveryRiderCard order={leg} />
               <DeliveryDetailsSection address={trip!.addresses} />
               <OrderSummarySection key={trip!.id} items={combinedOrder.order_items} onViewSummary={() => navigation.navigate('OrderSummary', { orderId, isTrip: true })} />
@@ -136,6 +144,7 @@ function TrackingDetails({ navigation, route }: Props) {
         <ScrollView className="flex-1" contentContainerClassName="items-center gap-3 px-5 pb-8 pt-4">
           <OrderInfoCard order={order!} />
 
+          {liveMap}
           <DeliveryRiderCard order={order!} />
 
           <DeliveryDetailsSection address={order!.addresses} />
