@@ -143,6 +143,11 @@ jobs:
         working-directory: apps/${{ matrix.app }}
       - run: npx eslint .
         working-directory: apps/${{ matrix.app }}
+      # Rider's pure decision logic (presence loops, schedules, background
+      # location disclosure, order mapping) is covered by runnable self-checks.
+      - if: matrix.app == 'rider'
+        run: npm test
+        working-directory: apps/rider
 
   # Next.js apps. `next typegen` generates the PageProps/LayoutProps/
   # RouteContext globals that the typecheck relies on.
