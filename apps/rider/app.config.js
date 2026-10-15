@@ -87,6 +87,14 @@ module.exports = {
       },
       predictiveBackGestureEnabled: false,
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'ACCESS_BACKGROUND_LOCATION', 'FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION'],
+      // Merged in by libraries or the Expo template but never used: no audio
+      // recording, no draw-over-other-apps, no ads. Removing them keeps the
+      // Play permission/data-safety declarations honest and short.
+      blockedPermissions: [
+        'android.permission.RECORD_AUDIO',
+        'android.permission.SYSTEM_ALERT_WINDOW',
+        'com.google.android.gms.permission.AD_ID',
+      ],
       config: {
         googleMaps: {
           apiKey: process.env.GOOGLE_MAPS_API_KEY,
@@ -102,6 +110,18 @@ module.exports = {
       'expo-font',
       'expo-splash-screen',
       'expo-video',
+      // Documents and profile photos are picked from the gallery only
+      // (launchImageLibraryAsync); the app never opens the camera or records
+      // audio. Without these flags the plugin adds CAMERA and RECORD_AUDIO,
+      // which Play then asks us to justify.
+      [
+        'expo-image-picker',
+        {
+          photosPermission: 'Gloceries needs access to your photos to upload your ID documents and profile picture.',
+          cameraPermission: false,
+          microphonePermission: false,
+        },
+      ],
       [
         'expo-location',
         {
