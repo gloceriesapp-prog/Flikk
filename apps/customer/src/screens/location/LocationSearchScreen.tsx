@@ -19,33 +19,32 @@
 
 import { ArrowLeft01Icon, GpsSignal01Icon, Search01Icon } from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import MapView, { Circle, Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { AppImage as Image } from '../../components/AppImage';
 import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import {
   distanceKm,
-  fetchNearbyPlaces,
   formatDistance,
   geocodeAddress,
-  getCurrentCoordinates,
   requestLocationPermission,
   reverseGeocode,
   searchPlaces,
   type Coordinates,
-  type NearbyPlace,
 } from '../../location/geocoding';
 import { distanceMeters } from '../../location/locationFilter';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
 import { LocationRequestGate } from '../../location/requestGate';
 import { useLiveLocation } from '../../location/useLiveLocation';
+import { getDeviceLocationFix } from '../../location/deviceLocation';
 import { withDeadline } from '../../utils/deadline';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLocationStore } from '../../store/useLocationStore';
@@ -80,10 +79,10 @@ const INITIAL_ALTITUDE = 300;
 const DEFAULT_CENTER = { latitude: 13.2167, longitude: 74.7469 };
 // The pin follows the live blue dot (until the person drags the map or
 // picks a search result) whenever the dot has moved more than this…
-const FOLLOW_MIN_MOVE_M = 3;
+const FOLLOW_MIN_MOVE_M = 4;
 // …but at most this often, so a stream of small refinements is one smooth
 // glide, not a jittery map.
-const FOLLOW_MIN_INTERVAL_MS = 1500;
+const FOLLOW_MIN_INTERVAL_MS = 1000;
 // The address is looked up again only when the pin moved further than this
 // from the point the shown address belongs to. Smaller moves (dot
 // refinements, the map settling after the card resizes) keep the address,
@@ -153,6 +152,9 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   }, [isAddressBookIntent, accessToken, exitGuestMode]);
 
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
+  const focused = useRef(isFocused);
+  useEffect(() => { focused.current = isFocused; }, [isFocused]);
   const mapRef = useRef<MapView>(null);
   const searchInputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState('');
@@ -171,10 +173,6 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   const [shortName, setShortName] = useState(startingPoint.addressLabel?.split(',')[0]?.trim() ?? '');
   const [city, setCity] = useState(startingPoint.city ?? '');
   const [resolving, setResolving] = useState(!startingPoint.addressLabel);
-  // Real nearby landmarks (fetchNearbyPlaces -> backend's Places Nearby
-  // Search proxy) — chips under the confirm card, tap one to make it the
-  // headline. Refetched every time the pin settles, same as shortName.
-  const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // react-native-maps' Android native view doesn't reliably resize when
@@ -212,7 +210,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // The live, filtered device position (useLiveLocation): the blue dot is
   // drawn from it and the pin moves to exactly this coordinate, so the two
   // always line up. Starts once location permission is granted.
-  const liveFix = useLiveLocation(hasLocationPermission);
+  const { fix: liveFix, adoptDeviceFix } = useLiveLocation(hasLocationPermission && isFocused);
   const dotCoordinate = liveFix ? { latitude: liveFix.latitude, longitude: liveFix.longitude } : null;
   // True while the pin should stay on the blue dot: the screen opened on the
   // person's GPS position (or with no position at all) and they have not
@@ -220,6 +218,12 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // location" turns it back on.
   const followDot = useRef(startingPoint.latitude == null || startingPoint.fromGps === true);
   const lastFollowMoveAt = useRef(0);
+  const selectedCenter = useRef(center);
+  const cameraRequests = useRef(new LocationRequestGate());
+  const commandedCameraTarget = useRef<Coordinates | null>(null);
+  const [hasSelectedPin, setHasSelectedPin] = useState(startingPoint.latitude != null && startingPoint.longitude != null);
+  const [addressFailed, setAddressFailed] = useState(false);
+  const pendingAddressAt = useRef<Coordinates | null>(null);
   // The coordinate the address on the card belongs to.
   const resolvedAt = useRef<Coordinates | null>(startingPoint.addressLabel && startingPoint.latitude != null && startingPoint.longitude != null
     ? { latitude: startingPoint.latitude, longitude: startingPoint.longitude }
@@ -233,6 +237,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   const navigationRequests = useRef(new LocationRequestGate());
   useEffect(() => () => {
     pinRequests.current.invalidate();
+    cameraRequests.current.invalidate();
     navigationRequests.current.invalidate();
     if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
   }, []);
@@ -250,18 +255,6 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       .then(setHasLocationPermission)
       .catch(() => setHasLocationPermission(false));
   }, []);
-
-  // Keep the pin on the blue dot while following: the first fix centres
-  // the map on it, later (filtered) refinements glide it there.
-  useEffect(() => {
-    if (!liveFix || !followDot.current || !mapReady) return;
-    const isFirstMove = lastFollowMoveAt.current === 0;
-    if (!isFirstMove && distanceMeters(center, liveFix) < FOLLOW_MIN_MOVE_M) return;
-    const now = Date.now();
-    if (!isFirstMove && now - lastFollowMoveAt.current < FOLLOW_MIN_INTERVAL_MS) return;
-    lastFollowMoveAt.current = now;
-    moveCameraTo(liveFix, isFirstMove);
-  }, [liveFix, mapReady, center]);
 
   // Debounced (300ms) — firing a request on every keystroke would spam
   // the backend/Mappls for no benefit; a short pause after the user stops
@@ -299,78 +292,107 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // Moves the map so `coords` sits exactly under the pin tip. animateCamera
   // centres the coordinate in the area above the card (mapPadding), which is
   // exactly where the pin is drawn (pinAnchorTop).
-  function moveCameraTo(coords: Coordinates, resetZoom: boolean) {
-    const target = { latitude: coords.latitude, longitude: coords.longitude };
-    mapRef.current?.animateCamera(resetZoom ? { center: target, zoom: INITIAL_ZOOM, heading: 0, pitch: INITIAL_PITCH } : { center: target }, { duration: resetZoom ? 400 : 300 });
-  }
-
-  async function handleRegionSettled(region: Region) {
-    // The camera target is the point under the pin tip. The region's own
-    // centre is the middle of the whole map view on Android, including the
-    // strip behind the card, so it is half the card's height off the pin.
-    const camera = mapRef.current
-      ? await withDeadline(mapRef.current.getCamera(), CAMERA_READ_DEADLINE_MS).catch(() => null)
-      : null;
-    const next = camera?.center
-      ? { latitude: camera.center.latitude, longitude: camera.center.longitude }
-      : { latitude: region.latitude, longitude: region.longitude };
+  function queueAddress(next: Coordinates, force = false) {
+    if (!focused.current) return;
+    selectedCenter.current = next;
     setCenter(next);
+    if (!force && pendingAddressAt.current && distanceMeters(pendingAddressAt.current, next) < REGEOCODE_MIN_MOVE_M) return;
     if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
-    if (resolvedAt.current && distanceMeters(resolvedAt.current, next) < REGEOCODE_MIN_MOVE_M) {
-      // Back within reach of the shown address: drop any lookup still
-      // running for a point further away.
-      pinRequests.current.invalidate();
+    const ticket = pinRequests.current.begin();
+    pendingAddressAt.current = null;
+    if (!force && resolvedAt.current && distanceMeters(resolvedAt.current, next) < REGEOCODE_MIN_MOVE_M) {
       setResolving(false);
       return;
     }
-    const ticket = pinRequests.current.begin();
+    pendingAddressAt.current = next;
     setResolving(true);
+    setAddressFailed(false);
     geocodeTimer.current = setTimeout(() => { void resolveAddress(next, ticket); }, GEOCODE_DEBOUNCE_MS);
   }
 
+  function moveCameraTo(coords: Coordinates, resetZoom: boolean) {
+    cameraRequests.current.invalidate();
+    const target = { latitude: coords.latitude, longitude: coords.longitude };
+    setHasSelectedPin(true);
+    commandedCameraTarget.current = target;
+    queueAddress(target);
+    mapRef.current?.animateCamera(resetZoom ? { center: target, zoom: INITIAL_ZOOM, heading: 0, pitch: INITIAL_PITCH } : { center: target }, { duration: resetZoom ? 400 : 300 });
+  }
+
+  function stopFollowing() {
+    followDot.current = false;
+    commandedCameraTarget.current = null;
+    cameraRequests.current.invalidate();
+    navigationRequests.current.invalidate();
+    pinRequests.current.invalidate();
+    pendingAddressAt.current = null;
+    if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
+    setResolving(true);
+  }
+
+  async function handleRegionSettled(region: Region, details?: { isGesture?: boolean }) {
+    if (details?.isGesture) stopFollowing();
+    // Gate before the asynchronous camera read, so old native events
+    // cannot replace a newer pan, search result or GPS selection.
+    const ticket = cameraRequests.current.begin();
+    const camera = mapRef.current
+      ? await withDeadline(mapRef.current.getCamera(), CAMERA_READ_DEADLINE_MS).catch(() => null)
+      : null;
+    if (!focused.current || !cameraRequests.current.current(ticket)) return;
+    const next = camera?.center
+      ? { latitude: camera.center.latitude, longitude: camera.center.longitude }
+      : { latitude: region.latitude, longitude: region.longitude };
+    // A completion from an interrupted animation can arrive after a new
+    // command. It must not snap the selection back to the old camera target.
+    if (commandedCameraTarget.current && distanceMeters(commandedCameraTarget.current, next) > 2) return;
+    commandedCameraTarget.current = null;
+    if (!hasSelectedPin && followDot.current) return;
+    setHasSelectedPin(true);
+    queueAddress(next);
+  }
+
   async function resolveAddress(next: Coordinates, ticket: number) {
-    void fetchNearbyPlaces(next).then(places => { if (pinRequests.current.current(ticket)) setNearbyPlaces(places); });
     try {
       const resolved = await withDeadline(reverseGeocode(next), GEOCODE_DEADLINE_MS);
-      if (!pinRequests.current.current(ticket)) return;
+      if (!focused.current || !pinRequests.current.current(ticket)) return;
+      if (resolved.resolved === false || !resolved.addressLabel.trim()) throw new Error('Address unavailable');
       resolvedAt.current = next;
       setError(null);
+      setAddressFailed(false);
       setAddressLabel(resolved.addressLabel); setShortName(resolved.shortName); setCity(resolved.city);
     } catch {
-      if (!pinRequests.current.current(ticket)) return;
-      // Never confirm a new coordinate with the previous address. The pin
-      // itself is still exact, so it can be confirmed; the address form
-      // asks for the house/street details.
+      if (!focused.current || !pinRequests.current.current(ticket)) return;
+      // A failed lookup must never leave the previous pin's address attached.
       resolvedAt.current = null;
       const pinned = `${next.latitude.toFixed(5)}, ${next.longitude.toFixed(5)}`;
       setAddressLabel(pinned); setShortName('Pinned location'); setCity('');
-      setError('Couldn’t find the address for this pin. You can still confirm it and type the address next.');
+      setAddressFailed(true);
+      setError('Couldn’t find this address. Retry or move the pin slightly.');
     } finally {
-      if (pinRequests.current.current(ticket)) setResolving(false);
+      if (pinRequests.current.current(ticket)) { pendingAddressAt.current = null; setResolving(false); }
     }
   }
 
   async function resolveAndGoTo(label: string) {
+    stopFollowing();
     const ticket = navigationRequests.current.begin();
     setError(null);
     try {
       const coords = await geocodeAddress(label);
-      if (!navigationRequests.current.current(ticket)) return;
+      if (!focused.current || !navigationRequests.current.current(ticket)) return;
       if (!coords) {
         setError("Couldn't find that location. Try a different search.");
+        if (hasSelectedPin) queueAddress(selectedCenter.current); else setResolving(false);
         return;
       }
       followDot.current = false;
       moveCameraTo(coords, true);
-      // Typed/selected text stays the address label (that's what the
-      // user actually searched for or picked) until the map settles and
-      // reverse-geocodes the real pin position — onRegionChangeComplete
-      // overwrites it right after.
-      setAddressLabel(label);
-      setShortName(label.split(',')[0]?.trim() ?? label);
       addRecentSearch({ label, ...coords });
     } catch {
-      if (navigationRequests.current.current(ticket)) setError('Search failed. Please try again.');
+      if (navigationRequests.current.current(ticket)) {
+        setError('Search failed. Please try again.');
+        if (hasSelectedPin) queueAddress(selectedCenter.current); else setResolving(false);
+      }
     }
   }
 
@@ -392,17 +414,14 @@ export function LocationSearchScreen({ navigation, route }: Props) {
     const ticket = navigationRequests.current.begin();
     setError(null);
     try {
-      // Same filtered position the blue dot is drawn from, so the pin lands
-      // exactly on the dot. A one-off fix only before the first live fix.
-      let coords: Coordinates | null = liveFix;
-      if (!coords) {
-        const granted = hasLocationPermission || (await requestLocationPermission());
-        if (!granted) throw new Error('Location permission denied');
-        setHasLocationPermission(true);
-        coords = await getCurrentCoordinates();
-      }
-      if (!navigationRequests.current.current(ticket)) return;
+      const granted = hasLocationPermission || (await requestLocationPermission());
+      if (!granted) throw new Error('Location permission denied');
+      setHasLocationPermission(true);
+      const deviceFix = await getDeviceLocationFix();
+      if (!focused.current || !navigationRequests.current.current(ticket)) return;
+      const coords = adoptDeviceFix(deviceFix);
       followDot.current = true;
+      // eslint-disable-next-line react-hooks/purity -- Read inside the explicit location action, never during render.
       lastFollowMoveAt.current = Date.now();
       moveCameraTo(coords, true);
     } catch {
@@ -411,6 +430,8 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   }
 
   async function handleConfirm() {
+    if (resolving || confirming || !hasSelectedPin || !resolvedAt.current || addressFailed
+      || distanceMeters(resolvedAt.current, selectedCenter.current) >= REGEOCODE_MIN_MOVE_M) return;
     setConfirming(true);
     try {
       if (intent === 'address-book') {
@@ -428,6 +449,36 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       setConfirming(false);
     }
   }
+
+  useEffect(() => {
+    if (isFocused) {
+      if (hasSelectedPin) queueAddress(selectedCenter.current);
+      return;
+    }
+    pinRequests.current.invalidate();
+    cameraRequests.current.invalidate();
+    navigationRequests.current.invalidate();
+    pendingAddressAt.current = null;
+    if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
+  // This effect intentionally runs on focus transitions; address changes
+  // already schedule their own lookup via queueAddress.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocused]);
+  // Keep the pin on the blue dot while following: the first fix centres
+  // the map on it, later (filtered) refinements glide it there.
+  useEffect(() => {
+    if (!liveFix || !followDot.current || !mapReady) return;
+    const isFirstMove = lastFollowMoveAt.current === 0;
+    if (!isFirstMove && distanceMeters(center, liveFix) < FOLLOW_MIN_MOVE_M) return;
+    // eslint-disable-next-line react-hooks/purity -- Location-follow effect timestamp, never a render value.
+    const now = Date.now();
+    if (!isFirstMove && now - lastFollowMoveAt.current < FOLLOW_MIN_INTERVAL_MS) return;
+    lastFollowMoveAt.current = now;
+    moveCameraTo(liveFix, isFirstMove);
+  // Camera commands are triggered only by position/readiness changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveFix, mapReady, center]);
+
 
   // After every hook above (Rules of Hooks — an early return before them
   // would call a different number of hooks on the render that flips this
@@ -475,7 +526,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // wait for an address forever.
           onMapReady={() => {
             setMapReady(true);
-            void handleRegionSettled({ ...center, latitudeDelta: 0, longitudeDelta: 0 });
+            if (hasSelectedPin) queueAddress(selectedCenter.current);
           }}
           // initialCamera, not initialRegion — a Region has no pitch/zoom
           // concept at all, only a lat/lng delta "span", which is exactly
@@ -492,13 +543,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           minZoomLevel={14}
           // A drag means the person is placing the pin themselves: stop
           // following the blue dot and drop any pending address lookup.
-          onPanDrag={() => {
-            followDot.current = false;
-            navigationRequests.current.invalidate();
-            pinRequests.current.invalidate();
-            if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
-            setResolving(true);
-          }}
+          onPanDrag={stopFollowing}
           onRegionChangeComplete={handleRegionSettled}
           // The map SDK's own blue dot is off: it draws every raw fix (the
           // jumping dot) from its own location source, so it never matched
@@ -525,7 +570,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                   strokeWidth={1}
                 />
               ) : null}
-              <Marker coordinate={dotCoordinate} anchor={{ x: 0.5, y: 0.5 }} flat zIndex={1}>
+              <Marker testID="device-location-marker" coordinate={dotCoordinate} anchor={{ x: 0.5, y: 0.5 }} flat zIndex={1}>
                 <View style={styles.userDot} />
               </Marker>
             </>
@@ -749,7 +794,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
                   {/* Fixed two-line height so the card keeps its size
                       whichever address is shown. */}
                   <Text className="text-[13px] leading-[18px] text-ink/45" numberOfLines={2} style={{ height: 36 }}>
-                    {addressLabel && addressLabel !== shortName ? addressLabel : city}
+                    {resolving ? 'Finding the address for this pin…' : addressLabel || 'Choose your current location or search an address.'}
                   </Text>
                 </View>
                 <Pressable
@@ -770,49 +815,18 @@ export function LocationSearchScreen({ navigation, route }: Props) {
               ) : null}
             </View>
 
-            {/* Real nearby landmarks (fetchNearbyPlaces) — a customer who
-                knows their area by landmark, not street name, taps one to
-                make it the confirm card's own headline instead of the
-                plain reverse-geocoded address above.
-                Fixed-height wrapper, ALWAYS mounted (not conditionally
-                rendered on nearbyPlaces.length) — this whole floating
-                panel's height is measured once via onLayout below
-                (cardHeight) and feeds straight into the MapView's
-                mapPadding/pin-anchor math above. Mounting/unmounting this
-                row on every settle changed that measured height each
-                time, which re-triggered mapPadding and visibly shoved the
-                pin up/down on every drag — a fixed height here means the
-                panel's total height never changes, chips or not. FlatList
-                over a plain ScrollView for the same reason any horizontal
-                chip list should use one — cheaper re-renders as the data
-                array actually changes underneath it. */}
-            <View style={{ height: 40 }} className="justify-center">
-              {nearbyPlaces.length > 0 ? (
-                <FlatList
-                  horizontal
-                  data={nearbyPlaces}
-                  keyExtractor={(place) => place.name}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 8 }}
-                  renderItem={({ item: place }) => (
-                    <Pressable
-                      onPress={() => setShortName(place.name)}
-                      className="rounded-full border border-mist bg-white/80 px-3.5 py-2"
-                    >
-                      <Text className="text-[12.5px] font-semibold text-ink/70" numberOfLines={1}>
-                        Near {place.name}
-                      </Text>
-                    </Pressable>
-                  )}
-                />
-              ) : null}
-            </View>
+            {addressFailed ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Retry address lookup"
+                onPress={() => queueAddress(selectedCenter.current, true)}>
+                <Text className="text-center text-sm font-semibold" style={{ color: BUTTON_ACCENT }}>Retry address lookup</Text>
+              </Pressable>
+            ) : null}
 
             <Pressable
               onPress={handleConfirm}
-              disabled={resolving || confirming}
+              disabled={resolving || confirming || !hasSelectedPin || addressFailed}
               className="flex-row items-center justify-center gap-2 rounded-2xl py-4"
-              style={{ backgroundColor: resolving || confirming ? `${BUTTON_ACCENT}80` : BUTTON_ACCENT }}
+              style={{ backgroundColor: resolving || confirming || !hasSelectedPin || addressFailed ? `${BUTTON_ACCENT}80` : BUTTON_ACCENT }}
             >
               {confirming ? (
                 <ActivityIndicator color="#FFFFFF" />

@@ -7,43 +7,76 @@
 // Approve/reject: PATCH /api/store-changes/[id]; reject asks for a reason the
 // partner sees.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, X } from 'lucide-react';
+import { Check, Pencil, Trash2 } from 'lucide-react';
+import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { ReasonModal } from '@/components/ui/ReasonModal';
 import { STORE_CHANGE_LABELS, formatChangeValue } from '@/lib/storeChanges';
 import type { StoreChangeRequest } from '@/lib/types';
 
 const formatDate = (iso: string) =>
-  new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 function mapLink(lat: unknown, lng: unknown) {
   return typeof lat === 'number' && typeof lng === 'number' ? `https://www.google.com/maps?q=${lat},${lng}` : null;
 }
 
-export function StoreChangeRequests({ storeId, onReviewed }: { storeId?: string; onReviewed?: () => void }) {
+export function StoreChangeRequests({ storeId, onReviewed, onCountChange, showEmpty = false }: { storeId?: string; onReviewed?: () => void; onCountChange?: (count: number) => void; showEmpty?: boolean }) {
   const [requests, setRequests] = useState<StoreChangeRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<StoreChangeRequest | null>(null);
+  const [loading, setLoading] = useState(true);
+  const readRef = useRef<AbortController | null>(null);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionRef = useRef(false);
   const router = useRouter();
 
   const load = useCallback(async () => {
+    readRef.current?.abort();
+    const controller = new AbortController();
+    readRef.current = controller;
     try {
-      const res = await fetch(storeId ? `/api/store-changes?storeId=${storeId}` : '/api/store-changes', { cache: 'no-store' });
+      const res = await fetch(storeId ? `/api/store-changes?storeId=${storeId}` : '/api/store-changes', { cache: 'no-store', signal: controller.signal });
       const body = await res.json();
+      if (controller.signal.aborted) return;
       if (!res.ok) throw new Error(body.error ?? 'Could not load store changes.');
       setRequests(body as StoreChangeRequest[]);
+      onCountChange?.((body as StoreChangeRequest[]).filter(request => request.status === 'pending').length);
       setError(null);
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : 'Could not load store changes.');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [storeId]);
+  }, [storeId, onCountChange]);
 
   useEffect(() => {
-    Promise.resolve().then(load);
+    let active = true;
+    Promise.resolve().then(() => { if (active) void load(); });
+    const poll = setInterval(() => { if (document.visibilityState === 'visible') void load(); }, 15_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') void load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      active = false;
+      clearInterval(poll);
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = null;
+      document.removeEventListener('visibilitychange', onVisible);
+      readRef.current?.abort();
+    };
   }, [load]);
+  const refreshFromEvent = useCallback(() => {
+    if (refreshTimer.current) return;
+    refreshTimer.current = setTimeout(() => {
+      refreshTimer.current = null;
+      void load();
+    }, 250);
+  }, [load]);
+  useAdminRealtime(refreshFromEvent);
 
   async function review(id: string, approve: boolean, reason?: string) {
     const res = await fetch(`/api/store-changes/${id}`, {
@@ -58,6 +91,8 @@ export function StoreChangeRequests({ storeId, onReviewed }: { storeId?: string;
   }
 
   async function approve(id: string) {
+    if (actionRef.current) return;
+    actionRef.current = true;
     setBusy(id);
     setError(null);
     try {
@@ -65,20 +100,21 @@ export function StoreChangeRequests({ storeId, onReviewed }: { storeId?: string;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not review the change.');
     } finally {
+      actionRef.current = false;
       setBusy(null);
     }
   }
 
-  if (!storeId && requests.length === 0 && !error) return null;
-  if (storeId && requests.length === 0 && !error) return null;
+  if (!showEmpty && requests.length === 0 && !error) return null;
 
   return (
     <section className="rounded-3xl border border-amber-200 bg-amber-50/40 p-5">
       <h2 className="text-base font-bold text-ink">{storeId ? 'Profile change requests' : 'Store profile changes awaiting review'}</h2>
       <p className="mt-0.5 text-xs text-muted">
-        Partner edits to name, category, address, map pin or drug licence. The live store is unchanged until you approve.
+        Review partner profile, location and document updates. Current store details stay live until accepted. Times are IST.
       </p>
-      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-danger">{error} <button type="button" onClick={() => void load()} className="underline">Retry</button></p>}
+      {showEmpty && requests.length === 0 && !error && <p className="mt-4 text-sm text-muted">{loading ? 'Checking partner updates…' : 'No store updates awaiting review.'}</p>}
       <div className="mt-4 flex flex-col gap-3">
         {requests.map((request) => {
           const newPin = mapLink(request.changes.lat, request.changes.lng);
@@ -97,22 +133,25 @@ export function StoreChangeRequests({ storeId, onReviewed }: { storeId?: string;
                   {!storeId && <p className="text-xs text-muted">Requested {formatDate(request.createdAt)}</p>}
                 </div>
                 {request.status === 'pending' ? (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Link href={`/stores/${request.storeId}#store-detail-form`} className="flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold text-ink">
+                      <Pencil size={13} /> Edit store
+                    </Link>
                     <button
                       type="button"
-                      disabled={busy === request.id}
+                      disabled={busy !== null}
                       onClick={() => setRejecting(request)}
                       className="flex items-center gap-1 rounded-full border border-danger/30 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-red-50 disabled:opacity-40"
                     >
-                      <X size={13} /> Reject
+                      <Trash2 size={13} /> Delete request
                     </button>
                     <button
                       type="button"
-                      disabled={busy === request.id}
+                      disabled={busy !== null}
                       onClick={() => void approve(request.id)}
                       className="flex items-center gap-1 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
                     >
-                      <Check size={13} /> {busy === request.id ? 'Approving…' : 'Approve'}
+                      <Check size={13} /> {busy === request.id ? 'Accepting…' : 'Accept'}
                     </button>
                   </div>
                 ) : (
@@ -154,13 +193,21 @@ export function StoreChangeRequests({ storeId, onReviewed }: { storeId?: string;
       </div>
       {rejecting && (
         <ReasonModal
-          title="Reject store change"
-          description={`The partner sees this reason. ${rejecting.storeName} keeps its current details.`}
-          confirmLabel="Reject change"
+          title="Delete pending request"
+          description={`Remove this request from the approval queue. ${rejecting.storeName} keeps its current details. The request is recorded as rejected, with your reason visible to the partner.`}
+          confirmLabel="Delete request"
           onClose={() => setRejecting(null)}
           onConfirm={async (reason) => {
-            await review(rejecting.id, false, reason);
-            setRejecting(null);
+            if (actionRef.current) throw new Error('Another review is being saved. Please retry.');
+            actionRef.current = true;
+            setBusy(rejecting.id);
+            try {
+              await review(rejecting.id, false, reason);
+              setRejecting(null);
+            } finally {
+              actionRef.current = false;
+              setBusy(null);
+            }
           }}
         />
       )}

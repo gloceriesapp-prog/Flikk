@@ -1,3 +1,4 @@
+import { RecoveredPaymentMethods } from './RecoveredPaymentMethods';
 import { fetchPaymentPreference, selectPaymentPreference } from '../../api/payments';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
@@ -23,7 +24,7 @@ import { TotalAmountCard } from '../checkout/components/TotalAmountCard';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'PaymentMethod'>;
 
-export function PaymentMethodScreen({ route, navigation }: Props) {
+function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
   const fromProfile = route.params.source === 'profile';
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
@@ -32,9 +33,14 @@ export function PaymentMethodScreen({ route, navigation }: Props) {
   const items = useCartStore((state) => state.items);
   const accessToken = useAuthStore((state) => state.accessToken);
   const { data: addresses } = useQuery({ queryKey: ['addresses', customerId], queryFn: fetchAddresses, enabled: !!accessToken && !fromProfile });
-  const address = addresses?.find((item) => item.is_default) ?? addresses?.[0] ?? null;
+  // Keep this preview tied to the cart's selected delivery address. A missing
+  // explicit address must not silently show a bill for another destination.
+  const selectedAddressId = route.params.selectedAddressId;
+  const address = selectedAddressId
+    ? addresses?.find((item) => item.id === selectedAddressId) ?? null
+    : addresses?.find((item) => item.is_default) ?? addresses?.[0] ?? null;
   const quoteQuery = useCheckoutQuote(fromProfile ? undefined : address?.id);
-  const { allowed } = usePaymentAvailability();
+  const { allowed, directUpiAvailable, loaded: paymentAvailabilityLoaded } = usePaymentAvailability();
   const [apps, setApps] = useState<UpiApp[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -57,7 +63,11 @@ export function PaymentMethodScreen({ route, navigation }: Props) {
       finally { setSaving(false); }
       return;
     }
-    navigation.popTo('Cart', { selectedPaymentMethod: method });
+    if (method.startsWith('upi_app:') && paymentAvailabilityLoaded && !directUpiAvailable) {
+      setError('UPI app payments are unavailable in this test environment. Choose another payment method.');
+      return;
+    }
+    navigation.popTo('Cart', { selectedPaymentMethod: method, ...(method.startsWith('upi_app:') ? { startSelectedPayment: true } : {}) });
   }
   return (
     <View className="flex-1 bg-[#F2F2F7]">
@@ -77,8 +87,9 @@ export function PaymentMethodScreen({ route, navigation }: Props) {
         {!fromProfile && <>
         <DeliveryAddressCard address={address} onChange={() => navigation.navigate('LocationSearch', { intent: 'address-book' })} />
         {quoteQuery.data && !quoteQuery.isError ? <TotalAmountCard items={quotedCartItems(items, quoteQuery.data)} totalPrice={quoteQuery.data.bill.total} />
-          : <Text className="text-ink/60">{quoteQuery.isError ? 'Could not check the bill. Return to your cart to retry.' : 'Checking your bill…'}</Text>}
+          : <Text className="text-ink/60">{addresses && selectedAddressId && !address ? 'This address is no longer available. Choose a delivery address in your cart.' : quoteQuery.isError ? 'Could not check the bill. Return to your cart to retry.' : 'Checking your bill…'}</Text>}
         </>}
+        {!fromProfile && paymentAvailabilityLoaded && !directUpiAvailable && allowed.online && <Text className="text-sm text-ink/60">UPI app payments are unavailable in this test environment. Choose another payment method.</Text>}
         {!!error && <Text className="text-red-600">{error}</Text>}
         {saving && <Text className="text-ink/60">Saving your preference…</Text>}
         <View pointerEvents={saving ? "none" : "auto"}>
@@ -88,4 +99,19 @@ export function PaymentMethodScreen({ route, navigation }: Props) {
       </KeyboardAwareScrollView>
     </View>
   );
+}
+
+export function PaymentMethodScreen(props: Props) {
+  const target = props.route.params.recoveryTarget;
+  if (!target) return <CartOrProfilePaymentMethodScreen {...props} />;
+  return <View className="flex-1 bg-[#F2F2F7]">
+    <View className="flex-row items-center gap-3 px-5 pb-3 pt-safe-offset-2">
+      <Pressable accessibilityRole="button" accessibilityLabel="Back to home" onPress={() => props.navigation.navigate('Home')}
+        className="h-11 w-11 items-center justify-center rounded-full bg-white">
+        <AppIcon icon={ArrowLeft01Icon} size={22} color="#111111" />
+      </Pressable>
+      <Text className="text-[18px] font-semibold text-ink">Choose how to pay</Text>
+    </View>
+    <RecoveredPaymentMethods target={target} navigation={props.navigation} />
+  </View>;
 }

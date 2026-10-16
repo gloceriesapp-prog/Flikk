@@ -1,5 +1,6 @@
 import { readAttempt, closeSavedAttempt, saveAttempt, clearAttempt, clearCommittedAttempt, newAttemptId, findAttempt, attemptTarget } from '../../../features/checkout-recovery/attemptStorage';
-// Cart owns order placement; the payment picker only returns a selection.
+import { beginCheckoutFlow } from '../../../features/checkout-recovery/checkoutActivity';
+// Cart owns order placement; an explicit UPI selection requests one checkout.
 // See ../README.md for confirmation, persistence and navigation flows.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CheckoutQuote } from '../../../api/checkout';
@@ -13,8 +14,9 @@ import { createOrder } from '../../../api/orders';
 import { createTrip } from '../../../api/trips';
 import type { ApiAddress } from '../../../api/addresses';
 import { useAuthStore } from '../../../store/useAuthStore';
-import { fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
+import { fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod, fetchPaymentContact } from '../../../api/payments';
 import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
+import { assertDirectUpiConfigured, prepareUpiIntent } from '../../../payments/upiIntent';
 import type { UpiApp } from '../../../payments/upiApps';
 import { detectInstalledUpiApps } from '../../../payments/installedUpiApps';
 import { keepsCheckoutAttempt } from './attemptPolicy';
@@ -44,21 +46,19 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   const clear = useCartStore((state) => state.clear);
 
   const accessToken = useAuthStore((state) => state.accessToken);
-  const [savedMethod, setSavedMethod] = useState<PaymentMethod | null>(null);
-  const [methodsReady, setMethodsReady] = useState(false);
+  const [methodState, setMethodState] = useState<{ token: string | null; method: PaymentMethod | null; apps: UpiApp[] } | null>(null);
+  const methodsReady = methodState !== null && methodState.token === accessToken;
+  const savedMethod = methodsReady ? methodState.method : null;
+  const upiApps = methodsReady ? methodState.apps : [];
   const placingOrder = useRef(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [upiApps, setUpiApps] = useState<UpiApp[]>([]);
   useEffect(() => {
     let cancelled = false;
-    detectInstalledUpiApps().catch(() => [] as UpiApp[]).then((apps) => {
+    const preference = accessToken ? fetchPaymentPreference().catch(() => ({ method: null })) : Promise.resolve({ method: null });
+    Promise.all([detectInstalledUpiApps().catch(() => [] as UpiApp[]), preference]).then(([apps, saved]) => {
       if (cancelled) return;
-      setUpiApps(apps);
-      setMethodsReady(true);
+      setMethodState({ token: accessToken, method: saved.method, apps });
     });
-    if (accessToken) fetchPaymentPreference().then((preference) => {
-      if (!cancelled) setSavedMethod(preference.method);
-    }).catch(() => {});
     return () => { cancelled = true; };
   }, [accessToken]);
   const ownerEpoch = useRef(useAuthStore.getState().sessionEpoch).current;
@@ -71,7 +71,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   useLayoutEffect(() => {
     latestSelection.current = { addressId: selectedAddress?.id, paymentMethod };
   }, [selectedAddress?.id, paymentMethod]);
-  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod });
+  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod, selectedAddressId: selectedAddress?.id });
 
   async function goToReceipt(order: { orderId: string; orderNumber: string; placedAt: string; avgPrepMinutes: number | null; estimatedDeliveryMinutes?: number | null; estimatedDeliveryAt?: string | null; amount: number; items: CartItem[] }, methodLabel: string, successfulMethod: PaymentMethod) {
     if (!stillOwner()) return;
@@ -115,7 +115,15 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
     }
     placingOrder.current = true;
     setIsPlacingOrder(true);
+    const endCheckoutFlow = beginCheckoutFlow();
     try {
+      if (paymentMethod.startsWith('upi_app:')) {
+        await assertDirectUpiConfigured(paymentMethod);
+        if (!stillOwner()) return;
+        const contact = await fetchPaymentContact();
+        if (!stillOwner()) return;
+        if (!contact.email) throw new Error('Razorpay requires a saved account email for direct UPI payments. Choose another payment method or contact support.');
+      }
       const cartKey = JSON.stringify({ items: checkoutItems(items), promo: promoCode ?? null });
       let saved = await readAttempt();
       if (saved) {
@@ -222,6 +230,17 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
 
       const payTarget = isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id };
       const deliveryAddress = selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address';
+      if (paymentMethod.startsWith('upi_app:')) {
+        const session = await prepareUpiIntent(payTarget, paymentMethod);
+        if (!stillOwner()) return;
+        if (session.amountPaise !== Math.round(confirmedAmount * 100)) throw new Error('The UPI amount does not match your order.');
+        navigation.navigate('PaymentProcessing', {
+          target: payTarget, appName: upiApps.find(app => paymentMethod === `upi_app:${app.id}`)?.name ?? 'your UPI app',
+          paymentMethod, amount: confirmedAmount, order: orderSummary, items: orderedItems,
+          deliveryAddress, isTrip: isMultiStore, expiresAt: session.expiresAt, upiIntent: session,
+        });
+        return;
+      }
       // The SDK owns UPI app hand-off, card entry and bank selection. Its
       // callback is never enough to show a receipt: verify captured state.
       const providerOrder = await createPaymentOrder(payTarget);
@@ -268,6 +287,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       onQuoteChanged();
       Alert.alert('Could not place order', err instanceof Error ? err.message : 'Please try again.');
     } finally {
+      endCheckoutFlow();
       placingOrder.current = false;
       setIsPlacingOrder(false);
     }

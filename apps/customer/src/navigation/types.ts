@@ -67,8 +67,8 @@ export type AppStackParamList = {
   RegionalCategory: { categoryId: string };
   CoconutOilCollection: undefined;
   StoreDetail: { storeId: string; storeName: string };
-  Cart: { selectedPaymentMethod?: PaymentMethod } | undefined;
-  PaymentMethod: { selectedMethod: PaymentMethod | null; source?: 'profile' };
+  Cart: { selectedPaymentMethod?: PaymentMethod; startSelectedPayment?: boolean } | undefined;
+  PaymentMethod: { selectedMethod: PaymentMethod | null; selectedAddressId?: string; source?: 'profile'; recoveryTarget?: import('../api/payments').PaymentTarget };
   CheckoutAttemptRecovery: undefined;
   PaymentRecovery: { target: import('../api/payments').PaymentTarget };
   PaymentStatus: { amount: number };
@@ -79,7 +79,7 @@ export type AppStackParamList = {
     appName: string;
     paymentMethod: PaymentMethod;
     amount: number;
-    order: {
+    order?: {
       orderId: string;
       orderNumber: string;
       placedAt: string;
@@ -87,10 +87,12 @@ export type AppStackParamList = {
       estimatedDeliveryMinutes?: number | null;
       estimatedDeliveryAt?: string | null;
     };
-    items: CartItem[];
-    deliveryAddress: string;
+    items?: CartItem[];
+    deliveryAddress?: string;
     isTrip?: boolean;
     expiresAt?: string;
+    upiIntent?: import('../api/payments').RazorpayUpiIntent;
+    recovered?: boolean;
   };
   // orderId is the real backend orders.id (UUID, from POST /orders) —
   // used only for navigation (TrackOrder's own real lookup), never shown.

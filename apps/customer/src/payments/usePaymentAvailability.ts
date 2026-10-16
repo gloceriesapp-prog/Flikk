@@ -9,5 +9,5 @@ import type { AllowedPaymentMethods } from './paymentMethod';
 export function usePaymentAvailability() {
   const query = useQuery({ queryKey: ['payment-availability'], queryFn: fetchPaymentAvailability, staleTime: 60_000, refetchInterval: 60_000 });
   const allowed: AllowedPaymentMethods = { cod: query.data?.cod ?? true, online: query.data?.online ?? true };
-  return { allowed, minOrderValue: query.data?.min_order_value ?? 0, loaded: query.isSuccess };
+  return { allowed, directUpiAvailable: query.data?.upi_intent === true, minOrderValue: query.data?.min_order_value ?? 0, loaded: query.isSuccess };
 }

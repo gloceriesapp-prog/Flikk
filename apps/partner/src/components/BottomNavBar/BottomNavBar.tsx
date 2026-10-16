@@ -1,14 +1,7 @@
-// Floating pill nav — same dark iOS glass recipe proven in
-// apps/customer/src/components/BottomNavBar/BottomNavBar.tsx
-// (BlurView systemThickMaterialDark + a black wash, not a flat fill) per
-// this app's explicit ask for a black-glassmorphism bar. Active tab is read
-// from the navigator's own state (useNavigationState), not local
-// component state — this bar is a sibling of the ScrollView on all three
-// tab-root screens (Orders/Catalog/Payouts), so deriving from the real
-// current route means it stays correct no matter which screen navigated
-// where, instead of drifting out of sync the way locally-tracked state can.
+// Android uses an edge-to-edge white bar; iOS retains its floating glass
+// pill. Both derive selection from the current navigation route.
 
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,6 +21,26 @@ export function BottomNavBar() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const activeRouteName = useNavigationState((state) => state.routes[state.index]?.name);
+  const items = BOTTOM_NAV_TABS.map((tab) => (
+    <BottomNavBarItem
+      key={tab.id}
+      tab={tab}
+      isActive={tab.id === activeRouteName}
+      onPress={() => navigation.navigate(tab.id)}
+    />
+  ));
+
+  if (Platform.OS === 'android') {
+    return (
+      <View style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0,
+        backgroundColor: '#FFFFFF', borderTopColor: '#E5E7EB', borderTopWidth: 1,
+        paddingTop: 6, paddingBottom: Math.max(insets.bottom, 8),
+      }}>
+        <View className="flex-row items-center">{items}</View>
+      </View>
+    );
+  }
 
   return (
     // Shadow lives on this outer, non-clipping wrapper — BlurView needs
@@ -48,14 +61,7 @@ export function BottomNavBar() {
         <View className="absolute inset-0 bg-black/60" />
 
         <View className="flex-row items-center justify-around px-2 py-2.5">
-          {BOTTOM_NAV_TABS.map((tab) => (
-            <BottomNavBarItem
-              key={tab.id}
-              tab={tab}
-              isActive={tab.id === activeRouteName}
-              onPress={() => navigation.navigate(tab.id)}
-            />
-          ))}
+          {items}
         </View>
       </BlurView>
     </View>

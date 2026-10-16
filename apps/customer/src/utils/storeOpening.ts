@@ -2,6 +2,8 @@ export interface StoreOpening {
   isActive: boolean;
   openTime?: string | null;
   closeTime?: string | null;
+  availabilityOverride?: boolean | null;
+  availabilityOverrideUntil?: string | null;
 }
 
 function minutes(value?: string | null): number | null {
@@ -19,6 +21,7 @@ function minutes(value?: string | null): number | null {
 // UI never authorizes checkout; the backend rechecks this transactionally.
 export function shopIsOpen(store: StoreOpening, date = new Date()): boolean {
   if (!store.isActive) return false;
+  if (store.availabilityOverride != null && store.availabilityOverrideUntil && Date.parse(store.availabilityOverrideUntil) > date.getTime()) return store.availabilityOverride;
   if (!store.openTime && !store.closeTime) return true;
   const open = minutes(store.openTime), close = minutes(store.closeTime);
   if (open == null || close == null) return false;

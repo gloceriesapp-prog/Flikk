@@ -16,6 +16,7 @@ export interface AttentionItem {
 
 const ITEMS: { key: string; label: string; href: string }[] = [
   { key: 'pendingStoreApplications', label: 'Store applications to review', href: '/approvals' },
+  { key: 'pendingStoreUpdates', label: 'Partner store updates to review', href: '/approvals' },
   { key: 'pendingRiderApplications', label: 'Rider applications to review', href: '/approvals' },
   { key: 'pendingProducts', label: 'Products / photos awaiting approval', href: '/approvals' },
   { key: 'refundsNeedingAction', label: 'Refunds failed or needing manual action', href: '/refunds' },
@@ -27,9 +28,13 @@ export async function GET() {
   const { denied } = await requireAdmin();
   if (denied) return denied;
   try {
-    const { data, error } = await supabaseAdmin.rpc('admin_attention_counts', { p_stuck_minutes: ATTENTION_THRESHOLD_MINUTES });
+    const [{ data, error }, { count: pendingStoreUpdates, error: changesError }] = await Promise.all([
+      supabaseAdmin.rpc('admin_attention_counts', { p_stuck_minutes: ATTENTION_THRESHOLD_MINUTES }),
+      supabaseAdmin.from('store_profile_change_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    ]);
     if (error) throw error;
-    const counts = (data ?? {}) as Record<string, number>;
+    if (changesError) throw changesError;
+    const counts = { ...(data ?? {}), pendingStoreUpdates: pendingStoreUpdates ?? 0 } as Record<string, number>;
     const items: AttentionItem[] = ITEMS.map((item) => ({ ...item, count: Number(counts[item.key] ?? 0) }));
     return NextResponse.json({ items, total: items.reduce((sum, item) => sum + item.count, 0) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {

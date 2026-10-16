@@ -7,7 +7,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function deliveryStores(query: Request['query']): Promise<string[]> {
   if (query.lat === undefined && query.lng === undefined) return [];
   const { lat, lng, zoneId } = readCoordinates(query);
-  return (await nearbyStores(lat, lng, zoneId, 20, null)).map((s: Record<string, unknown>) => String(s.id));
+  return (await nearbyStores(lat, lng, zoneId, 20, null, true)).map((s: Record<string, unknown>) => String(s.id));
 }
 export function browsePage(query: Request['query'], scope: unknown) {
   const fingerprint = createHash('sha256').update(JSON.stringify(scope)).digest('hex').slice(0, 32);

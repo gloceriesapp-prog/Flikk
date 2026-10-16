@@ -1,5 +1,6 @@
 import { AppImage as Image } from '../../components/AppImage';
-// Store settings (P6) — reached from StoreProfileHeader's gear icon.
+import { normalizeStoreHour } from '../../utils/storeHours';
+// Store settings (P6) — reached from the header's profile icon.
 // Full-screen, not a sheet — same reasoning as ProductDetailScreen's own
 // note: a multi-section editable form belongs on a real screen, not
 // squeezed into a modal. This is the one place a shop owner has complete
@@ -21,7 +22,6 @@ import { useEffect, useState } from 'react';
 import {
   ArrowLeft01Icon,
   Call02Icon,
-  CheckmarkCircle02Icon,
   Clock01Icon,
   Edit02Icon,
   File01Icon,
@@ -42,6 +42,7 @@ import { useChangeStoreLocation } from '../../hooks/useChangeStoreLocation';
 import { BrandFooter } from '../../components/BrandFooter';
 import { colors } from '../../theme/tokens';
 import { getAvatarImageUri } from '../../theme/placeholderImage';
+import { storePinPresentation } from '../../location/storePin';
 import { uploadStorePhoto } from '../../api/auth';
 import { API_BASE_URL } from '../../api/baseUrl';
 import { compressImageToTarget } from '../../media/compressImage';
@@ -68,6 +69,10 @@ const CHANGE_LABELS: Record<string, string> = {
   lat: 'map pin',
   lng: 'map pin',
   drug_license_number: 'drug licence',
+  pan_number: 'PAN',
+  gst_number: 'GST',
+  fssai_number: 'FSSAI',
+  shop_establishment_number: 'Shop & Establishment',
 };
 
 function describeChange(changes: Record<string, unknown>): string {
@@ -105,6 +110,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
 
   // Reviewed fields start from the pending request (if any), so saving again
   // keeps it instead of reverting it to the live values.
+  const location = storePinPresentation(profile);
   const pendingValues = profile.pendingChange?.changes ?? {};
   const pendingText = (key: string, live: string) => (typeof pendingValues[key] === 'string' ? (pendingValues[key] as string) : key in pendingValues ? '' : live);
   const [name, setName] = useState(pendingText('name', profile.storeName));
@@ -178,10 +184,11 @@ export function StoreSettingsScreen({ navigation }: Props) {
     try {
       const compressed = await compressImageToTarget(asset.uri, asset.width);
       const { url } = await uploadStorePhoto(compressed.base64, 'image/jpeg', compressed.uri);
-      updateProfile({ photoUrl: url });
-    } catch {
-      // Best-effort, same tolerance as this screen's other background
-      // saves — the avatar just stays whatever it was before the attempt.
+      const saved = await updateProfile({ photoUrl: url });
+      if (!saved.ok) throw new Error(saved.error);
+      Alert.alert('Store photo updated', 'Your new photo has been saved.');
+    } catch (err) {
+      Alert.alert('Could not save store photo', err instanceof Error ? err.message : 'Please try again.');
     } finally {
       setUploadingPhoto(false);
     }
@@ -209,6 +216,13 @@ export function StoreSettingsScreen({ navigation }: Props) {
   const panLocked = profile.panNumber.trim().length > 0;
 
   async function handleSave() {
+    const hoursChanged = openTime !== profile.openTime || closeTime !== profile.closeTime;
+    const normalizedOpen = normalizeStoreHour(openTime);
+    const normalizedClose = normalizeStoreHour(closeTime);
+    if (hoursChanged && (normalizedOpen === null || normalizedClose === null)) {
+      Alert.alert('Check store hours', 'Enter a valid time, such as 9:00 AM or 9:00 PM. Store hours use Indian Standard Time (IST).');
+      return;
+    }
     if (!fssaiValid) {
       Alert.alert('FSSAI format looks wrong', 'Should be exactly 14 digits, or leave it blank.');
       return;
@@ -227,8 +241,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
     const result = await updateProfile({
       storeName: name.trim() || profile.storeName,
       category,
-      openTime,
-      closeTime,
+      ...(hoursChanged && normalizedOpen !== null && normalizedClose !== null ? { openTime: normalizedOpen, closeTime: normalizedClose } : {}),
       avgPrepMinutes,
       manualAddress: manualAddress.trim(),
       ownerName: ownerName.trim(),
@@ -264,7 +277,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
   // onConfirm, one real implementation instead of two copies.
   const changeStoreLocation = useChangeStoreLocation();
 
-  if (profile.accessRole === 'manager') return <View className="flex-1 bg-white px-6 pb-safe pt-safe"><Text className="mt-6 text-xl font-semibold text-ink">Store settings</Text><Text className="mt-3 text-base text-ink/70">Your manager access covers orders, products and reviews. Ask the store owner to update legal details, store information or the payout account.</Text><Pressable onPress={() => navigation.goBack()} className="mt-6 rounded-xl bg-ink px-4 py-3"><Text className="text-center font-semibold text-white">Back</Text></Pressable></View>;
+  if (profile.accessRole === 'manager') return <View className="flex-1 bg-white px-6 pb-safe pt-safe"><Text className="mt-6 text-xl font-semibold text-ink">Store settings</Text><Text className="mt-3 text-base text-ink/70">Your manager access covers orders, products and reviews. Ask the store owner to update legal details, store information or the payout account.</Text><Pressable onPress={() => navigation.navigate('Reviews')} className="mt-6 rounded-xl bg-ink px-4 py-3"><Text className="text-center font-semibold text-white">Customer reviews</Text></Pressable><Pressable onPress={() => navigation.goBack()} className="mt-6 rounded-xl bg-ink px-4 py-3"><Text className="text-center font-semibold text-white">Back</Text></Pressable></View>;
 
   return (
     // Keyboard was covering the "Save changes" bar below (name TextInput
@@ -399,8 +412,8 @@ export function StoreSettingsScreen({ navigation }: Props) {
               the moment-to-moment toggle for "right now." Said explicitly
               so the two don't read as duplicates of each other. */}
             <Text className="text-[13px] font-medium leading-[17px] text-ink/50">
-              These are your standard operating hours. You can pause or accept live orders anytime from the{' '}
-              <Text className="font-semibold text-ink/80">Orders</Text> tab.
+              Your store opens and closes automatically at these IST times. Tap AM or PM to change it. The{' '}
+              <Text className="font-semibold text-ink/80">Orders</Text> toggle overrides hours until the next opening or closing time.
             </Text>
           </SettingsCard>
 
@@ -415,8 +428,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
                 never a fake placeholder. Falls back to district for any
                 store approved before this field existed. "Change on map"
                 is the one way to update the real pin after approval —
-                applies instantly (useChangeStoreLocation.ts's own note), not
-                gated behind Save. */}
+                is saved separately and remains pending until admin approval. */}
             <View className="gap-1.5">
               <Text className="text-[13px] font-medium text-ink/40">Store pin on map</Text>
               <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-black/10 bg-white px-4 py-3">
@@ -428,6 +440,14 @@ export function StoreSettingsScreen({ navigation }: Props) {
                 </Pressable>
               </View>
             </View>
+
+            {location.pending && (
+              <View className="gap-1 rounded-2xl bg-blue-50 p-3">
+                <Text className="text-sm font-semibold text-primary">Proposed location · Pending review</Text>
+                <Text className="text-sm text-ink">{location.address || location.district || 'New map pin saved'}</Text>
+                <Text className="text-xs text-ink/60">Customers and riders use your approved location until this change is approved.</Text>
+              </View>
+            )}
 
             {/* A genuinely separate field — the owner's own typed
                 description (e.g. "Near Bus Stand, opposite Xyz store"),
@@ -533,7 +553,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
               <Text className="flex-1 text-[12.5px] font-medium leading-[17px]">
                 <Text className="font-semibold text-red-500">Note: </Text>
                 <Text className="text-black/60">
-                  Formats are validated and encrypted for privacy. Once saved, contact support if you need to make changes.
+                  Formats are validated and encrypted for privacy. Use Replace legal document below to request an admin-reviewed change.
                 </Text>
               </Text>
             </View>
@@ -565,6 +585,9 @@ export function StoreSettingsScreen({ navigation }: Props) {
           <PayoutAccountCard />
 
           <View className="gap-4 rounded-[16px] bg-white p-4">
+            <SettingsLinkRow icon={InformationCircleIcon} label="Customer reviews" onPress={() => navigation.navigate('Reviews')} />
+            <SettingsLinkRow icon={InformationCircleIcon} label="Store team" onPress={() => navigation.navigate('Staff')} />
+            <SettingsLinkRow icon={File01Icon} label="Replace legal document" onPress={() => navigation.navigate('DocumentReplacement')} />
             <SettingsLinkRow icon={InformationCircleIcon} label="Help & support" onPress={() => navigation.navigate('Support')} />
             {/* No confirmation dialog — RootNavigator swaps to the auth
               stack the instant accessToken clears, same "store update

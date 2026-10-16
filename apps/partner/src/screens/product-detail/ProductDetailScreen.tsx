@@ -1,3 +1,4 @@
+import { parseMoneyInput, validVariantPrices } from '../../utils/moneyInput';
 import { AppImage as Image } from '../../components/AppImage';
 // Product detail — reached from ProductRow's "View" trigger on the
 // catalog. A real pushed screen (native-stack, same as OrderDetailScreen),
@@ -21,6 +22,10 @@ import { AppImage as Image } from '../../components/AppImage';
 // product later picks from these exact same labels, so keeping shop
 // owners off a fixed list is what makes size-matching possible at all.
 
+import * as ImagePicker from 'expo-image-picker';
+import { compressImageToTarget } from '../../media/compressImage';
+import { uploadProductPhoto } from '../../api/catalog';
+import { ProductCategoryPicker } from '../catalog/components/ProductCategoryPicker';
 import { useState } from 'react';
 import { ArrowLeft01Icon, Delete02Icon, Edit02Icon, ShoppingBasketAdd01Icon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -52,6 +57,9 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const updateProduct = useCatalogStore((state) => state.updateProduct);
   const deleteProduct = useCatalogStore((state) => state.deleteProduct);
 
+  const [category, setCategory] = useState(product?.category ?? '');
+  const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [name, setName] = useState(product?.name ?? '');
   const [draft, setDraft] = useState<ProductVariant[]>(product?.variants ?? []);
   const [sizePickerOpen, setSizePickerOpen] = useState(false);
@@ -70,7 +78,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const currentProduct = product;
 
   const addedLabels = new Set(draft.map((v) => v.label));
-  const availableSizes = standardSizeOptions(currentProduct.category, currentProduct.variants).filter(
+  const availableSizes = standardSizeOptions(category, currentProduct.variants).filter(
     (label) => !addedLabels.has(label)
   );
 
@@ -80,7 +88,8 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   }
 
   function setVariantPrice(variantId: string, rawPrice: string) {
-    const price = Number(rawPrice.replace(/[^0-9]/g, '')) || 0;
+    const price = rawPrice === '' || rawPrice === '.' ? 0 : parseMoneyInput(rawPrice);
+    if (price === null) return;
     setDraft((prev) =>
       prev.map((v) => {
         if (v.id !== variantId) return v;
@@ -93,8 +102,8 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   }
 
   function setVariantMrp(variantId: string, rawMrp: string) {
-    const digits = rawMrp.replace(/[^0-9]/g, '');
-    const originalPrice = digits ? Number(digits) : undefined;
+    const originalPrice = rawMrp === '' || rawMrp === '.' ? undefined : parseMoneyInput(rawMrp);
+    if (originalPrice === null) return;
     setDraft((prev) => prev.map((v) => (v.id === variantId ? { ...v, originalPrice } : v)));
   }
 
@@ -115,7 +124,23 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     setDraft((prev) => prev.filter((v) => v.id !== variantId));
   }
 
+  async function handlePhoto() {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) { Alert.alert('Photo access needed', 'Allow photo access in device settings to change this image.'); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
+      if (result.canceled || !result.assets[0]?.uri) return;
+      setUploadingPhoto(true);
+      const asset = result.assets[0];
+      const compressed = await compressImageToTarget(asset.uri, asset.width);
+      const photo = await uploadProductPhoto(compressed.base64, 'image/jpeg');
+      setImageUrl(photo.url);
+    } catch (err) { Alert.alert('Photo upload failed', err instanceof Error ? err.message : 'Please try again.'); }
+    finally { setUploadingPhoto(false); }
+  }
+
   async function handleSave() {
+    if (!validVariantPrices(draft)) { Alert.alert("Check prices", "Enter a positive price for every size. MRP must be at least the selling price."); return; }
     // Customers can only order counted packs — a size without a count
     // would stay unorderable, so ask for it before saving.
     if (hasUncountedVariant(draft)) {
@@ -124,12 +149,12 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     }
     setSaving(true);
     try {
-      const saved = await updateProduct(currentProduct.id, name.trim() || currentProduct.name, draft);
+      const saved = await updateProduct(currentProduct.id, name.trim() || currentProduct.name, draft, { category, imageUrl });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // A live product's new name/prices wait for admin (migration 115);
       // stock changes are already live.
       if (saved?.approvalStatus === 'approved' && saved.hasPendingChanges) {
-        Alert.alert('Sent for review', 'Customers keep seeing the current name and prices until Gloceries approves your change. Stock updates are live now.');
+        Alert.alert('Sent for review', 'Your changes were saved. Changes requiring review stay pending until Gloceries approves them; stock updates are live now.');
       }
       navigation.navigate('Catalog');
     } catch (err) {
@@ -196,9 +221,9 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
       <ScrollView className="flex-1" contentContainerClassName="gap-5 px-5 pb-6" keyboardShouldPersistTaps="handled">
         <View className="flex-row items-center gap-3">
-          <View className="h-16 w-16 overflow-hidden rounded-2xl bg-gray-100">
-            <Image source={{ uri: product.imageUrl ?? PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
-          </View>
+          <Pressable accessibilityLabel="Change product photo" disabled={uploadingPhoto} onPress={() => void handlePhoto()} className="h-16 w-16 overflow-hidden rounded-2xl bg-gray-100">
+            <Image source={{ uri: imageUrl ?? PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+          </Pressable>
 
           <View className="flex-1 gap-0.5">
             {/* Editable product name — plain TextInput styled to match the
@@ -218,6 +243,9 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             </Text>
           </View>
         </View>
+
+        <Text className="text-sm text-ink/60">{uploadingPhoto ? 'Uploading photo…' : 'Tap the photo to replace it. Changes may need approval.'}</Text>
+        <ProductCategoryPicker selected={category} onSelect={setCategory} />
 
         <View className="gap-3">
           <View className="flex-row items-center">
@@ -267,7 +295,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       <View className="px-5 pb-9 pt-3">
         <Pressable
           onPress={handleSave}
-          disabled={saving}
+          disabled={saving || uploadingPhoto}
           className="items-center justify-center rounded-full bg-black py-4 shadow-lg shadow-black/30"
           style={({ pressed }) => ({ opacity: pressed || saving ? 0.85 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] })}
         >

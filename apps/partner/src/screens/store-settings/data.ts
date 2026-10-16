@@ -30,6 +30,9 @@ export interface StoreProfile {
   storeName: string;
   category: string;
   isOpen: boolean;
+  availabilityOverride?: boolean | null;
+  availabilityOverrideUntil?: string | null;
+  availabilityNextChangeAt?: string | null;
   // Admin suspension (stores.admin_suspended, migration 110). While set the
   // store cannot be reopened from here; only Gloceries can lift it.
   adminSuspended: boolean;
@@ -58,10 +61,8 @@ export interface StoreProfile {
   // to a seeded placeholder keyed by `id`, never a fake name.
   photoUrl: string | null;
   hasUnreadNotifications: boolean;
-  // "9:00 AM" / "9:00 PM" — free text, not a time picker component, at
-  // this scale. Store hours are informational display only for now (the
-  // live Open/Closed toggle on the Orders header is the thing that
-  // actually gates order visibility, per stores.is_active).
+  // Saved daily IST hours drive automatic opening/closing. The header
+  // switch creates a temporary override until the next schedule boundary.
   openTime: string;
   closeTime: string;
   // Mirrors stores.avg_prep_minutes — shown to a customer as an ETA input

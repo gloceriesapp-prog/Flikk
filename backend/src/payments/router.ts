@@ -6,6 +6,9 @@ import { getPaymentRecovery, getPendingPayments } from './recovery.js';
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { createOrder } from './createOrder.js';
+import { createUpiIntent } from './upiIntent.js';
+import { env } from '../config/env.js';
+import { getPaymentContact, savePaymentContact } from './contact.js';
 import { verifyPayment } from './verifyPayment.js';
 import { requirePaymentsConfigured } from './razorpayClient.js';
 import { getPaymentAvailability, requireOnlinePaymentsOpen } from './availability.js';
@@ -23,7 +26,8 @@ paymentsRouter.get('/availability', async (_req, res, next) => {
   try {
     const availability = await getPaymentAvailability();
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ online: availability.online, cod: availability.cod, min_order_value: availability.minOrderValue });
+    res.json({ online: availability.online, cod: availability.cod, min_order_value: availability.minOrderValue,
+      upi_intent: availability.online && env.razorpayEnv === 'live' });
   } catch (error) { next(error); }
 });
 paymentsRouter.get('/pending', requireAuth, requireRole('customer'), getPendingPayments);
@@ -34,8 +38,11 @@ paymentsRouter.post('/abandon', requireAuth, requireRole('customer'), abandonChe
 paymentsRouter.patch('/preferred-method', requireAuth, requireRole('customer'), selectPaymentPreference);
 paymentsRouter.get('/preference', requireAuth, requireRole('customer'), getPaymentPreference);
 paymentsRouter.patch('/preference', requireAuth, requireRole('customer'), savePaymentPreference);
+paymentsRouter.get('/contact', requireAuth, requireRole('customer'), getPaymentContact);
+paymentsRouter.patch('/contact', requireAuth, requireRole('customer'), savePaymentContact);
 
 paymentsRouter.post('/create-order', requireAuth, requireRole('customer'), requirePaymentsConfigured, requireOnlinePaymentsOpen, createOrder);
+paymentsRouter.post('/upi-intent', requireAuth, requireRole('customer'), requirePaymentsConfigured, requireOnlinePaymentsOpen, createUpiIntent);
 // Format check works without PG keys; name lookup needs verification creds.
 paymentsRouter.post('/verify', requireAuth, requireRole('customer'), requirePaymentsConfigured, verifyPayment);
 paymentsRouter.post('/webhook', handleWebhook);

@@ -115,12 +115,16 @@ export type AuthStackParamList = {
     // already computes for its own confirm card (reverseGeocodeAddress) —
     // now threaded onward instead of discarded, so StoreProfileHeader can
     // show a real address, not just district.
-    onConfirm: (coordinates: import('../location/geocoding').Coordinates, district: string, addressLine: string | null) => void;
+    onConfirm: (coordinates: import('../location/geocoding').Coordinates, district: string, addressLine: string | null) => void | Promise<void>;
   };
 };
 
 export type AppStackParamList = {
   Orders: undefined;
+  OrderHistory: { status?: 'delivered' | 'cancelled' | 'failed' } | undefined;
+  Reviews: undefined;
+  Staff: undefined;
+  DocumentReplacement: undefined;
   Catalog: undefined;
   Payouts: undefined;
   // Order detail (P3) — reached from OrderCard's "View Order". Only an id
@@ -168,6 +172,6 @@ export type AppStackParamList = {
   // shape, same onConfirm contract either way.
   LocationPin: {
     initialCoordinates: import('../location/geocoding').Coordinates | null;
-    onConfirm: (coordinates: import('../location/geocoding').Coordinates, district: string, addressLine: string | null) => void;
+    onConfirm: (coordinates: import('../location/geocoding').Coordinates, district: string, addressLine: string | null) => void | Promise<void>;
   };
 };

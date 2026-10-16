@@ -1,29 +1,10 @@
-import { AppImage as Image } from '../../../components/AppImage';
-// Top-of-Home identity row — avatar (ringed, not a bare circle — the one
-// deliberate "this app has taste" detail on the screen a store owner opens
-// every single time), the store's own name as the title, then the real
-// full address on its own line below it, now a real tappable row (not
-// static text) — tapping it opens the same real map-pin screen
-// (useChangeStoreLocation.ts, LocationPinScreen) StoreSettingsScreen's own
-// "Change" button already uses, per an explicit ask to reuse that same
-// flow here instead of a second copy of it. A real native Switch (Open/
-// Closed), Settings, and the notification bell sit as a row of controls
-// on the right — the switch to the LEFT of Settings, per an explicit ask.
-// Flat white, no gradient backdrop (see OrdersScreen.tsx).
-//
-// The switch is a real toggle, not just a read-out — flipping it calls
-// onToggleOpen, same instant-feel contract as the catalog's in-stock
-// switch: a store owner flipping this mid-rush needs it to respond
-// immediately, not round-trip to a server first (useStoreProfileStore.
-// toggleOpen applies the flip locally right away, PATCHes /partner/store
-// in the background). This is the first thing rendered on the screen a
-// store owner opens dozens of times a day — worth more polish per pixel
-// than a screen they visit once.
-
-import { ArrowRight01Icon, User02Icon } from '@hugeicons/core-free-icons';
-import { Pressable, Switch, Text, View } from 'react-native';
+import { User02Icon } from '@hugeicons/core-free-icons';
+import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { AppImage as Image } from '../../../components/AppImage';
 import { AppIcon } from '../../../components/AppIcon';
+import { storePinPresentation } from '../../../location/storePin';
+import { useStoreProfileStore } from '../../../store/useStoreProfileStore';
 import { colors } from '../../../theme/tokens';
 import { getAvatarImageUri } from '../../../theme/placeholderImage';
 import type { StoreProfile } from '../data';
@@ -36,92 +17,96 @@ interface Props {
   onPressNotifications: () => void;
 }
 
-export function StoreProfileHeader({ profile, onToggleOpen, onPressLocation, onPressSettings, onPressNotifications }: Props) {
+export function StoreProfileHeader({ profile, onToggleOpen, onPressLocation, onPressSettings }: Props) {
+  const location = storePinPresentation(profile);
+  const togglingOpen = useStoreProfileStore(state => state.togglingOpen);
+  const statusError = useStoreProfileStore(state => state.statusError);
+  const setAvailability = useStoreProfileStore(state => state.setAvailability);
+  const disabled = !profile.id || profile.adminSuspended || togglingOpen;
+  // Always show the approved pickup address, never the owner's device GPS
+  // or a proposed pin that customers and riders cannot use yet.
+  const address = (profile.addressLine?.trim() || profile.district || 'Address not set').replace(/\s+/g, ' ');
+  const pendingReview = profile.pendingChange?.status === 'pending';
+  const statusLabel = togglingOpen ? 'Saving…' : profile.adminSuspended ? 'Suspended' : profile.isOpen ? 'Open' : 'Closed';
+  const manualUntil = profile.availabilityOverrideUntil
+    ? new Date(profile.availabilityOverrideUntil).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' }) : null;
+
   return (
     <View className="pt-safe">
-      <View className="flex-row items-center justify-between px-5 pb-5 pt-3">
-        <View className="flex-1 flex-row items-center gap-3.5">
-          <View className="rounded-full p-0.5 shadow-sm shadow-black/5">
-            <Image source={{ uri: profile.photoUrl ?? getAvatarImageUri(profile.id || 'partner-store') }} className="h-11 w-11 rounded-full" />
-          </View>
-
-          <View className="flex-1 gap-0">
-            <Text className="text-[18px] font-medium tracking-tight text-ink" numberOfLines={1}>
+      <View className="gap-3 px-5 pb-4 pt-3">
+        <View className="flex-row items-center gap-3">
+          <Image source={{ uri: profile.photoUrl ?? getAvatarImageUri(profile.id || 'partner-store') }} className="h-11 w-11 rounded-full" />
+          <View className="min-w-0 flex-1">
+            <Text className="text-[16px] font-semibold leading-[20px] tracking-tight text-ink" numberOfLines={1} ellipsizeMode="tail">
               {profile.storeName}
             </Text>
-
-            {/* Real full address (stores.address_line, captured during
-                onboarding's LocationPinScreen reverse-geocode) — falls
-                back to district for any store approved before this field
-                existed, and to a real "Loading…" label before GET
-                /partner/store (useStoreProfileStore.loadProfile) resolves
-                at all, never silent empty text next to an orphaned pin.
-                Now a real Pressable — tapping it opens the same map-pin
-                screen "Change on map" in Settings already does, per an
-                explicit ask to reach it straight from here too. */}
-            <Pressable onPress={onPressLocation} hitSlop={4} className="flex-row items-center gap-1">
-              <Text className="text-sm font-medium text-ink/70">Located at:</Text>
-              <Text className="flex-1 text-sm font-medium text-ink/50" numberOfLines={1}>
-                {profile.addressLine || profile.district || 'Loading…'}
+            <Pressable
+              onPress={onPressLocation}
+              accessibilityRole="button"
+              accessibilityLabel={`Change store location: ${address}`}
+              className="justify-center"
+              hitSlop={{ top: 4, bottom: 10 }}
+            >
+              <Text className="text-[12px] font-medium leading-[17px] text-ink/75" numberOfLines={1} ellipsizeMode="tail">
+                <Text className="text-black">At </Text>{address}
               </Text>
-              <AppIcon icon={ArrowRight01Icon} size={12} color={`${colors.ink}60`} />
             </Pressable>
           </View>
-        </View>
-
-        <View className="flex-row items-center gap-2.5">
-          {/* Real Open/Closed switch — left of Settings, per an explicit
-              ask. Same instant-feel toggle onToggleOpen already provides
-              (file header note); the label next to it is what actually
-              names the state, since a bare Switch alone doesn't say
-              Open vs Closed the way the pill it replaced used to. */}
-          <View className="flex-row items-center gap-1.5 rounded-full bg-white py-1 pl-3 pr-1">
-            <Text className={`text-[13px] font-medium ${profile.isOpen ? 'text-lime-deep' : 'text-ink/50'}`}>
-              {profile.adminSuspended ? 'Suspended' : profile.isOpen ? 'Open' : 'Closed'}
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityLabel="Store open for orders"
+            accessibilityValue={{ text: statusLabel }}
+            accessibilityState={{ checked: profile.isOpen && !profile.adminSuspended, disabled, busy: togglingOpen }}
+            disabled={disabled}
+            onPress={() => {
+              if (disabled) return;
+              void Haptics.selectionAsync().catch(() => {});
+              onToggleOpen();
+            }}
+            className="h-11 shrink-0 flex-row items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-3"
+            style={{ opacity: disabled ? 0.6 : 1 }}
+          >
+            <Text className="text-[13px] font-semibold" style={{ color: profile.isOpen && !profile.adminSuspended ? '#15803D' : '#6B7280' }}>
+              {statusLabel}
             </Text>
-            <Switch
-              value={profile.isOpen}
-              disabled={profile.adminSuspended}
-              onValueChange={() => {
-                Haptics.selectionAsync();
-                onToggleOpen();
-              }}
-              trackColor={{ false: '#D1D5DB', true: colors.limeDeep }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-
-          {/* No settings screen yet (P6, out of scope until later) —
-              stubbed rather than silently doing nothing, same convention
-              as the mic icon on apps/customer's HomeSearchBar. */}
+            <View style={{ width: 36, height: 22, borderRadius: 11, padding: 2, justifyContent: 'center', alignItems: profile.isOpen && !profile.adminSuspended ? 'flex-end' : 'flex-start', backgroundColor: profile.isOpen && !profile.adminSuspended ? '#15803D' : '#D1D5DB' }}>
+              <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#FFFFFF' }} />
+            </View>
+          </Pressable>
           <Pressable
             onPress={onPressSettings}
-            hitSlop={10}
-            className="h-11 w-11 items-center justify-center rounded-full bg-white"
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            accessibilityRole="button"
+            accessibilityLabel="Store settings"
+            className="h-11 w-11 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white"
           >
-            <AppIcon icon={User02Icon} size={19} color={colors.ink} />
+            <AppIcon icon={User02Icon} size={20} color={colors.ink} />
           </Pressable>
-
-          {/* <Pressable
-            onPress={onPressNotifications}
-            hitSlop={10}
-            className="h-11 w-11 items-center justify-center rounded-full bg-white"
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-          >
-            <AppIcon icon={Notification01Icon} size={19} color={colors.ink} />
-            {profile.hasUnreadNotifications && (
-              <View className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border border-white bg-lime-deep" />
-            )}
-          </Pressable> */}
         </View>
+        <View className="flex-row flex-wrap items-center justify-between gap-2">
+          <Text className="text-[11px] font-medium text-ink/60">
+            {manualUntil ? `Manual until ${manualUntil} IST` : 'Automatic store hours · IST'}
+          </Text>
+          {manualUntil && <Pressable onPress={() => void setAvailability('auto')} disabled={disabled} hitSlop={8} accessibilityRole="button" accessibilityLabel="Resume automatic store hours">
+            <Text className="text-[11px] font-semibold text-primary">Use store hours</Text>
+          </Pressable>}
+        </View>
+
       </View>
+
+      {pendingReview && (
+        <View accessibilityRole="alert" className="mx-5 mb-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+          <Text className="text-[13px] font-medium leading-[18px] text-primary">
+            {location.pending ? 'Location update awaiting approval. Customers and riders still use your approved address.' : 'Store updates awaiting approval. Customers still see your approved details.'}
+          </Text>
+        </View>
+      )}
+      {statusError && <Text accessibilityRole="alert" className="mx-5 mb-3 text-sm font-medium text-red-700">{statusError}</Text>}
       {profile.adminSuspended && (
         <View className="mx-5 mb-4 rounded-2xl bg-red-50 px-4 py-3">
           <Text className="text-sm font-semibold text-red-700">
             Suspended by Gloceries{profile.suspendedReason ? `: ${profile.suspendedReason}` : ''}
           </Text>
-          <Text className="mt-0.5 text-xs font-medium text-red-700/80">Your store is closed to customers. Contact Gloceries support to reopen.</Text>
+          <Text className="mt-1 text-xs text-red-700/80 font-medium">Your store is closed to customers. Contact Gloceries support to reopen.</Text>
         </View>
       )}
     </View>

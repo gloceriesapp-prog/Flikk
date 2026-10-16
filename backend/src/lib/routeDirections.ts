@@ -1,103 +1,101 @@
-// Real road-following route between two points, via Google's classic
-// Directions REST API — the same server-side-key pattern reverseGeocode.ts
-// already uses for Geocoding (maps.googleapis.com/maps/api/..., IP-restricted
-// GOOGLE_GEOCODING_API_KEY). The rider app's own GOOGLE_MAPS_API_KEY is the
-// Android-app-restricted Maps *SDK* key (renders tiles), NOT usable for a REST
-// Directions call — so this stays backend-side, proxied to the app.
-//
-// The Directions API product must be enabled on the same Google Cloud key.
-// Degrades to null (never throws) when the key is unset or Google fails — the
-// caller (rider map) then just draws the straight great-circle line it always
-// had, so a missing key / quota blip is a cosmetic downgrade, never a crash.
+// Server-side Routes API keeps native tile-rendering credentials separate
+// from road routing. The public response remains compatible with rider maps.
 import { env } from '../config/env.js';
+import { logger } from './logger.js';
 
-export interface LatLng {
-  latitude: number;
-  longitude: number;
-}
-
-interface DirectionsResponse {
-  status: string;
-  routes?: {
-    overview_polyline?: { points?: string };
-    // One leg per origin→destination with no waypoints; summed defensively
-    // below in case Google ever splits it.
-    legs?: { duration?: { value?: number }; distance?: { value?: number } }[];
-  }[];
-}
-
-// A routed line plus the real driving time/length Google computed for it —
-// durationSec/distanceM are null when Google omits legs (shouldn't happen for
-// a resolvable driving route, but the caller must not assume they're present).
+export interface LatLng { latitude: number; longitude: number }
 export interface RouteResult {
   points: LatLng[];
   durationSec: number | null;
   distanceM: number | null;
 }
 
-// Google's Encoded Polyline Algorithm Format decode — the one piece of real
-// logic here, hence the self-check in routeDirections.test.ts. Standard
-// signed-varint + delta scheme; 1e5 fixed-point degrees.
+const MAX_POLYLINE_LENGTH = 200_000;
+const MAX_ROUTE_POINTS = 20_000;
+function validPoint(point: LatLng): boolean {
+  return Number.isFinite(point.latitude) && Math.abs(point.latitude) <= 90
+    && Number.isFinite(point.longitude) && Math.abs(point.longitude) <= 180;
+}
+
+// Reject truncated/oversized provider data instead of producing invalid pins
+// or looping on malformed varints. Google's encoding uses 1e5 fixed point.
 export function decodePolyline(encoded: string): LatLng[] {
+  if (encoded.length > MAX_POLYLINE_LENGTH) return [];
   const points: LatLng[] = [];
   let index = 0;
-  let lat = 0;
-  let lng = 0;
-
-  while (index < encoded.length) {
-    let result = 0;
+  let latitude = 0;
+  let longitude = 0;
+  function delta(): number | null {
+    let value = 0;
     let shift = 0;
-    let b: number;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
+    while (index < encoded.length && shift <= 30) {
+      const chunk = encoded.charCodeAt(index++) - 63;
+      if (chunk < 0 || chunk > 63) return null;
+      value += (chunk & 31) * 2 ** shift;
+      if (chunk < 32) return value % 2 ? -(Math.floor(value / 2) + 1) : value / 2;
       shift += 5;
-    } while (b >= 0x20);
-    lat += result & 1 ? ~(result >> 1) : result >> 1;
-
-    result = 0;
-    shift = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    lng += result & 1 ? ~(result >> 1) : result >> 1;
-
-    points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+    }
+    return null;
+  }
+  while (index < encoded.length) {
+    const latDelta = delta();
+    const lngDelta = delta();
+    if (latDelta === null || lngDelta === null) return [];
+    latitude += latDelta;
+    longitude += lngDelta;
+    const point = { latitude: latitude / 1e5, longitude: longitude / 1e5 };
+    if (!validPoint(point) || points.length >= MAX_ROUTE_POINTS) return [];
+    points.push(point);
   }
   return points;
 }
 
+interface RoutesResponse {
+  routes?: { polyline?: { encodedPolyline?: unknown }; duration?: unknown; distanceMeters?: unknown }[];
+}
+
 export async function fetchRoute(origin: LatLng, dest: LatLng): Promise<RouteResult | null> {
-  if (!env.googleGeocodingApiKey) return null;
-  if (![origin.latitude, origin.longitude, dest.latitude, dest.longitude].every(Number.isFinite)) return null;
-
+  if (!env.googleRoutesApiKey || !validPoint(origin) || !validPoint(dest)) return null;
   try {
-    const url = new URL('https://maps.googleapis.com/maps/api/directions/json');
-    url.searchParams.set('origin', `${origin.latitude},${origin.longitude}`);
-    url.searchParams.set('destination', `${dest.latitude},${dest.longitude}`);
-    url.searchParams.set('mode', 'driving');
-    url.searchParams.set('key', env.googleGeocodingApiKey);
-
-    const res = await fetch(url);
-    if (!res.ok) return null;
-
-    const data = (await res.json()) as DirectionsResponse;
-    const route = data.status === 'OK' ? data.routes?.[0] : undefined;
-    const encoded = route?.overview_polyline?.points;
-    if (!encoded) return null;
-
+    const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': env.googleRoutesApiKey,
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline',
+      },
+      body: JSON.stringify({
+        origin: { location: { latLng: origin } },
+        destination: { location: { latLng: dest } },
+        travelMode: 'DRIVE',
+        routingPreference: 'TRAFFIC_UNAWARE',
+        computeAlternativeRoutes: false,
+        polylineQuality: 'OVERVIEW',
+        polylineEncoding: 'ENCODED_POLYLINE',
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) {
+      logger.warn({ provider: 'google_routes', httpStatus: response.status }, 'Route provider rejected request; check server API restrictions and billing');
+      return null;
+    }
+    const data = await response.json() as RoutesResponse;
+    const route = Array.isArray(data.routes) ? data.routes[0] : undefined;
+    const encoded = route?.polyline?.encodedPolyline;
+    if (typeof encoded !== 'string') return null;
     const points = decodePolyline(encoded);
     if (points.length === 0) return null;
-
-    const legs = route?.legs ?? [];
-    // `|| null`: a 0 sum means legs were absent/empty, not a real 0-second
-    // trip — surface it as "no ETA" so the caller uses its own fallback.
-    const durationSec = legs.reduce((sum, l) => sum + (l.duration?.value ?? 0), 0) || null;
-    const distanceM = legs.reduce((sum, l) => sum + (l.distance?.value ?? 0), 0) || null;
-    return { points, durationSec, distanceM };
+    const duration = typeof route?.duration === 'string' && /^\d+(?:\.\d+)?s$/.test(route.duration)
+      ? Number(route.duration.slice(0, -1)) : NaN;
+    const distance = route?.distanceMeters;
+    return {
+      points,
+      durationSec: Number.isFinite(duration) && duration >= 0 ? duration : null,
+      distanceM: typeof distance === 'number' && Number.isFinite(distance) && distance >= 0 ? distance : null,
+    };
   } catch {
+    // Never log provider errors/URLs: they can contain credentials or GPS data.
+    logger.warn({ provider: 'google_routes' }, 'Route lookup unavailable or timed out');
     return null;
   }
 }

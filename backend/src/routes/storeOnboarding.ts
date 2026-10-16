@@ -1,3 +1,4 @@
+import { onboardingCoordinates } from '../stores/onboardingCoordinates.js';
 import { resolveStoreAccess } from '../stores/access.js';
 import { storePrivateDocument } from '../media/privateDocuments.js';
 import { storePublicImage } from '../media/publicImages.js';
@@ -29,6 +30,8 @@ async function requirePrimaryStoreAccount(req: AuthedRequest, _res: import('expr
 
 
 interface OnboardingFields {
+  lat?: number;
+  lng?: number;
   storeName?: string;
   category?: string;
   phone?: string;
@@ -69,6 +72,8 @@ storeOnboardingRouter.get('/store-categories', requireAuth, (_req, res) => {
 storeOnboardingRouter.post('/store-application', requireAuth, requirePrimaryStoreAccount, async (req: AuthedRequest, res, next) => {
   try {
     const {
+      lat,
+      lng,
       storeName,
       category,
       phone,
@@ -93,6 +98,7 @@ storeOnboardingRouter.post('/store-application', requireAuth, requirePrimaryStor
     if (!storeName || !category || !district) {
       throw new AppError(400, 'MISSING_FIELDS', 'storeName, category and district are required.');
     }
+    const coordinates = onboardingCoordinates(lat, lng, true);
     // Same allowed set admin uses; a pharmacy must give its drug licence
     // (falls back to one already autosaved on the draft).
     let drugLicense = normalizeDrugLicense(drugLicenseNumber);
@@ -128,6 +134,7 @@ storeOnboardingRouter.post('/store-application', requireAuth, requirePrimaryStor
     const { error } = await supabase.from('store_onboarding_drafts').upsert(
       {
         user_id: req.user!.id,
+        ...coordinates,
         store_name: storeName,
         category,
         phone: phone || null,
@@ -244,6 +251,8 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, requirePrimaryStoreAcco
       throw new AppError(400, 'INVALID_PAN_FORMAT', 'PAN must be in the format ABCDE1234F.');
     }
 
+    const coordinates = onboardingCoordinates(lat, lng, false);
+
     // Partial upsert — only fields the caller actually sent overwrite the
     // existing row; one step's own PATCH must never blank out an earlier
     // step's already-saved fields.
@@ -254,8 +263,7 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, requirePrimaryStoreAcco
     if (district !== undefined) patch.district = district;
     if (addressLine !== undefined) patch.address_line = addressLine;
     if (manualAddress !== undefined) patch.manual_address = manualAddress;
-    if (lat !== undefined) patch.lat = lat;
-    if (lng !== undefined) patch.lng = lng;
+    Object.assign(patch, coordinates);
     if (photoUrl !== undefined) patch.photo_url = photoUrl;
     if (gstNumber !== undefined) patch.gst_number = gstNumber;
     if (ownerName !== undefined) patch.owner_name = ownerName;

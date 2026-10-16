@@ -1,3 +1,4 @@
+import { usePrivateQueryScope } from '../../network/usePrivateQueryScope';
 import { useFocusEffect } from '@react-navigation/native';
 // Order queue (P2) — this app's home screen. Reached first on app open
 // (see AppNavigator.tsx's initialRouteName) and via push-notification tap
@@ -10,7 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 // orders. This screen just renders what the store holds.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -55,10 +56,16 @@ const STATUS_GROUPS: { status: PartnerOrderStatus; filterValue: OrderStatusFilte
 ];
 
 export function OrdersScreen({ navigation }: Props) {
+  const queryScope = usePrivateQueryScope();
   const orders = useOrdersStore((state) => state.orders);
   const acknowledgeOrder = useOrdersStore((state) => state.acknowledgeOrder);
   const markPacked = useOrdersStore((state) => state.markPacked);
   const loadOrders = useOrdersStore((state) => state.loadOrders);
+  const queueError = useOrdersStore(state => state.error);
+  const lastUpdatedAt = useOrdersStore(state => state.lastUpdatedAt);
+  const queueLoading = useOrdersStore(state => state.loading);
+  const nextCursor = useOrdersStore(state => state.nextCursor);
+  const loadMore = useOrdersStore(state => state.loadMore);
   // Defaults to New Orders, not All — the screen a shop owner opens
   // should lead with what needs their action, not a mixed list they have
   // to scan through to find it.
@@ -70,10 +77,10 @@ export function OrdersScreen({ navigation }: Props) {
 
   useFocusEffect(useCallback(() => {
     void loadProfile();
-    void loadOrders();
+    void loadOrders().catch(() => {});
   }, [loadProfile, loadOrders]));
 
-  // Orders are already polled at 3.5s (features/incoming-order-alert/
+  // Order updates use the foreground digest loop (features/incoming-order-alert/
   // useOrderPolling, mounted app-wide for an approved session), but the store
   // profile — the Open/Closed state and admin-suspension banner this screen's
   // header shows — is otherwise fetch-on-focus only. Poll it while focused so
@@ -86,18 +93,14 @@ export function OrdersScreen({ navigation }: Props) {
   // former header note on that bug).
   const queryClient = useQueryClient();
   const { data: todayStats } = useQuery({
-    queryKey: ['stats-today'],
+    queryKey: ['stats-today', queryScope],
     queryFn: fetchTodayStats,
     // Cheap server aggregate — a periodic refetch so these numbers never sit
-    // at the global 60s staleTime while the queue below updates every 3.5s
-    // (useOrderPolling). Event-based invalidation (the effect further down)
-    // covers the instant case; this is only the safety net. No AppState
-    // special-casing on purpose: a plain interval, same convention as
-    // useOrderPolling — the OS suspends JS (and this timer) while
-    // backgrounded, and useForegroundRefresh refetches on return.
+    // at the global staleTime. Queue changes also invalidate these totals.
+    // React Query pauses intervals while the app is backgrounded.
     refetchInterval: 30_000,
   });
-  const { data: payoutAccount } = useQuery({ queryKey: PAYOUT_ACCOUNT_QUERY_KEY, queryFn: fetchPayoutAccount });
+  const { data: payoutAccount } = useQuery({ queryKey: [...PAYOUT_ACCOUNT_QUERY_KEY, queryScope], queryFn: fetchPayoutAccount });
 
   // Stats-affecting projection of the queue — each order's id + status. This
   // string changes exactly when an event that moves TodayStatsCard's numbers
@@ -179,6 +182,25 @@ export function OrdersScreen({ navigation }: Props) {
       )}
 
       <View className="pb-1">
+        {queueError && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retry orders"
+            accessibilityState={{ disabled: queueLoading, busy: queueLoading }}
+            disabled={queueLoading}
+            onPress={() => void loadOrders().catch(() => {})}
+            className="mx-5 gap-2 rounded-2xl bg-white p-4"
+          >
+            <Text accessibilityLiveRegion="polite" className="font-semibold text-danger">
+              {queueLoading ? 'Retrying your orders…' : 'Could not refresh orders'}
+            </Text>
+            <Text className="text-sm text-ink/70">
+              {queueLoading ? 'Reconnecting to your store.' : queueError}
+              {!queueLoading && lastUpdatedAt ? ' Showing the last update.' : ''}
+            </Text>
+            {!queueLoading && <Text className="font-semibold text-primary">Tap to retry</Text>}
+          </Pressable>
+        )}
         <TodayStatsCard
           orderCount={todayStats?.ordersToday ?? 0}
           pendingCount={todayStats?.pendingToday ?? 0}
@@ -194,6 +216,10 @@ export function OrdersScreen({ navigation }: Props) {
         </View>
       )}
 
+      <View className="mx-5 mt-3 flex-row items-center justify-between">
+        <Text className="text-xs text-ink/60">{lastUpdatedAt ? `Updated ${new Date(lastUpdatedAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}` : 'Checking your orders…'}</Text>
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate('OrderHistory')}><Text className="font-semibold text-primary">History & issues</Text></Pressable>
+      </View>
       <View className="py-3">
         <OrderStatusFilter
           // New Orders → Packed → Out for Delivery → Delivered → All, in
@@ -203,22 +229,25 @@ export function OrdersScreen({ navigation }: Props) {
             ...STATUS_GROUPS.map((group) => ({
               value: group.filterValue,
               label: group.sectionTitle,
-              count: orders.filter((order) => order.status === group.status).length,
+              count: group.status === 'delivered' || group.status === 'failed' ? undefined : orders.filter((order) => order.status === group.status).length,
             })),
             { value: 'all', label: 'All Orders', count: orders.length },
           ]}
           selected={statusFilter}
-          onSelect={setStatusFilter}
+          onSelect={value => {
+            if (value === 'delivered' || value === 'failed') navigation.navigate('OrderHistory', { status: value });
+            else setStatusFilter(value);
+          }}
         />
       </View>
 
       {orders.length === 0 ? (
         <View className="flex-1 items-center justify-center px-16">
-          <Text className="text-[15px] font-semibold text-ink">
-            Ready for your first order!
+          <Text accessibilityLiveRegion="polite" className="text-center text-[15px] font-semibold leading-[21px] text-ink">
+            {queueError ? 'Could not load your orders' : queueLoading ? 'Checking for orders…' : 'No active orders right now'}
           </Text>
-          <Text className="mt-1 text-center text-[13px] font-medium text-ink/50">
-            Once customers start ordering, you’ll see them pop up here in real time.
+          <Text className="mt-2 text-center text-[13px] font-medium leading-[19px] text-ink/60">
+            {queueError ? 'Check your connection, then tap Retry above.' : queueLoading ? 'We’re checking your store’s latest orders.' : 'New orders will appear here. View past orders in History & issues.'}
           </Text>
         </View>
       ) : (
@@ -234,7 +263,7 @@ export function OrdersScreen({ navigation }: Props) {
                     <OrderCard
                       key={order.id}
                       order={order}
-                      onAcknowledge={acknowledgeOrder}
+                      onAcknowledge={(id) => { void acknowledgeOrder(id).catch(err => Alert.alert('Could not accept order', err instanceof Error ? err.message : 'Please retry.')); }}
                       onMarkPacked={handleMarkPacked}
                       onViewOrder={() => navigation.navigate('OrderDetail', { orderId: order.id })}
                     />
@@ -242,6 +271,7 @@ export function OrdersScreen({ navigation }: Props) {
                 </View>
               )
           )}
+          {nextCursor && <Pressable className="rounded-2xl bg-white p-4" disabled={queueLoading} onPress={() => void loadMore().catch(() => {})}><Text className="text-center font-semibold text-primary">{queueLoading ? 'Finding more orders…' : 'Show more active orders'}</Text></Pressable>}
         </ScrollView>
       )}
 

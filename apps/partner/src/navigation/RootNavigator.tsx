@@ -96,6 +96,12 @@ export function RootNavigator() {
   const [minElapsed, setMinElapsed] = useState(false);
 
   useEffect(() => {
+    if (!accessToken || !isApproved || !hasStore || partnerSuspended) return;
+    const timer = setTimeout(flushPendingNotificationTap, 0);
+    return () => clearTimeout(timer);
+  }, [accessToken, isApproved, hasStore, partnerSuspended]);
+
+  useEffect(() => {
     void hydrate();
   }, [hydrate]);
 

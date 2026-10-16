@@ -12,7 +12,7 @@
 // every tap stops reading as a summary row. No other action on this card —
 // payouts are read-only by design, see data.ts.
 
-import { CheckmarkCircle02Icon, Clock01Icon, TickDouble01Icon } from '@hugeicons/core-free-icons';
+import { Clock01Icon, TickDouble01Icon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { payoutStatusPresentation, type WeeklyPayout } from '../data';

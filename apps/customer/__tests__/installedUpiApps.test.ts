@@ -1,4 +1,4 @@
-import { Linking, Platform } from 'react-native';
+import { Linking, NativeModules, Platform } from 'react-native';
 import { detectInstalledUpiApps, matchNativeUpiApps } from '../src/payments/installedUpiApps';
 import { UPI_APPS } from '../src/payments/upiApps';
 import { availablePaymentMethod } from '../src/payments/paymentMethod';
@@ -26,6 +26,39 @@ describe('installed UPI app detection', () => {
       expect((await detectInstalledUpiApps()).map((a) => a.id)).toEqual(['gpay', 'cred']);
     } finally {
       spy.mockRestore();
+      Object.defineProperty(Platform, 'OS', { value: original, configurable: true });
+    }
+  });
+
+  it('falls back to scheme discovery when Android native discovery fails', async () => {
+    const original = Platform.OS;
+    const previousModule = NativeModules.UpiApps;
+    Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+    NativeModules.UpiApps = { getInstalledUpiApps: jest.fn().mockRejectedValue(new Error('PackageManager unavailable')) };
+    const spy = jest.spyOn(Linking, 'canOpenURL').mockImplementation(async (url) => url === 'phonepe://');
+    try {
+      expect((await detectInstalledUpiApps()).map((a) => a.id)).toEqual(['phonepe']);
+    } finally {
+      spy.mockRestore();
+      if (previousModule) NativeModules.UpiApps = previousModule;
+      else delete NativeModules.UpiApps;
+      Object.defineProperty(Platform, 'OS', { value: original, configurable: true });
+    }
+  });
+
+  it('does not replace an authoritative empty Android result with generic schemes', async () => {
+    const original = Platform.OS;
+    const previousModule = NativeModules.UpiApps;
+    Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+    NativeModules.UpiApps = { getInstalledUpiApps: jest.fn().mockResolvedValue([]) };
+    const spy = jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
+    try {
+      expect(await detectInstalledUpiApps()).toEqual([]);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+      if (previousModule) NativeModules.UpiApps = previousModule;
+      else delete NativeModules.UpiApps;
       Object.defineProperty(Platform, 'OS', { value: original, configurable: true });
     }
   });

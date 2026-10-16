@@ -22,6 +22,10 @@ import { AddProductScreen } from '../screens/catalog/AddProductScreen';
 import { CatalogScreen } from '../screens/catalog/CatalogScreen';
 import { LocationPinScreen } from '../screens/onboarding/LocationPinScreen';
 import { OrderDetailScreen } from '../screens/order-detail/OrderDetailScreen';
+import { OrderHistoryScreen } from '../screens/orders/OrderHistoryScreen';
+import { ReviewsScreen } from '../screens/management/ReviewsScreen';
+import { StaffScreen } from '../screens/management/StaffScreen';
+import { DocumentReplacementScreen } from '../screens/management/DocumentReplacementScreen';
 import { OrdersScreen } from '../screens/orders/OrdersScreen';
 import { PayoutOrderHistoryScreen } from '../screens/payout-detail/PayoutOrderHistoryScreen';
 import { PayoutsScreen } from '../screens/payouts/PayoutsScreen';
@@ -37,6 +41,10 @@ export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Orders">
       <Stack.Screen name="Orders" component={OrdersScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
+      <Stack.Screen name="Reviews" component={ReviewsScreen} />
+      <Stack.Screen name="Staff" component={StaffScreen} />
+      <Stack.Screen name="DocumentReplacement" component={DocumentReplacementScreen} />
       <Stack.Screen name="Catalog" component={CatalogScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Payouts" component={PayoutsScreen} options={{ animation: 'none' }} />
       {/* gestureEnabled off — the slide-to-confirm knob on this screen is a

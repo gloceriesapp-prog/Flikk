@@ -132,7 +132,7 @@ export interface PartnerOrder {
 // Envelope returned by the paginated list endpoints (backend lib/
 // cursorPagination.ts sendPage) once `page=1` is passed: without it the
 // endpoint answers with only the first ~20 rows and no cursor.
-interface Page<T> {
+export interface Page<T> {
   items: T[];
   nextCursor: string | null;
 }
@@ -264,8 +264,16 @@ export interface PendingProductChanges {
   variants?: { unit_type: UnitType; quantity: number; price: number; original_price: number | null }[];
 }
 
-export function fetchMyProducts(): Promise<PartnerProduct[]> {
-  return apiRequest('/partner/products');
+export function fetchProductPage(options: { cursor?: string | null; q?: string; stock?: string } = {}): Promise<Page<PartnerProduct>> {
+  const params = new URLSearchParams({ page: '1', limit: '30', stock: options.stock ?? 'all' });
+  if (options.cursor) params.set('cursor', options.cursor);
+  if (options.q?.trim()) params.set('q', options.q.trim());
+  return apiRequest(`/partner/products?${params}`);
+}
+
+// Overview needs only a preview; full inventory is loaded explicitly by page.
+export async function fetchMyProducts(): Promise<PartnerProduct[]> {
+  return (await fetchProductPage()).items;
 }
 
 // Per-size pricing (backend/src/lib/products.ts's own model): a product is

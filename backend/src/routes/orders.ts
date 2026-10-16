@@ -1,3 +1,4 @@
+import { partnerOrderError } from '../partner/orders.js';
 import { resolveStoreAccess } from '../stores/access.js';
 import { logger } from '../lib/logger.js';
 import { deliveryStores } from '../customer-experience/browse.js';
@@ -403,7 +404,7 @@ ordersRouter.patch(
         // guard_checkout_order (migration 107) refuses a pickup while a
         // sibling trip leg is unpacked; same outcome as the pre-check above.
         if (updateErr?.code === 'P0409' && to === 'out_for_delivery') throw tripNotReady();
-        if (updateErr) throw updateErr;
+        if (updateErr) throw to === 'packed' ? partnerOrderError(updateErr) : updateErr;
         if (!result) throw new AppError(409, 'ORDER_CHANGED', 'The order changed. Refresh before retrying.');
         updated = result;
       }

@@ -1,3 +1,5 @@
+import { runMerchantOrderNotifications, runMerchantOrderReceipts } from '../notifications/merchantOrders.js';
+import { syncStoreAvailability } from '../stores/availability.js';
 import { runPromotions } from '../promotions/worker.js';
 import { cleanupMedia } from '../media/cleanup.js';
 import { runPushReceipts } from '../notifications/receipts.js';
@@ -24,6 +26,7 @@ export const jobs: Jobs = {
 // These are item-claimed queues, not singleton schedules. Worker replicas
 // can drain disjoint batches concurrently without a global scheduler lock.
 export const queues: Record<string, (shouldStop: () => boolean) => Promise<unknown>> = {
+  storeAvailability: syncStoreAvailability,
   promotions: runPromotions,
   mediaCleanup: cleanupMedia,
   // Provider reconciliation runs first so expiry never releases a paid checkout.
@@ -36,6 +39,8 @@ export const queues: Record<string, (shouldStop: () => boolean) => Promise<unkno
   orderRefunds: async () => { if (paymentsConfigured) await runOrderRefunds(); },
   deliveryCodes: pruneDeliveryCodes,
   authBudgets: pruneAuthBudgets,
+  merchantOrderNotifications: runMerchantOrderNotifications,
+  merchantOrderReceipts: runMerchantOrderReceipts,
   customerNotifications: runCustomerNotifications,
   pushReceipts: runPushReceipts,
 };

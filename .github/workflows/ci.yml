@@ -33,6 +33,9 @@ jobs:
             backend/pnpm-lock.yaml
             apps/admin/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Install partner workspace dependencies for cross-app regression tests
+        run: npm ci --no-audit --no-fund
+        working-directory: .
       # Several backend tests import shared logic from the customer and admin
       # apps (react-query cache helpers, admin route handlers), so their
       # dependencies must exist for those test files to load.
@@ -45,6 +48,8 @@ jobs:
       - run: pnpm exec tsc --noEmit -p tsconfig.json
       - run: pnpm test
       - run: node --test ../packages/server-media/upload.test.cjs
+      - name: Verify native map credential separation for all mobile apps
+        run: node --test ../packages/shared/config/google-maps.test.cjs
 
   commerce-security:
     runs-on: ubuntu-latest
@@ -118,6 +123,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm test -- --runInBand --watchman=false
       - name: Bundle both native platforms
         run: npx expo export --platform ios --max-workers 2 --output-dir /tmp/customer-ios
       - run: npx expo export --platform android --max-workers 2 --output-dir /tmp/customer-android

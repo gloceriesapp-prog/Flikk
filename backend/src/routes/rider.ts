@@ -8,6 +8,8 @@ import { requireActiveRider, requireApproved, requireAuth, requireRole, type Aut
 import { riderSuspendedError } from '../auth/riderSuspension.js';
 import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../lib/payoutAccount.js';
 import { fetchRoute } from '../lib/routeDirections.js';
+import { mapsBudget } from '../customer-experience/mapsBudget.js';
+import { validPin } from '../lib/checkoutEligibility.js';
 import { createNotification } from '../lib/notifications.js';
 import { validateAvailability } from '../lib/riderSchedule.js';
 import { computeRiderStats } from '../lib/riderStats.js';
@@ -219,13 +221,21 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
 
 // Road-following route line for the rider's in-app delivery map (DeliveryMap
 // View's <Polyline>) — origin=rider's live GPS, destination=store or customer
-// pin. Proxied server-side because the Directions REST call needs the
-// IP-restricted GOOGLE_GEOCODING_API_KEY, not the app's Maps-SDK key. Returns
+// pin. Proxied server-side using GOOGLE_ROUTES_API_KEY (with the existing
+// server geocoding key as compatibility fallback), never the app SDK key. Returns
 // { polyline: [], durationMin: null, distanceKm: null } (never 500s) when
 // routing is unavailable so the map falls back to its straight connector +
 // flat-speed ETA — a routed line and its real driving ETA are an enhancement,
 // not a gate.
-riderRouter.get('/route', async (req: AuthedRequest, res, next) => {
+riderRouter.get('/route', (req, _res, next) => {
+  const names = ['origin_lat', 'origin_lng', 'dest_lat', 'dest_lng'] as const;
+  if (names.some(name => typeof req.query[name] !== 'string' || !(req.query[name] as string).trim())
+    || !validPin(Number(req.query.origin_lat), Number(req.query.origin_lng))
+    || !validPin(Number(req.query.dest_lat), Number(req.query.dest_lng))) {
+    return next(new AppError(400, 'INVALID_COORDINATES', 'Choose valid route endpoints.'));
+  }
+  next();
+}, mapsBudget('client'), mapsBudget('provider'), async (req: AuthedRequest, res, next) => {
   try {
     const originLat = Number(req.query.origin_lat);
     const originLng = Number(req.query.origin_lng);

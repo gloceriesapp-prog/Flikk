@@ -14,7 +14,7 @@
 //      backgrounded gets the current state.
 // One listener, cleaned up — not per-screen.
 import { useEffect } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, Platform, type AppStateStatus } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { useCatalogStore } from '../../store/useCatalogStore';
@@ -22,8 +22,10 @@ import { useStoreProfileStore } from '../../store/useStoreProfileStore';
 import { useNotificationStatusStore } from '../../store/useNotificationStatusStore';
 import { COMMISSION_QUERY_KEY } from '../../api/payouts';
 import { registerPushToken } from '../push-notifications/registerPushToken';
+import { useStoreAvailabilityRefresh } from './useStoreAvailabilityRefresh';
 
 export function useForegroundRefresh(canLoadOrders: boolean, isLoggedIn: boolean): void {
+  useStoreAvailabilityRefresh(canLoadOrders);
   const queryClient = useQueryClient();
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
@@ -41,7 +43,7 @@ export function useForegroundRefresh(canLoadOrders: boolean, isLoggedIn: boolean
       if (isLoggedIn) {
         // Re-detect a permission flipped in system settings; un-dismiss so a
         // still-off state reappears (see NotificationsOffBanner).
-        useNotificationStatusStore.getState().resetDismissed();
+        if (Platform.OS !== 'android') useNotificationStatusStore.getState().resetDismissed();
         void registerPushToken();
       }
     });

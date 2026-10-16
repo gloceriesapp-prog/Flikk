@@ -39,6 +39,10 @@ export const STORE_CHANGE_LABELS: Record<string, string> = {
   lat: 'Latitude',
   lng: 'Longitude',
   drug_license_number: 'Drug licence',
+  pan_number: 'PAN number',
+  fssai_number: 'FSSAI number',
+  gst_number: 'GST number',
+  shop_establishment_number: 'Shop establishment number',
 };
 
 export function formatChangeValue(value: unknown): string {

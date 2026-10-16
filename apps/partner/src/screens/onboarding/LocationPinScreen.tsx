@@ -15,9 +15,8 @@
 // colors.primary (#155DFC), not the customer app's blue.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import MapView, { Circle, Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
-import { BlurView } from 'expo-blur';
 import Constants from 'expo-constants';
 import { isRunningInExpoGo } from 'expo';
 import { StatusBar } from 'expo-status-bar';
@@ -40,6 +39,8 @@ import {
 import { distanceMeters } from '../../location/locationFilter';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
 import { LocationRequestGate } from '../../location/requestGate';
+import { confirmStorePin } from '../../location/storePin';
+import { getSessionEpoch, isCurrentSession } from '../../store/sessionScope';
 import { useLiveLocation } from '../../location/useLiveLocation';
 import { colors } from '../../theme/tokens';
 import { storageUrl } from '../../utils/storageUrl';
@@ -70,11 +71,8 @@ const PIN_IMAGE_URI = storageUrl('Images/gps.png');
 const PIN_SIZE = 64;
 const PIN_TIP_RATIO = 0.926;
 
-// Partner's app.config.js sets only the Android Google Maps key; iOS has no
-// key, so hasIosGoogleMaps is never set and this stays false there — iOS
-// falls back to Apple Maps (no custom-style API) instead of hard-crashing on
-// a missing Google provider. Flips automatically if an iOS key + extra flag
-// are ever added, same as customer.
+// Google Maps on Android; iOS uses Apple Maps unless a separate iOS SDK
+// credential was included in the native build.
 const HAS_IOS_GOOGLE_MAPS = Constants.expoConfig?.extra?.hasIosGoogleMaps === true;
 const USES_GOOGLE_MAPS = Platform.OS === 'android' || HAS_IOS_GOOGLE_MAPS;
 
@@ -87,6 +85,7 @@ const IN_EXPO_GO = isRunningInExpoGo();
 export function LocationPinScreen({ navigation, route }: Props) {
   const { initialCoordinates, onConfirm } = route.params;
   const insets = useSafeAreaInsets();
+  const session = useRef(getSessionEpoch());
   const mapRef = useRef<MapView>(null);
   const searchInputRef = useRef<TextInput>(null);
 
@@ -94,6 +93,8 @@ export function LocationPinScreen({ navigation, route }: Props) {
   const [addressLabel, setAddressLabel] = useState<string | null>(null);
   const [resolving, setResolving] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const confirmingRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PlaceSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
@@ -250,12 +251,18 @@ export function LocationPinScreen({ navigation, route }: Props) {
   }
 
   async function handleConfirm() {
+    if (confirmingRef.current || (resolving && !IN_EXPO_GO)) return;
+    confirmingRef.current = true;
     setConfirming(true);
+    setConfirmError(null);
+    const selected = { ...center };
     try {
-      const district = (await reverseGeocodeDistrict(center)) ?? 'Udupi';
-      onConfirm(center, district, addressLabel);
-      navigation.goBack();
+      await confirmStorePin({ coordinates: selected, addressLabel, resolveDistrict: reverseGeocodeDistrict,
+        save: onConfirm, close: () => navigation.goBack(), isCurrent: () => isCurrentSession(session.current) });
+    } catch (error) {
+      setConfirmError(error instanceof Error ? error.message : 'Could not save this location. Please retry.');
     } finally {
+      confirmingRef.current = false;
       setConfirming(false);
     }
   }
@@ -385,11 +392,14 @@ export function LocationPinScreen({ navigation, route }: Props) {
           </ScrollView>
 
           <View className="px-4" style={{ paddingBottom: insets.bottom + 16 }}>
+            {confirmError && <Text accessibilityRole="alert" className="text-sm text-danger">{confirmError}</Text>}
             <Pressable
               onPress={handleConfirm}
               disabled={!fallbackPicked || confirming}
               className="h-[52px] flex-row items-center justify-center gap-1.5 rounded-full"
-              style={({ pressed }) => ({ backgroundColor: !fallbackPicked || confirming ? `${ACCENT}66` : ACCENT, opacity: pressed ? 0.9 : 1 })}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm location"
+              style={{ backgroundColor: !fallbackPicked || confirming ? '#A0B8F4' : ACCENT }}
             >
               {confirming ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -408,6 +418,7 @@ export function LocationPinScreen({ navigation, route }: Props) {
 
   return (
     <DismissKeyboardView>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View className="flex-1 bg-white">
         <StatusBar style="dark" />
         <View className="flex-1" onLayout={(e) => setMapAreaHeight(e.nativeEvent.layout.height)}>
@@ -537,7 +548,7 @@ export function LocationPinScreen({ navigation, route }: Props) {
             </Pressable>
           </View>
         </View>
-        {/* Floating confirm card over the map (frosted glass) — all four
+        {/* Solid white confirm card over the map — all four
             corners rounded, real left/right/bottom margin so the map peeks
             around it. Its measured height drives the pin anchor + mapPadding
             above, so it only ever grows (a shrink/grow would re-centre the
@@ -547,8 +558,7 @@ export function LocationPinScreen({ navigation, route }: Props) {
           className="absolute bottom-0 left-4 right-4 overflow-hidden rounded-3xl shadow-lg shadow-black/25"
           style={{ marginBottom: insets.bottom + 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' }}
         >
-          <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.72)' }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }]} />
 
           <View className="gap-3 px-5 pb-5 pt-4">
             <Text className="text-sm font-medium text-ink/50">Setting up your store at</Text>
@@ -586,11 +596,14 @@ export function LocationPinScreen({ navigation, route }: Props) {
               </Text>
             )}
 
+            {confirmError && <Text accessibilityRole="alert" className="text-sm text-danger">{confirmError}</Text>}
             <Pressable
               onPress={handleConfirm}
               disabled={resolving || confirming}
               className="h-[52px] flex-row items-center justify-center gap-1.5 rounded-full"
-              style={({ pressed }) => ({ backgroundColor: resolving || confirming ? `${ACCENT}66` : ACCENT, opacity: pressed ? 0.9 : 1 })}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm location"
+              style={{ backgroundColor: resolving || confirming ? '#A0B8F4' : ACCENT }}
             >
               {confirming ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -604,6 +617,7 @@ export function LocationPinScreen({ navigation, route }: Props) {
           </View>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </DismissKeyboardView>
   );
 }

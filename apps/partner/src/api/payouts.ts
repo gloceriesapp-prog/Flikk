@@ -84,6 +84,11 @@ export function fetchPayoutOrderPage(payoutId: string, cursor?: string): Promise
 export const PAYOUT_ACCOUNT_QUERY_KEY = ['payoutAccount'] as const;
 export const { fetchPayoutAccount, savePayoutAccount } = createPayoutAccountApi(apiRequest, '/partner');
 
+export interface UpiValidationResult { upiId: string; valid: boolean; registeredName: string | null }
+export function validatePayoutUpi(upiId: string): Promise<UpiValidationResult> {
+  return apiRequest('/partner/payout-account/validate-upi', { method: 'POST', body: { upiId } });
+}
+
 // Cancelled cheque / passbook photo — private store-documents bucket, object
 // PATH out (never a public URL), sent back as PUT's proofPath.
 export function uploadPayoutProof(base64: string): Promise<{ path: string }> {

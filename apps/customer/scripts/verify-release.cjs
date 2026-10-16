@@ -2,7 +2,7 @@
 const { validateApiUrl } = require('../../../packages/shared/config/api-url.cjs');
 const failures = [];
 try { validateApiUrl(process.env.EXPO_PUBLIC_API_URL, false); } catch { failures.push('Configure an HTTPS release API URL.'); }
-for (const name of ['EXPO_PUBLIC_SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN', 'GOOGLE_MAPS_API_KEY']) {
+for (const name of ['EXPO_PUBLIC_SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN']) {
   if (!process.env[name]?.trim()) failures.push(`Missing ${name}.`);
 }
 for (const name of Object.keys(process.env)) {
@@ -14,6 +14,10 @@ if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
 }
 try {
   const { expo } = require('../app.config.js');
+  // iOS can deliberately use Apple Maps. Only Android needs the native key.
+  if (process.env.EAS_BUILD_PLATFORM !== 'ios' && !expo.android?.config?.googleMaps?.apiKey) {
+    failures.push('Missing ANDROID_GOOGLE_MAPS_API_KEY (or GOOGLE_MAPS_API_KEY).');
+  }
   if (expo.name !== 'Gloceries') failures.push(`App name must be "Gloceries" (got "${expo.name}").`);
   if (expo.scheme !== 'gloceries') failures.push('App scheme must be "gloceries" (deep links/auth redirects depend on it).');
   if (!expo.extra?.eas?.projectId) failures.push('Missing extra.eas.projectId.');

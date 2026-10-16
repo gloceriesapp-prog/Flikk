@@ -29,7 +29,6 @@ import {
   formatDistance,
   geocodeAddress,
   getCurrentCoordinates,
-  reverseGeocode,
   searchPlaces,
   type Coordinates,
 } from '../../location/geocoding';
@@ -156,9 +155,12 @@ export function SelectLocationScreen({ navigation }: Props) {
     if (locating) return;
     setLocating(true);
     try {
-      const coords = currentCoords ?? (await getCurrentCoordinates());
-      const { addressLabel, city } = await reverseGeocode(coords);
-      navigation.navigate('LocationSearch', { ...coords, addressLabel, city, fromGps: true });
+      // The preview fix may be old after browsing saved addresses. An
+      // explicit current-location action must acquire a fresh validated fix.
+      const coords = await getCurrentCoordinates();
+      // The map resolves its own pin address. Do not block opening it on a
+      // network geocoder after the device position is already available.
+      navigation.navigate('LocationSearch', { ...coords, fromGps: true });
     } catch {
       navigation.navigate('LocationSearch');
     } finally {

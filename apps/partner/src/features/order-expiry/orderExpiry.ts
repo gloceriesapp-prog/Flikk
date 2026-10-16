@@ -5,7 +5,7 @@ import { apiRequest } from '../../api/client';
 // .store_response_timeout_minutes (default 10), served by GET
 // /delivery-settings. The backend worker (jobs/storeNoResponse.ts) cancels an
 // unanswered order after the same window even when this app is closed; this
-// client timer just reacts sooner while the app is open.
+// client timer displays the deadline and refreshes; it never cancels.
 export const DEFAULT_ACCEPT_WINDOW_MINUTES = 10;
 let acceptWindowMs = DEFAULT_ACCEPT_WINDOW_MINUTES * 60 * 1000;
 
@@ -44,6 +44,8 @@ export function getElapsedMs(order: PartnerOrder, now: number = Date.now()): num
 }
 
 export function getRemainingAcceptMs(order: PartnerOrder, now: number = Date.now()): number {
+  if (order.acceptedAtTimestamp != null) return 0;
+  if (Number.isFinite(order.acceptanceDeadlineTimestamp)) return Math.max(0, order.acceptanceDeadlineTimestamp! - now);
   return Math.max(0, acceptWindowMs - getElapsedMs(order, now));
 }
 

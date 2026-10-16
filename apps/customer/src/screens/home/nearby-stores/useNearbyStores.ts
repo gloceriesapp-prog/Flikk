@@ -43,6 +43,8 @@ interface ApiNearestStore {
   is_active: boolean;
   open_time: string | null;
   close_time?: string | null;
+  availability_override?: boolean | null;
+  availability_override_until?: string | null;
   address_line?: string | null;
   city?: string | null;
 }
@@ -71,7 +73,7 @@ export function useNearbyStores() {
     name: row.name,
     photoUrl: row.photo_url ?? undefined,
     distanceLabel: formatDistance(row.distance_km),
-    isOpen: shopIsOpen({ isActive: row.is_active, openTime: row.open_time, closeTime: row.close_time }, new Date(timestamp)),
+    isOpen: shopIsOpen({ isActive: row.is_active, openTime: row.open_time, closeTime: row.close_time, availabilityOverride: row.availability_override, availabilityOverrideUntil: row.availability_override_until }, new Date(timestamp)),
     openTime: row.open_time ?? undefined,
     locality: row.address_line?.trim() || row.city?.trim() || undefined,
   }));

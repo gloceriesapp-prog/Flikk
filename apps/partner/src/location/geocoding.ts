@@ -1,5 +1,6 @@
-// Thin wrapper around expo-location's device-native geocoder. Free, no API
-// key — the device's own Apple/Google geocoding framework does the work.
+// GPS comes from expo-location. Address labels use the backend Google
+// Geocoding proxy first, with the device-native geocoder as a fallback.
+// Provider REST credentials remain on the backend, never in this app.
 //
 // This used to just re-export packages/shared/src/location/geocoding.ts,
 // which is an older, plainer duplicate — no post-permission-grant wait, no
@@ -13,8 +14,11 @@
 
 import * as Location from 'expo-location';
 import { AppState } from 'react-native';
+import { API_BASE_URL } from '../api/baseUrl';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000';
+// Follow the same resolved backend host as the rest of the app, including
+// physical-device LAN resolution during local development.
+const API_URL = API_BASE_URL;
 
 // Resolves once the app is really in the foreground ('active'), or after a
 // hard cap so a caller can never hang forever on it. The OS permission
@@ -140,14 +144,18 @@ export async function reverseGeocode(coords: Coordinates): Promise<ReverseGeocod
 }
 
 async function reverseGeocodeViaGoogle(coords: Coordinates): Promise<ReverseGeocodeResult | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const res = await fetch(`${API_URL}/location/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`);
+    const res = await fetch(`${API_URL}/location/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`, { signal: controller.signal });
     if (!res.ok) return null;
     const data = (await res.json()) as { addressLabel: string | null; shortName?: string; city?: string };
     if (!data.addressLabel) return null;
     return { addressLabel: data.addressLabel, city: data.city ?? '', shortName: data.shortName ?? data.addressLabel };
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -165,15 +173,22 @@ export async function geocodeAddress(query: string): Promise<Coordinates | null>
 // shape in a couple of places; not worth rewriting those call sites just
 // to remove this). Never throws.
 export async function reverseGeocodeDistrict(coords: Coordinates): Promise<string | null> {
+  const fromGoogle = await reverseGeocodeViaGoogle(coords);
+  if (fromGoogle?.city) return fromGoogle.city;
   const results = await Location.reverseGeocodeAsync(coords).catch(() => []);
   const first = results[0];
   if (!first) return null;
-  return first.district ?? first.subregion ?? first.region ?? first.city ?? null;
+  return first.city ?? first.subregion ?? first.district ?? first.region ?? null;
 }
 
 // Fuller "building/street, district" label for the map-pin confirm
 // screen — same reasoning as reverseGeocodeDistrict above. Never throws.
 export async function reverseGeocodeAddress(coords: Coordinates): Promise<string | null> {
+  // Use the server-only Geocoding credential for pin labels. SDK map keys
+  // authorize tiles only; fall back to the device if the proxy is unavailable.
+  const fromGoogle = await reverseGeocodeViaGoogle(coords);
+  if (fromGoogle) return fromGoogle.addressLabel;
+
   const results = await Location.reverseGeocodeAsync(coords).catch(() => []);
   const first = results[0];
   if (!first) return null;

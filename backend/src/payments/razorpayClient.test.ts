@@ -1,7 +1,8 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import crypto from 'node:crypto';
-import { checkoutReceipt, refundRequestKey, toPaise, verifyCheckoutSignature, verifyWebhookSignature, createProviderOrder, createProviderRefund, getPaymentRefunds, findProviderOrder } from './razorpayClient.js';
-afterEach(() => vi.unstubAllGlobals());
+import { env } from '../config/env.js';
+import { checkoutReceipt, refundRequestKey, toPaise, verifyCheckoutSignature, verifyWebhookSignature, createProviderOrder, createProviderRefund, getPaymentRefunds, findProviderOrder, createProviderUpiIntent } from './razorpayClient.js';
+afterEach(() => { vi.unstubAllGlobals(); env.razorpayEnv = 'test'; });
 it('uses paise, rejects unsafe amounts and derives stable bounded identifiers', () => {
   expect(toPaise('12.34')).toBe(1234); expect(() => toPaise(-1)).toThrow(); expect(() => toPaise(Infinity)).toThrow();
   expect(checkoutReceipt('00000000-0000-4000-8000-000000000001')).toBe('gl_00000000000040008000000000000001');
@@ -23,6 +24,23 @@ it('creates an INR order with authoritative integer amount and no partial paymen
   expect(fetch.mock.calls[0][0]).toBe('https://api.razorpay.com/v1/orders');
   expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({amount:1234,currency:'INR',partial_payment:false,receipt:'gl_one'});
   expect(fetch.mock.calls[0][1].headers.Authorization).toMatch(/^Basic /);
+});
+it('creates the documented S2S UPI intent server-side with no client secret exposure', async () => {
+  env.razorpayEnv = 'live';
+  const link = 'upi://pay?pa=merchant%40razorpay&tr=ref&am=12.34&cu=INR';
+  const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ razorpay_payment_id: 'pay_one', link }) }); vi.stubGlobal('fetch', fetch);
+  expect(await createProviderUpiIntent({ providerOrderId: 'order_one', amountPaise: 1234, email: 'real@example.com', contact: '919999999999', notes: { gloceries_order_id: 'one' }, ip: '127.0.0.1', userAgent: 'Customer/1' }))
+    .toEqual({ razorpay_payment_id: 'pay_one', link });
+  expect(fetch.mock.calls[0][0]).toBe('https://api.razorpay.com/v1/payments/create/upi');
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ amount: 1234, currency: 'INR', order_id: 'order_one', method: 'upi', upi: { flow: 'intent' }, email: 'real@example.com', contact: '919999999999', ip: '127.0.0.1', user_agent: 'Customer/1' });
+  expect(fetch.mock.calls[0][1].headers.Authorization).toMatch(/^Basic /);
+});
+it('never calls Razorpay S2S with test keys that produce non-payable mock VPAs', () => {
+  const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
+  expect(() => createProviderUpiIntent({ providerOrderId: 'order_one', amountPaise: 100,
+    email: 'real@example.com', contact: '919999999999', notes: {} }))
+    .toThrow('UPI app payments require live Razorpay keys');
+  expect(fetch).not.toHaveBeenCalled();
 });
 it('uses Razorpay refund idempotency and the original captured payment', async () => {
   const fetch = vi.fn().mockResolvedValue({ok:true,json:async()=>({id:'rfnd_one'})}); vi.stubGlobal('fetch',fetch);

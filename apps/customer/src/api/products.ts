@@ -54,6 +54,8 @@ export interface ApiProduct {
     is_active?: boolean;
     open_time?: string | null;
     close_time?: string | null;
+    availability_override?: boolean | null;
+    availability_override_until?: string | null;
     name: string;
     fssai_number: string | null;
     address_line: string | null;
@@ -88,7 +90,7 @@ export function mapApiProduct(row: ApiProduct): Product {
   const unavailableReason = inventoryIssue(row, defaultVariant);
 
   return {
-    storeOpening: store ? { isActive: store.is_active !== false, openTime: store.open_time, closeTime: store.close_time } : undefined,
+    storeOpening: store ? { isActive: store.is_active !== false, openTime: store.open_time, closeTime: store.close_time, availabilityOverride: store.availability_override, availabilityOverrideUntil: store.availability_override_until } : undefined,
     availableQuantity: defaultVariant?.stock_quantity ?? (row.stock_tracking_enabled ? row.stock_quantity : undefined) ?? undefined,
     id: row.id,
     name: row.name,

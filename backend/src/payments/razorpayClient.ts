@@ -20,6 +20,7 @@ export function checkoutReceipt(targetId: string) { return `gl_${targetId.replac
 export function refundRequestKey(key: string) { return `gl_${crypto.createHash('sha256').update(key).digest('hex').slice(0, 32)}`; }
 export interface RazorpayOrder { id: string; amount: number; currency: string; receipt: string; status: string; notes?: Record<string, string>; }
 export interface RazorpayPayment { id: string; order_id: string; amount: number; currency: string; status: string; captured: boolean; }
+export interface RazorpayUpiIntent { razorpay_payment_id: string; link: string; }
 export interface RazorpayRefund { id: string; payment_id: string; amount: number; status: string; receipt?: string; notes?: Record<string, string>; }
 async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown, headers?: Record<string,string>): Promise<T> {
   if (!paymentsConfigured) throw paymentsNotConfigured();
@@ -56,6 +57,26 @@ export async function getOrderPayments(id: string): Promise<RazorpayPayment[]> {
   return result.items;
 }
 export function getProviderPayment(id: string) { return call<RazorpayPayment>('GET', `/payments/${encodeURIComponent(id)}`); }
+// Razorpay test instructions use simulated VPAs. Real UPI apps cannot pay
+// those addresses; never send a test-mode instruction to an installed app.
+export function requireLiveUpiIntent(mode: string = env.razorpayEnv): void {
+  if (mode !== 'live') throw new AppError(409, 'UPI_INTENT_REQUIRES_LIVE_MODE',
+    'UPI app payments require live Razorpay keys. Test-mode payments must use the Razorpay test checkout simulator.');
+}
+export function createProviderUpiIntent(input: {
+  providerOrderId: string; amountPaise: number; email: string; contact: string;
+  notes: Record<string, string>; ip?: string; userAgent?: string;
+}) {
+  requireLiveUpiIntent();
+  if (!/^order_[A-Za-z0-9]+$/.test(input.providerOrderId) || !Number.isSafeInteger(input.amountPaise) || input.amountPaise <= 0)
+    throw new Error('Invalid UPI payment target');
+  return call<RazorpayUpiIntent>('POST', '/payments/create/upi', {
+    amount: input.amountPaise, currency: 'INR', order_id: input.providerOrderId,
+    email: input.email, contact: input.contact, method: 'upi', upi: { flow: 'intent' },
+    description: 'Gloceries order', notes: input.notes,
+    ...(input.ip ? { ip: input.ip } : {}), ...(input.userAgent ? { user_agent: input.userAgent } : {}),
+  });
+}
 export async function getPaymentRefunds(id: string): Promise<RazorpayRefund[]> {
   // An order can have many partial refunds. Read every bounded page before computing remaining money.
   const items: RazorpayRefund[] = [];

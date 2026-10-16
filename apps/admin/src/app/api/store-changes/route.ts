@@ -26,5 +26,5 @@ export async function GET(request: Request) {
     console.error('Store change requests read failed', error);
     return NextResponse.json({ error: 'Could not load store changes.' }, { status: 500 });
   }
-  return NextResponse.json((data as unknown as StoreChangeRow[]).map(mapStoreChange));
+  return NextResponse.json((data as unknown as StoreChangeRow[]).map(mapStoreChange), { headers: { 'Cache-Control': 'private, no-store' } });
 }

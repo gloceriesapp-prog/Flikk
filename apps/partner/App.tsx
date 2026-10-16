@@ -20,6 +20,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { createAppQueryClient } from './src/network/queryClient';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { onSessionReset } from './src/store/sessionScope';
 import { useAuthStore } from './src/store/useAuthStore';
 import { AEONIK_FONT_FILES } from './src/theme/fonts';
 import { IncomingOrderAlert } from './src/features/incoming-order-alert/IncomingOrderAlert';
@@ -75,8 +76,9 @@ function AppErrorFallback({ resetError }: { resetError: () => void }) {
 // missing — queries retry only transient (network/5xx) failures twice instead
 // of blindly 3x, mutations never auto-retry. One instance, created once.
 const queryClient = createAppQueryClient();
+onSessionReset(() => { void queryClient.cancelQueries(); queryClient.clear(); });
 
-function App() {
+function AppContent() {
   // Loading the weights here registers them with the OS by font-family
   // name (e.g. "Gilroy-Regular") — the actual app-wide default is
   // applied via global.css's `@layer base { * { font-family: ... } }` and
@@ -92,6 +94,7 @@ function App() {
   // load ever hung. Not destructured: the values aren't read anywhere now.
   useFonts(AEONIK_FONT_FILES);
   const hasFullAccess = useAuthStore((s) => !!s.accessToken && s.hasStore && s.isApproved);
+  const sessionEpoch = useAuthStore((s) => s.sessionEpoch);
   const isLoggedIn = useAuthStore((s) => !!s.accessToken);
 
   // Hide the splash on the first real layout (#28) — no longer waits for fonts,
@@ -134,7 +137,6 @@ function App() {
     // SafeAreaProvider is what powers NativeWind's pt-safe/pb-safe utilities
     // used throughout src/screens — without it those classes resolve to 0.
     <SafeAreaProvider onLayout={onRootLayout}>
-      <QueryClientProvider client={queryClient}>
         {/* RootNavigator owns its own NavigationContainer — see that
             file's own note on why the auth split lives there now instead
             of here, same shape as apps/customer/App.tsx. */}
@@ -144,7 +146,7 @@ function App() {
           {/* Boundary around the navigator subtree so a render/effect throw
               shows the branded fallback above instead of a white screen. */}
           <Sentry.ErrorBoundary fallback={({ resetError }) => <AppErrorFallback resetError={resetError} />}>
-            <RootNavigator />
+            <RootNavigator key={sessionEpoch} />
             {hasFullAccess && (
               <>
                 {/* Mounted outside AppNavigator's own tree — a new order
@@ -165,9 +167,14 @@ function App() {
           </Sentry.ErrorBoundary>
         </ReleaseGate>
         <StatusBar style="dark" />
-      </QueryClientProvider>
     </SafeAreaProvider>
   );
+}
+
+// Query-aware lifecycle hooks run below this provider. A provider returned
+// by the same component cannot provide context to that component's hooks.
+function App() {
+  return <QueryClientProvider client={queryClient}><AppContent /></QueryClientProvider>;
 }
 
 export default withCrashReporting(App);

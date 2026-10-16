@@ -31,6 +31,18 @@ if (process.env.NODE_ENV !== 'production' && process.env.SUPABASE_URL?.includes(
   throw new Error('SUPABASE_URL points at the PRODUCTION project from a non-production backend. Use local Supabase or flikk-staging (see ENVIRONMENTS.md), or set ALLOW_PRODUCTION_DATABASE=true on purpose.');
 }
 
+const geocodingKey = process.env.GOOGLE_GEOCODING_API_KEY?.trim() || undefined;
+const routeKey = process.env.GOOGLE_GEOCODING_ROUTE_KEY?.trim() || undefined;
+const legacyRouteKey = process.env.GOOGLE_ROUTES_API_KEY?.trim() || undefined;
+if (routeKey && legacyRouteKey && routeKey !== legacyRouteKey) {
+  throw new Error('GOOGLE_GEOCODING_ROUTE_KEY and GOOGLE_ROUTES_API_KEY disagree. Configure one routing key.');
+}
+// An explicitly empty new route variable disables routing until its own key
+// is supplied. Only older configurations retain the shared server-key fallback.
+const effectiveRouteKey = routeKey || legacyRouteKey
+  || (process.env.GOOGLE_GEOCODING_ROUTE_KEY === undefined && !process.env.GOOGLE_GEOCODING_MAP_KEY?.trim()
+    ? geocodingKey : undefined);
+
 export const env = {
   port,
   // Production cannot silently fall back to stateless remote verification
@@ -56,7 +68,12 @@ export const env = {
   // degrades to { addressLabel: null } (client falls back to the free
   // on-device geocoder) rather than the whole backend refusing to boot
   // over one enhancement-only key.
-  googleGeocodingApiKey: process.env.GOOGLE_GEOCODING_API_KEY,
+  googleGeocodingApiKey: geocodingKey,
+  // Server REST credentials only; never use the Android/iOS Maps SDK key.
+  // Existing deployments can retain a shared server key while rotating each
+  // API independently. Each effective key needs its corresponding API enabled.
+  googleRoutesApiKey: effectiveRouteKey,
+  googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY?.trim() || process.env.GOOGLE_GEOCODING_API_KEY?.trim() || undefined,
   // Optional, not required(): KYC document envelope encryption key (base64, 32
   // bytes) and KEK id. Only needed when a sensitive KYC upload happens —
   // storePrivateDocument fails closed if a KYC kind is uploaded without this
