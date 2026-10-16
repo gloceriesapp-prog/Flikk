@@ -16,6 +16,12 @@
   },
   "overrides": {
     "react-native-worklets": "0.10.1",
-    "react-native-reanimated": "4.5.1"
+    "react-native-reanimated": "4.5.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "expo": "~57.0.30",
+    "@sentry/react-native": "~7.11.0",
+    "expo-audio": "~57.0.5"
   }
 }

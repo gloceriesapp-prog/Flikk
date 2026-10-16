@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 import { parseMoneyInput, validVariantPrices } from '../../utils/moneyInput';
 import { AppImage as Image } from '../../components/AppImage';
 // Product detail — reached from ProductRow's "View" trigger on the
@@ -27,7 +28,7 @@ import { compressImageToTarget } from '../../media/compressImage';
 import { uploadProductPhoto } from '../../api/catalog';
 import { ProductCategoryPicker } from '../catalog/components/ProductCategoryPicker';
 import { useState } from 'react';
-import { ArrowLeft01Icon, Delete02Icon, Edit02Icon, ShoppingBasketAdd01Icon } from '@hugeicons/core-free-icons';
+import { Delete02Icon, Edit02Icon, ShoppingBasketAdd01Icon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -202,7 +203,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           className="h-10 w-10 items-center justify-center rounded-full bg-gray-100"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
-          <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
+          <BackIcon size={18} color={colors.ink} />
         </Pressable>
 
         <Text className="absolute left-0 right-0 text-center text-xl font-medium tracking-tight text-ink">

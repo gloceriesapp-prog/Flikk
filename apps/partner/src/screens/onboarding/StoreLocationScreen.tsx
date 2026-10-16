@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 // Step 2 of 5 — dedicated "mark your store on the map" step. Wraps the same
 // real map-pin flow this app already has (LocationPinScreen — drag-a-fixed-
 // center-pin, search, current-location, far-pin sanity check) rather than
@@ -17,7 +18,7 @@ import { StatusBar } from 'expo-status-bar';
 import { isRunningInExpoGo } from 'expo';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Constants from 'expo-constants';
-import { ArrowLeft01Icon, ArrowRight01Icon, Location05Icon, PinLocation01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, Location05Icon, PinLocation01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { saveStoreDraft } from '../../api/auth';
 import { AppIcon } from '../../components/AppIcon';
@@ -148,7 +149,7 @@ export function StoreLocationScreen({ navigation, route }: Props) {
       {/* Same top bar as OnboardingScaffold — back arrow + centered progress. */}
       <View className="flex-row items-center px-5 pb-2 pt-safe-offset-2">
         <Pressable onPress={() => navigation.goBack()} hitSlop={16} className="h-9 w-9 items-center justify-center">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <BackIcon size={22} color={colors.ink} />
         </Pressable>
         <WizardProgress step={2} total={5} />
         <View className="h-9 w-9" />

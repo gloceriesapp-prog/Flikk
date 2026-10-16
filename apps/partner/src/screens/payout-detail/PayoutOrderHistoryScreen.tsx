@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 import { usePrivateQueryScope } from '../../network/usePrivateQueryScope';
 // Full order-by-order breakdown for one settlement — reached from "View
 // all orders" on either payout card (PayoutOrdersLink.tsx). A settlement's
@@ -24,7 +25,7 @@ import { usePrivateQueryScope } from '../../network/usePrivateQueryScope';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft01Icon, HugeiconsIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
@@ -65,7 +66,7 @@ export function PayoutOrderHistoryScreen({ route, navigation }: Props) {
           className="h-10 w-10 items-center justify-center rounded-full bg-gray-100"
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <BackIcon size={22} color={colors.ink} />
         </Pressable>
         <Text className="absolute left-0 right-0 text-center text-[17px] font-semibold text-ink">Settlement orders</Text>
       </View>

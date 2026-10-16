@@ -1,8 +1,7 @@
-import { User02Icon } from '@hugeicons/core-free-icons';
+import { ProfileIcon } from '../../../components/PartnerIcons';
 import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { AppImage as Image } from '../../../components/AppImage';
-import { AppIcon } from '../../../components/AppIcon';
 import { storePinPresentation } from '../../../location/storePin';
 import { useStoreProfileStore } from '../../../store/useStoreProfileStore';
 import { colors } from '../../../theme/tokens';
@@ -79,17 +78,17 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressLocation, onP
             accessibilityLabel="Store settings"
             className="h-11 w-11 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white"
           >
-            <AppIcon icon={User02Icon} size={20} color={colors.ink} />
+            <ProfileIcon size={24} color={colors.ink} />
           </Pressable>
         </View>
-        <View className="flex-row flex-wrap items-center justify-between gap-2">
-          <Text className="text-[11px] font-medium text-ink/60">
-            {manualUntil ? `Manual until ${manualUntil} IST` : 'Automatic store hours · IST'}
-          </Text>
-          {manualUntil && <Pressable onPress={() => void setAvailability('auto')} disabled={disabled} hitSlop={8} accessibilityRole="button" accessibilityLabel="Resume automatic store hours">
-            <Text className="text-[11px] font-semibold text-primary">Use store hours</Text>
-          </Pressable>}
-        </View>
+        {manualUntil && (
+          <View className="flex-row flex-wrap items-center justify-between gap-2">
+            <Text className="text-[11px] font-medium text-ink/60">Manual until {manualUntil} IST</Text>
+            <Pressable onPress={() => void setAvailability('auto')} disabled={disabled} hitSlop={8} accessibilityRole="button" accessibilityLabel="Resume automatic store hours">
+              <Text className="text-[11px] font-semibold text-primary">Use store hours</Text>
+            </Pressable>
+          </View>
+        )}
 
       </View>
 

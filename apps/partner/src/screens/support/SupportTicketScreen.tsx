@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 // One support request: the conversation with the support team (admin Support
 // inbox) and a reply box. Replying to a resolved request reopens it. Refreshes
 // every 15 s while open. Same screen in apps/rider.
@@ -6,9 +7,8 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+
 import { SUPPORT_STATUS_LABEL, newRequestId, supportCategoryLabel, validateSupportMessage } from '@gloceries/shared';
-import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { supportApi } from '../../api/support';
 import { useSupportThread } from './useSupport';
@@ -61,7 +61,7 @@ export function SupportTicketScreen() {
     <View className="flex-1 bg-[#fbfbfb]">
       <View className="flex-row items-center gap-3 px-4 pb-3 pt-safe-offset-3">
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back" className="h-9 w-9 items-center justify-center">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <BackIcon size={22} color={colors.ink} />
         </Pressable>
         <View className="flex-1">
           <Text className="text-[18px] font-bold text-ink">{ticket ? supportCategoryLabel(ticket.category) : 'Support request'}</Text>

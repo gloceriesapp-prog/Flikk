@@ -1,7 +1,8 @@
+import { BackIcon } from '../../components/PartnerIcons';
 // Account-scoped detail reads work independently of the queue, including cold-start
 // push navigation. Transient failures preserve the last loaded order.
 
-import { Alert02Icon, ArrowLeft01Icon, Cash01Icon, CheckmarkCircle02Icon, Wallet01Icon } from '@hugeicons/core-free-icons';
+import { Alert02Icon, Cash01Icon, CheckmarkCircle02Icon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -86,7 +87,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
     <SafeAreaView className="flex-1" style={{ backgroundColor: PAGE_BG }} edges={['top']}>
       <View className="flex-row items-center justify-between px-5 py-3">
         <Pressable onPress={() => navigation.goBack()} className="h-10 w-10 items-center justify-center rounded-full bg-white">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <BackIcon size={22} color={colors.ink} />
         </Pressable>
         <View className="flex-row items-center gap-2">
           <Pressable className="flex-row items-center gap-1.5 rounded-full bg-white px-3.5 py-2.5">

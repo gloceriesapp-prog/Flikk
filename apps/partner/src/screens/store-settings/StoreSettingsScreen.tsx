@@ -1,5 +1,7 @@
+import { BackIcon, CheckmarkIcon } from '../../components/PartnerIcons';
 import { AppImage as Image } from '../../components/AppImage';
 import { normalizeStoreHour } from '../../utils/storeHours';
+import { validateStoreSettings } from '../../utils/storeSettingsValidation';
 // Store settings (P6) — reached from the header's profile icon.
 // Full-screen, not a sheet — same reasoning as ProductDetailScreen's own
 // note: a multi-section editable form belongs on a real screen, not
@@ -19,20 +21,7 @@ import { normalizeStoreHour } from '../../utils/storeHours';
 // for that call.
 
 import { useEffect, useState } from 'react';
-import {
-  ArrowLeft01Icon,
-  Call02Icon,
-  Clock01Icon,
-  Delete02Icon,
-  Edit02Icon,
-  File01Icon,
-  InformationCircleIcon,
-  Logout01Icon,
-  SquareLock01Icon,
-  Store01Icon,
-  TagsIcon,
-  Tick02Icon,
-} from '@hugeicons/core-free-icons';
+import { Call02Icon, Clock01Icon, Delete02Icon, Edit02Icon, File01Icon, InformationCircleIcon, Logout01Icon, SquareLock01Icon, Store01Icon, TagsIcon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -195,16 +184,8 @@ export function StoreSettingsScreen({ navigation }: Props) {
     }
   }
 
-  // PAN is the one compulsory document now — enforced at onboarding submit
-  // (StoreReviewScreen's own canSubmit gate, server-side in POST
-  // /store-application), not here. A store approved before this feature
-  // existed can still have no PAN on file; Settings is where it fills in
-  // later, at its own pace — not blocked from saving unrelated changes
-  // (hours, category, photo) just because a document is still missing.
-  // Both fields are still format-checked whenever non-empty, same
-  // reasoning as before.
   const fssaiValid = fssaiLicenseNumber.trim().length === 0 || isValidFssaiFormat(fssaiLicenseNumber);
-  const panValid = panNumber.trim().length === 0 || isValidPanFormat(panNumber);
+  const panValid = isValidPanFormat(panNumber);
 
   // Write-once from this screen — once a document field holds a real
   // value (set here or copied in from onboarding at approval), it renders
@@ -220,27 +201,20 @@ export function StoreSettingsScreen({ navigation }: Props) {
     const hoursChanged = openTime !== profile.openTime || closeTime !== profile.closeTime;
     const normalizedOpen = normalizeStoreHour(openTime);
     const normalizedClose = normalizeStoreHour(closeTime);
-    if (hoursChanged && (normalizedOpen === null || normalizedClose === null)) {
-      Alert.alert('Check store hours', 'Enter a valid time, such as 9:00 AM or 9:00 PM. Store hours use Indian Standard Time (IST).');
-      return;
-    }
-    if (!fssaiValid) {
-      Alert.alert('FSSAI format looks wrong', 'Should be exactly 14 digits, or leave it blank.');
-      return;
-    }
-    if (!panValid) {
-      Alert.alert('PAN format looks wrong', 'PAN should look like ABCDE1234F, or leave it blank.');
-      return;
-    }
-
-    if (needsDrugLicense && !drugLicenseNumber.trim()) {
-      Alert.alert('Drug licence needed', 'A pharmacy needs its drug licence number (state Drug Control authority).');
+    if (saving) return;
+    const validationError = validateStoreSettings({
+      name, category, openTime, closeTime, avgPrepMinutes, manualAddress, ownerName,
+      panNumber, fssaiLicenseNumber, drugLicenseNumber, needsDrugLicense,
+      hasLocation: !!location.coordinates && !!location.district.trim(),
+    });
+    if (validationError) {
+      Alert.alert('Check required details', validationError);
       return;
     }
 
     setSaving(true);
     const result = await updateProfile({
-      storeName: name.trim() || profile.storeName,
+      storeName: name.trim(),
       category,
       ...(hoursChanged && normalizedOpen !== null && normalizedClose !== null ? { openTime: normalizedOpen, closeTime: normalizedClose } : {}),
       avgPrepMinutes,
@@ -263,7 +237,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
     if (result.pendingReview) {
       Alert.alert(
         'Sent for review',
-        'Changes to your store name, category or address go live once Gloceries approves them. Your other changes are saved.',
+        'Store details go live after approval. Other changes are saved.',
       );
     }
     // Explicit navigate, not goBack() — this screen is only ever reached
@@ -281,7 +255,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
   if (profile.accessRole === 'manager') return (
     <View className="flex-1 bg-white px-6 pb-safe pt-safe">
       <Text className="mt-6 text-xl font-semibold text-ink">Store settings</Text>
-      <Text className="mt-3 text-base text-ink/70">Your manager access covers orders, products and reviews. Ask the store owner to update legal details, store information or the payout account.</Text>
+      <Text className="mt-3 text-base text-ink/70">Manage orders, products and reviews. Store and payout details are owner-only.</Text>
       <Pressable onPress={() => navigation.navigate('Reviews')} className="mt-6 rounded-xl bg-ink px-4 py-3">
         <Text className="text-center font-semibold text-white">Customer reviews</Text>
       </Pressable>
@@ -303,7 +277,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
     // the touch responder on every scroll gesture, not just genuine taps).
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <SafeAreaView className="flex-1" style={{ backgroundColor: PAGE_BG }} edges={['top']}>
-        {/* Tick02Icon on the right is the real Save now — replaces the
+        {/* Checkmark on the right is the real Save now — replaces the
             fixed bottom "Save changes" bar entirely (per an explicit ask),
             same handleSave call, just triggered from the header instead of
             a bar that sat below the scroll content. */}
@@ -313,16 +287,19 @@ export function StoreSettingsScreen({ navigation }: Props) {
             className="h-10 w-10 items-center justify-center rounded-full bg-white"
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
-            <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+            <BackIcon size={22} color={colors.ink} />
           </Pressable>
           <Text className="absolute left-0 right-0 text-center text-[17px] font-semibold text-ink">Store settings</Text>
           <Pressable
             onPress={handleSave}
+            accessibilityRole="button"
+            accessibilityLabel="Save store settings"
+            accessibilityState={{ disabled: saving, busy: saving }}
             disabled={saving}
             className="h-10 w-10 items-center justify-center rounded-full bg-white active:opacity-60"
             hitSlop={8}
           >
-            {saving ? <ActivityIndicator size="small" color={colors.ink} /> : <AppIcon icon={Tick02Icon} size={22} color={colors.ink} />}
+            {saving ? <ActivityIndicator size="small" color={colors.ink} /> : <CheckmarkIcon size={24} />}
           </Pressable>
         </View>
 
@@ -365,21 +342,24 @@ export function StoreSettingsScreen({ navigation }: Props) {
               </View>
             </Pressable>
 
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              className="flex-1 text-[17px] font-semibold text-ink"
-              placeholder="Store name"
-              placeholderTextColor="#9AA5A3"
-            />
+            <View className="min-w-0 flex-1 gap-1">
+              <TextInput
+                accessibilityLabel="Store name, required"
+                value={name}
+                onChangeText={setName}
+                className="text-[17px] font-semibold text-ink"
+                placeholder="Store name"
+                placeholderTextColor="#9AA5A3"
+              />
+            </View>
           </View>
+          <Text className="text-[12px] font-medium text-ink/60">* Required. Fields marked optional can be left blank.</Text>
 
           {profile.pendingChange ? (
             <View className="rounded-[16px] bg-amber-50 px-4 py-3">
               <Text className="text-[13px] font-semibold text-amber-800">Pending review</Text>
               <Text className="mt-0.5 text-[12.5px] font-medium leading-[17px] text-amber-900/70">
-                Your change to {describeChange(profile.pendingChange.changes)} is waiting for Gloceries approval. Customers still see your current
-                details until then.
+                {describeChange(profile.pendingChange.changes)} awaiting approval. Current details stay live.
               </Text>
             </View>
           ) : profile.lastChangeReview?.status === 'rejected' ? (
@@ -391,29 +371,32 @@ export function StoreSettingsScreen({ navigation }: Props) {
             </View>
           ) : null}
 
-          <SettingsCard icon={TagsIcon} title="Category">
+          <SettingsCard icon={TagsIcon} title="Category *">
             <StoreCategoryPicker selected={category} onSelect={setCategory} />
             {needsDrugLicense && (
+              <View className="gap-1.5">
+              <Text className="text-[13px] font-medium text-ink/40">Drug licence number *</Text>
               <TextInput
                 value={drugLicenseNumber}
                 onChangeText={setDrugLicenseNumber}
-                placeholder="Drug licence number (required for a pharmacy)"
+                placeholder="Drug licence number"
                 placeholderTextColor="#9AA5A3"
                 autoCapitalize="characters"
                 maxLength={100}
-                className="rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-[15px] font-medium text-ink"
+                className="rounded-2xl border border-gray-200 bg-[#F1F2F4] px-4 py-3.5 text-[15px] font-medium text-ink"
               />
+              </View>
             )}
           </SettingsCard>
 
           <SettingsCard icon={Clock01Icon} title="Store hours">
             <View className="flex-row gap-3">
               <View className="flex-1 gap-1.5">
-                <Text className="text-[13px] font-medium text-ink/40">Opens</Text>
+                <Text className="text-[13px] font-medium text-ink/40">Opens *</Text>
                 <TimeDigitsInput value={openTime} onChangeText={setOpenTime} suffix="AM" />
               </View>
               <View className="flex-1 gap-1.5">
-                <Text className="text-[13px] font-medium text-ink/40">Closes</Text>
+                <Text className="text-[13px] font-medium text-ink/40">Closes *</Text>
                 <TimeDigitsInput value={closeTime} onChangeText={setCloseTime} suffix="PM" />
               </View>
             </View>
@@ -425,14 +408,13 @@ export function StoreSettingsScreen({ navigation }: Props) {
               the moment-to-moment toggle for "right now." Said explicitly
               so the two don't read as duplicates of each other. */}
             <Text className="text-[13px] font-medium leading-[17px] text-ink/50">
-              Your store opens and closes automatically at these IST times. Tap AM or PM to change it. The{' '}
-              <Text className="font-semibold text-ink/80">Orders</Text> toggle overrides hours until the next opening or closing time.
+              Hours use IST. Manual changes last until the next opening or closing.
             </Text>
           </SettingsCard>
 
           <SettingsCard icon={Store01Icon} title="Location">
             <View className="flex-row items-center justify-between">
-              <Text className="text-[14px] font-medium text-ink/70">City</Text>
+              <Text className="text-[14px] font-medium text-ink/70">City *</Text>
               <Text className="text-[14px] font-semibold text-ink">{profile.district}</Text>
             </View>
 
@@ -443,8 +425,8 @@ export function StoreSettingsScreen({ navigation }: Props) {
                 is the one way to update the real pin after approval —
                 is saved separately and remains pending until admin approval. */}
             <View className="gap-1.5">
-              <Text className="text-[13px] font-medium text-ink/40">Store pin on map</Text>
-              <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-black/10 bg-white px-4 py-3">
+              <Text className="text-[13px] font-medium text-ink/40">Store pin on map *</Text>
+              <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-black/10 bg-[#F1F2F4] px-4 py-3">
                 <Text className="flex-1 text-[13px] font-medium text-ink" numberOfLines={2}>
                   {profile.addressLine || profile.district || 'Not set yet'}
                 </Text>
@@ -458,7 +440,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
               <View className="gap-1 rounded-2xl bg-blue-50 p-3">
                 <Text className="text-sm font-semibold text-primary">Proposed location · Pending review</Text>
                 <Text className="text-sm text-ink">{location.address || location.district || 'New map pin saved'}</Text>
-                <Text className="text-xs text-ink/60">Customers and riders use your approved location until this change is approved.</Text>
+                <Text className="text-xs text-ink/60">Your approved pickup location stays live.</Text>
               </View>
             )}
 
@@ -468,31 +450,31 @@ export function StoreSettingsScreen({ navigation }: Props) {
                 normal Save button, same as every other text field on this
                 screen. */}
             <View className="gap-1.5">
-              <Text className="text-[13px] font-medium text-ink/40">Shop Complete address</Text>
+              <Text className="text-[13px] font-medium text-ink/40">Full shop address *</Text>
               <TextInput
                 value={manualAddress}
                 onChangeText={setManualAddress}
                 placeholder="e.g. Near Bus Stand, opposite Xyz store"
                 placeholderTextColor="#9AA5A3"
                 multiline
-                className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[14px] font-medium text-ink"
+                className="rounded-2xl border border-black/10 bg-[#F1F2F4] px-4 py-3 text-[14px] font-medium text-ink"
               />
             </View>
           </SettingsCard>
 
           <SettingsCard icon={Call02Icon} title="Account">
             <View className="gap-1.5">
-              <Text className="text-[13px] font-medium text-ink/40">Owner name</Text>
+              <Text className="text-[13px] font-medium text-ink/40">Owner name *</Text>
               <TextInput
                 value={ownerName}
                 onChangeText={setOwnerName}
                 placeholder="Your full name"
                 placeholderTextColor="#9AA5A3"
-                className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[14px] font-medium text-ink"
+                className="rounded-2xl border border-black/10 bg-[#F1F2F4] px-4 py-3 text-[14px] font-medium text-ink"
               />
             </View>
             <View className="flex-row items-center justify-between">
-              <Text className="text-[13px] font-medium text-ink/70">Phone number</Text>
+              <Text className="text-[13px] font-medium text-ink/70">Phone number *</Text>
               <View className="flex-row items-center gap-2">
                 <Text className="text-[13px] font-semibold text-ink">{profile.phone ? formatPhone(profile.phone) : '—'}</Text>
                 {profile.phone.length > 0 && (
@@ -503,7 +485,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
               </View>
             </View>
             <Text className="text-[12.5px] font-medium leading-[17px] text-ink/50">
-              Verified via OTP. To change your phone number, sign in with a different account.
+              Phone verified by OTP.
             </Text>
           </SettingsCard>
 
@@ -517,7 +499,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
                 once real, shown read-only below, same as the phone number row
                 above. */}
             <DocumentField
-              label="PAN number"
+              label="PAN number *"
               locked={panLocked}
               value={panNumber}
               onChangeText={setPanNumber}
@@ -555,7 +537,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
               locked={shopLicenseLocked}
               value={shopLicenseNumber}
               onChangeText={setShopLicenseNumber}
-              placeholder="License number, if you have one"
+              placeholder="License number"
               autoCapitalize="characters"
             />
 
@@ -566,7 +548,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
               <Text className="flex-1 text-[12.5px] font-medium leading-[17px]">
                 <Text className="font-semibold text-red-500">Note: </Text>
                 <Text className="text-black/60">
-                  Formats are validated and encrypted for privacy. Use Replace legal document below to request an admin-reviewed change.
+                  Numbers are format-checked. Replacements need approval.
                 </Text>
               </Text>
             </View>
@@ -582,7 +564,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
                 <Text className="text-[13px] font-semibold text-ink">My documents</Text>
               </View>
               <Text className="text-[12px] font-medium leading-[16px] text-ink/45">
-                Only you can see these — decrypted just for your account.
+                Private documents for your account.
               </Text>
               <View className="flex-row gap-3">
                 <PrivateDoc label="Store photo" uri={profile.storePhotoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
@@ -687,13 +669,14 @@ function DocumentField({ label, locked, value, onChangeText, placeholder, autoCa
     <View className="gap-1.5">
       <Text className="text-[13px] font-medium text-ink/40">{label}</Text>
       {locked ? (
-        <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-black/10 bg-mist px-4 py-3">
+        <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-black/10 bg-[#F1F2F4] px-4 py-3">
           <Text className="text-[14px] font-semibold text-ink">{value}</Text>
           <AppIcon icon={SquareLock01Icon} size={15} color={`${colors.ink}60`} />
         </View>
       ) : (
         <>
           <TextInput
+            accessibilityLabel={label}
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
@@ -701,7 +684,7 @@ function DocumentField({ label, locked, value, onChangeText, placeholder, autoCa
             autoCapitalize={autoCapitalize}
             keyboardType={keyboardType}
             maxLength={maxLength}
-            className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-[14px] font-medium text-ink"
+            className="rounded-2xl border border-black/10 bg-[#F1F2F4] px-4 py-3 text-[14px] font-medium text-ink"
           />
           {errorText && <Text className="text-[12px] font-medium text-red-500">{errorText}</Text>}
         </>

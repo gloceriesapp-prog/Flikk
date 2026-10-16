@@ -146,6 +146,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci --no-audit --no-fund
+      - name: Verify Expo native dependency alignment
+        run: npx --yes expo-doctor
+        working-directory: apps/${{ matrix.app }}
+        env:
+          EXPO_NO_DOTENV: '1'
       - run: npx tsc --noEmit
         working-directory: apps/${{ matrix.app }}
       - run: npx eslint .
