@@ -33,7 +33,7 @@ import { compressImageToTarget } from '../../../media/compressImage';
 import { SettingsCard } from './SettingsCard';
 
 const ACCENT = '#1754cf';
-const INPUT_CLASS = 'rounded-2xl border border-black/10 bg-white px-4 py-3 text-[14px] font-medium text-ink';
+const INPUT_CLASS = 'rounded-2xl border border-black/10 bg-[#F1F2F4] px-4 py-3 text-[14px] font-medium text-ink';
 
 export function PayoutAccountCard() {
   const queryScope = usePrivateQueryScope();
@@ -117,7 +117,7 @@ function AccountSummary({ account, onChange }: { account: PayoutAccount; onChang
         </View>
       )}
 
-      <Text className="text-[13px] font-medium text-ink/40">Your weekly payout (see the Payouts tab) is sent here after verification.</Text>
+      <Text className="text-[13px] font-medium text-ink/40">Weekly payouts are sent here after verification.</Text>
     </>
   );
 }
@@ -220,6 +220,11 @@ function PayoutForm({
   }
 
   function submit() {
+    if (busy) return;
+    if (values.method === 'bank' && !values.bankName.trim()) {
+      setErrors({ bankName: 'Enter your bank name.' });
+      return;
+    }
     const { errors: next, input } = validatePayoutForm(values);
     setErrors(next);
     if (input) mutation.mutate(input);
@@ -230,7 +235,7 @@ function PayoutForm({
       {hasExisting && (
         <View className="rounded-2xl bg-gold/15 px-3.5 py-3">
           <Text className="text-[12.5px] font-medium leading-[17px] text-ink/70">
-            Saving new details resets verification — we’ll confirm the name again when we send your next payout.
+            New payout details need verification.
           </Text>
         </View>
       )}
@@ -258,7 +263,7 @@ function PayoutForm({
       </View>
 
       {values.method === 'upi' ? (
-        <Field label="UPI ID" error={errors.upiId}>
+        <Field label="UPI ID *" error={errors.upiId}>
           <TextInput
             value={values.upiId}
             onChangeText={(t) => set('upiId', t.replace(/\s/g, ''))}
@@ -292,28 +297,28 @@ function PayoutForm({
         </Field>
       ) : (
         <View className="gap-3">
-          <Field label="Account holder name" error={errors.accountHolderName}>
+          <Field label="Account holder name *" error={errors.accountHolderName}>
             <TextInput value={values.accountHolderName} onChangeText={(t) => set('accountHolderName', t)} placeholder="As it appears on the bank account" placeholderTextColor="#9AA5A3" editable={!busy} className={INPUT_CLASS} />
           </Field>
-          <Field label="Account number" error={errors.accountNumber}>
+          <Field label="Account number *" error={errors.accountNumber}>
             <TextInput value={values.accountNumber} onChangeText={(t) => set('accountNumber', t.replace(/\D/g, ''))} placeholder="e.g. 765432123456" placeholderTextColor="#9AA5A3" keyboardType="number-pad" secureTextEntry editable={!busy} maxLength={18} className={INPUT_CLASS} />
           </Field>
-          <Field label="Confirm account number" error={errors.confirmAccountNumber}>
+          <Field label="Confirm account number *" error={errors.confirmAccountNumber}>
             <TextInput value={values.confirmAccountNumber} onChangeText={(t) => set('confirmAccountNumber', t.replace(/\D/g, ''))} placeholder="Re-enter account number" placeholderTextColor="#9AA5A3" keyboardType="number-pad" editable={!busy} maxLength={18} contextMenuHidden className={INPUT_CLASS} />
           </Field>
-          <Field label="IFSC code" error={errors.ifsc}>
+          <Field label="IFSC code *" error={errors.ifsc}>
             <TextInput value={values.ifsc} onChangeText={(t) => set('ifsc', t.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())} placeholder="e.g. HDFC0000053" placeholderTextColor="#9AA5A3" autoCapitalize="characters" autoCorrect={false} maxLength={11} editable={!busy} className={INPUT_CLASS} />
           </Field>
-          <Field label="Bank name (optional)">
+          <Field label="Bank name *">
             <TextInput value={values.bankName} onChangeText={(t) => set('bankName', t)} placeholder="e.g. HDFC Bank" placeholderTextColor="#9AA5A3" editable={!busy} className={INPUT_CLASS} />
           </Field>
-          <Field label="Cancelled cheque or passbook first page" error={errors.proofPath}>
+          <Field label="Cancelled cheque or passbook first page *" error={errors.proofPath}>
             <Pressable
               onPress={pickProof}
               disabled={busy}
               accessibilityRole="button"
               accessibilityLabel={values.proofPath ? 'Replace cheque or passbook photo' : 'Add cheque or passbook photo'}
-              className={`flex-row items-center gap-2.5 rounded-2xl px-4 py-3.5 ${values.proofPath ? 'bg-success/10' : 'border border-dashed border-black/15 bg-[#F9FAFB]'}`}
+              className={`flex-row items-center gap-2.5 rounded-2xl px-4 py-3.5 ${values.proofPath ? 'bg-gray-100' : 'border border-dashed border-black/15 bg-[#F9FAFB]'}`}
             >
               {uploadingProof ? (
                 <ActivityIndicator size="small" color={colors.ink} />
@@ -321,7 +326,7 @@ function PayoutForm({
                 <AppIcon icon={values.proofPath ? CheckmarkCircle02Icon : ImageUpload01Icon} size={18} color={values.proofPath ? colors.success : colors.ink} />
               )}
               <Text className="flex-1 text-[13px] font-semibold text-ink/80">
-                {uploadingProof ? 'Uploading…' : values.proofPath ? 'Photo added — tap to replace' : 'Add photo (account number & name clearly visible)'}
+                {uploadingProof ? 'Uploading…' : values.proofPath ? 'Photo added — tap to replace' : 'Add a clear account photo'}
               </Text>
             </Pressable>
           </Field>
@@ -346,7 +351,7 @@ function PayoutForm({
       )}
 
       <Text className="text-[13px] font-medium leading-normal text-ink/50">
-        We pay out weekly after verification. When we send your first payout we check the name on the account matches.
+        Weekly payouts start after account verification.
       </Text>
     </>
   );

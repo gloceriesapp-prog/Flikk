@@ -27,7 +27,7 @@ if (developmentApi || process.env.EAS_BUILD === 'true') {
 const easProjectId = 'f27829aa-b709-4d41-9186-8cde149ef0ac';
 
 // Sentry's build plugin uploads source maps; only wired when its org/project
-// are configured, same as apps/customer.
+// are configured, same as the other apps.
 const sentryPlugin = process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
   ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]]
   : [];
@@ -46,7 +46,7 @@ module.exports = {
     name: 'Gloceries Partner',
     slug: 'partner',
     owner: 'nishal777',
-    version: '1.0.0',
+    version: '1.0.1',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change.
@@ -93,6 +93,7 @@ module.exports = {
     },
     plugins: [
       ...sentryPlugin,
+      'expo-asset',
       'expo-font',
       'expo-splash-screen',
       'expo-location',

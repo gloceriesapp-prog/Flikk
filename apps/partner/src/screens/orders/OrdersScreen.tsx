@@ -175,8 +175,6 @@ export function OrdersScreen({ navigation }: Props) {
         onPressNotifications={() => { }}
       />
 
-      <DevSimulateOrderButton />
-
       {profile.id.length > 0 && (
         <ProfileSetupBanner profile={profile} hasPayoutAccount={payoutAccount ? payoutAccount.method !== null : undefined} onPress={() => navigation.navigate('StoreSettings')} />
       )}
@@ -217,8 +215,8 @@ export function OrdersScreen({ navigation }: Props) {
       )}
 
       <View className="mx-5 mt-3 flex-row items-center justify-between">
-        <Text className="text-xs text-ink/60">{lastUpdatedAt ? `Updated ${new Date(lastUpdatedAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}` : 'Checking your orders…'}</Text>
-        <Pressable accessibilityRole="button" onPress={() => navigation.navigate('OrderHistory')}><Text className="font-semibold text-primary">History & issues</Text></Pressable>
+        <Text className="text-[13px] text-ink/60 font-medium">{lastUpdatedAt ? `Updated ${new Date(lastUpdatedAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}` : 'Checking your orders…'}</Text>
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate('OrderHistory')}><Text className="text-[13px] font-semibold text-primary">History & issues</Text></Pressable>
       </View>
       <View className="py-3">
         <OrderStatusFilter
@@ -240,6 +238,8 @@ export function OrdersScreen({ navigation }: Props) {
           }}
         />
       </View>
+
+      <DevSimulateOrderButton />
 
       {orders.length === 0 ? (
         <View className="flex-1 items-center justify-center px-16">

@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 // In-app account deletion request (Google Play requires one). Explains what
 // is deleted and what the law makes us keep, then files the request with
 // POST /partner/account/deletion-request. Admin completes it from the
@@ -12,7 +13,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View 
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
+import { Delete02Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors } from '../../theme/tokens';
@@ -81,7 +82,7 @@ export function DeleteAccountScreen() {
     <View className="flex-1 bg-white">
       <View className="flex-row items-center gap-3 px-4 pb-3 pt-safe-offset-3">
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back" className="h-9 w-9 items-center justify-center">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <BackIcon size={22} color={colors.ink} />
         </Pressable>
         <Text className="text-[18px] font-bold text-ink">Delete account</Text>
       </View>

@@ -20,7 +20,7 @@ interface Props {
 export function PrepTimeStepper({ minutes, onChange }: Props) {
   return (
     <View className="flex-row items-center justify-between rounded-2xl border border-black/10 bg-white px-4 py-3">
-      <Text className="text-[14px] font-medium text-ink/70">Avg. prep time</Text>
+      <Text className="text-[14px] font-medium text-ink/70">Avg. prep time *</Text>
 
       <View className="flex-row items-center gap-4">
         <Pressable

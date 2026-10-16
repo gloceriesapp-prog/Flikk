@@ -40,7 +40,7 @@ const easProjectId = '35911db7-6e35-402b-b16b-6e13019a31ae';
 // Android push (FCM) config, shared by all three apps — see
 // packages/shared/config/google-services.cjs.
 // Sentry's build plugin uploads source maps; only wired when its org/project
-// are configured, same as apps/partner and apps/customer.
+// are configured, same as the other apps.
 const sentryPlugin = process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
   ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]]
   : [];
@@ -52,7 +52,7 @@ module.exports = {
     name: 'Gloceries Rider',
     slug: 'rider',
     owner: 'nishal777',
-    version: '1.0.0',
+    version: '1.0.1',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change. url uses THIS app's EAS

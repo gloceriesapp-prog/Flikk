@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ save: vi.fn(), expo: vi.fn(), status: vi.fn(), listeners: [] as Array<(token: { type: string; data: string }) => void>, auth: { accessToken: 'account-a' } }));
 vi.mock('../../../node_modules/expo-device', () => ({ isDevice: true }));
-vi.mock('../../../apps/partner/node_modules/react-native', () => ({ Platform: { OS: 'android' } }));
+vi.mock('../../../node_modules/react-native', () => ({ Platform: { OS: 'android' } }));
 vi.mock('../../../node_modules/expo', () => ({ isRunningInExpoGo: () => false }));
 vi.mock('../../../node_modules/expo-constants', () => ({ default: { expoConfig: { extra: { eas: { projectId: 'project' } } } } }));
 vi.mock('../../../node_modules/expo-notifications', () => ({

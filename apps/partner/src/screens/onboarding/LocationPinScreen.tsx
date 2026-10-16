@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 // Full-screen "confirm map pin" step — the drag-a-fixed-center-pin pattern
 // Blinkit/Zepto/Swiggy use for address confirm: the pin never moves, the map
 // pans underneath it, and the address re-resolves once panning settles.
@@ -20,7 +21,7 @@ import MapView, { Circle, Marker, PROVIDER_GOOGLE, type Region } from 'react-nat
 import Constants from 'expo-constants';
 import { isRunningInExpoGo } from 'expo';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft01Icon, ArrowRight01Icon, GpsSignal01Icon, Location01Icon, Location04Icon, Search01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, GpsSignal01Icon, Location01Icon, Location04Icon, Search01Icon } from '@hugeicons/core-free-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -312,7 +313,7 @@ export function LocationPinScreen({ navigation, route }: Props) {
               hitSlop={12}
               className="h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white"
             >
-              <AppIcon icon={ArrowLeft01Icon} size={20} color={colors.ink} />
+              <BackIcon size={20} color={colors.ink} />
             </Pressable>
             <View className="h-11 flex-1 flex-row items-center gap-2 rounded-full border border-gray-200 bg-white px-4">
               <TextInput
@@ -487,7 +488,7 @@ export function LocationPinScreen({ navigation, route }: Props) {
               hitSlop={12}
               className="h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white shadow-md"
             >
-              <AppIcon icon={ArrowLeft01Icon} size={20} color={colors.ink} />
+              <BackIcon size={20} color={colors.ink} />
             </Pressable>
 
             <View className="flex-1">

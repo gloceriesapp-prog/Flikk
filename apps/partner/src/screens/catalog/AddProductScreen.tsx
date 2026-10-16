@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 import { parseMoneyInput, validVariantPrices } from '../../utils/moneyInput';
 import { AppImage as Image } from '../../components/AppImage';
 // New-product form — reached from Inventory's own "Add product" button
@@ -33,7 +34,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
-import { Camera01Icon, ShoppingBasketAdd01Icon , ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+import { Camera01Icon, ShoppingBasketAdd01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { DismissKeyboardView } from '../../components/DismissKeyboardView';
@@ -178,7 +179,7 @@ export function AddProductScreen({ navigation }: Props) {
               className="h-10 w-10 items-center justify-center rounded-full bg-gray-100"
               style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             >
-              <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
+              <BackIcon size={18} color={colors.ink} />
             </Pressable>
             <Text className="absolute left-0 right-0 text-center text-xl font-medium tracking-tight text-ink">
               Add product
