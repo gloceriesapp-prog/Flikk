@@ -1,3 +1,4 @@
+import { logoutPartner } from '../../features/push-notifications/registerPushToken';
 // Shown instead of the app shell while Gloceries has suspended this partner
 // account (users.partner_suspended, migration 114 — GET /auth/me
 // partner_suspended). The backend already refuses every partner route with
@@ -6,7 +7,7 @@
 // into the app.
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { AlertCircleIcon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { DeleteAccountLink } from '../../components/DeleteAccountLink';
@@ -19,7 +20,6 @@ const POLL_INTERVAL_MS = 30_000;
 export function PartnerSuspendedScreen() {
   const reason = useAuthStore((s) => s.partnerSuspendedReason);
   const setPartnerSuspension = useAuthStore((s) => s.setPartnerSuspension);
-  const clear = useAuthStore((s) => s.clear);
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export function PartnerSuspendedScreen() {
         {checking ? <ActivityIndicator size="small" color={colors.ink} /> : <View className="h-2 w-2 rounded-full bg-danger" />}
         <Text className="text-xs font-semibold text-ink/60">{checking ? 'Checking status…' : 'Suspended'}</Text>
       </View>
-      <Pressable onPress={() => void clear()} className="rounded-full bg-ink px-6 py-3.5">
+      <Pressable onPress={() => void logoutPartner().catch(() => Alert.alert('Could not log out', 'Check your connection and try again to stop notifications on this device.'))} className="rounded-full bg-ink px-6 py-3.5">
         <Text className="text-sm font-semibold text-white">Log out</Text>
       </Pressable>
       <DeleteAccountLink />

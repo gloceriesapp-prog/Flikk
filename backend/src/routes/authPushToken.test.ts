@@ -59,3 +59,12 @@ it('keeps customers on their own device registration', async () => {
   expect((await call('delete', 'customer')).err).toMatchObject({ status: 400, code: 'USE_DEVICE_REGISTRATION' });
   expect(db.updates).toHaveLength(0);
 });
+
+it('removes only the captured device when a token is supplied', async () => {
+  await call('delete', 'store_owner', { token: 'ExponentPushToken[old]' });
+  expect(db.updates).toEqual([{ patch: { expo_push_token: null }, filters: [['eq', 'id', 'u1'], ['eq', 'expo_push_token', 'ExponentPushToken[old]']] }]);
+});
+it('rejects invalid device identifiers before writing', async () => {
+  for (const token of [null, '', 5, 'x'.repeat(513)]) expect((await call('delete', 'store_owner', { token })).err?.code).toBe('INVALID_TOKEN');
+  expect(db.updates).toHaveLength(0);
+});

@@ -17,6 +17,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { isRunningInExpoGo } from 'expo';
 import { savePushToken } from '../../api/auth';
+import { apiRequest } from '../../api/client';
 import { navigationRef } from '../../navigation/navigationRef';
 import { useNotificationStatusStore } from '../../store/useNotificationStatusStore';
 import { createNotificationTapRouter } from './notificationNavigation';
@@ -53,9 +54,11 @@ type DeviceToken = Notifications.DevicePushToken;
 type Registration = { epoch: number; pending: DeviceToken | null; lastDeviceKey: string | null; promise: Promise<void> };
 let registration: Registration | null = null;
 let savedToken: { epoch: number; token: string } | null = null;
+let sendingToken: { epoch: number; token: string } | null = null;
+let logout: { epoch: number; promise: Promise<void> } | null = null;
 const deviceKey = (token: DeviceToken) => `${token.type}:${String(token.data)}`;
-const currentAccount = (epoch: number) => isCurrentSession(epoch) && !!useAuthStore.getState().accessToken;
-onSessionReset(() => { registration = null; savedToken = null; });
+const currentAccount = (epoch: number) => isCurrentSession(epoch) && logout?.epoch !== epoch && !!useAuthStore.getState().accessToken;
+onSessionReset(() => { registration = null; savedToken = null; sendingToken = null; });
 
 async function registerOnce(epoch: number, devicePushToken?: DeviceToken): Promise<void> {
   const setStatus = (status: Parameters<ReturnType<typeof useNotificationStatusStore.getState>['setStatus']>[0]) => {
@@ -76,12 +79,39 @@ async function registerOnce(epoch: number, devicePushToken?: DeviceToken): Promi
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId, ...(devicePushToken ? { devicePushToken } : {}) });
     if (!currentAccount(epoch)) return;
     if (savedToken?.epoch !== epoch || savedToken.token !== token) {
+      sendingToken = { epoch, token };
       await savePushToken(token);
       if (!currentAccount(epoch)) return;
       savedToken = { epoch, token };
     }
     setStatus('ok');
   } catch { setStatus('error'); }
+}
+
+// Stop new registrations, drain any POST already in flight, then remove the
+// device before clearing credentials. A failed removal keeps the session so
+// the owner can retry; it must never silently leave an old store subscribed.
+export function logoutPartner(): Promise<void> {
+  const epoch = getSessionEpoch();
+  if (logout?.epoch === epoch) return logout.promise;
+  if (!useAuthStore.getState().accessToken) return useAuthStore.getState().clear();
+  const draining = registration?.epoch === epoch ? registration.promise : Promise.resolve();
+  const token = sendingToken?.epoch === epoch ? sendingToken.token : savedToken?.epoch === epoch ? savedToken.token : undefined;
+  const work = { epoch, promise: Promise.resolve() };
+  logout = work;
+  work.promise = Promise.resolve().then(async () => {
+    await draining;
+    if (!isCurrentSession(epoch)) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      await apiRequest('/auth/push-token', { method: 'DELETE', body: token ? { token } : {}, signal: controller.signal });
+      if (isCurrentSession(epoch)) await useAuthStore.getState().clear();
+    } catch (error) {
+      if (isCurrentSession(epoch)) throw error;
+    } finally { clearTimeout(timeout); }
+  }).finally(() => { if (logout === work) logout = null; });
+  return work.promise;
 }
 
 export function registerPushToken(devicePushToken?: DeviceToken): Promise<void> {

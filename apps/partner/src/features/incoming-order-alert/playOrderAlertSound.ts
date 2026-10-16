@@ -15,7 +15,7 @@
 //
 // The player is created eagerly at module load (see `player` below), not
 // lazily on the first call — a lazily-created player means the very first
-// alert after a cold app start would try to `.play()` a remote MP3 that
+// alert after a cold app start would try to `.play()` a bundled audio clip that
 // hasn't finished buffering yet, which is exactly the alert that most
 // needs to be heard. App.tsx calls primeOrderAlertSound() once on launch
 // so both the audio session and the file itself have had time to warm up
@@ -51,13 +51,13 @@ try {
   VolumeManager = null;
 }
 
-const SOUND_URL = 'https://images.gloceries.com/appsui/patner-alert.wav';
+// Bundled once in the native app: no network request at alert time.
+const SOUND_ASSET = require('../../../assets/partner-alert.wav');
 
 let audioModeConfigured = false;
 
 async function ensureAudioMode(): Promise<void> {
   if (audioModeConfigured) return;
-  audioModeConfigured = true;
   await setAudioModeAsync({
     playsInSilentMode: true,
     // 'duckOthers', not 'mixWithOthers' — this temporarily lowers
@@ -67,6 +67,7 @@ async function ensureAudioMode(): Promise<void> {
     interruptionMode: 'duckOthers',
     shouldPlayInBackground: false,
   });
+  audioModeConfigured = true;
 }
 
 // One player, reused rather than recreated per call — an order that
@@ -124,7 +125,7 @@ function scheduleVolumeRestore(): void {
 // the first real call), so there's no harm if it's ever invoked twice.
 export async function primeOrderAlertSound(): Promise<void> {
   await ensureAudioMode();
-  if (!player) player = createAudioPlayer({ uri: SOUND_URL });
+  if (!player) player = createAudioPlayer(SOUND_ASSET);
 }
 
 export async function playOrderAlertSound(): Promise<void> {
@@ -135,9 +136,9 @@ export async function playOrderAlertSound(): Promise<void> {
   void boostToMaxVolume();
 
   if (!player) {
-    player = createAudioPlayer({ uri: SOUND_URL });
+    player = createAudioPlayer(SOUND_ASSET);
   } else {
-    player.seekTo(0);
+    await player.seekTo(0);
   }
   // Max app-level gain — the ceiling this code alone controls.
   // boostToMaxVolume above is what actually raises the device's own
