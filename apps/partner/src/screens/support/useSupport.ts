@@ -1,3 +1,4 @@
+import { usePrivateQueryScope } from '../../network/usePrivateQueryScope';
 import { useQuery } from '@tanstack/react-query';
 import { supportApi } from '../../api/support';
 
@@ -7,13 +8,16 @@ export function useSupportContacts() {
 }
 
 export function useSupportTickets() {
-  return useQuery({ queryKey: ['support-tickets'], queryFn: supportApi.tickets });
+  const queryScope = usePrivateQueryScope();
+  return useQuery({ queryKey: ['support-tickets', queryScope], queryFn: supportApi.tickets });
 }
 
 export function useSupportOrders(enabled: boolean) {
-  return useQuery({ queryKey: ['support-orders'], queryFn: supportApi.orders, enabled });
+  const queryScope = usePrivateQueryScope();
+  return useQuery({ queryKey: ['support-orders', queryScope], queryFn: supportApi.orders, enabled });
 }
 
 export function useSupportThread(ticketId: string) {
-  return useQuery({ queryKey: ['support-ticket', ticketId], queryFn: () => supportApi.ticket(ticketId), refetchInterval: 15_000 });
+  const queryScope = usePrivateQueryScope();
+  return useQuery({ queryKey: ['support-ticket', queryScope, ticketId], queryFn: () => supportApi.ticket(ticketId), refetchInterval: 15_000 });
 }

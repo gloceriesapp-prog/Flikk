@@ -42,20 +42,10 @@ const REMINDER_COPY: Record<ReminderStage, { title: string; body: (customerName:
   },
 };
 
-let permissionRequested = false;
-
-async function ensurePermission(): Promise<boolean> {
-  const current = await Notifications.getPermissionsAsync();
-  if (current.granted) return true;
-  if (permissionRequested) return false;
-  permissionRequested = true;
-  const requested = await Notifications.requestPermissionsAsync();
-  return requested.granted;
-}
-
 export async function sendOrderReminderNotification(customerName: string, stage: ReminderStage): Promise<void> {
-  const granted = await ensurePermission();
-  if (!granted) return;
+  // Permission belongs to the login flow, never to an arriving order.
+  const permission = await Notifications.getPermissionsAsync();
+  if (!permission.granted) return;
 
   const copy = REMINDER_COPY[stage];
   await Notifications.scheduleNotificationAsync({

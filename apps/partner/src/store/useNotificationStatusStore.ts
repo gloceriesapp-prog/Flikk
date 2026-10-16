@@ -9,6 +9,7 @@
 // does NOT warn — it's a dev-only no-op, not a real "you turned notifications
 // off" state a production owner can be in.
 import { create } from 'zustand';
+import { onSessionReset } from './sessionScope';
 
 export type PushStatus = 'unknown' | 'ok' | 'denied' | 'error' | 'unsupported';
 
@@ -23,12 +24,12 @@ interface NotificationStatusState {
   resetDismissed: () => void;
 }
 
-// A dismiss only matters while the current status still warns; a new status
-// write resets it so a fresh failure is never pre-dismissed.
+// A foreground recheck of the same denied status must not reopen a popup.
+// A genuine permission change resets dismissal for a future decision.
 export const useNotificationStatusStore = create<NotificationStatusState>((set) => ({
   status: 'unknown',
   dismissed: false,
-  setStatus: (status) => set({ status, dismissed: false }),
+  setStatus: (status) => set(state => status === state.status ? state : { status, dismissed: false }),
   dismiss: () => set({ dismissed: true }),
   resetDismissed: () => set({ dismissed: false }),
 }));
@@ -36,3 +37,5 @@ export const useNotificationStatusStore = create<NotificationStatusState>((set) 
 export function pushStatusWarns(status: PushStatus): boolean {
   return status === 'denied' || status === 'error';
 }
+
+onSessionReset(() => useNotificationStatusStore.setState({ status: "unknown", dismissed: false }));

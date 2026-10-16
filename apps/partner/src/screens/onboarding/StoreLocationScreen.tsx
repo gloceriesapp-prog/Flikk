@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 // Step 2 of 5 — dedicated "mark your store on the map" step. Wraps the same
 // real map-pin flow this app already has (LocationPinScreen — drag-a-fixed-
 // center-pin, search, current-location, far-pin sanity check) rather than
@@ -12,11 +13,12 @@
 // scroll — so the chrome is composed here directly.
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { isRunningInExpoGo } from 'expo';
-import MapView, { Marker } from 'react-native-maps';
-import { ArrowLeft01Icon, ArrowRight01Icon, Location05Icon, PinLocation01Icon } from '@hugeicons/core-free-icons';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import Constants from 'expo-constants';
+import { ArrowRight01Icon, Location05Icon, PinLocation01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { saveStoreDraft } from '../../api/auth';
 import { AppIcon } from '../../components/AppIcon';
@@ -30,6 +32,7 @@ import type { AuthStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AuthStackParamList, 'StoreLocation'>;
 
 const PREVIEW_DELTA = 0.006;
+const USES_GOOGLE_MAPS = Platform.OS === 'android' || Constants.expoConfig?.extra?.hasIosGoogleMaps === true;
 
 // react-native-maps' native view isn't in the Expo Go runtime — mounting
 // <MapView> hard-crashes there. The pin itself is still set via LocationPin
@@ -146,7 +149,7 @@ export function StoreLocationScreen({ navigation, route }: Props) {
       {/* Same top bar as OnboardingScaffold — back arrow + centered progress. */}
       <View className="flex-row items-center px-5 pb-2 pt-safe-offset-2">
         <Pressable onPress={() => navigation.goBack()} hitSlop={16} className="h-9 w-9 items-center justify-center">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <BackIcon size={22} color={colors.ink} />
         </Pressable>
         <WizardProgress step={2} total={5} />
         <View className="h-9 w-9" />
@@ -177,6 +180,7 @@ export function StoreLocationScreen({ navigation, route }: Props) {
                 </View>
               ) : (
                 <MapView
+                  provider={USES_GOOGLE_MAPS ? PROVIDER_GOOGLE : undefined}
                   style={{ height: 220, width: '100%' }}
                   pointerEvents="none"
                   region={{ ...coordinates, latitudeDelta: PREVIEW_DELTA, longitudeDelta: PREVIEW_DELTA }}

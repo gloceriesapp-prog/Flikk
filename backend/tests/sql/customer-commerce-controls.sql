@@ -30,6 +30,9 @@ INSERT INTO addresses(id,user_id,line1,zone_id) VALUES('00000000-0000-4000-8000-
 INSERT INTO orders(id,customer_id,store_id,address_id,item_total,delivery_fee,commission_amount,total,payment_method,status,order_number)
  VALUES('00000000-0000-4000-8000-00000000c101','00000000-0000-4000-8000-00000000cc01','00000000-0000-4000-8000-00000000cf01',
   '00000000-0000-4000-8000-00000000cb01',100,20,6,120,'cod','placed','FLK-777');
+-- Replica-mode COD fixtures bypass the production visibility trigger.
+UPDATE orders SET store_visible_at=now(),acceptance_deadline_at=now()+interval '10 minutes'
+ WHERE payment_method='cod' AND store_visible_at IS NULL;
 SET LOCAL session_replication_role=origin;
 
 -- #43 customer profile edit, audited; phone untouched; non-customers refused.

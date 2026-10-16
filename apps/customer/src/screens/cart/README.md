@@ -7,28 +7,39 @@ blue order button with the total on the right. Orders are placed directly
 from the cart. No intermediate checkout
 page is registered. Without a selection it opens the picker instead.
 
-`../payment-method/PaymentMethodScreen.tsx` only selects a payment method.
-Selecting a row returns to the existing Cart route with a serializable
-`selectedPaymentMethod`; it never creates an order or initiates payment.
-Back without selecting preserves the current method and cart. The original grouped payment layout, delivery address and total are retained on
-that page. Rows end with selection arrows and never show Pay now buttons.
-Payment rows live in that folder; the shared method model lives in
-`../../payments/paymentMethod.ts`.
+`../payment-method/PaymentMethodScreen.tsx` returns a serializable payment
+selection to the existing Cart route. An explicit Android UPI app selection
+also requests one checkout through `payment/usePaymentSelectionStart.ts`.
+Cart consumes that request before asynchronous work, waits for eligibility and
+quote checks, and retains its existing price-change confirmation. Rerenders or
+foregrounding cannot replay the request. Profile selections only save a
+preference; other payment methods return to Cart for confirmation.
 
 On entering the cart, installed UPI apps and the account's payment preference
 load independently. Manual selection takes priority over a late preference
 response. A remembered app that is no longer installed is not selected;
 customers choose another method. Preference errors do not block selection.
-Payments use Razorpay's official `react-native-razorpay` Standard Checkout
-(`payments/openRazorpayCheckout.ts`). The backend creates/reuses the provider
-order and returns its key ID, integer paise amount, currency and reservation
-expiry. No secret is bundled. The native SDK owns UPI intent hand-off, card
-entry and the enabled bank/method list; this app never constructs payment URLs.
-Installed UPI rows remain preferences: Standard Checkout requires customers to
-choose their app in its secure picker. Only documented method preselection is
-used, and only when real contact and email are available. More payment options
-shows methods actually enabled on the merchant account. The old custom UPI
-collect/VPA flow is removed; no unsupported S2S API is assumed to be enabled.
+Android installed UPI app rows use Razorpay S2S intent. The authenticated
+backend `/payments/upi-intent` endpoint derives ownership, amount and contact
+from persisted data, atomically claims the attempt, and creates or reuses one
+provider payment. The app launches the exact provider URI with the selected
+Android package through the native `UpiApps` module. It never rewrites payment
+parameters. A real receipt email is required before creating an order for this
+flow; synthetic phone-login email addresses are rejected. Contacts are stored
+privately through `/payments/contact`.
+
+Direct UPI requires Razorpay live keys, including on a local backend. Test-mode
+mock payees are not valid bank UPI IDs. `/payments/availability.upi_intent`
+advertises readiness and the server rejects test-mode intent requests before
+creating provider orders or claims. Use the test checkout simulator for mock
+payments. Never rewrite a provider payee to bypass Google Pay validation.
+
+Cards, netbanking and other online options retain the official
+`react-native-razorpay` Standard Checkout. Direct S2S UPI is Android-only;
+other platforms show an explicit unsupported message. No provider secret is
+bundled. Apply backend migrations `20261014061458` and `20261014093324` before
+deploying this flow. The latter caches a short-lived verified resume decision;
+launching still rechecks provider state on the server.
 
 SDK callbacks are sent to `/payments/verify`; the backend checks signature,
 ownership, captured state, currency and amount. A callback alone never clears
@@ -68,11 +79,11 @@ Unavailable cards show a status and Remove action, and ordering stays disabled.
 
 ## Durable checkout recovery
 
-Order/trip creation requires an account-scoped persisted attempt ID. Retries reuse that ID only after an uncertain outcome (network/timeout/5xx); a definitive rejection (out of stock, price/promo changed) or a changed cart closes the attempt atomically on the backend and starts a fresh one (`payment/attemptPolicy.ts`). The old cart is never replayed. Unpaid checkouts can be cancelled or switched to cash on delivery from Payment recovery (`POST /payments/abandon`). Payment recovery is implemented in `features/checkout-recovery/`, using backend discovery and provider reconciliation rather than navigation snapshots. See `backend/CHECKOUT_RECOVERY.md` for migration/release requirements.
+Order/trip creation requires an account-scoped persisted attempt ID. Retries reuse that ID only after an uncertain outcome (network/timeout/5xx); a definitive rejection (out of stock, price/promo changed) or a changed cart closes the attempt atomically on the backend and starts a fresh one (`payment/attemptPolicy.ts`). The old cart is never replayed. Unpaid checkouts can be cancelled or switched to cash on delivery from the recovered payment chooser (`POST /payments/abandon`). Recovery briefly reconciles backend state and opens the existing Choose how to pay screen; it does not show an extra saved-order page. Payment recovery is implemented in `features/checkout-recovery/`, using backend discovery and provider reconciliation rather than navigation snapshots. See `backend/CHECKOUT_RECOVERY.md` for migration/release requirements.
 
 ## Native rollout and device checks
 
-App version/runtime `1.0.2` separates the new native gateway from existing
+App version/runtime `1.0.3` separates the new native gateway from existing
 internal-test binaries. Build and install a new Android/iOS binary (EAS
 prebuild/autolinking); this change cannot be delivered as an OTA update and
 Expo Go cannot execute native checkout. The public environment no longer

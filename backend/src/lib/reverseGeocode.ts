@@ -1,94 +1,65 @@
-// Real coordinates -> address logic, extracted from routes/location.ts's
-// own GET /reverse-geocode (that route now just calls this and returns
-// the result) so a SECOND real caller — routes/partner.ts's GET /store —
-// can reuse the exact same accurate Google Geocoding lookup to backfill a
-// store's address_line from its already-pinned lat/lng, instead of a
-// second, divergent copy of this same logic.
 import { env } from '../config/env.js';
 
 interface GoogleGeocodeResult {
   formatted_address?: string;
-  address_components?: { long_name: string; types: string[] }[];
-}
-
-interface GoogleGeocodeResponse {
-  status: string;
-  results?: GoogleGeocodeResult[];
-}
-
-function pickComponent(components: GoogleGeocodeResult['address_components'], ...types: string[]): string | null {
-  if (!components) return null;
-  for (const type of types) {
-    const match = components.find((c) => c.types.includes(type));
-    if (match) return match.long_name;
-  }
-  return null;
+  address_components?: { long_name?: string; types?: string[] }[];
 }
 
 export interface ReverseGeocodeResult {
   addressLabel: string | null;
   shortName: string | null;
   city: string | null;
+  status: 'resolved' | 'not_found' | 'unavailable';
 }
 
-const NULL_RESULT: ReverseGeocodeResult = { addressLabel: null, shortName: null, city: null };
+function emptyResult(status: 'not_found' | 'unavailable'): ReverseGeocodeResult {
+  return { addressLabel: null, shortName: null, city: null, status };
+}
 
-// Degrades to NULL_RESULT — never throws — whenever the key isn't
-// configured or Google's own call fails, same "never block the caller"
-// convention this always had as an inline route handler.
+function pickComponent(result: GoogleGeocodeResult, ...types: string[]): string | null {
+  if (!Array.isArray(result.address_components)) return null;
+  for (const type of types) {
+    const match = result.address_components.find(component => Array.isArray(component?.types)
+      && component.types.includes(type) && typeof component.long_name === 'string' && component.long_name.trim());
+    if (match?.long_name) return match.long_name.trim();
+  }
+  return null;
+}
+
+// Preserve the selected coordinates. A provider address describes the pin;
+// its geometry must never silently move the customer's delivery destination.
+// Failure remains nullable for non-HTTP callers (including store backfill).
 export async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodeResult> {
-  if (!env.googleGeocodingApiKey) return NULL_RESULT;
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat)>90 || Math.abs(lng)>180) return NULL_RESULT;
+  if (!env.googleGeocodingApiKey) return emptyResult('unavailable');
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)
+    return emptyResult('not_found');
 
   try {
     const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
     url.searchParams.set('latlng', `${lat},${lng}`);
+    url.searchParams.set('language', 'en');
     url.searchParams.set('key', env.googleGeocodingApiKey);
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return emptyResult('unavailable');
+    const data = await response.json() as { status?: string; results?: GoogleGeocodeResult[] };
+    if (data.status === 'ZERO_RESULTS') return emptyResult('not_found');
+    if (data.status !== 'OK' || !Array.isArray(data.results)) return emptyResult('unavailable');
 
-    const googleRes = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!googleRes.ok) return NULL_RESULT;
-
-    const data = (await googleRes.json()) as GoogleGeocodeResponse;
-    // results[0] is Google's own best/most-precise match — already
-    // ordered rooftop/street-address first, no re-ranking needed here.
-    const best = data.status === 'OK' ? data.results?.[0] : undefined;
-    if (!best?.formatted_address) return NULL_RESULT;
-
-    const city =
-      pickComponent(best.address_components, 'locality') ??
-      pickComponent(best.address_components, 'sublocality', 'sublocality_level_1') ??
-      pickComponent(best.address_components, 'administrative_area_level_3') ??
-      pickComponent(best.address_components, 'administrative_area_level_2') ??
-      null;
-
-    // A bare Plus Code ("7PMX+WC4, Yenna Gudde, Karnataka") is Google's own
-    // genuine result for a point with no closer-by named address, common
-    // in this app's own rural launch zone (CLAUDE.md) — still real data,
-    // but reads as broken/meaningless as a headline. Prefer a real
-    // neighborhood/city chain instead when the formatted_address starts
-    // with one; fall back to the Plus Code only if there's truly nothing
-    // better.
-    const isPlusCode = /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}/.test(best.formatted_address);
-    const neighborhood = pickComponent(best.address_components, 'neighborhood', 'sublocality_level_2');
-    const fallbackLabel = [neighborhood, city].filter(Boolean).join(', ');
-    const addressLabel = isPlusCode && fallbackLabel ? fallbackLabel : best.formatted_address;
-
-    // Real named-place components, not a naive addressLabel.split(',')[0]
-    // (grabs whatever precedes Google's first comma, often a house number
-    // or Plus Code). point_of_interest leads (a real landmark should
-    // headline with ITS name) — premise/subpremise deliberately excluded
-    // even though real, named data: Google's own premise value for a
-    // residential point is usually a bare plot number, which reads worse
-    // as a headline than the neighborhood it sits in.
-    const shortName =
-      pickComponent(best.address_components, 'point_of_interest') ??
-      neighborhood ??
-      pickComponent(best.address_components, 'sublocality_level_1', 'sublocality') ??
-      city ??
-      addressLabel;
-
-    return { addressLabel, shortName, city };
+    // Keep Google's closest-first ordering, skipping malformed/blank entries.
+    const best = data.results.find(result => typeof result?.formatted_address === 'string' && result.formatted_address.trim());
+    if (!best?.formatted_address) return emptyResult('not_found');
+    const city = pickComponent(best, 'locality', 'postal_town', 'administrative_area_level_3', 'administrative_area_level_2');
+    const neighborhood = pickComponent(best, 'neighborhood', 'sublocality_level_2', 'sublocality_level_1', 'sublocality');
+    const formatted = best.formatted_address.trim();
+    const isPlusCode = /^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}(?:\s|,|$)/i.test(formatted);
+    // A Plus Code is a valid precise address. Keep it in the detailed label;
+    // use its named locality for the headline rather than discarding address
+    // information (state/postcode/road) to manufacture a short label.
+    const shortName = pickComponent(best, 'point_of_interest', 'establishment')
+      ?? neighborhood ?? pickComponent(best, 'route') ?? city ?? (isPlusCode ? 'Selected location' : formatted);
+    return { addressLabel: formatted, shortName, city, status: 'resolved' };
   } catch {
-    return NULL_RESULT;
+    // Never log the URL: it contains both the API key and precise location.
+    return emptyResult('unavailable');
   }
 }

@@ -9,6 +9,8 @@ import { apiRequest } from './client';
 export interface ApiOrderItem {
   id: string;
   product_id: string;
+  product_name_at_order?: string | null;
+  product_image_at_order?: string | null;
   quantity: number;
   unit_price_at_order: number;
   unit_at_order?: string | null;
@@ -41,6 +43,9 @@ export interface ApiOrder {
   payment_method: 'cod' | 'online';
   provider_payment_id: string | null;
   placed_at: string;
+  accepted_at?: string | null;
+  acceptance_deadline_at?: string | null;
+  preparation_deadline_at?: string | null;
   // migration 109 — when the order reached the store (accept window start).
   store_visible_at?: string | null;
   packed_at: string | null;
@@ -50,18 +55,44 @@ export interface ApiOrder {
   addresses: { line1: string; landmark: string | null } | null;
 }
 
-export async function fetchOrders(): Promise<ApiOrder[]> {
-  const result: ApiOrder[] = [];
-  let cursor: string | null = null;
-  do {
-    const page: { items: ApiOrder[]; nextCursor: string | null } = await apiRequest(`/partner/orders?view=queue&page=1&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
-    result.push(...page.items); cursor = page.nextCursor;
-  } while (cursor);
-  return result;
+export type OrderSummary = Pick<ApiOrder, 'id' | 'order_number' | 'status' | 'total' | 'placed_at'>;
+export interface OrderPage<T = ApiOrder> { items: T[]; nextCursor: string | null }
+function orderPagePath(options: { cursor?: string | null; history?: boolean; search?: string; status?: string }): string {
+  const params = new URLSearchParams({ view: options.history ? 'history' : 'queue', page: '1', limit: '100' });
+  if (options.history) params.set('summary', '1');
+  if (options.cursor) params.set('cursor', options.cursor);
+  if (options.search) params.set('search', options.search);
+  if (options.status) params.set('status', options.status);
+  return `/partner/orders?${params}`;
+}
+export function fetchOrderPage(options: { cursor?: string | null } = {}): Promise<OrderPage> {
+  return apiRequest(orderPagePath(options));
+}
+export function fetchOrderHistoryPage(options: { cursor?: string | null; search?: string; status?: string } = {}): Promise<OrderPage<OrderSummary>> {
+  return apiRequest(orderPagePath({ ...options, history: true }));
+}
+export async function fetchOrders(): Promise<ApiOrder[] & { nextCursor?: string | null }> {
+  const page = await fetchOrderPage();
+  return Object.assign(page.items, { nextCursor: page.nextCursor });
+}
+export function fetchOrderUpdates(): Promise<{ version: string; hasMore: boolean }> {
+  return apiRequest('/partner/orders/updates');
 }
 
 // reason: a STORE_REJECT_REASONS code (@gloceries/shared) for a reject, or
 // 'store_no_response' for the auto-reject; stored as orders.cancel_reason.
 export function updateOrderStatus(orderId: string, status: 'packed' | 'cancelled', reason?: string): Promise<ApiOrder> {
   return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: reason ? { status, reason } : { status } });
+}
+
+export function acceptOrder(orderId: string): Promise<ApiOrder> {
+  return apiRequest(`/partner/orders/${encodeURIComponent(orderId)}/accept`, { method: 'POST' });
+}
+
+export function fetchOrderDetail(orderId: string): Promise<ApiOrder> {
+  return apiRequest(`/partner/orders/${encodeURIComponent(orderId)}`);
+}
+
+export function fetchOrderTransitions(ids: string[]): Promise<ApiOrder[]> {
+  return apiRequest(`/partner/orders/transitions?${new URLSearchParams({ ids: ids.join(',') })}`);
 }

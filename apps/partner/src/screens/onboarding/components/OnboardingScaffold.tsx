@@ -1,3 +1,4 @@
+import { BackIcon } from '../../../components/PartnerIcons';
 // Shared chrome for the partner onboarding wizard's form steps (Store
 // details, Location, Owner, Documents, Hours) — one place for the top bar
 // (back arrow + segmented step progress), the title + subheading, the
@@ -13,8 +14,7 @@
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { AppIcon } from '../../../components/AppIcon';
+
 import { DismissKeyboardView } from '../../../components/DismissKeyboardView';
 import { colors } from '../../../theme/tokens';
 
@@ -54,9 +54,11 @@ export function OnboardingScaffold({ step, totalSteps = WIZARD_TOTAL_STEPS, titl
         <StatusBar style="dark" />
         {showTopBar && (
           <View className="flex-row items-center px-5 pb-2 pt-safe-offset-2">
-            <Pressable onPress={onBack} hitSlop={16} disabled={!onBack} className="h-9 w-9 items-center justify-center">
-              {onBack && <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />}
-            </Pressable>
+            {onBack ? (
+              <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={16} className="h-9 w-9 items-center justify-center">
+                <BackIcon size={22} color={colors.ink} />
+              </Pressable>
+            ) : <View className="h-9 w-9" />}
             {step !== undefined ? <WizardProgress step={step} total={totalSteps} /> : <View className="flex-1" />}
             {/* Mirror of the back arrow's width so the progress bar stays
                 truly centered, not pushed right by the arrow. */}

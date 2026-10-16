@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 import { AppImage as Image } from '../../components/AppImage';
 // Verifies the code sent by LoginScreen, then persists the session and
 // hands off. Doesn't navigate anywhere itself on success — RootNavigator
@@ -19,13 +20,12 @@ import { AppImage as Image } from '../../components/AppImage';
 // hiding behind the keyboard).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+
 import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp, verifyOtp } from '../../api/auth';
 import { ApiError } from '../../api/client';
-import { AppIcon } from '../../components/AppIcon';
 import { OtpBoxInput } from '../../components/OtpBoxInput';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -121,7 +121,7 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
           hitSlop={12}
           className="absolute left-5 top-safe-offset-4 h-11 w-11 items-center justify-center rounded-full bg-white"
         >
-          <AppIcon icon={ArrowLeft01Icon} size={20} color={colors.ink} />
+          <BackIcon size={20} color={colors.ink} />
         </Pressable>
       </View>
 

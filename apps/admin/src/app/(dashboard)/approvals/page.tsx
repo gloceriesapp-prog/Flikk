@@ -9,21 +9,24 @@ import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { ApplicationRow } from '@/components/approvals/ApplicationRow';
 import { ProductReviewRow } from '@/components/approvals/ProductReviewRow';
+import { StoreChangeRequests } from '@/components/stores/StoreChangeRequests';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { fetchStoreOptions, type StoreOption } from '@/lib/supabase/products';
 import type { Application, Product } from '@/lib/types';
 
 const TABS = [
   { label: 'Stores', kind: 'store' as const },
+  { label: 'Store updates', kind: 'store-update' as const },
   { label: 'Riders', kind: 'rider' as const },
   { label: 'Products', kind: 'product' as const },
 ];
 
-type TabKind = 'store' | 'rider' | 'product';
+type TabKind = 'store' | 'store-update' | 'rider' | 'product';
 
 export default function ApprovalsPage() {
   const [tab, setTab] = useState<TabKind>('store');
   const [stores, setStores] = useState<Application[]>([]);
+  const [storeUpdateCount, setStoreUpdateCount] = useState(0);
   const [riders, setRiders] = useState<Application[]>([]);
   const [products, setProducts] = useState<{ pending: Product[]; imageChanges: Product[]; edits: Product[] }>({ pending: [], imageChanges: [], edits: [] });
   const [storeOptions, setStoreOptions] = useState<StoreOption[]>([]);
@@ -79,6 +82,7 @@ export default function ApprovalsPage() {
   const pendingCount = tab === 'product' ? productCount : applications.filter((a) => a.status === 'pending').length;
 
   function tabCount(kind: TabKind): number {
+    if (kind === 'store-update') return storeUpdateCount;
     if (kind === 'product') return productCount;
     return (kind === 'store' ? stores : riders).filter((a) => a.status === 'pending').length;
   }
@@ -87,7 +91,7 @@ export default function ApprovalsPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-medium text-ink">Approvals</h1>
-        <p className="text-sm text-muted">Review and approve new store and rider applications.</p>
+        <p className="text-sm text-muted">Review store applications, partner updates, riders and products.</p>
       </div>
 
       {error && (
@@ -99,7 +103,7 @@ export default function ApprovalsPage() {
         </p>
       )}
 
-      <div className="flex items-center gap-1 self-start rounded-full border border-border bg-card p-1">
+      <div className="flex flex-wrap items-center gap-1 self-start rounded-3xl border border-border bg-card p-1">
         {TABS.map((t) => {
           const count = tabCount(t.kind);
           const active = tab === t.kind;
@@ -129,7 +133,11 @@ export default function ApprovalsPage() {
         })}
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div hidden={tab !== 'store-update'}>
+        <StoreChangeRequests showEmpty onCountChange={setStoreUpdateCount} />
+      </div>
+
+      <div hidden={tab === 'store-update'} className="rounded-3xl border border-border bg-card p-5">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-medium text-ink">
             {tab === 'store' ? 'Store applications' : tab === 'rider' ? 'Rider applications' : 'Product approvals'}

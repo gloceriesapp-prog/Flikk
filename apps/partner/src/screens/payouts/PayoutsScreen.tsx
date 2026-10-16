@@ -1,3 +1,4 @@
+import { usePrivateQueryScope } from '../../network/usePrivateQueryScope';
 // Payouts (P5) — read-only, backed by real GET /partner/payouts (api/
 // payouts.ts). This screen must never compute a payout figure client-side
 // — see data.ts's own note; every gross/commission/net number here comes
@@ -28,11 +29,12 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Payouts'>;
 const PAGE_BG = '#F1F2F4';
 
 export function PayoutsScreen({ navigation }: Props) {
+  const queryScope = usePrivateQueryScope();
   const [statusFilter, setStatusFilter] = useState<PayoutStatusFilterValue>('all');
-  const query = useInfiniteQuery({ queryKey: ['payouts'], initialPageParam: '', queryFn: ({ pageParam }) => fetchPayoutPage(pageParam || undefined), getNextPageParam: page => page.nextCursor ?? undefined, refetchOnWindowFocus: false });
+  const query = useInfiniteQuery({ queryKey: ['payouts', queryScope], initialPageParam: '', queryFn: ({ pageParam }) => fetchPayoutPage(pageParam || undefined), getNextPageParam: page => page.nextCursor ?? undefined, refetchOnWindowFocus: false });
   const { isLoading } = query;
   // This store's real commission rate (GET /partner/commission).
-  const commission = useQuery({ queryKey: COMMISSION_QUERY_KEY, queryFn: fetchCommission, refetchOnWindowFocus: false });
+  const commission = useQuery({ queryKey: [...COMMISSION_QUERY_KEY, queryScope], queryFn: fetchCommission, refetchOnWindowFocus: false });
   const rows = query.data?.pages.flatMap(page => page.items);
   const realPayouts = (rows ?? []).map(toWeeklyPayout);
   // A brand-new store (zero delivered orders, zero real payouts yet) has

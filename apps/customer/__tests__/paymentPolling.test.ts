@@ -46,4 +46,12 @@ describe('payment reconciliation across suspension', () => {
     jest.mocked(recoverPayment).mockResolvedValue({ target, state: 'paid', record: { id: 'x', total: 10, status: 'placed', provider_payment_id: 'pay_real' } });
     await expect(pollOrderPaid(target)).resolves.toBe(true);
   });
+  it('waits through unpaid provider propagation after external UPI launch', async () => {
+    jest.mocked(recoverPayment)
+      .mockResolvedValueOnce({ target, state: 'unpaid', record: { id: 'x', total: 10, status: 'placed', provider_payment_id: null } })
+      .mockResolvedValueOnce({ target, state: 'paid', record: { id: 'x', total: 10, status: 'placed', provider_payment_id: 'pay_real' } });
+    const pending = pollOrderPaid(target, Date.now() + 5000);
+    await jest.advanceTimersByTimeAsync(4000);
+    await expect(pending).resolves.toBe(true);
+  });
 });

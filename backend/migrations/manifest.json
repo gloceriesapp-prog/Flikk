@@ -528,6 +528,38 @@
     {
       "file": "20261013105118_razorpay_provider_checkout.sql",
       "sha256": "add01d5eb0c30b4090f59fab7d9764396b921bae9ab7904f7a7d5a577a4af7f0"
+    },
+    {
+      "file": "20261014061458_razorpay_s2s_upi_intent.sql",
+      "sha256": "ce8596f515bb9437d5ab269e3873eb8fd7b77218ebe54cf925a2476d9997adb7"
+    },
+    {
+      "file": "20261014093324_upi_resume_snapshot_cache.sql",
+      "sha256": "6d8a26f389b145eb8fc066ab9c0fa764fe5e93bf1c16c81c27a56fc461eb2f56"
+    },
+    {
+      "file": "20261014163158_partner_order_acceptance.sql",
+      "sha256": "bee7fc53980d39bbdffcf9b0e69d4e071fec168b691fd9b9cb750965aeca4b54"
+    },
+    {
+      "file": "20261014163241_merchant_order_push_outbox.sql",
+      "sha256": "2149b79846f9653ec2754c4382b2f4485cd8a65c9ad8993baf32a7b9801a96ee"
+    },
+    {
+      "file": "20261015044025_partner_management_workflows.sql",
+      "sha256": "20fd2782555c1485e480c5ce1a60800d0d6bce4d76bd758b911397a601e87b9a"
+    },
+    {
+      "file": "20261015044135_partner_catalogue_read_indexes.sql",
+      "sha256": "fb93ee3ff5728d991fac6d4f9945cf402ccf099a5d7947b6a0206ee8f9ebdf6b"
+    },
+    {
+      "file": "20261015203513_store_scheduled_availability.sql",
+      "sha256": "e41fede041a823960aaae3000056a7e37ac16faa46e1fcd0e5c4a8e0153b1daf"
+    },
+    {
+      "file": "20261016051231_preserve_store_suspension_availability.sql",
+      "sha256": "50c4a760bb8f91a165fcc404d0e9ec874dd2d92552aca8d227a938d8c11cc181"
     }
   ]
 }

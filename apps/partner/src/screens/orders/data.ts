@@ -1,25 +1,12 @@
-// Placeholder order queue (P2) — no auth/login exists yet (see App.tsx),
-// so there's no session token to call the real `GET /partner/orders`
-// (backend/src/routes/partner.ts already implements it). `PartnerOrder`
-// intentionally mirrors that endpoint's shape (orders + order_items) so
-// swapping this for a real fetch is a data change, not a redesign.
-//
-// 'out_for_delivery'/'delivered' are shown here read-only — the real
-// endpoint queries `orders` scoped only by `store_id`, with no status
-// filter, so a store owner can already see an order in either state, they
-// just can't act on it. Per specs/02-partner-app/screens.md, "partner app
-// triggers no status transition other than `packed`" — that's a
-// restriction on writes, not on what this screen may display.
-// 'delivered' orders ARE shown now (useOrdersStore's own loadOrders scopes
-// them to today only, see that file's own note on why) — a store owner
-// still wants confirmation an order actually completed, not just that it
-// left for delivery.
+// Merchant order view models retain the server purchase and lifecycle snapshots.
+// Real order queue now — mapApiOrder converts one GET /partner/orders row
+// (api/orders.ts's own ApiOrder) into this screen's display shape.
+// Queue pages are bounded. Customer lifetime order counts cannot be inferred
+// from this data and are deliberately not displayed in order details.
 
-// 'failed' = rider couldn't complete the drop after pickup (goods already
-// left the store) — terminal, shown read-only so the owner knows their
-// stock is stranded and can follow up. Distinct from 'cancelled' (dropped
-// before anything left the shop, filtered out entirely — useOrdersStore).
-export type PartnerOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'failed';
+import type { ApiOrder } from '../../api/orders';
+
+export type PartnerOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'failed' | 'cancelled';
 
 export interface OrderLineItem {
   name: string;
@@ -57,12 +44,9 @@ export interface PartnerOrder {
   netPayout: number;
   status: PartnerOrderStatus;
   placedAtLabel: string;
-  // Clock time the order was placed — shown alongside orderCount in
-  // OrderDetailScreen ("Ramesh's 7th order · 12:40 pm"), distinct from the
-  // relative placedAtLabel used in the queue.
+  // Absolute clock time, distinct from the relative queue label.
   placedAtTime: string;
-  // How many orders this customer has placed at this store, this one
-  // included — a repeat-customer signal for the store owner.
+  // Legacy sample-model field: local page position, never a lifetime count.
   orderCount: number;
   // What the store owner must do about payment when the order goes out —
   // the real-money/operational instruction shown up top in
@@ -91,6 +75,9 @@ export interface PartnerOrder {
   // placedAtTime ("12:40 pm" has no date and drifts stale by the next
   // day). A real fetch populates this from orders.placed_at.
   placedAtTimestamp: number;
+  acceptedAtTimestamp?: number;
+  acceptanceDeadlineTimestamp?: number;
+  preparationDeadlineTimestamp?: number;
   // Epoch ms the order reached the store (orders.store_visible_at: checkout
   // for COD, payment for online) — the accept window's start, same anchor as
   // the backend's store_no_response job. Undefined for sample rows / older
@@ -111,15 +98,6 @@ export interface PartnerOrder {
 // type moved. Live mutations (the Open/Closed toggle, settings edits) go
 // through ../../store/useStoreProfileStore.ts, not this constant directly.
 export type { StoreProfile } from '../store-settings/data';
-
-// Real order queue now — mapApiOrder converts one GET /partner/orders row
-// (api/orders.ts's own ApiOrder) into this screen's display shape.
-// orderCount (repeat-customer signal) is computed across the *other*
-// already-fetched rows passed in, not a separate query — GET /partner/orders
-// already returns this store's entire order history in one call, so
-// counting a customer's prior orders at this store is free.
-
-import type { ApiOrder } from '../../api/orders';
 
 // Dev/preview-only queue — four orders covering the states OrderCard
 // actually renders differently (placed/packed/out_for_delivery/delivered,
@@ -148,7 +126,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
       netPayout: 542.38,
       status: 'placed',
       placedAtLabel: 'Just now',
-      placedAtTime: new Date(now).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      placedAtTime: new Date(now).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }),
       orderCount: 7,
       paymentMode: 'cod',
       deliveryAddress: ['12, Bunts Hostel Road', 'Near Kapu Junction'],
@@ -167,7 +145,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
       netPayout: 432.4,
       status: 'packed',
       placedAtLabel: '4 min ago',
-      placedAtTime: new Date(now - 4 * 60_000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      placedAtTime: new Date(now - 4 * 60_000).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }),
       orderCount: 2,
       paymentMode: 'paid_online',
       deliveryAddress: ['4th Cross, Malpe Road', ''],
@@ -189,7 +167,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
       netPayout: 182.36,
       status: 'out_for_delivery',
       placedAtLabel: '8 min ago',
-      placedAtTime: new Date(now - 8 * 60_000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      placedAtTime: new Date(now - 8 * 60_000).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }),
       orderCount: 1,
       paymentMode: 'cod',
       deliveryAddress: ['Shanthi Nagar, 2nd Main', 'Opposite water tank'],
@@ -208,7 +186,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
       netPayout: 267.9,
       status: 'delivered',
       placedAtLabel: '55 min ago',
-      placedAtTime: new Date(now - 55 * 60_000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      placedAtTime: new Date(now - 55 * 60_000).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }),
       orderCount: 4,
       paymentMode: 'paid_online',
       deliveryAddress: ['Hotel Sea Rock Road', 'Near Kaup Beach'],
@@ -247,7 +225,7 @@ export function buildSimulatedIncomingOrder(now: number = Date.now()): PartnerOr
     netPayout: 188.94,
     status: 'placed',
     placedAtLabel: 'Just now',
-    placedAtTime: new Date(now).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    placedAtTime: new Date(now).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }),
     orderCount: 1,
     paymentMode: 'cod',
     deliveryAddress: ['12, Bunts Hostel Road', 'Near Kapu Junction'],
@@ -274,13 +252,12 @@ function formatRelativeTime(iso: string): string {
 
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} hr ago`;
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return new Date(iso).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
 }
 
 export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrder {
-  // Every order this same customer has placed at this store, oldest first
-  // — this order's own 1-based position in that list is "the Nth order",
-  // matching the original "Ramesh's 7th order" convention.
+  // Retain local page position for compatibility with development fixtures.
+  // This is not a repeat-customer signal and is not shown in the UI.
   const sameCustomerOrdered = allOrders
     .filter((o) => o.users?.phone === order.users?.phone)
     .sort((a, b) => new Date(a.placed_at).getTime() - new Date(b.placed_at).getTime());
@@ -291,11 +268,15 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     orderNumber: order.order_number,
     customerName: order.users?.name?.trim() || order.users?.phone || 'Customer',
     items: order.order_items.map((item) => ({
-      name: item.products?.name ?? 'Item',
+      name: item.product_name_at_order ?? item.products?.name ?? 'Item',
       quantity: item.quantity,
       unit: item.unit_at_order ?? item.products?.unit ?? '',
       price: item.unit_price_at_order * item.quantity,
-      imageUrl: item.products?.image_url ?? null,
+      // A captured null image means the purchased item had no photo. Only
+      // legacy rows without a name snapshot may fall back to today's image.
+      imageUrl: item.product_name_at_order != null
+        ? item.product_image_at_order ?? null
+        : item.product_image_at_order ?? item.products?.image_url ?? null,
     })),
     total: order.total,
     itemTotal: order.item_total,
@@ -307,7 +288,7 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     // cast below is always one of the five real PartnerOrderStatus values.
     status: order.status as PartnerOrderStatus,
     placedAtLabel: formatRelativeTime(order.placed_at),
-    placedAtTime: new Date(order.placed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    placedAtTime: new Date(order.placed_at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }),
     orderCount,
     // Authoritative: orders.payment_method is the real COD-vs-online signal
     // (set at order creation from the customer's chosen method), and
@@ -324,6 +305,9 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     deliveryAddress: [order.addresses?.line1 ?? 'Address unavailable', order.addresses?.landmark ?? ''],
     customerPhone: order.users?.phone ?? '',
     placedAtTimestamp: new Date(order.placed_at).getTime(),
+    acceptedAtTimestamp: order.accepted_at ? Date.parse(order.accepted_at) : undefined,
+    acceptanceDeadlineTimestamp: order.acceptance_deadline_at ? Date.parse(order.acceptance_deadline_at) : undefined,
+    preparationDeadlineTimestamp: order.preparation_deadline_at ? Date.parse(order.preparation_deadline_at) : undefined,
     acceptWindowStartTimestamp: order.store_visible_at ? new Date(order.store_visible_at).getTime() : undefined,
   };
 }

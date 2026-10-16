@@ -104,9 +104,11 @@ const ROUTE_TO_TAB_ID: Record<string, string> = {
 
 interface Props {
   hidden?: SharedValue<number>;
+  // Measured active-order card height plus spacing, supplied by the home shell.
+  cartBottomOffset?: number;
 }
 
-export function BottomNavBar({ hidden }: Props) {
+export function BottomNavBar({ hidden, cartBottomOffset = 0 }: Props) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute();
@@ -284,7 +286,7 @@ export function BottomNavBar({ hidden }: Props) {
           self-nulls when the cart's empty. */}
       <Animated.View
         pointerEvents="box-none"
-        style={[{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + NAV_BOTTOM_OFFSET + PILL_HEIGHT + 4 }, cartBarAnimatedStyle]}
+        style={[{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + NAV_BOTTOM_OFFSET + PILL_HEIGHT + 4 + cartBottomOffset }, cartBarAnimatedStyle]}
         className="flex-row items-center justify-center"
       >
         <CartBar />

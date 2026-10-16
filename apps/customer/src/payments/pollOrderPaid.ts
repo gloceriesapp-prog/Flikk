@@ -41,7 +41,7 @@ export async function pollOrderPaid(target: PaymentTarget, deadlineMs = paymentC
         const recovery = await recoverPayment(target);
         if (signal?.aborted) return false;
         if (recovery.state === 'paid') return true;
-        if (recovery.state === 'cancelled' || recovery.state === 'expired' || recovery.state === 'unpaid') return false;
+        if (recovery.state === 'cancelled' || recovery.state === 'expired') return false;
       } catch {
         // Temporary connection errors keep the saved order and retry within
         // this same budget; restart recovery still comes from backend state.

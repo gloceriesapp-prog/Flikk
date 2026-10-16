@@ -15,7 +15,11 @@
     "start:worker": "node dist/workers/index.js",
     "db:status": "node scripts/db-migrate.mjs --status",
     "db:migrate": "node scripts/db-migrate.mjs",
-    "db:seed": "node scripts/db-migrate.mjs --seed"
+    "db:seed": "node scripts/db-migrate.mjs --seed",
+    "test:partner:db": "node scripts/test-partner-order-lifecycle.mjs",
+    "test:partner:management:db": "node scripts/test-partner-management.mjs",
+    "test:stores:availability:db": "node scripts/test-store-availability.mjs",
+    "test:partner:customer-order:db": "node scripts/test-partner-customer-order.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1146.0",

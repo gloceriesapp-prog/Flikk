@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppImage } from '../../components/AppImage';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { getCurrentCoordinates, requestLocationPermission, reverseGeocode } from '../../location/geocoding';
+import { getCurrentCoordinates, requestLocationPermission } from '../../location/geocoding';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'LocationPermission'>;
@@ -32,10 +32,9 @@ export function LocationPermissionScreen({ navigation }: Props) {
       }
       const coords = await getCurrentCoordinates();
       if (!navigation.isFocused()) return;
-      const { addressLabel, city } = await reverseGeocode(coords);
-      if (navigation.isFocused()) navigation.replace('LocationSearch', { ...coords, addressLabel, city, fromGps: true });
+      if (navigation.isFocused()) navigation.replace('LocationSearch', { ...coords, fromGps: true });
     } catch {
-      if (navigation.isFocused()) setError('Could not get your location. You can search for it instead.');
+      if (navigation.isFocused()) setError('Couldn’t get a precise GPS fix yet. Move near a window or select your location manually.');
     } finally {
       requesting.current = false;
       if (navigation.isFocused()) setLoading(false);

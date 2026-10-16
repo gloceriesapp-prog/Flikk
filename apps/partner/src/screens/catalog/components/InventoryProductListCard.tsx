@@ -12,7 +12,7 @@
 
 import { useCallback } from 'react';
 import { Package02Icon } from '@hugeicons/core-free-icons';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { ProductRow } from './ProductRow';
@@ -21,6 +21,10 @@ import type { PartnerProduct } from '../data';
 interface Props {
   products: PartnerProduct[];
   onPressView: (productId: string) => void;
+  loading: boolean;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  onRefresh: () => void;
 }
 
 const keyExtractor = (item: PartnerProduct) => item.id;
@@ -41,7 +45,7 @@ function ListHeader({ count }: { count: number }) {
   );
 }
 
-export function InventoryProductListCard({ products, onPressView }: Props) {
+export function InventoryProductListCard({ products, onPressView, loading, hasMore, onLoadMore, onRefresh }: Props) {
   const renderItem = useCallback(
     ({ item }: { item: PartnerProduct }) => <ProductRow product={item} onPressView={onPressView} />,
     [onPressView],
@@ -55,6 +59,9 @@ export function InventoryProductListCard({ products, onPressView }: Props) {
       renderItem={renderItem}
       ListHeaderComponent={<ListHeader count={products.length} />}
       ItemSeparatorComponent={Separator}
+      refreshing={loading}
+      onRefresh={onRefresh}
+      ListFooterComponent={hasMore ? <Pressable disabled={loading} onPress={onLoadMore} className="items-center py-5"><Text className="font-semibold text-ink">{loading ? 'Bringing more to your shelf…' : 'Load more products'}</Text></Pressable> : null}
       // mx-5 (horizontal) + the old pb-28 so the last row clears the BottomNavBar.
       contentContainerClassName="px-5 pb-28"
       initialNumToRender={10}

@@ -1,18 +1,6 @@
-// Single source of truth for the store's own profile — StoreProfileHeader
-// (Orders tab) and StoreSettingsScreen both read/write the same object now,
-// same reasoning as useOrdersStore/useCatalogStore: the Open/Closed toggle
-// on the header and an edit made in Settings need to agree with each
-// other, which a per-screen useState can't guarantee.
-//
-// Backed by real GET/PATCH /partner/store now (backend/src/routes/
-// partner.ts) — loadProfile() is called once from OrdersScreen's mount
-// effect, same "once per app session, once a real session exists" pattern
-// as registerPushToken. toggleOpen/updateProfile apply locally first (the
-// toggle needs to feel instant mid-rush, see StoreProfileHeader.tsx's own
-// note) then PATCH in the background; a failed PATCH is logged, not rolled
-// back — same best-effort tolerance as this app's draft autosaves.
-
 import { create } from 'zustand';
+import { normalizeStoreHour } from '../utils/storeHours';
+import { getSessionEpoch, isCurrentSession, onSessionReset } from './sessionScope';
 import { apiRequest, ApiError } from '../api/client';
 import { EMPTY_STORE_PROFILE, type StoreProfile, type StoreProfileChange } from '../screens/store-settings/data';
 
@@ -34,6 +22,9 @@ interface StoreRow {
   name: string;
   category: string;
   is_active: boolean;
+  availability_override?: boolean | null;
+  availability_override_until?: string | null;
+  availability_next_change_at?: string | null;
   admin_suspended?: boolean;
   suspended_reason?: string | null;
   district: string | null;
@@ -80,6 +71,9 @@ function fromRow(row: StoreRow): StoreProfileWithDocs {
     storeName: row.name,
     category: row.category,
     isOpen: row.is_active,
+    availabilityOverride: row.availability_override ?? null,
+    availabilityOverrideUntil: row.availability_override_until ?? null,
+    availabilityNextChangeAt: row.availability_next_change_at ?? null,
     adminSuspended: row.admin_suspended === true,
     suspendedReason: row.suspended_reason ?? null,
     district: row.district ?? '',
@@ -126,16 +120,27 @@ interface StoreProfileState {
   profile: StoreProfileWithDocs;
   loadProfile: () => Promise<void>;
   updateProfile: (patch: Partial<StoreProfile>) => Promise<ProfileSaveResult>;
-  toggleOpen: () => void;
+  toggleOpen: () => Promise<void>;
+  setAvailability: (mode: 'auto' | 'open' | 'closed') => Promise<void>;
+  togglingOpen: boolean;
+  statusError: string | null;
 }
+
+let profileWrites: Promise<unknown> = Promise.resolve();
+let profileRevision = 0;
 
 export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
   profile: { ...EMPTY_STORE_PROFILE, profilePhotoUrl: null, aadhaarPhotoUrl: null, storePhotoUrl: null },
 
+  togglingOpen: false,
+  statusError: null,
+
   loadProfile: async () => {
+    const epoch = getSessionEpoch();
+    const revision = profileRevision;
     try {
       const row = await apiRequest<StoreRow>('/partner/store');
-      set({ profile: fromRow(row) });
+      if (isCurrentSession(epoch) && revision === profileRevision) set({ profile: fromRow(row) });
     } catch (err) {
       // Logged, not just swallowed — a silent failure here left the header
       // and Settings screen stuck on EMPTY_STORE_PROFILE forever with zero
@@ -143,21 +148,33 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
       // location aren't showing"). Still best-effort (no user-facing error
       // — a transient failed load just means blanks until the next
       // successful one), but at least now it shows up in logs.
-      console.error('[useStoreProfileStore] loadProfile failed', err);
+      // A recoverable refresh failure must not open Android's blocking LogBox.
+      if (typeof __DEV__ !== 'undefined' && __DEV__ && isCurrentSession(epoch)) console.warn('[useStoreProfileStore] loadProfile failed', err);
       // Best-effort — a failed load just leaves the previous/empty profile
       // on screen, same tolerance as the rest of this app's background reads.
     }
   },
 
-  updateProfile: async (patch) => {
+  updateProfile: (patch) => {
+    const epoch = getSessionEpoch();
+    const operation = profileWrites.catch(() => {}).then(async (): Promise<ProfileSaveResult> => {
+    if (!isCurrentSession(epoch)) return { ok: false, error: "Your account changed. Please try again." };
+    const openTime = patch.openTime === undefined ? undefined : normalizeStoreHour(patch.openTime);
+    const closeTime = patch.closeTime === undefined ? undefined : normalizeStoreHour(patch.closeTime);
+    if (openTime === null || closeTime === null) return { ok: false, error: 'Enter valid opening and closing times, such as 9:00 AM or 9:00 PM (IST).' };
+    profileRevision += 1;
     const before = get().profile;
-    set((state) => ({ profile: { ...state.profile, ...patch } }));
+    const optimisticPatch = { ...patch };
+    // Reviewed fields must not briefly masquerade as the live pickup point.
+    for (const key of ['storeName', 'category', 'district', 'addressLine', 'manualAddress', 'lat', 'lng', 'drugLicenseNumber'] as const) delete optimisticPatch[key];
+    set((state) => ({ profile: { ...state.profile, ...optimisticPatch } }));
     const { id } = get().profile;
-    if (!id) return { ok: true, pendingReview: false };
+    if (!id) { set({ profile: before }); return { ok: false, error: "Store profile is not loaded. Please try again." }; }
     try {
       const row = await apiRequest<StoreRow>('/partner/store', {
         method: 'PATCH',
         body: {
+          is_active: patch.isOpen,
           name: patch.storeName,
           category: patch.category,
           district: patch.district,
@@ -165,8 +182,8 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
           manual_address: patch.manualAddress,
           lat: patch.lat,
           lng: patch.lng,
-          open_time: patch.openTime,
-          close_time: patch.closeTime,
+          open_time: openTime,
+          close_time: closeTime,
           avg_prep_minutes: patch.avgPrepMinutes,
           photo_url: patch.photoUrl,
           owner_name: patch.ownerName,
@@ -180,29 +197,47 @@ export const useStoreProfileStore = create<StoreProfileState>((set, get) => ({
       // The server's copy wins: reviewed fields keep their live values and
       // the pending request rides along for the "pending review" notice.
       const saved = fromRow(row);
+      if (!isCurrentSession(epoch)) return { ok: false, error: "Your account changed. Please try again." };
       set({ profile: saved });
       return { ok: true, pendingReview: saved.pendingChange !== null && saved.pendingChange.id !== before.pendingChange?.id };
     } catch (err) {
-      set({ profile: before });
+      if (isCurrentSession(epoch)) set({ profile: before });
       const message = err instanceof ApiError ? err.message : 'Could not save changes. Check your connection and try again.';
       return { ok: false, error: message };
     }
+    });
+    profileWrites = operation;
+    return operation;
   },
 
-  toggleOpen: () => {
-    // Suspended by Gloceries: the switch is disabled in the UI and the
-    // backend refuses to reopen (409 STORE_SUSPENDED) — never flip locally.
-    if (get().profile.adminSuspended) return;
-    set((state) => ({ profile: { ...state.profile, isOpen: !state.profile.isOpen } }));
-    const { id, isOpen } = get().profile;
-    if (!id) return;
-    apiRequest('/partner/store', { method: 'PATCH', body: { is_active: isOpen } }).catch((err) => {
-      // Suspended since the last load — undo the optimistic flip and pull
-      // the real state (with the reason) so the banner shows.
-      if (err instanceof ApiError && err.code === 'STORE_SUSPENDED') {
-        set((state) => ({ profile: { ...state.profile, isOpen: false, adminSuspended: true } }));
+  toggleOpen: async () => get().setAvailability(get().profile.isOpen ? 'closed' : 'open'),
+
+  setAvailability: async (mode) => {
+    if (get().profile.adminSuspended || get().togglingOpen || !get().profile.id) return;
+    const epoch = getSessionEpoch();
+    set({ togglingOpen: true, statusError: null });
+    const operation = profileWrites.catch(() => {}).then(async () => {
+      if (!isCurrentSession(epoch)) return;
+      profileRevision += 1;
+      try {
+        const row = await apiRequest<StoreRow>('/partner/store/availability', { method: 'PATCH', body: { mode } });
+        if (isCurrentSession(epoch)) set({ profile: fromRow(row), togglingOpen: false, statusError: null });
+      } catch (error) {
+        if (!isCurrentSession(epoch)) return;
+        set({ togglingOpen: false, statusError: error instanceof ApiError ? error.message : 'Could not save store availability. Check your connection and retry.' });
         void get().loadProfile();
       }
     });
+    profileWrites = operation;
+    await operation;
   },
 }));
+
+onSessionReset(() => {
+  profileRevision += 1;
+  profileWrites = Promise.resolve();
+  useStoreProfileStore.setState({
+    profile: { ...EMPTY_STORE_PROFILE, profilePhotoUrl: null, aadhaarPhotoUrl: null, storePhotoUrl: null },
+    togglingOpen: false, statusError: null,
+  });
+});

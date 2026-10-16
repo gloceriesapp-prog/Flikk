@@ -1,6 +1,8 @@
 /* global __dirname */
 const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
 const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
+const { resolveNativeMapKeys } = require('../../packages/shared/config/google-maps.cjs');
+const { androidGoogleMapsApiKey, iosGoogleMapsApiKey } = resolveNativeMapKeys(process.env);
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 // eas-cli evaluates this file on the developer's machine *before* it pulls the
@@ -29,7 +31,6 @@ if (developmentApi || process.env.EAS_BUILD === 'true') {
 // it's set, a fresh native build switches iOS to real Google Maps + the same
 // grayscale style Android uses. Until then iOS falls back to Apple Maps.
 
-const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
 
 // EAS project @nishal777/rider. Not a secret: it ties builds, OTA updates
 // and Expo push tokens to this project, so it is fixed here rather than
@@ -39,7 +40,7 @@ const easProjectId = '35911db7-6e35-402b-b16b-6e13019a31ae';
 // Android push (FCM) config, shared by all three apps — see
 // packages/shared/config/google-services.cjs.
 // Sentry's build plugin uploads source maps; only wired when its org/project
-// are configured, same as apps/partner and apps/customer.
+// are configured, same as the other apps.
 const sentryPlugin = process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
   ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]]
   : [];
@@ -51,7 +52,7 @@ module.exports = {
     name: 'Gloceries Rider',
     slug: 'rider',
     owner: 'nishal777',
-    version: '1.0.0',
+    version: '1.0.1',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change. url uses THIS app's EAS
@@ -103,7 +104,7 @@ module.exports = {
       ],
       config: {
         googleMaps: {
-          apiKey: process.env.GOOGLE_MAPS_API_KEY,
+          apiKey: androidGoogleMapsApiKey,
         },
       },
     },

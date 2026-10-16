@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { isMoneyInput } from '../../../utils/moneyInput';
 // One size's stock/price/quantity card — full-width now that this lives on
 // its own screen instead of a bottom sheet, same segmented Available/Out
 // toggle and dashed optional-quantity field as before.
@@ -19,6 +21,9 @@ interface Props {
 }
 
 export function ProductVariantCard({ variant, canRemove, onToggleStock, onChangePrice, onChangeMrp, onChangeQuantity, onRemove }: Props) {
+  const [priceInput, setPriceInput] = useState<string | null>(null);
+  const [mrpInput, setMrpInput] = useState<string | null>(null);
+
   return (
     <View className="gap-3 rounded-3xl bg-[#F9FAFB] p-4">
       <View className="flex-row items-center justify-between">
@@ -64,9 +69,11 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
           color={colors.ink}
         />
         <TextInput
-          value={String(variant.price)}
-          onChangeText={onChangePrice}
-          keyboardType="number-pad"
+          value={priceInput ?? String(variant.price)}
+          onFocus={() => setPriceInput(String(variant.price))}
+          onBlur={() => setPriceInput(null)}
+          onChangeText={(value) => { if (isMoneyInput(value)) { setPriceInput(value); onChangePrice(value); } }}
+          keyboardType="decimal-pad"
           className="ml-2 flex-1 p-0 text-base font-semibold text-ink"
           style={{
             height: 24,
@@ -90,9 +97,11 @@ export function ProductVariantCard({ variant, canRemove, onToggleStock, onChange
       <View className="flex-row items-center gap-2 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-3">
         <AppIcon icon={RupeeIcon} size={15} color={`${colors.ink}60`} />
         <TextInput
-          value={variant.originalPrice === undefined ? '' : String(variant.originalPrice)}
-          onChangeText={onChangeMrp}
-          keyboardType="number-pad"
+          value={mrpInput ?? (variant.originalPrice === undefined ? '' : String(variant.originalPrice))}
+          onFocus={() => setMrpInput(variant.originalPrice === undefined ? '' : String(variant.originalPrice))}
+          onBlur={() => setMrpInput(null)}
+          onChangeText={(value) => { if (isMoneyInput(value)) { setMrpInput(value); onChangeMrp(value); } }}
+          keyboardType="decimal-pad"
           placeholder="MRP (optional)"
           placeholderTextColor={`${colors.ink}60`}
           className="flex-1 text-base font-medium text-ink"

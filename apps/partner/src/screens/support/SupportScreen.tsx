@@ -1,3 +1,4 @@
+import { BackIcon } from '../../components/PartnerIcons';
 // Help & support — the admin-configured contacts (call / WhatsApp / email,
 // each shown only when set on admin "App settings") plus support tickets:
 // raise a new request (optionally about one of your orders) and see every
@@ -10,7 +11,7 @@ import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, Text, TextInp
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft01Icon, ArrowRight01Icon, CallIcon, Mail01Icon, WhatsappIcon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, CallIcon, Mail01Icon, WhatsappIcon } from '@hugeicons/core-free-icons';
 import type { IconSvgElement } from '@hugeicons/react-native';
 import {
   STAFF_SUPPORT_CATEGORIES, SUPPORT_STATUS_LABEL, newRequestId, supportCallUrl, supportCategoryLabel, supportEmailUrl,
@@ -88,7 +89,7 @@ export function SupportScreen() {
     <View className="flex-1 bg-[#fbfbfb]">
       <View className="flex-row items-center gap-3 px-4 pb-3 pt-safe-offset-3">
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back" className="h-9 w-9 items-center justify-center">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <BackIcon size={22} color={colors.ink} />
         </Pressable>
         <Text className="text-[18px] font-bold text-ink">Help & support</Text>
       </View>
