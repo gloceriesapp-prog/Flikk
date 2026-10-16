@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, IBM_Plex_Sans } from "next/font/google";
+import { Inter_Tight } from "next/font/google";
 import "./globals.css";
 
-// Self-hosted via next/font (no render-blocking Google @import) — CLAUDE.md's
-// system-font-only rule is deliberately overridden for THIS app only
-// (partner-dashboard, an internal web surface). Inter = body, IBM Plex = display.
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const ibmPlex = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-ibm-plex",
-  display: "swap",
-});
+// Inter Tight, self-hosted via next/font (no render-blocking Google @import).
+// One variable family for body and headings; weight carries the hierarchy.
+const interTight = Inter_Tight({ subsets: ["latin"], variable: "--font-inter-tight", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Gloceries Partner Dashboard",
@@ -24,7 +17,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     // security and colour-picker add-ons) write attributes onto <html>/<body>
     // before React hydrates. Only these two elements' own attributes are
     // exempt; mismatches anywhere inside still warn.
-    <html lang="en" className={`h-full antialiased ${inter.variable} ${ibmPlex.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`h-full antialiased ${interTight.variable}`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>{children}</body>
     </html>
   );

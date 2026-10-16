@@ -170,7 +170,7 @@ export default function LoginPage() {
             <div className="mx-auto flex w-full max-w-[340px] flex-1 flex-col justify-center py-10">
               {step === 'phone' ? (
                 <>
-                  <h1 className="text-center font-[family-name:var(--font-ibm-plex)] text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
+                  <h1 className="text-center text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
                     Partner
                     <br />
                     sign in
@@ -221,7 +221,7 @@ export default function LoginPage() {
                     <button
                       type="submit"
                       disabled={!phoneReady || isSubmitting}
-                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#a3d65c] text-[15px] font-semibold text-[#1d2b22] transition-colors hover:bg-[#95cc4b] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#155dfc] text-[15px] font-semibold text-white transition-colors hover:bg-[#0f4ad1] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isSubmitting ? 'Sending code…' : 'Send OTP'}
                     </button>
@@ -236,7 +236,7 @@ export default function LoginPage() {
                   >
                     <ArrowLeft className="h-4 w-4" /> Change number
                   </button>
-                  <h1 className="text-center font-[family-name:var(--font-ibm-plex)] text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
+                  <h1 className="text-center text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
                     Verify
                     <br />
                     OTP
@@ -261,7 +261,7 @@ export default function LoginPage() {
                     <button
                       type="submit"
                       disabled={code.length !== CODE_LENGTH || isSubmitting}
-                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#a3d65c] text-[15px] font-semibold text-[#1d2b22] transition-colors hover:bg-[#95cc4b] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#155dfc] text-[15px] font-semibold text-white transition-colors hover:bg-[#0f4ad1] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isSubmitting ? 'Verifying…' : 'Verify & sign in'}
                     </button>

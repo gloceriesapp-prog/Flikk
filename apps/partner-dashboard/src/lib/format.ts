@@ -3,8 +3,17 @@ export function formatInr(amount: number): string {
 }
 
 // For chart axis ticks, where "₹12,450" would crowd the axis — "₹12.5K" instead.
+// Axis/tile shorthand in Indian units: ₹950, ₹1.2K, ₹3.4L, ₹1.1Cr. Not
+// Intl's en-IN compact notation, which writes thousands as "T" and reads as
+// trillion.
 export function formatInrCompact(amount: number): string {
-  return `₹${new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(amount)}`;
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  const short = (value: number, suffix: string) => `${sign}₹${Number(value.toFixed(1))}${suffix}`;
+  if (abs >= 1e7) return short(abs / 1e7, 'Cr');
+  if (abs >= 1e5) return short(abs / 1e5, 'L');
+  if (abs >= 1e3) return short(abs / 1e3, 'K');
+  return `${sign}₹${Math.round(abs)}`;
 }
 
 // "500 g" / "1 kg" / "500 ml" / "1 L" / "2 pc" — display twin of backend/

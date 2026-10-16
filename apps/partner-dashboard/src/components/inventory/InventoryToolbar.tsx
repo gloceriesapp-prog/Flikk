@@ -1,14 +1,14 @@
 'use client';
 
-// The inventory page's action row — replaces the old big "Inventory" title
-// block (the top header already names the page). Modelled on the reference
-// toolbar: a left cluster of view controls and a right cluster of actions,
-// split by a divider. Every control here does something real — no inert
-// chrome. Table View is a static indicator (table is the only view that
-// exists); reinstate a real switcher only when a second view does.
+// The inventory page's action row — the page title lives in the shell's
+// header, so this is just controls: view toggles + sort on the left, Export
+// and the primary "Add product" on the right. Every control does something
+// real — no inert chrome (the old static "Table View" label and its
+// divider are gone; reinstate a real switcher only when a second view exists).
 
-import { BarChart3, Download, Plus, SlidersHorizontal, Table2 } from 'lucide-react';
+import { BarChart3, ChevronDown, Download, Plus, SlidersHorizontal } from 'lucide-react';
 import clsx from 'clsx';
+import { BUTTON } from './DataStates';
 
 export type SortKey = 'name' | 'stock' | 'price_high' | 'price_low';
 
@@ -30,7 +30,13 @@ interface Props {
   onAddProduct: () => void;
 }
 
-const pill = 'flex items-center gap-2 rounded-xl border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50';
+// Toggle pills: active = soft brand tint, inactive = white with a border.
+function togglePill(active: boolean) {
+  return clsx(
+    'inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors',
+    active ? 'border-transparent bg-accent-soft text-accent' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+  );
+}
 
 export function InventoryToolbar({
   showStats,
@@ -43,26 +49,20 @@ export function InventoryToolbar({
   onAddProduct,
 }: Props) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      {/* Left cluster — view controls */}
-      <div className="flex flex-wrap items-center gap-2.5">
-        <span className={clsx(pill, 'cursor-default text-neutral-900')}>
-          <Table2 size={16} className="text-neutral-500" /> Table View
-        </span>
-
-        <div className="h-6 w-px bg-neutral-200" />
-
-        <button type="button" onClick={onToggleFilter} className={clsx(pill, showFilter && 'border-neutral-900 bg-neutral-900 text-white')}>
-          <SlidersHorizontal size={16} className={showFilter ? 'text-white' : 'text-neutral-500'} /> Filter
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+      {/* Left cluster — view controls (one row on a phone; sort flexes) */}
+      <div className="flex min-w-0 items-center gap-2">
+        <button type="button" onClick={onToggleFilter} aria-pressed={showFilter} className={clsx(togglePill(showFilter), 'shrink-0')}>
+          <SlidersHorizontal size={16} /> Filters
         </button>
 
-        {/* Sort — native select styled to match the pills (real, accessible). */}
-        <div className="relative">
+        {/* Sort — native select styled as a pill (real, accessible). */}
+        <div className="relative min-w-0 flex-1 sm:flex-none">
           <select
             value={sort}
             onChange={(e) => onSortChange(e.target.value as SortKey)}
             aria-label="Sort products"
-            className={clsx(pill, 'cursor-pointer appearance-none pr-8')}
+            className="h-10 w-full cursor-pointer appearance-none truncate rounded-full border border-slate-200 bg-white pr-9 pl-4 text-sm font-medium text-slate-700 outline-none transition-colors hover:bg-slate-50 focus-visible:border-accent"
           >
             {SORT_OPTIONS.map((o) => (
               <option key={o.key} value={o.key}>
@@ -70,34 +70,39 @@ export function InventoryToolbar({
               </option>
             ))}
           </select>
-          <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+          <ChevronDown size={15} className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-slate-400" />
         </div>
 
         <button
           type="button"
           onClick={onToggleStats}
-          className="flex items-center gap-2.5 rounded-xl border border-hairline bg-white px-3.5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          aria-pressed={showStats}
+          aria-label="Show statistics"
+          className={clsx(togglePill(false), 'shrink-0 px-3 sm:px-4')}
         >
-          <BarChart3 size={16} className="text-neutral-500" /> Show statistics
-          <span className={clsx('relative h-5 w-9 rounded-full transition-colors', showStats ? 'bg-[#155DFC]' : 'bg-neutral-300')} style={{ ['--tw-bg-opacity' as string]: '1' }}>
-            <span className={clsx('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', showStats ? 'left-4' : 'left-0.5')} />
+          <BarChart3 size={16} className="text-slate-500" />
+          <span className="hidden sm:inline">Statistics</span>
+          <span
+            aria-hidden
+            className={clsx('relative h-5 w-9 shrink-0 rounded-full transition-colors', showStats ? 'bg-accent' : 'bg-slate-300')}
+          >
+            <span
+              className={clsx(
+                'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all',
+                showStats ? 'left-[18px]' : 'left-0.5',
+              )}
+            />
           </span>
         </button>
       </div>
 
       {/* Right cluster — actions */}
-      <div className="flex items-center gap-2.5">
-        <button type="button" onClick={onExport} className={pill}>
-          <Download size={16} className="text-neutral-500" /> Export
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={onExport} className={clsx(BUTTON.secondary, 'h-10 flex-1 sm:flex-none')}>
+          <Download size={16} className="text-slate-500" /> Export
         </button>
-        <button
-          type="button"
-          onClick={onAddProduct}
-          className="flex items-center gap-1.5 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-        >
-          <Plus size={16} /> Add New Product
+        <button type="button" onClick={onAddProduct} className={clsx(BUTTON.primary, 'h-10 flex-[2] sm:flex-none')}>
+          <Plus size={16} /> Add product
         </button>
       </div>
     </div>

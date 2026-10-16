@@ -1,8 +1,10 @@
 'use client';
 
-import { ChevronDown, Download, Search } from 'lucide-react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
+import clsx from 'clsx';
+import { CalendarDays, ChevronDown, Download, LayoutGrid, List, Search, X } from 'lucide-react';
 import type { OrderStatus } from '@/lib/partnerApi';
-import { statusLabel } from '@/lib/format';
+import { STATUS_META, type StatusFilter } from './orderMeta';
 
 export const ORDER_FILTERS: Array<OrderStatus | 'all'> = ['all', 'placed', 'packed', 'out_for_delivery', 'delivered', 'cancelled'];
 
@@ -16,91 +18,183 @@ const DATE_RANGES: { key: DateRange; label: string }[] = [
   { key: '30d', label: 'Last 30 days' },
 ];
 
+export type OrdersView = 'grid' | 'list';
+
 interface Props {
-  filter: OrderStatus | 'all';
-  onFilterChange: (filter: OrderStatus | 'all') => void;
+  filter: StatusFilter;
+  onFilterChange: (filter: StatusFilter) => void;
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
   onExport: () => void;
+  exportDisabled?: boolean;
   search: string;
   onSearchChange: (value: string) => void;
+  view: OrdersView;
+  onViewChange: (view: OrdersView) => void;
+  resultCount: number | null;
 }
 
-// One labelled native <select> styled as a rounded pill. Native is the
-// accessible, zero-dependency choice here — the reference's Location/Rider
-// dropdowns are dropped on purpose: partner orders carry neither field.
-function SelectField({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-2">
-      <span className="text-[13px] text-neutral-400">{label}</span>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none rounded-full border border-neutral-200 bg-white py-2.5 pl-4 pr-10 text-sm font-medium text-neutral-800 outline-none focus:border-neutral-300"
-        >
-          {children}
-        </select>
-        <ChevronDown size={16} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-      </div>
-    </label>
+// Mac shows ⌘K, everything else Ctrl K. Read through useSyncExternalStore so
+// the server snapshot ("⌘") never mismatches on hydration.
+const subscribeNoop = () => () => {};
+function useIsMac(): boolean {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+    () => true,
   );
 }
 
-export function OrdersFilterBar({ filter, onFilterChange, dateRange, onDateRangeChange, onExport, search, onSearchChange }: Props) {
+export function OrdersFilterBar({
+  filter,
+  onFilterChange,
+  dateRange,
+  onDateRangeChange,
+  onExport,
+  exportDisabled,
+  search,
+  onSearchChange,
+  view,
+  onViewChange,
+  resultCount,
+}: Props) {
+  const searchRef = useRef<HTMLInputElement>(null);
+  const isMac = useIsMac();
+
+  // ⌘K / Ctrl+K jumps to search from anywhere on the page — the fastest way
+  // to find the order a customer is calling about.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className="flex flex-1 flex-wrap items-end gap-4">
-        {/* Search moved here from the page header — sits left of the filters. */}
-        <label className="flex flex-1 flex-col gap-2 sm:max-w-xs">
-          <span className="text-[13px] text-neutral-400">Search</span>
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search order ID, customer, phone…"
-              className="w-full rounded-full border border-neutral-200 bg-white py-2.5 pl-11 pr-4 text-sm text-neutral-800 outline-none placeholder:text-neutral-400 focus:border-neutral-300"
-            />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+        {/* Status tabs — scroll sideways on a phone instead of wrapping. */}
+        <div className="-mx-3 overflow-x-auto px-3 [scrollbar-width:none] sm:mx-0 sm:px-0 xl:shrink-0">
+          <div role="group" aria-label="Filter by status" className="inline-flex gap-1 rounded-full bg-white p-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            {ORDER_FILTERS.map((f) => {
+              const active = filter === f;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => onFilterChange(f)}
+                  aria-pressed={active}
+                  className={clsx(
+                    'h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                    active ? 'bg-accent-soft text-accent' : 'text-slate-600 hover:bg-slate-50 hover:text-ink',
+                  )}
+                >
+                  {f === 'all' ? 'All' : STATUS_META[f].label}
+                </button>
+              );
+            })}
           </div>
+        </div>
+
+        <label className="relative block min-w-0 flex-1">
+          <span className="sr-only">Search orders</span>
+          <Search size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
+          <input
+            ref={searchRef}
+            type="search"
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && search) {
+                e.preventDefault();
+                onSearchChange('');
+              }
+            }}
+            placeholder="Search order no., customer or phone"
+            className="h-11 w-full rounded-full bg-white pl-11 pr-16 text-sm text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none ring-1 ring-transparent transition placeholder:text-slate-400 focus:ring-2 focus:ring-accent [&::-webkit-search-cancel-button]:hidden"
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => {
+                onSearchChange('');
+                searchRef.current?.focus();
+              }}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-ink"
+            >
+              <X size={16} />
+            </button>
+          ) : (
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-sans text-[11px] font-medium text-slate-500 sm:block">
+              {isMac ? '⌘K' : 'Ctrl K'}
+            </kbd>
+          )}
         </label>
-
-        <SelectField label="Status" value={filter} onChange={(v) => onFilterChange(v as OrderStatus | 'all')}>
-          {ORDER_FILTERS.map((f) => (
-            <option key={f} value={f}>
-              {f === 'all' ? 'All status' : statusLabel(f)}
-            </option>
-          ))}
-        </SelectField>
-
-        <SelectField label="Date range" value={dateRange} onChange={(v) => onDateRangeChange(v as DateRange)}>
-          {DATE_RANGES.map((r) => (
-            <option key={r.key} value={r.key}>
-              {r.label}
-            </option>
-          ))}
-        </SelectField>
       </div>
 
-      <button
-        type="button"
-        onClick={onExport}
-        className="flex items-center gap-2 rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
-      >
-        <Download size={16} />
-        Export
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="tnum mr-auto text-sm text-slate-500" aria-live="polite">
+          {resultCount === null ? ' ' : `${resultCount} ${resultCount === 1 ? 'order' : 'orders'}`}
+        </p>
+
+        <label className="relative">
+          <span className="sr-only">Date range</span>
+          <CalendarDays size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden />
+          <select
+            value={dateRange}
+            onChange={(e) => onDateRangeChange(e.target.value as DateRange)}
+            className="h-10 appearance-none rounded-full bg-white pl-10 pr-9 text-sm font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {DATE_RANGES.map((r) => (
+              <option key={r.key} value={r.key}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
+        </label>
+
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={exportDisabled}
+          title="Export CSV"
+          className="flex h-10 items-center gap-2 rounded-full bg-white px-3 text-sm sm:px-4 font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Download size={16} aria-hidden />
+          <span className="sr-only sm:not-sr-only">Export CSV</span>
+        </button>
+
+        <div role="group" aria-label="Layout" className="flex rounded-full bg-white p-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          {(
+            [
+              ['grid', LayoutGrid, 'Grid view'],
+              ['list', List, 'List view'],
+            ] as const
+          ).map(([key, Icon, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onViewChange(key)}
+              aria-pressed={view === key}
+              aria-label={label}
+              title={label}
+              className={clsx(
+                'flex h-8 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                view === key ? 'bg-accent-soft text-accent' : 'text-slate-500 hover:text-ink',
+              )}
+            >
+              <Icon size={17} />
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

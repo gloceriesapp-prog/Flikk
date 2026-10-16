@@ -1,12 +1,15 @@
-// Manual payout destinations (backend/PAYOUTS.md). Store owners and riders
-// save UPI or bank details; nothing is verified automatically. The founder
-// checks the name in their UPI/bank app before paying and flags it verified
-// in admin. Any write here resets that flag (migration 102 trigger + patch).
+// Payout destinations (backend/PAYOUTS.md). Store owners and riders save UPI
+// or bank details. Any write here resets the verified flag (migration 102
+// trigger + patch). UPI IDs can be checked with the bank automatically
+// (lib/upiVerification.ts, off unless PAYOUT_UPI_AUTO_VERIFY=true): a match
+// with the owner's/rider's name is verified on save; anything else stays for
+// the founder to verify in admin. Bank accounts are always checked manually.
 import type { RequestHandler } from 'express';
 import { supabase } from '../db/supabase.js';
 import { authBucket } from '../customer-experience/authBudget.js';
 import { AppError } from './errors.js';
 import type { AuthedRequest } from '../middleware/auth.js';
+import { namesMatch, signCareConfig, verifyUpiId, type SignCareConfig, type UpiCheck } from './upiVerification.js';
 
 export type PayoutAccountInput =
   | { method: 'upi'; upiId: string }
@@ -23,6 +26,16 @@ export interface PayoutAccount {
   status: 'unverified' | 'verified';
   verifiedName: string | null;
 }
+
+// What happened to the automatic UPI check on this save (PUT responses only).
+//   verified          bank name matched; account is verified
+//   name_mismatch     UPI ID exists, bank name differs; founder reviews it
+//   already_verified  same UPI ID was already verified; no new check
+//   unavailable       check couldn't run (provider down, daily limit); manual
+//   skipped           not a UPI ID, or auto-verification is switched off
+export type PayoutVerification =
+  | { outcome: 'verified' | 'name_mismatch'; nameAtBank: string }
+  | { outcome: 'already_verified' | 'unavailable' | 'skipped' };
 
 const UPI = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
 const ACCOUNT = /^\d{9,18}$/;
@@ -116,11 +129,100 @@ export async function readPayoutAccount(table: 'stores' | 'riders', key: 'id' | 
   return toPayoutAccount(data as unknown as Row);
 }
 
-export async function writePayoutAccount(table: 'stores' | 'riders', key: 'id' | 'user_id', value: string, body: unknown, userId: string): Promise<PayoutAccount> {
+// Each automatic check costs money, so cap them per account separately from
+// the general payout-change budget. Over the cap the save still goes through,
+// just without an automatic check.
+const UPI_CHECK_LIMIT = 5;
+
+async function claimUpiCheck(userId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('claim_auth_budget', { p_buckets: [{ key: authBucket('upi-verify', userId), limit: UPI_CHECK_LIMIT }] });
+  return !error && data === 0;
+}
+
+// The name the bank's answer is compared with.
+const PERSON_NAME_COLUMN = { stores: 'owner_name', riders: 'name' } as const;
+
+export interface WritePayoutDeps {
+  config?: SignCareConfig | null;
+  verify?: (upiId: string, config: SignCareConfig) => Promise<UpiCheck>;
+}
+
+export async function writePayoutAccount(
+  table: 'stores' | 'riders',
+  key: 'id' | 'user_id',
+  value: string,
+  body: unknown,
+  userId: string,
+  deps: WritePayoutDeps = {},
+): Promise<PayoutAccount & { verification: PayoutVerification }> {
   const input = parsePayoutAccountInput(body, userId);
   if (input.method === 'bank') await assertProofUploaded(table === 'stores' ? 'store-documents' : 'rider-documents', input.proofPath, userId);
+
+  const config = deps.config === undefined ? signCareConfig() : deps.config;
+  let check: UpiCheck | null = null;
+  let verification: PayoutVerification = { outcome: 'skipped' };
+  let personName: string | null = null;
+
+  if (input.method === 'upi' && config) {
+    const nameColumn = PERSON_NAME_COLUMN[table];
+    const { data: current, error } = await supabase
+      .from(table)
+      .select(`payout_upi_id, payout_details_status, ${nameColumn}`)
+      .eq(key, value)
+      .maybeSingle();
+    if (error) throw error;
+    if (!current) throw new AppError(404, 'PAYEE_NOT_FOUND', 'No payout profile for this account.');
+    const row = current as unknown as Row;
+    personName = row[nameColumn] ?? null;
+
+    if (row.payout_upi_id === input.upiId && row.payout_details_status === 'verified') {
+      // Same, already-verified UPI ID: nothing to save or pay for. Writing
+      // the patch would reset the verified flag for no reason.
+      return { ...(await readPayoutAccount(table, key, value)), verification: { outcome: 'already_verified' } };
+    } else if (!(await claimUpiCheck(userId))) {
+      verification = { outcome: 'unavailable' };
+    } else {
+      check = await (deps.verify ?? verifyUpiId)(input.upiId, config);
+      if (check.outcome === 'invalid') {
+        throw new AppError(400, 'UPI_NOT_FOUND', "We couldn't find this UPI ID. Check it in your UPI app and try again.");
+      }
+      if (check.outcome === 'unavailable') {
+        // Reason only: never log the UPI ID itself.
+        console.warn(`[upi-verify] check unavailable (${check.reason}); saved for manual review`);
+        verification = { outcome: 'unavailable' };
+      }
+    }
+  }
+
   const { data, error } = await supabase.from(table).update(toPayoutPatch(input)).eq(key, value).select(PAYOUT_ACCOUNT_COLUMNS).maybeSingle();
   if (error) throw error;
   if (!data) throw new AppError(404, 'PAYEE_NOT_FOUND', 'No payout profile for this account.');
-  return toPayoutAccount(data as unknown as Row);
+  let account = toPayoutAccount(data as unknown as Row);
+
+  if (input.method === 'upi' && check?.outcome === 'valid') {
+    const matched = namesMatch(check.nameAtBank, personName);
+    // A second write: the migration-102 trigger only resets verification when
+    // the payout details change, which they don't here. Pinned to the UPI ID
+    // just saved, so a concurrent change to another ID is never marked verified.
+    const patch: Record<string, unknown> = { payout_upi_verified_name: check.nameAtBank };
+    if (matched) {
+      patch.payout_details_status = 'verified';
+      patch.payout_details_verified_at = new Date().toISOString();
+      patch.payout_details_verified_by = null; // null "by" + verified = verified automatically
+    }
+    const { data: verifiedRow, error: verifyError } = await supabase
+      .from(table)
+      .update(patch)
+      .eq(key, value)
+      .eq('payout_upi_id', input.upiId)
+      .select(PAYOUT_ACCOUNT_COLUMNS)
+      .maybeSingle();
+    if (verifyError) throw verifyError;
+    if (verifiedRow) {
+      account = toPayoutAccount(verifiedRow as unknown as Row);
+      verification = { outcome: matched ? 'verified' : 'name_mismatch', nameAtBank: check.nameAtBank };
+    }
+  }
+
+  return { ...account, verification };
 }
