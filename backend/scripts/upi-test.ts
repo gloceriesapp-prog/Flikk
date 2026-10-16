@@ -3,7 +3,7 @@
 // Prints SignCare's raw HTTP status and body, then how lib/upiVerification.ts
 // reads it, so the mapping can be confirmed against a real sandbox answer.
 // Never prints the API key or client ID.
-import { parseResponse, signCareConfig } from '../src/lib/upiVerification.js';
+import { buildRequest, parseResponse, signCareConfig } from '../src/lib/upiVerification.js';
 
 const upiId = process.argv[2]?.trim();
 if (!upiId) {
@@ -17,15 +17,10 @@ if (!config) {
   process.exit(1);
 }
 
-const url = `${config.baseUrl}/api/v1/upi/advance`;
+const { url, init } = buildRequest(config, upiId);
 console.log(`POST ${url}`);
 try {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'x-api-key': config.apiKey, 'x-client-id': config.clientId },
-    body: JSON.stringify({ upi_id: upiId }),
-    signal: AbortSignal.timeout(config.timeoutMs),
-  });
+  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(config.timeoutMs) });
   const text = await res.text();
   let body: unknown = text;
   try {

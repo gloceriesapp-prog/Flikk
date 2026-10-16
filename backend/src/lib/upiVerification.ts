@@ -1,5 +1,6 @@
-// UPI ID verification through SignCare (POST /api/v1/upi/advance). Used when
-// a store owner or rider saves a UPI payout ID (lib/payoutAccount.ts):
+// UPI ID verification through SignCare (POST /api/v1/upi/verification, which
+// returns the account holder's name for a UPI ID). Used when a store owner or
+// rider saves a UPI payout ID (lib/payoutAccount.ts):
 //
 //   valid + name matches the owner/rider  -> saved as verified automatically
 //   valid + name differs                  -> saved unverified, the bank's name
@@ -11,12 +12,17 @@
 // unclear answer is never treated as verified.
 //
 // Off unless PAYOUT_UPI_AUTO_VERIFY=true and SIGNCARE_BASE_URL,
-// SIGNCARE_API_KEY and SIGNCARE_CLIENT_ID are set. The keys are server-only:
-// never ship them in an app.
+// SIGNCARE_API_KEY and SIGNCARE_CLIENT_ID (sent as X-API-APP-ID) are set. The
+// keys are server-only: never ship them in an app.
 //
-// The request headers/body and response fields below follow SignCare's
-// common shape but must be confirmed against a real sandbox response; they are
-// kept in buildRequest/parseResponse so that is a one-place change.
+// Request/response format from SignCare's own OpenAPI spec
+// (<base>/swagger/v1/swagger.json) and confirmed against the UAT sandbox
+// (https://uat-ext.signcare.io): HTTP is 200 for both outcomes; the body's
+// success/statusCode carry the result (100 = found, 101 = "No Record Found").
+// (/api/v1/upi/advance is a different API: it looks a UPI ID up from a mobile
+// number.)
+
+import { randomUUID } from 'node:crypto';
 
 export type UpiCheck =
   | { outcome: 'valid'; nameAtBank: string }
@@ -42,36 +48,32 @@ export function signCareConfig(env: NodeJS.ProcessEnv = process.env): SignCareCo
   return { baseUrl, apiKey, clientId, timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_TIMEOUT_MS };
 }
 
-function buildRequest(config: SignCareConfig, upiId: string): { url: string; init: RequestInit } {
+// SignCare requires the end user's consent and its own default consent
+// statement, sent verbatim (their spelling). The apps show the user a matching
+// notice before saving.
+const CONSENT_TEXT = 'I hear by declare my consent agreement for fetching my information via SignCare API';
+
+export function buildRequest(config: SignCareConfig, upiId: string, requestId: string = `gl-${randomUUID()}`): { url: string; init: RequestInit } {
   return {
-    url: `${config.baseUrl}/api/v1/upi/advance`,
+    url: `${config.baseUrl}/api/v1/upi/verification`,
     init: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'x-api-key': config.apiKey,
-        'x-client-id': config.clientId,
+        'X-API-KEY': config.apiKey,
+        'X-API-APP-ID': config.clientId,
       },
-      body: JSON.stringify({ upi_id: upiId }),
+      body: JSON.stringify({ consent: 'Y', consent_text: CONSENT_TEXT, request_id: requestId, customer_upi_id: upiId }),
     },
   };
 }
 
+const FOUND = 100;
+const NOT_FOUND = 101;
+
 type Json = Record<string, unknown>;
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
-
-function pickString(obj: Json, keys: string[]): string | null {
-  for (const key of keys) {
-    const value = obj[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
-}
-
-const NAME_KEYS = ['name_at_bank', 'nameAtBank', 'account_holder_name', 'accountHolderName', 'payee_name', 'payeeName', 'customer_name', 'name', 'full_name'];
-const VALID_WORDS = new Set(['valid', 'success', 'active', 'verified', 'exists']);
-const INVALID_WORDS = new Set(['invalid', 'not_found', 'notfound', 'inactive', 'failed', 'does_not_exist', 'not_exist']);
 
 /** Maps SignCare's answer to a UpiCheck. Anything it can't read confidently is 'unavailable'. */
 export function parseResponse(status: number, body: unknown): UpiCheck {
@@ -80,27 +82,14 @@ export function parseResponse(status: number, body: unknown): UpiCheck {
   if (status >= 500) return { outcome: 'unavailable', reason: `provider_${status}` };
   if (!isObject(body)) return { outcome: 'unavailable', reason: 'unreadable_body' };
 
-  // The useful fields may sit at the top level or under data/result.
-  const layers = [body, body.data, body.result].filter(isObject);
-  let flag: boolean | null = null;
-  let name: string | null = null;
-  for (const layer of layers) {
-    name ??= pickString(layer, NAME_KEYS);
-    for (const key of ['valid', 'is_valid', 'isValid', 'account_exists', 'accountExists', 'vpa_valid']) {
-      if (typeof layer[key] === 'boolean') flag ??= layer[key] as boolean;
-    }
-    const word = pickString(layer, ['status', 'account_status', 'vpa_status', 'verification_status'])?.toLowerCase().replace(/\s+/g, '_');
-    if (word && flag === null) {
-      if (VALID_WORDS.has(word)) flag = true;
-      else if (INVALID_WORDS.has(word)) flag = false;
-    }
+  const code = typeof body.statusCode === 'number' ? body.statusCode : null;
+  if (body.success === true && code === FOUND) {
+    const name = isObject(body.data) && typeof body.data.beneficiary_name === 'string' ? body.data.beneficiary_name.trim() : '';
+    // "Found" without a name is not enough to verify anyone.
+    return name ? { outcome: 'valid', nameAtBank: name } : { outcome: 'unavailable', reason: 'no_name' };
   }
-
-  if (flag === false || (status === 404 && flag !== true)) return { outcome: 'invalid' };
-  // A "valid" answer without a name is not enough to verify anyone.
-  if (flag === true && name) return { outcome: 'valid', nameAtBank: name };
-  if (status === 400 && flag === null) return { outcome: 'invalid' };
-  return { outcome: 'unavailable', reason: 'ambiguous_response' };
+  if (body.success === false && code === NOT_FOUND) return { outcome: 'invalid' };
+  return { outcome: 'unavailable', reason: `signcare_${code ?? status}` };
 }
 
 export async function verifyUpiId(upiId: string, config: SignCareConfig, fetchImpl: typeof fetch = fetch): Promise<UpiCheck> {
