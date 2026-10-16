@@ -1,6 +1,7 @@
 // Payout destination — UPI ID or bank account (backend/PAYOUTS.md). Payouts
-// are sent manually by the founder each week; nothing here contacts a
-// bank. Saved via PUT /partner/payout-account, read via GET (TanStack
+// are sent manually by the founder each week. A UPI ID may be checked with
+// the bank by the backend on save (lib/upiVerification.ts); the result comes
+// back on the save response and is shown in an alert. Saved via PUT /partner/payout-account, read via GET (TanStack
 // Query, PAYOUT_ACCOUNT_QUERY_KEY — also read by OrdersScreen's setup
 // banner). The full account number lives in this card's form state only
 // until a successful save, then it's wiped; afterwards only accountLast4
@@ -18,8 +19,11 @@ import { BankIcon, CheckmarkCircle02Icon, ImageUpload01Icon } from '@hugeicons/c
 import {
   EMPTY_PAYOUT_FORM,
   payoutAccountStatusLabel,
+  payoutSaveMessage,
+  UPI_NOT_FOUND_CODE,
   validatePayoutForm,
   type PayoutAccount,
+  type SavedPayoutAccount,
   type PayoutFormErrors,
   type PayoutFormValues,
 } from '@gloceries/shared';
@@ -76,6 +80,8 @@ export function PayoutAccountCard() {
           queryClient.setQueryData(PAYOUT_ACCOUNT_QUERY_KEY, saved);
           void queryClient.invalidateQueries({ queryKey: PAYOUT_ACCOUNT_QUERY_KEY });
           setEditing(false);
+          const message = payoutSaveMessage(saved);
+          Alert.alert(message.title, message.body);
         }}
       />
     </SettingsCard>
@@ -141,7 +147,7 @@ function PayoutForm({
   defaultHolderName: string;
   onCancel?: () => void;
   onSave: typeof savePayoutAccount;
-  onSaved: (account: PayoutAccount) => void;
+  onSaved: (account: SavedPayoutAccount) => void;
 }) {
   // Starts blank (not prefilled with the old destination) — the server only
   // ever returns the last 4 digits anyway.
@@ -156,7 +162,11 @@ function PayoutForm({
       setValues(EMPTY_PAYOUT_FORM); // never keep the full account number around after save
       onSaved(saved);
     },
-    onError: (err) => setServerError(err instanceof ApiError ? err.message : 'Could not save payout details. Please try again.'),
+    onError: (err) => {
+      // The bank says this UPI ID doesn't exist: show it on the field itself.
+      if (err instanceof ApiError && err.code === UPI_NOT_FOUND_CODE) setErrors((e) => ({ ...e, upiId: err.message }));
+      else setServerError(err instanceof ApiError ? err.message : 'Could not save payout details. Please try again.');
+    },
   });
   const busy = mutation.isPending || uploadingProof;
 
@@ -238,6 +248,7 @@ function PayoutForm({
             editable={!busy}
             className={INPUT_CLASS}
           />
+          <Text className="text-[12px] font-medium text-ink/40">We check this UPI ID with your bank to confirm the account holder&apos;s name.</Text>
         </Field>
       ) : (
         <View className="gap-3">
@@ -286,7 +297,14 @@ function PayoutForm({
         className="items-center justify-center rounded-2xl py-3.5"
         style={{ backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }}
       >
-        {mutation.isPending ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text className="text-[14px] font-semibold text-white">Save payout details</Text>}
+        {mutation.isPending ? (
+          <View className="flex-row items-center gap-2">
+            <ActivityIndicator size="small" color="#FFFFFF" />
+            <Text className="text-[14px] font-semibold text-white">{values.method === 'upi' ? 'Checking with your bank…' : 'Saving…'}</Text>
+          </View>
+        ) : (
+          <Text className="text-[14px] font-semibold text-white">Save payout details</Text>
+        )}
       </Pressable>
       {onCancel && (
         <Pressable onPress={onCancel} disabled={busy} accessibilityRole="button" className="items-center py-1">

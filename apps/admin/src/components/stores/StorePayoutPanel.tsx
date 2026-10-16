@@ -75,6 +75,11 @@ export function StorePayoutPanel({ storeId, payout }: { storeId: string; payout:
         {payout.status === 'verified' && payout.verifiedName && (
           <p className="mt-1 text-xs text-muted">Name seen in UPI/bank app: {payout.verifiedName}</p>
         )}
+        {/* Unverified with a name = the automatic UPI check found the ID,
+            but the bank's name didn't match the owner's. */}
+        {payout.method === 'upi' && payout.status !== 'verified' && payout.verifiedName && (
+          <p className="mt-1 text-xs text-amber-700">Name at bank (automatic check): {payout.verifiedName}. Doesn&apos;t match the owner name; check before paying.</p>
+        )}
         {payout.method && payout.status !== 'verified' && (
           <p className="mt-1 text-xs text-muted">
             Verify the account holder name when paying from the <Link href="/payouts" className="underline">Payouts</Link> page.

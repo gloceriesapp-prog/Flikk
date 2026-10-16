@@ -88,7 +88,13 @@ export interface PayoutAccount {
   verifiedName: string | null;
 }
 
-export function saveUpiPayoutAccount(upiId: string): Promise<PayoutAccount> {
+// Result of the backend's automatic UPI check (backend lib/upiVerification.ts),
+// returned on save only. Mirrors @gloceries/shared's PayoutVerification.
+export type PayoutVerification =
+  | { outcome: 'verified' | 'name_mismatch'; nameAtBank: string }
+  | { outcome: 'already_verified' | 'unavailable' | 'skipped' };
+
+export function saveUpiPayoutAccount(upiId: string): Promise<PayoutAccount & { verification?: PayoutVerification }> {
   return apiRequest('/partner/payout-account', { method: 'PUT', body: { method: 'upi', upiId } });
 }
 

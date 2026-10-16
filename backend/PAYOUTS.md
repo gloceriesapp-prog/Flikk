@@ -113,6 +113,26 @@ payee can match it in their bank statement).
 Removed: `POST /partner/verify-payout`, rider verify-payout route, payout
 webhook events, payout release worker, `RAZORPAYX_ACCOUNT_NUMBER` env.
 
+## Automatic UPI ID check (SignCare)
+
+`lib/upiVerification.ts`, called from `writePayoutAccount` on `PUT /partner|rider/payout-account`
+when the method is UPI. Off unless `PAYOUT_UPI_AUTO_VERIFY=true` and `SIGNCARE_BASE_URL`,
+`SIGNCARE_API_KEY`, `SIGNCARE_CLIENT_ID` are set. No migration: it uses the existing columns.
+
+| SignCare answer | What happens | Response `verification.outcome` |
+|---|---|---|
+| UPI ID exists, bank name matches owner (`stores.owner_name`) / rider (`riders.name`) | Saved and marked verified (`payout_details_verified_by` stays null = verified automatically) | `verified` |
+| UPI ID exists, name differs | Saved unverified; `payout_upi_verified_name` holds the bank's name for admin review | `name_mismatch` |
+| UPI ID doesn't exist | 400 `UPI_NOT_FOUND`, nothing saved | — |
+| Timeout (8 s), provider error, unclear answer, or > 5 checks for this account | Saved unverified, manual check as before | `unavailable` |
+| Same UPI ID already verified | No new check, nothing rewritten | `already_verified` |
+
+Verification is written in a second update pinned to the UPI ID just saved, so the migration-102
+reset trigger (which fires only when destination columns change) leaves it alone. Name matching
+ignores case, punctuation, titles and word order and accepts initials, but needs at least one shared
+whole word of 3+ letters. Bank accounts are still verified manually. The request/response mapping
+(`buildRequest`/`parseResponse`) must be confirmed against a real SignCare sandbox response.
+
 ## Admin (Next.js, service role)
 
 - `GET  /api/payouts?status=pending|paid|all&kind=store|rider|all` (defaults
