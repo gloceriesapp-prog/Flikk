@@ -59,34 +59,38 @@ describe('signCareConfig', () => {
   });
 });
 
+// Bodies below are real SignCare UAT responses (request ids shortened).
+const FOUND = { data: { beneficiary_name: 'ASHOK TAK' }, messages: [], request_id: 'gl-1', success: true, statusCode: 100, message: 'Valid Authentication' };
+const NOT_FOUND = { data: null, messages: [], request_id: 'gl-2', success: false, statusCode: 101, message: 'No Record Found' };
+const UNAUTHORIZED = { success: false, error: 'Unauthorized', message: 'Missing or invalid X-API-KEY header.' };
+
 describe('parseResponse', () => {
-  it('reads a valid answer with the name at bank, at the top level or nested', () => {
-    expect(parseResponse(200, { status: 'VALID', name_at_bank: 'RAMESH SHETTY' })).toEqual({ outcome: 'valid', nameAtBank: 'RAMESH SHETTY' });
-    expect(parseResponse(200, { success: true, data: { valid: true, account_holder_name: 'R SHETTY' } })).toEqual({ outcome: 'valid', nameAtBank: 'R SHETTY' });
-  });
-  it('treats explicit not-found answers as invalid', () => {
-    expect(parseResponse(200, { data: { valid: false } })).toEqual({ outcome: 'invalid' });
-    expect(parseResponse(200, { status: 'INVALID' })).toEqual({ outcome: 'invalid' });
-    expect(parseResponse(404, { message: 'VPA not found' })).toEqual({ outcome: 'invalid' });
+  it('reads SignCare found / not-found answers', () => {
+    expect(parseResponse(200, FOUND)).toEqual({ outcome: 'valid', nameAtBank: 'ASHOK TAK' });
+    expect(parseResponse(200, NOT_FOUND)).toEqual({ outcome: 'invalid' });
   });
   it('never verifies on an unclear answer', () => {
-    expect(parseResponse(200, { status: 'VALID' }).outcome).toBe('unavailable'); // valid but no name
-    expect(parseResponse(200, { message: 'ok' }).outcome).toBe('unavailable');
+    expect(parseResponse(200, { ...FOUND, data: { beneficiary_name: '  ' } })).toEqual({ outcome: 'unavailable', reason: 'no_name' });
+    expect(parseResponse(200, { ...FOUND, statusCode: 102 })).toEqual({ outcome: 'unavailable', reason: 'signcare_102' });
+    expect(parseResponse(200, { ...NOT_FOUND, statusCode: 500 })).toEqual({ outcome: 'unavailable', reason: 'signcare_500' });
     expect(parseResponse(200, 'html').outcome).toBe('unavailable');
-    expect(parseResponse(401, {}).outcome).toBe('unavailable');
+    expect(parseResponse(401, UNAUTHORIZED)).toEqual({ outcome: 'unavailable', reason: 'auth_401' });
     expect(parseResponse(429, {}).outcome).toBe('unavailable');
-    expect(parseResponse(503, { valid: true, name: 'X' }).outcome).toBe('unavailable');
+    expect(parseResponse(503, FOUND).outcome).toBe('unavailable');
   });
 });
 
 describe('verifyUpiId', () => {
-  it('sends the UPI ID server-side with both credentials', async () => {
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ valid: true, name: 'RAMESH SHETTY' }), { status: 200 }));
-    expect(await verifyUpiId('ramesh@okaxis', config, fetchImpl)).toEqual({ outcome: 'valid', nameAtBank: 'RAMESH SHETTY' });
+  it('posts the UPI ID with consent and both credentials, server-side', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(FOUND), { status: 200 }));
+    expect(await verifyUpiId('ashok@upi', config, fetchImpl)).toEqual({ outcome: 'valid', nameAtBank: 'ASHOK TAK' });
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe('https://signcare.test/api/v1/upi/advance');
-    expect(init.headers).toMatchObject({ 'x-api-key': 'k', 'x-client-id': 'c' });
-    expect(JSON.parse(String(init.body))).toEqual({ upi_id: 'ramesh@okaxis' });
+    expect(url).toBe('https://signcare.test/api/v1/upi/verification');
+    expect(init.headers).toMatchObject({ 'X-API-KEY': 'k', 'X-API-APP-ID': 'c' });
+    const body = JSON.parse(String(init.body));
+    expect(body).toMatchObject({ consent: 'Y', customer_upi_id: 'ashok@upi' });
+    expect(body.consent_text).toMatch(/consent/);
+    expect(body.request_id).toMatch(/^gl-/);
   });
   it('gives up after the timeout and on network errors', async () => {
     const hang: typeof fetch = (_u, init) => new Promise((_, reject) => init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))));

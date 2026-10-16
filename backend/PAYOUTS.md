@@ -153,8 +153,14 @@ when the method is UPI. Off unless `PAYOUT_UPI_AUTO_VERIFY=true` and `SIGNCARE_B
 Verification is written in a second update pinned to the UPI ID just saved, so the migration-102
 reset trigger (which fires only when destination columns change) leaves it alone. Name matching
 ignores case, punctuation, titles and word order and accepts initials, but needs at least one shared
-whole word of 3+ letters. Bank accounts are still verified manually. The request/response mapping
-(`buildRequest`/`parseResponse`) must be confirmed against a real SignCare sandbox response.
+whole word of 3+ letters. Bank accounts are still verified manually.
+
+SignCare call: `POST {SIGNCARE_BASE_URL}/api/v1/upi/verification` with headers `X-API-KEY` and
+`X-API-APP-ID` (= `SIGNCARE_CLIENT_ID`) and body `{ consent: 'Y', consent_text, request_id,
+customer_upi_id }`. HTTP is 200 either way; `success: true, statusCode: 100` with
+`data.beneficiary_name` = found, `success: false, statusCode: 101` = "No Record Found". Verified
+against the UAT sandbox (`https://uat-ext.signcare.io`; the full spec is at `/swagger/v1/swagger.json`).
+Check a setup from a dev machine with `pnpm upi:test name@upi`.
 
 ## Admin (Next.js, service role)
 
