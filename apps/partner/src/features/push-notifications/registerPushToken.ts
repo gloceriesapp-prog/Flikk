@@ -96,7 +96,12 @@ export function logoutPartner(): Promise<void> {
   if (logout?.epoch === epoch) return logout.promise;
   if (!useAuthStore.getState().accessToken) return useAuthStore.getState().clear();
   const draining = registration?.epoch === epoch ? registration.promise : Promise.resolve();
-  const token = sendingToken?.epoch === epoch ? sendingToken.token : savedToken?.epoch === epoch ? savedToken.token : undefined;
+  // A rotation POST may fail before or after the server commits it. Remove
+  // both known tokens; otherwise an ambiguous save can leave the old one live.
+  const tokens = [...new Set([
+    sendingToken?.epoch === epoch ? sendingToken.token : undefined,
+    savedToken?.epoch === epoch ? savedToken.token : undefined,
+  ].filter((token): token is string => !!token))];
   const work = { epoch, promise: Promise.resolve() };
   logout = work;
   work.promise = Promise.resolve().then(async () => {
@@ -105,7 +110,10 @@ export function logoutPartner(): Promise<void> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     try {
-      await apiRequest('/auth/push-token', { method: 'DELETE', body: token ? { token } : {}, signal: controller.signal });
+      for (const token of tokens.length ? tokens : [undefined]) {
+        if (!isCurrentSession(epoch)) return;
+        await apiRequest('/auth/push-token', { method: 'DELETE', body: token ? { token } : {}, signal: controller.signal });
+      }
       if (isCurrentSession(epoch)) await useAuthStore.getState().clear();
     } catch (error) {
       if (isCurrentSession(epoch)) throw error;

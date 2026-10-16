@@ -72,6 +72,15 @@ it('never clears a new account when old logout completes late', async () => {
   release(); await pending;
   expect(mocks.clear).not.toHaveBeenCalled();
 });
+
+it('removes both tokens after an ambiguous failed rotation save', async () => {
+  await registerPushToken();
+  mocks.save.mockRejectedValueOnce(new Error('connection lost after POST'));
+  await registerPushToken({ type: 'android', data: 'native-b' });
+  await logoutPartner();
+  expect(mocks.remove.mock.calls.map(call => call[1].body.token)).toEqual(['expo:native-b', 'expo:native-a']);
+  expect(mocks.clear).toHaveBeenCalledTimes(1);
+});
 it('processes a real rotation that arrives during registration', async () => {
   watchPushTokenRotation(); let release!: () => void;
   mocks.save.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));
