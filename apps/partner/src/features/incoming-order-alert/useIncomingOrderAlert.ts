@@ -1,40 +1,5 @@
-// Drives the full-screen alert — the "attention phase" of the two-phase
-// accept window (see features/order-expiry/orderExpiry.ts for the full
-// picture). This hook's only jobs are: which order (if any) is currently
-// shown, the 60s attention countdown, and manual accept/decline. It does
-// NOT reject an order on its own anymore — at 0s it just stops
-// interrupting and hands the order off to the grace phase, where it sits
-// as a normal, fully-acceptable card in the Orders queue
-// (OrderCard's own live countdown badge) until
-// features/order-expiry/useOrderExpiryWatcher.ts's longer total window
-// actually rejects it. A shop owner mid-customer for a minute doesn't
-// lose the order just because they didn't look at their phone the
-// instant it buzzed — the loud/blocking part of this flow is meant to be
-// short, not held open for the whole grace window.
-//
-// "Accept Order" here calls acknowledgeOrder, not markPacked — tapping
-// Accept the moment the phone rings means "yes, I'll take this," not "I've
-// already physically packed it." The order stays 'placed' (still the only
-// real status this app can write is 'packed') and shows as the queue's
-// "Accepted" card state, with its own separate "Mark Packed" action for
-// once the shop owner has actually finished — see OrderCard.tsx.
-//
-// Reads useOrdersStore directly rather than taking orders as a prop —
-// this is meant to be mounted once at the app root (see App.tsx),
-// independent of whatever screen is currently focused, so an incoming
-// order interrupts the shop owner regardless of which tab they're on.
-//
-// `activeOrder` is a local snapshot, not a live lookup into the store —
-// taken once when the alert triggers, kept as-is until Accept/Decline
-// clears it. Manual Decline still calls the store's real rejectOrder
-// (that's an intentional, immediate cancel); the attention-phase timeout
-// below does not.
-//
-// `dismissedOrderIds` is what stops an order from re-triggering this
-// full-screen alert after its attention phase has already run once —
-// without it, the "pick up the next un-dismissed order" effect would
-// immediately re-show the same order the instant its countdown hit zero,
-// since the order is still sitting in the store with status 'placed'.
+// Incoming-order decisions close the alert only after server confirmation.
+// Failed decisions remain visible and retryable; elapsed display time never cancels an order.
 
 import { useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
@@ -42,14 +7,17 @@ import { useOrdersStore } from '../../store/useOrdersStore';
 import { navigationRef } from '../../navigation/navigationRef';
 import type { PartnerOrder } from '../../screens/orders/data';
 import { playOrderAlertSound } from './playOrderAlertSound';
+import { attentionTiming, ATTENTION_SECONDS } from './attentionTiming';
 
-export const AUTO_DECLINE_SECONDS = 60;
+export const AUTO_DECLINE_SECONDS = ATTENTION_SECONDS;
 
 interface UseIncomingOrderAlertResult {
   activeOrder: PartnerOrder | null;
   secondsLeft: number;
-  onAccept: () => void;
-  onDecline: (reason: string) => void;
+  onAccept: () => Promise<void>;
+  onDecline: (reason: string) => Promise<void>;
+  busy: boolean;
+  error: string | null;
 }
 
 export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
@@ -61,11 +29,25 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
 
   const acknowledgedOrderIds = useOrdersStore((state) => state.acknowledgedOrderIds);
   const [activeOrder, setActiveOrder] = useState<PartnerOrder | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const actionLock = useRef(false);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_DECLINE_SECONDS);
   // Ref, not state — read inside the interval/effect below without
   // retriggering them on every dismissal, same pattern as
   // SlideToConfirmButton's own refs-in-gesture-handlers note.
   const dismissedOrderIdsRef = useRef<Set<string>>(new Set());
+  const attentionRef = useRef({ orderId: '', startedAt: 0, reminded: false });
+
+  useEffect(() => useOrdersStore.subscribe(state => {
+    if (!activeOrder || dismissedOrderIdsRef.current.has(activeOrder.id)) return;
+    const latest = state.orders.find(order => order.id === activeOrder.id);
+    if (!latest || latest.status !== 'placed' || latest.acceptedAtTimestamp != null) {
+      dismissedOrderIdsRef.current.add(activeOrder.id);
+      setActiveOrder(null);
+      clearNewlyArrived(activeOrder.id);
+    }
+  }), [activeOrder, clearNewlyArrived]);
 
   // Picks up the next un-dismissed, un-acknowledged order that
   // useOrdersStore itself has flagged as genuinely newly-arrived (see that
@@ -80,13 +62,15 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
     if (activeOrder) return;
     const next = orders.find(
       (order) =>
-        order.status === 'placed' &&
+        order.status === 'placed' && order.paymentMode !== 'awaiting_payment' && !order.acceptedAtTimestamp &&
         newlyArrivedOrderIds.has(order.id) &&
         !dismissedOrderIdsRef.current.has(order.id) &&
         !acknowledgedOrderIds.has(order.id)
     );
     if (!next) return;
 
+    setError(null);
+    attentionRef.current = { orderId: next.id, startedAt: Date.now(), reminded: false };
     setActiveOrder(next);
     setSecondsLeft(AUTO_DECLINE_SECONDS);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -96,23 +80,28 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
     playOrderAlertSound().catch(() => {});
   }, [orders, activeOrder, acknowledgedOrderIds, newlyArrivedOrderIds]);
 
-  // The attention-phase countdown — ticks once a second while an order is
-  // active. At zero: stop interrupting and send the shop owner to the
-  // Orders tab, where the order is now waiting as a normal card for the
-  // rest of the grace window. No rejectOrder call here — see file header.
-  // The side effects live inside the setTimeout callback directly, not
-  // inside the setSecondsLeft updater passed to it — that distinction is
-  // what "Cannot update a component while rendering a different
-  // component" was about: React can invoke a functional setState updater
-  // during render (StrictMode double-invoke, batching), so anything
-  // inside that updater must be a pure function of its previous value.
-  // The setTimeout callback itself runs as a genuine async event after
-  // render, so calling navigationRef from there is legal.
+  // The 50-second attention window is measured from presentation. At zero,
+  // hand off to the normal queue; only the server can expire an order.
+  // Side effects stay in the timer callback, never in a state updater.
   useEffect(() => {
-    if (!activeOrder || secondsLeft <= 0) return;
+    if (!activeOrder) return;
 
-    const timeout = setTimeout(() => {
-      if (secondsLeft <= 1) {
+    const tick = () => {
+      const attention = attentionRef.current;
+      if (attention.orderId !== activeOrder.id) return;
+      const timing = attentionTiming(attention.startedAt, Date.now());
+      setSecondsLeft(timing.secondsLeft);
+      // Read the current store before sounding: a completed acceptance,
+      // rejection or cancellation must suppress a queued reminder tick.
+      const state = useOrdersStore.getState();
+      const latest = state.orders.find(order => order.id === activeOrder.id);
+      if (timing.reminderDue && !attention.reminded && !actionLock.current && latest?.status === 'placed' &&
+          latest.acceptedAtTimestamp == null && latest.paymentMode !== 'awaiting_payment' &&
+          !state.acknowledgedOrderIds.has(activeOrder.id)) {
+        attention.reminded = true;
+        playOrderAlertSound().catch(() => {});
+      }
+      if (timing.secondsLeft === 0 && !actionLock.current && !error) {
         dismissedOrderIdsRef.current.add(activeOrder.id);
         // Handed off to the Orders queue's own grace-window countdown now
         // (OrderCard) — not "new" anymore in the sense this flag means,
@@ -120,40 +109,33 @@ export function useIncomingOrderAlert(): UseIncomingOrderAlertResult {
         clearNewlyArrived(activeOrder.id);
         setActiveOrder(null);
         if (navigationRef.isReady()) navigationRef.navigate('Orders');
-      } else {
-        setSecondsLeft(secondsLeft - 1);
       }
-    }, 1000);
+    };
+    const interval = setInterval(tick, 500);
 
-    return () => clearTimeout(timeout);
-  }, [activeOrder, secondsLeft, clearNewlyArrived]);
+    return () => clearInterval(interval);
+  }, [activeOrder, clearNewlyArrived, error]);
 
   // Neither of these navigates anywhere on purpose — accepting/declining
   // just clears activeOrder, closing the alert (Modal visible={false} on
   // the next render) and dropping the shop owner back wherever they
   // already were. Only the attention-phase timeout above forces a
   // destination (see file header on why).
-  function onAccept() {
-    if (!activeOrder) return;
-    dismissedOrderIdsRef.current.add(activeOrder.id);
-    clearNewlyArrived(activeOrder.id);
-    acknowledgeOrder(activeOrder.id);
-    setActiveOrder(null);
+  async function act(operation: (id: string) => Promise<void>) {
+    if (!activeOrder || actionLock.current) return;
+    actionLock.current = true;
+    setBusy(true); setError(null);
+    const id = activeOrder.id;
+    try {
+      await operation(id);
+      dismissedOrderIdsRef.current.add(id);
+      clearNewlyArrived(id);
+      setActiveOrder(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not update this order. Please retry.');
+    } finally { actionLock.current = false; setBusy(false); }
   }
-
-  function onDecline(reason: string) {
-    if (!activeOrder) return;
-    dismissedOrderIdsRef.current.add(activeOrder.id);
-    clearNewlyArrived(activeOrder.id);
-    // rejectOrder is a real backend call now (PATCH /orders/:id/status) —
-    // best-effort here: the modal has already closed and there's no
-    // sensible mid-decline retry UI for this specific interrupt flow, but
-    // a failure still needs to not be a silently-swallowed unhandled
-    // rejection (the exact bug class this app already got bitten by once,
-    // see features/order-expiry's own note on the same fix).
-    rejectOrder(activeOrder.id, reason).catch(() => {});
-    setActiveOrder(null);
-  }
-
-  return { activeOrder, secondsLeft, onAccept, onDecline };
+  const onAccept = () => act(acknowledgeOrder);
+  const onDecline = (reason: string) => act(id => rejectOrder(id, reason));
+  return { activeOrder, secondsLeft, onAccept, onDecline, busy, error };
 }

@@ -55,6 +55,8 @@ export async function GET() {
         .channel(`admin-overview-sync-${crypto.randomUUID()}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => send('orders'))
         .on('postgres_changes', { event: '*', schema: 'public', table: 'stores' }, () => send('stores'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'store_profile_change_requests' }, () => send('store-updates'))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => send('products'))
         .on('postgres_changes', { event: '*', schema: 'public', table: 'riders' }, () => send('riders'))
         .on('postgres_changes', { event: '*', schema: 'public', table: 'store_onboarding_drafts' }, () => send('applications'))
         .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_onboarding_drafts' }, () => send('applications'))

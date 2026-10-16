@@ -31,10 +31,16 @@ export function StoreReviewScreen({ navigation, route }: Props) {
   const setApplicationSubmitted = useAuthStore((s) => s.setApplicationSubmitted);
   const clearSession = useAuthStore((s) => s.clear);
 
+  const coordinates = draft.coordinates;
+  const validCoordinates = !!coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude) && Math.abs(coordinates.latitude) <= 90 && Math.abs(coordinates.longitude) <= 180;
+
   async function submitApplication() {
+    if (!validCoordinates) throw new Error("Choose your store location on the map before submitting.");
     await submitStoreApplication({
       storeName: draft.storeName,
       category: draft.category,
+      lat: coordinates!.latitude,
+      lng: coordinates!.longitude,
       phone: draft.phone || undefined,
       district: draft.district ?? 'Udupi',
       addressLine: draft.addressLine || undefined,
@@ -156,7 +162,7 @@ export function StoreReviewScreen({ navigation, route }: Props) {
           label="Start Selling on Gloceries"
           onPress={handleSubmit}
           loading={loading}
-          disabled={!isValidPanFormat(draft.panNumber)}
+          disabled={!isValidPanFormat(draft.panNumber) || !validCoordinates}
           trailingIcon={ArrowRight01Icon}
         />
       </View>

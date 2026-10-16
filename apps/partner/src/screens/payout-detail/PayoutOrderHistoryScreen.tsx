@@ -1,3 +1,4 @@
+import { usePrivateQueryScope } from '../../network/usePrivateQueryScope';
 // Full order-by-order breakdown for one settlement — reached from "View
 // all orders" on either payout card (PayoutOrdersLink.tsx). A settlement's
 // order count only grows (a busy week can be 18-24+), so this list needed
@@ -23,7 +24,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft01Icon, CheckmarkCircle02Icon, HugeiconsIcon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, HugeiconsIcon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
@@ -35,9 +36,10 @@ import { PayoutOrderHistoryRow } from './components/PayoutOrderHistoryRow';
 type Props = NativeStackScreenProps<AppStackParamList, 'PayoutOrderHistory'>;
 
 export function PayoutOrderHistoryScreen({ route, navigation }: Props) {
+  const queryScope = usePrivateQueryScope();
   const { payoutId, weekLabel, isSample, sampleTotals } = route.params;
   const query = useInfiniteQuery({
-    queryKey: ['payout-orders', payoutId],
+    queryKey: ['payout-orders', queryScope, payoutId],
     initialPageParam: '',
     queryFn: ({ pageParam }) => fetchPayoutOrderPage(payoutId, pageParam || undefined),
     getNextPageParam: page => page.nextCursor ?? undefined,

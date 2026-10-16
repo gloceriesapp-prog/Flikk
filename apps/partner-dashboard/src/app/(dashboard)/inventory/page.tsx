@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Boxes, Package, PackageX, ShieldAlert } from 'lucide-react';
-import { createProduct, fetchMyProducts, updateProduct, type PartnerProduct, type ProductInput } from '@/lib/partnerApi';
+import { createProduct, fetchProductPage, updateProduct, type PartnerProduct, type ProductInput } from '@/lib/partnerApi';
 import { DEMO_PRODUCTS } from '@/lib/demoProducts';
 import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
@@ -38,20 +38,62 @@ export default function InventoryPage() {
   const [showFilter, setShowFilter] = useState(true);
   const [sort, setSort] = useState<SortKey>('name');
 
-  function reload() {
-    return fetchMyProducts().then(setProducts);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const requestVersion = useRef(0);
+  const morePending = useRef(false);
+
+  async function reload() {
+    const version = ++requestVersion.current;
+    setIsLoading(true);
+    try {
+      const page = await fetchProductPage({ q: search, stock: filter });
+      if (version !== requestVersion.current) return;
+      setProducts(page.items);
+      setNextCursor(page.nextCursor);
+      setLastUpdated(new Date());
+      setError(null);
+    } catch {
+      if (version === requestVersion.current) setError('Could not refresh inventory. Showing the last loaded items.');
+    } finally {
+      if (version === requestVersion.current) setIsLoading(false);
+    }
   }
 
   useEffect(() => {
-    reload().finally(() => setIsLoading(false));
-  }, []);
+    const timer = setTimeout(() => { void reload(); }, 300);
+    return () => { clearTimeout(timer); requestVersion.current += 1; };
+    // The request generation fences old searches and unmount responses.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, filter]);
+
+  async function loadMore() {
+    if (!nextCursor || morePending.current || isLoading) return;
+    morePending.current = true;
+    setLoadingMore(true);
+    const version = requestVersion.current;
+    try {
+      const page = await fetchProductPage({ cursor: nextCursor, q: search, stock: filter });
+      if (version !== requestVersion.current) return;
+      setProducts((current) => [...current, ...page.items.filter((item) => !current.some((row) => row.id === item.id))]);
+      setNextCursor(page.nextCursor);
+      setError(null);
+    } catch {
+      if (version === requestVersion.current) setError('Could not load more items. Please retry.');
+    } finally {
+      morePending.current = false;
+      setLoadingMore(false);
+    }
+  }
 
   // DEMO DATA — this store has zero real products, so the table/filters/
   // stat strip would render entirely empty. Same isDemo convention as
   // Overview/Orders: shown only while products.length === 0, and replaced
   // outright the instant a real product is added (isDemo flips false on
   // the next reload(), demo rows are dropped rather than merged).
-  const isDemo = DEMO_DATA_ENABLED && !isLoading && products.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && !error && !search.trim() && filter === 'all' && !isLoading && products.length === 0;
   const sourceProducts = isDemo ? demoProducts : products;
 
   async function handleSubmit(input: ProductInput) {
@@ -154,10 +196,10 @@ export default function InventoryPage() {
 
       {showStats && (
         <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white md:grid-cols-4 md:divide-y-0">
-          <StatTile label="Total products" value={String(counts.all)} icon={Boxes} deltaPercent={INVENTORY_TRENDS.total} />
-          <StatTile label="In stock" value={String(counts.in_stock)} icon={Package} deltaPercent={INVENTORY_TRENDS.inStock} />
-          <StatTile label="Out of stock" value={String(counts.out_of_stock)} icon={PackageX} deltaPercent={INVENTORY_TRENDS.outOfStock} invertTone />
-          <StatTile label="Pending approval" value={String(counts.pending)} icon={ShieldAlert} deltaPercent={INVENTORY_TRENDS.pending} invertTone />
+          <StatTile label="Loaded products" value={String(counts.all)} icon={Boxes} deltaPercent={INVENTORY_TRENDS.total} />
+          <StatTile label="Loaded in stock" value={String(counts.in_stock)} icon={Package} deltaPercent={INVENTORY_TRENDS.inStock} />
+          <StatTile label="Loaded out of stock" value={String(counts.out_of_stock)} icon={PackageX} deltaPercent={INVENTORY_TRENDS.outOfStock} invertTone />
+          <StatTile label="Loaded pending approval" value={String(counts.pending)} icon={ShieldAlert} deltaPercent={INVENTORY_TRENDS.pending} invertTone />
         </div>
       )}
 
@@ -179,11 +221,14 @@ export default function InventoryPage() {
         <InventoryFilterBar filter={filter} onFilterChange={setFilter} search={search} onSearchChange={setSearch} counts={counts} />
       )}
 
-      {isLoading ? (
+      {error && <div role="alert" className="flex items-center justify-between rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={() => void reload()} className="font-semibold underline">Retry</button></div>}
+      {lastUpdated && <p className="text-sm text-neutral-500">{products.length} loaded · Updated {lastUpdated.toLocaleTimeString()} · Export includes loaded items</p>}
+      {isLoading && products.length === 0 ? (
         <Card className="py-20 text-center text-sm text-neutral-400">Loading inventory…</Card>
       ) : (
         <InventoryTable products={filtered} onEdit={(product) => setEditing({ mode: 'edit', product })} />
       )}
+      {nextCursor && <button disabled={loadingMore || isLoading} onClick={() => void loadMore()} className="self-center rounded-xl border border-hairline px-6 py-3 font-semibold disabled:opacity-50">{loadingMore ? 'Finding more items…' : 'Load more items'}</button>}
     </div>
   );
 }

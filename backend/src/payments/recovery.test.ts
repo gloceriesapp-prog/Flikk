@@ -3,10 +3,20 @@ const m = vi.hoisted(()=>({rpc:vi.fn(),from:vi.fn(),create:vi.fn(),get:vi.fn(),f
 vi.mock('../db/supabase.js',()=>({supabase:{rpc:m.rpc,from:m.from}}));
 vi.mock('./razorpayClient.js',async load=>({...await load<typeof import('./razorpayClient.js')>(),createProviderOrder:m.create,getProviderOrder:m.get,findProviderOrder:m.find,getOrderPayments:m.payments}));
 vi.mock('./settleCheckoutPayment.js',()=>({settleCheckoutPayment:m.settle}));
-import { paymentTarget, ensureProviderOrder, reconcileProvider, requirePaymentRetrySafe, claimPayment } from './recovery.js';
+import { paymentTarget, ensureProviderOrder, reconcileProvider, requirePaymentRetrySafe, claimPayment, reconcileProviderSnapshot, canResumeCachedUpiIntent } from './recovery.js';
 const id='00000000-0000-4000-8000-000000000100'; const target=paymentTarget({orderId:id});
 const provider={id:'order_one',amount:3000,currency:'INR',receipt:'gl_00000000000040008000000000000100',notes:{gloceries_order_id:id}};
-let session: {provider_order_id:string|null;payment_provider:string}; let claimed=false;
+it('retains verified resume eligibility during the reconciliation lease but rejects stale or altered snapshots', () => {
+ const now=Date.now();
+ const cached={upi_state:'ready',upi_payment_id:'pay_one',upi_link:'upi://pay?pa=merchant%40razorpay&tr=ref&am=30&cu=INR',upi_resume_allowed:true,upi_resume_verified_at:new Date(now-5000).toISOString()};
+ expect(canResumeCachedUpiIntent(cached,30,now)).toBe(true);
+ expect(canResumeCachedUpiIntent({...cached,upi_resume_allowed:false},30,now)).toBe(false);
+ expect(canResumeCachedUpiIntent({...cached,upi_state:'creating'},30,now)).toBe(false);
+ expect(canResumeCachedUpiIntent(cached,31,now)).toBe(false);
+ expect(canResumeCachedUpiIntent({...cached,upi_resume_verified_at:new Date(now-10001).toISOString()},30,now)).toBe(false);
+ expect(canResumeCachedUpiIntent({...cached,upi_resume_verified_at:new Date(now+1).toISOString()},30,now)).toBe(false);
+});
+let session: {provider_order_id:string|null;payment_provider:string;upi_state?:string;upi_payment_id?:string;upi_link?:string}; let claimed=false;
 beforeEach(()=>{
  vi.resetAllMocks(); session={provider_order_id:'order_one',payment_provider:'razorpay'};claimed=false;
  m.rpc.mockImplementation(async(name:string)=>({data:name==='claim_checkout_payment'?{claimed,total:30,session}:session,error:null}));
@@ -59,4 +69,19 @@ it('does not suppress authorized payment state during explicit abandonment',asyn
  expect(await reconcileProvider(target,'order_one',30,false)).toBe('pending');
  m.payments.mockResolvedValue([{id:'pay_one',order_id:'order_one',currency:'INR',amount:3000,status:'created',captured:false}]);
  expect(await reconcileProvider(target,'order_one',30,false)).toBe('unpaid');
+});
+it('allows resuming only the same verified created S2S instruction',async()=>{
+ session.upi_state='ready'; session.upi_payment_id='pay_one'; session.upi_link='upi://pay?pa=merchant%40razorpay&tr=ref&am=30&cu=INR';
+ m.payments.mockResolvedValue([{id:'pay_one',order_id:'order_one',currency:'INR',amount:3000,status:'created',captured:false}]);
+ expect(await reconcileProviderSnapshot(target,'order_one',30)).toEqual({state:'pending',canResumeUpiIntent:true});
+ expect(m.payments).toHaveBeenCalledTimes(1);
+});
+it('never resumes authorized, unknown, multiple or foreign pending payment flows',async()=>{
+ session.upi_state='ready';session.upi_payment_id='pay_one';session.upi_link='upi://pay?pa=merchant%40razorpay&tr=ref&am=30&cu=INR';
+ const payment={id:'pay_one',order_id:'order_one',currency:'INR',amount:3000,status:'created',captured:false};
+ for(const payments of [[{...payment,status:'authorized'}],[{...payment,id:'pay_other'}],[payment,{...payment,id:'pay_other'}],[]]) {
+  m.payments.mockResolvedValue(payments);expect((await reconcileProviderSnapshot(target,'order_one',30)).canResumeUpiIntent).toBe(false);
+ }
+ m.payments.mockResolvedValue([payment]);session.upi_state='creating';expect((await reconcileProviderSnapshot(target,'order_one',30)).canResumeUpiIntent).toBe(false);
+ session.upi_state='ready';session.upi_link=session.upi_link.replace('am=30','am=1');expect((await reconcileProviderSnapshot(target,'order_one',30)).canResumeUpiIntent).toBe(false);
 });

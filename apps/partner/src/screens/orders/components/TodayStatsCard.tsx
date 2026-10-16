@@ -43,7 +43,7 @@ export function TodayStatsCard({ orderCount, pendingCount, earningTotal }: Props
   return (
     <View className="mx-5 flex-row gap-3">
       <StatBox label="Orders today" value={String(orderCount)} />
-      <StatBox label="Today's earning" value={`₹${earningTotal}`} />
+      <StatBox label="Today’s Sales" value={`₹${earningTotal}`} />
       <StatBox label="Pending" value={String(pendingCount)} />
     </View>
   );

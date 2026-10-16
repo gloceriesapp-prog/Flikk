@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { NavigationContext, NavigationRouteContext, type NavigationProp, type RouteProp } from '@react-navigation/native';
 import { useSharedValue } from 'react-native-reanimated';
@@ -19,6 +19,7 @@ interface Props {
 // cart and scroll progress survive pushes/pops between Home and categories.
 export function HomeNavigationShell({ children, route, navigation }: Props) {
   const hidden = useSharedValue(0);
+  const [activeOrderHeight, setActiveOrderHeight] = useState(0);
   const { isServiceable } = useNearestStore();
   const showBar = isServiceable && (route.name === 'Home' || route.name === 'HomeCategory');
   return (
@@ -28,11 +29,11 @@ export function HomeNavigationShell({ children, route, navigation }: Props) {
         <View pointerEvents={showBar ? 'box-none' : 'none'} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, display: showBar ? 'flex' : 'none' }}>
           <NavigationContext.Provider value={navigation}>
             <NavigationRouteContext.Provider value={route}>
-              <BottomNavBar hidden={hidden} />
+              <BottomNavBar hidden={hidden} cartBottomOffset={activeOrderHeight > 0 ? activeOrderHeight + 8 : 0} />
               {/* Floats just above the nav bar; self-hides when there's no
                   active order. Only mounted on surfaces where the bar shows
                   so its background poll doesn't run off-surface. */}
-              {showBar && <ActiveOrderBar />}
+              {showBar && <ActiveOrderBar onHeightChange={setActiveOrderHeight} />}
             </NavigationRouteContext.Provider>
           </NavigationContext.Provider>
         </View>

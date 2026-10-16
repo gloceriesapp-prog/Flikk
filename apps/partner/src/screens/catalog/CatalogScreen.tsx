@@ -1,22 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
-// Catalog management (P4). Add/edit-product forms are a later pass — this
-// is the item list + stock/price triage, the core loop per
-// specs/02-partner-app/flows.md. No `GET /partner/products` call yet, same
-// no-auth caveat as ../orders/OrdersScreen.tsx.
-//
-// Product state lives in ../../store/useCatalogStore.ts now, not local
-// useState — ProductDetailScreen needs to read and act on the same
-// products (same reasoning as useOrdersStore for Orders/OrderDetail).
-// "View" on a row pushes ProductDetailScreen rather than opening a sheet —
-// see that screen's own note on why a sheet stopped fitting the job.
-
-import { useCallback, useState } from 'react';
-import { Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { useCatalogStore } from '../../store/useCatalogStore';
 import { useFocusedPoll } from '../../features/foreground-refresh/useFocusedPoll';
-import { CATALOG_LAST_UPDATED_LABEL } from './data';
 import { InventoryHeader } from './components/InventoryHeader';
 import { InventoryProductListCard } from './components/InventoryProductListCard';
 import { InventoryStatusFilter, type InventoryStatusFilterValue } from './components/InventoryStatusFilter';
@@ -34,18 +22,22 @@ const PAGE_BG = '#F1F2F4';
 export function CatalogScreen({ navigation }: Props) {
   const products = useCatalogStore((state) => state.products);
   const loadProducts = useCatalogStore((state) => state.loadProducts);
+  const { error, loading, loaded, nextCursor, lastUpdatedAt, loadMore, setFilters } = useCatalogStore();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const [stockFilter, setStockFilter] = useState<InventoryStatusFilterValue>('all');
+
+  useEffect(() => {
+    const timer = setTimeout(() => { void setFilters(search, stockFilter); }, 350);
+    return () => clearTimeout(timer);
+  }, [search, stockFilter, setFilters]);
 
   useFocusEffect(useCallback(() => {
     void loadProducts();
   }, [loadProducts]));
 
-  // Admin can edit any store's catalog (price/stock), and a product add/edit
-  // comes back pending until approved. This list is otherwise fetch-on-focus
-  // only, so poll it while focused + foregrounded so those server-side changes
-  // show up without a manual pull. loadProducts is a no-op-on-failure
-  // best-effort read (see useCatalogStore).
-  useFocusedPoll(loadProducts, 25_000);
+  // The store enforces a freshness window and capped exponential backoff.
+  useFocusedPoll(loadProducts, 60_000);
 
   const handlePressView = useCallback(
     (productId: string) => navigation.navigate('ProductDetail', { productId }),
@@ -61,11 +53,13 @@ export function CatalogScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1 pt-safe" style={{ backgroundColor: PAGE_BG }}>
-      <InventoryHeader onPressSearch={() => {}} />
+      <InventoryHeader onPressSearch={() => setSearchOpen((open) => !open)} />
+      {searchOpen && <TextInput accessibilityLabel="Search inventory" autoFocus value={search} onChangeText={setSearch} placeholder="Search products" maxLength={100} className="mx-5 mb-3 rounded-2xl bg-white px-4 py-3 text-base text-ink" />}
+      {error && <View className="mx-5 mb-3 rounded-2xl bg-white p-3"><Text className="text-sm text-red-600">{error}</Text><Pressable onPress={() => void loadProducts(true)}><Text className="mt-2 font-semibold text-blue-600">Retry</Text></Pressable></View>}
 
       <InventorySummaryCard
         listedCount={products.length}
-        lastUpdatedLabel={CATALOG_LAST_UPDATED_LABEL}
+        lastUpdatedLabel={lastUpdatedAt ? `Updated ${new Date(lastUpdatedAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })} · loaded items` : 'Loading your inventory'}
         onPressAddProduct={() => navigation.navigate('AddProduct')}
       />
 
@@ -85,12 +79,12 @@ export function CatalogScreen({ navigation }: Props) {
           VirtualizedList inside a ScrollView loses windowing). Empty state is
           a static view since there's nothing to scroll. */}
       {visibleProducts.length > 0 ? (
-        <InventoryProductListCard products={visibleProducts} onPressView={handlePressView} />
+        <InventoryProductListCard products={visibleProducts} onPressView={handlePressView} loading={loading} hasMore={!!nextCursor} onLoadMore={() => void loadMore()} onRefresh={() => void loadProducts(true)} />
       ) : (
         <View className="items-center gap-1 px-10 pt-16">
-          <Text className="text-[15px] font-semibold text-ink">No items here</Text>
+          <Text className="text-[15px] font-semibold text-ink">{!loaded ? (error ? 'Inventory unavailable' : 'Gathering your shelf essentials…') : 'No matching items'}</Text>
           <Text className="text-center text-[13px] text-ink/50 font-medium">
-            {stockFilter === 'out_of_stock' ? 'Nothing is marked out of stock right now.' : 'Nothing is in stock right now.'}
+            {loaded ? 'Try another search or stock filter.' : 'Your products will appear here.'}
           </Text>
         </View>
       )}

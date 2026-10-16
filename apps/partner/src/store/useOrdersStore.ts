@@ -1,226 +1,193 @@
-// Single source of truth for the order queue — lifted out of
-// screens/orders/OrdersScreen.tsx's local useState so OrderDetailScreen can
-// read/act on the same orders without passing whole order objects (and
-// their action callbacks) through navigation params, which React
-// Navigation warns against for non-serializable values. Both screens read
-// this store; only OrdersScreen seeds it.
-//
-// `acknowledgedOrderIds` is a local-only, UI-level "I've seen and accepted
-// this" flag — it does NOT touch `order.status`. A 'placed' order that's
-// been acknowledged still reads as 'placed' everywhere except the Orders
-// queue card, which uses it to show Pending → Accepted → (Mark Packed).
-// This is deliberate, not a shortcut: specs/02-partner-app/flows.md says
-// "Partner app triggers no status transition other than `packed`" (plus
-// cancelled, now — see backend/src/lib/orderStateMachine.ts's own note) —
-// if acknowledging pushed a real status change, that rule would be broken.
-//
-// Backed by real GET /partner/orders / PATCH /orders/:id/status
-// (api/orders.ts). loadOrders() is polled (features/incoming-order-alert/
-// useOrderPolling.ts, mounted once at app root) — this is the real "does
-// a store owner get alerted when someone orders" mechanism, not a manual
-// per-screen fetch. markPacked/rejectOrder both hit the real backend and
-// throw on failure — callers (OrdersScreen, OrderDetailScreen,
-// useOrderExpiryWatcher) decide how to surface that, this store doesn't
-// swallow it silently.
-//
-// `newlyArrivedOrderIds` is what makes polling safe to alert from: the
-// very first loadOrders() call of a session (baselineEstablished still
-// false) seeds the queue without flagging anything as "new" — a store
-// owner opening the app with 3 orders already sitting there from earlier
-// shouldn't get interrupted 3 times just because this was the first fetch.
-// Only a 'placed' order that shows up in a LATER poll, one that wasn't in
-// the previous poll's result, gets added here — that's the actual "a
-// customer just ordered" signal useIncomingOrderAlert reacts to instead of
-// treating every still-unacknowledged order as if it just arrived.
-
 import { create } from 'zustand';
-import { fetchOrders, updateOrderStatus, type ApiOrder } from '../api/orders';
-import { buildSampleOrders, buildSimulatedIncomingOrder, mapApiOrder, type PartnerOrder } from '../screens/orders/data';
+import { acceptOrder, fetchOrders, fetchOrderUpdates, fetchOrderPage, fetchOrderTransitions, updateOrderStatus, type ApiOrder } from '../api/orders';
+import { buildSimulatedIncomingOrder, mapApiOrder, type PartnerOrder } from '../screens/orders/data';
 import { computeNewlyArrivedIds, computeJustDeliveredIds, sameOrderList } from './orderBaseline';
-
-// India-only single-zone app (CLAUDE.md) — 'Asia/Kolkata' explicitly, not
-// the device's own timezone, so this reads the real IST calendar day
-// regardless of what timezone a phone happens to be set to.
-const IST_TIME_ZONE = 'Asia/Kolkata';
-
-function isSameIstDay(isoA: string, isoB: string): boolean {
-  const opts: Intl.DateTimeFormatOptions = { timeZone: IST_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' };
-  return new Date(isoA).toLocaleDateString('en-CA', opts) === new Date(isoB).toLocaleDateString('en-CA', opts);
-}
-
-// A delivered order has nothing left for a store owner to act on, but
-// still-showing today's completed deliveries is real, wanted confirmation
-// ("did that order actually land"), not noise — scoped to today only so
-// this queue never grows into the store's entire delivery history.
-function isDeliveredToday(row: ApiOrder, now: Date = new Date()): boolean {
-  return row.status === 'delivered' && !!row.delivered_at && isSameIstDay(row.delivered_at, now.toISOString());
-}
+import { getSessionEpoch, isCurrentSession, onSessionReset } from './sessionScope';
 
 interface OrdersState {
   orders: PartnerOrder[];
   acknowledgedOrderIds: Set<string>;
   newlyArrivedOrderIds: Set<string>;
-  // Same "genuinely changed since the last poll, not just currently in
-  // this state" reasoning as newlyArrivedOrderIds — an order that reaches
-  // 'delivered' between two loadOrders() calls lands here exactly once,
-  // which is what features/delivery-earned-alert/ watches to show the
-  // "you earned ₹X" banner. Never re-added for an order that was already
-  // delivered on a previous poll.
   justDeliveredOrderIds: Set<string>;
   baselineEstablished: boolean;
+  loading: boolean;
+  error: string | null;
+  lastUpdatedAt: number | null;
   loadOrders: () => Promise<void>;
-  // Local UI flag only — see file header. Not a status transition.
-  acknowledgeOrder: (orderId: string) => void;
-  markPacked: (orderId: string) => Promise<void>;
-  // reason: STORE_REJECT_REASONS code, or STORE_NO_RESPONSE_REASON for the auto-reject.
-  rejectOrder: (orderId: string, reason: string) => Promise<void>;
-  clearNewlyArrived: (orderId: string) => void;
-  clearJustDelivered: (orderId: string) => void;
-  // Dev-only — injects one fake order into `orders` AND
-  // newlyArrivedOrderIds in the same update, which is the exact condition
-  // useIncomingOrderAlert.ts's effect watches for. Fires the real
-  // production alert (full-screen modal + sound) instead of a separate
-  // mock, so previewing it can never quietly drift from what a genuine
-  // incoming order actually triggers. See DevSimulateOrderButton.tsx for
-  // the one place this gets called from.
+  refreshUpdates: () => Promise<void>;
+  loadMore: () => Promise<void>;
+  nextCursor: string | null;
+  acknowledgeOrder: (id: string) => Promise<void>;
+  markPacked: (id: string) => Promise<void>;
+  rejectOrder: (id: string, reason: string) => Promise<void>;
+  clearNewlyArrived: (id: string) => void;
+  clearJustDelivered: (id: string) => void;
   simulateIncomingOrder: () => void;
 }
 
+const initialState = () => ({ orders: [] as PartnerOrder[], acknowledgedOrderIds: new Set<string>(),
+  newlyArrivedOrderIds: new Set<string>(), justDeliveredOrderIds: new Set<string>(),
+  nextCursor: null as string | null, baselineEstablished: false, loading: false, error: null as string | null, lastUpdatedAt: null as number | null });
+let revision = 0;
+let readGeneration = 0;
+let lastFullReadAt = 0;
+let queueVersion: string | null = null;
+let updating: Promise<void> | null = null;
+let inFlight: { epoch: number; promise: Promise<void> } | null = null;
+const actions = new Map<string, Promise<void>>();
+
+function isQueueOrder(row: ApiOrder): boolean {
+  if (row.payment_method !== 'cod' && !row.provider_payment_id) return false;
+  if (['cancelled', 'failed', 'delivered'].includes(row.status)) return false;
+  return true;
+}
+
+// Coalesce repeated taps for one order. Server transitions remain authoritative.
+function runAction(id: string, work: () => Promise<void>): Promise<void> {
+  const key = `${getSessionEpoch()}:${id}`;
+  const existing = actions.get(key);
+  if (existing) return existing;
+  const epoch = getSessionEpoch();
+  const promise = work().finally(() => {
+    if (isCurrentSession(epoch)) revision += 1;
+    if (actions.get(key) === promise) actions.delete(key);
+  });
+  actions.set(key, promise);
+  return promise;
+}
+
 export const useOrdersStore = create<OrdersState>((set) => ({
-  orders: [],
-  acknowledgedOrderIds: new Set(),
-  newlyArrivedOrderIds: new Set(),
-  justDeliveredOrderIds: new Set(),
-  baselineEstablished: false,
-
-  loadOrders: async () => {
-    const rows = await fetchOrders();
-    // Queue-relevant statuses — 'cancelled' has nothing left for a store
-    // owner to act on or care about, so it's the only status excluded
-    // outright. 'delivered' is included but only for today (isDeliveredToday
-    // above) — a completed delivery from last week has no place cluttering
-    // today's queue, but today's own completed orders are real, wanted
-    // confirmation the order actually landed. 'failed' (rider couldn't
-    // complete the drop after pickup) is included unconditionally — the
-    // owner's stock left the shop and didn't get delivered, so they must
-    // see it regardless of the day.
-    // ponytail: 'failed' unscoped by date — failures are rare at MVP volume,
-    // so no flooding; add an isFailedToday guard like 'delivered' if it ever clutters.
-    const active = rows.filter(
-      (row) =>
-        row.status === 'placed' ||
-        row.status === 'packed' ||
-        row.status === 'out_for_delivery' ||
-        row.status === 'failed' ||
-        isDeliveredToday(row),
-    );
-    const mapped = active.map((row) => mapApiOrder(row, rows));
-
-    // Dev/preview fallback — a genuinely empty queue shows 3 sample orders
-    // (data.ts's own buildSampleOrders, each flagged isSample: true) so the
-    // UI can be checked without needing a real order first. Never mixed
-    // with real rows. markPacked/rejectOrder below both short-circuit for
-    // these ids instead of hitting the real backend.
-    //
-    // Generated exactly once, not on every call — this is polled every 10s
-    // (useOrderPolling.ts's own POLL_INTERVAL_MS) and buildSampleOrders()
-    // stamps placedAtTimestamp from Date.now() at call time; regenerating
-    // it on every poll kept resetting that timestamp to "now", which reset
-    // OrderCard's 10-minute accept countdown back to 10:00 every ~10
-    // seconds instead of letting it actually count down. Sample orders
-    // already on screen keep their original timestamps across every
-    // subsequent poll while the real queue stays empty.
-    // Development builds only: a real store must never see orders that do
-    // not exist. Production shows the Orders screen's own empty state.
-    if (mapped.length === 0 && __DEV__) {
-      set((state) => (state.orders.length > 0 && state.orders[0].isSample ? state : { orders: buildSampleOrders(), baselineEstablished: true }));
-      return;
-    }
-
-    set((state) => {
-      // Baseline/diff logic lives in ./orderBaseline (pure, self-checked) —
-      // this is the money path (a missed 'placed' = an auto-rejected order).
-      const genuinelyNew = computeNewlyArrivedIds(state.orders, mapped, state.baselineEstablished);
-      // Was present before with a real, DIFFERENT status — not "just
-      // appeared as delivered" (a stale/late poll catching up, not a fresh
-      // transition worth interrupting the owner about) and not on the very
-      // first load (baselineEstablished false — a store owner opening the app
-      // to 3 already-delivered orders from earlier today shouldn't get 3 "you
-      // earned" banners just because this was the first fetch).
-      const genuinelyJustDelivered = computeJustDeliveredIds(state.orders, mapped, state.baselineEstablished);
-
-      // Keep the previous array REFERENCE when this poll changed nothing — a
-      // new `mapped` every 10s otherwise re-renders every OrderCard even though
-      // the content is identical. Diffing still runs against the real `mapped`
-      // above; only the stored value falls back to the old ref.
-      const nextOrders = sameOrderList(state.orders, mapped) ? state.orders : mapped;
-
-      return {
-        orders: nextOrders,
-        baselineEstablished: true,
-        newlyArrivedOrderIds: genuinelyNew.length > 0 ? new Set([...state.newlyArrivedOrderIds, ...genuinelyNew]) : state.newlyArrivedOrderIds,
-        justDeliveredOrderIds:
-          genuinelyJustDelivered.length > 0 ? new Set([...state.justDeliveredOrderIds, ...genuinelyJustDelivered]) : state.justDeliveredOrderIds,
-      };
-    });
+  ...initialState(),
+  loadOrders: () => {
+    const epoch = getSessionEpoch();
+    if (inFlight?.epoch === epoch) return inFlight.promise;
+    const readRevision = revision;
+    const generation = ++readGeneration;
+    set({ loading: true });
+    const entry = { epoch, promise: Promise.resolve() };
+    const promise: Promise<void> = (async () => {
+      try {
+        const rows = await fetchOrders();
+        if (!isCurrentSession(epoch) || readRevision !== revision) return;
+        const previous = useOrdersStore.getState();
+        const currentIds = new Set(rows.map(row => row.id));
+        const departedIds = previous.orders.filter(order => !['delivered', 'failed', 'cancelled'].includes(order.status)
+          && !currentIds.has(order.id) && !order.id.startsWith('sample-')).slice(0, 100).map(order => order.id);
+        const transitions = departedIds.length ? await fetchOrderTransitions(departedIds) : [];
+        if (!isCurrentSession(epoch) || readRevision !== revision || generation !== readGeneration) return;
+        const delivered = transitions.filter(row => row.status === 'delivered').map(row => mapApiOrder(row, transitions));
+        const deliveredIds = new Set(delivered.map(row => row.id));
+        // Keep confirmed earnings until the banner consumer drains them. Historical
+        // browsing uses its own cursor query rather than keeping every terminal row.
+        const pending = previous.orders.filter(order => order.status === 'delivered'
+          && previous.justDeliveredOrderIds.has(order.id) && !deliveredIds.has(order.id));
+        const mapped = [...rows.filter(isQueueOrder).map(row => mapApiOrder(row, rows)), ...delivered, ...pending];
+        lastFullReadAt = Date.now();
+        set(state => ({
+          orders: sameOrderList(state.orders, mapped) ? state.orders : mapped,
+          acknowledgedOrderIds: new Set(mapped.filter(order => order.acceptedAtTimestamp != null).map(order => order.id)),
+          newlyArrivedOrderIds: new Set([...state.newlyArrivedOrderIds,
+            ...computeNewlyArrivedIds(state.orders, mapped, state.baselineEstablished)]
+            .filter(id => mapped.some(order => order.id === id && order.status === 'placed' && !order.acceptedAtTimestamp))),
+          justDeliveredOrderIds: new Set([...state.justDeliveredOrderIds,
+            ...computeJustDeliveredIds(state.orders, mapped, state.baselineEstablished)]),
+          baselineEstablished: true, nextCursor: rows.nextCursor ?? null, error: null, lastUpdatedAt: Date.now(),
+        }));
+      } catch (error) {
+        if (isCurrentSession(epoch) && readRevision === revision)
+          set({ error: error instanceof Error ? error.message : 'Could not refresh orders. Try again.' });
+        throw error;
+      } finally {
+        if (isCurrentSession(epoch) && generation === readGeneration) set({ loading: false });
+        if (inFlight === entry) inFlight = null;
+      }
+    })();
+    entry.promise = promise;
+    inFlight = entry;
+    return promise;
   },
-
-  acknowledgeOrder: (orderId) =>
-    set((state) => ({ acknowledgedOrderIds: new Set(state.acknowledgedOrderIds).add(orderId) })),
-
-  markPacked: async (orderId) => {
-    // Sample orders (data.ts's buildSampleOrders) aren't real orders.id
-    // UUIDs — never real network calls, local-only state change instead.
-    if (orderId.startsWith('sample-')) {
-      set((state) => ({ orders: state.orders.map((order) => (order.id === orderId ? { ...order, status: 'packed' } : order)) }));
-      return;
-    }
-    await updateOrderStatus(orderId, 'packed');
-    set((state) => ({
-      orders: state.orders.map((order) => (order.id === orderId ? { ...order, status: 'packed' } : order)),
+  refreshUpdates: () => {
+    if (updating) return updating;
+    const epoch = getSessionEpoch();
+    const readRevision = revision;
+    const queueGeneration = readGeneration;
+    const promise = (async () => {
+      try {
+        const digest = await fetchOrderUpdates();
+        if (!isCurrentSession(epoch) || revision !== readRevision) return;
+        if (digest.version !== queueVersion || !useOrdersStore.getState().baselineEstablished || useOrdersStore.getState().error || Date.now() - lastFullReadAt >= 120_000) {
+          await useOrdersStore.getState().loadOrders();
+          if (isCurrentSession(epoch) && revision === readRevision) queueVersion = digest.version;
+        } else set({ error: null });
+      } catch (error) {
+        // A manual retry may have recovered while this older digest was
+        // pending. Its late failure must not restore the stale error banner.
+        if (isCurrentSession(epoch) && revision === readRevision && readGeneration === queueGeneration) {
+          set({ error: error instanceof Error ? error.message : 'Could not refresh orders.' });
+        }
+        throw error;
+      }
+    })().finally(() => { if (updating === promise) updating = null; });
+    updating = promise;
+    return promise;
+  },
+  loadMore: async () => {
+    const { nextCursor, loading } = useOrdersStore.getState();
+    if (!nextCursor || loading) return;
+    const epoch = getSessionEpoch(); const readRevision = revision; const generation = ++readGeneration;
+    set({ loading: true });
+    try {
+      const page = await fetchOrderPage({ cursor: nextCursor });
+      if (!isCurrentSession(epoch) || revision !== readRevision || generation !== readGeneration || useOrdersStore.getState().nextCursor !== nextCursor) return;
+      set(state => {
+        const existing = new Set(state.orders.map(row => row.id));
+        const extra = page.items.filter(isQueueOrder).filter(row => !existing.has(row.id)).map(row => mapApiOrder(row, page.items));
+        const orders = [...state.orders, ...extra];
+        return { orders, nextCursor: page.nextCursor, error: null,
+          acknowledgedOrderIds: new Set(orders.filter(row => row.acceptedAtTimestamp != null).map(row => row.id)) };
+      });
+    } catch (error) {
+      if (isCurrentSession(epoch) && revision === readRevision && generation === readGeneration) set({ error: error instanceof Error ? error.message : 'Could not load more orders.' });
+      throw error;
+    } finally { if (isCurrentSession(epoch) && generation === readGeneration) set({ loading: false }); }
+  },
+  acknowledgeOrder: id => runAction(id, async () => {
+    const epoch = getSessionEpoch();
+    revision += 1;
+    const row = id.startsWith('sample-') && __DEV__ ? null : await acceptOrder(id);
+    if (!isCurrentSession(epoch)) return;
+    set(state => ({
+      orders: state.orders.map(order => order.id === id ? row ? mapApiOrder(row, [row]) : { ...order, acceptedAtTimestamp: Date.now() } : order),
+      acknowledgedOrderIds: new Set(state.acknowledgedOrderIds).add(id),
+      newlyArrivedOrderIds: new Set([...state.newlyArrivedOrderIds].filter(value => value !== id)),
     }));
+  }),
+  markPacked: id => runAction(id, async () => {
+    const epoch = getSessionEpoch(); revision += 1;
+    if (!(id.startsWith('sample-') && __DEV__)) await updateOrderStatus(id, 'packed');
+    if (!isCurrentSession(epoch)) return;
+    set(state => ({ orders: state.orders.map(order => order.id === id ? { ...order, status: 'packed' } : order) }));
+  }),
+  rejectOrder: (id, reason) => runAction(id, async () => {
+    const epoch = getSessionEpoch(); revision += 1;
+    if (!(id.startsWith('sample-') && __DEV__)) await updateOrderStatus(id, 'cancelled', reason);
+    if (!isCurrentSession(epoch)) return;
+    set(state => ({ orders: state.orders.filter(order => order.id !== id),
+      acknowledgedOrderIds: new Set([...state.acknowledgedOrderIds].filter(value => value !== id)),
+      newlyArrivedOrderIds: new Set([...state.newlyArrivedOrderIds].filter(value => value !== id)) }));
+  }),
+  clearNewlyArrived: id => set(state => ({ newlyArrivedOrderIds: new Set([...state.newlyArrivedOrderIds].filter(value => value !== id)) })),
+  clearJustDelivered: id => set(state => ({ justDeliveredOrderIds: new Set([...state.justDeliveredOrderIds].filter(value => value !== id)),
+    orders: state.orders.filter(order => order.id !== id || order.status !== 'delivered') })),
+  simulateIncomingOrder: () => {
+    if (!__DEV__) return;
+    const order = buildSimulatedIncomingOrder();
+    set(state => ({ orders: [order, ...state.orders], baselineEstablished: true,
+      newlyArrivedOrderIds: new Set(state.newlyArrivedOrderIds).add(order.id) }));
   },
-
-  rejectOrder: async (orderId, reason) => {
-    if (orderId.startsWith('sample-')) {
-      set((state) => ({ orders: state.orders.filter((order) => order.id !== orderId) }));
-      return;
-    }
-    await updateOrderStatus(orderId, 'cancelled', reason);
-    set((state) => {
-      const acknowledgedOrderIds = new Set(state.acknowledgedOrderIds);
-      acknowledgedOrderIds.delete(orderId);
-      const newlyArrivedOrderIds = new Set(state.newlyArrivedOrderIds);
-      newlyArrivedOrderIds.delete(orderId);
-      return {
-        orders: state.orders.filter((order) => order.id !== orderId),
-        acknowledgedOrderIds,
-        newlyArrivedOrderIds,
-      };
-    });
-  },
-
-  clearNewlyArrived: (orderId) =>
-    set((state) => {
-      const newlyArrivedOrderIds = new Set(state.newlyArrivedOrderIds);
-      newlyArrivedOrderIds.delete(orderId);
-      return { newlyArrivedOrderIds };
-    }),
-
-  clearJustDelivered: (orderId) =>
-    set((state) => {
-      const justDeliveredOrderIds = new Set(state.justDeliveredOrderIds);
-      justDeliveredOrderIds.delete(orderId);
-      return { justDeliveredOrderIds };
-    }),
-
-  simulateIncomingOrder: () =>
-    set((state) => {
-      const order = buildSimulatedIncomingOrder();
-      return {
-        orders: [order, ...state.orders],
-        baselineEstablished: true,
-        newlyArrivedOrderIds: new Set(state.newlyArrivedOrderIds).add(order.id),
-      };
-    }),
 }));
+
+onSessionReset(() => {
+  revision += 1; readGeneration += 1; lastFullReadAt = 0; inFlight = null; updating = null; queueVersion = null; actions.clear();
+  useOrdersStore.setState(initialState());
+});

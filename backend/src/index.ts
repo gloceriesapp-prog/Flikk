@@ -34,6 +34,7 @@ import { checkoutRouter } from './routes/checkout.js';
 import { ordersRouter } from './routes/orders.js';
 import { tripsRouter } from './routes/trips.js';
 import { addressesRouter } from './routes/addresses.js';
+import { partnerManagementRouter } from './routes/partnerManagement.js';
 import { partnerRouter } from './routes/partner.js';
 import { partnerAccountRouter } from './routes/partnerAccount.js';
 import { riderRouter } from './routes/rider.js';
@@ -194,6 +195,7 @@ app.use('/area-upvotes', areaUpvotesRouter);
 app.use('/partner/account', partnerAccountRouter);
 app.use('/partner', storeOnboardingRouter);
 app.use('/partner', partnerRouter);
+app.use('/partner', partnerManagementRouter);
 // Mounted before riderRouter for the same reason storeOnboardingRouter is
 // mounted before partnerRouter above: riderRouter applies a router-wide
 // requireRole('rider')/requireApproved gate, which a brand-new applicant

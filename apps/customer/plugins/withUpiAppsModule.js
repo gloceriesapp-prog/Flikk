@@ -45,6 +45,36 @@ class UpiAppsModule(reactContext: ReactApplicationContext) : ReactContextBaseJav
   override fun getName() = "UpiApps"
 
   @ReactMethod
+  fun launchPaymentIntent(value: String, packageName: String, promise: Promise) {
+    val allowedPackages = setOf("com.google.android.apps.nbu.paisa.user", "com.phonepe.app", "net.one97.paytm", "in.org.npci.upiapp", "com.dreamplug.androidapp", "in.amazon.mShop.android.shopping", "com.whatsapp")
+    try {
+      val uri = Uri.parse(value)
+      if (value.length > 8192 || uri.scheme != "upi" || uri.host != "pay" || !allowedPackages.contains(packageName)) {
+        promise.reject("INVALID_UPI_INTENT", "Invalid UPI payment destination.")
+        return
+      }
+      val intent = Intent(Intent.ACTION_VIEW, uri).setPackage(packageName)
+      val activity = reactApplicationContext.currentActivity
+      if (activity == null || intent.resolveActivity(reactApplicationContext.packageManager) == null) {
+        promise.reject("UPI_APP_UNAVAILABLE", "This UPI app is unavailable. Choose another payment method.")
+        return
+      }
+      activity.runOnUiThread {
+        try {
+          activity.startActivity(intent)
+          // Launch acknowledgement only. Never expose untrusted activity
+          // callbacks as proof that money moved.
+          promise.resolve(null)
+        } catch (error: Exception) {
+          promise.reject("UPI_LAUNCH_FAILED", "Could not open the selected UPI app.", error)
+        }
+      }
+    } catch (error: Exception) {
+      promise.reject("UPI_LAUNCH_FAILED", "Could not open the selected UPI app.", error)
+    }
+  }
+
+  @ReactMethod
   fun getInstalledUpiApps(promise: Promise) {
     try {
       val pm = reactApplicationContext.packageManager

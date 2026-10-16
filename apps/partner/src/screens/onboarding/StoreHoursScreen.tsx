@@ -1,10 +1,8 @@
-// Step 5 of 5 — opening/closing time, same free-text "9:00 AM"/"9:00 PM"
-// shape stores.open_time/close_time already use (TimeDigitsInput, reused
-// from Store Settings). One pair for every day — no same-every-day/per-day
-// toggle: stores.open_time/close_time has no per-day schema anywhere in the
-// app, so a toggle here would be fake functionality with nothing behind it.
+// Store hours are entered as local IST times, displayed with editable AM/PM,
+// and submitted as validated 24-hour HH:mm values.
 
 import { useState } from 'react';
+import { normalizeStoreHour } from '../../utils/storeHours';
 import { Text, View } from 'react-native';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,19 +19,21 @@ export function StoreHoursScreen({ navigation, route }: Props) {
   const [openTime, setOpenTime] = useState(draft.openTime);
   const [closeTime, setCloseTime] = useState(draft.closeTime);
 
-  const canContinue = openTime.length > 0 && closeTime.length > 0;
+  const normalizedOpen = normalizeStoreHour(openTime);
+  const normalizedClose = normalizeStoreHour(closeTime);
+  const canContinue = !!normalizedOpen && !!normalizedClose;
 
   function handleNext() {
-    if (!canContinue) return;
+    if (!normalizedOpen || !normalizedClose) return;
 
     // Best-effort autosave — fire-and-forget so it never blocks navigation.
     // warn (not error) so a transient network blip shows a yellow warning,
     // not a red "Console Error" box that reads as a crash.
-    void saveStoreDraft({ openTime, closeTime }).catch(
+    void saveStoreDraft({ openTime: normalizedOpen, closeTime: normalizedClose }).catch(
       (err) => console.warn('[StoreHours] saveStoreDraft failed (best-effort)', err),
     );
 
-    navigation.navigate('StoreReview', { draft: { ...draft, openTime, closeTime } });
+    navigation.navigate('StoreReview', { draft: { ...draft, openTime: normalizedOpen, closeTime: normalizedClose } });
   }
 
   return (
@@ -55,7 +55,7 @@ export function StoreHoursScreen({ navigation, route }: Props) {
             <TimeDigitsInput value={closeTime} onChangeText={setCloseTime} suffix="PM" />
           </View>
         </View>
-        <Text className="text-[12px] font-medium text-ink/40">Same hours every day — you can fine-tune this later in Store Settings.</Text>
+        <Text className="text-[12px] font-medium text-ink/40">All hours are in Indian Standard Time (IST). Tap AM or PM to change it.</Text>
       </View>
     </OnboardingScaffold>
   );

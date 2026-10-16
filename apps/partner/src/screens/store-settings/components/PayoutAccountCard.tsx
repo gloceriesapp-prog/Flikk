@@ -1,6 +1,8 @@
+import { usePrivateQueryScope } from '../../../network/usePrivateQueryScope';
 // Payout destination — UPI ID or bank account (backend/PAYOUTS.md). Payouts
-// are sent manually by the founder each week; nothing here contacts a
-// bank. Saved via PUT /partner/payout-account, read via GET (TanStack
+// are sent manually by the founder each week. The optional Verify UPI ID
+// action performs a server-only Razorpay lookup without saving or paying.
+// Saved via PUT /partner/payout-account, read via GET (TanStack
 // Query, PAYOUT_ACCOUNT_QUERY_KEY — also read by OrdersScreen's setup
 // banner). The full account number lives in this card's form state only
 // until a successful save, then it's wiped; afterwards only accountLast4
@@ -10,7 +12,7 @@
 // (private store-documents bucket, path sent as proofPath). Any edit resets
 // the server-side verification status, so the edit form warns about it.
 
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,7 +28,7 @@ import {
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { ApiError } from '../../../api/client';
-import { fetchPayoutAccount, PAYOUT_ACCOUNT_QUERY_KEY, savePayoutAccount, uploadPayoutProof } from '../../../api/payouts';
+import { fetchPayoutAccount, PAYOUT_ACCOUNT_QUERY_KEY, savePayoutAccount, uploadPayoutProof, validatePayoutUpi, type UpiValidationResult } from '../../../api/payouts';
 import { compressImageToTarget } from '../../../media/compressImage';
 import { SettingsCard } from './SettingsCard';
 
@@ -34,8 +36,9 @@ const ACCENT = '#1754cf';
 const INPUT_CLASS = 'rounded-2xl border border-black/10 bg-white px-4 py-3 text-[14px] font-medium text-ink';
 
 export function PayoutAccountCard() {
+  const queryScope = usePrivateQueryScope();
   const queryClient = useQueryClient();
-  const { data: account, isLoading, isError, refetch } = useQuery({ queryKey: PAYOUT_ACCOUNT_QUERY_KEY, queryFn: fetchPayoutAccount });
+  const { data: account, isLoading, isError, refetch } = useQuery({ queryKey: [...PAYOUT_ACCOUNT_QUERY_KEY, queryScope], queryFn: fetchPayoutAccount });
   const [editing, setEditing] = useState(false);
 
   if (isLoading) {
@@ -149,6 +152,10 @@ function PayoutForm({
   const [errors, setErrors] = useState<PayoutFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [uploadingProof, setUploadingProof] = useState(false);
+  const [validatingUpi, setValidatingUpi] = useState(false);
+  const [upiResult, setUpiResult] = useState<UpiValidationResult | null>(null);
+  const [upiError, setUpiError] = useState<string | null>(null);
+  const validationLock = useRef(false);
 
   const mutation = useMutation({
     mutationFn: onSave,
@@ -158,12 +165,35 @@ function PayoutForm({
     },
     onError: (err) => setServerError(err instanceof ApiError ? err.message : 'Could not save payout details. Please try again.'),
   });
-  const busy = mutation.isPending || uploadingProof;
+  const busy = mutation.isPending || uploadingProof || validatingUpi;
 
   function set<K extends keyof PayoutFormValues>(key: K, value: PayoutFormValues[K]) {
+    if (key === 'upiId' || key === 'method') {
+      setUpiResult(null);
+      setUpiError(null);
+    }
     setValues((v) => ({ ...v, [key]: value }));
     setErrors((e) => ({ ...e, [key]: undefined }));
     setServerError(null);
+  }
+
+  async function verifyUpi() {
+    if (busy || validationLock.current || values.method !== 'upi') return;
+    const validation = validatePayoutForm(values);
+    if (!validation.input || validation.input.method !== 'upi') {
+      setErrors(validation.errors);
+      return;
+    }
+    validationLock.current = true;
+    setValidatingUpi(true); setUpiError(null); setUpiResult(null);
+    try {
+      setUpiResult(await validatePayoutUpi(validation.input.upiId));
+    } catch (error) {
+      setUpiError(error instanceof ApiError ? error.message : 'Could not verify this UPI ID. Please retry.');
+    } finally {
+      validationLock.current = false;
+      setValidatingUpi(false);
+    }
   }
 
   async function pickProof() {
@@ -212,6 +242,7 @@ function PayoutForm({
           return (
             <Pressable
               key={option}
+              disabled={busy}
               onPress={() => set('method', option)}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
@@ -238,6 +269,26 @@ function PayoutForm({
             editable={!busy}
             className={INPUT_CLASS}
           />
+          <Pressable
+            onPress={() => void verifyUpi()}
+            disabled={busy || !values.upiId.trim()}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: busy || !values.upiId.trim(), busy: validatingUpi }}
+            className="items-center rounded-xl border border-blue-200 px-4 py-3"
+          >
+            <Text className="text-[13px] font-semibold text-primary">{validatingUpi ? 'Verifying UPI ID…' : 'Verify UPI ID'}</Text>
+          </Pressable>
+          {upiError && <Text accessibilityRole="alert" className="text-[13px] text-danger">{upiError}</Text>}
+          {upiResult && (
+            <View accessibilityLiveRegion="polite" className="gap-1 rounded-xl bg-gray-50 p-3">
+              <Text className="text-[13px] font-semibold" style={{ color: upiResult.valid ? colors.success : colors.danger }}>
+                {upiResult.valid ? 'UPI ID is valid' : 'UPI ID could not be verified'}
+              </Text>
+              <Text className="text-[13px] font-medium text-ink/70">
+                {upiResult.valid ? upiResult.registeredName ? `Registered name: ${upiResult.registeredName}` : 'The provider did not return a registered name.' : 'Check the UPI ID and try again.'}
+              </Text>
+            </View>
+          )}
         </Field>
       ) : (
         <View className="gap-3">

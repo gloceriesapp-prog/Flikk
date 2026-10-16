@@ -21,14 +21,14 @@ export function readCoordinates(query: Request['query']) {
 // Exact coordinates remain authoritative: rounding a shared result can put a
 // customer across a store's delivery boundary. PostgreSQL bounds candidates
 // through the spatial index and ranks only those candidates, returning <=20.
-export async function nearbyStores(lat: number, lng: number, zoneId: string | undefined, limit: number, maximum: number | null) {
-  const { data, error } = await supabase.rpc('nearby_customer_stores', {
+export async function nearbyStores(lat: number, lng: number, zoneId: string | undefined, limit: number, maximum: number | null, includeClosed = false) {
+  const { data, error } = await supabase.rpc(includeClosed ? 'nearby_browsable_stores' : 'nearby_customer_stores', {
     p_lat: lat, p_lng: lng, p_zone: zoneId ?? null, p_limit: limit, p_max_km: maximum,
   });
   if (error) throw error; // No full-zone fallback if the migration is missing.
   // SQL filters is_active (migration 097); this guard keeps a deactivated shop
   // out even if an older function definition is still deployed.
   return ((data ?? []) as { store: Record<string, unknown>; distance_km: number }[])
-    .filter(row => row.store.is_active !== false)
+    .filter(row => includeClosed || row.store.is_active !== false)
     .map(row => ({ ...row.store, distance_km: row.distance_km }));
 }

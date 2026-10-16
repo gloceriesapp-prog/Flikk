@@ -13,14 +13,14 @@ function formatOrderDateTime(deliveredAt: string): string {
   const date = new Date(deliveredAt);
 
   // Format: "Sun, 18 Sep"
-  const formattedDate = date.toLocaleDateString('en-IN', {
+  const formattedDate = date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata',
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   });
 
   // Format: "2:30 PM"
-  const formattedTime = date.toLocaleTimeString('en-IN', {
+  const formattedTime = date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata',
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,

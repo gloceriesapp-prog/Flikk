@@ -6,6 +6,7 @@
 // feature that owns it rather than the shared store folder.
 
 import { create } from 'zustand';
+import { onSessionReset } from '../../store/sessionScope';
 import type { ReminderStage } from './orderExpiry';
 
 export interface ActiveReminder {
@@ -25,3 +26,5 @@ export const useOrderReminderStore = create<OrderReminderState>((set) => ({
   showReminder: (reminder) => set({ activeReminder: reminder }),
   dismissReminder: () => set({ activeReminder: null }),
 }));
+
+onSessionReset(() => useOrderReminderStore.setState({ activeReminder: null }));

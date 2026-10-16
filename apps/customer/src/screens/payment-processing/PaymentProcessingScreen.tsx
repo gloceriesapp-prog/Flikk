@@ -4,7 +4,8 @@ import { clearCommittedAttempt } from '../../features/checkout-recovery/attemptS
 // UPI wait screen: success clears the saved checkout; timeout or a network
 // error opens backend recovery. Navigation snapshots only support the first
 // receipt display; restart recovery reads backend amounts and status.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { launchUpiIntent } from '../../payments/upiIntent';
 import { ActivityIndicator, AppState, BackHandler, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { pollOrderPaid, paymentCheckDeadline } from '../../payments/pollOrderPaid';
@@ -16,7 +17,16 @@ import type { AppStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'PaymentProcessing'>;
 
 export function PaymentProcessingScreen({ route, navigation }: Props) {
-  const { target, amount, order, items, deliveryAddress, isTrip, appName, paymentMethod, expiresAt } = route.params;
+  const { target, amount, order, items, deliveryAddress, isTrip, paymentMethod, expiresAt } = route.params;
+  const launched = useRef(false);
+  const [launchError, setLaunchError] = useState('');
+  useEffect(() => {
+    if (!route.params.upiIntent || launched.current) return;
+    launched.current = true;
+    void launchUpiIntent(route.params.upiIntent, paymentMethod).catch(error => {
+      setLaunchError(error instanceof Error ? error.message : 'Could not open your UPI app. Choose another payment method.');
+    });
+  }, [route.params.upiIntent, paymentMethod]);
   const [deadline] = useState(() => paymentCheckDeadline(expiresAt));
   const [secondsLeft, setSecondsLeft] = useState(() => Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
   useEffect(() => {
@@ -45,6 +55,11 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
         return;
       }
 
+      if (route.params.recovered || !order || !items || !deliveryAddress) {
+        navigation.replace('PaymentRecovery', { target });
+        return;
+      }
+
       // Real order confirmed paid — safe to clear the cart now, same
       // moment every other payment path in CheckoutScreen.tsx's own
       // goToReceipt already does it. Held off until now (not when this
@@ -59,7 +74,7 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
         orderNumber: order.orderNumber,
         amount,
         items,
-        paymentMethodLabel: appName,
+        paymentMethodLabel: 'Online payment',
         placedAt: order.placedAt,
         avgPrepMinutes: order.avgPrepMinutes,
         estimatedDeliveryMinutes: order.estimatedDeliveryMinutes,
@@ -81,6 +96,7 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-white px-10">
       <Text className="text-lg font-semibold text-ink">Confirming your payment</Text>
+      {!!launchError && <Text accessibilityRole="alert" className="text-center text-red-600">{launchError}</Text>}
       <Text className="text-center text-[13.5px] font-medium text-ink/55">
         {`We’re checking the payment securely. Your order is saved.`}
       </Text>

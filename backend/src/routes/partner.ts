@@ -1,3 +1,5 @@
+import { cataloguePage, readCatalogue } from '../partner/catalogReads.js';
+import { PARTNER_ORDER_SELECT, ACTIVE_PARTNER_FILTER, readPartnerQueueDigest, actionablePartnerOrders, partnerOrderError } from '../partner/orders.js';
 import { validateStoreFields } from '../stores/validation.js';
 import { requireStoreAccess } from '../stores/access.js';
 import { storePublicImage } from '../media/publicImages.js';
@@ -33,6 +35,7 @@ import {
 } from '../lib/products.js';
 import { requireActivePartner, requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../lib/payoutAccount.js';
+import { validatePartnerUpi } from '../payouts/upiValidation.js';
 import { decodeImage, toWebp } from '../utils/image.js';
 import { round2 } from '../lib/pricing.js';
 import { getStoreCommissionRate } from '../lib/platformSettings.js';
@@ -53,7 +56,7 @@ partnerRouter.use(async (req: AuthedRequest, _res, next) => {
   try {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       const access = await requireStoreAccess(req.user!.id);
-      if (access.role !== 'owner' && (['/payout-account', '/store-document-photo'].includes(req.path) || (req.path === '/store' && Object.keys(req.body ?? {}).some(key => key !== 'is_active')))) {
+      if (access.role !== 'owner' && (req.path.startsWith('/payout-account') || req.path === '/store-document-photo' || (req.path === '/store' && Object.keys(req.body ?? {}).some(key => key !== 'is_active')))) {
         throw new AppError(403, 'OWNER_REQUIRED', 'Only the store owner can change these details.');
       }
     }
@@ -106,7 +109,7 @@ async function resolveStoreDocUrl(path: string | null, userId: string): Promise<
 }
 
 const STORE_SELECT =
-  'id, name, category, is_active, admin_suspended, suspended_reason, suspended_at, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number, drug_license_number, profile_photo_path, aadhaar_photo_path, store_doc_path';
+  'id, name, category, is_active, admin_suspended, suspended_reason, suspended_at, district, address_line, manual_address, lat, lng, photo_url, open_time, close_time, availability_override, availability_override_until, availability_next_change_at, avg_prep_minutes, payout_method, payout_upi_id, payout_upi_verified_name, payout_bank_name, payout_bank_account_number, payout_bank_ifsc, owner_name, gst_number, shop_establishment_number, fssai_number, pan_number, drug_license_number, profile_photo_path, aadhaar_photo_path, store_doc_path';
 
 // Business documents are write-once from the owner's side — real, not
 // just a disabled input client-side (a raw PATCH call could otherwise
@@ -195,6 +198,27 @@ partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+partnerRouter.patch('/store/availability', async (req: AuthedRequest, res, next) => {
+  try {
+    const mode = req.body?.mode;
+    if (!['auto', 'open', 'closed'].includes(mode)) throw new AppError(400, 'INVALID_AVAILABILITY', 'Choose automatic hours, open or closed.');
+    const access = await requireStoreAccess(req.user!.id);
+    const { error } = await supabase.rpc('partner_set_store_availability', {
+      p_store: access.storeId, p_user: req.user!.id, p_open: mode === 'auto' ? null : mode === 'open',
+    });
+    if (error?.code === 'P0409') throw storeSuspendedError(null);
+    if (error?.code === 'P0403') throw new AppError(403, 'STORE_ACCESS_REQUIRED', 'You cannot change this store.');
+    if (error) throw new AppError(503, 'STORE_AVAILABILITY_UNAVAILABLE', 'Could not update store availability. Please retry.');
+    const { data, error: readError } = await supabase.from('stores').select(STORE_SELECT).eq('id', access.storeId).single();
+    if (readError || !data) throw new AppError(503, 'STORE_AVAILABILITY_UNAVAILABLE', 'Availability was saved. Refresh to see the latest status.');
+    const response = toStoreResponse(data as Record<string, unknown>, await ownerPhone(req.user!.id), access.role === 'owner' ? await latestProfileChange(access.storeId) : null);
+    if (access.role !== 'owner') {
+      for (const key of Object.keys(response)) if (key.startsWith('payout_') || ['pan_number', 'gst_number', 'fssai_number', 'shop_establishment_number', 'drug_license_number'].includes(key)) delete (response as Record<string, unknown>)[key];
+    }
+    res.json({ ...response, access_role: access.role });
+  } catch (err) { next(err); }
 });
 
 partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
@@ -371,6 +395,15 @@ partnerRouter.put('/payout-account', payoutAccountBudget, async (req: AuthedRequ
   }
 });
 
+partnerRouter.post('/payout-account/validate-upi', payoutAccountBudget, async (req: AuthedRequest, res, next) => {
+  try {
+    const access = await requireStoreAccess(req.user!.id);
+    if (access.role !== 'owner') throw new AppError(403, 'OWNER_REQUIRED', 'Only the store owner can verify payout details.');
+    res.set('Cache-Control', 'private, no-store');
+    res.json(await validatePartnerUpi(req.user!.id, req.body));
+  } catch (error) { next(error); }
+});
+
 // India Standard Time is a fixed +5:30 offset, no DST — same safe-to-
 // hardcode reasoning jobs/weeklyPayouts.ts's own IST_OFFSET_MS already
 // documents. A separate local copy here (not imported from that file) is
@@ -442,26 +475,93 @@ partnerRouter.get('/stats/today', async (req: AuthedRequest, res, next) => {
   }
 });
 
+partnerRouter.get('/orders/updates', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    res.set('Cache-Control', 'private, no-store');
+    res.json(await readPartnerQueueDigest(storeId));
+  } catch (error) { next(error); }
+});
+
+// Read only tracked orders that left a bounded queue page. This preserves
+// delivery earning transitions without repeatedly transferring completed orders.
+partnerRouter.get('/orders/transitions', async (req: AuthedRequest, res, next) => {
+  try {
+    const ids = typeof req.query.ids === 'string' ? req.query.ids.split(',') : [];
+    if (!ids.length || ids.length > 100 || ids.some(id => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
+      throw new AppError(400, 'INVALID_ORDER_IDS', 'Provide up to 100 order IDs.');
+    }
+    const storeId = await ownStoreId(req.user!.id);
+    const { data, error } = await supabase.from('orders').select(PARTNER_ORDER_SELECT)
+      .eq('store_id', storeId).in('id', [...new Set(ids)])
+      .or(actionablePartnerOrders).eq('checkout_payment_rejected', false).limit(100);
+    if (error) throw error;
+    res.set('Cache-Control', 'private, no-store');
+    res.json(data ?? []);
+  } catch (error) { next(error); }
+});
+
 partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const page = readPage(req, `partner-orders:${storeId}:${req.query.view ?? "history"}`);
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const status = typeof req.query.status === 'string' ? req.query.status : '';
+    if (req.query.status !== undefined && typeof req.query.status !== 'string') throw new AppError(400, 'INVALID_STATUS', 'Provide one order status.');
+    if (req.query.view !== undefined && (typeof req.query.view !== 'string' || !['queue', 'history'].includes(req.query.view))) throw new AppError(400, 'INVALID_VIEW', 'Invalid order view.');
+    if (req.query.summary !== undefined && (req.query.summary !== '1' || req.query.view === 'queue')) throw new AppError(400, 'INVALID_SUMMARY', 'Summary reads are available for order history only.');
+    if (search.length > 80 || (req.query.search !== undefined && typeof req.query.search !== 'string')) throw new AppError(400, 'INVALID_SEARCH', 'Search must be at most 80 characters.');
+    if (status && !['placed', 'packed', 'out_for_delivery', 'delivered', 'cancelled', 'failed'].includes(status)) throw new AppError(400, 'INVALID_STATUS', 'Invalid order status.');
+    const page = readPage(req, `partner-orders:${storeId}:${req.query.view ?? "history"}:${search}:${status}`);
+    const historySelect = 'id,order_number,status,total,placed_at' as const;
+    const projection: typeof historySelect | typeof PARTNER_ORDER_SELECT = req.query.summary === '1' ? historySelect : PARTNER_ORDER_SELECT;
     let query = supabase.from('orders')
-      .select('id, order_number, status, total, item_total, commission_amount, payment_method, provider_payment_id, placed_at, packed_at, delivered_at, order_items(id, product_id, quantity, unit_price_at_order, unit_at_order, products(name, unit, image_url)), users!customer_id(name, phone), addresses(line1, landmark, recipient_name)')
+      .select(projection)
       .eq('store_id', storeId);
+    query = query.or(actionablePartnerOrders).eq('checkout_payment_rejected', false);
+    if (search) query = query.ilike('order_number', `%${search.replace(/[\\%_]/g, '\\$&')}%`);
+    if (status) query = query.eq('status', status);
     let queueFilter: string | undefined;
     if (req.query.view === 'queue') {
-      const midnight = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) + 'T00:00:00+05:30').toISOString();
-      queueFilter = `status.in.(placed,packed,out_for_delivery),and(status.eq.failed,placed_at.gte.${midnight}),delivered_at.gte.${midnight}`;
+      queueFilter = `status.in.(${ACTIVE_PARTNER_FILTER})`;
     }
     if (page.cursor) queueFilter = queueFilter ? `and(or(${queueFilter}),or(${cursorFilter('placed_at', page.cursor)}))` : cursorFilter('placed_at', page.cursor);
     if (queueFilter) query = query.or(queueFilter);
-    const { data, error } = await query.order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
+    // Both allowlisted projections include these cursor fields. Keeping the
+    // response contract explicit avoids Supabase parsing a projection union.
+    const { data, error } = await query.order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1)
+      .overrideTypes<Array<{ id: string; placed_at: string } & Record<string, unknown>>, { merge: false }>();
     if (error) throw error;
     sendPage(res, data ?? [], page, 'placed_at');
   } catch (err) {
     next(err);
   }
+});
+
+// Independent detail read supports notification cold starts and cancelled history.
+partnerRouter.get('/orders/:id', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    const { data, error } = await supabase.from('orders').select(PARTNER_ORDER_SELECT)
+      .eq('store_id', storeId).eq('id', req.params.id)
+      .or(actionablePartnerOrders).eq('checkout_payment_rejected', false).maybeSingle();
+    if (error) throw error;
+    if (!data) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found for this store.');
+    res.json(data);
+  } catch (error) { next(error); }
+});
+
+partnerRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    const { error } = await supabase.rpc('partner_accept_order', {
+      p_order: req.params.id, p_store: storeId, p_user: req.user!.id,
+    });
+    if (error) throw partnerOrderError(error);
+    const { data, error: readError } = await supabase.from('orders').select(PARTNER_ORDER_SELECT)
+      .eq('store_id', storeId).eq('id', req.params.id).single();
+    if (readError) throw readError;
+    res.json(data);
+  } catch (error) { next(error); }
 });
 
 // Store-owner read of every review left for their own store (RLS
@@ -541,9 +641,9 @@ partnerRouter.post('/product-photo', async (req: AuthedRequest, res, next) => {
 partnerRouter.get('/products', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { data, error } = await supabase.from('products').select('*, product_variants(*)').eq('store_id', storeId);
-    if (error) throw error;
-    res.json(data);
+    const selection = cataloguePage(req, storeId);
+    const data = await readCatalogue(storeId, selection);
+    sendPage(res, data, selection.page, 'id');
   } catch (err) {
     next(err);
   }

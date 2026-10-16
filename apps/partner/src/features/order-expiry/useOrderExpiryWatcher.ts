@@ -1,30 +1,7 @@
-// The grace-phase enforcer — ticks every second, doing two things for
-// every still-'placed', not-yet-acknowledged order:
-// 1. Fires a reminder (in-app banner + OS notification) once per
-//    checkpoint in getReminderCheckpointsMs() as its elapsed time crosses
-//    each one.
-// 2. Rejects it once the accept window (admin setting, orderExpiry.ts) has elapsed.
-//
-// Mounted once at the app root (App.tsx), not inside IncomingOrderAlert or
-// OrdersScreen — it has to keep running regardless of whether the alert is
-// currently showing or which tab is focused, since the whole point of the
-// grace phase (and its reminders) is that a shop owner can be anywhere in
-// the app, or not in it at all, when they fire.
-//
-// Skips acknowledged orders entirely (no reminders, no reject) — once a
-// shop owner has hit "Accept Order" (useOrdersStore.acknowledgeOrder, a
-// local UI flag, not a status change), both the reminder nudges and the
-// auto-reject safety net have done their job and stand down. Reminding
-// someone about an order they already accepted, or rejecting it out from
-// under them, would undo their own action.
-//
-// `remindedCheckpointsRef` is what stops a reminder firing every second
-// once its checkpoint has passed — same ref-not-state pattern as
-// useIncomingOrderAlert.ts's dismissedOrderIdsRef, read inside the
-// interval without retriggering this effect.
+// Reminders follow the server response deadline. At expiry refresh the queue;
+// cancellation belongs exclusively to the transactional backend worker.
 
 import { useEffect, useRef } from 'react';
-import { STORE_NO_RESPONSE_REASON } from '@gloceries/shared';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import { getElapsedMs, getReminderCheckpointsMs, hasAcceptWindowExpired, loadOrderAcceptWindow } from './orderExpiry';
 import { sendOrderReminderNotification } from './orderReminderNotification';
@@ -33,7 +10,7 @@ import { useOrderReminderStore } from './useOrderReminderStore';
 export function useOrderExpiryWatcher(): void {
   const orders = useOrdersStore((state) => state.orders);
   const acknowledgedOrderIds = useOrdersStore((state) => state.acknowledgedOrderIds);
-  const rejectOrder = useOrdersStore((state) => state.rejectOrder);
+  const loadOrders = useOrdersStore((state) => state.loadOrders);
   const showReminder = useOrderReminderStore((state) => state.showReminder);
 
   // orderId -> set of checkpoint indexes (into getReminderCheckpointsMs())
@@ -51,16 +28,15 @@ export function useOrderExpiryWatcher(): void {
       const now = Date.now();
 
       for (const order of orders) {
-        if (order.status !== 'placed' || acknowledgedOrderIds.has(order.id)) continue;
+        if (order.status !== 'placed' || order.acceptedAtTimestamp != null || acknowledgedOrderIds.has(order.id) || order.paymentMode === 'awaiting_payment') continue;
 
         if (hasAcceptWindowExpired(order, now)) {
-          // Real backend call now (PATCH /orders/:id/status, 'cancelled')
-          // — best-effort here specifically: a failed auto-reject just
-          // means the order stays visible past its window, which a store
-          // owner can still act on manually, not a broken flow worth
-          // surfacing mid-background-timer.
-          rejectOrder(order.id, STORE_NO_RESPONSE_REASON).catch(() => {});
-          remindedCheckpointsRef.current.delete(order.id);
+          // Only the worker cancels expired orders. Device clock/network lag
+          // must never authorize a cancellation. Refresh once at the boundary.
+          if (!remindedCheckpointsRef.current.get(order.id)?.has(-1)) {
+            remindedCheckpointsRef.current.set(order.id, new Set([-1]));
+            void loadOrders().catch(() => {});
+          }
           continue;
         }
 
@@ -85,5 +61,5 @@ export function useOrderExpiryWatcher(): void {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [orders, acknowledgedOrderIds, rejectOrder, showReminder]);
+  }, [orders, acknowledgedOrderIds, loadOrders, showReminder]);
 }

@@ -19,9 +19,9 @@ export function OrderInfoRow({ icon, label, value }: Props) {
       <View className="h-10 w-10 items-center justify-center rounded-2xl bg-gray-200">
         <AppIcon icon={icon} size={20} color={colors.ink} />
       </View>
-      <View>
-        <Text className="text-sm font-medium text-ink/40">{label}</Text>
-        <Text className="text-base font-medium text-ink">{value}</Text>
+      <View className="min-w-0 flex-1">
+        <Text className="text-[12px] font-medium text-black/50">{label}</Text>
+        <Text className="text-[14px] font-medium text-black" numberOfLines={1}>{value}</Text>
       </View>
     </View>
   );

@@ -1,8 +1,6 @@
-// Copied from apps/customer/src/components/BottomNavBar/BottomNavBarItem.tsx
-// — same white-on-dark-glass treatment, kept in sync by hand.
-
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../AppIcon';
+import { colors } from '../../theme/tokens';
 import type { NavTab } from './data';
 
 interface Props {
@@ -12,6 +10,22 @@ interface Props {
 }
 
 export function BottomNavBarItem({ tab, isActive, onPress }: Props) {
+  if (Platform.OS === 'android') {
+    const color = isActive ? colors.primary : '#6B7280';
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="tab"
+        accessibilityLabel={tab.label}
+        accessibilityState={{ selected: isActive }}
+        className="flex-1 items-center justify-center gap-1 py-1.5"
+        style={{ minHeight: 56 }}
+      >
+        <AppIcon icon={tab.icon} size={24} strokeWidth={isActive ? 2 : 1.8} color={color} />
+        <Text className="text-[12px] font-semibold" style={{ color }}>{tab.label}</Text>
+      </Pressable>
+    );
+  }
   return (
     <Pressable onPress={onPress} className="items-center gap-1 px-3">
       <View

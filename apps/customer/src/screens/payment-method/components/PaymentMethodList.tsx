@@ -66,15 +66,17 @@ interface Props {
   upiApps: UpiApp[];
   // Methods switched off by admin are not offered (GET /payments/availability).
   allowed?: AllowedPaymentMethods;
+  // Resume an existing S2S intent without offering a different payment flow.
+  upiOnly?: boolean;
 }
 
-// Last-used app (the saved/selected method) first; rest in list order.
+// Put the saved or currently selected preference first.
 export function orderUpiApps(apps: UpiApp[], method: PaymentMethod | null): UpiApp[] {
   const lastId = method?.startsWith('upi_app:') ? method.slice('upi_app:'.length) : null;
   return [...apps].sort((a, b) => Number(b.id === lastId) - Number(a.id === lastId));
 }
 
-export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, allowed = { cod: true, online: true } }: Props) {
+export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, allowed = { cod: true, online: true }, upiOnly = false }: Props) {
   const selectedUpiAppId = method?.startsWith('upi_app:') ? method.slice('upi_app:'.length) : null;
   const upiApps = allowed.online ? orderUpiApps(detectedApps, method) : [];
 
@@ -104,7 +106,7 @@ export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, all
                       
                       {index === 0 && app.id === selectedUpiAppId ? (
                         <View className="rounded-full bg-lime-soft px-2 py-0.5">
-                          <Text className="text-[10.5px] font-semibold uppercase tracking-wide text-ink">Last used</Text>
+                          <Text className="text-[10.5px] font-semibold uppercase tracking-wide text-ink">Selected</Text>
                         </View>
                       ) : null}
                     </View>
@@ -117,7 +119,7 @@ export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, all
         </View>
       ) : null}
 
-      {allowed.online && <View>
+      {allowed.online && !upiOnly && <View>
         <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">{'Cards & netbanking'}</Text>
         <View className="bg-white p-4" style={{ borderRadius: 12 }}>
           <View className="mb-3 border-b border-dashed border-gray-100 pb-3">
@@ -129,12 +131,12 @@ export function PaymentMethodList({ method, onSelect, upiApps: detectedApps, all
         </View>
       </View>}
 
-      {allowed.online && <View className="bg-white p-4" style={{ borderRadius: 12 }}>
+      {allowed.online && !upiOnly && <View className="bg-white p-4" style={{ borderRadius: 12 }}>
         <MethodRow icon={CreditCardIcon} title="More payment options" subtitle="See all available methods in secure checkout"
           selected={method === 'online'} onPress={() => onSelect('online')} label="More online payment options" />
       </View>}
 
-      {allowed.cod && <View>
+      {allowed.cod && !upiOnly && <View>
         <Text className="mb-2 px-1 text-[17px] font-semibold text-ink/90">Pay on Delivery</Text>
         <View className="bg-white p-4 mt-1" style={{ borderRadius: 12 }}>
           <Pressable onPress={() => onSelect('cod')} accessibilityRole="button" accessibilityLabel="Cash on delivery"

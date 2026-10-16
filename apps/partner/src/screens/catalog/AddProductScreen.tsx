@@ -1,3 +1,4 @@
+import { parseMoneyInput, validVariantPrices } from '../../utils/moneyInput';
 import { AppImage as Image } from '../../components/AppImage';
 // New-product form — reached from Inventory's own "Add product" button
 // (InventorySummaryCard, was "Manage stocks" with nothing wired to it).
@@ -32,9 +33,8 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
-import { Camera01Icon, ShoppingBasketAdd01Icon } from '@hugeicons/core-free-icons';
+import { Camera01Icon, ShoppingBasketAdd01Icon , ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { colors } from '../../theme/tokens';
@@ -73,7 +73,7 @@ export function AddProductScreen({ navigation }: Props) {
 
   const addedLabels = new Set(variants.map((v) => v.label));
   const availableSizes = standardSizeOptions(category, variants).filter((label) => !addedLabels.has(label));
-  const canSubmit = name.trim().length > 0 && variants.length > 0 && !submitting;
+  const canSubmit = name.trim().length > 0 && variants.length > 0 && !submitting && !uploadingPhoto;
 
   async function handlePickPhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -113,7 +113,8 @@ export function AddProductScreen({ navigation }: Props) {
   }
 
   function setVariantPrice(variantId: string, rawPrice: string) {
-    const price = Number(rawPrice.replace(/[^0-9]/g, '')) || 0;
+    const price = rawPrice === '' || rawPrice === '.' ? 0 : parseMoneyInput(rawPrice);
+    if (price === null) return;
     setVariants((prev) =>
       prev.map((v) => {
         if (v.id !== variantId) return v;
@@ -127,8 +128,8 @@ export function AddProductScreen({ navigation }: Props) {
   }
 
   function setVariantMrp(variantId: string, rawMrp: string) {
-    const digits = rawMrp.replace(/[^0-9]/g, '');
-    const originalPrice = digits ? Number(digits) : undefined;
+    const originalPrice = rawMrp === '' || rawMrp === '.' ? undefined : parseMoneyInput(rawMrp);
+    if (originalPrice === null) return;
     setVariants((prev) => prev.map((v) => (v.id === variantId ? { ...v, originalPrice } : v)));
   }
 
@@ -143,6 +144,7 @@ export function AddProductScreen({ navigation }: Props) {
 
   async function handleSubmit() {
     if (!canSubmit) return;
+    if (!validVariantPrices(variants)) { setFormError("Enter a positive price for every size. MRP must be at least the selling price."); return; }
     // Checkout only sells counted packs — without a count this product
     // could be approved yet never orderable.
     if (hasUncountedVariant(variants)) {

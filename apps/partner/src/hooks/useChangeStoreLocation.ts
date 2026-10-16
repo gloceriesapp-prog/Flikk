@@ -1,4 +1,4 @@
-// Shared "open the real map pin, apply the confirmed pin instantly"
+// Shared "open the map pin and await an admin-reviewed location save"
 // logic — reused by both StoreSettingsScreen's own "Change" button and
 // StoreProfileHeader's now-tappable address row (OrdersScreen), instead
 // of each screen hand-rolling its own copy of the exact same navigate +
@@ -7,6 +7,8 @@
 // approval way to reach it.
 
 import { Alert } from 'react-native';
+import { storePinPresentation } from '../location/storePin';
+import { getSessionEpoch, isCurrentSession } from '../store/sessionScope';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { hasLocationPermission, requestLocationPermission } from '../location/geocoding';
@@ -19,24 +21,25 @@ export function useChangeStoreLocation(): () => void {
   const updateProfile = useStoreProfileStore((state) => state.updateProfile);
 
   return function changeStoreLocation() {
+    const epoch = getSessionEpoch();
     function openMap() {
+      if (!isCurrentSession(epoch)) return;
       // Seeds the map on the store's current real pin, not a blank default
       // zone center, so opening this to nudge the pin doesn't start from
       // scratch.
+      const location = storePinPresentation(profile);
       navigation.navigate('LocationPin', {
-        initialCoordinates: profile.lat != null && profile.lng != null ? { latitude: profile.lat, longitude: profile.lng } : null,
-        onConfirm: (coordinates, district, addressLine) => {
-          // Applies instantly — same "photo is live the moment it's hosted"
-          // reasoning StoreSettingsScreen's own handlePickPhoto uses, since
-          // LocationPinScreen already has its own explicit confirm step.
+        initialCoordinates: location.coordinates,
+        onConfirm: async (coordinates, district, addressLine) => {
           // A new pin changes which customers the store reaches, so it goes to
           // Gloceries for review (migration 114) — the live pin stays until then.
-          void updateProfile({ district, addressLine, lat: coordinates.latitude, lng: coordinates.longitude }).then((result) => {
-            if (!result.ok) Alert.alert('Could not update location', result.error);
-            else if (result.pendingReview) {
-              Alert.alert('Location sent for review', 'Your new store location goes live once Gloceries approves it.');
-            }
-          });
+          if (!isCurrentSession(epoch) || useStoreProfileStore.getState().profile.id !== profile.id) throw new Error('Your account changed. Reopen the map.');
+          const result = await updateProfile({ district, addressLine, lat: coordinates.latitude, lng: coordinates.longitude });
+          if (!isCurrentSession(epoch)) throw new Error('Your account changed. Reopen the map.');
+          if (!result.ok) throw new Error(result.error);
+          if (result.pendingReview) {
+            Alert.alert('Location sent for review', 'Your proposed pin is saved. Customers and riders keep using your approved location until Gloceries approves this change.');
+          }
         },
       });
     }

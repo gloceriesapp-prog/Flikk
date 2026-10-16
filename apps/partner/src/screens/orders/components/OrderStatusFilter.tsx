@@ -13,7 +13,7 @@ export type OrderStatusFilterValue = 'all' | 'placed' | 'packed' | 'out_for_deli
 interface FilterOption {
   value: OrderStatusFilterValue;
   label: string;
-  count: number;
+  count?: number;
 }
 
 interface Props {
@@ -36,11 +36,11 @@ export function OrderStatusFilter({ options, selected, onSelect }: Props) {
             }`}
           >
             <Text className={`text-base font-medium ${isActive ? 'text-white' : 'text-ink/70'}`}>{option.label}</Text>
-            <View className={`min-w-[20px] items-center rounded-full px-1.5 py-0.5 ${isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
+            {option.count !== undefined && <View className={`min-w-[20px] items-center rounded-full px-1.5 py-0.5 ${isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
               <Text className={`text-[11px] font-semibold ${isActive ? 'text-white' : 'text-ink/60'}`}>
                 {option.count}
               </Text>
-            </View>
+            </View>}
           </Pressable>
         );
       })}

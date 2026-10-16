@@ -218,7 +218,7 @@ export default function OverviewPage() {
       )}
 
       <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
-        <StatTile label="Total products" value={String(displayTotalProducts)} icon={Boxes} sublabel={`${displayInStock} in stock`} />
+        <StatTile label="Loaded products" value={String(displayTotalProducts)} icon={Boxes} sublabel={`${displayInStock} in stock`} />
         <StatTile label="Completed orders" value={String(displayCompleted)} icon={CheckCircle2} deltaPercent={displayCompletedTrend} />
         <StatTile label="Cancelled" value={String(displayCancelled)} icon={XCircle} deltaPercent={displayCancelledTrend} invertTone />
         <StatTile label="Active orders" value={String(displayActive)} icon={ListChecks} deltaPercent={displayActiveTrend} />

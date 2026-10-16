@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { isNativeCheckoutOpen } from '../../payments/openRazorpayCheckout';
+import { isCheckoutFlowActive } from './checkoutActivity';
 import { AppState } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,29 +20,29 @@ export function useCheckoutRecovery() {
     let stopped = false, running = false;
     const seen = new Set<string>();
     async function check() {
-      if (running || stopped || isNativeCheckoutOpen() || AppState.currentState !== 'active') return;
+      if (running || stopped || isCheckoutFlowActive() || isNativeCheckoutOpen() || AppState.currentState !== 'active') return;
       running = true;
       try {
         const saved = await readAttempt();
-        if (stopped || isNativeCheckoutOpen() || useAuthStore.getState().sessionEpoch !== epoch) return;
+        if (stopped || isCheckoutFlowActive() || isNativeCheckoutOpen() || useAuthStore.getState().sessionEpoch !== epoch) return;
         const resolved = saved ? await findAttempt(saved.id) : null;
-        if (stopped || isNativeCheckoutOpen() || useAuthStore.getState().sessionEpoch !== epoch) return;
+        if (stopped || isCheckoutFlowActive() || isNativeCheckoutOpen() || useAuthStore.getState().sessionEpoch !== epoch) return;
         if (resolved?.abandoned && saved) { await clearAttempt(saved.id); }
         if (saved && !resolved && !stopped) {
           const state = navigation.getState();
           const active = state?.routes[state.index]?.name;
-          if (!seen.has(saved.id) && active !== 'CheckoutAttemptRecovery' && active !== 'PaymentRecovery' && active !== 'PaymentProcessing' && active !== 'Receipt') {
+          if (!seen.has(saved.id) && active !== 'CheckoutAttemptRecovery' && active !== 'PaymentRecovery' && active !== 'PaymentMethod' && active !== 'PaymentProcessing' && active !== 'Receipt') {
             seen.add(saved.id); navigation.navigate('CheckoutAttemptRecovery');
           }
           return;
         }
         const target = resolved?.result ? attemptTarget({ ...resolved, result: resolved.result }) : (await fetchPendingPayments())[0];
-        if (!target || stopped || isNativeCheckoutOpen() || useAuthStore.getState().sessionEpoch !== epoch) return;
+        if (!target || stopped || isCheckoutFlowActive() || isNativeCheckoutOpen() || useAuthStore.getState().sessionEpoch !== epoch) return;
         const key = JSON.stringify(target);
         if (seen.has(key)) return;
         const state = navigation.getState();
         const active = state?.routes[state.index]?.name;
-        if (active === 'PaymentRecovery' || active === 'PaymentProcessing' || active === 'Receipt') return;
+        if (active === 'PaymentMethod' || active === 'PaymentRecovery' || active === 'PaymentProcessing' || active === 'Receipt') return;
         seen.add(key);
         navigation.navigate('PaymentRecovery', { target });
       } catch { /* Offline discovery is retried on foreground; checkout remains guarded. */ }

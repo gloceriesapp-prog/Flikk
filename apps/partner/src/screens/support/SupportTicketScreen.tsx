@@ -19,8 +19,9 @@ const CARD_BORDER = '#EAECEE';
 function stamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getDate()}/${d.getMonth() + 1} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const date = d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit' });
+  const time = d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${date} ${time}`;
 }
 
 export function SupportTicketScreen() {
@@ -43,7 +44,7 @@ export function SupportTicketScreen() {
       attempt.current = null;
       setReply('');
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['support-ticket', ticketId] }),
+        queryClient.invalidateQueries({ queryKey: ['support-ticket'] }),
         queryClient.invalidateQueries({ queryKey: ['support-tickets'] }),
       ]);
     } catch (err) {

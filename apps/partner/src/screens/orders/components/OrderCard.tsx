@@ -81,7 +81,7 @@ export const OrderCard = memo(function OrderCard({ order, onAcknowledge, onMarkP
     } else if (elapsedMinutes <= maxAcceptMinutes) {
       placedTimeDisplay = `${elapsedMinutes} ${elapsedMinutes === 1 ? 'min' : 'mins'} ago`;
     } else {
-      placedTimeDisplay = 'Cancelled';
+      placedTimeDisplay = 'Acceptance window ended';
     }
   }
 

@@ -17,6 +17,7 @@ import { useCopy } from '../../api/appConfig';
 // Rider tips stay hidden until collection and payout are supported.
 
 import { useMemo, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { ArrowLeft01Icon, Delete02Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { RupeePrice } from '../../components/RupeePrice';
@@ -34,6 +35,7 @@ import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
 import { CartPaymentBar } from './components/CartPaymentBar';
 import { useCartPayment } from './payment/useCartPayment';
+import { usePaymentSelectionStart } from './payment/usePaymentSelectionStart';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
 import { useCartAvailability } from './quote/useCartAvailability';
 import { useCheckoutQuote } from './quote/useCheckoutQuote';
@@ -131,6 +133,14 @@ export function CartScreen({ navigation, route }: Props) {
   }, [items, quote]);
   const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod,
     quote, onQuoteChanged: () => { void quoteQuery.refetch(); void availabilityQuery.refetch(); } });
+  const focused = useIsFocused();
+  usePaymentSelectionStart({ requested: route.params?.startSelectedPayment === true, active: focused,
+    ready: payment.methodsReady && !addressesLoading && !quoteQuery.isFetching && !availabilityQuery.isFetching
+      && payment.paymentMethod === route.params?.selectedPaymentMethod,
+    eligible: !!selectedAddress && !!quote && !quoteQuery.isError && availabilityQuery.data?.eligible === true && minimumShortfall <= 0,
+    consume: () => navigation.setParams({ startSelectedPayment: false }), start: payment.placeOrder,
+    invalid: () => Alert.alert('Review your cart', 'Check your address, available items and final bill before paying.'),
+  });
   function choosePayment() {
     if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }
     payment.choosePayment();

@@ -54,9 +54,11 @@ export function OnboardingScaffold({ step, totalSteps = WIZARD_TOTAL_STEPS, titl
         <StatusBar style="dark" />
         {showTopBar && (
           <View className="flex-row items-center px-5 pb-2 pt-safe-offset-2">
-            <Pressable onPress={onBack} hitSlop={16} disabled={!onBack} className="h-9 w-9 items-center justify-center">
-              {onBack && <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />}
-            </Pressable>
+            {onBack ? (
+              <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Back" hitSlop={16} className="h-9 w-9 items-center justify-center">
+                <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+              </Pressable>
+            ) : <View className="h-9 w-9" />}
             {step !== undefined ? <WizardProgress step={step} total={totalSteps} /> : <View className="flex-1" />}
             {/* Mirror of the back arrow's width so the progress bar stays
                 truly centered, not pushed right by the arrow. */}

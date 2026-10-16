@@ -16,7 +16,7 @@ export async function loadCheckoutAvailability(input: unknown, customerId: strin
   const [addressResult, storeResult, zoneResult, settings] = await Promise.all([
     addressId ? supabase.from('addresses').select('id, zone_id, latitude, longitude').eq('id', addressId)
       .eq('user_id', customerId).is('deleted_at', null).maybeSingle() : Promise.resolve({ data: null, error: null }),
-    supabase.from('stores').select('id, zone_id, is_active, open_time, close_time, lat, lng, delivery_radius_km').in('id', storeIds),
+    supabase.from('stores').select('id, zone_id, is_active, open_time, close_time, availability_override, availability_override_until, lat, lng, delivery_radius_km').in('id', storeIds),
     supabase.from('zones').select('id').eq('is_active', true),
     getDeliverySettings(),
   ]);
