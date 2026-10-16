@@ -1,13 +1,9 @@
-// The countdown, read as a digital "01:00" chip — not a ring, not a bar,
-// matching the reference exactly. Real mm:ss formatting, not a fixed
-// "00:" prefix — the timer now starts at a full minute (AUTO_DECLINE_SECONDS
-// in useIncomingOrderAlert.ts), so a plain zero-padded seconds string would
-// print "00:60" at the very start instead of "01:00".
+// The foreground attention window closes this alert; only the backend's
+// authoritative acceptance deadline can reject an unanswered order.
 
 import { Clock01Icon } from '@hugeicons/core-free-icons';
 import { Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
 
 interface Props {
   secondsLeft: number;
@@ -22,13 +18,13 @@ function formatCountdown(totalSeconds: number): string {
 export function AutoRejectChip({ secondsLeft }: Props) {
   return (
     <View className="items-end gap-1">
-      <View className="flex-row items-center gap-1.5 rounded-full bg-[#DCE6FF] px-3 py-1.5">
-        <AppIcon icon={Clock01Icon} size={13} color={colors.primary} />
-        <Text className="text-sm font-bold text-primary" style={{ fontVariant: ['tabular-nums'] }}>
+      <View className="flex-row items-center gap-1.5 rounded-full bg-white px-3 py-1.5">
+        <AppIcon icon={Clock01Icon} size={13} color="#000000" />
+        <Text className="text-[13px] font-semibold text-black" style={{ fontVariant: ['tabular-nums'] }}>
           {formatCountdown(secondsLeft)}
         </Text>
       </View>
-      <Text className="text-sm font-medium text-ink/60">Auto reject in</Text>
+      <Text className="text-[11px] font-medium text-black/50">Alert closes in</Text>
     </View>
   );
 }

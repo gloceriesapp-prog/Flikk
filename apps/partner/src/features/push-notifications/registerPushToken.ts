@@ -19,7 +19,10 @@ import { isRunningInExpoGo } from 'expo';
 import { savePushToken } from '../../api/auth';
 import { navigationRef } from '../../navigation/navigationRef';
 import { useNotificationStatusStore } from '../../store/useNotificationStatusStore';
-import { isAdminBroadcast } from './adminBroadcast';
+import { createNotificationTapRouter } from './notificationNavigation';
+import { useAuthStore } from '../../store/useAuthStore';
+import { getSessionEpoch, isCurrentSession, onSessionReset } from '../../store/sessionScope';
+import { ensureNotificationPermission } from './notificationPermission';
 
 // Android channels: importance and sound are fixed by the OS the first time a
 // channel is created and can't be changed by later app versions — only the
@@ -34,7 +37,8 @@ async function ensureAndroidChannels(): Promise<void> {
     name: 'New orders',
     description: 'Alerts for new customer orders that need accepting.',
     importance: Notifications.AndroidImportance.MAX,
-    sound: 'default',
+    // Omit sound to use Android's system default. Expo treats any string
+    // here as a bundled custom filename, including the word 'default'.
     vibrationPattern: [0, 400, 200, 400, 200, 400],
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     enableVibrate: true,
@@ -45,96 +49,102 @@ async function ensureAndroidChannels(): Promise<void> {
   });
 }
 
-export async function registerPushToken(): Promise<void> {
-  const setStatus = useNotificationStatusStore.getState().setStatus;
+type DeviceToken = Notifications.DevicePushToken;
+type Registration = { epoch: number; pending: DeviceToken | null; lastDeviceKey: string | null; promise: Promise<void> };
+let registration: Registration | null = null;
+let savedToken: { epoch: number; token: string } | null = null;
+const deviceKey = (token: DeviceToken) => `${token.type}:${String(token.data)}`;
+const currentAccount = (epoch: number) => isCurrentSession(epoch) && !!useAuthStore.getState().accessToken;
+onSessionReset(() => { registration = null; savedToken = null; });
+
+async function registerOnce(epoch: number, devicePushToken?: DeviceToken): Promise<void> {
+  const setStatus = (status: Parameters<ReturnType<typeof useNotificationStatusStore.getState>['setStatus']>[0]) => {
+    if (currentAccount(epoch)) useNotificationStatusStore.getState().setStatus(status);
+  };
   try {
-    // Simulators/emulators and a local dev run without an EAS projectId have no
-    // real push capability — 'unsupported', not a warning: a dev isn't an owner
-    // who switched notifications off.
-    if (!Device.isDevice) {
-      setStatus('unsupported');
-      return;
-    }
-
+    if (!currentAccount(epoch)) return;
+    if (!Device.isDevice || isRunningInExpoGo()) { setStatus('unsupported'); return; }
     await ensureAndroidChannels();
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let status = existingStatus;
-    if (status !== 'granted') {
-      const requested = await Notifications.requestPermissionsAsync();
-      status = requested.status;
-    }
-    if (status !== 'granted') {
-      setStatus('denied');
-      return;
-    }
-
+    if (!currentAccount(epoch)) return;
+    const { status } = await ensureNotificationPermission();
+    if (!currentAccount(epoch)) return;
+    if (status !== 'granted') { setStatus('denied'); return; }
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-    if (!projectId) {
-      setStatus('unsupported');
-      return;
+    if (!projectId) { setStatus('unsupported'); return; }
+    // Passing the native event's token avoids reading it again. Some native
+    // SDKs emit onNewToken on every read, which otherwise creates a loop.
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId, ...(devicePushToken ? { devicePushToken } : {}) });
+    if (!currentAccount(epoch)) return;
+    if (savedToken?.epoch !== epoch || savedToken.token !== token) {
+      await savePushToken(token);
+      if (!currentAccount(epoch)) return;
+      savedToken = { epoch, token };
     }
-
-    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-    await savePushToken(token);
     setStatus('ok');
-  } catch {
-    // Best-effort — never throws (see the note above). The failure is recorded
-    // so the owner gets an in-app warning instead of silent zero signal.
-    setStatus('error');
-  }
+  } catch { setStatus('error'); }
 }
 
-// Push tokens can rotate (app data cleared, FCM refresh). Re-register on
-// rotation so the backend never keeps pushing to a dead token. Returns the
-// unsubscribe for RootNavigator's effect cleanup.
+export function registerPushToken(devicePushToken?: DeviceToken): Promise<void> {
+  const epoch = getSessionEpoch();
+  if (!currentAccount(epoch)) return Promise.resolve();
+  if (registration?.epoch === epoch) {
+    // Keep the latest actual rotation while one registration is running.
+    if (devicePushToken && deviceKey(devicePushToken) !== registration.lastDeviceKey) registration.pending = devicePushToken;
+    return registration.promise;
+  }
+  const work: Registration = { epoch, pending: devicePushToken ?? null, lastDeviceKey: null, promise: Promise.resolve() };
+  registration = work;
+  // Defer execution until the shared promise is installed, including when
+  // a native token callback is delivered synchronously during the first read.
+  work.promise = Promise.resolve().then(async () => {
+    let first = true;
+    while (currentAccount(epoch) && (first || work.pending)) {
+      first = false;
+      const next = work.pending;
+      work.pending = null;
+      if (next) work.lastDeviceKey = deviceKey(next);
+      await registerOnce(epoch, next ?? undefined);
+    }
+  }).finally(() => { if (registration === work) registration = null; });
+  return work.promise;
+}
+
 export function watchPushTokenRotation(): () => void {
-  // Expo Go removed the push-token native API — calling it throws. Remote push
-  // can't work there anyway, so no-op. Try/catch keeps the never-throw posture.
   if (isRunningInExpoGo()) return () => {};
   try {
-    const subscription = Notifications.addPushTokenListener(() => {
-      void registerPushToken();
+    const epoch = getSessionEpoch();
+    const subscription = Notifications.addPushTokenListener(token => {
+      if (currentAccount(epoch)) void registerPushToken(token);
     });
     return () => subscription.remove();
-  } catch {
-    return () => {};
-  }
+  } catch { return () => {}; }
 }
 
 // Tapping an order push opens that order (or the Orders list when the push
 // carries no single order id, e.g. one leg of a multi-store trip). A tap that
 // cold-starts the app arrives before the NavigationContainer is ready, so it
 // is held and replayed from RootNavigator's onReady.
-let pendingTap: Notifications.NotificationResponse | null = null;
-
-function openFromTap(response: Notifications.NotificationResponse | null): void {
-  const data = response?.notification.request.content.data as { type?: unknown; orderId?: unknown } | undefined;
-  if (!data) return;
-  if (!navigationRef.isReady()) {
-    pendingTap = response;
-    return;
-  }
-  pendingTap = null;
-  // An admin fleet broadcast (adminBroadcast.ts) carries no order/trip and has
-  // no inbox to open — the OS already brought the app forward, so stop here
-  // rather than falling through to an order route.
-  if (isAdminBroadcast(data)) return;
-  if (typeof data.orderId === 'string') navigationRef.navigate('OrderDetail', { orderId: data.orderId });
-  else if (data.type === 'new_order') navigationRef.navigate('Orders');
-}
-
-export function flushPendingNotificationTap(): void {
-  if (pendingTap) openFromTap(pendingTap);
-}
+const tapRouter = createNotificationTapRouter({
+  canNavigate: () => {
+    const auth = useAuthStore.getState();
+    return navigationRef.isReady() && !!auth.accessToken && auth.isApproved && auth.hasStore && !auth.partnerSuspended;
+  },
+  openOrder: orderId => navigationRef.navigate('OrderDetail', { orderId }),
+  openQueue: () => navigationRef.navigate('Orders'),
+  clearLastResponse: () => { void Notifications.clearLastNotificationResponseAsync().catch(() => {}); },
+});
+onSessionReset(tapRouter.reset);
+export const flushPendingNotificationTap = tapRouter.flush;
 
 export function watchNotificationTaps(): () => void {
   // Same Expo-Go guard as watchPushTokenRotation — the notification-response
   // APIs are among the ones Expo Go strips out. Never throws.
   if (isRunningInExpoGo()) return () => {};
   try {
-    void Notifications.getLastNotificationResponseAsync().then(openFromTap).catch(() => {});
-    const subscription = Notifications.addNotificationResponseReceivedListener(openFromTap);
+    const epoch = getSessionEpoch();
+    const open = (response: Notifications.NotificationResponse | null) => { if (isCurrentSession(epoch)) tapRouter.open(response); };
+    void Notifications.getLastNotificationResponseAsync().then(open).catch(() => {});
+    const subscription = Notifications.addNotificationResponseReceivedListener(open);
     return () => subscription.remove();
   } catch {
     return () => {};

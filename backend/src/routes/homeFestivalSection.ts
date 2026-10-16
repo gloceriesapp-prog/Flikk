@@ -14,7 +14,7 @@ import { supabase } from '../db/supabase.js';
 export const homeFestivalSectionRouter = Router();
 
 const PRODUCT_WITH_VARIANTS_SELECT =
-  '*, stores!inner(name, is_active, fssai_number, address_line, city, district, photo_url), product_variants(*)';
+  '*, stores!inner(name, is_active, open_time, close_time, availability_override, availability_override_until, fssai_number, address_line, city, district, photo_url), product_variants(*)';
 
 homeFestivalSectionRouter.get('/', async (_req, res, next) => {
   try {
@@ -35,7 +35,6 @@ homeFestivalSectionRouter.get('/', async (_req, res, next) => {
       .select(`sort_order, products!inner(${PRODUCT_WITH_VARIANTS_SELECT})`)
       .eq('festival_section_id', section.id)
       .eq('products.approval_status', 'approved')
-      .eq('products.stores.is_active', true)
       .order('sort_order');
     if (linksError) throw linksError;
 

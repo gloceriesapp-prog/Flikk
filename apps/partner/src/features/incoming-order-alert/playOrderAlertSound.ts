@@ -1,5 +1,5 @@
 // The actual "sound on the phone" for a new order — plays the real
-// orders-received.mp3 via expo-audio, configured with `playsInSilentMode`
+// patner-alert.wav via expo-audio, configured with `playsInSilentMode`
 // so it's audible even with the phone's silent/mute switch on. That's the
 // same behavior a phone-call ringtone or an alarm gets, deliberately: a
 // shop owner with the phone in their pocket on silent still needs to know
@@ -51,7 +51,7 @@ try {
   VolumeManager = null;
 }
 
-const SOUND_URL = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/voice-sound/orders-received.mp3';
+const SOUND_URL = 'https://images.gloceries.com/appsui/patner-alert.wav';
 
 let audioModeConfigured = false;
 

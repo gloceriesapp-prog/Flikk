@@ -1,25 +1,8 @@
-// Single source of truth for the product catalog — lifted out of
-// screens/catalog/CatalogScreen.tsx's local useState so ProductDetailScreen
-// (a real pushed screen now, not a bottom sheet — see that screen's own
-// note on why) can read/act on the same products without passing whole
-// product objects through navigation params. Same shape and reasoning as
-// store/useOrdersStore.ts.
-//
-// Backed by real GET/POST /partner/products now (backend/src/routes/
-// partner.ts). loadProducts() is called once from CatalogScreen's mount
-// effect, same pattern as useStoreProfileStore's loadProfile(). A product
-// this store owner adds always comes back approval_status: 'pending' —
-// see partner.ts's own note — CatalogScreen/ProductRow show a badge for
-// anything that isn't 'approved' yet.
-//
-// updateProduct/deleteProduct are backed by real PATCH/DELETE
-// /partner/products/:id (backend/src/routes/partner.ts). Stock is counted
-// per size (product_variants.stock_quantity): add/edit send each size's
-// count, the backend saves packs in place (keeping counts it wasn't sent)
-// and turns on stock tracking, which checkout requires. PATCH is partial —
-// only name/stock/sizes are sent, so admin-set fields are never touched.
+// Bounded, account-isolated inventory pages. Refreshes coalesce and retain
+// the last good page on failure; cursor reads only run on explicit load-more.
 
 import { create } from 'zustand';
+import { getSessionEpoch, isCurrentSession, onSessionReset } from './sessionScope';
 import { apiRequest } from '../api/client';
 import { deleteProductApi, updateProductApi } from '../api/catalog';
 import {
@@ -40,7 +23,7 @@ interface VariantRow {
   stock_quantity: number | null;
 }
 
-interface ProductRow {
+export interface ProductRow {
   id: string;
   name: string;
   category: string;
@@ -49,6 +32,7 @@ interface ProductRow {
   stock_status: 'in_stock' | 'low_stock' | 'out_of_stock';
   image_url: string | null;
   approval_status: 'pending' | 'approved' | 'rejected';
+  pending_image_url?: string | null;
   pending_changes?: Record<string, unknown> | null;
   stock_quantity: number | null;
   stock_tracking_enabled: boolean;
@@ -95,7 +79,7 @@ function fromRow(row: ProductRow): PartnerProduct {
     imageUrl: row.image_url,
     stockQuantity: row.stock_tracking_enabled ? row.stock_quantity : null,
     approvalStatus: row.approval_status,
-    hasPendingChanges: row.pending_changes != null,
+    hasPendingChanges: row.pending_changes != null || row.pending_image_url != null,
     variants,
   };
 }
@@ -107,62 +91,103 @@ export interface AddProductInput {
   variants: ProductVariant[];
 }
 
+type StockFilter = 'all' | 'in_stock' | 'out_of_stock';
 interface CatalogState {
   products: PartnerProduct[];
   loaded: boolean;
-  loadProducts: () => Promise<void>;
-  // Throws (with a real message) on failure — ProductDetailScreen surfaces
-  // it, same convention as addProduct below.
-  // Resolves to the saved product (null if it was not in the list) so the
-  // caller can tell the owner when a name/price edit went to review.
-  updateProduct: (productId: string, name: string, variants: ProductVariant[]) => Promise<PartnerProduct | null>;
-  // Throws PRODUCT_HAS_ORDERS (409, backend's own note) if this product has
-  // ever been ordered — order_items.product_id can't be orphaned, so a
-  // product with real order history can only be marked out of stock, not
-  // deleted. ProductDetailScreen surfaces that message as-is.
+  loading: boolean;
+  error: string | null;
+  lastUpdatedAt: number | null;
+  nextCursor: string | null;
+  search: string;
+  stock: StockFilter;
+  loadProducts: (force?: boolean) => Promise<void>;
+  loadMore: () => Promise<void>;
+  setFilters: (search: string, stock: StockFilter) => Promise<void>;
+  updateProduct: (productId: string, name: string, variants: ProductVariant[], edits?: { category: string; imageUrl: string | null }) => Promise<PartnerProduct | null>;
   deleteProduct: (productId: string) => Promise<void>;
-  // Throws (with a real message) on failure — the add-product screen
-  // surfaces it, same convention as this app's other write calls.
-  // Returns false without calling the backend when `name` is already
-  // listed at this store.
   addProduct: (input: AddProductInput) => Promise<boolean>;
 }
+const empty = { products: [] as PartnerProduct[], loaded: false, loading: false, error: null as string | null, lastUpdatedAt: null as number | null, nextCursor: null as string | null, search: '', stock: 'all' as StockFilter };
+let sequence = 0;
+let inFlight: { key: string; request: number; promise: Promise<void> } | null = null;
+let failures = 0;
+let retryAt = 0;
 
-export const useCatalogStore = create<CatalogState>((set, get) => ({
-  products: [],
-  loaded: false,
-
-  loadProducts: async () => {
-    try {
-      const rows = await apiRequest<ProductRow[]>('/partner/products');
-      set({ products: rows.map(fromRow), loaded: true });
-    } catch {
-      // Best-effort — a failed load just leaves the previous list on
-      // screen, same tolerance as useStoreProfileStore's loadProfile.
-    }
+export const useCatalogStore = create<CatalogState>((set, get) => {
+  const read = (append: boolean, force = false): Promise<void> => {
+    const state = get();
+    if (append && !state.nextCursor) return Promise.resolve();
+    const epoch = getSessionEpoch();
+    const key = `${epoch}:${state.search}:${state.stock}:${append ? state.nextCursor : 'first'}`;
+    if (inFlight?.key === key) return inFlight.promise;
+    if (!force && !append && (Date.now() < retryAt || (state.lastUpdatedAt && Date.now() - state.lastUpdatedAt < 60_000))) return Promise.resolve();
+    // Never overlap page reads and refreshes for the same selection.
+    if (state.loading && inFlight) return inFlight.promise;
+    const request = ++sequence;
+    set({ loading: true, error: null });
+    const params = new URLSearchParams({ page: '1', limit: '30', q: state.search, stock: state.stock });
+    if (append && state.nextCursor) params.set('cursor', state.nextCursor);
+    const promise = (async () => {
+      try {
+        const page = await apiRequest<{ items: ProductRow[]; nextCursor: string | null }>(`/partner/products?${params}`);
+        if (!isCurrentSession(epoch) || request !== sequence) return;
+        failures = 0; retryAt = 0;
+        const items = page.items.map(fromRow);
+        set((current) => ({ products: append ? [...current.products, ...items.filter((item) => !current.products.some((p) => p.id === item.id))] : items, loaded: true, nextCursor: page.nextCursor, lastUpdatedAt: Date.now(), error: null }));
+      } catch {
+        if (!isCurrentSession(epoch) || request !== sequence) return;
+        failures += 1; retryAt = Date.now() + Math.min(300_000, 15_000 * 2 ** Math.min(failures, 5));
+        set({ error: 'Could not refresh inventory. Your last loaded items are still shown.' });
+      } finally {
+        if (isCurrentSession(epoch) && request === sequence) set({ loading: false });
+        if (inFlight?.request === request) inFlight = null;
+      }
+    })();
+    inFlight = { key, request, promise };
+    return promise;
+  };
+  return {
+  ...empty,
+  loadProducts: (force = false) => read(false, force),
+  loadMore: () => read(true),
+  setFilters: async (search, stock) => {
+    if (get().search === search.trim() && get().stock === stock) return;
+    sequence += 1; inFlight = null; retryAt = 0;
+    set({ search: search.trim(), stock, products: [], loaded: false, loading: false, lastUpdatedAt: null, nextCursor: null, error: null });
+    await read(false, true);
   },
 
-  updateProduct: async (productId, name, variants) => {
+  updateProduct: async (productId, name, variants, edits) => {
+    const epoch = getSessionEpoch();
     const existing = get().products.find((p) => p.id === productId);
     if (!existing) return null;
 
     const { isInStock } = summarizeVariants(variants);
     const row = await updateProductApi(productId, {
+      ...edits,
       name: name.trim(),
       stockStatus: isInStock ? 'in_stock' : 'out_of_stock',
       variants: variants.map(toBackendVariant),
     });
+    if (!isCurrentSession(epoch)) throw new Error('Account changed. Please reopen inventory.');
+    sequence += 1; inFlight = null;
+    set({ loading: false });
     const updated = fromRow(row as ProductRow);
     set((state) => ({ products: state.products.map((p) => (p.id === productId ? updated : p)) }));
     return updated;
   },
 
   deleteProduct: async (productId) => {
+    const epoch = getSessionEpoch();
     await deleteProductApi(productId);
+    if (!isCurrentSession(epoch)) return;
+    sequence += 1; inFlight = null; set({ loading: false });
     set((state) => ({ products: state.products.filter((p) => p.id !== productId) }));
   },
 
   addProduct: async ({ name, category, imageUrl, variants }) => {
+    const epoch = getSessionEpoch();
     if (isDuplicateProductName(get().products, name)) return false;
 
     const body = {
@@ -173,7 +198,12 @@ export const useCatalogStore = create<CatalogState>((set, get) => ({
       variants: variants.map(toBackendVariant),
     };
     const row = await apiRequest<ProductRow>('/partner/products', { method: 'POST', body });
-    set((state) => ({ products: [...state.products, fromRow(row)] }));
+    if (!isCurrentSession(epoch)) throw new Error('Account changed. Please reopen inventory.');
+    sequence += 1; inFlight = null; set({ loading: false });
+    set((state) => ({ products: [fromRow(row), ...state.products] }));
     return true;
   },
-}));
+};
+});
+
+onSessionReset(() => { sequence += 1; inFlight = null; failures = 0; retryAt = 0; useCatalogStore.setState({ ...empty, products: [] }); });

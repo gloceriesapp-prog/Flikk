@@ -5,6 +5,7 @@ import { AppError } from '../lib/errors.js';
 import { checkoutReceipt, createProviderOrder as createRazorpayOrder, findProviderOrder, getProviderOrder, getOrderPayments, toPaise, type RazorpayOrder } from './razorpayClient.js';
 import { settleCheckoutPayment } from './settleCheckoutPayment.js';
 import type { OrderIdBody } from './types.js';
+import { isValidUpiIntentUrl } from './upiIntentUrl.js';
 
 export function paymentTarget(input: OrderIdBody) {
   if (Boolean(input.orderId) === Boolean(input.tripId)) throw new AppError(400, 'INVALID_PAYMENT_REQUEST', 'Choose exactly one order or trip.');
@@ -18,6 +19,8 @@ export interface PaymentSession {
   provider_order_id: string | null;
   payment_provider?: string;
   reconcile_state?: string;
+  upi_resume_allowed?: boolean;
+  upi_resume_verified_at?: string;
 }
 export async function claimPayment(target: Target, customerId: string, mode: 'order') {
   const { data, error } = await supabase.rpc('claim_checkout_payment', {
@@ -74,8 +77,11 @@ export async function ensureProviderOrder(target: Target, customerId: string): P
   const order = checkProviderOrder(target, await createRazorpayOrder({ receipt: checkoutReceipt(target.id), amountPaise: toPaise(claim.total), notes }), claim.total);
   return attachProviderOrder(target, order, claim.total);
 }
-export async function reconcileProvider(target: Target, providerOrderId: string, total: number, openIsPending = true) {
-  const { data: session, error } = await supabase.from('checkout_payment_sessions').select('provider_order_id,payment_provider').eq('kind', target.kind).eq('target_id', target.id).maybeSingle();
+export interface ReconciledPayment { state: 'paid' | 'cancelled' | 'pending' | 'unpaid'; canResumeUpiIntent: boolean; }
+// The same provider snapshot determines status and whether reopening the SAME
+// created UPI instruction is safe. This adds no second provider read per lease.
+export async function reconcileProviderSnapshot(target: Target, providerOrderId: string, total: number, openIsPending = true): Promise<ReconciledPayment> {
+  const { data: session, error } = await supabase.from('checkout_payment_sessions').select('provider_order_id,payment_provider,upi_state,upi_payment_id,upi_link').eq('kind', target.kind).eq('target_id', target.id).maybeSingle();
   if (error) throw error;
   if (session?.payment_provider !== 'razorpay' || session.provider_order_id !== providerOrderId)
     throw new AppError(409, 'PAYMENT_REVIEW_REQUIRED', 'Payment could not be verified. Contact support.');
@@ -93,10 +99,19 @@ export async function reconcileProvider(target: Target, providerOrderId: string,
     // Settlement records duplicate captures as durable incidents for review.
     accepted = await settleCheckoutPayment(target.target, payment.id, payment.amount, 'INR', providerOrderId) || accepted;
   }
-  if (captured.length) return accepted ? 'paid' : 'cancelled';
+  if (captured.length) return { state: accepted ? 'paid' : 'cancelled', canResumeUpiIntent: false };
   // Authorized funds can still capture: never permit COD/cancellation to
   // race a known authorization. A merely created attempt may be abandoned.
-  return payments.some(payment => payment.status === 'authorized' || (openIsPending && payment.status === 'created')) ? 'pending' : 'unpaid';
+  const pending = payments.some(payment => payment.status === 'authorized' || (openIsPending && payment.status === 'created'));
+  const unresolved = payments.filter(payment => payment.status !== 'failed');
+  const activePayment = unresolved.length === 1 ? unresolved[0] : undefined;
+  const canResumeUpiIntent = pending && session.upi_state === 'ready'
+    && activePayment?.status === 'created' && activePayment.captured === false && activePayment.id === session.upi_payment_id
+    && isValidUpiIntentUrl(session.upi_link, toPaise(total));
+  return { state: pending ? 'pending' : 'unpaid', canResumeUpiIntent };
+}
+export async function reconcileProvider(target: Target, providerOrderId: string, total: number, openIsPending = true) {
+  return (await reconcileProviderSnapshot(target, providerOrderId, total, openIsPending)).state;
 }
 export async function requirePaymentRetrySafe(target: Target, providerOrderId: string, total: number) {
   const state = await reconcileProvider(target, providerOrderId, total);
@@ -110,6 +125,15 @@ export async function paysOnDelivery(target: Target, record: { payment_method?: 
   if (error) throw error;
   return (data?.length ?? 0) > 0;
 }
+export function canResumeCachedUpiIntent(session: { upi_state?: string; upi_payment_id?: string; upi_link?: string;
+  upi_resume_allowed?: boolean; upi_resume_verified_at?: string }, total: number, now = Date.now()) {
+  const checkedAt = Date.parse(session.upi_resume_verified_at ?? '');
+  return session.upi_resume_allowed === true && session.upi_state === 'ready'
+    && /^pay_[A-Za-z0-9]+$/.test(session.upi_payment_id ?? '')
+    && Number.isFinite(checkedAt) && checkedAt <= now && now - checkedAt <= 10_000
+    && isValidUpiIntentUrl(session.upi_link, toPaise(total));
+}
+
 export async function getPaymentRecovery(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
     const target = paymentTarget(req.body);
@@ -119,15 +143,23 @@ export async function getPaymentRecovery(req: AuthedRequest, res: Response, next
     if (sessionError) throw sessionError;
     let state = record.checkout_payment_rejected || record.status === 'cancelled' || record.status === 'failed' ? 'cancelled'
       : record.provider_payment_id || await paysOnDelivery(target, record) ? 'paid' : 'unpaid';
+    let canResumeUpiIntent = false;
     if (!record.provider_payment_id && state !== 'paid') {
       if (session) {
         const { data: lease, error: leaseError } = await supabase.rpc('claim_payment_reconciliation', { p_kind: target.kind, p_target_id: target.id });
         if (leaseError) throw leaseError;
         if (lease.claimed) {
           const providerId = session.provider_order_id ?? (await recoverProviderOrder(target, record.total))?.id;
-          state = providerId ? await reconcileProvider(target, providerId, record.total) : 'reconciling';
-          await saveSession(target, { reconcile_state: state });
-        } else state = lease.state;
+          if (providerId) {
+            const snapshot = await reconcileProviderSnapshot(target, providerId, record.total);
+            state = snapshot.state; canResumeUpiIntent = snapshot.canResumeUpiIntent;
+          } else state = 'reconciling';
+          await saveSession(target, { reconcile_state: state, upi_resume_allowed: canResumeUpiIntent,
+            upi_resume_verified_at: new Date().toISOString() });
+        } else {
+          state = lease.state;
+          canResumeUpiIntent = canResumeCachedUpiIntent(session, record.total);
+        }
       } else {
         // A session is required to identify the provider; legacy rows require support.
         const provider = await recoverProviderOrder(target, record.total);
@@ -144,7 +176,9 @@ export async function getPaymentRecovery(req: AuthedRequest, res: Response, next
     if (current.checkout_payment_rejected || current.status === 'cancelled' || current.status === 'failed') state = 'cancelled';
     else if (current.provider_payment_id || await paysOnDelivery(target, current)) state = 'paid';
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ target: target.target, state, record: current });
+    canResumeUpiIntent = canResumeUpiIntent && state === 'pending' && current.status === 'placed'
+      && Number.isFinite(Date.parse(current.reservation_expires_at)) && Date.parse(current.reservation_expires_at) > Date.now();
+    res.json({ target: target.target, state, record: current, canResumeUpiIntent });
   } catch (error) { next(error); }
 }
 export async function getPendingPayments(req: AuthedRequest, res: Response, next: NextFunction) {

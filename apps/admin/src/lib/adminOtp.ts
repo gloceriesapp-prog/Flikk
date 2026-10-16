@@ -10,6 +10,7 @@ import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import nodemailer from 'nodemailer';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { adminEmail } from '@/lib/adminIdentity';
+export { maskEmail } from './emailMask';
 
 export const OTP_TTL_MINUTES = 10;
 export const OTP_MAX_ATTEMPTS = 5;
@@ -36,13 +37,6 @@ function mailer() {
 // Always ADMIN_OTP_EMAIL — the one inbox the sign-in code goes to.
 export function otpRecipient(): string {
   return adminEmail();
-}
-
-// Masked for the UI ("ni•••••09@gmail.com") — enough to know where to look.
-export function maskEmail(email: string): string {
-  const [name, domain] = email.split('@');
-  if (!domain) return '•••';
-  return `${name.slice(0, 2)}${'•'.repeat(Math.max(3, name.length - 4))}${name.slice(-2)}@${domain}`;
 }
 
 // Replaces any earlier open code for this user, then emails the new one.

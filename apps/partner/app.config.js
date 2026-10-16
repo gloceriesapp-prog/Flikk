@@ -1,6 +1,8 @@
 /* global __dirname */
 const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
 const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
+const { resolveNativeMapKeys } = require('../../packages/shared/config/google-maps.cjs');
+const { androidGoogleMapsApiKey, iosGoogleMapsApiKey } = resolveNativeMapKeys(process.env);
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 // eas-cli evaluates this file on the developer's machine *before* it pulls the
@@ -17,7 +19,7 @@ if (developmentApi || process.env.EAS_BUILD === 'true') {
 // an env var, never hardcoded into a file that gets committed. Expo CLI
 // auto-loads .env/.env.local into process.env before evaluating this file
 // (no dotenv dependency needed) — see .env.example for the var name. iOS
-// needs no key at all: react-native-maps uses Apple Maps by default there.
+// uses Apple Maps by default; an optional iOS SDK key enables Google Maps.
 
 // EAS project @nishal777/partner. Not a secret: it ties builds, OTA updates
 // and Expo push tokens to this project, so it is fixed here rather than
@@ -25,7 +27,7 @@ if (developmentApi || process.env.EAS_BUILD === 'true') {
 const easProjectId = 'f27829aa-b709-4d41-9186-8cde149ef0ac';
 
 // Sentry's build plugin uploads source maps; only wired when its org/project
-// are configured, same as apps/customer.
+// are configured, same as the other apps.
 const sentryPlugin = process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
   ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]]
   : [];
@@ -44,7 +46,7 @@ module.exports = {
     name: 'Gloceries Partner',
     slug: 'partner',
     owner: 'nishal777',
-    version: '1.0.0',
+    version: '1.0.1',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change.
@@ -56,6 +58,7 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.gloceries.partner',
+      ...(iosGoogleMapsApiKey ? { config: { googleMapsApiKey: iosGoogleMapsApiKey } } : {}),
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSLocationWhenInUseUsageDescription: "Gloceries uses your location to fill in your store's city automatically.",
@@ -81,7 +84,7 @@ module.exports = {
       blockedPermissions: ['com.google.android.gms.permission.AD_ID', 'android.permission.RECORD_AUDIO'],
       config: {
         googleMaps: {
-          apiKey: process.env.GOOGLE_MAPS_API_KEY,
+          apiKey: androidGoogleMapsApiKey,
         },
       },
     },
@@ -90,6 +93,7 @@ module.exports = {
     },
     plugins: [
       ...sentryPlugin,
+      'expo-asset',
       'expo-font',
       'expo-splash-screen',
       'expo-location',
@@ -109,6 +113,7 @@ module.exports = {
       ],
     ],
     extra: {
+      hasIosGoogleMaps: Boolean(iosGoogleMapsApiKey),
       eas: {
         projectId: easProjectId,
       },

@@ -81,7 +81,7 @@ function LoginForm() {
               We emailed a 6-digit sign-in code to <span className="font-medium text-ink">{sentTo}</span>. It expires in 10 minutes.
             </>
           ) : (
-            'Sending your sign-in code…'
+            busy ? 'Sending your sign-in code…' : 'Request a sign-in code to continue.'
           )}
         </p>
 
@@ -100,7 +100,7 @@ function LoginForm() {
             placeholder="123456"
             className="rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-center text-lg tracking-[0.5em] text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
           />
-          <button type="submit" disabled={busy || code.length !== 6} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40">
+          <button type="submit" disabled={busy || !sentTo || code.length !== 6} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40">
             {busy ? 'Please wait…' : 'Verify'}
           </button>
         </form>

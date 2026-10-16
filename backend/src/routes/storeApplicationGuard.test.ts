@@ -20,7 +20,7 @@ const handler = storeOnboardingRouter.stack.find(l => l.route?.path === '/store-
 async function submit(extra: Record<string, unknown> = {}) {
   const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
   const next = vi.fn();
-  await handler({ user: { id: 'owner-1' }, body: { storeName: 'Shop', category: 'Kirana & Grocery', district: 'Udupi', panNumber: 'ABCDE1234F', ...extra } } as unknown as Request, res, next);
+  await handler({ user: { id: 'owner-1' }, body: { lat: 13.34, lng: 74.75, storeName: 'Shop', category: 'Kirana & Grocery', district: 'Udupi', panNumber: 'ABCDE1234F', ...extra } } as unknown as Request, res, next);
   return { res, err: next.mock.calls[0]?.[0] as { status?: number; code?: string } | undefined };
 }
 

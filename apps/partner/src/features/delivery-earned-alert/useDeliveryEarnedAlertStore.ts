@@ -4,6 +4,7 @@
 // real domain data, just "show this banner right now."
 
 import { create } from 'zustand';
+import { onSessionReset } from '../../store/sessionScope';
 
 export interface ActiveEarning {
   orderId: string;
@@ -24,3 +25,5 @@ export const useDeliveryEarnedAlertStore = create<DeliveryEarnedAlertState>((set
   showEarning: (earning) => set({ activeEarning: earning }),
   dismissEarning: () => set({ activeEarning: null }),
 }));
+
+onSessionReset(() => useDeliveryEarnedAlertStore.setState({ activeEarning: null }));

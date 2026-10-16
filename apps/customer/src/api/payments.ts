@@ -9,6 +9,7 @@ import type { PaymentMethod } from '../payments/paymentMethod';
 // subtotal, rupees). The server enforces both; this only shapes the UI.
 export interface PaymentAvailability {
   online: boolean;
+  upi_intent?: boolean;
   cod: boolean;
   min_order_value: number;
 }
@@ -55,6 +56,26 @@ export function createPaymentOrder(target: PaymentTarget): Promise<RazorpayOrder
   return apiRequest('/payments/create-order', { method: 'POST', body: { ...target, provider: 'razorpay' } });
 }
 
+export interface RazorpayUpiIntent {
+  provider: 'razorpay';
+  providerOrderId: string;
+  providerPaymentId: string;
+  intentUrl: string;
+  amountPaise: number;
+  currency: 'INR';
+  expiresAt: string;
+}
+
+// Only the server may create the provider payment and its signed intent data.
+export function createUpiIntentSession(target: PaymentTarget): Promise<RazorpayUpiIntent> {
+  return apiRequest('/payments/upi-intent', { method: 'POST', body: target });
+}
+
+export interface PaymentContact { email: string | null; required: true }
+export function fetchPaymentContact(): Promise<PaymentContact> {
+  return apiRequest('/payments/contact');
+}
+
 // The server verifies a complete SDK signature (when provided), then fetches
 // captured payment, amount, currency and ownership before committing success.
 export function verifyPayment(target: PaymentTarget, result?: RazorpayPaymentResult): Promise<{ ok: boolean }> {
@@ -63,6 +84,7 @@ export function verifyPayment(target: PaymentTarget, result?: RazorpayPaymentRes
 
 export interface PaymentRecovery {
   target: PaymentTarget;
+  canResumeUpiIntent?: boolean;
   state: 'paid' | 'unpaid' | 'pending' | 'reconciling' | 'expired' | 'cancelled';
   record: { id: string; total: number; status: string; provider_payment_id: string | null };
 }

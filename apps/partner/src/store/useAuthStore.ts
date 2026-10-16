@@ -29,11 +29,13 @@
 // (genuinely dead, nothing left to silently recover).
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import { getSessionEpoch, isCurrentSession, resetSessionScope } from './sessionScope';
 
 const TOKEN_KEY = 'gloceries_partner_access_token';
 const REFRESH_TOKEN_KEY = 'gloceries_partner_refresh_token';
 
 interface AuthState {
+  sessionEpoch: number;
   accessToken: string | null;
   refreshToken: string | null;
   isApproved: boolean;
@@ -61,7 +63,7 @@ interface AuthState {
   // silent token refresh — updates both the store and SecureStore without
   // touching isApproved/hasStore/applicationSubmitted, which have nothing
   // to do with a token rotation.
-  setTokens: (token: string, refreshToken: string) => Promise<void>;
+  setTokens: (token: string, refreshToken: string, expectedEpoch?: number) => Promise<void>;
   setApproved: (isApproved: boolean) => void;
   setHasStore: (hasStore: boolean) => void;
   setApplicationSubmitted: (applicationSubmitted: boolean) => void;
@@ -70,7 +72,25 @@ interface AuthState {
   clear: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+// Serialize SecureStore writes so a delayed old save cannot restore a token
+// after logout. State changes happen synchronously before storage is awaited.
+let persistence: Promise<void> = Promise.resolve();
+function persistSession(token: string | null, refreshToken: string | null): Promise<void> {
+  const operation = persistence.catch(() => {}).then(async () => {
+    if (token && refreshToken) {
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
+      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+    } else {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+    }
+  });
+  persistence = operation;
+  return operation;
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  sessionEpoch: getSessionEpoch(),
   accessToken: null,
   refreshToken: null,
   isApproved: false,
@@ -83,6 +103,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   isHydrated: false,
 
   hydrate: async () => {
+    // Navigator remounts also happen at sign-in/account changes. Hydration
+    // is a cold-start operation; persisted tokens may still be catching up
+    // with the authoritative in-memory session at those later mounts.
+    if (get().isHydrated) return;
+    const epoch = getSessionEpoch();
     const [token, refreshToken] = await Promise.all([
       SecureStore.getItemAsync(TOKEN_KEY),
       SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
@@ -91,17 +116,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     // returning session re-checks both via checkApprovalStatus() rather
     // than trusting a stale local flag that could be wrong by the time
     // the app is reopened (e.g. approved since the last session).
-    set({ accessToken: token, refreshToken, isHydrated: true });
+    if (isCurrentSession(epoch) && !get().isHydrated) {
+      set({ accessToken: token, refreshToken, isHydrated: true });
+    }
   },
 
   setSession: async (token, refreshToken, isApproved, hasStore, applicationSubmitted) => {
-    await Promise.all([SecureStore.setItemAsync(TOKEN_KEY, token), SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken)]);
-    set({ accessToken: token, refreshToken, isApproved, hasStore, applicationSubmitted });
+    const sessionEpoch = resetSessionScope();
+    set({ sessionEpoch, isHydrated: true, accessToken: token, refreshToken, isApproved, hasStore, applicationSubmitted,
+      isRejected: false, rejectionReason: null, partnerSuspended: false, partnerSuspendedReason: null });
+    await persistSession(token, refreshToken);
   },
 
-  setTokens: async (token, refreshToken) => {
-    await Promise.all([SecureStore.setItemAsync(TOKEN_KEY, token), SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken)]);
+  setTokens: async (token, refreshToken, expectedEpoch = getSessionEpoch()) => {
+    if (!isCurrentSession(expectedEpoch)) return;
     set({ accessToken: token, refreshToken });
+    await persistSession(token, refreshToken);
   },
 
   setApproved: (isApproved) => set({ isApproved }),
@@ -111,8 +141,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setPartnerSuspension: (partnerSuspended, partnerSuspendedReason) => set({ partnerSuspended, partnerSuspendedReason }),
 
   clear: async () => {
-    await Promise.all([SecureStore.deleteItemAsync(TOKEN_KEY), SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY)]);
+    const sessionEpoch = resetSessionScope();
     set({
+      sessionEpoch,
+      isHydrated: true,
       accessToken: null,
       refreshToken: null,
       isApproved: false,
@@ -123,5 +155,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       partnerSuspended: false,
       partnerSuspendedReason: null,
     });
+    await persistSession(null, null);
   },
 }));

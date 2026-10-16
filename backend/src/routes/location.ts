@@ -62,12 +62,8 @@ locationRouter.get('/search', async (req, res, next) => {
   }
 });
 
-// Coordinates -> genuine address, real village/street naming (Google's
-// results, not the coarse on-device fallback). Degrades to
-// { addressLabel: null } — never a 500 — whenever the key isn't
-// configured or Google's own call fails, same "never block the caller"
-// convention /search above already uses; apps/customer's geocoding.ts
-// falls back to the on-device geocoder when it sees a null addressLabel.
+// Only successful provider responses are cached. A missing key, denial or
+// timeout must remain retryable immediately rather than caching a null label.
 locationRouter.get('/reverse-geocode', async (req, res, next) => {
   try {
     const lat = Number(req.query.lat);
@@ -75,6 +71,7 @@ locationRouter.get('/reverse-geocode', async (req, res, next) => {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return res.json({ addressLabel: null });
 
     const result = await reverseGeocode(lat, lng);
+    if (result.status === 'unavailable') throw new AppError(503, 'LOCATION_PROVIDER_UNAVAILABLE', 'Address lookup is temporarily unavailable. Adjust the pin or try again.');
     res.json(result);
   } catch (err) {
     next(err);
@@ -93,8 +90,8 @@ interface GoogleNearbyResponse {
   results?: GooglePlaceResult[];
 }
 
-// Real nearby landmarks (a mall/temple/school within ~200m) — same key as
-// /reverse-geocode above (server-side, IP-restricted), but this hits
+// Real nearby landmarks — GOOGLE_PLACES_API_KEY (or the existing server
+// geocoding key for compatibility), never an Android SDK key. This hits
 // Places Nearby Search, a different Google API than Geocoding. If this
 // starts returning REQUEST_DENIED, the fix is enabling "Places API" for
 // this key in Google Cloud Console, not touching this code — Geocoding
@@ -108,7 +105,7 @@ interface GoogleNearbyResponse {
 // address — this is a suggestion layer on top, not a requirement.
 locationRouter.get('/nearby', async (req, res, next) => {
   try {
-    if (!env.googleGeocodingApiKey) return res.json({ places: [] });
+    if (!env.googlePlacesApiKey) return res.json({ places: [] });
 
     const lat = Number(req.query.lat);
     const lng = Number(req.query.lng);
@@ -117,7 +114,7 @@ locationRouter.get('/nearby', async (req, res, next) => {
     const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json');
     url.searchParams.set('location', `${lat},${lng}`);
     url.searchParams.set('rankby', 'distance');
-    url.searchParams.set('key', env.googleGeocodingApiKey);
+    url.searchParams.set('key', env.googlePlacesApiKey);
 
     const googleRes = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!googleRes.ok) return res.json({ places: [] });

@@ -20,9 +20,8 @@
 import { createAuthApi, type AccountStatus, type VerifyOtpResponse as SharedVerifyOtpResponse } from '@gloceries/shared';
 import { ApiError, apiRequest } from './client';
 import { API_BASE_URL } from './baseUrl';
+import { normalizeStoreHour } from '../utils/storeHours';
 import {
-  devCheckAccountStatus,
-  devSubmitStoreApplication,
   isBackendUnreachable,
 } from './devAuthFallback';
 
@@ -83,6 +82,8 @@ export interface StoreApplication {
   district: string;
   addressLine?: string;
   manualAddress?: string;
+  lat?: number;
+  lng?: number;
   gstNumber?: string;
   photoUrl?: string;
   ownerName?: string;
@@ -109,10 +110,9 @@ export interface StoreApplication {
 // auth contract, stays local to this app.
 export async function submitStoreApplication(application: StoreApplication): Promise<{ ok: true }> {
   try {
-    return await apiRequest('/partner/store-application', { method: 'POST', body: application });
+    return await apiRequest('/partner/store-application', { method: 'POST', body: normalizedApplicationHours(application) });
   } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    return devSubmitStoreApplication(application);
+    throw err;
   }
 }
 
@@ -140,8 +140,7 @@ export async function checkAccountStatus(): Promise<AccountStatus> {
   try {
     return await authApi.checkAccountStatus();
   } catch (err) {
-    if (!isBackendUnreachable(err)) throw err;
-    return devCheckAccountStatus();
+    throw err;
   }
 }
 
@@ -206,7 +205,18 @@ export async function fetchStoreDraft(): Promise<SavedStoreDraft | null> {
 }
 
 export async function saveStoreDraft(patch: StoreDraftPatch): Promise<void> {
-  await apiRequest('/partner/store-draft', { method: 'PATCH', body: patch });
+  await apiRequest('/partner/store-draft', { method: 'PATCH', body: normalizedApplicationHours(patch) });
+}
+
+function normalizedApplicationHours<T extends { openTime?: string; closeTime?: string }>(input: T): T {
+  const result = { ...input };
+  for (const key of ['openTime', 'closeTime'] as const) {
+    if (input[key] === undefined) continue;
+    const value = normalizeStoreHour(input[key]);
+    if (value === null) throw new ApiError(400, 'INVALID_STORE_HOURS', 'Enter valid opening and closing times in Indian Standard Time (IST).');
+    result[key] = value;
+  }
+  return result;
 }
 
 // Registers this device's Expo push token so admin's approve action

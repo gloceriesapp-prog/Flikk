@@ -62,6 +62,10 @@ INSERT INTO order_items(id,order_id,product_id,quantity,unit_price_at_order)
  VALUES('00000000-0000-4000-8000-000000009a11','00000000-0000-4000-8000-000000009103','00000000-0000-4000-8000-000000009a01',2,5);
 INSERT INTO inventory_reservations(order_item_id,order_id,product_id,quantity,state)
  VALUES('00000000-0000-4000-8000-000000009a11','00000000-0000-4000-8000-000000009103','00000000-0000-4000-8000-000000009a01',2,'committed');
+-- Captured/COD fixture orders have already become visible to their shops.
+-- Replica-mode inserts bypass the real visibility/deadline trigger.
+UPDATE orders SET store_visible_at=now(),acceptance_deadline_at=now()+interval '10 minutes'
+ WHERE (payment_method='cod' OR provider_payment_id IS NOT NULL) AND store_visible_at IS NULL;
 SET LOCAL session_replication_role=origin;
 
 -- B1: manual assignment is trip-aware, audited, and refuses unsafe riders.
@@ -224,6 +228,9 @@ DO $$ DECLARE r jsonb; BEGIN
    now()-interval '40 minutes',
    CASE WHEN n='03' THEN NULL WHEN n='04' THEN now()-interval '2 minutes' WHEN n='06' THEN now()-interval '15 minutes' ELSE now()-interval '35 minutes' END
   FROM unnest(ARRAY['01','02','03','04','05','06','71','72']) n;
+ -- The response policy is snapshotted when orders become visible.
+ UPDATE orders SET acceptance_deadline_at=store_visible_at+interval '30 minutes'
+  WHERE id::text LIKE '00000000-0000-4000-8000-0000000094%';
  SET LOCAL session_replication_role=origin;
  -- 01 COD old, 02 paid old, 03 unpaid checkout, 04 COD fresh, 05 packed old,
  -- 06 COD 15 min, trip 7: leg 71 placed+paid old beside packed leg 72.
@@ -240,8 +247,12 @@ DO $$ DECLARE r jsonb; BEGIN
  OR NOT EXISTS(SELECT 1 FROM customer_notifications WHERE order_id='00000000-0000-4000-8000-000000009401' AND event='cancelled') THEN RAISE EXCEPTION 'Refund or notification missing'; END IF;
  IF NOT EXISTS(SELECT 1 FROM trips WHERE id='00000000-0000-4000-8000-000000009007' AND status='cancelled' AND cancelled_by='system'
   AND cancel_origin_order_id='00000000-0000-4000-8000-000000009471' AND cancel_origin_store_id='00000000-0000-4000-8000-000000009f01') THEN RAISE EXCEPTION 'Trip origin not recorded'; END IF;
- -- A shorter window then picks the 15-minute order; a second pass is a no-op.
+ -- Policy edits do not retroactively shorten existing acceptance deadlines.
  UPDATE delivery_settings SET store_response_timeout_minutes=10;
+ r:=cancel_unanswered_store_orders(50);
+ IF (SELECT status FROM orders WHERE id='00000000-0000-4000-8000-000000009406')<>'placed' OR (r->>'cancelled_orders')::int<>0 THEN RAISE EXCEPTION 'Policy edit changed a snapshotted deadline'; END IF;
+ -- Simulate reaching that order's own authoritative deadline.
+ UPDATE orders SET acceptance_deadline_at=now()-interval '1 minute' WHERE id='00000000-0000-4000-8000-000000009406';
  r:=cancel_unanswered_store_orders(50);
  IF (SELECT status FROM orders WHERE id='00000000-0000-4000-8000-000000009406')<>'cancelled' OR (r->>'cancelled_orders')::int<>1 THEN RAISE EXCEPTION 'Setting not applied: %',r; END IF;
  IF (SELECT status FROM orders WHERE id='00000000-0000-4000-8000-000000009403')<>'placed' OR (SELECT status FROM orders WHERE id='00000000-0000-4000-8000-000000009404')<>'placed' THEN RAISE EXCEPTION 'Ineligible order cancelled'; END IF;

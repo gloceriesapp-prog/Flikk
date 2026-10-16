@@ -42,4 +42,35 @@ describe('env', () => {
     const { env } = await loadEnv({ MAPPLS_ACCESS_TOKEN: '' });
     expect(env.mapplsAccessToken).toBeUndefined();
   });
+  it('keeps server Maps APIs independently configurable with legacy fallback', async () => {
+    vi.stubEnv('GOOGLE_GEOCODING_ROUTE_KEY', undefined as unknown as string);
+    const separated = await loadEnv({ GOOGLE_GEOCODING_API_KEY: 'geo-key', GOOGLE_ROUTES_API_KEY: 'route-key', GOOGLE_PLACES_API_KEY: 'places-key' });
+    expect(separated.env.googleGeocodingApiKey).toBe('geo-key');
+    expect(separated.env.googleRoutesApiKey).toBe('route-key');
+    expect(separated.env.googlePlacesApiKey).toBe('places-key');
+    const legacy = await loadEnv({ GOOGLE_GEOCODING_API_KEY: ' geo-key ', GOOGLE_ROUTES_API_KEY: '', GOOGLE_PLACES_API_KEY: '' });
+    expect(legacy.env.googleRoutesApiKey).toBe('geo-key');
+    expect(legacy.env.googlePlacesApiKey).toBe('geo-key');
+  });
+
+  it('supports the separate route key name without consuming the native map key', async () => {
+    const { env } = await loadEnv({ GOOGLE_GEOCODING_API_KEY: 'geo-key', GOOGLE_GEOCODING_MAP_KEY: 'native-key',
+      GOOGLE_GEOCODING_ROUTE_KEY: ' route-key ', GOOGLE_ROUTES_API_KEY: '' });
+    expect(env.googleRoutesApiKey).toBe('route-key');
+    expect(env.googleGeocodingApiKey).toBe('geo-key');
+  });
+  it('does not silently reuse geocoding when a separate route key is explicitly empty', async () => {
+    const { env } = await loadEnv({ GOOGLE_GEOCODING_API_KEY: 'geo-key', GOOGLE_GEOCODING_ROUTE_KEY: '', GOOGLE_ROUTES_API_KEY: '' });
+    expect(env.googleRoutesApiKey).toBeUndefined();
+  });
+  it('keeps routes disabled in the new separated-key setup until a routing key is supplied', async () => {
+    const { env } = await loadEnv({ GOOGLE_GEOCODING_API_KEY: 'geo-key', GOOGLE_GEOCODING_MAP_KEY: 'native-key',
+      GOOGLE_GEOCODING_ROUTE_KEY: undefined, GOOGLE_ROUTES_API_KEY: '' });
+    expect(env.googleRoutesApiKey).toBeUndefined();
+  });
+  it('rejects conflicting routing aliases without exposing either value', async () => {
+    await expect(loadEnv({ GOOGLE_GEOCODING_ROUTE_KEY: 'new-route-key', GOOGLE_ROUTES_API_KEY: 'old-route-key' }))
+      .rejects.toThrow('GOOGLE_GEOCODING_ROUTE_KEY and GOOGLE_ROUTES_API_KEY disagree');
+  });
+
 });

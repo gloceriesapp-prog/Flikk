@@ -81,7 +81,7 @@ export const OrderCard = memo(function OrderCard({ order, onAcknowledge, onMarkP
     } else if (elapsedMinutes <= maxAcceptMinutes) {
       placedTimeDisplay = `${elapsedMinutes} ${elapsedMinutes === 1 ? 'min' : 'mins'} ago`;
     } else {
-      placedTimeDisplay = 'Cancelled';
+      placedTimeDisplay = 'Acceptance window ended';
     }
   }
 
@@ -160,26 +160,25 @@ export const OrderCard = memo(function OrderCard({ order, onAcknowledge, onMarkP
         )}
       </View>
 
-      <View className="flex-row gap-2.5">
+      <View className="gap-2.5">
         {isPending ? (
           // Real green (success token) — distinct from the black/coral
           // actions below it, so accepting reads as its own unmistakable
           // state, not just "a button of some color".
           <Pressable
             onPress={() => onAcknowledge(order.id)}
-            className="w-full flex-row items-center justify-center gap-1.5 rounded-xl bg-[#00a63e] py-3.5"
+            className="min-h-[48px] w-full flex-row items-center justify-center gap-1.5 rounded-xl bg-[#00a63e] py-3.5"
             style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
           >
             <Text className="text-[14px] font-medium text-white">Accept Order</Text>
           </Pressable>
         ) : (
           <>
-            {/* Narrower, plain outline — secondary now that Mark Packed is
-                the button a store owner actually needs to reach for next. */}
+            {/* Keep the action footprint stable when acceptance changes state.
+                Preparation stays on its own full-width row below details. */}
             <Pressable
               onPress={onViewOrder}
-              className={`flex-row items-center justify-center gap-1.5 rounded-xl bg-[#F1F2F4] py-3.5 ${isPlaced && isAccepted ? 'flex-[0.8]' : 'w-full'
-                }`}
+              className="min-h-[48px] w-full flex-row items-center justify-center gap-1.5 rounded-xl bg-[#F1F2F4] py-3.5"
             >
               <Text className="text-[14px] font-medium text-black">View Order</Text>
               <AppIcon icon={ArrowRight01Icon} size={13} color={colors.ink} />
@@ -191,15 +190,9 @@ export const OrderCard = memo(function OrderCard({ order, onAcknowledge, onMarkP
               // last poll refresh) must never resurrect Mark Packed on an
               // order that's already moved past 'placed' server-side
               // (packed/out_for_delivery/delivered).
-              // Coral — this app's own reserved CTA color (CLAUDE.md design
-              // tokens: coral is CTA-only, never brand/lime), used here
-              // deliberately so the next real action never blends into the
-              // black/gray/white chrome around it and gets missed. Wider
-              // than View Order (flex-[1.6] vs 0.8) since this is the
-              // button that actually needs pressing next.
               <Pressable
                 onPress={() => onMarkPacked(order.id)}
-                className="flex-[1.6] flex-row items-center justify-center gap-1.5 rounded-xl bg-[#f54900] py-3.5"
+                className="min-h-[48px] w-full flex-row items-center justify-center gap-1.5 rounded-xl bg-[#f54900] py-3.5"
               >
                 {/* <AppIcon icon={CheckmarkCircle02Icon} size={14} color="#FFFFFF" /> */}
                 <Text className="text-[14px] font-medium text-white">Mark Packed</Text>

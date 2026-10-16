@@ -21,6 +21,7 @@ jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
   getForegroundPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
   getCurrentPositionAsync: jest.fn(),
+  getLastKnownPositionAsync: jest.fn(async () => null),
   reverseGeocodeAsync: jest.fn(async () => []),
   watchPositionAsync: jest.fn(async () => ({ remove: jest.fn() })),
   enableNetworkProviderAsync: jest.fn(async () => {}),

@@ -25,9 +25,9 @@ export function BrandFooter() {
         <Text className="text-[13px] font-semibold text-ink/35">v{APP_VERSION}</Text>
       </View>
       <View className="flex-row items-center gap-1">
-        <Text className="text-xs font-medium text-ink/40">Built with</Text>
+        <Text className="text-[12px] font-medium text-ink/40">Built with</Text>
         <AppIcon icon={HeartIcon} size={11} color={colors.danger} fill={colors.danger} />
-        <Text className="text-xs font-medium text-ink/40">in Udupi, for shops like yours</Text>
+        <Text className="text-[12px] font-medium text-ink/40">in Udupi, for shops like yours</Text>
       </View>
     </View>
   );

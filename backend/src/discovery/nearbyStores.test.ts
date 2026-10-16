@@ -2,6 +2,11 @@ import { expect, it, vi } from 'vitest';
 const rpc = vi.hoisted(() => vi.fn());
 vi.mock('../db/supabase.js', () => ({ supabase: { rpc } }));
 import { nearbyStores, readCoordinates } from './nearbyStores.js';
+it('keeps closed-shop products browseable through the separate bounded coverage RPC', async () => {
+  rpc.mockResolvedValueOnce({ data: [{ store: { id: 'closed', is_active: false }, distance_km: 1 }], error: null });
+  expect(await nearbyStores(13,74,undefined,20,null,true)).toEqual([{ id: 'closed', is_active: false, distance_km: 1 }]);
+  expect(rpc).toHaveBeenLastCalledWith('nearby_browsable_stores', { p_lat: 13, p_lng: 74, p_zone: null, p_limit: 20, p_max_km: null });
+});
 it('rejects missing, blank, out-of-range coordinates and malformed zones; accepts the equator', () => {
   for (const query of [{}, {lat:'',lng:'0'}, {lat:'91',lng:'0'}, {lat:'0',lng:'181'}, {lat:'NaN',lng:'0'}, {lat:'0',lng:'0',zone_id:'x'}])
     expect(() => readCoordinates(query)).toThrow();

@@ -5,7 +5,7 @@
 // presentational + the tap handler. Renders null when there's no active
 // order, so mounting it costs a visible bar only while one exists.
 
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
@@ -26,12 +26,13 @@ import { useBrowseClock } from '../../utils/useBrowseClock';
 // that file's private internals): PILL_HEIGHT 73, and the pill's own bottom
 // offset (-10 on iOS where it floats above the safe area, 0 on Android where
 // it sits flush). GAP is the tight breathing room above the pill — matched to
-// CartBar's own +4 so this card rests exactly where CartBar would, not higher.
+// CartBar's own +4. The home shell places CartBar above this card using its
+// measured height, so both remain visible as the navigation bar animates.
 const PILL_HEIGHT = 73;
 const NAV_BOTTOM_OFFSET = Platform.OS === 'android' ? 0 : -10;
 const GAP = 4;
 
-export function ActiveOrderBar() {
+export function ActiveOrderBar({ onHeightChange }: { onHeightChange?: (height: number) => void }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const insets = useSafeAreaInsets();
   // Shared 30s clock (no per-card timer) — re-renders the pill so the ETA
@@ -48,6 +49,10 @@ export function ActiveOrderBar() {
     transform: [{ translateY: interpolate(navProgress.value, [0, 1], [0, PILL_HEIGHT]) }],
   }));
   const active = useActiveOrder();
+  const hasActiveOrder = !!active;
+  useEffect(() => {
+    if (!hasActiveOrder) onHeightChange?.(0);
+  }, [hasActiveOrder, onHeightChange]);
   if (!active) return null;
 
   const { orderId, isTrip, statusKey, deadlineMs, baseMinutes } = active;
@@ -63,16 +68,17 @@ export function ActiveOrderBar() {
       style={[{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + NAV_BOTTOM_OFFSET + PILL_HEIGHT + GAP }, slideStyle]}
     >
       <Pressable
+        onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)}
         accessibilityRole="button"
         accessibilityLabel={`Track order, ${title}`}
         // paymentMethodLabel is required by the route but unused for this
         // entry point (TrackOrder re-fetches the order) — same empty-string
         // the deep-link path (navigation/linking.ts) already passes.
         onPress={() => navigation.navigate('TrackOrder', { orderId, isTrip, paymentMethodLabel: '' })}
-        className={`w-full flex-row items-center gap-3 self-center rounded-[18px] border bg-white px-2.5 py-2.5 active:opacity-90 ${Platform.OS === 'android' ? 'border-gray-200' : 'border-ink/5'}`}
+        className={`w-full flex-row items-center gap-3 self-center rounded-[22px] border bg-white px-2.5 py-2.5 active:opacity-90 ${Platform.OS === 'android' ? 'border-gray-200' : 'border-ink/5'}`}
         // Android: no elevation shadow — a flat gray-100 border is the only
         // edge treatment. iOS keeps its own soft drop shadow + ink border.
-        style={{ maxWidth: 360, shadowColor: '#101C10', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: Platform.OS === 'android' ? 0 : 8 }}
+        style={{ maxWidth: 330, shadowColor: '#101C10', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: Platform.OS === 'android' ? 0 : 8 }}
       >
         {/* ETA badge — lime→deep diagonal gradient with ink text (white on
             lime fails AA, per the design system). Live countdown via

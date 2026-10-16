@@ -5,6 +5,7 @@
 // via Store Settings), and location/map moved to its own StoreLocation step.
 
 import { useState } from 'react';
+import { useNavigationState } from '@react-navigation/native';
 import { Text, TextInput } from 'react-native';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,6 +33,9 @@ const EMPTY_STORE_DRAFT: StoreDraft = {
 };
 
 export function StoreDetailsScreen({ navigation, route }: Props) {
+  // Returning applicants enter this screen as the stack root. There is
+  // no Login/OTP route behind it after the authenticated stack remounts.
+  const canGoBack = useNavigationState(state => state.index > 0);
   const draft = route.params?.draft ?? EMPTY_STORE_DRAFT;
   const [storeName, setStoreName] = useState(draft.storeName);
   const [category, setCategory] = useState(draft.category);
@@ -86,7 +90,9 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
       step={1}
       title="Store details"
       subheading="What's your store called, and how can customers reach it?"
-      onBack={() => navigation.goBack()}
+      onBack={canGoBack ? () => {
+        if (navigation.canGoBack()) navigation.goBack();
+      } : undefined}
       footer={<PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} trailingIcon={ArrowRight01Icon} />}
     >
       <FieldCard label="Store name">

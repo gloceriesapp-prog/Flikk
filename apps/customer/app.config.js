@@ -1,6 +1,7 @@
 /* global __dirname */
 const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
 const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
+const { resolveNativeMapKeys } = require('../../packages/shared/config/google-maps.cjs');
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 // eas-cli evaluates this file on the developer's machine *before* it pulls the
@@ -21,7 +22,7 @@ if (developmentApi || process.env.EAS_BUILD === 'true') {
 // IOS_GOOGLE_MAPS_API_KEY is optional; once it's set, a fresh native build
 // (this is native config, not OTA-able) switches iOS to real Google Maps.
 
-const iosGoogleMapsApiKey = process.env.IOS_GOOGLE_MAPS_API_KEY;
+const { androidGoogleMapsApiKey, iosGoogleMapsApiKey } = resolveNativeMapKeys(process.env);
 
 // EAS project @nishal777/customer. Not a secret: it ties builds, OTA updates
 // and Expo push tokens to this project, so it's fixed here (same shape as
@@ -40,7 +41,7 @@ module.exports = {
     // renaming it would detach the EAS project (builds/updates/credentials).
     slug: 'customer',
     scheme: 'gloceries',
-    version: '1.0.2',
+    version: '1.0.3',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change (mirrors apps/partner).
@@ -74,11 +75,11 @@ module.exports = {
     },
     android: {
       package: 'com.gloceries.customer',
+      versionCode: 11,
       googleServicesFile,
       adaptiveIcon: {
-        backgroundColor: '#A8D93A',
+        backgroundColor: '#FFFFFF',
         foregroundImage: './assets/android-icon-foreground.png',
-        backgroundImage: './assets/android-icon-background.png',
         monochromeImage: './assets/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
@@ -92,7 +93,7 @@ module.exports = {
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
       config: {
         googleMaps: {
-          apiKey: process.env.GOOGLE_MAPS_API_KEY,
+          apiKey: androidGoogleMapsApiKey,
         },
       },
     },
@@ -118,7 +119,7 @@ module.exports = {
         },
       ],
       'expo-font',
-      ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#A8D93A' }],
+      ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#FFFFFF' }],
       'expo-image',
       'expo-notifications',
       './plugins/withUpiAppQueries',

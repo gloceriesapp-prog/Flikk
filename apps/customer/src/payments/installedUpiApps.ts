@@ -41,7 +41,10 @@ export async function detectInstalledUpiApps(): Promise<UpiApp[]> {
     try {
       return matchNativeUpiApps(await upiAppsModule.getInstalledUpiApps());
     } catch {
-      return [];
+      // A PackageManager/icon read failure must not hide every installed app.
+      // This only restores preference discovery; the gateway still owns the
+      // final supported-app picker and all payment hand-off/validation.
+      return detectByScheme();
     }
   }
   return detectByScheme();

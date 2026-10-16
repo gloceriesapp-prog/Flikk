@@ -1,5 +1,28 @@
 # Manual payouts (no RazorpayX)
 
+## Optional UPI validation
+
+The partner form offers **Verify UPI ID** using the gateway's validation-only
+`POST /v1/payments/validate/vpa` API. This is separate from RazorpayX account
+validation and never creates a payment, contact, fund account or payout.
+
+- `POST /partner/payout-account/validate-upi`, body `{ "upiId": "name@bank" }`.
+- Authenticated, approved store owners only; the existing durable payout-account
+  budget caps calls across replicas. Identical in-flight lookups are coalesced
+  per owner, with a bounded concurrency cap and 10-second provider timeout.
+- Uses backend `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` with `RAZORPAY_ENV=live`.
+  Razorpay must enable this endpoint for the merchant; successful checkout does
+  not establish eligibility. Test-mode responses are not presented as real names.
+- Returns `{ upiId, valid, registeredName }`. Missing names remain null, failures
+  remain retryable errors, and provider responses must match the requested VPA.
+- The name is displayed only in the form. Editing the destination clears the
+  result. No validation result is persisted or used to approve a payout account.
+- Existing manual save, admin verification and weekly payout flows are unchanged.
+
+Reference: https://github.com/razorpay/razorpay-node/blob/master/documents/payment.md#valid-vpa-third-party-validation
+
+## Manual payout processing
+
 RazorpayX is removed entirely. Store and rider payouts are paid by the founder
 manually (net banking / any UPI app) once a week and recorded in admin with the
 bank reference (UTR). This file is the contract shared by backend, admin,

@@ -34,6 +34,9 @@ export function parseStoreTime(value: string | null): number | null {
 }
 export function storeIsOpen(store: EligibilityStore, date = new Date()): boolean {
   if (!store.is_active) return false;
+  if (store.availability_override != null && store.availability_override_until && Date.parse(store.availability_override_until) > date.getTime()) {
+    return store.availability_override;
+  }
   // No schedule uses the owner's open/closed toggle. Partial/invalid hours
   // fail closed; equal start/end explicitly means 24 hours.
   if (!store.open_time && !store.close_time) return true;
@@ -44,6 +47,7 @@ export function storeIsOpen(store: EligibilityStore, date = new Date()): boolean
   return open === close || (open < close ? minute >= open && minute < close : minute >= open || minute < close);
 }
 export interface EligibilityStore {
+  availability_override?: boolean | null; availability_override_until?: string | null;
   id: string; zone_id: string; is_active: boolean;
   open_time: string | null; close_time: string | null;
   lat: number | null; lng: number | null; delivery_radius_km: number | null;

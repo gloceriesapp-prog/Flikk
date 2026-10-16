@@ -1,7 +1,8 @@
+import { usePrivateQueryScope } from '../../../network/usePrivateQueryScope';
 // Payout destination — UPI ID or bank account (backend/PAYOUTS.md). Payouts
-// are sent manually by the founder each week. A UPI ID may be checked with
-// the bank by the backend on save (lib/upiVerification.ts); the result comes
-// back on the save response and is shown in an alert. Saved via PUT /partner/payout-account, read via GET (TanStack
+// are sent manually by the founder each week. Verify UPI ID performs a
+// server-only lookup without saving or paying; saving may also validate it.
+// Saved via PUT /partner/payout-account, read via GET (TanStack
 // Query, PAYOUT_ACCOUNT_QUERY_KEY — also read by OrdersScreen's setup
 // banner). The full account number lives in this card's form state only
 // until a successful save, then it's wiped; afterwards only accountLast4
@@ -11,7 +12,7 @@
 // (private store-documents bucket, path sent as proofPath). Any edit resets
 // the server-side verification status, so the edit form warns about it.
 
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -30,16 +31,17 @@ import {
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { ApiError } from '../../../api/client';
-import { fetchPayoutAccount, PAYOUT_ACCOUNT_QUERY_KEY, savePayoutAccount, uploadPayoutProof } from '../../../api/payouts';
+import { fetchPayoutAccount, PAYOUT_ACCOUNT_QUERY_KEY, savePayoutAccount, uploadPayoutProof, validatePayoutUpi, type UpiValidationResult } from '../../../api/payouts';
 import { compressImageToTarget } from '../../../media/compressImage';
 import { SettingsCard } from './SettingsCard';
 
 const ACCENT = '#1754cf';
-const INPUT_CLASS = 'rounded-2xl border border-black/10 bg-white px-4 py-3 text-[14px] font-medium text-ink';
+const INPUT_CLASS = 'rounded-2xl border border-black/10 bg-[#F1F2F4] px-4 py-3 text-[14px] font-medium text-ink';
 
 export function PayoutAccountCard() {
+  const queryScope = usePrivateQueryScope();
   const queryClient = useQueryClient();
-  const { data: account, isLoading, isError, refetch } = useQuery({ queryKey: PAYOUT_ACCOUNT_QUERY_KEY, queryFn: fetchPayoutAccount });
+  const { data: account, isLoading, isError, refetch } = useQuery({ queryKey: [...PAYOUT_ACCOUNT_QUERY_KEY, queryScope], queryFn: fetchPayoutAccount });
   const [editing, setEditing] = useState(false);
 
   if (isLoading) {
@@ -77,7 +79,7 @@ export function PayoutAccountCard() {
         onCancel={account.method ? () => setEditing(false) : undefined}
         onSave={savePayoutAccount}
         onSaved={(saved) => {
-          queryClient.setQueryData(PAYOUT_ACCOUNT_QUERY_KEY, saved);
+          queryClient.setQueryData([...PAYOUT_ACCOUNT_QUERY_KEY, queryScope], saved);
           void queryClient.invalidateQueries({ queryKey: PAYOUT_ACCOUNT_QUERY_KEY });
           setEditing(false);
           const message = payoutSaveMessage(saved);
@@ -120,7 +122,7 @@ function AccountSummary({ account, onChange }: { account: PayoutAccount; onChang
         </View>
       )}
 
-      <Text className="text-[13px] font-medium text-ink/40">Your weekly payout (see the Payouts tab) is sent here after verification.</Text>
+      <Text className="text-[13px] font-medium text-ink/40">Weekly payouts are sent here after verification.</Text>
     </>
   );
 }
@@ -155,6 +157,10 @@ function PayoutForm({
   const [errors, setErrors] = useState<PayoutFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [uploadingProof, setUploadingProof] = useState(false);
+  const [validatingUpi, setValidatingUpi] = useState(false);
+  const [upiResult, setUpiResult] = useState<UpiValidationResult | null>(null);
+  const [upiError, setUpiError] = useState<string | null>(null);
+  const validationLock = useRef(false);
 
   const mutation = useMutation({
     mutationFn: onSave,
@@ -168,12 +174,35 @@ function PayoutForm({
       else setServerError(err instanceof ApiError ? err.message : 'Could not save payout details. Please try again.');
     },
   });
-  const busy = mutation.isPending || uploadingProof;
+  const busy = mutation.isPending || uploadingProof || validatingUpi;
 
   function set<K extends keyof PayoutFormValues>(key: K, value: PayoutFormValues[K]) {
+    if (key === 'upiId' || key === 'method') {
+      setUpiResult(null);
+      setUpiError(null);
+    }
     setValues((v) => ({ ...v, [key]: value }));
     setErrors((e) => ({ ...e, [key]: undefined }));
     setServerError(null);
+  }
+
+  async function verifyUpi() {
+    if (busy || validationLock.current || values.method !== 'upi') return;
+    const validation = validatePayoutForm(values);
+    if (!validation.input || validation.input.method !== 'upi') {
+      setErrors(validation.errors);
+      return;
+    }
+    validationLock.current = true;
+    setValidatingUpi(true); setUpiError(null); setUpiResult(null);
+    try {
+      setUpiResult(await validatePayoutUpi(validation.input.upiId));
+    } catch (error) {
+      setUpiError(error instanceof ApiError ? error.message : 'Could not verify this UPI ID. Please retry.');
+    } finally {
+      validationLock.current = false;
+      setValidatingUpi(false);
+    }
   }
 
   async function pickProof() {
@@ -200,6 +229,11 @@ function PayoutForm({
   }
 
   function submit() {
+    if (busy) return;
+    if (values.method === 'bank' && !values.bankName.trim()) {
+      setErrors({ bankName: 'Enter your bank name.' });
+      return;
+    }
     const { errors: next, input } = validatePayoutForm(values);
     setErrors(next);
     if (input) mutation.mutate(input);
@@ -210,7 +244,7 @@ function PayoutForm({
       {hasExisting && (
         <View className="rounded-2xl bg-gold/15 px-3.5 py-3">
           <Text className="text-[12.5px] font-medium leading-[17px] text-ink/70">
-            Saving new details resets verification — we’ll confirm the name again when we send your next payout.
+            New payout details need verification.
           </Text>
         </View>
       )}
@@ -222,6 +256,7 @@ function PayoutForm({
           return (
             <Pressable
               key={option}
+              disabled={busy}
               onPress={() => set('method', option)}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
@@ -237,7 +272,7 @@ function PayoutForm({
       </View>
 
       {values.method === 'upi' ? (
-        <Field label="UPI ID" error={errors.upiId}>
+        <Field label="UPI ID *" error={errors.upiId}>
           <TextInput
             value={values.upiId}
             onChangeText={(t) => set('upiId', t.replace(/\s/g, ''))}
@@ -248,32 +283,51 @@ function PayoutForm({
             editable={!busy}
             className={INPUT_CLASS}
           />
-          <Text className="text-[12px] font-medium text-ink/40">We check this UPI ID with your bank to confirm the account holder&apos;s name.</Text>
+          <Pressable
+            onPress={() => void verifyUpi()}
+            disabled={busy || !values.upiId.trim()}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: busy || !values.upiId.trim(), busy: validatingUpi }}
+            className="items-center rounded-xl border border-blue-200 px-4 py-3"
+          >
+            <Text className="text-[13px] font-semibold text-primary">{validatingUpi ? 'Verifying UPI ID…' : 'Verify UPI ID'}</Text>
+          </Pressable>
+          {upiError && <Text accessibilityRole="alert" className="text-[13px] text-danger">{upiError}</Text>}
+          {upiResult && (
+            <View accessibilityLiveRegion="polite" className="gap-1 rounded-xl bg-gray-50 p-3">
+              <Text className="text-[13px] font-semibold" style={{ color: upiResult.valid ? colors.success : colors.danger }}>
+                {upiResult.valid ? 'UPI ID is valid' : 'UPI ID could not be verified'}
+              </Text>
+              <Text className="text-[13px] font-medium text-ink/70">
+                {upiResult.valid ? upiResult.registeredName ? `Registered name: ${upiResult.registeredName}` : 'The provider did not return a registered name.' : 'Check the UPI ID and try again.'}
+              </Text>
+            </View>
+          )}
         </Field>
       ) : (
         <View className="gap-3">
-          <Field label="Account holder name" error={errors.accountHolderName}>
+          <Field label="Account holder name *" error={errors.accountHolderName}>
             <TextInput value={values.accountHolderName} onChangeText={(t) => set('accountHolderName', t)} placeholder="As it appears on the bank account" placeholderTextColor="#9AA5A3" editable={!busy} className={INPUT_CLASS} />
           </Field>
-          <Field label="Account number" error={errors.accountNumber}>
+          <Field label="Account number *" error={errors.accountNumber}>
             <TextInput value={values.accountNumber} onChangeText={(t) => set('accountNumber', t.replace(/\D/g, ''))} placeholder="e.g. 765432123456" placeholderTextColor="#9AA5A3" keyboardType="number-pad" secureTextEntry editable={!busy} maxLength={18} className={INPUT_CLASS} />
           </Field>
-          <Field label="Confirm account number" error={errors.confirmAccountNumber}>
+          <Field label="Confirm account number *" error={errors.confirmAccountNumber}>
             <TextInput value={values.confirmAccountNumber} onChangeText={(t) => set('confirmAccountNumber', t.replace(/\D/g, ''))} placeholder="Re-enter account number" placeholderTextColor="#9AA5A3" keyboardType="number-pad" editable={!busy} maxLength={18} contextMenuHidden className={INPUT_CLASS} />
           </Field>
-          <Field label="IFSC code" error={errors.ifsc}>
+          <Field label="IFSC code *" error={errors.ifsc}>
             <TextInput value={values.ifsc} onChangeText={(t) => set('ifsc', t.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())} placeholder="e.g. HDFC0000053" placeholderTextColor="#9AA5A3" autoCapitalize="characters" autoCorrect={false} maxLength={11} editable={!busy} className={INPUT_CLASS} />
           </Field>
-          <Field label="Bank name (optional)">
+          <Field label="Bank name *">
             <TextInput value={values.bankName} onChangeText={(t) => set('bankName', t)} placeholder="e.g. HDFC Bank" placeholderTextColor="#9AA5A3" editable={!busy} className={INPUT_CLASS} />
           </Field>
-          <Field label="Cancelled cheque or passbook first page" error={errors.proofPath}>
+          <Field label="Cancelled cheque or passbook first page *" error={errors.proofPath}>
             <Pressable
               onPress={pickProof}
               disabled={busy}
               accessibilityRole="button"
               accessibilityLabel={values.proofPath ? 'Replace cheque or passbook photo' : 'Add cheque or passbook photo'}
-              className={`flex-row items-center gap-2.5 rounded-2xl px-4 py-3.5 ${values.proofPath ? 'bg-success/10' : 'border border-dashed border-black/15 bg-[#F9FAFB]'}`}
+              className={`flex-row items-center gap-2.5 rounded-2xl px-4 py-3.5 ${values.proofPath ? 'bg-gray-100' : 'border border-dashed border-black/15 bg-[#F9FAFB]'}`}
             >
               {uploadingProof ? (
                 <ActivityIndicator size="small" color={colors.ink} />
@@ -281,7 +335,7 @@ function PayoutForm({
                 <AppIcon icon={values.proofPath ? CheckmarkCircle02Icon : ImageUpload01Icon} size={18} color={values.proofPath ? colors.success : colors.ink} />
               )}
               <Text className="flex-1 text-[13px] font-semibold text-ink/80">
-                {uploadingProof ? 'Uploading…' : values.proofPath ? 'Photo added — tap to replace' : 'Add photo (account number & name clearly visible)'}
+                {uploadingProof ? 'Uploading…' : values.proofPath ? 'Photo added — tap to replace' : 'Add a clear account photo'}
               </Text>
             </Pressable>
           </Field>
@@ -313,7 +367,7 @@ function PayoutForm({
       )}
 
       <Text className="text-[13px] font-medium leading-normal text-ink/50">
-        We pay out weekly after verification. When we send your first payout we check the name on the account matches.
+        Weekly payouts start after account verification.
       </Text>
     </>
   );

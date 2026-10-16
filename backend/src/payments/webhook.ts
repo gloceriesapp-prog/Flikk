@@ -66,9 +66,16 @@ export async function handleWebhook(req: Request, res: Response, next: NextFunct
         const current = (await getPaymentRefunds(payment.id)).find(item => item.id === refund.id && item.payment_id === payment.id);
         const status = current?.status === 'processed' ? 'completed' : current?.status === 'failed' ? 'failed' : null;
         if (status) {
-          const { error } = await supabase.from('orders').update({ refund_status: status, ...(status === 'completed' ? { refunded_at: new Date().toISOString() } : {}) })
-            .eq('provider_refund_id', current!.id).eq('provider_payment_id', payment.id).eq('payment_provider', 'razorpay').eq('refund_status', 'processing');
-          if (error) throw error;
+          // One processed partial refund does not prove the checkout's entire
+          // refund target was paid. Wake the durable jobs; their leased worker
+          // sums all provider refunds before publishing a customer-visible
+          // result. This also covers late captures refunded after a COD switch,
+          // whose order deliberately has no provider_payment_id.
+          const nextAttemptAt = new Date().toISOString();
+          const results = await Promise.all(['order_refund_jobs', 'trip_refunds'].map(table =>
+            supabase.from(table).update({ next_attempt_at: nextAttemptAt })
+              .eq('payment_id', payment.id).in('status', ['queued', 'processing'])));
+          for (const result of results) if (result.error) throw result.error;
         }
       }
     }

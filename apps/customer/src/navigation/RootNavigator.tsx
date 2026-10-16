@@ -7,15 +7,6 @@
 // isGuest is in-memory only (see useAuthStore.ts's own note) so it doesn't
 // need to wait on hydration the way accessToken does.
 //
-// WelcomeScreen shows on EVERY cold open until hydration completes, with a
-// small minimum floor (MIN_WELCOME_MS) so a near-instant hydration doesn't
-// flash the logo for one frame — it is NOT a fixed multi-second gate. Whichever
-// finishes last — the min floor or hydration — reveals the real stack;
-// hydration taking longer than the floor (a slow device) still waits for it
-// rather than racing an unhydrated accessToken into the wrong branch. The
-// pure decision lives in welcomeGate.ts (computeWelcomeVisible) so it's
-// unit-tested without a renderer.
-//
 // Also hydrates useLocationStore here, before AppNavigator ever mounts —
 // AppNavigator picks its initial route (LocationPermission vs. Home) off that
 // store synchronously on mount, so it needs to already be hydrated by then.
@@ -32,15 +23,9 @@ import { useWishlistStore } from '../store/useWishlistStore';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 import { linking } from './linking';
-import { WelcomeScreen } from '../screens/WelcomeScreen';
-import { computeWelcomeVisible } from './welcomeGate';
 import { useNotifications } from '../features/notifications/useNotifications';
 import { notificationNavigation, flushOrderNotification } from '../features/notifications/navigation';
 import { navigationIntegration } from '../observability/crashReporting';
-
-// Minimum floor the WelcomeScreen stays up (ms) — just long enough to avoid a
-// one-frame flash when SecureStore hydration resolves almost instantly.
-const MIN_WELCOME_MS = 700;
 
 export function RootNavigator() {
   useDeliverySettingsSync();
@@ -50,17 +35,11 @@ export function RootNavigator() {
   const [cartReady, setCartReady] = useState(false);
   const [cartError, setCartError] = useState(false);
   const [cartRetry, setCartRetry] = useState(0);
-  const [minElapsed, setMinElapsed] = useState(false);
 
   useEffect(() => {
     hydrateAuth();
     hydrateLocation();
   }, [hydrateAuth, hydrateLocation]);
-
-  useEffect(() => {
-    const id = setTimeout(() => setMinElapsed(true), MIN_WELCOME_MS);
-    return () => clearTimeout(id);
-  }, []);
 
   // Admin blocked this account: api/client.ts already signed it out.
   useEffect(() => onAccountBlocked((message) => Alert.alert('Account blocked', message)), []);
@@ -76,11 +55,6 @@ export function RootNavigator() {
   }, [authHydrated, authError, cartRetry]);
 
   const hydrated = authHydrated && locationHydrated && (cartReady || !!authError);
-  const welcomeVisible = computeWelcomeVisible({
-    hydrated,
-    elapsedMs: minElapsed ? MIN_WELCOME_MS : 0,
-    minMs: MIN_WELCOME_MS,
-  });
 
   // Wishlist is account-backed now (useWishlistStore's own note) — loaded
   // once per fresh login same as the push-token registration above, and
@@ -96,9 +70,9 @@ export function RootNavigator() {
     }
   }, [authHydrated, accessToken]);
 
-  if (welcomeVisible) {
-    return <WelcomeScreen />;
-  }
+  // Restore the session and delivery location before choosing a stack,
+  // without an introductory page or an artificial minimum wait.
+  if (!hydrated) return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
 
   if (authError || locationError || cartError) {
     return <View className="flex-1 items-center justify-center gap-5 bg-white px-8">

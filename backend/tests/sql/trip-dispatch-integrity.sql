@@ -44,6 +44,10 @@ INSERT INTO orders(id,trip_id,customer_id,store_id,address_id,item_total,deliver
   CASE WHEN t=5 THEN null ELSE now() END,3000
  FROM generate_series(1,5) t,generate_series(1,2) s;
 INSERT INTO delivery_codes(scope_id,customer_id,code,expires_at) VALUES('00000000-0000-4000-8000-000000000714','00000000-0000-4000-8000-0000000007c1','4321',now()+interval '1 hour');
+-- These are captured online payments. Replica-mode fixture inserts bypass the
+-- production visibility trigger, so supply its verified-payment timestamp.
+UPDATE orders SET store_visible_at=now(), acceptance_deadline_at=now()+interval '10 minutes'
+ WHERE customer_id='00000000-0000-4000-8000-0000000007c1';
 SET LOCAL session_replication_role=origin;
 
 -- Finding 1: offers come from the stored position and each order's own radius.

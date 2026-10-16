@@ -1,28 +1,26 @@
-// Order detail (P3) — reached from OrderCard's "View Order". Replicates
-// the reference: back + copy-id header, customer/time row, collapsible
-// itemised "Order details" card, bottom bar with total bill + the status
-// action.
-//
-// Order is read live from useOrdersStore by orderId (not passed as a
-// route param) — see store/useOrdersStore.ts's own note on why. No manual
-// Reject action on this screen specifically — OrderCard's own pending
-// state (before acknowledge) is the only place a store owner backs out of
-// an order, and useOrderExpiryWatcher's auto-reject-on-timeout covers the
-// rest; a real reject call exists now (useOrdersStore.rejectOrder, PATCH
-// /orders/:id/status → cancelled) but this screen doesn't surface it.
+import { BackIcon } from '../../components/PartnerIcons';
+// Account-scoped detail reads work independently of the queue, including cold-start
+// push navigation. Transient failures preserve the last loaded order.
 
-import { Alert02Icon, ArrowLeft01Icon, Cash01Icon, CheckmarkCircle02Icon, Copy01Icon, Mic01Icon, PrinterIcon, Wallet01Icon } from '@hugeicons/core-free-icons';
+import { Alert02Icon, Cash01Icon, CheckmarkCircle02Icon, Wallet01Icon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { ApiError } from '../../api/client';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFocused } from '@react-navigation/native';
+import { fetchOrderDetail } from '../../api/orders';
+import { mapApiOrder } from '../orders/data';
+import { useAuthStore } from '../../store/useAuthStore';
 import { useOrdersStore } from '../../store/useOrdersStore';
 import type { AppStackParamList } from '../../navigation/types';
 import { OrderDetailItemRow } from './components/OrderDetailItemRow';
 import { OrderDetailSectionHeader } from './components/OrderDetailSectionHeader';
-import { OrderPayoutBreakdown } from './components/OrderPayoutBreakdown';
+import { OrderTotalCard } from './components/OrderTotalCard';
+import { orderDetailQueryOptions } from './orderDetailQuery';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OrderDetail'>;
 
@@ -37,6 +35,7 @@ const STATUS_BADGE_LABEL = {
   out_for_delivery: 'Out for delivery',
   delivered: 'Delivered',
   failed: 'Delivery failed',
+  cancelled: 'Cancelled',
 } as const;
 
 const PAYMENT_MODE_LABEL = { paid_online: 'Paid online', cod: 'Cash on delivery', awaiting_payment: 'Payment pending' } as const;
@@ -47,60 +46,50 @@ const PAYMENT_MODE_LABEL = { paid_online: 'Paid online', cod: 'Cash on delivery'
 // ambiguous about which day.
 function formatDateTime(timestampMs: number): string {
   const date = new Date(timestampMs);
-  const datePart = date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-  const timePart = date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const datePart = date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric' });
+  const timePart = date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true });
   return `${datePart}, ${timePart}`;
 }
 
-// "7th", "2nd", "11th"... — the standard English-ordinal exceptions are the
-// 11/12/13 teens, everything else keys off the last digit.
-function ordinal(n: number): string {
-  const lastTwo = n % 100;
-  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
-  switch (n % 10) {
-    case 1:
-      return `${n}st`;
-    case 2:
-      return `${n}nd`;
-    case 3:
-      return `${n}rd`;
-    default:
-      return `${n}th`;
-  }
-}
-
 export function OrderDetailScreen({ route, navigation }: Props) {
-  const order = useOrdersStore((state) => state.orders.find((o) => o.id === route.params.orderId));
-  const markPacked = useOrdersStore((state) => state.markPacked);
-
-  if (!order) {
-    navigation.goBack();
-    return null;
+  const cached = useOrdersStore(state => state.orders.find(order => order.id === route.params.orderId));
+  const markPacked = useOrdersStore(state => state.markPacked);
+  const epoch = useAuthStore(state => state.sessionEpoch);
+  const focused = useIsFocused();
+  const sample = route.params.orderId.startsWith('sample-') && __DEV__;
+  const queryClient = useQueryClient();
+  const options = orderDetailQueryOptions({
+    epoch, orderId: route.params.orderId, cached,
+    read: async () => { const row = await fetchOrderDetail(route.params.orderId); return mapApiOrder(row, [row]); },
+    enabled: !sample && focused,
+  });
+  const query = useQuery(options);
+  useEffect(() => {
+    // Simulated orders have no server detail endpoint. Reflect local actions
+    // while preserving their snapshot when a real queue refresh drops them.
+    if (sample && cached) queryClient.setQueryData(['partner-order-detail', epoch, route.params.orderId], cached);
+  }, [sample, cached, queryClient, epoch, route.params.orderId]);
+  const order = query.data;
+  const unavailable = query.error instanceof ApiError && [403, 404].includes(query.error.status);
+  if (!order || unavailable) {
+    return <SafeAreaView className="flex-1 gap-5 px-5 pt-5" style={{ backgroundColor: PAGE_BG }}>
+      <Pressable accessibilityRole="button" onPress={() => navigation.goBack()}><Text className="font-semibold text-primary">Back to orders</Text></Pressable>
+      <View className="gap-4 rounded-3xl bg-white p-6">
+        <Text accessibilityLiveRegion="polite" className="text-base text-ink">{unavailable ? 'This order is unavailable for your store.' : query.isError ? 'Could not connect to your order. Please retry.' : 'Getting your order details…'}</Text>
+        {query.isError && !unavailable && <Pressable accessibilityRole="button" onPress={() => void query.refetch()}><Text className="font-semibold text-primary">Retry</Text></Pressable>}
+      </View>
+    </SafeAreaView>;
   }
 
   const isPlaced = order.status === 'placed';
-  // Real orders.item_total/commission_amount (screens/orders/data.ts's own
-  // mapApiOrder) — never recomputed here. commissionRate is DERIVED from
-  // those two real numbers (not a hardcoded label) so it can never silently
-  // drift from backend/src/lib/pricing.ts's own COMMISSION_RATE the way this
-  // screen's old local 12%-flat guess already had. Kept as a 0–1 fraction and
-  // formatted by payouts' formatCommissionPercent in the breakdown, so a 4.5%
-  // store reads "4.5%" instead of being rounded to a wrong-looking "5%".
-  const commissionRate = order.itemTotal > 0 ? order.commissionAmount / order.itemTotal : 0;
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: PAGE_BG }} edges={['top']}>
       <View className="flex-row items-center justify-between px-5 py-3">
         <Pressable onPress={() => navigation.goBack()} className="h-10 w-10 items-center justify-center rounded-full bg-white">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <BackIcon size={22} color={colors.ink} />
         </Pressable>
         <View className="flex-row items-center gap-2">
-          {/* No voice-note/print backend yet (specs/05-platform doesn't cover
-              either) — stubbed rather than silently doing nothing, same
-              convention as the notification bell on the Orders screen. */}
-          <Pressable onPress={() => {}} className="h-10 w-10 items-center justify-center rounded-full bg-white">
-            <AppIcon icon={PrinterIcon} size={17} color={colors.ink} />
-          </Pressable>
           <Pressable className="flex-row items-center gap-1.5 rounded-full bg-white px-3.5 py-2.5">
             <Text className="text-[15px] font-medium text-ink">Order ID: {order.orderNumber}</Text>
             {/* <AppIcon icon={Copy01Icon} size={14} color={colors.ink} /> */}
@@ -109,6 +98,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="gap-5 px-5 pb-6">
+        {query.isError && <Pressable accessibilityRole="button" onPress={() => void query.refetch()} className="rounded-2xl bg-white p-4"><Text className="text-danger">Connection interrupted. Showing the last order update. Tap to retry.</Text></Pressable>}
         <View className="gap-3 rounded-3xl bg-white p-4">
           <View>
             <Text className="text-[18px] font-semibold text-black">{order.customerName}</Text>
@@ -124,7 +114,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
 
           <View className="flex-row items-center justify-between border-t border-black/5 pt-3">
             <Text className="text-[14px] font-medium text-ink/80">
-              {order.customerName.split(' ')[0]}&apos;s {ordinal(order.orderCount)} order
+              {order.customerName}
             </Text>
             <Text className="text-[14px] font-medium text-ink/60">{formatDateTime(order.placedAtTimestamp)}</Text>
           </View>
@@ -133,19 +123,13 @@ export function OrderDetailScreen({ route, navigation }: Props) {
         <View className="gap-1 rounded-3xl bg-white p-4">
           <OrderDetailSectionHeader itemCount={order.items.length} />
           <View className="mt-2 gap-1 border-t border-black/5 pt-2">
-            {order.items.map((item) => (
-              <OrderDetailItemRow key={item.name} item={item} />
+            {order.items.map((item, index) => (
+              <OrderDetailItemRow key={`${order.id}:${index}`} item={item} />
             ))}
           </View>
         </View>
 
-        <OrderPayoutBreakdown
-          itemTotal={order.itemTotal}
-          commissionRate={commissionRate}
-          commissionAmount={order.commissionAmount}
-          netPayout={order.netPayout}
-          delivered={order.status === 'delivered'}
-        />
+        <OrderTotalCard total={order.total} />
       </ScrollView>
 
       <View className="px-5 pb-9 pt-2">
@@ -164,7 +148,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
                   Alert.alert('Could not update order', err instanceof ApiError ? err.message : 'Please try again.');
                 });
             }}
-            className="h-[62px] w-full items-center justify-center rounded-full bg-[#f54900] active:opacity-80"
+            className="h-[62px] w-full items-center justify-center rounded-full bg-[#1447e6] active:opacity-80"
           >
             <Text className="text-lg font-medium text-white">Ready for Pickup</Text>
           </Pressable>

@@ -33,6 +33,9 @@ jobs:
             backend/pnpm-lock.yaml
             apps/admin/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Install partner workspace dependencies for cross-app regression tests
+        run: npm ci --no-audit --no-fund
+        working-directory: .
       # Several backend tests import shared logic from the customer and admin
       # apps (react-query cache helpers, admin route handlers), so their
       # dependencies must exist for those test files to load.
@@ -45,6 +48,8 @@ jobs:
       - run: pnpm exec tsc --noEmit -p tsconfig.json
       - run: pnpm test
       - run: node --test ../packages/server-media/upload.test.cjs
+      - name: Verify native map credential separation for all mobile apps
+        run: node --test ../packages/shared/config/google-maps.test.cjs
 
   commerce-security:
     runs-on: ubuntu-latest
@@ -98,6 +103,7 @@ jobs:
           PGDATABASE=flikk_migrations_tests psql -X -v ON_ERROR_STOP=1 -f backend/tests/sql/security-patch.sql -f backend/tests/sql/browse-visibility.sql -f backend/tests/sql/media-storage.sql -f backend/tests/sql/promotional-deliveries.sql -f backend/tests/sql/verify-rpc-security.sql -f backend/tests/sql/verify-commerce-security.sql -f backend/tests/sql/verify-order-safety.sql
           PGDATABASE=flikk_migrations_tests psql -X -v ON_ERROR_STOP=1 -f backend/tests/sql/razorpay-payments.sql -f backend/tests/sql/trip-dispatch-integrity.sql -f backend/tests/sql/rider-pay-cod.sql -f backend/tests/sql/admin-order-control.sql -f backend/tests/sql/account-controls.sql -f backend/tests/sql/catalogue-stock-integrity.sql -f backend/tests/sql/app-config-hours.sql -f backend/tests/sql/rider-ops.sql -f backend/tests/sql/partner-store-controls.sql -f backend/tests/sql/product-review-commission.sql -f backend/tests/sql/home-content-controls.sql -f backend/tests/sql/customer-commerce-controls.sql -f backend/tests/sql/partner-rider-support.sql -f backend/tests/sql/fleet-push.sql -f backend/tests/sql/rider-earnings-correction.sql
           PGDATABASE=flikk_migrations_tests python3 backend/tests/sql/razorpay-concurrency.py
+          PGDATABASE=flikk_migrations_tests psql -X -v ON_ERROR_STOP=1 -c BEGIN -f backend/tests/store-availability.sql -c ROLLBACK
 
   customer:
     runs-on: ubuntu-latest
@@ -118,6 +124,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm test -- --runInBand --watchman=false
       - name: Bundle both native platforms
         run: npx expo export --platform ios --max-workers 2 --output-dir /tmp/customer-ios
       - run: npx expo export --platform android --max-workers 2 --output-dir /tmp/customer-android
@@ -139,6 +146,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci --no-audit --no-fund
+      - name: Verify Expo native dependency alignment
+        run: npx --yes expo-doctor
+        working-directory: apps/${{ matrix.app }}
+        env:
+          EXPO_NO_DOTENV: '1'
       - run: npx tsc --noEmit
         working-directory: apps/${{ matrix.app }}
       - run: npx eslint .
