@@ -1,8 +1,9 @@
 // Payout-account contract (backend/PAYOUTS.md) — types, the exact contract
 // regexes, and the client-side form validation partner + rider both run
 // before PUT /{partner|rider}/payout-account. Server re-validates; this only
-// saves a round-trip and gives per-field messages. Manual weekly payouts, no
-// payout-provider API — nothing here talks to a bank.
+// saves a round-trip and gives per-field messages. When enabled on the
+// server, a saved UPI ID is checked with the bank (backend lib/
+// upiVerification.ts); the apps never talk to the verification provider.
 
 export type PayoutMethod = 'upi' | 'bank';
 
@@ -20,6 +21,33 @@ export interface PayoutAccount {
   hasProof: boolean;
   status: 'unverified' | 'verified';
   verifiedName: string | null;
+}
+
+// Result of the automatic UPI check, on PUT responses only.
+export type PayoutVerification =
+  | { outcome: 'verified' | 'name_mismatch'; nameAtBank: string }
+  | { outcome: 'already_verified' | 'unavailable' | 'skipped' };
+
+export type SavedPayoutAccount = PayoutAccount & { verification?: PayoutVerification };
+
+// Error code PUT answers with when the bank says the UPI ID doesn't exist.
+export const UPI_NOT_FOUND_CODE = 'UPI_NOT_FOUND';
+
+// What to tell the owner/rider right after saving. tone drives the colour.
+export function payoutSaveMessage(saved: SavedPayoutAccount): { tone: 'success' | 'info'; title: string; body: string } {
+  const v = saved.verification;
+  if (v?.outcome === 'verified' || v?.outcome === 'already_verified') {
+    const name = v.outcome === 'verified' ? v.nameAtBank : saved.verifiedName;
+    return { tone: 'success', title: 'UPI ID verified', body: name ? `Payouts will go to ${name}.` : 'Payouts will go to this UPI ID.' };
+  }
+  if (v?.outcome === 'name_mismatch') {
+    return {
+      tone: 'info',
+      title: 'Saved, name under review',
+      body: `This UPI ID belongs to ${v.nameAtBank}. If that isn't you, change it now. Otherwise Gloceries will confirm it before your first payout.`,
+    };
+  }
+  return { tone: 'info', title: 'Payout details saved', body: 'Gloceries will confirm the account name before your first payout.' };
 }
 
 // Status set for both payouts and rider_payouts ('processing' is gone).
@@ -78,10 +106,12 @@ export function validatePayoutForm(v: PayoutFormValues): { errors: PayoutFormErr
 }
 
 // Pill copy shared by both apps' payout-details card.
-export function payoutAccountStatusLabel(account: Pick<PayoutAccount, 'status' | 'verifiedName'>): string {
-  return account.status === 'verified'
-    ? `Verified ✓ ${account.verifiedName ?? ''}`.trim()
-    : 'Unverified — we confirm the name when we send your first payout';
+export function payoutAccountStatusLabel(account: Pick<PayoutAccount, 'status' | 'verifiedName' | 'method'>): string {
+  if (account.status === 'verified') return `Verified ✓ ${account.verifiedName ?? ''}`.trim();
+  // An unverified UPI ID with a name = the bank check found it under a
+  // different name than the owner's; Gloceries reviews it.
+  if (account.method === 'upi' && account.verifiedName) return `Under review — bank name ${account.verifiedName}`;
+  return 'Unverified — we confirm the name when we send your first payout';
 }
 
 type ApiRequest = <T>(path: string, options?: { method?: 'GET' | 'PUT'; body?: unknown }) => Promise<T>;
@@ -89,6 +119,6 @@ type ApiRequest = <T>(path: string, options?: { method?: 'GET' | 'PUT'; body?: u
 export function createPayoutAccountApi(apiRequest: ApiRequest, prefix: '/partner' | '/rider') {
   return {
     fetchPayoutAccount: () => apiRequest<PayoutAccount>(`${prefix}/payout-account`),
-    savePayoutAccount: (input: PayoutAccountInput) => apiRequest<PayoutAccount>(`${prefix}/payout-account`, { method: 'PUT', body: input }),
+    savePayoutAccount: (input: PayoutAccountInput) => apiRequest<SavedPayoutAccount>(`${prefix}/payout-account`, { method: 'PUT', body: input }),
   };
 }

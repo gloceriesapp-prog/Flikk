@@ -1,47 +1,77 @@
-import { Check } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import clsx from 'clsx';
-import type { OrderStatus } from '@/lib/partnerApi';
 import { formatDateTime } from '@/lib/format';
 
-interface Step {
-  key: OrderStatus;
+export interface TimelineStep {
+  key: string;
   label: string;
   at: string | null;
 }
 
-// Cancelled is a separate terminal state, not a step on this happy-path
-// timeline — the detail page renders a plain cancelled banner instead when
-// order.status === 'cancelled', so this component never has to represent it.
-export function OrderTimeline({ steps, cancelled }: { steps: Step[]; cancelled: boolean }) {
-  if (cancelled) {
-    return (
-      <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">This order was cancelled.</div>
-    );
+// Vertical status history. Reached steps are solid accent with their real
+// timestamp; the next step to happen is ringed; later ones sit muted.
+// Cancelled is a terminal state with no timestamp column in the schema, so a
+// cancelled order shows only the steps it actually reached, then a red
+// "Cancelled" end cap — never invented times for steps that never happened.
+export function OrderTimeline({ steps, cancelled, hint }: { steps: TimelineStep[]; cancelled: boolean; hint?: string }) {
+  const shown: (TimelineStep & { tone: 'done' | 'next' | 'todo' | 'cancelled' })[] = [];
+  let nextMarked = false;
+  for (const step of steps) {
+    if (step.at) shown.push({ ...step, tone: 'done' });
+    else if (cancelled) continue;
+    else if (!nextMarked) {
+      shown.push({ ...step, tone: 'next' });
+      nextMarked = true;
+    } else shown.push({ ...step, tone: 'todo' });
   }
-
-  const lastDoneIndex = steps.reduce((acc, step, i) => (step.at ? i : acc), -1);
+  if (cancelled) shown.push({ key: 'cancelled', label: 'Cancelled', at: null, tone: 'cancelled' });
 
   return (
     <ol className="flex flex-col">
-      {steps.map((step, i) => {
-        const done = step.at !== null;
-        const isLast = i === steps.length - 1;
+      {shown.map((step, i) => {
+        const isLast = i === shown.length - 1;
+        const nextDone = shown[i + 1]?.tone === 'done' || shown[i + 1]?.tone === 'cancelled';
         return (
           <li key={step.key} className="flex gap-3">
             <div className="flex flex-col items-center">
-              <div
+              <span
                 className={clsx(
-                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold',
-                  done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-neutral-200 bg-white text-neutral-300',
+                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
+                  step.tone === 'done' && 'bg-accent text-white',
+                  step.tone === 'next' && 'bg-white ring-2 ring-accent/60',
+                  step.tone === 'todo' && 'bg-white ring-1 ring-slate-200',
+                  step.tone === 'cancelled' && 'bg-red-500 text-white',
                 )}
               >
-                {done ? <Check size={14} /> : i + 1}
-              </div>
-              {!isLast && <div className={clsx('w-0.5 flex-1', i < lastDoneIndex ? 'bg-emerald-500' : 'bg-neutral-200')} />}
+                {step.tone === 'done' && <Check size={13} strokeWidth={3} aria-hidden />}
+                {step.tone === 'cancelled' && <X size={13} strokeWidth={3} aria-hidden />}
+                {step.tone === 'next' && <span className="h-2 w-2 animate-pulse rounded-full bg-accent" aria-hidden />}
+              </span>
+              {!isLast && (
+                <span className={clsx('my-1 w-0.5 flex-1 rounded-full', nextDone ? 'bg-accent/70' : 'bg-slate-200')} aria-hidden />
+              )}
             </div>
-            <div className={clsx('pb-6', isLast && 'pb-0')}>
-              <p className={clsx('text-sm font-medium', done ? 'text-neutral-900' : 'text-neutral-400')}>{step.label}</p>
-              <p className="text-xs text-neutral-400">{step.at ? formatDateTime(step.at) : 'Pending'}</p>
+            <div className={clsx('min-w-0 flex-1', !isLast && 'pb-5')}>
+              <div className="flex items-baseline justify-between gap-3">
+                <p
+                  className={clsx(
+                    'text-sm font-medium',
+                    step.tone === 'done' && 'text-ink',
+                    step.tone === 'next' && 'text-ink',
+                    step.tone === 'todo' && 'text-slate-400',
+                    step.tone === 'cancelled' && 'text-red-700',
+                  )}
+                >
+                  {step.label}
+                </p>
+                <p className="tnum shrink-0 text-xs text-slate-500">
+                  {step.at ? formatDateTime(step.at) : step.tone === 'next' ? 'Up next' : step.tone === 'todo' ? '—' : ''}
+                </p>
+              </div>
+              {step.tone === 'next' && hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
+              {step.tone === 'cancelled' && (
+                <p className="mt-0.5 text-xs text-slate-500">Any captured payment is refunded to the customer.</p>
+              )}
             </div>
           </li>
         );

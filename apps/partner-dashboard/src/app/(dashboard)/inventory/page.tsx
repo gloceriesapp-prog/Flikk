@@ -1,27 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Boxes, Package, PackageX, ShieldAlert } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Boxes, Package, PackageSearch, PackageX, Plus, ShieldAlert } from 'lucide-react';
 import { createProduct, fetchProductPage, updateProduct, type PartnerProduct, type ProductInput } from '@/lib/partnerApi';
 import { DEMO_PRODUCTS } from '@/lib/demoProducts';
 import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from '@/components/ui/Toast';
-import { StatTile } from '@/components/ui/StatTile';
 import { ProductForm } from '@/components/ProductForm';
 import { InventoryFilterBar, type StockFilter } from '@/components/inventory/InventoryFilterBar';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { InventoryToolbar, type SortKey } from '@/components/inventory/InventoryToolbar';
+import { MetricCard, MetricGrid } from '@/components/inventory/MetricCard';
+import { BUTTON, EmptyState, ErrorState, MetricGridSkeleton, RowsSkeleton } from '@/components/inventory/DataStates';
 import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 type Editing = { mode: 'create' } | { mode: 'edit'; product: PartnerProduct } | null;
-
-// DUMMY month-over-month deltas for the stat strip. There's no product-count
-// history table yet, so these are placeholders (same "UI exists, data not
-// wired" convention as the rest of the dashboard). Wire to a real snapshot
-// once inventory history is tracked. Signs match tone: out-of-stock / pending
-// rising is bad (invertTone on those tiles flips the pill red).
-const INVENTORY_TRENDS = { total: 3.4, inStock: 5.1, outOfStock: 12.5, pending: 8.0 };
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<PartnerProduct[]>([]);
@@ -86,6 +80,10 @@ export default function InventoryPage() {
       morePending.current = false;
       setLoadingMore(false);
     }
+  }
+
+  function retryLoad() {
+    void reload();
   }
 
   // DEMO DATA — this store has zero real products, so the table/filters/
@@ -181,8 +179,55 @@ export default function InventoryPage() {
     URL.revokeObjectURL(url);
   }
 
+  const openCreate = () => setEditing({ mode: 'create' });
+  const hasFilters = filter !== 'all' || search.trim() !== '';
+
+  let body: ReactNode;
+  if (isLoading && products.length === 0) {
+    body = <RowsSkeleton rows={6} />;
+  } else if (error && products.length === 0) {
+    body = <ErrorState title="Couldn’t load your products" onRetry={retryLoad} />;
+  } else if (sourceProducts.length === 0 && !hasFilters) {
+    body = (
+      <EmptyState
+        icon={Package}
+        title="No products yet"
+        description="Add your first product so customers nearby can order it."
+        action={
+          <button type="button" onClick={openCreate} className={BUTTON.primary}>
+            <Plus size={16} /> Add product
+          </button>
+        }
+      />
+    );
+  } else if (filtered.length === 0) {
+    body = (
+      <EmptyState
+        icon={PackageSearch}
+        title="No products match this view"
+        description="Try a different filter or search term."
+        action={
+          hasFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setFilter('all');
+                setSearch('');
+              }}
+              className={BUTTON.secondary}
+            >
+              Clear filters
+            </button>
+          )
+        }
+      />
+    );
+  } else {
+    body = <InventoryTable products={filtered} onEdit={(product) => setEditing({ mode: 'edit', product })} />;
+  }
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <InventoryToolbar
         showStats={showStats}
         onToggleStats={() => setShowStats((v) => !v)}
@@ -191,17 +236,19 @@ export default function InventoryPage() {
         sort={sort}
         onSortChange={setSort}
         onExport={handleExport}
-        onAddProduct={() => setEditing({ mode: 'create' })}
+        onAddProduct={openCreate}
       />
 
-      {showStats && (
-        <div className="grid grid-cols-2 divide-x divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white md:grid-cols-4 md:divide-y-0">
-          <StatTile label="Loaded products" value={String(counts.all)} icon={Boxes} deltaPercent={INVENTORY_TRENDS.total} />
-          <StatTile label="Loaded in stock" value={String(counts.in_stock)} icon={Package} deltaPercent={INVENTORY_TRENDS.inStock} />
-          <StatTile label="Loaded out of stock" value={String(counts.out_of_stock)} icon={PackageX} deltaPercent={INVENTORY_TRENDS.outOfStock} invertTone />
-          <StatTile label="Loaded pending approval" value={String(counts.pending)} icon={ShieldAlert} deltaPercent={INVENTORY_TRENDS.pending} invertTone />
-        </div>
-      )}
+      {showStats && !(error && products.length === 0) && (isLoading ? (
+        <MetricGridSkeleton />
+      ) : (
+        <MetricGrid>
+          <MetricCard label="Loaded products" value={counts.all} icon={Boxes} tone="blue" />
+          <MetricCard label="Loaded in stock" value={counts.in_stock} icon={Package} tone="green" />
+          <MetricCard label="Loaded out of stock" value={counts.out_of_stock} icon={PackageX} tone="red" />
+          <MetricCard label="Loaded pending approval" value={counts.pending} icon={ShieldAlert} tone="amber" />
+        </MetricGrid>
+      ))}
 
       <Modal
         open={!!editing}
@@ -217,17 +264,21 @@ export default function InventoryPage() {
         )}
       </Modal>
 
-      {showFilter && (
-        <InventoryFilterBar filter={filter} onFilterChange={setFilter} search={search} onSearchChange={setSearch} counts={counts} />
-      )}
-
-      {error && <div role="alert" className="flex items-center justify-between rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={() => void reload()} className="font-semibold underline">Retry</button></div>}
+      {error && products.length > 0 && <div role="alert" className="flex items-center justify-between rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={retryLoad} className="font-semibold underline">Retry</button></div>}
       {lastUpdated && <p className="text-sm text-neutral-500">{products.length} loaded · Updated {lastUpdated.toLocaleTimeString()} · Export includes loaded items</p>}
-      {isLoading && products.length === 0 ? (
-        <Card className="py-20 text-center text-sm text-neutral-400">Loading inventory…</Card>
-      ) : (
-        <InventoryTable products={filtered} onEdit={(product) => setEditing({ mode: 'edit', product })} />
-      )}
+      <Card className="overflow-hidden">
+        <div className="p-4 sm:p-5">
+          {showFilter ? (
+            <InventoryFilterBar filter={filter} onFilterChange={setFilter} search={search} onSearchChange={setSearch} counts={counts} />
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-lg font-semibold text-ink">Products</h2>
+              {!isLoading && !error && <span className="tnum text-sm text-slate-400">{filtered.length}</span>}
+            </div>
+          )}
+        </div>
+        {body}
+      </Card>
       {nextCursor && <button disabled={loadingMore || isLoading} onClick={() => void loadMore()} className="self-center rounded-xl border border-hairline px-6 py-3 font-semibold disabled:opacity-50">{loadingMore ? 'Finding more items…' : 'Load more items'}</button>}
     </div>
   );

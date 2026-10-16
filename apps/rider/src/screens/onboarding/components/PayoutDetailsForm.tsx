@@ -2,20 +2,24 @@
 // Profile's EditPayoutModal (one form, two hosts, each with its own CTA).
 // UPI ID, or bank account (holder, number + confirm, IFSC, optional bank
 // name, REQUIRED cancelled cheque / passbook photo). Saved via PUT
-// /rider/payout-account (backend/PAYOUTS.md) — manual weekly payouts, no
-// bank call; the founder confirms the payee name when sending the first
-// payout. After a successful save the form state (incl. the full account
+// /rider/payout-account (backend/PAYOUTS.md) — manual weekly payouts. A UPI
+// ID may be checked with the bank by the backend on save (lib/
+// upiVerification.ts); the result is shown in an alert. Bank accounts are
+// confirmed by the founder when sending the first payout. After a successful save the form state (incl. the full account
 // number) is wiped; only accountLast4 from the response is shown anywhere.
 
 import { useState, type ReactNode } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import {
   EMPTY_PAYOUT_FORM,
   payoutAccountStatusLabel,
+  payoutSaveMessage,
+  UPI_NOT_FOUND_CODE,
   validatePayoutForm,
   type PayoutAccount,
+  type SavedPayoutAccount,
   type PayoutFormErrors,
   type PayoutFormValues,
 } from '@gloceries/shared';
@@ -28,7 +32,7 @@ import { FieldCard } from './OnboardingScaffold';
 
 const INPUT_CLASS = 'rounded-2xl bg-[#EEF0F2] px-5 py-4 text-[15px] font-medium text-ink';
 
-export function usePayoutDetailsForm(onSaved: (account: PayoutAccount) => void) {
+export function usePayoutDetailsForm(onSaved: (account: SavedPayoutAccount) => void) {
   const queryClient = useQueryClient();
   const [values, setValues] = useState<PayoutFormValues>({ ...EMPTY_PAYOUT_FORM, method: 'bank' });
   const [errors, setErrors] = useState<PayoutFormErrors>({});
@@ -42,8 +46,14 @@ export function usePayoutDetailsForm(onSaved: (account: PayoutAccount) => void) 
       void queryClient.invalidateQueries({ queryKey: RIDER_PAYOUT_ACCOUNT_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: ['riderProfile'] });
       onSaved(saved);
+      const message = payoutSaveMessage(saved);
+      Alert.alert(message.title, message.body);
     },
-    onError: (err) => setServerError(err instanceof ApiError ? err.message : 'Could not save your payout details. Please try again.'),
+    onError: (err) => {
+      // The bank says this UPI ID doesn't exist: show it on the field itself.
+      if (err instanceof ApiError && err.code === UPI_NOT_FOUND_CODE) setErrors((e) => ({ ...e, upiId: err.message }));
+      else setServerError(err instanceof ApiError ? err.message : 'Could not save your payout details. Please try again.');
+    },
   });
 
   function set<K extends keyof PayoutFormValues>(key: K, value: PayoutFormValues[K]) {
@@ -103,6 +113,7 @@ export function PayoutDetailsFields({ form }: { form: PayoutDetailsFormState }) 
       ) : (
         <Field label="UPI ID" error={errors.upiId}>
           <TextInput value={values.upiId} onChangeText={(t) => set('upiId', t.replace(/\s/g, ''))} placeholder="e.g. name@okhdfcbank" placeholderTextColor="#9AA5A3" autoCapitalize="none" autoCorrect={false} editable={!isSaving} className={INPUT_CLASS} />
+          <Text className="px-1 text-[12px] font-medium text-ink/45">We check this UPI ID with your bank to confirm the account holder&apos;s name.</Text>
         </Field>
       )}
 
