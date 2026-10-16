@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { deadTokens, embeddedPushToken, sendPushNotification, sendPushNotifications } from './pushNotifications.js';
+import { deadTokens, embeddedPushToken, riderAssignmentPush, riderOfferPush, sendPushNotification, sendPushNotifications } from './pushNotifications.js';
 
 // Only the batch chunking has real logic worth guarding: Expo caps a
 // /push/send request at 100 messages, so N messages must become ceil(N/100)
@@ -76,5 +76,13 @@ describe('sendPushNotification', () => {
     }));
     await sendPushNotification('ExponentPushToken[x]', 'New order', 'body', { channelId: 'orders', priority: 'high', data: { orderId: 'o1' } });
     expect(sent).toEqual([{ sound: 'default', to: 'ExponentPushToken[x]', title: 'New order', body: 'body', channelId: 'orders', priority: 'high', data: { orderId: 'o1' } }]);
+  });
+});
+
+describe('rider push options', () => {
+  it('sends offers and assignments high priority on the loud offers channel with a tap target', () => {
+    expect(riderOfferPush('o1')).toEqual({ channelId: 'offers', priority: 'high', data: { type: 'dispatch_offer', orderId: 'o1' } });
+    expect(riderAssignmentPush('o2')).toEqual({ channelId: 'offers', priority: 'high', data: { type: 'assignment', orderId: 'o2' } });
+    expect(riderAssignmentPush(null).data).toEqual({ type: 'assignment', orderId: null });
   });
 });

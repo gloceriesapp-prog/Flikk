@@ -7,6 +7,7 @@ import { measureHttp } from './observability/http.js';
 import { customerHistoryRouter } from './history/customerHistory.js';
 import { collectionRouter } from './catalogue/collections.js';
 import { liveOrdersRouter, liveTripsRouter } from './tracking/live.js';
+import { riderLocationOrdersRouter, riderLocationTripsRouter } from './tracking/riderLocation.js';
 import { notificationsRouter } from './notifications/router.js';
 import { supportRouter } from './support/router.js';
 import { staffSupportRouter } from './support/staffRouter.js';
@@ -35,7 +36,9 @@ import { tripsRouter } from './routes/trips.js';
 import { addressesRouter } from './routes/addresses.js';
 import { partnerManagementRouter } from './routes/partnerManagement.js';
 import { partnerRouter } from './routes/partner.js';
+import { partnerAccountRouter } from './routes/partnerAccount.js';
 import { riderRouter } from './routes/rider.js';
+import { riderAccountRouter } from './routes/riderAccount.js';
 import { adminRouter } from './routes/admin.js';
 import { paymentsRouter } from './payments/router.js';
 import { locationRouter } from './routes/location.js';
@@ -169,8 +172,10 @@ app.use('/notifications', notificationsRouter);
 app.use('/admin/promotions', promotionsRouter);
 app.use('/orders', customerHistoryRouter);
 app.use('/orders', liveOrdersRouter);
+app.use('/orders', riderLocationOrdersRouter);
 app.use('/orders', ordersRouter);
 app.use('/trips', liveTripsRouter);
+app.use('/trips', riderLocationTripsRouter);
 app.use('/trips', tripsRouter);
 app.use('/addresses', addressesRouter);
 app.use('/promos', promosRouter);
@@ -185,6 +190,9 @@ app.use('/area-upvotes', areaUpvotesRouter);
 // requireRole('store_owner')/requireApproved gate (see that file's own
 // note on why). Express falls through to partnerRouter for any /partner/*
 // path this router doesn't itself define.
+// Account deletion must work for pending and suspended store owners too, so
+// it sits ahead of both (routes/partnerAccount.ts).
+app.use('/partner/account', partnerAccountRouter);
 app.use('/partner', storeOnboardingRouter);
 app.use('/partner', partnerRouter);
 app.use('/partner', partnerManagementRouter);
@@ -195,6 +203,9 @@ app.use('/partner', partnerManagementRouter);
 // (/application, /draft, /document-photo) each guard with requireAuth only
 // and must be reachable first; Express falls through to the gated
 // riderRouter for any /rider/* path this router doesn't itself define.
+// Account deletion must work for pending and suspended riders too, so it
+// sits ahead of riderRouter's approved/active gate (routes/riderAccount.ts).
+app.use('/rider/account', riderAccountRouter);
 app.use('/rider', riderOnboardingRouter);
 app.use('/rider', riderRouter);
 app.use('/admin', adminRouter);

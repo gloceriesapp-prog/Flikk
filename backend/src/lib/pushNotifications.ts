@@ -24,6 +24,17 @@ export type PushOptions = {
 // hear these, so they go out high priority on the partner app's loud channel.
 export const ORDER_PUSH: PushOptions = { channelId: 'orders', priority: 'high' };
 
+// Rider offer/assignment pushes: same reasoning for a rider on a scooter. They
+// use the rider app's loud 'offers' channel (apps/rider registerPushToken.ts).
+// `data.type` tells the app what a tap should open (dispatch_offer → the Home
+// offer list, assignment → that order).
+export function riderOfferPush(orderId: string): PushOptions {
+  return { channelId: 'offers', priority: 'high', data: { type: 'dispatch_offer', orderId } };
+}
+export function riderAssignmentPush(orderId: string | null): PushOptions {
+  return { channelId: 'offers', priority: 'high', data: { type: 'assignment', orderId } };
+}
+
 type PushMessage = { to: string; title: string; body: string } & PushOptions;
 type PushTicket = { status?: string; details?: { error?: string } };
 

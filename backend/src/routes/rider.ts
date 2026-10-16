@@ -15,6 +15,7 @@ import { validateAvailability } from '../lib/riderSchedule.js';
 import { computeRiderStats } from '../lib/riderStats.js';
 import { DELIVERY_MONEY_COLUMNS, withDeliveryMoney, type DeliveryMoneyOrder } from '../lib/riderDeliveryMoney.js';
 import { readPrivateDocument } from '../media/privateDocuments.js';
+import { cashLimitError, exceedsCashLimit, riderCashLimit, unsettledCash } from '../lib/riderCashLimit.js';
 
 export const riderRouter = Router();
 
@@ -209,8 +210,19 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
     const { data: dispatchConfig } = await supabase.rpc('dispatch_config');
     const offerWindowSeconds = Number((dispatchConfig as { step_seconds?: number }[] | null)?.[0]?.step_seconds) || 45;
 
+    // Cash orders this rider can't take until they hand over the cash they
+    // hold stay listed (a push already announced them) but are flagged, so
+    // the app can say why instead of failing on accept.
+    const cashLimit = riderCashLimit();
+    const held = cashLimit > 0 ? (await unsettledCash(req.user!.id)).held : 0;
+
     const withDistance = (await withDeliveryMoney((orders ?? []) as unknown as (DeliveryMoneyOrder & Record<string, unknown>)[]))
-      .map((o) => ({ ...o, distance_m: distanceByOrderId.get(o.id) ?? null, offer_window_seconds: offerWindowSeconds }))
+      .map((o) => ({
+        ...o,
+        distance_m: distanceByOrderId.get(o.id) ?? null,
+        offer_window_seconds: offerWindowSeconds,
+        cash_limit_blocked: exceedsCashLimit(held, o.cash_to_collect, cashLimit),
+      }))
       .sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0));
 
     res.json(withDistance);
@@ -278,8 +290,23 @@ const ACCEPT_ERRORS: Record<AcceptError, [number, string]> = {
   // delivery_settings.max_active_trips_per_rider (migration 113).
   RIDER_AT_CAPACITY: [409, 'Finish your current deliveries before accepting another pickup.'],
 };
+// Checked before the atomic accept: the cash this order (or its whole trip)
+// collects at the door, against the cash the rider already holds. An order
+// that can't be read is left to accept_dispatch_offer to refuse.
+async function assertCashLimit(orderId: string, riderId: string): Promise<void> {
+  const limit = riderCashLimit();
+  if (limit <= 0) return;
+  const { data: order } = await supabase.from('orders').select(`id, trip_id, ${DELIVERY_MONEY_COLUMNS}`).eq('id', orderId).maybeSingle();
+  if (!order) return;
+  const [money] = await withDeliveryMoney([order as unknown as DeliveryMoneyOrder]);
+  if (!money || money.cash_to_collect <= 0) return;
+  const { held } = await unsettledCash(riderId);
+  if (exceedsCashLimit(held, money.cash_to_collect, limit)) throw cashLimitError(held, limit);
+}
+
 riderRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) => {
   try {
+    await assertCashLimit(req.params.id ?? '', req.user!.id);
     const { data, error } = await supabase.rpc('accept_dispatch_offer', { p_order: req.params.id, p_rider: req.user!.id });
     if (error?.code === '22P02') throw new AppError(404, 'ORDER_NOT_FOUND', ACCEPT_ERRORS.ORDER_NOT_FOUND[1]);
     if (error) throw error;
@@ -324,6 +351,15 @@ riderRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) => 
 // the drop location including its real lat/lng (used for the live-GPS
 // final-leg map, CLAUDE.md's rider-app exception), and stores for the
 // pickup name + its own lat/lng (migration 005).
+// The rider needs the customer's number only to reach them during the
+// delivery. Once the order is delivered, cancelled or failed the number is
+// withheld, so order history on the phone holds no customer numbers.
+const PHONE_VISIBLE_STATUSES = new Set(['placed', 'packed', 'out_for_delivery']);
+export function withoutFinishedCustomerPhone<T extends { status: string; users?: { phone?: string | null } | null }>(row: T): T {
+  if (PHONE_VISIBLE_STATUSES.has(row.status) || !row.users) return row;
+  return { ...row, users: { ...row.users, phone: null } };
+}
+
 riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
   try {
     const page = readPage(req, `rider-assignments:${req.user!.id}:${req.query.view ?? 'history'}`);
@@ -349,8 +385,8 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
     if (syncFilter) query = query.or(syncFilter);
     const { data, error } = await query.order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
-    const rows = (data ?? []) as unknown as (DeliveryMoneyOrder & { placed_at: string })[];
-    sendPage(res, await withDeliveryMoney(rows, req.user!.id), page, 'placed_at');
+    const rows = (data ?? []) as unknown as (DeliveryMoneyOrder & { placed_at: string; status: string; users?: { name?: string | null; phone?: string | null } | null })[];
+    sendPage(res, (await withDeliveryMoney(rows, req.user!.id)).map(withoutFinishedCustomerPhone), page, 'placed_at');
   } catch (err) {
     next(err);
   }
@@ -446,19 +482,14 @@ riderRouter.get('/earnings', async (req: AuthedRequest, res, next) => {
 
 // Cash the rider collected on cash-on-delivery orders and has not yet handed
 // over (rider_cash_collections, migration 108; an admin settles it from the
-// Cash on delivery page). Own rows only — the .eq('rider_id', ...) filter is
-// the scoping, as in every sibling handler.
+// Cash on delivery page), with the float limit (lib/riderCashLimit.ts). Own
+// rows only: unsettledCash filters by rider_id, as every sibling handler does.
 riderRouter.get('/cash-balance', async (req: AuthedRequest, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('rider_cash_collections')
-      .select('amount')
-      .eq('rider_id', req.user!.id)
-      .is('settled_at', null);
-    if (error) throw error;
-    const rows = (data ?? []) as { amount: number | string }[];
-    const outstanding = Math.round(rows.reduce((sum, row) => sum + Number(row.amount), 0) * 100) / 100;
-    res.json({ outstanding, count: rows.length });
+    const { held, items } = await unsettledCash(req.user!.id);
+    // limit: 0 when switched off. items: the unsettled collections, newest
+    // first, so the rider can match what they hand over.
+    res.json({ outstanding: held, count: items.length, limit: riderCashLimit(), items });
   } catch (err) {
     next(err);
   }

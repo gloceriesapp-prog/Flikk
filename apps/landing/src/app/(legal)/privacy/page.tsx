@@ -1,4 +1,5 @@
 import { COMPANY } from "@/lib/legal/company";
+import { policyHref } from "@/lib/legal/policies";
 import {
   EntityDefinition,
   LegalDocument,
@@ -47,8 +48,16 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong>Delivery riders</strong> additionally provide identity and vehicle documents (such as Aadhaar,
-          driving licence and vehicle number), a profile photo, emergency contact, payout account details, and live
+          driving licence and vehicle number), a profile photo, emergency contact, payout account details, and precise
           location while they are online and on a delivery.
+        </p>
+        <p>
+          <strong>Rider location in the background.</strong> With the rider&apos;s permission, the Gloceries Rider app
+          collects precise location <strong>even when the app is closed or not in use</strong>, but only while the
+          rider is online. We use it to send nearby delivery offers, assign orders to the closest rider and show
+          customers and stores where their order is. Collection stops when the rider goes offline, and riders can
+          turn the permission off in their phone settings at any time. The app shows a notification whenever it is
+          sharing location in the background.
         </p>
       </LegalSection>
 
@@ -105,7 +114,7 @@ export default function PrivacyPage() {
             "Access and correct your profile and addresses in the app at any time.",
             "Turn off location access or notifications in your device settings. Some features, such as finding stores near you, need location to work.",
             "Withdraw consent for promotional messages at any time.",
-            "Request deletion of your account from Profile in the app. Deletion requests are reviewed and completed, except for records we must keep by law.",
+            <>Request deletion of your account in the app (customers: Profile → Account Privacy; riders: Profile → Delete account) or as described on our <a className="underline" href={policyHref("delete-account")}>Delete account</a> page. Deletion requests are reviewed and completed, except for records we must keep by law.</>,
             "Raise a grievance with our Grievance Officer (below).",
           ]}
         />

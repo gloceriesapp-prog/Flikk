@@ -308,9 +308,28 @@ authRouter.post('/push-token', requireAuth, async (req: AuthedRequest, res, next
     const { token } = req.body as { token?: string };
     if (!token) throw new AppError(400, 'MISSING_TOKEN', 'token is required.');
 
+    // One device token belongs to one account. A shared phone (riders
+    // swapping shifts, a family store phone) would otherwise keep pushing the
+    // previous account's offers to whoever signs in next, even when that
+    // account's logout never reached us (offline, app killed).
+    const { error: releaseError } = await supabase.from('users').update({ expo_push_token: null })
+      .eq('expo_push_token', token).neq('id', req.user!.id);
+    if (releaseError) throw releaseError;
     const { error } = await supabase.from('users').update({ expo_push_token: token }).eq('id', req.user!.id);
     if (error) throw error;
 
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Sign-out: stop pushes to this device for this account. Idempotent.
+authRouter.delete('/push-token', requireAuth, async (req: AuthedRequest, res, next) => {
+  try {
+    if (req.user!.role === 'customer') throw new AppError(400, 'USE_DEVICE_REGISTRATION', 'Use account-owned notification device registration.');
+    const { error } = await supabase.from('users').update({ expo_push_token: null }).eq('id', req.user!.id);
+    if (error) throw error;
     res.status(200).json({ ok: true });
   } catch (err) {
     next(err);

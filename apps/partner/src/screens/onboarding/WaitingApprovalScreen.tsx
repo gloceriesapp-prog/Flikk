@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { AlertCircleIcon, ArrowRight01Icon, Clock01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
+import { DeleteAccountLink } from '../../components/DeleteAccountLink';
 import { colors } from '../../theme/tokens';
 import { checkAccountStatus } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -108,6 +109,10 @@ export function WaitingApprovalScreen() {
           <Text className="text-sm font-semibold text-white">Edit & resubmit</Text>
           <AppIcon icon={ArrowRight01Icon} size={15} color="#FFFFFF" />
         </Pressable>
+
+        {/* Under review and rejected applicants never reach Store settings;
+          Play requires deletion to be requestable from inside the app. */}
+        <DeleteAccountLink />
       </View>
     );
   }
@@ -131,6 +136,7 @@ export function WaitingApprovalScreen() {
         <Text className="text-xs font-semibold text-ink/60">{checking ? 'Checking status…' : 'Waiting for approval'}</Text>
       </View>
 
+      <DeleteAccountLink />
     </View>
   );
 }

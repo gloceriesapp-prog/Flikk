@@ -33,6 +33,8 @@ interface RawDispatchOffer {
   distance_m: number | null;
   payment_method: 'cod' | 'online';
   cash_to_collect: number;
+  // Absent from an older backend.
+  cash_limit_blocked?: boolean;
 }
 
 export interface DispatchOffer {
@@ -66,6 +68,9 @@ export interface DispatchOffer {
   // Cash on delivery: the rider collects cashToCollect at the door.
   paymentMethod: 'cod' | 'online';
   cashToCollect: number;
+  // The rider holds too much unsettled cash to take this cash order
+  // (backend lib/riderCashLimit.ts); accepting is refused until they deposit.
+  cashLimitBlocked: boolean;
 }
 
 function coordsOf(lat: number | null | undefined, lng: number | null | undefined): Coordinates | null {
@@ -98,6 +103,7 @@ function toDispatchOffer(row: RawDispatchOffer): DispatchOffer {
     windowSeconds: row.offer_window_seconds || undefined,
     paymentMethod: row.payment_method === 'online' ? 'online' : 'cod',
     cashToCollect: Number(row.cash_to_collect) || 0,
+    cashLimitBlocked: row.cash_limit_blocked === true,
   };
 }
 
@@ -119,7 +125,9 @@ export async function acceptDispatchOffer(orderId: string): Promise<AcceptDispat
   } catch (err) {
     // RIDER_AT_CAPACITY: the rider already holds the admin's maximum active
     // deliveries (migration 113) — not a lost race, so show the server's reason.
-    if (err instanceof ApiError && err.code === 'RIDER_AT_CAPACITY') {
+    // CASH_LIMIT_REACHED: holding too much unsettled cash for another cash
+    // order (backend lib/riderCashLimit.ts) — the message says how much.
+    if (err instanceof ApiError && (err.code === 'RIDER_AT_CAPACITY' || err.code === 'CASH_LIMIT_REACHED')) {
       return { ok: false, alreadyTaken: false, message: err.message };
     }
     const alreadyTaken = err instanceof ApiError && err.status === 409;

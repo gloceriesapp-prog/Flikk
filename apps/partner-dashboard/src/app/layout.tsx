@@ -20,8 +20,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`h-full antialiased ${inter.variable} ${ibmPlex.variable}`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+    // suppressHydrationWarning: browser extensions (password managers,
+    // security and colour-picker add-ons) write attributes onto <html>/<body>
+    // before React hydrates. Only these two elements' own attributes are
+    // exempt; mismatches anywhere inside still warn.
+    <html lang="en" className={`h-full antialiased ${inter.variable} ${ibmPlex.variable}`} suppressHydrationWarning>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>{children}</body>
     </html>
   );
 }

@@ -40,7 +40,10 @@ export function fetchRiderEarningSummary(from: string, until: string): Promise<E
 
 // GET /rider/cash-balance — cash collected on cash-on-delivery orders that
 // the rider still holds (an admin marks it settled once handed over).
-export interface RiderCashBalance { outstanding: number; count: number }
+// limit: the float above which cash orders are refused (0 = off); items:
+// the unsettled collections, newest first. Both absent from an older backend.
+export interface RiderCashCollection { id: string; order_id: string | null; trip_id: string | null; amount: number; collected_at: string }
+export interface RiderCashBalance { outstanding: number; count: number; limit?: number; items?: RiderCashCollection[] }
 
 export async function fetchRiderCashBalance(): Promise<RiderCashBalance> {
   return apiRequest<RiderCashBalance>('/rider/cash-balance');

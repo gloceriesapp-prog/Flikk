@@ -16,6 +16,7 @@ import { AvailabilityScreen } from '../screens/profile/AvailabilityScreen';
 import { PayoutHistoryScreen } from '../screens/payouts/PayoutHistoryScreen';
 import { SupportScreen } from '../screens/support/SupportScreen';
 import { SupportTicketScreen } from '../screens/support/SupportTicketScreen';
+import { DeleteAccountScreen } from '../screens/profile/DeleteAccountScreen';
 import { useAutoOnline } from '../hooks/useAutoOnline';
 import type { AppStackParamList } from './types';
 
@@ -48,6 +49,7 @@ export function AppNavigator() {
       <Stack.Screen name="PayoutHistory" component={PayoutHistoryScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="Support" component={SupportScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="SupportTicket" component={SupportTicketScreen} options={{ presentation: 'card' }} />
+      <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ presentation: 'card' }} />
     </Stack.Navigator>
   );
 }

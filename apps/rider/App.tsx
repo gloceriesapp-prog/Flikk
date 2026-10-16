@@ -21,6 +21,7 @@ import { OfflineBanner } from './src/components/OfflineBanner';
 import { AEONIK_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { ReleaseGate } from './src/features/app-release/ReleaseGate';
+import { withCrashReporting } from './src/observability/crashReporting';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -42,7 +43,7 @@ wireOnlineManager(onlineManager, (setOnline) =>
 // the individual useQuery, never by weakening this base.
 const queryClient = createAppQueryClient();
 
-export default function App() {
+function App() {
   // Loading the weights here registers them with the OS by font-family
   // name (e.g. "Gilroy-Regular") — the actual app-wide default is
   // applied via global.css's `@layer base`/weight-utility mapping, not
@@ -86,3 +87,5 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+export default withCrashReporting(App);

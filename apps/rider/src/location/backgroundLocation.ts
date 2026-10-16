@@ -25,11 +25,15 @@ import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
 import * as TaskManager from 'expo-task-manager';
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../store/useAuthStore';
+import { classifyBackgroundPermission, parseDeclinedAt, type BackgroundAccess } from './backgroundDisclosure';
 // Same validated, Metro-host-following URL the foreground client uses, so a
 // background ping can never go somewhere the foreground app doesn't (it used
 // to read the raw env var with a localhost fallback, which on a phone is the
 // phone itself). baseUrl.ts imports no store, so it is safe in a headless task.
 import { API_BASE_URL as API_URL } from '../api/baseUrl';
+
+// When the rider last tapped "Not now" on the background-location disclosure.
+const DISCLOSURE_DECLINED_KEY = 'gloceries_rider_bg_location_declined_at';
 
 // Must match the string TaskManager.defineTask registers under — the OS
 // relaunches into the task by this name.
@@ -93,24 +97,52 @@ TaskManager.defineTask(RIDER_LOCATION_TASK, async ({ data, error }) => {
   }
 });
 
-export async function startBackgroundLocation(): Promise<void> {
-  // Background ("Always") grant is a separate OS prompt from when-in-use.
-  // Declining it isn't an error — the foreground ping loop still works, the
-  // rider just won't stay visible to dispatch once the app is suspended.
-  //
-  // requestBackgroundPermissionsAsync THROWS (ERR_LOCATION_INFO_PLIST), not
-  // just returns denied, when the running binary's Info.plist lacks the
-  // background-location entitlement — i.e. plain Expo Go, or a dev client
-  // built before app.config.js's UIBackgroundModes/permissions landed. Same
-  // no-op-and-degrade path as a declined grant, so swallow it rather than
-  // let it surface as an uncaught promise rejection.
-  let status: Location.PermissionStatus;
+// Silent read of the background ("Allow all the time") grant. Never prompts.
+// The permission APIs THROW (ERR_LOCATION_INFO_PLIST) rather than report
+// "denied" when the running binary lacks the background-location
+// entitlement (plain Expo Go, or a dev client built before
+// app.config.js's background flags), so that is reported as 'unavailable'.
+export async function getBackgroundAccess(): Promise<BackgroundAccess> {
   try {
-    ({ status } = await Location.requestBackgroundPermissionsAsync());
+    return classifyBackgroundPermission(await Location.getBackgroundPermissionsAsync());
   } catch {
-    return;
+    return 'unavailable';
   }
-  if (status !== 'granted') return;
+}
+
+// Shows the OS prompt. Only ever called after the rider accepted
+// BackgroundLocationDisclosure (Play's prominent-disclosure rule), and only
+// from a foreground tap: Android will not show the prompt from the
+// background, and Android 11+ requires the when-in-use grant first.
+export async function requestBackgroundAccess(): Promise<boolean> {
+  try {
+    const foreground = await Location.getForegroundPermissionsAsync();
+    if (!foreground.granted) return false;
+    const { granted } = await Location.requestBackgroundPermissionsAsync();
+    return granted;
+  } catch {
+    return false;
+  }
+}
+
+export async function getDisclosureDeclinedAt(): Promise<number | null> {
+  return parseDeclinedAt(await SecureStore.getItemAsync(DISCLOSURE_DECLINED_KEY).catch(() => null));
+}
+
+export async function recordDisclosureDeclined(now = Date.now()): Promise<void> {
+  await SecureStore.setItemAsync(DISCLOSURE_DECLINED_KEY, String(now)).catch(() => {});
+}
+
+export async function clearDisclosureDeclined(): Promise<void> {
+  await SecureStore.deleteItemAsync(DISCLOSURE_DECLINED_KEY).catch(() => {});
+}
+
+export async function startBackgroundLocation(): Promise<void> {
+  // Called when the app moves to the background while online. It NEVER
+  // prompts: the prompt belongs to the disclosure flow on a foreground tap
+  // (useBackgroundLocationDisclosure). Without the grant this is a no-op and
+  // the rider stays visible to dispatch only while the app is open.
+  if ((await getBackgroundAccess()) !== 'granted') return;
 
   const already = await Location.hasStartedLocationUpdatesAsync(RIDER_LOCATION_TASK).catch(() => false);
   if (already) return;

@@ -16,23 +16,39 @@
 // defense-in-depth pass against the same rule for the (rare) case where
 // the phone's status changed in the few seconds between the two calls.
 //
-// Google/email sign-in are UI only for now, per an explicit ask — real
-// phone OTP is the only path that actually authenticates today.
+// Phone OTP is the only sign-in method, so the page offers nothing else.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { checkPartnerPhone, requestOtp, verifyOtp } from '@/lib/authApi';
 import { clearTokens } from '@/lib/authStorage';
 import { ApiError } from '@/lib/api';
-import { CheckCircle2, LayoutGrid, Package, Wallet } from 'lucide-react';
+import { OtpInput } from '@/components/login/OtpInput';
+import { StoreIllustration } from '@/components/login/StoreIllustration';
 
 type Step = 'phone' | 'otp';
 
-const FEATURES = [
-  { icon: Package, label: 'Manage your live order queue from a bigger screen' },
-  { icon: LayoutGrid, label: 'Keep your catalog and stock in sync with the app' },
-  { icon: Wallet, label: 'Track weekly payouts and settlement history' },
-];
+const PHONE_LENGTH = 10;
+const CODE_LENGTH = 6;
+const RESEND_SECONDS = 30;
+const SITE_URL = 'https://www.gloceries.com';
+
+// Indian mobile numbers are 10 digits starting 6-9. Pasted numbers often
+// carry +91, a leading 0, spaces or dashes; keep the last 10 digits.
+function normalisePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  return digits.length > PHONE_LENGTH ? digits.slice(-PHONE_LENGTH) : digits;
+}
+
+function phoneProblem(phone: string): string | null {
+  if (phone.length < PHONE_LENGTH) return null;
+  return /^[6-9]/.test(phone) ? null : 'Enter a valid 10-digit mobile number.';
+}
+
+function formatPhone(phone: string): string {
+  return phone.length > 5 ? `${phone.slice(0, 5)} ${phone.slice(5)}` : phone;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,32 +57,60 @@ export default function LoginPage() {
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendIn, setResendIn] = useState(0);
+  const lastAutoSubmitted = useRef<string | null>(null);
 
   const fullPhone = `+91${phone}`;
+  const phoneError = phoneProblem(phone);
+  const phoneReady = phone.length === PHONE_LENGTH && !phoneError;
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
 
   async function handleRequestOtp(e: React.FormEvent) {
     e.preventDefault();
-    if (phone.length !== 10 || isSubmitting) return;
+    if (!phoneReady || isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
     try {
       await checkPartnerPhone(fullPhone);
       await requestOtp(fullPhone);
+      setCode('');
+      lastAutoSubmitted.current = null;
+      setResendIn(RESEND_SECONDS);
       setStep('otp');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send the code.');
+      setError(err instanceof ApiError ? err.message : 'Could not send the code. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function handleVerifyOtp(e: React.FormEvent) {
-    e.preventDefault();
-    if (!code || isSubmitting) return;
+  async function handleResend() {
+    if (resendIn > 0 || isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
     try {
-      const result = await verifyOtp(fullPhone, code);
+      await requestOtp(fullPhone);
+      setCode('');
+      lastAutoSubmitted.current = null;
+      setResendIn(RESEND_SECONDS);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not resend the code. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function verify(submittedCode: string) {
+    if (submittedCode.length !== CODE_LENGTH || isSubmitting) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const result = await verifyOtp(fullPhone, submittedCode);
 
       // Defense-in-depth re-check of the same rule checkPartnerPhone
       // already enforced above — see this file's own header note on why
@@ -89,199 +133,192 @@ export default function LoginPage() {
     }
   }
 
+  function handleCodeChange(next: string) {
+    setCode(next);
+    setError(null);
+    // Submit as soon as the sixth digit lands, once per distinct code, so a
+    // wrong code isn't retried in a loop and an edited code still submits.
+    if (next.length === CODE_LENGTH && lastAutoSubmitted.current !== next) {
+      lastAutoSubmitted.current = next;
+      void verify(next);
+    }
+  }
+
+  function backToPhone() {
+    setStep('phone');
+    setCode('');
+    setError(null);
+    lastAutoSubmitted.current = null;
+  }
+
   return (
-    <section className="min-h-screen bg-white p-3 text-black antialiased">
-      <div className="grid min-h-[calc(100vh-1.5rem)] gap-6 lg:grid-cols-[0.94fr_1.06fr]">
-        {/* Left: sign-in form */}
-        <div className="flex min-h-[760px] items-center justify-center rounded-md border border-black/10 bg-white px-6 py-12 lg:min-h-0 lg:px-14 lg:py-20 xl:px-20">
-          <div className="mx-auto w-full max-w-[420px]">
-            <h1 className="text-3xl font-medium tracking-tight text-black sm:text-4xl">Gloceries Partner</h1>
-            <p className="mt-2 text-sm text-black/50">
-              {step === 'phone'
-                ? 'Sign in with the phone number used on your Partner app.'
-                : `Enter the code sent to ${fullPhone}.`}
-            </p>
+    <main className="min-h-screen bg-[#1c2a22] p-2 text-[#1d2b22] antialiased sm:p-3">
+      <div className="relative min-h-[calc(100vh-1rem)] overflow-hidden rounded-[28px] bg-[#dff5c2] sm:min-h-[calc(100vh-1.5rem)]">
+        {/* Scene fills the frame; the card sits over its right side. */}
+        <StoreIllustration className="absolute inset-0 hidden h-full w-full lg:block" />
 
-            {step === 'phone' ? (
-              <>
-                {/* UI only — no real Google/email auth wired up yet, per an
-                    explicit ask to keep this to visual scaffolding for now. */}
-                <div className="mt-8 grid gap-3 sm:grid-cols-2 sm:gap-4">
-                  <button
-                    type="button"
-                    disabled
-                    className="flex h-11 w-full min-w-0 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-black/15 bg-white px-4 text-sm font-medium text-black/40"
-                  >
-                    <GoogleIcon />
-                    <span className="whitespace-nowrap">Continue with Google</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="flex h-11 w-full min-w-0 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-black/15 bg-white px-4 text-sm font-medium text-black/40"
-                  >
-                    <span className="whitespace-nowrap">Continue with email</span>
-                  </button>
-                </div>
-
-                <div className="my-6 flex items-center gap-4 text-xs font-medium text-black/40">
-                  <div className="h-px flex-1 bg-black/10" />
-                  or
-                  <div className="h-px flex-1 bg-black/10" />
-                </div>
-
-                <form onSubmit={handleRequestOtp} className="space-y-4">
-                  <div className="space-y-1.5 text-left">
-                    <label className="text-xs font-semibold text-black/60">Phone number</label>
-                    <div className="flex h-11 items-center rounded-lg border border-black/15 bg-white px-3.5 focus-within:border-black/40">
-                      <span className="pr-2 text-sm text-black/50">+91</span>
-                      <input
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={10}
-                        required
-                        value={phone}
-                        onChange={(e) => {
-                          setPhone(e.target.value.replace(/\D/g, ''));
-                          setError(null);
-                        }}
-                        placeholder="98765 43210"
-                        className="w-full bg-transparent text-sm text-black outline-none placeholder:text-black/30"
-                      />
-                    </div>
-                  </div>
-
-                  {error && <p className="text-xs leading-5 text-red-600">{error}</p>}
-
-                  <button
-                    type="submit"
-                    disabled={phone.length !== 10 || isSubmitting}
-                    className="mt-2 flex h-11 w-full items-center justify-center rounded-lg border border-black/40 bg-black text-sm font-medium text-white transition-colors hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {isSubmitting ? 'Checking…' : 'Continue'}
-                  </button>
-                </form>
-
-                <p className="mt-8 text-xs leading-5 text-black/40">
-                  New to Gloceries? Apply with your store on the Gloceries Partner app first — this dashboard unlocks
-                  once that application is submitted.
-                </p>
-              </>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="mt-8 space-y-4">
-                <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-semibold text-black/60">6-digit code</label>
-                  <div className="flex h-11 items-center rounded-lg border border-black/15 bg-white px-3.5 focus-within:border-black/40">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      required
-                      value={code}
-                      onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                      placeholder="000000"
-                      className="w-full bg-transparent text-sm text-black outline-none placeholder:text-black/30"
-                    />
-                  </div>
-                </div>
-
-                {error && <p className="text-xs leading-5 text-red-600">{error}</p>}
-
-                <button
-                  type="submit"
-                  disabled={!code || isSubmitting}
-                  className="flex h-11 w-full items-center justify-center rounded-lg border border-black/40 bg-black text-sm font-medium text-white transition-colors hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {isSubmitting ? 'Verifying…' : 'Verify & sign in'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep('phone');
-                    setCode('');
-                    setError(null);
-                  }}
-                  className="w-full text-center text-sm font-medium text-black/50"
-                >
-                  Use a different number
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-
-        {/* Right: brand panel — same dark navy-to-blue gradient language as
-            the marketing site's hero, scaled down. */}
-        <div className="relative hidden min-h-[720px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,#060B18_0%,#0B1743_55%,#123A8C_100%)] p-10 text-white lg:flex lg:min-h-0 lg:p-16">
-          <div className="pointer-events-none absolute -top-20 -right-24 h-[360px] w-[360px] rounded-full bg-[#3B6BFF] opacity-25 blur-[110px]" />
-          <div className="pointer-events-none absolute bottom-0 left-0 h-[320px] w-[320px] rounded-full bg-[#A8D93A] opacity-[0.15] blur-[120px]" />
-          {/* Vertical hairline texture, same cue as the reference layout's
-              striped backdrop. */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.06]"
-            style={{
-              backgroundImage: 'repeating-linear-gradient(90deg, rgba(255,255,255,0.7) 0px, rgba(255,255,255,0.7) 1px, transparent 1px, transparent 34px)',
-            }}
-          />
-
-          <div className="relative z-10 h-full w-full">
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm font-bold">
-                G
+        <div className="relative flex min-h-[calc(100vh-1rem)] items-stretch justify-end p-3 sm:min-h-[calc(100vh-1.5rem)] sm:p-6 lg:p-5">
+          <section className="flex w-full flex-col rounded-[28px] bg-white px-6 py-10 shadow-[0_20px_60px_-30px_rgba(16,48,28,0.45)] sm:px-12 lg:w-[48%] lg:max-w-[640px] xl:px-20">
+            <div className="flex items-center justify-center gap-2.5">
+              <BrandMark />
+              <span className="text-[22px] font-semibold tracking-tight">gloceries</span>
+              <span className="rounded-full bg-[#eef8de] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-[#5c8f2a]">
+                Partner
               </span>
-              <div>
-                <div className="text-sm font-semibold leading-tight text-white">Gloceries for Business</div>
-                <div className="mt-0.5 text-xs text-white/50">Partner dashboard</div>
-              </div>
             </div>
 
-            <h2 className="mt-8 max-w-[420px] text-2xl font-light leading-tight tracking-[-0.02em] text-white/90 sm:text-3xl lg:text-[34px]">
-              Your store, <span className="font-medium text-[#A8D93A]">from the counter to the cloud.</span>
-            </h2>
-            <p className="mt-5 max-w-[380px] text-sm leading-6 text-white/50">
-              The Partner dashboard mirrors your Gloceries Partner app — same store, same orders, same account.
+            <div className="mx-auto flex w-full max-w-[340px] flex-1 flex-col justify-center py-10">
+              {step === 'phone' ? (
+                <>
+                  <h1 className="text-center font-[family-name:var(--font-ibm-plex)] text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
+                    Partner
+                    <br />
+                    sign in
+                  </h1>
+                  <p className="mt-4 text-center text-sm text-black/50">Use the mobile number registered on your Partner app.</p>
+
+                  <form onSubmit={handleRequestOtp} className="mt-9 space-y-4" noValidate>
+                    <label htmlFor="phone" className="sr-only">
+                      Mobile number
+                    </label>
+                    <div
+                      className={`flex h-[52px] items-center rounded-full border bg-white pl-5 pr-4 transition-shadow focus-within:ring-4 ${
+                        phoneError ? 'border-red-400 focus-within:ring-red-100' : 'border-black/10 focus-within:border-[#8cc152] focus-within:ring-[#a8d93a]/25'
+                      }`}
+                    >
+                      <span className="pr-3 text-sm font-medium text-black/60">+91</span>
+                      <span className="mr-3 h-5 w-px bg-black/10" aria-hidden="true" />
+                      <input
+                        id="phone"
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        autoFocus
+                        value={formatPhone(phone)}
+                        onChange={(e) => {
+                          setPhone(normalisePhone(e.target.value));
+                          setError(null);
+                        }}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          setPhone(normalisePhone(e.clipboardData.getData('text')));
+                          setError(null);
+                        }}
+                        placeholder="Mobile number"
+                        aria-invalid={Boolean(phoneError) || undefined}
+                        aria-describedby="phone-help"
+                        className="w-full bg-transparent text-[15px] tracking-wide outline-none placeholder:tracking-normal placeholder:text-black/35"
+                      />
+                      <span className="shrink-0 text-xs tabular-nums text-black/30">
+                        {phone.length}/{PHONE_LENGTH}
+                      </span>
+                    </div>
+
+                    <p id="phone-help" className="min-h-5 px-5 text-xs leading-5 text-red-600" role="alert">
+                      {phoneError ?? error ?? ''}
+                    </p>
+
+                    <button
+                      type="submit"
+                      disabled={!phoneReady || isSubmitting}
+                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#a3d65c] text-[15px] font-semibold text-[#1d2b22] transition-colors hover:bg-[#95cc4b] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Sending code…' : 'Send OTP'}
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={backToPhone}
+                    className="mb-6 inline-flex items-center gap-1.5 self-start text-sm font-medium text-black/50 hover:text-black"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Change number
+                  </button>
+                  <h1 className="text-center font-[family-name:var(--font-ibm-plex)] text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
+                    Verify
+                    <br />
+                    OTP
+                  </h1>
+                  <p className="mt-4 text-center text-sm text-black/50">
+                    Enter the 6-digit code sent to <span className="font-semibold text-black/80">+91 {formatPhone(phone)}</span>
+                  </p>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void verify(code);
+                    }}
+                    className="mt-9 space-y-4"
+                  >
+                    <OtpInput value={code} onChange={handleCodeChange} disabled={isSubmitting} invalid={Boolean(error)} autoFocus />
+
+                    <p className="min-h-5 text-center text-xs leading-5 text-red-600" role="alert">
+                      {error ?? ''}
+                    </p>
+
+                    <button
+                      type="submit"
+                      disabled={code.length !== CODE_LENGTH || isSubmitting}
+                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#a3d65c] text-[15px] font-semibold text-[#1d2b22] transition-colors hover:bg-[#95cc4b] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Verifying…' : 'Verify & sign in'}
+                    </button>
+                  </form>
+
+                  <p className="mt-6 text-center text-sm text-black/50">
+                    Didn&apos;t get the code?{' '}
+                    {resendIn > 0 ? (
+                      <span className="tabular-nums text-black/40">Resend in {resendIn}s</span>
+                    ) : (
+                      <button type="button" onClick={handleResend} disabled={isSubmitting} className="font-semibold text-[#5c8f2a] hover:underline disabled:opacity-50">
+                        Resend OTP
+                      </button>
+                    )}
+                  </p>
+                </>
+              )}
+
+              <p className="mt-8 text-center text-xs leading-5 text-black/50">
+                By continuing you agree to Gloceries&apos;{' '}
+                <a href={`${SITE_URL}/terms`} target="_blank" rel="noreferrer" className="font-semibold text-[#5c8f2a] hover:underline">
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href={`${SITE_URL}/privacy`} target="_blank" rel="noreferrer" className="font-semibold text-[#5c8f2a] hover:underline">
+                  Privacy Policy
+                </a>
+                .
+              </p>
+            </div>
+
+            <p className="text-center text-sm text-black/60">
+              New to Gloceries? <span className="font-semibold text-[#5c8f2a]">Apply on the Partner app</span>
             </p>
-
-            <ul className="mt-10 flex max-w-[380px] flex-col gap-4">
-              {FEATURES.map(({ icon: Icon, label }) => (
-                <li key={label} className="flex items-start gap-3 text-sm text-white/75">
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10">
-                    <Icon className="h-3.5 w-3.5 text-[#A8D93A]" />
-                  </span>
-                  {label}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="relative z-10 mt-auto flex items-center gap-2 text-xs font-medium text-white/40">
-            <CheckCircle2 className="h-3.5 w-3.5 text-[#A8D93A]" />
-            Same account, same data — always in sync with your Partner app.
-          </div>
+          </section>
         </div>
       </div>
-    </section>
+    </main>
   );
 }
 
-function GoogleIcon() {
+// The Gloceries cart-"G" mark, simplified for small sizes.
+function BrandMark() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="9" fill="#a3d65c" />
+      <path d="M7 8.5h3.2l1 3.6" stroke="#1d2b22" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       <path
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09Z"
-        fill="#4285F4"
+        d="M22.6 13.2a6.4 6.4 0 1 0 .4 4.2h-5.2"
+        stroke="#1d2b22"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
       />
-      <path
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z"
-        fill="#34A853"
-      />
-      <path
-        d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84Z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38Z"
-        fill="#EB4335"
-      />
+      <circle cx="12.5" cy="25" r="1.8" fill="#1d2b22" />
+      <circle cx="21" cy="25" r="1.8" fill="#1d2b22" />
     </svg>
   );
 }

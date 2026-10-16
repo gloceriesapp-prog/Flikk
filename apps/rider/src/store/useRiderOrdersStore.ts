@@ -46,9 +46,12 @@
 // rider_earnings row).
 
 import * as SecureStore from 'expo-secure-store';
+import * as Haptics from 'expo-haptics';
+import { AppState, Vibration } from 'react-native';
 import { create } from 'zustand';
 import { acceptDispatchOffer, fetchDispatchOffers, updateRiderStatus, type AcceptDispatchOfferResult, type DispatchOffer } from '../api/dispatch';
-import { fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders';
+import { fetchAssignmentHistory, fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders';
+import { mergeHistory } from './orderHistory';
 import { generateMockOrder, generateMockRating, generateMockTip, type RiderOrder } from '../data/mockOrders';
 import { getCurrentCoordinates, requestLocationPermission } from '../location/riderLocation';
 import { startBackgroundLocation, stopBackgroundLocation } from '../location/backgroundLocation';
@@ -57,6 +60,7 @@ import { useAuthStore } from './useAuthStore';
 import { todayKey } from '../utils/date';
 import { carryOverActiveMs } from '../utils/activeTime';
 import { loopPlan, normalizeAppState } from './presenceLoops';
+import { newOfferIds } from '../features/push-notifications/offerPush';
 
 export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'picked_up', 'arrived_at_customer', 'delivered'];
 
@@ -86,7 +90,7 @@ const dedupById = (orders: RiderOrder[]): RiderOrder[] => {
 };
 
 // #22: true when two arrays have identical content (same length, same per-item
-// JSON by position). The 12s assignment poll and 45s dispatch-offer refresh
+// JSON by position). The 12s assignment poll and 20s dispatch-offer refresh
 // rebuild fresh arrays every tick even when nothing actually changed; callers
 // use this to keep the PREVIOUS array reference on an unchanged poll, so Home's
 // store subscribers (and the memoized cards) don't re-render every tick.
@@ -136,15 +140,28 @@ const ACTIVE_MS_KEY = 'gloceries_rider_active_ms_today';
 // How often, while online, to report a fresh position + refresh the
 // nearby-offers list. Balanced accuracy (getCurrentCoordinates), not
 // continuous high-accuracy tracking — this only needs to be fresh enough
-// for a 3-8km dispatch radius, not turn-by-turn precision.
-const LOCATION_PING_INTERVAL_MS = 45_000;
+// for a 3-8km dispatch radius, not turn-by-turn precision. 20s: offers are
+// first-come, so a rider who only hears about one 45s late usually loses it;
+// pushes trigger an immediate refresh on top of this (refreshOffers).
+const LOCATION_PING_INTERVAL_MS = 20_000;
+const DELIVERY_PING_INTERVAL_MS = 10_000;
+// Timers drift; without slack a 20s cadence on a 10s tick slips to 30s.
+const PING_TICK_SLACK_MS = 1_000;
+
+// Played in-app when an offer the rider hasn't seen appears while the app is
+// open. The OS push (channel 'offers') covers the app-closed case.
+const NEW_OFFER_VIBRATION = [0, 400, 200, 400];
+
+// Finished orders are stored without the customer's number: the rider no
+// longer needs it, and the server withholds it for them too.
+const withoutPhone = (order: RiderOrder): RiderOrder => (order.customerPhone ? { ...order, customerPhone: '' } : order);
 
 async function persistHistory(orders: RiderOrder[]): Promise<void> {
-  await SecureStore.setItemAsync(HISTORY_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY)));
+  await SecureStore.setItemAsync(HISTORY_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY).map(withoutPhone)));
 }
 
 async function persistCancelled(orders: RiderOrder[]): Promise<void> {
-  await SecureStore.setItemAsync(CANCELLED_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY)));
+  await SecureStore.setItemAsync(CANCELLED_KEY, JSON.stringify(orders.slice(0, MAX_HISTORY).map(withoutPhone)));
 }
 
 async function persistActive(orders: RiderOrder[]): Promise<void> {
@@ -188,13 +205,16 @@ interface RiderOrdersState {
   hydrateHistory: () => Promise<void>;
   startSync: () => void;
   stopSync: () => void;
-  // Reconciles the foreground loops (12s assignment poll, 45s presence ping)
+  syncNow: () => void;
+  refreshOffers: () => Promise<void>;
+  // Reconciles the foreground loops (12s assignment poll, 20s presence ping)
   // and the background-location writer to the app's foreground phase + shift
   // state — see presenceLoops.ts for the pure rule. Driven by the single
   // AppState listener in useAutoOnline; `next` is the raw AppStateStatus.
   syncLoopsToAppState: (next: string) => void;
   goOnline: () => Promise<boolean>;
   goOffline: () => void;
+  resetForSignOut: () => Promise<void>;
   acceptIncomingOrder: () => void;
   declineIncomingOrder: () => void;
   advanceOrderStatus: (orderId: string, otp?: string) => Promise<void>;
@@ -224,6 +244,8 @@ function handleSuspended(err: unknown): boolean {
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let autoDeclineTimer: ReturnType<typeof setTimeout> | null = null;
 let locationPingTimer: ReturnType<typeof setInterval> | null = null;
+let historyPulled = false;
+let lastPingAt = 0;
 
 function stopLocationPing() {
   if (locationPingTimer) {
@@ -247,6 +269,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
   // list from it (what nearby_dispatch_offers reads) — no reason to sample GPS
   // twice for two purposes that both need the exact same fix.
   async function pingAndRefresh() {
+    lastPingAt = Date.now();
     const coords = await getCurrentCoordinates().catch(() => null);
     if (!coords) return; // permission denied / no fix yet — try again next tick
     const suspendedNow = await updateRiderStatus({ status: 'online', lat: coords.latitude, lng: coords.longitude }).then(
@@ -260,14 +283,142 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     const offers = await fetchDispatchOffers(coords.latitude, coords.longitude).catch(() => null);
     // #22: keep the previous nearbyOffers ref when the refreshed list is
     // identical, so Home's "Pickups near you" subscribers don't re-render on a
-    // 45s tick that changed nothing.
-    if (offers) set((s) => ({ nearbyOffers: sameList(s.nearbyOffers, offers) ? s.nearbyOffers : offers }));
+    // 20s tick that changed nothing.
+    if (!offers) return;
+    const fresh = newOfferIds(get().nearbyOffers, offers);
+    set((s) => ({ nearbyOffers: sameList(s.nearbyOffers, offers) ? s.nearbyOffers : offers }));
+    if (fresh.length && AppState.currentState === 'active') {
+      Vibration.vibrate(NEW_OFFER_VIBRATION);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
   }
 
+  // One assignments refresh (GET /rider/assignments → active / incoming /
+  // history). Run by the 12s poll and on demand when a push lands (syncNow).
+  async function syncAssignments() {
+    let rows;
+    try {
+      rows = await fetchAssignments();
+    } catch {
+      // Network blip / not-yet-approved-as-a-rider — just skip this
+      // cycle, the next poll tries again. Nothing useful to surface to
+      // a rider for one missed background refresh.
+      return;
+    }
+
+    const state = get();
+    const mapped = rows.map(toRiderOrder).filter((o): o is RiderOrder => o !== null);
+
+    const knownIds = new Set([
+      ...state.activeOrders.map((o) => o.id),
+      ...state.completedOrders.map((o) => o.id),
+      ...state.cancelledOrders.map((o) => o.id),
+      ...state.dismissedIds,
+      ...(state.incomingOrder ? [state.incomingOrder.id] : []),
+    ]);
+
+    const nextActive: RiderOrder[] = [];
+    const newlyDelivered: RiderOrder[] = [];
+    const newlyCancelled: RiderOrder[] = [];
+    let nextIncoming = state.incomingOrder;
+    let nextIncomingExpiresAt = state.incomingOrderExpiresAt;
+
+    for (const order of mapped) {
+      if (order.status === 'delivered') {
+        if (!state.completedOrders.some((o) => o.id === order.id)) newlyDelivered.push(order);
+        continue;
+      }
+      if (order.status === 'cancelled') {
+        if (!state.cancelledOrders.some((o) => o.id === order.id)) newlyCancelled.push(order);
+        continue;
+      }
+
+      // Still the pending incoming order — stays there, not double-shown
+      // in the active list until actually accepted.
+      if (nextIncoming?.id === order.id) continue;
+
+      const brandNew = !knownIds.has(order.id) && order.status === 'assigned';
+      if (brandNew && !nextIncoming) {
+        if (state.isOnline) {
+          nextIncoming = order;
+          nextIncomingExpiresAt = Date.now() + ACCEPT_WINDOW_MS;
+        } else {
+          // Offline: still real, still theirs — just no interrupt.
+          nextActive.push(order);
+        }
+        continue;
+      }
+
+      // Preserve the local-only 'arrived_at_customer' sub-stage — the
+      // server only ever reports 'picked_up' for this order (mapped
+      // from out_for_delivery) until the real 'delivered' PATCH fires.
+      const existing = state.activeOrders.find((o) => o.id === order.id);
+      const effectiveStatus = existing?.status === 'arrived_at_customer' && order.status === 'picked_up' ? 'arrived_at_customer' : order.status;
+      nextActive.push({ ...order, status: effectiveStatus });
+    }
+
+    // ponytail: __DEV__ demo orders (id 'demo-…', from the Test button's
+    // acceptDemoOffer) have no server row, so this poll would drop them on
+    // the next cycle. Pin them so the accept→active preview survives. Real
+    // assignments never use this prefix. Delete with the Test button.
+    if (__DEV__) {
+      for (const o of state.activeOrders) {
+        if (o.id.startsWith('demo-') && !nextActive.some((n) => n.id === o.id)) nextActive.push(o);
+      }
+    }
+
+    set({
+      activeOrders: sameList(state.activeOrders, nextActive) ? state.activeOrders : nextActive,
+      completedOrders: newlyDelivered.length ? [...newlyDelivered, ...state.completedOrders] : state.completedOrders,
+      cancelledOrders: newlyCancelled.length ? [...newlyCancelled, ...state.cancelledOrders] : state.cancelledOrders,
+      incomingOrder: nextIncoming,
+      incomingOrderExpiresAt: nextIncomingExpiresAt,
+    });
+
+    if (newlyDelivered.length) void persistHistory(get().completedOrders);
+
+    if (nextIncoming && nextIncoming.id !== state.incomingOrder?.id) {
+      clearAutoDeclineTimer();
+      const incomingId = nextIncoming.id;
+      autoDeclineTimer = setTimeout(() => {
+        if (get().incomingOrder?.id === incomingId) get().declineIncomingOrder();
+      }, ACCEPT_WINDOW_MS);
+    }
+  }
+
+  // Once per signed-in session: fold the server's delivery history into the
+  // local cache, so a reinstall or a new phone still lists past deliveries.
+  // The local cache stays for an instant first paint; the server wins per
+  // order (orderHistory.ts). A failure retries on the next startSync.
+  async function pullServerHistory() {
+    historyPulled = true;
+    let rows;
+    try {
+      rows = await fetchAssignmentHistory();
+    } catch {
+      historyPulled = false;
+      return;
+    }
+    const delivered = rows
+      .map(toRiderOrder)
+      .filter((o): o is RiderOrder => o !== null && o.status === 'delivered');
+    const merged = mergeHistory(get().completedOrders, delivered, MAX_HISTORY);
+    if (sameList(get().completedOrders, merged)) return;
+    set({ completedOrders: merged });
+    void persistHistory(merged);
+  }
+
+  // With an order in hand the customer is watching the rider on a live map
+  // (backend tracking/riderLocation.ts), so report every 10s instead of 20s.
+  // One 10s tick drives both cadences; an idle rider still pings every 20s.
   function startForegroundPing() {
     stopLocationPing();
     void pingAndRefresh();
-    locationPingTimer = setInterval(() => void pingAndRefresh(), LOCATION_PING_INTERVAL_MS);
+    locationPingTimer = setInterval(() => {
+      const onDelivery = get().activeOrders.some((o) => o.status === 'picked_up' || o.status === 'arrived_at_customer');
+      const due = onDelivery ? DELIVERY_PING_INTERVAL_MS : LOCATION_PING_INTERVAL_MS;
+      if (Date.now() - lastPingAt >= due - PING_TICK_SLACK_MS) void pingAndRefresh();
+    }, DELIVERY_PING_INTERVAL_MS);
   }
 
   return {
@@ -316,99 +467,9 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
 
   startSync: () => {
     if (pollTimer) return; // already running
-    const sync = async () => {
-      let rows;
-      try {
-        rows = await fetchAssignments();
-      } catch {
-        // Network blip / not-yet-approved-as-a-rider — just skip this
-        // cycle, the next poll tries again. Nothing useful to surface to
-        // a rider for one missed background refresh.
-        return;
-      }
-
-      const state = get();
-      const mapped = rows.map(toRiderOrder).filter((o): o is RiderOrder => o !== null);
-
-      const knownIds = new Set([
-        ...state.activeOrders.map((o) => o.id),
-        ...state.completedOrders.map((o) => o.id),
-        ...state.cancelledOrders.map((o) => o.id),
-        ...state.dismissedIds,
-        ...(state.incomingOrder ? [state.incomingOrder.id] : []),
-      ]);
-
-      const nextActive: RiderOrder[] = [];
-      const newlyDelivered: RiderOrder[] = [];
-      const newlyCancelled: RiderOrder[] = [];
-      let nextIncoming = state.incomingOrder;
-      let nextIncomingExpiresAt = state.incomingOrderExpiresAt;
-
-      for (const order of mapped) {
-        if (order.status === 'delivered') {
-          if (!state.completedOrders.some((o) => o.id === order.id)) newlyDelivered.push(order);
-          continue;
-        }
-        if (order.status === 'cancelled') {
-          if (!state.cancelledOrders.some((o) => o.id === order.id)) newlyCancelled.push(order);
-          continue;
-        }
-
-        // Still the pending incoming order — stays there, not double-shown
-        // in the active list until actually accepted.
-        if (nextIncoming?.id === order.id) continue;
-
-        const brandNew = !knownIds.has(order.id) && order.status === 'assigned';
-        if (brandNew && !nextIncoming) {
-          if (state.isOnline) {
-            nextIncoming = order;
-            nextIncomingExpiresAt = Date.now() + ACCEPT_WINDOW_MS;
-          } else {
-            // Offline: still real, still theirs — just no interrupt.
-            nextActive.push(order);
-          }
-          continue;
-        }
-
-        // Preserve the local-only 'arrived_at_customer' sub-stage — the
-        // server only ever reports 'picked_up' for this order (mapped
-        // from out_for_delivery) until the real 'delivered' PATCH fires.
-        const existing = state.activeOrders.find((o) => o.id === order.id);
-        const effectiveStatus = existing?.status === 'arrived_at_customer' && order.status === 'picked_up' ? 'arrived_at_customer' : order.status;
-        nextActive.push({ ...order, status: effectiveStatus });
-      }
-
-      // ponytail: __DEV__ demo orders (id 'demo-…', from the Test button's
-      // acceptDemoOffer) have no server row, so this poll would drop them on
-      // the next cycle. Pin them so the accept→active preview survives. Real
-      // assignments never use this prefix. Delete with the Test button.
-      if (__DEV__) {
-        for (const o of state.activeOrders) {
-          if (o.id.startsWith('demo-') && !nextActive.some((n) => n.id === o.id)) nextActive.push(o);
-        }
-      }
-
-      set({
-        activeOrders: sameList(state.activeOrders, nextActive) ? state.activeOrders : nextActive,
-        completedOrders: newlyDelivered.length ? [...newlyDelivered, ...state.completedOrders] : state.completedOrders,
-        cancelledOrders: newlyCancelled.length ? [...newlyCancelled, ...state.cancelledOrders] : state.cancelledOrders,
-        incomingOrder: nextIncoming,
-        incomingOrderExpiresAt: nextIncomingExpiresAt,
-      });
-
-      if (newlyDelivered.length) void persistHistory(get().completedOrders);
-
-      if (nextIncoming && nextIncoming.id !== state.incomingOrder?.id) {
-        clearAutoDeclineTimer();
-        const incomingId = nextIncoming.id;
-        autoDeclineTimer = setTimeout(() => {
-          if (get().incomingOrder?.id === incomingId) get().declineIncomingOrder();
-        }, ACCEPT_WINDOW_MS);
-      }
-    };
-
-    void sync();
-    pollTimer = setInterval(sync, POLL_INTERVAL_MS);
+    void syncAssignments();
+    if (!historyPulled) void pullServerHistory();
+    pollTimer = setInterval(() => void syncAssignments(), POLL_INTERVAL_MS);
   },
 
   stopSync: () => {
@@ -418,6 +479,14 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     }
     clearAutoDeclineTimer();
   },
+
+  // Push-driven refreshes (features/push-notifications): skip the wait for
+  // the next poll tick. syncNow only runs while the poll itself is allowed
+  // to (an approved, signed-in rider), so a push can't start syncing early.
+  syncNow: () => {
+    if (pollTimer) void syncAssignments();
+  },
+  refreshOffers: () => (get().isOnline ? pingAndRefresh() : Promise.resolve()),
 
   goOnline: async () => {
     // Presence dispatch is pointless without location: pingAndRefresh below
@@ -472,7 +541,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
   syncLoopsToAppState: (next) => {
     // ONE source of truth for which loops run (presenceLoops.loopPlan), driven
     // by the single AppState listener in useAutoOnline. Pauses the 12s poll +
-    // 45s ping on background (battery/data), resumes on foreground, and flips
+    // 20s ping on background (battery/data), resumes on foreground, and flips
     // the sole /rider/status writer between the foreground ping (foregrounded)
     // and the background task (backgrounded) so there's never a double PATCH.
     const plan = loopPlan(normalizeAppState(next), get().isOnline);
@@ -501,6 +570,29 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     stopLocationPing();
     void stopBackgroundLocation();
     void updateRiderStatus({ status: 'offline' }).catch(() => {});
+  },
+
+  // Sign-out on a shared phone: the next rider must not see this rider's
+  // orders (customer names and addresses) or inherit their online shift.
+  // Runs before the auth tokens are cleared so the offline report can still
+  // authenticate. History is not lost: the server copy comes back on the
+  // next sign-in (pullServerHistory).
+  resetForSignOut: async () => {
+    const wasOnline = get().isOnline;
+    get().stopSync();
+    stopLocationPing();
+    historyPulled = false;
+    set({
+      isOnline: false, onlineSince: null, resumeOnline: false, nearbyOffers: [],
+      incomingOrder: null, incomingOrderExpiresAt: null,
+      activeOrders: [], completedOrders: [], cancelledOrders: [], dismissedIds: new Set(),
+      activeMsToday: 0, activeMsDate: todayKey(),
+    });
+    await Promise.all([
+      stopBackgroundLocation().catch(() => {}),
+      wasOnline ? updateRiderStatus({ status: 'offline' }).catch(() => {}) : Promise.resolve(),
+      ...[HISTORY_KEY, CANCELLED_KEY, ACTIVE_ORDERS_KEY, ONLINE_KEY, ACTIVE_MS_KEY].map((key) => SecureStore.deleteItemAsync(key).catch(() => {})),
+    ]);
   },
 
   acceptOffer: async (orderId) => {

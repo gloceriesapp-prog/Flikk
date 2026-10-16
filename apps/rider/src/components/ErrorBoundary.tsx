@@ -1,14 +1,17 @@
-// Diagnostic aid for the "Couldn't find a navigation context" crash on
-// Earnings' Withdraw tab — the in-app error overlay's Component Stack gets
-// cropped by however much fits on screen/in a screenshot; this logs the
-// FULL error + componentStack to the Metro terminal via console.error
-// (which Expo's LogBox doesn't truncate the same way), so the next repro
-// gives a complete, unambiguous trace instead of a 3-line crop. Also
-// renders a scrollable on-screen fallback with the same full text, in
-// case the terminal isn't handy.
+// Top-level safety net for render errors. Riders only ever see a calm,
+// recoverable screen; the raw message and component stack are logged to the
+// device console in every build and shown on screen only in development
+// builds (__DEV__), where they are the fastest way to debug a crash.
+//
+// "Try again" clears the error, which remounts the crashed subtree from
+// scratch. That recovers the common case (one bad API response feeding a
+// screen a null it didn't guard against). A deterministic bug will throw
+// again and land back here, which is still better than a white screen: the
+// rider can call support from this screen without restarting the app.
 
 import { Component, type ReactNode } from 'react';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { ErrorFallback } from './ErrorFallback';
+import { reportRenderError } from '../observability/crashReporting';
 
 interface Props {
   children: ReactNode;
@@ -27,33 +30,24 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: { componentStack?: string | null }) {
-    // eslint-disable-next-line no-console
     console.error('[ErrorBoundary] caught render error:\n', error, '\ncomponentStack:', errorInfo.componentStack);
+    reportRenderError(error, errorInfo.componentStack);
     this.setState({ componentStack: errorInfo.componentStack ?? null });
   }
 
-  render() {
-    if (this.state.error) {
-      return (
-        <ScrollView style={{ flex: 1, backgroundColor: '#101C10' }} contentContainerStyle={{ padding: 20, paddingTop: 60 }}>
-          <Text style={{ color: '#FF6B4A', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>
-            {this.state.error.message}
-          </Text>
-          <Text style={{ color: '#FFFFFF', fontFamily: 'Courier', fontSize: 12 }}>
-            {this.state.componentStack ?? 'No component stack available.'}
-          </Text>
-          {/* Reset so a transient error (e.g. a Fast Refresh context blip in
-              dev) is recoverable without a full app kill. */}
-          <Pressable
-            onPress={() => this.setState({ error: null, componentStack: null })}
-            style={{ marginTop: 24, alignSelf: 'flex-start', backgroundColor: '#155DFC', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 }}
-          >
-            <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Try again</Text>
-          </Pressable>
-        </ScrollView>
-      );
-    }
+  reset = () => {
+    this.setState({ error: null, componentStack: null });
+  };
 
-    return this.props.children;
+  render() {
+    const { error, componentStack } = this.state;
+    if (!error) return this.props.children;
+
+    return (
+      <ErrorFallback
+        onReset={this.reset}
+        debugDetails={__DEV__ ? `${error.message}\n\n${componentStack ?? 'No component stack available.'}` : null}
+      />
+    );
   }
 }

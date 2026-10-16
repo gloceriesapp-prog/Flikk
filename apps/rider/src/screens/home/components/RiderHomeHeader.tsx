@@ -20,6 +20,8 @@ import { colors } from '../../../theme/tokens';
 import { useRiderOrdersStore } from '../../../store/useRiderOrdersStore';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { useRiderProfile } from '../../profile/useRiderProfile';
+import { BackgroundLocationDisclosure } from '../../../location/BackgroundLocationDisclosure';
+import { useBackgroundLocationDisclosure } from '../../../location/useBackgroundLocationDisclosure';
 import type { AppStackParamList, AppTabParamList } from '../../../navigation/types';
 
 type Nav = CompositeNavigationProp<
@@ -34,6 +36,7 @@ export function RiderHomeHeader({ isOnline }: { isOnline: boolean }) {
   const goOnline = useRiderOrdersStore((s) => s.goOnline);
   const goOffline = useRiderOrdersStore((s) => s.goOffline);
   const { data: profile } = useRiderProfile();
+  const disclosure = useBackgroundLocationDisclosure();
 
   const name = profile?.name?.trim() || 'Rider';
   const first = name.split(' ')[0];
@@ -45,8 +48,15 @@ export function RiderHomeHeader({ isOnline }: { isOnline: boolean }) {
   // re-prompt after a hard denial, so a plain retry can't fix it).
   const handleGoOnline = async () => {
     const online = await goOnline();
+    // Online on the foreground grant. Now (still a foreground tap) offer the
+    // background grant behind Play's required disclosure, so dispatch keeps
+    // seeing the rider once the phone goes in a pocket.
+    if (online) {
+      void disclosure.maybePrompt();
+      return;
+    }
     // A suspension refusal swaps the whole app to RiderSuspendedScreen.
-    if (!online && !useAuthStore.getState().isSuspended) {
+    if (!useAuthStore.getState().isSuspended) {
       Alert.alert(
         'Location needed to go online',
         'Gloceries shares your location while online so you receive delivery offers nearby. Enable location access to go online.',
@@ -110,6 +120,14 @@ export function RiderHomeHeader({ isOnline }: { isOnline: boolean }) {
           <AppIcon icon={Settings02Icon} size={22} color={colors.ink} />
         </Pressable>
       </View>
+      {disclosure.action ? (
+        <BackgroundLocationDisclosure
+          action={disclosure.action}
+          busy={disclosure.busy}
+          onContinue={() => void disclosure.onContinue()}
+          onDecline={disclosure.onDecline}
+        />
+      ) : null}
     </View>
   );
 }

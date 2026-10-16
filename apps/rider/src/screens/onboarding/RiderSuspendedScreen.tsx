@@ -9,8 +9,9 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { AlertCircleIcon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
+import { DeleteAccountLink } from '../../components/DeleteAccountLink';
 import { colors } from '../../theme/tokens';
-import { fetchAccountStatus } from '../../api/auth';
+import { fetchAccountStatus, signOut } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 
@@ -19,7 +20,6 @@ const POLL_INTERVAL_MS = 30_000;
 export function RiderSuspendedScreen() {
   const reason = useAuthStore((s) => s.suspendedReason);
   const setAccountStatus = useAuthStore((s) => s.setAccountStatus);
-  const clear = useAuthStore((s) => s.clear);
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
@@ -77,9 +77,10 @@ export function RiderSuspendedScreen() {
         {checking ? <ActivityIndicator size="small" color={colors.ink} /> : <View className="h-2 w-2 rounded-full bg-danger" />}
         <Text className="text-xs font-semibold text-ink/60">{checking ? 'Checking status…' : 'Suspended'}</Text>
       </View>
-      <Pressable onPress={() => void clear()} className="rounded-full bg-ink px-6 py-3.5">
+      <Pressable onPress={() => void signOut()} className="rounded-full bg-ink px-6 py-3.5">
         <Text className="text-sm font-semibold text-white">Log out</Text>
       </Pressable>
+      <DeleteAccountLink />
     </View>
   );
 }

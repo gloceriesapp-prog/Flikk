@@ -1,6 +1,6 @@
 import { useAuthStore } from '../../../store/useAuthStore';
 import { useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { useAppForeground } from './useAppForeground';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchOrder } from '../../../api/orders';
@@ -16,11 +16,7 @@ export function useTracking(id: string, isTrip: boolean) {
   // interval on every render continually resets React Query's poll timer.
   const [pollInterval] = useState(trackingInterval);
   const client = useQueryClient();
-  const [foreground, setForeground] = useState(AppState.currentState == null || AppState.currentState === 'active');
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', state => setForeground(state === 'active'));
-    return () => sub.remove();
-  }, []);
+  const foreground = useAppForeground();
   const enabled = focused && foreground && !!customerId;
   // Shared full details remain compatible with order summary/cancellation.
   // They are not polled; remounts reuse them within the freshness window.

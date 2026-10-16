@@ -23,6 +23,7 @@ import {
   ArrowLeft01Icon,
   Call02Icon,
   Clock01Icon,
+  Delete02Icon,
   Edit02Icon,
   File01Icon,
   InformationCircleIcon,
@@ -277,7 +278,19 @@ export function StoreSettingsScreen({ navigation }: Props) {
   // onConfirm, one real implementation instead of two copies.
   const changeStoreLocation = useChangeStoreLocation();
 
-  if (profile.accessRole === 'manager') return <View className="flex-1 bg-white px-6 pb-safe pt-safe"><Text className="mt-6 text-xl font-semibold text-ink">Store settings</Text><Text className="mt-3 text-base text-ink/70">Your manager access covers orders, products and reviews. Ask the store owner to update legal details, store information or the payout account.</Text><Pressable onPress={() => navigation.navigate('Reviews')} className="mt-6 rounded-xl bg-ink px-4 py-3"><Text className="text-center font-semibold text-white">Customer reviews</Text></Pressable><Pressable onPress={() => navigation.goBack()} className="mt-6 rounded-xl bg-ink px-4 py-3"><Text className="text-center font-semibold text-white">Back</Text></Pressable></View>;
+  if (profile.accessRole === 'manager') return (
+    <View className="flex-1 bg-white px-6 pb-safe pt-safe">
+      <Text className="mt-6 text-xl font-semibold text-ink">Store settings</Text>
+      <Text className="mt-3 text-base text-ink/70">Your manager access covers orders, products and reviews. Ask the store owner to update legal details, store information or the payout account.</Text>
+      <Pressable onPress={() => navigation.navigate('Reviews')} className="mt-6 rounded-xl bg-ink px-4 py-3">
+        <Text className="text-center font-semibold text-white">Customer reviews</Text>
+      </Pressable>
+      <Pressable onPress={() => navigation.navigate('Orders')} className="mt-6 rounded-xl bg-ink px-4 py-3">
+        <Text className="text-center font-semibold text-white">Back</Text>
+      </Pressable>
+      <View className="mt-6"><SettingsLinkRow icon={Delete02Icon} label="Delete account" destructive onPress={() => navigation.navigate('DeleteAccount')} /></View>
+    </View>
+  );
 
   return (
     // Keyboard was covering the "Save changes" bar below (name TextInput
@@ -596,6 +609,9 @@ export function StoreSettingsScreen({ navigation }: Props) {
               session, so a confirm step would be friction without a real
               risk behind it. */}
             <SettingsLinkRow icon={Logout01Icon} label="Log out" destructive onPress={() => void clearSession()} />
+            {/* Google Play: deletion must be requestable in the app. The
+              screen explains what is deleted and kept before anything is sent. */}
+            <SettingsLinkRow icon={Delete02Icon} label="Delete account" destructive onPress={() => navigation.navigate('DeleteAccount')} />
           </View>
 
           <BrandFooter />
