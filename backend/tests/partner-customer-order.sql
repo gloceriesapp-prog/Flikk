@@ -1,16 +1,17 @@
 -- Local fixtures only, wrapped in BEGIN/ROLLBACK by the loopback-only runner.
 -- No external payment API, notification provider or worker is called.
-CREATE OR REPLACE FUNCTION public.checkout_clock() RETURNS timestamptz
-LANGUAGE sql VOLATILE AS $$
- SELECT (date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata') + interval '12 hours') AT TIME ZONE 'Asia/Kolkata'
-$$;
+-- Use the real database clock for both reservation creation and settlement.
+UPDATE public.delivery_settings SET ordering_opens_minute=0,ordering_closes_minute=1440;
 DO $$
 DECLARE s public.stores; p public.products; v public.product_variants; a public.addresses;
  source_product uuid; price numeric; args jsonb; attempt uuid:=gen_random_uuid(); result jsonb; replay jsonb;
  cod_id uuid; online_id uuid; payment text:='pay_Test'||replace(gen_random_uuid()::text,'-',''); provider_order text:='order_Test'||replace(gen_random_uuid()::text,'-','');
 BEGIN
- SELECT * INTO s FROM public.stores WHERE name='Chai store' LIMIT 1;
- IF s.id IS NULL THEN RAISE EXCEPTION 'Local Chai store fixture required'; END IF;
+ SELECT s0.* INTO s FROM public.stores s0
+  WHERE s0.owner_user_id IS NOT NULL AND s0.lat IS NOT NULL AND s0.lng IS NOT NULL
+    AND s0.zone_id IS NOT NULL AND EXISTS(SELECT 1 FROM public.products p0 WHERE p0.store_id=s0.id)
+  ORDER BY s0.id LIMIT 1;
+ IF s.id IS NULL THEN RAISE EXCEPTION 'Local store with coordinates and product fixture required'; END IF;
  SELECT * INTO p FROM public.products WHERE store_id=s.id LIMIT 1;
  SELECT a0.* INTO a FROM public.addresses a0 JOIN public.users u ON u.id=a0.user_id
   WHERE u.role='customer' AND a0.deleted_at IS NULL LIMIT 1;

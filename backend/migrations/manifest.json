@@ -556,6 +556,10 @@
     {
       "file": "20261015203513_store_scheduled_availability.sql",
       "sha256": "e41fede041a823960aaae3000056a7e37ac16faa46e1fcd0e5c4a8e0153b1daf"
+    },
+    {
+      "file": "20261016051231_preserve_store_suspension_availability.sql",
+      "sha256": "50c4a760bb8f91a165fcc404d0e9ec874dd2d92552aca8d227a938d8c11cc181"
     }
   ]
 }

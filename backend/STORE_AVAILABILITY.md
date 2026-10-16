@@ -20,7 +20,13 @@ delayed worker cannot authorize an expired override. Customer/server product
 availability uses the override metadata. Catalogue coverage includes closed
 approved shops independently of the orderable-store discovery feed.
 
-Rollout: apply `20261015203513_store_scheduled_availability.sql`, deploy the
+Lifting an admin or owner suspension leaves the shop temporarily closed until
+the operator reopens it or the next scheduled boundary. Suspension guards run
+before availability materialization so attempted reopening remains an explicit
+permission error.
+
+Rollout: apply `20261015203513_store_scheduled_availability.sql` and
+`20261016051231_preserve_store_suspension_availability.sql`, deploy the
 API and worker together, then distribute updated partner/customer JS builds.
 Older clients retain the existing schedule checks and may not display a
 manual opening outside hours. Never put this scheduler in each API process.
