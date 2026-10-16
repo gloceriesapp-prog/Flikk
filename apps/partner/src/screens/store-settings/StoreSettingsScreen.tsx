@@ -1,3 +1,4 @@
+import { logoutPartner } from '../../features/push-notifications/registerPushToken';
 import { BackIcon, CheckmarkIcon } from '../../components/PartnerIcons';
 import { AppImage as Image } from '../../components/AppImage';
 import { normalizeStoreHour } from '../../utils/storeHours';
@@ -91,7 +92,6 @@ function authSource(uri: string, token: string | null) {
 export function StoreSettingsScreen({ navigation }: Props) {
   const profile = useStoreProfileStore((state) => state.profile);
   const updateProfile = useStoreProfileStore((state) => state.updateProfile);
-  const clearSession = useAuthStore((state) => state.clear);
   // Read the token reactively so a silent refresh (api/client.ts) re-renders
   // the private doc images with the new bearer instead of leaving a stale 401.
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -590,7 +590,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
               Logging out isn't destructive to any data, just the local
               session, so a confirm step would be friction without a real
               risk behind it. */}
-            <SettingsLinkRow icon={Logout01Icon} label="Log out" destructive onPress={() => void clearSession()} />
+            <SettingsLinkRow icon={Logout01Icon} label="Log out" destructive onPress={() => void logoutPartner().catch(() => Alert.alert('Could not log out', 'Check your connection and try again so we can stop order notifications on this device.'))} />
             {/* Google Play: deletion must be requestable in the app. The
               screen explains what is deleted and kept before anything is sent. */}
             <SettingsLinkRow icon={Delete02Icon} label="Delete account" destructive onPress={() => navigation.navigate('DeleteAccount')} />

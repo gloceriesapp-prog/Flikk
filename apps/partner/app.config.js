@@ -3,6 +3,8 @@ const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
 const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
 const { resolveNativeMapKeys } = require('../../packages/shared/config/google-maps.cjs');
 const { androidGoogleMapsApiKey, iosGoogleMapsApiKey } = resolveNativeMapKeys(process.env);
+const { validateMonitoringConfig } = require('./config-monitoring.cjs');
+validateMonitoringConfig(process.env);
 const buildProfile = process.env.EAS_BUILD_PROFILE;
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 // eas-cli evaluates this file on the developer's machine *before* it pulls the
@@ -26,11 +28,12 @@ if (developmentApi || process.env.EAS_BUILD === 'true') {
 // read from env — a build can never ship without it.
 const easProjectId = 'f27829aa-b709-4d41-9186-8cde149ef0ac';
 
-// Sentry's build plugin uploads source maps; only wired when its org/project
-// are configured, same as the other apps.
-const sentryPlugin = process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
-  ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]]
-  : [];
+// Native crash integration is always generated; production requires the DSN
+// and private upload credentials rather than silently shipping without them.
+const sentryPlugin = [['@sentry/react-native/expo', {
+  ...(process.env.SENTRY_ORG ? { organization: process.env.SENTRY_ORG } : {}),
+  ...(process.env.SENTRY_PROJECT ? { project: process.env.SENTRY_PROJECT } : {}),
+}]];
 
 // Android push (FCM) config, shared by all three apps — see
 // packages/shared/config/google-services.cjs.
@@ -46,7 +49,7 @@ module.exports = {
     name: 'Gloceries Partner',
     slug: 'partner',
     owner: 'nishal777',
-    version: '1.0.1',
+    version: '1.0.2',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change.

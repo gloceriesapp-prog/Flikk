@@ -328,7 +328,15 @@ authRouter.post('/push-token', requireAuth, async (req: AuthedRequest, res, next
 authRouter.delete('/push-token', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
     if (req.user!.role === 'customer') throw new AppError(400, 'USE_DEVICE_REGISTRATION', 'Use account-owned notification device registration.');
-    const { error } = await supabase.from('users').update({ expo_push_token: null }).eq('id', req.user!.id);
+    const token = (req.body as { token?: unknown } | undefined)?.token;
+    if (token !== undefined && (typeof token !== 'string' || !token || token.length > 512)) {
+      throw new AppError(400, 'INVALID_TOKEN', 'Invalid notification token.');
+    }
+    // Older clients omit token. New clients only remove their own device,
+    // preserving a replacement registered from another phone meanwhile.
+    let removal = supabase.from('users').update({ expo_push_token: null }).eq('id', req.user!.id);
+    if (typeof token === 'string') removal = removal.eq('expo_push_token', token);
+    const { error } = await removal;
     if (error) throw error;
     res.status(200).json({ ok: true });
   } catch (err) {

@@ -5,7 +5,7 @@ UPDATE public.delivery_settings SET ordering_opens_minute=0,ordering_closes_minu
 DO $$
 DECLARE s public.stores; p public.products; v public.product_variants; a public.addresses;
  source_product uuid; price numeric; args jsonb; attempt uuid:=gen_random_uuid(); result jsonb; replay jsonb;
- cod_id uuid; online_id uuid; payment text:='pay_Test'||replace(gen_random_uuid()::text,'-',''); provider_order text:='order_Test'||replace(gen_random_uuid()::text,'-','');
+ rider_user uuid:=gen_random_uuid(); delivery_code text; cod_id uuid; online_id uuid; payment text:='pay_Test'||replace(gen_random_uuid()::text,'-',''); provider_order text:='order_Test'||replace(gen_random_uuid()::text,'-','');
 BEGIN
  SELECT s0.* INTO s FROM public.stores s0
   WHERE s0.owner_user_id IS NOT NULL AND s0.lat IS NOT NULL AND s0.lng IS NOT NULL
@@ -69,5 +69,18 @@ BEGIN
  PERFORM public.partner_accept_order(online_id,s.id,s.owner_user_id);
  UPDATE public.orders SET status='packed' WHERE id=online_id;
  IF NOT EXISTS(SELECT 1 FROM public.orders WHERE id=online_id AND accepted_at IS NOT NULL AND status='packed') THEN RAISE EXCEPTION 'Merchant acceptance/packing failed'; END IF;
- RAISE NOTICE 'Customer-to-store checkout, replay, stock, payment gating, notification intent and acceptance checks passed';
+ INSERT INTO public.users(id,phone,name,role,is_approved)
+ VALUES(rider_user,'+910000000777','Synthetic delivery rider','rider',true);
+ INSERT INTO public.riders(user_id,name,phone,is_active,status)
+ VALUES(rider_user,'Synthetic delivery rider','+910000000777',true,'online');
+ UPDATE public.orders SET rider_id=rider_user,picked_up_at=now(),status='out_for_delivery' WHERE id=online_id;
+ SELECT code INTO delivery_code FROM public.delivery_codes WHERE scope_id=online_id;
+ IF delivery_code IS NULL THEN RAISE EXCEPTION 'Pickup did not create private delivery proof'; END IF;
+ result:=public.complete_verified_delivery(online_id,rider_user,CASE WHEN delivery_code='0000' THEN '1111' ELSE '0000' END);
+ IF (result->>'accepted')::boolean OR result->>'error'<>'INVALID_OTP' THEN RAISE EXCEPTION 'Wrong delivery proof was accepted'; END IF;
+ result:=public.complete_verified_delivery(online_id,rider_user,delivery_code);
+ IF NOT (result->>'accepted')::boolean OR NOT EXISTS(SELECT 1 FROM public.orders WHERE id=online_id AND status='delivered' AND delivered_at IS NOT NULL) THEN RAISE EXCEPTION 'Verified delivery did not complete order'; END IF;
+ PERFORM public.complete_verified_delivery(online_id,rider_user,delivery_code);
+ IF (SELECT count(*) FROM public.rider_earnings WHERE order_id=online_id)<>1 THEN RAISE EXCEPTION 'Delivery replay duplicated or omitted rider earnings'; END IF;
+ RAISE NOTICE 'Checkout, payment gating, merchant alert intent, acceptance, packing, rider pickup, delivery proof and replay checks passed';
 END $$;

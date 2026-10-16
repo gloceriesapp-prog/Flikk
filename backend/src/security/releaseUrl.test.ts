@@ -12,7 +12,7 @@ it('blocks release app configs without a valid HTTPS endpoint', async () => {
   const {fileURLToPath}=await import('node:url');
   for(const app of ['customer','partner','rider']){
     const path=fileURLToPath(new URL(`../../../apps/${app}/app.config.js`,import.meta.url));
-    const env={...process.env,NODE_ENV:'production',EAS_BUILD_PROFILE:'production',EXPO_PUBLIC_API_URL:'',GOOGLE_SERVICES_JSON:'./google-services.json'};
+    const env={...process.env,NODE_ENV:'production',EAS_BUILD_PROFILE:'production',EXPO_PUBLIC_API_URL:'',GOOGLE_SERVICES_JSON:'./google-services.json',EXPO_PUBLIC_SENTRY_DSN:'https://test-key@example.ingest.sentry.io/123',SENTRY_ORG:'test-org',SENTRY_PROJECT:'partner',SENTRY_AUTH_TOKEN:'test-upload-token'};
     // EAS_BUILD=true is the EAS builder, where the release bundle is produced.
     const run=(url:string,builder='true')=>spawnSync(process.execPath,['-e','require(process.argv[1])',path],{env:{...env,EAS_BUILD:builder,EXPO_PUBLIC_API_URL:url},encoding:'utf8'});
     expect(run('').status).not.toBe(0);

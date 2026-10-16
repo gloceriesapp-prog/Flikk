@@ -1,3 +1,4 @@
+import { runReleaseMonitoringCheck } from './src/observability/releaseMonitoringCheck';
 // Auth gate lives in RootNavigator now — see that file's own note on the
 // four states an account can be in (loading / logged out / awaiting store
 // setup / awaiting approval / the real app shell). This file's job is just
@@ -37,6 +38,7 @@ import { initOnlineWiring } from './src/network/onlineWiring';
 import { colors } from './src/theme/tokens';
 
 void SplashScreen.preventAutoHideAsync();
+void runReleaseMonitoringCheck().catch(() => {});
 
 // Last-resort UI when a render/effect throws anywhere below the navigator.
 // Without a boundary, a throw white-screens the whole tree — Sentry.wrap
