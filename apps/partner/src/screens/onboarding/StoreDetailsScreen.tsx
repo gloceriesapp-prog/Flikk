@@ -4,10 +4,10 @@
 
 import { useState } from 'react';
 import { useNavigationState } from '@react-navigation/native';
-import { Text, TextInput } from 'react-native';
+import { Keyboard, Text, TextInput } from 'react-native';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { saveStoreDraft } from '../../api/auth';
+import { enqueueStoreDraft } from '../../onboarding/draftAutosave';
 import { ApiError } from '../../api/client';
 import { uploadStoreDocument } from '../../api/payouts';
 import { pickAndCompressImage } from '../../media/pickAndCompressImage';
@@ -70,13 +70,8 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
     const trimmedPhone = phone.trim();
     const trimmedLicense = needsDrugLicense ? drugLicenseNumber.trim() : '';
 
-    // Best-effort autosave — fire-and-forget so it never blocks navigation.
-    // A failed save just costs a resume, not a blocked flow (fetchStoreDraft's
-    // own note in api/auth.ts). warn (not error) so a transient network blip
-    // shows a yellow warning, not a red "Console Error" box that reads as a crash.
-    void saveStoreDraft({ storeName: trimmedName, category, phone: trimmedPhone, drugLicenseNumber: trimmedLicense, storePhotoPath: storePhotoPath ?? undefined }).catch(
-      (err) => console.warn('[StoreDetails] saveStoreDraft failed (best-effort)', err),
-    );
+    Keyboard.dismiss();
+    enqueueStoreDraft({ storeName: trimmedName, category, phone: trimmedPhone, drugLicenseNumber: trimmedLicense, storePhotoPath: storePhotoPath ?? undefined });
 
     navigation.navigate('StoreLocation', {
       draft: { ...draft, storeName: trimmedName, category, phone: trimmedPhone, drugLicenseNumber: trimmedLicense, storePhotoPath },

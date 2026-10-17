@@ -75,6 +75,7 @@ const DEV_FORCE_ONBOARDING = false;
 export function RootNavigator() {
   const {
     accessToken,
+    sessionEpoch,
     isApproved,
     hasStore,
     applicationSubmitted,
@@ -88,7 +89,8 @@ export function RootNavigator() {
     setPartnerSuspension,
     clear,
   } = useAuthStore();
-  const [statusChecked, setStatusChecked] = useState(false);
+  const hasSession = !!accessToken;
+  const [checkedSessionEpoch, setCheckedSessionEpoch] = useState<number | null>(null);
   // A short brand floor, flipped by a one-shot timer so the gate re-evaluates
   // once the floor passes even if hydration finished first. Boolean-flag
   // pattern (same as apps/customer's RootNavigator) — never read a ref's
@@ -110,28 +112,28 @@ export function RootNavigator() {
     return () => clearTimeout(id);
   }, []);
 
-  // Registered once per fresh login (accessToken change), same as the
+  // Registered once per session identity, same as the
   // status recheck below — a pending owner still gets their token saved
   // now (backend's POST /auth/push-token is requireAuth only, not
   // requireApproved) so admin's approve action can reach them the instant
   // it happens, not only after this app is reopened.
   useEffect(() => {
-    if (!isHydrated || !accessToken) return;
+    if (!isHydrated || !hasSession) return;
     void registerPushToken();
-  }, [isHydrated, accessToken]);
+  }, [isHydrated, hasSession, sessionEpoch]);
 
   useEffect(() => {
-    if (!isHydrated || !accessToken) return;
+    if (!isHydrated || !hasSession) return;
     const stopRotation = watchPushTokenRotation();
     const stopTaps = watchNotificationTaps();
     return () => {
       stopRotation();
       stopTaps();
     };
-  }, [isHydrated, accessToken]);
+  }, [isHydrated, hasSession, sessionEpoch]);
 
   useEffect(() => {
-    if (!isHydrated || !accessToken) return;
+    if (!isHydrated || !hasSession) return;
 
     let cancelled = false;
     checkAccountStatus()
@@ -161,27 +163,19 @@ export function RootNavigator() {
         }
       })
       .finally(() => {
-        if (!cancelled) setStatusChecked(true);
+        if (!cancelled) setCheckedSessionEpoch(sessionEpoch);
       });
 
     return () => {
       cancelled = true;
     };
-    // Deliberately only re-runs when accessToken changes (a fresh login),
-    // not on every isApproved/hasStore write — those are this effect's
-    // own output, re-running on them would loop.
+    // Recheck on login/account change, not token rotation or this effect's
+    // own approval/store updates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHydrated, accessToken]);
+  }, [isHydrated, hasSession, sessionEpoch]);
 
-  // Cold-start gate only — hydration + a short brand floor (computeColdStartDone,
-  // ./coldStart). This must NEVER also cover "just logged in, checking account
-  // status": accessToken changes every time OtpVerificationScreen calls
-  // setSession (a completely normal mid-session event, not a fresh app launch),
-  // and statusChecked resets to false on that same change (the effect above's
-  // own note on why) — folding that into this same condition was the actual bug
-  // behind "tapping Continue on OTP takes me back to the Welcome screen."
-  // Welcome is a real branded splash meant for app open, not something that
-  // should flash on every login.
+  // The branded splash is cold-start only. Login/account changes have their
+  // own status gate; silent token refresh keeps both the gate and stack intact.
   const isColdStart = !computeColdStartDone({
     hydrated: isHydrated,
     elapsedMs: minElapsed ? WELCOME_MIN_MS : 0,
@@ -194,7 +188,7 @@ export function RootNavigator() {
 
   // Past cold start, but a fresh login's own status check hasn't resolved
   // yet — a plain, unbranded spinner, not WelcomeScreen again.
-  const isCheckingLoginStatus = !!accessToken && !statusChecked;
+  const isCheckingLoginStatus = hasSession && checkedSessionEpoch !== sessionEpoch;
 
   if (isCheckingLoginStatus) {
     return (
@@ -209,7 +203,7 @@ export function RootNavigator() {
       {__DEV__ && DEV_FORCE_ONBOARDING ? (
         <AuthNavigator key="dev-onboarding" initialRouteName="StoreDetails" />
       ) : !accessToken ? (
-        // Keyed by accessToken so a session clear (missing/expired token —
+        // Separate from the authenticated session so a session clear (missing/expired token —
         // see api/client.ts's own note on the exact bug this fixes) always
         // gets a genuinely fresh AuthNavigator instance. Without this key,
         // this branch and the OnboardingIntro one below are the *same*
@@ -230,7 +224,7 @@ export function RootNavigator() {
       ) : applicationSubmitted ? (
         <WaitingApprovalGate />
       ) : (
-        <AuthNavigator key={accessToken} initialRouteName="StoreDetails" />
+        <AuthNavigator key={`partner-onboarding-${sessionEpoch}`} initialRouteName="StoreDetails" />
       )}
     </NavigationContainer>
   );
