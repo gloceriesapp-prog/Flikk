@@ -3,10 +3,10 @@
 
 import { useState } from 'react';
 import { normalizeStoreHour } from '../../utils/storeHours';
-import { Text, View } from 'react-native';
+import { Keyboard, Text, View } from 'react-native';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { saveStoreDraft } from '../../api/auth';
+import { enqueueStoreDraft } from '../../onboarding/draftAutosave';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { TimeDigitsInput } from '../store-settings/components/TimeDigitsInput';
 import { OnboardingScaffold } from './components/OnboardingScaffold';
@@ -26,12 +26,8 @@ export function StoreHoursScreen({ navigation, route }: Props) {
   function handleNext() {
     if (!normalizedOpen || !normalizedClose) return;
 
-    // Best-effort autosave — fire-and-forget so it never blocks navigation.
-    // warn (not error) so a transient network blip shows a yellow warning,
-    // not a red "Console Error" box that reads as a crash.
-    void saveStoreDraft({ openTime: normalizedOpen, closeTime: normalizedClose }).catch(
-      (err) => console.warn('[StoreHours] saveStoreDraft failed (best-effort)', err),
-    );
+    Keyboard.dismiss();
+    enqueueStoreDraft({ openTime: normalizedOpen, closeTime: normalizedClose });
 
     navigation.navigate('StoreReview', { draft: { ...draft, openTime: normalizedOpen, closeTime: normalizedClose } });
   }

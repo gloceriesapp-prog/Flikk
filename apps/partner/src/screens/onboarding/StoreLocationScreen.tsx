@@ -13,14 +13,14 @@ import { BackIcon } from '../../components/PartnerIcons';
 // scroll — so the chrome is composed here directly.
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Platform, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { isRunningInExpoGo } from 'expo';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Constants from 'expo-constants';
 import { ArrowRight01Icon, Location05Icon, PinLocation01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { saveStoreDraft } from '../../api/auth';
+import { enqueueStoreDraft } from '../../onboarding/draftAutosave';
 import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { getCurrentCoordinates, hasLocationPermission, requestLocationPermission, reverseGeocode, type Coordinates } from '../../location/geocoding';
@@ -128,15 +128,12 @@ export function StoreLocationScreen({ navigation, route }: Props) {
 
   function handleNext() {
     if (!canContinue) return;
-    saveStoreDraft({
+    Keyboard.dismiss();
+    enqueueStoreDraft({
       district: district ?? undefined,
       addressLine: addressLine ?? undefined,
       lat: coordinates?.latitude,
       lng: coordinates?.longitude,
-    }).catch((err) => {
-      // Best-effort autosave — log the error (an ApiError carries status/code)
-      // so a 429/4xx during onboarding is diagnosable instead of invisible.
-      console.error('[StoreLocation] saveStoreDraft failed', err);
     });
 
     navigation.navigate('OwnerDetails', { draft: { ...draft, district, addressLine, coordinates } });

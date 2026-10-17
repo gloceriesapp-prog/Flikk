@@ -3,10 +3,11 @@
 // checkAccountStatus), and an optional contact email (writes to users.email).
 
 import { useEffect, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Keyboard, Text, TextInput, View } from 'react-native';
 import { ArrowRight01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { checkAccountStatus, saveStoreDraft } from '../../api/auth';
+import { checkAccountStatus } from '../../api/auth';
+import { enqueueStoreDraft } from '../../onboarding/draftAutosave';
 import { ApiError } from '../../api/client';
 import { uploadStoreDocument } from '../../api/payouts';
 import { pickAndCompressImage } from '../../media/pickAndCompressImage';
@@ -63,12 +64,8 @@ export function OwnerDetailsScreen({ navigation, route }: Props) {
     const trimmedName = ownerName.trim();
     const trimmedEmail = ownerEmail.trim();
 
-    // Best-effort autosave — fire-and-forget so it never blocks navigation.
-    // warn (not error) so a transient network blip shows a yellow warning,
-    // not a red "Console Error" box that reads as a crash.
-    void saveStoreDraft({ ownerName: trimmedName, ownerEmail: trimmedEmail, profilePhotoPath: profilePhotoPath ?? undefined }).catch(
-      (err) => console.warn('[OwnerDetails] saveStoreDraft failed (best-effort)', err),
-    );
+    Keyboard.dismiss();
+    enqueueStoreDraft({ ownerName: trimmedName, ownerEmail: trimmedEmail, profilePhotoPath: profilePhotoPath ?? undefined });
 
     navigation.navigate('BusinessDocuments', { draft: { ...draft, ownerName: trimmedName, ownerEmail: trimmedEmail, profilePhotoPath } });
   }

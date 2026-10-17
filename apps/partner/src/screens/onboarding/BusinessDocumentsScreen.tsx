@@ -4,10 +4,10 @@
 // Settings. Aadhaar is not collected.
 
 import { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Keyboard, Text, TextInput, View } from 'react-native';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { saveStoreDraft } from '../../api/auth';
+import { enqueueStoreDraft } from '../../onboarding/draftAutosave';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { isValidFssaiFormat, isValidPanFormat } from '../../utils/documentValidation';
 import { categoryNeedsFssai, useStoreCategories } from '../store-settings/components/StoreCategoryPicker';
@@ -36,12 +36,8 @@ export function BusinessDocumentsScreen({ navigation, route }: Props) {
     const trimmedUdyam = udyamNumber.trim();
     const trimmedFssai = needsFssai ? fssaiNumber.trim() : draft.fssaiNumber;
 
-    // Best-effort autosave — fire-and-forget so it never blocks navigation.
-    // warn (not error) so a transient network blip shows a yellow warning,
-    // not a red "Console Error" box that reads as a crash.
-    void saveStoreDraft({ panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam, fssaiNumber: trimmedFssai || undefined }).catch(
-      (err) => console.warn('[BusinessDocuments] saveStoreDraft failed (best-effort)', err),
-    );
+    Keyboard.dismiss();
+    enqueueStoreDraft({ panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam, fssaiNumber: trimmedFssai || undefined });
 
     navigation.navigate('StoreHours', {
       draft: { ...draft, panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam, fssaiNumber: trimmedFssai },

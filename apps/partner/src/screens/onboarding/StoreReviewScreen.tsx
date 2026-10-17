@@ -1,3 +1,5 @@
+import { getSessionEpoch, isCurrentSession } from '../../store/sessionScope';
+import { flushStoreDraftSaves } from '../../onboarding/draftAutosave';
 // Final step — read-only summary of every field the 5-step wizard
 // collected, plus the actual submit. No field entry here on purpose: a shop
 // owner reviewing what they're about to send for approval shouldn't be able
@@ -39,6 +41,10 @@ export function StoreReviewScreen({ navigation, route }: Props) {
 
   async function submitApplication() {
     if (!validCoordinates) throw new Error("Choose your store location on the map before submitting.");
+    const epoch = getSessionEpoch();
+    // Drain old draft writes so they cannot overwrite the final submission.
+    await flushStoreDraftSaves();
+    if (!isCurrentSession(epoch)) throw new ApiError(0, 'SESSION_CHANGED', 'Your account changed. Please sign in again.');
     await submitStoreApplication({
       storeName: draft.storeName,
       category: draft.category,
