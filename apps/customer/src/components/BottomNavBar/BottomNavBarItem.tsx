@@ -1,5 +1,5 @@
 import { Platform, Pressable, Text, View } from 'react-native';
-import { IconlyHome, IconlyBag, IconlyCategory, type IconlyIconProps } from '../icons/iconly';
+import { IconlyCategory, IconlyHome, IconlyStore, IconlyTimer, type IconlyIconProps } from '../icons/iconly';
 import type { NavTab } from './data';
 
 interface Props {
@@ -8,13 +8,13 @@ interface Props {
   onPress: () => void;
 }
 
-// Per-tab Iconly glyph (outline when inactive, filled when active). Store has
-// no dedicated glyph yet — reuses Category as a placeholder (added later).
+// Per-tab Iconly glyph from components/icons/iconly.tsx (outline when
+// inactive, filled when active).
 const ICON_BY_TAB: Record<string, React.ComponentType<IconlyIconProps>> = {
   home: IconlyHome,
-  'order-again': IconlyBag,
+  'order-again': IconlyTimer,
   categories: IconlyCategory,
-  store: IconlyCategory,
+  store: IconlyStore,
 };
 
 export function BottomNavBarItem({ tab, isActive, onPress }: Props) {
