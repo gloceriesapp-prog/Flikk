@@ -1,17 +1,16 @@
-// Store verification — exactly what the partner app's Store Setup wizard
-// collects (backend/src/routes/storeOnboarding.ts), so nothing here asks
-// for a document the applicant was never given a field for. PAN is the one
-// document the wizard requires; FSSAI and Shop & Establishment are expected
-// for a grocery shop but optional in the wizard; GSTIN and Udyam are
-// optional. Payout details are collected after approval (partner app), not
-// here. Pharmacy gets its own section: the wizard collects the drug
-// licence (migration 114) and approval refuses a pharmacy without one.
+// Store verification: the documents the partner app's onboarding requires
+// (backend/src/routes/storeOnboarding.ts) — PAN, FSSAI for food categories,
+// a storefront photo and the map pin. Optional numbers (GSTIN, Udyam, Shop &
+// Establishment) are listed only when the applicant gave one, so the list
+// never shows "missing" for something the app doesn't ask for. Pharmacy gets
+// its own section: approval refuses a pharmacy without a drug licence.
 
-import { AlertCircle, CheckCircle2, MinusCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import clsx from 'clsx';
 import type { Application } from '@/lib/types';
+import { FSSAI_CATEGORIES } from '@/lib/store-options';
 
-type DocStatus = 'verified' | 'missing' | 'not_required';
+type DocStatus = 'verified' | 'missing';
 
 interface DocRow {
   label: string;
@@ -23,56 +22,52 @@ interface DocRow {
 const STATUS_CONFIG: Record<DocStatus, { icon: typeof CheckCircle2; className: string; label: string }> = {
   verified: { icon: CheckCircle2, className: 'text-success', label: 'Submitted' },
   missing: { icon: AlertCircle, className: 'text-danger', label: 'Missing' },
-  not_required: { icon: MinusCircle, className: 'text-muted', label: 'Optional — not given' },
 };
 
 export function DocumentChecklist({ application }: { application: Application }) {
   const isPharmacy = application.category === 'Pharmacy';
 
-  const optional = (value: string | undefined): DocStatus => (value ? 'verified' : 'not_required');
+  const needsFssai = !!application.category && FSSAI_CATEGORIES.includes(application.category);
+  const storePhoto = application.storeDocPhotoUrl ?? application.photoUrl;
+  const hasPin = application.lat != null && application.lng != null;
+
   const rows: DocRow[] = [
     {
       label: "Owner's PAN",
-      why: 'Required by the wizard — identity and tax/payout compliance.',
+      why: 'Required for every store — identity and tax/payout compliance.',
       status: application.panNumber ? 'verified' : 'missing',
       value: application.panNumber,
     },
-    {
+  ];
+  if (needsFssai || application.fssaiNumber) {
+    rows.push({
       label: 'FSSAI license/registration',
-      why: 'Legally mandatory for any business selling food/groceries in India, even small kirana stores.',
+      why: needsFssai ? 'Required for stores that sell food.' : 'Given by the applicant (not required for this category).',
       status: application.fssaiNumber ? 'verified' : 'missing',
       value: application.fssaiNumber,
-    },
-    {
-      label: 'Shop & Establishment license',
-      why: 'Local municipal registration — standard requirement for any physical shop.',
-      status: application.shopEstablishmentNumber ? 'verified' : 'missing',
-      value: application.shopEstablishmentNumber,
-    },
-    {
-      label: 'GSTIN',
-      why: 'Only required above the GST turnover threshold — optional in the wizard.',
-      status: optional(application.gstNumber),
-      value: application.gstNumber,
-    },
-    {
-      label: 'Udyam registration',
-      why: 'MSME registration — optional.',
-      status: optional(application.udyamNumber),
-      value: application.udyamNumber,
-    },
+    });
+  }
+  rows.push(
     {
       label: 'Storefront photo',
-      why: "Ties into Gloceries's real-photo trust strategy.",
-      status: application.photoUrl ? 'verified' : 'missing',
+      why: 'Required — shown above under Verification photos.',
+      status: storePhoto ? 'verified' : 'missing',
     },
     {
       label: 'Store location pin',
-      why: 'Without a map pin the store is invisible to nearby customers.',
-      status: application.lat != null && application.lng != null ? 'verified' : 'missing',
-      value: application.lat != null && application.lng != null ? `${application.lat.toFixed(5)}, ${application.lng.toFixed(5)}` : undefined,
+      why: 'Required — without a map pin the store is invisible to nearby customers.',
+      status: hasPin ? 'verified' : 'missing',
+      value: hasPin ? `${application.lat!.toFixed(5)}, ${application.lng!.toFixed(5)}` : undefined,
     },
+  );
+  const optionalDocs: [string, string | undefined][] = [
+    ['GSTIN', application.gstNumber],
+    ['Udyam registration', application.udyamNumber],
+    ['Shop & Establishment license', application.shopEstablishmentNumber],
   ];
+  for (const [label, value] of optionalDocs) {
+    if (value) rows.push({ label, why: 'Optional — given by the applicant.', status: 'verified', value });
+  }
 
   return (
     <div className="mt-6 border-t border-border pt-6">
