@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Store01Icon } from '@hugeicons/core-free-icons';
+import { authenticatedPhotoSource, selectStorePhoto } from '../media/storePhoto';
 import { API_BASE_URL } from '../api/baseUrl';
 import { useAuthStore } from '../store/useAuthStore';
 import { useStoreProfileStore } from '../store/useStoreProfileStore';
@@ -16,39 +17,38 @@ import { colors } from '../theme/tokens';
 import { AppIcon } from './AppIcon';
 import { AppImage } from './AppImage';
 
-// Private document URLs come back relative ("/partner/documents/:id") when
-// PUBLIC_API_URL isn't set on the server; resolve them against the API base.
+// Resolve private document URLs against this app's backend with scoped auth.
 export function authSource(uri: string, token: string | null) {
-  return {
-    uri: uri.startsWith('/') ? `${API_BASE_URL}${uri}` : uri,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  };
+  return authenticatedPhotoSource(uri, token, API_BASE_URL);
 }
 
 export function StoreAvatar({ size, className }: { size: number; className?: string }) {
   const publicPhoto = useStoreProfileStore((state) => state.profile.photoUrl);
   const privatePhoto = useStoreProfileStore((state) => state.profile.storePhotoUrl);
   const token = useAuthStore((state) => state.accessToken);
-  // Remembers which URL failed, so a new photo gets a fresh attempt.
-  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const epoch = useAuthStore((state) => state.sessionEpoch);
+  return <StorePhoto key={epoch} size={size} className={className} publicPhoto={publicPhoto} privatePhoto={privatePhoto} token={token} />;
+}
 
-  const uri = publicPhoto || privatePhoto || null;
-  const failed = !!uri && failedUri === uri;
+function StorePhoto({ size, className, publicPhoto, privatePhoto, token }: { size: number; className?: string; publicPhoto: string | null; privatePhoto: string | null; token: string | null }) {
+  const [failures, setFailures] = useState<{ uri: string; token: string | null }[]>([]);
+  const failedUris = failures.filter(failure => failure.uri !== privatePhoto || failure.token === token).map(failure => failure.uri);
+  const photo = selectStorePhoto(publicPhoto, privatePhoto, failedUris);
 
   const box = { width: size, height: size, borderRadius: size / 2 };
-  if (!uri || failed) {
+  if (!photo) {
     return (
       <View className={`items-center justify-center bg-slate-100 ${className ?? ''}`} style={box}>
         <AppIcon icon={Store01Icon} size={Math.round(size * 0.45)} color={colors.ink} />
       </View>
     );
   }
-  const isPrivate = !publicPhoto;
+  const { uri, private: isPrivate } = photo;
   return (
     <AppImage
       source={isPrivate ? authSource(uri, token) : { uri }}
       cachePolicy={isPrivate ? 'memory' : 'memory-disk'}
-      onError={() => setFailedUri(uri)}
+      onError={() => setFailures(previous => [...previous, { uri, token }])}
       className={className}
       style={box}
     />
