@@ -30,19 +30,19 @@ interface Props {
 }
 
 export function PrimaryButton({ label, onPress, disabled, loading, trailingIcon, variant = 'ink' }: Props) {
-  const isDisabled = disabled || loading;
+  // Always pass a boolean so the native disabled and accessibility states
+  // reset together when validation or loading changes.
+  const isDisabled = Boolean(disabled || loading);
 
   return (
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      className={`h-[52px] flex-row items-center justify-center gap-1.5 rounded-full ${
-        variant === 'ink' ? (isDisabled ? 'bg-ink/40' : 'bg-black') : ''
-      }`}
-      style={({ pressed }) => [
-        variant === 'blue' ? { backgroundColor: isDisabled ? `${BLUE}66` : BLUE } : undefined,
-        { opacity: pressed && !isDisabled ? 0.85 : 1 },
-      ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: isDisabled, busy: loading === true }}
+      className="h-[52px] flex-row items-center justify-center gap-1.5 rounded-full"
+      style={{ backgroundColor: variant === 'blue' ? (isDisabled ? `${BLUE}66` : BLUE) : (isDisabled ? '#101C1066' : '#000000') }}
     >
       {loading ? (
         <ActivityIndicator color="#FFFFFF" />
