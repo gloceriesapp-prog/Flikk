@@ -1,8 +1,8 @@
 import {
-  BarChart3,
-  Boxes,
+  ChartLine,
   CircleHelp,
   LayoutGrid,
+  Package,
   ReceiptText,
   Settings,
   Star,
@@ -16,26 +16,64 @@ export interface NavItem {
   icon: LucideIcon;
   // Shown in the page header under the title.
   subtitle: string;
+  // Optional sub-menu, drawn as a branch tree under the item.
+  children?: NavChild[];
 }
 
-export const MAIN_NAV: NavItem[] = [
-  { href: '/', label: 'Dashboard', icon: LayoutGrid, subtitle: "Here's what's happening at your store today." },
-  { href: '/orders', label: 'Orders', icon: ReceiptText, subtitle: 'Accept, pack and track every order.' },
-  { href: '/inventory', label: 'Inventory', icon: Boxes, subtitle: 'Your catalogue, prices and stock.' },
-  { href: '/payouts', label: 'Payouts', icon: Wallet, subtitle: 'Weekly settlements to your bank or UPI.' },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3, subtitle: 'Sales and order trends.' },
-  { href: '/reviews', label: 'Reviews', icon: Star, subtitle: 'What customers say about your store.' },
+export interface NavChild {
+  href: string;
+  label: string;
+  // Tailwind class for the leading dot.
+  dot: string;
+}
+
+export interface NavSection {
+  // Omitted for the first, unlabelled group.
+  title?: string;
+  items: NavItem[];
+}
+
+export const NAV_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { href: '/', label: 'Dashboard', icon: LayoutGrid, subtitle: "Here's what's happening at your store today." },
+      { href: '/orders', label: 'Orders', icon: ReceiptText, subtitle: 'Accept, pack and track every order.' },
+      { href: '/analytics', label: 'Analytics', icon: ChartLine, subtitle: 'Sales and order trends.' },
+      { href: '/reviews', label: 'Reviews', icon: Star, subtitle: 'What customers say about your store.' },
+    ],
+  },
+  {
+    title: 'My store',
+    items: [
+      {
+        href: '/inventory',
+        label: 'Inventory',
+        icon: Package,
+        subtitle: 'Your catalogue, prices and stock.',
+        children: [
+          { href: '/inventory?stock=in_stock', label: 'In stock', dot: 'bg-emerald-500' },
+          { href: '/inventory?stock=out_of_stock', label: 'Out of stock', dot: 'bg-rose-500' },
+          { href: '/inventory?stock=pending', label: 'Pending approval', dot: 'bg-amber-500' },
+        ],
+      },
+      { href: '/payouts', label: 'Payouts', icon: Wallet, subtitle: 'Weekly settlements to your bank or UPI.' },
+    ],
+  },
+  {
+    title: 'Support',
+    items: [
+      { href: '/help', label: 'Help', icon: CircleHelp, subtitle: 'Get in touch with the Gloceries team.' },
+      { href: '/settings', label: 'Settings', icon: Settings, subtitle: 'Store profile, hours, payouts and KYC.' },
+    ],
+  },
 ];
 
-export const OTHER_NAV: NavItem[] = [
-  { href: '/help', label: 'Help', icon: CircleHelp, subtitle: 'Get in touch with the Gloceries team.' },
-  { href: '/settings', label: 'Settings', icon: Settings, subtitle: 'Store profile, hours, payouts and KYC.' },
-];
+const ALL_NAV = NAV_SECTIONS.flatMap((section) => section.items);
 
 export function isActivePath(pathname: string, href: string): boolean {
   return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function navItemFor(pathname: string): NavItem | undefined {
-  return [...MAIN_NAV, ...OTHER_NAV].find((item) => isActivePath(pathname, item.href));
+  return ALL_NAV.find((item) => isActivePath(pathname, item.href));
 }

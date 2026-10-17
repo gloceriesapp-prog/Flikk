@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Boxes, Package, PackageSearch, PackageX, Plus, ShieldAlert } from 'lucide-react';
 import { createProduct, fetchProductPage, updateProduct, type PartnerProduct, type ProductInput } from '@/lib/partnerApi';
 import { DEMO_PRODUCTS } from '@/lib/demoProducts';
@@ -8,7 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from '@/components/ui/Toast';
 import { ProductForm } from '@/components/ProductForm';
-import { InventoryFilterBar, type StockFilter } from '@/components/inventory/InventoryFilterBar';
+import { INVENTORY_FILTERS, InventoryFilterBar, type StockFilter } from '@/components/inventory/InventoryFilterBar';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { InventoryToolbar, type SortKey } from '@/components/inventory/InventoryToolbar';
 import { MetricCard, MetricGrid } from '@/components/inventory/MetricCard';
@@ -17,7 +18,37 @@ import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 
 type Editing = { mode: 'create' } | { mode: 'edit'; product: PartnerProduct } | null;
 
+// The stock filter lives in ?stock= so the sidebar's Inventory sub-menu can
+// link straight to it. useSearchParams must sit under a Suspense boundary, or
+// a production build bails the route out of prerendering.
 export default function InventoryPage() {
+  return (
+    <Suspense fallback={null}>
+      <InventoryScreen />
+    </Suspense>
+  );
+}
+
+function useStockFilter(): [StockFilter, (next: StockFilter) => void] {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const raw = searchParams.get('stock');
+  const filter = INVENTORY_FILTERS.find((f) => f.key === raw)?.key ?? 'all';
+  const setFilter = useCallback(
+    (next: StockFilter) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === 'all') params.delete('stock');
+      else params.set('stock', next);
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
+  return [filter, setFilter];
+}
+
+function InventoryScreen() {
   const [products, setProducts] = useState<PartnerProduct[]>([]);
   // Local-only override for demo rows: editing a demo product must never
   // hit the real /partner/products/:id endpoint (that id doesn't exist
@@ -26,7 +57,7 @@ export default function InventoryPage() {
   const [demoProducts, setDemoProducts] = useState(DEMO_PRODUCTS);
   const [isLoading, setIsLoading] = useState(true);
   const [editing, setEditing] = useState<Editing>(null);
-  const [filter, setFilter] = useState<StockFilter>('all');
+  const [filter, setFilter] = useStockFilter();
   const [search, setSearch] = useState('');
   const [showStats, setShowStats] = useState(true);
   const [showFilter, setShowFilter] = useState(true);
