@@ -43,3 +43,7 @@ supabase/.temp/
 
 # Claude Code worktrees: full repo copies (1 GB+); never commit or upload to EAS
 .claude/worktrees/
+
+.playwright-cli/
+
+.pnpm-store/
