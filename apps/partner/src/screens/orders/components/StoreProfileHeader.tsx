@@ -46,7 +46,7 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressLocation, onP
               hitSlop={{ top: 4, bottom: 10 }}
             >
               <Text className="text-[12px] font-medium leading-[17px] text-ink/75" numberOfLines={1} ellipsizeMode="tail">
-                <Text className="text-black">At </Text>{address}
+                {address}
               </Text>
             </Pressable>
           </View>
