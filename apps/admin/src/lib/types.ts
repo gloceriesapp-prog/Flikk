@@ -61,6 +61,10 @@ export interface Application {
   phone: string;
   // Store-only fields — undefined for rider applications.
   photoUrl?: string;
+  // Private onboarding photos (storefront, owner), as admin decrypt-proxy
+  // URLs. Only set where the page resolved them (approvals/[id]).
+  storeDocPhotoUrl?: string;
+  ownerPhotoUrl?: string;
   gstNumber?: string;
   district?: string;
   // Everything the partner Store Setup wizard collects (storeOnboarding.ts).

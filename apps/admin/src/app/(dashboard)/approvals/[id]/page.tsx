@@ -31,6 +31,7 @@ import { DecisionButtons } from '@/components/approvals/DecisionButtons';
 import type { Application } from '@/lib/types';
 
 const DOCUMENTS_BUCKET = 'rider-documents';
+const STORE_DOCUMENTS_BUCKET = 'store-documents';
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 // photo_url (selfie) / aadhaar_photo_url / dl_photo_url are object PATHS on
@@ -47,6 +48,17 @@ async function signRiderPhotos<T extends { photo_url: string | null; aadhaar_pho
   return { ...row, photo_url: sign(row.photo_url), aadhaar_photo_url: sign(row.aadhaar_photo_url), dl_photo_url: sign(row.dl_photo_url) };
 }
 
+// The storefront and owner photos the partner app's onboarding uploads
+// (store_doc_path / profile_photo_path, private store-documents bucket,
+// encrypted) — resolved the same way as the rider photos above.
+async function storePhotos(row: { store_doc_path?: string | null; profile_photo_path?: string | null }): Promise<Pick<Application, 'storeDocPhotoUrl' | 'ownerPhotoUrl'>> {
+  const urlByPath = await privateDocUrls(STORE_DOCUMENTS_BUCKET, [row.store_doc_path ?? null, row.profile_photo_path ?? null], SIGNED_URL_TTL_SECONDS);
+  return {
+    storeDocPhotoUrl: row.store_doc_path ? urlByPath.get(row.store_doc_path) : undefined,
+    ownerPhotoUrl: row.profile_photo_path ? urlByPath.get(row.profile_photo_path) : undefined,
+  };
+}
+
 // Pending/rejected (draft, no real row yet) and approved (real `stores`/
 // `riders` row) are two different tables now, for both kinds — see
 // lib/supabase/approvals.ts's own note on why. Check the draft first
@@ -61,11 +73,15 @@ async function loadApplication(id: string): Promise<Application | null> {
     .maybeSingle();
   if (draftRow) {
     const { count } = await supabaseAdmin.from('stores').select('id', { count: 'exact', head: true }).eq('owner_user_id', id);
-    return { ...mapStoreDraft(draftRow as unknown as ApiStoreDraft), alreadyOwnsStore: (count ?? 0) > 0 };
+    const draft = draftRow as unknown as ApiStoreDraft;
+    return { ...mapStoreDraft(draft), ...(await storePhotos(draft)), alreadyOwnsStore: (count ?? 0) > 0 };
   }
 
   const { data: storeRow } = await supabaseAdmin.from('stores').select(APPROVED_STORE_SELECT).eq('owner_user_id', id).limit(1).maybeSingle();
-  if (storeRow) return mapApprovedStore(storeRow as unknown as ApiApprovedStore);
+  if (storeRow) {
+    const store = storeRow as unknown as ApiApprovedStore;
+    return { ...mapApprovedStore(store), ...(await storePhotos(store)) };
+  }
 
   const { data: riderDraftRow } = await supabaseAdmin
     .from('rider_onboarding_drafts')
@@ -90,6 +106,9 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
   const { data: zones } = await supabaseAdmin.from('zones').select('id, name').eq('is_active', true).order('name');
 
   const Icon = application.kind === 'store' ? Store : User;
+  // Stores have no public photo until they set one; show the storefront
+  // photo from onboarding in the header instead of a placeholder.
+  const headerPhoto = application.photoUrl ?? application.storeDocPhotoUrl;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -100,9 +119,9 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
 
       <div className="rounded-3xl border border-border bg-card p-6">
         <div className="flex items-start gap-4">
-          {application.photoUrl ? (
+          {headerPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- real Storage URL, no next.config domain to register yet
-            <img src={application.photoUrl} alt="" className="h-20 w-20 rounded-2xl object-cover" />
+            <img src={headerPhoto} alt="" className="h-20 w-20 rounded-2xl object-cover" />
           ) : (
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent">
               <Icon size={28} className="text-ink-soft" />
@@ -160,6 +179,17 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
           </div>
         )}
 
+        {application.kind === 'store' && (
+          <div className="mt-6 border-t border-border pt-6">
+            <p className="text-sm font-medium text-ink">Verification photos</p>
+            <p className="text-xs text-muted">Private, uploaded during onboarding. Click a photo to open it full size.</p>
+            <div className="mt-3 grid grid-cols-2 gap-4">
+              <PrivatePhoto label="Store photo" url={application.storeDocPhotoUrl} />
+              <PrivatePhoto label="Owner photo" url={application.ownerPhotoUrl} />
+            </div>
+          </div>
+        )}
+
         {application.kind === 'store' ? (
           <DocumentChecklist application={application} />
         ) : (
@@ -192,6 +222,24 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function PrivatePhoto({ label, url }: { label: string; url?: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {url ? (
+        <a href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-2xl border border-border bg-accent">
+          {/* eslint-disable-next-line @next/next/no-img-element -- authenticated decrypt-proxy URL, not optimisable */}
+          <img src={url} alt={label} className="h-48 w-full object-cover" />
+        </a>
+      ) : (
+        <div className="flex h-48 items-center justify-center rounded-2xl border border-dashed border-border bg-accent text-xs text-muted">
+          Not uploaded
+        </div>
+      )}
+      <p className="text-xs font-medium text-ink-soft">{label}</p>
     </div>
   );
 }
