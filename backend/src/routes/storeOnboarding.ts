@@ -16,7 +16,7 @@ import { AppError } from '../lib/errors.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { decodeImage, toWebp, normalizeImage } from '../utils/image.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
-import { assertStoreCategory, DRUG_LICENSE_CATEGORIES, isStoreCategory, normalizeDrugLicense, storeCategoryOptions } from '../lib/storeCategories.js';
+import { assertFssaiForCategory, assertStoreCategory, DRUG_LICENSE_CATEGORIES, isStoreCategory, normalizeDrugLicense, storeCategoryOptions } from '../lib/storeCategories.js';
 
 export const storeOnboardingRouter = Router();
 
@@ -54,7 +54,6 @@ interface OnboardingFields {
   // private store-documents bucket (mirrors rider aadhaar_photo_url), resolved
   // to a decrypt-proxy URL on read. Never a public URL.
   profilePhotoPath?: string;
-  aadhaarPhotoPath?: string;
   storePhotoPath?: string;
 }
 
@@ -92,7 +91,6 @@ storeOnboardingRouter.post('/store-application', requireAuth, requirePrimaryStor
       openTime,
       closeTime,
       profilePhotoPath,
-      aadhaarPhotoPath,
       storePhotoPath,
     } = req.body as OnboardingFields;
     if (!storeName || !category || !district) {
@@ -121,15 +119,22 @@ storeOnboardingRouter.post('/store-application', requireAuth, requirePrimaryStor
     const { data: membership, error: membershipError } = await supabase.from('store_memberships').select('user_id').eq('user_id', req.user!.id).eq('is_active', true).maybeSingle();
     if (membershipError) throw membershipError;
     if (membership) throw new AppError(409, 'STORE_TEAM_MEMBER', 'You already manage a store. Ask the administrator before applying for a separate store.');
-    // PAN is the one compulsory document at submit time — real per an
-    // explicit ask (tax/payout compliance applies to every store
-    // regardless of category). GST/Udyam/FSSAI/shop-license stay optional.
+    // Compulsory at submit: PAN (every store), FSSAI (food categories),
+    // a store photo, and the map location (onboardingCoordinates above).
+    // GST/Udyam/shop-license stay optional. Aadhaar is no longer collected.
     if (!panNumber || !isValidPanFormat(panNumber)) {
       throw new AppError(400, 'INVALID_PAN_FORMAT', 'A valid PAN (e.g. ABCDE1234F) is required to submit your application.');
     }
     if (fssaiNumber && !isValidFssaiFormat(fssaiNumber)) {
       throw new AppError(400, 'INVALID_FSSAI_FORMAT', 'FSSAI license number must be exactly 14 digits.');
     }
+    assertFssaiForCategory(category, fssaiNumber);
+    let storeDocPath = storePhotoPath || null;
+    if (!storeDocPath) {
+      const { data: savedDraft } = await supabase.from('store_onboarding_drafts').select('store_doc_path').eq('user_id', req.user!.id).maybeSingle();
+      storeDocPath = (savedDraft?.store_doc_path as string | null | undefined) ?? null;
+    }
+    if (!storeDocPath) throw new AppError(400, 'STORE_PHOTO_REQUIRED', 'Add a photo of your storefront to submit your application.');
 
     const { error } = await supabase.from('store_onboarding_drafts').upsert(
       {
@@ -152,8 +157,7 @@ storeOnboardingRouter.post('/store-application', requireAuth, requirePrimaryStor
         open_time: openTime || null,
         close_time: closeTime || null,
         profile_photo_path: profilePhotoPath || null,
-        aadhaar_photo_path: aadhaarPhotoPath || null,
-        store_doc_path: storePhotoPath || null,
+        store_doc_path: storeDocPath,
         // Clears out any reason from a previous rejection — a fresh
         // submission means a fresh review, not the old verdict still
         // hanging around next to it.
@@ -234,7 +238,6 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, requirePrimaryStoreAcco
       openTime,
       closeTime,
       profilePhotoPath,
-      aadhaarPhotoPath,
       storePhotoPath,
     } = req.body as OnboardingFields & { lat?: number; lng?: number };
     if (typeof category === 'string' && category && !isStoreCategory(category)) {
@@ -275,7 +278,6 @@ storeOnboardingRouter.patch('/store-draft', requireAuth, requirePrimaryStoreAcco
     if (openTime !== undefined) patch.open_time = openTime;
     if (closeTime !== undefined) patch.close_time = closeTime;
     if (profilePhotoPath !== undefined) patch.profile_photo_path = profilePhotoPath;
-    if (aadhaarPhotoPath !== undefined) patch.aadhaar_photo_path = aadhaarPhotoPath;
     if (storePhotoPath !== undefined) patch.store_doc_path = storePhotoPath;
 
     const { error } = await supabase.from('store_onboarding_drafts').upsert(patch, { onConflict: 'user_id' });
@@ -311,7 +313,7 @@ storeOnboardingRouter.post('/store-photo', requireAuth, requirePrimaryStoreAccou
 storeOnboardingRouter.post('/store-document-photo', requireAuth, requirePrimaryStoreAccount, async (req: AuthedRequest, res, next) => {
   try {
     const { base64, kind } = req.body as { base64?: string; kind?: string };
-    if (!kind || !['pan', 'gst', 'fssai', 'shop-license', 'udyam', 'payout-proof', 'profile', 'aadhaar', 'store'].includes(kind))
+    if (!kind || !['pan', 'gst', 'fssai', 'shop-license', 'udyam', 'payout-proof', 'profile', 'store'].includes(kind))
       throw new AppError(400, 'INVALID_DOCUMENT_KIND', 'Choose a supported verification document.');
     if (!base64) throw new AppError(400, 'MISSING_IMAGE', 'Choose a document photo.');
     const document = await storePrivateDocument({ bucket: 'store-documents', ownerId: req.user!.id, kind,

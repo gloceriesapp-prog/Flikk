@@ -41,7 +41,7 @@ import { round2 } from '../lib/pricing.js';
 import { getStoreCommissionRate } from '../lib/platformSettings.js';
 import { reverseGeocode } from '../lib/reverseGeocode.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
-import { assertStoreCategory, DRUG_LICENSE_CATEGORIES } from '../lib/storeCategories.js';
+import { assertFssaiForCategory, assertStoreCategory, DRUG_LICENSE_CATEGORIES } from '../lib/storeCategories.js';
 import { PROFILE_CHANGE_SELECT, reviewedChanges, type ReviewedChanges } from '../lib/storeProfileReview.js';
 
 export const partnerRouter = Router();
@@ -278,6 +278,14 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
         : 'drug_license_number' in pendingChanges ? pendingChanges.drug_license_number : currentDoc.drug_license_number;
       if (reviewed.category !== undefined) assertStoreCategory(reviewed.category, (licence as string | null) ?? null);
       else if (DRUG_LICENSE_CATEGORIES.includes(String(category)) && !licence) assertStoreCategory(category, null);
+    }
+    // Food categories must hold an FSSAI number. Checked when a save touches
+    // the FSSAI field or the category, so a food store can't clear it or
+    // switch to a food category without one.
+    if (fssai_number !== undefined || reviewed.category !== undefined) {
+      const categoryAfter = reviewed.category ?? (await pendingProfileChange(storeId))?.changes?.category ?? currentDoc.category;
+      const fssaiAfter = typeof fssai_number === 'string' ? fssai_number : currentDoc.fssai_number;
+      assertFssaiForCategory(categoryAfter, fssaiAfter);
     }
     assertNotLocked('GST number', currentDoc.gst_number, gst_number);
     assertNotLocked('Shop & Establishment license', currentDoc.shop_establishment_number, shop_establishment_number);

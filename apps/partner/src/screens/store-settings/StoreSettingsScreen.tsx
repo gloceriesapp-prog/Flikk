@@ -46,7 +46,7 @@ import { PayoutAccountCard } from './components/PayoutAccountCard';
 import { PrepTimeStepper } from './components/PrepTimeStepper';
 import { SettingsCard } from './components/SettingsCard';
 import { SettingsLinkRow } from './components/SettingsLinkRow';
-import { categoryNeedsDrugLicense, StoreCategoryPicker, useStoreCategories } from './components/StoreCategoryPicker';
+import { categoryNeedsDrugLicense, categoryNeedsFssai, StoreCategoryPicker, useStoreCategories } from './components/StoreCategoryPicker';
 import { TimeDigitsInput } from './components/TimeDigitsInput';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'StoreSettings'>;
@@ -185,6 +185,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
   }
 
   const fssaiValid = fssaiLicenseNumber.trim().length === 0 || isValidFssaiFormat(fssaiLicenseNumber);
+  const needsFssai = categoryNeedsFssai(categories, category);
   const panValid = isValidPanFormat(panNumber);
 
   // Write-once from this screen — once a document field holds a real
@@ -204,7 +205,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
     if (saving) return;
     const validationError = validateStoreSettings({
       name, category, openTime, closeTime, avgPrepMinutes, manualAddress, ownerName,
-      panNumber, fssaiLicenseNumber, drugLicenseNumber, needsDrugLicense,
+      panNumber, fssaiLicenseNumber, drugLicenseNumber, needsDrugLicense, needsFssai,
       hasLocation: !!location.coordinates && !!location.district.trim(),
     });
     if (validationError) {
@@ -499,7 +500,8 @@ export function StoreSettingsScreen({ navigation }: Props) {
                 once real, shown read-only below, same as the phone number row
                 above. */}
             <DocumentField
-              label="PAN number *"
+              label="PAN number"
+              required
               locked={panLocked}
               value={panNumber}
               onChangeText={setPanNumber}
@@ -509,10 +511,12 @@ export function StoreSettingsScreen({ navigation }: Props) {
               errorText={panNumber.length > 0 && !panValid ? 'Format should be ABCDE1234F.' : null}
             />
 
-            {/* FSSAI — optional (doesn't apply to every store category, e.g.
-                Hardware/Paint Shop/Steel & Vessels aren't food businesses). */}
+            {/* FSSAI — required for food categories (Kirana, Supermarket,
+                Bakery, Fruits & Vegetables, General Store); optional for
+                Hardware/Paint Shop/Steel & Vessels/Pharmacy/Others. */}
             <DocumentField
-              label="FSSAI license number (optional)"
+              label={needsFssai ? 'FSSAI registration or licence number' : 'FSSAI license number (optional)'}
+              required={needsFssai}
               locked={fssaiLocked}
               value={fssaiLicenseNumber}
               onChangeText={setFssaiLicenseNumber}
@@ -553,7 +557,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
               </Text>
             </View>
 
-            {/* My documents — the owner's three private, encrypted KYC photos,
+            {/* My documents — the owner's private, encrypted KYC photos,
                 fetched through the authenticated decrypt-proxy (bearer token
                 attached per request via authSource). Only this owner can see
                 them; the proxy enforces ownership server-side. Separate from
@@ -569,7 +573,6 @@ export function StoreSettingsScreen({ navigation }: Props) {
               <View className="flex-row gap-3">
                 <PrivateDoc label="Store photo" uri={profile.storePhotoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
                 <PrivateDoc label="Owner photo" uri={profile.profilePhotoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
-                <PrivateDoc label="Aadhaar" uri={profile.aadhaarPhotoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
               </View>
             </View>
           </SettingsCard>
@@ -649,6 +652,8 @@ function PrivateDoc({
 
 interface DocumentFieldProps {
   label: string;
+  // Shows the red required star after the label.
+  required?: boolean;
   locked: boolean;
   value: string;
   onChangeText: (value: string) => void;
@@ -664,10 +669,13 @@ interface DocumentFieldProps {
 // partner.ts's DOCUMENT_LOCKED guard, not just this UI). Same shape for
 // all four business-document fields, so a lock behaves identically
 // whether it's PAN, FSSAI, GST, or the shop license.
-function DocumentField({ label, locked, value, onChangeText, placeholder, autoCapitalize, keyboardType, maxLength, errorText }: DocumentFieldProps) {
+function DocumentField({ label, required, locked, value, onChangeText, placeholder, autoCapitalize, keyboardType, maxLength, errorText }: DocumentFieldProps) {
   return (
     <View className="gap-1.5">
-      <Text className="text-[13px] font-medium text-ink/40">{label}</Text>
+      <Text className="text-[13px] font-medium text-ink/40">
+        {label}
+        {required && <Text className="font-bold text-red-500"> *</Text>}
+      </Text>
       {locked ? (
         <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-black/10 bg-[#F1F2F4] px-4 py-3">
           <Text className="text-[14px] font-semibold text-ink">{value}</Text>

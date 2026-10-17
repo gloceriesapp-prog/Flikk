@@ -17,7 +17,8 @@ import { AppIcon } from '../../components/AppIcon';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useAuthStore } from '../../store/useAuthStore';
 import { colors } from '../../theme/tokens';
-import { isValidPanFormat } from '../../utils/documentValidation';
+import { isValidFssaiFormat, isValidPanFormat } from '../../utils/documentValidation';
+import { categoryNeedsFssai, useStoreCategories } from '../store-settings/components/StoreCategoryPicker';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'StoreReview'>;
@@ -30,6 +31,8 @@ export function StoreReviewScreen({ navigation, route }: Props) {
   const [error, setError] = useState<string | null>(null);
   const setApplicationSubmitted = useAuthStore((s) => s.setApplicationSubmitted);
   const clearSession = useAuthStore((s) => s.clear);
+  const categories = useStoreCategories();
+  const needsFssai = categoryNeedsFssai(categories, draft.category);
 
   const coordinates = draft.coordinates;
   const validCoordinates = !!coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude) && Math.abs(coordinates.latitude) <= 90 && Math.abs(coordinates.longitude) <= 180;
@@ -56,7 +59,6 @@ export function StoreReviewScreen({ navigation, route }: Props) {
       openTime: draft.openTime || undefined,
       closeTime: draft.closeTime || undefined,
       profilePhotoPath: draft.profilePhotoPath || undefined,
-      aadhaarPhotoPath: draft.aadhaarPhotoPath || undefined,
       storePhotoPath: draft.storePhotoPath || undefined,
     });
   }
@@ -136,6 +138,9 @@ export function StoreReviewScreen({ navigation, route }: Props) {
 
         <SectionLabel label="Documents" />
         <Row label="PAN" value={draft.panNumber} onEdit={() => navigation.navigate('BusinessDocuments', { draft })} />
+        {needsFssai && (
+          <Row label="FSSAI number" value={draft.fssaiNumber} onEdit={() => navigation.navigate('BusinessDocuments', { draft })} />
+        )}
         <Row label="GSTIN" value={draft.gstNumber} onEdit={() => navigation.navigate('BusinessDocuments', { draft })} />
         <Row label="Udyam number" value={draft.udyamNumber} onEdit={() => navigation.navigate('BusinessDocuments', { draft })} />
         {draft.category === 'Pharmacy' && (
@@ -152,7 +157,6 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         <SectionLabel label="Verification photos" />
         <PhotoStatusRow label="Store photo" uploaded={!!draft.storePhotoPath} onEdit={() => navigation.navigate('StoreDetails', { draft })} />
         <PhotoStatusRow label="Owner photo" uploaded={!!draft.profilePhotoPath} onEdit={() => navigation.navigate('OwnerDetails', { draft })} />
-        <PhotoStatusRow label="Aadhaar photo" uploaded={!!draft.aadhaarPhotoPath} onEdit={() => navigation.navigate('BusinessDocuments', { draft })} />
 
         {error && <Text className="mt-3 text-[13px] font-medium text-danger">{error}</Text>}
       </ScrollView>
@@ -162,7 +166,7 @@ export function StoreReviewScreen({ navigation, route }: Props) {
           label="Start Selling on Gloceries"
           onPress={handleSubmit}
           loading={loading}
-          disabled={!isValidPanFormat(draft.panNumber) || !validCoordinates}
+          disabled={!isValidPanFormat(draft.panNumber) || (needsFssai && !isValidFssaiFormat(draft.fssaiNumber)) || !draft.storePhotoPath || !validCoordinates}
           trailingIcon={ArrowRight01Icon}
         />
       </View>

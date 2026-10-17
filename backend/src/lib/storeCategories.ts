@@ -21,10 +21,25 @@ export const STORE_CATEGORIES = [
 ] as const;
 
 export const DRUG_LICENSE_CATEGORIES: readonly string[] = ['Pharmacy'];
+// Categories that sell food: FSSAI's e-commerce rules let a platform list
+// only FSSAI-registered food businesses, so these need an FSSAI number.
+export const FSSAI_CATEGORIES: readonly string[] = ['Kirana & Grocery', 'Supermarket', 'Bakery', 'Fruits & Vegetables', 'General Store'];
 const MAX_LICENSE_LENGTH = 100;
 
 export function storeCategoryOptions() {
-  return STORE_CATEGORIES.map((name) => ({ name, requires_drug_license: DRUG_LICENSE_CATEGORIES.includes(name) }));
+  return STORE_CATEGORIES.map((name) => ({
+    name,
+    requires_drug_license: DRUG_LICENSE_CATEGORIES.includes(name),
+    requires_fssai: FSSAI_CATEGORIES.includes(name),
+  }));
+}
+
+// category: the category the store will have; fssai: the FSSAI number it
+// will hold after the save (incoming value, else the one already on file).
+export function assertFssaiForCategory(category: unknown, fssai: string | null | undefined): void {
+  if (typeof category === 'string' && FSSAI_CATEGORIES.includes(category) && !fssai?.trim()) {
+    throw new AppError(400, 'FSSAI_REQUIRED', 'Food stores need an FSSAI registration or licence number (14 digits).');
+  }
 }
 
 export function isStoreCategory(value: unknown): value is (typeof STORE_CATEGORIES)[number] {

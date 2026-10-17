@@ -13,10 +13,18 @@ interface Props {
 export interface StoreCategoryOption {
   name: string;
   requires_drug_license: boolean;
+  // Older servers omit it; the bundled list below covers that case.
+  requires_fssai?: boolean;
 }
 
 const ACCENT = '#1754cf';
-const FALLBACK: StoreCategoryOption[] = STORE_CATEGORIES.map((name) => ({ name, requires_drug_license: name === 'Pharmacy' }));
+// Food categories need an FSSAI number (backend lib/storeCategories.ts).
+const FSSAI_CATEGORIES = ['Kirana & Grocery', 'Supermarket', 'Bakery', 'Fruits & Vegetables', 'General Store'];
+const FALLBACK: StoreCategoryOption[] = STORE_CATEGORIES.map((name) => ({
+  name,
+  requires_drug_license: name === 'Pharmacy',
+  requires_fssai: FSSAI_CATEGORIES.includes(name),
+}));
 let cached: StoreCategoryOption[] | null = null;
 
 // The server's list (GET /partner/store-categories) — exactly the set admin
@@ -41,6 +49,12 @@ export function useStoreCategories(): StoreCategoryOption[] {
     };
   }, []);
   return options;
+}
+
+export function categoryNeedsFssai(options: StoreCategoryOption[], category: string): boolean {
+  const option = options.find((o) => o.name === category);
+  if (!option) return false;
+  return option.requires_fssai ?? FSSAI_CATEGORIES.includes(category);
 }
 
 export function categoryNeedsDrugLicense(options: StoreCategoryOption[], category: string): boolean {
