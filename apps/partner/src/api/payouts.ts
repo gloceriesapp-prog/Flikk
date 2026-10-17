@@ -100,7 +100,7 @@ export function uploadPayoutProof(base64: string): Promise<{ path: string }> {
 // public URL); onboarding carries these as path strings, exactly like proofPath.
 export function uploadStoreDocument(
   base64: string,
-  kind: 'profile' | 'aadhaar' | 'store' | 'payout-proof',
+  kind: 'profile' | 'store' | 'payout-proof',
 ): Promise<{ path: string }> {
   return apiRequest('/partner/store-document-photo', { method: 'POST', body: { base64, kind } });
 }

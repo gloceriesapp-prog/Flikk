@@ -66,7 +66,6 @@ export interface StoreDraft {
   // once their respective step uploads via POST /partner/store-document-photo.
   // null until picked, same shape as the payout proof's proofPath.
   profilePhotoPath: string | null;
-  aadhaarPhotoPath: string | null;
   storePhotoPath: string | null;
 }
 

@@ -1,5 +1,5 @@
 // Reusable "add a private document photo" card for the onboarding wizard —
-// store photo, owner profile photo, Aadhaar. Visual twin of PayoutAccountCard's
+// store photo, owner profile photo. Visual twin of PayoutAccountCard's
 // cheque/passbook proof row: dashed-border placeholder when empty, success tint
 // once a path exists, a spinner while the upload is in flight. These are
 // encrypted private documents, so there's no image preview here — only an
@@ -18,12 +18,17 @@ interface Props {
   uploading: boolean;
   onPick: () => void;
   error?: string | null;
+  // Shows the red required star after the label.
+  required?: boolean;
 }
 
-export function DocPickerCard({ label, hint, hasPhoto, uploading, onPick, error }: Props) {
+export function DocPickerCard({ label, hint, hasPhoto, uploading, onPick, error, required }: Props) {
   return (
     <View className="gap-2.5">
-      <Text className="text-[15px] font-semibold text-ink/80">{label}</Text>
+      <View className="flex-row items-center gap-1">
+        <Text className="text-[15px] font-semibold text-ink/80">{label}</Text>
+        {required && <Text className="text-[15px] font-bold leading-none text-danger">*</Text>}
+      </View>
       <Pressable
         onPress={onPick}
         disabled={uploading}

@@ -44,7 +44,7 @@ async function patchStore(body: Record<string, unknown>) {
 }
 
 beforeEach(() => {
-  db.store = { id: 'store-1', name: 'Old name', category: 'Kirana & Grocery', drug_license_number: null, is_active: false, admin_suspended: false, suspended_reason: null };
+  db.store = { id: 'store-1', name: 'Old name', category: 'Kirana & Grocery', drug_license_number: null, fssai_number: '12345678901234', is_active: false, admin_suspended: false, suspended_reason: null };
   db.updateError = null;
   db.updates = [];
   db.pending = null;
@@ -76,6 +76,14 @@ it('maps the database suspension guard to STORE_SUSPENDED', async () => {
   db.updateError = { code: 'P0409', message: 'STORE_SUSPENDED' };
   const { err } = await patchStore({ is_active: true });
   expect(err).toMatchObject({ status: 409, code: 'STORE_SUSPENDED' });
+});
+
+it('refuses a food category or a cleared FSSAI number without an FSSAI number on file', async () => {
+  db.store = { ...db.store, category: 'Hardware', fssai_number: null };
+  expect((await patchStore({ category: 'Bakery' })).err).toMatchObject({ status: 400, code: 'FSSAI_REQUIRED' });
+  db.store = { ...db.store, category: 'Bakery', fssai_number: null };
+  expect((await patchStore({ fssai_number: '' })).err).toMatchObject({ status: 400, code: 'FSSAI_REQUIRED' });
+  expect((await patchStore({ open_time: '07:00' })).err).toBeUndefined();
 });
 
 // Store profile review (#37): identity / reach edits never write the live row.

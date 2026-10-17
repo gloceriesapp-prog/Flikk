@@ -103,10 +103,13 @@ export function WizardProgress({ step, total }: { step: number; total: number })
 // A field group on the white page — just a label above the caller's own
 // input. No card fill/border: on a flat white surface the faint-fill input
 // carries the visual weight, which is the cleaner/premium look.
-export function FieldCard({ label, children }: { label: string; children: ReactNode }) {
+export function FieldCard({ label, children, required }: { label: string; children: ReactNode; required?: boolean }) {
   return (
     <View className="gap-2.5">
-      <Text className="text-[15px] font-semibold text-ink/80">{label}</Text>
+      <View className="flex-row items-center gap-1">
+        <Text className="text-[15px] font-semibold text-ink/80">{label}</Text>
+        {required && <Text className="text-[15px] font-bold leading-none text-danger">*</Text>}
+      </View>
       {children}
     </View>
   );

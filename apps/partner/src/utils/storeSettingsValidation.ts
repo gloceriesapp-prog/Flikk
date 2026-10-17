@@ -13,6 +13,7 @@ interface StoreSettingsValues {
   fssaiLicenseNumber: string;
   drugLicenseNumber: string;
   needsDrugLicense: boolean;
+  needsFssai: boolean;
   hasLocation: boolean;
 }
 
@@ -32,6 +33,7 @@ export function validateStoreSettings(values: StoreSettingsValues): string | nul
   if (!values.manualAddress.trim()) return 'Enter your full shop address.';
   if (!values.ownerName.trim()) return 'Enter the owner’s full name.';
   if (!isValidPanFormat(values.panNumber)) return 'Enter a valid PAN, such as ABCDE1234F.';
+  if (values.needsFssai && !values.fssaiLicenseNumber.trim()) return 'Enter your FSSAI registration or licence number. Food stores need one.';
   if (values.fssaiLicenseNumber.trim() && !isValidFssaiFormat(values.fssaiLicenseNumber)) return 'FSSAI must contain 14 digits.';
   if (values.needsDrugLicense && !values.drugLicenseNumber.trim()) return 'Enter your pharmacy’s drug licence number.';
   return null;

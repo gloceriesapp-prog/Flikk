@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { STORE_CATEGORIES as ADMIN_STORE_CATEGORIES } from '../../../apps/admin/src/lib/store-options';
-import { assertStoreCategory, normalizeDrugLicense, STORE_CATEGORIES, storeCategoryOptions } from './storeCategories.js';
+import { assertFssaiForCategory, assertStoreCategory, normalizeDrugLicense, STORE_CATEGORIES, storeCategoryOptions } from './storeCategories.js';
 
 it('allows exactly the categories the admin panel allows', () => {
   expect([...STORE_CATEGORIES]).toEqual([...ADMIN_STORE_CATEGORIES]);
@@ -29,4 +29,13 @@ it('normalizes the licence text', () => {
   expect(normalizeDrugLicense(undefined)).toBeNull();
   expect(() => normalizeDrugLicense(5)).toThrow();
   expect(() => normalizeDrugLicense('x'.repeat(101))).toThrow();
+});
+
+it('requires FSSAI for food categories only', () => {
+  expect(storeCategoryOptions().filter((c) => c.requires_fssai).map((c) => c.name))
+    .toEqual(['Kirana & Grocery', 'Supermarket', 'Bakery', 'Fruits & Vegetables', 'General Store']);
+  expect(() => assertFssaiForCategory('Bakery', '  ')).toThrow(expect.objectContaining({ status: 400, code: 'FSSAI_REQUIRED' }));
+  expect(() => assertFssaiForCategory('Bakery', '12345678901234')).not.toThrow();
+  expect(() => assertFssaiForCategory('Hardware', null)).not.toThrow();
+  expect(() => assertFssaiForCategory('Pharmacy', null)).not.toThrow();
 });

@@ -1,8 +1,6 @@
-// Step 1 of the onboarding wizard — store name, category, store contact
-// phone only. Photo and address/map used to live here too (see git history)
-// but were split out per an explicit ask to keep each step focused on one
-// topic: photo is no longer collected during onboarding at all (added later
-// via Store Settings), and location/map moved to its own StoreLocation step.
+// Step 1 of the onboarding wizard — store name, a required private storefront
+// photo, category and store contact phone. Location/map is its own
+// StoreLocation step.
 
 import { useState } from 'react';
 import { useNavigationState } from '@react-navigation/native';
@@ -29,7 +27,7 @@ const EMPTY_STORE_DRAFT: StoreDraft = {
   coordinates: null, photoUrl: null, gstNumber: '', ownerName: '', ownerEmail: '',
   shopLicenseNumber: '', fssaiNumber: '', panNumber: '', udyamNumber: '', drugLicenseNumber: '',
   openTime: '', closeTime: '',
-  profilePhotoPath: null, aadhaarPhotoPath: null, storePhotoPath: null,
+  profilePhotoPath: null, storePhotoPath: null,
 };
 
 export function StoreDetailsScreen({ navigation, route }: Props) {
@@ -49,7 +47,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
   const isKnownCategory = categories.some((option) => option.name === category);
 
   const canContinue =
-    storeName.trim().length > 0 && isKnownCategory && phone.trim().length >= 10 && (!needsDrugLicense || drugLicenseNumber.trim().length > 0);
+    storeName.trim().length > 0 && isKnownCategory && phone.trim().length >= 10 && !!storePhotoPath && (!needsDrugLicense || drugLicenseNumber.trim().length > 0);
 
   async function handlePickStorePhoto() {
     const picked = await pickAndCompressImage();
@@ -112,6 +110,7 @@ export function StoreDetailsScreen({ navigation, route }: Props) {
         uploading={uploadingPhoto}
         onPick={() => void handlePickStorePhoto()}
         error={photoError}
+        required
       />
 
       <FieldCard label="Category">

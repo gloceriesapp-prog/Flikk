@@ -104,7 +104,6 @@ export interface StoreApplication {
   // Private encrypted KYC document PATHs (never URLs) — uploaded ahead of
   // submit via POST /partner/store-document-photo, carried here as strings.
   profilePhotoPath?: string;
-  aadhaarPhotoPath?: string;
   storePhotoPath?: string;
 }
 // auth contract, stays local to this app.
@@ -171,7 +170,6 @@ export interface StoreDraftPatch {
   openTime?: string;
   closeTime?: string;
   profilePhotoPath?: string;
-  aadhaarPhotoPath?: string;
   storePhotoPath?: string;
 }
 

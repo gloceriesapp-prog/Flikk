@@ -20,7 +20,7 @@ const handler = storeOnboardingRouter.stack.find(l => l.route?.path === '/store-
 async function submit(extra: Record<string, unknown> = {}) {
   const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
   const next = vi.fn();
-  await handler({ user: { id: 'owner-1' }, body: { lat: 13.34, lng: 74.75, storeName: 'Shop', category: 'Kirana & Grocery', district: 'Udupi', panNumber: 'ABCDE1234F', ...extra } } as unknown as Request, res, next);
+  await handler({ user: { id: 'owner-1' }, body: { lat: 13.34, lng: 74.75, storeName: 'Shop', category: 'Kirana & Grocery', district: 'Udupi', panNumber: 'ABCDE1234F', fssaiNumber: '12345678901234', storePhotoPath: 'owner-1/store.jpg', ...extra } } as unknown as Request, res, next);
   return { res, err: next.mock.calls[0]?.[0] as { status?: number; code?: string } | undefined };
 }
 
@@ -52,4 +52,21 @@ it('refuses a pharmacy without a drug licence and stores one that has it', async
   const { err } = await submit({ category: 'Pharmacy', drugLicenseNumber: ' KA-20B-1 ' });
   expect(err).toBeUndefined();
   expect(db.upserts[0]).toMatchObject({ category: 'Pharmacy', drug_license_number: 'KA-20B-1' });
+});
+
+it('requires an FSSAI number for food categories only', async () => {
+  expect((await submit({ fssaiNumber: undefined })).err).toMatchObject({ status: 400, code: 'FSSAI_REQUIRED' });
+  expect((await submit({ category: 'Hardware', fssaiNumber: undefined })).err).toBeUndefined();
+  expect(db.upserts).toHaveLength(1);
+});
+
+it('requires a store photo', async () => {
+  const { err } = await submit({ storePhotoPath: undefined });
+  expect(err).toMatchObject({ status: 400, code: 'STORE_PHOTO_REQUIRED' });
+  expect(db.upserts).toHaveLength(0);
+});
+
+it('no longer stores an Aadhaar photo', async () => {
+  await submit({ aadhaarPhotoPath: 'owner-1/aadhaar.jpg' });
+  expect(db.upserts[0]).not.toHaveProperty('aadhaar_photo_path');
 });

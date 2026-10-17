@@ -1,19 +1,16 @@
-// Step 4 of 5 — PAN (required, real format check), GST (optional), Udyam
-// registration number (optional). FSSAI/Shop & Establishment license are
-// still real, storable fields (StoreDraft's own note) but are no longer
-// collected in the wizard — only editable later in Store Settings.
+// Step 4 of 5 — PAN (required, real format check), FSSAI (required for food
+// categories, 14 digits), GST (optional), Udyam registration number
+// (optional). Shop & Establishment license is editable later in Store
+// Settings. Aadhaar is not collected.
 
 import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { saveStoreDraft } from '../../api/auth';
-import { ApiError } from '../../api/client';
-import { uploadStoreDocument } from '../../api/payouts';
-import { pickAndCompressImage } from '../../media/pickAndCompressImage';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { isValidPanFormat } from '../../utils/documentValidation';
-import { DocPickerCard } from './components/DocPickerCard';
+import { isValidFssaiFormat, isValidPanFormat } from '../../utils/documentValidation';
+import { categoryNeedsFssai, useStoreCategories } from '../store-settings/components/StoreCategoryPicker';
 import { FieldCard, INPUT_CLASS, OnboardingScaffold } from './components/OnboardingScaffold';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -24,43 +21,30 @@ export function BusinessDocumentsScreen({ navigation, route }: Props) {
   const [panNumber, setPanNumber] = useState(draft.panNumber);
   const [gstNumber, setGstNumber] = useState(draft.gstNumber);
   const [udyamNumber, setUdyamNumber] = useState(draft.udyamNumber);
-  const [aadhaarPhotoPath, setAadhaarPhotoPath] = useState(draft.aadhaarPhotoPath);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [fssaiNumber, setFssaiNumber] = useState(draft.fssaiNumber ?? '');
+  const categories = useStoreCategories();
+  const needsFssai = categoryNeedsFssai(categories, draft.category);
 
   const panValid = isValidPanFormat(panNumber);
-  const canContinue = panValid;
-
-  async function handlePickAadhaarPhoto() {
-    const picked = await pickAndCompressImage();
-    if (!picked) return;
-    setUploadingPhoto(true);
-    setPhotoError(null);
-    try {
-      const { path } = await uploadStoreDocument(picked.base64, 'aadhaar');
-      setAadhaarPhotoPath(path);
-    } catch (err) {
-      setPhotoError(err instanceof ApiError ? err.message : 'Could not upload photo. Please try again.');
-    } finally {
-      setUploadingPhoto(false);
-    }
-  }
+  const fssaiValid = isValidFssaiFormat(fssaiNumber);
+  const canContinue = panValid && (!needsFssai || fssaiValid);
 
   function handleNext() {
     if (!canContinue) return;
     const trimmedPan = panNumber.trim().toUpperCase();
     const trimmedGst = gstNumber.trim();
     const trimmedUdyam = udyamNumber.trim();
+    const trimmedFssai = needsFssai ? fssaiNumber.trim() : draft.fssaiNumber;
 
     // Best-effort autosave — fire-and-forget so it never blocks navigation.
     // warn (not error) so a transient network blip shows a yellow warning,
     // not a red "Console Error" box that reads as a crash.
-    void saveStoreDraft({ panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam, aadhaarPhotoPath: aadhaarPhotoPath ?? undefined }).catch(
+    void saveStoreDraft({ panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam, fssaiNumber: trimmedFssai || undefined }).catch(
       (err) => console.warn('[BusinessDocuments] saveStoreDraft failed (best-effort)', err),
     );
 
     navigation.navigate('StoreHours', {
-      draft: { ...draft, panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam, aadhaarPhotoPath },
+      draft: { ...draft, panNumber: trimmedPan, gstNumber: trimmedGst, udyamNumber: trimmedUdyam, fssaiNumber: trimmedFssai },
     });
   }
 
@@ -68,7 +52,7 @@ export function BusinessDocumentsScreen({ navigation, route }: Props) {
     <OnboardingScaffold
       step={4}
       title="Business documents"
-      subheading="PAN is required. Add a photo of the owner's Aadhaar for verification."
+      subheading={needsFssai ? 'PAN and FSSAI are required for your store.' : 'PAN is required for your store.'}
       onBack={() => navigation.goBack()}
       footer={<PrimaryButton label="Next" onPress={handleNext} disabled={!canContinue} trailingIcon={ArrowRight01Icon} />}
     >
@@ -94,6 +78,24 @@ export function BusinessDocumentsScreen({ navigation, route }: Props) {
         <Text className="text-[12px] font-medium text-ink/40">Required for payout tax compliance.</Text>
       </View>
 
+      {needsFssai && (
+        <FieldCard label="FSSAI registration or licence number" required>
+          <TextInput
+            value={fssaiNumber}
+            onChangeText={(text) => setFssaiNumber(text.replace(/[^0-9]/g, '').slice(0, 14))}
+            placeholder="14-digit number"
+            placeholderTextColor="#9AA5A3"
+            keyboardType="number-pad"
+            maxLength={14}
+            className={INPUT_CLASS}
+          />
+          {fssaiNumber.length > 0 && !fssaiValid && (
+            <Text className="text-[12px] font-medium text-danger">Must be exactly 14 digits.</Text>
+          )}
+          <Text className="text-[12px] font-medium text-ink/40">Required for stores that sell food.</Text>
+        </FieldCard>
+      )}
+
       <FieldCard label="GST number (optional)">
         <TextInput
           value={gstNumber}
@@ -115,15 +117,6 @@ export function BusinessDocumentsScreen({ navigation, route }: Props) {
           className={INPUT_CLASS}
         />
       </FieldCard>
-
-      <DocPickerCard
-        label="Aadhaar photo"
-        hint="A clear photo of the owner's Aadhaar card. Encrypted and kept private."
-        hasPhoto={!!aadhaarPhotoPath}
-        uploading={uploadingPhoto}
-        onPick={() => void handlePickAadhaarPhoto()}
-        error={photoError}
-      />
     </OnboardingScaffold>
   );
 }

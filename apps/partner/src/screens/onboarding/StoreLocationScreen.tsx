@@ -156,7 +156,9 @@ export function StoreLocationScreen({ navigation, route }: Props) {
       </View>
 
       <View className="px-6 pt-7">
-        <Text className="text-4xl font-medium leading-[42px] tracking-tight text-ink">Mark your store on the map</Text>
+        <Text className="text-4xl font-medium leading-[42px] tracking-tight text-ink">
+          Mark your store on the map<Text className="text-danger"> *</Text>
+        </Text>
         <Text className="mt-3 text-[16px] font-medium leading-[22px] text-ink/55">This pin is what riders use to find your store.</Text>
       </View>
 
