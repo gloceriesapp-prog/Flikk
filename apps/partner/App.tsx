@@ -29,6 +29,7 @@ import { primeOrderAlertSound } from './src/features/incoming-order-alert/playOr
 import { OrderReminderBanner } from './src/features/order-expiry/components/OrderReminderBanner';
 import { useOrderExpiryWatcher } from './src/features/order-expiry/useOrderExpiryWatcher';
 import { ReleaseGate } from './src/features/app-release/ReleaseGate';
+import { AppUpdateGate } from './src/features/app-update/AppUpdateGate';
 import { DeliveryEarnedBanner } from './src/features/delivery-earned-alert/DeliveryEarnedBanner';
 import { useDeliveryEarnedWatcher } from './src/features/delivery-earned-alert/useDeliveryEarnedWatcher';
 import { OfflineBanner } from './src/components/OfflineBanner';
@@ -144,6 +145,7 @@ function AppContent() {
             of here, same shape as apps/customer/App.tsx. */}
         {/* Admin App settings: maintenance / required update replace the
             whole app (features/app-release/ReleaseGate.tsx). */}
+        <AppUpdateGate>
         <ReleaseGate>
           {/* Boundary around the navigator subtree so a render/effect throw
               shows the branded fallback above instead of a white screen. */}
@@ -168,6 +170,7 @@ function AppContent() {
             <NotificationsOffBanner />
           </Sentry.ErrorBoundary>
         </ReleaseGate>
+        </AppUpdateGate>
         <StatusBar style="dark" />
     </SafeAreaProvider>
   );
