@@ -29,7 +29,7 @@ import type { Application } from '../types';
 // (backend/src/routes/storeOnboarding.ts: store-draft / store-application),
 // so the reviewer sees exactly what the applicant submitted.
 const STORE_DETAIL_COLUMNS =
-  'category, district, photo_url, gst_number, phone, address_line, manual_address, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, udyam_number, drug_license_number, open_time, close_time';
+  'category, district, photo_url, gst_number, phone, address_line, manual_address, lat, lng, owner_name, shop_establishment_number, fssai_number, pan_number, udyam_number, drug_license_number, open_time, close_time, profile_photo_path, store_doc_path';
 export const STORE_DRAFT_SELECT = `user_id, store_name, ${STORE_DETAIL_COLUMNS}, rejection_reason, submitted_at, users!user_id(phone, email, is_rejected)`;
 export const APPROVED_STORE_SELECT = `owner_user_id, name, ${STORE_DETAIL_COLUMNS}, created_at, zones(name), users!owner_user_id(phone, email)`;
 const RIDER_COLUMNS =
@@ -56,6 +56,11 @@ interface ApiStoreDetail {
   drug_license_number?: string | null;
   open_time: string | null;
   close_time: string | null;
+  // Private KYC photos from onboarding (store-documents bucket, encrypted).
+  // Raw object paths, never sent to the browser as-is: the review page
+  // resolves them to decrypt-proxy URLs (approvals/[id] storePhotos).
+  profile_photo_path?: string | null;
+  store_doc_path?: string | null;
 }
 
 export interface ApiStoreDraft extends ApiStoreDetail {
