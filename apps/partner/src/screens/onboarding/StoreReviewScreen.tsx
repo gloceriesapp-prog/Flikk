@@ -120,7 +120,7 @@ export function StoreReviewScreen({ navigation, route }: Props) {
         </Text>
         <Text className="mt-1 text-[28px] font-bold text-ink">{draft.storeName || 'Your store'}</Text>
         <Text className="mt-1 text-[15px] font-medium text-ink/60">
-          Double-check everything — we&rsquo;ll review this before your store goes live.
+          Double check everything, we&rsquo;ll review this before your store goes live.
         </Text>
       </View>
 

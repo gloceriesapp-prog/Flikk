@@ -1,4 +1,4 @@
-import { BackIcon } from '../../components/PartnerIcons';
+import { BackIcon, LocationPinIcon } from '../../components/PartnerIcons';
 // Step 2 of 5 — dedicated "mark your store on the map" step. Wraps the same
 // real map-pin flow this app already has (LocationPinScreen — drag-a-fixed-
 // center-pin, search, current-location, far-pin sanity check) rather than
@@ -186,10 +186,8 @@ export function StoreLocationScreen({ navigation, route }: Props) {
                   showsPointsOfInterests={false}
                   showsCompass={false}
                 >
-                  <Marker coordinate={coordinates}>
-                    <View className="h-9 w-9 items-center justify-center rounded-full bg-ink shadow-lg">
-                      <AppIcon icon={PinLocation01Icon} size={17} color="#FFFFFF" strokeWidth={2} />
-                    </View>
+                  <Marker coordinate={coordinates} anchor={{ x: 0.5, y: 1 }}>
+                    <LocationPinIcon />
                   </Marker>
                 </MapView>
               )}
