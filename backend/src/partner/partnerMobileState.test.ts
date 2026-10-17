@@ -24,6 +24,18 @@ describe('partner rupee input', () => {
  });
 });
 describe('partner account boundary', () => {
+ it('keeps the onboarding session identity through token rotation but changes it for a new login', async () => {
+  await useAuthStore.getState().setSession('first-token', 'first-refresh', false, false, false);
+  const identity = useAuthStore.getState().sessionEpoch;
+  const reset = vi.fn(); const stop = onSessionReset(reset);
+  await useAuthStore.getState().setTokens('rotated-token', 'rotated-refresh', identity);
+  expect(useAuthStore.getState().sessionEpoch).toBe(identity);
+  expect(useAuthStore.getState().accessToken).toBe('rotated-token');
+  expect(reset).not.toHaveBeenCalled();
+  await useAuthStore.getState().setSession('other-account', 'other-refresh', false, false, false);
+  expect(useAuthStore.getState().sessionEpoch).not.toBe(identity);
+  expect(reset).toHaveBeenCalledOnce(); stop();
+ });
  it('invalidates captured generations and notifies reset subscribers', () => {
   const old = getSessionEpoch(); const callback = vi.fn(); const stop = onSessionReset(callback); resetSessionScope(); stop();
   expect(isCurrentSession(old)).toBe(false); expect(callback).toHaveBeenCalledOnce();
