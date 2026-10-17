@@ -556,7 +556,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
                 Private documents for your account.
               </Text>
               <View className="flex-row gap-3">
-                <PrivateDoc label="Store photo" uri={profile.storePhotoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
+                <PrivateDoc label="Store photo" uri={profile.storePhotoUrl || profile.photoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
                 <PrivateDoc label="Owner photo" uri={profile.profilePhotoUrl} token={accessToken} onEnlarge={setEnlargedDoc} />
               </View>
             </View>
@@ -619,11 +619,18 @@ function PrivateDoc({
   token: string | null;
   onEnlarge: (uri: string) => void;
 }) {
+  const [failed, setFailed] = useState<{ uri: string; token: string | null } | null>(null);
+  const [retry, setRetry] = useState(0);
+  const hasError = !!uri && failed?.uri === uri && failed.token === token;
   return (
     <View className="flex-1 gap-1.5">
       {uri ? (
-        <Pressable onPress={() => onEnlarge(uri)} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-          <Image source={authSource(uri, token)} cachePolicy="memory" className="h-24 w-full rounded-xl bg-black/5" resizeMode="cover" />
+        <Pressable accessibilityRole="button" accessibilityLabel={hasError ? `Retry ${label.toLowerCase()}` : `View ${label.toLowerCase()}`} onPress={() => {
+          if (hasError) { setFailed(null); setRetry(value => value + 1); }
+          else onEnlarge(uri);
+        }}>
+          {hasError ? <View className="h-24 items-center justify-center rounded-xl bg-mist"><Text className="text-[11px] font-medium text-ink/60">Could not load. Tap to retry.</Text></View> :
+            <Image key={`${uri}:${retry}`} source={authSource(uri, token)} cachePolicy="memory" onError={() => setFailed({ uri, token })} className="h-24 w-full rounded-xl bg-black/5" resizeMode="cover" />}
         </Pressable>
       ) : (
         <View className="h-24 w-full items-center justify-center rounded-xl border border-dashed border-black/15 bg-mist">

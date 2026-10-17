@@ -92,7 +92,7 @@ function maskAccountNumber(full: string | null): string | null {
 // -> null so the app renders a placeholder. Mirrors rider's resolveRiderDocUrl.
 async function resolveStoreDocUrl(path: string | null, userId: string): Promise<string | null> {
   if (!path) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('media_assets')
     .select('id')
     .eq('object_key', path)
@@ -102,10 +102,21 @@ async function resolveStoreDocUrl(path: string | null, userId: string): Promise<
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   if (!data) return null;
-  // Absolute when PUBLIC_API_URL is set; relative otherwise — the partner app
-  // resolves a relative path against its own configured API base.
-  return `${process.env.PUBLIC_API_URL ?? ''}/partner/documents/${data.id}`;
+  // Keep authenticated document reads on the same API as the profile request.
+  return `/partner/documents/${data.id}`;
+}
+
+async function storeDocumentPhotos(data: Record<string, unknown>, userId: string, role: string) {
+  const [profilePhotoUrl, aadhaarPhotoUrl, storePhotoUrl] = role === 'owner'
+    ? await Promise.all([
+        resolveStoreDocUrl(data.profile_photo_path as string | null, userId),
+        resolveStoreDocUrl(data.aadhaar_photo_path as string | null, userId),
+        resolveStoreDocUrl(data.store_doc_path as string | null, userId),
+      ])
+    : [null, null, null];
+  return { profilePhotoUrl, aadhaarPhotoUrl, storePhotoUrl };
 }
 
 const STORE_SELECT =
@@ -194,7 +205,7 @@ partnerRouter.get('/store', async (req: AuthedRequest, res, next) => {
     if (access.role !== 'owner') {
       for (const key of Object.keys(response)) if (key.startsWith('payout_') || ['pan_number', 'gst_number', 'fssai_number', 'shop_establishment_number', 'drug_license_number'].includes(key)) delete (response as Record<string, unknown>)[key];
     }
-    res.json({ ...response, access_role: access.role });
+    res.json({ ...response, ...await storeDocumentPhotos(data, req.user!.id, access.role), access_role: access.role });
   } catch (err) {
     next(err);
   }
@@ -217,7 +228,7 @@ partnerRouter.patch('/store/availability', async (req: AuthedRequest, res, next)
     if (access.role !== 'owner') {
       for (const key of Object.keys(response)) if (key.startsWith('payout_') || ['pan_number', 'gst_number', 'fssai_number', 'shop_establishment_number', 'drug_license_number'].includes(key)) delete (response as Record<string, unknown>)[key];
     }
-    res.json({ ...response, access_role: access.role });
+    res.json({ ...response, ...await storeDocumentPhotos(data, req.user!.id, access.role), access_role: access.role });
   } catch (err) { next(err); }
 });
 
@@ -329,17 +340,7 @@ partnerRouter.patch('/store', async (req: AuthedRequest, res, next) => {
     if (access.role !== 'owner') {
       for (const key of Object.keys(response)) if (key.startsWith('payout_') || ['pan_number', 'gst_number', 'fssai_number', 'shop_establishment_number', 'drug_license_number'].includes(key)) delete (response as Record<string, unknown>)[key];
     }
-    // Owner-only encrypted KYC photos, resolved to decrypt-proxy URLs the
-    // Settings screen renders through GET /partner/documents/:id. Managers
-    // never see owner PII, same as the payout/document-number strip above.
-    const [profilePhotoUrl, aadhaarPhotoUrl, storePhotoUrl] = access.role === 'owner'
-      ? await Promise.all([
-          resolveStoreDocUrl(data.profile_photo_path as string | null, req.user!.id),
-          resolveStoreDocUrl(data.aadhaar_photo_path as string | null, req.user!.id),
-          resolveStoreDocUrl(data.store_doc_path as string | null, req.user!.id),
-        ])
-      : [null, null, null];
-    res.json({ ...response, profilePhotoUrl, aadhaarPhotoUrl, storePhotoUrl, access_role: access.role });
+    res.json({ ...response, ...await storeDocumentPhotos(data, req.user!.id, access.role), access_role: access.role });
   } catch (err) {
     next(err);
   }
