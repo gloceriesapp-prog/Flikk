@@ -32,10 +32,9 @@ import { AppIcon } from '../../components/AppIcon';
 import { useChangeStoreLocation } from '../../hooks/useChangeStoreLocation';
 import { BrandFooter } from '../../components/BrandFooter';
 import { colors } from '../../theme/tokens';
-import { getAvatarImageUri } from '../../theme/placeholderImage';
+import { authSource, StoreAvatar } from '../../components/StoreAvatar';
 import { storePinPresentation } from '../../location/storePin';
 import { uploadStorePhoto } from '../../api/auth';
-import { API_BASE_URL } from '../../api/baseUrl';
 import { compressImageToTarget } from '../../media/compressImage';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useStoreProfileStore } from '../../store/useStoreProfileStore';
@@ -76,18 +75,9 @@ function describeChange(changes: Record<string, unknown>): string {
 // per an explicit ask to match it here too.
 const PAGE_BG = '#F1F2F4';
 
-// The three "My documents" photos below come from the authenticated
-// decrypt-proxy (GET /partner/documents/:id) — the bytes are decrypted
-// server-side per request, so every fetch must carry the owner's bearer
-// token. A relative "/partner/documents/:id" is resolved against the API
-// base; an absolute URL is used as-is. Mirrors the rider pattern
-// (RiderDocumentsScreen's own authSource).
-function authSource(uri: string, token: string | null) {
-  return {
-    uri: uri.startsWith('/') ? `${API_BASE_URL}${uri}` : uri,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  };
-}
+// The "My documents" photos below come from the authenticated decrypt-proxy
+// (GET /partner/documents/:id), so every fetch carries the owner's bearer
+// token (authSource, components/StoreAvatar.tsx).
 
 export function StoreSettingsScreen({ navigation }: Props) {
   const profile = useStoreProfileStore((state) => state.profile);
@@ -324,14 +314,9 @@ export function StoreSettingsScreen({ navigation }: Props) {
               className="relative h-16 w-16"
               style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
             >
-              {/* Full Round Image View */}
-              <View className="h-full w-full overflow-hidden rounded-full bg-slate-100">
-                <Image
-                  source={{ uri: profile.photoUrl ?? getAvatarImageUri(profile.id || 'partner-store') }}
-                  className="h-full w-full"
-                  resizeMode="cover"
-                />
-              </View>
+              {/* The store's real photo (public, else the onboarding photo),
+                  or a store icon — never a stock image. */}
+              <StoreAvatar size={64} />
 
               {/* Bottom-Right Floating Camera/Plus Badge */}
               <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full  bg-white">
@@ -608,7 +593,7 @@ export function StoreSettingsScreen({ navigation }: Props) {
         <Modal visible={enlargedDoc !== null} transparent animationType="fade" onRequestClose={() => setEnlargedDoc(null)}>
           <Pressable onPress={() => setEnlargedDoc(null)} className="flex-1 items-center justify-center bg-black/90 px-5">
             {enlargedDoc !== null && (
-              <Image source={authSource(enlargedDoc, accessToken)} className="h-3/4 w-full rounded-2xl" resizeMode="contain" />
+              <Image source={authSource(enlargedDoc, accessToken)} cachePolicy="memory" className="h-3/4 w-full rounded-2xl" resizeMode="contain" />
             )}
             <Text className="mt-4 text-[13px] font-medium text-white/70">Tap anywhere to close</Text>
           </Pressable>
@@ -638,7 +623,7 @@ function PrivateDoc({
     <View className="flex-1 gap-1.5">
       {uri ? (
         <Pressable onPress={() => onEnlarge(uri)} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-          <Image source={authSource(uri, token)} className="h-24 w-full rounded-xl bg-black/5" resizeMode="cover" />
+          <Image source={authSource(uri, token)} cachePolicy="memory" className="h-24 w-full rounded-xl bg-black/5" resizeMode="cover" />
         </Pressable>
       ) : (
         <View className="h-24 w-full items-center justify-center rounded-xl border border-dashed border-black/15 bg-mist">

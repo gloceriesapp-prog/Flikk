@@ -1,11 +1,10 @@
 import { ProfileIcon } from '../../../components/PartnerIcons';
 import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { AppImage as Image } from '../../../components/AppImage';
+import { StoreAvatar } from '../../../components/StoreAvatar';
 import { storePinPresentation } from '../../../location/storePin';
 import { useStoreProfileStore } from '../../../store/useStoreProfileStore';
 import { colors } from '../../../theme/tokens';
-import { getAvatarImageUri } from '../../../theme/placeholderImage';
 import type { StoreProfile } from '../data';
 
 interface Props {
@@ -34,7 +33,7 @@ export function StoreProfileHeader({ profile, onToggleOpen, onPressLocation, onP
     <View className="pt-safe">
       <View className="gap-3 px-5 pb-4 pt-3">
         <View className="flex-row items-center gap-3">
-          <Image source={{ uri: profile.photoUrl ?? getAvatarImageUri(profile.id || 'partner-store') }} className="h-11 w-11 rounded-full" />
+          <StoreAvatar size={44} />
           <View className="min-w-0 flex-1">
             <Text className="text-[16px] font-semibold leading-[20px] tracking-tight text-ink" numberOfLines={1} ellipsizeMode="tail">
               {profile.storeName}
