@@ -7,7 +7,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
-import { Bell, Menu, Settings } from 'lucide-react';
+import { Menu } from 'lucide-react';
+import { IconlySetting } from '@/components/icons/iconly';
+import { NotificationBell } from '@/components/icons/NotificationBell';
 import { useStoreContext } from '@/lib/storeContext';
 import { navItemFor } from './nav';
 
@@ -38,7 +40,7 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
         aria-label={newOrderCount > 0 ? `${newOrderCount} new orders` : 'Orders'}
         className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 hover:text-ink"
       >
-        <Bell size={18} strokeWidth={1.8} />
+        <NotificationBell active={newOrderCount > 0} size={22} />
         {newOrderCount > 0 && (
           <span className="tnum absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white ring-2 ring-white">
             {newOrderCount > 9 ? '9+' : newOrderCount}
@@ -50,7 +52,7 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
         aria-label="Settings"
         className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 hover:text-ink sm:flex"
       >
-        <Settings size={18} strokeWidth={1.8} />
+        <IconlySetting size={20} active={pathname.startsWith('/settings')} />
       </Link>
     </header>
   );

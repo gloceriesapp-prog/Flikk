@@ -1,19 +1,19 @@
 import {
-  ChartLine,
-  CircleHelp,
-  LayoutGrid,
-  Package,
-  ReceiptText,
-  Settings,
-  Star,
-  Wallet,
-  type LucideIcon,
-} from 'lucide-react';
+  IconlyBag,
+  IconlyCategory,
+  IconlyChart,
+  IconlyHeadphone,
+  IconlyReceipt,
+  IconlySetting,
+  IconlyStar,
+  IconlyWallet,
+  type IconlyIcon,
+} from '@/components/icons/iconly';
 
 export interface NavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: IconlyIcon;
   // Shown in the page header under the title.
   subtitle: string;
   // Optional sub-menu, drawn as a branch tree under the item.
@@ -36,10 +36,10 @@ export interface NavSection {
 export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
-      { href: '/', label: 'Dashboard', icon: LayoutGrid, subtitle: "Here's what's happening at your store today." },
-      { href: '/orders', label: 'Orders', icon: ReceiptText, subtitle: 'Accept, pack and track every order.' },
-      { href: '/analytics', label: 'Analytics', icon: ChartLine, subtitle: 'Sales and order trends.' },
-      { href: '/reviews', label: 'Reviews', icon: Star, subtitle: 'What customers say about your store.' },
+      { href: '/', label: 'Dashboard', icon: IconlyCategory, subtitle: "Here's what's happening at your store today." },
+      { href: '/orders', label: 'Orders', icon: IconlyReceipt, subtitle: 'Accept, pack and track every order.' },
+      { href: '/analytics', label: 'Analytics', icon: IconlyChart, subtitle: 'Sales and order trends.' },
+      { href: '/reviews', label: 'Reviews', icon: IconlyStar, subtitle: 'What customers say about your store.' },
     ],
   },
   {
@@ -48,7 +48,7 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         href: '/inventory',
         label: 'Inventory',
-        icon: Package,
+        icon: IconlyBag,
         subtitle: 'Your catalogue, prices and stock.',
         children: [
           { href: '/inventory?stock=in_stock', label: 'In stock', dot: 'bg-emerald-500' },
@@ -56,14 +56,14 @@ export const NAV_SECTIONS: NavSection[] = [
           { href: '/inventory?stock=pending', label: 'Pending approval', dot: 'bg-amber-500' },
         ],
       },
-      { href: '/payouts', label: 'Payouts', icon: Wallet, subtitle: 'Weekly settlements to your bank or UPI.' },
+      { href: '/payouts', label: 'Payouts', icon: IconlyWallet, subtitle: 'Weekly settlements to your bank or UPI.' },
     ],
   },
   {
     title: 'Support',
     items: [
-      { href: '/help', label: 'Help', icon: CircleHelp, subtitle: 'Get in touch with the Gloceries team.' },
-      { href: '/settings', label: 'Settings', icon: Settings, subtitle: 'Store profile, hours, payouts and KYC.' },
+      { href: '/help', label: 'Help', icon: IconlyHeadphone, subtitle: 'Get in touch with the Gloceries team.' },
+      { href: '/settings', label: 'Settings', icon: IconlySetting, subtitle: 'Store profile, hours, payouts and KYC.' },
     ],
   },
 ];

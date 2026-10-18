@@ -12,6 +12,7 @@ import clsx from 'clsx';
 import { ChevronDown, LogOut, MoreHorizontal, X } from 'lucide-react';
 import { clearTokens } from '@/lib/authStorage';
 import { useStoreContext } from '@/lib/storeContext';
+import { IconlyMenuClose } from '@/components/icons/iconly';
 import { NAV_SECTIONS, isActivePath, type NavChild, type NavItem } from './nav';
 
 const COLLAPSED_KEY = 'gloceries_partner_sidebar_collapsed';
@@ -114,7 +115,7 @@ function Header({ collapsed, onToggle, onClose }: { collapsed: boolean; onToggle
       title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-[#3A3D45] transition-colors hover:bg-[#F2F2F4] hover:text-[#111318] lg:flex"
     >
-      <MenuCloseIcon flipped={collapsed} />
+      <IconlyMenuClose size={22} active={collapsed} />
     </button>
   );
 
@@ -175,7 +176,7 @@ function NavLink({
             aria-current={active ? 'page' : undefined}
             className={clsx(ROW, 'relative mx-auto h-11 w-11 justify-center', active ? ROW_ACTIVE : ROW_IDLE)}
           >
-            <Icon size={20} strokeWidth={active ? 2.2 : 1.7} />
+            <Icon size={22} active={active} />
             {badge > 0 && (
               <span className="tnum absolute -right-1 -top-1 min-w-[18px] rounded-full bg-[#E5484D] px-1 text-center text-[10px] font-semibold leading-[18px] text-white ring-2 ring-white">
                 {badge > 9 ? '9+' : badge}
@@ -194,7 +195,7 @@ function NavLink({
         aria-current={active ? 'page' : undefined}
         className={clsx(ROW, 'gap-3 px-3 py-2.5', active ? ROW_ACTIVE : ROW_IDLE)}
       >
-        <Icon size={19} strokeWidth={active ? 2.2 : 1.7} className={active ? 'text-[#111318]' : 'text-[#3A3D45]'} />
+        <Icon size={21} active={active} className={active ? 'text-[#111318]' : 'text-[#3A3D45]'} />
         <span className="flex-1 truncate whitespace-nowrap">{item.label}</span>
         {badge > 0 && (
           <span className="tnum rounded-full bg-[#E5484D] px-2 text-[11px] font-semibold leading-5 text-white shadow-[0_4px_10px_-4px_rgba(229,72,77,0.7)]">
@@ -251,7 +252,7 @@ function NavGroup({ item, pathname, collapsed }: { item: NavItem; pathname: stri
             aria-current={onSection ? 'page' : undefined}
             className={clsx(ROW, 'mx-auto h-11 w-11 justify-center', onSection ? ROW_ACTIVE : ROW_IDLE)}
           >
-            <Icon size={20} strokeWidth={onSection ? 2.2 : 1.7} />
+            <Icon size={22} active={onSection} />
           </Link>
         </HoverLabel>
       </li>
@@ -456,22 +457,6 @@ function AccountFooter({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-// "Menu close left": arrow out of a list. Mirrored, it reads as "open".
-function MenuCloseIcon({ flipped }: { flipped: boolean }) {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={clsx('transition-transform duration-200', flipped && '-scale-x-100')}
-    >
-      <path d="M7 16L3 11.9994M3 11.9994L7 8M3 11.9994L21 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path opacity="0.4" d="M12 5H21M12 19H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 // The Gloceries cart-"G" mark in the brand blue.
 export function BrandMark({ size = 34 }: { size?: number }) {
