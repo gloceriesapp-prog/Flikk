@@ -7,17 +7,13 @@
 import { apiRequest } from './api';
 import { setTokens } from './authStorage';
 
-// Real pre-flight gate — backend/src/routes/auth.ts's own POST
-// /otp/partner-check, called before requestOtp below. Throws ApiError
-// (404 PARTNER_NOT_REGISTERED) if this phone was never approved as a
-// store owner or never submitted an application — see that route's own
-// note on why this has to happen BEFORE the real OTP send, not after.
-export function checkPartnerPhone(phone: string): Promise<{ registered: true }> {
-  return apiRequest('/auth/otp/partner-check', { method: 'POST', body: { phone }, auth: false });
-}
+// 'partner_web' tells the backend this is the dashboard: it only sends a code
+// (and only signs in) a number whose user role is store_owner, otherwise it
+// answers 404 PARTNER_NOT_REGISTERED without sending an SMS.
+const APP = 'partner_web';
 
 export function requestOtp(phone: string): Promise<{ ok: true }> {
-  return apiRequest('/auth/otp/request', { method: 'POST', body: { phone }, auth: false });
+  return apiRequest('/auth/otp/request', { method: 'POST', body: { phone, app: APP }, auth: false });
 }
 
 interface VerifyOtpResponse {
@@ -32,7 +28,7 @@ interface VerifyOtpResponse {
 export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpResponse> {
   const result = await apiRequest<VerifyOtpResponse>('/auth/otp/verify', {
     method: 'POST',
-    body: { phone, code },
+    body: { phone, code, app: APP },
     auth: false,
   });
   setTokens(result.access_token, result.refresh_token);

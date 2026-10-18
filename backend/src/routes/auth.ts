@@ -18,9 +18,9 @@ export const authRouter = Router();
 // is the permanent identity, so a pending rider (role still 'customer') can no
 // longer also sign into the customer/partner app. LOGIN_TEST_OTPS numbers skip
 // the pin so one number can test every app; admin can change account_type.
-type AppKind = 'customer' | 'rider' | 'partner';
+type AppKind = 'customer' | 'rider' | 'partner' | 'partner_web';
 type AccountType = 'customer' | 'rider' | 'store_owner';
-const APP_TO_ACCOUNT_TYPE: Record<AppKind, AccountType> = { customer: 'customer', rider: 'rider', partner: 'store_owner' };
+const APP_TO_ACCOUNT_TYPE: Record<AppKind, AccountType> = { customer: 'customer', rider: 'rider', partner: 'store_owner', partner_web: 'store_owner' };
 const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { customer: 'Customer', rider: 'Rider', store_owner: 'Partner' };
 const wantedAccountType = (app: unknown): AccountType | undefined =>
   typeof app === 'string' && app in APP_TO_ACCOUNT_TYPE ? APP_TO_ACCOUNT_TYPE[app as AppKind] : undefined;
@@ -35,6 +35,24 @@ async function pinnedAccountType(canonical: string): Promise<AccountType | null>
   return (data?.account_type as AccountType | undefined) ?? null;
 }
 
+// The partner web dashboard (app 'partner_web') is for existing partners only:
+// no SMS is sent and no session is minted unless the number already belongs
+// to a user whose role is store_owner (set at admin approval). Applying and
+// waiting for approval happen in the partner mobile app, not here.
+async function isRegisteredPartner(canonical: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('users')
+    .select('id')
+    .in('phone', phoneVariants(canonical))
+    .eq('role', 'store_owner')
+    .limit(1)
+    .maybeSingle();
+  return !!data;
+}
+const partnerNotRegistered = () =>
+  new AppError(404, 'PARTNER_NOT_REGISTERED',
+    "This number isn't registered as a Gloceries partner. Use the number your store was approved with, or apply in the Gloceries Partner app.");
+
 // Supabase Auth refuses a banned user (admin customer Block → ban_duration)
 // with code 'user_banned'. Say so plainly instead of "invalid code".
 const isBanned = (error: unknown) => (error as { code?: string } | null)?.code === 'user_banned';
@@ -45,6 +63,7 @@ authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
     const { phone, app } = req.body as { phone?: string; app?: string };
     const canonical = normalizePhone(phone); // +91… — throws on a bad number
     if (await isPhoneBanned(canonical)) throw accountBlocked();
+    if (app === 'partner_web' && !(await isRegisteredPartner(canonical))) throw partnerNotRegistered();
     // Reject a cross-app number before spending an SMS. A brand-new number has
     // no pin yet and claims it at verify. Test numbers skip the pin.
     const want = wantedAccountType(app);
@@ -61,10 +80,17 @@ authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
   }
 });
 
-// Never reveal registration/role before phone ownership has been verified.
-// Partner login performs its actual role check after successful OTP verification.
-authRouter.post('/otp/partner-check', authBudget('partner-check'), (_req, res) => {
-  res.json({ registered: true });
+// Same partner-only rule as /otp/request with app 'partner_web', without
+// sending anything. This does tell a caller whether a number is a partner;
+// authBudget('partner-check') rate-limits it.
+authRouter.post('/otp/partner-check', authBudget('partner-check'), async (req, res, next) => {
+  try {
+    const canonical = normalizePhone((req.body as { phone?: string }).phone);
+    if (!(await isRegisteredPartner(canonical))) throw partnerNotRegistered();
+    res.json({ registered: true });
+  } catch (err) {
+    next(err);
+  }
 });
 
 authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
@@ -73,6 +99,9 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
     const canonical = normalizePhone(phone);
     if (!checkLoginOtp(canonical, code)) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
+    // Re-checked here so a session is never minted for a non-partner on the
+    // dashboard, even if the role changed after the code was sent.
+    if (app === 'partner_web' && !(await isRegisteredPartner(canonical))) throw partnerNotRegistered();
 
     // One phone, one app: reject a number pinned to a DIFFERENT app before we
     // mint a session for it. A brand-new number has no pin and claims it on

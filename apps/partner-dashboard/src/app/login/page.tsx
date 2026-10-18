@@ -5,23 +5,17 @@
 // dashboard with the exact same account as their app, not a separate
 // web-only login.
 //
-// Real gate, not cosmetic: this dashboard only exists for a store that
-// already applied through the partner mobile app. Before ever sending an
-// OTP, the phone is checked against POST /auth/otp/partner-check
-// (backend's own note has the full reasoning) — a phone that's never
-// touched the partner app gets a clear, honest error right away instead of
-// a real SMS it didn't need, or a confusing "pending approval" screen for
-// an account that was never a partner applicant in the first place.
-// verifyOtp's own role/application_submitted check below is a second,
-// defense-in-depth pass against the same rule for the (rare) case where
-// the phone's status changed in the few seconds between the two calls.
+// Partners only: the backend sends a code only to a number whose user role
+// is store_owner (app 'partner_web' in authApi.ts) and answers anything else
+// with PARTNER_NOT_REGISTERED, shown as the error below. The role check after
+// verify is a second pass in case the role changed between the two calls.
 //
 // Phone OTP is the only sign-in method, so the page offers nothing else.
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { checkPartnerPhone, requestOtp, verifyOtp } from '@/lib/authApi';
+import { requestOtp, verifyOtp } from '@/lib/authApi';
 import { clearTokens } from '@/lib/authStorage';
 import { ApiError } from '@/lib/api';
 import { OtpInput } from '@/components/login/OtpInput';
@@ -76,7 +70,6 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setError(null);
     try {
-      await checkPartnerPhone(fullPhone);
       await requestOtp(fullPhone);
       setCode('');
       lastAutoSubmitted.current = null;
@@ -112,12 +105,10 @@ export default function LoginPage() {
     try {
       const result = await verifyOtp(fullPhone, submittedCode);
 
-      // Defense-in-depth re-check of the same rule checkPartnerPhone
-      // already enforced above — see this file's own header note on why
-      // both passes exist.
-      if (result.role !== 'store_owner' && !result.application_submitted) {
+      // Second pass of the backend's partner-only rule (header note).
+      if (result.role !== 'store_owner') {
         clearTokens();
-        setError("This number isn't registered on the Gloceries Partner app yet. Apply with your store there first.");
+        setError("This number isn't registered as a Gloceries partner. Use the number your store was approved with.");
         return;
       }
 
