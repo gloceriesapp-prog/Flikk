@@ -20,7 +20,7 @@ const MAGGI: PartnerOrder['order_items'][number]['products'] = { name: 'Maggi No
 const TEA: PartnerOrder['order_items'][number]['products'] = { name: 'Red Label Tea 250g', unit: '250g', image_url: null };
 const ATTA: PartnerOrder['order_items'][number]['products'] = { name: 'Aashirvaad Atta 5kg', unit: '5kg', image_url: null };
 
-export const DEMO_ORDERS: PartnerOrder[] = [
+const HAND_PICKED: PartnerOrder[] = [
   {
     id: 'demo-order-1',
     order_number: 'FLK-1042',
@@ -152,3 +152,47 @@ export const DEMO_ORDERS: PartnerOrder[] = [
     addresses: { line1: 'Church Street, Kaup', landmark: null, recipient_name: 'Divya Bhat' },
   },
 ];
+
+// A month of delivered history so the sales charts and analytics have shape.
+// Deterministic (no Math.random) so every render shows the same numbers.
+const CUSTOMERS = ['Ramesh Shetty', 'Kavya Nayak', 'Pradeep Kini', 'Shwetha Rao', 'Anil Kotian', 'Meera Pai', 'Rahul Acharya', 'Nisha Salian'];
+const CATALOGUE = [
+  { product: MILK, id: 'demo-p-milk', price: 29 },
+  { product: BREAD, id: 'demo-p-bread', price: 50 },
+  { product: SALT, id: 'demo-p-salt', price: 28 },
+  { product: MAGGI, id: 'demo-p-maggi', price: 30 },
+  { product: TEA, id: 'demo-p-tea', price: 140 },
+  { product: ATTA, id: 'demo-p-atta', price: 285 },
+];
+
+function historyOrder(n: number): PartnerOrder {
+  const day = 1 + Math.floor(n / 2); // two orders a day, back 30 days
+  const placed = daysAgo(day + ((n * 7) % 10) / 24);
+  const lines = [CATALOGUE[n % 6], CATALOGUE[(n * 5 + 2) % 6]].filter((line, i, all) => all.indexOf(line) === i);
+  const items = lines.map((line, i) => {
+    const quantity = 1 + ((n + i * 3) % 4);
+    return { id: `demo-hist-${n}-${i}`, product_id: line.id, quantity, unit_price_at_order: line.price, products: line.product };
+  });
+  const itemTotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price_at_order, 0);
+  const cancelled = n % 11 === 5;
+  const customer = CUSTOMERS[n % CUSTOMERS.length];
+  return {
+    id: `demo-hist-${n}`,
+    order_number: `FLK-${980 - n}`,
+    status: cancelled ? 'cancelled' : 'delivered',
+    item_total: itemTotal,
+    delivery_fee: 20,
+    commission_amount: Math.round(itemTotal * 0.1),
+    total: itemTotal + 20,
+    provider_payment_id: n % 3 === 0 ? null : `demo_pay_h${n}`,
+    placed_at: placed,
+    packed_at: cancelled ? null : placed,
+    picked_up_at: cancelled ? null : placed,
+    delivered_at: cancelled ? null : placed,
+    order_items: items,
+    users: { name: customer, phone: `+91 98${String(450000 + n * 137).padStart(6, '0')}${n % 10}0` },
+    addresses: { line1: ['Market Road, Kaup', 'Beach Road, Kaup', 'Station Road, Kaup'][n % 3], landmark: null, recipient_name: customer },
+  } as PartnerOrder;
+}
+
+export const DEMO_ORDERS: PartnerOrder[] = [...HAND_PICKED, ...Array.from({ length: 60 }, (_, n) => historyOrder(n))];
