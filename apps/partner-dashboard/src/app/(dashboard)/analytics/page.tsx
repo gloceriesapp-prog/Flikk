@@ -68,7 +68,7 @@ export default function AnalyticsPage() {
   const loadError = !!error && data === undefined;
   // DEMO DATA — same isDemo convention as Overview/Orders: only while the
   // store has no real orders, and never in a production build.
-  const isDemo = DEMO_DATA_ENABLED && !isLoading && !loadError && (data?.length ?? 0) === 0;
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && (data?.length ?? 0) === 0;
   const orders = useMemo(() => (isDemo ? DEMO_ORDERS : (data ?? [])), [data, isDemo]);
 
   const delivered = useMemo(() => orders.filter((o) => o.status !== 'cancelled'), [orders]);
@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (loadError) {
+  if (loadError && !isDemo) {
     return (
       <Card>
         <ErrorState title="Couldn’t load your sales data" onRetry={() => void refetch()} />

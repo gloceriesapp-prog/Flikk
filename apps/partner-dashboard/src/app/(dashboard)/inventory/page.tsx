@@ -122,7 +122,7 @@ function InventoryScreen() {
   // Overview/Orders: shown only while products.length === 0, and replaced
   // outright the instant a real product is added (isDemo flips false on
   // the next reload(), demo rows are dropped rather than merged).
-  const isDemo = DEMO_DATA_ENABLED && !error && !search.trim() && filter === 'all' && !isLoading && products.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && !search.trim() && filter === 'all' && !isLoading && products.length === 0;
   const sourceProducts = isDemo ? demoProducts : products;
 
   async function handleSubmit(input: ProductInput) {
@@ -216,7 +216,7 @@ function InventoryScreen() {
   let body: ReactNode;
   if (isLoading && products.length === 0) {
     body = <RowsSkeleton rows={6} />;
-  } else if (error && products.length === 0) {
+  } else if (error && products.length === 0 && !isDemo) {
     body = <ErrorState title="Couldn’t load your products" onRetry={retryLoad} />;
   } else if (sourceProducts.length === 0 && !hasFilters) {
     body = (

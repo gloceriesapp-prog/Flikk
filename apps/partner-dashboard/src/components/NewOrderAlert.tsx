@@ -4,6 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Bell, X } from 'lucide-react';
 import { fetchOrderQueue, type PartnerOrder } from '@/lib/partnerApi';
+import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
+import { DEMO_ORDERS } from '@/lib/demoOrders';
+
+// DEMO DATA — while the store has no waiting orders, the badge and bell show
+// the demo's new orders so their states can be seen. No sound or toast.
+const DEMO_PLACED_COUNT = DEMO_ORDERS.filter((o) => o.status === 'placed').length;
 
 // Accept-time SLA depends on the owner noticing a 'placed' order fast. There's
 // no realtime channel wired into this web dashboard, so this polls on an
@@ -52,10 +58,11 @@ export function NewOrderAlert({ onCountChange }: { onCountChange?: (n: number) =
     try {
       orders = await fetchOrderQueue();
     } catch {
+      if (DEMO_DATA_ENABLED) onCountChange?.(DEMO_PLACED_COUNT);
       return; // transient network error — try again next tick
     }
     const placed = orders.filter((o) => o.status === 'placed');
-    onCountChange?.(placed.length);
+    onCountChange?.(placed.length === 0 && DEMO_DATA_ENABLED ? DEMO_PLACED_COUNT : placed.length);
 
     // First poll only seeds the baseline — existing orders don't alert.
     if (seenPlaced.current === null) {
