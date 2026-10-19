@@ -155,6 +155,24 @@ jobs:
         working-directory: apps/${{ matrix.app }}
       - run: npx eslint .
         working-directory: apps/${{ matrix.app }}
+      - name: Set up Java for Partner release policy checks
+        if: matrix.app == 'partner'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify Partner release configuration and Android API compatibility
+        if: matrix.app == 'partner'
+        run: npm run test:android-release-quality
+        working-directory: apps/partner
+      - name: Verify Partner prebuild and native bytecode transformation
+        if: matrix.app == 'partner'
+        working-directory: apps/partner
+        env:
+          EXPO_NO_DOTENV: '1'
+        run: |
+          npx expo prebuild --platform android --no-install
+          ./android/gradlew -p android/buildSrc test --no-daemon --max-workers=2
       # Rider's pure decision logic (presence loops, schedules, background
       # location disclosure, order mapping) is covered by runnable self-checks.
       - if: matrix.app == 'rider'

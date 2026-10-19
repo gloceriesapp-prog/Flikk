@@ -47,3 +47,6 @@ supabase/.temp/
 .playwright-cli/
 
 .pnpm-store/
+
+# Temporary generated Android release validation project
+/apps/.partner-release-audit/

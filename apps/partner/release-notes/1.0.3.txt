@@ -1,0 +1,5 @@
+<en-US>
+• Optimized the Android app build.
+• Improved support for portrait and landscape orientations.
+• Fixed login screen scrolling and keyboard layout so the Continue button stays accessible.
+</en-US>
