@@ -4,7 +4,7 @@ Candidate **1.0.4** changes the native runtime. An OTA update cannot apply these
 
 ## Current readiness — 19 October 2026
 
-The corrected local ARM64 release build, automated checks, and Android 14 startup/layout smoke tests pass. Physical testing found and fixed a WorkManager startup crash before release. **The local AAB is not ready for Play upload:** it uses a debug signing key and version code 1. A production-signed, all-ABI build with the next EAS version code and device validation remain required. No candidate 1.0.4 bundle has been uploaded to Play or analysed by Google.
+The corrected local ARM64 release build, automated checks, and limited signed-in Android 14 smoke tests pass. Physical testing found and fixed a WorkManager startup crash and an Orders landscape scrolling issue before release. Map tiles remain unverified because Google rejects the isolated test package/certificate. **The local AAB is not ready for Play upload:** it uses a debug signing key and version code 1. A production-signed, all-ABI build with the next EAS version code and device validation remain required. No candidate 1.0.4 bundle has been uploaded to Play or analysed by Google.
 
 ## Implementation
 
@@ -81,3 +81,15 @@ The local test build was initially compiled with an incorrect API override, `htt
 The local bundle was rebuilt with the production API value in 3m 6s, passed the release artifact verifier, and was reinstalled and opened successfully. Inspection of the packaged Hermes bundle confirms the correct host and absence of the incorrect host. The isolated APK retains identical DEX and all 26 native libraries from this source AAB. Release login errors now advise checking internet connectivity without exposing the backend address or incorrectly requiring the same Wi-Fi. TypeScript, ESLint, and all twelve release checks pass. Actual OTP submission and signed-in flows still require the user's session; endpoint reachability alone does not verify them.
 
 Evidence: `device-1.0.4/rebuild-production-api.log`, `production-api-bundle-verification.txt`, `production-api-code-identity.json`, and `production-api-launch-runtime.log` under the ignored artifacts directory.
+
+### Signed-in physical checks
+
+The user signed in directly on the phone. Orders, Inventory/search, order history and its Cancelled filter, Payouts, Help & support, Store Settings, Customer reviews, and Store team loaded. The account has no orders, inventory, payouts, reviews, or managers, so these checks cover navigation and empty states, not populated transactions. Add Product and the system photo picker opened; no photo was selected/uploaded, and no product, order, ticket, payout detail, permission, or store setting was changed. Notification permission is off for this isolated app, so push delivery/order alerts remain unverified. The session survived a cold launch and the subsequent APK update.
+
+Landscape Orders testing exposed a fixed bottom bar hiding the empty-state message. Orders now uses one vertical scroll container for its header and queue, with bottom safe-area clearance. Physical retesting confirms the message and supporting text scroll fully above the tabs; portrait navigation remains available. TypeScript, ESLint, and all twelve release tests pass.
+
+Opening the map initially crashed because the local generated project omitted native Maps metadata when dotenv loading was disabled. The published 1.0.3 AAB already contains that metadata. The ignored local manifest was corrected using the existing native SDK key, without changing production credentials. The key matches the published bundle. The native rebuild passed in 7m 28s; packaging the final layout change passed in 2m 9s. The strengthened artifact gate passes, and final test APK DEX/native libraries match the source release AAB.
+
+The corrected map opens without the missing-key crash, but Google logs an authorization failure for `com.gloceries.partner.validation` with the local debug certificate. Map tiles and full map interaction are therefore **not passed**. They require a production-signed internal build or a separately authorized test package/certificate; production key restrictions were not weakened. Android 15+, populated order/product/payment flows, notifications, production OTA, and Google Play analysis remain pending.
+
+Evidence remains local in ignored `device-1.0.4/`: `rebuild-native-map-config.log`, `rebuild-signedin-layout.log`, `native-map-artifact-verification.txt`, `native-map-code-identity.json`, `signedin-final-runtime.log`, and the signed-in screen/rotation XML captures. Private gallery captures were removed rather than retained or published. GitHub checks on commit `a2b89cd0` passed, including all twelve Partner release checks and the native JVM/prebuild check. The admin Vercel preview still fails collecting `/api/app-content` because its server-side Supabase key is missing/empty; it is a separate environment issue.
