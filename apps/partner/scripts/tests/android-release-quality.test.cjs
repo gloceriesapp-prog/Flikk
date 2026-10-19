@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { configureProperties, configureBuildGradle, configureManifest, configureStyles, configureProjectBuildGradle } = require('../../plugins/withAndroidReleaseQuality.cjs');
+const { configureProperties, configureBuildGradle, configureManifest, configureStyles, configureProjectBuildGradle, configureProguardRules } = require('../../plugins/withAndroidReleaseQuality.cjs');
 
 describe('Partner Android release quality', () => {
   it('enables R8, resource shrinking and edge-to-edge without duplicate properties', () => {
@@ -36,5 +36,15 @@ apply plugin: "expo-root-project"`;
   it('removes deprecated bar-color and opt-out attributes but preserves theme settings', () => {
     const resources = {resources:{style:[{$:{name:'AppTheme'},item:['android:statusBarColor','android:navigationBarColor','android:navigationBarDividerColor','android:windowOptOutEdgeToEdgeEnforcement','colorPrimary'].map(name=>({$:{name},_:'value'}))}]}};
     assert.deepEqual(configureStyles(resources).resources.style[0].item.map(item=>item.$.name),['colorPrimary']);
+  });
+  it('retains reflective Room and InputMerger constructors without blanket library keeps', () => {
+    const original = '-keepclassmembers class com.example.NativeBridge { native <methods>; }\n';
+    const result = configureProguardRules(original);
+    assert.equal(configureProguardRules(result), result);
+    assert.ok(result.includes(original.trim()));
+    for (const type of ['androidx.room.RoomDatabase', 'androidx.work.InputMerger']) {
+      assert.ok(result.includes(`-keepclassmembers class * extends ${type} {\n    public <init>();\n}`));
+    }
+    assert.doesNotMatch(result, /-dont(?:shrink|optimize|obfuscate)|\{ \*; \}/);
   });
 });

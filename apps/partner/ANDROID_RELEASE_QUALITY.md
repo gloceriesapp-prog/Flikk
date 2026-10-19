@@ -4,13 +4,13 @@ Candidate **1.0.4** changes the native runtime. An OTA update cannot apply these
 
 ## Current readiness — 19 October 2026
 
-The local ARM64 release build and automated checks pass. **The local AAB is not ready for Play upload:** it uses a debug signing key and version code 1. A production-signed, all-ABI build with the next EAS version code and device validation remain required. No candidate 1.0.4 bundle has been uploaded to Play or analysed by Google.
+The corrected local ARM64 release build, automated checks, and Android 14 startup/layout smoke tests pass. Physical testing found and fixed a WorkManager startup crash before release. **The local AAB is not ready for Play upload:** it uses a debug signing key and version code 1. A production-signed, all-ABI build with the next EAS version code and device validation remain required. No candidate 1.0.4 bundle has been uploaded to Play or analysed by Google.
 
 ## Implementation
 
 `plugins/withAndroidReleaseQuality.cjs` runs during Expo prebuild:
 
-- Pins AGP 9.0.1, uses optimized ProGuard defaults, and enables R8 shrinking, optimization, obfuscation, and optimized resource shrinking. Library JNI/reflection consumer keep rules remain intact.
+- Pins AGP 9.0.1, uses optimized ProGuard defaults, and enables R8 shrinking, optimization, obfuscation, and optimized resource shrinking. Library JNI/reflection consumer keep rules remain intact. Narrow member rules explicitly retain default constructors for RoomDatabase and InputMerger subclasses under AGP 9 strict keep-rule semantics.
 - Retains the supported legacy Kotlin/DSL/source-set migration switches needed by Expo 57/RN 0.86. Registers library codegen early and pins NDK 27.1.12297006. The Expo Gradle plugin patch handles AGP 9's removal of library `targetSdk`; the application target remains 36.
 - Removes orientation/aspect-ratio restrictions and permits resizing. The login form scrolls, respects safe-area insets, and remains reachable with the keyboard or a short landscape window.
 - Removes deprecated theme bar-color/edge-to-edge opt-out attributes. A release-only ASM transform routes dependency color calls and cutout writes through `SystemBarCompat`, excluding the helper itself. API 35+ avoids the deprecated bar color APIs; older Android versions retain their styling. DEFAULT/SHORT_EDGES cutout writes become ALWAYS on API 30+, while pre-30 behavior and explicit NEVER/ALWAYS remain. Stack effects are identical, so existing bytecode frames are preserved.
@@ -30,7 +30,7 @@ npm run lint --workspace=apps/partner
 npm run verify:android-release --workspace=apps/partner -- /absolute/path/app-release.aab
 ```
 
-The verifier checks packaged DEX, AGP version, a nonempty obfuscation mapping, R8 optimizer flags, and optimized resource shrinking in the bundle metadata. A locally calculated renamed-class percentage is **not** the Google Play score. CI runs ten release checks (six configuration/API policy tests and four artifact-gate cases), Expo prebuild, and the native ASM transformation test. The artifact cases reject missing R8 metadata, disabled optimized resource shrinking, and an older AGP version.
+The verifier checks packaged DEX, AGP version, a nonempty obfuscation mapping, R8 optimizer flags, and optimized resource shrinking in the bundle metadata. A locally calculated renamed-class percentage is **not** the Google Play score. CI runs twelve release checks (seven configuration/API policy tests and five artifact-gate cases), Expo prebuild, and the native ASM transformation test. The artifact cases reject missing R8 metadata, disabled optimized resource shrinking, an older AGP version, and stripped Room/WorkManager default constructors.
 
 For native plugin tests after Android prebuild, from `apps/partner`:
 
@@ -42,15 +42,15 @@ For native plugin tests after Android prebuild, from `apps/partner`:
 
 The isolated generated project in ignored `apps/.partner-release-audit` uses copied entry files, source links to Partner, a single ARM64 ABI, and debug signing. Keep its entry and NativeWind stylesheet resolution consistent. Sentry upload is disabled only for local validation; production monitoring guards remain enabled.
 
-- `bundleRelease` passed in 25m 36s (970 tasks), including JS/source maps, ASM instrumentation, R8, native compilation, release vital lint, and bundle packaging.
-- All ten release checks pass, including six configuration/API policy tests with API 24–36 fixtures and four artifact-gate cases. The ASM JVM test, TypeScript, ESLint, patch applicability, and scoped whitespace checks pass.
+- The corrected `bundleRelease` passed in 8m 58s (970 tasks; 54 executed, 916 up-to-date), including JS/source maps, ASM instrumentation, R8, native compilation, release vital lint, and bundle packaging.
+- All twelve release checks pass, including seven configuration/API policy tests with API 24–36 fixtures and five artifact-gate cases. The ASM JVM test, TypeScript, ESLint, patch applicability, and scoped whitespace checks pass.
 - Bundle metadata confirms AGP 9.0.1 and R8 shrinking/optimization/obfuscation enabled, with `resourceOptimization.isOptimizedShrinkingEnabled=true`.
-- Mapping: 8,878/10,253 classes renamed (86.6% local count). R8 no-obfuscation/no-optimization/no-shrinking statistics: 20.03/20.58/19.97. These are not a confirmed Play score.
+- Mapping: 9,050/10,425 classes renamed (86.8% local count). R8 no-obfuscation/no-optimization/no-shrinking statistics: 19.65/20.19/19.59. These are not a confirmed Play score.
 - The compiled reload image loader references Glide and bounded dimensions, with no `BitmapFactory`, `decodeStream`, or `URLConnection` reference.
 
-Local evidence under `apps/.partner-release-audit/artifacts/`: `release-1.0.4-retry-build.log`, `release-1.0.4-verification.txt`, `pr-native-policy-tests.log`, and `reload-image-bytecode.txt`. These generated files are not committed.
+Local evidence under `apps/.partner-release-audit/artifacts/`: `device-1.0.4/rebuild-reflection-fix.log`, `device-1.0.4/fixed-bundle-verification.txt`, `pr-native-policy-tests.log`, and `reload-image-bytecode.txt`. These generated files are not committed.
 
-The earlier 1.0.3 build was smoke-tested on an Android 14 phone for launch, keyboard/Continue accessibility, rotation, and background recovery. **That does not validate the new 1.0.4 native changes.** No phone is currently connected; physical testing was deferred by the user.
+The earlier 1.0.3 build was smoke-tested on an Android 14 phone for launch, keyboard/Continue accessibility, rotation, and background recovery. **That does not validate the new 1.0.4 native changes.** The phone was subsequently reconnected for candidate 1.0.4 testing; see the device follow-up below.
 
 ## Before Play upload
 
@@ -60,3 +60,16 @@ The earlier 1.0.3 build was smoke-tested on an Android 14 phone for launch, keyb
 4. Upload to the normal Play internal-testing track and inspect Google's analysis for this bundle. Repository/build success does not clear warnings attached to release 13.
 
 Release notes are in `release-notes/1.0.4.txt`. No candidate production upload or Google Play publication has been performed.
+
+
+## Physical-device follow-up — 19 October 2026
+
+The Android 14 OPPO CPH2381 was reconnected. The first candidate 1.0.4 launch crashed in WorkManager startup with `NoSuchMethodException: androidx.work.impl.WorkDatabase_Impl.<init>()`. This is a release blocker discovered on-device after compilation, lint, and optimizer metadata checks passed. The test APK's DEX and 26 ARM64 native libraries were verified byte-identical to the release AAB; package/provider isolation and debug signing preserve the installed production app and its data.
+
+The Room 2.6.1/WorkManager 2.9.1 consumer rules keep classes without explicitly keeping default constructors. AGP 9 defaults to `android.r8.strictFullModeForKeepRules=true`; constructor preservation must now be explicit. The prebuild plugin adds narrow `-keepclassmembers` rules for public no-argument constructors in RoomDatabase and InputMerger subclasses, without disabling shrinking/optimization/obfuscation. The artifact verifier checks constructors in both generated databases and WorkManager's InputMergers; a new fixture and the actual failing AAB verify rejection of stripped constructors.
+
+The corrected bundle builds and passes all twelve automated checks and the strengthened artifact verifier. On the physical phone, three successive corrected launches reached login with no fatal exceptions (779/815/700ms activity-launch timings). After aligning the isolated APK resource package with its test application ID, a final cold launch passed at 641ms with no welcome-image URL failure. The DEX and all 26 native libraries remain byte-identical to the corrected source release AAB. Resource package metadata, manifest identity/authorities/permissions, label, and debug signing differ only to isolate the test app.
+
+Passed: incomplete/complete phone-input button states without submitting, portrait with and without the keyboard, landscape including its floating keyboard, scrolling to Continue, phone-value retention across rotation, and background/foreground recovery in the same process. Test digits were cleared. Rotation was restored using the window-manager command; OEM restrictions reject direct `settings put`, so no permission was bypassed. Read-back confirms the original rotation values.
+
+App-scoped logs show no fatal exceptions after the fix. The local harness still logs a nonblocking EAS update check failure because it lacks the production channel header; this is not a verified production OTA test. The installed production package remains 1.0.2/code 12 with its data untouched. Signed-in flows remain pending a user-provided test-store session, and this Android 14 phone cannot verify Android 15/16 enforcement. Evidence is under ignored `apps/.partner-release-audit/artifacts/device-1.0.4/`, including `final-code-identity.json`, `rotation-checks.json`, `repeated-launch-checks.json`, screenshots, and scoped runtime logs.

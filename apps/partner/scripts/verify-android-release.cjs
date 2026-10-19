@@ -18,6 +18,17 @@ const mapping = execFileSync('unzip', ['-p', absolute, mappingEntry], { encoding
 const classes = [...mapping.matchAll(/^([^\s#].*?) -> ([^\s]+):$/gm)];
 const renamed = classes.filter(match => match[1] !== match[2]).length;
 assert.ok(renamed > 0, 'No renamed classes found in the release mapping.');
+for (const name of ['androidx.work.impl.WorkDatabase_Impl', 'expo.modules.updates.db.UpdatesDatabase_Impl', 'androidx.work.OverwritingInputMerger', 'androidx.work.ArrayCreatingInputMerger']) {
+  const header = `${name} -> ${name}:\n`;
+  const start = mapping.indexOf(header);
+  assert.ok(start >= 0, `Reflectively loaded class is missing or renamed: ${name}`);
+  const remaining = mapping.slice(start + header.length);
+  const nextClass = remaining.search(/^[^\s#]/m);
+  const body = nextClass < 0 ? remaining : remaining.slice(0, nextClass);
+  assert.match(body, /^\s+(?:\d+:\d+:)?void <init>\(\)(?::[\d:]+)? -> <init>$/m,
+    `Reflective default constructor is missing: ${name}`);
+}
+console.log('Room/WorkManager reflective constructors retained.');
 assert.ok(entries.some(entry => /^base\/dex\/classes.*\.dex$/.test(entry)), 'Android DEX files are missing.');
 console.log(`Release mapping: ${renamed} / ${classes.length} classes renamed (${(renamed / classes.length * 100).toFixed(1)}%). This is a local class count, not the Play vitals score.`);
 const r8Entry = entries.find(entry => entry === 'BUNDLE-METADATA/com.android.tools/r8.json');

@@ -67,6 +67,23 @@ function configureStyles(resources) {
   return resources;
 }
 
+function configureProguardRules(source) {
+  const cleaned = source
+    .replace(/^\s*-keep class (?:com\.swmansion\.reanimated|com\.facebook\.react\.turbomodule)\.\*\* \{ \*; \}\s*$/gm, '')
+    .replace(/# Partner reflective constructors BEGIN[\s\S]*?# Partner reflective constructors END\n?/g, '')
+    .trimEnd();
+  // Room 2.6 / WorkManager 2.9 keep their implementation classes but their
+  // consumer rules predate AGP 9's explicit-constructor requirement.
+  return `${cleaned}\n\n# Partner reflective constructors BEGIN
+-keepclassmembers class * extends androidx.room.RoomDatabase {
+    public <init>();
+}
+-keepclassmembers class * extends androidx.work.InputMerger {
+    public <init>();
+}
+# Partner reflective constructors END\n`;
+}
+
 function withAndroidReleaseQuality(config) {
   config = withGradleProperties(config, mod => { mod.modResults = configureProperties(mod.modResults); return mod; });
   config = withAppBuildGradle(config, mod => { mod.modResults.contents = configureBuildGradle(mod.modResults.contents); return mod; });
@@ -75,7 +92,7 @@ function withAndroidReleaseQuality(config) {
     // Native libraries already publish the JNI/consumer keep rules they need.
     const file = path.join(mod.modRequest.platformProjectRoot, 'app/proguard-rules.pro');
     const source = await fs.readFile(file, 'utf8');
-    await fs.writeFile(file, source.replace(/^\s*-keep class (?:com\.swmansion\.reanimated|com\.facebook\.react\.turbomodule)\.\*\* \{ \*; \}\s*$/gm, ''));
+    await fs.writeFile(file, configureProguardRules(source));
     const native = path.join(__dirname, '../native-release-quality');
     await fs.cp(path.join(native, 'buildSrc'), path.join(mod.modRequest.platformProjectRoot, 'buildSrc'), { recursive: true });
     await fs.cp(path.join(native, 'app'), path.join(mod.modRequest.platformProjectRoot, 'app/src/main/java'), { recursive: true });
@@ -91,3 +108,4 @@ module.exports.configureBuildGradle = configureBuildGradle;
 module.exports.configureProjectBuildGradle = configureProjectBuildGradle;
 module.exports.configureManifest = configureManifest;
 module.exports.configureStyles = configureStyles;
+module.exports.configureProguardRules = configureProguardRules;

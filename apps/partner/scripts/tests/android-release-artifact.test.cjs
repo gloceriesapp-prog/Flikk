@@ -8,7 +8,7 @@ const { execFileSync, spawnSync } = require('node:child_process');
 
 // Check acceptance/rejection against ZIP artifacts, including incomplete R8
 // evidence. These fixtures validate optimizer reporting, not Android installability.
-for (const scenario of ['optimized', 'missing-r8', 'unoptimized-resources', 'old-agp']) {
+for (const scenario of ['optimized', 'missing-r8', 'unoptimized-resources', 'old-agp', 'missing-reflective-constructor']) {
   test(`release artifact gate: ${scenario}`, () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'partner-release-artifact-'));
     const content = path.join(dir, 'content');
@@ -20,7 +20,9 @@ for (const scenario of ['optimized', 'missing-r8', 'unoptimized-resources', 'old
     try {
       write('BUNDLE-METADATA/com.android.tools.build.gradle/app-metadata.properties',
         `androidGradlePluginVersion=${scenario === 'old-agp' ? '8.12.0' : '9.0.1'}\n`);
-      write('BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map', 'com.example.Main -> a:\n');
+      const reflective = ['androidx.work.impl.WorkDatabase_Impl', 'expo.modules.updates.db.UpdatesDatabase_Impl', 'androidx.work.OverwritingInputMerger', 'androidx.work.ArrayCreatingInputMerger'];
+      const mapping = reflective.map(name => `${name} -> ${name}:\n${scenario === 'missing-reflective-constructor' && name.endsWith('WorkDatabase_Impl') ? '' : '    void <init>() -> <init>\n'}`).join('');
+      write('BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map', 'com.example.Main -> a:\n' + mapping);
       write('base/dex/classes.dex', 'optimizer-test-fixture');
       if (scenario !== 'missing-r8') {
         write('BUNDLE-METADATA/com.android.tools/r8.json', JSON.stringify({
@@ -42,6 +44,7 @@ for (const scenario of ['optimized', 'missing-r8', 'unoptimized-resources', 'old
           'missing-r8': /R8 metadata is missing/,
           'unoptimized-resources': /Optimized resource shrinking is disabled/,
           'old-agp': /Release must use AGP 9/,
+          'missing-reflective-constructor': /Reflective default constructor is missing/,
         };
         assert.match(result.stderr, expected[scenario]);
       }
