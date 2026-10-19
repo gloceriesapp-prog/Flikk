@@ -3,24 +3,13 @@ import { AppImage as Image } from '../../components/AppImage';
 // specs/00-foundation/auth-and-roles.md. This screen only requests the
 // OTP; verification happens on the next screen.
 //
-// Fixed hero image at top (store-image.jpeg, real storefront photo — a
-// fitting image for a store-owner login, unlike customer's own generic
-// hero), plain and static — no keyboard-driven shrink/extend animation.
-// That animation only works on customer's own app because its
-// app.config.js explicitly forces Android's softInputMode to 'pan' (no
-// window resize, so nothing else makes room for the keyboard except that
-// manual shrink); partner has no such override, so Android's default
-// resize behavior already handles the keyboard on its own — a fixed image
-// height plus a real KeyboardAvoidingView 'height' behavior on Android is
-// the correct, much simpler fit here, not a copy of customer's own
-// keyboard-controller-driven setup. That mismatch (Android getting
-// `behavior={undefined}`, appropriate only under 'pan' mode) was the
-// actual bug behind "the Continue button isn't visible" — nothing was
-// avoiding the keyboard on Android at all.
+// Keep the form reachable with the keyboard open, in landscape and in
+// resized windows. The decorative image shrinks on short screens; the form scrolls.
 
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp } from '../../api/auth';
 import { ApiError } from '../../api/client';
@@ -32,13 +21,11 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 const PHONE_LENGTH = 10;
 const HERO_IMAGE_URI = 'https://images.gloceries.com/appsui/patner-login.png';
-// Fixed, real height — not measured/animated. Full device width, this
-// height; resizeMode="cover" keeps the real image's own aspect from
-// looking stretched at that width without needing its actual pixel
-// dimensions on hand.
-const HERO_HEIGHT = 240;
 
 export function LoginScreen({ navigation }: Props) {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const heroHeight = width > height ? 112 : 240;
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,22 +47,33 @@ export function LoginScreen({ navigation }: Props) {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <KeyboardAvoidingView
+      // Re-measure keyboard avoidance after rotation/window resizing. RN's
+      // height mode otherwise retains the previous window's initial height.
+      key={width}
+      style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar style="dark" />
-
-      <Image source={{ uri: HERO_IMAGE_URI }} style={{ width: '100%', height: HERO_HEIGHT }} resizeMode="cover" />
-
-      {/* 'height' on Android, not undefined — this app has no softInputMode
-          override (unlike customer's own 'pan' setup), so Android's real
-          window-resize needs KeyboardAvoidingView to actually push content
-          up. style={{flex:1}}, not className="flex-1" — KeyboardAvoidingView
-          isn't one of NativeWind's auto-patched components (same gotcha
-          this codebase already documents for Animated.View/LinearGradient
-          elsewhere), so the className was being silently dropped, leaving
-          this view with no real height at all — the actual reason the
-          Continue button never rendered, keyboard open or not. */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View className="flex-1 gap-5 bg-white px-6 pb-safe pt-7">
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <Image source={{ uri: HERO_IMAGE_URI }} style={{ width: '100%', height: heroHeight }} resizeMode="cover" />
+        <View
+          className="gap-5 bg-white px-6 pt-7"
+          style={{
+            flexGrow: 1,
+            width: '100%',
+            maxWidth: 640,
+            alignSelf: 'center',
+            paddingBottom: insets.bottom,
+            paddingLeft: Math.max(24, insets.left),
+            paddingRight: Math.max(24, insets.right),
+          }}
+        >
           <Text className="text-2xl font-semibold leading-8 text-ink">Run your store from your pocket.</Text>
 
           <PhoneInput value={phone} onChangeText={setPhone} autoFocus />
@@ -87,11 +85,10 @@ export function LoginScreen({ navigation }: Props) {
           <View className="mt-auto gap-3 pb-6">
             <PrimaryButton label="Continue" onPress={handleContinue} disabled={!canContinue} loading={loading} />
 
-
             <Text className="text-center text-[11px] font-medium text-ink/35">Powered by gloceries.com</Text>
           </View>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

@@ -49,13 +49,13 @@ module.exports = {
     name: 'Gloceries Partner',
     slug: 'partner',
     owner: 'nishal777',
-    version: '1.0.2',
+    version: '1.0.4',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change.
     runtimeVersion: { policy: 'appVersion' },
     updates: { url: `https://u.expo.dev/${easProjectId}` },
-    orientation: 'portrait',
+    orientation: 'default',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     ios: {
@@ -95,6 +95,7 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: [
+      './plugins/withAndroidReleaseQuality.cjs',
       ...sentryPlugin,
       'expo-asset',
       'expo-font',

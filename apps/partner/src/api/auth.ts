@@ -51,7 +51,10 @@ export interface RequestOtpResult {
 // behind "invalid code". An unreachable backend is now a clear error.
 function unreachable(err: unknown): never {
   if (!(err instanceof ApiError) || err.status === 0) {
-    throw new ApiError(0, 'SERVER_UNREACHABLE', `Can't reach the Gloceries server (${API_BASE_URL}). Check the backend is running and this phone is on the same Wi-Fi.`);
+    const message = __DEV__
+      ? `Can't reach the Gloceries server (${API_BASE_URL}). Verify the API address, backend availability, and internet connection.`
+      : "Couldn't connect to Gloceries. Check your internet connection and try again.";
+    throw new ApiError(0, 'SERVER_UNREACHABLE', message);
   }
   throw err;
 }

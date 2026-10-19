@@ -1,6 +1,6 @@
 {
   "name": "partner",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "main": "index.ts",
   "dependencies": {
     "@gloceries/shared": "*",
@@ -60,6 +60,8 @@
     "web": "expo start --web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:android-release-quality": "node --test scripts/tests/*.test.cjs",
+    "verify:android-release": "node scripts/verify-android-release.cjs",
     "eas-build-post-install": "node scripts/verify-sentry-build.cjs"
   },
   "private": true
