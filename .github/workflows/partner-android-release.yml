@@ -1,0 +1,183 @@
+name: Partner Android Release
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/partner-android-release.yml'
+      - 'apps/partner/**'
+      - 'packages/shared/**'
+      - 'patches/**'
+      - 'scripts/configure-partner-release.cjs'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'New Android version code (higher than every code uploaded to Play)'
+        required: true
+        type: string
+      highest_play_version_code:
+        description: 'Highest version code you verified in Play Console, across all tracks'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: partner-android-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install locked dependencies and persisted native patches
+        run: npm ci --no-audit --no-fund
+      - name: Check Partner source and release safeguards
+        run: |
+          npm run typecheck --workspace=apps/partner
+          npm run lint --workspace=apps/partner
+          npm run test:android-release-quality --workspace=apps/partner
+      - name: Validate requested version codes and release branch
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          PARTNER_ANDROID_VERSION_CODE: ${{ inputs.version_code }}
+          PARTNER_HIGHEST_PLAY_VERSION_CODE: ${{ inputs.highest_play_version_code }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH" || {
+            echo 'Production releases must run from the reviewed default branch.'
+            exit 1
+          }
+          node -e "require('./apps/partner/scripts/release-config.cjs').productionVersionCode(process.env)"
+
+  build:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: partner-android-production
+    env:
+      PARTNER_DIRECT_ANDROID_RELEASE: 'true'
+      PARTNER_ANDROID_VERSION_CODE: ${{ inputs.version_code }}
+      PARTNER_HIGHEST_PLAY_VERSION_CODE: ${{ inputs.highest_play_version_code }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      EXPO_PUBLIC_SENTRY_SMOKE_TEST: 'false'
+      EXPO_NO_DOTENV: '1'
+      EXPO_NO_TELEMETRY: '1'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set temporary release paths
+        run: |
+          echo "PARTNER_RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/partner-upload.jks" >> "$GITHUB_ENV"
+          echo "PARTNER_RELEASE_ARTIFACT_DIR=$RUNNER_TEMP/partner-release-artifacts" >> "$GITHUB_ENV"
+          echo "PARTNER_BUNDLETOOL_JAR=$RUNNER_TEMP/bundletool-1.18.3.jar" >> "$GITHUB_ENV"
+      - name: Fail early for incomplete production configuration
+        run: node apps/partner/scripts/direct-android-release.cjs preflight
+      - name: Install locked dependencies and verify Sentry authentication
+        run: |
+          npm ci --no-audit --no-fund
+          node apps/partner/scripts/verify-sentry-build.cjs
+      - name: Install pinned Android toolchain and artifact verifier
+        run: |
+          set -euo pipefail
+          df -h .
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006'
+          curl --fail --location --silent --show-error --retry 3 \
+            https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar \
+            --output "$PARTNER_BUNDLETOOL_JAR"
+          echo "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29  $PARTNER_BUNDLETOOL_JAR" | sha256sum --check
+      - name: Confirm production backend health
+        run: |
+          node - <<'NODE'
+          (async () => {
+            const response = await fetch(process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, '') + '/', {
+              signal: AbortSignal.timeout(30000),
+            });
+            if (!response.ok) throw new Error('Production backend health check failed.');
+            const body = await response.json();
+            if (body.ok !== true || body.service !== 'gloceries-backend') throw new Error('Unexpected production backend response.');
+            console.log('Production Gloceries backend is reachable.');
+          })().catch(() => { console.error('Could not verify production backend health.'); process.exitCode = 1; });
+          NODE
+      - name: Generate production Android project and configure signing
+        working-directory: apps/partner
+        run: |
+          npx expo prebuild --platform android --no-install
+          node scripts/direct-android-release.cjs prepare-signing
+      - name: Verify native transformation tests
+        working-directory: apps/partner
+        run: ./android/gradlew -p android/buildSrc test --no-daemon --max-workers=2
+      - name: Build production AAB for all configured ABIs
+        working-directory: apps/partner
+        run: |
+          set -euo pipefail
+          mkdir -p "$PARTNER_RELEASE_ARTIFACT_DIR"
+          ./android/gradlew -p android :app:bundleRelease --no-daemon --max-workers=2 \
+            '-Dorg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m' --console=plain 2>&1 \
+            | node scripts/redact-release-log.cjs \
+            | tee "$PARTNER_RELEASE_ARTIFACT_DIR/build.log"
+      - name: Verify signed bundle, packaged configuration and optimization
+        run: |
+          node apps/partner/scripts/direct-android-release.cjs verify \
+            apps/partner/android/app/build/outputs/bundle/release/app-release.aab
+      - name: Save verified release artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: partner-android-${{ inputs.version_code }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/partner-release-artifacts/*.aab
+            ${{ runner.temp }}/partner-release-artifacts/mapping.txt
+            ${{ runner.temp }}/partner-release-artifacts/SHA256SUMS
+            ${{ runner.temp }}/partner-release-artifacts/release-verification.json
+            ${{ runner.temp }}/partner-release-artifacts/optimizer-verification.txt
+            ${{ runner.temp }}/partner-release-artifacts/build.log
+          if-no-files-found: error
+          retention-days: 14
+      - name: Save sanitized build log when the build fails
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: partner-android-failed-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/partner-release-artifacts/build.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Remove temporary signing credentials
+        if: always()
+        run: |
+          rm -f "$PARTNER_RELEASE_KEYSTORE_PATH"
+          rm -f apps/partner/android/app/partner-upload-signing.gradle

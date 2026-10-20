@@ -1,6 +1,7 @@
 // EAS invokes this after dependency installation and before native compilation.
 // Never print CLI output: it can contain private account information.
-if (process.env.EAS_BUILD === 'true' && ['production', 'release-validation'].includes(process.env.EAS_BUILD_PROFILE)) {
+if (process.env.PARTNER_DIRECT_ANDROID_RELEASE === 'true'
+    || (process.env.EAS_BUILD === 'true' && ['production', 'release-validation'].includes(process.env.EAS_BUILD_PROFILE))) {
   require('../config-monitoring.cjs').validateMonitoringConfig(process.env);
   const { spawnSync } = require('node:child_process');
   const SentryCli = require('@sentry/cli');

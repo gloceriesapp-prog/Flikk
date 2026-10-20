@@ -30,7 +30,7 @@ npm run lint --workspace=apps/partner
 npm run verify:android-release --workspace=apps/partner -- /absolute/path/app-release.aab
 ```
 
-The verifier checks packaged DEX, AGP version, a nonempty obfuscation mapping, R8 optimizer flags, and optimized resource shrinking in the bundle metadata. A locally calculated renamed-class percentage is **not** the Google Play score. CI runs twelve release checks (seven configuration/API policy tests and five artifact-gate cases), Expo prebuild, and the native ASM transformation test. The artifact cases reject missing R8 metadata, disabled optimized resource shrinking, an older AGP version, and stripped Room/WorkManager default constructors.
+The verifier checks packaged DEX, AGP version, a nonempty obfuscation mapping, R8 optimizer flags, and optimized resource shrinking in the bundle metadata. A locally calculated renamed-class percentage is **not** the Google Play score. CI runs the release checks, Expo prebuild, and the native ASM transformation test. The artifact cases reject missing R8 metadata, disabled optimized resource shrinking, an older AGP version, and stripped Room/WorkManager default constructors.
 
 For native plugin tests after Android prebuild, from `apps/partner`:
 
@@ -93,3 +93,30 @@ Opening the map initially crashed because the local generated project omitted na
 The corrected map opens without the missing-key crash, but Google logs an authorization failure for `com.gloceries.partner.validation` with the local debug certificate. Map tiles and full map interaction are therefore **not passed**. They require a production-signed internal build or a separately authorized test package/certificate; production key restrictions were not weakened. Android 15+, populated order/product/payment flows, notifications, production OTA, and Google Play analysis remain pending.
 
 Evidence remains local in ignored `device-1.0.4/`: `rebuild-native-map-config.log`, `rebuild-signedin-layout.log`, `native-map-artifact-verification.txt`, `native-map-code-identity.json`, `signedin-final-runtime.log`, and the signed-in screen/rotation XML captures. Private gallery captures were removed rather than retained or published. GitHub checks on commit `a2b89cd0` passed, including all twelve Partner release checks and the native JVM/prebuild check. The admin Vercel preview still fails collecting `/api/app-content` because its server-side Supabase key is missing/empty; it is a separate environment issue.
+
+## Direct Gradle release pipeline — 20 October 2026
+
+`PRODUCTION_RELEASE_PIPELINE.md` describes the manual GitHub signed-release
+workflow, independently of the editor used for development. Direct builds fail closed for missing
+signing/Sentry/Maps configuration, require operator-confirmed Play version
+codes, and preserve the production Updates channel header. The artifact gate
+checks the upload certificate and actual packaged configuration as well as
+the optimizer checks above. Build logs are redacted before artifact storage.
+
+Validation: TypeScript, ESLint, all 19 release tests and Actionlint pass.
+Tests include real signed/unsigned/tampered JAR fixtures and the non-admin
+bootstrap refusal. A fresh direct-production-mode Expo prebuild and Gradle
+`signingReport` passed with a temporary fixture key; version code, OTA header
+and release signing config were checked. The manifest parser was also tested
+against the actual local AAB. This does not produce or validate a new
+production-signed AAB.
+
+The latest PR #64 checks (all 21) passed after the user configured the admin
+Preview server key and its deployment was rebuilt successfully. Production
+pipeline activation still requires merging the reviewed workflow, a GitHub
+repository admin to configure its restricted environment/secrets, and a valid
+Sentry upload token. The connected GitHub account has write access but the
+environment API returned 403 for lack of admin rights. The existing upload
+keystore has been recovered into restricted ignored local storage and its
+certificate verified. Devin is used only as an IDE; cloud login and snapshots
+are not required for this GitHub/Gradle pipeline.
