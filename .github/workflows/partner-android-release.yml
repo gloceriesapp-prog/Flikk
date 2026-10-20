@@ -4,9 +4,12 @@ on:
   pull_request:
     paths:
       - '.github/workflows/partner-android-release.yml'
-      - 'apps/partner/scripts/**'
-      - 'apps/partner/config-monitoring.cjs'
-      - 'apps/partner/app.config.js'
+      - 'apps/partner/**'
+      - 'packages/shared/**'
+      - 'patches/**'
+      - 'scripts/configure-partner-release.cjs'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
     inputs:
       version_code:

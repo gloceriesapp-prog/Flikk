@@ -24,7 +24,7 @@ Configure these **environment secrets**:
 | `ANDROID_KEY_ALIAS` | Existing key alias |
 | `ANDROID_KEY_PASSWORD` | Existing key password |
 | `GOOGLE_MAPS_API_KEY` | Existing native Android Maps SDK key, not a backend geocoding/Routes key |
-| `SENTRY_AUTH_TOKEN` | Valid Sentry upload token for the Partner organization/project |
+| `SENTRY_AUTH_TOKEN` | Sentry Organization Auth Token with `org:ci` for the Partner organization |
 
 Configure these **environment variables**:
 
@@ -61,20 +61,34 @@ restrictions before storing secrets. It reads secret bodies through stdin,
 prints names rather than values, and preserves existing review protections.
 It does not dispatch a release, merge a PR or publish to Play.
 
-## Devin environment
+## Development in any IDE
 
-Connect `gloceriesapp-prog/Flikk` in Devin Settings → Connections → GitHub.
-In Environment settings, sync the repository's git-backed
-`.devin/blueprint.yaml` from the reviewed branch. The blueprint installs Node
-22, JDK 17, Android SDK/build-tools 36, NDK 27.1.12297006 and locked workspace
-dependencies. It includes the Partner lint/test/build instructions.
+Devin is only the editor. Android Studio is optional for editing and device
+inspection; GitHub's Linux runner supplies the Android SDK and Gradle build
+machine. No Devin cloud account, snapshot or EAS Build subscription is required.
+Keep signing credentials in GitHub's restricted production environment.
 
-The blueprint is versioned source, not proof that a Devin account has been
-connected or its snapshot has built. Confirm a successful snapshot in Devin
-after connecting the repository. Production signing/Sentry tokens remain in
-GitHub's production environment; they are not baked into Devin's snapshot.
-If interactive map testing in Devin is needed, configure an appropriately
-restricted development Maps key for its package/certificate separately.
+Use Node 22 and install the locked dependencies at the repository root:
+
+```sh
+npm ci --no-audit --no-fund
+npm run typecheck --workspace=apps/partner
+npm run lint --workspace=apps/partner
+npm run test:android-release-quality --workspace=apps/partner
+```
+
+The release tests also require JDK 17 (`java`, `keytool` and `jarsigner` on
+PATH). The existing CI runs automatically on pushes and pull requests:
+Expo dependency checks, TypeScript, lint, release regression tests, Android
+prebuild and native transformation tests. Changes to the release pipeline
+also run its separate validation job. Production signing is available only
+to a manual release from the default branch, after those checks pass.
+
+For interactive device testing, install Android SDK platform/build-tools 36
+and NDK 27.1.12297006; set `ANDROID_HOME` and `JAVA_HOME` for the installed
+SDK/JDK. Run `npm run android --workspace=apps/partner` with a development
+API configuration. Keep the production app and its data intact when using
+an isolated test package. A development install is not a Play release.
 
 ## Create a release
 
@@ -119,7 +133,6 @@ Sentry/Play vitals. No Play service-account credential is needed for this
 build-only workflow. Automated submission can be added as a separately
 reviewed change later.
 
-References: [Devin blueprints](https://docs.devin.ai/onboard-devin/environment/blueprint-reference),
-[GitHub environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments),
+References: [GitHub environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments),
 [Expo credentials](https://docs.expo.dev/app-signing/syncing-credentials/),
 [Android release builds](https://developer.android.com/build/building-cmdline).

@@ -97,7 +97,7 @@ Evidence remains local in ignored `device-1.0.4/`: `rebuild-native-map-config.lo
 ## Direct Gradle release pipeline — 20 October 2026
 
 `PRODUCTION_RELEASE_PIPELINE.md` describes the manual GitHub signed-release
-workflow and versioned Devin blueprint. Direct builds fail closed for missing
+workflow, independently of the editor used for development. Direct builds fail closed for missing
 signing/Sentry/Maps configuration, require operator-confirmed Play version
 codes, and preserve the production Updates channel header. The artifact gate
 checks the upload certificate and actual packaged configuration as well as
@@ -118,5 +118,5 @@ repository admin to configure its restricted environment/secrets, and a valid
 Sentry upload token. The connected GitHub account has write access but the
 environment API returned 403 for lack of admin rights. The existing upload
 keystore has been recovered into restricted ignored local storage and its
-certificate verified. Devin's account must be signed in and its blueprint
-synced before its snapshot can be considered configured.
+certificate verified. Devin is used only as an IDE; cloud login and snapshots
+are not required for this GitHub/Gradle pipeline.
