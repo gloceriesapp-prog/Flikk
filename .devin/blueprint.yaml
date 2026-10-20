@@ -1,0 +1,56 @@
+runs-on: linux
+
+initialize:
+  - name: Set up Node.js
+    uses: github.com/actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+    with:
+      node-version: '22'
+  - name: Set up Java
+    uses: github.com/actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+    with:
+      distribution: temurin
+      java-version: '17'
+  - name: Set up Android SDK
+    uses: github.com/android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+    with:
+      cmdline-tools-version: '15859902'
+      packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.1.12297006'
+      log-accepted-android-sdk-licenses: 'false'
+
+maintenance:
+  - name: Install locked workspace dependencies and native patches
+    run: npm ci --no-audit --no-fund
+  - name: Confirm Android environment
+    run: |
+      node --version
+      java -version
+      sdkmanager --version
+      test -d "$ANDROID_HOME/platforms/android-36"
+      test -d "$ANDROID_HOME/ndk/27.1.12297006"
+
+knowledge:
+  - name: lint
+    contents: npm run typecheck --workspace=apps/partner && npm run lint --workspace=apps/partner
+  - name: test
+    contents: |
+      npm run test:android-release-quality --workspace=apps/partner
+      Native transformation tests after prebuild:
+      cd apps/partner && ./android/gradlew -p android/buildSrc test --no-daemon --max-workers=2
+  - name: build
+    contents: |
+      Partner is an Expo/React Native workspace at apps/partner. Read
+      apps/partner/PRODUCTION_RELEASE_PIPELINE.md and ANDROID_RELEASE_QUALITY.md.
+      Local validation can generate Android with a development API URL:
+      cd apps/partner && EXPO_PUBLIC_API_URL=http://127.0.0.1:3001 npx expo prebuild --platform android --no-install
+      Preserve plugins/withAndroidReleaseQuality.cjs and root patches/.
+      Production signing credentials stay in the GitHub environment
+      partner-android-production. Use the manual Partner Android Release
+      workflow from the reviewed default branch. Do not replace the upload
+      key, weaken Maps key restrictions, or disable Sentry or R8.
+  - name: deploy
+    contents: |
+      Release workflow artifacts contain the verified signed AAB, mapping,
+      checksum, verification report and redacted build log. Version codes
+      must exceed the operator-confirmed highest Play code across all tracks.
+      Publishing is manual: validate through Play Internal Testing first.
+      Do not publish or promote a Google Play release without human approval.

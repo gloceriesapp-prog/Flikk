@@ -1,7 +1,8 @@
 // Checked on the EAS builder, where secret environment variables are available.
 // Local config reads and CI never need production credentials.
 function validateMonitoringConfig(env) {
-  const release = env.EAS_BUILD === 'true' && ['production', 'release-validation'].includes(env.EAS_BUILD_PROFILE);
+  const release = env.PARTNER_DIRECT_ANDROID_RELEASE === 'true'
+    || (env.EAS_BUILD === 'true' && ['production', 'release-validation'].includes(env.EAS_BUILD_PROFILE));
   if (!release) return;
   const required = ['EXPO_PUBLIC_SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN'];
   const missing = required.filter(name => !env[name]?.trim());
