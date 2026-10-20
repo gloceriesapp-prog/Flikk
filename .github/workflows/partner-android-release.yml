@@ -112,11 +112,21 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           node apps/partner/scripts/verify-sentry-build.cjs
-      - name: Install pinned Android toolchain and artifact verifier
+      - name: Set up pinned Android SDK tools and packages
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          cmdline-tools-version: '15859902'
+          log-accepted-android-sdk-licenses: 'false'
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.1.12297006'
+      - name: Verify Android toolchain and install artifact verifier
         run: |
           set -euo pipefail
           df -h .
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006'
+          command -v sdkmanager
+          sdkmanager --version
+          test -d "$ANDROID_HOME/platforms/android-36"
+          test -d "$ANDROID_HOME/build-tools/36.0.0"
+          test -d "$ANDROID_HOME/ndk/27.1.12297006"
           curl --fail --location --silent --show-error --retry 3 \
             https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar \
             --output "$PARTNER_BUNDLETOOL_JAR"

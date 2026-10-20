@@ -1,7 +1,10 @@
 # Partner signed Android releases
 
 The manual **Partner Android Release** GitHub workflow builds the existing
-React Native/Expo app directly with Gradle. It does not call EAS Build or
+React Native/Expo app directly with Gradle. The runner explicitly installs
+pinned Android command-line tools, SDK/build-tools 36 and NDK 27.1.12297006;
+it does not depend on `sdkmanager` already being on the runner PATH.
+It does not call EAS Build or
 automatically upload/promote a Google Play release.
 
 ## One-time repository-admin setup
