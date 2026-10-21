@@ -560,6 +560,10 @@
     {
       "file": "20261016051231_preserve_store_suspension_availability.sql",
       "sha256": "50c4a760bb8f91a165fcc404d0e9ec874dd2d92552aca8d227a938d8c11cc181"
+    },
+    {
+      "file": "20261021090000_play_review_rider.sql",
+      "sha256": "985c36f1ed68c3eca88c4f64a1cd1c7cdaf40b4af2078a62f0f1027e2ca8d471"
     }
   ]
 }
