@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import clsx from 'clsx';
-import { Pencil, Clock, MapPin, Plus, Search, Store as StoreIcon } from 'lucide-react';
+import { Pencil, Clock, MapPin, Plus, Search, Store as StoreIcon } from '@/components/icons';
 import type { NewStoreInput, Store } from '@/lib/types';
 import { fetchStores } from '@/lib/supabase/stores';
 import { AddStoreModal } from '@/components/stores/AddStoreModal';

@@ -5,27 +5,19 @@
 // dashboard with the exact same account as their app, not a separate
 // web-only login.
 //
-// Real gate, not cosmetic: this dashboard only exists for a store that
-// already applied through the partner mobile app. Before ever sending an
-// OTP, the phone is checked against POST /auth/otp/partner-check
-// (backend's own note has the full reasoning) — a phone that's never
-// touched the partner app gets a clear, honest error right away instead of
-// a real SMS it didn't need, or a confusing "pending approval" screen for
-// an account that was never a partner applicant in the first place.
-// verifyOtp's own role/application_submitted check below is a second,
-// defense-in-depth pass against the same rule for the (rare) case where
-// the phone's status changed in the few seconds between the two calls.
+// Dashboard sign-in requires an existing store_owner account. The OTP send
+// and verify calls both enforce this on the server, including every resend.
+// No separate preflight request is needed before sending the code.
 //
 // Phone OTP is the only sign-in method, so the page offers nothing else.
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { checkPartnerPhone, requestOtp, verifyOtp } from '@/lib/authApi';
+import { requestOtp, verifyOtp } from '@/lib/authApi';
 import { clearTokens } from '@/lib/authStorage';
 import { ApiError } from '@/lib/api';
 import { OtpInput } from '@/components/login/OtpInput';
-import { StoreIllustration } from '@/components/login/StoreIllustration';
 
 type Step = 'phone' | 'otp';
 
@@ -33,6 +25,8 @@ const PHONE_LENGTH = 10;
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 30;
 const SITE_URL = 'https://www.gloceries.com';
+const LOGIN_IMAGE_URL = 'https://images.gloceries.com/appsui/patner-dashboard-loginv3.png';
+const BRAND_MARK_URL = 'https://images.gloceries.com/appsui/gloceries-main.png';
 
 // Indian mobile numbers are 10 digits starting 6-9. Pasted numbers often
 // carry +91, a leading 0, spaces or dashes; keep the last 10 digits.
@@ -76,7 +70,6 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setError(null);
     try {
-      await checkPartnerPhone(fullPhone);
       await requestOtp(fullPhone);
       setCode('');
       lastAutoSubmitted.current = null;
@@ -112,10 +105,8 @@ export default function LoginPage() {
     try {
       const result = await verifyOtp(fullPhone, submittedCode);
 
-      // Defense-in-depth re-check of the same rule checkPartnerPhone
-      // already enforced above — see this file's own header note on why
-      // both passes exist.
-      if (result.role !== 'store_owner' && !result.application_submitted) {
+      // Keep the UI gate strict as well: a submitted application is not a role.
+      if (result.role !== 'store_owner') {
         clearTokens();
         setError("This number isn't registered on the Gloceries Partner app yet. Apply with your store there first.");
         return;
@@ -152,19 +143,24 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#1c2a22] p-2 text-[#1d2b22] antialiased sm:p-3">
-      <div className="relative min-h-[calc(100vh-1rem)] overflow-hidden rounded-[28px] bg-[#dff5c2] sm:min-h-[calc(100vh-1.5rem)]">
+    <main className="min-h-dvh text-[#1d2b22] antialiased lg:h-dvh lg:overflow-hidden">
+      <div className="relative min-h-screen overflow-hidden bg-[#155dfc]">
         {/* Scene fills the frame; the card sits over its right side. */}
-        <StoreIllustration className="absolute inset-0 hidden h-full w-full lg:block" />
+        {/* Whole image at its own aspect ratio, never cropped or zoomed. Any leftover
+            space is the frame's blue, which matches the image's own background. */}
+        <img
+          src={LOGIN_IMAGE_URL}
+          alt=""
+          draggable={false}
+          className="pointer-events-none absolute inset-0 hidden h-full w-full select-none object-contain object-left-bottom lg:block"
+        />
 
-        <div className="relative flex min-h-[calc(100vh-1rem)] items-stretch justify-end p-3 sm:min-h-[calc(100vh-1.5rem)] sm:p-6 lg:p-5">
+        <div className="relative flex min-h-screen items-stretch justify-end p-3 sm:p-6 lg:p-2">
           <section className="flex w-full flex-col rounded-[28px] bg-white px-6 py-10 shadow-[0_20px_60px_-30px_rgba(16,48,28,0.45)] sm:px-12 lg:w-[48%] lg:max-w-[640px] xl:px-20">
             <div className="flex items-center justify-center gap-2.5">
               <BrandMark />
-              <span className="text-[22px] font-semibold tracking-tight">gloceries</span>
-              <span className="rounded-full bg-[#eef8de] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-[#5c8f2a]">
-                Partner
-              </span>
+              <span className="text-[22px] font-semibold tracking-tight">gloceries Store</span>
+
             </div>
 
             <div className="mx-auto flex w-full max-w-[340px] flex-1 flex-col justify-center py-10">
@@ -172,21 +168,22 @@ export default function LoginPage() {
                 <>
                   <h1 className="text-center text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
                     Partner
-                    <br />
+
                     sign in
                   </h1>
-                  <p className="mt-4 text-center text-sm text-black/50">Use the mobile number registered on your Partner app.</p>
+                  <p className="mt-4 text-center text-sm text-black/50 font-medium">Use the mobile number registered with <br/> your Partner app.</p>
 
-                  <form onSubmit={handleRequestOtp} className="mt-9 space-y-4" noValidate>
+                  <form onSubmit={handleRequestOtp} className="mt-9 space-y-3" noValidate>
                     <label htmlFor="phone" className="sr-only">
                       Mobile number
                     </label>
                     <div
-                      className={`flex h-[52px] items-center rounded-full border bg-white pl-5 pr-4 transition-shadow focus-within:ring-4 ${
-                        phoneError ? 'border-red-400 focus-within:ring-red-100' : 'border-black/10 focus-within:border-[#8cc152] focus-within:ring-[#a8d93a]/25'
+                      className={`flex h-[54px] items-center rounded-xl border bg-white pl-4 pr-4 shadow-[0_1px_2px_rgba(16,24,16,0.04)] transition-[border-color,box-shadow] duration-150  ${
+                        phoneError ? 'border-red-400 focus-within:ring-red-100' : 'border-black/10 hover:border-black/20 focus-within:border-black/40 focus-within:ring-black/[0.04]'
                       }`}
                     >
-                      <span className="pr-3 text-sm font-medium text-black/60">+91</span>
+                      <IndiaFlag />
+                      <span className="pl-2 pr-3 text-[15px] font-semibold text-black/75">+91</span>
                       <span className="mr-3 h-5 w-px bg-black/10" aria-hidden="true" />
                       <input
                         id="phone"
@@ -194,9 +191,10 @@ export default function LoginPage() {
                         inputMode="numeric"
                         autoComplete="tel-national"
                         autoFocus
-                        value={formatPhone(phone)}
+                        maxLength={PHONE_LENGTH}
+                        value={phone}
                         onChange={(e) => {
-                          setPhone(normalisePhone(e.target.value));
+                          setPhone(e.target.value.replace(/\D/g, '').slice(0, PHONE_LENGTH));
                           setError(null);
                         }}
                         onPaste={(e) => {
@@ -207,21 +205,20 @@ export default function LoginPage() {
                         placeholder="Mobile number"
                         aria-invalid={Boolean(phoneError) || undefined}
                         aria-describedby="phone-help"
-                        className="w-full bg-transparent text-[15px] tracking-wide outline-none placeholder:tracking-normal placeholder:text-black/35"
+                        className="w-full bg-transparent text-[15px] font-medium tracking-[0.06em] text-[#1d2b22] outline-none placeholder:font-normal placeholder:tracking-normal placeholder:text-black/35"
                       />
-                      <span className="shrink-0 text-xs tabular-nums text-black/30">
-                        {phone.length}/{PHONE_LENGTH}
-                      </span>
                     </div>
 
-                    <p id="phone-help" className="min-h-5 px-5 text-xs leading-5 text-red-600" role="alert">
-                      {phoneError ?? error ?? ''}
-                    </p>
+                    {(phoneError ?? error) && (
+                      <p id="phone-help" className="px-1 text-xs leading-5 text-red-600" role="alert">
+                        {phoneError ?? error}
+                      </p>
+                    )}
 
                     <button
                       type="submit"
                       disabled={!phoneReady || isSubmitting}
-                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#155dfc] text-[15px] font-semibold text-white transition-colors hover:bg-[#0f4ad1] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-[54px] w-full items-center justify-center rounded-xl bg-[#000000] text-[15px] font-semibold text-white transition-[background-color,transform,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                     >
                       {isSubmitting ? 'Sending code…' : 'Send OTP'}
                     </button>
@@ -238,7 +235,7 @@ export default function LoginPage() {
                   </button>
                   <h1 className="text-center text-[44px] font-medium leading-[1.05] tracking-tight sm:text-[52px]">
                     Verify
-                    <br />
+
                     OTP
                   </h1>
                   <p className="mt-4 text-center text-sm text-black/50">
@@ -261,7 +258,7 @@ export default function LoginPage() {
                     <button
                       type="submit"
                       disabled={code.length !== CODE_LENGTH || isSubmitting}
-                      className="flex h-[52px] w-full items-center justify-center rounded-full bg-[#155dfc] text-[15px] font-semibold text-white transition-colors hover:bg-[#0f4ad1] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-[52px] w-full items-center justify-center rounded-xl bg-[#000000] text-[15px] font-semibold text-white transition-colors hover:bg-[#0f4ad1] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isSubmitting ? 'Verifying…' : 'Verify & sign in'}
                     </button>
@@ -272,7 +269,7 @@ export default function LoginPage() {
                     {resendIn > 0 ? (
                       <span className="tabular-nums text-black/40">Resend in {resendIn}s</span>
                     ) : (
-                      <button type="button" onClick={handleResend} disabled={isSubmitting} className="font-semibold text-[#5c8f2a] hover:underline disabled:opacity-50">
+                      <button type="button" onClick={handleResend} disabled={isSubmitting} className="font-semibold text-[#000000] hover:underline disabled:opacity-50">
                         Resend OTP
                       </button>
                     )}
@@ -282,11 +279,11 @@ export default function LoginPage() {
 
               <p className="mt-8 text-center text-xs leading-5 text-black/50">
                 By continuing you agree to Gloceries&apos;{' '}
-                <a href={`${SITE_URL}/terms`} target="_blank" rel="noreferrer" className="font-semibold text-[#5c8f2a] hover:underline">
+                <a href={`${SITE_URL}/terms`} target="_blank" rel="noreferrer" className="font-semibold text-[#000000] hover:underline">
                   Terms of Service
                 </a>{' '}
                 and{' '}
-                <a href={`${SITE_URL}/privacy`} target="_blank" rel="noreferrer" className="font-semibold text-[#5c8f2a] hover:underline">
+                <a href={`${SITE_URL}/privacy`} target="_blank" rel="noreferrer" className="font-semibold text-[#000000] hover:underline">
                   Privacy Policy
                 </a>
                 .
@@ -294,7 +291,7 @@ export default function LoginPage() {
             </div>
 
             <p className="text-center text-sm text-black/60">
-              New to Gloceries? <span className="font-semibold text-[#5c8f2a]">Apply on the Partner app</span>
+              New to Gloceries? <span className="font-semibold text-[#000000]">Apply on the Partner app</span>
             </p>
           </section>
         </div>
@@ -303,22 +300,20 @@ export default function LoginPage() {
   );
 }
 
-// The Gloceries cart-"G" mark, simplified for small sizes.
 function BrandMark() {
+  return <img src={BRAND_MARK_URL} alt="" width={30} height={30} className="h-[30px] w-[30px] rounded-[9px] object-contain" />;
+}
+
+// India flag for the +91 prefix — inline so it renders the same on every OS
+// (Windows has no flag emoji).
+function IndiaFlag() {
   return (
-    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="9" fill="#a3d65c" />
-      <path d="M7 8.5h3.2l1 3.6" stroke="#1d2b22" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <path
-        d="M22.6 13.2a6.4 6.4 0 1 0 .4 4.2h-5.2"
-        stroke="#1d2b22"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="12.5" cy="25" r="1.8" fill="#1d2b22" />
-      <circle cx="21" cy="25" r="1.8" fill="#1d2b22" />
+    <svg width="24" height="17" viewBox="0 0 24 17" aria-hidden="true" className="shrink-0 overflow-hidden rounded-[3px] ">
+      <rect width="24" height="17" fill="#fff" />
+      <rect width="24" height="5.67" fill="#FF9933" />
+      <rect y="11.33" width="24" height="5.67" fill="#138808" />
+      <circle cx="12" cy="8.5" r="2.2" fill="none" stroke="#000080" strokeWidth="0.6" />
+      <circle cx="12" cy="8.5" r="0.5" fill="#000080" />
     </svg>
   );
 }

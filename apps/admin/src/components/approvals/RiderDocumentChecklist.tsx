@@ -5,7 +5,7 @@
 // this screen is a human visually checking the photo matches the person
 // and the number, not just confirming a file was uploaded.
 
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from '@/components/icons';
 import clsx from 'clsx';
 import type { Application } from '@/lib/types';
 

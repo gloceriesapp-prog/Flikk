@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Save } from 'lucide-react';
+import { Check, Save } from '@/components/icons';
 import type { Store } from '@/lib/types';
 import { STORE_CATEGORIES } from '@/lib/store-options';
 import { storeDraft, changedStoreFields } from '@/features/store-management/storeDraft';

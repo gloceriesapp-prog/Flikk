@@ -5,7 +5,7 @@
 // No bulk "mark all paid", no payout gateway. Contract: backend/PAYOUTS.md.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Copy, Download, FileImage } from 'lucide-react';
+import { Copy, Download, FileImage } from '@/components/icons';
 import clsx from 'clsx';
 import { MarkPaidModal } from '@/components/payouts/MarkPaidModal';
 import { formatDateTime, formatRupees, sumRupees } from '@/lib/format';

@@ -6,7 +6,7 @@ import { useState } from 'react';
 // what to consider for a future zone at a glance, without it implying
 // any of these are activating.
 
-import { ArrowBigUp } from 'lucide-react';
+import { ArrowBigUp } from '@/components/icons';
 import type { ZoneRequest } from '@/lib/types';
 
 export function ZoneRequestsList({ requests }: { requests: ZoneRequest[] }) {

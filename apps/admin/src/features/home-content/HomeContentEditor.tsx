@@ -1,8 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowUp, ArrowDown } from '@/components/icons';
 import {
   createSection,
+  addMissingFestivalSections,
+  createFestivalSections,
   SECTION_KINDS,
   TAB_KEYS,
   validateContent,
@@ -30,8 +33,8 @@ const KIND_LABELS: Record<string, string> = {
 };
 const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind;
 type HistoryEntry = { revision: number; changed_at: string; content: HomeContentDocument };
-export function HomeContentEditor() {
-  const [tab, setTab] = useState<HomeContentKey>('grocery');
+export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: HomeContentKey }) {
+  const [tab, setTab] = useState<HomeContentKey>(initialTab);
   const [record, setRecord] = useState<HomeContentRecord | null>(null);
   const [draft, setDraft] = useState<HomeContentDocument | null>(null);
   const [selectedId, setSelectedId] = useState('');
@@ -169,7 +172,7 @@ export function HomeContentEditor() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Home tab content</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Manage the customer app’s Grocery, Fruit & Veg and Regional tabs. Arrange sections,
+            Manage the customer app’s Grocery, Fruit & Veg, Regional, Festivals and Meat tabs. Arrange sections,
             choose real catalogue products, and edit the text and images customers see.
           </p>
         </div>
@@ -270,6 +273,28 @@ export function HomeContentEditor() {
               Published {new Date(record.updatedAt).toLocaleString()}
             </div>
           </div>
+          {tab === 'festivals' && (
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="max-w-2xl text-sm text-slate-600">
+                <p className="font-semibold text-slate-900">Festival sections</p>
+                <p className="mt-1">Manage puja, flowers, sweets, fruit, lights, decor, local shops and offers here.
+                  Add missing sections to your draft, edit their products and order, then publish.
+                  Existing sections and selections are preserved.</p>
+                <a className="mt-2 inline-block font-medium underline" href="/festival-greeting">Edit seasonal artwork and greeting</a>
+              </div>
+              <button type="button" disabled={createFestivalSections().every(item => draft.sections.some(section => section.id === item.id))}
+                onClick={() => {
+                  const next = addMissingFestivalSections(draft);
+                  if (next.sections.length > 40) { setError('Remove unused sections before adding the festival layout (maximum 40 sections).'); return; }
+                  setDraft(next);
+                  setSelectedId('festival-puja');
+                  setMessage('Festival sections added to draft. Review and publish to make them live.');
+                }}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-900 disabled:opacity-40">
+                Add missing festival sections
+              </button>
+            </div>
+          )}
           <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
             <aside className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between">
@@ -306,7 +331,7 @@ export function HomeContentEditor() {
                         className="disabled:opacity-20"
                         aria-label="Move section up"
                       >
-                        ↑ Up
+                        <ArrowUp size={14} className="inline-block" /> Up
                       </button>
                       <button
                         type="button"
@@ -315,7 +340,7 @@ export function HomeContentEditor() {
                         className="disabled:opacity-20"
                         aria-label="Move section down"
                       >
-                        ↓ Down
+                        <ArrowDown size={14} className="inline-block" /> Down
                       </button>
                       <button
                         type="button"

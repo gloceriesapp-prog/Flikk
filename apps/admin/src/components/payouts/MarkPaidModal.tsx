@@ -7,7 +7,7 @@
 // refetches on success.
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X } from '@/components/icons';
 import { formatRupees } from '@/lib/format';
 import { UTR_PATTERN } from '@/lib/payoutValidation';
 import type { AdminPayoutRow } from '@/lib/types';

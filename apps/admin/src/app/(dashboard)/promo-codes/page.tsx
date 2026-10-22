@@ -12,7 +12,7 @@
 // own note on the FK restrict that makes a redeemed code undeletable).
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from '@/components/icons';
 import clsx from 'clsx';
 import type { PromoCode } from '@/lib/supabase/promoCodes';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';

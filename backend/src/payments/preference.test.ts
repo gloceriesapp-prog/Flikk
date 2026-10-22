@@ -33,6 +33,11 @@ describe('payment preference', () => {
   it('accepts supported methods and never stores an arbitrary app or VPA', () => {
     expect(normalizePaymentPreference('upi_app:gpay')).toBe('upi_app:gpay');
     expect(normalizePaymentPreference('upi_id')).toBeNull();
+    expect(normalizePaymentPreference('wallet:mobikwik')).toBe('wallet:mobikwik');
+    expect(normalizePaymentPreference('wallet:olamoney')).toBe('wallet:olamoney');
+    expect(normalizePaymentPreference('wallet:payzapp')).toBeNull();
+    expect(normalizePaymentPreference('paylater:getsimpl')).toBeNull();
+    expect(normalizePaymentPreference('paylater:bad/code')).toBeNull();
     expect(normalizePaymentPreference('upi_app:amazonpay')).toBe('upi_app:amazonpay');
     expect(normalizePaymentPreference('upi_app:unknown')).toBeNull();
     expect(normalizePaymentPreference('name@bank')).toBeNull();

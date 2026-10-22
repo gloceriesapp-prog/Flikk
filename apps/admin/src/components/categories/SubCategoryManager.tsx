@@ -16,7 +16,7 @@
 // enough to warrant its own bucket).
 
 import { useCallback, useEffect, useState } from 'react';
-import { Image as ImageIcon, Plus, X } from 'lucide-react';
+import { Image as ImageIcon, Plus, X } from '@/components/icons';
 import { fetchSubCategories, type SubCategory } from '@/lib/supabase/subcategories';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 

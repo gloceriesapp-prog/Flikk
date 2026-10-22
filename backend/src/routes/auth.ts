@@ -1,7 +1,7 @@
 import { resolveStoreAccess } from '../stores/access.js';
 import { authBudget } from '../customer-experience/authBudget.js';
 // Shared across all 4 apps. Source: specs/00-foundation/auth-and-roles.md
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import { supabase, supabaseAuth } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { normalizePhone, phoneVariants } from '../lib/phone.js';
@@ -18,9 +18,9 @@ export const authRouter = Router();
 // is the permanent identity, so a pending rider (role still 'customer') can no
 // longer also sign into the customer/partner app. LOGIN_TEST_OTPS numbers skip
 // the pin so one number can test every app; admin can change account_type.
-type AppKind = 'customer' | 'rider' | 'partner';
+type AppKind = 'customer' | 'rider' | 'partner' | 'partner_dashboard';
 type AccountType = 'customer' | 'rider' | 'store_owner';
-const APP_TO_ACCOUNT_TYPE: Record<AppKind, AccountType> = { customer: 'customer', rider: 'rider', partner: 'store_owner' };
+const APP_TO_ACCOUNT_TYPE: Record<AppKind, AccountType> = { customer: 'customer', rider: 'rider', partner: 'store_owner', partner_dashboard: 'store_owner' };
 const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { customer: 'Customer', rider: 'Rider', store_owner: 'Partner' };
 const wantedAccountType = (app: unknown): AccountType | undefined =>
   typeof app === 'string' && app in APP_TO_ACCOUNT_TYPE ? APP_TO_ACCOUNT_TYPE[app as AppKind] : undefined;
@@ -35,15 +35,26 @@ async function pinnedAccountType(canonical: string): Promise<AccountType | null>
   return (data?.account_type as AccountType | undefined) ?? null;
 }
 
+// Dashboard is sign-in only. An application/account_type pin is not a partner role.
+const partnerDashboardDenied = () => new AppError(403, 'PARTNER_LOGIN_REQUIRED', 'Sign in with a registered partner phone number.');
+async function requireDashboardPartner(canonical: string): Promise<string> {
+  const { data, error } = await supabase.from('users').select('id, role')
+    .in('phone', phoneVariants(canonical)).maybeSingle();
+  if (error) throw new AppError(503, 'PARTNER_LOGIN_UNAVAILABLE', 'Could not check your partner account. Please try again.');
+  if (!data || data.role !== 'store_owner') throw partnerDashboardDenied();
+  return data.id;
+}
+
 // Supabase Auth refuses a banned user (admin customer Block → ban_duration)
 // with code 'user_banned'. Say so plainly instead of "invalid code".
 const isBanned = (error: unknown) => (error as { code?: string } | null)?.code === 'user_banned';
 const accountBlocked = () => new AppError(403, 'ACCOUNT_BLOCKED', 'This account has been blocked. Contact Gloceries support.');
 
-authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
+const requestOtpHandler: RequestHandler = async (req, res, next) => {
   try {
     const { phone, app } = req.body as { phone?: string; app?: string };
     const canonical = normalizePhone(phone); // +91… — throws on a bad number
+    if (app === 'partner_dashboard') await requireDashboardPartner(canonical);
     if (await isPhoneBanned(canonical)) throw accountBlocked();
     // Reject a cross-app number before spending an SMS. A brand-new number has
     // no pin yet and claims it at verify. Test numbers skip the pin.
@@ -59,20 +70,34 @@ authRouter.post('/otp/request', authBudget('send'), async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+// Fixed server-side context: a caller cannot turn dashboard sign-in into signup.
+function dashboardOnly(handler: RequestHandler): RequestHandler {
+  return (req, res, next) => {
+    req.body = { ...req.body, app: 'partner_dashboard' };
+    return handler(req, res, next);
+  };
+}
+authRouter.post('/otp/request', authBudget('send'), requestOtpHandler);
+authRouter.post('/partner-dashboard/otp/request', authBudget('send'), dashboardOnly(requestOtpHandler));
+
+// Retained for existing dashboard clients; the send/verify routes also enforce
+// the role themselves, so skipping this preflight cannot bypass the restriction.
+authRouter.post('/otp/partner-check', authBudget('partner-check'), async (req, res, next) => {
+  try {
+    await requireDashboardPartner(normalizePhone(req.body?.phone));
+    res.json({ registered: true });
+  } catch (err) { next(err); }
 });
 
-// Never reveal registration/role before phone ownership has been verified.
-// Partner login performs its actual role check after successful OTP verification.
-authRouter.post('/otp/partner-check', authBudget('partner-check'), (_req, res) => {
-  res.json({ registered: true });
-});
-
-authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
+const verifyOtpHandler: RequestHandler = async (req, res, next) => {
   try {
     const { phone, code, app } = req.body as { phone?: string; code?: string; app?: string };
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
     const canonical = normalizePhone(phone);
     if (!checkLoginOtp(canonical, code)) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
+    const dashboardPartnerId = app === 'partner_dashboard' ? await requireDashboardPartner(canonical) : null;
 
     // One phone, one app: reject a number pinned to a DIFFERENT app before we
     // mint a session for it. A brand-new number has no pin and claims it on
@@ -87,15 +112,14 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
     const { data, error } = await sessionForVerifiedPhone(canonical);
     if (isBanned(error)) throw accountBlocked();
     if (error || !data.session) throw new AppError(500, 'SIGN_IN_FAILED', 'We couldn’t sign you in. Please try again.');
-    // Only now is the code used up: a failed sign-in above leaves it valid.
-    consumeLoginOtp(canonical);
-
     const userId = data.session.user.id;
+    if (dashboardPartnerId && dashboardPartnerId !== userId) throw partnerDashboardDenied();
     // Same lazy-provisioning as requireAuth (see that file's own note) —
     // verify is the very first authenticated call for a brand-new phone
     // number, so no public.users row exists yet either. A new row claims its
     // account_type pin from the app it signed in through (default customer).
     let { data: userRow } = await supabase.from('users').select('is_approved, role, account_type').eq('id', userId).single();
+    if (!userRow && app === 'partner_dashboard') throw partnerDashboardDenied();
     if (!userRow) {
       const { data: created } = await supabase
         .from('users')
@@ -104,6 +128,9 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
         .single();
       userRow = created;
     }
+    if (app === 'partner_dashboard' && userRow?.role !== 'store_owner') throw partnerDashboardDenied();
+    // Failed sign-in/role checks leave the code available for a valid retry.
+    consumeLoginOtp(canonical);
     const { count } = await supabase.from('stores').select('id', { count: 'exact', head: true }).eq('owner_user_id', userId);
     // A real `stores` row only ever exists post-approval now (see
     // storeOnboarding.ts's own note) — a returning applicant with no store
@@ -147,7 +174,10 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+};
+
+authRouter.post('/otp/verify', authBudget('verify'), verifyOtpHandler);
+authRouter.post('/partner-dashboard/otp/verify', authBudget('verify'), dashboardOnly(verifyOtpHandler));
 
 // Exchanges a still-valid refresh token for a new access/refresh pair —
 // called by an app's own api client the moment any authenticated request
@@ -159,11 +189,21 @@ authRouter.post('/otp/verify', authBudget('verify'), async (req, res, next) => {
 authRouter.post('/refresh', authBudget('refresh'), async (req, res, next) => {
   try {
     const { refresh_token } = req.body as { refresh_token?: string };
-    if (!refresh_token) throw new AppError(400, 'MISSING_REFRESH_TOKEN', 'refresh_token is required.');
+    if (typeof refresh_token !== 'string' || !refresh_token.trim()) throw new AppError(400, 'MISSING_REFRESH_TOKEN', 'refresh_token is required.');
 
     const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token });
     if (isBanned(error)) throw accountBlocked();
-    if (error || !data.session) throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'Session could not be refreshed.');
+    if (error) {
+      // A provider outage or rate limit is retryable. Reporting it as 401
+      // would make mobile clients delete an otherwise valid saved session.
+      const invalidCodes = new Set(['refresh_token_not_found', 'refresh_token_already_used',
+        'session_not_found', 'session_expired', 'user_not_found', 'invalid_credentials']);
+      if (error.code && invalidCodes.has(error.code)) {
+        throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'Session could not be refreshed.');
+      }
+      throw new AppError(error.status === 429 ? 429 : 503, 'REFRESH_UNAVAILABLE', 'Could not refresh your session. Please try again.');
+    }
+    if (!data.session) throw new AppError(503, 'REFRESH_UNAVAILABLE', 'Could not refresh your session. Please try again.');
 
     res.status(200).json({
       access_token: data.session.access_token,

@@ -60,6 +60,13 @@ describe('backend checkout eligibility', () => {
     }
     expect(check([product], [store], address, new Set()).eligible).toBe(false);
   });
+  it('blocks a closed-shop draft and accepts the same items only after reopening with stock', () => {
+    const closed = check([product], [{ ...store, is_active: false }]);
+    expect(closed.eligible).toBe(false);
+    expect(closed.lines[0]).toMatchObject({ status: 'STORE_CLOSED', eligible: false, availableQuantity: 3 });
+    expect(check().eligible).toBe(true);
+    expect(check([{ ...product, stock_quantity: 0 }]).eligible).toBe(false);
+  });
   it('checks every shop against the owned saved address and its own radius', () => {
     const result = checkoutAvailability([...items, { product_id: 'fruit', quantity: 1 }], [product, { ...product, id: 'fruit', store_id: 'far' }],
       [store, { ...store, id: 'far', lat: 0, lng: 0 }], address, new Set(['zone']), noon);

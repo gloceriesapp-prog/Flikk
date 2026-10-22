@@ -7,7 +7,7 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Store, User } from 'lucide-react';
+import { ArrowLeft, Store, User } from '@/components/icons';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { privateDocUrls } from '@/lib/supabase/privateDocUrl';
 import { requireAdminPage } from '@/lib/auth/requireAdminPage';

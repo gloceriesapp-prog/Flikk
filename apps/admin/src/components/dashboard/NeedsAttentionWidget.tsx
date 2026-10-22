@@ -13,7 +13,7 @@
 // fake list that never matched what the real Orders page showed.
 
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowRight } from '@/components/icons';
 import Link from 'next/link';
 import clsx from 'clsx';
 import { Card } from '@/components/ui/Card';

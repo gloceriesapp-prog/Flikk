@@ -1,21 +1,6 @@
-// India-only phone entry (single launch zone, CLAUDE.md) — +91 prefix
-// fixed, not editable (the chevron is decorative, not a real country
-// picker). Same notched-outline shape as apps/customer's own PhoneInput.tsx
-// — per an explicit ask to match the login flow's UI exactly across both
-// apps, not just keep a similar-but-drifted copy.
-//
-// Notched-outline label — "Your Phone Number" sits ON the top border, not
-// floating separately above the box. Border is thin, gray at rest, black
-// once focused (isFocused state below).
-//
-// rounded-[13px], not a `rounded-button` theme key — customer's own
-// tailwind.config.js defines that as a borderRadius extension partner's
-// config doesn't have; the literal value matches exactly without adding a
-// new theme key for one component.
-
-import { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
-import { colors } from '../theme/tokens';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AEONIK } from '../theme/fonts';
 
 interface Props {
   value: string;
@@ -23,35 +8,57 @@ interface Props {
   autoFocus?: boolean;
 }
 
+// India is the fixed launch country; tapping the prefix focuses phone entry.
 export function PhoneInput({ value, onChangeText, autoFocus }: Props) {
+  const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);
 
   return (
-    <View className="relative mt-2.5">
-      <View
-        className="h-[52px] flex-row items-center rounded-[13px] border px-4"
-        style={{ borderColor: isFocused ? colors.ink : '#D1D5DB' }}
-      >
-        <Text className="pr-1.5 text-base font-medium text-ink">🇮🇳 +91</Text>
-        <View className="mx-3 h-6 w-px bg-slate-200" />
+    <View style={styles.field}>
+      <Text style={styles.label} nativeID="partner-phone-label">Phone Number</Text>
+      <View style={[styles.row, { borderBottomColor: isFocused ? '#2457F5' : '#CBD5E1' }]}>
+        <Pressable
+          onPress={() => inputRef.current?.focus()}
+          accessibilityRole="button"
+          accessibilityLabel="India, fixed country code plus 91. Enter phone number"
+          hitSlop={6}
+          style={styles.prefix}
+        >
+          <Text style={styles.flag} accessible={false}>🇮🇳</Text>
+          <Text style={styles.countryCode}>+91</Text>
+        </Pressable>
+        <View style={styles.divider} />
         <TextInput
+          ref={inputRef}
           value={value}
           onChangeText={(text) => onChangeText(text.replace(/[^0-9]/g, '').slice(0, 10))}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder="We'll send an OTP to verify"
-          placeholderTextColor="#9AA5A3"
+          accessibilityLabel="Phone number"
+          accessibilityLabelledBy="partner-phone-label"
           keyboardType="number-pad"
+          textContentType="telephoneNumber"
+          autoComplete="tel-national"
+          autoCorrect={false}
           maxLength={10}
           autoFocus={autoFocus}
           textAlignVertical="center"
-          className="h-full flex-1 py-0 text-base leading-tight text-ink"
+          selectionColor="#2457F5"
+          underlineColorAndroid="transparent"
+          style={styles.input}
         />
-      </View>
-
-      <View style={{ position: 'absolute', top: -10, left: 12, backgroundColor: '#FFFFFF', paddingHorizontal: 4 }}>
-        <Text style={{ fontSize: 12, fontWeight: '500', color: `${colors.ink}80` }}>Your Phone Number</Text>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  field: { width: '100%', paddingHorizontal: 0, paddingTop: 8, paddingBottom: 8, backgroundColor: '#FFFFFF' },
+  label: { fontFamily: AEONIK.medium, fontSize: 12, lineHeight: 16, color: '#7B8493' },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 35, paddingBottom: 3, borderBottomWidth: 1.5 },
+  prefix: { flexDirection: 'row', gap: 7, minHeight: 32, justifyContent: 'center', alignItems: 'center', paddingRight: 10 },
+  flag: { fontSize: 15, lineHeight: 22 },
+  countryCode: { fontFamily: AEONIK.semiBold, fontSize: 14, lineHeight: 22, color: '#202124' },
+  divider: { width: 1, height: 16, backgroundColor: '#AAB5C5', marginRight: 10 },
+  input: { flex: 1, minWidth: 0, height: 32, paddingHorizontal: 0, paddingVertical: 0, fontFamily: AEONIK.medium, fontSize: 14, color: '#202124' },
+});

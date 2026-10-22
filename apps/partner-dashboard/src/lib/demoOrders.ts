@@ -13,22 +13,22 @@ function daysAgo(d: number): string {
   return hoursAgo(d * 24);
 }
 
-const MILK: PartnerOrder['order_items'][number]['products'] = { name: 'Amul Fresh Milk 500ml', unit: '500ml', image_url: null };
-const BREAD: PartnerOrder['order_items'][number]['products'] = { name: 'Britannia Bread', unit: '400g', image_url: null };
-const SALT: PartnerOrder['order_items'][number]['products'] = { name: 'Tata Salt 1kg', unit: '1kg', image_url: null };
-const MAGGI: PartnerOrder['order_items'][number]['products'] = { name: 'Maggi Noodles 2-pack', unit: '2-pack', image_url: null };
-const TEA: PartnerOrder['order_items'][number]['products'] = { name: 'Red Label Tea 250g', unit: '250g', image_url: null };
-const ATTA: PartnerOrder['order_items'][number]['products'] = { name: 'Aashirvaad Atta 5kg', unit: '5kg', image_url: null };
+const MILK: PartnerOrder['order_items'][number]['products'] = { name: 'Amul Fresh Milk 500ml', unit: '500ml', image_url: '/demo-products/dairy.png' };
+const BREAD: PartnerOrder['order_items'][number]['products'] = { name: 'Britannia Bread', unit: '400g', image_url: '/demo-products/bread.jpg' };
+const SALT: PartnerOrder['order_items'][number]['products'] = { name: 'Tata Salt 1kg', unit: '1kg', image_url: '/demo-products/staples.png' };
+const MAGGI: PartnerOrder['order_items'][number]['products'] = { name: 'Maggi Noodles 2-pack', unit: '2-pack', image_url: '/demo-products/snacks.jpg' };
+const TEA: PartnerOrder['order_items'][number]['products'] = { name: 'Red Label Tea 250g', unit: '250g', image_url: '/demo-products/tea.jpg' };
+const ATTA: PartnerOrder['order_items'][number]['products'] = { name: 'Aashirvaad Atta 5kg', unit: '5kg', image_url: '/demo-products/staples.png' };
 
 export const DEMO_ORDERS: PartnerOrder[] = [
   {
     id: 'demo-order-1',
     order_number: 'FLK-1042',
     status: 'placed',
-    item_total: 265,
+    item_total: 358,
     delivery_fee: 20,
-    commission_amount: 27,
-    total: 285,
+    commission_amount: 35.8,
+    total: 378,
     provider_payment_id: 'demo_pay_1',
     placed_at: hoursAgo(0.3),
     packed_at: null,
@@ -36,7 +36,9 @@ export const DEMO_ORDERS: PartnerOrder[] = [
     delivered_at: null,
     order_items: [
       { id: 'demo-item-1a', product_id: 'demo-p-milk', quantity: 2, unit_price_at_order: 58, products: MILK },
-      { id: 'demo-item-1b', product_id: 'demo-p-bread', quantity: 3, unit_price_at_order: 49.67, products: BREAD },
+      { id: 'demo-item-1b', product_id: 'demo-p-bread', quantity: 2, unit_price_at_order: 45, products: BREAD },
+      { id: 'demo-item-1c', product_id: 'demo-p-salt', quantity: 1, unit_price_at_order: 22, products: SALT },
+      { id: 'demo-item-1d', product_id: 'demo-p-tea', quantity: 1, unit_price_at_order: 130, products: TEA },
     ],
     users: { name: 'Aditi Rao', phone: '+91 98450 12345' },
     addresses: { line1: '4th Cross, Kaup', landmark: 'Near bus stand', recipient_name: 'Aditi Rao' },
@@ -45,16 +47,21 @@ export const DEMO_ORDERS: PartnerOrder[] = [
     id: 'demo-order-2',
     order_number: 'FLK-1043',
     status: 'placed',
-    item_total: 150,
+    item_total: 537,
     delivery_fee: 20,
-    commission_amount: 15,
-    total: 170,
+    commission_amount: 53.7,
+    total: 557,
     provider_payment_id: null,
     placed_at: hoursAgo(1.1),
     packed_at: null,
     picked_up_at: null,
     delivered_at: null,
-    order_items: [{ id: 'demo-item-2a', product_id: 'demo-p-maggi', quantity: 5, unit_price_at_order: 30, products: MAGGI }],
+    order_items: [
+      { id: 'demo-item-2a', product_id: 'demo-p-maggi', quantity: 5, unit_price_at_order: 30, products: MAGGI },
+      { id: 'demo-item-2b', product_id: 'demo-p-milk', quantity: 1, unit_price_at_order: 58, products: MILK },
+      { id: 'demo-item-2c', product_id: 'demo-p-salt', quantity: 2, unit_price_at_order: 22, products: SALT },
+      { id: 'demo-item-2d', product_id: 'demo-p-atta', quantity: 1, unit_price_at_order: 285, products: ATTA },
+    ],
     users: { name: 'Suresh Poojary', phone: '+91 99001 22334' },
     addresses: { line1: 'Temple Road, Kaup', landmark: null, recipient_name: 'Suresh Poojary' },
   },

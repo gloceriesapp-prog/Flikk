@@ -1,0 +1,470 @@
+{
+  "AlarmClock": {
+    "name": "Alarm classic",
+    "style": "Light",
+    "file": "alarm-classic.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "AlertCircle": {
+    "name": "Danger Circle",
+    "style": "Light",
+    "file": "danger-circle.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "AlertTriangle": {
+    "name": "Danger Triangle",
+    "style": "Light",
+    "file": "danger-triangle.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ArrowBigUp": {
+    "name": "Arrow - Up",
+    "style": "Light",
+    "file": "arrow-up.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ArrowDown": {
+    "name": "Arrow - Down",
+    "style": "Light",
+    "file": "arrow-down.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ArrowLeft": {
+    "name": "Arrow - Left",
+    "style": "Light",
+    "file": "arrow-left.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ArrowRight": {
+    "name": "Arrow - Right",
+    "style": "Light",
+    "file": "arrow-right.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ArrowUp": {
+    "name": "Arrow - Up",
+    "style": "Light",
+    "file": "arrow-up.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Banknote": {
+    "name": "Money paper total",
+    "style": "Light",
+    "file": "money-paper-total.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Bell": {
+    "name": "Notification",
+    "style": "Light",
+    "file": "notification.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Bike": {
+    "name": "Post motor",
+    "style": "Light",
+    "file": "post-motor.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Boxes": {
+    "name": "Delivery Boxes 2",
+    "style": "Light",
+    "file": "delivery-boxes-2.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Camera": {
+    "name": "Camera",
+    "style": "Light",
+    "file": "camera.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Check": {
+    "name": "Tick Square",
+    "style": "Light",
+    "file": "tick-square.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "CheckCircle2": {
+    "name": "Tick Square",
+    "style": "Light",
+    "file": "tick-square.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ChevronDown": {
+    "name": "Arrow - Down 2",
+    "style": "Light",
+    "file": "arrow-down-2.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ChevronLeft": {
+    "name": "Arrow - Left 2",
+    "style": "Light",
+    "file": "arrow-left-2.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ChevronRight": {
+    "name": "Arrow - Right 2",
+    "style": "Light",
+    "file": "arrow-right-2.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Clock": {
+    "name": "Time Circle",
+    "style": "Light",
+    "file": "time-circle.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Coins": {
+    "name": "Coins 1",
+    "style": "Light",
+    "file": "coins-1.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Copy": {
+    "name": "Copy 1",
+    "style": "Light",
+    "file": "copy-1.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "CreditCard": {
+    "name": "Bank Card",
+    "style": "Light",
+    "file": "bank-card.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Crown": {
+    "name": "King",
+    "style": "Light",
+    "file": "king.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Download": {
+    "name": "Paper Download",
+    "style": "Light",
+    "file": "paper-download.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ExternalLink": {
+    "name": "External link",
+    "style": "Light",
+    "file": "external-link.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "FileImage": {
+    "name": "Image",
+    "style": "Light",
+    "file": "image.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "FileText": {
+    "name": "Paper",
+    "style": "Light",
+    "file": "paper.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Gift": {
+    "name": "Gift",
+    "style": "Light",
+    "file": "gift.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "HandCoins": {
+    "name": "Charity coins",
+    "style": "Light",
+    "file": "charity-coins.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "HelpCircle": {
+    "name": "question mark circle",
+    "style": "Light",
+    "file": "question-mark-circle.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Home": {
+    "name": "Home",
+    "style": "Light",
+    "file": "home.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Image": {
+    "name": "Image",
+    "style": "Light",
+    "file": "image.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ImageIcon": {
+    "name": "Image",
+    "style": "Light",
+    "file": "image.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ImagePlus": {
+    "name": "Image 2",
+    "style": "Light",
+    "file": "image-2.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "IndianRupee": {
+    "name": "rupee",
+    "style": "Light",
+    "file": "rupee.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "LayoutDashboard": {
+    "name": "Chart",
+    "style": "Light",
+    "file": "chart.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "LayoutGrid": {
+    "name": "Category",
+    "style": "Light",
+    "file": "category.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Loader2": {
+    "name": "Loading circle-1",
+    "style": "Light",
+    "file": "loading-circle-1.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "LogOut": {
+    "name": "Logout",
+    "style": "Light",
+    "file": "logout.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Map": {
+    "name": "Map",
+    "style": "Light",
+    "file": "map.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "MapPin": {
+    "name": "Location",
+    "style": "Light",
+    "file": "location.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Megaphone": {
+    "name": "Speaker megaphone",
+    "style": "Light",
+    "file": "speaker-megaphone.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "MoreHorizontal": {
+    "name": "More Circle",
+    "style": "Light",
+    "file": "more-circle.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Package": {
+    "name": "Delivery Box 1",
+    "style": "Light",
+    "file": "delivery-box-1.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "PackageSearch": {
+    "name": "Delivery Search",
+    "style": "Light",
+    "file": "delivery-search.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "PackageX": {
+    "name": "Delivery close",
+    "style": "Light",
+    "file": "delivery-close.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "PanelLeftClose": {
+    "name": "Sidebar close",
+    "style": "Light",
+    "file": "sidebar-close.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "PanelLeftOpen": {
+    "name": "Sidebar Open",
+    "style": "Light",
+    "file": "sidebar-open.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "PartyPopper": {
+    "name": "Party",
+    "style": "Light",
+    "file": "party.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Pencil": {
+    "name": "Edit",
+    "style": "Light",
+    "file": "edit.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Phone": {
+    "name": "Call",
+    "style": "Light",
+    "file": "call.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Plus": {
+    "name": "Plus 1",
+    "style": "Light",
+    "file": "plus-1.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Rocket": {
+    "name": "Rocket space",
+    "style": "Light",
+    "file": "rocket-space.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "RotateCcw": {
+    "name": "Delivery Refresh",
+    "style": "Light",
+    "file": "delivery-refresh.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Route": {
+    "name": "Journey",
+    "style": "Light",
+    "file": "journey.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Save": {
+    "name": "floppy disk save",
+    "style": "Light",
+    "file": "floppy-disk-save.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Search": {
+    "name": "Search",
+    "style": "Light",
+    "file": "search.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Send": {
+    "name": "Send",
+    "style": "Light",
+    "file": "send.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Settings": {
+    "name": "Setting",
+    "style": "Light",
+    "file": "setting.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "ShieldAlert": {
+    "name": "Shield Fail",
+    "style": "Light",
+    "file": "shield-fail.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "SlidersHorizontal": {
+    "name": "Filter",
+    "style": "Light",
+    "file": "filter.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Snowflake": {
+    "name": "Snow",
+    "style": "Light",
+    "file": "snow.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Sparkles": {
+    "name": "sparkling",
+    "style": "Light",
+    "file": "sparkling.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Star": {
+    "name": "Star",
+    "style": "Light",
+    "file": "star.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Store": {
+    "name": "Store",
+    "style": "Light",
+    "file": "store.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Tag": {
+    "name": "Discount",
+    "style": "Light",
+    "file": "discount.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Ticket": {
+    "name": "Ticket",
+    "style": "Light",
+    "file": "ticket.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Timer": {
+    "name": "Time Circle",
+    "style": "Light",
+    "file": "time-circle.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Trash2": {
+    "name": "Delete",
+    "style": "Light",
+    "file": "delete.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "TrendingDown": {
+    "name": "Line chart Trend down",
+    "style": "Light",
+    "file": "line-chart-trend-down.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "TrendingUp": {
+    "name": "Line chart Trend up",
+    "style": "Light",
+    "file": "line-chart-trend-up.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Truck": {
+    "name": "Truck 1",
+    "style": "Light",
+    "file": "truck-1.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "User": {
+    "name": "Profile",
+    "style": "Light",
+    "file": "profile.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "UserCheck": {
+    "name": "User checked",
+    "style": "Light",
+    "file": "user-checked.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "UserX": {
+    "name": "User delete",
+    "style": "Light",
+    "file": "user-delete.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Users": {
+    "name": "2 User",
+    "style": "Light",
+    "file": "2-user.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "Wallet": {
+    "name": "Wallet",
+    "style": "Light",
+    "file": "wallet.svg",
+    "source": "https://web.iconly.pro/"
+  },
+  "X": {
+    "name": "Close remove",
+    "style": "Light",
+    "file": "close-remove.svg",
+    "source": "https://web.iconly.pro/"
+  }
+}

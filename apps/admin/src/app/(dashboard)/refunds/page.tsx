@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, RotateCcw } from 'lucide-react';
+import { ExternalLink, RotateCcw } from '@/components/icons';
 import clsx from 'clsx';
 import type { RefundOrder } from '@/app/api/refunds/route';
 import type { TripRefundRow } from '@/app/api/refunds/trips/route';

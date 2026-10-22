@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Check, ChevronDown, Image as ImageIcon, IndianRupee, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { Check, ChevronDown, Image as ImageIcon, IndianRupee, Pencil, Plus, Search, Trash2, X } from '@/components/icons';
 import clsx from 'clsx';
 import { formatNumber } from '@/lib/format';
 import type { NewProductInput, Product, StockStatus } from '@/lib/types';

@@ -1,74 +1,17 @@
 'use client';
 
-import { Camera, Package, Pencil } from 'lucide-react';
+import { Camera, Package, Pencil, Star } from 'lucide-react';
 import clsx from 'clsx';
-import type { PartnerProduct, StockStatus } from '@/lib/partnerApi';
-import { deriveStockStatus } from '@/lib/partnerApi';
+import type { PartnerProduct } from '@/lib/partnerApi';
+import { ProductPerformance } from './ProductPerformance';
+import { ProductStockCell } from './ProductStockCell';
 import { formatInr, formatVariantSize } from '@/lib/format';
-import { BUTTON } from './DataStates';
+import { ProductRowActions } from './ProductRowActions';
 
 // minmax(0,…) not bare fr: each row is its own grid sharing this string, and
 // a bare fr track (min-width:auto) lets an overflowing cell widen its column,
 // drifting cells row-to-row. minmax(0,…) pins every track.
-const COLUMNS = 'minmax(0,2fr) minmax(0,0.9fr) minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1fr) 88px';
-
-// Three-level stock, driven by the REAL stock_status enum (falls back to the
-// is_in_stock bool for older rows that predate the enum).
-const STOCK: Record<StockStatus, { label: string; text: string; bar: string }> = {
-  in_stock: { label: 'In stock', text: 'text-emerald-600', bar: 'bg-emerald-500' },
-  low_stock: { label: 'Low stock', text: 'text-amber-600', bar: 'bg-amber-400' },
-  out_of_stock: { label: 'Out of stock', text: 'text-red-600', bar: 'bg-red-500' },
-};
-const STOCK_FULL_SCALE = 44; // nominal "full shelf" the bar fills against
-
-// Legacy fallback only. A real stock_quantity is now the source of truth
-// (partner types it, status derives from it) — but rows created before the
-// migration read 0 here while still flagged in_stock, which isn't a real
-// "0 on hand". For exactly that pairing we show a cosmetic count instead of
-// a wrong "0": deterministic by id (stable across renders, not random),
-// bucketed by status so the number always agrees with the label.
-function cosmeticStock(product: PartnerProduct, status: StockStatus): number {
-  if (status === 'out_of_stock') return 0;
-  let h = 0;
-  for (const c of product.id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return status === 'low_stock' ? 2 + (h % 6) : 24 + (h % 56);
-}
-
-// A stored 0 while the row isn't out_of_stock is a legacy row the migration
-// defaulted, never a real count the partner typed — real 0 always carries
-// out_of_stock status (deriveStockStatus). Treat that one pairing as "not set".
-function hasRealQuantity(product: PartnerProduct): boolean {
-  const q = product.stock_quantity;
-  if (q == null) return false;
-  return !(q === 0 && product.stock_status !== 'out_of_stock');
-}
-
-function stockFor(product: PartnerProduct) {
-  const real = hasRealQuantity(product);
-  // When a real count exists, status is derived from it so the number and
-  // label can never disagree; otherwise fall back to the stored/legacy status.
-  const status: StockStatus = real
-    ? deriveStockStatus(product.stock_quantity as number)
-    : product.stock_status ?? (product.is_in_stock ? 'in_stock' : 'out_of_stock');
-  const count = real ? (product.stock_quantity as number) : cosmeticStock(product, status);
-  return { status, count, fill: Math.min(100, Math.round((count / STOCK_FULL_SCALE) * 100)) };
-}
-
-function StockCell({ product }: { product: PartnerProduct }) {
-  const { status, count, fill } = stockFor(product);
-  const cfg = STOCK[status];
-  return (
-    <div className="flex w-full min-w-0 flex-col gap-1.5">
-      <div className="flex items-baseline gap-1.5">
-        <span className="tnum text-[15px] font-semibold text-ink">{count}</span>
-        <span className={`text-xs font-semibold ${cfg.text}`}>{cfg.label}</span>
-      </div>
-      <div className="h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-slate-100">
-        <div className={`h-full rounded-full ${cfg.bar}`} style={{ width: `${Math.max(fill, status === 'out_of_stock' ? 0 : 4)}%` }} />
-      </div>
-    </div>
-  );
-}
+const COLUMNS = '64px minmax(220px,2fr) minmax(140px,1fr) minmax(100px,0.8fr) minmax(150px,1.2fr) minmax(175px,1.2fr) 128px 150px';
 
 // Every size a product comes in renders inside this ONE row — a product
 // with a 500 g and a 1 kg variant is one Onion row showing both prices,
@@ -99,7 +42,7 @@ function VariantPrices({ product }: { product: PartnerProduct }) {
       {sorted.map((v) => (
         <span
           key={v.id}
-          className="inline-flex items-baseline gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs whitespace-nowrap text-slate-500"
+          className="inline-flex items-baseline gap-1.5 rounded-xl bg-slate-100 px-2.5 py-1.5 text-xs whitespace-nowrap text-slate-500"
         >
           <span className="font-medium text-slate-600">{formatVariantSize(v.quantity, v.unit_type)}</span>
           <span className="tnum font-semibold text-ink">{formatInr(v.price)}</span>
@@ -123,14 +66,18 @@ function VegMark({ isVeg }: { isVeg: boolean }) {
   );
 }
 
-const PILL = 'inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap';
+const STATUS_TEXT = 'inline-flex max-w-full items-start gap-1.5 text-xs font-semibold leading-5';
 
 function ApprovalBadge({ status }: { status: PartnerProduct['approval_status'] }) {
-  if (status === 'pending') return <span className={clsx(PILL, 'bg-amber-50 text-amber-700')}>Pending approval</span>;
-  if (status === 'rejected') return <span className={clsx(PILL, 'bg-red-50 text-red-600')}>Rejected</span>;
+  const presentation = status === 'pending'
+    ? { label: 'Pending approval', text: 'text-amber-700', dot: 'bg-amber-500' }
+    : status === 'rejected'
+      ? { label: 'Rejected', text: 'text-red-600', dot: 'bg-red-600' }
+      : { label: 'Live', text: 'text-emerald-700', dot: 'bg-emerald-500' };
   return (
-    <span className={clsx(PILL, 'bg-emerald-50 text-emerald-700')}>
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live
+    <span className={clsx(STATUS_TEXT, presentation.text)}>
+      <span aria-hidden className={clsx('mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full', presentation.dot)} />
+      <span>{presentation.label}</span>
     </span>
   );
 }
@@ -142,20 +89,20 @@ function ReviewFlags({ product }: { product: PartnerProduct }) {
   return (
     <>
       {product.pending_image_url && (
-        <span className={clsx(PILL, 'bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700')}>
-          <Camera size={11} /> Photo in review
+        <span className={clsx(STATUS_TEXT, 'text-amber-700')}>
+          <Camera size={13} className="mt-1 shrink-0" aria-hidden /><span>Photo in review</span>
         </span>
       )}
       {product.pending_changes && (
-        <span className={clsx(PILL, 'bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700')}>
-          <Pencil size={11} /> Edits in review
+        <span className={clsx(STATUS_TEXT, 'text-amber-700')}>
+          <Pencil size={13} className="mt-1 shrink-0" aria-hidden /><span>Edits in review</span>
         </span>
       )}
     </>
   );
 }
 
-// Product photo, or a tidy soft-blue tile with a package glyph when there
+// Product photo, or a neutral gray tile with a package glyph when there
 // isn't one yet (most kirana rows start without a photo).
 export function ProductThumb({ src, size = 'md' }: { src: string | null; size?: 'md' | 'lg' }) {
   const box = size === 'lg' ? 'h-14 w-14 rounded-2xl' : 'h-11 w-11 rounded-xl';
@@ -164,7 +111,7 @@ export function ProductThumb({ src, size = 'md' }: { src: string | null; size?: 
     return <img src={src} alt="" className={clsx(box, 'shrink-0 bg-slate-100 object-cover')} />;
   }
   return (
-    <span className={clsx(box, 'flex shrink-0 items-center justify-center bg-accent-soft text-accent/60')}>
+    <span className={clsx(box, 'flex shrink-0 items-center justify-center bg-gray-100 text-gray-500')}>
       <Package size={size === 'lg' ? 22 : 19} strokeWidth={1.75} />
     </span>
   );
@@ -175,10 +122,14 @@ function ProductName({ product }: { product: PartnerProduct }) {
     <div className="min-w-0">
       <div className="flex min-w-0 items-center gap-1.5">
         <VegMark isVeg={product.is_veg} />
-        <p className="truncate text-[15px] font-medium text-ink" title={product.name}>
+        <p className="truncate text-[15px] font-semibold text-gray-950" title={product.name}>
           {product.name}
         </p>
       </div>
+      <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+        Review: <span className="ml-0.5 font-semibold text-gray-950">{product.inventory_metrics?.rating != null ? product.inventory_metrics.rating.toFixed(1) : '—'}</span>
+        <Star size={12} fill="currentColor" className="text-gray-950" aria-hidden />
+      </p>
       {product.freshness_tag && <p className="mt-0.5 truncate text-xs text-slate-400">{product.freshness_tag}</p>}
     </div>
   );
@@ -187,57 +138,60 @@ function ProductName({ product }: { product: PartnerProduct }) {
 interface Props {
   products: PartnerProduct[];
   onEdit: (product: PartnerProduct) => void;
+  onDelete: (product: PartnerProduct) => void;
 }
 
 // Rows only — the page wraps this in its Card (with the filter bar above) and
 // owns the empty / loading / error states.
-export function InventoryTable({ products, onEdit }: Props) {
+export function InventoryTable({ products, onEdit, onDelete }: Props) {
   return (
     <>
       {/* ≥ md: a roomy grid table */}
       <div className="hidden md:block">
         <div className="overflow-x-auto">
-          <div className="min-w-[860px]">
+          <div className="min-w-[1180px]">
             <div
-              className="grid items-center border-y border-slate-100 bg-slate-50/70 text-[13px] font-medium text-slate-500"
+              className="grid items-stretch divide-x divide-gray-200 border-b border-gray-200 bg-gray-50 text-[14px] font-semibold text-gray-900"
               style={{ gridTemplateColumns: COLUMNS }}
             >
+              <span className="px-3 py-3 text-center">Sl no.</span>
               <span className="px-5 py-3">Product</span>
+              <span className="px-4 py-3">Performance</span>
               <span className="px-4 py-3">Category</span>
               <span className="px-4 py-3">Sizes & price</span>
               <span className="px-4 py-3">Stock</span>
               <span className="px-4 py-3">Status</span>
               <span className="px-5 py-3 text-right">
-                <span className="sr-only">Actions</span>
+                <span>Actions</span>
               </span>
             </div>
 
-            <div className="divide-y divide-slate-100">
-              {products.map((product) => (
+            <div className="divide-y divide-gray-200/70">
+              {products.map((product, index) => (
                 <div
                   key={product.id}
-                  className="grid items-center transition-colors hover:bg-slate-50/80"
+                  className="grid items-stretch divide-x divide-gray-200 transition-colors hover:bg-gray-50/70"
                   style={{ gridTemplateColumns: COLUMNS }}
                 >
+                  <span className="tnum flex items-center justify-center px-3 py-4 text-center text-sm font-medium text-gray-500">{index + 1}</span>
                   <div className="flex min-w-0 items-center gap-3 px-5 py-4">
                     <ProductThumb src={product.image_url} />
                     <ProductName product={product} />
                   </div>
-                  <span className="truncate px-4 py-4 text-sm text-slate-500">{product.category}</span>
-                  <div className="px-4 py-4">
+                  <div className="flex items-center px-4 py-4"><ProductPerformance product={product} /></div>
+                  <div className="flex min-w-0 items-center px-4 py-4 text-sm text-slate-500"><span className="truncate">{product.category}</span></div>
+                  <div className="flex items-center px-4 py-4">
                     <VariantPrices product={product} />
                   </div>
-                  <div className="px-4 py-4">
-                    <StockCell product={product} />
+                  <div className="flex items-center px-4 py-4">
+                    <ProductStockCell product={product} />
                   </div>
-                  <div className="flex flex-col items-start gap-1.5 px-4 py-4">
+                  <div className="flex flex-col items-start justify-center gap-1.5 px-4 py-4">
                     <ApprovalBadge status={product.approval_status} />
                     <ReviewFlags product={product} />
                   </div>
-                  <div className="flex justify-end px-5 py-4">
-                    <button type="button" onClick={() => onEdit(product)} className={clsx(BUTTON.secondary, 'px-3.5 py-1.5 text-[13px]')}>
-                      <Pencil size={13} /> Edit
-                    </button>
+                  <div className="flex items-center justify-end px-3 py-4">
+                    <ProductRowActions product={product} onEdit={onEdit} onDelete={onDelete} />
                   </div>
                 </div>
               ))}
@@ -247,28 +201,23 @@ export function InventoryTable({ products, onEdit }: Props) {
       </div>
 
       {/* < md: stacked product cards — no sideways scrolling on a phone */}
-      <ul className="divide-y divide-slate-100 border-t border-slate-100 md:hidden">
-        {products.map((product) => (
+      <ul className="divide-y divide-gray-200/70 border-t border-slate-100 md:hidden">
+        {products.map((product, index) => (
           <li key={product.id} className="flex flex-col gap-3 px-4 py-4">
             <div className="flex items-start gap-3">
+              <span className="tnum pt-3 text-xs font-medium text-gray-500" aria-label={`Serial number ${index + 1}`}>{index + 1}</span>
               <ProductThumb src={product.image_url} />
               <div className="min-w-0 flex-1">
                 <ProductName product={product} />
                 <p className="mt-0.5 truncate text-xs text-slate-500">{product.category}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => onEdit(product)}
-                aria-label={`Edit ${product.name}`}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              >
-                <Pencil size={15} />
-              </button>
+              <ProductRowActions product={product} onEdit={onEdit} onDelete={onDelete} />
             </div>
             <VariantPrices product={product} />
+            <ProductPerformance product={product} />
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <StockCell product={product} />
+                <ProductStockCell product={product} />
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1.5">
                 <ApprovalBadge status={product.approval_status} />

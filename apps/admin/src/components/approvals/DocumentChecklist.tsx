@@ -5,7 +5,7 @@
 // never shows "missing" for something the app doesn't ask for. Pharmacy gets
 // its own section: approval refuses a pharmacy without a drug licence.
 
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from '@/components/icons';
 import clsx from 'clsx';
 import type { Application } from '@/lib/types';
 import { FSSAI_CATEGORIES } from '@/lib/store-options';

@@ -11,7 +11,7 @@
 // backend's own POST /reviews uses — never leaves stores.rating stale.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Star, Trash2 } from 'lucide-react';
+import { Star, Trash2 } from '@/components/icons';
 import clsx from 'clsx';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 

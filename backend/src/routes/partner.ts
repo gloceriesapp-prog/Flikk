@@ -647,6 +647,28 @@ partnerRouter.post('/product-photo', async (req: AuthedRequest, res, next) => {
   }
 });
 
+// Store-wide exact counts stay independent of product search and pagination.
+partnerRouter.get('/products/overview', async (req: AuthedRequest, res, next) => {
+  try {
+    const storeId = await ownStoreId(req.user!.id);
+    const results = await Promise.all([
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('store_id', storeId),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('store_id', storeId).eq('approval_status', 'approved'),
+      supabase.from('products').select('name', { count: 'exact' }).eq('store_id', storeId).eq('approval_status', 'pending').order('name').limit(2),
+      supabase.from('products').select('name', { count: 'exact' }).eq('store_id', storeId).eq('stock_status', 'out_of_stock').order('name').limit(2),
+      supabase.from('products').select('name,stock_quantity', { count: 'exact' }).eq('store_id', storeId).eq('stock_tracking_enabled', true).neq('stock_status', 'out_of_stock').gt('stock_quantity', 0).lt('stock_quantity', 5).order('stock_quantity').order('name').limit(1),
+    ]);
+    for (const result of results) if (result.error) throw result.error;
+    const [total, live, pending, out, low] = results;
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ total: total.count ?? 0, live: live.count ?? 0, pending: pending.count ?? 0,
+      notLive: Math.max(0, (total.count ?? 0) - (live.count ?? 0) - (pending.count ?? 0)),
+      outOfStock: out.count ?? 0, runningLow: low.count ?? 0,
+      pendingNames: pending.data?.map(item => item.name) ?? [], outOfStockNames: out.data?.map(item => item.name) ?? [],
+      lowStockExample: low.data?.[0] ?? null });
+  } catch (error) { next(error); }
+});
+
 partnerRouter.get('/products', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);

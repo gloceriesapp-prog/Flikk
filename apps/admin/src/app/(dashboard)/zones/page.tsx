@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { MapPin, Plus } from 'lucide-react';
+import { MapPin, Plus } from '@/components/icons';
 import clsx from 'clsx';
 import { StorePerformanceList } from '@/components/zones/StorePerformanceList';
 import { ZoneRequestsList } from '@/components/zones/ZoneRequestsList';

@@ -1,75 +1,40 @@
 'use client';
 
-import clsx from 'clsx';
-import { ReceiptText } from 'lucide-react';
-import type { OrderStatus } from '@/lib/partnerApi';
-import { STATUS_META, type StatusFilter } from './orderMeta';
+import { Clock3, PackageCheck, ShoppingBag, Timer, XCircle, Bell, type LucideIcon } from 'lucide-react';
+import type { PartnerOrder } from '@/lib/partnerApi';
+import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
+import { durationLabel, orderSummaryData } from './orderSummaryData';
+import type { StatusFilter } from './orderMeta';
 
-const TILES: OrderStatus[] = ['placed', 'packed', 'out_for_delivery', 'delivered', 'cancelled'];
+type Metric = { label: string; value: string; badge: string; detail: string; tone?: 'green' | 'red'; icon: LucideIcon; filter?: StatusFilter };
+const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`;
 
-// Count-per-status strip. Each tile is also a filter, so "3 New" is one
-// click from being the only thing on screen. The filled accent tile is the
-// "All orders" reset. Counts follow the date range + search, not the status
-// tab, so the tiles always add up to the All tile.
-export function OrdersSummaryStrip({
-  counts,
-  active,
-  onSelect,
-  loading,
-}: {
-  counts: Record<StatusFilter, number>;
-  active: StatusFilter;
-  onSelect: (f: StatusFilter) => void;
-  loading: boolean;
+export function OrdersSummaryStrip({ orders, active, onSelect, loading, now }: {
+  orders: PartnerOrder[]; active: StatusFilter; onSelect: (filter: StatusFilter) => void; loading: boolean; now: number;
 }) {
-  return (
-    // Phones: one swipeable row instead of three stacked rows of tiles, so
-    // the orders themselves start above the fold.
-    <div className="-mx-3 flex gap-2.5 -my-1 overflow-x-auto px-3 py-1 [scrollbar-width:none] sm:mx-0 sm:my-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:p-0 xl:grid-cols-[1.35fr_repeat(5,minmax(0,1fr))]">
-      <button
-        type="button"
-        onClick={() => onSelect('all')}
-        aria-pressed={active === 'all'}
-        className={clsx(
-          'relative flex min-h-[84px] w-[168px] shrink-0 flex-col sm:min-h-[92px] sm:w-auto justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#2f6dff] to-accent-strong p-4 text-left text-white shadow-[0_8px_24px_-12px_rgba(21,93,252,0.7)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas sm:p-5',
-          active !== 'all' && 'opacity-90 hover:opacity-100',
-        )}
-      >
-        {/* Soft highlight so the gradient reads as a surface, not a flat fill. */}
-        <span className="pointer-events-none absolute -top-10 -right-8 h-28 w-28 rounded-full bg-white/10" aria-hidden />
-        <span className="flex items-center justify-between gap-2">
-          <span className="text-[15px] font-medium text-white/90">All orders</span>
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
-            <ReceiptText size={18} aria-hidden />
-          </span>
-        </span>
-        <span className="tnum text-[28px] font-semibold leading-none tracking-tight sm:text-3xl">{loading ? '–' : counts.all}</span>
-      </button>
-
-      {TILES.map((status) => {
-        const meta = STATUS_META[status];
-        const isActive = active === status;
-        return (
-          <button
-            key={status}
-            type="button"
-            onClick={() => onSelect(isActive ? 'all' : status)}
-            aria-pressed={isActive}
-            className={clsx(
-              'flex min-h-[84px] w-[136px] shrink-0 flex-col sm:min-h-[92px] sm:w-auto justify-between rounded-2xl bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:p-5',
-              isActive ? 'ring-accent' : 'ring-transparent hover:ring-slate-200',
-            )}
-          >
-            <span className="flex items-center gap-2 text-sm font-medium text-slate-600">
-              <span className={clsx('h-2 w-2 rounded-full', meta.dot)} aria-hidden />
-              {meta.label}
-            </span>
-            <span className={clsx('tnum text-[28px] font-semibold leading-none tracking-tight sm:text-3xl', meta.count)}>
-              {loading ? '–' : counts[status]}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
+  const summary = orderSummaryData(orders, now);
+  const demo = DEMO_DATA_ENABLED;
+  const accept = demo ? 100_000 : summary.acceptMs;
+  const pack = demo ? 420_000 : summary.packMs;
+  const cancelRate = demo ? 2 / 14 * 100 : summary.cancelRate;
+  const growth = demo ? 8 : summary.growth;
+  const metrics: Metric[] = [
+    { label: 'Today’s orders', value: demo ? '14' : String(summary.count), badge: growth === null ? 'Today · IST' : `${growth > 0 ? '+' : ''}${Math.round(growth)}% vs same time yesterday`, detail: demo ? '₹2,480 · avg ₹177' : `${money(summary.sales)} · avg ${summary.averageValue === null ? '—' : money(summary.averageValue)}`, icon: ShoppingBag },
+    { label: 'Avg. time to accept', value: durationLabel(accept), badge: accept === null ? 'No accepted orders yet' : accept < 120_000 ? 'Under 2 min' : 'Target under 2 min', tone: accept === null ? undefined : accept < 120_000 ? 'green' : 'red', detail: demo ? 'Slowest: 6 min (#FLK-1043)' : summary.slowest ? `Slowest: ${durationLabel(summary.slowest.ms)} (#${summary.slowest.order.order_number})` : 'Measured after acceptance', icon: Clock3 },
+    { label: 'Avg. time to pack', value: durationLabel(pack), badge: pack === null ? 'No packed orders yet' : pack < 600_000 ? 'Under 10 min' : 'Over 10 min', tone: pack === null ? undefined : pack < 600_000 ? 'green' : 'red', detail: 'Target under 10 min', icon: Timer },
+    { label: 'Cancelled / rejected', value: demo ? '2' : String(summary.cancelled), badge: `${cancelRate.toLocaleString('en-IN', { maximumFractionDigits: 1 })}% of today’s orders`, tone: cancelRate > 5 ? 'red' : undefined, detail: demo ? '1 out of stock · 1 customer cancelled' : summary.cancelReasons || 'No cancellations today', icon: XCircle },
+    { label: 'Awaiting acceptance', value: demo ? '2' : String(summary.awaiting), badge: 'New orders', detail: 'Review and accept to prepare', icon: Bell, filter: 'placed' },
+    { label: 'Ready for pickup', value: demo ? '1' : String(summary.ready), badge: 'Packed orders', detail: 'Waiting for rider pickup', icon: PackageCheck, filter: 'packed' },
+  ];
+  return <section aria-label="Order performance" className="grid grid-cols-1 gap-1.5 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+    {metrics.map(({ label, value, badge, tone, icon: Icon, filter }) => {
+      const content = <>
+        <div className="flex items-start justify-between gap-2"><h2 className="text-[13px] font-semibold leading-5 text-black">{label}</h2><Icon size={16} strokeWidth={1.6} className="mt-0.5 shrink-0 text-slate-400" aria-hidden /></div>
+        <p className="tnum mt-2 text-[28px] font-semibold leading-tight tracking-tight text-ink">{loading ? '—' : value}</p>
+        <p className={`mt-2 text-[13px] font-medium leading-5 ${tone === 'green' ? 'text-green-700' : tone === 'red' ? 'text-red-600' : 'text-slate-500'}`}>{loading ? 'Loading…' : badge}</p>
+      </>;
+      const classes = 'flex min-w-0 flex-col rounded-2xl border bg-white px-4 pt-4 pb-3 text-left';
+      return filter ? <button key={label} type="button" onClick={() => onSelect(active === filter ? 'all' : filter)} aria-pressed={active === filter} className={`${classes} ${active === filter ? 'border-black/40' : 'border-slate-200/70'} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black`}>{content}</button> : <div key={label} className={`${classes} border-slate-200/70`}>{content}</div>;
+    })}
+  </section>;
 }

@@ -31,9 +31,9 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-canvas text-ink">
       <Sidebar open={menuOpen} onClose={closeMenu} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <main className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-3 lg:pl-4">
-          <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
-            <AppHeader onOpenMenu={() => setMenuOpen(true)} />
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <AppHeader onOpenMenu={() => setMenuOpen(true)} />
+          <div className="mx-auto w-full max-w-[1440px] px-2 pb-2 pt-2 sm:px-3 sm:pb-3">
             {children}
           </div>
         </main>

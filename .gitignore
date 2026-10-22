@@ -50,3 +50,8 @@ supabase/.temp/
 
 # Temporary generated Android release validation project
 /apps/.partner-release-audit/
+
+# Local dependencies, downloaded signing credentials and QA output
+node_modules
+credentials.json
+/output/

@@ -42,6 +42,38 @@ it('refuses to refresh a blocked session with ACCOUNT_BLOCKED', async () => {
   expect((await post('/refresh', { refresh_token: 'r' })).error).toMatchObject({ status: 403, code: 'ACCOUNT_BLOCKED' });
 });
 
+it.each(['refresh_token_not_found', 'refresh_token_already_used', 'session_not_found', 'session_expired', 'user_not_found', 'invalid_credentials'])(
+  'rejects revoked or invalid refresh credentials: %s', async (code) => {
+    auth.refreshSession.mockResolvedValue({ data: { session: null }, error: { status: 400, code } });
+    expect((await post('/refresh', { refresh_token: 'r' })).error).toMatchObject({ status: 401, code: 'INVALID_REFRESH_TOKEN' });
+  });
+
+it.each([{ status: 503, code: 'unexpected_failure' }, { status: 0, name: 'AuthRetryableFetchError' },
+  { status: 409, code: 'conflict' }, { status: 403, code: 'provider_disabled' }])(
+  'keeps provider failures retryable instead of expiring sessions: %j', async (error) => {
+    auth.refreshSession.mockResolvedValue({ data: { session: null }, error });
+    expect((await post('/refresh', { refresh_token: 'r' })).error).toMatchObject({ status: 503, code: 'REFRESH_UNAVAILABLE' });
+  });
+
+it('preserves provider rate limits and rejects malformed input before provider calls', async () => {
+  auth.refreshSession.mockResolvedValue({ data: { session: null }, error: { status: 429, code: 'over_request_rate_limit' } });
+  expect((await post('/refresh', { refresh_token: 'r' })).error).toMatchObject({ status: 429, code: 'REFRESH_UNAVAILABLE' });
+  auth.refreshSession.mockClear();
+  for (const refresh_token of [null, 123, {}, '', '   ']) {
+    expect((await post('/refresh', { refresh_token })).error).toMatchObject({ status: 400, code: 'MISSING_REFRESH_TOKEN' });
+  }
+  expect(auth.refreshSession).not.toHaveBeenCalled();
+});
+
+it('treats a missing provider session as unavailable and returns rotated tokens on success', async () => {
+  auth.refreshSession.mockResolvedValue({ data: { session: null }, error: null });
+  expect((await post('/refresh', { refresh_token: 'r' })).error).toMatchObject({ status: 503, code: 'REFRESH_UNAVAILABLE' });
+  auth.refreshSession.mockResolvedValue({ data: { session: { access_token: 'a', refresh_token: 'b' } }, error: null });
+  const result = await post('/refresh', { refresh_token: 'r' });
+  expect(result.error).toBeUndefined();
+  expect(result.res.json).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'b' });
+});
+
 it('keeps a wrong code as OTP_INVALID and never creates a session for it', async () => {
   login.checkLoginOtp.mockReturnValue(false);
   expect((await post('/otp/verify', { phone: '9876543210', code: '123456' })).error).toMatchObject({ status: 401, code: 'OTP_INVALID' });

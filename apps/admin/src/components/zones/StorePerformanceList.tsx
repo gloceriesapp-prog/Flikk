@@ -4,7 +4,7 @@
 // lib/revenue.ts). Sorted best-first; #1 gets the crown, everyone else
 // gets a straight rank number.
 
-import { Crown } from 'lucide-react';
+import { Crown } from '@/components/icons';
 import clsx from 'clsx';
 import { formatCurrency } from '@/lib/format';
 import type { StoreRevenueShare } from '@/lib/revenue';

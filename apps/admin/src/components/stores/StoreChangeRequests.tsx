@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Pencil, Trash2 } from 'lucide-react';
+import { Check, Pencil, Trash2 } from '@/components/icons';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { ReasonModal } from '@/components/ui/ReasonModal';
 import { STORE_CHANGE_LABELS, formatChangeValue } from '@/lib/storeChanges';
