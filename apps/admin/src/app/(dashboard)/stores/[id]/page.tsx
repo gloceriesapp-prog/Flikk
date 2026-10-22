@@ -1,7 +1,7 @@
 import { StoreTeamPanel } from '@/components/stores/StoreTeamPanel';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@/components/icons';
 import { STORE_SELECT, mapRowToStore, type StoreRow } from '@/lib/supabase/stores';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdminPage } from '@/lib/auth/requireAdminPage';

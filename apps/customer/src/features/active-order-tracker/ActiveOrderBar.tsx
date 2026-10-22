@@ -21,6 +21,8 @@ import { activeOrderLabel } from './activeOrderLabel';
 import { computeDisplayEta } from './activeOrderEta';
 import { useActiveOrder } from './useActiveOrder';
 import { useBrowseClock } from '../../utils/useBrowseClock';
+import { DeliveredOrderRatingBar } from '../order-rating/DeliveredOrderRatingBar';
+import { useOrderRatingPreview } from '../order-rating/preview';
 
 // Mirrors BottomNavBar's own layout math (kept local rather than importing
 // that file's private internals): PILL_HEIGHT 73, and the pill's own bottom
@@ -32,7 +34,7 @@ const PILL_HEIGHT = 73;
 const NAV_BOTTOM_OFFSET = Platform.OS === 'android' ? 0 : -10;
 const GAP = 4;
 
-export function ActiveOrderBar({ onHeightChange }: { onHeightChange?: (height: number) => void }) {
+export function ActiveOrderBar({ onHeightChange, navigationBarHeight = PILL_HEIGHT }: { onHeightChange?: (height: number) => void; navigationBarHeight?: number }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const insets = useSafeAreaInsets();
   // Shared 30s clock (no per-card timer) — re-renders the pill so the ETA
@@ -46,14 +48,15 @@ export function ActiveOrderBar({ onHeightChange }: { onHeightChange?: (height: n
   const localHidden = useSharedValue(0);
   const navProgress = useContext(HomeNavigationProgressContext) ?? localHidden;
   const slideStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(navProgress.value, [0, 1], [0, PILL_HEIGHT]) }],
+    transform: [{ translateY: interpolate(navProgress.value, [0, 1], [0, navigationBarHeight]) }],
   }));
   const active = useActiveOrder();
+  const previewRating = useOrderRatingPreview(s => s.visible);
   const hasActiveOrder = !!active;
   useEffect(() => {
     if (!hasActiveOrder) onHeightChange?.(0);
   }, [hasActiveOrder, onHeightChange]);
-  if (!active) return null;
+  if (!active || (__DEV__ && previewRating)) return <DeliveredOrderRatingBar navigationBarHeight={navigationBarHeight} onHeightChange={onHeightChange} />;
 
   const { orderId, isTrip, statusKey, deadlineMs, baseMinutes } = active;
   const title = activeOrderLabel(statusKey);
@@ -65,7 +68,7 @@ export function ActiveOrderBar({ onHeightChange }: { onHeightChange?: (height: n
     // drops it to the bottom in lockstep with the nav bar on scroll.
     <Animated.View
       pointerEvents="box-none"
-      style={[{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + NAV_BOTTOM_OFFSET + PILL_HEIGHT + GAP }, slideStyle]}
+      style={[{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + NAV_BOTTOM_OFFSET + navigationBarHeight + GAP }, slideStyle]}
     >
       <Pressable
         onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)}

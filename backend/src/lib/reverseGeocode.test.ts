@@ -15,15 +15,23 @@ describe('reverse geocoded delivery address', () => {
       { long_name: 'Yenna Gudde', types: ['sublocality_level_1'] },
       { long_name: 'Udupi', types: ['administrative_area_level_2'] },
     ] }] });
-    expect(await reverseGeocode(13.2743, 74.7597)).toEqual({ addressLabel: '7PMX+WC4, Yenna Gudde, Karnataka 574106, India', shortName: 'Yenna Gudde', city: 'Udupi', status: 'resolved' });
+    expect(await reverseGeocode(13.2743, 74.7597)).toEqual({ addressLabel: '7PMX+WC4, Yenna Gudde, Karnataka 574106, India', shortName: 'Yenna Gudde', city: 'Udupi', district: 'Udupi', status: 'resolved' });
     const url = new URL(request.mock.calls[0]![0]);
     expect(url.searchParams.get('latlng')).toBe('13.2743,74.7597');
     expect(url.searchParams.get('language')).toBe('en');
     expect(request.mock.calls[0]![1].signal).toBeInstanceOf(AbortSignal);
   });
+  it('uses the Indian district rather than its administrative division', async () => {
+    provider({ status: 'OK', results: [{ formatted_address: 'Kaup, Udupi, India', address_components: [
+      { long_name: 'India', types: ['country'] },
+      { long_name: 'Mysore Division', types: ['administrative_area_level_2'] },
+      { long_name: 'Udupi', types: ['administrative_area_level_3'] },
+    ] }] });
+    expect(await reverseGeocode(13.2, 74.7)).toMatchObject({ district: 'Udupi' });
+  });
   it('skips blank entries and uses a street when there is no neighborhood', async () => {
-    provider({ status: 'OK', results: [{ formatted_address: ' ' }, { formatted_address: 'Main Road, Kaup', address_components: [{ long_name: 'Main Road', types: ['route'] }, { long_name: 'Kaup', types: ['locality'] }] }] });
-    expect(await reverseGeocode(13.2, 74.7)).toMatchObject({ shortName: 'Main Road', addressLabel: 'Main Road, Kaup', city: 'Kaup' });
+    provider({ status: 'OK', results: [{ formatted_address: ' ' }, { formatted_address: 'Main Road, Kaup', address_components: [{ long_name: 'Main Road', types: ['route'] }, { long_name: 'Kaup', types: ['locality'] }, { long_name: 'Udupi', types: ['administrative_area_level_2'] }] }] });
+    expect(await reverseGeocode(13.2, 74.7)).toMatchObject({ shortName: 'Main Road', addressLabel: 'Main Road, Kaup', city: 'Kaup', district: 'Udupi' });
   });
   it.each(['REQUEST_DENIED', 'OVER_QUERY_LIMIT', 'UNKNOWN_ERROR'])('makes %s retryable without a fabricated label', async status => {
     provider({ status, error_message: 'secret provider text' });

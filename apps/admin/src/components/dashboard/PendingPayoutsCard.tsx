@@ -3,7 +3,7 @@
 // /api/payouts?status=pending). Paying happens on the Payouts page.
 
 import Link from 'next/link';
-import { ArrowRight, ShieldAlert, Users } from 'lucide-react';
+import { ArrowRight, ShieldAlert, Users } from '@/components/icons';
 import { Card } from '@/components/ui/Card';
 import { formatRupees, sumRupees } from '@/lib/format';
 import type { AdminPayoutRow } from '@/lib/types';

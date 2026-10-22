@@ -173,6 +173,10 @@ jobs:
         run: |
           npx expo prebuild --platform android --no-install
           ./android/gradlew -p android/buildSrc test --no-daemon --max-workers=2
+      - name: Verify Partner notification bitmap ownership and cancellation
+        if: matrix.app == 'partner'
+        working-directory: apps/partner
+        run: ./android/gradlew -p native-release-quality/notification-tests test --no-daemon --max-workers=2
       # Rider's pure decision logic (presence loops, schedules, background
       # location disclosure, order mapping) is covered by runnable self-checks.
       - if: matrix.app == 'rider'

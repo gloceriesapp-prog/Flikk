@@ -19,7 +19,7 @@
 
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Bookmark01Icon, HeartIcon } from '@hugeicons/core-free-icons';
+import { Bookmark01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';

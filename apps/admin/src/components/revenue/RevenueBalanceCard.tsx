@@ -3,7 +3,7 @@
 // Overview's PendingPayoutsCard).
 
 import Link from 'next/link';
-import { TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { TrendingDown, TrendingUp, Wallet } from '@/components/icons';
 import clsx from 'clsx';
 import { formatCurrency, formatRupees } from '@/lib/format';
 

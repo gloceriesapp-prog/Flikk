@@ -4,7 +4,7 @@ import { AppError } from '../lib/errors.js';
 
 // Explicit merchant DTO: delivery proof, provider details and customer financial
 // metadata never leave this endpoint. Purchased pack/name/image are snapshots.
-export const PARTNER_ORDER_SELECT = 'id, order_number, status, total, item_total, commission_amount, payment_method, provider_payment_id, placed_at, store_visible_at, accepted_at, acceptance_deadline_at, preparation_deadline_at, packed_at, delivered_at, order_items(id, product_id, quantity, unit_price_at_order, unit_at_order, product_name_at_order, product_image_at_order, products(name, unit, image_url)), users!customer_id(name, phone), addresses(line1, landmark, recipient_name)';
+export const PARTNER_ORDER_SELECT = 'id, order_number, status, total, item_total, commission_amount, cancel_reason, payment_method, provider_payment_id, placed_at, store_visible_at, accepted_at, acceptance_deadline_at, preparation_deadline_at, packed_at, delivered_at, order_items(id, product_id, quantity, unit_price_at_order, unit_at_order, product_name_at_order, product_image_at_order, products(name, unit, image_url)), users!customer_id(name, phone), addresses(line1, landmark, recipient_name)';
 export const actionablePartnerOrders = 'payment_method.eq.cod,provider_payment_id.not.is.null';
 
 export function partnerOrderError(error: { code?: string; message?: string }): Error | typeof error {

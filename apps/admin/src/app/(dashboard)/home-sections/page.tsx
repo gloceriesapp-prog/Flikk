@@ -7,6 +7,7 @@
 // order. Same load()/save() + shared UI kit as festival-greeting/page.tsx.
 
 import { useCallback, useEffect, useState } from 'react';
+import { ArrowUp, ArrowDown } from '@/components/icons';
 
 interface HomeSection {
   key: string;
@@ -127,7 +128,7 @@ export default function HomeSectionsPage() {
                     aria-label="Move up"
                     className="rounded-lg px-2 py-0.5 text-ink hover:bg-canvas disabled:opacity-25"
                   >
-                    ↑
+                    <ArrowUp size={14} />
                   </button>
                   <button
                     type="button"
@@ -136,7 +137,7 @@ export default function HomeSectionsPage() {
                     aria-label="Move down"
                     className="rounded-lg px-2 py-0.5 text-ink hover:bg-canvas disabled:opacity-25"
                   >
-                    ↓
+                    <ArrowDown size={14} />
                   </button>
                 </div>
                 <div>

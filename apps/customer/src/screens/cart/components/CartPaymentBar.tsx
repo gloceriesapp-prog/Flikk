@@ -11,15 +11,17 @@ interface Props {
   total: number | null;
   busy: boolean;
   disabled: boolean;
+  storeClosed?: boolean;
+  bankName?: string;
   onChoose: () => void;
   onPlaceOrder: () => void;
 }
 
 // One row, two actions: change payment on the left, place order on the right.
-export function CartPaymentBar({ method, apps, total, busy, disabled, onChoose, onPlaceOrder }: Props) {
-  const label = method ? paymentMethodLabel(method, apps) : 'Select payment method';
+export function CartPaymentBar({ method, apps, total, busy, disabled, storeClosed = false, bankName, onChoose, onPlaceOrder }: Props) {
+  const label = method === 'netbanking' && bankName ? bankName : method ? paymentMethodLabel(method, apps) : 'Select payment method';
   const amount = total == null ? 'Checking total…' : `₹${total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-  const blocked = busy || disabled;
+  const blocked = busy || disabled || storeClosed;
   const placeOrderLabel = useCopy('checkout.placeOrder.cta');
 
   return (
@@ -39,16 +41,16 @@ export function CartPaymentBar({ method, apps, total, busy, disabled, onChoose, 
 
       <Pressable onPress={method ? onPlaceOrder : onChoose} disabled={blocked}
         accessibilityRole="button" accessibilityState={{ disabled: blocked, busy }}
-        accessibilityLabel={method ? `${placeOrderLabel}, total ${amount}` : `Select payment method, total ${amount}`}
-        className="min-h-[52px] min-w-0 flex-1 items-center justify-center rounded-2xl bg-primary px-3 py-2.5"
-        style={({ pressed }) => ({ opacity: disabled ? 0.5 : pressed ? 0.85 : 1 })}>
+        accessibilityLabel={storeClosed ? 'Store closed' : method ? `${placeOrderLabel}, total ${amount}` : `Select payment method, total ${amount}`}
+        className={`min-h-[52px] min-w-0 flex-1 items-center justify-center rounded-2xl px-3 py-2.5 ${storeClosed ? 'bg-[#E7E7EA]' : 'bg-primary'}`}
+        style={({ pressed }) => ({ opacity: storeClosed ? 1 : disabled ? 0.5 : pressed ? 0.85 : 1 })}>
         {busy ? <ActivityIndicator color="#FFFFFF" /> : (
           <>
-            <Text numberOfLines={1} className="text-[14px] font-semibold text-white">
-              {method ? placeOrderLabel : 'Select payment'}
+            <Text numberOfLines={1} className={`text-[14px] font-semibold ${storeClosed ? 'text-[#737373]' : 'text-white'}`}>
+              {storeClosed ? 'Store closed' : method ? placeOrderLabel : 'Select payment'}
             </Text>
-            <Text numberOfLines={1} className="mt-0.5 text-[13px] font-semibold text-white/80 tracking-tight"
-              style={{ fontVariant: ['tabular-nums'] }}>{amount}</Text>
+            {!storeClosed && <Text numberOfLines={1} className="mt-0.5 text-[13px] font-semibold text-white/80 tracking-tight"
+              style={{ fontVariant: ['tabular-nums'] }}>{amount}</Text>}
           </>
         )}
       </Pressable>

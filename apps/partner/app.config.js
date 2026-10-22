@@ -56,7 +56,7 @@ module.exports = {
     name: 'Gloceries Partner',
     slug: 'partner',
     owner: 'nishal777',
-    version: '1.0.4',
+    version: '1.0.5',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change.

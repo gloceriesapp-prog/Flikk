@@ -4,7 +4,7 @@ import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { filterFix, isUsableLocationFix, type FilteredFix, type RawFix } from './locationFilter';
-import { getDeviceLocationFix, isUsableDeviceFix, rememberDeviceFix } from './deviceLocation';
+import { getDeviceLocationFix, getRecentDeviceFix, isUsableDeviceFix, rememberDeviceFix } from './deviceLocation';
 
 export function useLiveLocation(enabled: boolean) {
   const [fix, setFix] = useState<FilteredFix | null>(null);
@@ -52,6 +52,8 @@ export function useLiveLocation(enabled: boolean) {
       publish(filterFix(filtered.current, raw));
     }
 
+    const recent = getRecentDeviceFix();
+    if (recent) acceptFix(recent);
     void getDeviceLocationFix().then(acceptFix, () => undefined);
     // Start the watch independently of Android's optional accuracy prompt.
     if (Platform.OS === 'android') void Location.enableNetworkProviderAsync().catch(() => undefined);

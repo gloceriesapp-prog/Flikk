@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import { ArrowRight02Icon } from '@hugeicons/core-free-icons';
 
 import { useNavigation } from '@react-navigation/native';
@@ -51,46 +49,7 @@ export function DealsForYouSection({
       NativeStackNavigationProp<AppStackParamList>
     >();
 
-  const [
-    shuffleOffset,
-    setShuffleOffset,
-  ] = useState(0);
-
-  const visibleCount = Math.min(
-    MAX_OFFERS,
-    products.length,
-  );
-
-  const offers =
-    products.length === 0
-      ? []
-      : Array.from(
-        {
-          length: visibleCount,
-        },
-        (_, index) =>
-          products[
-          (shuffleOffset +
-            index) %
-          products.length
-          ],
-      );
-
-  function handleShuffle() {
-    if (
-      products.length <=
-      MAX_OFFERS
-    ) {
-      return;
-    }
-
-    setShuffleOffset(
-      (current) =>
-        (current +
-          MAX_OFFERS) %
-        products.length,
-    );
-  }
+  const offers = products.slice(0, MAX_OFFERS);
 
   if (offers.length === 0) {
     return null;

@@ -4,6 +4,8 @@ import { getPaymentRecovery, getPendingPayments } from './recovery.js';
 // at /payments in index.ts (which also owns the raw-body capture webhook.ts
 // needs for signature verification).
 import { Router } from 'express';
+import { getAvailableWallets } from './wallets.js';
+import { getNetbankingBanks } from './netbankingBanks.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { createOrder } from './createOrder.js';
 import { createUpiIntent } from './upiIntent.js';
@@ -28,6 +30,18 @@ paymentsRouter.get('/availability', async (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ online: availability.online, cod: availability.cod, min_order_value: availability.minOrderValue,
       upi_intent: availability.online && env.razorpayEnv === 'live' });
+  } catch (error) { next(error); }
+});
+paymentsRouter.get('/wallets', requirePaymentsConfigured, requireOnlinePaymentsOpen, async (_req, res, next) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ wallets: await getAvailableWallets() });
+  } catch (error) { next(error); }
+});
+paymentsRouter.get('/netbanking-banks', requirePaymentsConfigured, requireOnlinePaymentsOpen, async (_req, res, next) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ banks: await getNetbankingBanks() });
   } catch (error) { next(error); }
 });
 paymentsRouter.get('/pending', requireAuth, requireRole('customer'), getPendingPayments);

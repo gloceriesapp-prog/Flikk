@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CONTENT,
   createSection,
+  addMissingFestivalSections,
+  createFestivalSections,
   createItem,
   validateContent,
   referencedIds,
@@ -30,7 +32,7 @@ describe('Home content publication contract', () => {
   it('validates all seeded tabs and preserves the existing 30-section order', () => {
     expect(
       Object.values(DEFAULT_CONTENT).map((doc) => validateContent(doc).sections.length),
-    ).toEqual([11, 9, 10, 3, 3]);
+    ).toEqual([11, 9, 10, 10, 3]);
     expect(DEFAULT_CONTENT.fresh.sections[4]?.id).toBe('home-grown-nearby');
   });
   it('rejects unknown renderers, duplicate keys, and non-boolean visibility', () => {
@@ -170,4 +172,46 @@ it('bounds the combined managed-tab preview budget', () => {
   const template = content.sections.find(s => s.kind === 'products')!;
   content.sections = Array.from({ length: 40 }, (_, i) => ({ ...structuredClone(template), id: `budget-${i}`, enabled: true, limit: 24 }));
   expect(() => validateContent(content)).toThrow(/preview budget/);
+});
+
+
+describe('Festival section publication', () => {
+  it('ships all named festival sections through the production content contract', () => {
+    const doc = validateContent(DEFAULT_CONTENT.festivals);
+    expect(doc.sections.map(section => section.id)).toEqual([
+      'festival-shelf', 'festival-puja', 'festival-flowers', 'festival-sweets',
+      'festival-fruits', 'festival-lights', 'festival-decor', 'festival-local-shops',
+      'festival-offers', 'brand-footer',
+    ]);
+    expect(doc.sections.find(section => section.id === 'festival-offers')!.selection.discountedOnly).toBe(true);
+    expect(doc.sections.find(section => section.id === 'festival-local-shops')!.kind).toBe('stores');
+  });
+
+  it('adds only missing shelves to legacy drafts and preserves existing manual picks, visibility and ordering', () => {
+    const edited = createFestivalSections()[0]!;
+    edited.title = 'Store puja picks';
+    edited.enabled = false;
+    edited.selection.mode = 'manual';
+    edited.selection.productIds = [ids[0]!];
+    const original = { ...structuredClone(DEFAULT_CONTENT.festivals), sections: [edited, createSection('footer', 'brand-footer')] };
+    const upgraded = validateContent(addMissingFestivalSections(original));
+    expect(upgraded.sections[0]).toEqual(edited);
+    expect(upgraded.sections.at(-1)!.id).toBe('brand-footer');
+    expect(upgraded.sections).toHaveLength(9);
+    expect(original.sections).toHaveLength(2);
+    expect(addMissingFestivalSections(upgraded)).toEqual(upgraded);
+    expect(referencedIds(upgraded).productIds).toContain(ids[0]);
+  });
+
+  it('uses real matching inventory and discounts rather than sample festival stock', () => {
+    const options = createFestivalSections();
+    const candidates = [
+      { ...products[0]!, name: 'Cotton wick', category: 'Puja' },
+      { ...products[1]!, name: 'Jasmine garland', category: 'Flowers' },
+      { ...products[2]!, name: 'Rice', category: 'Grocery' },
+    ];
+    expect(selectContentProducts(candidates, options.find(s => s.id === 'festival-puja')!.selection).map(p => p.name)).toEqual(['Cotton wick']);
+    expect(selectContentProducts(candidates, options.find(s => s.id === 'festival-offers')!.selection).map(p => p.name)).toEqual(['Cotton wick']);
+    expect(selectContentProducts([], options[0]!.selection)).toEqual([]);
+  });
 });

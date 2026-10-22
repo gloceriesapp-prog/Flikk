@@ -14,7 +14,7 @@
 // or a dozen eggs, not just whole-number presets. See product-options.ts's
 // own note on why the split is exactly there.
 
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from '@/components/icons';
 import { GRAM_PRESETS, ML_PRESETS, UNIT_TYPE_OPTIONS, hasFixedPresets, presetsForUnit, type UnitType } from '@/lib/product-options';
 import { suggestedMrp } from '@/lib/pricing';
 import type { ProductVariant } from '@/lib/types';

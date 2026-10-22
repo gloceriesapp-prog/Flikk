@@ -6,7 +6,7 @@ import type { OrderStatus, PartnerOrder } from '@/lib/partnerApi';
 // "Packed" order is the same amber everywhere. 'placed' reads as "New" here:
 // to the owner it is the order waiting for them, not a past event.
 export const STATUS_META: Record<OrderStatus, { label: string; pill: string; dot: string; count: string }> = {
-  placed: { label: 'New', pill: 'bg-accent-soft text-accent', dot: 'bg-accent', count: 'text-accent' },
+  placed: { label: 'New', pill: 'bg-green-50 text-green-700', dot: 'bg-green-600', count: 'text-green-700' },
   packed: { label: 'Packed', pill: 'bg-amber-50 text-amber-700', dot: 'bg-amber-500', count: 'text-amber-600' },
   out_for_delivery: {
     label: 'Out for delivery',

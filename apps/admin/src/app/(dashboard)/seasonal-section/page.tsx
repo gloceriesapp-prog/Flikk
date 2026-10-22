@@ -12,7 +12,7 @@
 // sort order actually render there (backend's own GET route limits(4)).
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Plus, Trash2, Pencil } from '@/components/icons';
 import clsx from 'clsx';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 

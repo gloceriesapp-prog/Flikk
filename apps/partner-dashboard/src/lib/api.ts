@@ -6,6 +6,7 @@
 // tokens are short-lived (1hr), and without a silent refresh here every
 // session would look "logged out" the moment that hour passed.
 
+import { DEMO_DATA_ENABLED } from './demoMode';
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from './authStorage';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -82,6 +83,10 @@ function refreshAccessToken(): Promise<string | null> {
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = true } = options;
+  if (DEMO_DATA_ENABLED && auth) {
+    const { demoRequest } = await import('./demoApi');
+    return demoRequest(path, method) as T;
+  }
 
   let res: Response;
   let json: unknown;

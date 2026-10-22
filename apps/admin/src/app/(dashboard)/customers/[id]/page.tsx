@@ -8,7 +8,7 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, MapPin } from 'lucide-react';
+import { ArrowLeft, MapPin } from '@/components/icons';
 import { formatCurrency } from '@/lib/format';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { ReasonModal } from '@/components/ui/ReasonModal';

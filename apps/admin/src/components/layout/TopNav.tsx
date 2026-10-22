@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Download, LogOut, Plus, Save, Settings } from 'lucide-react';
+import { Bell, Download, LogOut, Plus, Save, Settings } from '@/components/icons';
 import { ALL_NAV_ITEMS, QUICK_ACTIONS } from '@/lib/nav';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 

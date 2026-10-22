@@ -20,6 +20,7 @@ const target = { orderId: 'same-order' };
 const navigation = { replace: mockReplace } as unknown as Parameters<typeof useRecoveredPayment>[1];
 beforeEach(() => {
   jest.clearAllMocks(); mockEpoch = 1;
+  mockRecovery.isFetchedAfterMount = true; mockRecovery.isFetching = false; mockRecovery.isError = false;
   mockRecovery.data.state = 'unpaid'; mockRecovery.data.canResumeUpiIntent = false;
   Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'active' });
   jest.mocked(recoverPayment).mockResolvedValue({ target, state: 'unpaid', record: { id: 'same-order', total: 63, status: 'pending', provider_payment_id: null } });
@@ -29,6 +30,27 @@ it('never starts a payment simply by rendering the recovered chooser', async () 
   await renderHook(() => useRecoveredPayment(target, navigation));
   expect(prepareUpiIntent).not.toHaveBeenCalled();
   expect(createPaymentOrder).not.toHaveBeenCalled();
+});
+it('keeps a checked unpaid chooser usable during background polling', async () => {
+  mockRecovery.isFetching = true;
+  const hook = await renderHook(() => useRecoveredPayment(target, navigation));
+  expect(hook.result.current.canPay).toBe(true);
+  expect(createPaymentOrder).not.toHaveBeenCalled();
+});
+it('does not enable cached unpaid data before the first mount check', async () => {
+  mockRecovery.isFetchedAfterMount = false; mockRecovery.isFetching = true;
+  const hook = await renderHook(() => useRecoveredPayment(target, navigation));
+  expect(hook.result.current.canPay).toBe(false);
+});
+it('checks a stale unpaid selection before charging when a background capture arrived', async () => {
+  mockRecovery.isFetching = true;
+  jest.mocked(recoverPayment).mockResolvedValue({ target, state: 'paid', record: { id: 'same-order', total: 63, status: 'placed', provider_payment_id: 'pay_test' } });
+  const hook = await renderHook(() => useRecoveredPayment(target, navigation));
+  await act(() => hook.result.current.select('card'));
+  expect(recoverPayment).toHaveBeenCalledWith(target);
+  expect(createPaymentOrder).not.toHaveBeenCalled();
+  expect(openRazorpayCheckout).not.toHaveBeenCalled();
+  expect(mockReplace).toHaveBeenCalledWith('PaymentRecovery', { target });
 });
 it('reconciles and mounts processing for the existing order before UPI handoff', async () => {
   const hook = await renderHook(() => useRecoveredPayment(target, navigation));

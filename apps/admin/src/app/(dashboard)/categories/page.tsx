@@ -11,7 +11,7 @@
 // patching local state.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Image as ImageIcon, Pencil, Plus } from 'lucide-react';
+import { Image as ImageIcon, Pencil, Plus } from '@/components/icons';
 import type { Category, CategorySection, NewCategoryInput } from '@/lib/types';
 import { fetchCategories } from '@/lib/supabase/categories';
 import { fetchCategorySections } from '@/lib/supabase/categorySections';

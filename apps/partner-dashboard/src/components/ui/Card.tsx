@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
 
-// The one card chrome for the whole dashboard: white, generously rounded,
-// a barely-there shadow on the grey canvas. Every surface (stat tiles,
+// The one card chrome for the whole dashboard: white and rounded
+// on the grey canvas. Every surface (stat tiles,
 // tables, panels) composes this so the app reads as one designed thing.
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={clsx('rounded-[20px] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]', className)}>{children}</div>
+    <div className={clsx('rounded-[20px] bg-white', className)}>{children}</div>
   );
 }
 

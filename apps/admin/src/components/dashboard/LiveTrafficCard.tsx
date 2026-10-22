@@ -10,7 +10,7 @@
 // shadcn's separate ui/chart + ui/select components for one chart.
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '@/components/icons';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { Card } from '@/components/ui/Card';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';

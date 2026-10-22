@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Loader2, Trash2 } from 'lucide-react';
+import { Camera, Loader2, Trash2 } from '@/components/icons';
 
 export function StorePhotoEditor({ url, disabled, onChange, onBusy }: {
   url: string; disabled: boolean; onChange: (url: string) => void; onBusy: (busy: boolean) => void;

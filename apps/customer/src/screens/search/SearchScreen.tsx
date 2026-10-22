@@ -29,7 +29,6 @@ import { useAllStores } from '../store-list/all-stores/useAllStores';
 import { ProductCard } from '../home/products/ProductCard';
 import type { Product } from '../home/products/types';
 import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
-import { useBrowseClock } from '../../utils/useBrowseClock';
 import { productAvailability } from '../../utils/productAvailability';
 import { useProductSearch } from './useProductSearch';
 import { SearchHeader } from './components/SearchHeader';
@@ -61,7 +60,6 @@ export function SearchScreen({ navigation }: Props) {
   // product's (cheap, pure) availability, and the memoized card only re-renders
   // for a product whose availability actually changed.
   const estimatedMinutes = useDeliveryEstimateMinutes();
-  const date = new Date(useBrowseClock());
 
   // Final results view: searching, settled (not loading/debouncing/errored).
   // Only then do we surface stores + the product grid; while a query is still
@@ -129,7 +127,7 @@ export function SearchScreen({ navigation }: Props) {
           }
           ListFooterComponent={search.isFetchingNextPage ? <ActivityIndicator className="py-4" color="#155DFC" /> : null}
           renderItem={({ item }: { item: Product }) => {
-            const availability = productAvailability(item, date);
+            const availability = productAvailability(item);
             return (
               <View style={{ flex: 1, paddingHorizontal: 5, paddingBottom: 20 }}>
                 <ProductCard

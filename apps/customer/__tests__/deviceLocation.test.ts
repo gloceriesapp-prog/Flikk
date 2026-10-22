@@ -295,3 +295,16 @@ it('keeps the most accurate still-fresh native preview during refinement', async
   await jest.advanceTimersByTimeAsync(1500);
   await expect(pending).resolves.toMatchObject({ accuracy: 30 });
 });
+
+
+it('reuses a fresh native preview for recentering, but expires it after two seconds', () => {
+  service.rememberDeviceFix({ ...position(0, 35).coords, timestamp: Date.now() });
+  expect(service.getRecentDeviceFix()).toMatchObject({ accuracy: 35 });
+  jest.advanceTimersByTime(2001);
+  expect(service.getRecentDeviceFix()).toBeNull();
+});
+
+it('does not expose an inaccurate native sample as a current-location preview', () => {
+  service.rememberDeviceFix({ ...position(0, 80).coords, timestamp: Date.now() });
+  expect(service.getRecentDeviceFix()).toBeNull();
+});

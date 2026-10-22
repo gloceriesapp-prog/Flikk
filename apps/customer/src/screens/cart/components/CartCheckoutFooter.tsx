@@ -1,6 +1,6 @@
 // Cart footer keeps delivery-address controls above payment and order actions.
 import type { ReactNode } from 'react';
-import { ChevronRightIcon, Location01Icon, Location03Icon } from '@hugeicons/core-free-icons';
+import { ChevronRightIcon, Location01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import type { ApiAddress } from '../../../api/addresses';

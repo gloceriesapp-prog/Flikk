@@ -66,7 +66,7 @@ export function ReceiptScreen({ navigation, route }: Props) {
         <SuccessSeal size={76} color={colors.success} />
 
         <View className="items-center gap-1.5">
-          <Text className="text-[23px] font-extrabold tracking-tight text-ink">Payment Successful</Text>
+          <Text className="text-[23px] font-extrabold tracking-tight text-ink">Order confirmed</Text>
           <Text className="max-w-[280px] text-center text-[14.5px] font-medium leading-5 text-ink/55">
             Your order is confirmed and on its way to the store. Thank you for shopping with Gloceries.
           </Text>

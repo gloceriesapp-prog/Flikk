@@ -22,7 +22,7 @@ interface Props {
 // so it doesn't vanish into the card around it.
 export function PayoutDestinationCard({ store, linkToSettings = true, className }: Props) {
   const surface = linkToSettings
-    ? 'rounded-[20px] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+    ? 'rounded-2xl border border-gray-200/70 bg-white'
     : 'rounded-2xl border border-slate-200 bg-slate-50/60';
 
   if (!store.payout_method) {
@@ -30,12 +30,12 @@ export function PayoutDestinationCard({ store, linkToSettings = true, className 
       <div
         className={clsx(
           'flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between',
-          linkToSettings ? 'rounded-[20px] bg-amber-50' : 'rounded-2xl border border-amber-200 bg-amber-50',
+          linkToSettings ? 'rounded-2xl border border-gray-200/70 bg-white' : 'rounded-2xl border border-amber-200 bg-amber-50',
           className,
         )}
       >
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+          <span className={clsx('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', linkToSettings ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-600')}>
             <TriangleAlert size={19} />
           </span>
           <div className="min-w-0">
@@ -48,7 +48,7 @@ export function PayoutDestinationCard({ store, linkToSettings = true, className 
         {linkToSettings && (
           <Link
             href="/settings"
-            className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-strong"
+            className="inline-flex shrink-0 items-center justify-center gap-1 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-50"
           >
             Set up payouts <ChevronRight size={15} />
           </Link>
@@ -61,9 +61,9 @@ export function PayoutDestinationCard({ store, linkToSettings = true, className 
   const verified = !!store.payout_upi_verified_name;
 
   return (
-    <div className={clsx('flex items-center justify-between gap-3 p-5', surface, className)}>
+    <div className={clsx('flex items-center justify-between gap-3 p-4', surface, className)}>
       <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+        <span className={clsx('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', linkToSettings ? 'bg-gray-100 text-gray-600' : 'bg-emerald-50 text-emerald-600')}>
           {isUpi ? <Smartphone size={19} /> : <Landmark size={19} />}
         </span>
         <div className="min-w-0">
@@ -72,7 +72,7 @@ export function PayoutDestinationCard({ store, linkToSettings = true, className 
             <p className="truncate text-[15px] font-semibold text-ink">
               {isUpi ? store.payout_upi_id : `${store.payout_bank_name} · ${store.payout_bank_account_number}`}
             </p>
-            {verified && <BadgeCheck size={16} className="shrink-0 text-emerald-600" />}
+            {verified && <BadgeCheck size={16} className={clsx('shrink-0', linkToSettings ? 'text-gray-600' : 'text-emerald-600')} />}
           </div>
           <p className="truncate text-sm text-slate-500">
             {verified ? `Verified · ${store.payout_upi_verified_name}` : isUpi ? 'UPI' : `IFSC ${store.payout_bank_ifsc}`}
@@ -82,7 +82,7 @@ export function PayoutDestinationCard({ store, linkToSettings = true, className 
       {linkToSettings && (
         <Link
           href="/settings"
-          className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          className="inline-flex shrink-0 items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
         >
           Change
         </Link>

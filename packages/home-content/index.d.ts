@@ -75,3 +75,6 @@ export function selectContentProducts<
     original_price: number | null;
   },
 >(products: T[], selection: ContentSelection, limit?: number): T[];
+
+export function createFestivalSections(): HomeContentSection[];
+export function addMissingFestivalSections(content: HomeContentDocument): HomeContentDocument;

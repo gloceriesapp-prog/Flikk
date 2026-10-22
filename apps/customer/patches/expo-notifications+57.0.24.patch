@@ -1,0 +1,81 @@
+diff --git a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/presentation/builders/DownloadImage.kt b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/presentation/builders/DownloadImage.kt
+--- a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/presentation/builders/DownloadImage.kt
++++ b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/presentation/builders/DownloadImage.kt
+@@ -1,23 +1,40 @@
+ package expo.modules.notifications.notifications.presentation.builders
+ 
++import android.content.Context
+ import android.graphics.Bitmap
+-import android.graphics.BitmapFactory
+ import android.net.Uri
++import com.bumptech.glide.Glide
++import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
++import kotlinx.coroutines.CancellationException
+ import kotlinx.coroutines.Dispatchers
+-import kotlinx.coroutines.withContext
+-import kotlinx.coroutines.withTimeout
+-import java.net.URL
++import kotlinx.coroutines.runInterruptible
++import java.util.concurrent.TimeUnit
+ 
+-suspend fun downloadImage(imageUrl: Uri, connectTimeout: Long = 8000, readTimeout: Long = 8000): Bitmap? {
+-  return runCatching {
+-    withTimeout(connectTimeout + readTimeout) {
+-      withContext(Dispatchers.IO) {
+-        val url = URL(imageUrl.toString())
+-        val connection = url.openConnection()
+-        connection.connectTimeout = connectTimeout.toInt()
+-        connection.readTimeout = readTimeout.toInt()
+-        BitmapFactory.decodeStream(connection.inputStream)
++suspend fun downloadImage(context: Context, imageUrl: Uri, connectTimeout: Long = 8000, readTimeout: Long = 8000): Bitmap? {
++  return try {
++    runInterruptible(Dispatchers.IO) {
++      val display = context.resources.displayMetrics
++      val manager = Glide.with(context.applicationContext)
++      val target = manager.asBitmap()
++        .load(imageUrl)
++        .override(display.widthPixels.coerceIn(1, 1024), display.heightPixels.coerceIn(1, 1024))
++        .downsample(DownsampleStrategy.AT_MOST)
++        .disallowHardwareConfig()
++        .timeout(connectTimeout.coerceIn(1, 60000).toInt())
++        .submit()
++      try {
++        // NotificationCompat retains this bitmap after the request ends. Give it
++        // an independent bounded copy before returning Glide's buffer to its pool.
++        target.get((connectTimeout.coerceIn(1, 60000) + readTimeout.coerceIn(1, 60000)), TimeUnit.MILLISECONDS)
++          .copy(Bitmap.Config.ARGB_8888, false)
++      } finally {
++        manager.clear(target)
+       }
+     }
+-  }.getOrNull()
++  } catch (cancelled: CancellationException) {
++    throw cancelled
++  } catch (_: Exception) {
++    // An unavailable image must not prevent delivery of the notification text.
++    null
++  }
+ }
+diff --git a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt
+--- a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt
++++ b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt
+@@ -24,7 +24,7 @@
+ 
+   override suspend fun getImage(context: Context): Bitmap? {
+     val uri = remoteMessage.notification?.imageUrl
+-    return uri?.let { downloadImage(it) }
++    return uri?.let { downloadImage(context, it) }
+   }
+ 
+   override fun containsImage(): Boolean {
+diff --git a/node_modules/expo-notifications/android/build.gradle b/node_modules/expo-notifications/android/build.gradle
+--- a/node_modules/expo-notifications/android/build.gradle
++++ b/node_modules/expo-notifications/android/build.gradle
+@@ -33,6 +33,7 @@
+ }
+ 
+ dependencies {
++  implementation 'com.github.bumptech.glide:glide:5.0.5'
+   implementation 'androidx.core:core:1.17.0'
+   implementation 'androidx.lifecycle:lifecycle-runtime:2.9.3'
+   implementation 'androidx.lifecycle:lifecycle-process:2.9.3'

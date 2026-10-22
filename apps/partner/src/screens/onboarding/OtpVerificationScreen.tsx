@@ -1,167 +1,169 @@
-import { BackIcon } from '../../components/PartnerIcons';
-import { AppImage as Image } from '../../components/AppImage';
-// Verifies the code sent by LoginScreen, then persists the session and
-// hands off. Doesn't navigate anywhere itself on success — RootNavigator
-// swaps away from the auth stack automatically once useAuthStore's
-// accessToken/hasStore/isApproved change, same "swaps automatically"
-// pattern as apps/customer/src/screens/OtpVerificationScreen.tsx, just
-// with three destinations to route between instead of one (Store Setup /
-// Waiting for approval / the real app shell — see RootNavigator.tsx).
-//
-// Same fixed (not animated) hero image as LoginScreen.tsx, back button
-// floating top-left over it, "Verify your number." headline. The dev-mode
-// banner (real functionality, not cosmetic — api/devAuthFallback.ts's own
-// local stand-in for "no backend reachable") is kept below the OTP boxes.
-//
-// 'height' behavior on Android, not undefined — this app has no
-// softInputMode override (unlike customer's own 'pan' setup), so Android
-// needs a real KeyboardAvoidingView to make room for the keyboard; see
-// LoginScreen.tsx's own note on this exact bug (the Continue button
-// hiding behind the keyboard).
-
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  AppState,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ArrowLeft02Icon } from '@hugeicons/core-free-icons';
+import { AppIcon } from '../../components/AppIcon';
 import { requestOtp, verifyOtp } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import { OtpBoxInput } from '../../components/OtpBoxInput';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { useAuthStore } from '../../store/useAuthStore';
-import { colors } from '../../theme/tokens';
+import { AEONIK } from '../../theme/fonts';
 import { roleMismatchMessage } from '../../utils/roleGuard';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
-
-const RESEND_COOLDOWN_SECONDS = 30;
-// Same real hero asset LoginScreen.tsx uses — one consistent image across
-// both screens of this flow.
-const HERO_IMAGE_URI = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/store-image.jpeg';
-const HERO_HEIGHT = 240;
+const RESEND_COOLDOWN_MS = 30_000;
 
 export function OtpVerificationScreen({ route, navigation }: Props) {
   const { phone } = route.params;
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS);
+  const [resendAt, setResendAt] = useState(() => Date.now() + RESEND_COOLDOWN_MS);
+  const [secondsLeft, setSecondsLeft] = useState(30);
+  const requestInFlight = useRef(false);
   const setSession = useAuthStore((s) => s.setSession);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setSecondsLeft((s) => Math.max(0, s - 1));
-    }, 1000);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+    const update = () => setSecondsLeft(Math.max(0, Math.ceil((resendAt - Date.now()) / 1000)));
+    update();
+    const timer = setInterval(update, 1000);
+    const listener = AppState.addEventListener('change', (state) => { if (state === 'active') update(); });
+    return () => { clearInterval(timer); listener.remove(); };
+  }, [resendAt]);
 
-  const handleVerify = useCallback(
-    async (otp: string) => {
-      setError(null);
-      setLoading(true);
-      try {
-        const { access_token, refresh_token, is_approved, has_store, application_submitted, role } = await verifyOtp(phone, otp);
-        // One phone number, one role — checked BEFORE setSession ever
-        // persists anything, so an already-approved Rider account never
-        // gets a half-working session on this app (utils/roleGuard.ts's
-        // own note). 'customer' still passes through — that's the real,
-        // default state every brand-new applicant is in before they've
-        // ever gone through Store Setup.
-        const mismatch = roleMismatchMessage(role);
-        if (mismatch) {
-          setError(mismatch);
-          setCode('');
-          return;
-        }
-        await setSession(access_token, refresh_token, is_approved, has_store, application_submitted);
-        // RootNavigator swaps to Store Setup / Waiting / the app shell
-        // automatically once the store updates — see that file's own note.
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Could not verify the code. Please try again.');
-        // Only a wrong or expired code is cleared; after a sign-in or network
-        // failure the same code still works, so keep it for another tap.
-        if (err instanceof ApiError && err.code === 'OTP_INVALID') setCode('');
-      } finally {
-        setLoading(false);
+  const handleVerify = useCallback(async () => {
+    if (code.length !== 6 || requestInFlight.current) return;
+    requestInFlight.current = true;
+    setError(null);
+    setLoading(true);
+    try {
+      const { access_token, refresh_token, is_approved, has_store, application_submitted, role } = await verifyOtp(phone, code);
+      const mismatch = roleMismatchMessage(role);
+      if (mismatch) {
+        setError(mismatch);
+        setCode('');
+        return;
       }
-    },
-    [phone, setSession]
-  );
-
-  // No auto-submit: the code is checked only when Continue is pressed.
-  function handleCodeChange(digits: string) {
-    setCode(digits);
-    if (error) setError(null);
-  }
+      // RootNavigator chooses the appropriate signed-in/store setup screen.
+      await setSession(access_token, refresh_token, is_approved, has_store, application_submitted);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not verify the code. Please try again.');
+      if (err instanceof ApiError && err.code === 'OTP_INVALID') setCode('');
+    } finally {
+      requestInFlight.current = false;
+      setLoading(false);
+    }
+  }, [code, phone, setSession]);
 
   async function handleResend() {
-    if (secondsLeft > 0) return;
+    if (Date.now() < resendAt || requestInFlight.current) return;
+    requestInFlight.current = true;
+    setResending(true);
     setError(null);
-    setSecondsLeft(RESEND_COOLDOWN_SECONDS);
     try {
       await requestOtp(phone);
-    } catch {
-      setError('Could not resend code. Please try again.');
+      setCode('');
+      setResendAt(Date.now() + RESEND_COOLDOWN_MS);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not resend code. Please try again.');
+    } finally {
+      requestInFlight.current = false;
+      setResending(false);
     }
   }
 
+  const resendDisabled = secondsLeft > 0 || loading || resending;
+  const displayPhone = phone.startsWith('+91') ? `+91-${phone.slice(3)}` : phone;
+
   return (
-    <View className="flex-1 bg-white">
+    <KeyboardAvoidingView key={width} style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar style="dark" />
-
-      <View style={{ width: '100%', height: HERO_HEIGHT }}>
-        <Image source={{ uri: HERO_IMAGE_URI }} style={{ width: '100%', height: HERO_HEIGHT }} resizeMode="cover" />
-
-        <Pressable
-          onPress={() => navigation.goBack()}
-          hitSlop={12}
-          className="absolute left-5 top-safe-offset-4 h-11 w-11 items-center justify-center rounded-full bg-white"
-        >
-          <BackIcon size={20} color={colors.ink} />
-        </Pressable>
-      </View>
-
-      {/* style, not className — KeyboardAvoidingView isn't NativeWind-patched
-          (LoginScreen.tsx's own note); className="flex-1" here was being
-          silently dropped, which is why Continue never had real room to
-          render at all. */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View className="flex-1 gap-5 bg-white px-6 pb-safe pt-7">
-          <View className="gap-1.5">
-            <Text className="text-2xl font-semibold leading-8 text-ink">Verify your number.</Text>
-            <Text className="text-sm text-ink/55">
-              Code sent to <Text className="font-semibold text-ink">{phone}</Text> · valid for 10 minutes
-            </Text>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingTop: insets.top + 8,
+          paddingBottom: Math.max(24, insets.bottom),
+          paddingLeft: Math.max(20, insets.left),
+          paddingRight: Math.max(20, insets.right),
+        }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Back to phone number" onPress={() => navigation.goBack()} hitSlop={8} style={styles.back}>
+              <AppIcon icon={ArrowLeft02Icon} size={24} color="#202124" />
+            </Pressable>
+            <Text style={styles.title} accessibilityRole="header">Verify details</Text>
           </View>
 
-          <OtpBoxInput value={code} onChangeText={handleCodeChange} autoFocus />
-          {error && <Text className="text-center text-[13px] text-danger">{error}</Text>}
+          <View style={styles.details}>
+            <Text style={styles.description}>We have sent an OTP to</Text>
+            <Text style={styles.phone}>{displayPhone}</Text>
+          </View>
 
+          <View style={styles.code}>
+            <OtpBoxInput value={code} onChangeText={(digits) => { setCode(digits); if (error) setError(null); }} autoFocus editable={!loading && !resending} invalid={Boolean(error)} />
+            {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
+          </View>
 
-          <View className="mt-auto gap-4 pb-6">
-            <Pressable onPress={handleResend} disabled={secondsLeft > 0}>
-              <Text className="text-center text-[13px] text-ink/55">
-                {secondsLeft > 0
-                  ? `Didn't receive the code? Retry in 00:${String(secondsLeft).padStart(2, '0')}`
-                  : "Didn't receive the code? Resend"}
-              </Text>
-            </Pressable>
-
-            <PrimaryButton
-              label={loading ? 'Verifying…' : 'Continue'}
-              onPress={() => { if (!loading) handleVerify(code); }}
-              disabled={code.length !== 6 || loading}
-              loading={loading}
-            />
-
-            <Text className="text-center text-[11px] font-medium text-ink/35">Powered by gloceries.com</Text>
+          <View style={styles.footer}>
+            <Text style={styles.timer} accessibilityLabel={`Resend available in ${secondsLeft} seconds`}>
+              00:{String(secondsLeft).padStart(2, '0')}
+            </Text>
+            <View style={styles.resendRow}>
+              <Text style={styles.resendPrompt}>Didn’t receive the code?</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Resend OTP" accessibilityState={{ disabled: resendDisabled, busy: resending }} disabled={resendDisabled} onPress={handleResend} style={styles.resendButton}>
+                <Text style={[styles.resendText, { color: resendDisabled ? '#AAB0BE' : '#2457F5' }]}>{resending ? 'Sending…' : 'Resend now'}</Text>
+              </Pressable>
+            </View>
+            {(code.length === 6 || loading) && (
+              <Pressable accessibilityRole="button" accessibilityLabel="Verify OTP" accessibilityState={{ disabled: loading || resending, busy: loading }} disabled={loading || resending} onPress={handleVerify} style={styles.verifyButton}>
+                {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.verifyText}>Verify OTP</Text>}
+              </Pressable>
+            )}
           </View>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#FFFFFF' },
+  content: { flexGrow: 1, minHeight: 410, width: '100%', maxWidth: 520, alignSelf: 'center' },
+  header: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  back: { position: 'absolute', left: -8, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  title: { marginHorizontal: 44, fontFamily: AEONIK.semiBold, fontSize: 20, lineHeight: 28, textAlign: 'center', color: '#2D3547' },
+  details: { marginTop: 44, alignItems: 'center' },
+  description: { fontFamily: AEONIK.medium, fontSize: 17, lineHeight: 24, color: '#454D60', textAlign: 'center' },
+  phone: { fontFamily: AEONIK.bold, fontSize: 18, lineHeight: 25, color: '#2D3547', textAlign: 'center' },
+  code: { marginTop: 64 },
+  error: { marginTop: 14, fontFamily: AEONIK.medium, fontSize: 13, lineHeight: 19, textAlign: 'center', color: '#C82A36' },
+  footer: { flexGrow: 1, justifyContent: 'flex-end', paddingTop: 40 },
+  timer: { fontFamily: AEONIK.semiBold, fontSize: 21, lineHeight: 29, color: '#202124', textAlign: 'center', fontVariant: ['tabular-nums'] },
+  resendRow: { marginTop: 14, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', columnGap: 5 },
+  resendPrompt: { fontFamily: AEONIK.medium, fontSize: 15, lineHeight: 22, color: '#454D60' },
+  resendButton: { minHeight: 44, justifyContent: 'center' },
+  resendText: { fontFamily: AEONIK.semiBold, fontSize: 15, lineHeight: 22 },
+  verifyButton: { marginTop: 16, minHeight: 52, paddingVertical: 13, paddingHorizontal: 20, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#2457F5' },
+  verifyText: { fontFamily: AEONIK.semiBold, fontSize: 18, lineHeight: 26, color: '#FFFFFF' },
+});

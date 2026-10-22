@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronLeft, ChevronRight, Download, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Download, SlidersHorizontal, X } from '@/components/icons';
 import clsx from 'clsx';
 import { formatCurrency, formatDateTime } from '@/lib/format';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';

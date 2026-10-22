@@ -7,7 +7,7 @@
 // up without an app release. Same load()/save() shape as festival-greeting.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from '@/components/icons';
 import {
   COPY_KEY_PATTERN,
   COPY_MAX_KEYS,

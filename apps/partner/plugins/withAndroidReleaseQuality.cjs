@@ -31,7 +31,9 @@ function configureBuildGradle(source) {
   if (!optimized.includes('proguard-android-optimize.txt') || !optimized.includes('minifyEnabled enableMinifyInReleaseBuilds')) {
     throw new Error('Android release template changed: verify R8 and the optimized ProGuard defaults before building.');
   }
-  return optimized.includes("apply plugin: 'partner-release-quality'") ? optimized : `${optimized}\napply plugin: 'partner-release-quality'\n`;
+  const withQuality = optimized.includes("apply plugin: 'partner-release-quality'") ? optimized : `${optimized}\napply plugin: 'partner-release-quality'\n`;
+  // The partner-owned KML image bridge uses the same managed loader as expo-image.
+  return withQuality.includes('// Partner managed KML images') ? withQuality : `${withQuality}\n// Partner managed KML images\ndependencies { implementation 'com.github.bumptech.glide:glide:5.0.5' }\n`;
 }
 
 function configureProjectBuildGradle(source) {
@@ -94,7 +96,13 @@ function withAndroidReleaseQuality(config) {
     const source = await fs.readFile(file, 'utf8');
     await fs.writeFile(file, configureProguardRules(source));
     const native = path.join(__dirname, '../native-release-quality');
-    await fs.cp(path.join(native, 'buildSrc'), path.join(mod.modRequest.platformProjectRoot, 'buildSrc'), { recursive: true });
+    const buildSrcRoot = path.join(native, 'buildSrc');
+    await fs.cp(buildSrcRoot, path.join(mod.modRequest.platformProjectRoot, 'buildSrc'), {
+      recursive: true,
+      // Running the native tests locally must not copy their compiled classes
+      // or Gradle state into a newly generated Android project.
+      filter: source => !['build', '.gradle'].includes(path.relative(buildSrcRoot, source).split(path.sep)[0]),
+    });
     await fs.cp(path.join(native, 'app'), path.join(mod.modRequest.platformProjectRoot, 'app/src/main/java'), { recursive: true });
     return mod;
   }]);

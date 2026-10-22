@@ -1,8 +1,5 @@
-// One single screen for picking a delivery location — search bar overlaid
-// on a live map with a fixed center pin, same "map moves under a pin that
-// never moves" pattern Blinkit/Zepto/Swiggy all use (read the new center
-// off onRegionChangeComplete, no draggable Marker, no drag-gesture
-// conflicts with the map's own pan gesture).
+// A coordinate-anchored pin follows live GPS. Panning switches to a fixed
+// centre pin so the map can move underneath it for manual delivery selection.
 //
 // This used to be two screens (a plain search list, then a separate
 // MapConfirmScreen navigated to after a search/GPS fix) — merged into one
@@ -18,6 +15,9 @@
 // EAS dev client) to actually render. See src/screens/location/README.md.
 
 import { ArrowLeft01Icon, GpsSignal01Icon, Search01Icon } from '@hugeicons/core-free-icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchAddresses, setDefaultAddress } from '../../api/addresses';
+import { matchSavedAddress } from '../../features/delivery-address/matchSavedAddress';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -44,13 +44,15 @@ import { distanceMeters } from '../../location/locationFilter';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
 import { LocationRequestGate } from '../../location/requestGate';
 import { useLiveLocation } from '../../location/useLiveLocation';
-import { getDeviceLocationFix } from '../../location/deviceLocation';
+import { getDeviceLocationFix, getRecentDeviceFix } from '../../location/deviceLocation';
+import { LiveLocationPin } from './components/LiveLocationPin';
 import { withDeadline } from '../../utils/deadline';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLocationStore } from '../../store/useLocationStore';
 import { useRecentSearchesStore } from '../../store/useRecentSearchesStore';
 import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
+import { MapLoadingState } from './components/MapLoadingState';
 import { storageUrl } from '../../utils/storageUrl';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'LocationSearch'>;
@@ -145,6 +147,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // final POST /addresses 401 with a raw server error is the actual fix —
   // same class of bug as the earlier CartScreen/addresses-query one this
   // session, just caught before the user invests any time in the flow.
+  const queryClient = useQueryClient();
   const accessToken = useAuthStore((s) => s.accessToken);
   const exitGuestMode = useAuthStore((s) => s.exitGuestMode);
   useEffect(() => {
@@ -195,6 +198,13 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // render (before ready). mapPadding stays undefined until onMapReady
   // sets this true; the pin/mapPadding math below is otherwise unchanged.
   const [mapReady, setMapReady] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapAttempt, setMapAttempt] = useState(0);
+  function retryMap() {
+    setMapReady(false);
+    setMapLoaded(false);
+    setMapAttempt(attempt => attempt + 1);
+  }
   // Measured so the "current location" pill can sit just above the
   // floating card instead of a guessed fixed offset — the card's own
   // height varies (the distance-warning chip only sometimes renders).
@@ -217,7 +227,9 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   // dragged the map or picked a search result yet. "Use my current
   // location" turns it back on.
   const followDot = useRef(startingPoint.latitude == null || startingPoint.fromGps === true);
+  const [followingDevice, setFollowingDevice] = useState(startingPoint.latitude == null || startingPoint.fromGps === true);
   const lastFollowMoveAt = useRef(0);
+  const lastFollowCameraTarget = useRef<Coordinates | null>(null);
   const selectedCenter = useRef(center);
   const cameraRequests = useRef(new LocationRequestGate());
   const commandedCameraTarget = useRef<Coordinates | null>(null);
@@ -321,6 +333,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
 
   function stopFollowing() {
     followDot.current = false;
+    setFollowingDevice(false);
     commandedCameraTarget.current = null;
     cameraRequests.current.invalidate();
     navigationRequests.current.invalidate();
@@ -332,6 +345,9 @@ export function LocationSearchScreen({ navigation, route }: Props) {
 
   async function handleRegionSettled(region: Region, details?: { isGesture?: boolean }) {
     if (details?.isGesture) stopFollowing();
+    // GPS owns selection while following; an older animation completion
+    // must not replace a newer location fix with its camera centre.
+    if (followDot.current) return;
     // Gate before the asynchronous camera read, so old native events
     // cannot replace a newer pan, search result or GPS selection.
     const ticket = cameraRequests.current.begin();
@@ -417,10 +433,12 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       const granted = hasLocationPermission || (await requestLocationPermission());
       if (!granted) throw new Error('Location permission denied');
       setHasLocationPermission(true);
-      const deviceFix = await getDeviceLocationFix();
+      const deviceFix = getRecentDeviceFix() ?? await getDeviceLocationFix();
       if (!focused.current || !navigationRequests.current.current(ticket)) return;
       const coords = adoptDeviceFix(deviceFix);
       followDot.current = true;
+      setFollowingDevice(true);
+      lastFollowCameraTarget.current = coords;
       // eslint-disable-next-line react-hooks/purity -- Read inside the explicit location action, never during render.
       lastFollowMoveAt.current = Date.now();
       moveCameraTo(coords, true);
@@ -433,8 +451,24 @@ export function LocationSearchScreen({ navigation, route }: Props) {
     if (resolving || confirming || !hasSelectedPin || !resolvedAt.current || addressFailed
       || distanceMeters(resolvedAt.current, selectedCenter.current) >= REGEOCODE_MIN_MOVE_M) return;
     setConfirming(true);
+    const owner = useAuthStore.getState().sessionEpoch;
+    const ticket = navigationRequests.current.begin();
+    const currentConfirmation = () => focused.current && navigationRequests.current.current(ticket)
+      && useAuthStore.getState().sessionEpoch === owner
+      && distanceMeters(center, selectedCenter.current) < REGEOCODE_MIN_MOVE_M;
     try {
       if (intent === 'address-book') {
+        const addresses = await fetchAddresses();
+        if (!currentConfirmation()) return;
+        const existing = matchSavedAddress(addresses, center);
+        if (existing) {
+          await setDefaultAddress(existing.id);
+          if (!currentConfirmation()) return;
+          await setLocation({ ...center, addressLabel, city });
+          await queryClient.invalidateQueries({ queryKey: ['addresses', useAuthStore.getState().customerId] });
+          navigation.goBack();
+          return;
+        }
         // A real saved address, not the ambient "what area am I browsing"
         // location — AddressFormScreen collects the rest (name/phone/
         // landmark/label/instructions) and is the one that actually POSTs
@@ -445,6 +479,9 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       }
       await setLocation({ ...center, addressLabel, city });
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    } catch {
+      if (!currentConfirmation()) return;
+      setError('Could not confirm this address. Please check your connection and try again.');
     } finally {
       setConfirming(false);
     }
@@ -469,11 +506,15 @@ export function LocationSearchScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (!liveFix || !followDot.current || !mapReady) return;
     const isFirstMove = lastFollowMoveAt.current === 0;
-    if (!isFirstMove && distanceMeters(center, liveFix) < FOLLOW_MIN_MOVE_M) return;
+    // Selection tracks every refinement, independently of camera throttling.
+    if (distanceMeters(selectedCenter.current, liveFix) > 0.01) queueAddress(liveFix);
+    if (!isFirstMove && lastFollowCameraTarget.current
+      && distanceMeters(lastFollowCameraTarget.current, liveFix) < FOLLOW_MIN_MOVE_M) return;
     // eslint-disable-next-line react-hooks/purity -- Location-follow effect timestamp, never a render value.
     const now = Date.now();
     if (!isFirstMove && now - lastFollowMoveAt.current < FOLLOW_MIN_INTERVAL_MS) return;
     lastFollowMoveAt.current = now;
+    lastFollowCameraTarget.current = liveFix;
     moveCameraTo(liveFix, isFirstMove);
   // Camera commands are triggered only by position/readiness changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -497,10 +538,16 @@ export function LocationSearchScreen({ navigation, route }: Props) {
             location pill) is a child of THIS box, not the outer screen,
             so `top: '50%'`-style centering keeps resolving against the
             map's own actual visible area instead of the whole screen. */}
-        <View className="flex-1" onLayout={(e) => setMapAreaHeight(e.nativeEvent.layout.height)}>
-        <MapView
+        <View testID="map-area" className="flex-1 bg-[#F4F5F7]" onLayout={(e) => setMapAreaHeight(e.nativeEvent.layout.height)}>
+        {mapAreaHeight > 0 && <MapView
+          key={`map-${mapAttempt}`}
           ref={mapRef}
-          style={mapAreaHeight > 0 ? { width: '100%', height: mapAreaHeight } : { flex: 1 }}
+          style={{ width: '100%', height: mapAreaHeight, backgroundColor: '#F4F5F7' }}
+          userInterfaceStyle="light"
+          loadingEnabled
+          loadingBackgroundColor="#F4F5F7"
+          loadingIndicatorColor="#155DFC"
+          onMapLoaded={() => setMapLoaded(true)}
           // USES_GOOGLE_MAPS is always true on Android; on iOS it flips to
           // true automatically once IOS_GOOGLE_MAPS_API_KEY is set and a
           // fresh native build ships (app.config.js's own note + this
@@ -526,6 +573,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // wait for an address forever.
           onMapReady={() => {
             setMapReady(true);
+            if (!USES_GOOGLE_MAPS) setMapLoaded(true);
             if (hasSelectedPin) queueAddress(selectedCenter.current);
           }}
           // initialCamera, not initialRegion — a Region has no pitch/zoom
@@ -559,6 +607,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           // recurs, it's this prop, not mapStyle.ts, to revisit.
           showsBuildings
         >
+          {followingDevice && dotCoordinate && <LiveLocationPin coordinate={dotCoordinate} uri={PIN_IMAGE_URI} size={PIN_SIZE} tipRatio={PIN_TIP_RATIO} />}
           {liveFix && dotCoordinate ? (
             <>
               {liveFix.accuracy > 8 ? (
@@ -575,7 +624,8 @@ export function LocationSearchScreen({ navigation, route }: Props) {
               </Marker>
             </>
           ) : null}
-        </MapView>
+        </MapView>}
+        {!mapLoaded && <MapLoadingState key={`loading-${mapAttempt}`} onRetry={retryMap} />}
 
         {/* Subtle scrim over the whole map — pure decoration (masking, not a
             real map layer), keeps the pin/callout/sheet as the visual focus
@@ -612,7 +662,8 @@ export function LocationSearchScreen({ navigation, route }: Props) {
             mapPadding is zero). marginTop shifts the box up by
             PIN_TIP_RATIO's own fraction of its height on top of that,
             same reasoning as before. */}
-        <View
+        {mapLoaded && (!followingDevice || !dotCoordinate) && <View
+          testID="manual-location-pin"
           pointerEvents="none"
           style={{
             position: 'absolute',
@@ -625,7 +676,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
           }}
         >
           <Image source={{ uri: PIN_IMAGE_URI }} style={{ flex: 1 }} contentFit="contain" />
-        </View>
+        </View>}
 
         {/* Title is its own absolutely-centered layer (not a flex sibling
             of the back button) so it centers on the screen regardless of

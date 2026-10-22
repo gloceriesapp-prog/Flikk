@@ -118,14 +118,17 @@ export default function FestivalGreetingPage() {
         <p className="text-sm text-muted">The festival tab on the customer Home screen, with its greeting banner and category chips.</p>
       </div>
 
+      <a href="/festival-layout" className="rounded-2xl border border-border bg-card p-4 text-sm font-medium text-ink">
+        Manage festival sections, products, ordering and visibility →
+      </a>
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
 
       <div className="rounded-3xl border border-border bg-card p-5">
         <h2 className="mb-1 text-sm font-semibold text-ink">Festival tab</h2>
         <p className="mb-4 text-xs text-muted">
-          When on, a tab with this title appears first after All. Its products are the ones picked on the Festival Section
-          page; with none picked, it shows matching items from nearby shops (puja, flowers, sweets, fruit, lights, decor).
-          When off, customers see no festival tab.
+          When on, a tab with this title appears first after All. Its shelves are published from Festival sections & layout; the Festival products page supplies the shared
+          curated rail. Disable the whole destination using Show this tab in Festival sections & layout.
+          This switch controls the seasonal tab title, greeting and artwork.
         </p>
         <div className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm font-medium text-ink">

@@ -81,3 +81,40 @@ are embedded identifiers; package/certificate and API restrictions protect them.
   selection races. Configuration
   regression tests check native-key separation; real map rendering still
   requires an installed native build with valid Google restrictions.
+
+## Local Android map authorization
+
+The local development build uses `com.gloceries.customer.local`, a separate
+Android application identity from the production `com.gloceries.customer`.
+Google Maps API-key Android restrictions must include that exact package and
+the installed build's signing SHA-1. On the currently connected development
+build the SHA-1 is `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`.
+Preserve production signing entries when adding a local build. Never remove
+application/API restrictions to work around an authorization failure. A new
+signing certificate requires its own allowlist entry; do not assume this
+fingerprint applies to every developer/build.
+
+A blank map with a Google logo can be an SDK authorization failure even when
+reverse-geocoding and GPS work. Inspect the Android SDK's authorization log,
+not only the backend geocoding endpoint. After restrictions propagate, restart
+the development app to clear a cached SDK authorization result.
+
+The screen mounts the native map at measured dimensions and uses a light
+native loading background. Google Maps' tile-loaded event dismisses the
+loading state; Apple Maps uses map-ready. A stalled load offers a native map
+retry without changing or saving the selected pin. The map screen uses no
+navigation animation to avoid Android surface-transition flashes.
+
+### Live location alignment and startup
+
+The live pin is a native map marker anchored by its image tip to the same
+coordinate as the device dot. Camera throttling only controls animation; it
+must not throttle selected delivery coordinates. Programmatic camera callbacks
+cannot replace GPS selection. Panning exits follow mode and restores the fixed
+centre pin; explicit current-location selection resumes following.
+
+Already-granted permission skips the permission-dialog settling delay. A native
+watch sample up to two seconds old with reported accuracy within 50 m can be
+reused immediately for recentering while the watch continues refining it. A
+materially better precise fix replaces a coarse startup preview without blending
+in its original error. The accuracy circle still represents provider uncertainty.

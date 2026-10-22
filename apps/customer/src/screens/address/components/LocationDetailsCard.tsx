@@ -1,11 +1,3 @@
-// House/building + street feed into one addresses.line1 string on save
-// (AddressFormScreen's own note) — split into two fields here purely for
-// how a real kirana-delivery address actually gets read out loud ("flat
-// 4B, Shanti Nivas... then Church Road"), not a schema change. The pinned-
-// area row is read-only display of what the map screen already resolved,
-// with "Change" jumping back to re-pick the pin rather than letting free
-// text silently drift from the real geocoded location riders navigate to.
-
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
@@ -14,76 +6,122 @@ interface Props {
   building: string;
   street: string;
   landmark: string;
+  instructions: string;
+  instructionsMaxLength?: number;
   pinnedArea: string;
   onChangeBuilding: (value: string) => void;
   onChangeStreet: (value: string) => void;
   onChangeLandmark: (value: string) => void;
-  // Omitted = pin is fixed (editing a saved address); the row is display-only.
+  onChangeInstructions: (value: string) => void;
   onChangePin?: () => void;
+}
+
+function AddressField({
+  label,
+  placeholder,
+  value,
+  onChange,
+  maxLength,
+  optional = false,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  maxLength: number;
+  optional?: boolean;
+}) {
+  return (
+    <View className="gap-2">
+      <Text className="text-[13px] font-medium text-ink/80">
+        {label}{' '}
+        {optional ? (
+          <Text className="text-ink/50">(optional)</Text>
+        ) : (
+          <Text className="text-danger">*</Text>
+        )}
+      </Text>
+      <TextInput
+        accessibilityLabel={label}
+        value={value}
+        onChangeText={onChange}
+        placeholder={placeholder}
+        placeholderTextColor="#9AA5A3"
+        maxLength={maxLength}
+        autoCapitalize="sentences"
+        className="min-h-[52px] rounded-xl border border-[#E8E8ED] bg-[#FAFAFA] px-3.5 py-3 text-[14px] font-medium text-ink"
+      />
+    </View>
+  );
 }
 
 export function LocationDetailsCard({
   building,
   street,
   landmark,
+  instructions,
+  instructionsMaxLength = 300,
   pinnedArea,
   onChangeBuilding,
   onChangeStreet,
   onChangeLandmark,
+  onChangeInstructions,
   onChangePin,
 }: Props) {
   return (
     <View className="gap-3 rounded-2xl bg-white p-4">
-      <Text className="text-[15px] font-medium text-ink">
-        Pin the exact spot <Text className="text-danger">*</Text>
-      </Text>
-
-      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
-        <TextInput
-          value={building}
-          onChangeText={onChangeBuilding}
-          placeholder="Flat / House no., building"
-          placeholderTextColor="#9AA5A3"
-          textAlignVertical="center"
-          className="h-full flex-1 py-0 text-base leading-tight text-ink font-medium"
-        />
-      </View>
-
-      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
-        <TextInput
-          value={street}
-          onChangeText={onChangeStreet}
-          placeholder="Street / area (optional)"
-          placeholderTextColor="#9AA5A3"
-          textAlignVertical="center"
-          className="h-full flex-1 py-0 text-base leading-tight text-ink font-medium"
-        />
-      </View>
-
-      <Pressable onPress={onChangePin} disabled={!onChangePin} className="h-[52px] flex-row items-center gap-3 rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
-        <Text className="flex-1 text-[13px] text-ink font-medium" numberOfLines={2}>
-          {pinnedArea}
+      <View className="gap-1">
+        <Text accessibilityRole="header" className="text-[16px] font-semibold text-black">
+          Help your rider find your door
         </Text>
-        {onChangePin ? (
-          <View className="flex-row items-center gap-0.5">
-            <Text className="text-[13px] font-semibold" style={{ color: '#155DFC' }}>
-              Change
-            </Text>
-            <AppIcon icon={ArrowRight01Icon} size={13} color="#155DFC" />
-          </View>
-        ) : null}
-      </Pressable>
-
-      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
-        <TextInput
-          value={landmark}
-          onChangeText={onChangeLandmark}
-          placeholder="Landmark (optional)"
-          placeholderTextColor="#9AA5A3"
-          textAlignVertical="center"
-          className="h-full flex-1 py-0 text-base leading-tight text-ink font-medium"
-        />
       </View>
+      <View className="gap-2">
+        <Text className="text-[13px] font-medium text-ink/80">Location selected on map</Text>
+        <Pressable
+          onPress={onChangePin}
+          disabled={!onChangePin}
+          accessibilityRole={onChangePin ? 'button' : undefined}
+          accessibilityLabel={onChangePin ? 'Change map location' : undefined}
+          className="min-h-[52px] flex-row items-center gap-3 rounded-xl bg-[#FAFAFA] px-3.5 py-3"
+        >
+          <Text className="flex-1 text-[13px] font-medium leading-5 text-ink">{pinnedArea}</Text>
+          {onChangePin && (
+            <View className="min-h-11 flex-row items-center gap-0.5">
+              <Text className="text-[13px] font-semibold text-[#155DFC]">Change</Text>
+              <AppIcon icon={ArrowRight01Icon} size={13} color="#155DFC" />
+            </View>
+          )}
+        </Pressable>
+      </View>
+      <AddressField
+        label="House / flat number & building"
+        placeholder="e.g. 4B, Shanti Nivas"
+        value={building}
+        onChange={onChangeBuilding}
+        maxLength={150}
+      />
+      <AddressField
+        label="Street / road & area"
+        placeholder="e.g. Temple Road, Yenna Gudde"
+        value={street}
+        onChange={onChangeStreet}
+        maxLength={140}
+      />
+      <AddressField
+        label="Nearby landmark"
+        placeholder="e.g. Opposite Achada School"
+        value={landmark}
+        onChange={onChangeLandmark}
+        maxLength={200}
+      />
+      <AddressField
+        optional
+        label="Floor & entrance directions"
+        placeholder="e.g. Ground floor, blue gate beside the shop"
+        value={instructions}
+        onChange={onChangeInstructions}
+        maxLength={instructionsMaxLength}
+      />
     </View>
   );
 }

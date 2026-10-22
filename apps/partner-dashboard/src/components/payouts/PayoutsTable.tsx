@@ -1,8 +1,12 @@
-import clsx from 'clsx';
-import type { Payout } from '@/lib/partnerApi';
-import { formatInr, formatDate, statusColor, statusLabel } from '@/lib/format';
+'use client';
 
-const COLUMNS = 'minmax(0,1.5fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.5fr)';
+import { useState } from 'react';
+import { Download, Eye } from 'lucide-react';
+import type { Payout } from '@/lib/partnerApi';
+import { formatDate } from '@/lib/format';
+import { PayoutStatus } from './PayoutStatus';
+import { PayoutDetailsDialog } from './PayoutDetailsDialog';
+import { downloadPayoutStatement, payoutMoney, payoutCommission } from './payoutStatement';
 
 // "5 – 11 Oct 2026" when the week sits inside one month, else the full pair.
 export function formatWeek(startIso: string, endIso: string): string {
@@ -17,97 +21,52 @@ export function formatWeek(startIso: string, endIso: string): string {
   return `${formatDate(startIso)} – ${formatDate(endIso)}`;
 }
 
-const DOT: Record<Payout['status'], string> = {
-  pending: 'bg-amber-500',
-  processing: 'bg-blue-500',
-  paid: 'bg-emerald-500',
-  blocked: 'bg-red-500',
-  failed: 'bg-red-500',
-};
 
-function StatusPill({ status }: { status: Payout['status'] }) {
-  return (
-    <span className={clsx('inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap', statusColor(status))}>
-      <span className={clsx('h-1.5 w-1.5 rounded-full', DOT[status])} />
-      {statusLabel(status)}
-    </span>
-  );
+function PayoutActions({ payout, onView }: { payout: Payout; onView: (payout: Payout) => void }) {
+  return <div className="flex items-center justify-end gap-1.5">
+    <button type="button" onClick={() => onView(payout)} aria-label={`View settlement for ${formatWeek(payout.week_start, payout.week_end)}`} className="inline-flex h-9 md:h-8 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-medium text-gray-950 hover:bg-gray-50"><Eye size={15} aria-hidden />View</button>
+    <button type="button" onClick={() => downloadPayoutStatement(payout)} aria-label={`Download CSV statement for ${formatWeek(payout.week_start, payout.week_end)}`} title="Download statement (CSV)" className="flex h-9 w-9 md:h-8 md:w-8 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"><Download size={16} aria-hidden /></button>
+  </div>;
 }
 
 function PaidOn({ payout }: { payout: Payout }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      {(payout.paid_at || !payout.payment_note) && (
-        <span className={clsx('text-sm whitespace-nowrap', payout.paid_at ? 'text-slate-600' : 'text-slate-300')}>
-          {payout.paid_at ? formatDate(payout.paid_at) : '—'}
-        </span>
-      )}
-      {payout.payment_note && (
-        <span className="w-fit max-w-full rounded-lg bg-slate-50 px-2 py-1 text-xs leading-snug text-slate-600">{payout.payment_note}</span>
-      )}
-    </div>
-  );
+  return <div className="min-w-0 space-y-1"><span className="text-sm text-gray-600">{payout.paid_at ? formatDate(payout.paid_at) : '—'}</span>{payout.payment_note && <p title={payout.payment_note} className="line-clamp-1 text-xs leading-5 break-words text-gray-500">{payout.payment_note}</p>}</div>;
 }
 
-// Rows only — the page wraps this in its Card and owns empty/loading/error.
 export function PayoutsTable({ payouts }: { payouts: Payout[] }) {
-  return (
-    <>
-      {/* ≥ md: table */}
-      <div className="hidden overflow-x-auto md:block">
-        <div className="min-w-[760px]">
-          <div
-            className="grid items-center border-y border-slate-100 bg-slate-50/70 text-[13px] font-medium text-slate-500"
-            style={{ gridTemplateColumns: COLUMNS }}
-          >
-            <span className="px-5 py-3">Week</span>
-            <span className="px-4 py-3 text-right">Gross</span>
-            <span className="px-4 py-3 text-right">Commission</span>
-            <span className="px-4 py-3 text-right">Net payout</span>
-            <span className="px-4 py-3 pl-8">Status</span>
-            <span className="px-5 py-3">Paid on / note</span>
-          </div>
-
-          <div className="divide-y divide-slate-100">
-            {payouts.map((p) => (
-              <div key={p.id} className="grid items-center transition-colors hover:bg-slate-50/80" style={{ gridTemplateColumns: COLUMNS }}>
-                <span className="px-5 py-4 text-[15px] font-medium whitespace-nowrap text-ink">{formatWeek(p.week_start, p.week_end)}</span>
-                <span className="tnum px-4 py-4 text-right text-sm whitespace-nowrap text-slate-600">{formatInr(p.gross_amount)}</span>
-                <span className="tnum px-4 py-4 text-right text-sm whitespace-nowrap text-slate-400">−{formatInr(p.commission_deducted)}</span>
-                <span className="tnum px-4 py-4 text-right text-[15px] font-semibold whitespace-nowrap text-ink">{formatInr(p.net_payout)}</span>
-                <span className="px-4 py-4 pl-8">
-                  <StatusPill status={p.status} />
-                </span>
-                <span className="px-5 py-4">
-                  <PaidOn payout={p} />
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* < md: stacked cards */}
-      <ul className="divide-y divide-slate-100 border-t border-slate-100 md:hidden">
-        {payouts.map((p) => (
-          <li key={p.id} className="flex flex-col gap-2 px-4 py-4">
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-medium text-slate-600">{formatWeek(p.week_start, p.week_end)}</p>
-              <StatusPill status={p.status} />
-            </div>
-            <p className="tnum text-xl font-semibold text-ink">{formatInr(p.net_payout)}</p>
-            <p className="tnum text-xs text-slate-500">
-              Gross {formatInr(p.gross_amount)} · Commission −{formatInr(p.commission_deducted)}
-            </p>
-            {(p.paid_at || p.payment_note) && (
-              <div className="text-xs text-slate-500">
-                {p.paid_at && <p>Paid on {formatDate(p.paid_at)}</p>}
-                {p.payment_note && <p className="mt-1 rounded-lg bg-slate-50 px-2 py-1 text-slate-600">{p.payment_note}</p>}
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-    </>
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = payouts.find(payout => payout.id === selectedId) ?? null;
+  return <>
+    <div className="hidden overflow-x-auto md:block">
+      <table className="w-full min-w-[1100px] border-collapse text-left">
+        <caption className="sr-only">Weekly settlements with recorded amounts, status and statement actions</caption>
+        <thead className="bg-gray-50 text-sm font-semibold text-gray-950">
+          <tr className="divide-x divide-gray-200 border-y border-gray-200">
+            {['Sl no.', 'Settlement period', 'Gross amount', 'Commission', 'Net payout', 'Status', 'Paid on / note', 'Actions'].map((title, index) => <th key={title} scope="col" className={`px-4 py-3 whitespace-nowrap ${index >= 2 && index <= 4 ? 'text-right' : index === 0 ? 'w-16 text-center' : index === 7 ? 'w-36 text-right' : ''}`}>{title}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {payouts.map((payout, index) => <tr key={payout.id} className="divide-x divide-gray-200 border-b border-gray-200 last:border-b-0 hover:bg-gray-50/60">
+            <td className="tnum px-4 py-2.5 text-center text-sm text-gray-500">{index + 1}</td>
+            <th scope="row" className="px-4 py-2.5 text-sm font-semibold whitespace-nowrap text-gray-950">{formatWeek(payout.week_start, payout.week_end)}</th>
+            <td className="tnum px-4 py-2.5 text-right text-sm whitespace-nowrap text-gray-600">{payoutMoney(payout.gross_amount)}</td>
+            <td className="tnum px-4 py-2.5 text-right text-sm whitespace-nowrap text-gray-500" title="Effective commission calculated from this settlement’s recorded gross amount and deduction">{payoutCommission(payout)}</td>
+            <td className="tnum px-4 py-2.5 text-right text-sm font-semibold whitespace-nowrap text-gray-950">{payoutMoney(payout.net_payout)}</td>
+            <td className="px-4 py-2.5"><PayoutStatus status={payout.status} /></td>
+            <td className="max-w-60 px-4 py-2.5"><PaidOn payout={payout} /></td>
+            <td className="px-3 py-2.5"><PayoutActions payout={payout} onView={p => setSelectedId(p.id)} /></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    <ul className="divide-y divide-gray-200 border-t border-gray-200 md:hidden">
+      {payouts.map((payout, index) => <li key={payout.id} className="space-y-3 p-4">
+        <div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">{index + 1}. {formatWeek(payout.week_start, payout.week_end)}</p><PayoutStatus status={payout.status} /></div>
+        <p className="tnum text-xl font-semibold">{payoutMoney(payout.net_payout)}</p>
+        <p className="text-xs text-gray-500">Gross {payoutMoney(payout.gross_amount)} · Commission {payoutCommission(payout)}</p>
+        <div className="flex items-end justify-between gap-3"><PaidOn payout={payout} /><PayoutActions payout={payout} onView={p => setSelectedId(p.id)} /></div>
+      </li>)}
+    </ul>
+    <PayoutDetailsDialog payout={selected} onClose={() => setSelectedId(null)} />
+  </>;
 }

@@ -111,3 +111,13 @@ describe('filterFix', () => {
     expect(isUsableLocationFix(fix(0, 10, 30), now)).toBe(false);
   });
 });
+
+
+it('reanchors a coarse startup preview to a materially better precise fix', () => {
+  const time = Date.now();
+  const first = filterFix(null, { latitude: 13.2, longitude: 74.7, accuracy: 35, timestamp: time });
+  const precise = { latitude: 13.2001, longitude: 74.7, accuracy: 20, timestamp: time + 1000 };
+  const next = filterFix(first, precise);
+  expect(next.latitude).toBe(precise.latitude);
+  expect(next.longitude).toBe(precise.longitude);
+});

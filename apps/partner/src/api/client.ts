@@ -11,6 +11,7 @@
 import { ApiError, createApiClient } from '@gloceries/shared';
 import { useAuthStore } from '../store/useAuthStore';
 import { API_BASE_URL } from './baseUrl';
+import { requestSessionRefresh } from './refreshSession';
 
 // Plain fetch, not this file's own apiRequest — apiRequest is what calls
 // this on a 401 (via the shared client's own `refresh` option below);
@@ -36,17 +37,10 @@ async function doRefresh(epoch: number): Promise<string | null> {
   if (!isCurrentSession(epoch)) return null;
   const refreshToken = useAuthStore.getState().refreshToken;
   if (!refreshToken) return null;
-  try {
-    const res = await fetch(`${API_URL}/auth/refresh`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-    if (!res.ok || !isCurrentSession(epoch)) return null;
-    const body = await res.json() as { access_token: string; refresh_token: string };
-    if (!isCurrentSession(epoch)) return null;
-    await useAuthStore.getState().setTokens(body.access_token, body.refresh_token, epoch);
-    return isCurrentSession(epoch) ? body.access_token : null;
-  } catch { return null; }
+  const body = await requestSessionRefresh(API_URL, refreshToken);
+  if (!body || !isCurrentSession(epoch)) return null;
+  await useAuthStore.getState().setTokens(body.access_token, body.refresh_token, epoch);
+  return isCurrentSession(epoch) ? body.access_token : null;
 }
 function refreshAccessToken(epoch: number): Promise<string | null> {
   let pending = refreshes.get(epoch);

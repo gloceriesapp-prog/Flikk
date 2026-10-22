@@ -1,8 +1,28 @@
+/* global __dirname */
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
 const { configureProperties, configureBuildGradle, configureManifest, configureStyles, configureProjectBuildGradle, configureProguardRules } = require('../../plugins/withAndroidReleaseQuality.cjs');
 
 describe('Partner Android release quality', () => {
+  it('isolates the new native image loaders from the shipped 1.0.4 OTA runtime', () => {
+    const root = path.resolve(__dirname, '../../../..');
+    const config = JSON.parse(execFileSync(process.execPath, ['-e',
+      'const {expo} = require("./apps/partner/app.config.js"); console.log(JSON.stringify({version:expo.version,runtimeVersion:expo.runtimeVersion}));',
+    ], {
+      cwd: root,
+      env: { PATH: process.env.PATH, NODE_ENV: 'test', EXPO_PUBLIC_API_URL: 'https://api.example.com' },
+      encoding: 'utf8',
+    }));
+    const version = require('../../package.json').version;
+    assert.equal(config.version, version);
+    assert.equal(require('../../../../package-lock.json').packages['apps/partner'].version, version);
+    assert.deepEqual(config.runtimeVersion, { policy: 'appVersion' });
+    // Release 15 shipped native code under 1.0.4 before these native patches.
+    assert.ok(version.localeCompare('1.0.4', undefined, { numeric: true }) > 0,
+      'Native image fixes require a new runtime version beyond the shipped 1.0.4 binary.');
+  });
   it('enables R8, resource shrinking and edge-to-edge without duplicate properties', () => {
     const initial = [{type:'property',key:'android.enableMinifyInReleaseBuilds',value:'false'}];
     const result = configureProperties(initial);

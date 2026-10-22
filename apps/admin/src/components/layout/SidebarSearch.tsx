@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { Search } from '@/components/icons';
 
 interface Hit { id: string; label: string; detail: string }
 interface Results { orders: Hit[]; customers: Hit[]; stores: Hit[] }

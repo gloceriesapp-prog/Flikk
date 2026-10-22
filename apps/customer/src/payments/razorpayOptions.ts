@@ -1,7 +1,7 @@
-import type { RazorpayOrder, RazorpayPaymentResult } from '../api/payments';
+import type { NetbankingBank, RazorpayOrder, RazorpayPaymentResult } from '../api/payments';
 import type { PaymentMethod } from './paymentMethod';
 
-export function razorpayOptions(order: RazorpayOrder, method: PaymentMethod = 'online', nowMs = Date.now()) {
+export function razorpayOptions(order: RazorpayOrder, method: PaymentMethod = 'online', nowMs = Date.now(), bank?: NetbankingBank, walletContact?: string) {
   const expires = Date.parse(order.expiresAt);
   if (order.provider !== 'razorpay' || !/^order_[a-zA-Z0-9]+$/.test(order.providerOrderId)
     || !/^rzp_(live|test)_[a-zA-Z0-9]+$/.test(order.keyId) || order.currency !== 'INR'
@@ -18,7 +18,29 @@ export function razorpayOptions(order: RazorpayOrder, method: PaymentMethod = 'o
   const customer = order.customer ?? {};
   const preferredMethod = method === 'card' || method === 'netbanking' ? method
     : method.startsWith('upi_app:') ? 'upi' : undefined;
+  if (bank && (method !== 'netbanking' || !/^[A-Z0-9_]{2,20}$/.test(bank.code))) {
+    throw new Error('Choose an available bank before paying.');
+  }
+  const wallet = method.startsWith('wallet:') ? method.slice('wallet:'.length) : undefined;
+  if (wallet !== undefined && wallet !== 'mobikwik' && wallet !== 'olamoney') {
+    throw new Error('Choose an available wallet before paying.');
+  }
+  if (walletContact !== undefined && (!wallet || !/^\+91[6-9]\d{9}$/.test(walletContact))) {
+    throw new Error('Enter a valid wallet mobile number.');
+  }
   return {
+    ...(method === 'card' ? { config: { display: {
+      blocks: { cards_only: { name: 'Credit or debit card', instruments: [{ method: 'card' }] } },
+      sequence: ['block.cards_only'], preferences: { show_default_blocks: false },
+    } } } : {}),
+    ...(wallet ? { config: { display: {
+      blocks: { selected_wallet: { name: 'Wallet', instruments: [{ method: 'wallet', wallets: [wallet] }] } },
+      sequence: ['block.selected_wallet'], preferences: { show_default_blocks: false },
+    } } } : {}),
+    ...(bank ? { config: { display: {
+      blocks: { selected_bank: { name: 'Selected bank', instruments: [{ method: 'netbanking', banks: [bank.code] }] } },
+      sequence: ['block.selected_bank'], preferences: { show_default_blocks: false },
+    } } } : {}),
     key: order.keyId,
     order_id: order.providerOrderId,
     amount: order.amountPaise,
@@ -27,6 +49,7 @@ export function razorpayOptions(order: RazorpayOrder, method: PaymentMethod = 'o
     description: 'Groceries and essentials',
     prefill: {
       ...customer,
+      ...(walletContact ? { contact: walletContact } : {}),
       ...(preferredMethod && customer.contact && customer.email ? { method: preferredMethod } : {}),
     },
     theme: { color: '#155DFC' },

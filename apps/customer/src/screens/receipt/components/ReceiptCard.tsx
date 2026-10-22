@@ -103,7 +103,7 @@ export function ReceiptCard({
       </View>
 
       <View className="mt-4 flex-row items-center justify-between border-t border-dashed border-gray-300 pt-4">
-        <Text className="text-xl font-bold text-ink">Total Payment</Text>
+        <Text className="text-xl font-bold text-ink">Order total</Text>
         <RupeePrice amount={total} size={20} />
       </View>
 

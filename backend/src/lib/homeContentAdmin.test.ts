@@ -123,3 +123,22 @@ describe('Admin Home content API', () => {
     expect(JSON.stringify(await response.json())).not.toContain('private database error');
   });
 });
+
+
+it('publishes all named festival shelves through the authenticated revision-checked API', async () => {
+  const content = structuredClone(DEFAULT_CONTENT.festivals);
+  content.sections.find(section => section.id === 'festival-puja')!.title = 'Our puja picks';
+  content.sections.find(section => section.id === 'festival-flowers')!.enabled = false;
+  mocks.row = { tab_key: 'festivals', home_tab_id: null, revision: 4, updated_at: '2026-10-21T10:00:00Z', content };
+  const request = new Request('http://localhost:3000/api/home-content/festivals', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:3000' },
+    body: JSON.stringify({ revision: 3, content }),
+  });
+  const response = await PUT(request, { params: Promise.resolve({ tab: 'festivals' }) });
+  expect(response.status).toBe(200);
+  const published = await response.json();
+  expect(published.tabKey).toBe('festivals');
+  expect(published.content.sections).toHaveLength(10);
+  expect(published.content.sections.find((section: { id: string }) => section.id === 'festival-flowers').enabled).toBe(false);
+  expect(mocks.update).toHaveBeenCalledWith({ content, updated_by: mocks.user!.id });
+});

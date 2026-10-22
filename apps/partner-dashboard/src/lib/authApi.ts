@@ -4,20 +4,17 @@
 // the SAME phone number/account as their app, not a separate web-only
 // identity.
 
-import { apiRequest } from './api';
+import { ApiError, apiRequest } from './api';
 import { setTokens } from './authStorage';
 
-// Real pre-flight gate — backend/src/routes/auth.ts's own POST
-// /otp/partner-check, called before requestOtp below. Throws ApiError
-// (404 PARTNER_NOT_REGISTERED) if this phone was never approved as a
-// store owner or never submitted an application — see that route's own
-// note on why this has to happen BEFORE the real OTP send, not after.
+// Optional UI preflight; request and verify repeat this check on the server.
+// Only existing users with the partner (store_owner) role can sign in here.
 export function checkPartnerPhone(phone: string): Promise<{ registered: true }> {
   return apiRequest('/auth/otp/partner-check', { method: 'POST', body: { phone }, auth: false });
 }
 
 export function requestOtp(phone: string): Promise<{ ok: true }> {
-  return apiRequest('/auth/otp/request', { method: 'POST', body: { phone }, auth: false });
+  return apiRequest('/auth/partner-dashboard/otp/request', { method: 'POST', body: { phone, app: 'partner_dashboard' }, auth: false });
 }
 
 interface VerifyOtpResponse {
@@ -30,11 +27,12 @@ interface VerifyOtpResponse {
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpResponse> {
-  const result = await apiRequest<VerifyOtpResponse>('/auth/otp/verify', {
+  const result = await apiRequest<VerifyOtpResponse>('/auth/partner-dashboard/otp/verify', {
     method: 'POST',
-    body: { phone, code },
+    body: { phone, code, app: 'partner_dashboard' },
     auth: false,
   });
+  if (result.role !== 'store_owner') throw new ApiError(403, 'PARTNER_LOGIN_REQUIRED', 'Sign in with a registered partner phone number.');
   setTokens(result.access_token, result.refresh_token);
   return result;
 }

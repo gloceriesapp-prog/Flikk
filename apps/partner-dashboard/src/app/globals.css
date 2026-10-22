@@ -79,3 +79,9 @@ h1, h2, h3, .font-display {
   transition: border-color 0.12s ease;
 }
 
+
+/* App-like feel: no rubber-band bounce when the page is dragged past its edge. */
+html,
+body {
+  overscroll-behavior: none;
+}
