@@ -58,48 +58,38 @@ pnpm db:status                             # ledger shows 141 applied
 then log in with a test number from a dev build. Delete the scratch project
 afterwards.
 
-## 3. Copy the database (CLI, from your laptop)
+## 3. Copy the database (from your laptop)
 
-Supabase's documented path is the CLI dump/restore. Connection strings come
-from each project's Connect button (use the **session pooler** URI on IPv4
-networks).
+Target project: **gloceries-mumbai** (`cdnfpaolzkpqetmmpyzh`, `ap-south-1`),
+created 22 Oct 2026. Script: `backend/scripts/mumbai/1-copy-database.sh`.
 
 ```bash
-OLD="postgresql://postgres.bjlknohjdnemxwwoxcsv:<old-password>@<old-pooler-host>:5432/postgres"
-NEW="postgresql://postgres.<new-ref>:<new-password>@<new-pooler-host>:5432/postgres"
-
-supabase db dump --db-url "$OLD" -f roles.sql  --role-only
-supabase db dump --db-url "$OLD" -f schema.sql
-supabase db dump --db-url "$OLD" -f data.sql   --use-copy --data-only
-
-psql --single-transaction --variable ON_ERROR_STOP=1 \
-  --file roles.sql --file schema.sql \
-  --command 'SET session_replication_role = replica' \
-  --file data.sql \
-  --dbname "$NEW"
+export OLD_DB_URL='<Seoul session pooler URL>'   # Connect → Session pooler
+export NEW_DB_URL='<Mumbai session pooler URL>'
+bash backend/scripts/mumbai/1-copy-database.sh
 ```
 
-- `session_replication_role = replica` stops triggers (e.g. the rider and
-  store guards) from firing while rows are loaded.
-- Auth users come across in the data dump (`auth.users`), so the 9 accounts
-  keep their ids. Phone logins mint a fresh one-time password on every sign-in,
-  so nothing about them needs migrating; admin email/password hashes carry over.
-- `ops.applied_migrations` comes across too, so the migration ledger stays
-  correct (`pnpm db:status` must show the same 141 rows).
-- Check the `supabase_realtime` publication on the new project lists the same
-  tables as the old one (`select * from pg_publication_tables`); add any missing
-  ones with `alter publication supabase_realtime add table …`.
-- Never commit `roles.sql` / `data.sql`: they contain personal data. Delete them
-  after the move.
+It refuses to run unless OLD points at `bjlknohjdnemxwwoxcsv` and NEW at
+`cdnfpaolzkpqetmmpyzh` and Mumbai is empty; dumps Seoul (roles, schema, data,
+read-only) with the Supabase CLI; restores into Mumbai in **one transaction**
+with triggers paused (a failure leaves Mumbai empty); copies the `ops`
+migration ledger if the dump left it out; deletes the dumps (personal data);
+then runs `verify.sql` on both and diffs every table (row count + md5 of all
+rows for `public`/`ops`, key columns for `auth`/`storage`).
+Needs Docker running and psql 17.
+
+Baseline taken from Seoul on 22 Oct 2026: 98 public/ops tables,
+`ops.applied_migrations` 141 rows, `auth.users` 9, `auth.identities` 10,
+`storage.buckets` 15, `storage.objects` 154.
 
 ## 4. Copy storage files
 
-The dump copies `storage.objects` rows, not the files. Copy the files bucket by
-bucket with the Supabase JS client using each project's service-role key
-(list → download from old → upload to new, same path, `upsert: true`).
-~154 files, so a one-off script run once from your laptop is fine. Private
-buckets (`rider-documents`, `store-documents`, `private-documents`) must stay
-private on the new project.
+Script: `backend/scripts/mumbai/2-copy-storage.mjs` (service-role keys from
+each project's API settings, exported in your terminal only). Copies every
+file bucket by bucket with the same path and content type, creates any missing
+bucket with the same public/limit settings, is safe to re-run (upsert) and
+fails unless every bucket ends with the same file count. Private documents are
+already encrypted by the app, so they are copied as-is.
 
 ## 5. Cut over (≈30 minutes, low-traffic hour)
 
