@@ -20,11 +20,9 @@
 
 import { View } from 'react-native';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
-import { EtaBadge } from './EtaBadge';
 import { DeliveryModeSwitcher } from './DeliveryModeSwitcher';
 import { LocationSelector } from './LocationSelector';
 
-const PLACEHOLDER_ETA_MINUTES = 9; // real value should come from the nearest store's avg_prep_minutes
 // px of scroll over which the block fully collapses — lowered from 50 per
 // an explicit ask to get the search bar under the status bar sooner: this
 // row's real content height (not spare padding, both already at floor

@@ -74,3 +74,46 @@ describe('native checkout lifecycle', () => {
     expect(isNativeCheckoutOpen()).toBe(false);
   });
 });
+
+it('configures secure checkout with the selected netbanking bank only', () => {
+  expect(razorpayOptions(order, 'netbanking', now, { code: 'SBIN', name: 'State Bank of India' }).config?.display)
+    .toMatchObject({ blocks: { selected_bank: { instruments: [{ method: 'netbanking', banks: ['SBIN'] }] } }, preferences: { show_default_blocks: false } });
+  expect(() => razorpayOptions(order, 'netbanking', now, { code: 'not a code', name: 'Bad' })).toThrow();
+  expect(() => razorpayOptions(order, 'card', now, { code: 'SBIN', name: 'State Bank of India' })).toThrow();
+  expect(razorpayOptions(order, 'online', now).config).toBeUndefined();
+});
+
+it.each(['mobikwik', 'olamoney'] as const)('restricts wallet checkout to %s', code => {
+  expect(razorpayOptions(order, `wallet:${code}`, now).config?.display)
+    .toMatchObject({ blocks: { selected_wallet: { instruments: [{ method: 'wallet', wallets: [code] }] } }, preferences: { show_default_blocks: false } });
+});
+it('rejects unsupported wallets', () => {
+  expect(() => razorpayOptions(order, 'wallet:payzapp' as never, now)).toThrow();
+});
+
+
+it('opens card-only Razorpay checkout with the server order even without a saved email', async () => {
+  NativeModules.RNRazorpayCheckout = { open: jest.fn() };
+  const currentOrder = { ...order, expiresAt: new Date(Date.now() + 120_000).toISOString() };
+  jest.mocked(RazorpayCheckout.open).mockResolvedValueOnce(result);
+  try {
+    await expect(openRazorpayCheckout(currentOrder, 'card')).resolves.toEqual(result);
+    expect(RazorpayCheckout.open).toHaveBeenLastCalledWith(expect.objectContaining({
+      key: order.keyId, order_id: order.providerOrderId, amount: order.amountPaise,
+      config: { display: { blocks: { cards_only: {
+        name: 'Credit or debit card', instruments: [{ method: 'card' }],
+      } }, sequence: ['block.cards_only'], preferences: { show_default_blocks: false } } },
+    }));
+    expect(isNativeCheckoutOpen()).toBe(false);
+  } finally { delete NativeModules.RNRazorpayCheckout; }
+});
+
+it('passes the wallet number only as checkout contact without altering the server order', () => {
+  const options = razorpayOptions(order, 'wallet:mobikwik', now, undefined, '+919000000000');
+  expect(options.prefill.contact).toBe('+919000000000');
+  expect(options.order_id).toBe(order.providerOrderId);
+  expect(options.amount).toBe(order.amountPaise);
+  expect(order.customer).toBeUndefined();
+  expect(() => razorpayOptions(order, 'wallet:olamoney', now, undefined, '123')).toThrow('valid wallet mobile');
+  expect(() => razorpayOptions(order, 'card', now, undefined, '+919000000000')).toThrow();
+});

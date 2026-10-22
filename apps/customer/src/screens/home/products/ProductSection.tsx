@@ -13,7 +13,6 @@ import { View } from 'react-native';
 import { ProductCard } from './ProductCard';
 import { SectionTitle } from '../components/SectionTitle';
 import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
-import { useBrowseClock } from '../../../utils/useBrowseClock';
 import { productAvailability } from '../../../utils/productAvailability';
 import type { Product } from './types';
 
@@ -32,19 +31,14 @@ interface Props {
 }
 
 export function ProductSection({ title, products, showDiscountBadge = false }: Props) {
-  // Lifted once for the whole section (issue #22): a single delivery-settings
-  // query + a single browse-clock subscription, instead of one per card. The
-  // 30s tick re-renders this node, which recomputes each product's (cheap,
-  // pure) availability and passes primitives down; the memoized cards only
-  // re-render for a product whose availability actually changed.
+  // Share delivery settings across cards; cart availability depends on stock.
   const estimatedMinutes = useDeliveryEstimateMinutes();
-  const date = new Date(useBrowseClock());
   return (
     <View className="pt-8">
       <SectionTitle>{title}</SectionTitle>
       <View className="flex-row flex-wrap gap-x-2.5 gap-y-5 px-5">
         {products.map((product) => {
-          const availability = productAvailability(product, date);
+          const availability = productAvailability(product);
           return (
             <ProductCard
               key={product.id}

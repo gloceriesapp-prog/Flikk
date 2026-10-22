@@ -70,6 +70,11 @@ export function filterFix(previous: FilteredFix | null, fix: RawFix): FilteredFi
     return { ...previous, rejected, candidate: fix };
   }
 
+  // Replace a coarse startup preview once a materially better precise fix
+  // arrives. Blending would retain the original Wi-Fi position error.
+  if (previous.accuracy > 25 && measuredAccuracy <= 25
+    && measuredAccuracy <= previous.accuracy * 0.75) return restart(fix);
+
   // GPS uncertainty is not movement. Keep the displayed position anchored
   // inside that uncertainty, including when accuracy fluctuates between fixes.
   // A substantially better fix must still correct an initially coarse position.

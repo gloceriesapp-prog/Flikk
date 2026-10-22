@@ -11,6 +11,8 @@ export type AuthStackParamList = {
 };
 
 export type AppStackParamList = {
+  // Explicit local design route: structured rider/item feedback has no API yet.
+  OrderRating: { previewOnly: true };
   // One-time (per session, until a saved location exists) flow between login
   // and Home — see src/screens/location/README.md for the full sequence.
   LocationPermission: undefined;
@@ -67,8 +69,8 @@ export type AppStackParamList = {
   RegionalCategory: { categoryId: string };
   CoconutOilCollection: undefined;
   StoreDetail: { storeId: string; storeName: string };
-  Cart: { selectedPaymentMethod?: PaymentMethod; startSelectedPayment?: boolean } | undefined;
-  PaymentMethod: { selectedMethod: PaymentMethod | null; selectedAddressId?: string; source?: 'profile'; recoveryTarget?: import('../api/payments').PaymentTarget };
+  Cart: { selectedWallet?: import('../payments/paymentMethod').WalletSelection; selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedPaymentMethod?: PaymentMethod; startSelectedPayment?: boolean } | undefined;
+  PaymentMethod: { selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedMethod: PaymentMethod | null; selectedAddressId?: string; source?: 'profile'; recoveryTarget?: import('../api/payments').PaymentTarget };
   CheckoutAttemptRecovery: undefined;
   PaymentRecovery: { target: import('../api/payments').PaymentTarget };
   PaymentStatus: { amount: number };

@@ -19,7 +19,6 @@ import { cartIdentity } from '../../../store/cartIdentity';
 import type { Product } from '../../home/products/types';
 
 const STEPPER_TINT = '#155DFC';
-const BLUE = '#155DFC';
 
 function cartItemToProduct(item: CartItem): Product {
   return {
@@ -49,7 +48,8 @@ export function CartItemRow({ item, availability }: Props) {
   const productId = cartIdentity(item).productId;
   const requestedQuantity = useCartStore((state) => state.items.reduce((sum, line) =>
     cartIdentity(line).productId === productId ? sum + line.quantity : sum, 0));
-  const cannotIncrease = unavailable || (availability?.availableQuantity != null && requestedQuantity >= availability.availableQuantity);
+  const shopClosed = availability?.status === 'STORE_CLOSED';
+  const cannotIncrease = (unavailable && !shopClosed) || (availability?.availableQuantity != null && requestedQuantity >= availability.availableQuantity);
   const incrementItem = useCartStore(
     (state) => state.incrementItem,
   );
@@ -118,7 +118,7 @@ export function CartItemRow({ item, availability }: Props) {
         {!unavailable && availability?.availableQuantity != null && availability.availableQuantity <= 10 && (
           <Text className="mb-1 self-start rounded-md bg-[#FFF7E6] px-2 py-1 text-[11px] font-semibold text-[#946B14]">Only {availability.availableQuantity} left</Text>
         )}
-        {unavailable && (
+        {unavailable && !shopClosed && (
           <View className="mb-1 gap-1.5">
             <Text className="self-start rounded-md bg-[#FFF0EE] px-2 py-1 text-[11px] font-bold text-[#B42318]">{availability.message ?? 'Unavailable'}</Text>
             <Pressable onPress={() => removeItem(item.id)} accessibilityRole="button"><Text className="text-[12px] font-semibold text-[#155DFC]">Remove item</Text></Pressable>

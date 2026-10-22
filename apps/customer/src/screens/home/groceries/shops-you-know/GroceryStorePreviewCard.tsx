@@ -39,7 +39,7 @@ export function GroceryStorePreviewCard({ store, onOpen, showButton = false, but
         <View className="overflow-hidden rounded-2xl bg-[#F7F7F7]">
           {store.products.map((product, index) => (
             <View key={product.id} className={index === store.products.length - 1 ? '' : 'border-b border-black/[0.05]'}>
-              <PopularProductRow product={product} allowAdd={store.isOpen} onPress={store.isOpen ? undefined : onOpen} />
+              <PopularProductRow product={product} />
             </View>
           ))}
         </View>

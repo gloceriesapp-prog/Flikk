@@ -32,6 +32,7 @@ const ACCENT = '#155DFC';
 interface Props {
   visible: boolean;
   addresses: ApiAddress[];
+  selectedId?: string | null;
   selectingId: string | null;
   deletingId: string | null;
   onClose: () => void;
@@ -40,7 +41,7 @@ interface Props {
   onAddNew: () => void;
 }
 
-export function AddressSelectSheet({ visible, addresses, selectingId, deletingId, onClose, onSelect, onDelete, onAddNew }: Props) {
+export function AddressSelectSheet({ visible, addresses, selectedId, selectingId, deletingId, onClose, onSelect, onDelete, onAddNew }: Props) {
   function confirmDelete(address: ApiAddress) {
     Alert.alert('Remove this address?', `${address.label} · ${address.line1}`, [
       { text: 'Cancel', style: 'cancel' },
@@ -79,7 +80,7 @@ export function AddressSelectSheet({ visible, addresses, selectingId, deletingId
                 <View
                   key={address.id}
                   className="flex-row items-center gap-2 rounded-2xl border px-2.5 py-2.5"
-                  style={{ borderColor: address.is_default ? ACCENT : '#E5E7EB', backgroundColor: address.is_default ? `${ACCENT}0D` : '#FFFFFF' }}
+                  style={{ borderColor: (selectedId === undefined ? address.is_default : address.id === selectedId) ? ACCENT : '#E5E7EB', backgroundColor: (selectedId === undefined ? address.is_default : address.id === selectedId) ? `${ACCENT}0D` : '#FFFFFF' }}
                 >
                   <Pressable onPress={() => onSelect(address.id)} disabled={busy} className="flex-1 flex-row items-center gap-3 px-1.5 py-1">
                     <View className="h-9 w-9 items-center justify-center rounded-full bg-mist">
@@ -88,9 +89,9 @@ export function AddressSelectSheet({ visible, addresses, selectingId, deletingId
                     <View className="flex-1 gap-0.5">
                       <View className="flex-row items-center gap-2">
                         <Text className="text-sm font-bold text-ink">{address.label}</Text>
-                        {address.is_default ? (
+                        {(selectedId === undefined ? address.is_default : address.id === selectedId) ? (
                           <View className="rounded-full bg-lime-soft px-2 py-0.5">
-                            <Text className="text-[10px] font-bold text-lime-deep">Default</Text>
+                            <Text className="text-[10px] font-bold text-lime-deep">{selectedId === undefined ? 'Default' : 'Selected'}</Text>
                           </View>
                         ) : null}
                       </View>

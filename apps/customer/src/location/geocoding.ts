@@ -21,6 +21,9 @@ export class LocationPermissionDeniedError extends Error {
 }
 
 export async function requestLocationPermission(): Promise<boolean> {
+  // Existing permission needs no dialog or Activity-settling delay.
+  const existing = await Location.getForegroundPermissionsAsync();
+  if (existing.status === 'granted') return true;
   const { status } = await Location.requestForegroundPermissionsAsync();
   // Real crash this works around, not a defensive-programming guess: the
   // OS permission dialog tears down and recreates the host Activity: on

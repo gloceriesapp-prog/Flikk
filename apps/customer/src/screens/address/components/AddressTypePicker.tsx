@@ -46,6 +46,8 @@ export function AddressTypePicker({ label, customName, onSelectPreset, onChangeC
 
       {isOther && (
         <TextInput
+          accessibilityLabel="Address name"
+          maxLength={40}
           value={customName}
           onChangeText={onChangeCustomName}
           placeholder="Name this address, e.g. Friend's place"

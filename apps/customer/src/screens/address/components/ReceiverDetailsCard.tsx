@@ -35,12 +35,16 @@ export function ReceiverDetailsCard({ name, phone, onChangeName, onChangePhone }
 
   return (
     <View className="gap-3 rounded-2xl bg-white p-4">
-      <Text className="text-[15px] font-medium text-ink">
+      <Text accessibilityRole="header" className="text-[16px] font-semibold text-black">
         Who should we hand this to? <Text className="text-danger">*</Text>
       </Text>
-
-      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
+      <View
+        className="h-[52px] flex-row items-center rounded-xl px-4"
+        style={{ backgroundColor: '#FAFAFA' }}
+      >
         <TextInput
+          accessibilityLabel="Receiver name"
+          maxLength={100}
           value={name}
           onChangeText={onChangeName}
           placeholder="Receiver's name"
@@ -50,11 +54,15 @@ export function ReceiverDetailsCard({ name, phone, onChangeName, onChangePhone }
         />
       </View>
 
-      <View className="h-[52px] flex-row items-center rounded-xl px-4" style={{ backgroundColor: '#FAFAFA' }}>
+      <View
+        className="h-[52px] flex-row items-center rounded-xl px-4"
+        style={{ backgroundColor: '#FAFAFA' }}
+      >
         <Text className="text-base text-ink">🇮🇳</Text>
         <Text className="ml-2 text-base text-ink font-medium">{COUNTRY_CODE}</Text>
         <View className="mx-3 h-6 w-px bg-gray-300" />
         <TextInput
+          accessibilityLabel="Receiver mobile number"
           value={digits}
           onChangeText={handleChangeDigits}
           placeholder="10-digit mobile number"

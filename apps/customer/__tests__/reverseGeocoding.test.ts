@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { apiRequest } from '../src/api/client';
-import { getCurrentCoordinates, reverseGeocode } from '../src/location/geocoding';
+import { getCurrentCoordinates, requestLocationPermission, reverseGeocode } from '../src/location/geocoding';
 
 jest.mock('../src/api/client', () => ({ apiRequest: jest.fn() }));
 const request = jest.mocked(apiRequest);
@@ -51,4 +51,26 @@ it('does not use a stale or very coarse one-off GPS result as the delivery pin',
     await jest.advanceTimersByTimeAsync(15000);
     await assertion;
   }
+});
+
+
+it('reuses granted permission without prompting or waiting for Activity recreation', async () => {
+  jest.useFakeTimers();
+  jest.mocked(Location.getForegroundPermissionsAsync).mockResolvedValueOnce({ status: 'granted' } as never);
+  const before = jest.mocked(Location.requestForegroundPermissionsAsync).mock.calls.length;
+  await expect(requestLocationPermission()).resolves.toBe(true);
+  expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(before);
+  expect(jest.getTimerCount()).toBe(0);
+});
+
+it('retains the native Activity settling delay after a new permission grant', async () => {
+  jest.useFakeTimers();
+  jest.mocked(Location.getForegroundPermissionsAsync).mockResolvedValueOnce({ status: 'denied' } as never);
+  jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValueOnce({ status: 'granted' } as never);
+  let completed = false;
+  const pending = requestLocationPermission().then(value => { completed = true; return value; });
+  await jest.advanceTimersByTimeAsync(399);
+  expect(completed).toBe(false);
+  await jest.advanceTimersByTimeAsync(1);
+  await expect(pending).resolves.toBe(true);
 });

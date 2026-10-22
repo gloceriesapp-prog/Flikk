@@ -35,7 +35,7 @@ export function WishlistScreen({ navigation }: Props) {
   const emptyTitle = useCopy('wishlist.empty.title');
   const emptySubtitle = useCopy('wishlist.empty.subtitle');
   const unavailableNote = useCopy('wishlist.unavailable.note');
-  // Out-of-stock items and closed/deactivated shops stay listed (the customer
+  // Out-of-stock items stay listed (the customer
   // saved them) but sort last; ProductCard itself shows the reason and
   // disables add-to-cart via the same productAvailability check.
   const available = saved.filter((p) => productAvailability(p).isAvailable);

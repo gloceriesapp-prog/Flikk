@@ -20,7 +20,6 @@
 
 import { Pressable, Text, View } from 'react-native';
 import { RupeePrice } from '../RupeePrice';
-import { getPerUnitPriceLabel } from '../../utils/perUnitPrice';
 import type { Product } from '../../screens/home/products/types';
 
 type ProductVariant = NonNullable<Product['variants']>[number];
@@ -47,7 +46,6 @@ export function ProductVariantOptions({ variants, selectedId, onSelect }: Props)
             variant.originalPrice && variant.originalPrice > variant.price
               ? Math.round((1 - variant.price / variant.originalPrice) * 100)
               : null;
-          const perUnitLabel = getPerUnitPriceLabel(variant.label, variant.price);
 
           return (
             <Pressable

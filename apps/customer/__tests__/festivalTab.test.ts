@@ -24,3 +24,30 @@ test('an enabled festival tab goes first with the admin title and colours', () =
   expect(matched.map((t) => t.id)).toEqual(['d', 'g']);
   expect(matched[0]!.festival).toBe(config);
 });
+
+
+test('seasonal artwork reuses the managed Festivals tab instead of duplicating it', () => {
+  const managed = { ...tab('published-festivals', 'Festivals'), contentKey: 'festivals' as const };
+  const config = mapFestivalTabConfig({ enabled: true, title: 'Diwali' });
+  const result = withFestivalHomeTab([tab('g', 'Groceries'), managed, tab('n', 'Navratri')], config);
+  expect(result.map(item => item.id)).toEqual(['published-festivals', 'g']);
+  expect(result[0]).toMatchObject({ contentKey: 'festivals', label: 'Diwali', festival: config });
+});
+
+test('an admin-disabled managed Festival tab cannot be resurrected by seasonal artwork', () => {
+  const config = mapFestivalTabConfig({ enabled: true, title: 'Diwali' });
+  const result = withFestivalHomeTab([tab('g', 'Groceries'), tab('n', 'Navratri')], config, false);
+  expect(result.map(item => item.id)).toEqual(['g']);
+});
+
+
+test('unifying festival tabs preserves existing seasonal tiles and banners', () => {
+  const managed = { ...tab('managed', 'Festivals'), contentKey: 'festivals' as const,
+    tiles: [{ id: 'managed-tile', name: 'Shop festival products' }] };
+  const legacy = { ...tab('legacy', 'Navratri'), tiles: [{ id: 'legacy-tile', name: 'Puja picks' }],
+    banners: [{ id: 'poster', imageUrl: 'https://example.com/festival.png' }] };
+  const result = withFestivalHomeTab([managed, legacy], mapFestivalTabConfig({ enabled: true, title: 'Navratri' }));
+  expect(result).toHaveLength(1);
+  expect(result[0]!.tiles.map(tile => tile.id)).toEqual(['managed-tile', 'legacy-tile']);
+  expect(result[0]!.banners).toEqual(legacy.banners);
+});

@@ -735,23 +735,6 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
   ],
 }));
 
-const headerTitleStyle = useAnimatedStyle(() => ({
-  opacity: interpolate(
-    grow.value,
-    [0, 0.45, 1],
-    [0, 0, 1],
-  ),
-
-  transform: [
-    {
-      translateY: interpolate(
-        grow.value,
-        [0, 1],
-        [4, 0],
-      ),
-    },
-  ],
-}));
   // Grown-state resting top for the floating controls (below the status bar).
   const grownHeaderTop = insets.top + 14;
   const headerRowStyle = useAnimatedStyle(() => ({

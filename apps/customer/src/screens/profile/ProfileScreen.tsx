@@ -1,24 +1,10 @@
 import {
   useEffect,
   useState,
-  type ComponentProps,
+  type ComponentType,
 } from 'react';
 
-import {
-  ArrowDown01Icon,
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-  CreditCardIcon,
-  CustomerService01Icon,
-  InformationCircleIcon,
-  Location05Icon,
-  LockIcon,
-  Logout03Icon,
-  Notification03Icon,
-  Share08Icon,
-  StarIcon,
-  UserAdd01Icon,
-} from '@hugeicons/core-free-icons';
+import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
 
 import { StatusBar } from 'expo-status-bar';
 
@@ -34,6 +20,21 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AppIcon } from '../../components/AppIcon';
 import { BrandFooter } from '../../components/BrandFooter';
+import {
+  IconlyAddUser,
+  IconlyArrowLeft,
+  IconlyArrowRight,
+  IconlyHeadphone,
+  IconlyIncognito,
+  IconlyInfoSquare,
+  IconlyLogout,
+  IconlyNotification,
+  IconlyPinMap,
+  IconlySend,
+  IconlyStar,
+  IconlyWallet,
+  type IconlyIconProps,
+} from '../../components/icons/iconly';
 
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -52,7 +53,7 @@ type Props =
   >;
 
 type ProfileIcon =
-  ComponentProps<typeof AppIcon>['icon'];
+  ComponentType<IconlyIconProps>;
 
 interface MenuRowProps {
   icon: ProfileIcon;
@@ -66,7 +67,7 @@ interface MenuRowProps {
 }
 
 function MenuRow({
-  icon,
+  icon: Icon,
   label,
   onPress,
   disabled = false,
@@ -103,12 +104,7 @@ function MenuRow({
             bg-[#F5F5F5]
           "
         >
-          <AppIcon
-            icon={icon}
-            size={18}
-            color="#555555"
-            strokeWidth={1.8}
-          />
+          <Icon size={20} color="#555555" />
         </View>
 
         {/* LABEL */}
@@ -167,12 +163,7 @@ function MenuRow({
               bg-[#F7F7F7]
             "
           >
-            <AppIcon
-              icon={ArrowRight01Icon}
-              size={14}
-              color="#777777"
-              strokeWidth={2}
-            />
+            <IconlyArrowRight size={16} color="#777777" />
           </View>
         ) : null}
       </Pressable>
@@ -327,25 +318,20 @@ export function ProfileScreen({
             active:scale-95
           "
         >
-          <AppIcon
-            icon={ArrowLeft01Icon}
-            size={20}
-            color="#1C1C1C"
-            strokeWidth={2}
-          />
+          <IconlyArrowLeft size={22} color="#1C1C1C" />
         </Pressable>
 
         <Text
           className="
             flex-1
             text-center
-            text-[18px]
+            text-[20px]
             font-bold
             tracking-[-0.3px]
             text-[#1C1C1C]
           "
         >
-         Your profile
+          My Account
         </Text>
 
         <View className="h-10 w-10" />
@@ -395,7 +381,7 @@ export function ProfileScreen({
         {/* PREFERENCES */}
         <SectionCard title="Preferences">
           <MenuRow
-            icon={Location05Icon}
+            icon={IconlyPinMap}
             label="Address Book"
             onPress={() =>
               navigation.navigate(
@@ -405,13 +391,13 @@ export function ProfileScreen({
           />
 
           <MenuRow
-            icon={CreditCardIcon}
+            icon={IconlyWallet}
             label="Payment Methods"
             onPress={() => navigation.navigate('PaymentMethod', { selectedMethod: null, source: 'profile' })}
           />
 
           <MenuRow
-            icon={Notification03Icon}
+            icon={IconlyNotification}
             label="Notifications"
             showDivider={false}
             onPress={() => navigation.navigate('Notifications')}
@@ -421,13 +407,13 @@ export function ProfileScreen({
         {/* GLOCERIES + SUPPORT */}
         <SectionCard title="Gloceries & support">
           <MenuRow
-            icon={Share08Icon}
+            icon={IconlySend}
             label="Share Gloceries"
             onPress={handleShare}
           />
 
           <MenuRow
-            icon={UserAdd01Icon}
+            icon={IconlyAddUser}
             label="Invite Friends"
             onPress={() =>
               navigation.navigate(
@@ -437,7 +423,7 @@ export function ProfileScreen({
           />
 
           <MenuRow
-            icon={StarIcon}
+            icon={IconlyStar}
             label="Rate Gloceries"
             onPress={() =>
               setIsRateModalOpen(
@@ -447,26 +433,26 @@ export function ProfileScreen({
           />
 
           <MenuRow
-            icon={CustomerService01Icon}
+            icon={IconlyHeadphone}
             label="Help & Support"
             onPress={() => navigation.navigate('Support')}
           />
 
           <MenuRow
-            icon={LockIcon}
+            icon={IconlyIncognito}
             label="Account Privacy"
             onPress={() => navigation.navigate('AccountPrivacy')}
           />
 
           <MenuRow
-            icon={InformationCircleIcon}
+            icon={IconlyInfoSquare}
             label="About Gloceries"
             onPress={() => navigation.navigate('AboutGloceries')}
           />
 
           {/* LOGOUT — SAME CARD, SAME NEUTRAL STYLE */}
           <MenuRow
-            icon={Logout03Icon}
+            icon={IconlyLogout}
             label={
               isLoggingOut
                 ? 'Logging out…'

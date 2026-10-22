@@ -5,7 +5,8 @@ The customer tabs no longer keep separate copies of their section order,
 headings, categories, brand lists or selection rules.
 
 - `model.js`: supported section types and empty section/item factories.
-- `defaults.js`: initial Grocery, Fruit & Veg and Regional layouts.
+- `defaults.js`: initial layouts for all five managed tabs.
+- `festival.js`: named festival section presets and non-destructive draft upgrades.
 - `validation.js`: bounded, strict validation used before publishing and rendering.
 - `selection.js`: deterministic product selection and reference extraction.
 - `index.d.ts`: the shared TypeScript contract.
@@ -72,3 +73,11 @@ targeted lint, admin production build and customer iOS export. Database checks
 should exercise RLS, optimistic revisions and bidirectional header sync inside
 a transaction that is rolled back. A live invalidation smoke test may publish
 an identical document to confirm database-to-backend streaming.
+
+
+Festival admin entry: `/festival-layout` opens the same editor on Festivals.
+`addMissingFestivalSections` preserves existing sections, selections, order and
+visibility; inserts missing named shelves before the footer; and is idempotent.
+Published empty or custom layouts are never overwritten automatically. The
+customer uses this publication contract for both generic and seasonal festival
+destinations, so admin controls affect the production renderer.

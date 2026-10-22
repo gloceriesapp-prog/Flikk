@@ -14,7 +14,7 @@ import { createOrder } from '../../../api/orders';
 import { createTrip } from '../../../api/trips';
 import type { ApiAddress } from '../../../api/addresses';
 import { useAuthStore } from '../../../store/useAuthStore';
-import { fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod, fetchPaymentContact } from '../../../api/payments';
+import { fetchAvailableWallets, fetchNetbankingBanks, fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod, fetchPaymentContact } from '../../../api/payments';
 import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
 import { assertDirectUpiConfigured, prepareUpiIntent } from '../../../payments/upiIntent';
 import type { UpiApp } from '../../../payments/upiApps';
@@ -33,9 +33,11 @@ interface Props {
   quote?: CheckoutQuote;
   onQuoteChanged: () => void;
   selectedPaymentMethod?: PaymentMethod;
+  selectedWallet?: import('../../../payments/paymentMethod').WalletSelection;
+  selectedNetbankingBank?: import('../../../api/payments').NetbankingBank;
 }
 
-export function useCartPayment({ navigation, selectedAddress, selectedPaymentMethod, quote, onQuoteChanged }: Props) {
+export function useCartPayment({ navigation, selectedAddress, selectedPaymentMethod, selectedWallet, selectedNetbankingBank, quote, onQuoteChanged }: Props) {
   const items = useCartStore((state) => state.items);
   const orderingHours = useOrderingHours();
   const storeCount = useCartStore(selectCartStoreCount);
@@ -67,11 +69,11 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   // A method admin switched off is dropped, so the cart asks for another one.
   const { allowed } = usePaymentAvailability();
   const paymentMethod = availablePaymentMethod(chosenMethod ?? savedMethod, upiApps, allowed);
-  const latestSelection = useRef({ addressId: selectedAddress?.id, paymentMethod });
+  const latestSelection = useRef({ addressId: selectedAddress?.id, paymentMethod, bankCode: selectedNetbankingBank?.code, walletContact: selectedWallet?.contact });
   useLayoutEffect(() => {
-    latestSelection.current = { addressId: selectedAddress?.id, paymentMethod };
-  }, [selectedAddress?.id, paymentMethod]);
-  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod, selectedAddressId: selectedAddress?.id });
+    latestSelection.current = { addressId: selectedAddress?.id, paymentMethod, bankCode: selectedNetbankingBank?.code, walletContact: selectedWallet?.contact };
+  }, [selectedAddress?.id, paymentMethod, selectedNetbankingBank?.code, selectedWallet?.contact]);
+  const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod, selectedNetbankingBank: paymentMethod === 'netbanking' ? selectedNetbankingBank : undefined, selectedAddressId: selectedAddress?.id });
 
   async function goToReceipt(order: { orderId: string; orderNumber: string; placedAt: string; avgPrepMinutes: number | null; estimatedDeliveryMinutes?: number | null; estimatedDeliveryAt?: string | null; amount: number; items: CartItem[] }, methodLabel: string, successfulMethod: PaymentMethod) {
     if (!stillOwner()) return;
@@ -117,6 +119,23 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
     setIsPlacingOrder(true);
     const endCheckoutFlow = beginCheckoutFlow();
     try {
+      if (paymentMethod.startsWith('wallet:')) {
+        if (selectedWallet?.method === paymentMethod && !/^\+91[6-9]\d{9}$/.test(selectedWallet.contact)) {
+          throw new Error('Enter a valid wallet mobile number in payment methods.');
+        }
+        const { wallets } = await fetchAvailableWallets();
+        if (!stillOwner()) return;
+        if (!wallets.some(wallet => `wallet:${wallet.code}` === paymentMethod)) {
+          throw new Error('This wallet is unavailable. Choose another payment method.');
+        }
+      }
+      if (paymentMethod === 'netbanking' && selectedNetbankingBank) {
+        const { banks } = await fetchNetbankingBanks();
+        if (!stillOwner()) return;
+        if (!banks.some(bank => bank.code === selectedNetbankingBank.code)) {
+          throw new Error('This bank is no longer available. Choose another bank in payment methods.');
+        }
+      }
       if (paymentMethod.startsWith('upi_app:')) {
         await assertDirectUpiConfigured(paymentMethod);
         if (!stillOwner()) return;
@@ -176,7 +195,9 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       if (JSON.stringify(checkoutItems(useCartStore.getState().items)) !== JSON.stringify(input)
         || useCartStore.getState().appliedPromo?.code !== promoCode
         || latestSelection.current.addressId !== selectedAddress.id
-        || latestSelection.current.paymentMethod !== paymentMethod) {
+        || latestSelection.current.paymentMethod !== paymentMethod
+        || latestSelection.current.bankCode !== selectedNetbankingBank?.code
+        || latestSelection.current.walletContact !== selectedWallet?.contact) {
         throw new Error('Your cart changed. Review it before ordering.');
       }
       if (!stillOwner()) return;
@@ -248,7 +269,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       // Customers can change methods inside secure checkout, so the receipt
       // must not falsely claim that a preferred UPI app/card actually charged.
       const label = 'Online payment';
-      const result = await openRazorpayCheckout(providerOrder, paymentMethod);
+      const result = await openRazorpayCheckout(providerOrder, paymentMethod, paymentMethod === 'netbanking' ? selectedNetbankingBank : undefined, selectedWallet?.method === paymentMethod ? selectedWallet.contact : undefined);
       if (!stillOwner()) return;
       const verified = await verifyPayment(payTarget, result).catch(() => ({ ok: false }));
       if (!stillOwner()) return;
