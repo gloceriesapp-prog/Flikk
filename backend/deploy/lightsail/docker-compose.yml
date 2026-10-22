@@ -1,0 +1,51 @@
+# Gloceries backend on one Lightsail instance (Mumbai): API + worker + Caddy.
+# Lives at /opt/gloceries on the server, next to `.env` (secrets, chmod 600)
+# and `Caddyfile`. Deploys set TAG to the commit's image tag:
+#   TAG=<sha> docker compose pull && TAG=<sha> docker compose up -d
+services:
+  api:
+    image: ghcr.io/gloceriesapp-prog/flikk-backend:${TAG:-latest}
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # Caddy is the only proxy in front of the API.
+      TRUST_PROXY_HOPS: "1"
+    expose: ["3000"]
+    restart: unless-stopped
+    # Exactly one API: pending login codes live in this process (auth/loginOtp.ts).
+    deploy:
+      replicas: 1
+    mem_limit: 900m
+    stop_grace_period: 20s
+    logging: &logging
+      driver: json-file
+      options: {max-size: "20m", max-file: "5"}
+
+  worker:
+    image: ghcr.io/gloceriesapp-prog/flikk-backend:${TAG:-latest}
+    command: ["node", "dist/workers/index.js"]
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+    mem_limit: 512m
+    stop_grace_period: 20s
+    logging: *logging
+
+  caddy:
+    image: caddy:2.8.4
+    ports: ["80:80", "443:443"]
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in /opt/gloceries/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,4 +1,4 @@
-# Moving to Mumbai: Supabase (ap-south-1) + Google Cloud Run (asia-south1)
+# Moving to Mumbai: Supabase (ap-south-1) + AWS Lightsail (ap-south-1)
 
 Today: database in Seoul (Supabase `ap-northeast-2`, project `bjlknohjdnemxwwoxcsv`),
 API + worker in Singapore (Railway). Every request from Kaup crosses India →
@@ -117,93 +117,51 @@ private on the new project.
    | Landing site | `NEXT_PUBLIC_SUPABASE_*` |
    | EAS production env (customer, partner) | `EXPO_PUBLIC_ARTWORK_BASE_URL` (or keep R2) |
 
-5. Start the backend on the new host (section 6), run the smoke test (section 7).
+5. Start the backend on Lightsail (section 6), run the smoke test (section 7).
 6. Everyone signs in again once (the JWT secret differs between projects).
 7. Keep the old Seoul project **paused, not deleted**, for 2 weeks as a fallback.
 
-## 6. Backend on Google Cloud Run, Mumbai
+## 6. Backend on AWS Lightsail, Mumbai
 
-**Billing in INR**: create the Google Cloud billing account with an Indian
-address; Google Cloud India bills in rupees and Indian cards work. Set a budget
-alert (Billing → Budgets, e.g. ₹3,000/month, alerts at 50/90/100%).
+Chosen over Cloud Run after a cost check (22 Oct 2026): one always-on Cloud
+Run vCPU is ~₹3,500/month on its own, and the API runs cron schedules and a
+realtime subscription in-process (`src/server/background.ts`), so Cloud Run's
+cheap request-based mode would starve them. A $12 Lightsail instance in
+Mumbai runs API + worker + HTTPS for ~₹1,000/month, in the same AWS region as
+Supabase `ap-south-1`.
 
-### One-time setup
+Files: `backend/deploy/lightsail/` (`docker-compose.yml`, `Caddyfile`,
+`setup.sh`) and `.github/workflows/backend-lightsail.yml`.
 
-```bash
-gcloud config set project <your-project-id>
-gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
-  cloudbuild.googleapis.com secretmanager.googleapis.com
-gcloud artifacts repositories create flikk --repository-format=docker \
-  --location=asia-south1
-```
+1. Lightsail → Create instance → Mumbai → Linux → OS only → Ubuntu 24.04 →
+   $12 plan (2 GB, dual-stack). Attach a static IP. Networking: allow 80, 443.
+   Turn on automatic snapshots. Billing → budget alert.
+2. SSH in (browser SSH is fine) and run `setup.sh` (updates, Docker, swap,
+   firewall, key-only SSH, `/opt/gloceries`).
+3. Copy `docker-compose.yml` and `Caddyfile` to `/opt/gloceries`. Create
+   `/opt/gloceries/.env` (chmod 600) with the same variables Railway has, the
+   new Supabase URL/key after cut-over, and `API_DOMAIN=api.gloceries.com`.
+4. DNS: `A` record `api.gloceries.com` → the static IP. Caddy gets the
+   certificate on first start.
+5. `docker login ghcr.io` with a GitHub token that has `read:packages`, then
+   `docker compose up -d`. Check `docker compose ps` and
+   `curl https://api.gloceries.com/`.
+6. GitHub → Settings → Secrets and variables → Actions: secrets
+   `LIGHTSAIL_HOST`, `LIGHTSAIL_SSH_KEY`; variables `API_DOMAIN`,
+   `LIGHTSAIL_DEPLOY=true` (only at cut-over, so Railway and Lightsail never
+   both serve). Pushes to `main` that touch the backend then build the image
+   on GitHub and roll it out.
+7. After a stable week on Lightsail, delete the Railway services.
 
-Put every backend secret in Secret Manager (one secret per variable, same names
-as Railway: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MSG91_AUTH_KEY`,
-`MSG91_SMS_TEMPLATE_ID`, `LOGIN_TEST_OTPS`, `RAZORPAY_*`, `CASHFREE_*`,
-`R2_*`, `DOC_ENCRYPTION_KEY`, `GOOGLE_GEOCODING_*`, `MAPPLS_ACCESS_TOKEN`, …).
-Type them in the console yourself; don't paste them anywhere else.
-
-### Build (repo root is the build context, as on Railway)
-
-`cloudbuild.yaml` at the repo root:
-
-```yaml
-steps:
-  - name: gcr.io/cloud-builders/docker
-    args: ["build", "-f", "backend/Dockerfile",
-           "-t", "asia-south1-docker.pkg.dev/$PROJECT_ID/flikk/backend:$SHORT_SHA", "."]
-images:
-  - asia-south1-docker.pkg.dev/$PROJECT_ID/flikk/backend:$SHORT_SHA
-```
-
-Connect the GitHub repo in Cloud Build → Triggers (branch `main`, file
-`cloudbuild.yaml`) so pushes to `main` build like Railway does today.
-
-### API service
-
-```bash
-gcloud run deploy flikk-api \
-  --image asia-south1-docker.pkg.dev/<project>/flikk/backend:<tag> \
-  --region asia-south1 \
-  --min-instances 1 --max-instances 1 \
-  --cpu 1 --memory 512Mi --concurrency 80 --timeout 3600 \
-  --allow-unauthenticated \
-  --set-env-vars NODE_ENV=production,TRUST_PROXY_HOPS=1 \
-  --set-secrets SUPABASE_URL=SUPABASE_URL:latest,SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest,...
-```
-
-- **Exactly one instance** (`min = max = 1`): pending login codes live in the
-  process (`auth/loginOtp.ts`), so a second instance would reject codes sent by
-  the first. Raise this only after moving pending codes into the database.
-- Request-based billing (the default) is fine for the API: its only timers are
-  metrics sampling and SSE heartbeats, which run while a stream request is open.
-- `--timeout 3600` keeps the home-content SSE stream alive (Cloud Run's maximum).
-- Cloud Run sets `PORT`; the backend already reads it (`config/env.ts`).
-- Check `TRUST_PROXY_HOPS` against Google's front end before relying on IP
-  rate limits.
-- Map `api.gloceries.com` (Cloud Run → Domain mappings, or a load balancer).
-
-### Worker
-
-The worker (`node dist/workers/index.js`) has no HTTP port and must run all the
-time. Cheapest reliable options, in order:
-
-1. **Small Compute Engine VM in Mumbai** (e2-small) running the same image with
-   `docker run --restart=always … node dist/workers/index.js`. Roughly the price
-   of the always-on alternatives below or less. You patch the VM.
-2. **Cloud Run worker pool** (instance-based, always on) with the image and the
-   same secrets, command `node dist/workers/index.js`.
-3. Cloud Run service with `--no-cpu-throttling --min-instances 1` and a tiny
-   health endpoint: works, but always-on CPU billing makes it the most expensive.
-
-### Cost, honestly
-
-An always-on vCPU on Cloud Run is billed every second whether or not traffic
-arrives, so "API + worker on Cloud Run, both always on" is **several thousand
-rupees a month**, not hundreds. The API with request-based billing and one warm
-instance is cheap when idle; the worker is the expensive part, which is why
-option 1 (VM) is listed first. Run Google's pricing calculator for asia-south1
-with your actual settings before committing, and keep the budget alert on.
+Operational notes:
+- One API container only (pending login codes live in memory). A deploy
+  restarts it in a few seconds; codes sent in that window must be resent.
+- The $12 plan's CPU is burstable. Watch Lightsail → Metrics → "CPU burst
+  capacity"; if it trends to zero, move to the $24 plan (snapshot → bigger
+  instance, ~10 minutes).
+- Logs: `docker compose logs -f api worker` (rotated, 5 × 20 MB each).
+- Add an external uptime check (UptimeRobot/Better Stack, free) on
+  `https://api.gloceries.com/`.
 
 ## 7. Smoke test after cut-over
 

@@ -1,0 +1,9 @@
+# HTTPS for the API. Caddy gets and renews the Let's Encrypt certificate
+# for API_DOMAIN (e.g. api.gloceries.com) once its DNS A record points at
+# the instance's static IP.
+{$API_DOMAIN} {
+	reverse_proxy api:3000 {
+		# Home-content updates are an SSE stream: send each event at once.
+		flush_interval -1
+	}
+}
