@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const lifecycle = vi.hoisted(() => ({ effects: [] as Array<() => void | (() => void)> }));
-vi.mock('../../../apps/partner-dashboard/node_modules/react/index.js', () => ({
+vi.mock('react', () => ({
   useRef: (value: unknown) => ({ current: value }),
   useState: (value: unknown) => [value, vi.fn()],
   useEffect: (effect: () => void | (() => void)) => lifecycle.effects.push(effect),
