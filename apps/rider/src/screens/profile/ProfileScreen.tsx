@@ -28,8 +28,10 @@ import {
   Delete02Icon,
   IdentityCardIcon,
   Invoice01Icon,
+  LegalDocument01Icon,
   Logout01Icon,
   MessageQuestionIcon,
+  PolicyIcon,
   Motorbike01Icon,
   ShieldCheckIcon,
   SmartPhone01Icon,
@@ -49,6 +51,7 @@ import { useRiderProfile } from './useRiderProfile';
 import { useRiderStats } from './useRiderStats';
 import type { RiderStats } from '../../api/stats';
 import { EditPayoutModal } from './EditPayoutModal';
+import { useLegalLinks } from '../../api/legal';
 import type { RiderProfile } from '../../api/profile';
 import type { AppStackParamList, AppTabParamList } from '../../navigation/types';
 
@@ -79,6 +82,7 @@ const VEHICLE_LABEL: Record<NonNullable<RiderProfile['vehicleType']>, string> = 
 
 export function ProfileScreen() {
   const navigation = useNavigation<ProfileNav>();
+  const legal = useLegalLinks();
   const goOffline = useRiderOrdersStore((s) => s.goOffline);
   const { data: profile, isLoading } = useRiderProfile();
   const { data: stats } = useRiderStats();
@@ -230,6 +234,8 @@ export function ProfileScreen() {
             <MenuRow icon={Invoice01Icon} label="Payout history" onPress={() => navigation.navigate('PayoutHistory')} />
             <MenuRow icon={IdentityCardIcon} label="Payout method" onPress={() => setEditingPayout(true)} />
             <MenuRow icon={MessageQuestionIcon} label="Report a problem" onPress={reportProblem} />
+            <MenuRow icon={PolicyIcon} label="Privacy policy" onPress={() => void Linking.openURL(legal.privacyUrl)} />
+            <MenuRow icon={LegalDocument01Icon} label="Terms of service" onPress={() => void Linking.openURL(legal.termsUrl)} />
             <MenuRow icon={Logout01Icon} label="Log out" danger onPress={handleLogout} />
             <MenuRow icon={Delete02Icon} label="Delete account" danger onPress={() => navigation.navigate('DeleteAccount')} />
           </View>
