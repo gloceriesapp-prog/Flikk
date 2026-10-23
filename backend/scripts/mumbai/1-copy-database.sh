@@ -116,6 +116,8 @@ psql "$NEW_DB_URL" -XAt -f "$HERE/verify.sql" > "$WORK/new.txt"
 # Storage file counts only match after 2-copy-storage.mjs; leave them out here.
 if diff <(grep -v '^bucket:' "$WORK/old.txt") <(grep -v '^bucket:' "$WORK/new.txt"); then
   echo "Database copy verified: $(grep -vc '^bucket:' "$WORK/new.txt") tables identical."
+  # The baseline 4-final-sync.sh compares Seoul against at the switch.
+  cp "$WORK/old.txt" "$HERE/seoul-at-copy.txt"
 else
   echo "Differences above (left = Seoul, right = Mumbai). Volatile auth tables show '-' for content."
   exit 1

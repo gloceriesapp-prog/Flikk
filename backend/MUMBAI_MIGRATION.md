@@ -106,23 +106,35 @@ already encrypted by the app, so they are copied as-is.
 
 ## 5. Cut over (≈30 minutes, low-traffic hour)
 
-1. Announce a short maintenance window (Play/partners are not affected beyond
-   that window).
-2. Stop writes: scale the Railway API and worker to 0 (or pause them).
-3. Re-run the **data** dump/restore (step 3, data only, after truncating the new
-   project's public tables) so nothing written since the rehearsal is lost.
+gloceries-mumbai is the production database from this point on. Seoul (Flikk)
+only has to stay frozen while the last writes are carried over.
+
+1. Announce a short maintenance window.
+2. **Stop both Railway services** (API and worker), so nothing writes to Seoul.
+3. Carry over anything written to Seoul since the copy, and prove the match:
+   ```bash
+   export OLD_DB_URL='<Seoul session pooler URL>' NEW_DB_URL='<Mumbai session pooler URL>'
+   SEOUL_STOPPED=yes bash backend/scripts/mumbai/4-final-sync.sh
+   ```
+   It refuses while Seoul's worker is still running, refuses if a migration
+   ran on Seoul after the copy (apply it to Mumbai with db-migrate first),
+   syncs only the tables whose fingerprint moved since `seoul-at-copy.txt`
+   (Seoul's rows win; Mumbai's own edits elsewhere are kept), points any
+   Seoul storage URL in those rows at Mumbai, raises sequences, and ends by
+   comparing every table. It tells you to re-run `2-copy-storage.mjs` if new
+   files were uploaded to Seoul.
 4. Swap secrets everywhere:
 
    | Where | Variables |
    |---|---|
-   | Backend API + worker | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (and anon/publishable key if set) |
+   | Backend API + worker (Railway now, Lightsail later) | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (and anon/publishable key if set) |
    | Admin panel host | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, service key |
    | Landing site | `NEXT_PUBLIC_SUPABASE_*` |
-   | EAS production env (customer, partner) | `EXPO_PUBLIC_ARTWORK_BASE_URL` (or keep R2) |
 
-5. Start the backend on Lightsail (section 6), run the smoke test (section 7).
+5. Start the backend again and run the smoke test (section 7).
 6. Everyone signs in again once (the JWT secret differs between projects).
-7. Keep the old Seoul project **paused, not deleted**, for 2 weeks as a fallback.
+7. Pause Seoul (Settings → General → Pause project) once the smoke test passes.
+   Keep it **paused, not deleted**, for 2 weeks as a fallback.
 
 ## 6. Backend on AWS Lightsail, Mumbai
 

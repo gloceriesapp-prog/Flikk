@@ -4,7 +4,8 @@
 --   psql "$NEW_DB_URL" -XAt -f verify.sql > new.txt && diff old.txt new.txt
 --
 -- public.* and ops.*: row count + md5 of every full row (sorted), so any
--- difference in any column shows up.
+-- difference in any column shows up. Either project's ref inside a value
+-- (stored image URLs) hashes as '<project>', so the URL move is not a diff.
 -- auth / storage: Supabase owns these schemas and a newer project can carry
 -- extra columns, so they are compared on the columns that matter to the apps
 -- (identity, phone/email, password hash, ban, provider; bucket settings; file
@@ -19,7 +20,8 @@ with app_tables as (
 select format('%s.%s|%s|%s', s, t,
   (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I', s, t), false, true, '')))[1]::text,
   coalesce((xpath('/row/h/text()', query_to_xml(
-    format('select md5(string_agg(x::text, %L order by x::text)) as h from %I.%I x', E'\n', s, t),
+    format('select md5(string_agg(replace(replace(x::text, %L, %L), %L, %L), %L order by x::text)) as h from %I.%I x',
+           'bjlknohjdnemxwwoxcsv', '<project>', 'cdnfpaolzkpqetmmpyzh', '<project>', E'\n', s, t),
     false, true, '')))[1]::text, 'empty'))
 from app_tables
 union all
