@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: GitHub main-branch deployment access using OIDC and a tagged Lightsail target, without persistent AWS access keys.
+Metadata:
+  AWSToolsMetrics:
+    AWSAgentToolkit: aws-cloudformation@3
+Parameters:
+  Repository:
+    Type: String
+    Default: gloceriesapp-prog/Flikk
+    AllowedPattern: '[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+'
+  TargetName:
+    Type: String
+    Default: gloceries-api
+    AllowedPattern: '[A-Za-z0-9_-]+'
+  CreateGitHubProvider:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Set false if this account already has the token.actions.githubusercontent.com OIDC provider.
+Conditions:
+  CreateProvider: !Equals [!Ref CreateGitHubProvider, 'true']
+Resources:
+  GitHubProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateProvider
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Exchange GitHub job identities for temporary AWS credentials.
+        must: [Reuse an existing provider rather than creating a duplicate.]
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+  DeploymentRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Permit one trusted repository branch to open and remove its runner-specific SSH rule.
+        must:
+          - Trust only main, never pull requests or arbitrary branches.
+          - Mutation requires the explicit DeploymentTarget resource tag.
+          - No access to IAM, secrets, instance deletion, or other AWS services.
+    Properties:
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateProvider
+                - !Ref GitHubProvider
+                - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${Repository}:ref:refs/heads/main
+      Policies:
+        - PolicyName: RestrictedLightsailFirewall
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [lightsail:OpenInstancePublicPorts, lightsail:CloseInstancePublicPorts]
+                Resource: !Sub arn:${AWS::Partition}:lightsail:${AWS::Region}:${AWS::AccountId}:Instance/*
+                Condition:
+                  StringEquals:
+                    aws:ResourceTag/DeploymentTarget: !Ref TargetName
+                    aws:RequestedRegion: !Ref AWS::Region
+              # AWS does not support resource-level scoping for this read API.
+              - Effect: Allow
+                Action: lightsail:GetInstancePortStates
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: !Ref AWS::Region
+Outputs:
+  DeploymentRoleArn:
+    Description: Save as the repository variable LIGHTSAIL_AWS_ROLE_ARN.
+    Value: !GetAtt DeploymentRole.Arn

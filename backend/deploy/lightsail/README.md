@@ -36,17 +36,45 @@ Repository secrets:
   browser SSH session. Compare `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`
   there before trusting a key obtained over the network.
 
-Repository variables: `API_DOMAIN=api.gloceries.com` and, only after the migration
-gates below pass, `LIGHTSAIL_DEPLOY=true`. The workflow builds on GitHub, pulls an
+Repository variables: `API_DOMAIN=api.gloceries.com`,
+`LIGHTSAIL_INSTANCE_NAME=gloceries-api`, `LIGHTSAIL_AWS_ROLE_ARN` from the access
+stack output and, only after the migration gates below pass,
+`LIGHTSAIL_DEPLOY=true`. The workflow builds on GitHub, pulls an
 immutable commit tag and uses the short-lived job token for registry access.
 No registry password is retained on the instance. Private GHCR package settings
 must grant this repository's Actions workflow access to the package.
 
-SSH is currently limited to the Lightsail browser client. A GitHub-hosted runner
-cannot deploy through that rule. Before enabling the workflow, configure an
-approved runner with a fixed egress address and allow only that address on port
-22, or implement an approved AWS-authenticated deployment transport. Do not open
-SSH to the whole internet to accommodate changing runner addresses.
+Deploy `github-access.yaml` in Mumbai after checking IAM for an existing GitHub
+OIDC provider (set `CreateGitHubProvider=false` if one exists). It creates no
+instance and no persistent AWS access key. Tag only this instance with
+`DeploymentTarget=gloceries-api`. The role trusts only this repository's `main`
+branch and can open/close ports only on instances carrying that explicit tag in
+the stack's region. The port-state read API requires `Resource: '*'` in IAM.
+AWS does not expose a port-number condition for these mutation APIs: the trusted
+workflow and its helper constrain them to TCP 22. Protect `main` and review any
+changes to the workflow or helper as production deployment access.
+
+Each deployment waits for the full push CI run on its exact commit to pass,
+builds on GitHub, authenticates to AWS with OIDC, discovers its public IPv4 and
+temporarily allows only that `/32` on SSH. The helper verifies that browser SSH
+remains available and never changes HTTP/HTTPS rules. Strict host-key checking
+uses the independently pinned server key; it never trusts a new keyscan result.
+Authorize the deployment public key with OpenSSH's `restrict` option to disable
+PTY, forwarding and agent access. This key still grants deployment shell access
+as `ubuntu`; protect it as a production secret.
+
+An `always()` cleanup step removes the job's rule after success, failure or
+normal cancellation, and fails the workflow if removal cannot be verified.
+An abruptly destroyed runner or AWS outage can prevent cleanup; inspect the
+Lightsail firewall after such a run and remove only its recorded `/32`, keeping
+the `lightsail-connect` alias. The next run refuses unexpected stale SSH rules.
+Do not open port 22 to `0.0.0.0/0` or `::/0`.
+
+`ONLINE_PAYMENTS_DISABLED=false` permits the admin checkout setting to enable
+online payments. Razorpay must have valid live credentials and the matching
+webhook secret. Confirm `/payments/availability`, `/payments/netbanking-banks`
+and `/payments/wallets` after restarting API/worker. This does not itself prove a
+real payment and webhook settlement; test those separately before launch.
 
 For the first deployment, run the workflow manually with `build_only=true`.
 This builds an immutable image on GitHub and saves a one-day artifact without

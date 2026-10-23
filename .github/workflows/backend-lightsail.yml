@@ -3,7 +3,8 @@
 # LIGHTSAIL_DEPLOY is "true", so it never races Railway during the move.
 #
 # Repository settings needed:
-#   variables: LIGHTSAIL_DEPLOY=true, API_DOMAIN=api.gloceries.com
+#   variables: LIGHTSAIL_DEPLOY=true, API_DOMAIN=api.gloceries.com,
+#              LIGHTSAIL_AWS_ROLE_ARN, LIGHTSAIL_INSTANCE_NAME=gloceries-api
 #   secrets:   LIGHTSAIL_HOST (static IP), LIGHTSAIL_SSH_KEY (private key of a
 #              key pair whose public half is in ~ubuntu/.ssh/authorized_keys),
 #              LIGHTSAIL_KNOWN_HOSTS (verified SSH host key, never blind keyscan)
@@ -34,6 +35,12 @@ jobs:
         run: |
           bash -n backend/deploy/lightsail/setup.sh backend/deploy/lightsail/deploy.sh
           bash backend/deploy/lightsail/test-deploy.sh
+          python3 backend/deploy/lightsail/test-ci-ssh-access.py
+      - name: Validate deployment role template
+        run: |
+          python3 -m venv "$RUNNER_TEMP/cfn-validation"
+          "$RUNNER_TEMP/cfn-validation/bin/pip" install --disable-pip-version-check cfn-lint==1.58.0
+          "$RUNNER_TEMP/cfn-validation/bin/cfn-lint" -r ap-south-1 -t backend/deploy/lightsail/github-access.yaml
       - name: Validate Compose configuration
         env:
           TAG: ${{ github.sha }}
@@ -49,11 +56,27 @@ jobs:
     needs: validate
     if: (github.event_name == 'workflow_dispatch' && inputs.build_only) || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.LIGHTSAIL_DEPLOY == 'true')
     runs-on: ubuntu-latest
-    permissions: {contents: read, packages: write}
+    timeout-minutes: 30
+    permissions: {contents: read, actions: read, packages: write, id-token: write}
     env:
       IMAGE: ghcr.io/gloceriesapp-prog/flikk-backend
+      AWS_REGION: ap-south-1
+      LIGHTSAIL_INSTANCE_NAME: ${{ vars.LIGHTSAIL_INSTANCE_NAME }}
     steps:
       - uses: actions/checkout@v4
+      - name: Require the full CI suite for this exact main commit
+        if: ${{ !inputs.build_only }}
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          run_id=''
+          for attempt in $(seq 1 12); do
+            run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --event push --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+            [[ -n "$run_id" ]] && break
+            sleep 5
+          done
+          [[ -n "$run_id" ]] || { echo 'No push CI run exists for this commit'; exit 1; }
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 15
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         if: ${{ !inputs.build_only }}
@@ -78,6 +101,37 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+      - name: Authenticate to AWS using GitHub identity
+        if: ${{ !inputs.build_only }}
+        id: aws
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.LIGHTSAIL_AWS_ROLE_ARN }}
+          aws-region: ap-south-1
+          role-session-name: gloceries-deploy-${{ github.run_id }}
+          role-duration-seconds: 3600
+          allowed-account-ids: '657358297558'
+
+      - name: Identify this runner's IPv4 address
+        if: ${{ !inputs.build_only }}
+        id: runner
+        run: |
+          set -euo pipefail
+          ip=$(curl -4fsS --retry 3 --connect-timeout 10 --max-time 20 https://checkip.amazonaws.com)
+          python3 - "$ip" "$GITHUB_OUTPUT" <<'PY'
+          import ipaddress, sys
+          address = ipaddress.ip_address(sys.argv[1].strip())
+          if address.version != 4 or not address.is_global:
+              raise SystemExit('Expected a public runner IPv4 address')
+          with open(sys.argv[2], 'a') as output:
+              output.write(f'cidr={address}/32\n')
+          PY
+
+      - name: Allow SSH only from this runner
+        if: ${{ !inputs.build_only }}
+        env: {RUNNER_CIDR: '${{ steps.runner.outputs.cidr }}'}
+        run: python3 backend/deploy/lightsail/ci-ssh-access.py open "$RUNNER_CIDR"
+
       - name: Deploy
         if: ${{ !inputs.build_only }}
         env:
@@ -94,7 +148,15 @@ jobs:
           printf '%s\n' "$SSH_KEY" > "$key_dir/key"
           printf '%s\n' "$KNOWN_HOSTS" > "$key_dir/known_hosts"
           chmod 600 "$key_dir/"*
-          opts=(-i "$key_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$key_dir/known_hosts")
+          opts=(-i "$key_dir/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o "UserKnownHostsFile=$key_dir/known_hosts")
+          # Firewall changes are asynchronous. Retry only the connection probe,
+          # never a deployment that may have partially completed.
+          connected=false
+          for attempt in $(seq 1 12); do
+            if ssh "${opts[@]}" ubuntu@"$HOST" true; then connected=true; break; fi
+            sleep 5
+          done
+          "$connected" || { echo 'SSH connection could not be verified'; exit 1; }
           ssh "${opts[@]}" ubuntu@"$HOST" "mkdir -p /opt/gloceries/releases/$TAG"
           scp "${opts[@]}" backend/deploy/lightsail/{docker-compose.yml,Caddyfile,deploy.sh} "ubuntu@$HOST:/opt/gloceries/releases/$TAG/"
           # Ephemeral job token: no persistent registry PAT on the host.
@@ -112,3 +174,8 @@ jobs:
             sleep 6
           done
           echo "API did not answer 200 after deploy" && exit 1
+
+      - name: Remove this runner's SSH access
+        if: ${{ always() && !inputs.build_only && steps.aws.outcome == 'success' && steps.runner.outputs.cidr != '' }}
+        env: {RUNNER_CIDR: '${{ steps.runner.outputs.cidr }}'}
+        run: python3 backend/deploy/lightsail/ci-ssh-access.py close "$RUNNER_CIDR"
