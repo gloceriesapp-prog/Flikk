@@ -81,12 +81,10 @@ export function HomeScreen() {
   const cancelledOrders = useRiderOrdersStore((s) => s.cancelledOrders);
   const loadSampleData = useRiderOrdersStore((s) => s.loadSampleData);
   const todayOrders = completedOrders.filter((order) => order.deliveredAt && isToday(order.deliveredAt));
-  // "Earned" is the fare only; tips get their own column instead of being
-  // folded silently in — a real tip is the customer's own money on top of
-  // the fare, not part of what the delivery itself earned
-  // (data/mockOrders.ts's own note).
+  // "Earned" is the fare only. Tips are not part of the product yet (no
+  // backend field), so there is no Tips column; when they arrive they get
+  // their own column rather than being folded into the fare.
   const todayEarnings = totalPayout(todayOrders.map((order) => ({ ...order, tip: undefined })));
-  const todayTips = todayOrders.reduce((sum, order) => sum + (order.tip ?? 0), 0);
   const activeMs = useActiveMsToday();
   const [filter, setFilter] = useState<DeliveryFilter>('active');
   // ponytail: __DEV__-only, drives the "Test" button's full-screen offer popup.
@@ -211,8 +209,8 @@ export function HomeScreen() {
         </Pressable>
       ) : null}
 
-      {/* Today's earnings hero — identical card to the offline home, with a
-          third column for on-shift Tips. Tap → Earnings tab. */}
+      {/* Today's earnings hero — identical card to the offline home. Tap →
+          Earnings tab. */}
       <View className="overflow-hidden rounded-2xl border bg-white" style={{ borderColor: CARD_BORDER }}>
         <Pressable
           onPress={() => navigation.navigate('Earnings')}
@@ -235,10 +233,6 @@ export function HomeScreen() {
           <View className="flex-1 border-r px-4 py-4" style={{ borderColor: CARD_BORDER }}>
             <Text className="text-[22px] font-bold text-ink tabular-nums">{todayOrders.length}</Text>
             <Text className="mt-0.5 text-[15px] font-medium text-ink/50">Delivered</Text>
-          </View>
-          <View className="flex-1 border-r px-4 py-4" style={{ borderColor: CARD_BORDER }}>
-            <Text className="text-[22px] font-bold text-ink tabular-nums">₹{todayTips}</Text>
-            <Text className="mt-0.5 text-[15px] font-medium text-ink/50">Tips</Text>
           </View>
           <View className="flex-1 px-4 py-4">
             <Text className="text-[22px] font-bold text-ink tabular-nums">{formatDurationShort(activeMs)}</Text>
