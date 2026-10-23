@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copies the whole Flikk database (Seoul, bjlknohjdnemxwwoxcsv) into the empty
-# gloceries-mumbai project (cdnfpaolzkpqetmmpyzh): roles, schema (tables,
+# gloceries-mumbai project (cdnfpaolzkpqetmmpyzh): schema (tables,
 # functions, triggers, policies, grants, views, publications, the ops schema)
 # and every row, including auth users and storage metadata. This is Supabase's
 # documented CLI dump/restore. Storage FILES are copied by 2-copy-storage.mjs.
@@ -41,14 +41,25 @@ fi
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT   # the dumps hold personal data: never keep them
 
+echo "== Checking roles"
+# Every Supabase project ships the same built-in roles, already configured
+# (re-running their CREATE/ALTER ROLE needs superuser and aborts the restore).
+# Only roles WE added would need copying; Flikk has none, so stop if that
+# ever changes instead of silently dropping one.
+role_sql="select rolname from pg_roles where rolname !~ '^pg_'"
+missing=$(LC_ALL=C comm -23 <(psql "$OLD_DB_URL" -XAtc "$role_sql" | LC_ALL=C sort) <(psql "$NEW_DB_URL" -XAtc "$role_sql" | LC_ALL=C sort))
+if [ -n "$missing" ]; then
+  echo "Seoul has roles Mumbai lacks; create them in Mumbai first, then re-run:"
+  echo "$missing"
+  exit 1
+fi
+
 echo "== Dumping Seoul (read-only)"
-"${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/roles.sql" --role-only
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/schema.sql"
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/data.sql" --use-copy --data-only
 
 echo "== Restoring into Mumbai (one transaction, triggers paused while rows load)"
 psql -X -v ON_ERROR_STOP=1 --single-transaction \
-  --file "$WORK/roles.sql" \
   --file "$WORK/schema.sql" \
   --command 'SET session_replication_role = replica' \
   --file "$WORK/data.sql" \

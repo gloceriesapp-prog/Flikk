@@ -70,7 +70,8 @@ bash backend/scripts/mumbai/1-copy-database.sh
 ```
 
 It refuses to run unless OLD points at `bjlknohjdnemxwwoxcsv` and NEW at
-`cdnfpaolzkpqetmmpyzh` and Mumbai is empty; dumps Seoul (roles, schema, data,
+`cdnfpaolzkpqetmmpyzh`, Mumbai is empty and Mumbai has every Seoul role (both
+only have Supabase's built-in roles, so none are copied); dumps Seoul (schema, data,
 read-only) with the Supabase CLI; restores into Mumbai in **one transaction**
 with triggers paused (a failure leaves Mumbai empty); copies the `ops`
 migration ledger if the dump left it out; deletes the dumps (personal data);
