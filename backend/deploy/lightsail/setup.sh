@@ -47,7 +47,7 @@ systemctl reload ssh
 
 echo "== App directory"
 mkdir -p "$APP_DIR/releases"
-chown "$DEPLOY_USER":"$DEPLOY_USER" "$APP_DIR"
+chown "$DEPLOY_USER":"$DEPLOY_USER" "$APP_DIR" "$APP_DIR/releases"
 chmod 750 "$APP_DIR"
 
 cat <<EOF
