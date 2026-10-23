@@ -1,20 +1,16 @@
 // The active-delivery card a rider glances at mid-shift — premium white card
-// on the gray home surface. Whole card taps into OrderDetail; the one nested
-// interactive control is the coral "Navigate" CTA, which hands off to the
-// rider's real maps app (openNavigation) for turn-by-turn.
+// on the gray home surface. The whole card taps into OrderDetail, where the
+// leg-aware Navigate hand-off to the rider's maps app lives.
 //
 // The route line (store dot / dashed connector / customer pin) is the exact
-// visual every courier app uses so "where do I go" reads instantly. The
-// Navigate button is leg-aware: before pickup it routes to the STORE, after
-// pickup to the CUSTOMER — the same next-stop a rider actually needs.
+// visual every courier app uses so "where do I go" reads instantly.
 
-import { ArrowRight01Icon, MapPinIcon, Navigation03Icon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, MapPinIcon, PackageIcon, Store01Icon } from '@hugeicons/core-free-icons';
 import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { CollectCashBanner } from '../../../components/CollectCashBanner';
 import { colors } from '../../../theme/tokens';
-import { openNavigation } from '../../../location/openNavigation';
 import type { RiderOrder } from '../../../data/mockOrders';
 
 // Status pill copy + NativeWind class per status (pill bg / text / dot). Class
@@ -38,11 +34,6 @@ interface Props {
 
 export const ActiveDeliveryCard = memo(function ActiveDeliveryCard({ order, onPress }: Props) {
   const status = STATUS[order.status];
-  // Leg-aware Navigate target: heading to the store until picked up, to the
-  // customer after. delivered/cancelled aren't shown here.
-  const goingToStore = order.status === 'assigned';
-  const navTarget = goingToStore ? order.storeCoords : order.customerCoords;
-  const navLabel = goingToStore ? order.storeName : order.customerName;
 
   return (
     <Pressable

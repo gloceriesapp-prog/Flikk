@@ -11,17 +11,15 @@
 // pickup-nav "I've arrived" button already documents.
 
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Alert02Icon,
   ArrowLeft01Icon,
-  CheckmarkCircle02Icon,
   CustomerService01Icon,
   Store01Icon,
 } from '@hugeicons/core-free-icons';
-import { Linking } from 'react-native';
 import { AppIcon } from '../../components/AppIcon';
 import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors } from '../../theme/tokens';
