@@ -64,13 +64,15 @@ module.exports = {
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     ios: {
-      supportsTablet: true,
+      // Riders work from a phone. iPad support would make App Review test on
+      // iPad and require iPad screenshots for layouts never designed for it.
+      supportsTablet: false,
       bundleIdentifier: 'com.gloceries.rider',
       infoPlist: {
         NSLocationWhenInUseUsageDescription: 'Gloceries uses your location to show your live position to the customer while delivering their order.',
         // Background ("Always") grant — lets presence keep pinging dispatch
         // when the app is backgrounded/killed mid-shift (backgroundLocation.ts).
-        NSLocationAlwaysAndWhenInUseUsageDescription: 'Gloceries shares your location while you are online so you keep receiving delivery offers, even when the app is in the background.',
+        NSLocationAlwaysAndWhenInUseUsageDescription: 'While you are online for deliveries, Gloceries uses your location in the background to offer you nearby orders and to show customers where their delivery is. Going offline stops it.',
         UIBackgroundModes: ['location'],
         // Lets Linking.canOpenURL detect the Google Maps app so "Navigate"
         // can prefer it over Apple Maps; without this iOS silently reports it
@@ -137,7 +139,7 @@ module.exports = {
           // Background presence pings while online (backgroundLocation.ts) —
           // Android needs the foreground-service + background flags wired by
           // the plugin, not just the manifest permission above.
-          locationAlwaysAndWhenInUsePermission: 'Gloceries shares your location while you are online so you keep receiving delivery offers, even when the app is in the background.',
+          locationAlwaysAndWhenInUsePermission: 'While you are online for deliveries, Gloceries uses your location in the background to offer you nearby orders and to show customers where their delivery is. Going offline stops it.',
           isAndroidBackgroundLocationEnabled: true,
           isAndroidForegroundServiceEnabled: true,
         },

@@ -9,7 +9,7 @@
 // The accept-race + countdown logic is shared with the dark card via
 // useOfferDecision; this file owns only the sheet presentation.
 
-import { CheckmarkCircle02Icon, Cancel01Icon, CreditCardIcon, PackageIcon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon, CreditCardIcon, PackageIcon } from '@hugeicons/core-free-icons';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../../../components/AppIcon';
@@ -24,8 +24,6 @@ const DECISION_WINDOW_S = 30;
 // The ring track needs a dark tint to read on white (its default is a light
 // tint tuned for the dark card).
 const LIGHT_RING_TRACK = '#101C1014';
-// Accept CTA green — solid, white text passes AA on it.
-const ACCEPT_GREEN = '#00a63e';
 
 interface Props {
   offer: DispatchOffer | null;

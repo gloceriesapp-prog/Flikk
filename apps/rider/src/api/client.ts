@@ -5,9 +5,11 @@
 // independently in each (CLAUDE.md's own consistency rule). This file only
 // supplies rider's base URL, token getter, refresh, and dead-session clear.
 
+import * as SecureStore from 'expo-secure-store';
 import { createApiClient } from '@gloceries/shared';
-import { useAuthStore } from '../store/useAuthStore';
+import { REFRESH_TOKEN_KEY, useAuthStore } from '../store/useAuthStore';
 import { API_BASE_URL } from './baseUrl';
+import { latestRefreshToken } from './refreshToken';
 
 export { ApiError } from '@gloceries/shared';
 
@@ -21,8 +23,12 @@ export const API_URL = API_BASE_URL;
 // would recurse the moment the refresh call also 401s. See apps/customer's
 // client.ts note on why the refresh dance exists (Supabase access tokens are
 // short-lived).
+// The background location task rotates the session in SecureStore while the
+// app is backgrounded, leaving the in-memory refresh token spent; read the
+// stored one first (refreshToken.ts).
 async function doRefresh(): Promise<string | null> {
-  const refreshToken = useAuthStore.getState().refreshToken;
+  const stored = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY).catch(() => null);
+  const refreshToken = latestRefreshToken(stored, useAuthStore.getState().refreshToken);
   if (!refreshToken) return null;
 
   try {
