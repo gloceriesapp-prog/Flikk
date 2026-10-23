@@ -4,37 +4,59 @@
 #   TAG=<sha> docker compose pull && TAG=<sha> docker compose up -d
 services:
   api:
-    image: ghcr.io/gloceriesapp-prog/flikk-backend:${TAG:-latest}
+    image: ghcr.io/gloceriesapp-prog/flikk-backend:${TAG:?set the immutable release commit}
     env_file: .env
     environment:
       NODE_ENV: production
       PORT: "3000"
       # Caddy is the only proxy in front of the API.
       TRUST_PROXY_HOPS: "1"
+      METRICS_HOST: "127.0.0.1"
+      METRICS_PORT: "9464"
     expose: ["3000"]
     restart: unless-stopped
     # Exactly one API: pending login codes live in this process (auth/loginOtp.ts).
     deploy:
       replicas: 1
     mem_limit: 900m
+    init: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9464/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     stop_grace_period: 20s
     logging: &logging
       driver: json-file
       options: {max-size: "20m", max-file: "5"}
 
   worker:
-    image: ghcr.io/gloceriesapp-prog/flikk-backend:${TAG:-latest}
+    image: ghcr.io/gloceriesapp-prog/flikk-backend:${TAG:?set the immutable release commit}
     command: ["node", "dist/workers/index.js"]
     env_file: .env
     environment:
       NODE_ENV: production
+      METRICS_HOST: "127.0.0.1"
+      METRICS_PORT: "9465"
     restart: unless-stopped
     mem_limit: 512m
+    init: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9465/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     stop_grace_period: 20s
     logging: *logging
 
   caddy:
-    image: caddy:2.8.4
+    image: caddy:2.11.7
     ports: ["80:80", "443:443"]
     environment:
       API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in /opt/gloceries/.env}
@@ -42,7 +64,10 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-    depends_on: [api]
+    depends_on:
+      api:
+        condition: service_healthy
+    mem_limit: 192m
     restart: unless-stopped
     logging: *logging
 
