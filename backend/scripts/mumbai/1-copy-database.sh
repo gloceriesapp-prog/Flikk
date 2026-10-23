@@ -46,9 +46,19 @@ echo "== Dumping Seoul (read-only)"
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/schema.sql"
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/data.sql" --use-copy --data-only
 
+echo "== Leaving out roles Mumbai already has"
+# A new project ships Supabase's own roles (e.g. supabase_privileged_role),
+# and an older CLI dumps them anyway; re-creating one aborts the restore.
+psql "$NEW_DB_URL" -XAtc "select rolname from pg_roles" > "$WORK/target-roles.txt"
+awk 'NR == FNR { have[$0] = 1; next }
+     /^(CREATE|ALTER) ROLE / { name = $3; gsub(/[";]/, "", name); if (name in have) { skipped++; next } }
+     { print }
+     END { print "-- skipped " skipped + 0 " statements for existing roles" > "/dev/stderr" }' \
+  "$WORK/target-roles.txt" "$WORK/roles.sql" > "$WORK/roles-new.sql"
+
 echo "== Restoring into Mumbai (one transaction, triggers paused while rows load)"
 psql -X -v ON_ERROR_STOP=1 --single-transaction \
-  --file "$WORK/roles.sql" \
+  --file "$WORK/roles-new.sql" \
   --file "$WORK/schema.sql" \
   --command 'SET session_replication_role = replica' \
   --file "$WORK/data.sql" \
