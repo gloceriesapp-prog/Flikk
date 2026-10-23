@@ -13,10 +13,10 @@ import {
 } from "@hugeicons/core-free-icons";
 
 const BIKE_IMAGE_URL =
-  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/bike1.png";
+  "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/website-images/bike1.png";
 
 const STORE_IMAGE_URL =
-  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/store.png";
+  "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/website-images/store.png";
 
 export default function PartnerSection() {
   return (

@@ -36,7 +36,7 @@ export interface LandingProduct {
 // Same shared fallback every real product feed in this monorepo uses for
 // a product with no uploaded photo yet — not a fake per-product image.
 const DEFAULT_PRODUCT_IMAGE =
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/amul.jpeg';
+  'https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/website-images/amul.jpeg';
 
 const UNIT_LABEL: Record<string, string> = { g: 'g', kg: 'kg', ml: 'ml', l: 'L', pc: 'pc' };
 

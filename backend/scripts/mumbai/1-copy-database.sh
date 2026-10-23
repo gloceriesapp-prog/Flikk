@@ -58,11 +58,43 @@ echo "== Dumping Seoul (read-only)"
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/schema.sql"
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/data.sql" --use-copy --data-only
 
+# The CLI dump leaves out the storage schema, so our policies on
+# storage.objects (migration 094: private documents service-only, no direct
+# writes to media buckets) are rebuilt from Seoul's catalogue.
+psql "$OLD_DB_URL" -XAt -c "
+  select format('CREATE POLICY %I ON %I.%I AS %s FOR %s TO %s%s%s;',
+    policyname, schemaname, tablename, permissive, cmd,
+    (select string_agg(case when r = 'public' then 'PUBLIC' else quote_ident(r) end, ',') from unnest(roles) r),
+    coalesce(' USING (' || qual || ')', ''), coalesce(' WITH CHECK (' || with_check || ')', ''))
+  from pg_policies where schemaname = 'storage' order by policyname" > "$WORK/storage-policies.sql"
+
+# A newer project's default privileges give anon/authenticated everything on
+# restored tables and functions; replay Seoul's exact privileges instead
+# (privileges.sql, also runnable alone as 3-sync-privileges.sh).
+psql "$OLD_DB_URL" -XAt -f "$HERE/privileges.sql" > "$WORK/grants.sql"
+
+# Drop COPY blocks that must not or need not be loaded:
+#  - empty tables: some are Supabase-internal ones our role may not write
+#    (storage.buckets_vectors: permission denied), and empty needs no load;
+#  - realtime.subscription: live websocket subscriptions of the old project;
+#  - supabase_migrations: the CLI's history (this repo tracks ops.applied_migrations).
+# verify.sql still compares every public/ops table afterwards.
+awk 'function flush() { if (held != "") print held; held = "" }
+     skipping { if ($0 == "\\.") skipping = 0; next }
+     /^COPY "(realtime"\."subscription|supabase_migrations"\.)/ { skipping = 1; dropped++; next }
+     /^COPY .* FROM stdin;$/ { held = $0; next }
+     held != "" { if ($0 == "\\.") { held = ""; dropped++; next } flush() }
+     { print }
+     END { print "-- left out " dropped + 0 " tables (empty or not app data)" > "/dev/stderr" }' \
+  "$WORK/data.sql" > "$WORK/data-rows.sql"
+
 echo "== Restoring into Mumbai (one transaction, triggers paused while rows load)"
 psql -X -v ON_ERROR_STOP=1 --single-transaction \
   --file "$WORK/schema.sql" \
   --command 'SET session_replication_role = replica' \
-  --file "$WORK/data.sql" \
+  --file "$WORK/data-rows.sql" \
+  --file "$WORK/storage-policies.sql" \
+  --file "$WORK/grants.sql" \
   --dbname "$NEW_DB_URL"
 
 echo "== Migration ledger (ops.applied_migrations)"
@@ -84,6 +116,8 @@ psql "$NEW_DB_URL" -XAt -f "$HERE/verify.sql" > "$WORK/new.txt"
 # Storage file counts only match after 2-copy-storage.mjs; leave them out here.
 if diff <(grep -v '^bucket:' "$WORK/old.txt") <(grep -v '^bucket:' "$WORK/new.txt"); then
   echo "Database copy verified: $(grep -vc '^bucket:' "$WORK/new.txt") tables identical."
+  # The baseline 4-final-sync.sh compares Seoul against at the switch.
+  cp "$WORK/old.txt" "$HERE/seoul-at-copy.txt"
 else
   echo "Differences above (left = Seoul, right = Mumbai). Volatile auth tables show '-' for content."
   exit 1

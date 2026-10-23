@@ -6,7 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Download01Icon, ArrowRight01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 
 const LOGO_IMAGE_URL =
-  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/All_Right-removebg-preview.png";
+  "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/website-images/All_Right-removebg-preview.png";
 
 export default function StickyBottomDock() {
   const [isVisible, setIsVisible] = useState(true);

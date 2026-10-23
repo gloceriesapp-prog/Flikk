@@ -24,7 +24,7 @@ import type { AuthStackParamList, RiderDraft } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'OnboardingIntro'>;
 
-const HERO_IMAGE = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/rider.jpeg';
+const HERO_IMAGE = 'https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/rider.jpeg';
 
 const EMPTY_DRAFT: RiderDraft = {
   fullName: '',

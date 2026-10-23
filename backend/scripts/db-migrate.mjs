@@ -11,24 +11,28 @@
 //
 // Target: DATABASE_URL (Supabase dashboard -> Connect -> "Session pooler" URI).
 // Production is refused unless --production is passed AND
-// CONFIRM_PRODUCTION=bjlknohjdnemxwwoxcsv is set. --seed is always refused there.
+// CONFIRM_PRODUCTION=<that project's ref> is set (cdnfpaolzkpqetmmpyzh for
+// gloceries-mumbai). --seed is always refused there.
 // Needs psql on PATH (macOS: brew install libpq && brew link --force libpq).
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
-const PRODUCTION_REF = 'bjlknohjdnemxwwoxcsv';
+// gloceries-mumbai (production) and the retired Seoul project (Flikk), which
+// holds the same live data until it is deleted.
+const PRODUCTION_REFS = ['cdnfpaolzkpqetmmpyzh', 'bjlknohjdnemxwwoxcsv'];
 const args = process.argv.slice(2);
 const flag = name => args.includes(name);
 const option = name => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 
 const url = process.env.DATABASE_URL;
 if (!url) fail('Set DATABASE_URL to the target database connection string.');
-const production = url.includes(PRODUCTION_REF);
+const productionRef = PRODUCTION_REFS.find(ref => url.includes(ref));
+const production = Boolean(productionRef);
 if (production) {
   if (flag('--seed')) fail('Refusing to load fake seed data into production.');
-  if (!flag('--production') || process.env.CONFIRM_PRODUCTION !== PRODUCTION_REF) {
-    fail(`DATABASE_URL points at PRODUCTION (${PRODUCTION_REF}). Re-run with --production and CONFIRM_PRODUCTION=${PRODUCTION_REF} after a backup.`);
+  if (!flag('--production') || process.env.CONFIRM_PRODUCTION !== productionRef) {
+    fail(`DATABASE_URL points at PRODUCTION (${productionRef}). Re-run with --production and CONFIRM_PRODUCTION=${productionRef} after a backup.`);
   }
 }
 

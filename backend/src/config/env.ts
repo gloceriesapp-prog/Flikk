@@ -25,8 +25,11 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 // not read or write the live database by accident: test orders and riders would
 // land next to real customers. Point local dev at local Supabase or flikk-staging,
 // or set ALLOW_PRODUCTION_DATABASE=true for a deliberate, read-mostly session.
-const PRODUCTION_SUPABASE_REF = 'bjlknohjdnemxwwoxcsv';
-if (process.env.NODE_ENV !== 'production' && process.env.SUPABASE_URL?.includes(PRODUCTION_SUPABASE_REF)
+// gloceries-mumbai is production; the retired Seoul project (Flikk) holds the
+// same live data until it is deleted, so it stays guarded too.
+const PRODUCTION_SUPABASE_REFS = ['cdnfpaolzkpqetmmpyzh', 'bjlknohjdnemxwwoxcsv'];
+if (process.env.NODE_ENV !== 'production'
+  && PRODUCTION_SUPABASE_REFS.some((ref) => process.env.SUPABASE_URL?.includes(ref))
   && process.env.ALLOW_PRODUCTION_DATABASE !== 'true') {
   throw new Error('SUPABASE_URL points at the PRODUCTION project from a non-production backend. Use local Supabase or flikk-staging (see ENVIRONMENTS.md), or set ALLOW_PRODUCTION_DATABASE=true on purpose.');
 }

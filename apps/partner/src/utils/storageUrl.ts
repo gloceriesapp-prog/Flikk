@@ -5,7 +5,7 @@
 // from there. Building it from EXPO_PUBLIC_SUPABASE_URL blanked these images
 // whenever the app pointed at a local or staging project.
 // EXPO_PUBLIC_ARTWORK_BASE_URL overrides the host if the artwork ever moves.
-const PRODUCTION_SUPABASE_URL = 'https://bjlknohjdnemxwwoxcsv.supabase.co';
+const PRODUCTION_SUPABASE_URL = 'https://cdnfpaolzkpqetmmpyzh.supabase.co';
 const BASE = (process.env.EXPO_PUBLIC_ARTWORK_BASE_URL || PRODUCTION_SUPABASE_URL).replace(/\/+$/, '');
 
 /** `path` is `<bucket>/<object path>`, already URL-encoded. */

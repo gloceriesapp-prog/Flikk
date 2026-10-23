@@ -28,10 +28,10 @@ const PROMO_CARDS: PromoCard[] = [
     borderColor: "border-amber-200/80",
     titleColor: "text-slate-900",
     subtitleColor: "text-slate-800",
-    image: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/landing-promo.png",
+    image: "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/landing-promo.png",
     alt: "Fresh Fruits & Vegetables",
     proof: "FRESH PICKS",
-    bgImage: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card4-landing.png",
+    bgImage: "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/card4-landing.png",
   },
   {
     id: "local-kirana",
@@ -41,10 +41,10 @@ const PROMO_CARDS: PromoCard[] = [
     borderColor: "border-sky-200/60",
     titleColor: "text-slate-900",
     subtitleColor: "text-slate-800",
-    image: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/landing-promo2.png",
+    image: "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/landing-promo2.png",
     alt: "Everyday grocery staples from local kirana stores",
     proof: "DAILY ESSENTIALS",
-    bgImage: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card3-landing.png",
+    bgImage: "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/card3-landing.png",
   },
   {
     id: "fresh-produce",
@@ -54,10 +54,10 @@ const PROMO_CARDS: PromoCard[] = [
     borderColor: "border-emerald-200/70",
     titleColor: "text-slate-900",
     subtitleColor: "text-slate-800",
-    image: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/landing-promo3.png",
+    image: "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/landing-promo3.png",
     alt: "Festive Shopping, Made Easy",
     proof: "FESTIVE SPECIALS",
-    bgImage: "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/card5-landing.png",
+    bgImage: "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/card5-landing.png",
   },
 ];
 

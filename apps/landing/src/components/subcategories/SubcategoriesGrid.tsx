@@ -11,7 +11,7 @@ interface SubcategoryItem {
 }
 
 const DEFAULT_SUBCATEGORY_IMAGE =
-  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/website-images/amul.jpeg";
+  "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/website-images/amul.jpeg";
 
 const SUBCATEGORIES: SubcategoryItem[] = [
   {
