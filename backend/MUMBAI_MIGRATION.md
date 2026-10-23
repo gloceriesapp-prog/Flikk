@@ -83,6 +83,12 @@ Baseline taken from Seoul on 22 Oct 2026: 98 public/ops tables,
 `ops.applied_migrations` 141 rows, `auth.users` 9, `auth.identities` 10,
 `storage.buckets` 15, `storage.objects` 154.
 
+It also replays Seoul's exact privileges (`privileges.sql`): a newer project's
+default privileges otherwise leave every function callable, and every table
+writable, by `anon`/`authenticated`. For a database copied before that step,
+run `3-sync-privileges.sh` on its own. `verify.sql` fingerprints privileges and
+policies too, so a gap shows up in the diff.
+
 ## 4. Copy storage files
 
 Script: `backend/scripts/mumbai/2-copy-storage.mjs` (service-role keys from

@@ -68,6 +68,11 @@ psql "$OLD_DB_URL" -XAt -c "
     coalesce(' USING (' || qual || ')', ''), coalesce(' WITH CHECK (' || with_check || ')', ''))
   from pg_policies where schemaname = 'storage' order by policyname" > "$WORK/storage-policies.sql"
 
+# A newer project's default privileges give anon/authenticated everything on
+# restored tables and functions; replay Seoul's exact privileges instead
+# (privileges.sql, also runnable alone as 3-sync-privileges.sh).
+psql "$OLD_DB_URL" -XAt -f "$HERE/privileges.sql" > "$WORK/grants.sql"
+
 # Drop COPY blocks that must not or need not be loaded:
 #  - empty tables: some are Supabase-internal ones our role may not write
 #    (storage.buckets_vectors: permission denied), and empty needs no load;
@@ -89,6 +94,7 @@ psql -X -v ON_ERROR_STOP=1 --single-transaction \
   --command 'SET session_replication_role = replica' \
   --file "$WORK/data-rows.sql" \
   --file "$WORK/storage-policies.sql" \
+  --file "$WORK/grants.sql" \
   --dbname "$NEW_DB_URL"
 
 echo "== Migration ledger (ops.applied_migrations)"

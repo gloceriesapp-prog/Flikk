@@ -32,6 +32,34 @@ select format('policies|%s|%s', count(*), md5(string_agg(
   E'\n' order by schemaname, tablename, policyname)))
 from pg_policies
 union all
+select format('privileges|%s|%s', count(*), md5(string_agg(line, E'\n' order by line)))
+from (
+  select format('%s %s.%s %s %s %s', c.relkind, n.nspname, c.relname, a.privilege_type,
+                coalesce(r.rolname, 'PUBLIC'), a.is_grantable) as line
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  cross join lateral aclexplode(coalesce(c.relacl, acldefault((case when c.relkind = 'S' then 's' else 'r' end)::"char", c.relowner))) a
+  left join pg_roles r on r.oid = a.grantee
+  where n.nspname in ('public', 'ops') and c.relkind in ('r', 'p', 'v', 'm', 'f', 'S')
+  union all
+  select format('col %s.%s.%s %s %s', n.nspname, c.relname, att.attname, a.privilege_type, coalesce(r.rolname, 'PUBLIC'))
+  from pg_attribute att join pg_class c on c.oid = att.attrelid join pg_namespace n on n.oid = c.relnamespace
+  cross join lateral aclexplode(att.attacl) a
+  left join pg_roles r on r.oid = a.grantee
+  where n.nspname in ('public', 'ops') and att.attacl is not null
+  union all
+  select format('fn %s.%s(%s) %s', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), coalesce(r.rolname, 'PUBLIC'))
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  cross join lateral aclexplode(coalesce(p.proacl, acldefault('f'::"char", p.proowner))) a
+  left join pg_roles r on r.oid = a.grantee
+  where n.nspname in ('public', 'ops')
+  union all
+  select format('default %s %s %s %s', d.defaclnamespace::regnamespace, d.defaclobjtype, a.privilege_type, coalesce(r.rolname, 'PUBLIC'))
+  from pg_default_acl d
+  cross join lateral aclexplode(d.defaclacl) a
+  left join pg_roles r on r.oid = a.grantee
+  where d.defaclrole = 'postgres'::regrole and d.defaclnamespace::regnamespace::text in ('public', 'ops')
+) acl
+union all
 select format('auth.users|%s|%s', count(*), coalesce(md5(string_agg(
   concat_ws('|', id, phone, email, encrypted_password, phone_confirmed_at is not null,
             email_confirmed_at is not null, banned_until, role, is_sso_user, deleted_at),
