@@ -17,7 +17,8 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const PRODUCTION_REF = 'bjlknohjdnemxwwoxcsv';
+// gloceries-mumbai (production) and the retired Seoul project (Flikk).
+const PRODUCTION_REFS = ['cdnfpaolzkpqetmmpyzh', 'bjlknohjdnemxwwoxcsv'];
 const LOCAL_TEST_STORE = '00000000-0000-4000-a000-000000000201';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const fail = (message) => { console.error(`\n✗ ${message}`); process.exit(1); };
@@ -45,7 +46,7 @@ const TABLES = [
 ];
 
 const source = process.env.SOURCE_DATABASE_URL;
-if (!source) fail("Set SOURCE_DATABASE_URL to production's Session pooler URI (Supabase -> Flikk -> Connect). It is only read.");
+if (!source) fail("Set SOURCE_DATABASE_URL to production's Session pooler URI (Supabase -> gloceries-mumbai -> Connect). It is only read.");
 
 let target = process.env.DATABASE_URL;
 if (!target) {
@@ -53,7 +54,7 @@ if (!target) {
   target = status.stdout?.match(/^DB_URL="?([^"\n]+)"?$/m)?.[1];
   if (!target) fail('Local Supabase is not running. Run `npm run local:setup` first, or set DATABASE_URL to the local database.');
 }
-if (target.includes(PRODUCTION_REF)) fail('The target is the production database. This script only writes to a local database.');
+if (PRODUCTION_REFS.some(ref => target.includes(ref))) fail('The target is the production database. This script only writes to a local database.');
 if (target === source) fail('Source and target are the same database.');
 
 function psql(url, args, { input, readOnly = false } = {}) {

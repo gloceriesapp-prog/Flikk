@@ -6,7 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { SparklesIcon } from "@hugeicons/core-free-icons";
 
 const HERO_IMAGE_URL =
-  "https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/landing-hero.png";
+  "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/landing-hero.png";
 
 export default function Hero() {
   return (

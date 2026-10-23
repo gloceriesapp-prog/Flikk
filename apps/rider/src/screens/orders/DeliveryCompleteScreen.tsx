@@ -36,7 +36,7 @@ import type { AppStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'DeliveryComplete'>;
 
 const TICK_VIDEO =
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/Success%20Tick.mp4';
+  'https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/Success%20Tick.mp4';
 
 const rupee = (n: number) => `₹${Math.round(n)}`;
 

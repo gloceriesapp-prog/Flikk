@@ -5,19 +5,19 @@ Every change goes **local → staging → production**. Only production has real
 | | Local | Staging | Production |
 |---|---|---|---|
 | Purpose | Build and debug | End-to-end test before release | Real customers |
-| Database (Supabase) | `npm run local:setup` (local Supabase in Docker) | `flikk-staging` (`qgbuvydwcgjthwqxqylk`, Singapore) | `Flikk` (`bjlknohjdnemxwwoxcsv`) |
-| Backend + worker | `pnpm dev` / `pnpm dev:worker` in `backend/` | Railway environment `staging` (branch `staging`) | Railway environment `production` (branch `main`) |
+| Database (Supabase) | `npm run local:setup` (local Supabase in Docker) | `flikk-staging` (`qgbuvydwcgjthwqxqylk`, Singapore) | `gloceries-mumbai` (`cdnfpaolzkpqetmmpyzh`, Mumbai). The old Seoul project `Flikk` (`bjlknohjdnemxwwoxcsv`) is retired: kept paused as a fallback, never written to |
+| Backend + worker | `pnpm dev` / `pnpm dev:worker` in `backend/` | Railway environment `staging` (branch `staging`) | AWS Lightsail, Mumbai (`backend/deploy/lightsail`, deployed from `main`); Railway until the switch |
 | Mobile apps | Dev build, `.env.local` → your LAN IP | EAS profile `preview` → APK on test phones | EAS profile `production` → Play Store |
 | EAS variables | none (`.env.local`) | EAS environment `preview` | EAS environment `production` |
 | Admin panel | `pnpm dev` in `apps/admin` | Vercel preview pointed at staging | Vercel production |
-| Payments | Cashfree sandbox | Cashfree sandbox | Cashfree live |
+| Payments | Razorpay test mode | Razorpay test mode | Razorpay live |
 | Phone OTP | Backend → MSG91 (no keys: code printed in the backend log); test numbers 9100000001/2/3 = 123456 | Backend → MSG91; test numbers from `LOGIN_TEST_OTPS` | Backend → MSG91; test numbers from `LOGIN_TEST_OTPS` |
 | Data | `backend/seed/dev-seed.sql` | `backend/seed/dev-seed.sql` + your test accounts | Real |
 
 ## Guard rails already in the code
 
 - **Laptop backends can't use the production database.** The backend refuses to start against the production project unless `NODE_ENV=production`, which only the Docker image sets, or you set `ALLOW_PRODUCTION_DATABASE=true` on purpose.
-- **`db-migrate.mjs` won't touch production by accident.** It needs `--production` plus `CONFIRM_PRODUCTION=bjlknohjdnemxwwoxcsv`, and it never loads seed data there.
+- **`db-migrate.mjs` won't touch production by accident.** It needs `--production` plus `CONFIRM_PRODUCTION=cdnfpaolzkpqetmmpyzh`, and it never loads seed data there.
 - **Migrations are tracked.** Every applied migration is recorded in `ops.applied_migrations` with its checksum. Editing a migration after it was applied anywhere fails loudly.
 - **Release app builds need a real HTTPS API URL.** The check runs on the EAS builder, so a local `.env.local` can't leak into a Play Store build.
 
@@ -43,13 +43,13 @@ It keeps your other keys (MSG91, Maps, Sentry and so on) and saves each old file
 **Real content and images (optional):** the test data has no pictures or home-screen content. To copy production's catalogue and home content (categories, banners, tabs, tiles, festival and seasonal sections, FAQs, products, variants) into local:
 
 ```
-SOURCE_DATABASE_URL='<Flikk Session pooler URI>' npm run local:content
+SOURCE_DATABASE_URL='<gloceries-mumbai Session pooler URI>' npm run local:content
 ```
 
 - The production connection is read-only, and the script refuses to write anywhere except a local database.
 - Nothing personal is copied: no users, stores, addresses, orders or riders.
 - Products are attached to the local test store. Images keep their production URLs, which are public.
-- Get the URI from Supabase → Flikk → **Connect** → Session pooler. Paste it only into your terminal, and never commit it.
+- Get the URI from Supabase → gloceries-mumbai → **Connect** → Session pooler. Paste it only into your terminal, and never commit it.
 
 Then, each in its own terminal:
 
@@ -116,10 +116,10 @@ Account-wide (Global) variables apply to every environment you tick, so make sur
    - a rider gets the offer, picks up, and delivers with the code;
    - admin sees the order, payout and earnings.
 5. **Promote to production:**
-   1. Back up: Supabase → Flikk → Database → Backups. Download one, or note the latest daily backup time.
+   1. Back up: Supabase → gloceries-mumbai → Database → Backups. Download one, or note the latest daily backup time.
    2. Apply the migrations first:
       ```
-      DATABASE_URL='<prod URI>' CONFIRM_PRODUCTION=bjlknohjdnemxwwoxcsv node scripts/db-migrate.mjs --production
+      DATABASE_URL='<prod URI>' CONFIRM_PRODUCTION=cdnfpaolzkpqetmmpyzh node scripts/db-migrate.mjs --production
       ```
    3. Then merge `staging` → `main`, and Railway production deploys.
    4. Watch Railway logs for 10 minutes.
@@ -130,7 +130,7 @@ Account-wide (Global) variables apply to every environment you tick, so make sur
 Production got migrations 001–112 before this ledger existed. Record them once, without running them, before using `db-migrate` there:
 
 ```
-DATABASE_URL='<prod URI>' CONFIRM_PRODUCTION=bjlknohjdnemxwwoxcsv \
+DATABASE_URL='<prod URI>' CONFIRM_PRODUCTION=cdnfpaolzkpqetmmpyzh \
   node scripts/db-migrate.mjs --production --baseline-through 112_app_config_and_hours.sql
 ```
 
@@ -170,11 +170,11 @@ Supabase sends no SMS and needs no SMS provider, test OTPs or Send SMS hook. The
 **Secrets**
 - Secrets live only in Railway variables, EAS secrets, Supabase and local `.env.local` files. They never go in Git, chat, screenshots or `EXPO_PUBLIC_*` variables. Anything `EXPO_PUBLIC_` is readable by anyone who downloads the app.
 - If a secret is ever pasted somewhere public, rotate it the same day.
-- Staging and production use different keys: Cashfree sandbox vs live, and a different Supabase service key.
+- Staging and production use different keys: Razorpay test vs live keys, and a different Supabase service key.
 
 **Money and data**
-- Test payments only with Cashfree sandbox until go-live. After go-live, do a real ₹1 order end to end after every payments change.
-- Payouts are manual: reconcile Cashfree settlements against admin payouts every week.
+- Test payments only with Razorpay test mode until go-live. After go-live, do a real ₹1 order end to end after every payments change.
+- Payouts are manual: reconcile Razorpay settlements against admin payouts every week.
 - Production data never gets copied into local or staging. Customer phones and addresses stay in production only.
 
 **Watching production**

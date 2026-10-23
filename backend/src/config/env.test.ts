@@ -30,8 +30,10 @@ describe('env', () => {
     expect(result.paymentsConfigured).toBe(false);
   });
 
-  it('refuses the production Supabase project from a non-production backend', async () => {
-    const prod = 'https://bjlknohjdnemxwwoxcsv.supabase.co';
+  it.each([
+    ['gloceries-mumbai (production)', 'https://cdnfpaolzkpqetmmpyzh.supabase.co'],
+    ['retired Seoul project', 'https://bjlknohjdnemxwwoxcsv.supabase.co'],
+  ])('refuses the %s from a non-production backend', async (_name, prod) => {
     await expect(loadEnv({ NODE_ENV: 'development', SUPABASE_URL: prod })).rejects.toThrow(/PRODUCTION/);
     await expect(loadEnv({ NODE_ENV: 'development', SUPABASE_URL: prod, ALLOW_PRODUCTION_DATABASE: 'true' })).resolves.toBeDefined();
     await expect(loadEnv({ NODE_ENV: 'production', SUPABASE_URL: prod })).resolves.toBeDefined();

@@ -27,7 +27,7 @@ const greens = 'spinach,palak,lettuce,amaranth,methi,fenugreek leaves,leafy gree
 const herbs = 'coriander,cilantro,mint,pudina,curry leaves,basil,parsley,dill,rosemary,thyme';
 const regional =
   'snack,chips,murukku,chakli,chakkuli,kodubale,namkeen,mixture,sev,chivda,sweet,mithai,laddu,laddoo,barfi,burfi,halwa,mysore pak,peda,chikki,pickle,achar,masala,spice,jaggery,coconut oil,rice,atta,dal,juice,kokum,kashaya';
-const imageBase = 'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/';
+const imageBase = 'https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/';
 const footer = () =>
   section('footer', 'brand-footer', 'Gloceries', '', {
     subtitle: 'Made with ♥ in Udupi (Tulunadu), India',

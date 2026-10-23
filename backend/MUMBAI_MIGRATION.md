@@ -12,6 +12,12 @@ State at planning time (22 Oct 2026): 20 MB database, 9 auth users,
 15 storage buckets with ~154 files, 141 migrations, 0 orders. This is the
 cheapest moment the move will ever be.
 
+> **Status (23 Oct 2026):** the database copy is done and verified. gloceries-mumbai
+> matches Seoul row for row, including auth users, storage files, policies and
+> privileges, and stored image URLs now point at Mumbai. The code treats
+> gloceries-mumbai as production. What remains is section 5 onward: the backend
+> on Lightsail with Mumbai's keys, the client URL switch, and pausing Seoul.
+
 ## 0. Before the move (do these first, each is useful on its own)
 
 1. **Put the API behind your own domain**, e.g. `api.gloceries.com` (CNAME at

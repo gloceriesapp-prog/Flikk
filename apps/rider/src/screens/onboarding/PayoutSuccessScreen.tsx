@@ -10,7 +10,7 @@ import { Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 const TICK_VIDEO =
-  'https://bjlknohjdnemxwwoxcsv.supabase.co/storage/v1/object/public/Images/Success%20Tick.mp4';
+  'https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/Images/Success%20Tick.mp4';
 
 // How long the rider sits on "You're all set!" before we redirect. Long
 // enough for the tick to play + register, short enough to feel snappy.
