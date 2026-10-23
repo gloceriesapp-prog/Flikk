@@ -48,6 +48,12 @@ approved runner with a fixed egress address and allow only that address on port
 22, or implement an approved AWS-authenticated deployment transport. Do not open
 SSH to the whole internet to accommodate changing runner addresses.
 
+For the first deployment, run the workflow manually with `build_only=true`.
+This builds an immutable image on GitHub and saves a one-day artifact without
+using SSH, pushing a registry package or starting production services. Transfer
+the authenticated artifact to the host, verify its digest and load it with
+`docker load`. Keep automatic deployment disabled until its access is configured.
+
 ## Cutover gates
 
 1. Keep the existing Supabase production project for the compute migration.
