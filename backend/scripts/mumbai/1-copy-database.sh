@@ -58,6 +58,16 @@ echo "== Dumping Seoul (read-only)"
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/schema.sql"
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/data.sql" --use-copy --data-only
 
+# The CLI dump leaves out the storage schema, so our policies on
+# storage.objects (migration 094: private documents service-only, no direct
+# writes to media buckets) are rebuilt from Seoul's catalogue.
+psql "$OLD_DB_URL" -XAt -c "
+  select format('CREATE POLICY %I ON %I.%I AS %s FOR %s TO %s%s%s;',
+    policyname, schemaname, tablename, permissive, cmd,
+    (select string_agg(case when r = 'public' then 'PUBLIC' else quote_ident(r) end, ',') from unnest(roles) r),
+    coalesce(' USING (' || qual || ')', ''), coalesce(' WITH CHECK (' || with_check || ')', ''))
+  from pg_policies where schemaname = 'storage' order by policyname" > "$WORK/storage-policies.sql"
+
 # Drop COPY blocks that must not or need not be loaded:
 #  - empty tables: some are Supabase-internal ones our role may not write
 #    (storage.buckets_vectors: permission denied), and empty needs no load;
@@ -78,6 +88,7 @@ psql -X -v ON_ERROR_STOP=1 --single-transaction \
   --file "$WORK/schema.sql" \
   --command 'SET session_replication_role = replica' \
   --file "$WORK/data-rows.sql" \
+  --file "$WORK/storage-policies.sql" \
   --dbname "$NEW_DB_URL"
 
 echo "== Migration ledger (ops.applied_migrations)"
