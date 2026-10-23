@@ -72,7 +72,9 @@ An `always()` cleanup step removes the job's rule after success, failure or
 normal cancellation, and fails the workflow if removal cannot be verified.
 An abruptly destroyed runner or AWS outage can prevent cleanup; inspect the
 Lightsail firewall after such a run and remove only its recorded `/32`, keeping
-the `lightsail-connect` alias. The next run refuses unexpected stale SSH rules.
+the `lightsail-connect` alias and, when present, its `lightsail-connect-ipv6`
+browser-client counterpart. Both aliases were observed in the production API
+response; public IPv4/IPv6 SSH ranges and unknown aliases remain rejected. The next run refuses unexpected stale SSH rules.
 Do not open port 22 to `0.0.0.0/0` or `::/0`.
 
 `ONLINE_PAYMENTS_DISABLED=false` permits the admin checkout setting to enable
