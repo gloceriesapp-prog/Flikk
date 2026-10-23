@@ -8,7 +8,9 @@ spec.loader.exec_module(access)
 
 
 class Firewall:
-    def __init__(self):
+    def __init__(self, aliases=None):
+        self.aliases = aliases if aliases is not None else ['lightsail-connect']
+        self.ipv6 = []
         self.cidrs = set()
         self.calls = []
         self.stuck = False
@@ -25,7 +27,7 @@ class Firewall:
                 else:
                     self.cidrs.difference_update(port['cidrs'])
         return {'portStates': [
-            {'fromPort': 22, 'toPort': 22, 'protocol': 'tcp', 'state': 'open', 'cidrs': list(self.cidrs), 'cidrListAliases': ['lightsail-connect']},
+            {'fromPort': 22, 'toPort': 22, 'protocol': 'tcp', 'state': 'open', 'cidrs': list(self.cidrs), 'ipv6Cidrs': self.ipv6, 'cidrListAliases': self.aliases},
             {'fromPort': 80, 'toPort': 80, 'protocol': 'tcp', 'state': 'open', 'cidrs': ['0.0.0.0/0']},
             {'fromPort': 443, 'toPort': 443, 'protocol': 'tcp', 'state': 'open', 'cidrs': ['0.0.0.0/0']},
         ]}
@@ -37,6 +39,36 @@ class AccessTests(unittest.TestCase):
         for action in ['open', 'close', 'close']:
             access.change_access(action, 'gloceries-api', '8.8.8.8/32', firewall, lambda _: None)
         self.assertEqual(firewall.cidrs, set())
+
+    def test_dual_stack_browser_aliases_are_preserved(self):
+        # Matches the actual GetInstancePortStates response from gloceries-api.
+        firewall = Firewall(['lightsail-connect', 'lightsail-connect-ipv6'])
+        for action in ['open', 'close', 'close']:
+            access.change_access(action, 'gloceries-api', '8.8.8.8/32', firewall, lambda _: None)
+        self.assertEqual(firewall.cidrs, set())
+        self.assertEqual(firewall.aliases, ['lightsail-connect', 'lightsail-connect-ipv6'])
+
+    def test_unknown_alias_or_public_ssh_is_rejected_without_mutation(self):
+        for aliases, ipv6, cidrs in [
+            (['lightsail-connect', 'unknown'], [], set()),
+            (['lightsail-connect-ipv6'], [], set()),
+            (['lightsail-connect', 'lightsail-connect-ipv6'], ['::/0'], set()),
+            (['lightsail-connect'], [], {'0.0.0.0/0'}),
+        ]:
+            firewall = Firewall(aliases)
+            firewall.ipv6, firewall.cidrs = ipv6, cidrs
+            with self.assertRaises(RuntimeError):
+                access.change_access('open', 'gloceries-api', '8.8.8.8/32', firewall)
+            self.assertTrue(all(call[2] is None for call in firewall.calls))
+
+    def test_browser_alias_loss_during_mutation_fails_verification(self):
+        firewall = Firewall(['lightsail-connect', 'lightsail-connect-ipv6'])
+        def losing_alias(action, instance, port=None):
+            if port:
+                firewall.aliases = ['lightsail-connect']
+            return firewall(action, instance, port)
+        with self.assertRaises(RuntimeError):
+            access.change_access('open', 'gloceries-api', '8.8.8.8/32', losing_alias, lambda _: None)
 
     def test_reject_broad_private_and_ipv6_before_any_aws_call(self):
         for cidr in ['0.0.0.0/0', '8.8.8.0/24', '127.0.0.1/32', '10.0.0.1/32', '::/0', 'bad']:

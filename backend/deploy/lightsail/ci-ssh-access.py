@@ -39,15 +39,25 @@ def change_access(action, instance, cidr, call=aws, pause=time.sleep):
     cidr = runner_cidr(cidr)
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,253}', instance):
         raise ValueError('Invalid Lightsail instance name')
-    before, aliases, ipv6 = ssh_access(call('get-instance-port-states', instance))
-    if aliases != {'lightsail-connect'} or ipv6 or before - {cidr}:
-        raise RuntimeError('Unexpected SSH rules: retain browser-only access and clear stale runner rules first')
+    states = call('get-instance-port-states', instance)
+    before, aliases, ipv6 = ssh_access(states)
+    # Observed on the dual-stack production instance: AWS returns separate
+    # browser-client aliases for IPv4 and IPv6. Neither is public ::/0 access.
+    browser_aliases = aliases
+    allowed_aliases = {'lightsail-connect', 'lightsail-connect-ipv6'}
+    if 'lightsail-connect' not in aliases or aliases - allowed_aliases or ipv6 or before - {cidr}:
+        # These are public firewall settings, not credentials. Include the
+        # service response shape so a new API representation can be diagnosed
+        # without weakening the fail-closed access check or logging AWS tokens.
+        fields = ('fromPort', 'toPort', 'protocol', 'state', 'cidrs', 'ipv6Cidrs', 'cidrListAliases')
+        details = [{key: rule.get(key) for key in fields} for rule in states.get('portStates', [])]
+        raise RuntimeError('Unexpected firewall representation; no rule changed: ' + json.dumps(details))
     port = {'fromPort': 22, 'toPort': 22, 'protocol': 'tcp', 'cidrs': [cidr], 'ipv6Cidrs': [], 'cidrListAliases': []}
     call('open-instance-public-ports' if action == 'open' else 'close-instance-public-ports', instance, port)
     expected = {cidr} if action == 'open' else set()
     for attempt in range(10):
         actual, aliases, ipv6 = ssh_access(call('get-instance-port-states', instance))
-        if actual == expected and aliases == {'lightsail-connect'} and not ipv6:
+        if actual == expected and aliases == browser_aliases and not ipv6:
             print(f'SSH runner rule {action}: verified; browser SSH preserved')
             return
         if attempt < 9:
