@@ -564,6 +564,10 @@
     {
       "file": "20261021090000_play_review_rider.sql",
       "sha256": "985c36f1ed68c3eca88c4f64a1cd1c7cdaf40b4af2078a62f0f1027e2ca8d471"
+    },
+    {
+      "file": "20261023150000_rider_drafts_server_only.sql",
+      "sha256": "47d9eca56009c8d9df15ed55f901d23a798604c458ca6fdc497908ac5d5d66ae"
     }
   ]
 }
