@@ -58,11 +58,26 @@ echo "== Dumping Seoul (read-only)"
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/schema.sql"
 "${SUPABASE[@]}" db dump --db-url "$OLD_DB_URL" -f "$WORK/data.sql" --use-copy --data-only
 
+# Drop COPY blocks that must not or need not be loaded:
+#  - empty tables: some are Supabase-internal ones our role may not write
+#    (storage.buckets_vectors: permission denied), and empty needs no load;
+#  - realtime.subscription: live websocket subscriptions of the old project;
+#  - supabase_migrations: the CLI's history (this repo tracks ops.applied_migrations).
+# verify.sql still compares every public/ops table afterwards.
+awk 'function flush() { if (held != "") print held; held = "" }
+     skipping { if ($0 == "\\.") skipping = 0; next }
+     /^COPY "(realtime"\."subscription|supabase_migrations"\.)/ { skipping = 1; dropped++; next }
+     /^COPY .* FROM stdin;$/ { held = $0; next }
+     held != "" { if ($0 == "\\.") { held = ""; dropped++; next } flush() }
+     { print }
+     END { print "-- left out " dropped + 0 " tables (empty or not app data)" > "/dev/stderr" }' \
+  "$WORK/data.sql" > "$WORK/data-rows.sql"
+
 echo "== Restoring into Mumbai (one transaction, triggers paused while rows load)"
 psql -X -v ON_ERROR_STOP=1 --single-transaction \
   --file "$WORK/schema.sql" \
   --command 'SET session_replication_role = replica' \
-  --file "$WORK/data.sql" \
+  --file "$WORK/data-rows.sql" \
   --dbname "$NEW_DB_URL"
 
 echo "== Migration ledger (ops.applied_migrations)"
