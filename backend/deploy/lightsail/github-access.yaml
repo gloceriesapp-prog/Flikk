@@ -4,10 +4,11 @@ Metadata:
   AWSToolsMetrics:
     AWSAgentToolkit: aws-cloudformation@3
 Parameters:
-  Repository:
+  RepositoryIdentity:
     Type: String
-    Default: gloceriesapp-prog/Flikk
-    AllowedPattern: '[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+'
+    Default: gloceriesapp-prog@331685205/Flikk@1335724632
+    AllowedPattern: '[A-Za-z0-9_.-]+@[0-9]+/[A-Za-z0-9_.-]+@[0-9]+'
+    Description: Immutable owner/repository identity from the repository OIDC customization API, without the repo prefix.
   TargetName:
     Type: String
     Default: gloceries-api
@@ -54,7 +55,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub repo:${Repository}:ref:refs/heads/main
+                token.actions.githubusercontent.com:sub: !Sub repo:${RepositoryIdentity}:ref:refs/heads/main
       Policies:
         - PolicyName: RestrictedLightsailFirewall
           PolicyDocument:
