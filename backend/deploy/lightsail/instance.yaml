@@ -1,0 +1,64 @@
+# Desired infrastructure for a NEW host. The current host was provisioned in
+# the signed-in console; do not create a duplicate stack or replace it blindly.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Gloceries production API host in Mumbai
+Parameters:
+  UbuntuBlueprintId:
+    Type: String
+    Description: Current Ubuntu 24.04 Lightsail blueprint ID from the regional catalog
+  BundleId:
+    Type: String
+    Description: Current dual-stack 2 GB 12 USD Lightsail bundle ID from the regional catalog
+  InstanceName:
+    Type: String
+    Default: gloceries-api
+  KeyPairName:
+    Type: String
+    Description: Existing Mumbai SSH key pair name
+Resources:
+  ApiInstance:
+    Type: AWS::Lightsail::Instance
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      InstanceName: !Ref InstanceName
+      AvailabilityZone: ap-south-1a
+      BlueprintId: !Ref UbuntuBlueprintId
+      BundleId: !Ref BundleId
+      KeyPairName: !Ref KeyPairName
+      AddOns:
+        - AddOnType: AutoSnapshot
+          Status: Enabled
+          AutoSnapshotAddOnRequest:
+            SnapshotTimeOfDay: '00:00'
+      Networking:
+        Ports:
+          - FromPort: 22
+            ToPort: 22
+            Protocol: tcp
+            CidrListAliases: [lightsail-connect]
+          - FromPort: 80
+            ToPort: 80
+            Protocol: tcp
+            Cidrs: [0.0.0.0/0]
+            Ipv6Cidrs: ['::/0']
+          - FromPort: 443
+            ToPort: 443
+            Protocol: tcp
+            Cidrs: [0.0.0.0/0]
+            Ipv6Cidrs: ['::/0']
+      Tags:
+        - Key: Service
+          Value: gloceries-backend
+        - Key: Environment
+          Value: production
+  StaticIp:
+    Type: AWS::Lightsail::StaticIp
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      StaticIpName: gloceries-api-ip
+      AttachedTo: !Ref ApiInstance
+Outputs:
+  StaticAddress:
+    Value: !GetAtt StaticIp.IpAddress
