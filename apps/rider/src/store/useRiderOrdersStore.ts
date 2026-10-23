@@ -52,7 +52,7 @@ import { create } from 'zustand';
 import { acceptDispatchOffer, fetchDispatchOffers, updateRiderStatus, type AcceptDispatchOfferResult, type DispatchOffer } from '../api/dispatch';
 import { fetchAssignmentHistory, fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders';
 import { mergeHistory } from './orderHistory';
-import { generateMockOrder, generateMockRating, generateMockTip, type RiderOrder } from '../data/mockOrders';
+import type { RiderOrder } from '../data/mockOrders';
 import { getCurrentCoordinates, requestLocationPermission } from '../location/riderLocation';
 import { startBackgroundLocation, stopBackgroundLocation } from '../location/backgroundLocation';
 import { ApiError } from '../api/client';
@@ -723,33 +723,39 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
   },
 
   loadSampleData: () => {
-    const active: RiderOrder = { ...generateMockOrder(), status: 'picked_up' };
+    // Required here, not imported at the top, so release builds (where
+    // __DEV__ is false) drop the mock generator from the bundle entirely.
+    if (__DEV__) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { generateMockOrder, generateMockRating, generateMockTip } = require('../data/mockOrders') as typeof import('../data/mockOrders');
+      const active: RiderOrder = { ...generateMockOrder(), status: 'picked_up' };
 
-    const completedOne: RiderOrder = {
-      ...generateMockOrder(),
-      status: 'delivered',
-      deliveredAt: new Date().toISOString(),
-      customerRating: generateMockRating(),
-      tip: generateMockTip(),
-    };
-    const completedTwo: RiderOrder = {
-      ...generateMockOrder(),
-      status: 'delivered',
-      deliveredAt: new Date().toISOString(),
-      customerRating: generateMockRating(),
-      tip: generateMockTip(),
-    };
+      const completedOne: RiderOrder = {
+        ...generateMockOrder(),
+        status: 'delivered',
+        deliveredAt: new Date().toISOString(),
+        customerRating: generateMockRating(),
+        tip: generateMockTip(),
+      };
+      const completedTwo: RiderOrder = {
+        ...generateMockOrder(),
+        status: 'delivered',
+        deliveredAt: new Date().toISOString(),
+        customerRating: generateMockRating(),
+        tip: generateMockTip(),
+      };
 
-    const cancelledBase = generateMockOrder();
-    const cancelled: RiderOrder = { ...cancelledBase, status: 'cancelled', cancelReason: 'Store is closed' };
+      const cancelledBase = generateMockOrder();
+      const cancelled: RiderOrder = { ...cancelledBase, status: 'cancelled', cancelReason: 'Store is closed' };
 
-    set((state) => ({
-      activeOrders: [active, ...state.activeOrders],
-      completedOrders: [completedOne, completedTwo, ...state.completedOrders],
-      cancelledOrders: [cancelled, ...state.cancelledOrders],
-    }));
+      set((state) => ({
+        activeOrders: [active, ...state.activeOrders],
+        completedOrders: [completedOne, completedTwo, ...state.completedOrders],
+        cancelledOrders: [cancelled, ...state.cancelledOrders],
+      }));
 
-    void persistHistory(get().completedOrders);
+      void persistHistory(get().completedOrders);
+    }
   },
   };
 });
