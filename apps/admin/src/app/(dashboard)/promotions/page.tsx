@@ -1,5 +1,7 @@
 'use client';
 
+import { X } from '@/components/icons';
+
 // Promotions — compose an SMS or email campaign for explicitly chosen
 // customers (up to 100), see past campaigns and each recipient's delivery
 // status, and flip the promotions kill switch. Queued messages are sent by
@@ -203,7 +205,7 @@ export default function PromotionsPage() {
                 {recipients.map((c) => (
                   <button key={c.id} type="button" onClick={() => setRecipients((prev) => prev.filter((r) => r.id !== c.id))}
                     className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-ink" aria-label={`Remove ${c.name || c.phone}`}>
-                    {c.name || c.phone} ×
+                    {c.name || c.phone} <X size={12} className="ml-1 inline-block" />
                   </button>
                 ))}
               </div>

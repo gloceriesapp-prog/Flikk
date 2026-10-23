@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import clsx from 'clsx';
-import { CalendarDays, ChevronDown, Download, LayoutGrid, List, Search, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, LayoutGrid, List, Search, X } from 'lucide-react';
 import type { OrderStatus } from '@/lib/partnerApi';
 import { STATUS_META, type StatusFilter } from './orderMeta';
 
@@ -25,13 +25,10 @@ interface Props {
   onFilterChange: (filter: StatusFilter) => void;
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
-  onExport: () => void;
-  exportDisabled?: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   view: OrdersView;
   onViewChange: (view: OrdersView) => void;
-  resultCount: number | null;
 }
 
 // Mac shows ⌘K, everything else Ctrl K. Read through useSyncExternalStore so
@@ -50,13 +47,10 @@ export function OrdersFilterBar({
   onFilterChange,
   dateRange,
   onDateRangeChange,
-  onExport,
-  exportDisabled,
   search,
   onSearchChange,
   view,
   onViewChange,
-  resultCount,
 }: Props) {
   const searchRef = useRef<HTMLInputElement>(null);
   const isMac = useIsMac();
@@ -76,124 +70,34 @@ export function OrdersFilterBar({
   }, []);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-        {/* Status tabs — scroll sideways on a phone instead of wrapping. */}
-        <div className="-mx-3 overflow-x-auto px-3 [scrollbar-width:none] sm:mx-0 sm:px-0 xl:shrink-0">
-          <div role="group" aria-label="Filter by status" className="inline-flex gap-1 rounded-full bg-white p-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            {ORDER_FILTERS.map((f) => {
-              const active = filter === f;
-              return (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => onFilterChange(f)}
-                  aria-pressed={active}
-                  className={clsx(
-                    'h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                    active ? 'bg-accent-soft text-accent' : 'text-slate-600 hover:bg-slate-50 hover:text-ink',
-                  )}
-                >
-                  {f === 'all' ? 'All' : STATUS_META[f].label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <label className="relative block min-w-0 flex-1">
-          <span className="sr-only">Search orders</span>
-          <Search size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
-          <input
-            ref={searchRef}
-            type="search"
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape' && search) {
-                e.preventDefault();
-                onSearchChange('');
-              }
-            }}
-            placeholder="Search order no., customer or phone"
-            className="h-11 w-full rounded-full bg-white pl-11 pr-16 text-sm text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none ring-1 ring-transparent transition placeholder:text-slate-400 focus:ring-2 focus:ring-accent [&::-webkit-search-cancel-button]:hidden"
-          />
-          {search ? (
-            <button
-              type="button"
-              onClick={() => {
-                onSearchChange('');
-                searchRef.current?.focus();
-              }}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-ink"
-            >
-              <X size={16} />
-            </button>
-          ) : (
-            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-sans text-[11px] font-medium text-slate-500 sm:block">
-              {isMac ? '⌘K' : 'Ctrl K'}
-            </kbd>
-          )}
-        </label>
+    <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+      <div role="group" aria-label="Filter by status" className="inline-flex shrink-0 gap-0.5 rounded-full bg-white p-1">
+        {ORDER_FILTERS.map(status => <button key={status} type="button" onClick={() => onFilterChange(status)} aria-pressed={filter === status}
+          className={clsx('h-9 whitespace-nowrap rounded-full px-3 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-black', filter === status ? 'bg-gray-200 text-black' : 'text-slate-600 hover:bg-gray-100 hover:text-black')}>
+          {status === 'all' ? 'All' : STATUS_META[status].label}
+        </button>)}
       </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="tnum mr-auto text-sm text-slate-500" aria-live="polite">
-          {resultCount === null ? ' ' : `${resultCount} ${resultCount === 1 ? 'order' : 'orders'}`}
-        </p>
-
-        <label className="relative">
-          <span className="sr-only">Date range</span>
-          <CalendarDays size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden />
-          <select
-            value={dateRange}
-            onChange={(e) => onDateRangeChange(e.target.value as DateRange)}
-            className="h-10 appearance-none rounded-full bg-white pl-10 pr-9 text-sm font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            {DATE_RANGES.map((r) => (
-              <option key={r.key} value={r.key}>
-                {r.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
-        </label>
-
-        <button
-          type="button"
-          onClick={onExport}
-          disabled={exportDisabled}
-          title="Export CSV"
-          className="flex h-10 items-center gap-2 rounded-full bg-white px-3 text-sm sm:px-4 font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Download size={16} aria-hidden />
-          <span className="sr-only sm:not-sr-only">Export CSV</span>
-        </button>
-
-        <div role="group" aria-label="Layout" className="flex rounded-full bg-white p-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          {(
-            [
-              ['grid', LayoutGrid, 'Grid view'],
-              ['list', List, 'List view'],
-            ] as const
-          ).map(([key, Icon, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onViewChange(key)}
-              aria-pressed={view === key}
-              aria-label={label}
-              title={label}
-              className={clsx(
-                'flex h-8 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                view === key ? 'bg-accent-soft text-accent' : 'text-slate-500 hover:text-ink',
-              )}
-            >
-              <Icon size={17} />
-            </button>
-          ))}
-        </div>
+      <label className="relative block min-w-[220px] flex-1 basis-[320px]">
+        <span className="sr-only">Search orders</span>
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
+        <input ref={searchRef} type="search" value={search} onChange={event => onSearchChange(event.target.value)}
+          onKeyDown={event => { if (event.key === 'Escape' && search) { event.preventDefault(); onSearchChange(''); } }}
+          placeholder="Search orders"
+          className="h-11 w-full rounded-full border border-slate-200/70 bg-white pl-9 pr-14 text-[13px] text-ink outline-none placeholder:text-slate-400 focus:border-black/40 [&::-webkit-search-cancel-button]:hidden" />
+        {search ? <button type="button" onClick={() => { onSearchChange(''); searchRef.current?.focus(); }} aria-label="Clear search" className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-gray-100 hover:text-black"><X size={16} /></button>
+          : <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-sans text-[10px] font-medium text-slate-500">{isMac ? '⌘K' : 'Ctrl K'}</kbd>}
+      </label>
+      <label className="relative shrink-0">
+        <span className="sr-only">Date range</span>
+        <CalendarDays size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden />
+        <select value={dateRange} onChange={event => onDateRangeChange(event.target.value as DateRange)} className="h-11 appearance-none rounded-full border border-slate-200/70 bg-white pl-9 pr-8 text-[13px] font-medium text-ink outline-none focus-visible:ring-2 focus-visible:ring-black/30">
+          {DATE_RANGES.map(range => <option key={range.key} value={range.key}>{range.label}</option>)}
+        </select>
+        <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
+      </label>
+      <div role="group" aria-label="Layout" className="flex h-11 shrink-0 items-center rounded-full bg-white p-1">
+        {([['grid', LayoutGrid, 'Grid view'], ['list', List, 'List view']] as const).map(([key, Icon, label]) => <button key={key} type="button" onClick={() => onViewChange(key)} aria-pressed={view === key} aria-label={label} title={label}
+          className={clsx('flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-black', view === key ? 'bg-gray-200 text-black' : 'text-slate-500 hover:bg-gray-100 hover:text-black')}><Icon size={17} aria-hidden /></button>)}
       </div>
     </div>
   );

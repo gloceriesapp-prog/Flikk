@@ -7,7 +7,7 @@
 // assign_trip_rider for a trip leg, guarded packed + unassigned otherwise).
 
 import { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check } from '@/components/icons';
 import type { ActiveRider, Order } from '@/lib/types';
 import { formatCurrency } from '@/lib/format';
 import { RiderSelect } from './RiderSelect';

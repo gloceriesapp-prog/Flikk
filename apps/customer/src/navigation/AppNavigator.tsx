@@ -58,6 +58,7 @@ import { WishlistScreen } from '../screens/wishlist/WishlistScreen';
 import { useLocationStore } from '../store/useLocationStore';
 import type { AppStackParamList } from './types';
 import { HomeNavigationShell } from './home/HomeNavigationShell';
+import { OrderRatingScreen } from '../features/order-rating/screens/OrderRatingScreen';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -85,7 +86,7 @@ export function AppNavigator() {
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
       <Stack.Screen name="HomeContentCollection" component={HomeContentCollectionScreen} />
       <Stack.Screen name="SelectLocation" component={SelectLocationScreen} />
-      <Stack.Screen name="LocationSearch" component={LocationSearchScreen} />
+      <Stack.Screen name="LocationSearch" component={LocationSearchScreen} options={{ animation: 'none', contentStyle: { backgroundColor: '#F4F5F7' } }} />
       {/* animation: 'none' on these four — they're the bottom nav's own tabs
           (Home/Purchase/Categories/Store), each rendering its own
           <BottomNavBar/> at the identical screen position/style. Left on
@@ -103,6 +104,7 @@ export function AppNavigator() {
       <Stack.Screen name="Store" component={StoreListScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Purchase" component={PurchaseScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      {__DEV__ && <Stack.Screen name="OrderRating" component={OrderRatingScreen} />}
       <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
       <Stack.Screen name="BreakfastEssentials" component={BreakfastEssentialsScreen} />
       <Stack.Screen name="KitchenEssentials" component={KitchenEssentialsScreen} />

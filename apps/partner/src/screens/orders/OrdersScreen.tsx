@@ -12,6 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../api/client';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -56,6 +57,7 @@ const STATUS_GROUPS: { status: PartnerOrderStatus; filterValue: OrderStatusFilte
 ];
 
 export function OrdersScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const queryScope = usePrivateQueryScope();
   const orders = useOrdersStore((state) => state.orders);
   const acknowledgeOrder = useOrdersStore((state) => state.acknowledgeOrder);
@@ -160,6 +162,12 @@ export function OrdersScreen({ navigation }: Props) {
 
   return (
     <View className="flex-1" style={{ backgroundColor: PAGE_BG }}>
+      {/* Scroll the header with the queue in short windows; reserve room
+          for the fixed bottom navigation, including its safe-area inset. */}
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 96 }}
+      >
       {/* Flat gray page, no gradient wash behind the header. Stat boxes
           still read as cards on their own (solid white + shadow), same
           layout/spacing as before, just a gray backdrop under everything
@@ -242,7 +250,7 @@ export function OrdersScreen({ navigation }: Props) {
       <DevSimulateOrderButton />
 
       {orders.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-16">
+        <View className="flex-1 items-center justify-center px-16 py-6" style={{ minHeight: 160 }}>
           <Text accessibilityLiveRegion="polite" className="text-center text-[15px] font-semibold leading-[21px] text-ink">
             {queueError ? 'Could not load your orders' : queueLoading ? 'Checking for orders…' : 'No active orders right now'}
           </Text>
@@ -251,7 +259,7 @@ export function OrdersScreen({ navigation }: Props) {
           </Text>
         </View>
       ) : (
-        <ScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-28">
+        <View className="gap-3 px-5">
           {visibleGroups.map(
             (group) =>
               group.orders.length > 0 && (
@@ -272,8 +280,9 @@ export function OrdersScreen({ navigation }: Props) {
               )
           )}
           {nextCursor && <Pressable className="rounded-2xl bg-white p-4" disabled={queueLoading} onPress={() => void loadMore().catch(() => {})}><Text className="text-center font-semibold text-primary">{queueLoading ? 'Finding more orders…' : 'Show more active orders'}</Text></Pressable>}
-        </ScrollView>
+        </View>
       )}
+      </ScrollView>
 
       <BottomNavBar />
     </View>

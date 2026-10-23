@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import {
   Cancel01Icon,
   CheckmarkCircle02Icon,
-  Clock01Icon,
   InformationCircleIcon,
 } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';

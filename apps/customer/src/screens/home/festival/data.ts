@@ -64,15 +64,25 @@ export function isFestivalTabName(name: string, config: Pick<FestivalTabConfig, 
 // Disabled: every festival-named tab is hidden. Enabled: the matching admin
 // tab (its ID, tiles and banners kept) or a synthesized one goes first,
 // marked with its config and labelled with the admin tab title.
-export function withFestivalHomeTab(tabs: RemoteHomeTab[], config: FestivalTabConfig): RemoteHomeTab[] {
+export function withFestivalHomeTab(tabs: RemoteHomeTab[], config: FestivalTabConfig, managedEnabled = true): RemoteHomeTab[] {
   const isFestival = (tab: RemoteHomeTab) => !tab.contentKey && isFestivalTabName(tab.name, config);
   const otherTabs = tabs.filter((tab) => !isFestival(tab));
+  if (!managedEnabled) return otherTabs.filter(tab => tab.contentKey !== 'festivals');
   if (!config.enabled) return otherTabs;
-  const configuredTab = tabs.find(isFestival);
+  // Seasonal artwork decorates the published Festivals tab; it must not
+  // create a second destination with a different set of product shelves.
+  const managedTab = tabs.find(tab => tab.contentKey === 'festivals');
+  const legacyTab = tabs.find(isFestival);
+  const configuredTab = managedTab ?? legacyTab;
   const festivalTab: RemoteHomeTab = {
     ...(configuredTab ?? { id: FESTIVAL_TAB_ID, name: config.title, tiles: [], banners: [] }),
     label: config.title,
     festival: config,
+    // Preserve legacy artwork tiles when unifying an existing named tab.
+    ...(managedTab && legacyTab ? {
+      tiles: [...new Map([...managedTab.tiles, ...legacyTab.tiles].map(tile => [tile.id, tile])).values()],
+      banners: [...new Map([...managedTab.banners, ...legacyTab.banners].map(banner => [banner.id, banner])).values()],
+    } : {}),
   };
-  return [festivalTab, ...otherTabs];
+  return [festivalTab, ...otherTabs.filter(tab => tab.id !== configuredTab?.id)];
 }

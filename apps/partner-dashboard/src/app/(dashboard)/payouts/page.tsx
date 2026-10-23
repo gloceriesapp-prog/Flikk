@@ -6,7 +6,7 @@ import { fetchMyCommission, fetchMyPayouts, fetchMyStore, type PartnerCommission
 import { useLiveData } from '@/lib/useLiveData';
 import { DEMO_PAYOUTS } from '@/lib/demoPayouts';
 import { Card } from '@/components/ui/Card';
-import { MetricCard, MetricGrid } from '@/components/inventory/MetricCard';
+import { PayoutMetricCard as MetricCard } from '@/components/payouts/PayoutMetricCard';
 import { EmptyState, ErrorState, MetricGridSkeleton, RowsSkeleton, Skeleton } from '@/components/inventory/DataStates';
 import { formatInr } from '@/lib/format';
 import { PayoutDestinationCard } from '@/components/payouts/PayoutDestinationCard';
@@ -114,12 +114,12 @@ export default function PayoutsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-1.5">
       {/* Where the money goes + what Gloceries keeps. The destination card is
           never demo-faked (see its own note). */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-1.5 lg:grid-cols-3">
         {!storeSettled ? (
-          <div className="flex items-center gap-3 rounded-[20px] bg-white p-5 lg:col-span-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-gray-200/70 bg-white p-4 lg:col-span-2">
             <Skeleton className="h-11 w-11 rounded-xl" />
             <div className="flex flex-1 flex-col gap-2">
               <Skeleton className="h-3 w-24" />
@@ -130,8 +130,8 @@ export default function PayoutsPage() {
           store && <PayoutDestinationCard store={store} className={commission ? 'lg:col-span-2' : 'lg:col-span-3'} />
         )}
         {commission && ratePercent !== null && (
-          <div className={`flex items-center gap-3 rounded-[20px] bg-white p-5 ${store || !storeSettled ? '' : 'lg:col-span-3'}`}>
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+          <div className={`flex items-center gap-3 rounded-2xl border border-gray-200/70 bg-white p-4 ${store || !storeSettled ? '' : 'lg:col-span-3'}`}>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
               <Percent size={19} />
             </span>
             <div className="min-w-0">
@@ -149,14 +149,13 @@ export default function PayoutsPage() {
         <MetricGridSkeleton />
       ) : (
         !loadError && (
-          <MetricGrid>
-            <MetricCard label="Lifetime paid" value={formatInr(lifetimePaid)} icon={Wallet} tone="green" sublabel="Settled to your account" />
-            <MetricCard label="Pending" value={formatInr(pendingAmount)} icon={HandCoins} tone="amber" sublabel="Pending + processing" />
+          <div className="grid grid-cols-1 gap-1.5 min-[480px]:grid-cols-2 lg:grid-cols-4">
+            <MetricCard label="Lifetime paid" value={formatInr(lifetimePaid)} icon={Wallet} sublabel="Settled to your account" />
+            <MetricCard label="Pending" value={formatInr(pendingAmount)} icon={HandCoins} sublabel="Pending + processing" />
             <MetricCard
               label="Next payout"
               value={nextPayout ? formatInr(nextPayout.net_payout) : '—'}
               icon={Calendar}
-              tone="blue"
               sublabel={
                 nextPayout
                   ? `For ${formatWeek(nextPayout.week_start, nextPayout.week_end)} · ${nextPayout.status === 'processing' ? 'Processing' : 'Pending'}`
@@ -167,10 +166,9 @@ export default function PayoutsPage() {
               label="Needs attention"
               value={needsAttention}
               icon={AlertCircle}
-              tone={needsAttention > 0 ? 'red' : 'green'}
               sublabel={needsAttention > 0 ? 'Blocked or failed' : 'All clear'}
             />
-          </MetricGrid>
+          </div>
         )
       )}
 

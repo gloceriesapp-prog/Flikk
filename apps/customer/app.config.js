@@ -41,12 +41,15 @@ module.exports = {
     // renaming it would detach the EAS project (builds/updates/credentials).
     slug: 'customer',
     scheme: 'gloceries',
-    version: '1.0.3',
+    version: '1.0.4',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change (mirrors apps/partner).
     runtimeVersion: { policy: 'appVersion' },
-    updates: { url: `https://u.expo.dev/${easProjectId}`, fallbackToCacheTimeout: 0 },
+    updates: {
+      url: `https://u.expo.dev/${easProjectId}`, fallbackToCacheTimeout: 0,
+      ...(process.env.CUSTOMER_DIRECT_ANDROID_RELEASE === 'true' ? { requestHeaders: { 'expo-channel-name': 'production' } } : {}),
+    },
     orientation: 'portrait',
     // Brand placeholders (lime + Gilroy "g", generated) — replace with designer assets before store listing.
     icon: './assets/icon.png',
@@ -75,7 +78,9 @@ module.exports = {
     },
     android: {
       package: 'com.gloceries.customer',
-      versionCode: 11,
+      versionCode: process.env.CUSTOMER_DIRECT_ANDROID_RELEASE === 'true'
+        ? require('./scripts/release-config.cjs').productionVersionCode(process.env)
+        : 11,
       googleServicesFile,
       adaptiveIcon: {
         backgroundColor: '#FFFFFF',
@@ -91,6 +96,7 @@ module.exports = {
       // for moving the phone input above the keyboard.
       softwareKeyboardLayoutMode: 'pan',
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
+      blockedPermissions: ['com.google.android.gms.permission.AD_ID'],
       config: {
         googleMaps: {
           apiKey: androidGoogleMapsApiKey,
@@ -101,7 +107,11 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: [
-      ...(process.env.SENTRY_ORG && process.env.SENTRY_PROJECT ? [['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]] : []),
+      './plugins/withAndroidReleaseQuality.cjs',
+      ['@sentry/react-native/expo', {
+        ...(process.env.SENTRY_ORG ? { organization: process.env.SENTRY_ORG } : {}),
+        ...(process.env.SENTRY_PROJECT ? { project: process.env.SENTRY_PROJECT } : {}),
+      }],
       '@react-native-community/datetimepicker',
       'expo-secure-store',
       [

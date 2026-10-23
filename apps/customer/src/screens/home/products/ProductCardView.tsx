@@ -8,7 +8,6 @@ import { IconlyBookmark, IconlyBookmarkFilled } from '../../../components/icons/
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { cartLineId } from '../../../store/cartIdentity';
 import { colors } from '../../../theme/tokens';
-import { getPerUnitPriceLabel } from '../../../utils/perUnitPrice';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
 import { useWishlistStore } from '../../../store/useWishlistStore';
@@ -59,7 +58,6 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
   } = product;
 
   const discountPercent = showDiscountBadge && originalPrice ? Math.round((1 - price / originalPrice) * 100) : null;
-  const perUnitLabel = getPerUnitPriceLabel(weight, price);
 
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize] = useState(chips[0]);

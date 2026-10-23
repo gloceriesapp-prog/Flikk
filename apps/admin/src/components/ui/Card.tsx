@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from '@/components/icons';
 import clsx from 'clsx';
 
 interface CardProps {

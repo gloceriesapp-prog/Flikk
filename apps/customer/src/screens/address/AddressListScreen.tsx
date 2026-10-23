@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { useLocationStore } from '../../store/useLocationStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { fetchAddresses, setDefaultAddress, type ApiAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
@@ -47,6 +48,13 @@ export function AddressListScreen({ navigation }: Props) {
   async function handleSelect(id: string) {
     try {
       await setDefaultAddress(id);
+      const chosen = addresses?.find(address => address.id === id);
+      if (chosen?.latitude != null && chosen.longitude != null) {
+        await useLocationStore.getState().setLocation({ latitude: chosen.latitude, longitude: chosen.longitude,
+          addressLabel: chosen.map_address || chosen.line1, city: '' }).catch(() => {
+            console.warn('[AddressList] Could not persist the selected delivery pin.');
+          });
+      }
 
       await queryClient.invalidateQueries({
         queryKey: ['addresses', customerId],
@@ -88,7 +96,7 @@ export function AddressListScreen({ navigation }: Props) {
           />
         </Pressable>
 
-        <Text className="absolute left-0 right-0 text-center text-[19px] font-bold text-[#1D1D23]">
+        <Text className="absolute left-0 right-0 text-center text-[19px] font-semibold text-ink">
           Delivery addresses
         </Text>
       </View>

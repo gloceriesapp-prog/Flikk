@@ -4,22 +4,20 @@
 // control an owner needs from every page) and shortcuts to new orders and
 // settings. Below lg it also opens the navigation drawer.
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import { Menu } from 'lucide-react';
-import { IconlySetting } from '@/components/icons/iconly';
-import { NotificationBell } from '@/components/icons/NotificationBell';
+import { StoreProfileLink } from './StoreProfileLink';
+import { NotificationMenu } from '@/components/notifications/NotificationMenu';
 import { useStoreContext } from '@/lib/storeContext';
 import { navItemFor } from './nav';
 
 export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
   const pathname = usePathname();
   const item = navItemFor(pathname);
-  const { newOrderCount } = useStoreContext();
 
   return (
-    <header className="flex items-center gap-3 rounded-[20px] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-6">
+    <header className="flex w-full items-center gap-3 border-b border-slate-200/60 bg-white px-3 py-3 sm:px-4">
       <button
         type="button"
         onClick={onOpenMenu}
@@ -35,25 +33,8 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
 
       <OnlineSwitch />
 
-      <Link
-        href="/orders"
-        aria-label={newOrderCount > 0 ? `${newOrderCount} new orders` : 'Orders'}
-        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 hover:text-ink"
-      >
-        <NotificationBell active={newOrderCount > 0} size={22} />
-        {newOrderCount > 0 && (
-          <span className="tnum absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white ring-2 ring-white">
-            {newOrderCount > 9 ? '9+' : newOrderCount}
-          </span>
-        )}
-      </Link>
-      <Link
-        href="/settings"
-        aria-label="Settings"
-        className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 hover:text-ink sm:flex"
-      >
-        <IconlySetting size={20} active={pathname.startsWith('/settings')} />
-      </Link>
+      <NotificationMenu />
+      <StoreProfileLink />
     </header>
   );
 }
@@ -73,15 +54,15 @@ function OnlineSwitch() {
       onClick={() => void setOnline(!online)}
       title={suspended ? (store.suspended_reason ?? 'Suspended by Gloceries') : online ? 'Tap to stop taking orders' : 'Tap to start taking orders'}
       className={clsx(
-        'flex shrink-0 items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-sm font-medium transition-colors disabled:cursor-not-allowed',
-        online ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-600',
+        'flex h-10 shrink-0 items-center gap-2 rounded-full border pl-1.5 pr-3 text-sm font-medium transition-colors disabled:cursor-not-allowed',
+        online ? 'border-slate-200 bg-white text-ink' : 'border-slate-200 bg-white text-slate-600',
         isTogglingOnline && 'opacity-60',
       )}
     >
       <span className={clsx('relative h-5 w-9 shrink-0 rounded-full transition-colors', online ? 'bg-emerald-500' : 'bg-slate-300')}>
         <span
           className={clsx(
-            'absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+            'absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform',
             online ? 'translate-x-4' : 'translate-x-0',
           )}
         />

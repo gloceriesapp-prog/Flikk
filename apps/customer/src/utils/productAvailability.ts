@@ -1,13 +1,13 @@
 import type { Product } from '../screens/home/products/types';
-import { shopIsOpen } from './storeOpening';
 
-export function productAvailability(product: Product, date = new Date()) {
-  const closed = product.storeOpening && !shopIsOpen(product.storeOpening, date);
+// The cart is a draft: a closed shop does not prevent saving stocked items.
+// Live shop hours and inventory are checked again by checkout on the server.
+export function productAvailability(product: Product) {
   return {
-    isAvailable: product.isAvailable !== false && !closed,
+    isAvailable: product.isAvailable !== false,
     label: product.isAvailable === false
       ? product.unavailableReason === 'stock_unconfirmed' ? 'Stock updating'
         : product.unavailableReason === 'product_unavailable' ? 'Unavailable' : 'Out of stock'
-      : closed ? 'Shop closed' : undefined,
+      : undefined,
   };
 }

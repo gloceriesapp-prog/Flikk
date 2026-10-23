@@ -7,15 +7,14 @@ import { fetchMyOrders, updateOrderStatus, type OrderStatus, type PartnerOrder }
 import { useLiveData } from '@/lib/useLiveData';
 import { DEMO_ORDERS } from '@/lib/demoOrders';
 import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
-import { formatInr, statusLabel } from '@/lib/format';
 import { toast } from '@/components/ui/Toast';
-import { OrdersFilterBar, ORDER_FILTERS, type DateRange, type OrdersView } from '@/components/orders/OrdersFilterBar';
+import { OrdersFilterBar, type DateRange, type OrdersView } from '@/components/orders/OrdersFilterBar';
 import { OrdersSummaryStrip } from '@/components/orders/OrdersSummaryStrip';
 import { OrderCard, OrderCardSkeleton } from '@/components/orders/OrderCard';
 import { OrdersTable, OrdersTableSkeleton } from '@/components/orders/OrdersTable';
 import { OrderDetailsPanel } from '@/components/orders/OrderDetailsPanel';
 import { RejectReasonDialog } from '@/components/orders/RejectReasonDialog';
-import { customerName, paymentInfo, useNow, type StatusFilter } from '@/components/orders/orderMeta';
+import { customerName, useNow, type StatusFilter } from '@/components/orders/orderMeta';
 
 const RANGE_MS: Record<Exclude<DateRange, 'all' | 'today'>, number> = {
   '7d': 7 * 86400e3,
@@ -38,30 +37,6 @@ function inRange(iso: string, range: DateRange): boolean {
   const t = new Date(iso).getTime();
   if (range === 'today') return new Date(iso).toDateString() === new Date().toDateString();
   return Date.now() - t <= RANGE_MS[range];
-}
-
-// Client-side CSV of whatever the filters currently show. No server round-trip.
-function exportCsv(orders: PartnerOrder[]) {
-  const head = ['Order', 'Customer', 'Phone', 'Status', 'Payment', 'Item total', 'Commission', 'You earn', 'Amount', 'Placed'];
-  const rows = orders.map((o) => [
-    o.order_number,
-    customerName(o),
-    o.users?.phone ?? '',
-    statusLabel(o.status),
-    paymentInfo(o).label,
-    formatInr(o.item_total),
-    formatInr(o.commission_amount),
-    formatInr(o.item_total - o.commission_amount),
-    formatInr(o.total),
-    new Date(o.placed_at).toLocaleString('en-IN'),
-  ]);
-  const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 // Remembered per browser — an owner who prefers the dense list shouldn't
@@ -215,14 +190,6 @@ function OrdersScreen() {
     });
   }, [sorted, dateRange, search]);
 
-  const counts = useMemo(() => {
-    const result = { all: scoped.length } as Record<StatusFilter, number>;
-    for (const f of ORDER_FILTERS) {
-      if (f !== 'all') result[f] = scoped.filter((o) => o.status === f).length;
-    }
-    return result;
-  }, [scoped]);
-
   const filtered = useMemo(() => (filter === 'all' ? scoped : scoped.filter((o) => o.status === filter)), [scoped, filter]);
 
   // Changes only on owner-driven filter changes, never on a background poll.
@@ -253,20 +220,17 @@ function OrdersScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <OrdersSummaryStrip counts={counts} active={filter} onSelect={setFilter} loading={isLoading} />
+      <OrdersSummaryStrip orders={sourceOrders} now={now} active={filter} onSelect={setFilter} loading={isLoading} />
 
       <OrdersFilterBar
         filter={filter}
         onFilterChange={setFilter}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
-        onExport={() => exportCsv(filtered)}
-        exportDisabled={filtered.length === 0}
         search={search}
         onSearchChange={setSearch}
         view={view}
         onViewChange={changeView}
-        resultCount={isLoading || hardError ? null : filtered.length}
       />
 
       {isDemo && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ArrowUp, ArrowDown, X } from '@/components/icons';
 export interface CatalogueItem {
   id: string;
   name: string;
@@ -105,7 +106,7 @@ export function CataloguePicker({
                 onClick={() => move(index, -1)}
                 className="disabled:opacity-25"
               >
-                ↑
+                <ArrowUp size={14} />
               </button>
               <button
                 type="button"
@@ -114,14 +115,14 @@ export function CataloguePicker({
                 onClick={() => move(index, 1)}
                 className="disabled:opacity-25"
               >
-                ↓
+                <ArrowDown size={14} />
               </button>
               <button
                 type="button"
                 aria-label="Remove selected item"
                 onClick={() => onChange(value.filter((v) => v !== id))}
               >
-                ×
+                <X size={14} />
               </button>
             </li>
           ))}

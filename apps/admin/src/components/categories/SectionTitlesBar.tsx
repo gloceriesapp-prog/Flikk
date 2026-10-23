@@ -7,7 +7,7 @@
 // than living inside a category's own edit modal.
 
 import { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from '@/components/icons';
 import type { CategorySection } from '@/lib/types';
 
 export function SectionTitlesBar({

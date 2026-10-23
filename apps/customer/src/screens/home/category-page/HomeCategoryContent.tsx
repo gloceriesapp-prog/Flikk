@@ -10,6 +10,7 @@ import { HomeTabExtras, HomeTabTileGrid } from '../hometab/HomeTabTileGrid';
 // Resolve by managed identity first, so admin display-name changes cannot
 // send Grocery/Fresh/Regional to a different template.
 export function homeCategoryKind(tab: RemoteHomeTab) {
+  if (tab.contentKey === 'festivals') return 'festival';
   if (tab.contentKey) return tab.contentKey === 'grocery' ? 'groceries' : tab.contentKey;
   if (tab.festival) return 'festival';
   const names: Record<string, string> = {
@@ -37,7 +38,7 @@ export function HomeCategoryContent({ tab }: { tab: RemoteHomeTab }) {
     case 'regional': return <><HomeTabExtras tab={tab} /><RegionalTab /></>;
     // Festivals & Meat: managed Home-Tab-Content tabs, same pattern as
     // Grocery/Fresh/Regional (admin tiles above the managed section layout).
-    case 'festivals': return <><HomeTabExtras tab={tab} /><ManagedHomeTab tabKey="festivals" /></>;
+    case 'festivals': return <FestivalTab tab={tab} />;
     case 'meat': return <><HomeTabExtras tab={tab} /><ManagedHomeTab tabKey="meat" /></>;
     case 'festival': return <FestivalTab tab={tab} />;
     default: return <HomeTabTileGrid tab={tab} />;

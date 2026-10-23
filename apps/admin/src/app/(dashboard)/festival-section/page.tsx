@@ -14,7 +14,7 @@
 // short list doesn't need a DnD library to reorder.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, Search, Trash2 } from '@/components/icons';
 import { formatCurrency } from '@/lib/format';
 import { fetchProducts } from '@/lib/supabase/products';
 import type { Product } from '@/lib/types';
@@ -139,9 +139,12 @@ export default function FestivalSectionPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold text-ink">Festival Section</h1>
-        <p className="text-sm text-muted">The curated product row on Home&apos;s All tab, above &quot;Shops Near You&quot;.</p>
+        <p className="text-sm text-muted">The shared curated product rail, also available inside the published festival layout.</p>
       </div>
 
+      <a href="/festival-layout" className="rounded-2xl border border-border bg-card p-4 text-sm font-medium text-ink">
+        Manage the full festival layout and individual product sections →
+      </a>
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
 
       <div className="rounded-3xl border border-border bg-card p-5">

@@ -7,3 +7,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Icons
+
+Use Iconly Light icons from `@/components/icons` for all admin interface icons.
+See `src/components/icons/README.md` for source assets, provenance, accessibility
+and generation commands. Do not import other icon libraries or add Unicode
+characters as button icons. Preserve data visualization SVGs.

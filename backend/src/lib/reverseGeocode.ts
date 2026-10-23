@@ -9,6 +9,7 @@ export interface ReverseGeocodeResult {
   addressLabel: string | null;
   shortName: string | null;
   city: string | null;
+  district?: string | null;
   status: 'resolved' | 'not_found' | 'unavailable';
 }
 
@@ -57,7 +58,9 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
     // information (state/postcode/road) to manufacture a short label.
     const shortName = pickComponent(best, 'point_of_interest', 'establishment')
       ?? neighborhood ?? pickComponent(best, 'route') ?? city ?? (isPlusCode ? 'Selected location' : formatted);
-    return { addressLabel: formatted, shortName, city, status: 'resolved' };
+    return { addressLabel: formatted, shortName, city, district: pickComponent(best, 'country') === 'India'
+      ? pickComponent(best, 'administrative_area_level_3', 'administrative_area_level_2')
+      : pickComponent(best, 'administrative_area_level_2'), status: 'resolved' };
   } catch {
     // Never log the URL: it contains both the API key and precise location.
     return emptyResult('unavailable');

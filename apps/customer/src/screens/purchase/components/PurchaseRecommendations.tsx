@@ -3,16 +3,15 @@
 // /stores/products/catalog, same feed Home's "Today's Stock" row uses),
 // capped at VISIBLE_COUNT.
 //
-// ProductCard is intentionally left unchanged.
-// This component only adds a white section container around the title
-// and product grid so it reads as a clean card on the page background.
+// Full-width white section. A single content inset gives the three-column
+// grid more image space without changing shared product-card interactions.
 
 import { Text, View } from 'react-native';
 import { ProductCard } from '../../home/products/ProductCard';
 import { useEverydayEssentials } from '../../home/everyday-essentials/useEverydayEssentials';
 
 const VISIBLE_COUNT = 9;
-const CARD_WIDTH = 'w-[31%]';
+const CARD_WIDTH = 'w-[32%]';
 
 export function PurchaseRecommendations() {
   const { data: realProducts = [] } = useEverydayEssentials();
@@ -27,37 +26,12 @@ export function PurchaseRecommendations() {
   }
 
   return (
-    <View
-      className="
-        mt-4
-        rounded-[16px]
-        bg-white
-        px-4
-        pb-1
-        pt-4
-      "
-    >
-      {/* TITLE */}
-      <Text
-        className="
-          text-[17px]
-          font-bold
-          // tracking-[-0.25px]
-          text-ink
-        "
-      >
+    <View className="bg-white px-4 pb-2 pt-5">
+      <Text accessibilityRole="header" className="text-[17px] font-bold text-ink">
         Picked Just For You
       </Text>
 
-      {/* PRODUCT GRID */}
-      <View
-        className="
-          mt-3.5
-          flex-row
-          flex-wrap
-          justify-between
-        "
-      >
+      <View className="mt-4 flex-row flex-wrap justify-between">
         {visibleProducts.map((product) => (
           <ProductCard
             key={product.id}

@@ -7,7 +7,7 @@
 // revenue leaderboard, place-picker, peak-hours heatmap, and weekly trend
 // chart are gone; this table is the whole card now.
 
-import { Star } from 'lucide-react';
+import { Star } from '@/components/icons';
 import { Card } from '@/components/ui/Card';
 import { formatNumber } from '@/lib/format';
 

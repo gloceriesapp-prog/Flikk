@@ -1,0 +1,18 @@
+plugins {
+  id 'groovy'
+  id 'java-gradle-plugin'
+}
+repositories { google(); mavenCentral() }
+dependencies {
+  implementation gradleApi()
+  implementation 'com.android.tools.build:gradle:9.0.1'
+  testImplementation 'junit:junit:4.13.2'
+}
+gradlePlugin {
+  plugins {
+    partnerReleaseQuality {
+      id = 'partner-release-quality'
+      implementationClass = 'com.gloceries.build.ReleaseQualityPlugin'
+    }
+  }
+}

@@ -5,8 +5,7 @@
 
 import { useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
-import { StarIcon } from '@hugeicons/core-free-icons';
-import { AppIcon } from '../../../components/AppIcon';
+import { OrderRatingStars } from './OrderRatingStars';
 import { colors } from '../../../theme/tokens';
 import { submitReview } from '../../../api/reviews';
 
@@ -14,12 +13,13 @@ interface Props {
   visible: boolean;
   orderId: string;
   storeName: string;
+  initialRating?: number;
   onClose: () => void;
   onSubmitted: (rating: number) => void;
 }
 
-export function RateOrderModal({ visible, orderId, storeName, onClose, onSubmitted }: Props) {
-  const [rating, setRating] = useState(0);
+export function RateOrderModal({ visible, orderId, storeName, initialRating = 0, onClose, onSubmitted }: Props) {
+  const [rating, setRating] = useState(initialRating);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,19 +54,7 @@ export function RateOrderModal({ visible, orderId, storeName, onClose, onSubmitt
             <Text className="mt-0.5 text-sm text-ink/50">How was your experience with {storeName}?</Text>
           </View>
 
-          <View className="flex-row justify-center gap-2 py-2">
-            {[1, 2, 3, 4, 5].map((value) => (
-              <Pressable accessibilityRole="button" accessibilityLabel={`Rate ${value} out of 5`} key={value} onPress={() => setRating(value)} hitSlop={8}>
-                <AppIcon
-                  icon={StarIcon}
-                  size={32}
-                  color={colors.gold}
-                  fill={value <= rating ? colors.gold : 'transparent'}
-                  strokeWidth={1.5}
-                />
-              </Pressable>
-            ))}
-          </View>
+          <OrderRatingStars rating={rating} onChange={setRating} disabled={isSubmitting} />
 
           <TextInput
             value={comment}

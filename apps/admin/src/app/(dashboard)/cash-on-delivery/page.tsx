@@ -6,7 +6,7 @@
 // Styling mirrors the Failed deliveries page.
 
 import { useCallback, useEffect, useState } from 'react';
-import { HandCoins } from 'lucide-react';
+import { HandCoins } from '@/components/icons';
 import clsx from 'clsx';
 import type { CashCollectionsResponse, RiderCashBalance } from '@/app/api/cash-collections/route';
 import { formatDateTime, formatRupees } from '@/lib/format';

@@ -1,8 +1,8 @@
-import type { LucideIcon } from 'lucide-react';
+import type { IconComponent } from '@/components/icons';
 import clsx from 'clsx';
 
 interface StatCardProps {
-  icon: LucideIcon;
+  icon: IconComponent;
   value: string;
   // Optional — only shown when the caller has a real, cheaply-computed
   // comparison for this metric (e.g. today vs yesterday). Metrics with no

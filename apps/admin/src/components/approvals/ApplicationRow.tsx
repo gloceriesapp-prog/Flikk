@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Check, ChevronRight, Clock, Store, User, X } from 'lucide-react';
+import { Check, ChevronRight, Clock, Store, User, X } from '@/components/icons';
 import clsx from 'clsx';
 import type { Application, ApplicationStatus } from '@/lib/types';
 

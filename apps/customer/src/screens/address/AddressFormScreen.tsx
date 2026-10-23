@@ -1,3 +1,4 @@
+import { useLocationStore } from '../../store/useLocationStore';
 import { useAuthStore } from '../../store/useAuthStore';
 // Real saved-address form — reached only via LocationSearchScreen's own
 // intent='address-book' branch (a real map pin already picked by the
@@ -7,8 +8,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 // Required: full address text (building/street, prefilled from the map's
 // reverse geocode but editable), recipient name, recipient phone
 // (prefilled from the account's own verified number, editable for
-// "delivering to someone else"). Optional: landmark, address label
-// (Home/Work/Other, with a custom name for Other), delivery instructions.
+// "delivering to someone else"). Building, street/area, landmark,
+// and address label are required. Floor/entrance directions are optional.
 //
 // A "Confirm your address" sheet (ConfirmAddressSheet) stands between
 // tapping Save and the real POST /addresses call — catching a typo before
@@ -20,11 +21,11 @@ import { useAuthStore } from '../../store/useAuthStore';
 // whichever screen started the flow (Cart, AddressList, Profile...).
 // With route.params.address it edits that saved address (PATCH) instead.
 
-import { useEffect, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppIcon } from '../../components/AppIcon';
@@ -33,6 +34,13 @@ import { createAddress, updateAddress } from '../../api/addresses';
 import { fetchAccountInfo } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import type { AppStackParamList } from '../../navigation/types';
+import { addressDetailsReady } from './addressDetailsValidation';
+import {
+  composeDeliveryInstructions,
+  parseDeliveryInstructions,
+  type DeliveryInstructionId,
+} from './deliveryInstructions';
+import { DeliveryInstructionsCard } from './components/DeliveryInstructionsCard';
 import { AddressTypePicker } from './components/AddressTypePicker';
 import { ConfirmAddressSheet } from './components/ConfirmAddressSheet';
 import { LocationDetailsCard } from './components/LocationDetailsCard';
@@ -44,7 +52,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'AddressForm'>;
 const ACCENT = '#1447E6';
 
 export function AddressFormScreen({ route, navigation }: Props) {
-  const customerId = useAuthStore(state => state.customerId);
+  const customerId = useAuthStore((state) => state.customerId);
   const { latitude, longitude, addressLabel, city, address: editing } = route.params;
   const editingPreset = editing && ['Home', 'Work'].includes(editing.label);
   const insets = useSafeAreaInsets();
@@ -67,7 +75,18 @@ export function AddressFormScreen({ route, navigation }: Props) {
   const [accountPhone, setAccountPhone] = useState<string | null>(null);
   const [label, setLabel] = useState(editing ? (editingPreset ? editing.label : 'Other') : 'Home');
   const [customName, setCustomName] = useState(editing && !editingPreset ? editing.label : '');
-  const [instructions, setInstructions] = useState(editing?.delivery_instructions ?? '');
+  const [instructions, setInstructions] = useState(
+    () => parseDeliveryInstructions(editing?.delivery_instructions).custom,
+  );
+  const [deliveryOptions, setDeliveryOptions] = useState<DeliveryInstructionId[]>(
+    () => parseDeliveryInstructions(editing?.delivery_instructions).selected,
+  );
+  const deliveryInstructions = composeDeliveryInstructions(instructions, deliveryOptions);
+  const optionTextLength = composeDeliveryInstructions('', deliveryOptions).length;
+  const instructionsMaxLength = Math.max(
+    instructions.length,
+    300 - optionTextLength - (optionTextLength ? 1 : 0),
+  );
 
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,24 +128,32 @@ export function AddressFormScreen({ route, navigation }: Props) {
 
   const line1 = [building.trim(), street.trim()].filter(Boolean).join(', ');
   const savedLabel = label === 'Other' ? customName.trim() || 'Other' : label;
-  // Receiver phone must be a full 10-digit number (stored as +91XXXXXXXXXX),
-  // same bar as LoginScreen — a non-empty check let 2-3 digit numbers through
-  // and saved a broken delivery contact.
-  const recipientPhoneValid = recipientPhone.replace(/^\+91/, '').length === 10;
   const canReview =
-    building.trim().length > 0 && recipientName.trim().length > 0 && recipientPhoneValid && (label !== 'Other' || customName.trim().length > 0);
+    addressDetailsReady({
+      building,
+      street,
+      landmark,
+      instructions: deliveryInstructions,
+      recipientName,
+      recipientPhone,
+      label: savedLabel,
+    }) &&
+    (label !== 'Other' || customName.trim().length > 0);
+  const savingRef = useRef(false);
 
   async function handleConfirmSave() {
+    if (!canReview || savingRef.current) return;
+    savingRef.current = true;
     setError(null);
     setSaving(true);
     try {
       const fields = {
         label: savedLabel,
         line1,
-        landmark: landmark.trim() || undefined,
+        landmark: landmark.trim(),
         recipient_name: recipientName.trim(),
         recipient_phone: recipientPhone.trim(),
-        delivery_instructions: instructions.trim() || undefined,
+        delivery_instructions: deliveryInstructions,
         latitude,
         longitude,
         // Full address the map resolved for this pin — kept whole alongside
@@ -141,6 +168,14 @@ export function AddressFormScreen({ route, navigation }: Props) {
       // duplicate behind a failed follow-up "set default".
       if (editing) await updateAddress(editing.id, fields);
       else await createAddress({ ...fields, make_default: true });
+      if (!editing || editing.is_default) {
+        await useLocationStore
+          .getState()
+          .setLocation({ latitude, longitude, addressLabel: fields.map_address || line1, city })
+          .catch(() => {
+            console.warn('[AddressForm] Could not persist the selected delivery pin.');
+          });
+      }
       // Real invalidation, not left to chance — Checkout's own useQuery
       // (['addresses']) is a still-mounted screen underneath this one
       // (popTo('Cart') below brings it back into focus rather than
@@ -156,33 +191,43 @@ export function AddressFormScreen({ route, navigation }: Props) {
       // Pop the LocationSearch/AddressForm steps; land on whoever started the flow.
       const routes = navigation.getState().routes;
       let origin = routes.length - 1;
-      while (origin > 0 && ['AddressForm', 'LocationSearch'].includes(routes[origin]!.name)) origin--;
+      while (origin > 0 && ['AddressForm', 'LocationSearch'].includes(routes[origin]!.name))
+        origin--;
       navigation.pop(Math.max(routes.length - 1 - origin, 1));
     } catch (err) {
       setConfirmVisible(false);
-      setError(err instanceof ApiError ? err.message : 'Could not save this address. Please try again.');
+      setError(
+        err instanceof ApiError ? err.message : 'Could not save this address. Please try again.',
+      );
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   return (
-    <View className="flex-1 bg-[#FAFAFA]">
-        <View className="flex-row items-center gap-3 bg-white px-5 pb-3 pt-safe-offset-3">
-          <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-10 w-10 items-center justify-center">
-            <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
-          </Pressable>
-          <View className="flex-1">
-            <Text className="text-[17px] font-medium text-ink" numberOfLines={1}>
-              {city}
-            </Text>
-            <Text className="text-xs text-ink/45" numberOfLines={1}>
-              {addressLabel}
-            </Text>
-          </View>
+    <View className="flex-1 bg-[#F2F2F7]">
+      <View className="flex-row items-center gap-3 bg-white px-5 pb-3 pt-safe-offset-3">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+          className="h-10 w-10 items-center justify-center"
+        >
+          <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
+        </Pressable>
+        <View className="flex-1">
+          <Text className="text-[17px] font-medium text-ink" numberOfLines={1}>
+            {city}
+          </Text>
+          <Text className="text-xs text-ink/45" numberOfLines={1}>
+            {addressLabel}
+          </Text>
         </View>
+      </View>
 
-        {/* KeyboardAwareScrollView, not a plain ScrollView + KeyboardAvoidingView
+      {/* KeyboardAwareScrollView, not a plain ScrollView + KeyboardAvoidingView
             — a fixed 'padding' shift only resizes the whole screen for the
             keyboard, it never scrolls a specific focused field into view.
             The bottom fields here (landmark, rider instructions) sat lower
@@ -192,79 +237,86 @@ export function AddressFormScreen({ route, navigation }: Props) {
             instead. bottomOffset reserves room for the fixed "Confirm
             address" footer below this scroll view, which the keyboard sits
             on top of but isn't part of the scrollable content. */}
-        <KeyboardAwareScrollView
-          className="flex-1"
-          contentContainerClassName="gap-3 px-4 pb-6 pt-4"
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          bottomOffset={110}
-        >
-          <View className="gap-3 rounded-2xl bg-white p-4">
-            <Text className="text-[15px] font-medium text-ink">Who are you ordering for?</Text>
-            <OrderingForToggle value={orderingFor} onChange={handleChangeOrderingFor} />
-            {orderingFor === 'myself' && accountName ? (
-              <Text className="text-[13px] text-ink/45">
-                Delivered to <Text className="font-semibold text-ink/70">{accountName}</Text> · {accountPhone}
-              </Text>
-            ) : null}
-          </View>
-
-          {orderingFor === 'someone_else' ? (
-            <ReceiverDetailsCard
-              name={recipientName}
-              phone={recipientPhone}
-              onChangeName={setRecipientName}
-              onChangePhone={setRecipientPhone}
-            />
-          ) : !accountName ? (
-            // Myself, but no name on the account yet — still a required
-            // field, so it stays visible instead of pretending it's filled.
-            <ReceiverDetailsCard
-              name={recipientName}
-              phone={recipientPhone}
-              onChangeName={setRecipientName}
-              onChangePhone={setRecipientPhone}
-            />
-          ) : null}
-
-          <View className="gap-3 rounded-2xl bg-white p-4">
-            <Text className="text-[15px] font-medium text-ink">What should we call this place?</Text>
-            <AddressTypePicker label={label} customName={customName} onSelectPreset={setLabel} onChangeCustomName={setCustomName} />
-          </View>
-
-          <LocationDetailsCard
-            building={building}
-            street={street}
-            landmark={landmark}
-            pinnedArea={addressLabel}
-            onChangeBuilding={setBuilding}
-            onChangeStreet={setStreet}
-            onChangeLandmark={setLandmark}
-            // ponytail: editing keeps the saved pin; moving it means adding a new address
-            // until LocationSearch can carry an address id through to this form.
-            onChangePin={editing ? undefined : () => navigation.navigate('LocationSearch', { intent: 'address-book' })}
-          />
-
-          <View className="gap-3 rounded-2xl bg-white p-4">
-            <Text className="text-[15px] font-medium text-ink">
-              Any instructions for the rider? <Text className="text-ink/40">(optional)</Text>
+      <KeyboardAwareScrollView
+        className="flex-1"
+        contentContainerClassName="gap-2 px-4 pb-3 pt-2"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        bottomOffset={110}
+      >
+        <View className="gap-3 rounded-2xl bg-white p-4">
+          <Text accessibilityRole="header" className="text-[16px] font-semibold text-black">
+            Who are you ordering for?
+          </Text>
+          <OrderingForToggle value={orderingFor} onChange={handleChangeOrderingFor} />
+          {orderingFor === 'myself' && accountName ? (
+            <Text className="text-[13px] text-ink/45">
+              Delivered to <Text className="font-semibold text-ink/70">{accountName}</Text> ·{' '}
+              {accountPhone}
             </Text>
-            <View className="rounded-xl px-4 py-3" style={{ backgroundColor: '#FAFAFA' }}>
-              <TextInput
-                value={instructions}
-                onChangeText={setInstructions}
-                placeholder="Leave at door, call before arriving..."
-                placeholderTextColor="#9AA5A3"
-                multiline
-                className="min-h-[40px] text-base text-ink font-medium"
-              />
-            </View>
-          </View>
+          ) : null}
+        </View>
 
-          {error && <Text className="text-[13px] font-medium text-danger">{error}</Text>}
-        </KeyboardAwareScrollView>
+        {orderingFor === 'someone_else' ? (
+          <ReceiverDetailsCard
+            name={recipientName}
+            phone={recipientPhone}
+            onChangeName={setRecipientName}
+            onChangePhone={setRecipientPhone}
+          />
+        ) : !accountName ? (
+          // Myself, but no name on the account yet — still a required
+          // field, so it stays visible instead of pretending it's filled.
+          <ReceiverDetailsCard
+            name={recipientName}
+            phone={recipientPhone}
+            onChangeName={setRecipientName}
+            onChangePhone={setRecipientPhone}
+          />
+        ) : null}
 
-        {/* pb-safe-offset-4's bottom padding exists to clear the home
+        <View className="gap-3 rounded-2xl bg-white p-4">
+          <Text accessibilityRole="header" className="text-[16px] font-semibold text-black">
+            What should we call this place?
+          </Text>
+          <AddressTypePicker
+            label={label}
+            customName={customName}
+            onSelectPreset={setLabel}
+            onChangeCustomName={setCustomName}
+          />
+        </View>
+
+        <LocationDetailsCard
+          building={building}
+          street={street}
+          landmark={landmark}
+          instructions={instructions}
+          instructionsMaxLength={instructionsMaxLength}
+          pinnedArea={addressLabel}
+          onChangeBuilding={setBuilding}
+          onChangeStreet={setStreet}
+          onChangeLandmark={setLandmark}
+          onChangeInstructions={setInstructions}
+          // ponytail: editing keeps the saved pin; moving it means adding a new address
+          // until LocationSearch can carry an address id through to this form.
+          onChangePin={
+            editing
+              ? undefined
+              : () => navigation.navigate('LocationSearch', { intent: 'address-book' })
+          }
+        />
+
+        <DeliveryInstructionsCard
+          selected={deliveryOptions}
+          custom={instructions}
+          onChange={setDeliveryOptions}
+        />
+
+        {error && <Text className="text-[13px] font-medium text-danger">{error}</Text>}
+      </KeyboardAwareScrollView>
+
+      {/* pb-safe-offset-4's bottom padding exists to clear the home
             indicator/nav-bar when the keyboard is closed — with it open,
             the keyboard itself already sits there, so that same padding
             just reads as dead space between this button and the keys.
@@ -273,28 +325,31 @@ export function AddressFormScreen({ route, navigation }: Props) {
             moment the keyboard's up; offset.closed stays 0 so the resting
             state is untouched. (Was -insets.bottom — verified live that
             direction was backwards, it widened the gap instead of closing it.) */}
-        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }} className="bg-white px-5 pb-safe-offset-4 pt-3 shadow-sm shadow-black/5">
-          <Pressable
-            onPress={() => setConfirmVisible(true)}
-            disabled={!canReview}
-            className="flex-row items-center justify-center gap-2 rounded-2xl py-4"
-            style={{ backgroundColor: canReview ? ACCENT : `${ACCENT}55` }}
-          >
-            <Text className="text-lg font-medium text-white">Confirm address</Text>
-          </Pressable>
-        </KeyboardStickyView>
+      <KeyboardStickyView
+        offset={{ closed: 0, opened: insets.bottom }}
+        className="bg-white px-5 pb-safe-offset-4 pt-3 shadow-sm shadow-black/5"
+      >
+        <Pressable
+          onPress={() => setConfirmVisible(true)}
+          disabled={!canReview}
+          className="flex-row items-center justify-center gap-2 rounded-2xl py-4"
+          style={{ backgroundColor: canReview ? ACCENT : `${ACCENT}55` }}
+        >
+          <Text className="text-lg font-medium text-white">Confirm address</Text>
+        </Pressable>
+      </KeyboardStickyView>
 
-        <ConfirmAddressSheet
-          visible={confirmVisible}
-          label={savedLabel}
-          fullAddress={landmark.trim() ? `${line1} (near ${landmark.trim()})` : line1}
-          recipientName={recipientName.trim()}
-          recipientPhone={recipientPhone.trim()}
-          instructions={instructions}
-          saving={saving}
-          onEdit={() => setConfirmVisible(false)}
-          onConfirm={handleConfirmSave}
-        />
+      <ConfirmAddressSheet
+        visible={confirmVisible}
+        label={savedLabel}
+        fullAddress={`${line1}\n${addressLabel}\nLandmark: ${landmark.trim()}`}
+        recipientName={recipientName.trim()}
+        recipientPhone={recipientPhone.trim()}
+        instructions={deliveryInstructions}
+        saving={saving}
+        onEdit={() => setConfirmVisible(false)}
+        onConfirm={handleConfirmSave}
+      />
     </View>
   );
 }

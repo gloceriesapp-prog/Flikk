@@ -105,6 +105,9 @@ export interface PartnerOrderItem {
   product_id: string;
   quantity: number;
   unit_price_at_order: number;
+  unit_at_order?: string | null;
+  product_name_at_order?: string | null;
+  product_image_at_order?: string | null;
   products: { name: string; unit: string; image_url: string | null } | null;
 }
 
@@ -119,6 +122,7 @@ export interface PartnerOrder {
   item_total: number;
   delivery_fee: number;
   commission_amount: number;
+  cancel_reason?: string | null;
   total: number;
   // Set once the payment provider (Razorpay) actually captures payment — orders.ts creates the
   // order row before payment completes (see that route's own note), so a
@@ -129,6 +133,9 @@ export interface PartnerOrder {
   // provider_payment_id. Optional: older backends don't send it.
   payment_method?: 'cod' | 'online' | null;
   placed_at: string;
+  store_visible_at?: string | null;
+  acceptance_deadline_at?: string | null;
+  accepted_at?: string | null;
   packed_at: string | null;
   picked_up_at: string | null;
   delivered_at: string | null;
@@ -261,6 +268,8 @@ export interface PartnerProduct {
   // edited since the migration read 0 here while still flagged in_stock —
   // InventoryTable's StockCell treats that pairing as "not really set".
   stock_quantity: number | null;
+  stock_tracking_enabled?: boolean;
+  inventory_metrics?: { rating: number | null; review_count: number; lifetime_units_sold: number } | null;
   approval_status: 'pending' | 'approved' | 'rejected';
   product_variants: ProductVariant[];
 }
@@ -402,4 +411,25 @@ export function fetchMyReviews(): Promise<PartnerReview[]> {
 // scopes the write to the caller's own store. Empty string clears the reply.
 export function replyToReview(id: string, reply: string): Promise<PartnerReview> {
   return apiRequest(`/partner/reviews/${id}`, { method: 'PATCH', body: { reply } });
+}
+
+// Acknowledge receipt without advancing the preparation status to packed.
+export function acceptPartnerOrder(id: string): Promise<PartnerOrder> {
+  return apiRequest(`/partner/orders/${encodeURIComponent(id)}/accept`, { method: 'POST' });
+}
+
+export function fetchOrderQueueVersion(): Promise<{ version: string; hasMore: boolean }> {
+  return apiRequest('/partner/orders/updates');
+}
+
+export interface InventoryOverviewData {
+  total: number; live: number; notLive: number; pending: number; outOfStock: number; runningLow: number;
+  outOfStockNames: string[]; pendingNames: string[]; lowStockExample: { name: string; stock_quantity: number } | null;
+}
+export function fetchInventoryOverview(): Promise<InventoryOverviewData> {
+  return apiRequest('/partner/products/overview');
+}
+
+export function deleteProduct(id: string): Promise<void> {
+  return apiRequest(`/partner/products/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

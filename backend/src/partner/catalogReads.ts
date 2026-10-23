@@ -9,7 +9,7 @@ export function cataloguePage(req: Pick<Request, 'query'>, storeId: string) {
   const search = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   if (search.length > 100) throw new AppError(400, 'INVALID_SEARCH', 'Search must be at most 100 characters.');
   const stock = req.query.stock ?? 'all';
-  if (typeof stock !== 'string' || !['all', 'in_stock', 'out_of_stock', 'pending'].includes(stock)) throw new AppError(400, 'INVALID_STOCK_FILTER', 'Invalid stock filter.');
+  if (typeof stock !== 'string' || !['all', 'in_stock', 'out_of_stock', 'pending', 'low_stock'].includes(stock)) throw new AppError(400, 'INVALID_STOCK_FILTER', 'Invalid stock filter.');
   const page = readPage(req, `partner-products:${storeId}:${search}:${stock}`, 'uuid');
   return { search, stock, page };
 }
@@ -29,6 +29,7 @@ async function queryCatalogue(storeId: string, selection: ReturnType<typeof cata
   const { page, search, stock } = selection;
   let query = supabase.from('products').select(PARTNER_PRODUCT_SELECT).eq('store_id', storeId);
   if (search) query = query.or(catalogueSearchFilter(search));
+  if (stock === 'low_stock') query = query.eq('stock_tracking_enabled', true).neq('stock_status', 'out_of_stock').gt('stock_quantity', 0).lt('stock_quantity', 5);
   if (stock === 'pending') query = query.eq('approval_status', 'pending');
   if (stock === 'out_of_stock') query = query.eq('stock_status', 'out_of_stock');
   if (stock === 'in_stock') query = query.neq('stock_status', 'out_of_stock');

@@ -13,9 +13,11 @@ interface Props {
   onConfirm: (reason: string) => void;
   onClose: () => void;
   orderNumber?: string;
+  isSubmitting?: boolean;
+  error?: string | null;
 }
 
-export function RejectReasonDialog({ onConfirm, onClose, orderNumber }: Props) {
+export function RejectReasonDialog({ onConfirm, onClose, orderNumber, isSubmitting = false, error }: Props) {
   const [reason, setReason] = useState('');
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +63,8 @@ export function RejectReasonDialog({ onConfirm, onClose, orderNumber }: Props) {
           </div>
         </div>
 
-        <fieldset className="mt-5">
+        {error && <p role="alert" className="mt-4 text-sm font-medium text-red-600">{error}</p>}
+        <fieldset disabled={isSubmitting} className="mt-5">
           <legend className="mb-2 text-sm font-medium text-ink">Why are you rejecting it?</legend>
           <div className="flex flex-col gap-2">
             {STORE_REJECT_REASONS.map((option) => (
@@ -90,17 +93,18 @@ export function RejectReasonDialog({ onConfirm, onClose, orderNumber }: Props) {
           <button
             type="button"
             onClick={onClose}
+            disabled={isSubmitting}
             className="h-11 flex-1 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
             Keep order
           </button>
           <button
             type="button"
-            disabled={!reason}
+            disabled={!reason || isSubmitting}
             onClick={() => onConfirm(reason)}
             className="h-11 flex-1 rounded-full bg-red-600 text-sm font-semibold text-white hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Reject order
+            {isSubmitting ? 'Rejecting…' : 'Reject order'}
           </button>
         </div>
       </div>

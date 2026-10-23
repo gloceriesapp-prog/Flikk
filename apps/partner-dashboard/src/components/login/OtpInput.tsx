@@ -108,13 +108,13 @@ export function OtpInput({ value, onChange, length = 6, disabled, invalid, autoF
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={(e) => handlePaste(index, e)}
             onFocus={(e) => e.target.select()}
-            className={`h-14 w-full min-w-0 rounded-2xl border bg-white text-center text-xl font-semibold text-[#1d2b22] outline-none transition-colors disabled:opacity-50 ${
+            className={`h-14 w-full min-w-0 rounded-xl border bg-white text-center text-xl font-semibold text-[#1d2b22] outline-none transition-colors disabled:opacity-50 ${
               invalid
                 ? 'border-red-400 focus:border-red-500'
                 : digit
-                  ? 'border-[#8cc152] focus:border-[#6fa83a]'
-                  : 'border-black/10 focus:border-[#8cc152]'
-            } focus:ring-4 focus:ring-[#a8d93a]/25`}
+                  ? 'border-black/25 focus:border-black/40'
+                  : 'border-black/10 hover:border-black/20 focus:border-black/40'
+            }`}
           />
         );
       })}

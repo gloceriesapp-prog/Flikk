@@ -1,0 +1,14 @@
+plugins { id 'org.jetbrains.kotlin.jvm' version '2.1.20' }
+repositories { mavenCentral() }
+dependencies {
+  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2'
+  testImplementation 'junit:junit:4.13.2'
+}
+// Compile the exact installed source changed by patch-package. Android/Glide
+// fakes exercise ownership and failure policy; Android compilation is a separate gate.
+sourceSets.main.kotlin {
+  srcDir '../../../../node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/presentation/builders'
+  include 'DownloadImage.kt'
+}
+kotlin { jvmToolchain(17) }
+test { maxParallelForks = 1 }

@@ -79,7 +79,7 @@ export function useHomeTabs() {
     ...query,
     // The admin festival tab (or none) is applied here, so the header, Home
     // body and category routes all resolve the same tab list.
-    data: withFestivalHomeTab(mergeManagedTabs(query.data ?? [], content.data), greeting.data?.tab ?? DISABLED_FESTIVAL_TAB),
+    data: withFestivalHomeTab(mergeManagedTabs(query.data ?? [], content.data), greeting.data?.tab ?? DISABLED_FESTIVAL_TAB, content.data?.find(row => row.tabKey === 'festivals')?.content.enabled ?? true),
     // Dedicated category routes resolve IDs against both sources. A missing
     // managed tab is not "removed" while its content config is still loading.
     isResolvingTabs: query.isPending || content.isPending || greeting.isPending,

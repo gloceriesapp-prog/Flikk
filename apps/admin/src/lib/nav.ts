@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import type { IconComponent } from '@/components/icons';
 import {
   AlarmClock,
   Banknote,
@@ -34,7 +34,7 @@ import {
   Home,
   Wallet,
   HandCoins,
-} from 'lucide-react';
+} from '@/components/icons';
 
 // Sidebar information architecture. One standalone Overview link, then a
 // handful of task-named groups (Operations / Catalogue / Network / …) in
@@ -45,7 +45,7 @@ import {
 export interface NavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: IconComponent;
 }
 
 export interface NavGroup {
@@ -96,6 +96,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/home-categories', label: 'Home tabs & tiles', icon: Home },
       { href: '/home-sections', label: '“All” tab layout', icon: LayoutGrid },
       { href: '/home-content', label: 'Category-tab content', icon: LayoutGrid },
+      { href: '/festival-layout', label: 'Festival sections & layout', icon: LayoutGrid },
       { href: '/festival-section', label: 'Festival products', icon: PartyPopper },
       { href: '/festival-greeting', label: 'Festival tab & greeting', icon: Sparkles },
       { href: '/seasonal-section', label: 'Seasonal section', icon: Snowflake },

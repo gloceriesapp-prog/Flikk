@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { PaymentTarget } from '../../api/payments';
+import type { NetbankingBank, PaymentTarget } from '../../api/payments';
 import { detectInstalledUpiApps } from '../../payments/installedUpiApps';
 import type { UpiApp } from '../../payments/upiApps';
 import { usePaymentAvailability } from '../../payments/usePaymentAvailability';
 import type { PaymentMethod } from '../../payments/paymentMethod';
 import type { AppStackParamList } from '../../navigation/types';
 import { RupeePrice } from '../../components/RupeePrice';
+import { NetbankingBankPicker } from './components/NetbankingBankPicker';
 import { PaymentMethodList } from './components/PaymentMethodList';
 import { useRecoveredPayment } from './useRecoveredPayment';
 
@@ -20,6 +21,7 @@ type Props = {
 // Reuses the normal chooser, but its amount/target come exclusively from the
 // saved backend checkout. A changed cart must never alter this payment.
 export function RecoveredPaymentMethods({ target, navigation }: Props) {
+  const [bankPickerVisible, setBankPickerVisible] = useState(false);
   const recovery = useRecoveredPayment(target, navigation);
   const { allowed, directUpiAvailable, loaded: paymentAvailabilityLoaded } = usePaymentAvailability();
   const [apps, setApps] = useState<UpiApp[]>([]);
@@ -33,13 +35,14 @@ export function RecoveredPaymentMethods({ target, navigation }: Props) {
   const total = Number(recovery.query.data?.record.total);
   const state = recovery.query.data?.state;
   const checking = state === 'pending' || state === 'reconciling';
-  async function select(method: PaymentMethod) {
+  async function select(method: PaymentMethod, bank?: NetbankingBank, contact?: string) {
     if (!recovery.canPay) return;
+    if (method === 'netbanking' && !bank) { setBankPickerVisible(true); return; }
     if (method === 'cod') {
       Alert.alert('Pay cash on delivery?', `Pay ₹${total.toFixed(2)} to the rider. Any delayed online payment will be checked and refunded when required.`, [
         { text: 'Not now', style: 'cancel' }, { text: 'Pay cash', onPress: () => void recovery.select(method) },
       ]);
-    } else void recovery.select(method);
+    } else void recovery.select(method, bank, contact);
   }
   return <KeyboardAwareScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-8 pt-4" bottomOffset={40}>
     <View className="gap-3 rounded-3xl bg-white px-5 py-5">
@@ -57,7 +60,7 @@ export function RecoveredPaymentMethods({ target, navigation }: Props) {
     </Pressable> : null}
     {appsReady ? <View pointerEvents={recovery.canPay ? 'auto' : 'none'} accessibilityElementsHidden={!recovery.canPay}
       importantForAccessibility={recovery.canPay ? 'auto' : 'no-hide-descendants'} style={{ opacity: recovery.canPay ? 1 : 0.45 }}>
-      <PaymentMethodList method={null} upiApps={apps} onSelect={select} allowed={allowed} upiOnly={recovery.canResumeUpi} />
+      <PaymentMethodList method={null} upiApps={apps} onSelect={select} onWalletSelect={(method, contact) => void select(method, undefined, contact)} allowed={allowed} upiOnly={recovery.canResumeUpi} />
     </View> : <Text className="text-sm text-ink/60">Finding your payment apps…</Text>}
     {checking && allowed.cod && <Pressable disabled={recovery.busy} accessibilityRole="button"
       onPress={() => Alert.alert('Pay cash on delivery?', 'We’ll check the online payment first. Any delayed charge will be refunded when required.', [
@@ -71,5 +74,7 @@ export function RecoveredPaymentMethods({ target, navigation }: Props) {
       ])} className="px-5 py-4">
       <Text className="text-center font-semibold text-ink/60">Cancel order</Text>
     </Pressable>
+    <NetbankingBankPicker visible={bankPickerVisible} onClose={() => setBankPickerVisible(false)}
+      onSelect={bank => { setBankPickerVisible(false); void select('netbanking', bank); }} />
   </KeyboardAwareScrollView>;
 }

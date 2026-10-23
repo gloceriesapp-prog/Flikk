@@ -1,4 +1,5 @@
 import { createSection, createItem, createSelection as selection } from './model.js';
+import { createFestivalSections } from './festival.js';
 
 const terms = (text) =>
   text
@@ -257,7 +258,7 @@ export const DEFAULT_CONTENT = {
     enabled: true,
     sections: [
       section('festival', 'festival-shelf', 'Festival picks', ''),
-      section('products', 'festive-essentials', 'Festive essentials', 'sweets,laddu,diya,candle,gift,dry fruits,nuts'),
+      ...createFestivalSections(),
       footer(),
     ],
   },

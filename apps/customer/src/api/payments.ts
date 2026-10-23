@@ -105,3 +105,13 @@ export function fetchPendingPayments(): Promise<PaymentTarget[]> {
 export function selectPaymentPreference(method: PaymentMethod): Promise<{ method: PaymentMethod }> {
   return apiRequest('/payments/preferred-method', { method: 'PATCH', body: { method } });
 }
+
+export interface NetbankingBank { code: string; name: string }
+export function fetchNetbankingBanks(): Promise<{ banks: NetbankingBank[] }> {
+  return apiRequest('/payments/netbanking-banks');
+}
+
+export interface WalletOption { code: 'mobikwik' | 'olamoney'; name: string }
+export function fetchAvailableWallets(): Promise<{ wallets: WalletOption[] }> {
+  return apiRequest('/payments/wallets');
+}

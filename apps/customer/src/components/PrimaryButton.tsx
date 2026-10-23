@@ -5,7 +5,6 @@
 // renders the same blue button.
 
 import { ActivityIndicator, Pressable, Text } from 'react-native';
-import { colors } from '../theme/tokens';
 
 interface Props {
   label: string;

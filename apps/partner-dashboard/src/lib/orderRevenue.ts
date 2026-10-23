@@ -28,3 +28,15 @@ export function lineNetRevenue(
   const netFactor = (order.item_total - order.commission_amount) / order.item_total;
   return lineGross * netFactor;
 }
+
+// Use the order's historical deduction, never today's store commission rate.
+export function orderItemSettlement(order: Pick<PartnerOrder, 'item_total' | 'commission_amount' | 'status'>) {
+  const itemsPaise = Math.round(order.item_total * 100);
+  const commissionPaise = Math.round(order.commission_amount * 100);
+  return {
+    itemsTotal: itemsPaise / 100,
+    commission: commissionPaise / 100,
+    commissionPercent: itemsPaise > 0 ? commissionPaise / itemsPaise * 100 : null,
+    receivable: order.status === 'cancelled' ? 0 : Math.max(0, itemsPaise - commissionPaise) / 100,
+  };
+}

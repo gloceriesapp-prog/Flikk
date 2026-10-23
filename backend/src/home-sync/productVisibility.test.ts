@@ -13,11 +13,11 @@ const row: ApiProduct = {
   stores: { name: 'Shop', is_active: false, open_time: null, close_time: null, fssai_number: null, address_line: null, city: null, photo_url: null },
 };
 describe('Visible catalogue versus orderability', () => {
-  it('keeps closed-shop items and their prices while blocking Add', () => {
+  it('keeps closed-shop items and their prices and allows adding stocked items to the draft cart', () => {
     expect(selectBalancedProducts([row], [/incense/])).toEqual([row]);
     const product = mapApiProduct(row);
     expect(product).toMatchObject({ id: row.id, price: 10, imageUrl: row.image_url });
-    expect(productAvailability(product)).toEqual({ isAvailable: false, label: 'Shop closed' });
+    expect(productAvailability(product)).toEqual({ isAvailable: true, label: undefined });
     expect(productAvailability(mapApiProduct({ ...row, stores: { ...row.stores!, is_active: true } }))).toEqual({ isAvailable: true, label: undefined });
   });
   it('keeps sold-out items visible and distinguishes stock from shop closure', () => {

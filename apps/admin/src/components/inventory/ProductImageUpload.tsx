@@ -4,7 +4,7 @@
 // The hosted URL is saved on the product, store or content record.
 
 import { useEffect, useRef, useState } from 'react';
-import { ImagePlus, Loader2 } from 'lucide-react';
+import { ImagePlus, Loader2 } from '@/components/icons';
 
 export function ProductImageUpload({
   imageUrl,

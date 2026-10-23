@@ -5,10 +5,9 @@
 // at the wrong door. RN-core Modal + slide, not a third-party
 // bottom-sheet dependency.
 
-import { Home01Icon, Briefcase01Icon, Location04Icon, NoteIcon } from '@hugeicons/core-free-icons';
+import { Home01Icon, Briefcase01Icon, Location04Icon } from '@hugeicons/core-free-icons';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
-import { colors } from '../../../theme/tokens';
 
 const LABEL_ICON: Record<string, typeof Home01Icon> = { Home: Home01Icon, Work: Briefcase01Icon };
 const ACCENT = '#1447E6';
@@ -63,7 +62,7 @@ export function ConfirmAddressSheet({
               <>
                 <View className="h-px bg-gray-200" />
                 <View className="flex-row items-start gap-2">
-                  <Text className="flex-1 text-base text-ink/70">Instrution: {instructions.trim()}</Text>
+                  <Text className="flex-1 text-base text-ink/70">Floor & entrance: {instructions.trim()}</Text>
                 </View>
               </>
             ) : null}

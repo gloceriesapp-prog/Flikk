@@ -30,9 +30,12 @@ import { deleteAddress, fetchAddresses, setDefaultAddress } from '../../api/addr
 import type { ApiAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
 import { groupCartItemsByStore, selectCartTotalPrice, selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
+import { useLocationStore } from '../../store/useLocationStore';
+import { cartAddressForLocation } from '../../features/delivery-address/matchSavedAddress';
 import { useAuthStore } from '../../store/useAuthStore';
 import { AddressSelectSheet } from './components/AddressSelectSheet';
 import { CartItemRow } from './components/CartItemRow';
+import { StoreClosedNotice } from './components/StoreClosedNotice';
 import { CartPaymentBar } from './components/CartPaymentBar';
 import { useCartPayment } from './payment/useCartPayment';
 import { usePaymentSelectionStart } from './payment/usePaymentSelectionStart';
@@ -51,6 +54,8 @@ import type { AppStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'Cart'>;
 
 export function CartScreen({ navigation, route }: Props) {
+  const location = useLocationStore(state => state.location);
+  const locationHydrated = useLocationStore(state => state.isHydrated);
   const customerId = useAuthStore(state => state.customerId);
   const emptyTitle = useCopy('cart.empty.title');
   const emptySubtitle = useCopy('cart.empty.subtitle');
@@ -110,13 +115,12 @@ export function CartScreen({ navigation, route }: Props) {
     queryFn: fetchAddresses,
     enabled: !!accessToken,
   });
-  // Last-used = the account's own default (or its first address if none
-  // is marked default — same fallback CheckoutScreen's own selectedAddress
-  // uses), shown directly on the footer instead of making every cart
-  // visit tap through a picker for an address that hasn't changed.
-  const selectedAddress = (addresses ?? []).find((a) => a.is_default) ?? addresses?.[0] ?? null;
+  // Checkout follows the confirmed Home pin. A different location must get
+  // its own saved receiver/building details instead of using the old default.
+  const selectedAddress = locationHydrated ? cartAddressForLocation(addresses ?? [], location) : null;
 
   const availabilityQuery = useCartAvailability(selectedAddress?.id);
+  const storeClosed = availabilityQuery.data?.lines.some(line => line.status === 'STORE_CLOSED') ?? false;
   const quoteQuery = useCheckoutQuote(selectedAddress?.id);
   const quote = quoteQuery.data;
   const minimumShortfall = quote?.minimumOrder?.shortfall ?? 0;
@@ -131,7 +135,7 @@ export function CartScreen({ navigation, route }: Props) {
       return priced ? { ...item, price: priced.price, originalPrice: priced.originalPrice, weight: priced.weight } : item;
     }));
   }, [items, quote]);
-  const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod,
+  const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod, selectedWallet: route.params?.selectedWallet, selectedNetbankingBank: route.params?.selectedNetbankingBank,
     quote, onQuoteChanged: () => { void quoteQuery.refetch(); void availabilityQuery.refetch(); } });
   const focused = useIsFocused();
   usePaymentSelectionStart({ requested: route.params?.startSelectedPayment === true, active: focused,
@@ -146,10 +150,22 @@ export function CartScreen({ navigation, route }: Props) {
     payment.choosePayment();
   }
 
+  function addAddressAtLocation() {
+    if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }
+    navigation.navigate('LocationSearch', { ...(location ?? {}), intent: 'address-book' });
+  }
+
   async function handleSelectAddress(id: string) {
     setSelectingAddressId(id);
     try {
       await setDefaultAddress(id);
+      const chosen = addresses?.find(address => address.id === id);
+      if (chosen?.latitude != null && chosen.longitude != null) {
+        await useLocationStore.getState().setLocation({ latitude: chosen.latitude, longitude: chosen.longitude,
+          addressLabel: chosen.map_address || chosen.line1, city: '' }).catch(() => {
+            console.warn('[CartScreen] Could not persist the selected delivery pin.');
+          });
+      }
       await queryClient.invalidateQueries({ queryKey: ['addresses', customerId] });
       setAddressSheetVisible(false);
 
@@ -251,18 +267,12 @@ export function CartScreen({ navigation, route }: Props) {
       ) : (
         <>
           <ScrollView className="flex-1" contentContainerClassName="gap-3 px-4 pb-4 pt-4">
-            {/* CartDeliveryInfoBar removed from here per an explicit ask —
-                the same address/Change readout now lives in
-                CartCheckoutFooter's own row right above "Proceed to Pay",
-                which made showing it a second time up here redundant.
-                CartDeliveryInfoBar.tsx itself is untouched, just no longer
-                called from this screen. */}
-
+            {storeClosed && <StoreClosedNotice />}
             <View className="rounded-2xl bg-white px-4 py-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2.5">
                   <View>
-                    <Text className="text-[17px] font-bold text-ink">Delivery in {estimatedMinutes} minutes</Text>
+                    <Text className="text-[17px] font-semibold text-ink">{storeClosed ? 'Your cart' : `Delivery in ${estimatedMinutes} minutes`}</Text>
                     <Text className="text-[12.5px] text-ink/45 font-medium mt-1">
                       {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}
                       {storeGroups.length > 1 ? ` from ${storeGroups.length} stores` : ' in this order'}
@@ -317,7 +327,7 @@ export function CartScreen({ navigation, route }: Props) {
             {quote && quoteHasPriceChanges(items, quote) && (
               <Text className="px-2 text-[13px] text-[#996A16]">Some pack prices or sizes have changed. You’ll be asked to confirm before ordering.</Text>
             )}
-            {(quoteQuery.isFetching || quoteQuery.isError || !quote) && (
+            {!storeClosed && (quoteQuery.isFetching || quoteQuery.isError || !quote) && (
               <View className="gap-2 rounded-2xl bg-white p-4">
                 <Text className="text-[13px] text-ink/65">{!accessToken ? 'Sign in to get your final bill.'
                   : !selectedAddress ? 'Choose a delivery address to get your final bill.'
@@ -329,18 +339,20 @@ export function CartScreen({ navigation, route }: Props) {
           </ScrollView>
 
           <CartCheckoutFooter
-            addressesLoading={addressesLoading}
+            addressesLoading={addressesLoading || !locationHydrated}
             selectedAddress={selectedAddress}
-            onAddAddress={() => navigation.navigate('LocationSearch', { intent: 'address-book' })}
+            onAddAddress={addAddressAtLocation}
             onChangeAddress={() => setAddressSheetVisible(true)}
             paymentBar={<CartPaymentBar method={payment.paymentMethod} apps={payment.upiApps} total={payment.grandTotal}
-              busy={payment.isPlacingOrder} disabled={addressesLoading || !payment.methodsReady || !quote || minimumShortfall > 0 || quoteQuery.isFetching || quoteQuery.isError || !availabilityQuery.data?.eligible || availabilityQuery.isError}
+              bankName={payment.paymentMethod === 'netbanking' ? route.params?.selectedNetbankingBank?.name : undefined}
+              busy={payment.isPlacingOrder} storeClosed={storeClosed} disabled={addressesLoading || !payment.methodsReady || !quote || minimumShortfall > 0 || quoteQuery.isFetching || quoteQuery.isError || !availabilityQuery.data?.eligible || availabilityQuery.isError}
               onChoose={choosePayment} onPlaceOrder={payment.placeOrder} />}
           />
 
           <AddressSelectSheet
             visible={addressSheetVisible}
             addresses={addresses ?? []}
+            selectedId={selectedAddress?.id ?? null}
             selectingId={selectingAddressId}
             deletingId={deletingAddressId}
             onClose={() => setAddressSheetVisible(false)}
@@ -348,7 +360,7 @@ export function CartScreen({ navigation, route }: Props) {
             onDelete={handleDeleteAddress}
             onAddNew={() => {
               setAddressSheetVisible(false);
-              navigation.navigate('LocationSearch', { intent: 'address-book' });
+              addAddressAtLocation();
             }}
           />
         </>

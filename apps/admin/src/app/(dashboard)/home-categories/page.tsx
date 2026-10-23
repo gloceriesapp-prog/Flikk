@@ -12,7 +12,7 @@
 // for, not a single flat list mixing tabs and tiles together.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Check, Pencil, Plus, Trash2 } from '@/components/icons';
 import type { HomeTab, HomeTabBanner, HomeTabTile, HomeTabTileLinkType } from '@/lib/types';
 import { fetchHomeTabBanners, fetchHomeTabs, fetchHomeTabTiles } from '@/lib/supabase/homeTabs';
 import { fetchCategories } from '@/lib/supabase/categories';

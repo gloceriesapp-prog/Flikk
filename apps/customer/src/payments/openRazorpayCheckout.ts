@@ -1,5 +1,5 @@
 import { NativeModules, TurboModuleRegistry } from 'react-native';
-import type { RazorpayOrder, RazorpayPaymentResult } from '../api/payments';
+import type { NetbankingBank, RazorpayOrder, RazorpayPaymentResult } from '../api/payments';
 import type { PaymentMethod } from './paymentMethod';
 import { razorpayOptions, razorpayResult } from './razorpayOptions';
 
@@ -8,9 +8,9 @@ export const isNativeCheckoutOpen = () => checkoutOpen;
 
 // Load lazily so Expo Go / an old installed binary can still browse and pay
 // cash. Replacing a native gateway requires a NEW store/dev-client build.
-export async function openRazorpayCheckout(order: RazorpayOrder, method: PaymentMethod = 'online'): Promise<RazorpayPaymentResult> {
+export async function openRazorpayCheckout(order: RazorpayOrder, method: PaymentMethod = 'online', bank?: NetbankingBank, walletContact?: string): Promise<RazorpayPaymentResult> {
   if (checkoutOpen) throw new Error('A payment is already open. Finish checking it first.');
-  const options = razorpayOptions(order, method);
+  const options = razorpayOptions(order, method, Date.now(), bank, walletContact);
   checkoutOpen = true;
   try {
     let sdk: typeof import('react-native-razorpay');

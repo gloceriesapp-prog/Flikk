@@ -10,7 +10,7 @@
 // ApplicationRow so both tabs read the same.
 
 import { useState } from 'react';
-import { Check, Package, Pencil, X } from 'lucide-react';
+import { Check, Package, Pencil, X } from '@/components/icons';
 import clsx from 'clsx';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 import { EditProductModal } from '@/components/inventory/EditProductModal';

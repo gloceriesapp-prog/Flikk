@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { MapPin, Phone } from 'lucide-react';
+import { MapPin, Phone } from '@/components/icons';
 import { RiderChangeRequests } from '@/components/riders/RiderChangeRequests';
 import { AssignRiderRow } from '@/components/dispatch/AssignRiderRow';
 import { ReasonModal } from '@/components/ui/ReasonModal';

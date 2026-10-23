@@ -8,7 +8,7 @@
 // success. Mirrors MarkPaidModal (confirmation + double-submit guard).
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X } from '@/components/icons';
 import { formatRupees } from '@/lib/format';
 import { rupeesToPaise, validateCorrectionInput, type CorrectionResult } from '@/lib/riderEarningCorrection';
 import type { RiderEarningRow } from '@/lib/types';

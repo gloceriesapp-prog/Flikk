@@ -41,8 +41,10 @@ export function ItemThumb({
   imageUrl,
   index,
   className,
+  neutral = false,
 }: {
   name: string;
+  neutral?: boolean;
   imageUrl: string | null | undefined;
   index: number;
   className?: string;
@@ -58,7 +60,7 @@ export function ItemThumb({
       aria-hidden
       className={clsx(
         'flex shrink-0 items-center justify-center rounded-xl text-xs font-semibold',
-        AVATAR_PALETTE[index % AVATAR_PALETTE.length],
+        neutral ? 'bg-slate-100 text-black' : AVATAR_PALETTE[index % AVATAR_PALETTE.length],
         className,
       )}
     >
@@ -150,7 +152,7 @@ export function OrderActions({
           onMarkPacked?.(order.id);
         }}
         disabled={anyBusy || !onMarkPacked}
-        className={clsx(BTN_BASE, BTN_SIZE[size], 'bg-accent text-white hover:bg-accent-strong', stretch && 'flex-1')}
+        className={clsx(BTN_BASE, BTN_SIZE[size], 'bg-green-600 text-white hover:bg-green-700', stretch && 'flex-1')}
       >
         <PackageCheck size={iconSize} />
         Mark packed
@@ -172,7 +174,7 @@ export function OrderActions({
         className={clsx(
           BTN_BASE,
           BTN_SIZE[size],
-          'border border-slate-200 bg-white text-slate-700 hover:border-red-200 hover:bg-red-50 hover:text-red-700',
+          'bg-red-600 text-white hover:bg-red-700',
           stretch && 'flex-1',
         )}
       >
@@ -191,7 +193,7 @@ export function OrderActions({
         className={clsx(
           BTN_BASE,
           BTN_SIZE[size],
-          'bg-accent text-white shadow-[0_1px_2px_rgba(21,93,252,0.25)] hover:bg-accent-strong',
+          'bg-green-600 text-white hover:bg-green-700',
           stretch && 'flex-[2]',
         )}
       >

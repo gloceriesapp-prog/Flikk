@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronDown, HelpCircle, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { ChevronDown, HelpCircle, PanelLeftClose, PanelLeftOpen, Search } from '@/components/icons';
 import clsx from 'clsx';
 import { NAV_GROUPS, OVERVIEW_ITEM, type NavItem } from '@/lib/nav';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';

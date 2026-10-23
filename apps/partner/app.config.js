@@ -3,6 +3,13 @@ const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
 const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
 const { resolveNativeMapKeys } = require('../../packages/shared/config/google-maps.cjs');
 const { androidGoogleMapsApiKey, iosGoogleMapsApiKey } = resolveNativeMapKeys(process.env);
+const directAndroidRelease = process.env.PARTNER_DIRECT_ANDROID_RELEASE === 'true';
+const directVersionCode = directAndroidRelease
+  ? require('./scripts/release-config.cjs').productionVersionCode(process.env)
+  : undefined;
+if (directAndroidRelease && !androidGoogleMapsApiKey) {
+  throw new Error('A direct production release requires a native Android Maps SDK key.');
+}
 const { validateMonitoringConfig } = require('./config-monitoring.cjs');
 validateMonitoringConfig(process.env);
 const buildProfile = process.env.EAS_BUILD_PROFILE;
@@ -13,8 +20,8 @@ const developmentApi = buildProfile ? buildProfile.startsWith('development') : p
 // on the EAS builder (EAS_BUILD=true), where the real bundle is produced. The
 // local pre-read is skipped entirely: it may see a developer's LAN URL from
 // .env.local, which never reaches the builder (it is not committed).
-if (developmentApi || process.env.EAS_BUILD === 'true') {
-  validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
+if (directAndroidRelease || developmentApi || process.env.EAS_BUILD === 'true') {
+  validateApiUrl(process.env.EXPO_PUBLIC_API_URL, directAndroidRelease ? false : developmentApi);
 }
 
 // Dynamic config (not app.json) so the Google Maps Android key comes from
@@ -49,13 +56,16 @@ module.exports = {
     name: 'Gloceries Partner',
     slug: 'partner',
     owner: 'nishal777',
-    version: '1.0.2',
+    version: '1.0.5',
     // OTA updates only reach builds with the same runtime version, so a JS
     // update can never land on a binary missing the native code it needs.
     // Bump `version` whenever native modules change.
     runtimeVersion: { policy: 'appVersion' },
-    updates: { url: `https://u.expo.dev/${easProjectId}` },
-    orientation: 'portrait',
+    updates: {
+      url: `https://u.expo.dev/${easProjectId}`,
+      ...(directAndroidRelease ? { requestHeaders: { 'expo-channel-name': 'production' } } : {}),
+    },
+    orientation: 'default',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     ios: {
@@ -71,6 +81,7 @@ module.exports = {
     },
     android: {
       package: 'com.gloceries.partner',
+      ...(directAndroidRelease ? { versionCode: directVersionCode } : {}),
       googleServicesFile,
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
@@ -95,6 +106,7 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: [
+      './plugins/withAndroidReleaseQuality.cjs',
       ...sentryPlugin,
       'expo-asset',
       'expo-font',

@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment, type PaymentTarget } from '../../api/payments';
+import { fetchAvailableWallets, fetchNetbankingBanks, type NetbankingBank, abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment, type PaymentTarget } from '../../api/payments';
 import { useAuthStore } from '../../store/useAuthStore';
 import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
 import { prepareUpiIntent } from '../../payments/upiIntent';
@@ -35,7 +35,10 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
   });
   const state = query.data?.state;
   const canResumeUpi = state === 'pending' && query.data?.canResumeUpiIntent === true;
-  const canPay = query.isFetchedAfterMount && !query.isFetching && !query.isError && (state === 'unpaid' || canResumeUpi) && !busy;
+  // A periodic refresh must not swallow a bank selection or disable the
+  // chooser every eight seconds. The initial mount check is still required;
+  // act() reconciles again before creating or resuming any payment.
+  const canPay = query.isFetchedAfterMount && !query.isError && (state === 'unpaid' || canResumeUpi) && !busy;
   useEffect(() => {
     if (focused && !busy && query.isFetchedAfterMount && !query.isFetching && !query.isError
       && (state === 'paid' || state === 'cancelled' || state === 'expired')) {
@@ -43,7 +46,7 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
     }
   }, [busy, focused, navigation, query.isError, query.isFetchedAfterMount, query.isFetching, state, target]);
 
-  async function act(action: PaymentMethod | 'cancel') {
+  async function act(action: PaymentMethod | 'cancel', bank?: NetbankingBank, contact?: string) {
     if (lock.current || !stillOwner()) return;
     lock.current = true; setBusy(true); setError('');
     const endFlow = beginCheckoutFlow();
@@ -73,9 +76,20 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
         });
         return;
       }
+      if (action.startsWith('wallet:')) {
+        if (contact !== undefined && !/^\+91[6-9]\d{9}$/.test(contact)) throw new Error('Enter a valid wallet mobile number.');
+        const { wallets } = await fetchAvailableWallets();
+        if (!stillOwner()) return;
+        if (!wallets.some(wallet => `wallet:${wallet.code}` === action)) throw new Error('This wallet is unavailable. Choose another payment method.');
+      }
+      if (action === 'netbanking' && bank) {
+        const { banks } = await fetchNetbankingBanks();
+        if (!stillOwner()) return;
+        if (!banks.some(entry => entry.code === bank.code)) throw new Error('This bank is no longer available. Choose another bank.');
+      }
       const order = await createPaymentOrder(target);
       if (!stillOwner()) return;
-      const result = await openRazorpayCheckout(order, action);
+      const result = await openRazorpayCheckout(order, action, bank, contact);
       if (!stillOwner()) return;
       await verifyPayment(target, result).catch(() => ({ ok: false }));
       if (stillOwner()) navigation.replace('PaymentRecovery', { target });
@@ -89,5 +103,5 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
       if (stillOwner()) setBusy(false);
     }
   }
-  return { query, busy, error, canPay, canResumeUpi, select: (method: PaymentMethod) => act(method), cancel: () => act('cancel') };
+  return { query, busy, error, canPay, canResumeUpi, select: (method: PaymentMethod, bank?: NetbankingBank, contact?: string) => act(method, bank, contact), cancel: () => act('cancel') };
 }

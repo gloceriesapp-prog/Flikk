@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { Search } from '@/components/icons';
 import { formatCurrency } from '@/lib/format';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 

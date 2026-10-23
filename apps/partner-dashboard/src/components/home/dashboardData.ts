@@ -1,5 +1,5 @@
 import type { PartnerOrder, PartnerProduct, TodayStats } from '@/lib/partnerApi';
-import { orderNetRevenue } from '@/lib/orderRevenue';
+import { orderNetRevenue } from '../../lib/orderRevenue';
 
 // Pure derivations for the Home page, kept out of the components so every
 // card reads the same numbers from the same order list.

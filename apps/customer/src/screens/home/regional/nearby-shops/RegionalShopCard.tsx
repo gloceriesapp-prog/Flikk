@@ -2,7 +2,6 @@ import { Pressable, Text, View } from 'react-native';
 import { ArrowRight01Icon, Store03Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../../components/AppIcon';
 import { GroceryProductTile } from '../../groceries/components/GroceryProductTile';
-import { SelfServiceProductCardView } from '../../products/ProductCardView';
 import type { Product } from '../../products/types';
 
 interface Props {
@@ -33,13 +32,7 @@ export function RegionalShopCard({ name, products, isOpen, distanceLabel, previe
       <View className="mt-4 flex-row items-start gap-2">
         {products.slice(0, 3).map((product) => (
           <View key={product.id} className="min-w-0 flex-1">
-            {!previewOnly && isOpen === false ? (
-              <View pointerEvents="none" accessible accessibilityLabel={`${product.name}, ${product.weight}. Store closed; open the store to browse.`}>
-                <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                  <SelfServiceProductCardView product={product} widthClassName="w-full" showDiscountBadge />
-                </View>
-              </View>
-            ) : <GroceryProductTile product={product} previewOnly={previewOnly} />}
+            <GroceryProductTile product={product} previewOnly={previewOnly} />
           </View>
         ))}
       </View>

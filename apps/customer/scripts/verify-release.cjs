@@ -14,6 +14,10 @@ if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
 }
 try {
   const { expo } = require('../app.config.js');
+  const manifest = require('../package.json');
+  if (manifest.version !== expo.version) failures.push('package.json and app.config.js versions must match.');
+  if (expo.runtimeVersion?.policy !== 'appVersion') failures.push('Native releases require the appVersion update-runtime policy.');
+  if (!expo.plugins?.includes('./plugins/withAndroidReleaseQuality.cjs')) failures.push('Android release optimization plugin is missing.');
   // iOS can deliberately use Apple Maps. Only Android needs the native key.
   if (process.env.EAS_BUILD_PLATFORM !== 'ios' && !expo.android?.config?.googleMaps?.apiKey) {
     failures.push('Missing ANDROID_GOOGLE_MAPS_API_KEY (or GOOGLE_MAPS_API_KEY).');

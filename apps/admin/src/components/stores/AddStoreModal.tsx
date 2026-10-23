@@ -7,7 +7,7 @@
 // onAdd is async — StoresPage POSTs to /api/stores and refetches the list.
 
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X } from '@/components/icons';
 import type { NewStoreInput } from '@/lib/types';
 import { STORE_CATEGORIES } from '@/lib/store-options';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
@@ -91,7 +91,7 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
       >
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
           <h3 className="text-lg font-semibold text-ink">Add store</h3>
-          <button type="button" onClick={onClose} className="text-muted hover:text-ink">
+          <button type="button" onClick={onClose} className="text-muted hover:text-ink" aria-label="Close">
             <X size={18} />
           </button>
         </div>

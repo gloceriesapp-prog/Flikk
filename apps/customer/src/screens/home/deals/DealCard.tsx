@@ -40,11 +40,6 @@ const CARD_WIDTH = 174;
  */
 const IMAGE_CARD_HEIGHT = 150;
 
-/*
- * Single solid premium plum.
- */
-const MAIN_CARD_COLOR = '#5B173E';
-
 interface Props {
   product: Product;
 }
@@ -84,20 +79,6 @@ export function DealCard({
       0,
       Math.round(
         originalPrice - price,
-      ),
-    )
-    : 0;
-
-  const discountPercent = hasDeal
-    ? Math.min(
-      100,
-      Math.max(
-        0,
-        Math.round(
-          ((originalPrice - price) /
-            originalPrice) *
-          100,
-        ),
       ),
     )
     : 0;

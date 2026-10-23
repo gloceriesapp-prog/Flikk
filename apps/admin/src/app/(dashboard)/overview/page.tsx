@@ -23,7 +23,7 @@
 // over the last hour, see that component's own note.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Bike, Clock, PackageSearch, Store, Timer } from 'lucide-react';
+import { Bike, Clock, PackageSearch, Store, Timer } from '@/components/icons';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card } from '@/components/ui/Card';
 import { PendingPayoutsCard } from '@/components/dashboard/PendingPayoutsCard';

@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, X } from 'lucide-react';
+import { Check, X } from '@/components/icons';
 import { ReasonModal } from '@/components/ui/ReasonModal';
 
 interface Props {

@@ -104,11 +104,12 @@ const ROUTE_TO_TAB_ID: Record<string, string> = {
 
 interface Props {
   hidden?: SharedValue<number>;
+  onBarHeightChange?: (height: number) => void;
   // Measured active-order card height plus spacing, supplied by the home shell.
   cartBottomOffset?: number;
 }
 
-export function BottomNavBar({ hidden, cartBottomOffset = 0 }: Props) {
+export function BottomNavBar({ hidden, cartBottomOffset = 0, onBarHeightChange }: Props) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute();
@@ -184,7 +185,7 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0 }: Props) {
             colors={['rgba(16,28,16,0)', 'rgba(16,28,16,0.07)']}
             style={{ position: 'absolute', left: 0, right: 0, top: -12, height: 12 }}
           />
-          <View className="flex-row items-center justify-around px-2 py-2.5">
+          <View onLayout={event => onBarHeightChange?.(event.nativeEvent.layout.height)} className="flex-row items-center justify-around px-2 py-2.5">
             {BOTTOM_NAV_TABS.map((tab) => (
               <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
             ))}
@@ -229,7 +230,7 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0 }: Props) {
               isInteractive
               style={{ borderRadius: 999, overflow: 'hidden', borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.08)' }}
             >
-              <View className="flex-row items-center justify-around px-1 py-1.5">
+              <View onLayout={event => onBarHeightChange?.(event.nativeEvent.layout.height)} className="flex-row items-center justify-around px-1 py-1.5">
                 {BOTTOM_NAV_TABS.map((tab) => (
                   <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
                 ))}
@@ -253,7 +254,7 @@ export function BottomNavBar({ hidden, cartBottomOffset = 0 }: Props) {
                   stay light too, same reasoning as the GlassView branch's own
                   colorScheme="light" change. */}
               <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.3)' }} />
-              <View className="flex-row items-center justify-around px-2 py-2.5">
+              <View onLayout={event => onBarHeightChange?.(event.nativeEvent.layout.height)} className="flex-row items-center justify-around px-2 py-2.5">
                 {BOTTOM_NAV_TABS.map((tab) => (
                   <BottomNavBarItem key={tab.id} tab={tab} isActive={tab.id === activeId} onPress={() => handlePress(tab.id)} />
                 ))}

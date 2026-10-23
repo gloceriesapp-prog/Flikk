@@ -25,7 +25,7 @@ function pageList(current: number, total: number): (number | 'gap')[] {
   return out;
 }
 
-// List view: a calm, borderless table on desktop (row click opens details,
+// List view: a boxed table with clear column and row dividers on desktop (row click opens details,
 // the order number is the keyboard entry) and stacked rows below lg, where
 // eight columns can't fit a phone. Paginated so a long history stays fast.
 export function OrdersTable({
@@ -67,18 +67,19 @@ export function OrdersTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         {/* Desktop table */}
-        <table className="hidden w-full text-left lg:table">
-          <thead>
-            <tr className="border-b border-slate-100 text-xs font-medium text-slate-500">
-              <th scope="col" className="px-5 py-3 font-medium">Order</th>
-              <th scope="col" className="px-3 py-3 font-medium">Customer</th>
-              <th scope="col" className="hidden px-3 py-3 font-medium xl:table-cell">Items</th>
-              <th scope="col" className="px-3 py-3 font-medium">Status</th>
-              <th scope="col" className="px-3 py-3 text-right font-medium">Amount</th>
-              <th scope="col" className="px-5 py-3 text-right font-medium">
-                <span className="sr-only">Actions</span>
+        <table className="hidden w-full border-collapse text-left lg:table">
+          <caption className="sr-only">Store orders with customer, items, status, amount and actions</caption>
+          <thead className="bg-slate-50">
+            <tr className="divide-x divide-slate-200 border-b border-slate-200 text-[14px] font-semibold text-black">
+              <th scope="col" className="px-4 py-3.5 font-semibold">Order</th>
+              <th scope="col" className="px-4 py-3.5 font-semibold">Customer</th>
+              <th scope="col" className="hidden px-4 py-3.5 font-semibold xl:table-cell">Items</th>
+              <th scope="col" className="px-4 py-3.5 font-semibold">Status</th>
+              <th scope="col" className="px-4 py-3.5 text-right font-semibold">Amount</th>
+              <th scope="col" className="px-4 py-3.5 text-right font-semibold">
+                Actions
               </th>
             </tr>
           </thead>
@@ -89,9 +90,9 @@ export function OrdersTable({
                 <tr
                   key={o.id}
                   onClick={() => h.onOpen(o.id)}
-                  className="cursor-pointer border-b border-slate-100 align-middle transition-colors last:border-b-0 hover:bg-slate-50/70"
+                  className="cursor-pointer divide-x divide-slate-200 border-b border-slate-200 align-middle transition-colors last:border-b-0 hover:bg-slate-50/70"
                 >
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-4">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -99,32 +100,32 @@ export function OrdersTable({
                         h.onOpen(o.id);
                       }}
                       aria-label={`Open order ${o.order_number}`}
-                      className="tnum rounded text-sm font-semibold text-ink hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      className="tnum rounded text-[15px] font-semibold text-ink hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                       #{o.order_number}
                     </button>
                     <p className="tnum mt-0.5 whitespace-nowrap text-xs text-slate-500">{orderWhen(o.placed_at, now)}</p>
                   </td>
-                  <td className="px-3 py-3.5">
-                    <p className="max-w-[200px] truncate text-sm font-medium text-ink">{customerName(o)}</p>
+                  <td className="px-4 py-4">
+                    <p className="max-w-[200px] truncate text-[14px] font-medium text-ink">{customerName(o)}</p>
                     <p className="tnum truncate text-xs text-slate-500">{o.users?.phone ?? '—'}</p>
                   </td>
-                  <td className="hidden px-3 py-3.5 xl:table-cell">
+                  <td className="hidden px-4 py-4 xl:table-cell">
                     <ItemStack order={o} />
                   </td>
-                  <td className="px-3 py-3.5">
+                  <td className="px-4 py-4">
                     <div className="flex flex-col items-start gap-1">
                       <StatusPill status={o.status} />
                       {wait && <span className={clsx('tnum rounded-full px-2 py-0.5 text-[11px] font-medium', wait.className)}>{wait.label}</span>}
                     </div>
                   </td>
-                  <td className="px-3 py-3.5 text-right">
+                  <td className="px-4 py-4 text-right">
                     <p className="tnum text-[15px] font-semibold text-ink">{formatInr(o.total)}</p>
                     <div className="mt-1 flex justify-end">
                       <PaymentBadge order={o} />
                     </div>
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-4">
                     <div className="flex justify-end">
                       {o.status === 'placed' ? (
                         <OrderActions {...actionProps(o)} />

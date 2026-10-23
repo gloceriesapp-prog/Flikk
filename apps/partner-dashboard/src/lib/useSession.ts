@@ -10,6 +10,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { DEMO_DATA_ENABLED } from './demoMode';
+import { DEMO_ME } from './demoApi';
 import { fetchMe, type Me } from './authApi';
 import { clearTokens, getAccessToken } from './authStorage';
 
@@ -24,6 +26,7 @@ export function useSession(): SessionState {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (DEMO_DATA_ENABLED) return;
     let cancelled = false;
 
     async function load() {
@@ -69,5 +72,5 @@ export function useSession(): SessionState {
     };
   }, [router]);
 
-  return { me, isLoading };
+  return DEMO_DATA_ENABLED ? { me: DEMO_ME, isLoading: false } : { me, isLoading };
 }

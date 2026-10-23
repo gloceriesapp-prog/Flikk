@@ -6,6 +6,7 @@ export interface TimelineStep {
   key: string;
   label: string;
   at: string | null;
+  completed?: boolean;
 }
 
 // Vertical status history. Reached steps are solid accent with their real
@@ -17,7 +18,7 @@ export function OrderTimeline({ steps, cancelled, hint }: { steps: TimelineStep[
   const shown: (TimelineStep & { tone: 'done' | 'next' | 'todo' | 'cancelled' })[] = [];
   let nextMarked = false;
   for (const step of steps) {
-    if (step.at) shown.push({ ...step, tone: 'done' });
+    if (step.at || step.completed) shown.push({ ...step, tone: 'done' });
     else if (cancelled) continue;
     else if (!nextMarked) {
       shown.push({ ...step, tone: 'next' });
@@ -37,18 +38,18 @@ export function OrderTimeline({ steps, cancelled, hint }: { steps: TimelineStep[
               <span
                 className={clsx(
                   'flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
-                  step.tone === 'done' && 'bg-accent text-white',
-                  step.tone === 'next' && 'bg-white ring-2 ring-accent/60',
+                  step.tone === 'done' && 'bg-green-600 text-white',
+                  step.tone === 'next' && 'bg-white ring-2 ring-green-600/60',
                   step.tone === 'todo' && 'bg-white ring-1 ring-slate-200',
                   step.tone === 'cancelled' && 'bg-red-500 text-white',
                 )}
               >
                 {step.tone === 'done' && <Check size={13} strokeWidth={3} aria-hidden />}
                 {step.tone === 'cancelled' && <X size={13} strokeWidth={3} aria-hidden />}
-                {step.tone === 'next' && <span className="h-2 w-2 animate-pulse rounded-full bg-accent" aria-hidden />}
+                {step.tone === 'next' && <span className="h-2 w-2 animate-pulse rounded-full bg-green-600" aria-hidden />}
               </span>
               {!isLast && (
-                <span className={clsx('my-1 w-0.5 flex-1 rounded-full', nextDone ? 'bg-accent/70' : 'bg-slate-200')} aria-hidden />
+                <span className={clsx('my-1 w-0.5 flex-1 rounded-full', nextDone ? 'bg-green-600/70' : 'bg-slate-200')} aria-hidden />
               )}
             </div>
             <div className={clsx('min-w-0 flex-1', !isLast && 'pb-5')}>
@@ -65,7 +66,7 @@ export function OrderTimeline({ steps, cancelled, hint }: { steps: TimelineStep[
                   {step.label}
                 </p>
                 <p className="tnum shrink-0 text-xs text-slate-500">
-                  {step.at ? formatDateTime(step.at) : step.tone === 'next' ? 'Up next' : step.tone === 'todo' ? '—' : ''}
+                  {step.at ? formatDateTime(step.at) : step.tone === 'next' ? 'Up next' : step.tone === 'todo' ? '—' : step.tone === 'done' ? 'Completed' : ''}
                 </p>
               </div>
               {step.tone === 'next' && hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}

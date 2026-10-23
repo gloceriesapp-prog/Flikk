@@ -2,9 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Boxes, Package, PackageSearch, PackageX, Plus, ShieldAlert } from 'lucide-react';
-import { createProduct, fetchProductPage, updateProduct, type PartnerProduct, type ProductInput } from '@/lib/partnerApi';
-import { DEMO_PRODUCTS } from '@/lib/demoProducts';
+import { Package, PackageSearch, Plus } from 'lucide-react';
+import { createProduct, deleteProduct, fetchProductPage, fetchInventoryOverview, updateProduct, type PartnerProduct, type ProductInput } from '@/lib/partnerApi';
 import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from '@/components/ui/Toast';
@@ -12,9 +11,9 @@ import { ProductForm } from '@/components/ProductForm';
 import { INVENTORY_FILTERS, InventoryFilterBar, type StockFilter } from '@/components/inventory/InventoryFilterBar';
 import { InventoryTable } from '@/components/inventory/InventoryTable';
 import { InventoryToolbar, type SortKey } from '@/components/inventory/InventoryToolbar';
-import { MetricCard, MetricGrid } from '@/components/inventory/MetricCard';
-import { BUTTON, EmptyState, ErrorState, MetricGridSkeleton, RowsSkeleton } from '@/components/inventory/DataStates';
-import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
+import { InventoryOverview } from '@/components/inventory/InventoryOverview';
+import { useLiveData } from '@/lib/useLiveData';
+import { BUTTON, EmptyState, ErrorState, RowsSkeleton } from '@/components/inventory/DataStates';
 
 type Editing = { mode: 'create' } | { mode: 'edit'; product: PartnerProduct } | null;
 
@@ -49,18 +48,16 @@ function useStockFilter(): [StockFilter, (next: StockFilter) => void] {
 }
 
 function InventoryScreen() {
+  const overview = useLiveData(fetchInventoryOverview, 60_000);
   const [products, setProducts] = useState<PartnerProduct[]>([]);
-  // Local-only override for demo rows: editing a demo product must never
-  // hit the real /partner/products/:id endpoint (that id doesn't exist
-  // server-side), so its change is applied here instead. Same pattern as
-  // the Orders detail page's demo-order override.
-  const [demoProducts, setDemoProducts] = useState(DEMO_PRODUCTS);
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<PartnerProduct | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deletePending = useRef(false);
   const [editing, setEditing] = useState<Editing>(null);
   const [filter, setFilter] = useStockFilter();
   const [search, setSearch] = useState('');
-  const [showStats, setShowStats] = useState(true);
-  const [showFilter, setShowFilter] = useState(true);
   const [sort, setSort] = useState<SortKey>('name');
 
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -117,13 +114,7 @@ function InventoryScreen() {
     void reload();
   }
 
-  // DEMO DATA — this store has zero real products, so the table/filters/
-  // stat strip would render entirely empty. Same isDemo convention as
-  // Overview/Orders: shown only while products.length === 0, and replaced
-  // outright the instant a real product is added (isDemo flips false on
-  // the next reload(), demo rows are dropped rather than merged).
-  const isDemo = DEMO_DATA_ENABLED && !search.trim() && filter === 'all' && !isLoading && products.length === 0;
-  const sourceProducts = isDemo ? demoProducts : products;
+  const sourceProducts = products;
 
   async function handleSubmit(input: ProductInput) {
     // A store owner can't list the same product twice under two rows —
@@ -141,12 +132,8 @@ function InventoryScreen() {
     const isEdit = editing?.mode === 'edit';
     try {
       if (editing?.mode === 'edit') {
-        if (isDemo) {
-          setDemoProducts((prev) => prev.map((p) => (p.id === editing.product.id ? applyInputToDemoProduct(p, input) : p)));
-        } else {
-          await updateProduct(editing.product.id, input);
-          await reload();
-        }
+        await updateProduct(editing.product.id, input);
+        await reload();
       } else {
         await createProduct(input);
         await reload();
@@ -155,22 +142,47 @@ function InventoryScreen() {
       toast.error(isEdit ? 'Could not update the product. Try again.' : 'Could not add the product. Try again.');
       throw err; // keep the inline message in the form too
     }
+    void overview.refetch();
     toast.success(isEdit ? `“${input.name}” updated` : `“${input.name}” added`);
     setEditing(null);
   }
 
+  async function confirmDelete() {
+    if (!deleteTarget || deletePending.current) return;
+    deletePending.current = true;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteProduct(deleteTarget.id);
+      setDeleteTarget(null);
+      toast.success('Product deleted');
+      await Promise.all([reload(), overview.refetch()]);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Could not delete this product. Try again.');
+    } finally {
+      deletePending.current = false;
+      setDeleting(false);
+    }
+  }
+
   const counts = useMemo(() => {
+    if (overview.data) {
+      const totals = overview.data;
+      return { all: totals.total, in_stock: totals.total - totals.outOfStock, out_of_stock: totals.outOfStock, low_stock: totals.runningLow, pending: totals.pending };
+    }
     const result = { all: sourceProducts.length } as Record<StockFilter, number>;
     result.in_stock = sourceProducts.filter((p) => p.is_in_stock).length;
     result.out_of_stock = sourceProducts.filter((p) => !p.is_in_stock).length;
+    result.low_stock = sourceProducts.filter(isRunningLow).length;
     result.pending = sourceProducts.filter((p) => p.approval_status === 'pending').length;
     return result;
-  }, [sourceProducts]);
+  }, [sourceProducts, overview.data]);
 
   const filtered = useMemo(() => {
     let byFilter = sourceProducts;
     if (filter === 'in_stock') byFilter = sourceProducts.filter((p) => p.is_in_stock);
     if (filter === 'out_of_stock') byFilter = sourceProducts.filter((p) => !p.is_in_stock);
+    if (filter === 'low_stock') byFilter = sourceProducts.filter(isRunningLow);
     if (filter === 'pending') byFilter = sourceProducts.filter((p) => p.approval_status === 'pending');
 
     const q = search.trim().toLowerCase();
@@ -216,7 +228,7 @@ function InventoryScreen() {
   let body: ReactNode;
   if (isLoading && products.length === 0) {
     body = <RowsSkeleton rows={6} />;
-  } else if (error && products.length === 0 && !isDemo) {
+  } else if (error && products.length === 0) {
     body = <ErrorState title="Couldn’t load your products" onRetry={retryLoad} />;
   } else if (sourceProducts.length === 0 && !hasFilters) {
     body = (
@@ -254,32 +266,31 @@ function InventoryScreen() {
       />
     );
   } else {
-    body = <InventoryTable products={filtered} onEdit={(product) => setEditing({ mode: 'edit', product })} />;
+    body = <InventoryTable products={filtered} onEdit={(product) => setEditing({ mode: 'edit', product })} onDelete={(product) => { setDeleteError(null); setDeleteTarget(product); }} />;
   }
 
   return (
     <div className="flex flex-col gap-4">
+      <InventoryOverview data={overview.data} onSelect={(next) => { setSearch(''); setFilter(next); }} />
+      {!!overview.error && <p role="alert" className="text-sm text-slate-600">Could not refresh inventory totals. <button type="button" onClick={() => void overview.refetch()} className="font-semibold underline">Retry</button></p>}
       <InventoryToolbar
-        showStats={showStats}
-        onToggleStats={() => setShowStats((v) => !v)}
-        showFilter={showFilter}
-        onToggleFilter={() => setShowFilter((v) => !v)}
         sort={sort}
         onSortChange={setSort}
         onExport={handleExport}
         onAddProduct={openCreate}
-      />
+      >
+        <InventoryFilterBar filter={filter} onFilterChange={setFilter} search={search} onSearchChange={setSearch} counts={counts} />
+      </InventoryToolbar>
 
-      {showStats && !(error && products.length === 0) && (isLoading ? (
-        <MetricGridSkeleton />
-      ) : (
-        <MetricGrid>
-          <MetricCard label="Loaded products" value={counts.all} icon={Boxes} tone="blue" />
-          <MetricCard label="Loaded in stock" value={counts.in_stock} icon={Package} tone="green" />
-          <MetricCard label="Loaded out of stock" value={counts.out_of_stock} icon={PackageX} tone="red" />
-          <MetricCard label="Loaded pending approval" value={counts.pending} icon={ShieldAlert} tone="amber" />
-        </MetricGrid>
-      ))}
+
+      <Modal open={!!deleteTarget} onClose={() => { if (!deletePending.current) setDeleteTarget(null); }} title="Delete product?">
+        <p className="text-sm leading-6 text-gray-600">Delete <strong className="text-gray-950">{deleteTarget?.name}</strong> from your catalogue? This cannot be undone. Products with past orders cannot be deleted; mark them out of stock instead.</p>
+        {deleteError && <p role="alert" className="mt-3 text-sm text-red-600">{deleteError}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" disabled={deleting} onClick={() => setDeleteTarget(null)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium disabled:opacity-50">Cancel</button>
+          <button type="button" disabled={deleting} onClick={() => void confirmDelete()} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{deleting ? 'Deleting…' : 'Delete product'}</button>
+        </div>
+      </Modal>
 
       <Modal
         open={!!editing}
@@ -298,16 +309,6 @@ function InventoryScreen() {
       {error && products.length > 0 && <div role="alert" className="flex items-center justify-between rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={retryLoad} className="font-semibold underline">Retry</button></div>}
       {lastUpdated && <p className="text-sm text-neutral-500">{products.length} loaded · Updated {lastUpdated.toLocaleTimeString()} · Export includes loaded items</p>}
       <Card className="overflow-hidden">
-        <div className="p-4 sm:p-5">
-          {showFilter ? (
-            <InventoryFilterBar filter={filter} onFilterChange={setFilter} search={search} onSearchChange={setSearch} counts={counts} />
-          ) : (
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-lg font-semibold text-ink">Products</h2>
-              {!isLoading && !error && <span className="tnum text-sm text-slate-400">{filtered.length}</span>}
-            </div>
-          )}
-        </div>
         {body}
       </Card>
       {nextCursor && <button disabled={loadingMore || isLoading} onClick={() => void loadMore()} className="self-center rounded-xl border border-hairline px-6 py-3 font-semibold disabled:opacity-50">{loadingMore ? 'Finding more items…' : 'Load more items'}</button>}
@@ -320,32 +321,6 @@ function isDuplicateProductName(products: PartnerProduct[], name: string, exclud
   return products.some((p) => p.id !== excludeProductId && p.name.trim().toLowerCase() === normalized);
 }
 
-// Demo rows never touch the real backend, so this mirrors what
-// backend/src/lib/products.ts's toProductRow + save_catalogue_product do server-side:
-// variants[0] is the default, its price/unit denormalize onto the product
-// itself, and is_in_stock follows stockStatus (a DB trigger does this for
-// real products — there's no trigger here, so it's done by hand).
-function applyInputToDemoProduct(product: PartnerProduct, input: ProductInput): PartnerProduct {
-  const [defaultVariant] = input.variants;
-  return {
-    ...product,
-    name: input.name,
-    category: input.category,
-    image_url: input.imageUrl ?? product.image_url,
-    is_veg: input.isVeg ?? product.is_veg,
-    stock_status: input.stockStatus,
-    stock_quantity: input.variants.reduce((sum, v) => sum + (v.stockQuantity ?? 0), 0),
-    is_in_stock: input.stockStatus !== 'out_of_stock',
-    price: defaultVariant.price,
-    original_price: defaultVariant.originalPrice ?? null,
-    product_variants: input.variants.map((v, i) => ({
-      id: product.product_variants[i]?.id ?? `${product.id}-v${i}`,
-      unit_type: v.unitType,
-      quantity: v.quantity,
-      price: v.price,
-      original_price: v.originalPrice ?? null,
-      is_default: i === 0,
-      stock_quantity: v.stockQuantity ?? null,
-    })),
-  };
+function isRunningLow(product: PartnerProduct): boolean {
+  return product.stock_tracking_enabled === true && product.is_in_stock && product.stock_quantity != null && product.stock_quantity > 0 && product.stock_quantity < 5;
 }

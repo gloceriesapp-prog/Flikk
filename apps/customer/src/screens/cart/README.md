@@ -103,3 +103,50 @@ launch errors when Android has no activity or cannot open checkout, and
 handles a null payment error payload. The upstream wrapper otherwise leaves
 those errors unresolved. Keep this narrow compatibility patch until an
 upstream SDK version fixes the same cases; re-run native builds when upgrading.
+
+## Netbanking bank selection
+
+Netbanking opens `payment-method/components/NetbankingBankPicker.tsx` before
+returning to the cart. `GET /payments/netbanking-banks` reads Razorpay `/methods`
+using the public key ID only, with a short server cache and online-payment
+availability checks. No static fallback bank list is offered. The picker
+supports search, loading, retry, and empty states.
+
+The selected `{ code, name }` is scoped to the current cart navigation; the
+account preference remains the generic Netbanking method. Cart/recovery
+recheck the bank list before starting payment and pass the selected code
+to Standard Checkout's documented display block. Bank credentials are entered
+only in Razorpay/bank checkout. Recovery continues using the existing saved
+order and does not create a second order.
+
+## Wallets
+
+`WalletOptions` reads `/payments/wallets`. Only MobiKwik and Ola Money are
+supported, and only when Razorpay explicitly flags them as enabled. Loading,
+retry and unavailable states never introduce fallback providers. The backend
+shares the short-lived public-key-only methods cache with Netbanking.
+Cart and recovery recheck availability before payment and restrict Standard
+Checkout to the selected wallet. Wallet authentication remains with Razorpay;
+amounts, signatures and capture verification follow the existing server flow.
+Pay Later has been removed; stale Pay Later preferences are rejected.
+
+The wallet header opens an inline mobile-number form. Its blue Continue button
+selects the wallet and prepares a contact for this checkout; it never claims
+that an account is linked. The number stays in navigation state, is scoped to
+the chosen wallet, and is not saved to the profile or payment preference.
+Only an Indian mobile number is accepted. Cart and recovery validate it again
+before order/payment creation. Standard Checkout receives it as `prefill.contact`;
+wallet verification happens with the provider during payment. No app-owned OTP,
+wallet balance, linking token or persistent linked-account state is invented.
+
+## Credit and debit cards
+
+Choosing Credit / Debit Card in the cart chooser requests one checkout through
+`usePaymentSelectionStart`. It consumes the navigation intent before payment
+work and checks current cart/address/quote eligibility; closed-store carts
+cannot start. Profile selection saves a preference only. Card checkout uses
+Razorpay Standard Checkout's cards-only display block, including when a saved
+email is absent. Card number, expiry, CVV and issuer verification remain in
+the native provider flow. Order amounts stay server-owned; signatures/capture
+are verified on the server before a receipt is shown. Recovery uses the same
+card-only configuration against the existing saved order.

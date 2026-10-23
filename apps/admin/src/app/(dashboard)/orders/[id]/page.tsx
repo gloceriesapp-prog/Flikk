@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@/components/icons';
 import clsx from 'clsx';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { RiderSelect } from '@/components/dispatch/RiderSelect';

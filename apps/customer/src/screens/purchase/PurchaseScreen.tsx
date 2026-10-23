@@ -220,7 +220,7 @@ export function PurchaseScreen({ navigation }: Props) {
   });
 
   return (
-    <View className="flex-1 bg-[#F8F8F8] pt-safe">
+    <View className="flex-1 bg-white pt-safe">
       {/* Plain background again — no gradient header (PurchaseHeader.tsx,
           deleted) to keep light icons legible against. */}
       <StatusBar style="dark" />
@@ -241,7 +241,7 @@ export function PurchaseScreen({ navigation }: Props) {
         }}
         onEndReachedThreshold={0.4}
         ListHeaderComponent={
-          <View>
+          <View className="bg-[#F8F8F8]">
             <View className="px-6 pb-1 pt-3">
               <View className="h-10 items-center justify-center">
                 <Text accessibilityRole="header" className="text-center text-[20px] font-bold text-ink">Purchase History</Text>
@@ -293,10 +293,10 @@ export function PurchaseScreen({ navigation }: Props) {
         }
         ListFooterComponent={
           hasFilteredResults ? (
-            <View className="px-6">
+            <View className="mt-4 bg-white">
               {history.isFetchingNextPage && <ActivityIndicator className="py-4" color="#155DFC" />}
               <PurchaseRecommendations />
-              <View className="mt-8 gap-2 pb-44 pt-10">
+              <View className="mt-8 gap-2 px-6 pb-44 pt-10">
                 <Text className="text-5xl font-bold tracking-tight text-ink/10">Every order, a small win.</Text>
                 <View className="flex-row items-center gap-1.5">
                   <Text className="text-sm font-medium text-ink/50">#GloceriesApp</Text>
@@ -308,7 +308,7 @@ export function PurchaseScreen({ navigation }: Props) {
           ) : null
         }
         renderItem={({ item: order }) => (
-          <View className="px-6">
+          <View className="bg-[#F8F8F8] px-6">
             <OrderRow
               order={order}
               now={now}

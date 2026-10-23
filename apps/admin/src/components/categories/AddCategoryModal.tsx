@@ -11,7 +11,7 @@
 // is product-photo specific.
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X } from '@/components/icons';
 import type { CategorySection, NewCategoryInput } from '@/lib/types';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 
@@ -57,7 +57,7 @@ export function AddCategoryModal({
       >
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
           <h3 className="text-lg font-semibold text-ink">Add category</h3>
-          <button type="button" onClick={onClose} className="text-muted hover:text-ink">
+          <button type="button" onClick={onClose} className="text-muted hover:text-ink" aria-label="Close">
             <X size={18} />
           </button>
         </div>

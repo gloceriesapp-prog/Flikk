@@ -20,4 +20,16 @@ describe('partner catalogue read contract', () => {
   const selection = cataloguePage({ query: { page: '1', limit: '30', q: 'milk' } }, storeId);
   const first = readCatalogue(storeId,selection); const second = readCatalogue(storeId,selection); expect(mocked.from).toHaveBeenCalledTimes(1); expect(chain.limit).toHaveBeenCalledWith(31); expect(chain.eq).toHaveBeenCalledWith('store_id',storeId); finish({data:[{id:'a'}],error:null}); expect(await first).toEqual(await second);
  });
+ it('filters running low to tracked positive quantities below five within the owner store', async () => {
+  const chain = { select: vi.fn(), eq: vi.fn(), neq: vi.fn(), gt: vi.fn(), lt: vi.fn(), order: vi.fn(), limit: vi.fn() };
+  for (const method of [chain.select, chain.eq, chain.neq, chain.gt, chain.lt, chain.order]) method.mockReturnValue(chain);
+  chain.limit.mockResolvedValue({ data: [], error: null }); mocked.from.mockReturnValue(chain);
+  await readCatalogue('low-stock-store', cataloguePage({ query: { stock: 'low_stock', page: '1' } }, 'low-stock-store'));
+  expect(chain.eq).toHaveBeenCalledWith('store_id', 'low-stock-store');
+  expect(chain.eq).toHaveBeenCalledWith('stock_tracking_enabled', true);
+  expect(chain.neq).toHaveBeenCalledWith('stock_status', 'out_of_stock');
+  expect(chain.gt).toHaveBeenCalledWith('stock_quantity', 0);
+  expect(chain.lt).toHaveBeenCalledWith('stock_quantity', 5);
+ });
+
 });

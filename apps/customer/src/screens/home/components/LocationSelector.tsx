@@ -24,11 +24,10 @@ import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 // Location is still tappable/changeable underneath either way — this is
 // just what the header SAYS while closed.
 
-import { ChevronDownIcon, Navigation03Icon } from '@hugeicons/core-free-icons';
+import { ChevronDownIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../../../components/AppIcon';
 import { useReopenLabel } from '../../../utils/useOperatingHours';
-import { colors } from '../../../theme/tokens';
 import { useLocationStore } from '../../../store/useLocationStore';
 
 interface Props {
@@ -49,7 +48,6 @@ export function LocationSelector({ onPress, isClosed = false, light = false }: P
   // dark-gradient tab they stay white.
   const primaryText = light ? 'text-black' : 'text-white';
   const iconColor = light ? '#101C10' : '#FFFFFF';
-  const navColor = light ? 'rgba(16,28,16,0.6)' : 'rgba(255,255,255,0.6)';
 
   return (
     <Pressable onPress={onPress} className="max-w-[230px]">
@@ -65,8 +63,8 @@ export function LocationSelector({ onPress, isClosed = false, light = false }: P
           {isClosed ? `Opens ${reopen.time} ${reopen.day}` : `In ${estimatedMinutes} minutes`}
         </Text>
       </View>
-      <View className="flex-row items-center gap-1">
-        <Text className={`text-lg font-semibold ${primaryText}`} numberOfLines={1}>
+      <View className="flex-row items-center gap-0.5">
+        <Text className={`shrink text-lg font-semibold ${primaryText}`} numberOfLines={1}>
           {isClosed ? 'Closed for now' : label}
         </Text>
         {!isClosed && <AppIcon icon={ChevronDownIcon} size={16} color={iconColor} strokeWidth={2.2} />}

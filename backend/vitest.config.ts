@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 // fast on missing config). Unit tests import modules that transitively pull in
 // the Supabase client, so tests need *some* value here, not real credentials.
 export default defineConfig({
-  resolve: { alias: { '@': fileURLToPath(new URL('../apps/admin/src', import.meta.url)) } },
+  // Cross-app hook tests must mock one React instance, regardless of npm/pnpm hoisting.
+  resolve: { dedupe: ['react'], alias: { '@': fileURLToPath(new URL('../apps/admin/src', import.meta.url)) } },
   test: {
     env: {
       SUPABASE_URL: 'https://test.supabase.co',

@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Banknote } from 'lucide-react';
+import { Banknote } from '@/components/icons';
 import clsx from 'clsx';
 import type { FailedDeliveryOrder } from '@/app/api/failed-deliveries/route';
 import { formatCurrency } from '@/lib/format';

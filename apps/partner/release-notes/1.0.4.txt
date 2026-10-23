@@ -1,0 +1,5 @@
+<en-US>
+• Improved Android 15+ system-bar and display-cutout compatibility.
+• Updated the Android build tools and enabled optimized resource shrinking.
+• Improved image memory handling while the app reloads after an update.
+</en-US>
