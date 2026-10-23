@@ -61,7 +61,7 @@ export default function ReviewsPage() {
     void load();
   }
 
-  const isDemo = DEMO_DATA_ENABLED && !isLoading && !loadError && reviews.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && reviews.length === 0;
   const source = isDemo ? DEMO_REVIEWS : reviews;
 
   // Only real reviews are replyable — demo rows have no DB row to write to,
@@ -116,7 +116,7 @@ export default function ReviewsPage() {
     );
   }
 
-  if (loadError) {
+  if (loadError && !isDemo) {
     return (
       <Card>
         <ErrorState title="Couldn’t load your reviews" onRetry={retry} />

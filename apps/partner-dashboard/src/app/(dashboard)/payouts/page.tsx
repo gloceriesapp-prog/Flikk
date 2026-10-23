@@ -48,7 +48,7 @@ export default function PayoutsPage() {
   // as Overview/Orders/Inventory: shown only while payouts.length === 0,
   // gone the instant a real payout row exists. The payout DESTINATION card
   // below is never part of this — see its own note on why.
-  const isDemo = DEMO_DATA_ENABLED && !isLoading && !loadError && payouts.length === 0;
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && payouts.length === 0;
   const sourcePayouts = isDemo ? DEMO_PAYOUTS : payouts;
 
   const counts = useMemo(() => {
@@ -82,7 +82,7 @@ export default function PayoutsPage() {
   let body: ReactNode;
   if (isLoading) {
     body = <RowsSkeleton rows={5} leading={false} />;
-  } else if (loadError) {
+  } else if (loadError && !isDemo) {
     body = <ErrorState title="Couldn’t load your payouts" onRetry={() => void refetch()} />;
   } else if (sourcePayouts.length === 0) {
     body = (

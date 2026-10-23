@@ -87,7 +87,7 @@ module.exports = {
       package: 'com.gloceries.rider',
       googleServicesFile,
       adaptiveIcon: {
-        backgroundColor: '#E6F4FE',
+        backgroundColor: '#101C10',
         foregroundImage: './assets/android-icon-foreground.png',
         backgroundImage: './assets/android-icon-background.png',
         monochromeImage: './assets/android-icon-monochrome.png',

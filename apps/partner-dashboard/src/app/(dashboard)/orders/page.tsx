@@ -81,9 +81,9 @@ function OrdersScreen() {
 
   // DEMO DATA — same isDemo convention as the Overview page: shown only while
   // the store has zero real orders, replaced the instant a real one lands.
-  // DEMO_DATA_ENABLED is hard-off in production builds. A failed fetch is not
-  // "zero orders", so it shows the error state instead of sample data.
-  const isDemo = DEMO_DATA_ENABLED && !isLoading && !error && orders.length === 0;
+  // DEMO_DATA_ENABLED is hard-off in production builds; in local dev a failed
+  // fetch also falls back to sample data so the UI can be designed offline.
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && orders.length === 0;
   const sourceOrders = isDemo ? demoOrders : orders;
 
   function changeView(next: OrdersView) {
@@ -213,7 +213,7 @@ function OrdersScreen() {
 
   // Error with nothing to show → full error state. Error on a later poll →
   // keep the last good list and say so quietly.
-  const hardError = Boolean(error) && orders.length === 0 && !isLoading;
+  const hardError = Boolean(error) && orders.length === 0 && !isLoading && !isDemo;
   const softError = Boolean(error) && orders.length > 0;
   const selectedOrder = selectedId ? (sorted.find((o) => o.id === selectedId) ?? null) : null;
   const rejectingOrder = rejectingId ? sorted.find((o) => o.id === rejectingId) : undefined;

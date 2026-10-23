@@ -12,6 +12,8 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContaine
 import { Ban, ListOrdered, Receipt, ShoppingBasket, Wallet } from 'lucide-react';
 import clsx from 'clsx';
 import { fetchMyOrders } from '@/lib/partnerApi';
+import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
+import { DEMO_ORDERS } from '@/lib/demoOrders';
 import { orderNetRevenue, lineNetRevenue } from '@/lib/orderRevenue';
 import { useLiveData } from '@/lib/useLiveData';
 import { Card } from '@/components/ui/Card';
@@ -63,8 +65,11 @@ function ChartTooltip({ active, payload, kind }: { active?: boolean; payload?: {
 export default function AnalyticsPage() {
   const { data, isLoading, error, refetch } = useLiveData(fetchMyOrders, ANALYTICS_POLL_MS);
   const [range, setRange] = useState<Range>(DEFAULT_RANGE);
-  const orders = useMemo(() => data ?? [], [data]);
   const loadError = !!error && data === undefined;
+  // DEMO DATA — same isDemo convention as Overview/Orders: only while the
+  // store has no real orders, and never in a production build.
+  const isDemo = DEMO_DATA_ENABLED && !isLoading && (data?.length ?? 0) === 0;
+  const orders = useMemo(() => (isDemo ? DEMO_ORDERS : (data ?? [])), [data, isDemo]);
 
   const delivered = useMemo(() => orders.filter((o) => o.status !== 'cancelled'), [orders]);
 
@@ -136,7 +141,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (loadError) {
+  if (loadError && !isDemo) {
     return (
       <Card>
         <ErrorState title="Couldn’t load your sales data" onRetry={() => void refetch()} />
