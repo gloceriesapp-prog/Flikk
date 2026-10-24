@@ -27,10 +27,10 @@ concurrency: {group: backend-lightsail, cancel-in-progress: false}
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions: {contents: read}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 - Node.js 24
       - name: Validate deployment scripts
         run: |
           bash -n backend/deploy/lightsail/setup.sh backend/deploy/lightsail/deploy.sh
@@ -55,7 +55,7 @@ jobs:
   deploy:
     needs: validate
     if: (github.event_name == 'workflow_dispatch' && inputs.build_only) || (github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.LIGHTSAIL_DEPLOY == 'true')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions: {contents: read, actions: read, packages: write, id-token: write}
     env:
@@ -63,7 +63,7 @@ jobs:
       AWS_REGION: ap-south-1
       LIGHTSAIL_INSTANCE_NAME: ${{ vars.LIGHTSAIL_INSTANCE_NAME }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 - Node.js 24
       - name: Require the full CI suite for this exact main commit
         if: ${{ !inputs.build_only }}
         env: {GH_TOKEN: '${{ github.token }}'}

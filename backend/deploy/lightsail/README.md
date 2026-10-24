@@ -50,6 +50,11 @@ instance and no persistent AWS access key. Tag only this instance with
 `DeploymentTarget=gloceries-api`. The role trusts only this repository's `main`
 branch and can open/close ports only on instances carrying that explicit tag in
 the stack's region. The port-state read API requires `Resource: '*'` in IAM.
+This repository uses immutable OIDC subjects. Its identity is
+`gloceriesapp-prog@331685205/Flikk@1335724632`; obtain the current format using
+`gh api repos/gloceriesapp-prog/Flikk/actions/oidc/customization/sub` and pass it
+as `RepositoryIdentity` without the `repo:` prefix. A name-only subject does not
+authenticate here. Preserve the exact main-branch suffix when updating trust.
 AWS does not expose a port-number condition for these mutation APIs: the trusted
 workflow and its helper constrain them to TCP 22. Protect `main` and review any
 changes to the workflow or helper as production deployment access.
@@ -67,7 +72,9 @@ An `always()` cleanup step removes the job's rule after success, failure or
 normal cancellation, and fails the workflow if removal cannot be verified.
 An abruptly destroyed runner or AWS outage can prevent cleanup; inspect the
 Lightsail firewall after such a run and remove only its recorded `/32`, keeping
-the `lightsail-connect` alias. The next run refuses unexpected stale SSH rules.
+the `lightsail-connect` alias and, when present, its `lightsail-connect-ipv6`
+browser-client counterpart. Both aliases were observed in the production API
+response; public IPv4/IPv6 SSH ranges and unknown aliases remain rejected. The next run refuses unexpected stale SSH rules.
 Do not open port 22 to `0.0.0.0/0` or `::/0`.
 
 `ONLINE_PAYMENTS_DISABLED=false` permits the admin checkout setting to enable
