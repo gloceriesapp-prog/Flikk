@@ -25,11 +25,11 @@
 // 6. Session + role==='rider' + approved → AppNavigator, the real app shell.
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useRiderOrdersStore } from '../store/useRiderOrdersStore';
-import { fetchAccountStatus } from '../api/auth';
+import { fetchAccountStatus, signOut } from '../api/auth';
 import { ApiError } from '../api/client';
 import { colors } from '../theme/tokens';
 import { AuthNavigator } from './AuthNavigator';
@@ -39,6 +39,7 @@ import { BankDetailsScreen } from '../screens/onboarding/BankDetailsScreen';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen';
 import { RiderSuspendedScreen } from '../screens/onboarding/RiderSuspendedScreen';
 import { flushPendingNotificationTap, registerPushToken, watchNotificationTaps, watchOfferPushes } from '../features/push-notifications/registerPushToken';
+import { loginGate } from './loginGate';
 import { navigationRef } from './navigationRef';
 
 const WELCOME_DURATION_MS = 2000;
@@ -65,7 +66,15 @@ export function RootNavigator() {
   const stopSync = useRiderOrdersStore((s) => s.stopSync);
   const isHistoryHydrated = useRiderOrdersStore((s) => s.isHistoryHydrated);
   const goOnline = useRiderOrdersStore((s) => s.goOnline);
-  const [statusChecked, setStatusChecked] = useState(false);
+  // This session's GET /auth/me: loaded, failed (non-401), or slower than the
+  // 6s cap. All reset on every new token, so logging out and back in (a
+  // store reviewer's routine) re-checks instead of reusing the last result.
+  // Results are tagged with the token + attempt they belong to, so a stale
+  // result never counts for a new session.
+  const [statusAttempt, setStatusAttempt] = useState(0);
+  const statusKey = `${accessToken ?? ''}#${statusAttempt}`;
+  const [statusResult, setStatusResult] = useState({ key: '', loaded: false, failed: false, slow: false });
+  const status = statusResult.key === statusKey ? statusResult : { loaded: false, failed: false, slow: false };
 
   useEffect(() => {
     void hydrate();
@@ -74,12 +83,18 @@ export function RootNavigator() {
   useEffect(() => {
     if (!isHydrated || !accessToken) return;
     let cancelled = false;
+    const mark = (patch: { loaded?: boolean; failed?: boolean; slow?: boolean }) =>
+      setStatusResult((prev) => ({
+        ...(prev.key === statusKey ? prev : { key: statusKey, loaded: false, failed: false, slow: false }),
+        ...patch,
+      }));
 
     // Hard cap: never let a hung/slow /auth/me strand the app on the
-    // loading spinner. After this, routing proceeds on whatever we know
-    // (the persisted status, or defaults) instead of spinning forever.
+    // loading spinner. After this, a session with nothing known yet gets the
+    // Retry / Log out screen (loginGate.ts); the request keeps running and
+    // its answer still routes the app when it lands.
     const timeout = setTimeout(() => {
-      if (!cancelled) setStatusChecked(true);
+      if (!cancelled) mark({ slow: true });
     }, 6000);
 
     fetchAccountStatus()
@@ -95,6 +110,7 @@ export function RootNavigator() {
             isSuspended: rider_suspended === true,
             suspendedReason: rider_suspended_reason ?? null,
           });
+          mark({ loaded: true });
         }
       })
       .catch((err) => {
@@ -104,22 +120,20 @@ export function RootNavigator() {
         // A plain network blip is NOT a reason to log someone out, so only
         // a real auth failure clears.
         if (err instanceof ApiError && err.status === 401) void clearSession();
+        else if (!cancelled) mark({ failed: true });
       })
       .finally(() => {
-        if (!cancelled) {
-          clearTimeout(timeout);
-          setStatusChecked(true);
-        }
+        if (!cancelled) clearTimeout(timeout);
       });
     return () => {
       cancelled = true;
       clearTimeout(timeout);
     };
-    // Deliberately only re-runs on a fresh login, not on every
+    // Deliberately only re-runs on a fresh login or a Retry, not on every
     // role/isApproved/applicationSubmitted write — those are this effect's
     // own output.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHydrated, accessToken]);
+  }, [isHydrated, accessToken, statusKey]);
 
   // Approved rider, but "usable" (real order sync, push, the app shell)
   // only once bank details are on file too — an approved rider still on
@@ -189,16 +203,31 @@ export function RootNavigator() {
   // the "waiting for approval" screen after an app close/reload — and let
   // the /auth/me refresh below refine it in the background.
   const hasKnownStatus = role !== null || applicationSubmitted || isRejected || payoutConfigured;
-  const isCheckingLoginStatus = !!accessToken && !statusChecked && !hasKnownStatus;
+  const gate = accessToken ? loginGate({ hasKnownStatus, statusLoaded: status.loaded, statusFailed: status.failed, statusSlow: status.slow }) : 'route';
 
   if (isColdStart) {
     return <WelcomeScreen />;
   }
 
-  if (isCheckingLoginStatus) {
+  if (gate === 'checking') {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator color={colors.ink} />
+      </View>
+    );
+  }
+
+  if (gate === 'retry') {
+    return (
+      <View className="flex-1 items-center justify-center gap-3 bg-white px-8">
+        <Text className="text-center text-[17px] font-semibold text-ink">{"We couldn't load your account"}</Text>
+        <Text className="text-center text-[14px] text-ink/60">Check your connection and try again.</Text>
+        <Pressable onPress={() => setStatusAttempt((n) => n + 1)} className="mt-3 rounded-full bg-ink px-6 py-3.5" accessibilityRole="button">
+          <Text className="text-[15px] font-semibold text-white">Try again</Text>
+        </Pressable>
+        <Pressable onPress={() => void signOut()} hitSlop={8} accessibilityRole="button">
+          <Text className="text-sm font-semibold text-ink">Log out</Text>
+        </Pressable>
       </View>
     );
   }

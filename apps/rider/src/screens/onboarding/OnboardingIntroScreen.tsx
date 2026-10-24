@@ -17,6 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fetchRiderDraft } from '../../api/onboarding';
+import { AccountExitLinks } from '../../components/AccountExitLinks';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -163,6 +164,7 @@ export function OnboardingIntroScreen({ navigation, route }: Props) {
                 </>
               )}
             </Pressable>
+            <AccountExitLinks onDark />
           </View>
         </LinearGradient>
       </ImageBackground>
