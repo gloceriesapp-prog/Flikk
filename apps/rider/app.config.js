@@ -102,6 +102,8 @@ module.exports = {
       blockedPermissions: [
         'android.permission.RECORD_AUDIO',
         'android.permission.SYSTEM_ALERT_WINDOW',
+        // expo-image-picker adds CAMERA; this app only picks from the gallery.
+        'android.permission.CAMERA',
         'com.google.android.gms.permission.AD_ID',
       ],
       config: {
@@ -122,13 +124,16 @@ module.exports = {
       'expo-video',
       // Documents and profile photos are picked from the gallery only
       // (launchImageLibraryAsync); the app never opens the camera or records
-      // audio. Without these flags the plugin adds CAMERA and RECORD_AUDIO,
-      // which Play then asks us to justify.
+      // audio. iOS still needs a camera purpose string: the picker binary
+      // references the camera APIs, and App Store Connect rejects an upload
+      // whose binary uses an API without its Info.plist string (ITMS-90683).
+      // cameraPermission: false would delete it. Android's CAMERA, which the
+      // plugin adds for a string, is blocked in android.blockedPermissions.
       [
         'expo-image-picker',
         {
           photosPermission: 'Gloceries needs access to your photos to upload your ID documents and profile picture.',
-          cameraPermission: false,
+          cameraPermission: 'Gloceries Rider does not use the camera. ID documents and your profile picture are chosen from your photos.',
           microphonePermission: false,
         },
       ],

@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { AccountExitLinks } from '../../components/AccountExitLinks';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useAuthStore } from '../../store/useAuthStore';
 import { OnboardingScaffold } from './components/OnboardingScaffold';
@@ -28,7 +29,12 @@ export function BankDetailsScreen() {
     <OnboardingScaffold
       title="You're approved! One last thing."
       subheading="Add where you'd like to receive your delivery earnings."
-      footer={<PrimaryButton label="Save & finish" onPress={form.submit} loading={form.isSaving} trailingIcon={ArrowRight01Icon} tone="primary" />}
+      footer={
+        <>
+          <PrimaryButton label="Save & finish" onPress={form.submit} loading={form.isSaving} trailingIcon={ArrowRight01Icon} tone="primary" />
+          <AccountExitLinks />
+        </>
+      }
     >
       <PayoutDetailsFields form={form} />
     </OnboardingScaffold>

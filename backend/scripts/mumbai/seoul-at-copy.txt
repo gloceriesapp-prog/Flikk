@@ -15,7 +15,7 @@ bucket:store-documents|f|8
 bucket:store-images|t|5
 bucket:voice-sound|t|1
 bucket:website-images|t|7
-ops.applied_migrations|141|3274ab4a071e0427ddd451b140ee4cba
+ops.applied_migrations|142|2c15202efd2fe39c8f49ca78a2602d8b
 policies|61|e067a635289c700e7cdd6304c7fa9b8c
 privileges|2384|4d9f097d49266099ac101ca60295f5c7
 public.addresses|7|a3acd7dac9306290331c8ad3465e58b9
@@ -81,7 +81,7 @@ public.rider_earnings|0|empty
 public.rider_onboarding_drafts|0|empty
 public.rider_payouts|0|empty
 public.rider_profile_change_requests|0|empty
-public.riders|2|f5dbb4fdcb726da356a4ff0e86dfbc0b
+public.riders|2|3d69d0a1ba8dc5b100db3caa9f8e491a
 public.scheduled_work|4|019b6fbda85678c4fb765f02eb082aac
 public.seasonal_banner|1|dd945c2c63ceceb44b19eb2c8f390d5a
 public.seasonal_tiles|0|empty
@@ -96,7 +96,7 @@ public.support_ticket_requests|0|empty
 public.support_tickets|0|empty
 public.trip_refunds|0|empty
 public.trips|0|empty
-public.users|9|59f48d4dc368a4d354c1cbaae0fc92ff
+public.users|9|2578527e6f191b6597e8b130e79953dc
 public.wishlist_items|0|empty
 public.zones|1|f3ca0f29491b7443f75ecca0549a7a0a
 storage.buckets|15|dbb04cc3b4daa0e53e154dcb0df70120
