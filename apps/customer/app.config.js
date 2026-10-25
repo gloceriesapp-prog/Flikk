@@ -60,6 +60,9 @@ module.exports = {
         // Keep native-stack statusBar options unset to avoid competing owners.
         UIViewControllerBasedStatusBarAppearance: false,
         NSLocationWhenInUseUsageDescription: 'Gloceries uses your location to find stores near you and set your delivery address.',
+        // expo-image links Photos APIs even when displaying only remote images.
+        // Keep this in Expo config so native regeneration preserves it.
+        NSPhotoLibraryUsageDescription: 'Gloceries uses photo-library access to display photos you choose from your device.',
         // Installed-app discovery plus Razorpay's documented iOS UPI schemes.
         // The native checkout owns secure app hand-off.
         LSApplicationQueriesSchemes: ['upi', 'tez', 'phonepe', 'paytmmp', 'bhim', 'credpay', 'amazonpay', 'whatsapp',

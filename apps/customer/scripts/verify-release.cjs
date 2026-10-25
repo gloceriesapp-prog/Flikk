@@ -19,6 +19,7 @@ if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
 try {
   const { expo } = require('../app.config.js');
   const manifest = require('../package.json');
+  if (!expo.ios?.infoPlist?.NSPhotoLibraryUsageDescription?.trim()) failures.push('Missing NSPhotoLibraryUsageDescription (Apple ITMS-90683).');
   if (manifest.version !== expo.version) failures.push('package.json and app.config.js versions must match.');
   if (expo.runtimeVersion?.policy !== 'appVersion') failures.push('Native releases require the appVersion update-runtime policy.');
   if (!expo.plugins?.includes('./plugins/withAndroidReleaseQuality.cjs')) failures.push('Android release optimization plugin is missing.');
