@@ -1,23 +1,30 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 
+// ponytail: dismiss lasts for the page view only; persist to localStorage if visitors complain it comes back.
 export default function AnnouncementBanner() {
+  const [open, setOpen] = useState(true);
+  if (!open) return null;
+
   return (
-    <div className="w-full bg-gradient-to-r from-[#0052FF] via-[#1D4ED8] to-[#4F46E5] text-white py-2 px-4 shadow-sm relative z-50">
-      <div className="max-w-[980px] mx-auto flex items-center justify-center gap-2 text-xs sm:text-sm font-medium text-center tracking-tight">
-        <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold  tracking-wider text-amber-300 shrink-0">
-          🎉 We&apos;re Live
-        </span>
-        {/* Gloceries is now delivering everyday groceries in Mangalore! */}
-        <span>Gloceries is now delivering groceries across every corner of Mangalore.</span>
-        <span className="hidden md:inline-block text-white/80 font-normal">
-          •
-        </span>
-        <span className="hidden md:inline-block font-bold text-blue-100 bg-white/10 px-2.5 py-0.5 rounded-full text-xs shrink-0">
-          Free delivery on your first order
-        </span>
+    <div className="relative bg-[#E8F0FF] text-[#0B2A6B]">
+      <div className="mx-auto flex h-11 max-w-[1440px] items-center justify-center px-12 text-[14px] font-medium sm:text-[16px]">
+        {/* One line everywhere; truncates on narrow screens. */}
+        <p className="truncate">
+          Discover everything you love with a shopping experience that brings convenience, freshness, and delight to your everyday.
+        </p>
       </div>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        aria-label="Dismiss announcement"
+        className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[#0B2A6B]/70 transition-colors hover:bg-white/60 hover:text-[#0B2A6B] sm:right-5"
+      >
+        <HugeiconsIcon icon={Cancel01Icon} className="h-4 w-4" />
+      </button>
     </div>
   );
 }

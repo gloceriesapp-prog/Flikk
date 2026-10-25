@@ -34,6 +34,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "cdnfpaolzkpqetmmpyzh.supabase.co",
       },
+      {
+        protocol: "https",
+        hostname: "images.gloceries.com",
+      },
     ],
   },
 };
