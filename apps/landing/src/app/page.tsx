@@ -1,6 +1,9 @@
 import Navbar from "@/components/navbar/Navbar";
-import ExperienceBanner from "@/components/experience/ExperienceBanner";
+import GloceriesHero from "@/components/hero/GloceriesHero";
+import BrandShowcase from "@/components/brands/BrandShowcase";
 import NearbyStores from "@/components/stores/NearbyStores";
+import LocalPicks from "@/components/local/LocalPicks";
+import AppDownloadBanner from "@/components/download/AppDownloadBanner";
 import SubcategoriesGrid from "@/components/subcategories/SubcategoriesGrid";
 import ProductCarousel from "@/components/products/ProductCarousel";
 import AreaStrip from "@/components/location/AreaStrip";
@@ -35,10 +38,13 @@ export default async function Home({
       <JsonLd data={mobileAppSchema()} />
       <main>
         {activeArea && <AreaStrip area={activeArea.area} />}
-        <ExperienceBanner />
-        <NearbyStores />
+        <GloceriesHero />
         <SubcategoriesGrid />
         <ProductCarousel products={products} />
+        <BrandShowcase />
+        <LocalPicks products={[...products.slice(16), ...products.slice(0, 16)].slice(0, 10)} />
+        <NearbyStores />
+        <AppDownloadBanner />
       </main>
       <Footer />
     </div>

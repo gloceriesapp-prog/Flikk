@@ -45,7 +45,7 @@ const NEARBY_STORES: StoreItem[] = [
 export default function NearbyStores() {
   return (
     <section className="w-full bg-white pt-8 pb-14 sm:pb-16">
-      <div className="max-w-[1280px] mx-auto px-6 flex flex-col gap-6">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 flex flex-col gap-6">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-xl sm:text-[30px] font-semibold text-[#0F172A] tracking-tight">
             Shop on stores you love
