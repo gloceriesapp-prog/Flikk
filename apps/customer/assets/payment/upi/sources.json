@@ -1,0 +1,58 @@
+[
+  {
+    "app": "gpay",
+    "bundleId": "com.google.paisa",
+    "publisher": "Google",
+    "source": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/b6/52/33/b65233f3-2e8f-d937-76fe-1ef8e131c3ea/GPayAppIcon-0-0-1x_U007ephone-0-0-0-1-0-0-0-85-220.png/512x512bb.jpg",
+    "lookup": "https://itunes.apple.com/lookup?country=in&bundleId=com.google.paisa",
+    "sha256": "966065582daad9b06e2cb1b364566406620643220b7f176daf13326c65b5e546"
+  },
+  {
+    "app": "phonepe",
+    "bundleId": "com.phonepe.PhonePeApp",
+    "publisher": "PHONEPE PRIVATE LIMITED",
+    "source": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/41/9b/ae/419bae30-2847-4387-58dd-7fc1fabf58fb/AppIcon-0-0-1x_U007emarketing-0-6-0-85-220.png/512x512bb.jpg",
+    "lookup": "https://itunes.apple.com/lookup?country=in&bundleId=com.phonepe.PhonePeApp",
+    "sha256": "c4145f343d73b31baaa0364b8b33c127122c03dc8067892b60ff813d95eaabe2"
+  },
+  {
+    "app": "paytm",
+    "bundleId": "com.one97.paytm",
+    "publisher": "Paytm Mobile Solutions",
+    "source": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/3a/42/d7/3a42d722-cdbb-ba50-d09f-ee68f77e36ec/AppIcon-0-0-1x_U007ephone-0-1-0-85-220.png/512x512bb.jpg",
+    "lookup": "https://itunes.apple.com/lookup?country=in&bundleId=com.one97.paytm",
+    "sha256": "08c33b7f87e83c3bdc3cab3aa039dc2bfb29284357fe8f49ca909a4a5be5089e"
+  },
+  {
+    "app": "bhim",
+    "bundleId": "in.org.npci.ios.upiapp",
+    "publisher": "National Payments Corporation of India (NPCI)",
+    "source": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/db/d4/7b/dbd47b12-94b4-075e-572c-94f508107493/AppIcon-0-0-1x_U007emarketing-0-11-0-85-220.png/512x512bb.jpg",
+    "lookup": "https://itunes.apple.com/lookup?country=in&bundleId=in.org.npci.ios.upiapp",
+    "sha256": "4f580364224c9b55c6481e05f2fc194593585f51158fb96a73b0d025c593a262"
+  },
+  {
+    "app": "cred",
+    "bundleId": "com.dreamplug.cred",
+    "publisher": "Dreamplug",
+    "source": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/13/c5/cf/13c5cf76-2353-36a7-6621-9612bf8f7ee3/AppIcon-0-0-1x_U007emarketing-0-11-0-sRGB-85-220.png/512x512bb.jpg",
+    "lookup": "https://itunes.apple.com/lookup?country=in&bundleId=com.dreamplug.cred",
+    "sha256": "b925cabc56ec1252613435af9bed1aac95b7d6e72a471d4dffdf92453778cc94"
+  },
+  {
+    "app": "amazonpay",
+    "bundleId": "com.amazon.AmazonIN",
+    "publisher": "AMZN Mobile LLC",
+    "source": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/e1/4b/c0/e14bc0ea-a09b-29e0-4623-889b1f32f32e/AppIcon-0-0-1x_U007epad-0-1-0-0-85-220.png/512x512bb.jpg",
+    "lookup": "https://itunes.apple.com/lookup?country=in&bundleId=com.amazon.AmazonIN",
+    "sha256": "282339fd7bab56c5004a97f288bb7054270a3139273b1a0ae681865d1a519821"
+  },
+  {
+    "app": "whatsapp",
+    "bundleId": "net.whatsapp.WhatsApp",
+    "publisher": "WhatsApp Inc.",
+    "source": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/78/a1/10/78a11046-7937-eaf8-24b6-96ee9a30d479/AppIcon-0-0-1x_U007epad-0-0-0-1-0-0-sRGB-0-85-220.png/512x512bb.jpg",
+    "lookup": "https://itunes.apple.com/lookup?country=in&bundleId=net.whatsapp.WhatsApp",
+    "sha256": "3fe86b1ea5754d92339be405d6100bc6f93f130172c1ced37b65f21f6e8f80b8"
+  }
+]
