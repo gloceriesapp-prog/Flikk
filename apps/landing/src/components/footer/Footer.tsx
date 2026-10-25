@@ -2,17 +2,30 @@ import Image from "next/image";
 import { AREAS } from "@/lib/seo/areas";
 import { POLICIES, POLICY_ORDER, policyHref } from "@/lib/legal/policies";
 import { COMPANY as LEGAL_ENTITY } from "@/lib/legal/company";
+import { APP_DOWNLOAD_HREF } from "@/lib/links";
 import { FooterAppBadges } from "./FooterAppBadges";
 import { FooterSocialLinks } from "./FooterSocialLinks";
 
 type FooterLink = { label: string; href: string };
 
-const COMPANY: FooterLink[] = [
+// Each link lives in exactly one column: browsing → Categories, policies → Legal,
+// people/company → Support & Services.
+const CATEGORIES: FooterLink[] = [
+  "Fruits & Vegetables",
+  "Milk, Bread & Eggs",
+  "Atta, Rice & Dals",
+  "Snacks & Munchies",
+  "Cold Drinks & Juices",
+  "Personal Care",
+  "Cleaning Essentials",
+].map((label) => ({ label, href: APP_DOWNLOAD_HREF }));
+const SUPPORT: FooterLink[] = [
   { label: "About Gloceries", href: "/about" },
+  { label: "Contact Us", href: policyHref("contact") },
   { label: "Partner with us", href: "/partner" },
   { label: "Become a rider", href: "/partner#rider" },
 ];
-const LEGAL: FooterLink[] = POLICY_ORDER.map((slug) => ({
+const LEGAL: FooterLink[] = POLICY_ORDER.filter((slug) => slug !== "contact").map((slug) => ({
   label: POLICIES[slug].label,
   href: policyHref(slug),
 }));
@@ -23,7 +36,7 @@ function LinkColumn({ title, items }: { title: string; items: FooterLink[] }) {
     <nav aria-label={title}>
       <h3 className="mb-4 text-[16px] font-semibold tracking-tight text-[#192334]">{title}</h3>
       <ul className="space-y-2 text-[15px] leading-6">
-        {items.map((item) => <li key={item.href}><a href={item.href} className={FOOTER_LINK_CLASS}>{item.label}</a></li>)}
+        {items.map((item) => <li key={item.label}><a href={item.href} className={FOOTER_LINK_CLASS}>{item.label}</a></li>)}
       </ul>
     </nav>
   );
@@ -34,7 +47,7 @@ export default function Footer() {
     <footer className="w-full bg-[#F3F5F9] text-[#192334]">
       <div className="mx-auto max-w-[1280px] px-6 pb-6 pt-12 sm:pt-14 lg:pt-16">
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4 lg:gap-x-14">
-          <LinkColumn title="About Gloceries" items={COMPANY} />
+          <LinkColumn title="Categories" items={CATEGORIES} />
           <LinkColumn title="Legal" items={LEGAL} />
 
           {/* Keep every live and upcoming delivery route crawlable. */}
@@ -53,11 +66,7 @@ export default function Footer() {
           </nav>
 
           <div>
-            <LinkColumn title="Support & Services" items={[
-              { label: "Contact Us", href: "/contact" },
-              { label: "Partner with us", href: "/partner" },
-              { label: "Cancellation & Refunds", href: "/refund-policy" },
-            ]} />
+            <LinkColumn title="Support & Services" items={SUPPORT} />
             <div className="mt-9">
               <h3 className="mb-3 text-[16px] font-semibold tracking-tight">Region / Country</h3>
               <div className="inline-flex min-h-10 items-center gap-2.5 rounded-md bg-white px-3 py-2 text-[14px] text-[#253044]">
