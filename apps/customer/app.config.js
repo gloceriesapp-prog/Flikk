@@ -14,14 +14,7 @@ if (developmentApi || process.env.EAS_BUILD === 'true') {
   validateApiUrl(process.env.EXPO_PUBLIC_API_URL, developmentApi);
 }
 
-// Dynamic config (not app.json) so the Google Maps keys come from env vars,
-// never hardcoded into a file that gets committed. Expo CLI auto-loads
-// .env/.env.local into process.env before evaluating this file (no dotenv
-// dependency needed) — see .env.example for both var names. iOS needs no
-// key to run at all (react-native-maps falls back to Apple Maps there) —
-// IOS_GOOGLE_MAPS_API_KEY is optional; once it's set, a fresh native build
-// (this is native config, not OTA-able) switches iOS to real Google Maps.
-
+// Native SDK keys are platform-specific; server keys never enter the app.
 const { androidGoogleMapsApiKey, iosGoogleMapsApiKey } = resolveNativeMapKeys(process.env);
 
 // EAS project @nishal777/customer. Not a secret: it ties builds, OTA updates
@@ -48,7 +41,8 @@ module.exports = {
     runtimeVersion: { policy: 'appVersion' },
     updates: {
       url: `https://u.expo.dev/${easProjectId}`, fallbackToCacheTimeout: 0,
-      ...(process.env.CUSTOMER_DIRECT_ANDROID_RELEASE === 'true' ? { requestHeaders: { 'expo-channel-name': 'production' } } : {}),
+      ...(process.env.CUSTOMER_DIRECT_ANDROID_RELEASE === 'true' || process.env.CUSTOMER_DIRECT_IOS_RELEASE === 'true'
+        ? { requestHeaders: { 'expo-channel-name': 'production' } } : {}),
     },
     orientation: 'portrait',
     // Brand placeholders (lime + Gilroy "g", generated) — replace with designer assets before store listing.
@@ -57,6 +51,10 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.gloceries.customer',
+      ...(process.env.CUSTOMER_DIRECT_IOS_RELEASE === 'true'
+        ? { buildNumber: require('./scripts/ios-release-config.cjs').iosBuildNumber(process.env) } : {}),
+      // Pin the intended team on developer machines/CI with multiple certificates.
+      ...(process.env.APPLE_TEAM_ID ? { appleTeamId: process.env.APPLE_TEAM_ID } : {}),
       infoPlist: {
         // expo-status-bar uses React Native's application-level controller.
         // Keep native-stack statusBar options unset to avoid competing owners.
@@ -68,12 +66,6 @@ module.exports = {
           'navipay', 'mobikwik', 'myairtel', 'popclubapp', 'super', 'kiwi', 'simplypayupi'],
         ITSAppUsesNonExemptEncryption: false,
       },
-      // Undefined (key omitted from .env.local) is a valid, supported state
-      // — Expo's own config schema just skips Google Maps setup on iOS
-      // when this is absent, same as Android would if GOOGLE_MAPS_API_KEY
-      // were unset.
-      // Spread, not `config: undefined`: an own key holding undefined crashes
-      // Expo's iOS Info.plist mod ('usesNonExemptEncryption' in undefined).
       ...(iosGoogleMapsApiKey ? { config: { googleMapsApiKey: iosGoogleMapsApiKey } } : {}),
     },
     android: {
@@ -107,6 +99,11 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     plugins: [
+      ['expo-build-properties', { ios: { enableSceneSupport: true } }],
+      ['react-native-maps', {
+        ...(androidGoogleMapsApiKey ? { androidGoogleMapsApiKey } : {}),
+        ...(iosGoogleMapsApiKey ? { iosGoogleMapsApiKey } : {}),
+      }],
       './plugins/withAndroidReleaseQuality.cjs',
       ['@sentry/react-native/expo', {
         ...(process.env.SENTRY_ORG ? { organization: process.env.SENTRY_ORG } : {}),
@@ -139,12 +136,7 @@ module.exports = {
       eas: {
         projectId: easProjectId,
       },
-      // A boolean, never the key itself — LocationSearchScreen.tsx reads
-      // this (via expo-constants) to decide whether iOS gets real Google
-      // Maps + the same grayscale style Android already uses, or falls
-      // back to Apple Maps' own muted style. Flips automatically the next
-      // time this key is set + a fresh native build ships — no code change
-      // needed in that file when the real key finally exists.
+      // Native Google SDK availability, never the key itself.
       hasIosGoogleMaps: Boolean(iosGoogleMapsApiKey),
     },
     owner: 'nishal777',

@@ -19,7 +19,7 @@
 // the header background; catalogue sections follow on their own surfaces.
 
 import { memo, useEffect, useMemo, useState } from 'react';
-import { InteractionManager, View } from 'react-native';
+import { View } from 'react-native';
 import { CategorySections } from '../../../components/CategorySections/CategorySections';
 import { BrandFooter } from '../../../components/BrandFooter';
 import { DealsSection } from '../deals/DealsSection';
@@ -276,13 +276,13 @@ export function AllTabSections({ onSelectCategory }: Props) {
     [sections, ctx, copyByKey, loadingByKey, quickCategoriesLeading, shortcutsBackground],
   );
   // First paint mounts only the above-the-fold set; the rest (and their own
-  // queries) mount one idle frame later via runAfterInteractions. The deferred
+  // queries) mount during an idle callback after first paint. The deferred
   // tail sits below the fold at scroll 0, so this cuts first-paint fan-out
   // with no layout jump, blank flash, or change to section order/data.
   const [deferredMounted, setDeferredMounted] = useState(false);
   useEffect(() => {
-    const handle = InteractionManager.runAfterInteractions(() => setDeferredMounted(true));
-    return () => handle.cancel();
+    const handle = requestIdleCallback(() => setDeferredMounted(true), { timeout: 1000 });
+    return () => cancelIdleCallback(handle);
   }, []);
   const visibleChildren = deferredMounted ? children : children.slice(0, ABOVE_FOLD_COUNT);
 

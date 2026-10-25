@@ -297,11 +297,19 @@ it('keeps the most accurate still-fresh native preview during refinement', async
 });
 
 
-it('reuses a fresh native preview for recentering, but expires it after two seconds', () => {
-  service.rememberDeviceFix({ ...position(0, 35).coords, timestamp: Date.now() });
-  expect(service.getRecentDeviceFix()).toMatchObject({ accuracy: 35 });
+it('reuses a precise native fix for recentering, but expires it after two seconds', () => {
+  service.rememberDeviceFix({ ...position(0, 10).coords, timestamp: Date.now() });
+  expect(service.getRecentDeviceFix()).toMatchObject({ accuracy: 10 });
   jest.advanceTimersByTime(2001);
   expect(service.getRecentDeviceFix()).toBeNull();
+});
+
+it('refines a coarse in-memory preview instead of reusing it for recentering', async () => {
+  service.rememberDeviceFix({ ...position(0, 35).coords, timestamp: Date.now() });
+  expect(service.getRecentDeviceFix()).toBeNull();
+  gps.mockResolvedValue(position(0, 8));
+  await expect(service.getDeviceLocationFix()).resolves.toMatchObject({ accuracy: 8 });
+  expect(gps).toHaveBeenCalledWith({ accuracy: require('expo-location').Accuracy.BestForNavigation });
 });
 
 it('does not expose an inaccurate native sample as a current-location preview', () => {

@@ -7,6 +7,7 @@ let mockLiveFix: { latitude: number; longitude: number; accuracy: number; timest
 const mockReverse = jest.fn();
 const mockGeocode = jest.fn();
 const mockGetCamera = jest.fn();
+const mockCoordinateForPoint = jest.fn();
 const mockAnimateCamera = jest.fn();
 const mockSetLocation = jest.fn();
 const mockNavigate = jest.fn();
@@ -41,7 +42,7 @@ jest.mock('react-native-maps', () => {
   const React = require('react');
   const { View } = require('react-native');
   const Map = React.forwardRef((props: any, ref: any) => {
-    React.useImperativeHandle(ref, () => ({ getCamera: mockGetCamera, animateCamera: mockAnimateCamera }));
+    React.useImperativeHandle(ref, () => ({ coordinateForPoint: mockCoordinateForPoint, animateCamera: mockAnimateCamera }));
     const create = Reflect.get(React, 'createElement');
     return create(View, { ...props, testID: 'map' });
   });
@@ -63,6 +64,11 @@ async function render(element: React.ReactElement) {
 async function settleTimers() {
   await act(async () => { jest.advanceTimersByTime(400); });
 }
+async function layoutAddressCard(view: Awaited<ReturnType<typeof render>>, height = 200) {
+  await fireEvent(view.getByTestId('location-address-card'), 'layout', {
+    nativeEvent: { layout: { height, width: 328, x: 16, y: 580 } },
+  });
+}
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
@@ -74,6 +80,7 @@ beforeEach(() => {
   mockAdoptDeviceFix.mockImplementation(fix => { mockLiveFix = fix; return fix; });
   mockGeocode.mockResolvedValue(null);
   mockGetCamera.mockResolvedValue({ center: { latitude: 13.2, longitude: 74.7 } });
+  mockCoordinateForPoint.mockImplementation(async () => (await mockGetCamera()).center);
   mockReverse.mockResolvedValue({ addressLabel: 'Real street, Kaup', shortName: 'Real street', city: 'Kaup', resolved: true });
 });
 afterEach(() => jest.useRealTimers());
@@ -206,6 +213,8 @@ it('keeps the manually selected delivery pin when a later GPS update arrives', a
   const view = await render(screen());
   const map = view.getByTestId('map');
   await fireEvent(map, 'onMapReady');
+  await fireEvent(map, 'onMapLoaded');
+  await layoutAddressCard(view);
   await settleTimers();
   expect(mockAnimateCamera).toHaveBeenCalledTimes(1);
   mockGetCamera.mockResolvedValue({ center: { latitude: 13.3, longitude: 74.8 } });
@@ -266,6 +275,8 @@ it('keeps the native live pin and confirmed coordinates on small GPS refinements
   mockLiveFix = { latitude: 13.2, longitude: 74.7, accuracy: 5, timestamp: Date.now() };
   const view = await render(screen({ fromGps: true }));
   await fireEvent(view.getByTestId('map'), 'onMapReady');
+  await fireEvent(view.getByTestId('map'), 'onMapLoaded');
+  await layoutAddressCard(view);
   await settleTimers();
   mockLiveFix = { ...mockLiveFix, latitude: 13.20001, timestamp: Date.now() };
   await view.rerender(screen({ fromGps: true }));
@@ -281,11 +292,101 @@ it('recenters immediately using a fresh native watch sample', async () => {
   const geo = require('../src/location/geocoding');
   const original = geo.requestLocationPermission;
   geo.requestLocationPermission = async () => true;
-  mockRecentDeviceFix.mockReturnValue({ latitude: 13.2, longitude: 74.7, accuracy: 30, timestamp: Date.now() });
+  mockRecentDeviceFix.mockReturnValue({ latitude: 13.2, longitude: 74.7, accuracy: 10, timestamp: Date.now() });
   try {
     const view = await render(screen());
     await fireEvent.press(view.getByText('Use my current location'));
     expect(mockDeviceFix).not.toHaveBeenCalled();
-    expect(mockAdoptDeviceFix).toHaveBeenCalledWith(expect.objectContaining({ accuracy: 30 }));
+    expect(mockAdoptDeviceFix).toHaveBeenCalledWith(expect.objectContaining({ accuracy: 10 }));
   } finally { geo.requestLocationPermission = original; }
+});
+
+it('waits for rendered tiles and measured card layout before the first GPS camera command', async () => {
+  mockLiveFix = { latitude: 13.2, longitude: 74.7, accuracy: 5, timestamp: Date.now() };
+  const view = await render(screen({ fromGps: true }));
+  const map = view.getByTestId('map');
+  await fireEvent(map, 'onMapReady');
+  await settleTimers();
+  expect(mockAnimateCamera).not.toHaveBeenCalled();
+  await fireEvent(map, 'onMapLoaded');
+  await settleTimers();
+  expect(mockAnimateCamera).not.toHaveBeenCalled();
+  await layoutAddressCard(view);
+  await settleTimers();
+  expect(mockAnimateCamera).toHaveBeenCalledTimes(1);
+  expect(mockAnimateCamera.mock.calls[0][0].center).toEqual({ latitude: 13.2, longitude: 74.7 });
+});
+
+it('recenters an unchanged GPS fix after the address card changes the visible map area', async () => {
+  mockLiveFix = { latitude: 13.2, longitude: 74.7, accuracy: 5, timestamp: Date.now() };
+  const view = await render(screen({ fromGps: true }));
+  const map = view.getByTestId('map');
+  await fireEvent(map, 'onMapReady');
+  await fireEvent(map, 'onMapLoaded');
+  await layoutAddressCard(view);
+  await settleTimers();
+  mockAnimateCamera.mockClear();
+  await layoutAddressCard(view, 260);
+  await settleTimers();
+  expect(mockAnimateCamera).toHaveBeenCalledTimes(1);
+  expect(mockAnimateCamera.mock.calls[0][0].center).toEqual({ latitude: 13.2, longitude: 74.7 });
+});
+
+it('selects the coordinate under the visible pin instead of the provider camera centre', async () => {
+  const pin = { latitude: 13.3001, longitude: 74.8001 };
+  mockCoordinateForPoint.mockResolvedValue(pin);
+  const view = await render(screen({ latitude: 13.2, longitude: 74.7 }));
+  await layoutAddressCard(view);
+  const map = view.getByTestId('map');
+  await fireEvent(map, 'onPanDrag');
+  await fireEvent(map, 'onRegionChangeComplete', { latitude: 13.3, longitude: 74.8 });
+  await settleTimers();
+  expect(mockCoordinateForPoint).toHaveBeenCalledWith({ x: 180, y: 284 });
+  expect(mockReverse).toHaveBeenLastCalledWith(pin);
+  await fireEvent.press(view.getByText('Confirm Location'));
+  expect(mockSetLocation).toHaveBeenCalledWith(expect.objectContaining(pin));
+});
+
+it('blocks confirmation if the native map cannot project the selected pin', async () => {
+  mockCoordinateForPoint.mockRejectedValue(new Error('native view unavailable'));
+  const view = await render(screen({ latitude: 13.2, longitude: 74.7, addressLabel: 'Old address' }));
+  const map = view.getByTestId('map');
+  await fireEvent(map, 'onPanDrag');
+  await fireEvent(map, 'onRegionChangeComplete', { latitude: 13.3, longitude: 74.8 });
+  expect(view.getByText('Couldn’t read this spot. Move the map slightly or use your current location.')).toBeTruthy();
+  await fireEvent.press(view.getByText('Confirm Location'));
+  expect(mockSetLocation).not.toHaveBeenCalled();
+});
+
+it('resets Apple Maps altitude as well as Google Maps zoom when recentering', async () => {
+  const geo = require('../src/location/geocoding');
+  const original = geo.requestLocationPermission;
+  geo.requestLocationPermission = async () => true;
+  try {
+    const view = await render(screen());
+    await fireEvent.press(view.getByText('Use my current location'));
+    expect(mockAnimateCamera).toHaveBeenLastCalledWith(expect.objectContaining({
+      altitude: 300, zoom: 18.5, pitch: 0, heading: 0,
+    }), expect.anything());
+  } finally { geo.requestLocationPermission = original; }
+});
+
+it('supplies an ordered zoom range so Google Maps iOS cannot receive min 14 and default max 0', async () => {
+  const view = await render(screen());
+  const { minZoomLevel, maxZoomLevel } = view.getByTestId('map').props;
+  expect(minZoomLevel).toBe(14);
+  expect(maxZoomLevel).toBe(21);
+  expect(maxZoomLevel).toBeGreaterThan(minZoomLevel);
+});
+
+it('keeps one live halo without overlapping accuracy circles for precise GPS fixes', async () => {
+  mockLiveFix = { latitude: 13.2, longitude: 74.7, accuracy: 5, timestamp: Date.now() };
+  const view = await render(screen({ fromGps: true }));
+  expect(view.queryByTestId('device-location-accuracy')).toBeNull();
+  expect(view.getByTestId('device-location-marker').props.coordinate).toEqual({ latitude: 13.2, longitude: 74.7 });
+  expect(view.getByTestId('device-location-halo')).toBeTruthy();
+  mockLiveFix = null;
+  await view.rerender(screen({ fromGps: true }));
+  expect(view.queryByTestId('device-location-accuracy')).toBeNull();
+  expect(view.queryByTestId('device-location-halo')).toBeNull();
 });

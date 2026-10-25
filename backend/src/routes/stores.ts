@@ -75,7 +75,7 @@ storesRouter.get('/', async (req, res, next) => {
   try {
     if (req.query.lat === undefined && req.query.lng === undefined) return res.json([]);
     const { lat, lng, zoneId } = readCoordinates(req.query);
-    const rows = await nearbyStores(lat, lng, zoneId, 20, null);
+    const rows = await nearbyStores(lat, lng, zoneId, 20, null, true);
     res.json(rows.map(publicStore));
   } catch (err) {
     next(err);
@@ -99,9 +99,9 @@ storesRouter.get('/nearest', async (req, res, next) => {
       ? Math.min(Math.max(0.1, requestedMaxDistanceKm), MAX_ALLOWED_DISTANCE_KM)
       : null;
 
-    const ranked = await nearbyStores(lat, lng, zoneId, limit, maxOverrideKm);
+    const ranked = await nearbyStores(lat, lng, zoneId, limit, maxOverrideKm, true);
 
-    res.json(ranked);
+    res.json(ranked.map(row => ({ ...publicStore(row), distance_km: row.distance_km })));
   } catch (err) {
     next(err);
   }
@@ -117,7 +117,7 @@ storesRouter.get('/serviceability', async (req, res, next) => {
   try {
     const { lat, lng, zoneId } = readCoordinates(req.query);
 
-    const inRange = await nearbyStores(lat, lng, zoneId, 1, null);
+    const inRange = await nearbyStores(lat, lng, zoneId, 1, null, true);
 
     res.json({
       serviceable: inRange.length > 0,

@@ -1,6 +1,10 @@
 // Read-only build gate: never prints credentials or deploys anything.
 const { validateApiUrl } = require('../../../packages/shared/config/api-url.cjs');
 const failures = [];
+if (process.env.CUSTOMER_DIRECT_IOS_RELEASE === 'true') {
+  try { require('./ios-release-config.cjs').verifyIosRelease(process.env); }
+  catch (error) { failures.push(error.message); }
+}
 try { validateApiUrl(process.env.EXPO_PUBLIC_API_URL, false); } catch { failures.push('Configure an HTTPS release API URL.'); }
 for (const name of ['EXPO_PUBLIC_SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN']) {
   if (!process.env[name]?.trim()) failures.push(`Missing ${name}.`);
@@ -18,7 +22,11 @@ try {
   if (manifest.version !== expo.version) failures.push('package.json and app.config.js versions must match.');
   if (expo.runtimeVersion?.policy !== 'appVersion') failures.push('Native releases require the appVersion update-runtime policy.');
   if (!expo.plugins?.includes('./plugins/withAndroidReleaseQuality.cjs')) failures.push('Android release optimization plugin is missing.');
-  // iOS can deliberately use Apple Maps. Only Android needs the native key.
+  // Both shipped platforms use Google Maps. Refuse an iOS release that would
+  // silently fall back to Apple Maps because its native SDK key was omitted.
+  if (process.env.EAS_BUILD_PLATFORM === 'ios' && !expo.ios?.config?.googleMapsApiKey) {
+    failures.push('Missing IOS_GOOGLE_MAPS_API_KEY for the iOS Google Maps release.');
+  }
   if (process.env.EAS_BUILD_PLATFORM !== 'ios' && !expo.android?.config?.googleMaps?.apiKey) {
     failures.push('Missing ANDROID_GOOGLE_MAPS_API_KEY (or GOOGLE_MAPS_API_KEY).');
   }
