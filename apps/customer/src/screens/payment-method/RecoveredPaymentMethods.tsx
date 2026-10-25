@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { NetbankingBank, PaymentTarget } from '../../api/payments';
@@ -50,7 +50,7 @@ export function RecoveredPaymentMethods({ target, navigation }: Props) {
       {Number.isFinite(total) ? <RupeePrice amount={total.toFixed(2)} size={28} /> : <Text className="text-ink/60">Checking your bill…</Text>}
       <Text className="text-sm text-ink/60">{recovery.canResumeUpi ? 'Choose your UPI app to finish the existing payment.' : checking ? 'Confirming your last payment before another attempt.' : 'Choose a method to complete this order.'}</Text>
     </View>
-    {paymentAvailabilityLoaded && !directUpiAvailable && allowed.online && <Text className="text-sm text-ink/60">UPI app payments are unavailable in this test environment. Choose another payment method.</Text>}
+    {Platform.OS === 'android' && paymentAvailabilityLoaded && !directUpiAvailable && allowed.online && <Text className="text-sm text-ink/60">UPI app payments are unavailable in this test environment. Choose another payment method.</Text>}
     {!!recovery.error && <Text accessibilityLiveRegion="polite" className="text-sm text-red-600">{recovery.error}</Text>}
     {recovery.query.isError && <Text className="text-sm text-red-600">Couldn’t check your payment. Reconnect and retry.</Text>}
     {recovery.busy && <Text accessibilityLiveRegion="polite" className="text-sm text-ink/60">Opening your payment…</Text>}

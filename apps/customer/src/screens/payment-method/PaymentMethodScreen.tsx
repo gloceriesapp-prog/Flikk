@@ -3,13 +3,14 @@ import type { NetbankingBank } from '../../api/payments';
 import { RecoveredPaymentMethods } from './RecoveredPaymentMethods';
 import { fetchPaymentPreference, selectPaymentPreference } from '../../api/payments';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
+import { usesDirectUpiIntent } from '../../payments/upiIntent';
 import { detectInstalledUpiApps } from '../../payments/installedUpiApps';
 import type { UpiApp } from '../../payments/upiApps';
 import type { AppStackParamList } from '../../navigation/types';
@@ -51,7 +52,7 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
       finally { setSaving(false); }
       return;
     }
-    if (method.startsWith('upi_app:') && paymentAvailabilityLoaded && !directUpiAvailable) {
+    if (usesDirectUpiIntent(method) && paymentAvailabilityLoaded && !directUpiAvailable) {
       setError('UPI app payments are unavailable in this test environment. Choose another payment method.');
       return;
     }
@@ -72,7 +73,7 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
         </View>
       </View>
       <KeyboardAwareScrollView className="flex-1" contentContainerClassName="gap-3 px-5 pb-8 pt-4" bottomOffset={40}>
-        {!fromProfile && paymentAvailabilityLoaded && !directUpiAvailable && allowed.online && <Text className="text-sm text-ink/60">UPI app payments are unavailable in this test environment. Choose another payment method.</Text>}
+        {!fromProfile && Platform.OS === 'android' && paymentAvailabilityLoaded && !directUpiAvailable && allowed.online && <Text className="text-sm text-ink/60">UPI app payments are unavailable in this test environment. Choose another payment method.</Text>}
         {!!error && <Text className="text-red-600">{error}</Text>}
         {saving && <Text className="text-ink/60">Saving your preference…</Text>}
         <View pointerEvents={saving ? "none" : "auto"}>

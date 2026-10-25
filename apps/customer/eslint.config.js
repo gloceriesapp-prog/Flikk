@@ -7,4 +7,4 @@ const expoConfig = require('eslint-config-expo/flat');
 // (partner/rider have no ios/ directory at all). eslint-config-expo/flat
 // doesn't ignore it by default; without this, its minified vendor JS
 // (minified vendor pod JS) fails to even parse.
-module.exports = [{ ignores: ['ios/Pods/**', 'android/**'] }, ...expoConfig];
+module.exports = [{ ignores: ['.expo/**', 'ios/Pods/**', 'android/**'] }, ...expoConfig];

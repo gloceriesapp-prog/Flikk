@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fetchAvailableWallets, fetchNetbankingBanks, type NetbankingBank, abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment, type PaymentTarget } from '../../api/payments';
 import { useAuthStore } from '../../store/useAuthStore';
 import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
-import { prepareUpiIntent } from '../../payments/upiIntent';
+import { prepareUpiIntent, usesDirectUpiIntent } from '../../payments/upiIntent';
 import type { PaymentMethod } from '../../payments/paymentMethod';
 import { beginCheckoutFlow } from '../../features/checkout-recovery/checkoutActivity';
 import type { AppStackParamList } from '../../navigation/types';
@@ -34,7 +34,7 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
     refetchIntervalInBackground: false,
   });
   const state = query.data?.state;
-  const canResumeUpi = state === 'pending' && query.data?.canResumeUpiIntent === true;
+  const canResumeUpi = Platform.OS === 'android' && state === 'pending' && query.data?.canResumeUpiIntent === true;
   // A periodic refresh must not swallow a bank selection or disable the
   // chooser every eight seconds. The initial mount check is still required;
   // act() reconciles again before creating or resuming any payment.
@@ -63,9 +63,9 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
         if (stillOwner()) navigation.replace('PaymentRecovery', { target });
         return;
       }
-      const resumingExistingUpi = action.startsWith('upi_app:') && latest.state === 'pending' && latest.canResumeUpiIntent === true;
+      const resumingExistingUpi = usesDirectUpiIntent(action) && latest.state === 'pending' && latest.canResumeUpiIntent === true;
       if (latest.state !== 'unpaid' && !resumingExistingUpi) throw new Error('Your last payment is still being checked. Wait for its result before paying again.');
-      if (action.startsWith('upi_app:')) {
+      if (usesDirectUpiIntent(action)) {
         const session = await prepareUpiIntent(target, action);
         if (session.amountPaise !== Math.round(Number(latest.record.total) * 100)) {
           throw new Error('The payment amount changed. Check your order before paying.');
