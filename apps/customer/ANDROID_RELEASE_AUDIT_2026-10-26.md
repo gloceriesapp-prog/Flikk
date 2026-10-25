@@ -15,8 +15,9 @@ Target: Gloceries 1.0.4, Android version code 11, package com.gloceries.customer
 ## Remaining release gates
 
 - Run the main-only GitHub release workflow for code 11 / highest 10 after this reviewed source is merged. Download and verify the resulting signed AAB and logs.
+- Play Publishing overview specifically flags marketing illustrations instead of real in-app screenshots. Replace them with genuine Android captures before review; do not dismiss the warning with Proceed anyway. ADB detected no Android phone during this audit.
 - Test the exact signed Android release on a device/Play internal track, including real-account OTP, Maps, process restart, closed-store behaviour and payment handoff. Automated mocks do not establish those outcomes.
 - The earlier sandbox refund job received provider HTTP 400 and still needs diagnosis; do not change its idempotency key/body or mark it refunded without provider acknowledgement. No live charge/refund was created during this audit.
-- Primary images.gloceries.com returned HTTP 403 to a public probe; the allowlisted API image recovery path returns WebP 200 and is implemented in the app. Repair and recheck primary CDN access before claiming it is healthy.
+- The primary images.gloceries.com image renders in Chrome. Command-line image/legal probes returned HTTP 403 while actual browser pages/images loaded, so those probe responses alone do not establish an outage. The allowlisted API image recovery returns WebP 200; verify both paths on the exact Android release.
 - Push delivery, webhook delivery/reconciliation, current Sentry errors, dependency findings and Play listing/data-safety/reviewer access need exact release verification. Supabase advisors still report seven mutable-function-search-path warnings and disabled leaked-password protection; server-only tables without client policies are intentionally deny-by-default, not a reason to open access.
 - No Play review submission, rollout, changed declarations or production order/payment is authorized by this build audit alone.
