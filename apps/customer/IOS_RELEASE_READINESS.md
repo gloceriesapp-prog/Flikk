@@ -22,6 +22,12 @@ The preflight rejects a local/staging API, missing iOS Maps configuration, dupli
 
 Customer discovery includes otherwise eligible closed stores. Their `is_active=false` value is preserved so customers can browse and prepare a cart. Existing checkout eligibility still rejects ordering from closed stores. Suspended stores, geographic restrictions and checkout checks remain enforced. Public discovery responses use an explicit merchant-field allowlist.
 
+## Validation of this branch
+
+On 25 October 2026 the full customer suite passed: 41 suites, 261 tests. The full backend suite passed: 205 suites, 1,284 tests. Customer TypeScript/lint and backend build/lint passed. The local production configuration passed preflight using existing local Maps and Sentry settings, without copying credentials to another service. The public live health and payment-availability endpoints responded successfully.
+
+The native map regression covers an ordered Google Maps zoom range (14 through 21), scene-based startup, camera readiness/layout, pin-coordinate projection, precise recentering and one shared pin artwork. A compatible brace-expansion patch removes a high-severity build-tool advisory; 14 audit entries remain (9 high, 5 moderate, including propagated dependency findings). Forced Expo downgrades are not a safe resolution.
+
 ## Remaining release gates
 
 - Install and test the exact signed Release/TestFlight binary on iPhone; current physical evidence is a development build.
