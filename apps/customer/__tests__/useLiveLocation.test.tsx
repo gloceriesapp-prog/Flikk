@@ -61,10 +61,10 @@ it('can reanchor to a usable device preview and retains its real uncertainty', a
   expect(view.result.current.fix).toMatchObject({ latitude: preview.latitude, accuracy: 35 });
 });
 
-it('does not replace a precise acquired fix with a substantially worse newer watch reading', async () => {
+it.each([12, 24, 45])('does not downgrade an 8 m acquired fix to a newer %s m watch reading', async accuracy => {
   const view = await renderHook(() => useLiveLocation(true));
   const acquired = { ...raw(1, 500), accuracy: 8 };
-  await act(async () => emit({ ...raw(20), accuracy: 45 }));
+  await act(async () => emit({ ...raw(20), accuracy }));
   await act(async () => { view.result.current.adoptDeviceFix(acquired); });
   expect(view.result.current.fix).toMatchObject({ latitude: acquired.latitude, accuracy: 8 });
 });

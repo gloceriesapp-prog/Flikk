@@ -28,7 +28,7 @@ export function useLiveLocation(enabled: boolean) {
     // Do not replace a substantially more precise result just for recency.
     const latest = latestNative.current;
     const accepted = latest && latest.timestamp > raw.timestamp && isUsableDeviceFix(latest)
-      && latest.accuracy <= Math.max((raw.accuracy ?? 0) * 1.5, 25) ? latest : raw;
+      && latest.accuracy <= (raw.accuracy ?? 0) ? latest : raw;
     if (!isUsableDeviceFix(accepted)) throw new Error('A fresh device location is not available.');
     latestNative.current = accepted;
     rememberDeviceFix(accepted);

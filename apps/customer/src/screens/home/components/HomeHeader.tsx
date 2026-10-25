@@ -166,11 +166,11 @@ export function HomeHeader({
           <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }]} />
         ) : (
           <>
-            {/* intensity caps at 100 — stronger blur comes from (1) experimental
+            {/* intensity caps at 100 — stronger blur comes from (1) the native
                 Gaussian method and (2) a second stacked pass re-blurring the
                 already-blurred output for a visibly deeper frost. */}
-            <BlurView intensity={100} tint="light" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
-            <BlurView intensity={100} tint="light" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={100} tint="light" blurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={100} tint="light" blurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
             <GlassView glassEffectStyle="regular" colorScheme="light" style={StyleSheet.absoluteFill} />
           </>
         )}

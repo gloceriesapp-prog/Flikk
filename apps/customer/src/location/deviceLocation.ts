@@ -26,9 +26,9 @@ export function isUsableDeviceFix(fix: RawFix, now = Date.now()): fix is RawFix 
     && fix.accuracy != null && fix.accuracy > 0 && fix.accuracy <= USABLE_LIVE_ACCURACY_M;
 }
 
-// Reuse only an actual, fresh native watch sample for explicit recentering.
+// A coarse live preview must not bypass precision acquisition on recenter.
 export function getRecentDeviceFix(): RawFix | null {
-  return recentFix && isUsableDeviceFix(recentFix) && Date.now() - recentFix.timestamp <= RECENT_FIX_MS
+  return recentFix && isRecentPreciseFix(recentFix)
     ? { ...recentFix } : null;
 }
 
@@ -106,7 +106,7 @@ function acquireDeviceFix(): Promise<RawFix> {
       else subscription = watch;
     }, () => providerFailed('watch'));
 
-    void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }).then(position => {
+    void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation }).then(position => {
       acceptLivePosition(position);
       providerFailed('fresh'); // A single read cannot supply another refinement.
     }, () => providerFailed('fresh'));
