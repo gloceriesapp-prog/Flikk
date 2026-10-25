@@ -38,6 +38,10 @@ function preflight(env = process.env) {
   productionVersionCode(env);
   fingerprint(env.ANDROID_UPLOAD_CERT_SHA256);
   require('../../../packages/shared/config/api-url.cjs').validateApiUrl(env.EXPO_PUBLIC_API_URL, false);
+  assert.equal(new URL(env.EXPO_PUBLIC_API_URL).origin, 'https://api.gloceries.com', 'Use the live Lightsail API for the customer production release.');
+  assert.notEqual(env.EXPO_PUBLIC_API_FOLLOW_METRO_HOST, 'true', 'Disable Metro-host API rewriting for production.');
+  assert.equal(env.SENTRY_ORG, 'gloceries', 'Use the Gloceries Sentry organization.');
+  assert.equal(env.SENTRY_PROJECT, 'customer-app', 'Use the customer-app Sentry project.');
   assert.equal(new URL(env.EXPO_PUBLIC_SENTRY_DSN).protocol, 'https:', 'Sentry DSN must use HTTPS.');
   require('../../../packages/shared/config/google-maps.cjs').resolveNativeMapKeys(env);
   assert.ok(env.CUSTOMER_RELEASE_KEYSTORE_PATH, 'Missing temporary keystore path.');
@@ -107,6 +111,9 @@ app=r.find('application'); assert app is not None
 meta={n.get(a+'name'):n.get(a+'value') for n in app.findall('meta-data')}
 key=meta.get('com.google.android.geo.API_KEY','')
 print(json.dumps({'package':r.get('package'),'versionCode':r.get(a+'versionCode'),'versionName':r.get(a+'versionName'),
+'targetSdk':r.find('uses-sdk').get(a+'targetSdkVersion') if r.find('uses-sdk') is not None else None,
+'cleartext':app.get(a+'usesCleartextTraffic','false'),
+'permissions':[n.get(a+'name') for n in r.findall('uses-permission')],
 'debuggable':app.get(a+'debuggable','false'),'hasMapKey':bool(key and key.startswith('AIza') and len(key)==39),
 'headers':json.loads(meta.get('expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY','{}')),
 'updatesUrl':meta.get('expo.modules.updates.EXPO_UPDATE_URL')}))`;
@@ -118,6 +125,11 @@ function validateManifest(facts, env, version) {
   assert.equal(Number(facts.versionCode), productionVersionCode(env), 'AAB version code is incorrect.');
   assert.equal(facts.versionName, version, 'AAB version name differs from package.json.');
   assert.equal(facts.debuggable, 'false', 'A production AAB must not be debuggable.');
+  assert.ok(Number(facts.targetSdk) >= 36, 'The customer release must target Android API 36 or later.');
+  assert.equal(facts.cleartext, 'false', 'The production app must not allow cleartext traffic.');
+  for (const permission of ['android.permission.ACCESS_BACKGROUND_LOCATION', 'android.permission.READ_CONTACTS', 'android.permission.READ_SMS', 'com.google.android.gms.permission.AD_ID']) {
+    assert.ok(!facts.permissions?.includes(permission), `Unexpected customer permission: ${permission}`);
+  }
   assert.equal(facts.hasMapKey, true, 'Packaged native Maps API key is missing.');
   assert.equal(facts.headers['expo-channel-name'], 'production', 'Production OTA channel header is missing.');
   assert.equal(facts.updatesUrl, 'https://u.expo.dev/a98e9f05-620b-4efb-8624-99d724667e7c', 'Unexpected Expo Updates project.');
@@ -140,6 +152,15 @@ function verifyRelease(bundle, env = process.env) {
   }
   const js = run('unzip', ['-p', bundle, 'base/assets/index.android.bundle'], { encoding: 'buffer' });
   assert.ok(js.includes(Buffer.from(env.EXPO_PUBLIC_API_URL)), 'Packaged JS does not contain the production API address.');
+  for (const local of ['http://127.0.0.1:4000', 'http://192.168.0.162:4000']) {
+    assert.ok(!js.includes(Buffer.from(local)), 'Packaged JavaScript contains a development API address.');
+  }
+  const bundleConfig = JSON.parse(run('java', ['-jar', tool, 'dump', 'config', '--bundle=' + bundle]));
+  assert.equal(bundleConfig.optimizations?.uncompressNativeLibraries?.alignment, 'PAGE_ALIGNMENT_16K', 'The AAB must request 16 KB native-library ZIP alignment.');
+  const native64 = entries.filter(entry => /\/lib\/(arm64-v8a|x86_64)\/[^/]+\.so$/.test(entry));
+  assert.ok(native64.length > 0, 'No 64-bit native libraries were found.');
+  const { verifyElf16Kb } = require('./android-native-alignment.cjs');
+  for (const entry of native64) verifyElf16Kb(run('unzip', ['-p', bundle, entry], { encoding: 'buffer' }), entry);
   run('java', ['-jar', tool, 'validate', '--bundle=' + bundle]);
   const mappingEntry = 'BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map';
   assert.ok(entries.includes(mappingEntry), 'R8 mapping metadata is missing from the AAB.');
@@ -162,6 +183,7 @@ function verifyRelease(bundle, env = process.env) {
     commit: env.GITHUB_SHA || run('git', ['rev-parse', 'HEAD'], { cwd: APP_DIR }).trim(),
     version, versionCode: code, operatorConfirmedHighestPlayVersionCode: Number(env.CUSTOMER_HIGHEST_PLAY_VERSION_CODE),
     package: facts.package, uploadCertificateSha256: cert, sha256, abis,
+    targetSdk: Number(facts.targetSdk), cleartextTrafficAllowed: false, native16KbAlignment: 'passed', native64LibraryCount: native64.length,
     productionApiVerifiedInBundle: true, mapsKeyPresent: facts.hasMapKey,
     otaChannel: facts.headers['expo-channel-name'], optimizerChecks: 'passed',
     submittedToPlay: false, deviceTestingRequired: true,
