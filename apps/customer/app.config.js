@@ -88,7 +88,15 @@ module.exports = {
       // for moving the phone input above the keyboard.
       softwareKeyboardLayoutMode: 'pan',
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
-      blockedPermissions: ['com.google.android.gms.permission.AD_ID'],
+      // AD_ID: no ads. The rest come from the Expo template and nothing in
+      // the app uses them (no overlay, no file or photo access); Play flags
+      // unused sensitive permissions in review.
+      blockedPermissions: [
+        'com.google.android.gms.permission.AD_ID',
+        'android.permission.SYSTEM_ALERT_WINDOW',
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+      ],
       config: {
         googleMaps: {
           apiKey: androidGoogleMapsApiKey,
