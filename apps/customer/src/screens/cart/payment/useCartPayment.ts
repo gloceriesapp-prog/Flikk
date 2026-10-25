@@ -16,7 +16,7 @@ import type { ApiAddress } from '../../../api/addresses';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { fetchAvailableWallets, fetchNetbankingBanks, fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod, fetchPaymentContact } from '../../../api/payments';
 import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
-import { assertDirectUpiConfigured, prepareUpiIntent } from '../../../payments/upiIntent';
+import { assertDirectUpiConfigured, prepareUpiIntent, usesDirectUpiIntent } from '../../../payments/upiIntent';
 import type { UpiApp } from '../../../payments/upiApps';
 import { detectInstalledUpiApps } from '../../../payments/installedUpiApps';
 import { keepsCheckoutAttempt } from './attemptPolicy';
@@ -136,7 +136,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
           throw new Error('This bank is no longer available. Choose another bank in payment methods.');
         }
       }
-      if (paymentMethod.startsWith('upi_app:')) {
+      if (usesDirectUpiIntent(paymentMethod)) {
         await assertDirectUpiConfigured(paymentMethod);
         if (!stillOwner()) return;
         const contact = await fetchPaymentContact();
@@ -251,7 +251,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
 
       const payTarget = isMultiStore ? { tripId: paymentRecord.id } : { orderId: paymentRecord.id };
       const deliveryAddress = selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address';
-      if (paymentMethod.startsWith('upi_app:')) {
+      if (usesDirectUpiIntent(paymentMethod)) {
         const session = await prepareUpiIntent(payTarget, paymentMethod);
         if (!stillOwner()) return;
         if (session.amountPaise !== Math.round(confirmedAmount * 100)) throw new Error('The UPI amount does not match your order.');

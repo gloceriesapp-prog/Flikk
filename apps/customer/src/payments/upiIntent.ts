@@ -5,6 +5,13 @@ import { UPI_APPS } from './upiApps';
 
 interface IntentModule { launchPaymentIntent(uri: string, packageName: string): Promise<void> }
 
+// iOS uses Razorpay's native checkout picker. Only Android supports our
+// package-targeted launcher and resumable server-created intent sessions.
+export function usesDirectUpiIntent(method: PaymentMethod): boolean {
+  return Platform.OS === 'android' && method.startsWith('upi_app:');
+}
+
+
 export const DIRECT_UPI_UNAVAILABLE = 'UPI app payments are unavailable on this server. Choose another payment method or contact support.';
 
 // Recheck at the action boundary, before creating an order or a provider attempt.

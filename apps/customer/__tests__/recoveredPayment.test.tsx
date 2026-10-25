@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react-native';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useRecoveredPayment } from '../src/screens/payment-method/useRecoveredPayment';
 import { abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment } from '../src/api/payments';
 import { prepareUpiIntent } from '../src/payments/upiIntent';
@@ -10,7 +10,7 @@ const mockRecovery = { data: { state: 'unpaid', canResumeUpiIntent: false, recor
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('@tanstack/react-query', () => ({ useQuery: () => mockRecovery }));
 jest.mock('../src/api/payments', () => ({ abandonCheckout: jest.fn(), createPaymentOrder: jest.fn(), recoverPayment: jest.fn(), verifyPayment: jest.fn() }));
-jest.mock('../src/payments/upiIntent', () => ({ prepareUpiIntent: jest.fn() }));
+jest.mock('../src/payments/upiIntent', () => ({ ...jest.requireActual('../src/payments/upiIntent'), prepareUpiIntent: jest.fn() }));
 jest.mock('../src/payments/openRazorpayCheckout', () => ({ openRazorpayCheckout: jest.fn() }));
 jest.mock('../src/store/useAuthStore', () => ({ useAuthStore: Object.assign(
   (selector: (state: unknown) => unknown) => selector({ customerId: 'customer' }),
@@ -18,7 +18,10 @@ jest.mock('../src/store/useAuthStore', () => ({ useAuthStore: Object.assign(
 ) }));
 const target = { orderId: 'same-order' };
 const navigation = { replace: mockReplace } as unknown as Parameters<typeof useRecoveredPayment>[1];
+const originalOS = Platform.OS;
+afterEach(() => Object.defineProperty(Platform, 'OS', { configurable: true, value: originalOS }));
 beforeEach(() => {
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' });
   jest.clearAllMocks(); mockEpoch = 1;
   mockRecovery.isFetchedAfterMount = true; mockRecovery.isFetching = false; mockRecovery.isError = false;
   mockRecovery.data.state = 'unpaid'; mockRecovery.data.canResumeUpiIntent = false;

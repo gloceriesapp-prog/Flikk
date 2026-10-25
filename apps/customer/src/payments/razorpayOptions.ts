@@ -29,6 +29,10 @@ export function razorpayOptions(order: RazorpayOrder, method: PaymentMethod = 'o
     throw new Error('Enter a valid wallet mobile number.');
   }
   return {
+    ...(method.startsWith('upi_app:') ? { config: { display: {
+      blocks: { upi_only: { name: 'Pay with UPI', instruments: [{ method: 'upi' }] } },
+      sequence: ['block.upi_only'], preferences: { show_default_blocks: false },
+    } } } : {}),
     ...(method === 'card' ? { config: { display: {
       blocks: { cards_only: { name: 'Credit or debit card', instruments: [{ method: 'card' }] } },
       sequence: ['block.cards_only'], preferences: { show_default_blocks: false },
