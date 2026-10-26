@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import * as Location from 'expo-location';
 import { apiRequest } from '../src/api/client';
 import { getCurrentCoordinates, requestLocationPermission, reverseGeocode } from '../src/location/geocoding';
@@ -73,4 +74,13 @@ it('retains the native Activity settling delay after a new permission grant', as
   expect(completed).toBe(false);
   await jest.advanceTimersByTimeAsync(1);
   await expect(pending).resolves.toBe(true);
+});
+
+
+it.each([{ android: { accuracy: 'coarse' } }, { ios: { accuracy: 'reduced' } }])('does not present approximate permission as precise GPS: %j', async details => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  jest.mocked(Location.getForegroundPermissionsAsync).mockResolvedValueOnce({ status: 'granted', ...details } as never);
+  await expect(requestLocationPermission()).resolves.toBe(false);
+  expect(alert).toHaveBeenCalledWith('Enable precise location', expect.stringContaining('choose your pin manually'), expect.any(Array));
+  alert.mockRestore();
 });

@@ -84,14 +84,12 @@ BEGIN
  IF (SELECT status FROM support_tickets WHERE id=t)<>'resolved' OR (SELECT actor_role FROM support_messages WHERE id=m)<>'admin' THEN RAISE EXCEPTION 'Admin reply not saved'; END IF;
  m:=reply_support_ticket(t,rider,gen_random_uuid(),'It happened again today.');
  IF (SELECT status FROM support_tickets WHERE id=t)<>'open' OR (SELECT actor_role FROM support_messages WHERE id=m)<>'rider' THEN RAISE EXCEPTION 'Rider follow-up did not reopen'; END IF;
- -- The customer flow is unchanged and separate.
- customer_ticket:=create_customer_ticket(customer,gen_random_uuid(),rider_order,null,'missing_items','One item is missing from my order');
- IF (SELECT requester_role FROM support_tickets WHERE id=customer_ticket)<>'customer' THEN RAISE EXCEPTION 'Customer role wrong'; END IF;
- BEGIN PERFORM create_customer_ticket(customer,gen_random_uuid(),null,null,'missing_items','No order for an item issue'); RAISE EXCEPTION 'Customer order rule lost'; EXCEPTION WHEN check_violation THEN NULL; END;
+ -- Customer chat is retired; partner and rider conversations remain active.
+ BEGIN PERFORM create_customer_ticket(customer,gen_random_uuid(),rider_order,null,'missing_items','Customer chat has been retired'); RAISE EXCEPTION 'Customer chat still enabled'; EXCEPTION WHEN sqlstate 'P0410' THEN NULL; END;
  BEGIN
   INSERT INTO support_tickets(customer_id,requester_role,request_id,category,initial_message) VALUES(customer,'customer',gen_random_uuid(),'payout','Customer with a partner category');
   RAISE EXCEPTION 'Customer took a partner category';
- EXCEPTION WHEN check_violation THEN NULL; END;
+ EXCEPTION WHEN sqlstate 'P0410' THEN NULL; END;
  BEGIN
   INSERT INTO support_tickets(customer_id,requester_role,request_id,trip_id,category,initial_message) VALUES(rider,'rider',gen_random_uuid(),'00000000-0000-4000-8000-000000011811','order_issue','Rider ticket linked to a trip');
   RAISE EXCEPTION 'Staff ticket linked a trip';
@@ -113,7 +111,7 @@ DO $$ DECLARE b record; o jsonb; a jsonb; top jsonb; commission numeric; fee num
  IF EXISTS(SELECT 1 FROM admin_revenue_trend() t WHERE extract(isodow FROM t.week_start)<>1) THEN RAISE EXCEPTION 'Weeks must start on Monday'; END IF;
  IF (a->>'stuckOrders')::int-(b.attention->>'stuckOrders')::int<>1 THEN RAISE EXCEPTION 'Stuck orders wrong: %', a; END IF;
  IF (a->>'refundsNeedingAction')::int-(b.attention->>'refundsNeedingAction')::int<>1 THEN RAISE EXCEPTION 'Refunds wrong: %', a; END IF;
- IF (a->>'openSupportTickets')::int-(b.attention->>'openSupportTickets')::int<>4 THEN RAISE EXCEPTION 'Open tickets wrong: %', a; END IF;
+ IF (a->>'openSupportTickets')::int-(b.attention->>'openSupportTickets')::int<>3 THEN RAISE EXCEPTION 'Open tickets wrong: %', a; END IF;
  IF (admin_attention_counts(now(),120)->>'stuckOrders')::int<>(b.attention->>'stuckOrders')::int THEN RAISE EXCEPTION 'Stuck threshold ignored'; END IF;
 END $$;
 ROLLBACK;

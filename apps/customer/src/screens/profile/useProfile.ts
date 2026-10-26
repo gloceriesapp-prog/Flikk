@@ -11,10 +11,6 @@ import { ApiError, apiRequest } from '../../api/client';
 export interface Profile {
   phone: string;
   name: string | null;
-  // YYYY-MM-DD, or null when the customer hasn't added one yet
-  // (users.birthday, migration 004) — ProfileScreen's own "Add your
-  // birthday" banner only shows while this is null.
-  birthday: string | null;
   isApproved: boolean;
   hasStore: boolean;
 }
@@ -22,7 +18,6 @@ export interface Profile {
 interface ApiMe {
   phone: string;
   name: string | null;
-  birthday: string | null;
   is_approved: boolean;
   has_store: boolean;
 }
@@ -36,7 +31,6 @@ export function useProfile() {
       const profile: Profile = {
         phone: data.phone,
         name: data.name,
-        birthday: data.birthday,
         isApproved: data.is_approved,
         hasStore: data.has_store,
       };
@@ -45,7 +39,7 @@ export function useProfile() {
   });
 }
 
-// Saves AccountDetailsCard's Name/Date-of-birth row edits — PATCH
+// Saves AccountDetailsCard's name edits — PATCH
 // /auth/me (backend). Phone is never sent here: it's the verified OTP
 // identity, not an editable field. Invalidates the same query key
 // useProfile reads so the card shows the new value immediately, without a
@@ -54,8 +48,8 @@ export function useUpdateProfileField() {
   const customerId = useAuthStore(state => state.customerId);
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (patch: { name?: string; birthday?: string }) =>
-      apiRequest<{ name: string | null; birthday: string | null }>('/auth/me', { method: 'PATCH', body: patch }),
+    mutationFn: (patch: { name: string }) =>
+      apiRequest<{ name: string | null }>('/auth/me', { method: 'PATCH', body: patch }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile', 'me', customerId] }),
     // Every caller fires-and-forgets; surface failures here so none is silent.
     onError: (err) => {
