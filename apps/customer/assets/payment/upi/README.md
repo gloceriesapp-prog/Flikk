@@ -1,0 +1,1 @@
+Official app artwork, retrieved from Apple App Store metadata on 25 October 2026. Source URLs, publisher identities and checksums are recorded in sources.json. These identify payment applications; trademarks belong to their respective owners. Bundle locally so offline iOS discovery does not fall back to letter placeholders. Android may still prefer the installed app icon.

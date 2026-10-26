@@ -88,6 +88,7 @@ jobs:
       ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
       EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+      EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false'
       EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
       SENTRY_ORG: ${{ vars.SENTRY_ORG }}
       SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
@@ -151,7 +152,16 @@ jobs:
             if (!response.ok) throw new Error('Production backend health check failed.');
             const body = await response.json();
             if (body.ok !== true || body.service !== 'gloceries-backend') throw new Error('Unexpected production backend response.');
-            console.log('Production Gloceries backend is reachable.');
+            const api = process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, '');
+            const configResponse = await fetch(api + '/app-config?app=customer', { signal: AbortSignal.timeout(30000) });
+            if (!configResponse.ok) throw new Error('Production database-backed app settings are unavailable.');
+            const config = await configResponse.json();
+            if (!config.release || !config.legal?.privacyUrl) throw new Error('Production app settings are incomplete.');
+            const paymentResponse = await fetch(api + '/payments/availability', { signal: AbortSignal.timeout(30000) });
+            if (!paymentResponse.ok) throw new Error('Production payment availability is unavailable.');
+            const payments = await paymentResponse.json();
+            if (!payments.online && !payments.cod) throw new Error('No production checkout method is enabled.');
+            console.log('Production API, database-backed app settings and checkout availability verified.');
           })().catch(() => { console.error('Could not verify production backend health.'); process.exitCode = 1; });
           NODE
       - name: Generate production Android project and configure signing
@@ -164,7 +174,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$CUSTOMER_RELEASE_ARTIFACT_DIR"
-          ./android/gradlew -p android :app:bundleRelease --no-daemon --max-workers=2 \
+          ./android/gradlew -p android :app:verifyCustomerR8Version :app:bundleRelease --stacktrace --no-daemon --max-workers=2 \
             '-Dorg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m' --console=plain 2>&1 \
             | node scripts/redact-release-log.cjs \
             | tee "$CUSTOMER_RELEASE_ARTIFACT_DIR/build.log"

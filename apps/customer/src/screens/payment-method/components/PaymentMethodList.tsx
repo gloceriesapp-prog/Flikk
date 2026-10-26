@@ -1,6 +1,7 @@
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { BankIcon, CreditCardIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { WalletOptions } from './WalletOptions';
+import { UpiAppLogo } from '../../../components/payments/UpiAppLogo';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage } from '../../../components/AppImage';
 import { colors, minTouchTarget } from '../../../theme/tokens';
@@ -20,17 +21,6 @@ function AppBadge({ icon }: { icon: typeof CreditCardIcon }) {
   return (
     <View className="h-12 w-12 items-center justify-center border border-gray-100">
       <AppIcon icon={icon} size={26} color={colors.ink} />
-    </View>
-  );
-}
-
-function UpiAppBadge({ app }: { app: UpiApp }) {
-  if (app.iconUri) {
-    return <Image source={{ uri: app.iconUri }} className="h-12 w-12" />;
-  }
-  return (
-    <View className="h-12 w-12 items-center justify-center" style={{ backgroundColor: app.color }}>
-      <Text className="text-lg font-extrabold text-white">{app.name.charAt(0)}</Text>
     </View>
   );
 }
@@ -91,7 +81,7 @@ export function PaymentMethodList({ method, onSelect, onWalletSelect, upiApps: d
                   <Pressable onPress={() => onSelect(`upi_app:${app.id}`)} accessibilityRole="button"
                     accessibilityLabel={`Pay with ${app.name}`} accessibilityState={{ selected: isSelected }}
                     className="flex-row items-center gap-3" style={{ minHeight: minTouchTarget }}>
-                    <UpiAppBadge app={app} />
+                    <UpiAppLogo app={app} />
                     <View className="flex-1 flex-row items-center gap-2">
                       <Text className="text-[15px] font-medium text-ink">{app.name}</Text>
                       

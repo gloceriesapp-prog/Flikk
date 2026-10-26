@@ -60,6 +60,9 @@ module.exports = {
         // Keep native-stack statusBar options unset to avoid competing owners.
         UIViewControllerBasedStatusBarAppearance: false,
         NSLocationWhenInUseUsageDescription: 'Gloceries uses your location to find stores near you and set your delivery address.',
+        // expo-image links Photos APIs even when displaying only remote images.
+        // Keep this in Expo config so native regeneration preserves it.
+        NSPhotoLibraryUsageDescription: 'Gloceries uses photo-library access to display photos you choose from your device.',
         // Installed-app discovery plus Razorpay's documented iOS UPI schemes.
         // The native checkout owns secure app hand-off.
         LSApplicationQueriesSchemes: ['upi', 'tez', 'phonepe', 'paytmmp', 'bhim', 'credpay', 'amazonpay', 'whatsapp',
@@ -88,14 +91,16 @@ module.exports = {
       // for moving the phone input above the keyboard.
       softwareKeyboardLayoutMode: 'pan',
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
-      // AD_ID: no ads. The rest come from the Expo template and nothing in
-      // the app uses them (no overlay, no file or photo access); Play flags
-      // unused sensitive permissions in review.
       blockedPermissions: [
         'com.google.android.gms.permission.AD_ID',
-        'android.permission.SYSTEM_ALERT_WINDOW',
-        'android.permission.READ_EXTERNAL_STORAGE',
-        'android.permission.WRITE_EXTERNAL_STORAGE',
+        // Dependency templates include developer overlays and legacy shared
+        // storage access. Customer features use app-owned files and remote
+        // images; these permissions have no purpose in a production build.
+        ...(!developmentApi ? [
+          'android.permission.SYSTEM_ALERT_WINDOW',
+          'android.permission.READ_EXTERNAL_STORAGE',
+          'android.permission.WRITE_EXTERNAL_STORAGE',
+        ] : []),
       ],
       config: {
         googleMaps: {

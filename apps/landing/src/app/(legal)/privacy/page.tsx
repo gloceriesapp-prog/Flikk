@@ -83,7 +83,7 @@ export default function PrivacyPage() {
             "The partner store fulfilling your order receives your order items and the name associated with the order.",
             "The rider delivering your order receives your delivery address, map pin, recipient name and phone number for that delivery.",
             "Customers see the assigned rider's name, phone number and delivery count while an order is in progress.",
-            "Service providers that run the platform for us under contract: cloud database and authentication hosting, image storage and delivery, payment processing (Cashfree Payments, an RBI-authorised payment aggregator), SMS and push-notification delivery, maps and address lookup, and crash reporting.",
+            "Service providers that run the platform for us under contract: cloud database and authentication hosting, image storage and delivery, payment processing (Razorpay), SMS and push-notification delivery, maps and address lookup, and crash reporting.",
             "Government authorities or law enforcement when required by law or a valid legal request.",
           ]}
         />
@@ -115,6 +115,7 @@ export default function PrivacyPage() {
             "Turn off location access or notifications in your device settings. Some features, such as finding stores near you, need location to work.",
             "Withdraw consent for promotional messages at any time.",
             <>Request deletion of your account in the app (customers: Profile → Account Privacy; riders: Profile → Delete account) or as described on our <a className="underline" href={policyHref("delete-account")}>Delete account</a> page. Deletion requests are reviewed and completed, except for records we must keep by law.</>,
+            <>Request deletion of specific personal data while keeping your account through our <a className="underline" href={policyHref("delete-data")}>data deletion support process</a>. Records required for legal obligations are retained as described above.</>,
             "Raise a grievance with our Grievance Officer (below).",
           ]}
         />

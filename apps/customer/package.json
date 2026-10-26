@@ -74,6 +74,7 @@
     "typecheck": "tsc --noEmit",
     "start:dev-client": "expo start --dev-client --lan",
     "verify:release": "node scripts/verify-release.cjs",
+    "verify:ios-privacy": "node scripts/verify-ios-privacy.cjs",
     "eas-build-post-install": "node scripts/eas-build-post-install.cjs",
     "test": "jest"
   },

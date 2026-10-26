@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
+import { UpiAppLogo } from '../../../components/payments/UpiAppLogo';
 import { AppIcon } from '../../../components/AppIcon';
 import type { UpiApp } from '../../../payments/upiApps';
 import { paymentMethodLabel, type PaymentMethod } from '../../../payments/paymentMethod';
@@ -21,6 +22,7 @@ interface Props {
 export function CartPaymentBar({ method, apps, total, busy, disabled, storeClosed = false, bankName, onChoose, onPlaceOrder }: Props) {
   const label = method === 'netbanking' && bankName ? bankName : method ? paymentMethodLabel(method, apps) : 'Select payment method';
   const amount = total == null ? 'Checking total…' : `₹${total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  const selectedUpiApp = apps.find(app => method === `upi_app:${app.id}`);
   const blocked = busy || disabled || storeClosed;
   const placeOrderLabel = useCopy('checkout.placeOrder.cta');
 
@@ -30,6 +32,7 @@ export function CartPaymentBar({ method, apps, total, busy, disabled, storeClose
         accessibilityLabel={method ? `Change payment method, ${label}` : label}
         accessibilityState={{ disabled: busy }}
         className="min-h-[52px] min-w-0 flex-1 flex-row items-center gap-2 py-2">
+        {selectedUpiApp && <UpiAppLogo app={selectedUpiApp} size={28} />}
         <View className="min-w-0 flex-1">
           <Text className="text-[11px] font-medium text-[#717986]">Payment method</Text>
           <Text numberOfLines={1} className="mt-1 text-[13px] font-semibold text-[#18243B]">
