@@ -8,7 +8,7 @@
 // pays once). The live trip total/fee is computed by calculateCheckoutBill
 // (lib/checkoutBill.ts) and routes/trips.ts, not here.
 
-import { calcItemTotal, calcCommission } from './pricing.js';
+import { calcItemTotal } from './pricing.js';
 import type { PricedCheckoutItem } from './checkoutItems.js';
 
 export interface TripLegItem {
@@ -27,9 +27,9 @@ export interface TripLeg {
   commissionAmount: number;
 }
 
-// commissionRate is one rate for every store, or a per-store lookup
-// (stores.commission_rate overrides, migration 115).
-export function groupPricedCartByStore(items: PricedCheckoutItem[], commissionRate: number | ((storeId: string) => number)): TripLeg[] {
+// commissions: what each store pays for its leg, from lib/commission.ts
+// (category rates, store overrides and the per-order cap).
+export function groupPricedCartByStore(items: PricedCheckoutItem[], commissions: Map<string, number>): TripLeg[] {
   const groups = new Map<string, TripLeg>();
   for (const item of items) {
     const leg = groups.get(item.store_id) ?? { storeId: item.store_id, items: [], itemTotal: 0, commissionAmount: 0 };
@@ -38,7 +38,7 @@ export function groupPricedCartByStore(items: PricedCheckoutItem[], commissionRa
   }
   for (const leg of groups.values()) {
     leg.itemTotal = calcItemTotal(leg.items.map((item) => ({ unitPrice: item.unit_price_at_order, quantity: item.quantity })));
-    leg.commissionAmount = calcCommission(leg.itemTotal, typeof commissionRate === 'number' ? commissionRate : commissionRate(leg.storeId));
+    leg.commissionAmount = commissions.get(leg.storeId) ?? 0;
   }
   return [...groups.values()];
 }

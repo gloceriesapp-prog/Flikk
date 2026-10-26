@@ -66,7 +66,10 @@ export function demoRequest(path: string, method: string): unknown {
         earningToday: orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.item_total - o.commission_amount, 0) } satisfies TodayStats;
     }
     case '/partner/payouts': return { items: structuredClone(DEMO_PAYOUTS), nextCursor: null };
-    case '/partner/commission': return { commissionRate: 0.1, isStoreOverride: false };
+    case '/partner/commission': return { commissionRate: 0.04, isStoreOverride: false, capPerOrder: 30, categoryRates: [
+      { category: 'Dairy, Bread & Eggs', commissionRate: 0 }, { category: 'Vegetables & Fruits', commissionRate: 0.02 },
+      { category: 'Meat, Eggs & Fish', commissionRate: 0.02 }, { category: 'Snacks & Munchies', commissionRate: 0.04 },
+      { category: 'Personal Care', commissionRate: 0.08 }] };
     case '/partner/reviews': return structuredClone(reviews);
     default: throw new Error('This action is unavailable in the local preview.');
   }

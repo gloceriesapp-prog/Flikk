@@ -44,12 +44,28 @@ export interface ApiPayoutOrder {
   commissionRate?: number;
 }
 
-// GET /partner/commission — the rate new orders at this store are charged:
-// the store's own rate set by Gloceries, else the platform default
-// (migration 115). Replaces the old hard-coded "6%".
+// GET /partner/commission — what new orders at this store are charged:
+// the store's own rate set by Gloceries (isStoreOverride, migration 115), or
+// each product's category rate, with commissionRate for a category without
+// one. capPerOrder caps one order's commission in rupees. categoryRates and
+// capPerOrder are absent on older backends (one flat commissionRate then).
 export interface PartnerCommission {
   commissionRate: number;
   isStoreOverride: boolean;
+  capPerOrder?: number | null;
+  categoryRates?: { category: string; commissionRate: number }[];
+}
+
+export interface CommissionRateGroup {
+  rate: number;
+  categories: string[];
+}
+
+// Categories that share a rate, lowest rate first, for the rate card.
+export function groupCommissionRates(rates: { category: string; commissionRate: number }[]): CommissionRateGroup[] {
+  const groups = new Map<number, string[]>();
+  for (const { category, commissionRate } of rates) groups.set(commissionRate, [...(groups.get(commissionRate) ?? []), category]);
+  return [...groups.entries()].sort(([a], [b]) => a - b).map(([rate, categories]) => ({ rate, categories }));
 }
 
 // Shared so PayoutsScreen's useQuery and the foreground/focused refresh
