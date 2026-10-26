@@ -217,9 +217,21 @@ export function SectionEditor({
           )}
           {section.items.map((item, index) => (
             <details key={item.id} className="rounded-xl border border-slate-200 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-800">
-                {index + 1}. {item.title}
-                {!item.enabled && ' · hidden'}
+              <summary className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-slate-800">
+                {/* The picture the app shows on this card, so a tile with no
+                    image stands out without opening it. */}
+                {item.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg bg-slate-100 object-contain" />
+                ) : (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 text-[9px] font-medium text-slate-400">
+                    No image
+                  </span>
+                )}
+                <span>
+                  {index + 1}. {item.title}
+                  {!item.enabled && ' · hidden'}
+                </span>
               </summary>
               <div className="mt-4 space-y-4">
                 <div className="flex items-center justify-between">
@@ -265,7 +277,18 @@ export function SectionEditor({
                       className={inputClass}
                     />
                   </Field>
-                  <ProductImageUpload imageUrl={item.imageUrl} bucket={section.kind === 'categories' ? 'categories' : 'appsui'} onChange={(url) => updateItem(index, { imageUrl: url })} />
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <span className="text-xs font-semibold text-slate-600">
+                      {section.kind === 'brands' ? 'Brand logo or image' : 'Tile image'}
+                    </span>
+                    <div className="flex items-center gap-4">
+                      <ProductImageUpload imageUrl={item.imageUrl} bucket={section.kind === 'categories' ? 'categories' : 'appsui'} onChange={(url) => updateItem(index, { imageUrl: url })} />
+                      <span className="text-xs leading-5 text-slate-500">
+                        Click the box to upload a JPG, PNG or WebP (up to 5 MB). It appears on this card in the app after you publish.
+                        {!item.imageUrl && ' Until then the app uses a product photo from this tile, or just the name.'}
+                      </span>
+                    </div>
+                  </div>
                   <Field label="Image URL">
                     <input
                       type="url"
