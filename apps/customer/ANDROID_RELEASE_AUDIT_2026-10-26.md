@@ -49,3 +49,11 @@ Target: Gloceries 1.0.4, Android version code 11, package com.gloceries.customer
 - Validation: customer 45 suites / 284 tests; backend 208 suites / 1,291 tests; customer/backend TypeScript and lint pass. An isolated PostgreSQL 17 instance successfully rebuilt all 144 canonical migrations. Customer privacy, partner/rider support and account-controls SQL regression checks pass. Landing TypeScript and targeted lint pass.
 - Prior build 40277433416 from 089c4fb5 succeeded but predates these changes. Do not upload it as the data-minimized release. Build the replacement on the exact merged source.
 - Remaining gates: exact signed Android device testing and genuine Play screenshots; accurate Google Maps/Sentry diagnostics and identifier disclosure; previously recorded refund/push/payment reconciliation checks. No review submission or rollout has occurred.
+
+
+## Sentry performance-event location privacy follow-up
+
+- Review of Sentry's SDK data documentation confirmed that request URLs/query strings can be retained by performance instrumentation. The previous beforeSend callback protected crashes only; performance transactions bypassed it. This is inconsistent with minimizing delivery coordinates outside fulfilment/map processing.
+- Apply one sanitizer through both beforeSend and beforeSendTransaction. Remove request/extra/breadcrumbs, span descriptions and arbitrary span attributes, and trace-context attributes. Preserve span timing/status/trace IDs and screen transaction names. Replace any user identity with a non-user IP placeholder to prevent default IP inference on these events; breadcrumbs are disabled. Existing error-text scrubbing remains.
+- Regression payloads include exact synthetic coordinates, a delivery address, account identity and URLs. None remain after filtering. Customer TypeScript, lint and all 286 tests pass; an additional wiring regression test covers both callbacks. No new data collection or dependency is introduced.
+- Cancelled superseded AAB run 40282752830 before any Play upload. Build from the final merged telemetry-fix source instead. PR #87's production backend deployment and database migration already passed; the customer birthday column is absent and both chat guards are enabled.
