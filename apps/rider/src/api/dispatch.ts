@@ -6,6 +6,7 @@
 import { apiRequest, ApiError } from './client';
 import { distanceKm } from '../utils/geo';
 import type { Coordinates } from '../data/mockOrders';
+import { readyAtOf } from '../utils/storePacking';
 
 // Fallback for how long an offer stays open before the dispatch worker
 // widens it — the real value is the admin's delivery_settings.
@@ -22,6 +23,10 @@ interface RawDispatchOffer {
   id: string;
   order_number: string;
   trip_id: string | null;
+  // 'placed' = the store accepted and is still packing; 'packed' = ready.
+  // Absent from an older backend (which only ever offered packed orders).
+  status?: 'placed' | 'packed';
+  preparation_deadline_at?: string | null;
   // What the rider earns for this order or whole trip (admin pay rule).
   rider_payout: number;
   stores: { name: string; lat: number | null; lng: number | null } | null;
@@ -71,6 +76,11 @@ export interface DispatchOffer {
   // The rider holds too much unsettled cash to take this cash order
   // (backend lib/riderCashLimit.ts); accepting is refused until they deposit.
   cashLimitBlocked: boolean;
+  // The store is still packing: the rider can accept and ride over now, and
+  // picks up once the store marks it packed. readyAt: the store's expected
+  // finish time (epoch ms), null when the store set no preparation time.
+  packing: boolean;
+  readyAt: number | null;
 }
 
 function coordsOf(lat: number | null | undefined, lng: number | null | undefined): Coordinates | null {
@@ -104,6 +114,8 @@ function toDispatchOffer(row: RawDispatchOffer): DispatchOffer {
     paymentMethod: row.payment_method === 'online' ? 'online' : 'cod',
     cashToCollect: Number(row.cash_to_collect) || 0,
     cashLimitBlocked: row.cash_limit_blocked === true,
+    packing: row.status === 'placed',
+    readyAt: row.status === 'placed' ? readyAtOf(row.preparation_deadline_at) : null,
   };
 }
 

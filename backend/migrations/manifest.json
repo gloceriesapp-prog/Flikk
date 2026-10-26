@@ -572,6 +572,10 @@
     {
       "file": "20261023160000_review_rider_ready_for_review.sql",
       "sha256": "04eb6298326df51310d9e91f4c5b98cc433b6122ead961d5057e72659b7226f1"
+    },
+    {
+      "file": "20261026090000_dispatch_on_store_accept.sql",
+      "sha256": "bcf649b5ada8d54ee588a264f43efb2cd5ff031e866f6411f3562d4a18e974c6"
     }
   ]
 }

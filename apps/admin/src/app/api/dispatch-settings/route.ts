@@ -1,7 +1,9 @@
 // Dispatch settings on the delivery_settings singleton (migration 113):
 // - dispatch_radius_steps_m: the expanding offer rings (metres),
 // - dispatch_step_seconds: how long each ring is offered before widening,
-// - max_active_trips_per_rider: live trips one rider may hold (null = no limit).
+// - max_active_trips_per_rider: live trips one rider may hold (null = no limit),
+// - dispatch_after_accept_seconds: wait after the store accepts before the
+//   first ring (migration 20261026090000).
 // Read by the backend on every dispatch pass (advance_dispatch_offers via
 // riderDispatch worker, nearby_dispatchable_riders, rider_dispatch_offers,
 // accept_dispatch_offer and the orders capacity trigger), so a save applies to
@@ -13,13 +15,14 @@ import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { parseDispatchSettings, type DispatchSettings } from '@/lib/dispatchSettings';
 
-const COLUMNS = 'id, dispatch_radius_steps_m, dispatch_step_seconds, max_active_trips_per_rider';
+const COLUMNS = 'id, dispatch_radius_steps_m, dispatch_step_seconds, max_active_trips_per_rider, dispatch_after_accept_seconds';
 
 interface Row {
   id: string;
   dispatch_radius_steps_m: number[] | null;
   dispatch_step_seconds: number | null;
   max_active_trips_per_rider: number | null;
+  dispatch_after_accept_seconds: number | null;
 }
 
 function toSettings(row: Row): DispatchSettings {
@@ -27,6 +30,7 @@ function toSettings(row: Row): DispatchSettings {
     radiusStepsKm: (row.dispatch_radius_steps_m ?? [3000, 5000, 8000]).map((m) => m / 1000).sort((a, b) => a - b),
     stepSeconds: row.dispatch_step_seconds ?? 45,
     maxActiveTripsPerRider: row.max_active_trips_per_rider,
+    acceptDelaySeconds: row.dispatch_after_accept_seconds ?? 15,
   };
 }
 
@@ -52,6 +56,7 @@ export async function PATCH(request: Request) {
         dispatch_radius_steps_m: parsed.value.radiusStepsKm.map((km) => Math.round(km * 1000)),
         dispatch_step_seconds: parsed.value.stepSeconds,
         max_active_trips_per_rider: parsed.value.maxActiveTripsPerRider,
+        dispatch_after_accept_seconds: parsed.value.acceptDelaySeconds,
         updated_at: new Date().toISOString(),
       })
       .eq('id', settings.id)

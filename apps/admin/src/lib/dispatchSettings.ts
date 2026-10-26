@@ -1,5 +1,6 @@
-// Rider dispatch settings (delivery_settings, migration 113). Bounds match
-// that migration's delivery_settings_dispatch_check constraint.
+// Rider dispatch settings (delivery_settings, migrations 113 and
+// 20261026090000). Bounds match delivery_settings_dispatch_check and
+// delivery_settings_dispatch_after_accept_check.
 
 export interface DispatchSettings {
   // Offer rings in km, ascending (stored as metres).
@@ -8,6 +9,9 @@ export interface DispatchSettings {
   stepSeconds: number;
   // Live trips one rider may hold at once; null = no limit.
   maxActiveTripsPerRider: number | null;
+  // Seconds after the store accepts an order before riders are offered it
+  // (it is still being packed). 0 = straight away.
+  acceptDelaySeconds: number;
 }
 
 export const DISPATCH_LIMITS = {
@@ -17,10 +21,11 @@ export const DISPATCH_LIMITS = {
   minStepSeconds: 10,
   maxStepSeconds: 600,
   maxTripsPerRider: 20,
+  maxAcceptDelaySeconds: 600,
 } as const;
 
 export function parseDispatchSettings(body: unknown): { ok: true; value: DispatchSettings } | { ok: false; error: string } {
-  const input = (body ?? {}) as { radiusStepsKm?: unknown; stepSeconds?: unknown; maxActiveTripsPerRider?: unknown };
+  const input = (body ?? {}) as { radiusStepsKm?: unknown; stepSeconds?: unknown; maxActiveTripsPerRider?: unknown; acceptDelaySeconds?: unknown };
   if (!Array.isArray(input.radiusStepsKm) || input.radiusStepsKm.length < 1 || input.radiusStepsKm.length > DISPATCH_LIMITS.maxRings) {
     return { ok: false, error: `Add between 1 and ${DISPATCH_LIMITS.maxRings} dispatch rings.` };
   }
@@ -40,5 +45,9 @@ export function parseDispatchSettings(body: unknown): { ok: true; value: Dispatc
   if (max !== null && (typeof max !== 'number' || !Number.isInteger(max) || max < 1 || max > DISPATCH_LIMITS.maxTripsPerRider)) {
     return { ok: false, error: `Max active trips per rider must be empty (no limit) or a whole number from 1 to ${DISPATCH_LIMITS.maxTripsPerRider}.` };
   }
-  return { ok: true, value: { radiusStepsKm: sorted, stepSeconds, maxActiveTripsPerRider: max } };
+  const acceptDelaySeconds = input.acceptDelaySeconds;
+  if (typeof acceptDelaySeconds !== 'number' || !Number.isInteger(acceptDelaySeconds) || acceptDelaySeconds < 0 || acceptDelaySeconds > DISPATCH_LIMITS.maxAcceptDelaySeconds) {
+    return { ok: false, error: `Wait after the store accepts must be a whole number between 0 and ${DISPATCH_LIMITS.maxAcceptDelaySeconds} seconds.` };
+  }
+  return { ok: true, value: { radiusStepsKm: sorted, stepSeconds, maxActiveTripsPerRider: max, acceptDelaySeconds } };
 }

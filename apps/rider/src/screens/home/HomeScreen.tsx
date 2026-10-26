@@ -48,6 +48,8 @@ const DEMO_OFFER: DispatchOffer = {
   pickupKm: 1.4,
   storeToDropKm: 2.7,
   totalKm: 4.1,
+  packing: false,
+  readyAt: null,
   dropLabel: 'Near Kaup Beach Rd',
   itemCount: 6,
   storeCoords: { latitude: 13.2167, longitude: 74.7469 },

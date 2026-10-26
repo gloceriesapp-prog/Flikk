@@ -29,7 +29,7 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
 } }));
 vi.mock('../orders/deliveryCodes.js', () => ({ customerDeliveryCodes: vi.fn(), completeDelivery: vi.fn(), verifyDelivery: db.verifyDelivery }));
 vi.mock('../orders/deliveredPush.js', () => ({ notifyStoresOfDelivery: db.notifyStores }));
-vi.mock('../lib/riderDispatch.js', () => ({ triggerDispatch: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('../lib/riderDispatch.js', () => ({ triggerDispatch: vi.fn().mockResolvedValue(undefined), notifyRiderOrderPacked: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../lib/pushNotifications.js', () => ({ sendPushNotification: vi.fn(), sendPushNotifications: vi.fn(), embeddedPushToken: vi.fn(), riderAssignmentPush: (orderId: string | null) => ({ channelId: 'offers', priority: 'high', data: { type: 'assignment', orderId } }) }));
 vi.mock('../lib/notifications.js', () => ({ createNotification: vi.fn() }));
 import { ordersRouter } from './orders.js';
@@ -66,6 +66,12 @@ it('refuses picking up a trip leg while another shop in the trip has not packed'
 it('maps the database pickup guard to the same 409', async () => {
   db.updateResult = { data: null, error: { code: 'P0409' } };
   expect((await patchStatus({ status: 'out_for_delivery' })).err).toMatchObject({ status: 409, code: 'TRIP_NOT_READY' });
+});
+
+it('refuses pickup of an order the rider took early while the store is still packing', async () => {
+  db.order = { ...leg, trip_id: null, status: 'placed' };
+  expect((await patchStatus({ status: 'out_for_delivery' })).err).toMatchObject({ status: 409 });
+  expect(db.updates).toHaveLength(0);
 });
 
 it('picks up once every sibling has packed', async () => {

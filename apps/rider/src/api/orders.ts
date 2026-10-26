@@ -6,6 +6,7 @@
 
 import { distanceKm } from '../utils/geo';
 import type { OrderItemLine, RiderOrder } from '../data/mockOrders';
+import { readyAtOf } from '../utils/storePacking';
 
 // Payout comes from the backend (rider_payout, backend/src/lib/
 // riderDeliveryMoney.ts): what this order — or, on a trip leg, the whole
@@ -24,6 +25,8 @@ interface RawOrderItem {
 interface RawAssignment {
   id: string;
   status: BackendOrderStatus;
+  // When the store expects to finish packing (absent on an older backend).
+  preparation_deadline_at?: string | null;
   placed_at: string;
   delivered_at: string | null;
   cancel_reason: string | null;
@@ -63,16 +66,17 @@ export async function updateOrderStatus(orderId: string, status: BackendOrderSta
   return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: { status, reason, otp } });
 }
 
-// packed/out_for_delivery are the only statuses a rider ever actually acts
-// on (an order becomes visible to them at 'packed', per admin's own
-// assign-rider guard) — 'placed' should never reach this app at all
-// (defensive filter below), and out_for_delivery always maps to
+// 'placed' reaches this app when the rider took the order while the store
+// was still packing (riders are offered it once the store accepts, backend
+// migration 20261026090000): it is 'assigned' like a packed order, flagged
+// packing so pickup waits for the store. out_for_delivery always maps to
 // 'picked_up' here: whether a specific order is further along, at its own
 // local-only 'arrived_at_customer' milestone (no backend column for
 // this — it's a client-side sub-stage, see useRiderOrdersStore.ts's own
 // note), is merged in by the store, not decided here.
 function toLocalStatus(status: BackendOrderStatus): RiderOrder['status'] | null {
   switch (status) {
+    case 'placed':
     case 'packed':
       return 'assigned';
     case 'out_for_delivery':
@@ -154,6 +158,8 @@ export function toRiderOrder(row: RawAssignment): RiderOrder | null {
     tripId: row.trip_id ?? undefined,
     paymentMethod: row.payment_method === 'online' ? 'online' : 'cod',
     cashToCollect: Number(row.cash_to_collect) || 0,
+    packing: row.status === 'placed',
+    readyAt: row.status === 'placed' ? readyAtOf(row.preparation_deadline_at) : null,
   };
 }
 

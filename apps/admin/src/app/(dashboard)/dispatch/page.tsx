@@ -42,6 +42,7 @@ function DispatchSettingsCard() {
   const [rings, setRings] = useState('');
   const [stepSeconds, setStepSeconds] = useState('');
   const [maxTrips, setMaxTrips] = useState('');
+  const [acceptDelay, setAcceptDelay] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -50,6 +51,7 @@ function DispatchSettingsCard() {
     setRings(settings.radiusStepsKm.join(', '));
     setStepSeconds(String(settings.stepSeconds));
     setMaxTrips(settings.maxActiveTripsPerRider == null ? '' : String(settings.maxActiveTripsPerRider));
+    setAcceptDelay(String(settings.acceptDelaySeconds));
   }
 
   useEffect(() => {
@@ -74,6 +76,7 @@ function DispatchSettingsCard() {
           radiusStepsKm: rings.split(',').map((part) => part.trim()).filter(Boolean).map(Number),
           stepSeconds: Number(stepSeconds),
           maxActiveTripsPerRider: maxTrips.trim() === '' ? null : Number(maxTrips),
+          acceptDelaySeconds: Number(acceptDelay),
         }),
       });
       const body = await res.json();
@@ -92,9 +95,16 @@ function DispatchSettingsCard() {
     <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
       <h3 className="text-sm font-semibold text-ink">Dispatch settings</h3>
       <p className="mb-4 text-xs text-muted">
-        A packed order is offered to online riders inside the first ring, then widened ring by ring. After the last ring it waits for manual assignment.
+        Once a store accepts an order, riders inside the first ring are offered it while the store packs, then the search widens ring by ring. After the last ring the offer repeats every minute, and the order is flagged here and in the alerts bell for manual assignment.
       </p>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <label className="flex flex-col gap-1 text-xs font-semibold text-ink-soft">
+          Start rider search after store accepts (seconds)
+          <input type="number" min={0} max={DISPATCH_LIMITS.maxAcceptDelaySeconds} value={acceptDelay} onChange={(e) => setAcceptDelay(e.target.value)} className={inputClass} />
+          <span className="font-normal text-muted">
+            0–{DISPATCH_LIMITS.maxAcceptDelaySeconds} s. The rider rides over while the store packs; pickup still waits for “Packed”.
+          </span>
+        </label>
         <label className="flex flex-col gap-1 text-xs font-semibold text-ink-soft">
           Offer rings (km, comma separated)
           <input value={rings} onChange={(e) => setRings(e.target.value)} placeholder="3, 5, 8" className={inputClass} />

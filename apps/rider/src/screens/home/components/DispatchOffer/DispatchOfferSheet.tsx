@@ -19,6 +19,7 @@ import { OfferCountdownRing } from './OfferCountdownRing';
 import { OfferRouteStops } from './OfferRouteStops';
 import { OfferStatTiles } from './OfferStatTiles';
 import { useOfferDecision } from './useOfferDecision';
+import { usePackingLabel } from '../../../../hooks/usePackingLabel';
 
 const DECISION_WINDOW_S = 30;
 // The ring track needs a dark tint to read on white (its default is a light
@@ -59,6 +60,7 @@ function SheetContent({
 }) {
   const insets = useSafeAreaInsets();
   const { state, handleAccept, handleDecline } = useOfferDecision(offer.orderId, onAccept, onClose);
+  const packingText = usePackingLabel(offer.readyAt);
 
   // Floating card sheet — side gutters, but sitting on the bottom safe-area
   // with no extra gap (rests just above the home indicator).
@@ -122,6 +124,12 @@ function SheetContent({
           <Text className="text-[13px] font-medium text-ink/70">Cashless payment</Text>
         </View>
       </View>
+
+      {offer.packing && (
+        <Text className="mt-3 text-center text-[12px] font-semibold text-ink/60">
+          {packingText}. Accept now and ride over.
+        </Text>
+      )}
 
       {/* Accept — solid green CTA. #00a63e is dark enough for white text (AA). */}
       <View className="mt-5">

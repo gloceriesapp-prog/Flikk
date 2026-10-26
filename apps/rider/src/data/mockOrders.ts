@@ -85,6 +85,11 @@ export interface RiderOrder {
   // or the whole trip total on every leg of a trip (not per leg).
   paymentMethod: 'cod' | 'online';
   cashToCollect: number;
+  // Taken while the store was still packing (backend status 'placed'):
+  // pickup waits until the store marks it packed. readyAt is the store's
+  // expected finish time (epoch ms). Absent = ready to collect.
+  packing?: boolean;
+  readyAt?: number | null;
 }
 
 const STORE_NAMES = ['Ganesh Kirana Store', 'Suvarna Supermarket', 'Kaup Fresh Mart', 'Udupi Daily Needs', 'Anantha Provision Store'];

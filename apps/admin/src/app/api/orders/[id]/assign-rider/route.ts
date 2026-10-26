@@ -5,8 +5,9 @@
 //   as backend PATCH /admin/trips/:id/assign-rider): under the trip lock,
 //   every unassigned live leg gets this rider, and a trip that already has
 //   another rider is refused, so a trip can never be split across riders;
-// - a single order keeps the guarded update (status='packed' AND
-//   rider_id IS NULL), so it can never steal an order a rider just accepted.
+// - a single order keeps the guarded update (accepted by the store or packed,
+//   AND rider_id IS NULL; migration 20261026090000), so it can never steal an
+//   order a rider just accepted.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
@@ -53,7 +54,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (error) throw error;
     const assigned = (data ?? []) as { id: string; trip_id: string | null }[];
     if (assigned.length === 0) {
-      return NextResponse.json({ error: 'Order is no longer packed or already has a rider.' }, { status: 409 });
+      return NextResponse.json({ error: 'The store has not accepted this order yet, or it already has a rider.' }, { status: 409 });
     }
 
     const tripId = assigned[0].trip_id;

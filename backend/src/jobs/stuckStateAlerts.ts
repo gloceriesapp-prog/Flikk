@@ -9,8 +9,10 @@ import { metrics } from '../observability/metrics.js';
 // Covered here (periodic scan):
 //   - refund jobs stuck 'processing'/'queued' past STUCK_REFUND_MINUTES, and
 //     any refund already 'failed'/'manual_required' (needs a hand, any age).
-//   - orders that exhausted dispatch (broadcast started, nobody accepted) and
-//     still have rider_id null past STUCK_DISPATCH_MINUTES.
+//   - orders still searching for a rider (offered, nobody accepted) more than
+//     STUCK_DISPATCH_MINUTES after the store accepted them. Measured from
+//     accepted_at, not the latest offer: the widest ring repeats every minute
+//     (migration 20261026090000), so the offer time never gets old.
 //
 // PAYMENT_REVIEW_REQUIRED is NOT a persisted order state (it is only ever an
 // API error raised when provider records disagree with ours), so it cannot be
@@ -55,7 +57,8 @@ async function fetchRefundRows(): Promise<RefundRow[]> {
 async function countExhaustedDispatch(now: number): Promise<number> {
   const cutoff = new Date(now - STUCK_DISPATCH_MINUTES * 60_000).toISOString();
   const { count, error } = await supabase.from('orders').select('id', { count: 'exact', head: true })
-    .eq('status', 'packed').is('rider_id', null).not('dispatch_broadcast_at', 'is', null).lt('dispatch_broadcast_at', cutoff);
+    .in('status', ['placed', 'packed']).is('rider_id', null).not('dispatch_broadcast_at', 'is', null)
+    .not('accepted_at', 'is', null).lt('accepted_at', cutoff);
   if (error) throw error;
   return count ?? 0;
 }
@@ -82,7 +85,7 @@ export async function runStuckStateAlerts(
     logger.warn({ processingStuck: refunds.processingStuck, thresholdMinutes: STUCK_REFUND_MINUTES }, 'Refund jobs stuck in flight past threshold');
   }
   if (dispatchExhausted > 0) {
-    logger.warn({ dispatchExhausted, thresholdMinutes: STUCK_DISPATCH_MINUTES }, 'Packed orders exhausted dispatch with no rider assigned');
+    logger.warn({ dispatchExhausted, thresholdMinutes: STUCK_DISPATCH_MINUTES }, 'Accepted orders still have no rider');
   }
   return { ...refunds, dispatchExhausted };
 }

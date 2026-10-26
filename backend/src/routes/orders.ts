@@ -30,7 +30,7 @@ import { isRiderCancelReasonCode } from '../lib/cancelReasons.js';
 import { isRiderDeliveryFailureReasonCode } from '../lib/deliveryFailureReasons.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
 import { reorderByRank } from '../lib/buyItAgain.js';
-import { triggerDispatch } from '../lib/riderDispatch.js';
+import { notifyRiderOrderPacked, triggerDispatch } from '../lib/riderDispatch.js';
 import { assertPaymentMethodAvailable } from '../payments/availability.js';
 
 export const ordersRouter = Router();
@@ -412,13 +412,13 @@ ordersRouter.patch(
       // may project a code from the private delivery_codes table.
       updated.delivery_otp = null;
 
-      // Real automated dispatch — fires the moment a store packs an order,
-      // never blocks this response (fire-and-forget, same convention this
-      // handler's own push-notification call below already uses).
-      // lib/riderDispatch.ts's own note has the full broadcast + atomic-
-      // accept-wins design.
+      // The rider search normally started when the store accepted (worker,
+      // lib/riderDispatch.ts). On packed: start it now if it hasn't started
+      // yet, or tell the rider who already took the order that it's ready.
+      // Fire-and-forget, never blocks this response.
       if (to === 'packed') {
-        void triggerDispatch({ id: String(updated.id), store_id: String(updated.store_id) }).catch((err) =>
+        const packed = { id: String(updated.id), store_id: String(updated.store_id), rider_id: updated.rider_id as string | null, trip_id: updated.trip_id as string | null };
+        void (packed.rider_id ? notifyRiderOrderPacked(packed) : triggerDispatch(packed)).catch((err) =>
           logger.error({ err, orderId: updated.id }, 'Rider dispatch failed'),
         );
       }
