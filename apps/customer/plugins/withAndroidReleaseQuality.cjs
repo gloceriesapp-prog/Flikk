@@ -1,4 +1,4 @@
-const { withGradleProperties, withAppBuildGradle, withSettingsGradle, withDangerousMod } = require('expo/config-plugins');
+const { withGradleProperties, withAppBuildGradle, withSettingsGradle, withDangerousMod, withAndroidManifest } = require('expo/config-plugins');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
@@ -75,7 +75,21 @@ function configureProguardRules(source) {
 # Gloceries reflective constructors END\n`;
 }
 
+function configureMainActivity(manifest) {
+  const activities = manifest.manifest.application?.flatMap(app => app.activity || []) || [];
+  const main = activities.find(activity => activity.$?.['android:name'] === '.MainActivity'
+    || activity.$?.['android:name'] === 'com.gloceries.customer.MainActivity');
+  if (!main) throw new Error('Customer MainActivity is missing: verify the Android manifest template.');
+  // Android 16 ignores orientation locks on large screens. Let the same layout
+  // adapt on earlier versions too. Do not alter third-party checkout activities
+  // or the iOS orientation policy in the shared Expo configuration.
+  delete main.$['android:screenOrientation'];
+  main.$['android:resizeableActivity'] = 'true';
+  return manifest;
+}
+
 function withAndroidReleaseQuality(config) {
+  config = withAndroidManifest(config, mod => { mod.modResults = configureMainActivity(mod.modResults); return mod; });
   config = withSettingsGradle(config, mod => { mod.modResults.contents = configureSettingsGradle(mod.modResults.contents); return mod; });
   config = withGradleProperties(config, mod => { mod.modResults = configureProperties(mod.modResults); return mod; });
   config = withAppBuildGradle(config, mod => { mod.modResults.contents = configureBuildGradle(mod.modResults.contents); return mod; });
@@ -91,3 +105,4 @@ module.exports.configureProperties = configureProperties;
 module.exports.configureBuildGradle = configureBuildGradle;
 module.exports.configureProguardRules = configureProguardRules;
 module.exports.configureSettingsGradle = configureSettingsGradle;
+module.exports.configureMainActivity = configureMainActivity;

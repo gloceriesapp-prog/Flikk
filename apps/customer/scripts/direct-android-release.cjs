@@ -108,11 +108,14 @@ function manifestFacts(xml) {
   const script = `import sys,json,xml.etree.ElementTree as E
 r=E.fromstring(sys.stdin.read()); a='{http://schemas.android.com/apk/res/android}'
 app=r.find('application'); assert app is not None
+main=next((n for n in app.findall('activity') if n.get(a+'name') in ['.MainActivity','com.gloceries.customer.MainActivity']),None)
 meta={n.get(a+'name'):n.get(a+'value') for n in app.findall('meta-data')}
 key=meta.get('com.google.android.geo.API_KEY','')
 print(json.dumps({'package':r.get('package'),'versionCode':r.get(a+'versionCode'),'versionName':r.get(a+'versionName'),
 'targetSdk':r.find('uses-sdk').get(a+'targetSdkVersion') if r.find('uses-sdk') is not None else None,
 'cleartext':app.get(a+'usesCleartextTraffic','false'),
+'mainActivityOrientation':main.get(a+'screenOrientation') if main is not None else 'missing',
+'mainActivityResizable':main.get(a+'resizeableActivity',app.get(a+'resizeableActivity','true')) if main is not None else 'false',
 'permissions':[n.get(a+'name') for n in r.findall('uses-permission')],
 'debuggable':app.get(a+'debuggable','false'),'hasMapKey':bool(key and key.startswith('AIza') and len(key)==39),
 'headers':json.loads(meta.get('expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY','{}')),
@@ -127,6 +130,8 @@ function validateManifest(facts, env, version) {
   assert.equal(facts.debuggable, 'false', 'A production AAB must not be debuggable.');
   assert.ok(Number(facts.targetSdk) >= 36, 'The customer release must target Android API 36 or later.');
   assert.equal(facts.cleartext, 'false', 'The production app must not allow cleartext traffic.');
+  assert.equal(facts.mainActivityOrientation, null, 'Customer MainActivity must not restrict orientation.');
+  assert.equal(facts.mainActivityResizable, 'true', 'Customer MainActivity must support resizing.');
   for (const permission of ['android.permission.ACCESS_BACKGROUND_LOCATION', 'android.permission.READ_CONTACTS', 'android.permission.READ_SMS', 'android.permission.SYSTEM_ALERT_WINDOW', 'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE', 'com.google.android.gms.permission.AD_ID']) {
     assert.ok(!facts.permissions?.includes(permission), `Unexpected customer permission: ${permission}`);
   }

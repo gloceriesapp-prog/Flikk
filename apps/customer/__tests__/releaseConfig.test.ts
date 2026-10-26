@@ -27,6 +27,27 @@ function run(script: string, overrides = {}) {
 describe('customer release safeguards', () => {
   const gate = "require('./scripts/verify-release.cjs')";
 
+  it('allows Android rotation and resizing without changing checkout or iOS policy', () => {
+    const result = run(`
+      const assert = require('node:assert/strict');
+      const {configureMainActivity} = require('./plugins/withAndroidReleaseQuality.cjs');
+      for (const name of ['.MainActivity', 'com.gloceries.customer.MainActivity']) {
+        const main = {$:{'android:name':name,'android:screenOrientation':'portrait','android:resizeableActivity':'false'}};
+        const checkout = {$:{'android:name':'com.razorpay.CheckoutActivity','android:screenOrientation':'portrait'}};
+        const manifest = {manifest:{application:[{activity:[main,checkout]}]}};
+        configureMainActivity(manifest);
+        assert.equal(main.$['android:screenOrientation'],undefined);
+        assert.equal(main.$['android:resizeableActivity'],'true');
+        assert.equal(checkout.$['android:screenOrientation'],'portrait');
+        assert.deepEqual(configureMainActivity(manifest),manifest);
+      }
+      assert.throws(()=>configureMainActivity({manifest:{application:[{activity:[]}]}}));
+      assert.equal(require('./app.config.js').expo.orientation,'portrait');
+    `);
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+  });
+
   it('accepts a complete synthetic release configuration', () => {
     const result = run(gate);
     expect(result.status).toBe(0);
