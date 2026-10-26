@@ -359,11 +359,24 @@ export interface Payout {
   paid_at: string | null;
 }
 
-// GET /partner/commission — the rate this store's new orders are charged:
-// its own rate set by Gloceries, else the platform default (migration 115).
+// GET /partner/commission — what this store's new orders are charged: its
+// own rate set by Gloceries (isStoreOverride, migration 115), or each
+// product's category rate, with commissionRate for a category without one.
+// capPerOrder caps one order's commission in rupees. categoryRates and
+// capPerOrder are absent on older backends (one flat commissionRate then).
 export interface PartnerCommission {
   commissionRate: number;
   isStoreOverride: boolean;
+  capPerOrder?: number | null;
+  categoryRates?: { category: string; commissionRate: number }[];
+}
+
+// Categories that share a rate, lowest rate first (same grouping as the
+// partner app's payouts screen).
+export function groupCommissionRates(rates: { category: string; commissionRate: number }[]): { rate: number; categories: string[] }[] {
+  const groups = new Map<number, string[]>();
+  for (const { category, commissionRate } of rates) groups.set(commissionRate, [...(groups.get(commissionRate) ?? []), category]);
+  return [...groups.entries()].sort(([a], [b]) => a - b).map(([rate, categories]) => ({ rate, categories }));
 }
 
 export function fetchMyCommission(): Promise<PartnerCommission> {

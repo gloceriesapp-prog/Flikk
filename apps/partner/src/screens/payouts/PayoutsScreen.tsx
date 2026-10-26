@@ -17,7 +17,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
-import { fetchCommission, fetchPayoutPage, formatCommissionPercent, COMMISSION_QUERY_KEY } from '../../api/payouts';
+import { fetchCommission, fetchPayoutPage, COMMISSION_QUERY_KEY } from '../../api/payouts';
+import { CommissionRatesCard } from './components/CommissionRatesCard';
 import { buildSamplePayouts, toWeeklyPayout } from './data';
 import { CurrentWeekPayoutCard } from './components/CurrentWeekPayoutCard';
 import { PayoutStatusFilter, type PayoutStatusFilterValue } from './components/PayoutStatusFilter';
@@ -111,12 +112,7 @@ export function PayoutsScreen({ navigation }: Props) {
 
           {currentWeek && <CurrentWeekPayoutCard payout={currentWeek} />}
 
-          {commission.data && (
-            <Text className="px-1 text-[12.5px] font-medium text-ink/55">
-              Gloceries commission: {formatCommissionPercent(commission.data.commissionRate)} of the item total on each new order
-              {commission.data.isStoreOverride ? ' (your store’s rate)' : ''}.
-            </Text>
-          )}
+          {commission.data && <CommissionRatesCard commission={commission.data} />}
 
           <View className="mt-3 gap-3">
             <PayoutStatusFilter

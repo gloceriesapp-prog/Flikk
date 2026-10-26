@@ -16,17 +16,15 @@ export default function RevenuePage() {
   const [pendingPayouts, setPendingPayouts] = useState<AdminPayoutRow[] | null>(null);
   const [trend, setTrend] = useState<RevenuePoint[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [commissionRate, setCommissionRate] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoadError(null);
     try {
-      const [payoutsRes, trendRes, ordersRes, settingsRes] = await Promise.all([
+      const [payoutsRes, trendRes, ordersRes] = await Promise.all([
         fetch('/api/payouts?status=pending'),
         fetch('/api/revenue-trend'),
         fetch('/api/orders'),
-        fetch('/api/platform-settings'),
       ]);
       if (!payoutsRes.ok) throw new Error((await payoutsRes.json()).error ?? 'Could not load payouts.');
       if (!trendRes.ok) throw new Error((await trendRes.json()).error ?? 'Could not load revenue trend.');
@@ -34,7 +32,6 @@ export default function RevenuePage() {
       setPendingPayouts(await payoutsRes.json());
       setTrend(await trendRes.json());
       setOrders(await ordersRes.json());
-      if (settingsRes.ok) setCommissionRate((await settingsRes.json()).commissionRate);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load revenue data.');
     }
@@ -80,7 +77,6 @@ export default function RevenuePage() {
         thisWeek={latestTotal}
         weekOverWeekPct={weekOverWeekPct}
         pendingPayouts={pendingTotal}
-        commissionRate={commissionRate}
       />
 
       <div className="rounded-3xl border border-border bg-card p-5">

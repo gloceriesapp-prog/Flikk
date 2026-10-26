@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AlertCircle, Calendar, HandCoins, Percent, ReceiptText, Wallet } from 'lucide-react';
+import { AlertCircle, Calendar, HandCoins, ReceiptText, Wallet } from 'lucide-react';
 import { fetchMyCommission, fetchMyPayouts, fetchMyStore, type PartnerCommission, type Store } from '@/lib/partnerApi';
 import { useLiveData } from '@/lib/useLiveData';
 import { DEMO_PAYOUTS } from '@/lib/demoPayouts';
@@ -10,6 +10,7 @@ import { PayoutMetricCard as MetricCard } from '@/components/payouts/PayoutMetri
 import { EmptyState, ErrorState, MetricGridSkeleton, RowsSkeleton, Skeleton } from '@/components/inventory/DataStates';
 import { formatInr } from '@/lib/format';
 import { PayoutDestinationCard } from '@/components/payouts/PayoutDestinationCard';
+import { CommissionRatesCard } from '@/components/payouts/CommissionRatesCard';
 import { PayoutsFilterBar, PAYOUT_FILTERS, type PayoutFilter } from '@/components/payouts/PayoutsFilterBar';
 import { PayoutsTable, formatWeek } from '@/components/payouts/PayoutsTable';
 import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
@@ -77,8 +78,6 @@ export default function PayoutsPage() {
   const nextPayout = queued[0];
   const needsAttention = counts.blocked + counts.failed;
 
-  const ratePercent = commission ? Math.round(commission.commissionRate * 10000) / 100 : null;
-
   let body: ReactNode;
   if (isLoading) {
     body = <RowsSkeleton rows={5} leading={false} />;
@@ -129,20 +128,7 @@ export default function PayoutsPage() {
         ) : (
           store && <PayoutDestinationCard store={store} className={commission ? 'lg:col-span-2' : 'lg:col-span-3'} />
         )}
-        {commission && ratePercent !== null && (
-          <div className={`flex items-center gap-3 rounded-2xl border border-gray-200/70 bg-white p-4 ${store || !storeSettled ? '' : 'lg:col-span-3'}`}>
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
-              <Percent size={19} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-500">Gloceries commission{commission.isStoreOverride ? ' · your store’s rate' : ''}</p>
-              <p className="text-[15px] font-semibold text-ink">
-                <span className="tnum">{ratePercent}%</span>
-                <span className="font-normal text-slate-500"> of the item total on each new order</span>
-              </p>
-            </div>
-          </div>
-        )}
+        {commission && <CommissionRatesCard commission={commission} className={store || !storeSettled ? '' : 'lg:col-span-3'} />}
       </div>
 
       {isLoading ? (

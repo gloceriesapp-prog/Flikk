@@ -25,14 +25,10 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
   const { data: payoutRow, error: payoutError } = await supabaseAdmin.from('stores').select(STORE_PAYOUT_SELECT).eq('id', id).maybeSingle();
   if (payoutError) throw payoutError;
   const payout = toStorePayoutView(payoutRow as Record<string, string | null> | null);
-  // Commission override (migration 115) next to the platform default it replaces.
-  const [{ data: commissionRow, error: commissionError }, { data: platformRow }] = await Promise.all([
-    supabaseAdmin.from('stores').select('commission_rate').eq('id', id).maybeSingle(),
-    supabaseAdmin.from('platform_settings').select('commission_rate').limit(1).maybeSingle(),
-  ]);
+  // Commission override (migration 115); without one the store pays the category rates.
+  const { data: commissionRow, error: commissionError } = await supabaseAdmin.from('stores').select('commission_rate').eq('id', id).maybeSingle();
   if (commissionError) throw commissionError;
   const storeRate = (commissionRow as { commission_rate: number | string | null } | null)?.commission_rate;
-  const platformRate = (platformRow as { commission_rate: number | string | null } | null)?.commission_rate;
   // Partner account (migration 114): the owner's suspension state and the
   // audit trail of suspend/reinstate actions.
   const { data: ownerRef } = await supabaseAdmin.from('stores').select('owner_user_id').eq('id', id).maybeSingle();
@@ -73,7 +69,6 @@ export default async function StoreDetailPage({ params }: PageProps<'/stores/[id
         key={`commission:${storeRate ?? 'default'}`}
         storeId={store.id}
         storeRate={storeRate == null ? null : Number(storeRate)}
-        platformRate={platformRate == null ? null : Number(platformRate)}
       />
       <StoreDetailForm key={`${store.id}:${store.adminSuspended ? 's' : 'a'}:${store.name}:${store.category}:${store.lat}:${store.lng}:${store.addressLine}`} store={store} />
     </div>

@@ -14,7 +14,6 @@ export function RevenueBalanceCard({
   thisWeek,
   weekOverWeekPct,
   pendingPayouts,
-  commissionRate,
 }: {
   totalRevenue: number;
   // Two real, separate income sources rolled into totalRevenue above —
@@ -31,7 +30,6 @@ export function RevenueBalanceCard({
   // Real, admin-editable rate (Settings -> Platform fees) — shown right
   // next to the number it produces so "how much did we earn" and "why"
   // read together, not as two disconnected screens.
-  commissionRate: number | null;
 }) {
   const isUp = weekOverWeekPct >= 0;
 
@@ -45,11 +43,6 @@ export function RevenueBalanceCard({
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted">Total earned, all-time</p>
-              {commissionRate !== null && (
-                <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-ink-soft">
-                  {(commissionRate * 100).toFixed(1)}% commission
-                </span>
-              )}
             </div>
             <p className="text-4xl font-medium tabular-nums text-ink">{formatCurrency(totalRevenue)}</p>
             <p className="mt-1 text-xs text-muted">

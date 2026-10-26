@@ -580,6 +580,10 @@
     {
       "file": "20261026090000_dispatch_on_store_accept.sql",
       "sha256": "bcf649b5ada8d54ee588a264f43efb2cd5ff031e866f6411f3562d4a18e974c6"
+    },
+    {
+      "file": "20261026120000_category_commission.sql",
+      "sha256": "8421f016a060e803bf111112e33a61bcdc5578299f9e736b1e7d50c55369689e"
     }
   ]
 }

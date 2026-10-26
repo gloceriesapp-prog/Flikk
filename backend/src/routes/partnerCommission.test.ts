@@ -8,17 +8,18 @@ vi.mock('../db/supabase.js', () => ({ supabase: {
   },
 } }));
 const rates = vi.hoisted(() => ({ get: vi.fn() }));
-vi.mock('../lib/platformSettings.js', () => ({ getStoreCommissionRate: rates.get }));
+vi.mock('../lib/commission.js', () => ({ getStoreCommissionCard: rates.get }));
 import { partnerRouter } from './partner.js';
 
 const handler = partnerRouter.stack.find(l => l.route?.path === '/commission')!.route!.stack.at(-1)!.handle as RequestHandler;
 
-it('returns the caller’s own store commission rate', async () => {
-  rates.get.mockResolvedValue({ rate: 0.045, isStoreOverride: true });
+it('returns the caller’s own store commission rates', async () => {
+  const card = { commissionRate: 0.04, isStoreOverride: false, capPerOrder: 30, categoryRates: [{ category: 'Dairy, Bread & Eggs', commissionRate: 0 }] };
+  rates.get.mockResolvedValue(card);
   const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
   const next = vi.fn();
   await handler({ user: { id: 'owner-1' } } as unknown as Request, res, next);
   expect(next).not.toHaveBeenCalled();
   expect(rates.get).toHaveBeenCalledWith('store-1');
-  expect(res.json).toHaveBeenCalledWith({ commissionRate: 0.045, isStoreOverride: true });
+  expect(res.json).toHaveBeenCalledWith(card);
 });

@@ -12,9 +12,12 @@ vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () 
 vi.mock('./resolveAddress.js', () => ({ resolveAddressId: mocks.address }));
 // Per-store commission (migration 115): shop-b has its own 5% rate, every other store the 10% default.
 const { storeRate } = vi.hoisted(() => ({ storeRate: (id: string) => ({ rate: id === 'shop-b' ? 0.05 : 0.1, isStoreOverride: id === 'shop-b' }) }));
-vi.mock('./platformSettings.js', () => ({
-  getStoreCommissionRate: async (id: string) => storeRate(id),
-  getStoreCommissionRates: async (ids: string[]) => new Map(ids.map((id) => [id, storeRate(id)])),
+vi.mock('./commission.js', () => ({
+  getStoreCommissions: async (lines: { store_id: string; unit_price_at_order: number; quantity: number }[]) => {
+    const totals = new Map<string, number>();
+    for (const l of lines) totals.set(l.store_id, (totals.get(l.store_id) ?? 0) + l.unit_price_at_order * l.quantity * storeRate(l.store_id).rate);
+    return totals;
+  },
 }));
 vi.mock('./pushNotifications.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('./pushNotifications.js')>()), sendPushNotification: vi.fn() }));
 vi.mock('./riderDispatch.js', () => ({ triggerDispatch: vi.fn() }));

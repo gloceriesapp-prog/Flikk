@@ -40,10 +40,11 @@ describe('variant checkout contract', () => {
   });
   it('allows two packs of one product without collapsing their prices', () => {
     const items = priceCheckoutItems([line, { product_id: productId, variant_id: smallId, quantity: 3 }], [product]);
-    const legs = groupPricedCartByStore(items, 0.1);
+    const legs = groupPricedCartByStore(items, new Map([[items[0].store_id, 9.4]]));
     expect(legs[0].items).toHaveLength(2);
     expect(legs[0].itemTotal).toBe(94);
     expect(legs[0].commissionAmount).toBe(9.4);
+    expect(groupPricedCartByStore(items, new Map())[0].commissionAmount).toBe(0);
   });
   it('rejects variants removed from or belonging to another product', () => {
     expect(() => priceCheckoutItems([{ ...line, variant_id: productId }], [product])).toThrow('pack is no longer');

@@ -38,7 +38,7 @@ import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../l
 import { validatePartnerUpi } from '../payouts/upiValidation.js';
 import { decodeImage, toWebp } from '../utils/image.js';
 import { round2 } from '../lib/pricing.js';
-import { getStoreCommissionRate } from '../lib/platformSettings.js';
+import { getStoreCommissionCard } from '../lib/commission.js';
 import { reverseGeocode } from '../lib/reverseGeocode.js';
 import { isValidFssaiFormat, isValidPanFormat } from '../lib/documentValidation.js';
 import { assertFssaiForCategory, assertStoreCategory, DRUG_LICENSE_CATEGORIES } from '../lib/storeCategories.js';
@@ -793,14 +793,14 @@ partnerRouter.delete('/products/:id', async (req: AuthedRequest, res, next) => {
   }
 });
 
-// The commission rate this store's NEW orders are charged (migration 115):
-// the store's own rate when admin set one, else the platform default. Shown
-// by the partner app/dashboard instead of a hard-coded percentage.
+// What this store's NEW orders are charged: the store's own rate when admin
+// set one (115), else the rate of each product's category, with the default
+// (commissionRate) for a category without one, and the per-order cap.
+// Shown by the partner app/dashboard instead of a hard-coded percentage.
 partnerRouter.get('/commission', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
-    const { rate, isStoreOverride } = await getStoreCommissionRate(storeId);
-    res.json({ commissionRate: rate, isStoreOverride });
+    res.json(await getStoreCommissionCard(storeId));
   } catch (err) {
     next(err);
   }

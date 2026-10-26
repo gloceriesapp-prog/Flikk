@@ -1,7 +1,8 @@
 'use client';
 
-// Per-store commission override (stores.commission_rate, migration 115). Empty
-// means the store pays the platform default from Settings. Applies to new
+// Per-store commission override (stores.commission_rate, migration 115). Set:
+// the store pays this one rate on every item. Empty: each item pays its
+// category's rate from Settings → Commission by category. Applies to new
 // orders only — see app/api/stores/[id]/commission/route.ts.
 
 import { useState } from 'react';
@@ -14,11 +15,9 @@ function toPercent(rate: number): string {
 export function StoreCommissionPanel({
   storeId,
   storeRate,
-  platformRate,
 }: {
   storeId: string;
   storeRate: number | null;
-  platformRate: number | null;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState(storeRate == null ? '' : toPercent(storeRate));
@@ -60,8 +59,8 @@ export function StoreCommissionPanel({
           <h2 className="text-base font-bold text-ink">Commission</h2>
           <p className="mt-1 text-sm text-muted">
             {storeRate != null
-              ? `This store pays its own rate of ${toPercent(storeRate)}% of the item total.`
-              : `This store pays the platform default${platformRate != null ? ` of ${toPercent(platformRate)}%` : ''}.`}{' '}
+              ? `This store pays its own rate of ${toPercent(storeRate)}% on every item, instead of the category rates.`
+              : 'This store pays the category rates from Settings → Commission by category. Set a rate here to charge this store one rate on every item instead.'}{' '}
             Changes apply to new orders.
           </p>
         </div>
@@ -73,7 +72,7 @@ export function StoreCommissionPanel({
               max={100}
               step={0.1}
               value={draft}
-              placeholder={platformRate != null ? toPercent(platformRate) : 'Default'}
+              placeholder="By category"
               onChange={(e) => setDraft(e.target.value)}
               aria-label="Store commission percent"
               className="w-16 bg-transparent text-right text-sm font-medium text-ink outline-none"
@@ -95,7 +94,7 @@ export function StoreCommissionPanel({
               onClick={() => void save('')}
               className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
             >
-              Use default
+              Use category rates
             </button>
           )}
         </div>
