@@ -21,9 +21,12 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/home-tabs/
     const input: Partial<HomeTabWriteInput> = body;
     validateHomeTabInput(input);
 
+    // toHomeTabRow fills every column; a body without imageUrl (a rename)
+    // must keep the tab's card image instead of clearing it.
+    const { image_url, ...rest } = toHomeTabRow(input);
     const { data, error } = await supabaseAdmin
       .from('home_tabs')
-      .update(toHomeTabRow(input))
+      .update('imageUrl' in input ? { ...rest, image_url } : rest)
       .eq('id', id)
       .select(HOME_TAB_SELECT)
       .single();

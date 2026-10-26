@@ -39,6 +39,9 @@ export interface RemoteHomeTabBanner {
 export interface RemoteHomeTab {
   id: string;
   name: string;
+  // The tab's own card artwork on Home's Quick categories grid
+  // (home_tabs.image_url, admin Home tabs & tiles → "Card image").
+  imageUrl?: string;
   tiles: RemoteHomeTabTile[];
   banners: RemoteHomeTabBanner[];
   contentKey?: HomeContentKey;
@@ -68,6 +71,7 @@ export function useHomeTabs() {
         (row): RemoteHomeTab => ({
           id: row.id,
           name: row.name,
+          imageUrl: row.image_url ?? undefined,
           tiles: row.tiles.map((t) => ({ id: t.id, name: t.name, imageUrl: t.image_url ?? undefined,
             link: t.link ? { type: t.link.type, id: t.link.id, categoryId: t.link.category_id } : undefined })),
           banners: row.banners.map((b) => ({ id: b.id, imageUrl: b.image_url })),

@@ -4,7 +4,7 @@ import { ALL_TAB, buildHomeCategories } from '../data/categoryTabs';
 import { useHomeTabs } from '../data/useHomeTabs';
 import { QuickCategoryCard } from './QuickCategoryCard';
 import { quickCategoryRows } from './layout';
-import { GROCERY_QUICK_CATEGORY_IMAGE, GROCERY_IMAGE_BOTTOM_BLEED } from './data';
+import { GROCERY_QUICK_CATEGORY_IMAGE, quickCategoryArtwork } from './data';
 import { useCopy, useCopyImage } from '../../../api/appConfig';
 
 interface Props {
@@ -32,6 +32,7 @@ export function QuickCategoriesSection({ onSelectCategory, title = 'Quick catego
   const festivalImages = new Map(sourceTabs
     .filter((tab) => tab.festival)
     .map((tab) => [tab.id, tab.festival?.headerImageUri ?? undefined] as const));
+  const tabImages = new Map(sourceTabs.map((tab) => [tab.id, tab.imageUrl] as const));
   const categories = buildHomeCategories(tabs).filter((category) => category.id !== ALL_TAB.id && !excludedIds.has(category.id));
   const rows = quickCategoryRows(categories);
   if (rows.length === 0) return null;
@@ -42,17 +43,25 @@ export function QuickCategoriesSection({ onSelectCategory, title = 'Quick catego
       <View className="gap-2 px-5">
         {rows.map((row) => (
           <View key={row[0].category.id} className="flex-row items-stretch gap-2">
-            {row.map(({ category, weight }) => (
-              <View key={category.id} style={{ flex: weight, minWidth: 0 }}>
-                <QuickCategoryCard
-                  category={category}
-                  onSelect={onSelectCategory}
-                  imageUrl={groceryIds.has(category.id) ? groceryImage : festivalImages.get(category.id)}
-                  imageBottomBleed={groceryIds.has(category.id) ? GROCERY_IMAGE_BOTTOM_BLEED : 0}
-                  imageScale={festivalImages.has(category.id) ? 1.12 : 1}
-                />
-              </View>
-            ))}
+            {row.map(({ category, weight }) => {
+              const artwork = quickCategoryArtwork({
+                tabImage: tabImages.get(category.id),
+                isGrocery: groceryIds.has(category.id),
+                groceryImage,
+                festivalImage: festivalImages.get(category.id),
+              });
+              return (
+                <View key={category.id} style={{ flex: weight, minWidth: 0 }}>
+                  <QuickCategoryCard
+                    category={category}
+                    onSelect={onSelectCategory}
+                    imageUrl={artwork.imageUrl}
+                    imageBottomBleed={artwork.bottomBleed}
+                    imageScale={artwork.scale}
+                  />
+                </View>
+              );
+            })}
           </View>
         ))}
       </View>
