@@ -34,6 +34,7 @@ import { DeliveryMapView } from './components/DeliveryMapView';
 import { openNavigation } from '../../location/openNavigation';
 import type { AppStackParamList } from '../../navigation/types';
 import type { RiderOrder } from '../../data/mockOrders';
+import { usePackingLabel } from '../../hooks/usePackingLabel';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OrderDetail'>;
 
@@ -57,6 +58,7 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   // cached" → max update depth). Deriving below is plain render-time work.
   const activeOrders = useRiderOrdersStore((s) => s.activeOrders);
   const order = activeOrders.find((o) => o.id === orderId);
+  const packingText = usePackingLabel(order?.readyAt ?? null);
   // Every other active leg of the same multi-store trip (backend's own
   // trip_id — RiderOrder.tripId's note) — same customer/drop address,
   // different store each. Empty for the common single-store order.
@@ -480,7 +482,18 @@ export function OrderDetailScreen({ route, navigation }: Props) {
           // through to the "Continue to customer" bar below (every leg
           // collected → drop nav) or the "waiting" state (siblings still
           // pending), never back to this slide button a second time.
-          <SlideToConfirmButton label={NEXT_ACTION_LABEL.assigned} successLabel="Heading to customer" onConfirm={handlePrimaryAction} />
+          // Taken while the store is still packing: ride over now, the
+          // slide unlocks once the store marks the order packed.
+          order.packing ? (
+            <View className="gap-2">
+              <Text className="text-center text-[13px] font-semibold text-ink/60">
+                {packingText}. Head to the store.
+              </Text>
+              <SlideToConfirmButton label="Waiting for the store to pack" successLabel="Heading to customer" disabled onConfirm={handlePrimaryAction} />
+            </View>
+          ) : (
+            <SlideToConfirmButton label={NEXT_ACTION_LABEL.assigned} successLabel="Heading to customer" onConfirm={handlePrimaryAction} />
+          )
         ) : allLegsPickedUp ? (
           // Whole trip picked up — the real next step is the drop-leg map
           // (DeliveryNavigation). Primary (blue) CTA.

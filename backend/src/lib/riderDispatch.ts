@@ -1,6 +1,11 @@
 import { supabase } from '../db/supabase.js';
-import { riderOfferPush, sendPushNotifications } from './pushNotifications.js';
+import { riderAssignmentPush, riderOfferPush, sendPushNotification, sendPushNotifications } from './pushNotifications.js';
 
+// When the search starts: once the store ACCEPTS the order and
+// delivery_settings.dispatch_after_accept_seconds (default 15 s) have passed,
+// or as soon as it is packed (migration 20261026090000). The rider rides to
+// the shop while it packs; pickup itself still waits for 'packed'.
+//
 // Expanding search — the rings (delivery_settings.dispatch_radius_steps_m)
 // and how long each ring is offered (dispatch_step_seconds) are admin
 // settings (migration 113), read by advance_dispatch_offers on every pass,
@@ -57,8 +62,9 @@ async function advanceOffers(orderId?: string): Promise<DispatchOffer[]> {
 }
 
 // Atomic null->first-radius transition prevents simultaneous API replicas
-// broadcasting the same initial offer. The worker recovers missed initial
-// dispatch, including a crash between packing and this fire-and-forget call.
+// broadcasting the same initial offer. Called when the store marks packed:
+// it starts a search only if none is running yet (a store that packed inside
+// the accept delay). The worker starts every other search after accept.
 export async function triggerDispatch(order: { id: string; store_id: string }): Promise<void> {
   for (const offer of await advanceOffers(order.id))
     await broadcastToRadius(offer.id, offer.lat, offer.lng, offer.store_name, offer.radius_m);
@@ -66,7 +72,8 @@ export async function triggerDispatch(order: { id: string; store_id: string }): 
 
 // Database row locks advance each eligible offer exactly once per window.
 // Radius/visibility is persisted before best-effort push; riders can poll it
-// even if the push fails. Batches are bounded, exhausted offers remain manual.
+// even if the push fails. After the widest ring the offer repeats there at
+// most once a minute until a rider accepts; the admin bell counts those.
 export async function expandDispatchOrRebroadcast(_now: Date = new Date(), guard: () => Promise<void> = async () => {}): Promise<{ expanded: number; exhausted: number }> {
   await guard();
   const offers = await advanceOffers();
@@ -79,4 +86,18 @@ export async function expandDispatchOrRebroadcast(_now: Date = new Date(), guard
     } catch { /* Persisted offers remain available to rider polling. */ }
   }
   return { expanded, exhausted: 0 };
+}
+
+// A rider who took the order while the store was still packing is told the
+// moment it is packed, so they can head in or collect it. Best-effort: the
+// rider app's poll shows the same change within seconds.
+export async function notifyRiderOrderPacked(order: { id: string; store_id: string; rider_id?: string | null; trip_id?: string | null }): Promise<void> {
+  if (!order.rider_id) return;
+  const [{ data: rider }, { data: store }] = await Promise.all([
+    supabase.from('users').select('expo_push_token').eq('id', order.rider_id).maybeSingle(),
+    supabase.from('stores').select('name').eq('id', order.store_id).maybeSingle(),
+  ]);
+  await sendPushNotification(rider?.expo_push_token, 'Order ready for pickup',
+    `${store?.name ?? 'The store'} has packed order ${order.id.slice(0, 6).toUpperCase()}.`,
+    riderAssignmentPush(order.trip_id ? null : order.id));
 }

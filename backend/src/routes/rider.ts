@@ -200,8 +200,10 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
         // client derives the real per-offer countdown deadline from it
         // (that timestamp + offer_window_seconds), instead of a
         // mount-seeded guess. Set on every broadcast/rebroadcast by
-        // advance_dispatch_offers.
-        `id, order_number, trip_id, dispatch_broadcast_at, ${DELIVERY_MONEY_COLUMNS}, stores(name, lat, lng), addresses(line1, landmark, latitude, longitude), order_items(quantity)`
+        // advance_dispatch_offers. status 'placed' = the store accepted and
+        // is still packing (preparation_deadline_at: when it expects to be
+        // done); 'packed' = ready to collect.
+        `id, order_number, trip_id, status, preparation_deadline_at, dispatch_broadcast_at, ${DELIVERY_MONEY_COLUMNS}, stores(name, lat, lng), addresses(line1, landmark, latitude, longitude), order_items(quantity)`
       )
       .in('id', orderIds);
     if (ordersErr) throw ordersErr;
@@ -275,7 +277,8 @@ riderRouter.get('/route', (req, _res, next) => {
 
 // The atomic "first accept wins" — accept_dispatch_offer (migration 107)
 // runs as one transaction under the trip's advisory lock: the order must be
-// packed, unassigned and actually broadcast, the rider must be online and
+// accepted by the store (still packing) or packed, unassigned and actually
+// broadcast, the rider must be online and
 // inside the order's current dispatch radius, and a trip whose live legs
 // already belong to another rider is refused. Accepting one leg claims every
 // unassigned leg of the same trip in that same transaction, so two riders can
@@ -374,7 +377,7 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
         // DELIVERY_MONEY_COLUMNS feed withDeliveryMoney below: the rider's
         // payout (the recorded earning once delivered, else the admin pay
         // rule) and, for cash on delivery, the amount to collect.
-        `id, status, placed_at, delivered_at, cancel_reason, trip_id, ${DELIVERY_MONEY_COLUMNS}, order_items(quantity, unit_at_order, products(name, unit)), stores(name, phone, lat, lng, manual_address, address_line, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude, delivery_instructions)`,
+        `id, status, preparation_deadline_at, placed_at, delivered_at, cancel_reason, trip_id, ${DELIVERY_MONEY_COLUMNS}, order_items(quantity, unit_at_order, products(name, unit)), stores(name, phone, lat, lng, manual_address, address_line, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude, delivery_instructions)`,
       )
       .eq('rider_id', req.user!.id)
 ;

@@ -25,6 +25,7 @@ import { OfferRouteStops } from './OfferRouteStops';
 import { OfferStatTiles } from './OfferStatTiles';
 import { OfferRoutePreview } from './OfferRoutePreview';
 import { useOfferDecision } from './useOfferDecision';
+import { usePackingLabel } from '../../../../hooks/usePackingLabel';
 
 // Decide-window length in seconds — the arc denominator. The offer's own
 // windowSeconds (admin's dispatch_step_seconds) wins; 45s is the fallback, so
@@ -49,6 +50,7 @@ interface Props {
 
 export const DispatchOfferCard = memo(function DispatchOfferCard({ offer, onAccept, onClose, windowSeconds = offer.windowSeconds ?? DECISION_WINDOW_S }: Props) {
   const { state, handleAccept, handleDecline } = useOfferDecision(offer.orderId, onAccept, onClose);
+  const packingText = usePackingLabel(offer.readyAt);
   const hasRoute = offer.storeCoords != null && offer.dropCoords != null;
 
   if (state === 'declined') return null;
@@ -103,6 +105,12 @@ export const DispatchOfferCard = memo(function DispatchOfferCard({ offer, onAcce
           </Text>
         </View>
       </View>
+
+      {offer.packing && (
+        <Text className="text-center text-[12px] font-semibold text-white/80">
+          {packingText}. Accept now and ride over.
+        </Text>
+      )}
 
       {offer.cashLimitBlocked ? (
         <Text className="text-center text-[12px] font-semibold text-[#fe9a00]">

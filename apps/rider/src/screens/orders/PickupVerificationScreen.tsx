@@ -25,6 +25,7 @@ import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import type { AppStackParamList } from '../../navigation/types';
+import { usePackingLabel } from '../../hooks/usePackingLabel';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'PickupVerification'>;
 
@@ -80,6 +81,7 @@ export function PickupVerificationScreen({ route, navigation }: Props) {
     !!order?.tripId &&
     activeOrders.some((o) => o.tripId === order.tripId && o.id !== order.id && o.status === 'assigned');
   const insets = useSafeAreaInsets();
+  const packingText = usePackingLabel(order?.readyAt ?? null);
 
   const [checked, setChecked] = useState<Record<CheckKey, boolean>>({ items: false, condition: false, name: false });
   const [confirming, setConfirming] = useState(false);
@@ -103,8 +105,11 @@ export function PickupVerificationScreen({ route, navigation }: Props) {
   // verification screen): if the trip still has stores to pick up, go to
   // OrderDetail for the multi-stop route; otherwise straight to the customer
   // drop nav.
+  // Taken while the store is still packing: the slide unlocks once the
+  // store marks it packed (the assignments poll flips packing off).
+  const packing = order.packing === true;
   const confirmPickup = async () => {
-    if (confirming || !allChecked) return;
+    if (confirming || !allChecked || packing) return;
     setConfirming(true);
     try {
       await advanceOrderStatus(orderId);
@@ -248,10 +253,15 @@ export function PickupVerificationScreen({ route, navigation }: Props) {
           reasoning OrderDetail's own pickup slide applies — this is the real
           assigned→picked_up write, worth the friction. */}
       <View style={{ paddingBottom: insets.bottom + 16 }} className="gap-3 px-5 pt-3">
+        {packing && (
+          <Text className="text-center text-[13px] font-semibold text-ink/60">
+            {packingText}. You can pick up once it is packed.
+          </Text>
+        )}
         <SlideToConfirmButton
-          label={allChecked ? 'Slide to verify & pick up' : 'Tick all three to pick up'}
+          label={packing ? 'Waiting for the store to pack' : allChecked ? 'Slide to verify & pick up' : 'Tick all three to pick up'}
           successLabel="Picked up"
-          disabled={!allChecked || confirming}
+          disabled={packing || !allChecked || confirming}
           onConfirm={confirmPickup}
         />
 

@@ -21,6 +21,7 @@ const ITEMS: { key: string; label: string; href: string }[] = [
   { key: 'pendingProducts', label: 'Products / photos awaiting approval', href: '/approvals' },
   { key: 'refundsNeedingAction', label: 'Refunds failed or needing manual action', href: '/refunds' },
   { key: 'openSupportTickets', label: 'Support requests waiting for a reply', href: '/support' },
+  { key: 'noRiderFound', label: 'Orders no rider accepted (assign one)', href: '/dispatch' },
   { key: 'stuckOrders', label: `Orders with no rider for ${ATTENTION_THRESHOLD_MINUTES}+ min`, href: '/orders' },
 ];
 
