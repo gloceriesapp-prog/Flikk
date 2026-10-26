@@ -1,6 +1,11 @@
-const { withGradleProperties, withAppBuildGradle, withDangerousMod } = require('expo/config-plugins');
+const { withGradleProperties, withAppBuildGradle, withSettingsGradle, withDangerousMod } = require('expo/config-plugins');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+
+// AGP 8.12.0 embeds R8 before the optimized resource shrinker fix.
+// https://issuetracker.google.com/issues/447076894
+// Use Google's published stable patch from the same compiler release line.
+const R8_VERSION = '8.12.30';
 
 const PROPERTIES = {
   'android.enableMinifyInReleaseBuilds': 'true',
@@ -16,13 +21,44 @@ function configureProperties(items) {
   ];
 }
 
+function configureSettingsGradle(source) {
+  const cleaned = source.replace(/  \/\/ Gloceries R8 patch BEGIN[\s\S]*?  \/\/ Gloceries R8 patch END\n?/g, '');
+  const hook = /^pluginManagement\s*\{/m;
+  if ((cleaned.match(/^pluginManagement\s*\{/gm) || []).length !== 1) {
+    throw new Error('Android settings template changed: verify R8 plugin classpath before building.');
+  }
+  // Official R8 override belongs in settings pluginManagement, ahead of AGP.
+  // https://r8.googlesource.com/r8/+/refs/heads/main/README.md
+  return cleaned.replace(hook, `pluginManagement {
+  // Gloceries R8 patch BEGIN
+  buildscript {
+    repositories { google(); mavenCentral() }
+    dependencies { classpath("com.android.tools:r8:${R8_VERSION}") }
+  }
+  // Gloceries R8 patch END`);
+}
+
 function configureBuildGradle(source) {
   const result = source.replace(/getDefaultProguardFile\(["']proguard-android\.txt["']\)/g,
     'getDefaultProguardFile("proguard-android-optimize.txt")');
   if (!result.includes('proguard-android-optimize.txt') || !result.includes('minifyEnabled enableMinifyInReleaseBuilds')) {
     throw new Error('Android release template changed: verify optimized R8 defaults before building.');
   }
-  return result;
+  const cleaned = result.replace(/\n\/\/ Gloceries R8 verification BEGIN[\s\S]*?\/\/ Gloceries R8 verification END\n?/g, '').trimEnd();
+  return `${cleaned}
+
+// Gloceries R8 verification BEGIN
+tasks.register("verifyCustomerR8Version") {
+    doLast {
+        def actual = com.android.tools.r8.Version.getVersionString()
+        if (!(actual == "${R8_VERSION}" || actual.startsWith("${R8_VERSION} "))) {
+            throw new GradleException("Expected R8 ${R8_VERSION}, loaded " + actual)
+        }
+        println("Verified release compiler: R8 " + actual)
+    }
+}
+// Gloceries R8 verification END
+`;
 }
 
 function configureProguardRules(source) {
@@ -40,6 +76,7 @@ function configureProguardRules(source) {
 }
 
 function withAndroidReleaseQuality(config) {
+  config = withSettingsGradle(config, mod => { mod.modResults.contents = configureSettingsGradle(mod.modResults.contents); return mod; });
   config = withGradleProperties(config, mod => { mod.modResults = configureProperties(mod.modResults); return mod; });
   config = withAppBuildGradle(config, mod => { mod.modResults.contents = configureBuildGradle(mod.modResults.contents); return mod; });
   return withDangerousMod(config, ['android', async mod => {
@@ -53,3 +90,4 @@ module.exports = withAndroidReleaseQuality;
 module.exports.configureProperties = configureProperties;
 module.exports.configureBuildGradle = configureBuildGradle;
 module.exports.configureProguardRules = configureProguardRules;
+module.exports.configureSettingsGradle = configureSettingsGradle;

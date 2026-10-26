@@ -174,7 +174,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$CUSTOMER_RELEASE_ARTIFACT_DIR"
-          ./android/gradlew -p android :app:bundleRelease --no-daemon --max-workers=2 \
+          ./android/gradlew -p android :app:verifyCustomerR8Version :app:bundleRelease --stacktrace --no-daemon --max-workers=2 \
             '-Dorg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m' --console=plain 2>&1 \
             | node scripts/redact-release-log.cjs \
             | tee "$CUSTOMER_RELEASE_ARTIFACT_DIR/build.log"

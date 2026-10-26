@@ -59,7 +59,7 @@ describe('customer release safeguards', () => {
   it('applies optimized release rules idempotently and rejects template drift', () => {
     const result = run(`
       const assert = require('node:assert/strict');
-      const {configureProperties, configureBuildGradle, configureProguardRules} = require('./plugins/withAndroidReleaseQuality.cjs');
+      const {configureProperties, configureBuildGradle, configureProguardRules, configureSettingsGradle} = require('./plugins/withAndroidReleaseQuality.cjs');
       const original = [
         {type:'comment', value:'preserve me'},
         {type:'property', key:'unrelated', value:'keep'},
@@ -77,6 +77,14 @@ describe('customer release safeguards', () => {
       assert.ok(gradle.includes('proguard-android-optimize.txt'));
       assert.equal(configureBuildGradle(gradle),gradle);
       assert.throws(()=>configureBuildGradle('new template without known release hooks'));
+      assert.ok(gradle.includes('verifyCustomerR8Version'));
+      const settings = configureSettingsGradle('pluginManagement {\\n  includeBuild("unchanged-plugin")\\n}\\nplugins { id("example") }');
+      assert.equal(configureSettingsGradle(settings),settings);
+      assert.ok(settings.includes('com.android.tools:r8:8.12.30'));
+      assert.ok(settings.includes('includeBuild("unchanged-plugin")'));
+      assert.ok(settings.indexOf('buildscript {') < settings.indexOf('includeBuild('));
+      assert.throws(()=>configureSettingsGradle('plugins { id("example") }'));
+      assert.throws(()=>configureSettingsGradle('pluginManagement {}\\npluginManagement {}'));
       const rules = configureProguardRules('-keep class example.App');
       assert.equal(configureProguardRules(rules),rules);
       assert.ok(rules.includes('androidx.room.RoomDatabase'));
