@@ -127,7 +127,7 @@ function validateManifest(facts, env, version) {
   assert.equal(facts.debuggable, 'false', 'A production AAB must not be debuggable.');
   assert.ok(Number(facts.targetSdk) >= 36, 'The customer release must target Android API 36 or later.');
   assert.equal(facts.cleartext, 'false', 'The production app must not allow cleartext traffic.');
-  for (const permission of ['android.permission.ACCESS_BACKGROUND_LOCATION', 'android.permission.READ_CONTACTS', 'android.permission.READ_SMS', 'com.google.android.gms.permission.AD_ID']) {
+  for (const permission of ['android.permission.ACCESS_BACKGROUND_LOCATION', 'android.permission.READ_CONTACTS', 'android.permission.READ_SMS', 'android.permission.SYSTEM_ALERT_WINDOW', 'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE', 'com.google.android.gms.permission.AD_ID']) {
     assert.ok(!facts.permissions?.includes(permission), `Unexpected customer permission: ${permission}`);
   }
   assert.equal(facts.hasMapKey, true, 'Packaged native Maps API key is missing.');
