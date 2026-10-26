@@ -91,7 +91,17 @@ module.exports = {
       // for moving the phone input above the keyboard.
       softwareKeyboardLayoutMode: 'pan',
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
-      blockedPermissions: ['com.google.android.gms.permission.AD_ID'],
+      blockedPermissions: [
+        'com.google.android.gms.permission.AD_ID',
+        // Dependency templates include developer overlays and legacy shared
+        // storage access. Customer features use app-owned files and remote
+        // images; these permissions have no purpose in a production build.
+        ...(!developmentApi ? [
+          'android.permission.SYSTEM_ALERT_WINDOW',
+          'android.permission.READ_EXTERNAL_STORAGE',
+          'android.permission.WRITE_EXTERNAL_STORAGE',
+        ] : []),
+      ],
       config: {
         googleMaps: {
           apiKey: androidGoogleMapsApiKey,

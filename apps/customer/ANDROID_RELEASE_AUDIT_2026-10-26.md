@@ -29,3 +29,9 @@ Target: Gloceries 1.0.4, Android version code 11, package com.gloceries.customer
 - Patch validation: all 44 customer suites / 277 tests and lint pass. A real Expo Android prebuild without local dotenv files confirms the generated settings and compiler guard.
 - The physical Android phone is connected. Its installed Play app is still 1.0.3 (10), so it has not verified the new release.
 - Play's saved Data safety answer claims data is automatically deleted within 90 days without account deletion. No supporting automatic retention job was established in this audit; verify/correct that answer with the account owner before submission. No declaration was edited.
+
+## Production permission and Play draft cleanup
+
+- The generated dependency manifest requested SYSTEM_ALERT_WINDOW and legacy READ_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE. The customer has no corresponding overlay or shared-storage feature. Production config now blocks those permissions, while development config remains unchanged; the packaged-AAB verifier rejects them if reintroduced. Regenerated production manifest entries use tools:node=remove. All 44 customer suites / 278 tests and lint pass. The final AAB still needs to be rebuilt from this source.
+- Owner approved India-only production availability; saved as a pending Play publishing change, with no submission or rollout.
+- Owner confirmed partial data deletion through support and approved the new public /delete-data instructions. PR #85 is merged, its Vercel landing deployment passed, and the published URL loaded in Chrome. Play Data safety draft now has Yes selected for support-based data deletion with https://gloceries.com/delete-data; saved successfully. The unsupported 90-day automatic deletion answer is deselected.

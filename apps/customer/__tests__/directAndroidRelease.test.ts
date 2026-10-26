@@ -27,7 +27,7 @@ describe('direct customer Android release safeguards', () => {
       const env = {CUSTOMER_ANDROID_VERSION_CODE:'12',CUSTOMER_HIGHEST_PLAY_VERSION_CODE:'11'};
       const facts = {package:'com.gloceries.customer',versionCode:'12',versionName:'1.0.4',debuggable:'false',targetSdk:'36',cleartext:'false',permissions:[],hasMapKey:true,headers:{'expo-channel-name':'production'},updatesUrl:'https://u.expo.dev/a98e9f05-620b-4efb-8624-99d724667e7c'};
       validateManifest(facts,env,'1.0.4');
-      for (const bad of [{package:'com.gloceries.partner'},{debuggable:'true'},{targetSdk:'34'},{cleartext:'true'},{permissions:['android.permission.READ_CONTACTS']},{versionCode:'11'},{hasMapKey:false},{headers:{'expo-channel-name':'preview'}},{updatesUrl:'https://u.expo.dev/wrong'}]) {
+      for (const bad of [{package:'com.gloceries.partner'},{debuggable:'true'},{targetSdk:'34'},{cleartext:'true'},{permissions:['android.permission.READ_CONTACTS']},{permissions:['android.permission.SYSTEM_ALERT_WINDOW']},{permissions:['android.permission.READ_EXTERNAL_STORAGE']},{permissions:['android.permission.WRITE_EXTERNAL_STORAGE']},{versionCode:'11'},{hasMapKey:false},{headers:{'expo-channel-name':'preview'}},{updatesUrl:'https://u.expo.dev/wrong'}]) {
         assert.throws(()=>validateManifest({...facts,...bad},env,'1.0.4'));
       }
       assert.equal(fingerprint('aa:'.repeat(31)+'aa'),'AA'.repeat(32));
