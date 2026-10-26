@@ -2,7 +2,7 @@
 // each page's own metadata all read from here, so adding a policy is one entry
 // plus one page file — no second list to keep in sync.
 
-export type PolicySlug = "privacy" | "terms" | "refund-policy" | "shipping-policy" | "contact" | "delete-account";
+export type PolicySlug = "privacy" | "terms" | "refund-policy" | "shipping-policy" | "contact" | "delete-account" | "delete-data";
 
 export interface Policy {
   slug: PolicySlug;
@@ -22,7 +22,7 @@ export const POLICIES: Record<PolicySlug, Policy> = {
     label: "Privacy Policy",
     description:
       "How Gloceries collects, uses, shares and protects your personal information when you use our apps and website.",
-    lastUpdated: "2026-10-06",
+    lastUpdated: "2026-10-26",
   },
   terms: {
     slug: "terms",
@@ -55,6 +55,13 @@ export const POLICIES: Record<PolicySlug, Policy> = {
     description: "Reach the Gloceries support team for help with orders, payments, refunds or partnering with us.",
     lastUpdated: "2026-10-06",
   },
+  "delete-data": {
+    slug: "delete-data",
+    title: "Request Deletion of Your Gloceries Data",
+    label: "Delete Personal Data",
+    description: "How to request deletion of specific Gloceries personal data through support while keeping your account.",
+    lastUpdated: "2026-10-26",
+  },
   "delete-account": {
     slug: "delete-account",
     title: "Delete Your Gloceries Account",
@@ -66,6 +73,6 @@ export const POLICIES: Record<PolicySlug, Policy> = {
 };
 
 // Footer order: contact first, then the documents payment gateways check.
-export const POLICY_ORDER: PolicySlug[] = ["contact", "terms", "privacy", "refund-policy", "shipping-policy", "delete-account"];
+export const POLICY_ORDER: PolicySlug[] = ["contact", "terms", "privacy", "refund-policy", "shipping-policy", "delete-account", "delete-data"];
 
 export const policyHref = (slug: PolicySlug) => `/${slug}`;
