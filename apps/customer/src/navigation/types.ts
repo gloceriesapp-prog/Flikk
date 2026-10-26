@@ -134,11 +134,10 @@ export type AppStackParamList = {
   };
   TrackOrder: { orderId: string; paymentMethodLabel: string; isTrip?: boolean };
   OrderSummary: { orderId: string; isTrip?: boolean };
-  Support: {target?:import('../features/customer-care/api').SupportTarget;category?:import('../features/customer-care/api').IssueCategory} | undefined;
+  Support: {target?:import('../features/customer-care/supportEmail').SupportTarget;category?:import('../features/customer-care/supportEmail').IssueCategory} | undefined;
   Notifications: undefined;
   AboutGloceries: undefined;
   Faq: undefined;
-  SupportTicket: {ticketId:string};
   MyRefunds: undefined;
   RefundDetail: {kind:'order'|'trip';refundId:string};
   Wishlist: undefined;

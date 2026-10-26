@@ -229,7 +229,7 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
 
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('phone, name, birthday, is_rejected, created_at')
+      .select('phone, name, is_rejected, created_at')
       .eq('id', req.user!.id)
       .single();
     if (userError) throw userError;
@@ -296,7 +296,6 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
       rejection_reason: activeDraft?.rejection_reason ?? null,
       phone: user.phone,
       name: user.name,
-      birthday: user.birthday,
       // Real users.created_at — PurchaseScreen's order-time filter builds
       // its year list (2024, 2023, ...) down to whichever year this
       // account actually started in, not a hardcoded lookback window.
@@ -307,30 +306,21 @@ authRouter.get('/me', requireAuth, async (req: AuthedRequest, res, next) => {
   }
 });
 
-// Customer-self-update — name and/or birthday (Profile screen's own
-// account-details card: Name row, Date of birth row — phone is never
-// editable here, it's the verified OTP identity, not a free-text field).
-// Same partial-patch style as partner.ts's own PATCH /store: only fields
-// present in the body get touched, everything else on the row is left
-// alone.
+// Profile edits are name-only. Reject removed and unexpected fields before writing.
 authRouter.patch('/me', requireAuth, async (req: AuthedRequest, res, next) => {
   try {
-    const { name, birthday } = req.body as { name?: string; birthday?: string };
-    if (birthday !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
-      throw new AppError(400, 'INVALID_BIRTHDAY', 'birthday must be YYYY-MM-DD.');
+    const body = req.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).some(key => key !== 'name')) {
+      throw new AppError(400, 'INVALID_PROFILE_FIELDS', 'Only your name can be updated.');
     }
-    if (name !== undefined && !name.trim()) {
-      throw new AppError(400, 'INVALID_NAME', 'name cannot be empty.');
+    if (typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 100) {
+      throw new AppError(400, 'INVALID_NAME', 'Enter a name of 1–100 characters.');
     }
-
-    const patch: Record<string, unknown> = {};
-    if (birthday !== undefined) patch.birthday = birthday;
-    if (name !== undefined) patch.name = name.trim();
-
-    const { data, error } = await supabase.from('users').update(patch).eq('id', req.user!.id).select('name, birthday').single();
+    const { data, error } = await supabase.from('users')
+      .update({ name: body.name.trim() }).eq('id', req.user!.id).select('name').single();
     if (error) throw error;
-
-    res.json({ name: data.name, birthday: data.birthday });
+    res.json({ name: data.name });
   } catch (err) {
     next(err);
   }

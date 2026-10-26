@@ -126,7 +126,7 @@ export default function DeleteAccountPage() {
       <LegalSection title="6. Data we delete">
         <LegalList
           items={[
-            "Your name, date of birth and the mobile number linked to your account.",
+            "Your name and the mobile number linked to your customer account.",
             "Your sign-in identity, so the account can no longer be used.",
             "Push-notification tokens and registered devices.",
             "Your wishlist.",

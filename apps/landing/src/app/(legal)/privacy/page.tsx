@@ -31,12 +31,12 @@ export default function PrivacyPage() {
         </p>
         <LegalList
           items={[
-            "Account details: your mobile number (used for OTP sign-in), name, and optionally email and date of birth.",
+            "Customer account details: your mobile number (used for OTP sign-in) and name. The customer app does not request a date of birth.",
             "Delivery addresses: address text, landmark, recipient name and phone, and the map pin you place for each saved address.",
-            "Location: your device location, when you allow it, to find stores that deliver to you and to place your address pin.",
+            "Location: your precise foreground device location, when you allow it, to find nearby stores and place your delivery pin. You can select the pin manually instead. The customer app does not collect location in the background.",
             "Orders: items, prices, stores, delivery status, cancellations, refunds, ratings, reviews, wishlists and shopping lists.",
             "Payments: payment method type and the payment and refund reference IDs from our payment gateway. We never receive or store your full card number, CVV, UPI PIN or net-banking password.",
-            "Support: the messages and details you send us through Help & Support.",
+            "Customer support: email you choose to send to hello@gloceries.com. The customer app opens your email app and does not create in-app support conversations. Email correspondence is handled in our support mailbox. Partner and rider apps continue to offer in-app support.",
             "Device data: push-notification token, app version, device model and crash diagnostics.",
             "Voice input: if you use voice search, your device's speech service converts speech to text; we receive only the resulting search text.",
           ]}
@@ -81,9 +81,10 @@ export default function PrivacyPage() {
         <LegalList
           items={[
             "The partner store fulfilling your order receives your order items and the name associated with the order.",
-            "The rider delivering your order receives your delivery address, map pin, recipient name and phone number for that delivery.",
+            "The assigned rider receives your exact delivery address, map pin, recipient name and phone number while delivering your order. Riders considering a delivery offer see only an approximate delivery area. Finished-order rider history hides the exact delivery address and phone number.",
             "Customers see the assigned rider's name, phone number and delivery count while an order is in progress.",
             "Service providers that run the platform for us under contract: cloud database and authentication hosting, image storage and delivery, payment processing (Razorpay), SMS and push-notification delivery, maps and address lookup, and crash reporting.",
+            "Google Maps and our address-lookup providers process map and geocoding requests. Google Maps also collects SDK diagnostics and identifiers under Google’s privacy terms; map data is not limited to sharing with a rider.",
             "Government authorities or law enforcement when required by law or a valid legal request.",
           ]}
         />

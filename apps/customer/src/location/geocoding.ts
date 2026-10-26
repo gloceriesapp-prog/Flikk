@@ -5,6 +5,7 @@
 // apparently verified delivery address.
 
 import * as Location from 'expo-location';
+import { Alert, Linking } from 'react-native';
 import { apiRequest } from '../api/client';
 import { withDeadline } from '../utils/deadline';
 import { getDeviceLocationFix } from './deviceLocation';
@@ -23,8 +24,9 @@ export class LocationPermissionDeniedError extends Error {
 export async function requestLocationPermission(): Promise<boolean> {
   // Existing permission needs no dialog or Activity-settling delay.
   const existing = await Location.getForegroundPermissionsAsync();
-  if (existing.status === 'granted') return true;
-  const { status } = await Location.requestForegroundPermissionsAsync();
+  if (existing.status === 'granted') return acceptLocationPrecision(existing);
+  const permission = await Location.requestForegroundPermissionsAsync();
+  const { status } = permission;
   // Real crash this works around, not a defensive-programming guess: the
   // OS permission dialog tears down and recreates the host Activity: on
   // React Native's New Architecture (enabled in this app,
@@ -41,7 +43,15 @@ export async function requestLocationPermission(): Promise<boolean> {
   // the activity-recreation window on real hardware without being a
   // noticeable pause to the user waiting on a permission prompt.
   if (status === 'granted') await new Promise((resolve) => setTimeout(resolve, 400));
-  return status === 'granted';
+  return status === 'granted' && acceptLocationPrecision(permission);
+}
+
+function acceptLocationPrecision(permission: Location.LocationPermissionResponse): boolean {
+  if (permission.android?.accuracy !== 'coarse' && permission.ios?.accuracy !== 'reduced') return true;
+  Alert.alert('Enable precise location',
+    'Your phone is sharing an approximate area. Enable Precise Location in Settings for an accurate delivery pin, or choose your pin manually.',
+    [{ text: 'Choose manually', style: 'cancel' }, { text: 'Open Settings', onPress: () => { void Linking.openSettings().catch(() => undefined); } }]);
+  return false;
 }
 
 export async function getCurrentCoordinates(): Promise<Coordinates> {
