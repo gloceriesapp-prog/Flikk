@@ -208,6 +208,27 @@ export default function HomeCategoriesPage() {
     }
   }
 
+  // The tab's own card picture on the customer Home "Quick categories" grid
+  // (home_tabs.image_url). null removes it; the app then shows just the name
+  // (Grocery and the festival tab fall back to their built-in artwork).
+  async function handleTabImageChange(tab: HomeTab, imageUrl: string | null) {
+    setError(null);
+    try {
+      const res = await fetch(`/api/home-tabs/${tab.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tab.name, sortOrder: tab.sortOrder, isActive: tab.isActive, imageUrl }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Save failed.');
+      }
+      await loadTabs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save the card image — try again.');
+    }
+  }
+
   async function handleDeleteTab(id: string) {
     setError(null);
     try {
@@ -423,7 +444,15 @@ export default function HomeCategoriesPage() {
                     className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
                   />
                 ) : (
-                  <span className="flex-1 truncate text-sm font-medium text-ink">{tab.name}</span>
+                  <>
+                    {tab.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={tab.imageUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg bg-accent object-contain" />
+                    ) : (
+                      <span className="h-8 w-8 shrink-0 rounded-lg border border-dashed border-border" aria-hidden="true" />
+                    )}
+                    <span className="flex-1 truncate text-sm font-medium text-ink">{tab.name}</span>
+                  </>
                 )}
                 {editingTabId === tab.id ? (
                   <button
@@ -497,6 +526,31 @@ export default function HomeCategoriesPage() {
             <p className="py-10 text-center text-sm text-muted">Pick a tab on the left, or add one.</p>
           ) : (
             <>
+              <div className="mb-6 flex flex-wrap items-center gap-4 rounded-2xl border border-border p-4">
+                <ProductImageUpload
+                  key={selectedTab.id}
+                  imageUrl={selectedTab.imageUrl}
+                  onChange={(imageUrl) => handleTabImageChange(selectedTab, imageUrl)}
+                  bucket="home-tab-images"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-ink">Card image for &quot;{selectedTab.name}&quot;</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Shown on this tab&apos;s card in the Home screen&apos;s category grid. Click the box to upload a JPG, PNG or
+                    WebP (up to 5 MB); a transparent PNG of the products looks best. Customers see it the next time their Home screen loads (within about 5 minutes).
+                  </p>
+                  {selectedTab.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => handleTabImageChange(selectedTab, null)}
+                      className="mt-2 text-xs font-semibold text-danger hover:underline"
+                    >
+                      Remove image
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted">
                 Tiles inside &quot;{selectedTab.name}&quot;
               </p>
