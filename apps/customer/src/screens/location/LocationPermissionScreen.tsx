@@ -58,7 +58,7 @@ export function LocationPermissionScreen({ navigation }: Props) {
       <View className="bg-white px-6 pb-6 pt-4">
         <Text accessibilityRole="header" className="text-center text-2xl font-bold text-[#181A1B]">Find everything nearby</Text>
         <Text className="mt-2 text-center text-[15px] font-medium leading-5 text-[#181A1B]/60">
-          Discover stores around you and get faster, more accurate deliveries to your doorstep.
+          Use your precise location to find nearby stores and place your delivery pin. Your assigned rider uses the confirmed pin to reach you.
         </Text>
         {error && <Text accessibilityLiveRegion="polite" className="mt-3 text-center text-[13px] font-medium text-red-500">{error}</Text>}
         <View className="mt-6 gap-3">

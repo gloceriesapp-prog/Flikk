@@ -4,7 +4,6 @@ import { AccountPrivacyScreen } from '../features/account-privacy/AccountPrivacy
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen';
 import { SupportScreen } from '../features/customer-care/SupportScreen';
 import { FaqScreen } from '../features/customer-care/FaqScreen';
-import { SupportTicketScreen } from '../features/customer-care/SupportTicketScreen';
 import { RefundsScreen } from '../features/customer-care/RefundsScreen';
 import { RefundDetailScreen } from '../features/customer-care/RefundDetailScreen';
 import { CheckoutAttemptRecoveryScreen } from '../features/checkout-recovery/CheckoutAttemptRecoveryScreen';
@@ -133,7 +132,6 @@ export function AppNavigator() {
       <Stack.Screen name="AboutGloceries" component={AboutGloceriesScreen} />
       <Stack.Screen name="Faq" component={FaqScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
-      <Stack.Screen name="SupportTicket" component={SupportTicketScreen} />
       <Stack.Screen name="MyRefunds" component={RefundsScreen} />
       <Stack.Screen name="RefundDetail" component={RefundDetailScreen} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} />

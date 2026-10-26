@@ -14,7 +14,7 @@ export function FaqScreen({ navigation }: Props) {
   const faqs = config.data?.faqs ?? [];
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <CareLayout title="Common questions" onBack={() => navigation.goBack()}>
+    <CareLayout allowGuest title="Common questions" onBack={() => navigation.goBack()}>
       {config.isPending ? <Text className="text-sm text-gray-600">Loading…</Text> : null}
       {config.isError && !config.data ? (
         <>

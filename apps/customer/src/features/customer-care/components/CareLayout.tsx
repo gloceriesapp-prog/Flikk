@@ -4,10 +4,11 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
-export function CareLayout({ title, onBack, children }: {
+export function CareLayout({ title, onBack, children, allowGuest = false }: {
     title: string;
     onBack: () => void;
     children: ReactNode;
+    allowGuest?: boolean;
 }) {
     const token = useAuthStore(s => s.accessToken);
     const signIn = useAuthStore(s => s.exitGuestMode);
@@ -16,7 +17,7 @@ export function CareLayout({ title, onBack, children }: {
    <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} className="h-10 w-10 items-center justify-center rounded-full bg-white"><AppIcon icon={ArrowLeft01Icon} size={22} color="#111"/></Pressable>
    <Text className="flex-1 text-center text-lg font-bold text-black">{title}</Text><View className="w-10"/>
   </View>
-  <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-4 px-5 pb-safe-offset-6 pt-3">{token ? children : <><CareEmpty text="Sign in to view your orders, support requests and refunds."/><CareButton label="Sign in" onPress={signIn}/></>}</ScrollView>
+  <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-4 px-5 pb-safe-offset-6 pt-3">{token || allowGuest ? children : <><CareEmpty text="Sign in to view your orders and refunds."/><CareButton label="Sign in" onPress={signIn}/></>}</ScrollView>
  </View>;
 }
 export function CareButton({ label, onPress, disabled = false }: {

@@ -574,6 +574,10 @@
       "sha256": "04eb6298326df51310d9e91f4c5b98cc433b6122ead961d5057e72659b7226f1"
     },
     {
+      "file": "20261026063056_customer_email_support_privacy.sql",
+      "sha256": "552a86f2c25a36437be578c85b4e58fe78681ced296dba04b5b5f1e792f21dd9"
+    },
+    {
       "file": "20261026090000_dispatch_on_store_accept.sql",
       "sha256": "bcf649b5ada8d54ee588a264f43efb2cd5ff031e866f6411f3562d4a18e974c6"
     }

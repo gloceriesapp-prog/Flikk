@@ -44,12 +44,12 @@ it('lists offers from the server-side rider position, ignoring client position a
   db.rpc.mockImplementation(async (name: string) => name === 'dispatch_config'
     ? { data: [{ steps: [2000, 4000], step_seconds: 30, max_trips: 2 }], error: null }
     : { data: [{ order_id: 'o1', distance_m: 1200 }], error: null });
-  db.orders = [{ id: 'o1', order_number: 'FLK-1', trip_id: null, payment_method: 'cod', total: '150', delivery_fee: '0' }];
+  db.orders = [{ id: 'o1', order_number: 'FLK-1', trip_id: null, payment_method: 'cod', total: '150', delivery_fee: '0', addresses: { line1: 'Private house', landmark: 'Private gate', latitude: 13.223456, longitude: 74.744321 } }];
   const { res, err } = await call('/dispatch-offers', 'get', { query: { lat: '0', lng: '0', radius_m: '100000000' } });
   expect(err).toBeUndefined();
   expect(db.rpc).toHaveBeenCalledWith('rider_dispatch_offers', { p_rider: 'rider-1' });
   // Free delivery still offers the admin minimum payout; COD shows the cash to collect.
-  expect(res.json).toHaveBeenCalledWith([{ ...db.orders[0], distance_m: 1200, cash_to_collect: 150,
+  expect(res.json).toHaveBeenCalledWith([{ ...db.orders[0], addresses: { line1: 'Approximate delivery area', landmark: null, latitude: 13.22, longitude: 74.74 }, distance_m: 1200, cash_to_collect: 150,
     rider_payout: 30, rider_payout_base: 30, rider_payout_extra_stop: 0, offer_window_seconds: 30, cash_limit_blocked: false }]);
 });
 

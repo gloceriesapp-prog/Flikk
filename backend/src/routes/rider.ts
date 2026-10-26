@@ -7,6 +7,7 @@ import { AppError } from '../lib/errors.js';
 import { requireActiveRider, requireApproved, requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { riderSuspendedError } from '../auth/riderSuspension.js';
 import { payoutAccountBudget, readPayoutAccount, writePayoutAccount } from '../lib/payoutAccount.js';
+import { approximateOfferAddress, withoutFinishedDeliveryAddress } from '../lib/customerLocationPrivacy.js';
 import { fetchRoute } from '../lib/routeDirections.js';
 import { mapsBudget } from '../customer-experience/mapsBudget.js';
 import { validPin } from '../lib/checkoutEligibility.js';
@@ -221,6 +222,7 @@ riderRouter.get('/dispatch-offers', async (req: AuthedRequest, res, next) => {
     const withDistance = (await withDeliveryMoney((orders ?? []) as unknown as (DeliveryMoneyOrder & Record<string, unknown>)[]))
       .map((o) => ({
         ...o,
+        addresses: approximateOfferAddress(o.addresses),
         distance_m: distanceByOrderId.get(o.id) ?? null,
         offer_window_seconds: offerWindowSeconds,
         cash_limit_blocked: exceedsCashLimit(held, o.cash_to_collect, cashLimit),
@@ -389,7 +391,7 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
     const { data, error } = await query.order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1);
     if (error) throw error;
     const rows = (data ?? []) as unknown as (DeliveryMoneyOrder & { placed_at: string; status: string; users?: { name?: string | null; phone?: string | null } | null })[];
-    sendPage(res, (await withDeliveryMoney(rows, req.user!.id)).map(withoutFinishedCustomerPhone), page, 'placed_at');
+    sendPage(res, (await withDeliveryMoney(rows, req.user!.id)).map(withoutFinishedCustomerPhone).map(withoutFinishedDeliveryAddress), page, 'placed_at');
   } catch (err) {
     next(err);
   }

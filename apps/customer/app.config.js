@@ -122,7 +122,6 @@ module.exports = {
         ...(process.env.SENTRY_ORG ? { organization: process.env.SENTRY_ORG } : {}),
         ...(process.env.SENTRY_PROJECT ? { project: process.env.SENTRY_PROJECT } : {}),
       }],
-      '@react-native-community/datetimepicker',
       'expo-secure-store',
       [
         'expo-location',
