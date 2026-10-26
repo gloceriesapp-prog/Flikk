@@ -115,6 +115,7 @@ export default function PrivacyPage() {
             "Turn off location access or notifications in your device settings. Some features, such as finding stores near you, need location to work.",
             "Withdraw consent for promotional messages at any time.",
             <>Request deletion of your account in the app (customers: Profile → Account Privacy; riders: Profile → Delete account) or as described on our <a className="underline" href={policyHref("delete-account")}>Delete account</a> page. Deletion requests are reviewed and completed, except for records we must keep by law.</>,
+            <>Request deletion of specific personal data while keeping your account through our <a className="underline" href={policyHref("delete-data")}>data deletion support process</a>. Records required for legal obligations are retained as described above.</>,
             "Raise a grievance with our Grievance Officer (below).",
           ]}
         />
