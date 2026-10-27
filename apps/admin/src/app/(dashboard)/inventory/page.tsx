@@ -16,12 +16,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Check, ChevronDown, Image as ImageIcon, IndianRupee, Pencil, Plus, Search, Trash2, X } from '@/components/icons';
+import { Check, ChevronDown, Home, Image as ImageIcon, IndianRupee, Pencil, Plus, Search, Trash2, X } from '@/components/icons';
 import clsx from 'clsx';
 import { formatNumber } from '@/lib/format';
 import type { NewProductInput, Product, StockStatus } from '@/lib/types';
 import { fetchProducts, fetchStoreOptions, type StoreOption } from '@/lib/supabase/products';
 import { EditProductModal } from '@/components/inventory/EditProductModal';
+import { ShowOnHomeModal } from '@/components/home/ShowOnHomeModal';
 import { AddProductModal } from '@/components/inventory/AddProductModal';
 
 const STOCK_STYLES: Record<StockStatus, string> = {
@@ -45,6 +46,7 @@ export default function InventoryPage() {
   const [category, setCategory] = useState('All');
   const [storeId, setStoreId] = useState('all');
   const [editing, setEditing] = useState<Product | null>(null);
+  const [showingOnHome, setShowingOnHome] = useState<Product | null>(null);
   const [adding, setAdding] = useState(false);
   // Two-step inline delete: first click arms, second click (while armed)
   // commits — no window.confirm. deleteError surfaces the 409 per row.
@@ -382,6 +384,15 @@ export default function InventoryPage() {
                   )}
                   <button
                     type="button"
+                    onClick={() => setShowingOnHome(product)}
+                    className="flex h-[30px] w-[30px] items-center justify-center rounded-[10px] border border-border text-ink-soft hover:bg-accent hover:text-ink"
+                    aria-label={`Show ${product.name} on home`}
+                    title="Show on home"
+                  >
+                    <Home size={13} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setEditing(product)}
                     className="flex items-center gap-1.5 rounded-[10px] border border-border px-3.5 py-1.5 text-xs font-semibold text-ink-soft hover:bg-accent hover:text-ink"
                   >
@@ -419,6 +430,7 @@ export default function InventoryPage() {
         )}
       </div>
 
+      {showingOnHome && <ShowOnHomeModal product={showingOnHome} onClose={() => setShowingOnHome(null)} />}
       {editing && <EditProductModal product={editing} stores={stores} onClose={() => setEditing(null)} onSave={handleSave} />}
       {adding && (
         <AddProductModal stores={stores} existingProducts={products} onClose={() => setAdding(false)} onAdd={handleAdd} />

@@ -592,6 +592,10 @@
     {
       "file": "20261027120000_admin_money_summary.sql",
       "sha256": "1e6a8b30a8921c9324fe9b101e7022d2dd38a2532f7476c23e4869158caed9ff"
+    },
+    {
+      "file": "20261027150000_home_section_products.sql",
+      "sha256": "c576022c3728d8fd72ecd69126923d9b1611f05fc035855fbbf6fc33f74fa3a4"
     }
   ]
 }
