@@ -22,8 +22,9 @@ export default function ContactPage() {
       slug="contact"
       intro={
         <p>
-          The fastest way to get help with an order is <strong>Help &amp; Support</strong> in the {COMPANY.brand} app —
-          pick the order and the issue, and our team replies in the same conversation.
+          Open <strong>Help &amp; Support</strong> in the {COMPANY.brand} app to email our team, or write to{" "}
+          <a className="underline" href={`mailto:${supportEmail}`}>{supportEmail}</a>.
+          Include your order number and a description of the issue so we can help.
         </p>
       }
     >
