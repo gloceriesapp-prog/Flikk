@@ -121,7 +121,7 @@ export default function CashOnDeliveryPage() {
 
       {settling && (
         <div role="dialog" aria-modal="true" aria-labelledby="settle-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-2xl bg-card p-6">
             <h2 id="settle-title" className="text-lg font-semibold text-ink">Mark cash settled</h2>
             <p className="mt-1 text-sm text-muted">
               Record that {settling.riderName} handed over {formatRupees(settling.outstandingAmount)} for {settling.outstandingCount}{' '}

@@ -20,8 +20,8 @@ export function StatCard({ icon: Icon, value, changePct, label }: StatCardProps)
 
   return (
     <div className="card flex items-center gap-3.5 px-4 py-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
-        <Icon size={18} className="text-brand" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent">
+        <Icon size={18} className="text-ink" />
       </div>
       <div>
         <div className="flex items-baseline gap-1.5">

@@ -73,7 +73,7 @@ function AlertsBell() {
         )}
       </button>
       {open && (
-        <div role="dialog" aria-label="Alerts" className="card absolute right-0 top-11 z-50 w-80 animate-rise p-2 shadow-[var(--shadow-pop)]">
+        <div role="dialog" aria-label="Alerts" className="card absolute right-0 top-11 z-50 w-80 animate-rise p-2">
           <p className="px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Needs attention</p>
           {failed && !items ? (
             <p className="px-3 py-4 text-sm text-danger">Could not load alerts.</p>
@@ -110,7 +110,7 @@ export function TopNav() {
   const actionClass = 'btn btn-primary ml-2';
 
   return (
-    <header className="flex h-[60px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card/80 px-8 backdrop-blur">
+    <header className="flex h-[60px] shrink-0 items-center justify-between gap-4 border-b border-border bg-white px-8">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
         <span className="text-muted">{group ?? 'Dashboard'}</span>
         {current && (

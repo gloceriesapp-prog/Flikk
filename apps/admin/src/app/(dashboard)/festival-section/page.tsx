@@ -188,7 +188,7 @@ export default function FestivalSectionPage() {
               className="w-full rounded-xl border border-border bg-canvas py-2.5 pl-9 pr-3.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             />
             {searchResults.length > 0 && (
-              <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-border bg-card shadow-lg">
+              <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-border bg-card">
                 {searchResults.map((p) => (
                   <button
                     key={p.id}

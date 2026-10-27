@@ -158,7 +158,7 @@ export default function CategoriesPage() {
                 key={category.id}
                 type="button"
                 onClick={() => setEditing(category)}
-                className="group flex flex-col items-center gap-2 card p-4 text-center hover:border-ink/15 hover:shadow-sm"
+                className="group flex flex-col items-center gap-2 card p-4 text-center hover:border-ink/15"
               >
                 {category.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element

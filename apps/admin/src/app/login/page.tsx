@@ -72,8 +72,8 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-sidebar px-4 [background-image:radial-gradient(60rem_40rem_at_50%_-10%,rgb(22_80_255/0.28),transparent)]">
-      <div className="card w-full max-w-sm animate-rise p-8 shadow-[var(--shadow-pop)]">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4">
+      <div className="card w-full max-w-sm animate-rise p-8">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand-mark.png" alt="" className="mb-5 h-11 w-11 rounded-xl" />
         <h1 className="text-xl font-semibold tracking-tight text-ink">Sign in to Gloceries Admin</h1>

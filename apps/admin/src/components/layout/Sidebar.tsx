@@ -76,11 +76,11 @@ export function Sidebar() {
         className={clsx(
           'group relative flex items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] font-medium transition-colors',
           collapsed && 'justify-center px-0',
-          isActive ? 'bg-white/[0.09] text-white' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white'
+          isActive ? 'bg-accent text-ink' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-ink'
         )}
       >
-        {isActive && <span className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand" />}
-        <Icon size={17} className={clsx('shrink-0', isActive ? 'text-white' : 'text-sidebar-text group-hover:text-white')} />
+        {isActive && <span className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-ink" />}
+        <Icon size={17} className={clsx('shrink-0', isActive ? 'text-ink' : 'text-muted group-hover:text-ink')} />
         {!collapsed && (
           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
             <span className="truncate">{item.label}</span>
@@ -89,7 +89,7 @@ export function Sidebar() {
             )}
           </span>
         )}
-        {collapsed && count > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-sidebar" />}
+        {collapsed && count > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-white" />}
       </Link>
     );
   }
@@ -97,7 +97,7 @@ export function Sidebar() {
   return (
     <aside
       className={clsx(
-        'flex h-full shrink-0 flex-col bg-sidebar px-3 pb-3 pt-4 transition-[width] duration-200',
+        'flex h-full shrink-0 flex-col border-r border-border bg-sidebar px-3 pb-3 pt-4 transition-[width] duration-200',
         collapsed ? 'w-[72px]' : 'w-[248px]'
       )}
     >
@@ -107,8 +107,8 @@ export function Sidebar() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand-mark.png" alt="" className="h-8 w-8 rounded-[9px]" />
             <div className="leading-tight">
-              <p className="text-[14px] font-semibold tracking-tight text-white">Gloceries</p>
-              <p className="text-[11px] font-medium text-sidebar-text">Admin console</p>
+              <p className="text-[14px] font-semibold tracking-tight text-ink">Gloceries</p>
+              <p className="text-[11px] font-medium text-muted">Admin console</p>
             </div>
           </div>
         )}
@@ -116,7 +116,7 @@ export function Sidebar() {
           type="button"
           onClick={() => setCollapsed((v) => !v)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-sidebar-text hover:bg-sidebar-hover hover:text-white"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-sidebar-hover hover:text-ink"
         >
           {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
         </button>
@@ -129,13 +129,13 @@ export function Sidebar() {
           type="button"
           aria-label="Search"
           onClick={() => { setCollapsed(false); setSearchFocus((n) => n + 1); }}
-          className="mb-4 flex h-9 w-9 items-center justify-center self-center rounded-[10px] border border-white/[0.08] text-sidebar-text hover:text-white"
+          className="mb-4 flex h-9 w-9 items-center justify-center self-center rounded-[10px] border border-border text-muted hover:text-ink"
         >
           <Search size={14} />
         </button>
       )}
 
-      <nav className="-mx-1 flex flex-1 flex-col gap-0.5 overflow-y-auto px-1 pb-2 [scrollbar-color:#2a2f38_transparent]">
+      <nav className="-mx-1 flex flex-1 flex-col gap-0.5 overflow-y-auto px-1 pb-2">
         {renderItem(OVERVIEW_ITEM)}
 
         {NAV_GROUPS.map((group) => {
@@ -148,7 +148,7 @@ export function Sidebar() {
                 <button
                   type="button"
                   onClick={() => setClosedGroups((g) => ({ ...g, [group.title]: !g[group.title] }))}
-                  className="mt-4 flex items-center justify-between px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#6b7280] hover:text-sidebar-text"
+                  className="mt-4 flex items-center justify-between px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted hover:text-ink"
                 >
                   <span className="flex items-center gap-1.5">
                     {group.title}
@@ -159,7 +159,7 @@ export function Sidebar() {
                   <ChevronDown size={12} className={clsx('transition-transform', !open && '-rotate-90')} />
                 </button>
               ) : (
-                <div className="mx-auto my-2 h-px w-5 bg-white/10" />
+                <div className="mx-auto my-2 h-px w-5 bg-border" />
               )}
               {open && group.items.map(renderItem)}
             </div>
@@ -167,24 +167,24 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="flex flex-col gap-1 border-t border-white/[0.08] pt-3">
+      <div className="flex flex-col gap-1 border-t border-border pt-3">
         <Link
           href="/support"
           title={collapsed ? 'Help Center' : undefined}
           className={clsx(
-            'flex items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] font-medium text-sidebar-text hover:bg-sidebar-hover hover:text-white',
+            'flex items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] font-medium text-sidebar-text hover:bg-sidebar-hover hover:text-ink',
             collapsed && 'justify-center px-0'
           )}
         >
           <HelpCircle size={17} />
           {!collapsed && 'Help Center'}
         </Link>
-        <div className={clsx('mt-1 flex items-center gap-2.5 rounded-[10px] bg-white/[0.04] px-2.5 py-2', collapsed && 'justify-center px-0')}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-[12px] font-semibold text-white">F</div>
+        <div className={clsx('mt-1 flex items-center gap-2.5 rounded-[10px] border border-border px-2.5 py-2', collapsed && 'justify-center px-0')}>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-[12px] font-semibold text-ink">F</div>
           {!collapsed && (
             <div className="min-w-0 flex-1 leading-tight">
-              <p className="truncate text-[13px] font-semibold text-white">Founder</p>
-              <p className="truncate text-[11px] text-sidebar-text">Signed in · admin</p>
+              <p className="truncate text-[13px] font-semibold text-ink">Founder</p>
+              <p className="truncate text-[11px] text-muted">Signed in · admin</p>
             </div>
           )}
         </div>

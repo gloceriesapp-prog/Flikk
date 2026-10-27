@@ -86,7 +86,7 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden card shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-6 py-5">

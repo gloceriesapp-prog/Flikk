@@ -52,7 +52,7 @@ export function AddCategoryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="flex w-full max-w-sm flex-col overflow-hidden card shadow-2xl"
+        className="flex w-full max-w-sm flex-col overflow-hidden card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-6 py-5">

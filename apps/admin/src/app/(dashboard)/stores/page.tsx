@@ -110,7 +110,7 @@ export default function StoresPage() {
           <Link
             key={store.id}
             href={`/stores/${store.id}`}
-            className="group flex items-center gap-4 card p-4 pr-5 transition hover:border-ink/15 hover:shadow-sm"
+            className="group flex items-center gap-4 card p-4 pr-5 transition hover:border-ink/15"
           >
             {store.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

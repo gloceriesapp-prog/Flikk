@@ -80,7 +80,7 @@ export function StoreDetailForm({ store }: { store: Store }) {
           </div>
         </Section>
       </fieldset>
-      <div className="sticky bottom-4 rounded-2xl border border-border bg-white p-4 shadow-sm">
+      <div className="sticky bottom-4 rounded-2xl border border-border bg-white p-4">
         {error && <p role="alert" className="mb-3 text-sm text-danger">{error}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-sm text-muted">{uploading ? 'Uploading photo…' : dirty ? 'Unsaved changes' : 'All changes saved'}</span>

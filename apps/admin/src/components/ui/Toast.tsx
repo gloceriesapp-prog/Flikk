@@ -81,9 +81,9 @@ function settleConfirm(ok: boolean) {
 }
 
 const TONE = {
-  success: { icon: CheckCircle2, ring: 'text-success bg-success-soft' },
-  error: { icon: AlertCircle, ring: 'text-danger bg-danger-soft' },
-  info: { icon: AlertTriangle, ring: 'text-brand bg-brand-soft' },
+  success: { icon: CheckCircle2, ring: 'text-success' },
+  error: { icon: AlertCircle, ring: 'text-danger' },
+  info: { icon: AlertTriangle, ring: 'text-ink' },
 } as const;
 
 function ConfirmDialog({ request }: { request: ConfirmRequest }) {
@@ -97,11 +97,11 @@ function ConfirmDialog({ request }: { request: ConfirmRequest }) {
   const danger = request.tone === 'danger';
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-ink/30 backdrop-blur-[2px]" onClick={() => settleConfirm(false)} />
+      <div className="absolute inset-0 bg-ink/20" onClick={() => settleConfirm(false)} />
       <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-title"
-        className="card relative w-full max-w-md animate-rise p-6 shadow-[var(--shadow-pop)]">
+        className="card relative w-full max-w-md animate-rise p-6">
         <div className="flex gap-4">
-          <span className={clsx('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', danger ? 'bg-danger-soft text-danger' : 'bg-brand-soft text-brand')}>
+          <span className={clsx('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', danger ? 'bg-danger-soft text-danger' : 'bg-accent text-ink')}>
             <AlertTriangle size={18} />
           </span>
           <div className="min-w-0">
@@ -133,7 +133,7 @@ export function Toaster() {
           const { icon: Icon, ring } = TONE[item.tone];
           return (
             <div key={item.id} role={item.tone === 'error' ? 'alert' : 'status'}
-              className="card pointer-events-auto flex animate-toast-in items-start gap-3 p-3.5 pr-2.5 shadow-[var(--shadow-pop)]">
+              className="card pointer-events-auto flex animate-toast-in items-start gap-3 p-3.5 pr-2.5">
               <span className={clsx('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full', ring)}>
                 <Icon size={15} />
               </span>

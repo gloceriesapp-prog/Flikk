@@ -48,7 +48,7 @@ export function StoreSuspensionPanel({
   }
 
   return (
-    <section className={`rounded-3xl border p-6 shadow-sm ${suspended ? 'border-danger/40 bg-red-50' : 'border-border bg-card'}`}>
+    <section className={`rounded-3xl border p-6  ${suspended ? 'border-danger/40 bg-red-50' : 'border-border bg-card'}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-ink">{suspended ? 'Suspended by Gloceries' : 'Store suspension'}</h2>
