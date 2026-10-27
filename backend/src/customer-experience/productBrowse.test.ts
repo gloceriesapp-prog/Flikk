@@ -36,3 +36,12 @@ it('deals rank by discount through a bounded RPC and are empty without a pin', a
   const { res } = await request('/deals', {});
   expect(mocks.rpc).not.toHaveBeenCalled(); expect(res.json).toHaveBeenCalledWith([]);
 });
+it('home picks group pinned products by section in pin order, only from delivery stores', async () => {
+  mocks.rpc.mockResolvedValueOnce({ data: [{ section_key: 'trending', id: 'p2' }, { section_key: 'trending', id: 'p1' }, { section_key: 'custom-diwali1', id: 'p1' }, { section_key: 'trending', id: 'gone' }], error: null });
+  const { res } = await request('/home-picks', pin);
+  expect(mocks.rpc).toHaveBeenCalledWith('home_pick_product_ids', { p_stores: ['s1'] });
+  expect(res.json).toHaveBeenCalledWith({ trending: [{ id: 'p2' }, { id: 'p1' }], 'custom-diwali1': [{ id: 'p1' }] });
+  mocks.rpc.mockClear();
+  const empty = await request('/home-picks', {});
+  expect(mocks.rpc).not.toHaveBeenCalled(); expect(empty.res.json).toHaveBeenCalledWith({});
+});

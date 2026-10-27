@@ -29,7 +29,8 @@ import { ESSENTIALS_GRID_LIMIT, EverydayEssentialsSection } from '../everyday-es
 import { useEverydayEssentials } from '../everyday-essentials/useEverydayEssentials';
 import { usePopularProducts } from '../trending/useTrendingThisWeek';
 import { useCopyText } from '../../../api/appConfig';
-import { assignDistinctRows } from './distinctRows';
+import { assignHomeRows } from './distinctRows';
+import { useHomePicks } from './useHomePicks';
 import { MostBoughtSection } from '../most-bought/MostBoughtSection';
 import { NearbyStoresSection } from '../nearby-stores/NearbyStoresSection';
 import { QuickCategoriesSection } from '../quick-categories/QuickCategoriesSection';
@@ -55,6 +56,8 @@ interface Props {
 // Everything a section renderer might need, resolved once per render.
 interface SectionCtx {
   rows: Record<ProductRowKey, Product[]>;
+  // Hand-picked products for founder-made sections (custom-xxxxxx keys).
+  picks: Record<string, Product[]>;
   onSelectCategory: (id: string) => void;
   // Quick categories directly under the header continue its colour, untitled.
   quickCategoriesLeading: boolean;
@@ -71,6 +74,23 @@ const ROW_PRIORITY: ProductRowKey[] = ['price-drops', 'todays-best-deals', 'deal
 // packages/home-content/copyKeys.js, editable on admin's App content page).
 interface SectionCopy { title: string; subtitle: string | null }
 const copyPrefix = (key: string) => `home.${key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())}`;
+
+// A founder-made section (admin Home Sections -> New section) is a plain
+// product grid of its hand-picked products, capped like the other rows.
+// One renderer per key, kept stable so HomeSection's memo can still bail out.
+const CUSTOM_SECTION_LIMIT = 12;
+const customRenderers = new Map<string, (ctx: SectionCtx, copy: SectionCopy) => React.ReactNode>();
+function renderCustomSection(key: string) {
+  let render = customRenderers.get(key);
+  if (!render) {
+    render = (ctx, c) => {
+      const products = (ctx.picks[key] ?? []).filter((p) => p.isAvailable !== false).slice(0, CUSTOM_SECTION_LIMIT);
+      return products.length > 0 ? <ProductSection title={c.title} products={products} /> : null;
+    };
+    customRenderers.set(key, render);
+  }
+  return render;
+}
 
 // key -> how to render that section. Returning null renders nothing.
 const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, copy: SectionCopy) => React.ReactNode> = {
@@ -118,9 +138,10 @@ const FALLBACK_ORDER = [
   'brand-footer',
 ];
 
-// Stable empty feed so a still-loading query doesn't hand assignDistinctRows a
+// Stable empty feed so a still-loading query doesn't hand assignHomeRows a
 // fresh [] every render (keeps the memoized rows identity steady).
 const EMPTY_PRODUCTS: Product[] = [];
+const EMPTY_PICKS: Record<string, Product[]> = {};
 
 // Sections rendered eagerly on first paint; the rest mount one idle frame later
 // (see the deferral note in AllTabSections). 6 above-the-fold entries plus the
@@ -176,21 +197,30 @@ export function AllTabSections({ onSelectCategory }: Props) {
   const trendingQuery = usePopularProducts(7);
   const mostBoughtQuery = usePopularProducts(30);
   const essentialsQuery = useEverydayEssentials();
+  const picksQuery = useHomePicks();
   const { data: sectionConfig } = useHomeSections();
+  const picks = picksQuery.data ?? EMPTY_PICKS;
   const t = useCopyText();
+
+  // Rows that show only their hand-picked products (admin "Only show these").
+  const pinnedOnly = useMemo(
+    () => new Set((sectionConfig ?? []).filter((s) => s.pinnedOnly).map((s) => s.key)),
+    [sectionConfig],
+  );
 
   // Product rows, rebuilt only when a feed actually changes — not on every
   // re-render — so ctx.rows keeps a stable identity between query resolutions.
+  // Hand-picked products take the first slots (distinctRows.ts).
   const rows = useMemo(
-    () => assignDistinctRows(ROW_PRIORITY, {
+    () => assignHomeRows(ROW_PRIORITY, {
       'price-drops': { feed: dealsQuery.data ?? EMPTY_PRODUCTS, cap: 4 },
       'todays-best-deals': { feed: dealsQuery.data ?? EMPTY_PRODUCTS, cap: 6 },
       'deals-for-you': { feed: dealsQuery.data ?? EMPTY_PRODUCTS, cap: 8 },
       trending: { feed: trendingQuery.data ?? EMPTY_PRODUCTS, cap: 6 },
       'most-bought': { feed: mostBoughtQuery.data ?? EMPTY_PRODUCTS, cap: 6 },
       'everyday-essentials': { feed: essentialsQuery.data ?? EMPTY_PRODUCTS, cap: ESSENTIALS_GRID_LIMIT },
-    }),
-    [dealsQuery.data, trendingQuery.data, mostBoughtQuery.data, essentialsQuery.data],
+    }, picks, pinnedOnly),
+    [dealsQuery.data, trendingQuery.data, mostBoughtQuery.data, essentialsQuery.data, picks, pinnedOnly],
   );
 
   // Admin config when present (enabled only, ordered by sortIndex); otherwise
@@ -224,8 +254,8 @@ export function AllTabSections({ onSelectCategory }: Props) {
   // Everything a section renderer needs, with a stable identity so React.memo
   // on HomeSection can bail out when a section's inputs are unchanged.
   const ctx = useMemo<SectionCtx>(
-    () => ({ rows, onSelectCategory, quickCategoriesLeading }),
-    [rows, onSelectCategory, quickCategoriesLeading],
+    () => ({ rows, picks, onSelectCategory, quickCategoriesLeading }),
+    [rows, picks, onSelectCategory, quickCategoriesLeading],
   );
 
   // Section copy, resolved once per section and memoized so copy strings keep a
@@ -258,7 +288,7 @@ export function AllTabSections({ onSelectCategory }: Props) {
   // subtree and never re-runs that section's registry renderer).
   const children = useMemo(
     () => sections.map((cfg) => {
-      const render = SECTION_REGISTRY[cfg.key];
+      const render = cfg.custom ? renderCustomSection(cfg.key) : SECTION_REGISTRY[cfg.key];
       if (!render) return null; // config key with no code section yet
       return (
         <HomeSection
@@ -266,14 +296,14 @@ export function AllTabSections({ onSelectCategory }: Props) {
           renderSection={render}
           ctx={ctx}
           copy={copyByKey[cfg.key]}
-          loading={!!loadingByKey[cfg.key]}
+          loading={cfg.custom ? picksQuery.isPending : !!loadingByKey[cfg.key]}
           bgColor={cfg.bgColor}
           isQuickLeading={cfg.key === 'quick-categories' && quickCategoriesLeading}
           shortcutsBackground={shortcutsBackground}
         />
       );
     }),
-    [sections, ctx, copyByKey, loadingByKey, quickCategoriesLeading, shortcutsBackground],
+    [sections, ctx, copyByKey, loadingByKey, picksQuery.isPending, quickCategoriesLeading, shortcutsBackground],
   );
   // First paint mounts only the above-the-fold set; the rest (and their own
   // queries) mount during an idle callback after first paint. The deferred

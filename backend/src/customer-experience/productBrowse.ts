@@ -43,6 +43,26 @@ productBrowseRouter.get('/deals', async (req, res, next) => {
     res.json(await hydrateBrowse(data ?? [], stores, PRODUCT_WITH_VARIANTS_SELECT));
   } catch (error) { next(error); }
 });
+// Hand-picked products per Home section (admin Home Sections / Inventory
+// "Show on home"), only from stores that deliver here, in the admin's order:
+// { "trending": [product, ...], "custom-xxxxxx": [...] }.
+productBrowseRouter.get('/home-picks', async (req, res, next) => {
+  try {
+    const stores = await deliveryStores(req.query);
+    const { data, error } = stores.length ? await supabase.rpc('home_pick_product_ids', { p_stores: stores }) : { data: [], error: null };
+    if (error) throw error;
+    const pins = (data ?? []) as { section_key: string; id: string }[];
+    const ids = [...new Set(pins.map(pin => pin.id))].map(id => ({ id }));
+    const byId = new Map((await hydrateBrowse(ids, stores, PRODUCT_WITH_VARIANTS_SELECT))
+      .map(row => [(row as unknown as { id: string }).id, row]));
+    const picks: Record<string, unknown[]> = {};
+    for (const pin of pins) {
+      const product = byId.get(pin.id);
+      if (product) (picks[pin.section_key] ??= []).push(product);
+    }
+    res.json(picks);
+  } catch (error) { next(error); }
+});
 productBrowseRouter.get('/category', async (req, res, next) => {
   try {
     const category = optionalUuid(req.query.category); const subcategory = optionalUuid(req.query.subcategory);
