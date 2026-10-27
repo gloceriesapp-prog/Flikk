@@ -21,6 +21,7 @@ import { storeRevenueShares } from '@/lib/revenue';
 import { fetchStores } from '@/lib/supabase/stores';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import type { Order, Store, Zone, ZoneRequest } from '@/lib/types';
+import { confirmAction } from '@/components/ui/Toast';
 
 const TABS = ['Zones', 'Zone Requests'] as const;
 const FIELD = 'rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10';
@@ -90,9 +91,9 @@ export default function ZonesPage() {
   async function updateZone(zone: Zone, patch: { name?: string; isActive?: boolean }) {
     if (patch.isActive === false) {
       const count = stores.filter((s) => s.zoneId === zone.id).length;
-      const ok = window.confirm(
+      const ok = (await confirmAction(
         `Deactivate ${zone.name}? Its ${count} store${count === 1 ? '' : 's'} disappear for customers and the zone leaves the approval picker.`,
-      );
+      ));
       if (!ok) return;
     }
     setBusyZone(zone.id);
@@ -115,7 +116,7 @@ export default function ZonesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-medium text-ink">Zones</h1>
+        <h1 className="page-title">Zones</h1>
         <p className="text-sm text-muted">Create zones, switch them on, and see which stores each one holds.</p>
       </div>
 
@@ -149,7 +150,7 @@ export default function ZonesPage() {
 
       {tab === 'Zones' && (
         <div className="flex flex-col gap-4">
-          <form onSubmit={createZone} className="flex flex-wrap items-end gap-3 rounded-3xl border border-border bg-card p-5">
+          <form onSubmit={createZone} className="flex flex-wrap items-end gap-3 card p-5">
             <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-sm font-medium text-ink">
               New zone
               <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Karkala, Udupi" maxLength={80} className={FIELD} />
@@ -161,7 +162,7 @@ export default function ZonesPage() {
             <button
               type="submit"
               disabled={creating || newName.trim().length < 2}
-              className="flex items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-[10px] bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
             >
               <Plus size={15} />
               {creating ? 'Adding…' : 'Add zone'}
@@ -176,7 +177,7 @@ export default function ZonesPage() {
               return (
                 <div
                   key={zone.id}
-                  className={zone.isActive ? 'rounded-3xl border border-border bg-card p-5' : 'rounded-3xl border border-dashed border-border bg-card/60 p-5'}
+                  className={zone.isActive ? 'card p-5' : 'rounded-3xl border border-dashed border-border bg-card/60 p-5'}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex h-11 w-11 items-center justify-center rounded-full bg-accent">
@@ -195,7 +196,7 @@ export default function ZonesPage() {
                         type="button"
                         disabled={busyZone === zone.id}
                         onClick={() => void updateZone(zone, { name: editing.name })}
-                        className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                        className="rounded-[10px] bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
                       >
                         Save
                       </button>
@@ -226,7 +227,7 @@ export default function ZonesPage() {
                       <button
                         type="button"
                         onClick={() => setEditing({ id: zone.id, name: zone.name })}
-                        className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink"
+                        className="rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-ink"
                       >
                         Rename
                       </button>
@@ -251,7 +252,7 @@ export default function ZonesPage() {
           <p className="text-xs text-muted">Move a store between zones from its own page (Stores → store → Zone).</p>
 
           {performanceZone && (
-            <div className="rounded-3xl border border-border bg-card p-5">
+            <div className="card p-5">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-medium text-ink">Store performance — {performanceZone.name}</h3>
@@ -279,7 +280,7 @@ export default function ZonesPage() {
       )}
 
       {tab === 'Zone Requests' && (
-        <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="card p-5">
           <div className="mb-4">
             <h3 className="text-sm font-medium text-ink">Where customers are asking for Gloceries</h3>
             <p className="text-xs text-muted">

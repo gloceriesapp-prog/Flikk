@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { StorePayoutView } from '@/lib/storePayout';
+import { confirmAction } from '@/components/ui/Toast';
 
 const inputClass = 'w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/15';
 
@@ -24,7 +25,7 @@ export function StorePayoutPanel({ storeId, payout }: { storeId: string; payout:
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
-    if (payout.method && !window.confirm('Replace this store’s payout details? Verification resets and the partner sees the new destination.')) return;
+    if (payout.method && !(await confirmAction('Replace this store’s payout details? Verification resets and the partner sees the new destination.'))) return;
     setSaving(true);
     setError(null);
     try {
@@ -49,7 +50,7 @@ export function StorePayoutPanel({ storeId, payout }: { storeId: string; payout:
   }
 
   return (
-    <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+    <section className="card p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-ink">Payout account</h2>
@@ -88,7 +89,7 @@ export function StorePayoutPanel({ storeId, payout }: { storeId: string; payout:
       </div>
 
       {!editing ? (
-        <button type="button" onClick={() => setEditing(true)} className="mt-4 rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink">
+        <button type="button" onClick={() => setEditing(true)} className="mt-4 rounded-[10px] border border-border px-4 py-2 text-sm font-semibold text-ink">
           {payout.method ? 'Replace payout account' : 'Set payout account'}
         </button>
       ) : (
@@ -117,10 +118,10 @@ export function StorePayoutPanel({ storeId, payout }: { storeId: string; payout:
           )}
           {error && <p className="text-sm text-danger">{error}</p>}
           <div className="flex gap-2">
-            <button type="submit" disabled={saving} className="rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white disabled:opacity-40">
+            <button type="submit" disabled={saving} className="rounded-[10px] bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong">
               {saving ? 'Saving…' : 'Save payout account'}
             </button>
-            <button type="button" disabled={saving} onClick={() => setEditing(false)} className="rounded-full border border-border px-4 py-2 text-sm font-semibold">
+            <button type="button" disabled={saving} onClick={() => setEditing(false)} className="rounded-[10px] border border-border px-4 py-2 text-sm font-semibold">
               Cancel
             </button>
           </div>

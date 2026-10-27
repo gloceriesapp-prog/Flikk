@@ -198,7 +198,7 @@ export default function InventoryPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-medium text-ink">Inventory</h1>
+          <h1 className="page-title">Inventory</h1>
           <p className="text-sm text-muted">
             {loading ? 'Loading…' : `${products.length} products listed across every store in the zone.`}
           </p>
@@ -208,7 +208,7 @@ export default function InventoryPage() {
           type="button"
           onClick={() => setAdding(true)}
           disabled={loading || stores.length === 0}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+          className="flex shrink-0 items-center gap-1.5 rounded-[10px] bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
         >
           <Plus size={15} />
           Add product
@@ -275,7 +275,7 @@ export default function InventoryPage() {
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         {filtered.map((product) => (
-          <div key={product.id} className="flex items-center gap-4 rounded-3xl border border-border bg-card p-3 pr-4">
+          <div key={product.id} className="flex items-center gap-4 card p-3 pr-4">
             {/* Real photo (product.imageUrl, set via Add/EditProductModal's
                 ProductImageUpload -> Supabase Storage) when one's been
                 uploaded — no random stock-photo fallback; a product with no
@@ -350,7 +350,7 @@ export default function InventoryPage() {
                   <button
                     type="button"
                     onClick={() => void handleApproval(product.id, false)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-danger hover:bg-red-50"
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-danger hover:bg-red-50"
                   >
                     <X size={13} />
                     Reject
@@ -383,7 +383,7 @@ export default function InventoryPage() {
                   <button
                     type="button"
                     onClick={() => setEditing(product)}
-                    className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold text-ink-soft hover:bg-accent hover:text-ink"
+                    className="flex items-center gap-1.5 rounded-[10px] border border-border px-3.5 py-1.5 text-xs font-semibold text-ink-soft hover:bg-accent hover:text-ink"
                   >
                     <Pencil size={12} />
                     Edit

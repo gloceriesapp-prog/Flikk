@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
+import { confirmAction, toast } from '@/components/ui/Toast';
 
 type AppKey = 'customer' | 'partner' | 'rider';
 interface ReleaseRow {
@@ -41,17 +42,16 @@ function ReleaseCard({ app, label, row, onSaved }: { app: AppKey; label: string;
   const [draft, setDraft] = useState<ReleaseDraft>(() => toDraft(row));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   async function save() {
     if (draft.maintenanceEnabled && !row?.maintenance_enabled
-      && !window.confirm(`Turn on maintenance for the ${label.toLowerCase()}? Everyone using it is blocked until you turn it off.`)) return;
-    setSaving(true); setError(null); setSaved(false);
+      && !(await confirmAction(`Turn on maintenance for the ${label.toLowerCase()}? Everyone using it is blocked until you turn it off.`))) return;
+    setSaving(true); setError(null);
     try {
       const res = await fetch('/api/app-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ app, ...draft }) });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? 'Could not save.');
-      setSaved(true);
+      toast.success('Release settings saved', 'Apps pick it up within about a minute.');
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.');
@@ -93,10 +93,10 @@ function ReleaseCard({ app, label, row, onSaved }: { app: AppKey; label: string;
       </div>
       {error && <p className="mt-3 text-xs font-medium text-danger">{error}</p>}
       <div className="mt-4 flex items-center gap-3">
-        <button type="button" onClick={save} disabled={saving} className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white disabled:opacity-40">
+        <button type="button" onClick={save} disabled={saving} className="rounded-[10px] bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong">
           {saving ? 'Saving…' : 'Save'}
         </button>
-        {saved && !saving && <span role="status" className="text-xs text-green-700">Saved. Apps pick it up within about a minute.</span>}
+        
       </div>
     </div>
   );
@@ -111,17 +111,16 @@ function SupportContactsCard({ app, label, row, onSaved }: { app: 'partner' | 'r
   const [email, setEmail] = useState(row?.support_email ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   async function save() {
-    setSaving(true); setError(null); setSaved(false);
+    setSaving(true); setError(null);
     try {
       const res = await fetch('/api/app-settings/support', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ app, phone, whatsapp, email }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? 'Could not save.');
-      setSaved(true);
+      toast.success('Support contacts saved', 'The app shows them within about a minute.');
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.');
@@ -149,10 +148,10 @@ function SupportContactsCard({ app, label, row, onSaved }: { app: 'partner' | 'r
       </div>
       {error && <p className="mt-3 text-xs font-medium text-danger">{error}</p>}
       <div className="mt-3 flex items-center gap-3">
-        <button type="button" onClick={save} disabled={saving} className="rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+        <button type="button" onClick={save} disabled={saving} className="rounded-[10px] bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong">
           {saving ? 'Saving…' : 'Save contacts'}
         </button>
-        {saved && !saving && <span role="status" className="text-xs text-green-700">Saved. The app shows them within about a minute.</span>}
+        
       </div>
     </div>
   );
@@ -184,7 +183,7 @@ function FaqEditor({ faq, onChanged }: { faq: FaqRow | null; onChanged: () => vo
   }
 
   async function remove() {
-    if (!faq || !window.confirm('Delete this FAQ?')) return;
+    if (!faq || !(await confirmAction('Delete this FAQ?'))) return;
     setBusy(true);
     const res = await fetch(`/api/app-settings/faqs/${faq.id}`, { method: 'DELETE' });
     setBusy(false);
@@ -205,7 +204,7 @@ function FaqEditor({ faq, onChanged }: { faq: FaqRow | null; onChanged: () => vo
         </label>
         <div className="ml-auto flex gap-2">
           {faq && <button type="button" onClick={remove} disabled={busy} className="rounded-full px-3 py-1.5 text-xs font-semibold text-danger disabled:opacity-40">Delete</button>}
-          <button type="button" onClick={save} disabled={busy || !question.trim() || !answer.trim()} className="rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+          <button type="button" onClick={save} disabled={busy || !question.trim() || !answer.trim()} className="rounded-[10px] bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong">
             {faq ? 'Save' : 'Add FAQ'}
           </button>
         </div>
@@ -244,14 +243,14 @@ export default function AppSettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">App settings</h1>
+        <h1 className="page-title">App settings</h1>
         <p className="text-sm text-muted">Required and available updates, maintenance mode, and the customer FAQ.</p>
       </div>
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
       {APPS.map(({ key, label }) => (
         <ReleaseCard key={`${key}-${version}`} app={key} label={label} row={releases.find((r) => r.app === key)} onSaved={load} />
       ))}
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-1 text-sm font-semibold text-ink">Partner &amp; rider help contacts</h2>
         <p className="mb-4 text-xs text-muted">
           Shown in the partner app&apos;s Help &amp; support screen and the rider app&apos;s Help buttons. Leave a field blank to use the
@@ -262,7 +261,7 @@ export default function AppSettingsPage() {
           <SupportContactsCard key={`rider-support-${version}`} app="rider" label="Rider app" row={releases.find((r) => r.app === 'rider')} onSaved={load} />
         </div>
       </div>
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-1 text-sm font-semibold text-ink">Customer FAQ</h2>
         <p className="mb-4 text-xs text-muted">Shown in the customer app under Help &amp; support, lowest order first.</p>
         <div className="flex flex-col gap-3">

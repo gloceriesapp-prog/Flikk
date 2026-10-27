@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ReasonModal } from '@/components/ui/ReasonModal';
+import { confirmAction } from '@/components/ui/Toast';
 
 async function setSuspension(storeId: string, suspend: boolean, reason?: string) {
   const res = await fetch(`/api/stores/${storeId}/suspension`, {
@@ -33,7 +34,7 @@ export function StoreSuspensionPanel({
   const [error, setError] = useState<string | null>(null);
 
   async function unsuspend() {
-    if (!window.confirm('Unsuspend this store? It stays closed until the partner reopens it.')) return;
+    if (!(await confirmAction('Unsuspend this store? It stays closed until the partner reopens it.'))) return;
     setBusy(true);
     setError(null);
     try {
@@ -63,7 +64,7 @@ export function StoreSuspensionPanel({
           )}
         </div>
         {suspended ? (
-          <button type="button" disabled={busy} onClick={() => void unsuspend()} className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-ink disabled:opacity-50">
+          <button type="button" disabled={busy} onClick={() => void unsuspend()} className="rounded-[10px] border border-border bg-white px-4 py-2 text-sm font-semibold text-ink disabled:opacity-50">
             {busy ? 'Saving…' : 'Unsuspend'}
           </button>
         ) : (

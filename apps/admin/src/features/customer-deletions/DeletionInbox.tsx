@@ -26,7 +26,7 @@ export function DeletionInbox() {
     finally { setBusy(false); }
   }
   return <section className="space-y-5 p-6">
-    <h1 className="text-2xl font-semibold">Account deletion requests</h1>
+    <h1 className="page-title">Account deletion requests</h1>
     <p className="text-sm text-gray-500">Approval disables login and removes reusable profile data. Historical order and payment records remain. Resolve open orders, refunds and support first.</p>
     {error && <p role="alert" className="text-red-600">{error}</p>}
     <button disabled={busy} onClick={() => void load()} className="rounded-xl border px-4 py-2">Refresh</button>

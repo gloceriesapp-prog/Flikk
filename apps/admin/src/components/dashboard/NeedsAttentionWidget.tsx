@@ -87,7 +87,7 @@ export function NeedsAttentionWidget() {
 
                 <Link
                   href="/riders"
-                  className="flex shrink-0 items-center gap-1 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                  className="flex shrink-0 items-center gap-1 rounded-[10px] bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-strong"
                 >
                   Assign
                   <ArrowRight size={12} />

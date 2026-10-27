@@ -14,6 +14,8 @@ import Link from 'next/link';
 import { Check, ChevronRight, Clock, Store, User, X } from '@/components/icons';
 import clsx from 'clsx';
 import type { Application, ApplicationStatus } from '@/lib/types';
+import { ReasonModal } from '@/components/ui/ReasonModal';
+import { toast } from '@/components/ui/Toast';
 
 const STATUS_STYLES: Record<ApplicationStatus, string> = {
   pending: 'bg-amber-50 text-amber-700',
@@ -26,51 +28,39 @@ const DEFAULT_REJECTION_REASON =
 
 export function ApplicationRow({ application }: { application: Application }) {
   const [status, setStatus] = useState(application.status);
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Reject asks for a reason (shown to the applicant), pre-filled with a
+  // clean default a founder in a hurry can keep.
+  const [rejecting, setRejecting] = useState(false);
   const Icon = application.kind === 'store' ? Store : User;
   // Rejected still shows the decide buttons, not a terminal pill — a
   // founder who changes their mind can approve it later (the draft is
   // kept, not deleted, on reject — see the approve route's own note).
   const needsDecision = status !== 'approved';
 
-  async function decide(approve: boolean) {
-    // Reject asks for a reason so the applicant gets a real explanation,
-    // not just a status flip — window.prompt is a plain-but-functional
-    // way to collect that without a whole modal component for one text
-    // field. Pre-filled with a clean default so a founder in a hurry can
-    // just hit OK; editing it is optional, not required.
-    let reason: string | undefined;
-    if (!approve) {
-      const typed = window.prompt('Reason for rejecting this application (shown to the applicant):', DEFAULT_REJECTION_REASON);
-      if (typed === null) return; // cancelled — don't reject at all
-      reason = typed.trim();
-      if (reason.length < 3) {
-        window.alert('A rejection reason is required — the applicant sees it.');
-        return;
-      }
+  // Throws on failure so the reject dialog can show the error and stay open.
+  async function send(approve: boolean, reason?: string) {
+    const res = await fetch(`/api/approvals/${application.kind === 'store' ? 'stores' : 'riders'}/${application.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(approve ? { approve } : { approve, reason }),
+    }).catch(() => null);
+    if (!res) throw new Error('Could not reach the server. Please try again.');
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(body?.error ?? 'Could not update this application.');
     }
+    setStatus(approve ? 'approved' : 'rejected');
+    toast.success(approve ? `${application.name} approved` : `${application.name} rejected`, approve ? 'They have been notified.' : 'The applicant sees your reason.');
+  }
 
+  async function approve() {
     if (busy) return;
-    setError(null);
     setBusy(true);
     try {
-      const res = await fetch(`/api/approvals/${application.kind === 'store' ? 'stores' : 'riders'}/${application.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(approve ? { approve } : { approve, reason }),
-      });
-      if (res.ok) {
-        setStatus(approve ? 'approved' : 'rejected');
-      } else {
-        // Previously silent — a failed decide() just stopped spinning
-        // with zero indication anything went wrong, which is exactly
-        // what "reject button does nothing" looked like from the outside.
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        setError(body?.error ?? 'Could not update this application.');
-      }
-    } catch {
-      setError('Could not reach the server. Please try again.');
+      await send(true);
+    } catch (err) {
+      toast.error('Could not approve', err instanceof Error ? err.message : undefined);
     } finally {
       setBusy(false);
     }
@@ -108,12 +98,11 @@ export function ApplicationRow({ application }: { application: Application }) {
         <ChevronRight size={15} className="shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100" />
       </Link>
 
-      {!!error && <p role="alert" className="text-sm text-danger">{error}</p>}
       {needsDecision ? (
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => decide(false)}
+            onClick={() => setRejecting(true)}
             disabled={busy}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-danger hover:bg-red-50 disabled:opacity-40"
             aria-label="Reject"
@@ -122,9 +111,9 @@ export function ApplicationRow({ application }: { application: Application }) {
           </button>
           <button
             type="button"
-            onClick={() => decide(true)}
+            onClick={approve}
             disabled={busy}
-            className="flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+            className="flex h-9 items-center gap-1.5 rounded-[10px] bg-brand px-4 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
           >
             <Check size={14} />
             {busy ? 'Approving…' : 'Approve'}
@@ -134,6 +123,16 @@ export function ApplicationRow({ application }: { application: Application }) {
         <span className={clsx('shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold', STATUS_STYLES[status])}>
           {status === 'approved' ? 'Approved' : 'Rejected'}
         </span>
+      )}
+      {rejecting && (
+        <ReasonModal
+          title={`Reject ${application.name}?`}
+          description="The applicant sees this reason and can resubmit."
+          confirmLabel="Reject application"
+          initialReason={DEFAULT_REJECTION_REASON}
+          onClose={() => setRejecting(false)}
+          onConfirm={async (reason) => { await send(false, reason); setRejecting(false); }}
+        />
       )}
     </div>
   );

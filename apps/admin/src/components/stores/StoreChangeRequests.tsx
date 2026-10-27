@@ -134,7 +134,7 @@ export function StoreChangeRequests({ storeId, onReviewed, onCountChange, showEm
                 </div>
                 {request.status === 'pending' ? (
                   <div className="flex flex-wrap gap-2">
-                    <Link href={`/stores/${request.storeId}#store-detail-form`} className="flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold text-ink">
+                    <Link href={`/stores/${request.storeId}#store-detail-form`} className="flex items-center gap-1 rounded-[10px] border border-border bg-white px-3 py-1.5 text-xs font-semibold text-ink">
                       <Pencil size={13} /> Edit store
                     </Link>
                     <button
@@ -149,7 +149,7 @@ export function StoreChangeRequests({ storeId, onReviewed, onCountChange, showEm
                       type="button"
                       disabled={busy !== null}
                       onClick={() => void approve(request.id)}
-                      className="flex items-center gap-1 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                      className="flex items-center gap-1 rounded-[10px] bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
                     >
                       <Check size={13} /> {busy === request.id ? 'Accepting…' : 'Accept'}
                     </button>

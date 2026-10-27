@@ -12,8 +12,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Download, LogOut, Plus, Save, Settings } from '@/components/icons';
-import { ALL_NAV_ITEMS, QUICK_ACTIONS } from '@/lib/nav';
+import { Bell, ChevronRight, Download, LogOut, Plus, Save, Settings } from '@/components/icons';
+import { ALL_NAV_ITEMS, NAV_GROUPS, QUICK_ACTIONS } from '@/lib/nav';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 
 interface AttentionItem { key: string; label: string; count: number; href: string }
@@ -63,18 +63,18 @@ function AlertsBell() {
         aria-label={total > 0 ? `Alerts: ${total} items need attention` : 'Alerts'}
         aria-expanded={open}
         onClick={() => { setOpen((v) => !v); if (!open) void load(); }}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-ink-soft hover:text-ink"
+        className="icon-btn relative"
       >
         <Bell size={16} />
         {total > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white tabular-nums">
+          <span className="absolute right-0.5 top-0.5 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[9.5px] font-bold text-white ring-2 ring-white tabular-nums">
             {total > 99 ? '99+' : total}
           </span>
         )}
       </button>
       {open && (
-        <div role="dialog" aria-label="Alerts" className="absolute right-0 top-11 z-50 w-80 rounded-2xl border border-border bg-card p-2 shadow-lg">
-          <p className="px-3 pb-1 pt-2 text-xs font-semibold text-muted">Needs attention</p>
+        <div role="dialog" aria-label="Alerts" className="card absolute right-0 top-11 z-50 w-80 animate-rise p-2 shadow-[var(--shadow-pop)]">
+          <p className="px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Needs attention</p>
           {failed && !items ? (
             <p className="px-3 py-4 text-sm text-danger">Could not load alerts.</p>
           ) : !items ? (
@@ -87,10 +87,10 @@ function AlertsBell() {
                 key={item.key}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm text-ink hover:bg-canvas"
+                className="flex items-center justify-between gap-3 rounded-[10px] px-3 py-2.5 text-sm text-ink hover:bg-accent"
               >
                 <span>{item.label}</span>
-                <span className="rounded-full bg-danger/10 px-2 py-0.5 text-xs font-bold tabular-nums text-danger">{item.count}</span>
+                <span className="rounded-full bg-danger-soft px-2 py-0.5 text-xs font-bold tabular-nums text-danger">{item.count}</span>
               </Link>
             ))
           )}
@@ -103,27 +103,29 @@ function AlertsBell() {
 export function TopNav() {
   const pathname = usePathname();
   const current = ALL_NAV_ITEMS.find((item) => pathname.startsWith(item.href));
+  const groupTitle = current ? NAV_GROUPS.find((g) => g.items.includes(current))?.title : undefined;
+  const group = groupTitle && groupTitle !== current?.label ? groupTitle : undefined;
   const editingStore = /^\/stores\/[^/]+$/.test(pathname);
   const quickAction = current && current.href === pathname ? QUICK_ACTIONS[current.href] : undefined;
-  const actionClass = 'flex items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90';
+  const actionClass = 'btn btn-primary ml-2';
 
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-border bg-canvas px-8 py-4">
+    <header className="flex h-[60px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card/80 px-8 backdrop-blur">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
-        <span className="text-muted">Dashboard</span>
+        <span className="text-muted">{group ?? 'Dashboard'}</span>
         {current && (
           <>
-            <span className="text-muted">/</span>
+            <ChevronRight size={13} className="text-border-strong" />
             <span className="font-semibold text-ink">{current.label}</span>
           </>
         )}
       </nav>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5">
         <Link
           href="/settings"
           aria-label="Settings"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-ink-soft hover:text-ink"
+          className="icon-btn"
         >
           <Settings size={16} />
         </Link>
@@ -134,7 +136,7 @@ export function TopNav() {
           <button
             type="submit"
             aria-label="Sign out"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-ink-soft hover:text-ink"
+            className="icon-btn"
           >
             <LogOut size={16} />
           </button>

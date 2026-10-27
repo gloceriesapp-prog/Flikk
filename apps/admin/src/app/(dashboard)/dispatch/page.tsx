@@ -19,6 +19,7 @@ import { formatCurrency, formatDateTime, formatRelativeTime } from '@/lib/format
 import { DISPATCH_LIMITS, type DispatchSettings } from '@/lib/dispatchSettings';
 import type { MapOrder, MapRider } from '@/lib/dispatchMap';
 import type { ActiveRider, DispatchBoardRow } from '@/lib/types';
+import { toast } from '@/components/ui/Toast';
 
 // Leaflet touches `window` at import, so the map is client-only — never in the
 // server bundle (ssr:false). Keeps the map code out of the initial RSC payload.
@@ -82,7 +83,7 @@ function DispatchSettingsCard() {
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? 'Could not save dispatch settings.');
       apply(body as DispatchSettings);
-      setMessage({ ok: true, text: 'Saved. The next dispatch pass uses these settings.' });
+      toast.success('Dispatch settings saved', 'The next dispatch pass uses them.');
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Could not save dispatch settings.' });
     } finally {
@@ -92,7 +93,7 @@ function DispatchSettingsCard() {
 
   const inputClass = 'w-full rounded-2xl border border-border bg-canvas px-3.5 py-2 text-sm text-ink focus:outline-none';
   return (
-    <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+    <div className="card p-5">
       <h3 className="text-sm font-semibold text-ink">Dispatch settings</h3>
       <p className="mb-4 text-xs text-muted">
         Once a store accepts an order, riders inside the first ring are offered it while the store packs, then the search widens ring by ring. After the last ring the offer repeats every minute, and the order is flagged here and in the alerts bell for manual assignment.
@@ -130,7 +131,7 @@ function DispatchSettingsCard() {
           type="button"
           onClick={save}
           disabled={saving || !saved}
-          className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-[10px] bg-brand px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-30 hover:bg-brand-strong"
         >
           {saving ? 'Saving…' : 'Save dispatch settings'}
         </button>
@@ -189,7 +190,7 @@ export default function DispatchPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Trips &amp; dispatch</h1>
+        <h1 className="page-title">Trips &amp; dispatch</h1>
         <p className="text-sm text-muted">Live trips, who has them, and the ones automatic dispatch could not place.</p>
       </div>
 
@@ -218,7 +219,7 @@ export default function DispatchPage() {
 
       {loadError && <p className="text-sm text-danger">{loadError}</p>}
 
-      <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+      <div className="overflow-x-auto card">
         <table className="w-full min-w-[1000px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">

@@ -78,10 +78,10 @@ export default function OverviewPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-3xl font-medium text-ink">Welcome back Founder...!</p>
-          <h1 className="text-lg font-medium text-ink text-muted">
-            {new Intl.DateTimeFormat('en-IN', { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date())}
-          </h1>
+          <p className="text-[13px] font-medium text-muted">
+            {new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
+          </p>
+          <h1 className="page-title mt-0.5">Welcome back, Founder</h1>
         </div>
         <SystemStatusBadge />
       </div>

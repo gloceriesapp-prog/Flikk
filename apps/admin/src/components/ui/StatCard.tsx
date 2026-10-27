@@ -19,13 +19,13 @@ export function StatCard({ icon: Icon, value, changePct, label }: StatCardProps)
   const isUp = (changePct ?? 0) >= 0;
 
   return (
-    <div className="flex items-center gap-3 rounded-3xl border border-border bg-card px-4 py-4">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent">
-        <Icon size={18} className="text-ink" />
+    <div className="card flex items-center gap-3.5 px-4 py-4">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
+        <Icon size={18} className="text-brand" />
       </div>
       <div>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-2xl font-semibold tabular-nums text-ink">{value}</span>
+          <span className="text-[22px] font-semibold tracking-tight tabular-nums text-ink">{value}</span>
           {changePct !== undefined && (
             <span className={clsx('text-xs font-semibold', isUp ? 'text-success' : 'text-danger')}>
               {isUp ? '+' : ''}
@@ -33,7 +33,7 @@ export function StatCard({ icon: Icon, value, changePct, label }: StatCardProps)
             </span>
           )}
         </div>
-        <p className="text-xs text-muted">{label}</p>
+        <p className="mt-0.5 text-xs font-medium text-muted">{label}</p>
       </div>
     </div>
   );

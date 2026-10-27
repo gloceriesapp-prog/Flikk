@@ -122,7 +122,7 @@ export function OrdersTable() {
   exportParams.set('format', 'csv');
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+    <div className="card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <form
           className="flex min-w-[220px] flex-1 items-center gap-2"
@@ -138,7 +138,7 @@ export function OrdersTable() {
             aria-label="Search orders"
             className="w-full max-w-md rounded-full border border-border bg-canvas px-4 py-2 text-sm text-ink focus:outline-none"
           />
-          <button type="submit" className="rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white">Search</button>
+          <button type="submit" className="rounded-[10px] bg-brand px-4 py-2 text-xs font-semibold text-white hover:bg-brand-strong">Search</button>
         </form>
 
         <div className="flex items-center gap-2">
@@ -156,7 +156,7 @@ export function OrdersTable() {
           </button>
           <a
             href={`/api/orders?${exportParams}`}
-            className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-xs font-semibold text-ink-soft hover:text-ink"
+            className="flex items-center gap-1.5 rounded-[10px] border border-border px-3.5 py-2 text-xs font-semibold text-ink-soft hover:text-ink"
           >
             <Download size={13} />
             Export CSV

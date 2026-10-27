@@ -9,7 +9,7 @@ export default function OrdersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Orders</h1>
+        <h1 className="page-title">Orders</h1>
         <p className="text-sm text-muted">Live status across every store in the zone.</p>
       </div>
 

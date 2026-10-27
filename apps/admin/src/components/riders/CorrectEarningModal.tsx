@@ -55,7 +55,7 @@ export function CorrectEarningModal({ row, onClose, onCorrected }: { row: RiderE
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={submitting ? undefined : onClose}>
-      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex w-full max-w-md flex-col overflow-hidden card shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
           <h3 className="text-lg font-semibold text-ink">Correct earning</h3>
           <button type="button" onClick={onClose} className="text-muted hover:text-ink" aria-label="Close">
@@ -83,7 +83,7 @@ export function CorrectEarningModal({ row, onClose, onCorrected }: { row: RiderE
               )}
             </div>
             <div className="flex justify-end">
-              <button type="button" onClick={onClose} className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white">Done</button>
+              <button type="button" onClick={onClose} className="rounded-[10px] bg-brand px-5 py-2 text-sm font-medium text-white hover:bg-brand-strong">Done</button>
             </div>
           </div>
         ) : (

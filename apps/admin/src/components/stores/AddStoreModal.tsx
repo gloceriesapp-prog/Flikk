@@ -86,7 +86,7 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
@@ -307,7 +307,7 @@ export function AddStoreModal({ onClose, onAdd }: { onClose: () => void; onAdd: 
             type="button"
             onClick={handleAdd}
             disabled={!draft.name.trim() || !draft.ownerPhone.trim() || submitting}
-            className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
+            className="rounded-[10px] bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong"
           >
             {submitting ? 'Adding…' : 'Add store'}
           </button>

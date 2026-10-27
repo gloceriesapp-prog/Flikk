@@ -66,7 +66,7 @@ export function PartnerAccountPanel({
           )}
         </div>
         {suspended ? (
-          <button type="button" onClick={() => { setError(null); setModal('reinstate'); }} className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-ink">
+          <button type="button" onClick={() => { setError(null); setModal('reinstate'); }} className="rounded-[10px] border border-border bg-white px-4 py-2 text-sm font-semibold text-ink">
             Reinstate partner
           </button>
         ) : (

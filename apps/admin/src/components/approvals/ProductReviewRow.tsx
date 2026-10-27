@@ -192,7 +192,7 @@ export function ProductReviewRow({
           type="button"
           onClick={() => call(endpoint, approvalBody)}
           disabled={busy}
-          className="flex h-9 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+          className="flex h-9 items-center gap-1.5 rounded-[10px] bg-brand px-4 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
         >
           <Check size={14} />
           Approve

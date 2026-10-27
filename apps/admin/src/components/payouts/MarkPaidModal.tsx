@@ -49,7 +49,7 @@ export function MarkPaidModal({ row, onClose, onPaid }: { row: AdminPayoutRow; o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={submitting ? undefined : onClose}>
-      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex w-full max-w-md flex-col overflow-hidden card shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
           <h3 className="text-lg font-semibold text-ink">Mark paid</h3>
           <button type="button" onClick={onClose} disabled={submitting} className="text-muted hover:text-ink" aria-label="Close">

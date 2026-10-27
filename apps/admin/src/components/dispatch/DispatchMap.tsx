@@ -63,7 +63,7 @@ export default function DispatchMap({ riders, orders }: { riders: MapRider[]; or
   }, [riders, orders]);
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
+    <div className="card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-ink">Live map</h3>
         <div className="flex flex-wrap items-center gap-4">

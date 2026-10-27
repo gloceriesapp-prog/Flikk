@@ -205,13 +205,13 @@ export default function PromoCodesPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-medium text-ink">Promo codes</h1>
+          <h1 className="page-title">Promo codes</h1>
           <p className="text-sm text-muted">{loading ? 'Loading…' : `${codes.length} codes.`}</p>
         </div>
         <button
           type="button"
           onClick={() => (adding || editingId ? closeForm() : setAdding(true))}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+          className="flex shrink-0 items-center gap-1.5 rounded-[10px] bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-strong"
         >
           <Plus size={15} />
           Add promo code
@@ -221,7 +221,7 @@ export default function PromoCodesPage() {
       {loadError && <p className="text-sm text-danger">{loadError}</p>}
 
       {(adding || editingId !== null) && (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 card p-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Code">
               <input
@@ -315,7 +315,7 @@ export default function PromoCodesPage() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
             >
               {editingId ? (saving ? 'Saving…' : 'Save changes') : saving ? 'Creating…' : 'Create code'}
             </button>
@@ -323,7 +323,7 @@ export default function PromoCodesPage() {
         </form>
       )}
 
-      <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+      <div className="overflow-x-auto card">
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">

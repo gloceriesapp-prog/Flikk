@@ -8,6 +8,7 @@
 // as festival-section/page.tsx.
 
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from '@/components/ui/Toast';
 
 interface GreetingCategory {
   id: string;
@@ -34,7 +35,6 @@ export default function FestivalGreetingPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   const [title, setTitle] = useState('');
   const [tagline, setTagline] = useState('');
@@ -84,7 +84,6 @@ export default function FestivalGreetingPage() {
     }
     setSaving(true);
     setError(null);
-    setSaved(false);
     try {
       const res = await fetch('/api/festival-greeting', {
         method: 'PATCH',
@@ -101,7 +100,7 @@ export default function FestivalGreetingPage() {
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Save failed.');
       await load();
-      setSaved(true);
+      toast.success('Saved. Customers see it within a few seconds.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.');
     } finally {
@@ -114,7 +113,7 @@ export default function FestivalGreetingPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Festival Greeting</h1>
+        <h1 className="page-title">Festival Greeting</h1>
         <p className="text-sm text-muted">The festival tab on the customer Home screen, with its greeting banner and category chips.</p>
       </div>
 
@@ -123,7 +122,7 @@ export default function FestivalGreetingPage() {
       </a>
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-1 text-sm font-semibold text-ink">Festival tab</h2>
         <p className="mb-4 text-xs text-muted">
           When on, a tab with this title appears first after All. Its shelves are published from Festival sections & layout; the Festival products page supplies the shared
@@ -164,7 +163,7 @@ export default function FestivalGreetingPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-3 text-sm font-semibold text-ink">Greeting</h2>
         <div className="flex flex-col gap-4">
           <div>
@@ -184,7 +183,7 @@ export default function FestivalGreetingPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-3 text-sm font-semibold text-ink">Categories</h2>
         <div className="flex flex-col gap-2">
           {categories.map((c) => (
@@ -201,11 +200,10 @@ export default function FestivalGreetingPage() {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+          className="rounded-[10px] bg-brand px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong"
         >
           {saving ? 'Saving…' : 'Save'}
         </button>
-        {saved && !saving && <span role="status" className="text-xs text-green-700">Saved. Customers see it within a few seconds.</span>}
       </div>
     </div>
   );

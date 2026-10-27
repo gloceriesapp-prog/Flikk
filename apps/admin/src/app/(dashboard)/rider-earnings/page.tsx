@@ -93,7 +93,7 @@ export default function RiderEarningsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-medium text-ink">Rider earnings</h1>
+        <h1 className="page-title">Rider earnings</h1>
         <p className="text-sm text-muted">Every delivery a rider was paid for, with the base and extra-stop split and whether it has been paid out.</p>
       </div>
 
@@ -137,7 +137,7 @@ export default function RiderEarningsPage() {
 
       {loadError && <p className="text-sm text-danger">{loadError}</p>}
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="text-sm font-semibold text-ink">Weekly totals</h3>
           <p className="text-xs text-muted">
@@ -178,7 +178,7 @@ export default function RiderEarningsPage() {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+      <div className="overflow-x-auto card">
         <table className="w-full min-w-[900px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">
@@ -216,7 +216,7 @@ export default function RiderEarningsPage() {
                   <button
                     type="button"
                     onClick={() => setCorrecting(e)}
-                    className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent"
+                    className="rounded-[10px] border border-border bg-card px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent"
                   >
                     Correct
                   </button>

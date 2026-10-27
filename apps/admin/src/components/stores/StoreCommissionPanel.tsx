@@ -53,7 +53,7 @@ export function StoreCommissionPanel({
   }
 
   return (
-    <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+    <section className="card p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-ink">Commission</h2>
@@ -83,7 +83,7 @@ export function StoreCommissionPanel({
             type="button"
             disabled={!dirty || busy}
             onClick={() => void save(draft)}
-            className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            className="rounded-[10px] bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
           >
             {busy ? 'Saving…' : 'Save'}
           </button>
@@ -92,7 +92,7 @@ export function StoreCommissionPanel({
               type="button"
               disabled={busy}
               onClick={() => void save('')}
-              className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
+              className="rounded-[10px] border border-border bg-white px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40"
             >
               Use category rates
             </button>

@@ -18,14 +18,14 @@ export default async function DashboardLayout({ children }: LayoutProps<'/'>) {
     // trick: sticky still scrolls its whole ancestor chain with the page,
     // which is exactly what was cutting the panel's rounded corner off
     // screen once content got tall enough to scroll.
-    <div className="flex h-screen overflow-hidden bg-canvas">
+    <div className="flex h-screen overflow-hidden bg-sidebar">
       <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      {/* The work area sits on the dark sidebar like a sheet: rounded on the
+          left, its own scroll. */}
+      <div className="my-2 mr-2 flex flex-1 flex-col overflow-hidden rounded-2xl bg-canvas">
         <TopNav />
-        {/* Rounded top-left only where it meets the sidebar/topnav corner,
-            square everywhere else — this is the one scrollable region. */}
-        <main className="flex-1 overflow-y-auto rounded-tl-3xl bg-card">
-          <div className="mx-auto max-w-[1400px] px-8 py-6">{children}</div>
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-[1360px] px-8 pb-12 pt-7">{children}</div>
         </main>
       </div>
     </div>

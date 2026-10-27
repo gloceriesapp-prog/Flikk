@@ -20,6 +20,7 @@ import { ReasonModal } from '@/components/ui/ReasonModal';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import type { ActiveRider, Order } from '@/lib/types';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
+import { confirmAction } from '@/components/ui/Toast';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 // liveStatus is derived server-side (app/api/riders): a live trip = On
@@ -87,7 +88,7 @@ export default function RidersPage() {
   }
 
   async function reactivate(rider: ActiveRider) {
-    if (!window.confirm(`Reactivate ${rider.name}? They will be able to go online and receive pickups again.`)) return;
+    if (!(await confirmAction(`Reactivate ${rider.name}? They will be able to go online and receive pickups again.`))) return;
     setActionError(null);
     try {
       await setSuspension(rider, false);
@@ -101,7 +102,7 @@ export default function RidersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Riders</h1>
+        <h1 className="page-title">Riders</h1>
         <p className="text-sm text-muted">Active roster and manual order assignment.</p>
       </div>
 
@@ -110,7 +111,7 @@ export default function RidersPage() {
 
       <RiderChangeRequests />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
-        <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+        <div className="card p-5">
           <h3 className="mb-3 text-sm font-semibold text-ink">Riders</h3>
           <div className="flex flex-col gap-3">
             {riders.map((rider) => {
@@ -209,7 +210,7 @@ export default function RidersPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+        <div className="card p-5">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-ink">Unassigned orders</h3>
             <span className="text-xs text-muted">{unassigned.length} waiting</span>

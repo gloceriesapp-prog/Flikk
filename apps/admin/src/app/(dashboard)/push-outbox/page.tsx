@@ -72,7 +72,7 @@ export default function PushOutboxPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Push outbox</h1>
+        <h1 className="page-title">Push outbox</h1>
         <p className="text-sm text-muted">
           Customer pushes waiting, sent and failed. A push is retried automatically up to 6 times; after that it stays failed until you retry it.
           Edit wording or send a message on <Link href="/notifications" className="font-semibold text-ink hover:underline">Customer notifications</Link>.
@@ -87,7 +87,7 @@ export default function PushOutboxPage() {
         ))}
       </div>
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
-      <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+      <div className="overflow-x-auto card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs font-semibold text-muted">
@@ -129,7 +129,7 @@ export default function PushOutboxPage() {
                 <td className="px-4 py-3 text-right">
                   {!r.sentAt && (
                     <button type="button" disabled={busyId === r.id} onClick={() => void retry(r.id)}
-                      className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+                      className="rounded-[10px] bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong">
                       {busyId === r.id ? 'Retrying…' : 'Retry now'}
                     </button>
                   )}

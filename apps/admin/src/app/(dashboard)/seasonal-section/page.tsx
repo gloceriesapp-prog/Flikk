@@ -155,13 +155,13 @@ export default function SeasonalSectionPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-medium text-ink">Seasonal Section</h1>
+        <h1 className="page-title">Seasonal Section</h1>
         <p className="text-sm text-muted">The poster and tile grid on the customer app&apos;s Home &quot;All&quot; tab.</p>
       </div>
 
       {loadError && <p className="text-sm text-danger">{loadError}</p>}
 
-      <div className="rounded-3xl border border-border bg-card p-6">
+      <div className="card p-6">
         <h3 className="mb-1 text-sm font-semibold text-ink">Poster banner</h3>
         <p className="mb-4 text-xs text-muted">Paste an image URL. Leave blank to turn the banner off entirely.</p>
         {loading ? (
@@ -183,7 +183,7 @@ export default function SeasonalSectionPage() {
                 type="button"
                 onClick={handleSaveBanner}
                 disabled={savingBanner || bannerDraft === (banner?.bannerImageUrl ?? '')}
-                className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
               >
                 {savingBanner ? 'Saving…' : 'Save banner'}
               </button>
@@ -200,7 +200,7 @@ export default function SeasonalSectionPage() {
         <button
           type="button"
           onClick={() => (adding && !editingTile ? closeForm() : openCreate())}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+          className="flex shrink-0 items-center gap-1.5 rounded-[10px] bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-strong"
         >
           <Plus size={15} />
           Add tile
@@ -208,7 +208,7 @@ export default function SeasonalSectionPage() {
       </div>
 
       {adding && (
-        <form onSubmit={handleSubmitTile} className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5">
+        <form onSubmit={handleSubmitTile} className="flex flex-col gap-4 card p-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-ink-soft">Title</span>
@@ -244,7 +244,7 @@ export default function SeasonalSectionPage() {
             <button type="button" onClick={closeForm} className="text-sm font-medium text-muted">
               Cancel
             </button>
-            <button type="submit" disabled={saving} className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+            <button type="submit" disabled={saving} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong">
               {editingTile ? (saving ? 'Saving…' : 'Save tile') : saving ? 'Adding…' : 'Add tile'}
             </button>
           </div>
@@ -253,7 +253,7 @@ export default function SeasonalSectionPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
-          <div key={tile.id} className="flex flex-col gap-3 rounded-3xl border border-border bg-card p-4">
+          <div key={tile.id} className="flex flex-col gap-3 card p-4">
             <div className="flex h-24 items-center justify-center rounded-2xl" style={{ backgroundColor: tile.bgColor }}>
               {tile.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -286,7 +286,7 @@ export default function SeasonalSectionPage() {
         ))}
 
         {!loading && tiles.length === 0 && (
-          <p className="col-span-full rounded-3xl border border-border bg-card py-8 text-center text-sm text-muted">
+          <p className="col-span-full card py-8 text-center text-sm text-muted">
             No tiles yet — add one above.
           </p>
         )}

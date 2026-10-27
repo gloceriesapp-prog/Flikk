@@ -57,7 +57,7 @@ export default function CustomersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-medium text-ink">Customers</h1>
+        <h1 className="page-title">Customers</h1>
         <p className="text-sm text-muted">{loading ? 'Loading…' : `${customers.length} accounts.`}</p>
       </div>
 
@@ -73,7 +73,7 @@ export default function CustomersPage() {
 
       {loadError && <p className="text-sm text-danger">{loadError}</p>}
 
-      <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+      <div className="overflow-x-auto card">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">

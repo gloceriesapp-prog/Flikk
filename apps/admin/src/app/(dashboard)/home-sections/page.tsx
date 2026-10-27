@@ -104,7 +104,7 @@ export default function HomeSectionsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Home Sections</h1>
+        <h1 className="page-title">Home Sections</h1>
         <p className="text-sm text-muted">
           Reorder, rename, recolor, or hide the sections on the customer Home screen. Changes go live for everyone on save.
         </p>
@@ -116,7 +116,7 @@ export default function HomeSectionsPage() {
         {sections.map((s, i) => (
           <div
             key={s.key}
-            className={`rounded-3xl border border-border bg-card p-5 ${s.enabled ? '' : 'opacity-60'}`}
+            className={`card p-5 ${s.enabled ? '' : 'opacity-60'}`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -213,7 +213,7 @@ export default function HomeSectionsPage() {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+          className="rounded-[10px] bg-brand px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong"
         >
           {saving ? 'Saving…' : 'Save'}
         </button>

@@ -159,7 +159,7 @@ export function ProductVariantsEditor({
       <button
         type="button"
         onClick={addVariant}
-        className="flex items-center gap-1.5 self-start rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink-soft hover:bg-accent hover:text-ink"
+        className="flex items-center gap-1.5 self-start rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-ink-soft hover:bg-accent hover:text-ink"
       >
         <Plus size={13} />
         Add another size

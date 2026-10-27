@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { CommissionSettingsCard } from '@/components/settings/CommissionSettingsCard';
 import { fetchDeliverySettings, minuteToTimeInput, timeInputToMinute, type DeliverySettings } from '@/lib/supabase/deliverySettings';
+import { toast } from '@/components/ui/Toast';
 
 type TierDraft = { upToKm: string; fee: string };
 
@@ -32,11 +33,11 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () =>
     <button
       type="button"
       onClick={onChange}
-      className={clsx('relative h-6 w-11 shrink-0 rounded-full transition-colors', checked ? 'bg-ink' : 'bg-accent')}
+      className={clsx('relative h-6 w-11 shrink-0 rounded-full transition-colors', checked ? 'bg-brand' : 'bg-border-strong')}
     >
       <span
         className={clsx(
-          'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
+          'absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
           checked ? 'translate-x-[22px]' : 'translate-x-0.5'
         )}
       />
@@ -176,6 +177,7 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error(body.error ?? 'Could not save delivery settings.');
       const next = body as DeliverySettings;
       setSaved(next);
+      toast.success('Delivery settings saved', 'The next checkout uses them.');
       // The server sorts tiers; show them in the order they will apply.
       setDraft((current) => current && { ...current, deliveryFeeTiers: next.deliveryFeeTiers.map((tier) => ({ upToKm: String(tier.upToKm), fee: String(tier.fee) })) });
     } catch (err) {
@@ -191,11 +193,11 @@ export default function SettingsPage() {
       if (isDirty) void handleSaveDelivery();
     }}>
       <div>
-        <h1 className="text-3xl font-bold text-ink">Settings</h1>
+        <h1 className="page-title">Settings</h1>
         <p className="text-sm text-muted">Your account and notification preferences.</p>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <div className="card p-6">
         <h3 className="mb-4 text-sm font-semibold text-ink">Founder account</h3>
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 rounded-full bg-accent" />
@@ -206,7 +208,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <div className="card p-6">
         <h3 className="mb-4 text-sm font-semibold text-ink">Notifications</h3>
         <div className="flex flex-col gap-4">
           {NOTIFICATION_PREFS.map((pref) => (
@@ -221,7 +223,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <div className="card p-6">
         <h3 className="mb-1 text-sm font-semibold text-ink">Delivery &amp; fees</h3>
         <p className="mb-4 text-xs text-muted">
           Applies to every customer order right now — the next checkout uses whatever is saved here, no app release needed.
@@ -500,7 +502,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={!isDirty || isSaving}
                 onClick={handleSaveDelivery}
-                className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
               >
                 {isSaving ? 'Saving…' : 'Save changes'}
               </button>

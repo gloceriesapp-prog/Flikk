@@ -63,7 +63,7 @@ export default function RevenuePage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-medium text-ink">Revenue</h1>
+          <h1 className="page-title">Revenue</h1>
           <p className="text-sm text-muted">How much Gloceries earned, and what&apos;s owed back to stores and riders.</p>
         </div>
       </div>
@@ -79,7 +79,7 @@ export default function RevenuePage() {
         pendingPayouts={pendingTotal}
       />
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <div className="mb-4">
           <h3 className="text-sm font-medium text-ink">Order transactions</h3>
           <p className="text-xs text-muted">Every order, its total, and the commission Gloceries earned from it.</p>

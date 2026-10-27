@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { toast } from '@/components/ui/Toast';
 interface Product { id: string; name: string; stock_tracking_enabled: boolean; stock_quantity: number | null; product_variants: { id: string; quantity: number; unit_type: string; stock_quantity: number | null }[] }
 export function PackStockEditor() {
   const [items, setItems] = useState<Product[]>([]); const [next, setNext] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [counts, setCounts] = useState<Record<string, string>>({});
-  const [saved, setSaved] = useState('');
   async function load(after?: string) {
-    setBusy(true); setError(''); setSaved('');
+    setBusy(true); setError('');
     try {
       const response = await fetch(`/api/inventory-pack-stock${after ? `?after=${after}` : ''}`); const data = await response.json();
       if (!response.ok) throw new Error(data.error);
@@ -19,7 +19,7 @@ export function PackStockEditor() {
     return () => { mounted = false; };
   }, []);
   async function save(product: Product, variantId: string | null, key: string) {
-    setBusy(true); setError(''); setSaved('');
+    setBusy(true); setError('');
     try {
       const quantity = Number(counts[key]);
       const response = await fetch('/api/inventory-pack-stock', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: product.id, variantId, quantity }) });
@@ -29,13 +29,12 @@ export function PackStockEditor() {
         const variants = p.product_variants.map(v => v.id === variantId ? { ...v, stock_quantity: quantity } : v);
         return { ...p, stock_tracking_enabled: true, stock_quantity: variantId ? variants.reduce((total, variant) => total + (variant.stock_quantity ?? 0), 0) : quantity, product_variants: variants };
       }));
-      setSaved(`Saved ${quantity} available packs for ${product.name}.`);
+      toast.success(`Saved ${quantity} available packs for ${product.name}.`);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save count.'); }
     finally { setBusy(false); }
   }
-  return <section className="space-y-5 p-6"><h1 className="text-2xl font-semibold">Available packs</h1><p className="text-sm text-gray-500">Count retail packs available to sell, excluding existing reservations. Set each size separately. An unconfirmed size cannot be ordered. Bulk stock must be packed into sellable units before entering these counts.</p>
+  return <section className="space-y-5 p-6"><h1 className="page-title">Available packs</h1><p className="text-sm text-gray-500">Count retail packs available to sell, excluding existing reservations. Set each size separately. An unconfirmed size cannot be ordered. Bulk stock must be packed into sellable units before entering these counts.</p>
     {error && <p role="alert" className="text-red-600">{error}</p>}
-    {saved && <p role="status" className="rounded-xl bg-green-50 p-3 text-sm text-green-700">{saved}</p>}
     <button onClick={() => void load()} disabled={busy} className="rounded-xl border px-4 py-2">Refresh</button>
     {items.map(p => <article key={p.id} className="space-y-3 rounded-2xl border bg-white p-5"><strong>{p.name}</strong>
       <p className="text-sm text-gray-500">{!p.stock_tracking_enabled ? 'Stock unconfirmed — enter the actual packs available to enable ordering.' : `${p.stock_quantity ?? 0} confirmed packs across all sizes.`}</p>
