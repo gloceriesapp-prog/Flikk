@@ -23,3 +23,9 @@ Replacement build 5 is being prepared. No claim of successful archive, upload, T
 The corrected local archive was installed on the physical iPhone and reached Login, remained running, and entered the guest location flow. This is a local archive test, not exact TestFlight replacement verification.
 
 A post-archive privacy scan caught a separate packaging defect: CocoaPods had already staged its XCFramework before the app privacy phase normalized the Pod source. The embedded Razorpay framework therefore still carried the known noncanonical email label. The phase now corrects and validates both the Pod source and its staged XCFramework before embedding/signing, and updates existing generated phases idempotently. The replacement archive is being rebuilt and must pass final bundle verification before upload.
+
+## First-location navigation regression
+
+The physical guest flow confirmed a no-op Back button on the initial map. LocationPermission replaces the stack's only route with LocationSearch, leaving no previous route. The map now falls back to LocationPermission when canGoBack is false while preserving ordinary back navigation from other screens. Both cases and the existing 23 location-selection regressions pass (25 targeted tests); typecheck and lint pass.
+
+The local build also confirmed location selection reaches Home and shows the live nearby store with its closed/opening status. These read-only checks created no order or charge.
