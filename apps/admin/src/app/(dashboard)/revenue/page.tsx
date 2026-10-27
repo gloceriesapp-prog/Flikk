@@ -1,83 +1,57 @@
 'use client';
 
-// Revenue — how much money the platform actually made (commission trend +
-// platform fee), and every order's transaction. What's owed back out to
-// stores and riders is paid and recorded on the Payouts page (manual UTR
-// flow, backend/PAYOUTS.md); this page only shows that pending total.
+// Revenue — where every rupee customers paid went: the stores' share, rider
+// pay, and what Gloceries kept, with what is still owed to stores and
+// riders kept separate from our earnings (components/revenue/MoneySplit).
+// Paying stores and riders happens on the Payouts page (manual UTR flow,
+// backend/PAYOUTS.md).
 
 import { useCallback, useEffect, useState } from 'react';
-import { RevenueBalanceCard } from '@/components/revenue/RevenueBalanceCard';
+import { MoneySplit } from '@/components/revenue/MoneySplit';
 import { OrderTransactionsTable } from '@/components/revenue/OrderTransactionsTable';
-import { sumRupees } from '@/lib/format';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
-import type { AdminPayoutRow, Order, RevenuePoint } from '@/lib/types';
+import type { MoneyRange, MoneySummary } from '@/lib/moneySummary';
+import type { Order } from '@/lib/types';
 
 export default function RevenuePage() {
-  const [pendingPayouts, setPendingPayouts] = useState<AdminPayoutRow[] | null>(null);
-  const [trend, setTrend] = useState<RevenuePoint[]>([]);
+  const [range, setRange] = useState<MoneyRange>('month');
+  const [summary, setSummary] = useState<MoneySummary | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoadError(null);
     try {
-      const [payoutsRes, trendRes, ordersRes] = await Promise.all([
-        fetch('/api/payouts?status=pending'),
-        fetch('/api/revenue-trend'),
+      const [summaryRes, ordersRes] = await Promise.all([
+        fetch(`/api/money-summary?range=${range}`),
         fetch('/api/orders'),
       ]);
-      if (!payoutsRes.ok) throw new Error((await payoutsRes.json()).error ?? 'Could not load payouts.');
-      if (!trendRes.ok) throw new Error((await trendRes.json()).error ?? 'Could not load revenue trend.');
+      if (!summaryRes.ok) throw new Error((await summaryRes.json()).error ?? 'Could not load the money summary.');
       if (!ordersRes.ok) throw new Error((await ordersRes.json()).error ?? 'Could not load orders.');
-      setPendingPayouts(await payoutsRes.json());
-      setTrend(await trendRes.json());
+      setSummary(await summaryRes.json());
       setOrders(await ordersRes.json());
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load revenue data.');
     }
-  }, []);
+  }, [range]);
 
   useEffect(() => {
     Promise.resolve().then(loadData);
   }, [loadData]);
   useAdminRealtime(loadData);
 
-  // Real total earnings = commission (from stores) + platform/handling fee
-  // (from customers) — both are money Gloceries actually keeps, neither is
-  // ever paid to a store or a rider. app/api/revenue-trend's own note has
-  // the full reasoning.
-  const totalCommission = trend.reduce((sum, p) => sum + p.commission, 0);
-  const totalPlatformFee = trend.reduce((sum, p) => sum + p.platformFee, 0);
-  const totalRevenue = totalCommission + totalPlatformFee;
-  const latest = trend[trend.length - 1];
-  const prior = trend[trend.length - 2];
-  const latestTotal = latest ? latest.commission + latest.platformFee : 0;
-  const priorTotal = prior ? prior.commission + prior.platformFee : 0;
-  const weekOverWeekPct = priorTotal > 0 ? Math.round(((latestTotal - priorTotal) / priorTotal) * 100) : 0;
-
   const ordersByRecency = [...orders].reverse();
-
-  const pendingTotal = pendingPayouts ? sumRupees(pendingPayouts.map((p) => p.netAmount)) : null;
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="page-title">Revenue</h1>
-          <p className="text-sm text-muted">How much Gloceries earned, and what&apos;s owed back to stores and riders.</p>
-        </div>
+      <div>
+        <h1 className="page-title">Revenue</h1>
+        <p className="page-subtitle">What Gloceries earned, kept apart from what we owe stores and riders.</p>
       </div>
 
       {loadError && <p className="text-sm text-danger">{loadError}</p>}
 
-      <RevenueBalanceCard
-        totalRevenue={totalRevenue}
-        totalCommission={totalCommission}
-        totalPlatformFee={totalPlatformFee}
-        thisWeek={latestTotal}
-        weekOverWeekPct={weekOverWeekPct}
-        pendingPayouts={pendingTotal}
-      />
+      <MoneySplit summary={summary} range={range} onRangeChange={setRange} />
 
       <div className="card p-5">
         <div className="mb-4">
