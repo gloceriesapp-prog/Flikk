@@ -1,4 +1,25 @@
-import { configurePrivacyBuildPhase } from '../plugins/withIosReleaseQuality.cjs';
+import { configurePrivacyBuildPhase, configureRuntimeBuildPhase } from '../plugins/withIosReleaseQuality.cjs';
+
+it('checks the final bundled runtimes after JS bundling, before signing', () => {
+  const firstTarget = { buildPhases: [
+    { value: 'BUNDLE', comment: 'Bundle React Native code and images' },
+    { value: 'EMBED', comment: '[CP] Embed Pods Frameworks' },
+  ] };
+  let added = false;
+  const project = {
+    getFirstTarget: () => ({ uuid: 'APP', firstTarget }),
+    pbxItemByComment: () => added,
+    addBuildPhase: (_files: unknown[], _kind: string, _name: string, _target: string, options: { shellScript: string }) => {
+      expect(options.shellScript).toContain('$DERIVED_FILE_DIR/main.jsbundle.map');
+      added = true;
+      firstTarget.buildPhases.push({ value: 'VERIFY', comment: 'Runtime verification' });
+      return { uuid: 'VERIFY' };
+    },
+  };
+  configureRuntimeBuildPhase(project);
+  configureRuntimeBuildPhase(project);
+  expect(firstTarget.buildPhases.map(phase => phase.value)).toEqual(['BUNDLE', 'VERIFY', 'EMBED']);
+});
 
 it('runs the SDK metadata check before resource/signing work and adds it only once', () => {
   const firstTarget = { buildPhases: [{ value: 'SOURCES' }, { value: 'RESOURCES' }] };
@@ -6,6 +27,7 @@ it('runs the SDK metadata check before resource/signing work and adds it only on
   const addBuildPhase = jest.fn((_files, _kind, name, target, options) => {
     expect(target).toBe('APP');
     expect(options.shellScript).toContain('--normalize-razorpay');
+    expect(options.shellScript).toContain('${PODS_XCFRAMEWORKS_BUILD_DIR}/razorpay-pod');
     phases.PRIVACY = { name };
     firstTarget.buildPhases.push({ value: 'PRIVACY' });
     return { uuid: 'PRIVACY' };

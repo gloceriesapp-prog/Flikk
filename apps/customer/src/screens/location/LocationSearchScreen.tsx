@@ -691,7 +691,9 @@ export function LocationSearchScreen({ navigation, route }: Props) {
             of relying on two separate `top` values happening to match. */}
         <View style={{ top: insets.top + 12 }} className="absolute left-4 right-4 h-11 flex-row items-center gap-2.5">
           <Pressable accessibilityRole="button" accessibilityLabel="Go back"
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.canGoBack()
+              ? navigation.goBack()
+              : navigation.replace('LocationPermission')}
             hitSlop={12}
             className="h-11 w-11 items-center justify-center rounded-full border border-gray-300 bg-white"
           >

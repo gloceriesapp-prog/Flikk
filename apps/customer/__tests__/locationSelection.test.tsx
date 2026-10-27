@@ -18,6 +18,8 @@ const mockAdoptDeviceFix = jest.fn();
 const mockFetchAddresses = jest.fn();
 const mockSetDefault = jest.fn();
 const mockGoBack = jest.fn();
+const mockCanGoBack = jest.fn();
+const mockReplace = jest.fn();
 jest.mock('../src/api/addresses', () => ({ fetchAddresses: (...args: any[]) => mockFetchAddresses(...args), setDefaultAddress: (...args: any[]) => mockSetDefault(...args) }));
 
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
@@ -52,7 +54,7 @@ jest.mock('react-native-maps', () => {
 
 function screen(params = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
-  return <QueryClientProvider client={client}><LocationSearchScreen navigation={{ navigate: mockNavigate, reset: mockReset, goBack: mockGoBack } as any}
+  return <QueryClientProvider client={client}><LocationSearchScreen navigation={{ navigate: mockNavigate, reset: mockReset, goBack: mockGoBack, canGoBack: mockCanGoBack, replace: mockReplace } as any}
     route={{ params, key: 'location', name: 'LocationSearch' } as any} /></QueryClientProvider>;
 }
 async function render(element: React.ReactElement) {
@@ -72,6 +74,7 @@ async function layoutAddressCard(view: Awaited<ReturnType<typeof render>>, heigh
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
+  mockCanGoBack.mockReturnValue(true);
   mockLiveFix = null;
   mockRecentDeviceFix.mockReturnValue(null);
   mockFetchAddresses.mockResolvedValue([]);
@@ -84,6 +87,21 @@ beforeEach(() => {
   mockReverse.mockResolvedValue({ addressLabel: 'Real street, Kaup', shortName: 'Real street', city: 'Kaup', resolved: true });
 });
 afterEach(() => jest.useRealTimers());
+
+it('returns to location choices when onboarding replaced the only stack route', async () => {
+  mockCanGoBack.mockReturnValue(false);
+  const view = await render(screen());
+  await fireEvent.press(view.getByLabelText('Go back'));
+  expect(mockReplace).toHaveBeenCalledWith('LocationPermission');
+  expect(mockGoBack).not.toHaveBeenCalled();
+});
+
+it('preserves the previous screen when changing location from an existing stack', async () => {
+  const view = await render(screen());
+  await fireEvent.press(view.getByLabelText('Go back'));
+  expect(mockGoBack).toHaveBeenCalledTimes(1);
+  expect(mockReplace).not.toHaveBeenCalled();
+});
 
 it('does not resolve or confirm the launch-zone placeholder before a real selection', async () => {
   const view = await render(screen());
