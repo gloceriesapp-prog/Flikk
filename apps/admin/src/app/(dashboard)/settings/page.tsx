@@ -446,12 +446,14 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
               <div>
-                <label htmlFor="riderBasePayout" className="text-sm font-medium text-ink">Minimum rider payout per delivery</label>
+                <label htmlFor="riderBasePayout" className="text-sm font-medium text-ink">Rider pay per delivery</label>
                 <p className="text-xs text-muted">
-                  For each order or multi-store trip the rider earns the higher of this amount and the delivery fee the customer
-                  paid (not counting the extra-store fee, which is paid through the payout below), so a free-delivery order still
-                  pays this amount. Set to 0 to pay riders exactly the delivery fee the customer paid
-                  (the per-extra-store payout below is then not added).
+                  For each order or multi-store trip the rider earns exactly this amount; the rest of the delivery fee stays with
+                  Gloceries (e.g. ₹30 fee, ₹25 here: rider ₹25, Gloceries ₹5). Set to 0 to pay riders exactly the delivery fee the
+                  customer paid.
+                  {draft.riderBasePayout !== '' && Number(draft.riderBasePayout) > 0 && draft.deliveryFeeTiers.length > 0 && (
+                    <> You keep {draft.deliveryFeeTiers.map((tier) => `₹${Math.max(0, Number(tier.fee) - Number(draft.riderBasePayout))}`).join(' / ')} per delivery on your fee tiers.</>
+                  )}
                 </p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">
@@ -471,8 +473,8 @@ export default function SettingsPage() {
               <div>
                 <label htmlFor="riderExtraStopPayout" className="text-sm font-medium text-ink">Rider payout per extra store</label>
                 <p className="text-xs text-muted">
-                  Added on top of the minimum payout for each store after the first on a multi-store trip. Applies only when the
-                  minimum rider payout is above 0.
+                  Added on top of the rider pay for each store after the first on a multi-store trip. Leave at 0 to pass the
+                  customer&apos;s extra-store fee to the rider instead. Applies only when rider pay per delivery is above 0.
                 </p>
               </div>
               <div className="flex items-center gap-1 rounded-xl border border-border px-3 py-2">

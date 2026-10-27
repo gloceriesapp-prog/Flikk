@@ -584,6 +584,10 @@
     {
       "file": "20261026120000_category_commission.sql",
       "sha256": "8421f016a060e803bf111112e33a61bcdc5578299f9e736b1e7d50c55369689e"
+    },
+    {
+      "file": "20261027090000_fixed_rider_payout.sql",
+      "sha256": "d8e6a934540812263927dd8aae942b092fa94f37f39d9cf5418f853f5388b306"
     }
   ]
 }
