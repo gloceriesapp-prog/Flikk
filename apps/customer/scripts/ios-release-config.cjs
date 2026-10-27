@@ -1,5 +1,9 @@
 const assert = require('node:assert/strict');
 
+function verifyIosDeviceFamily(infoPlist) {
+  assert.deepEqual(infoPlist?.UIDeviceFamily, [1], 'The initial iOS release must target iPhone only.');
+}
+
 function iosBuildNumber(env = process.env) {
   const next = env.CUSTOMER_IOS_BUILD_NUMBER;
   const previous = env.CUSTOMER_HIGHEST_IOS_BUILD_NUMBER;
@@ -34,4 +38,4 @@ if (require.main === module) {
   catch (error) { console.error(error.message); process.exitCode = 1; }
 }
 
-module.exports = { iosBuildNumber, verifyIosRelease };
+module.exports = { iosBuildNumber, verifyIosRelease, verifyIosDeviceFamily };

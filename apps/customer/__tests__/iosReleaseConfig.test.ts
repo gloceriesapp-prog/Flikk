@@ -1,4 +1,11 @@
-import { verifyIosRelease } from '../scripts/ios-release-config.cjs';
+import { verifyIosRelease, verifyIosDeviceFamily } from '../scripts/ios-release-config.cjs';
+
+it('accepts only the shipped iPhone device family for the initial release', () => {
+  expect(() => verifyIosDeviceFamily({ UIDeviceFamily: [1] })).not.toThrow();
+  for (const UIDeviceFamily of [undefined, [], [2], [1, 2]]) {
+    expect(() => verifyIosDeviceFamily({ UIDeviceFamily })).toThrow();
+  }
+});
 
 const valid: NodeJS.ProcessEnv = {
   CUSTOMER_DIRECT_IOS_RELEASE: 'true', NODE_ENV: 'production',

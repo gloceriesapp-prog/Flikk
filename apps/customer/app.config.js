@@ -49,7 +49,8 @@ module.exports = {
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     ios: {
-      supportsTablet: true,
+      // Initial App Store launch is iPhone-only. Enable iPad after tablet QA.
+      supportsTablet: false,
       bundleIdentifier: 'com.gloceries.customer',
       ...(process.env.CUSTOMER_DIRECT_IOS_RELEASE === 'true'
         ? { buildNumber: require('./scripts/ios-release-config.cjs').iosBuildNumber(process.env) } : {}),
@@ -118,6 +119,7 @@ module.exports = {
         ...(iosGoogleMapsApiKey ? { iosGoogleMapsApiKey } : {}),
       }],
       './plugins/withAndroidReleaseQuality.cjs',
+      './plugins/withIosReleaseQuality.cjs',
       ['@sentry/react-native/expo', {
         ...(process.env.SENTRY_ORG ? { organization: process.env.SENTRY_ORG } : {}),
         ...(process.env.SENTRY_PROJECT ? { project: process.env.SENTRY_PROJECT } : {}),
