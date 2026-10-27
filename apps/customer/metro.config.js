@@ -1,6 +1,7 @@
 const path = require('path');
 const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 const { withNativeWind } = require('nativewind/metro');
+const { withCustomerSingletons } = require('./scripts/metro-singletons.cjs');
 
 const config = getSentryExpoConfig(__dirname);
 
@@ -33,4 +34,7 @@ config.resolver.extraNodeModules = {
 // dual-React-context hazard rider's metro.config documents.
 config.resolver.nodeModulesPaths = [path.resolve(__dirname, 'node_modules')];
 
-module.exports = withNativeWind(config, { input: './global.css' });
+module.exports = withCustomerSingletons(
+  withNativeWind(config, { input: './global.css' }),
+  __dirname,
+);
