@@ -76,7 +76,7 @@ export default function ReviewsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-medium text-ink">Reviews</h1>
+        <h1 className="page-title">Reviews</h1>
         <p className="text-sm text-muted">{loading ? 'Loading…' : `${reviews.length} reviews, most recent 200.`}</p>
       </div>
 
@@ -100,7 +100,7 @@ export default function ReviewsPage() {
 
       <div className="flex flex-col gap-3">
         {filtered.map((review) => (
-          <div key={review.id} className="rounded-3xl border border-border bg-card p-5">
+          <div key={review.id} className="card p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-ink">{review.storeName}</p>
@@ -136,7 +136,7 @@ export default function ReviewsPage() {
         ))}
 
         {!loading && filtered.length === 0 && (
-          <p className="rounded-3xl border border-border bg-card py-8 text-center text-sm text-muted">
+          <p className="card py-8 text-center text-sm text-muted">
             {reviews.length === 0 ? 'No reviews yet.' : 'No reviews match this filter.'}
           </p>
         )}

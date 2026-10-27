@@ -90,7 +90,7 @@ export default function ApprovalsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-medium text-ink">Approvals</h1>
+        <h1 className="page-title">Approvals</h1>
         <p className="text-sm text-muted">Review store applications, partner updates, riders and products.</p>
       </div>
 
@@ -103,7 +103,7 @@ export default function ApprovalsPage() {
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-1 self-start rounded-3xl border border-border bg-card p-1">
+      <div className="flex flex-wrap items-center gap-1 self-start card p-1">
         {TABS.map((t) => {
           const count = tabCount(t.kind);
           const active = tab === t.kind;
@@ -137,7 +137,7 @@ export default function ApprovalsPage() {
         <StoreChangeRequests showEmpty onCountChange={setStoreUpdateCount} />
       </div>
 
-      <div hidden={tab === 'store-update'} className="rounded-3xl border border-border bg-card p-5">
+      <div hidden={tab === 'store-update'} className="card p-5">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-medium text-ink">
             {tab === 'store' ? 'Store applications' : tab === 'rider' ? 'Rider applications' : 'Product approvals'}

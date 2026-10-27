@@ -146,7 +146,7 @@ export default function AppContentPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">App content</h1>
+        <h1 className="page-title">App content</h1>
         <p className="text-sm text-muted">
           Customer-facing links, contacts and text. Changes reach the customer app within about a minute — no release needed.
         </p>
@@ -154,7 +154,7 @@ export default function AppContentPage() {
 
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-3 text-sm font-semibold text-ink">Legal links</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Field label="Terms of service" hint="https:// only">
@@ -169,7 +169,7 @@ export default function AppContentPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-3 text-sm font-semibold text-ink">Support contacts</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Field label="Phone" hint="International format, e.g. +919876543210">
@@ -184,7 +184,7 @@ export default function AppContentPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-3 text-sm font-semibold text-ink">About</h2>
         <div className="flex flex-col gap-4">
           <Field label="Title">
@@ -196,7 +196,7 @@ export default function AppContentPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">UI copy</h2>
           <span className="text-xs text-muted">
@@ -266,7 +266,7 @@ export default function AppContentPage() {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+          className="rounded-[10px] bg-brand px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong"
         >
           {saving ? 'Saving…' : 'Save'}
         </button>

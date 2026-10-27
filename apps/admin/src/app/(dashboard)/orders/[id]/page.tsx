@@ -21,6 +21,7 @@ import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { CANCELLED_BY_LABELS, orderReasonLabel } from '@/lib/orders/cancelReasons';
 import type { OrderDetail } from '@/lib/orders/orderDetail';
 import type { ActiveRider } from '@/lib/types';
+import { toast } from '@/components/ui/Toast';
 
 type ActionKind = 'cancel' | 'packed' | 'out_for_delivery' | 'unassign' | 'reassign' | 'reissue';
 
@@ -43,7 +44,7 @@ const CODE_STATE_LABEL: Record<OrderDetail['deliveryCode']['state'], string> = {
 
 function Section({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={clsx('rounded-3xl border border-border bg-card p-5 shadow-sm', className)}>
+    <section className={clsx('card p-5', className)}>
       <h3 className="mb-3 text-sm font-semibold text-ink">{title}</h3>
       {children}
     </section>
@@ -69,7 +70,6 @@ export default function OrderDetailPage() {
   const [riderId, setRiderId] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -100,7 +100,6 @@ export default function OrderDetailPage() {
     setReason('');
     setRiderId('');
     setActionError(null);
-    setNotice(null);
   }
 
   async function runAction() {
@@ -129,7 +128,7 @@ export default function OrderDetailPage() {
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const result = await res.json().catch(() => null);
       if (!res.ok) throw new Error(result?.error ?? 'That action failed.');
-      setNotice(action === 'reissue' ? 'A new delivery code was issued. The customer sees it in their app.' : `${copy.title}: done.`);
+      toast.success(action === 'reissue' ? 'A new delivery code was issued. The customer sees it in their app.' : `${copy.title}: done.`);
       setAction(null);
       await load();
     } catch (err) {
@@ -170,7 +169,7 @@ export default function OrderDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link href="/orders" className="mb-2 flex items-center gap-1 text-sm text-muted hover:text-ink"><ArrowLeft size={14} /> Orders</Link>
-          <h1 className="flex items-center gap-3 text-3xl font-bold text-ink">
+          <h1 className="page-title flex items-center gap-3">
             {order.orderNumber}
             <StatusPill status={order.status} />
           </h1>
@@ -195,10 +194,9 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      {notice && <p className="rounded-2xl bg-green-50 px-4 py-3 text-sm text-success">{notice}</p>}
 
       {action && (
-        <div role="dialog" aria-label={ACTION_COPY[action].title} className="rounded-3xl border-2 border-ink/10 bg-card p-5 shadow-sm">
+        <div role="dialog" aria-label={ACTION_COPY[action].title} className="rounded-3xl border-2 border-ink/10 bg-card p-5">
           <h3 className="text-sm font-semibold text-ink">{ACTION_COPY[action].title}?</h3>
           <p className="mt-1 text-xs text-muted">
             {action === 'cancel' && (isTrip
@@ -379,7 +377,7 @@ export default function OrderDetailPage() {
             <Row label="Reissued">{code.resets === 0 ? 'never' : `${code.resets}× · last ${formatDateTime(code.lastResetAt!)}`}</Row>
             {code.canReissue ? (
               <button type="button" onClick={() => openAction('reissue')}
-                className="mt-2 rounded-full border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas">
+                className="mt-2 rounded-[10px] border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-canvas">
                 Reissue delivery code
               </button>
             ) : (

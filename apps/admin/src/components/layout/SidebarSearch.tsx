@@ -74,8 +74,8 @@ export function SidebarSearch({ focusSignal }: { focusSignal: number }) {
   }
 
   return (
-    <div ref={boxRef} className="relative mb-5">
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+    <div ref={boxRef} className="relative mb-4">
+      <div className="flex items-center gap-2 rounded-[10px] border border-border bg-white px-3 py-2 transition-colors focus-within:border-ink">
         <Search size={14} className="text-muted" />
         <input
           ref={inputRef}
@@ -85,12 +85,12 @@ export function SidebarSearch({ focusSignal }: { focusSignal: number }) {
           onKeyDown={(e) => { if (e.key === 'Escape') { clear(); inputRef.current?.blur(); } }}
           placeholder="Search"
           aria-label="Search orders, customers and stores"
-          className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-muted focus:outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-ink placeholder:text-muted focus:outline-none"
         />
-        <kbd className="rounded-md border border-border bg-canvas px-1.5 py-0.5 text-[10px] font-semibold text-muted">⌘K</kbd>
+        <kbd className="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted">⌘K</kbd>
       </div>
       {open && term.length >= 2 && (
-        <div className="absolute left-0 right-0 top-12 z-50 max-h-96 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-lg">
+        <div className="absolute left-0 top-11 z-50 max-h-96 w-80 overflow-y-auto rounded-2xl border border-border bg-card p-2">
           {error ? (
             <p className="px-3 py-3 text-sm text-danger">Search failed. Try again.</p>
           ) : !results ? (

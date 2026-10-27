@@ -12,6 +12,7 @@ import { X } from '@/components/icons';
 
 import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
+import { confirmAction, toast } from '@/components/ui/Toast';
 
 type Channel = 'sms' | 'email';
 interface Counts { recipients: number; queued: number; sending: number; accepted: number; skipped: number; failed: number; uncertain: number }
@@ -51,7 +52,6 @@ export default function PromotionsPage() {
   const [results, setResults] = useState<Customer[]>([]);
   const [recipients, setRecipients] = useState<Customer[]>([]);
   const [sending, setSending] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -113,10 +113,9 @@ export default function PromotionsPage() {
 
   async function queueCampaign() {
     if (!canSend) return;
-    if (!window.confirm(`Queue this ${channel.toUpperCase()} for ${recipients.length} customer${recipients.length === 1 ? '' : 's'}?`)) return;
+    if (!(await confirmAction(`Queue this ${channel.toUpperCase()} for ${recipients.length} customer${recipients.length === 1 ? '' : 's'}?`))) return;
     setSending(true);
     setError(null);
-    setNotice(null);
     try {
       const res = await fetch('/api/promotions', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -124,7 +123,7 @@ export default function PromotionsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Could not queue the campaign.');
-      setNotice(`Queued for ${data.recipients} customer${data.recipients === 1 ? '' : 's'}.`);
+      toast.success(`Queued for ${data.recipients} customer${data.recipients === 1 ? '' : 's'}.`);
       setCampaignId(newCampaignId());
       setSubject(''); setBody(''); setRecipients([]); setQuery(''); setResults([]);
       await load();
@@ -140,14 +139,13 @@ export default function PromotionsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Promotions</h1>
+        <h1 className="page-title">Promotions</h1>
         <p className="text-sm text-muted">Send an SMS or email offer to chosen customers. Customers who opted out are skipped automatically.</p>
       </div>
 
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
-      {notice && <p role="status" className="rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</p>}
 
-      <div className="flex items-center justify-between gap-4 rounded-3xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between gap-4 card p-5">
         <div>
           <h2 className="text-sm font-semibold text-ink">Promotions are {enabled ? 'on' : 'off'}</h2>
           <p className="text-xs text-muted">
@@ -161,7 +159,7 @@ export default function PromotionsPage() {
         </button>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-3 text-sm font-semibold text-ink">New campaign</h2>
         <div className="flex flex-col gap-4">
           <div className="flex gap-2">
@@ -213,7 +211,7 @@ export default function PromotionsPage() {
           </div>
           <div className="flex items-center gap-3">
             <button type="button" onClick={queueCampaign} disabled={!canSend}
-              className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40">
+              className="rounded-[10px] bg-brand px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong">
               {sending ? 'Queuing…' : 'Queue campaign'}
             </button>
             {!enabled && <span className="text-xs text-muted">Turn promotions on to queue a campaign.</span>}
@@ -221,7 +219,7 @@ export default function PromotionsPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-3 text-sm font-semibold text-ink">Past campaigns</h2>
         {campaigns.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted">No campaigns yet.</p>

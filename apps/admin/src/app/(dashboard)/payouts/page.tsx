@@ -127,7 +127,7 @@ export default function PayoutsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-medium text-ink">Payouts</h1>
+          <h1 className="page-title">Payouts</h1>
           <p className="text-sm text-muted">Pay each store and rider from your UPI/bank app, then record the UTR here.</p>
         </div>
         <button
@@ -145,15 +145,15 @@ export default function PayoutsPage() {
       {proofError && <p className="text-sm text-danger">{proofError}</p>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="card p-5">
           <p className="text-xs font-semibold text-muted">Total pending</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{formatRupees(pendingTotal)}</p>
         </div>
-        <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="card p-5">
           <p className="text-xs font-semibold text-muted">Payees to pay</p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{payeeCount}</p>
         </div>
-        <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="card p-5">
           <p className="text-xs font-semibold text-muted">Unverified accounts</p>
           <p className={clsx('mt-1 text-2xl font-bold tabular-nums', unverifiedCount > 0 ? 'text-amber-600' : 'text-ink')}>{unverifiedCount}</p>
         </div>
@@ -199,7 +199,7 @@ export default function PayoutsPage() {
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+      <div className="overflow-x-auto card">
         <table className="w-full min-w-[960px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">

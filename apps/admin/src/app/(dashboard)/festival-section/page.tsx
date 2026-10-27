@@ -138,7 +138,7 @@ export default function FestivalSectionPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Festival Section</h1>
+        <h1 className="page-title">Festival Section</h1>
         <p className="text-sm text-muted">The shared curated product rail, also available inside the published festival layout.</p>
       </div>
 
@@ -147,7 +147,7 @@ export default function FestivalSectionPage() {
       </a>
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label className="mb-1.5 block text-xs font-medium text-muted">Title</label>
@@ -168,7 +168,7 @@ export default function FestivalSectionPage() {
             type="button"
             onClick={handleSaveDetails}
             disabled={saving || !title.trim()}
-            className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded-[10px] bg-brand px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -176,7 +176,7 @@ export default function FestivalSectionPage() {
       </div>
 
       {section && (
-        <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="card p-5">
           <h2 className="mb-3 text-sm font-semibold text-ink">Products ({sortedProducts.length})</h2>
 
           <div className="relative mb-4">
@@ -188,7 +188,7 @@ export default function FestivalSectionPage() {
               className="w-full rounded-xl border border-border bg-canvas py-2.5 pl-9 pr-3.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             />
             {searchResults.length > 0 && (
-              <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-border bg-card shadow-lg">
+              <div className="absolute z-10 mt-1.5 w-full rounded-xl border border-border bg-card">
                 {searchResults.map((p) => (
                   <button
                     key={p.id}

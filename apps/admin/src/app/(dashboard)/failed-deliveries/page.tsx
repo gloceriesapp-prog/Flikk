@@ -81,7 +81,7 @@ export default function FailedDeliveriesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Failed deliveries</h1>
+        <h1 className="page-title">Failed deliveries</h1>
         <p className="text-sm text-muted">
           Orders the rider couldn&apos;t deliver after pickup — the customer paid and needs a manual refund review.{' '}
           {pendingCount > 0 ? `${pendingCount} awaiting a refund decision.` : 'Nothing awaiting a decision.'}
@@ -169,7 +169,7 @@ export default function FailedDeliveriesPage() {
                           className="w-24 rounded-full border border-border px-3 py-1.5 text-xs"
                         />
                         <button type="submit" disabled={refundingId === order.id}
-                          className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+                          className="rounded-[10px] bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong">
                           {refundingId === order.id ? 'Approving…' : 'Refund trip'}
                         </button>
                         <button type="button" onClick={() => setTripRefund(null)} className="text-xs text-muted hover:text-ink">Cancel</button>
@@ -181,7 +181,7 @@ export default function FailedDeliveriesPage() {
                           ? setTripRefund({ id: order.id, amount: String(order.tripTotal ?? order.amount) })
                           : handleRefund(order.id))}
                         disabled={refundingId === order.id}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                        className="inline-flex items-center gap-1.5 rounded-[10px] bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
                       >
                         <Banknote size={13} />
                         {refundingId === order.id ? 'Issuing…' : order.tripId ? 'Refund trip…' : 'Issue refund'}

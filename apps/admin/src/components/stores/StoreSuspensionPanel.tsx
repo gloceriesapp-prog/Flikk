@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ReasonModal } from '@/components/ui/ReasonModal';
+import { confirmAction } from '@/components/ui/Toast';
 
 async function setSuspension(storeId: string, suspend: boolean, reason?: string) {
   const res = await fetch(`/api/stores/${storeId}/suspension`, {
@@ -33,7 +34,7 @@ export function StoreSuspensionPanel({
   const [error, setError] = useState<string | null>(null);
 
   async function unsuspend() {
-    if (!window.confirm('Unsuspend this store? It stays closed until the partner reopens it.')) return;
+    if (!(await confirmAction('Unsuspend this store? It stays closed until the partner reopens it.'))) return;
     setBusy(true);
     setError(null);
     try {
@@ -47,7 +48,7 @@ export function StoreSuspensionPanel({
   }
 
   return (
-    <section className={`rounded-3xl border p-6 shadow-sm ${suspended ? 'border-danger/40 bg-red-50' : 'border-border bg-card'}`}>
+    <section className={`rounded-3xl border p-6  ${suspended ? 'border-danger/40 bg-red-50' : 'border-border bg-card'}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-ink">{suspended ? 'Suspended by Gloceries' : 'Store suspension'}</h2>
@@ -63,7 +64,7 @@ export function StoreSuspensionPanel({
           )}
         </div>
         {suspended ? (
-          <button type="button" disabled={busy} onClick={() => void unsuspend()} className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-ink disabled:opacity-50">
+          <button type="button" disabled={busy} onClick={() => void unsuspend()} className="rounded-[10px] border border-border bg-white px-4 py-2 text-sm font-semibold text-ink disabled:opacity-50">
             {busy ? 'Saving…' : 'Unsuspend'}
           </button>
         ) : (

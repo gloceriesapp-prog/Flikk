@@ -122,7 +122,7 @@ export default function CategoriesPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-medium text-ink">Categories</h1>
+          <h1 className="page-title">Categories</h1>
           <p className="text-sm text-muted">
             {loading ? 'Loading…' : `${categories.length} categories across ${sections.length} titles.`}
           </p>
@@ -131,7 +131,7 @@ export default function CategoriesPage() {
           type="button"
           onClick={() => setAdding(true)}
           disabled={loading}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+          className="flex shrink-0 items-center gap-1.5 rounded-[10px] bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
         >
           <Plus size={15} />
           Add category
@@ -158,7 +158,7 @@ export default function CategoriesPage() {
                 key={category.id}
                 type="button"
                 onClick={() => setEditing(category)}
-                className="group flex flex-col items-center gap-2 rounded-3xl border border-border bg-card p-4 text-center hover:border-ink/15 hover:shadow-sm"
+                className="group flex flex-col items-center gap-2 card p-4 text-center hover:border-ink/15"
               >
                 {category.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -182,7 +182,7 @@ export default function CategoriesPage() {
       ))}
 
       {!loading && categories.length === 0 && (
-        <p className="rounded-3xl border border-border bg-card py-8 text-center text-sm text-muted">
+        <p className="card py-8 text-center text-sm text-muted">
           No categories yet — add a title above, then add the first category.
         </p>
       )}

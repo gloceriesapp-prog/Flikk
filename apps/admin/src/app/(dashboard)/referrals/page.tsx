@@ -41,7 +41,7 @@ export default function ReferralsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Referrals</h1>
+        <h1 className="page-title">Referrals</h1>
         <p className="text-sm text-muted">Invite codes customers shared and who joined with them. Referrals are tracked only: no rewards or credits are given.</p>
       </div>
       {error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
@@ -54,14 +54,14 @@ export default function ReferralsPage() {
               { label: 'Customers who joined with a code', value: data.signups.length },
               { label: 'Of those, with a delivered order', value: data.signups.filter((s) => s.hasDeliveredOrder).length },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-3xl border border-border bg-card p-5">
+              <div key={stat.label} className="card p-5">
                 <p className="text-xs text-muted">{stat.label}</p>
                 <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{stat.value}</p>
               </div>
             ))}
           </div>
 
-          <div className="rounded-3xl border border-border bg-card p-5">
+          <div className="card p-5">
             <h2 className="mb-3 text-sm font-semibold text-ink">Top referrers</h2>
             {data.topReferrers.length === 0 ? (
               <p className="text-sm text-muted">No referrals yet.</p>
@@ -77,7 +77,7 @@ export default function ReferralsPage() {
             )}
           </div>
 
-          <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+          <div className="overflow-x-auto card">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs font-semibold text-muted">

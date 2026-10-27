@@ -71,13 +71,13 @@ export default function StoresPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-ink">Stores</h1>
+          <h1 className="page-title">Stores</h1>
           <p className="text-sm text-muted">{loading ? 'Loading…' : `${stores.length} stores · ${stores.filter(store => store.isActive).length} active`}</p>
         </div>
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+          className="flex shrink-0 items-center gap-1.5 rounded-[10px] bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-strong"
         >
           <Plus size={15} />
           Add store
@@ -110,7 +110,7 @@ export default function StoresPage() {
           <Link
             key={store.id}
             href={`/stores/${store.id}`}
-            className="group flex items-center gap-4 rounded-3xl border border-border bg-card p-4 pr-5 transition hover:border-ink/15 hover:shadow-sm"
+            className="group flex items-center gap-4 card p-4 pr-5 transition hover:border-ink/15"
           >
             {store.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -162,7 +162,7 @@ export default function StoresPage() {
           </Link>
         ))}
         {!loading && filtered.length === 0 && (
-          <p className="col-span-full rounded-3xl border border-border bg-card py-8 text-center text-sm text-muted">
+          <p className="col-span-full card py-8 text-center text-sm text-muted">
             {stores.length === 0 ? 'No stores yet — add the first one.' : `No stores match "${query}".`}
           </p>
         )}

@@ -69,7 +69,7 @@ export function AssignRiderRow({ order, riders }: Props) {
             type="button"
             disabled={!selectedRiderId || pending}
             onClick={handleAssign}
-            className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-30"
+            className="rounded-[10px] bg-brand px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-30 hover:bg-brand-strong"
           >
             {pending ? 'Assigning…' : 'Assign'}
           </button>

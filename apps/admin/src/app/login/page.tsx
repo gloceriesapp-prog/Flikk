@@ -72,10 +72,12 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
-      <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-8 shadow-sm">
-        <p className="text-2xl font-medium text-ink">Gloceries Admin</p>
-        <p className="mt-1 text-sm text-muted">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4">
+      <div className="card w-full max-w-sm animate-rise p-8">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand-mark.png" alt="" className="mb-5 h-11 w-11 rounded-xl" />
+        <h1 className="text-xl font-semibold tracking-tight text-ink">Sign in to Gloceries Admin</h1>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted">
           {sentTo ? (
             <>
               We emailed a 6-digit sign-in code to <span className="font-medium text-ink">{sentTo}</span>. It expires in 10 minutes.
@@ -85,7 +87,7 @@ function LoginForm() {
           )}
         </p>
 
-        {error && <p className="mt-4 text-sm text-danger">{error}</p>}
+        {error && <p role="alert" className="mt-4 rounded-[10px] bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
         <form onSubmit={verify} className="mt-6 flex flex-col gap-3">
           <input
@@ -98,15 +100,16 @@ function LoginForm() {
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             placeholder="123456"
-            className="rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-center text-lg tracking-[0.5em] text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+            className="rounded-[10px] border border-border bg-card px-3.5 py-3 text-center text-xl font-semibold tracking-[0.5em] text-ink"
           />
-          <button type="submit" disabled={busy || !sentTo || code.length !== 6} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40">
+          <button type="submit" disabled={busy || !sentTo || code.length !== 6} className="btn btn-primary py-2.5">
             {busy ? 'Please wait…' : 'Verify'}
           </button>
         </form>
 
-        <div className="mt-4 text-sm">
-          <button type="button" onClick={sendCode} disabled={busy} className="text-ink underline disabled:opacity-40">
+        <div className="mt-4 text-center text-sm text-muted">
+          Didn&apos;t get it?{' '}
+          <button type="button" onClick={sendCode} disabled={busy} className="font-semibold text-brand hover:underline disabled:opacity-40">
             Resend code
           </button>
         </div>

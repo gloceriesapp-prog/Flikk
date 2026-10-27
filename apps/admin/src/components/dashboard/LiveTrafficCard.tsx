@@ -47,7 +47,7 @@ function TooltipCard({ active, payload }: { active?: boolean; payload?: { payloa
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-xs shadow-md">
+    <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-xs">
       <p className="mb-1.5 font-semibold text-ink">{formatDateLabel(point.date)}</p>
       {SERIES.map((s) => (
         <div key={s.key} className="flex items-center gap-1.5">

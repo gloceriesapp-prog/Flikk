@@ -8,26 +8,25 @@ import { useState } from 'react';
 
 import { ArrowBigUp } from '@/components/icons';
 import type { ZoneRequest } from '@/lib/types';
+import { confirmAction, toast } from '@/components/ui/Toast';
 
 export function ZoneRequestsList({ requests }: { requests: ZoneRequest[] }) {
   const [busy, setBusy] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   async function notify(request: ZoneRequest) {
     if (busy) return;
-    if (!window.confirm('Notify signed-in customers who joined this area’s launch waitlist? Confirm delivery is available here first.')) return;
-    setBusy(request.id); setMessage(null);
+    if (!(await confirmAction('Notify signed-in customers who joined this area’s launch waitlist? Confirm delivery is available here first.'))) return;
+    setBusy(request.id);
     try {
       const res = await fetch('/api/area-upvotes/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ addressLabel: request.placeName, title: 'Gloceries is now nearby', body: 'Delivery is available in your requested area. Open Gloceries and choose your address to browse.' }) });
       const result = await res.json(); if (!res.ok) throw new Error(result.error);
-      setMessage(`${result.queued} waitlist notifications queued.${result.more ? ' Send another batch to reach remaining voters.' : ''}`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not send.'); }
+      toast.success(`${result.queued} waitlist notifications queued.${result.more ? ' Send another batch to reach remaining voters.' : ''}`);
+    } catch (error) { toast.error('Could not send', error instanceof Error ? error.message : undefined); }
     finally { setBusy(null); }
   }
   const topVotes = requests[0]?.upvotes ?? 1;
 
   return (
     <div className="flex flex-col gap-3">
-      {!!message && <p role="status" className="text-sm">{message}</p>}
       {requests.map((request, i) => (
         <div key={request.id} className="flex items-center gap-4 rounded-2xl border border-border p-4">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-ink-soft">

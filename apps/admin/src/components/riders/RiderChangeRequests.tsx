@@ -31,7 +31,7 @@ export function RiderChangeRequests() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not review changes.'); }
     finally { setBusy(null); }
   }
-  return <section className="rounded-3xl border border-border bg-card p-5">
+  return <section className="card p-5">
     <div className="flex items-center justify-between"><h2 className="text-sm font-semibold">Document and vehicle changes</h2>
       <button onClick={() => void load()} className="text-sm underline">Refresh</button></div>
     {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}

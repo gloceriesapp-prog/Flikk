@@ -8,6 +8,7 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FLEET_AUDIENCE_LABEL, FLEET_AUDIENCES, type FleetAudience } from '@/lib/fleetPush';
+import { confirmAction, toast } from '@/components/ui/Toast';
 
 const inputClass = 'w-full rounded-xl border border-border bg-canvas px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10';
 
@@ -39,13 +40,11 @@ function TemplateEditor({ template, onSaved }: { template: Template; onSaved: ()
   const [body, setBody] = useState(template.body);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const dirty = title !== template.title || body !== template.body;
 
   async function save(next: { title: string; body: string }) {
     setBusy(true);
     setError(null);
-    setSaved(false);
     try {
       const res = await fetch(`/api/notification-templates/${template.event}`, {
         method: 'PATCH',
@@ -53,7 +52,7 @@ function TemplateEditor({ template, onSaved }: { template: Template; onSaved: ()
         body: JSON.stringify(next),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Could not save.');
-      setSaved(true);
+      toast.success('Template saved. Used from the next status change.');
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.');
@@ -75,7 +74,7 @@ function TemplateEditor({ template, onSaved }: { template: Template; onSaved: ()
       <textarea aria-label={`${template.label} message`} value={body} maxLength={240} rows={2} onChange={(e) => setBody(e.target.value)} className={inputClass} />
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" disabled={busy || !dirty || !title.trim() || !body.trim()} onClick={() => void save({ title, body })}
-          className="rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+          className="rounded-[10px] bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong">
           {busy ? 'Saving…' : 'Save'}
         </button>
         {!isDefault && (
@@ -83,11 +82,10 @@ function TemplateEditor({ template, onSaved }: { template: Template; onSaved: ()
             setTitle(template.defaultTitle);
             setBody(template.defaultBody);
             void save({ title: template.defaultTitle, body: template.defaultBody });
-          }} className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold text-ink hover:bg-accent disabled:opacity-40">
+          }} className="rounded-[10px] border border-border px-4 py-1.5 text-xs font-semibold text-ink hover:bg-accent disabled:opacity-40">
             Reset to default
           </button>
         )}
-        {saved && !busy && <span role="status" className="text-xs text-green-700">Saved. Used from the next status change.</span>}
       </div>
       {error && <p className="text-xs font-medium text-danger">{error}</p>}
     </div>
@@ -104,7 +102,7 @@ function SendPushCard({ initialCustomerId, onSent }: { initialCustomerId: string
   const [result, setResult] = useState<string | null>(null);
 
   async function send() {
-    if (audience === 'all' && !window.confirm('Send this push to every customer? You can send one message to all customers per hour.')) return;
+    if (audience === 'all' && !(await confirmAction('Send this push to every customer? You can send one message to all customers per hour.'))) return;
     setBusy(true);
     setError(null);
     setResult(null);
@@ -128,7 +126,7 @@ function SendPushCard({ initialCustomerId, onSent }: { initialCustomerId: string
   }
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-5">
+    <div className="card p-5">
       <h2 className="mb-1 text-sm font-semibold text-ink">Send a push</h2>
       <p className="mb-4 text-xs text-muted">
         Goes to the customer’s phone and their in-app notifications. Limits: one message to all customers per hour (three per day), 30 single-customer messages per hour.
@@ -151,7 +149,7 @@ function SendPushCard({ initialCustomerId, onSent }: { initialCustomerId: string
         <textarea aria-label="Push message" value={body} maxLength={240} rows={3} placeholder="Message (up to 240 characters)" onChange={(e) => setBody(e.target.value)} className={inputClass} />
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => void send()} disabled={busy || !title.trim() || !body.trim()}
-            className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white disabled:opacity-40">
+            className="rounded-[10px] bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong">
             {busy ? 'Sending…' : 'Send push'}
           </button>
           {result && <span role="status" className="text-xs text-green-700">{result}</span>}
@@ -198,7 +196,7 @@ function FleetBroadcastCard() {
   }, [loadSent]);
 
   async function send() {
-    if (!window.confirm(`Send this broadcast to ${FLEET_AUDIENCE_LABEL[audience].toLowerCase()}? Everyone gets an immediate notification.`)) return;
+    if (!(await confirmAction(`Send this broadcast to ${FLEET_AUDIENCE_LABEL[audience].toLowerCase()}? Everyone gets an immediate notification.`))) return;
     setBusy(true);
     setError(null);
     setResult(null);
@@ -222,7 +220,7 @@ function FleetBroadcastCard() {
   }
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-5">
+    <div className="card p-5">
       <h2 className="mb-1 text-sm font-semibold text-ink">Broadcast to riders &amp; partners</h2>
       <p className="mb-4 text-xs text-muted">
         A one-off operational message straight to their phones. Online riders only reaches riders currently on shift. One send per audience per minute, 20 per hour.
@@ -239,7 +237,7 @@ function FleetBroadcastCard() {
         <textarea aria-label="Broadcast message" value={body} maxLength={240} rows={3} placeholder="Message (up to 240 characters)" onChange={(e) => setBody(e.target.value)} className={inputClass} />
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => void send()} disabled={busy || !title.trim() || !body.trim()}
-            className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white disabled:opacity-40">
+            className="rounded-[10px] bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong">
             {busy ? 'Sending…' : 'Send broadcast'}
           </button>
           {result && <span role="status" className="text-xs text-green-700">{result}</span>}
@@ -292,7 +290,7 @@ export default function NotificationsPage({ searchParams }: { searchParams: Prom
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Customer notifications</h1>
+        <h1 className="page-title">Customer notifications</h1>
         <p className="text-sm text-muted">
           Order-update wording and messages to customers. Delivery status and failures are on the <Link href="/push-outbox" className="font-semibold text-ink hover:underline">Push outbox</Link>.
         </p>
@@ -303,7 +301,7 @@ export default function NotificationsPage({ searchParams }: { searchParams: Prom
 
       <FleetBroadcastCard />
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-1 text-sm font-semibold text-ink">Order update messages</h2>
         <p className="mb-4 text-xs text-muted">Sent automatically when an order changes status. Write {'{order_number}'} to include the order number.</p>
         <div className="flex flex-col gap-3">
@@ -311,7 +309,7 @@ export default function NotificationsPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="card p-5">
         <h2 className="mb-3 text-sm font-semibold text-ink">Recently sent</h2>
         {messages.length === 0 ? (
           <p className="text-sm text-muted">No messages sent yet.</p>

@@ -114,7 +114,7 @@ export default function StuckPaymentsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Stuck checkouts and payments</h1>
+        <h1 className="page-title">Stuck checkouts and payments</h1>
         <p className="text-sm text-muted">
           Unpaid online checkouts are normally released 20 minutes after placement (at most 50 while the provider is checked). Anything listed here is older than that window or than the age you pick.
         </p>
@@ -149,12 +149,12 @@ export default function StuckPaymentsPage() {
                   <input aria-label={`Resolution reference for ${incident.paymentId}`} placeholder="Investigation or refund reference" maxLength={64}
                     value={incidentReferences[incident.id] ?? ''} onChange={(event) => setIncidentReferences((previous) => ({ ...previous, [incident.id]: event.target.value }))}
                     className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2 text-sm" />
-                  <button type="button" disabled={busyId === incident.id} onClick={() => void resolveIncident(incident)} className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-ink disabled:opacity-40">Record resolved review</button>
+                  <button type="button" disabled={busyId === incident.id} onClick={() => void resolveIncident(incident)} className="rounded-[10px] border border-border px-3 py-2 text-xs font-semibold text-ink disabled:opacity-40">Record resolved review</button>
                 </div>
               </div>
             ))}
           </div>
-          <div className="rounded-3xl border border-border bg-card p-5">
+          <div className="card p-5">
             <h2 className="mb-1 text-sm font-semibold text-ink">Checkouts waiting for online payment ({data.checkouts.length})</h2>
             <p className="mb-4 text-xs text-muted">Stock is held for these. Open the order to cancel it; a payment that arrives later is refunded automatically.</p>
             {data.checkouts.length === 0 ? (
@@ -175,7 +175,7 @@ export default function StuckPaymentsPage() {
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-semibold tabular-nums text-ink">{formatCurrency(c.total)}</span>
                       {c.orderId && (
-                        <Link href={`/orders/${c.orderId}`} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent">Open order</Link>
+                        <Link href={`/orders/${c.orderId}`} className="rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent">Open order</Link>
                       )}
                     </div>
                   </div>
@@ -184,7 +184,7 @@ export default function StuckPaymentsPage() {
             )}
           </div>
 
-          <div className="rounded-3xl border border-border bg-card p-5">
+          <div className="card p-5">
             <h2 className="mb-1 text-sm font-semibold text-ink">Refunds not completed ({data.refunds.length})</h2>
             <p className="mb-4 text-xs text-muted">
               Queued and processing refunds are retried by the refund worker. Failed single-order refunds can be retried here; trip and manual refunds are handled on <Link href="/refunds" className="font-semibold text-ink hover:underline">Refunds</Link>.
@@ -209,11 +209,11 @@ export default function StuckPaymentsPage() {
                       <span className="text-sm font-semibold tabular-nums text-ink">{formatCurrency(r.amount)}</span>
                       {r.kind === 'order' && r.status === 'failed' ? (
                         <button type="button" disabled={busyId === r.id} onClick={() => void retryRefund(r.id)}
-                          className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+                          className="rounded-[10px] bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong">
                           {busyId === r.id ? 'Retrying…' : 'Retry refund'}
                         </button>
                       ) : (
-                        <Link href="/refunds" className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent">Refunds</Link>
+                        <Link href="/refunds" className="rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent">Refunds</Link>
                       )}
                     </div>
                   </div>

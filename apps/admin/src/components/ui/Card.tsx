@@ -16,12 +16,12 @@ interface CardProps {
 // pattern, so it's one component, not repeated markup per widget.
 export function Card({ title, subtitle, action, showMenu, className, children }: CardProps) {
   return (
-    <div className={clsx('rounded-3xl border border-border  p-5', className)}>
+    <div className={clsx('card p-5', className)}>
       {(title || action || showMenu) && (
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            {title && <h3 className="text-base font-medium text-ink">{title}</h3>}
-            {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
+            {title && <h3 className="text-[15px] font-semibold tracking-tight text-ink">{title}</h3>}
+            {subtitle && <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p>}
           </div>
           {action ?? (showMenu && <MoreHorizontal size={18} className="mt-0.5 shrink-0 text-muted" />)}
         </div>

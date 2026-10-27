@@ -109,7 +109,7 @@ export default function RefundsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Refunds</h1>
+        <h1 className="page-title">Refunds</h1>
         <p className="text-sm text-muted">
           Every cancelled or failed order that was paid online.{' '}
           {failedCount + manualCount === 0
@@ -184,7 +184,7 @@ export default function RefundsPage() {
                         type="button"
                         onClick={() => handleRetry(refund.id)}
                         disabled={retryingId === refund.id}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent/50 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent/50 disabled:opacity-50"
                       >
                         <RotateCcw size={13} className={retryingId === refund.id ? 'animate-spin' : ''} />
                         {retryingId === refund.id ? 'Retrying…' : 'Retry'}
@@ -213,7 +213,7 @@ export default function RefundsPage() {
                           <button
                             type="submit"
                             disabled={savingManual || manualRef.trim().length < 4}
-                            className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                            className="rounded-[10px] bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
                           >
                             {savingManual ? 'Saving…' : 'Save'}
                           </button>
@@ -235,7 +235,7 @@ export default function RefundsPage() {
                             setManualId(refund.id);
                             setManualRef('');
                           }}
-                          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent/50"
+                          className="rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent/50"
                         >
                           Mark refunded manually
                         </button>
@@ -324,7 +324,7 @@ export default function RefundsPage() {
                             className="w-48 rounded-full border border-border px-3 py-1.5 text-xs"
                           />
                           <button type="submit" disabled={savingManual || manualRef.trim().length < 4}
-                            className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+                            className="rounded-[10px] bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-brand-strong">
                             {savingManual ? 'Saving…' : 'Save'}
                           </button>
                           <button type="button" onClick={() => { setManualId(null); setManualRef(''); }} className="text-xs text-muted hover:text-ink">
@@ -335,7 +335,7 @@ export default function RefundsPage() {
                         <button
                           type="button"
                           onClick={() => { setManualId(manualLeg.id); setManualRef(''); }}
-                          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent/50"
+                          className="rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent/50"
                         >
                           Mark refunded manually
                         </button>

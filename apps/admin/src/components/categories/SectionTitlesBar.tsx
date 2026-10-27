@@ -53,7 +53,7 @@ export function SectionTitlesBar({
   }
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-4">
+    <div className="card p-4">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
         Titles — the headings categories show under on the customer app
       </p>
@@ -94,7 +94,7 @@ export function SectionTitlesBar({
           type="button"
           onClick={handleAdd}
           disabled={!newName.trim() || adding}
-          className="flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-ink-soft hover:bg-accent disabled:opacity-40"
+          className="flex items-center gap-1 rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-ink-soft hover:bg-accent disabled:opacity-40"
         >
           <Plus size={12} />
           Add

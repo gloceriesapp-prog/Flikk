@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Zone } from '@/lib/types';
+import { confirmAction } from '@/components/ui/Toast';
 
 export function StoreZonePanel({ storeId, zoneId, zoneName }: { storeId: string; zoneId: string | null; zoneName: string }) {
   const router = useRouter();
@@ -27,7 +28,7 @@ export function StoreZonePanel({ storeId, zoneId, zoneName }: { storeId: string;
   async function save() {
     if (!selected || selected === zoneId) return;
     const target = zones.find((z) => z.id === selected);
-    if (!window.confirm(`Move this store to ${target?.name ?? 'that zone'}? Only customers in that zone will see it.`)) return;
+    if (!(await confirmAction(`Move this store to ${target?.name ?? 'that zone'}? Only customers in that zone will see it.`))) return;
     setBusy(true);
     setError(null);
     try {
@@ -46,7 +47,7 @@ export function StoreZonePanel({ storeId, zoneId, zoneName }: { storeId: string;
   }
 
   return (
-    <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+    <section className="card p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-ink">Zone</h2>
@@ -71,7 +72,7 @@ export function StoreZonePanel({ storeId, zoneId, zoneName }: { storeId: string;
             type="button"
             disabled={busy || !selected || selected === zoneId}
             onClick={() => void save()}
-            className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            className="rounded-[10px] bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
           >
             {busy ? 'Moving…' : 'Move store'}
           </button>

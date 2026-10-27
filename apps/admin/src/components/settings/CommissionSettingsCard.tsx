@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import type { CommissionSettings } from '@/lib/commissionRates';
+import { toast } from '@/components/ui/Toast';
 
 interface Draft {
   defaultRate: string;
@@ -82,6 +83,7 @@ export function CommissionSettingsCard() {
       if (!res.ok) throw new Error(body.error ?? 'Could not save commission rates.');
       const next = toDraft(body as CommissionSettings);
       setSaved(next);
+      toast.success('Commission rates saved', 'They apply from the next order.');
       setDraft(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save commission rates.');
@@ -91,7 +93,7 @@ export function CommissionSettingsCard() {
   }
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+    <div className="card p-6">
       <h3 className="mb-1 text-sm font-semibold text-ink">Commission by category</h3>
       <p className="mb-4 text-xs text-muted">
         Each item in an order is charged its category&apos;s rate on the item price. Leave a rate blank to use the default.
@@ -152,7 +154,7 @@ export function CommissionSettingsCard() {
               type="button"
               disabled={!isDirty || isSaving}
               onClick={save}
-              className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
             >
               {isSaving ? 'Saving…' : 'Save changes'}
             </button>

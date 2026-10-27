@@ -388,7 +388,7 @@ export default function HomeCategoriesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-medium text-ink">Home Categories</h1>
+        <h1 className="page-title">Home Categories</h1>
         <p className="text-sm text-muted">
           Home screen&apos;s own top tab row and each tab&apos;s tile grid — separate from the main Categories screen, editing here never
           affects it.
@@ -407,7 +407,7 @@ export default function HomeCategoriesPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
         {/* Left pane — the tab list itself */}
-        <div className="flex flex-col gap-3 rounded-3xl border border-border bg-card p-4">
+        <div className="flex flex-col gap-3 card p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Tabs</p>
           <p className="-mt-2 text-[11px] text-muted">Top tab row — title only, like Blinkit/Instamart. Photos go on the tiles below.</p>
 
@@ -512,7 +512,7 @@ export default function HomeCategoriesPage() {
               type="button"
               onClick={handleAddTab}
               disabled={!newTabName.trim() || addingTab}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-ink px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
             >
               <Plus size={14} />
               Add tab
@@ -521,7 +521,7 @@ export default function HomeCategoriesPage() {
         </div>
 
         {/* Right pane — the selected tab's own tiles */}
-        <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="card p-5">
           {!selectedTab ? (
             <p className="py-10 text-center text-sm text-muted">Pick a tab on the left, or add one.</p>
           ) : (
@@ -656,7 +656,7 @@ export default function HomeCategoriesPage() {
                   type="button"
                   onClick={handleAddTile}
                   disabled={!newTileName.trim() || addingTile || Boolean(newTileLink.linkType && !newTileLink.linkId)}
-                  className="flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
                 >
                   <Plus size={14} />
                   {addingTile ? 'Submitting…' : 'Submit'}
@@ -695,7 +695,7 @@ export default function HomeCategoriesPage() {
                     type="button"
                     onClick={handleAddBanner}
                     disabled={!newBannerImage || addingBanner}
-                    className="flex items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
                   >
                     <Plus size={14} />
                     {addingBanner ? 'Submitting…' : 'Submit'}

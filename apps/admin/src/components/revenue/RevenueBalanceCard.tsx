@@ -34,7 +34,7 @@ export function RevenueBalanceCard({
   const isUp = weekOverWeekPct >= 0;
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-5">
+    <div className="card p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent">

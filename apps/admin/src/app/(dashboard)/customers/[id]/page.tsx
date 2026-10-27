@@ -14,6 +14,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { ReasonModal } from '@/components/ui/ReasonModal';
 import { BLOCK_DURATIONS } from '@/lib/customerBlocks';
 import type { OrderStatus } from '@/lib/types';
+import { confirmAction } from '@/components/ui/Toast';
 
 type AccountType = 'customer' | 'rider' | 'store_owner';
 
@@ -108,7 +109,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   }
 
   async function unblock() {
-    if (!window.confirm('Unblock this customer? They can sign in and order again.')) return;
+    if (!(await confirmAction('Unblock this customer? They can sign in and order again.'))) return;
     setActionError(null);
     const res = await fetch(`/api/customers/${id}/block`, { method: 'DELETE' });
     if (!res.ok) {
@@ -131,7 +132,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
       {customer && (
         <>
-          <div className="rounded-3xl border border-border bg-card p-6">
+          <div className="card p-6">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent text-lg font-bold text-ink-soft">
                 {(customer.name ?? customer.phone).slice(0, 1).toUpperCase()}
@@ -148,7 +149,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     setProfileError(null);
                     setEditing({ name: customer.name ?? '', email: customer.email ?? '' });
                   }}
-                  className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent"
+                  className="rounded-[10px] border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent"
                 >
                   Edit profile
                 </button>
@@ -185,10 +186,10 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 <p className="text-xs text-muted">The phone number is how the customer signs in, so it cannot be changed here. Every change is recorded with your email.</p>
                 {profileError && <p className="text-sm text-danger">{profileError}</p>}
                 <div className="flex gap-2">
-                  <button type="submit" disabled={savingProfile} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                  <button type="submit" disabled={savingProfile} className="rounded-[10px] bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-brand-strong">
                     {savingProfile ? 'Saving…' : 'Save'}
                   </button>
-                  <button type="button" onClick={() => setEditing(null)} className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
+                  <button type="button" onClick={() => setEditing(null)} className="rounded-[10px] border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
                     Cancel
                   </button>
                 </div>
@@ -209,11 +210,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               ) : (
                 <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-success">Active</span>
               )}
-              <Link href={`/notifications?customerId=${customer.id}`} className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
+              <Link href={`/notifications?customerId=${customer.id}`} className="rounded-[10px] border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
                 Send push
               </Link>
               {customer.block ? (
-                <button type="button" onClick={() => void unblock()} className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
+                <button type="button" onClick={() => void unblock()} className="rounded-[10px] border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-accent">
                   Unblock
                 </button>
               ) : (
@@ -245,7 +246,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             )}
           </div>
 
-          <div className="rounded-3xl border border-border bg-card p-6">
+          <div className="card p-6">
             <h3 className="mb-1 text-sm font-semibold text-ink">Account type override</h3>
             <p className="mb-4 text-xs text-muted">
               Which app this phone number is pinned to. A number is locked to the first app it signs in through — change it here to move the number to a different app.
@@ -272,14 +273,14 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                   <option value="store_owner">Store owner</option>
                 </select>
               </label>
-              <button type="submit" disabled={savingAccountType} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button type="submit" disabled={savingAccountType} className="rounded-[10px] bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-brand-strong">
                 {savingAccountType ? 'Saving…' : 'Save'}
               </button>
             </form>
             {accountMsg && <p className={`mt-2 text-sm ${accountMsg.ok ? 'text-success' : 'text-danger'}`}>{accountMsg.text}</p>}
           </div>
 
-          <div className="rounded-3xl border border-border bg-card p-6">
+          <div className="card p-6">
             <h3 className="mb-4 text-sm font-semibold text-ink">Saved addresses</h3>
             <div className="flex flex-col gap-3">
               {customer.addresses.map((address) => (
@@ -301,7 +302,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          <div className="rounded-3xl border border-border bg-card p-6">
+          <div className="card p-6">
             <h3 className="mb-4 text-sm font-semibold text-ink">Order history</h3>
             <div className="flex flex-col gap-3">
               {customer.orders.map((order) => (

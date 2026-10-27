@@ -72,31 +72,24 @@ export function Sidebar() {
         key={item.href}
         href={item.href}
         title={collapsed ? item.label : undefined}
+        aria-current={isActive ? 'page' : undefined}
         className={clsx(
-          'relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+          'group relative flex items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] font-medium transition-colors',
           collapsed && 'justify-center px-0',
-          isActive ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:bg-card/60 hover:text-ink'
+          isActive ? 'bg-accent text-ink' : 'text-sidebar-text hover:bg-sidebar-hover hover:text-ink'
         )}
       >
-        <Icon size={17} className="shrink-0" />
+        {isActive && <span className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-ink" />}
+        <Icon size={17} className={clsx('shrink-0', isActive ? 'text-ink' : 'text-muted group-hover:text-ink')} />
         {!collapsed && (
-          <span className="flex flex-1 items-center justify-between">
-            {item.label}
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <span className="truncate">{item.label}</span>
             {count > 0 && (
-              <span
-                className={clsx(
-                  'rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
-                  isActive ? 'bg-ink text-white' : 'bg-danger/10 text-danger'
-                )}
-              >
-                {count}
-              </span>
+              <span className="rounded-full bg-danger px-1.5 py-px text-[10px] font-bold tabular-nums text-white">{count}</span>
             )}
           </span>
         )}
-        {/* Collapsed rail: a tiny red dot instead of the number, so an item
-            needing attention is still visible without room for the count. */}
-        {collapsed && count > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-danger" />}
+        {collapsed && count > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-white" />}
       </Link>
     );
   }
@@ -104,22 +97,26 @@ export function Sidebar() {
   return (
     <aside
       className={clsx(
-        'flex h-full shrink-0 flex-col overflow-y-auto border-r border-border bg-canvas px-3 py-5 transition-[width]',
-        collapsed ? 'w-[76px]' : 'w-64'
+        'flex h-full shrink-0 flex-col border-r border-border bg-sidebar px-3 pb-3 pt-4 transition-[width] duration-200',
+        collapsed ? 'w-[72px]' : 'w-[248px]'
       )}
     >
-      <div className={clsx('mb-4 flex items-center px-1', collapsed ? 'justify-center' : 'justify-between')}>
+      <div className={clsx('mb-5 flex items-center px-1', collapsed ? 'justify-center' : 'justify-between')}>
         {!collapsed && (
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-sm font-bold text-white">F</div>
-            <span className="text-sm font-semibold text-ink">Gloceries Admin</span>
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand-mark.png" alt="" className="h-8 w-8 rounded-[9px]" />
+            <div className="leading-tight">
+              <p className="text-[14px] font-semibold tracking-tight text-ink">Gloceries</p>
+              <p className="text-[11px] font-medium text-muted">Admin console</p>
+            </div>
           </div>
         )}
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-card hover:text-ink"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-sidebar-hover hover:text-ink"
         >
           {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
         </button>
@@ -132,14 +129,13 @@ export function Sidebar() {
           type="button"
           aria-label="Search"
           onClick={() => { setCollapsed(false); setSearchFocus((n) => n + 1); }}
-          className="mb-5 flex h-9 w-9 items-center justify-center self-center rounded-xl border border-border bg-card text-muted hover:text-ink"
+          className="mb-4 flex h-9 w-9 items-center justify-center self-center rounded-[10px] border border-border text-muted hover:text-ink"
         >
           <Search size={14} />
         </button>
       )}
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
-        {/* Overview — standalone, above the groups */}
+      <nav className="-mx-1 flex flex-1 flex-col gap-0.5 overflow-y-auto px-1 pb-2">
         {renderItem(OVERVIEW_ITEM)}
 
         {NAV_GROUPS.map((group) => {
@@ -147,24 +143,23 @@ export function Sidebar() {
           const open = collapsed || hasActive || !closedGroups[group.title];
           const groupCount = group.items.reduce((n, i) => n + (counts[i.href] ?? 0), 0);
           return (
-            <div key={group.title} className="flex flex-col gap-1">
+            <div key={group.title} className="flex flex-col gap-0.5">
               {!collapsed ? (
                 <button
                   type="button"
                   onClick={() => setClosedGroups((g) => ({ ...g, [group.title]: !g[group.title] }))}
-                  className="mt-3 flex items-center justify-between px-3 pb-1 text-xs font-semibold text-muted hover:text-ink"
+                  className="mt-4 flex items-center justify-between px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted hover:text-ink"
                 >
                   <span className="flex items-center gap-1.5">
                     {group.title}
                     {!open && groupCount > 0 && (
-                      <span className="rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-danger">{groupCount}</span>
+                      <span className="rounded-full bg-danger px-1.5 text-[10px] font-bold tabular-nums text-white">{groupCount}</span>
                     )}
                   </span>
-                  <ChevronDown size={13} className={clsx('transition-transform', !open && '-rotate-90')} />
+                  <ChevronDown size={12} className={clsx('transition-transform', !open && '-rotate-90')} />
                 </button>
               ) : (
-                // Collapsed rail: a thin divider stands in for each group header.
-                <div className="mx-auto my-1.5 h-px w-5 bg-border" />
+                <div className="mx-auto my-2 h-px w-5 bg-border" />
               )}
               {open && group.items.map(renderItem)}
             </div>
@@ -177,25 +172,19 @@ export function Sidebar() {
           href="/support"
           title={collapsed ? 'Help Center' : undefined}
           className={clsx(
-            'flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-ink-soft hover:bg-card hover:text-ink',
+            'flex items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] font-medium text-sidebar-text hover:bg-sidebar-hover hover:text-ink',
             collapsed && 'justify-center px-0'
           )}
         >
           <HelpCircle size={17} />
           {!collapsed && 'Help Center'}
         </Link>
-
-        <div
-          className={clsx(
-            'mt-2 flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5',
-            collapsed && 'justify-center px-0'
-          )}
-        >
-          <div className="h-8 w-8 shrink-0 rounded-full bg-accent" />
+        <div className={clsx('mt-1 flex items-center gap-2.5 rounded-[10px] border border-border px-2.5 py-2', collapsed && 'justify-center px-0')}>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-[12px] font-semibold text-ink">F</div>
           {!collapsed && (
             <div className="min-w-0 flex-1 leading-tight">
-              <p className="truncate text-xs font-semibold text-ink">Founder</p>
-              <p className="truncate text-[10px] text-muted">founder@flikk.app</p>
+              <p className="truncate text-[13px] font-semibold text-ink">Founder</p>
+              <p className="truncate text-[11px] text-muted">Signed in · admin</p>
             </div>
           )}
         </div>

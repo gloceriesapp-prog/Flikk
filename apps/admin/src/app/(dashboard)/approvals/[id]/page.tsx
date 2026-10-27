@@ -117,7 +117,7 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
         Back to Approvals
       </Link>
 
-      <div className="rounded-3xl border border-border bg-card p-6">
+      <div className="card p-6">
         <div className="flex items-start gap-4">
           {headerPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- real Storage URL, no next.config domain to register yet
@@ -128,7 +128,7 @@ export default async function ApplicationReviewPage({ params }: PageProps<'/appr
             </div>
           )}
           <div>
-            <h1 className="text-2xl font-medium text-ink">{application.name}</h1>
+            <h1 className="page-title">{application.name}</h1>
             <p className="text-sm text-muted">
               {application.kind === 'store' ? application.category : 'Rider application'} · Submitted{' '}
               {application.submittedAt}

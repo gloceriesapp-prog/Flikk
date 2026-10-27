@@ -10,6 +10,7 @@ import { HandCoins } from '@/components/icons';
 import clsx from 'clsx';
 import type { CashCollectionsResponse, RiderCashBalance } from '@/app/api/cash-collections/route';
 import { formatDateTime, formatRupees } from '@/lib/format';
+import { toast } from '@/components/ui/Toast';
 
 export default function CashOnDeliveryPage() {
   const [data, setData] = useState<CashCollectionsResponse>({ riders: [], collections: [] });
@@ -18,7 +19,6 @@ export default function CashOnDeliveryPage() {
   const [settling, setSettling] = useState<RiderCashBalance | null>(null);
   const [reference, setReference] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -50,7 +50,7 @@ export default function CashOnDeliveryPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? 'Could not record the settlement.');
-      setNotice(`${settling.riderName}: ${formatRupees(body.settledAmount)} settled (${body.settledCount} ${body.settledCount === 1 ? 'delivery' : 'deliveries'}).`);
+      toast.success(`${settling.riderName}: ${formatRupees(body.settledAmount)} settled (${body.settledCount} ${body.settledCount === 1 ? 'delivery' : 'deliveries'}).`);
       setSettling(null);
       setReference('');
       await load();
@@ -66,7 +66,7 @@ export default function CashOnDeliveryPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Cash on delivery</h1>
+        <h1 className="page-title">Cash on delivery</h1>
         <p className="text-sm text-muted">
           Cash riders collected from customers and have not handed over yet.{' '}
           {data.riders.length > 0 ? `${formatRupees(totalOutstanding)} outstanding across ${data.riders.length} ${data.riders.length === 1 ? 'rider' : 'riders'}.` : 'Nothing outstanding.'}
@@ -74,7 +74,6 @@ export default function CashOnDeliveryPage() {
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
-      {notice && <p role="status" className="text-sm text-success">{notice}</p>}
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
         <h2 className="px-4 pt-4 text-base font-semibold text-ink">Outstanding by rider</h2>
@@ -106,8 +105,8 @@ export default function CashOnDeliveryPage() {
                   <td className="px-4 py-3 text-right">
                     <button
                       type="button"
-                      onClick={() => { setSettling(rider); setReference(''); setNotice(null); }}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                      onClick={() => { setSettling(rider); setReference(''); }}
+                      className="inline-flex items-center gap-1.5 rounded-[10px] bg-brand px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-strong"
                     >
                       <HandCoins size={13} />
                       Mark settled
@@ -122,7 +121,7 @@ export default function CashOnDeliveryPage() {
 
       {settling && (
         <div role="dialog" aria-modal="true" aria-labelledby="settle-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-2xl bg-card p-6">
             <h2 id="settle-title" className="text-lg font-semibold text-ink">Mark cash settled</h2>
             <p className="mt-1 text-sm text-muted">
               Record that {settling.riderName} handed over {formatRupees(settling.outstandingAmount)} for {settling.outstandingCount}{' '}
@@ -146,7 +145,7 @@ export default function CashOnDeliveryPage() {
                 type="button"
                 onClick={handleSettle}
                 disabled={isSaving}
-                className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
               >
                 {isSaving ? 'Saving…' : 'Mark settled'}
               </button>
