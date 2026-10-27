@@ -30,9 +30,9 @@ describe('deliveryMoney', () => {
     expect(deliveryMoney({ id: 'o', trip_id: null, payment_method: 'cod', total: '212.5', delivery_fee: '0' }, [], settings))
       .toEqual({ payment_method: 'cod', cash_to_collect: 212.5, rider_payout: 30, rider_payout_base: 30, rider_payout_extra_stop: 0 });
   });
-  it('collects nothing on a prepaid order', () => {
+  it('collects nothing on a prepaid order and pays the set rider pay, not the whole fee', () => {
     expect(deliveryMoney({ id: 'o', trip_id: null, payment_method: 'online', total: 500, delivery_fee: 40 }, [], settings))
-      .toMatchObject({ payment_method: 'online', cash_to_collect: 0, rider_payout: 40 });
+      .toMatchObject({ payment_method: 'online', cash_to_collect: 0, rider_payout: 30 });
   });
   it('collects the trip total less cancelled legs and pays per extra shop', () => {
     const legs = [

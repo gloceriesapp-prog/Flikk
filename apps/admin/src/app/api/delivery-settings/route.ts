@@ -48,7 +48,7 @@ export async function PATCH(request: Request) {
     // are optional here: omitted = unchanged.
     const riderPayouts: { rider_base_payout?: number; rider_extra_stop_payout?: number; extra_stop_fee?: number } = {};
     for (const [field, column, label] of [
-      ['riderBasePayout', 'rider_base_payout', 'Minimum rider payout'],
+      ['riderBasePayout', 'rider_base_payout', 'Rider pay per delivery'],
       ['riderExtraStopPayout', 'rider_extra_stop_payout', 'Rider payout per extra store'],
       ['extraStopFee', 'extra_stop_fee', 'Extra store fee'],
     ] as const) {

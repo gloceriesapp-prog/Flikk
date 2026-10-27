@@ -63,9 +63,16 @@ DO $$ DECLARE r jsonb; e rider_earnings; BEGIN
  IF e.amount<>42 OR e.base_amount<>30 OR e.extra_stop_amount<>12 THEN
   RAISE EXCEPTION 'Trip earning ignores extra-shop payout: % % %',e.amount,e.base_amount,e.extra_stop_amount; END IF;
  -- The customer's extra-shop fee is not paid twice: fee 41 = 26 + 15 for one extra shop.
- IF (SELECT amount FROM rider_delivery_payout(41,1))<>42 OR (SELECT base_amount FROM rider_delivery_payout(60,1))<>45
- OR (SELECT amount FROM rider_delivery_payout(60,1))<>57 THEN
+ IF (SELECT amount FROM rider_delivery_payout(41,1))<>42 OR (SELECT base_amount FROM rider_delivery_payout(60,1))<>30
+ OR (SELECT amount FROM rider_delivery_payout(60,1))<>42 THEN
   RAISE EXCEPTION 'Extra shops paid twice: %',(SELECT amount FROM rider_delivery_payout(41,1)); END IF;
+ -- Fixed pay (20261027090000): ₹30 fee, ₹25 rider pay -> rider 25, platform keeps 5.
+ -- With no extra-shop payout set, the customer's ₹15 extra-shop fee goes to the rider.
+ UPDATE delivery_settings SET rider_base_payout=25,rider_extra_stop_payout=0;
+ IF (SELECT amount FROM rider_delivery_payout(30,0))<>25 OR (SELECT amount FROM rider_delivery_payout(45,1))<>40
+ OR (SELECT extra_stop_amount FROM rider_delivery_payout(45,1))<>15 THEN
+  RAISE EXCEPTION 'Rider not paid the fixed amount: %',(SELECT amount FROM rider_delivery_payout(30,0)); END IF;
+ UPDATE delivery_settings SET rider_extra_stop_payout=12;
 
  -- Minimum payout 0 keeps the old rule: pay = delivery fee charged.
  UPDATE delivery_settings SET rider_base_payout=0;
