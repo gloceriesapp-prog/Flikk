@@ -588,6 +588,10 @@
     {
       "file": "20261027090000_fixed_rider_payout.sql",
       "sha256": "d8e6a934540812263927dd8aae942b092fa94f37f39d9cf5418f853f5388b306"
+    },
+    {
+      "file": "20261027120000_admin_money_summary.sql",
+      "sha256": "1e6a8b30a8921c9324fe9b101e7022d2dd38a2532f7476c23e4869158caed9ff"
     }
   ]
 }
