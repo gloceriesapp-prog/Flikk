@@ -27,6 +27,7 @@ it('runs the SDK metadata check before resource/signing work and adds it only on
   const addBuildPhase = jest.fn((_files, _kind, name, target, options) => {
     expect(target).toBe('APP');
     expect(options.shellScript).toContain('--normalize-razorpay');
+    expect(options.shellScript).toContain('${PODS_XCFRAMEWORKS_BUILD_DIR}/razorpay-pod');
     phases.PRIVACY = { name };
     firstTarget.buildPhases.push({ value: 'PRIVACY' });
     return { uuid: 'PRIVACY' };

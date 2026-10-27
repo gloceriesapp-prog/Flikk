@@ -17,3 +17,9 @@ The final archive source map contains separate customer and repository-root copi
 ## Required release verification
 
 Replacement build 5 is being prepared. No claim of successful archive, upload, TestFlight launch, signed-in flows, payment/refund completion, push delivery, or App Review submission is made by this source change. The exact replacement TestFlight build must pass physical-device testing. Historical refund, CDN, push, and missing vendor-symbol limitations remain separately tracked.
+
+## Physical launch and privacy packaging follow-up
+
+The corrected local archive was installed on the physical iPhone and reached Login, remained running, and entered the guest location flow. This is a local archive test, not exact TestFlight replacement verification.
+
+A post-archive privacy scan caught a separate packaging defect: CocoaPods had already staged its XCFramework before the app privacy phase normalized the Pod source. The embedded Razorpay framework therefore still carried the known noncanonical email label. The phase now corrects and validates both the Pod source and its staged XCFramework before embedding/signing, and updates existing generated phases idempotently. The replacement archive is being rebuilt and must pass final bundle verification before upload.
