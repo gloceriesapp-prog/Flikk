@@ -1,4 +1,4 @@
-// Searches Purchase History by item or store name. Rolling hints decorate
+// Searches Purchase History by item or store name. A stable hint decorates
 // the empty input; the Filter action opens the order status/time sheet.
 
 import { FilterIcon, Search01Icon } from '@hugeicons/core-free-icons';

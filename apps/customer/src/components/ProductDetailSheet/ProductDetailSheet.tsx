@@ -564,6 +564,8 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const hasRatings = Number.isFinite(product.rating) && product.rating > 0 && product.rating <= 5
+    && Number.parseFloat(product.ratingCount) > 0;
 
   const needsSimilar = !product.relatedProducts;
   const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId);
@@ -875,12 +877,14 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
                 backing so it stays legible on both light and dark photos —
                 the reference floats bare text, but the catalog's photos vary
                 too much for that to read everywhere. */}
-            <View className="absolute bottom-2.5 right-3 flex-row items-center gap-1 rounded-full bg-white/85 px-2 py-1">
-              <AppIcon icon={StarIcon} size={12} color={colors.success} fill={colors.success} strokeWidth={0} />
-              <Text className="text-[12px] font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
-                {product.rating.toFixed(1)} ({product.ratingCount})
-              </Text>
-            </View>
+            {hasRatings ? (
+              <View className="absolute bottom-2.5 right-3 flex-row items-center gap-1 rounded-full bg-white/85 px-2 py-1">
+                <AppIcon icon={StarIcon} size={12} color={colors.success} fill={colors.success} strokeWidth={0} />
+                <Text className="text-[12px] font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
+                  {product.rating.toFixed(1)} ({product.ratingCount})
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <ProductDetailInfo

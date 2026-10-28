@@ -29,3 +29,14 @@ A post-archive privacy scan caught a separate packaging defect: CocoaPods had al
 The physical guest flow confirmed a no-op Back button on the initial map. LocationPermission replaces the stack's only route with LocationSearch, leaving no previous route. The map now falls back to LocationPermission when canGoBack is false while preserving ordinary back navigation from other screens. Both cases and the existing 23 location-selection regressions pass (25 targeted tests); typecheck and lint pass.
 
 The local build also confirmed location selection reaches Home and shows the live nearby store with its closed/opening status. These read-only checks created no order or charge.
+
+
+## Exact TestFlight build 5 follow-up
+
+- Apple processing completed for 1.0.4 (5), build UUID `94e49106-a470-4689-afa3-cb9bbdee5988`. Assigned to the previously approved owner-only Gloceries iPhone QA group. No new testers or public distribution.
+- User approved replacing the local installation after Apple's local-data-loss warning. TestFlight download completed and displayed Open for build 5. The Apple-installed binary launched successfully.
+- Automated device checks passed: guest Home, live product details/images, Add to Cart, guest checkout sign-in requirement, Google Maps current location, map drag/address update, recenter and ordinary Back navigation.
+- Approved reviewer login completed in the TestFlight app. Verified the initial-map Back fallback returns to location choices; confirmed location then reached signed-in Home. Profile, saved delivery address, Purchase history and existing cancelled-order details loaded. Login and selected location remained available after app close/reopen. App left signed in at Home.
+- Payment-method UI displayed Google Pay, PhonePe, Amazon Pay and WhatsApp with visible logos. Netbanking loaded the live bank list; SBI search returned State Bank of India. MobiKwik and Ola Money mobile-number forms opened; continuation was disabled for empty numbers. No wallet verification, payment, new order, refund or address write was submitted.
+- Found two cosmetic issues in the installed build: unrated products show `0.0 ()`; the rotating Purchase search hint can display clipped fragments. Prepared source fixes hide empty/invalid rating badges and replace the rolling hint with a centered static hint. These fixes are not in uploaded build 5 and need a replacement binary plus visual verification.
+- Seven missing vendor-framework dSYM warnings remain. Controlled payment/refund/webhook verification, push delivery, final catalogue/content review, genuine final-build listing screenshots and final App Review validation are not signed off by these read-only checks. Not submitted for App Review or public.
