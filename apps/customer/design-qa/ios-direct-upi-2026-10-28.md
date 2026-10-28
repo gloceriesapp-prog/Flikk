@@ -27,3 +27,5 @@ Standard iOS 1.5.9, Custom iOS 2.2.3 and Core 1.0.9 are pinned together to avoid
 - https://github.com/razorpay/markdown-docs/blob/master/payments/payment-gateway/s2s-integration/payment-methods/upi/intent.md (server-created URI integrity; Android route remains unchanged).
 
 Additional receipt-contact tests cover explicit save, synthetic-email rejection, reuse, cancellation, save failure and account changes. No real customer email is included in this report or source.
+
+The iOS runtime is isolated as `1.0.4-ios-upi-1`; the marketing version alone cannot distinguish the added native Custom SDK from earlier 1.0.4 binaries. Android's runtime policy is preserved. Temporary on-device QA uses a separately signed copy with updates disabled so it must load the freshly bundled JavaScript; that copy is not an App Store artifact. The final archive must be checked separately.
