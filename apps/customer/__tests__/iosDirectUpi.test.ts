@@ -73,7 +73,7 @@ it('honors the live server payment switch without opening either SDK', async () 
   expect(StandardCheckout.open).not.toHaveBeenCalled();
 });
 it('uses only identifiers returned by the SDK, including current dictionary entries', () => {
-  expect(supportedIosUpiApps({ data: [{ appName: { appName: 'google_pay' } }, { appName: 'unknown' }, { appName: 'phonepe' }] })
+  expect(supportedIosUpiApps({ data: [{ appName: { appName: 'Google Pay', shortcode: 'google_pay', uriScheme: 'tez://upi/pay' } }, { appName: 'unknown' }, { appName: 'phonepe' }] })
     .map(item => [item.app.id, item.sdkId])).toEqual([['gpay', 'google_pay'], ['phonepe', 'phonepe']]);
 });
 it('cleans up a timed-out discovery request', async () => {
