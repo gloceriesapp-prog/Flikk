@@ -4,6 +4,7 @@ import { useRecoveredPayment } from '../src/screens/payment-method/useRecoveredP
 import { abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment } from '../src/api/payments';
 import { prepareUpiIntent } from '../src/payments/upiIntent';
 import { openRazorpayCheckout } from '../src/payments/openRazorpayCheckout';
+jest.mock('../src/payments/usePaymentReceiptEmail', () => ({ usePaymentReceiptEmail: () => ({ requestEmail: async () => 'test@example.com', emailForm: null }) }));
 const mockReplace = jest.fn(), mockRefetch = jest.fn();
 let mockEpoch = 1;
 const mockRecovery = { data: { state: 'unpaid', canResumeUpiIntent: false, record: { total: 63 } }, isFetchedAfterMount: true, isFetching: false, isError: false, refetch: mockRefetch };

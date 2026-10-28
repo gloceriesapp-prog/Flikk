@@ -2,9 +2,9 @@ import { NativeModules, Platform } from 'react-native';
 import { openRazorpayCheckout } from '../src/payments/openRazorpayCheckout';
 import { installedIosUpiApps, supportedIosUpiApps } from '../src/payments/iosUpiCheckout';
 import StandardCheckout from 'react-native-razorpay';
-import { fetchPaymentAvailability } from '../src/api/payments';
+import { fetchPaymentAvailability, fetchPaymentCustomer } from '../src/api/payments';
 
-jest.mock('../src/api/payments', () => ({ fetchPaymentAvailability: jest.fn() }));
+jest.mock('../src/api/payments', () => ({ fetchPaymentAvailability: jest.fn(), fetchPaymentCustomer: jest.fn() }));
 
 const mockListeners = new Map<string, Set<(data: unknown) => void>>();
 jest.mock('react-native/Libraries/EventEmitter/NativeEventEmitter', () => ({
@@ -26,6 +26,7 @@ beforeEach(() => {
   jest.clearAllMocks(); mockListeners.clear();
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
   jest.mocked(fetchPaymentAvailability).mockResolvedValue({ online: true, upi_intent: true, cod: true, min_order_value: 0 });
+  jest.mocked(fetchPaymentCustomer).mockResolvedValue({ email: 'test@example.com', contact: '+919000000000' });
   NativeModules.RazorpayEventEmitterCustom = {};
   NativeModules.RazorpayCustomui = {
     getAppsWhichSupportUpi: jest.fn(() => emit('Razorpay::UPI_APPS', { data: [{ appName: 'google_pay' }, { appName: 'phonepe' }] })),
@@ -83,4 +84,10 @@ it('cleans up a timed-out discovery request', async () => {
   await jest.advanceTimersByTimeAsync(8000); await result;
   expect([...mockListeners.values()].every(listeners => listeners.size === 0)).toBe(true);
   jest.useRealTimers();
+});
+
+it('uses the server account contact when the provider order contains no customer object', async () => {
+  const withoutContact = { ...order(), customer: undefined };
+  await expect(openRazorpayCheckout(withoutContact, 'upi_app:gpay')).resolves.toEqual(evidence);
+  expect(NativeModules.RazorpayCustomui.open).toHaveBeenCalledWith(expect.objectContaining({ email: 'test@example.com', contact: '+919000000000' }));
 });

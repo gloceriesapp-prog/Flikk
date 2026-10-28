@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fetchAvailableWallets, fetchNetbankingBanks, type NetbankingBank, abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment, type PaymentTarget } from '../../api/payments';
 import { useAuthStore } from '../../store/useAuthStore';
+import { usePaymentReceiptEmail } from '../../payments/usePaymentReceiptEmail';
 import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
 import { prepareUpiIntent, usesDirectUpiIntent } from '../../payments/upiIntent';
 import type { PaymentMethod } from '../../payments/paymentMethod';
@@ -12,6 +13,7 @@ import { beginCheckoutFlow } from '../../features/checkout-recovery/checkoutActi
 import type { AppStackParamList } from '../../navigation/types';
 
 export function useRecoveredPayment(target: PaymentTarget, navigation: NativeStackNavigationProp<AppStackParamList, 'PaymentMethod'>) {
+  const receiptEmail = usePaymentReceiptEmail();
   const customerId = useAuthStore(state => state.customerId);
   const [epoch] = useState(() => useAuthStore.getState().sessionEpoch);
   const lock = useRef(false);
@@ -65,6 +67,10 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
       }
       const resumingExistingUpi = usesDirectUpiIntent(action) && latest.state === 'pending' && latest.canResumeUpiIntent === true;
       if (latest.state !== 'unpaid' && !resumingExistingUpi) throw new Error('Your last payment is still being checked. Wait for its result before paying again.');
+      if (action.startsWith('upi_app:')) {
+        const email = await receiptEmail.requestEmail();
+        if (!stillOwner() || !email) return;
+      }
       if (usesDirectUpiIntent(action)) {
         const session = await prepareUpiIntent(target, action);
         if (session.amountPaise !== Math.round(Number(latest.record.total) * 100)) {
@@ -103,5 +109,5 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
       if (stillOwner()) setBusy(false);
     }
   }
-  return { query, busy, error, canPay, canResumeUpi, select: (method: PaymentMethod, bank?: NetbankingBank, contact?: string) => act(method, bank, contact), cancel: () => act('cancel') };
+  return { receiptEmailForm: receiptEmail.emailForm, query, busy, error, canPay, canResumeUpi, select: (method: PaymentMethod, bank?: NetbankingBank, contact?: string) => act(method, bank, contact), cancel: () => act('cancel') };
 }

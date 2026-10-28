@@ -1,6 +1,7 @@
 import { NativeEventEmitter, NativeModules, Platform, type EmitterSubscription } from 'react-native';
 import type { RazorpayOrder, RazorpayPaymentResult } from '../api/payments';
-import { fetchPaymentAvailability } from '../api/payments';
+import { useAuthStore } from '../store/useAuthStore';
+import { fetchPaymentAvailability, fetchPaymentCustomer } from '../api/payments';
 import type { PaymentMethod } from './paymentMethod';
 import { razorpayOptions, razorpayResult } from './razorpayOptions';
 import { UPI_APPS, type UpiApp } from './upiApps';
@@ -72,14 +73,17 @@ export async function assertIosUpiConfigured(method: PaymentMethod): Promise<str
 export async function openIosUpiCheckout(order: RazorpayOrder, method: PaymentMethod): Promise<RazorpayPaymentResult> {
   // Shared validation checks the server order, paise amount, expiry and key
   // environment. Intent itself is live-only; never substitute a sandbox key.
+  const epoch = useAuthStore.getState().sessionEpoch;
   razorpayOptions(order, method);
   if (order.environment !== 'production' || !order.keyId.startsWith('rzp_live_')) {
     throw new Error('UPI app payments require the live payment service. Choose another payment method.');
   }
   const sdkId = await assertIosUpiConfigured(method);
   razorpayOptions(order, method); // Discovery may have waited past the order expiry.
-  const customer = order.customer;
-  if (!customer?.email || !customer.contact) throw new Error('Save your email and phone in your account before paying with UPI.');
+  const customer = await fetchPaymentCustomer();
+  if (useAuthStore.getState().sessionEpoch !== epoch) throw new Error('Your account changed. Please check your checkout again.');
+  razorpayOptions(order, method);
+  if (!customer.email || !/^(?:\+91)?[6-9]\d{9}$/.test(customer.contact)) throw new Error('Add your payment receipt email before paying with UPI.');
   const { native, events } = nativeSdk();
   return new Promise((resolve, reject) => {
     const subscriptions: EmitterSubscription[] = [];

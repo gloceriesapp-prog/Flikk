@@ -5,6 +5,7 @@ import RazorpayCheckout from 'react-native-razorpay';
 import { useRecoveredPayment } from '../src/screens/payment-method/useRecoveredPayment';
 import { createPaymentOrder, createUpiIntentSession, fetchPaymentAvailability, recoverPayment, verifyPayment } from '../src/api/payments';
 
+jest.mock('../src/payments/usePaymentReceiptEmail', () => ({ usePaymentReceiptEmail: () => ({ requestEmail: async () => 'test@example.com', emailForm: null }) }));
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 jest.mock('../src/payments/iosUpiCheckout', () => ({ usesIosUpiCheckout: (method: string) => require('react-native').Platform.OS === 'ios' && method.startsWith('upi_app:'), openIosUpiCheckout: jest.fn() }));
 
