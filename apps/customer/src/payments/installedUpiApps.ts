@@ -2,6 +2,7 @@
 // Razorpay's native checkout owns app launching and the payment payload.
 import { Linking, NativeModules, Platform } from 'react-native';
 import { UPI_APPS, type UpiApp } from './upiApps';
+import { installedIosUpiApps } from './iosUpiCheckout';
 
 export interface NativeUpiApp {
   name: string;
@@ -33,6 +34,7 @@ async function detectByScheme(): Promise<UpiApp[]> {
 // launches (install/uninstall), and this is cheap enough to redo per
 // checkout visit.
 export async function detectInstalledUpiApps(): Promise<UpiApp[]> {
+  if (Platform.OS === 'ios') return (await installedIosUpiApps()).map(item => item.app);
   if (Platform.OS === 'android') {
     const upiAppsModule = NativeModules.UpiApps as { getInstalledUpiApps(): Promise<NativeUpiApp[]> } | undefined;
     // Older dev-client without the native module: per-scheme canOpenURL

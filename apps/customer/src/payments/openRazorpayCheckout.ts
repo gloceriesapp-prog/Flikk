@@ -2,6 +2,7 @@ import { NativeModules, TurboModuleRegistry } from 'react-native';
 import type { NetbankingBank, RazorpayOrder, RazorpayPaymentResult } from '../api/payments';
 import type { PaymentMethod } from './paymentMethod';
 import { razorpayOptions, razorpayResult } from './razorpayOptions';
+import { openIosUpiCheckout, usesIosUpiCheckout } from './iosUpiCheckout';
 
 let checkoutOpen = false;
 export const isNativeCheckoutOpen = () => checkoutOpen;
@@ -13,6 +14,7 @@ export async function openRazorpayCheckout(order: RazorpayOrder, method: Payment
   const options = razorpayOptions(order, method, Date.now(), bank, walletContact);
   checkoutOpen = true;
   try {
+    if (usesIosUpiCheckout(method)) return await openIosUpiCheckout(order, method);
     let sdk: typeof import('react-native-razorpay');
     try {
       const nativeCheckout = TurboModuleRegistry.get('RNRazorpayCheckout') ?? NativeModules.RNRazorpayCheckout;

@@ -1,8 +1,12 @@
 import { AppState, NativeModules, Platform } from 'react-native';
 import { act, renderHook } from '@testing-library/react-native';
+import { openIosUpiCheckout } from '../src/payments/iosUpiCheckout';
 import RazorpayCheckout from 'react-native-razorpay';
 import { useRecoveredPayment } from '../src/screens/payment-method/useRecoveredPayment';
 import { createPaymentOrder, createUpiIntentSession, fetchPaymentAvailability, recoverPayment, verifyPayment } from '../src/api/payments';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+jest.mock('../src/payments/iosUpiCheckout', () => ({ usesIosUpiCheckout: (method: string) => require('react-native').Platform.OS === 'ios' && method.startsWith('upi_app:'), openIosUpiCheckout: jest.fn() }));
 
 const mockRefetch = jest.fn();
 let mockRecovery: Record<string, unknown>;
@@ -30,6 +34,7 @@ beforeEach(() => {
   jest.mocked(recoverPayment).mockImplementation(async () => mockRecovery as never);
   jest.mocked(createPaymentOrder).mockResolvedValue(providerOrder());
   jest.mocked(RazorpayCheckout.open).mockResolvedValue(evidence);
+  jest.mocked(openIosUpiCheckout).mockResolvedValue(evidence);
   jest.mocked(verifyPayment).mockResolvedValue({ ok: true });
 });
 afterEach(() => {
@@ -47,9 +52,8 @@ it('pays an existing iOS order through native UPI checkout and verifies the same
   await act(async () => result.current.select('upi_app:gpay'));
   expect(createPaymentOrder).toHaveBeenCalledWith(target);
   expect(createUpiIntentSession).not.toHaveBeenCalled();
-  expect(RazorpayCheckout.open).toHaveBeenCalledWith(expect.objectContaining({ order_id: 'order_abc', amount: 6300,
-    config: { display: { blocks: { upi_only: { name: 'Pay with UPI', instruments: [{ method: 'upi' }] } }, sequence: ['block.upi_only'], preferences: { show_default_blocks: false } } },
-  }));
+  expect(openIosUpiCheckout).toHaveBeenCalledWith(expect.objectContaining({ providerOrderId: 'order_abc', amountPaise: 6300 }), 'upi_app:gpay');
+  expect(RazorpayCheckout.open).not.toHaveBeenCalled();
   expect(verifyPayment).toHaveBeenCalledWith(target, evidence);
   expect(navigation.replace).toHaveBeenCalledWith('PaymentRecovery', { target });
 });
@@ -64,7 +68,7 @@ it('does not start another iOS payment while an Android intent remains pending',
   expect(result.current.error).toContain('still being checked');
 });
 it('retains recovery and never claims success when iOS native checkout is cancelled', async () => {
-  jest.mocked(RazorpayCheckout.open).mockRejectedValue({ reason: 'payment_cancelled' });
+  jest.mocked(openIosUpiCheckout).mockRejectedValue(new Error('Payment cancelled. Check your saved order.'));
   const { result } = await setup();
   await act(async () => result.current.select('upi_app:phonepe'));
   expect(verifyPayment).not.toHaveBeenCalled();

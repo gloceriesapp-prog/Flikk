@@ -20,7 +20,7 @@ func checked(_ original: [String: Any], normalizeRazorpay: Bool) throws -> ([Str
     guard var entries = raw as? [[String: Any]] else { throw PrivacyError.invalidManifest("Invalid data array") }
     var changed = false
     for index in entries.indices {
-        // RazorpayStandard 1.5.3 and the upstream 1.5.9 manifest spell this value
+        // RazorpayStandard and RazorpayCustom manifests spell this value
         // as a human label. Correct only the identifier; retain every purpose,
         // linkage flag, tracking flag and other declaration unchanged.
         if normalizeRazorpay && entries[index]["NSPrivacyCollectedDataType"] as? String == "Email address" {
@@ -75,7 +75,8 @@ do {
                 throw PrivacyError.invalidManifest("Invalid property list")
             }
             let normalize = args[0] == "--normalize-razorpay"
-                && file.path.hasSuffix("/RazorpayStandard.framework/PrivacyInfo.xcprivacy")
+                && ["/RazorpayStandard.framework/PrivacyInfo.xcprivacy", "/RazorpayCustom.framework/PrivacyInfo.xcprivacy"]
+                    .contains(where: file.path.hasSuffix)
             let (validated, changed) = try checked(manifest, normalizeRazorpay: normalize)
             if changed {
                 try PropertyListSerialization.data(fromPropertyList: validated, format: .xml, options: 0)
