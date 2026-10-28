@@ -29,7 +29,10 @@ beforeEach(() => {
   jest.mocked(fetchPaymentCustomer).mockResolvedValue({ email: 'test@example.com', contact: '+919000000000' });
   NativeModules.RazorpayEventEmitterCustom = {};
   NativeModules.RazorpayCustomui = {
-    getAppsWhichSupportUpi: jest.fn(() => emit('Razorpay::UPI_APPS', { data: [{ appName: 'google_pay' }, { appName: 'phonepe' }] })),
+    getAppsWhichSupportUpi: jest.fn(() => emit('Razorpay::UPI_APPS', { data: [
+      { appName: { appName: 'Google Pay', appPackageName: 'google_pay', appLogo: 'https://cdn.razorpay.com/app/google_pay.png', appIconBase64: '' } },
+      { appName: { appName: 'PhonePe', appPackageName: 'phonepe', appLogo: 'https://cdn.razorpay.com/app/phonepe.png', appIconBase64: '' } },
+    ] })),
     open: jest.fn(() => emit('Razorpay::PAYMENT_SUCCESS', evidence)),
   };
 });
@@ -76,6 +79,16 @@ it('honors the live server payment switch without opening either SDK', async () 
 it('uses only identifiers returned by the SDK, including current dictionary entries', () => {
   expect(supportedIosUpiApps({ data: [{ appName: { appName: 'Google Pay', shortcode: 'google_pay', uriScheme: 'tez://upi/pay' } }, { appName: 'unknown' }, { appName: 'phonepe' }] })
     .map(item => [item.app.id, item.sdkId])).toEqual([['gpay', 'google_pay'], ['phonepe', 'phonepe']]);
+});
+it('parses the appPackageName response observed from the installed iOS Custom SDK', () => {
+  expect(supportedIosUpiApps({ data: [
+    { appName: { appName: 'Google Pay', appPackageName: 'google_pay', appIconBase64: '' } },
+    { appName: { appName: 'PhonePe', appPackageName: 'phonepe', appIconBase64: '' } },
+    { appName: { appName: 'AmazonPay', appPackageName: 'amazonpay', appIconBase64: '' } },
+    { appName: { appName: 'Unsupported', appPackageName: 'unknown' } },
+  ] }).map(item => [item.app.id, item.sdkId])).toEqual([
+    ['gpay', 'google_pay'], ['phonepe', 'phonepe'], ['amazonpay', 'amazonpay'],
+  ]);
 });
 it('cleans up a timed-out discovery request', async () => {
   jest.useFakeTimers();

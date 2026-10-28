@@ -36,8 +36,9 @@ export function supportedIosUpiApps(value: unknown): { app: UpiApp; sdkId: strin
   for (const entry of value.data) {
     const raw = entry && typeof entry === 'object' ? entry.appName : undefined;
     const sdkId = typeof raw === 'string' ? raw
-      : raw && typeof raw === 'object' && typeof raw.shortcode === 'string' ? raw.shortcode
-        : undefined;
+      : raw && typeof raw === 'object' && typeof raw.appPackageName === 'string' ? raw.appPackageName
+        : raw && typeof raw === 'object' && typeof raw.shortcode === 'string' ? raw.shortcode
+          : undefined;
     if (!sdkId) continue;
     const app = UPI_APPS.find(candidate => candidate.id === appIds[sdkId]);
     if (app && !result.some(item => item.app.id === app.id)) result.push({ app, sdkId });

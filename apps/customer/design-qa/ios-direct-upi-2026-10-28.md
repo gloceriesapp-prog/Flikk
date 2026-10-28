@@ -14,10 +14,13 @@ Standard iOS 1.5.9, Custom iOS 2.2.3 and Core 1.0.9 are pinned together to avoid
 
 - Public live API `/payments/availability` returned online=true and upi_intent=true on 2026-10-28. This confirms the public service switch, not an actual bank transaction.
 - Native pods resolved successfully with both SDKs and Core 1.0.9.
-- TypeScript and targeted ESLint pass.
+- TypeScript and targeted ESLint pass. All 51 suites / 320 tests pass with Watchman disabled for the local sandbox permission restriction.
 - Automated tests cover selected-app options, no Standard fallback, unavailable app, live/test mismatch, amount mismatch, cancellation, mismatched provider order, old binaries, discovery timeout and SDK discovery identifiers. Recovery integration tests preserve the same target and server verification; Android intent tests remain covered.
 - A new native binary is required. Existing TestFlight build 5 does not contain this change. The intermediate build-7 archive compiled successfully but is superseded by the receipt-contact fix and must not be uploaded. The UI-only build-6 archive was stopped and was not uploaded.
-- Actual selected-app handoff, return/cancellation and server-confirmed capture require physical verification of the replacement binary. No live order, charge or refund was created during this investigation. Store closure must not be bypassed to test checkout.
+- Physical QA found that the native SDK returns `appPackageName`, not only the previously supported `shortcode` shape. The parser now accepts the observed response and regression tests use that real structure. Google Pay, PhonePe and Amazon Pay appear with logos on the connected iPhone. Discovery failures are surfaced instead of silently hiding every app.
+- Physical QA also exposed minified-release safe-area overlap. Preserving the provider displayName restores NativeWind safe-area variables; corrected Home, Checkout and payment-selection screens were visually verified.
+- One live sample checkout (FLK-100076, INR 1) opened PhonePe and returned to Gloceries with a confirmed receipt. The user explicitly confirmed completing the payment on the phone. The agent did not enter a UPI PIN or tap payment authorization. Read-only Razorpay inspection independently confirms UPI captured=true, amount=100 paise and matching backend order metadata. No additional checkout or refund was performed.
+- These physical checks used the temporary native QA copy, not exact TestFlight build 8. Cancellation, other selected apps and exact replacement TestFlight installation remain to verify. Store closure must not be bypassed to test checkout.
 - This change does not resolve or supersede the other recorded App Store release gates.
 
 ## Official references
