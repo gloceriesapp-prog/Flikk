@@ -155,9 +155,8 @@ storesRouter.get('/products/deals', async (req, res, next) => {
 
 // Cross-store general catalog — Home's "Today's Stock" row
 // (EverydayEssentialsSection.tsx). Same shape as /products/deals but no
-// discount requirement. products has no created_at column (only
-// product_variants/stores/zones do), so this orders by name rather than
-// claiming a "newest first" ordering it can't actually back.
+// discount requirement. Newest first (products.created_at, migration
+// 20261028090000), then by name.
 storesRouter.get('/products/catalog', async (req, res, next) => {
   try {
     const { data, error } = await supabase
@@ -165,6 +164,7 @@ storesRouter.get('/products/catalog', async (req, res, next) => {
       .select(PRODUCT_WITH_VARIANTS_SELECT)
       .eq('approval_status', 'approved')
       .in('store_id', res.locals.deliveryStores ?? [])
+      .order('created_at', { ascending: false })
       .order('name')
       .limit(20);
     if (error) throw error;

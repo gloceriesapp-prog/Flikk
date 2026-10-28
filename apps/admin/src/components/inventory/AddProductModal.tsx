@@ -24,6 +24,8 @@ import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { SubCategoryPicker } from './SubCategoryPicker';
+import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
+import { createPortal } from 'react-dom';
 
 const STOCK_OPTIONS: { value: StockStatus; label: string }[] = [
   { value: 'in_stock', label: 'In stock' },
@@ -60,11 +62,13 @@ export function AddProductModal({
   stores: StoreOption[];
   existingProducts: Product[];
   onClose: () => void;
-  onAdd: (product: NewProductInput) => Promise<void>;
+  // homeKeys: Home sections to pick the new product in once it is created.
+  onAdd: (product: NewProductInput, homeKeys: string[]) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(() => makeEmptyDraft(stores));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const homeChoice = useHomeSectionChoice();
 
   async function handleAdd() {
     const name = draft.name.trim();
@@ -111,14 +115,16 @@ export function AddProductModal({
         subCategoryId: draft.subCategoryId,
         isVeg: draft.isVeg,
         freshnessTag: draft.freshnessTag || undefined,
-      });
+      }, homeChoice.keys);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add product — try again.');
       setSubmitting(false);
     }
   }
 
-  return (
+  // Portalled to <body> so the overlay covers the whole screen, not just the
+  // transformed page area.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden card"
@@ -250,6 +256,13 @@ export function AddProductModal({
             ))}
           </select>
 
+          <div className="flex flex-col gap-2 border-t border-border pt-4">
+            <div>
+              <p className="text-sm font-medium text-ink">Show on Home</p>
+              <p className="text-xs text-muted">Pick the Home sections this product should appear in. Reorder them on the &ldquo;All&rdquo; tab layout page.</p>
+            </div>
+            <HomeSectionChecklist choice={homeChoice} compact />
+          </div>
           {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-danger">{error}</p>}
         </div>
 
@@ -271,6 +284,7 @@ export function AddProductModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

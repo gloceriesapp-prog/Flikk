@@ -18,12 +18,18 @@ interface Props {
   previewCount?: number;
   onViewMore?: () => void;
   previewProducts?: Product[];
+  // Founder's hand-picked products (admin Home Sections), shown first.
+  pinnedProducts?: Product[];
 }
 
-export function GroceryCollectionSection({ title, groups, maxProducts = 8, previewCount, onViewMore, previewProducts = [] }: Props) {
+export function GroceryCollectionSection({ title, groups, maxProducts = 8, previewCount, onViewMore, previewProducts = [], pinnedProducts = [] }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { visibleProducts, hasLocation, isLoading, isError, retry } = useNearbyGroceryInventory();
-  const realProducts = selectBalancedProducts(visibleProducts, groups, previewCount ?? maxProducts).map(mapApiProduct);
+  const limit = previewCount ?? maxProducts;
+  const pinned = pinnedProducts.filter((p) => p.isAvailable !== false).slice(0, limit);
+  const pinnedIds = new Set(pinned.map((p) => p.id));
+  const matched = selectBalancedProducts(visibleProducts, groups, limit).map(mapApiProduct).filter((p) => !pinnedIds.has(p.id));
+  const realProducts = [...pinned, ...matched].slice(0, limit);
   const previewOnly = __DEV__ && process.env.EXPO_PUBLIC_ENABLE_DESIGN_PREVIEWS === 'true' && realProducts.length === 0 && previewProducts.length > 0;
   const products = previewOnly ? previewProducts.slice(0, previewCount ?? maxProducts) : realProducts;
 
