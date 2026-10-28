@@ -2,7 +2,8 @@
 // 20261027150000). Which sections take products, and how many cards each
 // shows on the phone (pins fill the first slots; the rest is automatic unless
 // the section is "pinned only"). Keep in step with ROW_PRIORITY caps in
-// apps/customer/src/screens/home/sections/AllTabSections.tsx.
+// apps/customer/src/screens/home/sections/AllTabSections.tsx (and
+// EverydayDairySection's maxProducts).
 
 export const PIN_CAPACITY: Record<string, number> = {
   trending: 6,
@@ -11,6 +12,7 @@ export const PIN_CAPACITY: Record<string, number> = {
   'todays-best-deals': 6,
   'price-drops': 4,
   'everyday-essentials': 9,
+  'everyday-dairy': 8,
 };
 export const CUSTOM_SECTION_CAPACITY = 12;
 export const MAX_PINS = 30;

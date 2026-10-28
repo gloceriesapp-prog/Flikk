@@ -43,6 +43,7 @@ beforeEach(() => { db.authorized = true; db.rpc = null; db.rpcResult = { data: n
 
 it('helpers: only product rails and custom sections take picks; ids and schedules are validated', () => {
   expect(acceptsPins('trending')).toBe(true);
+  expect(acceptsPins('everyday-dairy')).toBe(true);
   expect(acceptsPins('nearby-stores')).toBe(false);
   expect(acceptsPins(newCustomSectionKey(() => 0.5))).toBe(true);
   expect(() => parseProductIds([A, A])).toThrow(/only once/);

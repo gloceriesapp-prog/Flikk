@@ -23,6 +23,8 @@ import type { NewProductInput, Product, StockStatus } from '@/lib/types';
 import { fetchProducts, fetchStoreOptions, type StoreOption } from '@/lib/supabase/products';
 import { EditProductModal } from '@/components/inventory/EditProductModal';
 import { ShowOnHomeModal } from '@/components/home/ShowOnHomeModal';
+import { saveProductHomeSections } from '@/components/home/HomeSectionChecklist';
+import { toast } from '@/components/ui/Toast';
 import { AddProductModal } from '@/components/inventory/AddProductModal';
 
 const STOCK_STYLES: Record<StockStatus, string> = {
@@ -130,7 +132,7 @@ export default function InventoryPage() {
     return deduped.sort((a, b) => (category === 'All' ? a.price - b.price : 0));
   })();
 
-  async function handleSave(updated: Product) {
+  async function handleSave(updated: Product, homeKeys: string[] | null) {
     const res = await fetch(`/api/products/${updated.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -140,6 +142,7 @@ export default function InventoryPage() {
       const body = await res.json().catch(() => null);
       throw new Error(body?.error ?? 'Save failed.');
     }
+    if (homeKeys) await saveProductHomeSections(updated.id, homeKeys);
     await loadData();
     setEditing(null);
   }
@@ -182,7 +185,7 @@ export default function InventoryPage() {
     }
   }
 
-  async function handleAdd(newProduct: NewProductInput) {
+  async function handleAdd(newProduct: NewProductInput, homeKeys: string[]) {
     const res = await fetch('/api/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -192,8 +195,18 @@ export default function InventoryPage() {
       const body = await res.json().catch(() => null);
       throw new Error(body?.error ?? 'Add failed.');
     }
+    const created = (await res.json()) as Product;
     await loadData();
     setAdding(false);
+    // The product exists now; a failed pick must not look like a failed add.
+    if (homeKeys.length > 0) {
+      try {
+        await saveProductHomeSections(created.id, homeKeys);
+        toast.success('Product added', `Picked in ${homeKeys.length} Home section${homeKeys.length === 1 ? '' : 's'}.`);
+      } catch (err) {
+        toast.error('Product added, but not placed on Home', err instanceof Error ? err.message : undefined);
+      }
+    }
   }
 
   return (
