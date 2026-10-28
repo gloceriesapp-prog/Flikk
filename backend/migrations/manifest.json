@@ -596,6 +596,10 @@
     {
       "file": "20261027150000_home_section_products.sql",
       "sha256": "c576022c3728d8fd72ecd69126923d9b1611f05fc035855fbbf6fc33f74fa3a4"
+    },
+    {
+      "file": "20261028090000_home_picks_dairy_newest.sql",
+      "sha256": "1055d84143a7eea5490e149226b39d1689fd069fa3db6e30c375fc76ba43f390"
     }
   ]
 }
