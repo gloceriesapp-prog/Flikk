@@ -16,6 +16,7 @@ import type { ApiAddress } from '../../../api/addresses';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { fetchAvailableWallets, fetchNetbankingBanks, fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod, fetchPaymentContact } from '../../../api/payments';
 import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
+import { assertIosUpiConfigured, usesIosUpiCheckout } from '../../../payments/iosUpiCheckout';
 import { assertDirectUpiConfigured, prepareUpiIntent, usesDirectUpiIntent } from '../../../payments/upiIntent';
 import type { UpiApp } from '../../../payments/upiApps';
 import { detectInstalledUpiApps } from '../../../payments/installedUpiApps';
@@ -136,8 +137,9 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
           throw new Error('This bank is no longer available. Choose another bank in payment methods.');
         }
       }
-      if (usesDirectUpiIntent(paymentMethod)) {
-        await assertDirectUpiConfigured(paymentMethod);
+      if (usesDirectUpiIntent(paymentMethod) || usesIosUpiCheckout(paymentMethod)) {
+        if (usesIosUpiCheckout(paymentMethod)) await assertIosUpiConfigured(paymentMethod);
+        else await assertDirectUpiConfigured(paymentMethod);
         if (!stillOwner()) return;
         const contact = await fetchPaymentContact();
         if (!stillOwner()) return;

@@ -1,9 +1,12 @@
 import { Linking, NativeModules, Platform } from 'react-native';
 import { detectInstalledUpiApps, matchNativeUpiApps } from '../src/payments/installedUpiApps';
+import { installedIosUpiApps } from '../src/payments/iosUpiCheckout';
 import { UPI_APPS } from '../src/payments/upiApps';
 import { availablePaymentMethod } from '../src/payments/paymentMethod';
 import { orderUpiApps } from '../src/screens/payment-method/components/PaymentMethodList';
 
+
+jest.mock('../src/payments/iosUpiCheckout', () => ({ installedIosUpiApps: jest.fn() }));
 
 const app = (id: string) => UPI_APPS.find((a) => a.id === id)!;
 
@@ -18,12 +21,14 @@ describe('installed UPI app detection', () => {
     expect(detected[1]).toMatchObject({ iconUri: 'data:image/png;base64,AAA' });
   });
 
-  it('on iOS lists only apps whose scheme can open', async () => {
+  it('on iOS lists only apps supported by Razorpay Custom UPI', async () => {
     const original = Platform.OS;
     Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
-    const spy = jest.spyOn(Linking, 'canOpenURL').mockImplementation(async (url) => url === 'tez://' || url === 'credpay://');
+    const spy = jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
+    jest.mocked(installedIosUpiApps).mockResolvedValue([{ app: app('gpay'), sdkId: 'google_pay' }, { app: app('cred'), sdkId: 'cred' }]);
     try {
       expect((await detectInstalledUpiApps()).map((a) => a.id)).toEqual(['gpay', 'cred']);
+      expect(spy).not.toHaveBeenCalled();
     } finally {
       spy.mockRestore();
       Object.defineProperty(Platform, 'OS', { value: original, configurable: true });

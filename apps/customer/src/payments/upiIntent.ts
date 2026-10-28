@@ -5,7 +5,7 @@ import { UPI_APPS } from './upiApps';
 
 interface IntentModule { launchPaymentIntent(uri: string, packageName: string): Promise<void> }
 
-// iOS uses Razorpay's native checkout picker. Only Android supports our
+// iOS uses Razorpay Custom UI with the SDK-discovered app identifier. Only Android supports our
 // package-targeted launcher and resumable server-created intent sessions.
 export function usesDirectUpiIntent(method: PaymentMethod): boolean {
   return Platform.OS === 'android' && method.startsWith('upi_app:');

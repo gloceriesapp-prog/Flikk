@@ -1,7 +1,8 @@
 const { withXcodeProject } = require('@expo/config-plugins');
 
 const phaseName = '[Gloceries] Validate SDK privacy metadata';
-const privacyScript = 'set -eu; mkdir -p "${DERIVED_FILE_DIR}/GloceriesSwiftModuleCache"; export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"; xcrun --sdk macosx swift -module-cache-path "${DERIVED_FILE_DIR}/GloceriesSwiftModuleCache" "${SRCROOT}/../scripts/ios-sdk-privacy.swift" --normalize-razorpay "${PODS_ROOT}/razorpay-pod"; xcrun --sdk macosx swift -module-cache-path "${DERIVED_FILE_DIR}/GloceriesSwiftModuleCache" "${SRCROOT}/../scripts/ios-sdk-privacy.swift" --normalize-razorpay "${PODS_XCFRAMEWORKS_BUILD_DIR}/razorpay-pod"';
+const privacyRoots = ['${PODS_ROOT}/razorpay-pod', '${PODS_ROOT}/razorpay-customui-pod', '${PODS_XCFRAMEWORKS_BUILD_DIR}/razorpay-pod', '${PODS_XCFRAMEWORKS_BUILD_DIR}/razorpay-customui-pod'];
+const privacyScript = 'set -eu; mkdir -p "${DERIVED_FILE_DIR}/GloceriesSwiftModuleCache"; export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"; ' + privacyRoots.map(root => `xcrun --sdk macosx swift -module-cache-path "\${DERIVED_FILE_DIR}/GloceriesSwiftModuleCache" "\${SRCROOT}/../scripts/ios-sdk-privacy.swift" --normalize-razorpay "${root}"`).join('; ');
 
 function configurePrivacyBuildPhase(project) {
   const target = project.getFirstTarget();
