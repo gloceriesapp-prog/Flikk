@@ -49,6 +49,10 @@ module.exports = {
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     ios: {
+      // Custom UPI adds native code while marketing version stays 1.0.4.
+      // Isolate it from older iOS/Android OTA bundles using that app version.
+      // Increment this compatibility ID whenever the iOS native runtime changes.
+      runtimeVersion: '1.0.4-ios-upi-1',
       // Initial App Store launch is iPhone-only. Enable iPad after tablet QA.
       supportsTablet: false,
       bundleIdentifier: 'com.gloceries.customer',

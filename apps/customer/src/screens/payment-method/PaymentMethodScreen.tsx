@@ -34,7 +34,8 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
   useEffect(() => {
     let alive = true;
     detectInstalledUpiApps().then((result) => { if (alive) setApps(result); })
-      .catch(() => {}).finally(() => { if (alive) setLoading(false); });
+      .catch(() => { if (alive) setError('Could not check installed UPI apps. Reopen payment methods to try again.'); })
+      .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, []);
   const preference = useQuery({ queryKey: ['payment-preference', customerId], queryFn: fetchPaymentPreference, enabled: fromProfile && !!customerId });

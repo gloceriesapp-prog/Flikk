@@ -23,6 +23,11 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { OfflineBanner } from './src/components/OfflineBanner';
 import { ReleaseGate } from './src/features/app-release/ReleaseGate';
 
+// NativeWind identifies this provider by displayName/name when injecting CSS
+// safe-area variables. Release minification renames the function, so keep an
+// explicit name to prevent headers and checkout controls entering system areas.
+Object.assign(SafeAreaProvider, { displayName: 'SafeAreaProvider' });
+
 registerAccountReset(() => {
   detachNotifications();
   useCartStore.getState().clear();

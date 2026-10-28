@@ -349,6 +349,7 @@ export function CartScreen({ navigation, route }: Props) {
               onChoose={choosePayment} onPlaceOrder={payment.placeOrder} />}
           />
 
+          {payment.receiptEmailForm}
           <AddressSelectSheet
             visible={addressSheetVisible}
             addresses={addresses ?? []}

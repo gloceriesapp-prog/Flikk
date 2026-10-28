@@ -14,8 +14,9 @@ import { createOrder } from '../../../api/orders';
 import { createTrip } from '../../../api/trips';
 import type { ApiAddress } from '../../../api/addresses';
 import { useAuthStore } from '../../../store/useAuthStore';
-import { fetchAvailableWallets, fetchNetbankingBanks, fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod, fetchPaymentContact } from '../../../api/payments';
+import { fetchAvailableWallets, fetchNetbankingBanks, fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
 import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
+import { usePaymentReceiptEmail } from '../../../payments/usePaymentReceiptEmail';
 import { assertIosUpiConfigured, usesIosUpiCheckout } from '../../../payments/iosUpiCheckout';
 import { assertDirectUpiConfigured, prepareUpiIntent, usesDirectUpiIntent } from '../../../payments/upiIntent';
 import type { UpiApp } from '../../../payments/upiApps';
@@ -39,6 +40,7 @@ interface Props {
 }
 
 export function useCartPayment({ navigation, selectedAddress, selectedPaymentMethod, selectedWallet, selectedNetbankingBank, quote, onQuoteChanged }: Props) {
+  const receiptEmail = usePaymentReceiptEmail();
   const items = useCartStore((state) => state.items);
   const orderingHours = useOrderingHours();
   const storeCount = useCartStore(selectCartStoreCount);
@@ -141,9 +143,8 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
         if (usesIosUpiCheckout(paymentMethod)) await assertIosUpiConfigured(paymentMethod);
         else await assertDirectUpiConfigured(paymentMethod);
         if (!stillOwner()) return;
-        const contact = await fetchPaymentContact();
-        if (!stillOwner()) return;
-        if (!contact.email) throw new Error('Razorpay requires a saved account email for direct UPI payments. Choose another payment method or contact support.');
+        const email = await receiptEmail.requestEmail();
+        if (!stillOwner() || !email) return;
       }
       const cartKey = JSON.stringify({ items: checkoutItems(items), promo: promoCode ?? null });
       let saved = await readAttempt();
@@ -316,5 +317,5 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
     }
   }
 
-  return { paymentMethod, upiApps, grandTotal, isPlacingOrder, methodsReady, choosePayment, placeOrder: handlePay };
+  return { receiptEmailForm: receiptEmail.emailForm, paymentMethod, upiApps, grandTotal, isPlacingOrder, methodsReady, choosePayment, placeOrder: handlePay };
 }

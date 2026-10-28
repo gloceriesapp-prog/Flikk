@@ -74,6 +74,7 @@ export function RecoveredPaymentMethods({ target, navigation }: Props) {
       ])} className="px-5 py-4">
       <Text className="text-center font-semibold text-ink/60">Cancel order</Text>
     </Pressable>
+    {recovery.receiptEmailForm}
     <NetbankingBankPicker visible={bankPickerVisible} onClose={() => setBankPickerVisible(false)}
       onSelect={bank => { setBankPickerVisible(false); void select('netbanking', bank); }} />
   </KeyboardAwareScrollView>;

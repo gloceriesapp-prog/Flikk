@@ -42,3 +42,11 @@ it('runs the SDK metadata check before resource/signing work and adds it only on
   expect(addBuildPhase).toHaveBeenCalledTimes(1);
   expect(firstTarget.buildPhases.map(phase => phase.value)).toEqual(['PRIVACY', 'SOURCES', 'RESOURCES']);
 });
+
+it('isolates the new iOS native UPI runtime from older app-version OTA updates', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const config = require('../app.config.js').expo;
+  expect(typeof config.ios.runtimeVersion).toBe('string');
+  expect(config.ios.runtimeVersion).not.toBe(config.version);
+  expect(config.runtimeVersion).toEqual({ policy: 'appVersion' });
+});

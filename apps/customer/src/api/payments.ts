@@ -76,6 +76,15 @@ export function fetchPaymentContact(): Promise<PaymentContact> {
   return apiRequest('/payments/contact');
 }
 
+export function savePaymentContact(email: string): Promise<PaymentContact> {
+  return apiRequest('/payments/contact', { method: 'PATCH', body: { email } });
+}
+
+export async function fetchPaymentCustomer(): Promise<{ email: string | null; contact: string }> {
+  const [receipt, account] = await Promise.all([fetchPaymentContact(), apiRequest<{ phone: string }>('/auth/me')]);
+  return { email: receipt.email, contact: account.phone };
+}
+
 // The server verifies a complete SDK signature (when provided), then fetches
 // captured payment, amount, currency and ownership before committing success.
 export function verifyPayment(target: PaymentTarget, result?: RazorpayPaymentResult): Promise<{ ok: boolean }> {
