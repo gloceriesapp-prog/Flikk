@@ -403,6 +403,16 @@ it('keeps one live halo without overlapping accuracy circles for precise GPS fix
   expect(view.queryByTestId('device-location-accuracy')).toBeNull();
   expect(view.getByTestId('device-location-marker').props.coordinate).toEqual({ latitude: 13.2, longitude: 74.7 });
   expect(view.getByTestId('device-location-halo')).toBeTruthy();
+  expect(view.getByTestId('device-location-marker').props.tracksViewChanges).toBe(true);
+  await fireEvent(view.getByTestId('device-location-halo'), 'layout', {
+    nativeEvent: { layout: { width: 64, height: 64, x: 0, y: 0 } },
+  });
+  await settleTimers();
+  expect(view.getByTestId('device-location-marker').props.tracksViewChanges).toBe(false);
+  mockLiveFix = { ...mockLiveFix!, latitude: 13.21, timestamp: Date.now() };
+  await view.rerender(screen({ fromGps: true }));
+  expect(view.getByTestId('device-location-marker').props.coordinate.latitude).toBe(13.21);
+  expect(view.getByTestId('device-location-marker').props.tracksViewChanges).toBe(false);
   mockLiveFix = null;
   await view.rerender(screen({ fromGps: true }));
   expect(view.queryByTestId('device-location-accuracy')).toBeNull();

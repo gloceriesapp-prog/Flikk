@@ -24,7 +24,7 @@ import { BlurView } from 'expo-blur';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -44,7 +44,7 @@ import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
 import { LocationRequestGate } from '../../location/requestGate';
 import { useLiveLocation } from '../../location/useLiveLocation';
 import { getDeviceLocationFix, getRecentDeviceFix } from '../../location/deviceLocation';
-import { DeliveryPinArtwork, DELIVERY_PIN_SIZE, DELIVERY_PIN_TIP, LiveLocationPin } from './components/LiveLocationPin';
+import { DeliveryPinArtwork, DELIVERY_PIN_SIZE, DELIVERY_PIN_TIP, LiveLocationPin, LiveLocationHalo } from './components/LiveLocationPin';
 import { withDeadline } from '../../utils/deadline';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLocationStore } from '../../store/useLocationStore';
@@ -619,13 +619,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
         >
           {followingDevice && dotCoordinate && <LiveLocationPin coordinate={dotCoordinate} />}
           {liveFix && dotCoordinate ? (
-            <>
-              <Marker testID="device-location-marker" coordinate={dotCoordinate} anchor={{ x: 0.5, y: 0.5 }} flat zIndex={1}>
-                {/* One decorative halo; GPS accuracy remains in the location
-                    data rather than adding another overlapping circle. */}
-                <View testID="device-location-halo" style={styles.userLocationHalo} />
-              </Marker>
-            </>
+            <LiveLocationHalo coordinate={dotCoordinate} />
           ) : null}
         </MapView>}
         {!mapLoaded && <MapLoadingState key={`loading-${mapAttempt}`} onRetry={retryMap} />}
@@ -895,12 +889,3 @@ export function LocationSearchScreen({ navigation, route }: Props) {
     </DismissKeyboardView>
   );
 }
-
-const styles = StyleSheet.create({
-  userLocationHalo: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(20,71,230,0.14)',
-  },
-});
