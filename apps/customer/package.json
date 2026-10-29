@@ -75,6 +75,7 @@
     "start:dev-client": "expo start --dev-client --lan",
     "verify:release": "node scripts/verify-release.cjs",
     "verify:ios-privacy": "node scripts/verify-ios-privacy.cjs",
+    "verify:ios-symbols": "node scripts/collect-ios-symbols.cjs",
     "eas-build-post-install": "node scripts/eas-build-post-install.cjs",
     "test": "jest"
   },

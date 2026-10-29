@@ -1,6 +1,6 @@
 import { Marker } from 'react-native-maps';
 import { useEffect, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import type { Coordinates } from '../../../location/geocoding';
 
 // Existing Gloceries artwork for the manual pin overlay. Bundling it keeps
@@ -33,3 +33,27 @@ export function LiveLocationPin({ coordinate }: { coordinate: Coordinates }) {
     </Marker>
   );
 }
+
+// A custom Google marker otherwise snapshots its view continuously, even
+// though this halo never changes. Allow the initial native layout to draw,
+// then stop snapshot tracking; coordinate updates still move the marker.
+export function LiveLocationHalo({ coordinate }: { coordinate: Coordinates }) {
+  const [laidOut, setLaidOut] = useState(false);
+  const [tracking, setTracking] = useState(true);
+  useEffect(() => {
+    if (!laidOut) return;
+    const timer = setTimeout(() => setTracking(false), 250);
+    return () => clearTimeout(timer);
+  }, [laidOut]);
+  return (
+    <Marker testID="device-location-marker" coordinate={coordinate}
+      anchor={{ x: 0.5, y: 0.5 }} flat zIndex={1} tracksViewChanges={tracking}>
+      <View testID="device-location-halo" collapsable={false}
+        onLayout={() => setLaidOut(true)} style={styles.halo} />
+    </Marker>
+  );
+}
+
+const styles = StyleSheet.create({
+  halo: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(20,71,230,0.14)' },
+});
