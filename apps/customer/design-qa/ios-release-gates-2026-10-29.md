@@ -40,11 +40,17 @@ The user approved replacing the local test installation, including possible loca
 
 Current source validation: 51 customer suites / 320 tests pass; TypeScript, focused ESLint and git diff checks pass. The location test verifies initial halo tracking, stopping after layout, and continued GPS movement with tracking off. Backend focused tests remain 33 passing; symbol collector tests remain 3 passing.
 
+Follow-up: after resetting the stalled runner, the controlled native-build-8 baseline visibly opened Google Maps and measured 264672 KB at 11:18:42 UTC and 276128 KB at 11:20:00 UTC. Only one Gloceries process was present. The public production OTA endpoint returned HTTP 204 for the exact iOS runtime, so no remote update was available in that check. These baseline observations do not reproduce the prior unbounded memory growth and do not establish the halo as its sole cause.
+
+A further packaging discrepancy was found: the temporary candidate's export was plain JavaScript, while the archive baseline uses optimized Hermes bytecode version 98. Earlier cross-variant memory comparisons are therefore not conclusive. Recompiled the candidate with the project's matching Hermes compiler (250829098.0.17, bytecode 98), verified its development signature, and continued the comparison with matching formats. The production archive/IPA remains untouched.
+
 ## Refund blocker
 
 One guarded retry against the dedicated local database and Razorpay test key still returned HTTP 400 BAD_REQUEST_ERROR, `invalid request sent`. The captured sandbox payment is INR 63 and has no provider refund. The durable request retains its original idempotency key and frozen amount. Do not repeatedly retry, replace that key, or run a live refund without authorization. The current request shape matches the documented idempotent refund API, so a code defect has not been established.
 
 Latest read-only recheck confirmed captured=true, amount=6300 paise, method=netbanking, and zero provider refunds; the local job was failed at six attempts. A subsequent diagnostic retry stopped at its local-database guard because Docker had shut down after the Mac disk filled. It did not reach the provider. Docker logs explicitly reported `no space left on device`; reinstallable caches were cleared, but the engine's restart controls remained stuck. User assistance reopening Docker is pending. No containers or volumes were deleted and no live refund was attempted.
+
+Docker recovery subsequently succeeded after force-stopping only its already-stalled backend and starting the installed Desktop application. The dashboard and CLI report Engine running; existing database/storage volumes remain intact and the sandbox containers are healthy. The prepared guarded retry then reached Razorpay and again returned HTTP 400, BAD_REQUEST_ERROR, `invalid request sent`; source, step and reason were all NA. The provider supplied no x-razorpay-request-id header. No live refund was attempted. The remaining refund blocker is now the provider rejection, not Docker availability.
 
 ## Exact-build payment return
 
@@ -59,3 +65,13 @@ npm run verify:ios-symbols -- --archive /path/Gloceries.xcarchive --search-root 
 ```
 
 The collector refuses mismatched UUIDs and exits unsuccessfully if any embedded framework lacks matching symbols. Preserve the actual vendor dSYMs rather than generating placeholder symbols from stripped binaries.
+
+## Resumed physical checks and support escalation
+
+The matching-Hermes native-build-8 candidate visibly opened Google Maps and measured 332896 KB resident memory at 2026-10-29 13:51:58 UTC. Reviewer sign-in succeeded. Two map openings were verified; synthesized panning produced a visible map change, but the accessibility tree cannot independently confirm the pan distance or recenter result. The third opening's accessibility wait timed out and is not counted as a pass. Returning to the location onboarding screen was visually verified. No new Gloceries crash reports were present after this test. This is a limited diagnostic result, not exact TestFlight verification or proof that the original crash is resolved.
+
+Two earlier CPU-resource reports at 15:08 and 15:13 local time were also found. The latter reports 57% CPU averaged over 159 seconds, with no OS action taken. Matching Hermes dSYMs resolve the sampled stack to Runtime::drainJobs, generatorPrototypeResume and interpreter calls. These native frames do not identify the responsible JavaScript source or prove the map is the cause.
+
+The signed-in Razorpay test dashboard independently confirms the INR 63 payment is captured with no refund. Its refund form exposes no actionable explanation for the API's generic rejection; no dashboard refund was submitted. After explicit user approval for the redacted diagnostic and existing support contact, Razorpay support ticket #21602384 was successfully created. Razorpay's confirmation estimates a status update in 4-8 business hours. No live financial action was performed.
+
+Host storage fell below 300 MB free during testing. Further archive creation and large traces were held to avoid another disk-full shutdown. Rebuildable browser disk/update caches were selected for cleanup; release archives, original IPAs, source, signing keys and database volumes are preserved.
