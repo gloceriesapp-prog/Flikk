@@ -78,6 +78,9 @@ module.exports = {
         // can prefer it over Apple Maps; without this iOS silently reports it
         // as unavailable and we always fall back to Apple Maps.
         LSApplicationQueriesSchemes: ['comgooglemaps'],
+        // Only HTTPS (exempt encryption), so App Store Connect stops asking
+        // the export-compliance question on every upload.
+        ITSAppUsesNonExemptEncryption: false,
       },
       // Undefined when the key is unset is a valid, supported state — Expo
       // just skips Google Maps setup on iOS then (Apple Maps fallback).
