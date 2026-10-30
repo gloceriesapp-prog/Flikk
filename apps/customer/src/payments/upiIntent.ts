@@ -16,10 +16,11 @@ export const DIRECT_UPI_UNAVAILABLE = 'UPI app payments are unavailable on this 
 
 // Recheck at the action boundary, before creating an order or a provider attempt.
 // A cached UI flag alone cannot guarantee that the backend configuration matches.
-export async function assertDirectUpiConfigured(method: PaymentMethod): Promise<void> {
+export async function assertDirectUpiConfigured(method: PaymentMethod) {
   assertDirectUpiAvailable(method);
   const availability = await fetchPaymentAvailability();
   if (!availability.online || availability.upi_intent !== true) throw new Error(DIRECT_UPI_UNAVAILABLE);
+  return availability;
 }
 
 function selectedApp(method: PaymentMethod) {

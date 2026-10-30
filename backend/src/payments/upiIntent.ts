@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { env } from '../config/env.js';
 import type { Response, NextFunction } from 'express';
 import type { AuthedRequest } from '../middleware/auth.js';
 import { supabase } from '../db/supabase.js';
@@ -62,9 +63,10 @@ export async function createUpiIntent(req: AuthedRequest, res: Response, next: N
     // Correcting a missing profile field must not strand the checkout claim.
     const { data: customer, error: customerError } = await supabase.from('users').select('phone').eq('id', customerId).single();
     if (customerError || !customer) throw new AppError(503, 'PAYMENT_RECOVERY_UNAVAILABLE', 'Could not load your payment details.');
-    const email = await readPaymentEmail(customerId);
+    // Optional-email merchants send no email, including no synthetic login address.
+    const email = env.razorpayUpiEmailOptional ? undefined : await readPaymentEmail(customerId);
     const contact = typeof customer.phone === 'string' ? customer.phone.replace(/^\+/, '') : '';
-    if (!email)
+    if (!email && !env.razorpayUpiEmailOptional)
       throw new AppError(409, 'PAYMENT_EMAIL_REQUIRED', 'Add your email address for the payment receipt to pay with UPI.');
     if (!/^\d{10,15}$/.test(contact))
       throw new AppError(409, 'PAYMENT_CONTACT_REQUIRED', 'Add a valid phone number in Profile to pay with UPI.');
@@ -90,7 +92,7 @@ export async function createUpiIntent(req: AuthedRequest, res: Response, next: N
     if (payments.some(payment => payment.status !== 'failed'))
       throw new AppError(409, 'PAYMENT_RECONCILING', 'A previous payment is still being confirmed.');
     const notes: Record<string, string> = target.kind === 'trip' ? { gloceries_trip_id: target.id } : { gloceries_order_id: target.id };
-    const intent = await createProviderUpiIntent({ providerOrderId: order.id, amountPaise: order.amount, email, contact,
+    const intent = await createProviderUpiIntent({ providerOrderId: order.id, amountPaise: order.amount, ...(email ? { email } : {}), contact,
       notes, ip: req.ip, userAgent: req.get('user-agent')?.slice(0, 1024) });
     if (!/^pay_[A-Za-z0-9]+$/.test(intent.razorpay_payment_id) || !isValidUpiIntentUrl(intent.link, order.amount))
       throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'The payment provider returned an invalid UPI instruction.');

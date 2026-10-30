@@ -10,6 +10,8 @@ import type { PaymentMethod } from '../payments/paymentMethod';
 export interface PaymentAvailability {
   online: boolean;
   upi_intent?: boolean;
+  // Absent on older servers: keep their existing contact requirement.
+  upi_email_optional?: boolean;
   cod: boolean;
   min_order_value: number;
 }
