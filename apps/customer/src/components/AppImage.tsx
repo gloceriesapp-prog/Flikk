@@ -29,10 +29,17 @@
 import { Image as ExpoImage, type ImageProps as ExpoImageProps, type ImageContentFit } from 'expo-image';
 import { cssInterop } from 'nativewind';
 import { useState } from 'react';
+import { AppState } from 'react-native';
 import { API_BASE_URL } from '../api/baseUrl';
 import { publicImageFallback } from './media/publicImageFallback';
 
 cssInterop(ExpoImage, { className: 'style' });
+
+// Decoded photos (800x800 product WebP is ~2.6 MB each in RAM) pile up in
+// expo-image's memory cache across a long browse. When the OS warns that
+// memory is low, drop the decoded copies (they reload from disk instantly)
+// instead of letting iOS kill the app (Sentry CUSTOMER-APP-4/-5).
+AppState.addEventListener('memoryWarning', () => { void ExpoImage.clearMemoryCache(); });
 
 const RESIZE_MODE_TO_CONTENT_FIT = {
   cover: 'cover',
@@ -80,13 +87,14 @@ export function AppImage({ resizeMode, contentFit, transition = 200, cachePolicy
   );
 }
 
-// Warms expo-image's disk/memory cache for URLs the user hasn't tapped
+// Warms expo-image's disk cache for URLs the user hasn't tapped
 // into view yet — e.g. ProductCard.tsx calling this for a product's
 // "similar products" photos as soon as that query resolves, well before
 // the detail sheet (which is what actually renders them) ever mounts. A
 // no-op for anything already cached; fire-and-forget, no loading state to
-// track since nothing here is rendered directly.
+// track since nothing here is rendered directly. Disk only: warming the
+// memory cache would decode every photo into RAM before it is ever shown.
 export function prefetchImages(uris: (string | undefined)[]) {
   const real = uris.filter((uri): uri is string => Boolean(uri));
-  if (real.length > 0) void ExpoImage.prefetch([...new Set(real)], 'memory-disk').catch(() => { /* Prefetch is optional; rendering can retry normally. */ });
+  if (real.length > 0) void ExpoImage.prefetch([...new Set(real)], 'disk').catch(() => { /* Prefetch is optional; rendering can retry normally. */ });
 }

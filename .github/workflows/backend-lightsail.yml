@@ -177,7 +177,9 @@ jobs:
         env: {HOST: "${{ secrets.LIGHTSAIL_HOST }}"}
         run: |
           for i in $(seq 1 20); do
-            code=$(curl -fsS -o /dev/null -w '%{http_code}' --resolve "${{ vars.API_DOMAIN }}:443:$HOST" "https://${{ vars.API_DOMAIN }}/" || true)
+            # Through Cloudflare, like real clients: the host's 80/443 accept
+            # only Cloudflare's ranges, so a direct check from this runner fails.
+            code=$(curl -fsS -o /dev/null -w '%{http_code}' "https://${{ vars.API_DOMAIN }}/" || true)
             [ "$code" = "200" ] && echo "API healthy" && exit 0
             sleep 6
           done
