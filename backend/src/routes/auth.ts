@@ -96,7 +96,7 @@ const verifyOtpHandler: RequestHandler = async (req, res, next) => {
     const { phone, code, app } = req.body as { phone?: string; code?: string; app?: string };
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new AppError(400, 'INVALID_OTP', 'phone and code are required.');
     const canonical = normalizePhone(phone);
-    if (!checkLoginOtp(canonical, code)) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
+    if (!(await checkLoginOtp(canonical, code))) throw new AppError(401, 'OTP_INVALID', 'Invalid or expired code.');
     const dashboardPartnerId = app === 'partner_dashboard' ? await requireDashboardPartner(canonical) : null;
 
     // One phone, one app: reject a number pinned to a DIFFERENT app before we
@@ -130,7 +130,7 @@ const verifyOtpHandler: RequestHandler = async (req, res, next) => {
     }
     if (app === 'partner_dashboard' && userRow?.role !== 'store_owner') throw partnerDashboardDenied();
     // Failed sign-in/role checks leave the code available for a valid retry.
-    consumeLoginOtp(canonical);
+    await consumeLoginOtp(canonical);
     const { count } = await supabase.from('stores').select('id', { count: 'exact', head: true }).eq('owner_user_id', userId);
     // A real `stores` row only ever exists post-approval now (see
     // storeOnboarding.ts's own note) — a returning applicant with no store

@@ -140,6 +140,7 @@ jobs:
           TAG: ${{ github.sha }}
           KNOWN_HOSTS: ${{ secrets.LIGHTSAIL_KNOWN_HOSTS }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SENTRY_DSN: ${{ secrets.BACKEND_SENTRY_DSN }}
         run: |
           set -euo pipefail
           [[ -n "$SSH_KEY" && -n "$KNOWN_HOSTS" && "$HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
@@ -159,6 +160,13 @@ jobs:
           "$connected" || { echo 'SSH connection could not be verified'; exit 1; }
           ssh "${opts[@]}" ubuntu@"$HOST" "mkdir -p /opt/gloceries/releases/$TAG"
           scp "${opts[@]}" backend/deploy/lightsail/{docker-compose.yml,Caddyfile,deploy.sh} "ubuntu@$HOST:/opt/gloceries/releases/$TAG/"
+          # Backend Sentry DSN lives in the BACKEND_SENTRY_DSN repo secret and is
+          # written into the host's .env (replacing any older line) before the
+          # containers restart. Sent on stdin, never in the command or logs.
+          if [[ -n "${SENTRY_DSN:-}" ]]; then
+            printf '%s' "$SENTRY_DSN" | ssh "${opts[@]}" ubuntu@"$HOST" \
+              "set -eu; read -r dsn || true; [[ \"\$dsn\" =~ ^https://[A-Za-z0-9]+@[A-Za-z0-9.-]+/[0-9]+\$ ]] || { echo 'BACKEND_SENTRY_DSN is not a Sentry DSN'; exit 1; }; umask 077; f=/opt/gloceries/.env; { grep -v '^SENTRY_DSN=' \"\$f\" || true; printf 'SENTRY_DSN=%s\\n' \"\$dsn\"; } > \"\$f.next\"; mv \"\$f.next\" \"\$f\""
+          fi
           # Ephemeral job token: no persistent registry PAT on the host.
           # The token is sent on stdin, never in the remote command or logs.
           printf '%s' "$GHCR_TOKEN" | ssh "${opts[@]}" ubuntu@"$HOST" \

@@ -17,6 +17,7 @@ import express from 'express';
 import { pinoHttp } from 'pino-http';
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
+import { initSentry } from './observability/sentry.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { shortCache } from './middleware/shortCache.js';
 import { authRouter } from './routes/auth.js';
@@ -63,6 +64,7 @@ import { uploadBodyDeadline } from './security/bodyDeadline.js';
 import { requestAdmission, concurrentAdmission } from './security/admission.js';
 import { UPLOAD_PATHS, uploadAdmission, ordinaryJson, productUploadRole } from './security/parsers.js';
 
+initSentry('api');
 const app = express();
 let shuttingDown = false;
 app.use(measureHttp);

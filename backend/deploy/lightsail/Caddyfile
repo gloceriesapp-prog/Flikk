@@ -1,8 +1,25 @@
 # HTTPS for the API. Caddy gets and renews the Let's Encrypt certificate
 # for API_DOMAIN (e.g. api.gloceries.com) once its DNS A record points at
-# the instance's static IP.
+# the instance's static IP. Works the same with Cloudflare's proxy (orange
+# cloud) on or off; with it on, set Cloudflare SSL mode to "Full (strict)".
+{
+	servers {
+		# Keep X-Forwarded-For only when the request came through Cloudflare
+		# (https://www.cloudflare.com/ips/). Anyone else hitting the origin
+		# directly gets their own IP, so the API's per-IP limits can't be
+		# dodged with a forged header. Update if Cloudflare adds ranges.
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+	}
+}
+
 {$API_DOMAIN} {
-	reverse_proxy api:3000 {
+	reverse_proxy api-a:3000 api-b:3000 {
+		lb_policy least_conn
+		# A replica that is restarting (deploy) or crashed refuses the
+		# connection; retry the other one instead of failing the request.
+		lb_try_duration 10s
+		lb_try_interval 250ms
+		fail_duration 30s
 		# Home-content updates are an SSE stream: send each event at once.
 		flush_interval -1
 	}

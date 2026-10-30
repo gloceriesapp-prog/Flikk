@@ -123,7 +123,11 @@ commit=$(basename "$(readlink -f current)")
 bash "current/deploy.sh" "$commit"
 ```
 
-This is a single host: releases can briefly interrupt in-memory OTP sessions and
-SSE connections. Snapshots protect the host, not the external Supabase database.
+This is a single host running two API replicas (api-a, api-b). deploy.sh
+restarts them one at a time and Caddy retries the other replica meanwhile, so
+releases don't drop requests; open SSE streams on the restarting replica
+reconnect. Login codes live in Postgres (migration 20261030100000), so any
+replica can finish a sign-in. The host itself is still one machine: a host
+failure takes the API down until it restarts or a snapshot is restored. Snapshots protect the host, not the external Supabase database.
 Test restore separately and keep database backups. No deploy automatically runs
 schema migrations, deletes Railway or prunes rollback images.

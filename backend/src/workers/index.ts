@@ -2,6 +2,8 @@ import { startMonitoring } from '../observability/runtime.js';
 import { startWorker, startQueueConsumer } from './runner.js';
 import { jobs, queues } from './jobs.js';
 import { logger } from '../lib/logger.js';
+import { initSentry, flushSentry } from '../observability/sentry.js';
+initSentry('worker');
 import { closeDatabaseConnections, supabase } from '../db/supabase.js';
 const { data: ready, error: readinessError } = await supabase.rpc('background_worker_ready');
 if (readinessError || ready !== true) {
@@ -21,7 +23,7 @@ function shutdown(signal: string) {
   stopping = true;
   logger.info({ signal }, 'Worker draining');
   const deadline = setTimeout(() => process.exit(1), 15000);
-  void stop().then(closeDatabaseConnections).catch(err => {
+  void stop().then(closeDatabaseConnections).then(flushSentry).catch(err => {
     logger.error({ err }, 'Worker shutdown failed'); process.exitCode = 1;
   }).finally(() => clearTimeout(deadline));
 }
