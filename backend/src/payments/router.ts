@@ -29,7 +29,8 @@ paymentsRouter.get('/availability', async (_req, res, next) => {
     const availability = await getPaymentAvailability();
     res.setHeader('Cache-Control', 'no-store');
     res.json({ online: availability.online, cod: availability.cod, min_order_value: availability.minOrderValue,
-      upi_intent: availability.online && env.razorpayEnv === 'live' });
+      upi_intent: availability.online && env.razorpayEnv === 'live',
+      upi_email_optional: env.razorpayUpiEmailOptional && env.razorpayEnv === 'live' });
   } catch (error) { next(error); }
 });
 paymentsRouter.get('/wallets', requirePaymentsConfigured, requireOnlinePaymentsOpen, async (_req, res, next) => {

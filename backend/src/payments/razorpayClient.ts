@@ -64,15 +64,17 @@ export function requireLiveUpiIntent(mode: string = env.razorpayEnv): void {
     'UPI app payments require live Razorpay keys. Test-mode payments must use the Razorpay test checkout simulator.');
 }
 export function createProviderUpiIntent(input: {
-  providerOrderId: string; amountPaise: number; email: string; contact: string;
+  providerOrderId: string; amountPaise: number; email?: string; contact: string;
   notes: Record<string, string>; ip?: string; userAgent?: string;
 }) {
   requireLiveUpiIntent();
   if (!/^order_[A-Za-z0-9]+$/.test(input.providerOrderId) || !Number.isSafeInteger(input.amountPaise) || input.amountPaise <= 0)
     throw new Error('Invalid UPI payment target');
+  if (!input.email && !env.razorpayUpiEmailOptional)
+    throw new AppError(409, 'PAYMENT_EMAIL_REQUIRED', 'Add your email address for the payment receipt to pay with UPI.');
   return call<RazorpayUpiIntent>('POST', '/payments/create/upi', {
     amount: input.amountPaise, currency: 'INR', order_id: input.providerOrderId,
-    email: input.email, contact: input.contact, method: 'upi', upi: { flow: 'intent' },
+    ...(input.email ? { email: input.email } : {}), contact: input.contact, method: 'upi', upi: { flow: 'intent' },
     description: 'Gloceries order', notes: input.notes,
     ...(input.ip ? { ip: input.ip } : {}), ...(input.userAgent ? { user_agent: input.userAgent } : {}),
   });

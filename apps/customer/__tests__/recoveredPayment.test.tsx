@@ -2,16 +2,17 @@ import { act, renderHook } from '@testing-library/react-native';
 import { AppState, Platform } from 'react-native';
 import { useRecoveredPayment } from '../src/screens/payment-method/useRecoveredPayment';
 import { abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment } from '../src/api/payments';
-import { prepareUpiIntent } from '../src/payments/upiIntent';
+import { assertDirectUpiConfigured, prepareUpiIntent } from '../src/payments/upiIntent';
 import { openRazorpayCheckout } from '../src/payments/openRazorpayCheckout';
-jest.mock('../src/payments/usePaymentReceiptEmail', () => ({ usePaymentReceiptEmail: () => ({ requestEmail: async () => 'test@example.com', emailForm: null }) }));
+const mockRequestEmail = jest.fn(async () => 'test@example.com');
+jest.mock('../src/payments/usePaymentReceiptEmail', () => ({ usePaymentReceiptEmail: () => ({ requestEmail: mockRequestEmail, emailForm: null }) }));
 const mockReplace = jest.fn(), mockRefetch = jest.fn();
 let mockEpoch = 1;
 const mockRecovery = { data: { state: 'unpaid', canResumeUpiIntent: false, record: { total: 63 } }, isFetchedAfterMount: true, isFetching: false, isError: false, refetch: mockRefetch };
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('@tanstack/react-query', () => ({ useQuery: () => mockRecovery }));
 jest.mock('../src/api/payments', () => ({ abandonCheckout: jest.fn(), createPaymentOrder: jest.fn(), recoverPayment: jest.fn(), verifyPayment: jest.fn() }));
-jest.mock('../src/payments/upiIntent', () => ({ ...jest.requireActual('../src/payments/upiIntent'), prepareUpiIntent: jest.fn() }));
+jest.mock('../src/payments/upiIntent', () => ({ ...jest.requireActual('../src/payments/upiIntent'), prepareUpiIntent: jest.fn(), assertDirectUpiConfigured: jest.fn() }));
 jest.mock('../src/payments/openRazorpayCheckout', () => ({ openRazorpayCheckout: jest.fn() }));
 jest.mock('../src/store/useAuthStore', () => ({ useAuthStore: Object.assign(
   (selector: (state: unknown) => unknown) => selector({ customerId: 'customer' }),
@@ -24,6 +25,7 @@ afterEach(() => Object.defineProperty(Platform, 'OS', { configurable: true, valu
 beforeEach(() => {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' });
   jest.clearAllMocks(); mockEpoch = 1;
+  jest.mocked(assertDirectUpiConfigured).mockResolvedValue({ online: true, cod: true, min_order_value: 0, upi_intent: true });
   mockRecovery.isFetchedAfterMount = true; mockRecovery.isFetching = false; mockRecovery.isError = false;
   mockRecovery.data.state = 'unpaid'; mockRecovery.data.canResumeUpiIntent = false;
   Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'active' });
@@ -132,4 +134,18 @@ it.each([true, false])('enables the pending UPI chooser only when the backend re
   const hook = await renderHook(() => useRecoveredPayment(target, navigation));
   expect(hook.result.current.canResumeUpi).toBe(allowed);
   expect(hook.result.current.canPay).toBe(allowed);
+});
+
+it('skips the email form for Android only when the server explicitly permits omission', async () => {
+  jest.mocked(assertDirectUpiConfigured).mockResolvedValue({ online: true, cod: true, min_order_value: 0, upi_intent: true, upi_email_optional: true });
+  const hook = await renderHook(() => useRecoveredPayment(target, navigation));
+  await act(() => hook.result.current.select('upi_app:phonepe'));
+  expect(mockRequestEmail).not.toHaveBeenCalled();
+  expect(prepareUpiIntent).toHaveBeenCalledWith(target, 'upi_app:phonepe');
+  expect(mockReplace).toHaveBeenCalledWith('PaymentProcessing', expect.objectContaining({ target }));
+});
+it('keeps the contact step for legacy Android servers without the optional-email capability', async () => {
+  const hook = await renderHook(() => useRecoveredPayment(target, navigation));
+  await act(() => hook.result.current.select('upi_app:phonepe'));
+  expect(mockRequestEmail).toHaveBeenCalledTimes(1);
 });
