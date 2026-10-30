@@ -1,19 +1,28 @@
 import { AppState } from 'react-native';
+import { prefetchImages } from '../src/components/AppImage';
 
 const mockPrefetch = jest.fn(() => Promise.resolve(true));
 const mockClearMemoryCache = jest.fn(() => Promise.resolve(true));
+
 jest.mock('expo-image', () => ({
-  Image: Object.assign(() => null, { prefetch: mockPrefetch, clearMemoryCache: mockClearMemoryCache }),
+  // Wrapped: the factory runs before the mock fns above are initialised.
+  Image: Object.assign(() => null, {
+    prefetch: (...args: unknown[]) => mockPrefetch(...(args as [])),
+    clearMemoryCache: () => mockClearMemoryCache(),
+  }),
 }));
-
-const listeners: Record<string, () => void> = {};
-jest.spyOn(AppState, 'addEventListener').mockImplementation(((type: string, cb: () => void) => {
-  listeners[type] = cb;
-  return { remove: jest.fn() };
-}) as never);
-
-// Loaded after the spy so its module-level memory-warning listener is captured.
-const { prefetchImages } = require('../src/components/AppImage') as typeof import('../src/components/AppImage');
+// Captures AppImage's module-level memory-warning listener (jest.mock is hoisted above the import).
+jest.mock('react-native', () => {
+  const actual = jest.requireActual('react-native');
+  // Lives inside the factory: it runs before this file's own consts exist.
+  const listeners: Record<string, () => void> = {};
+  actual.AppState.addEventListener = (type: string, cb: () => void) => {
+    listeners[type] = cb;
+    return { remove: jest.fn() };
+  };
+  actual.AppState.testListeners = listeners;
+  return actual;
+});
 
 describe('AppImage memory use', () => {
   it('prefetches to disk only, deduplicated, so nothing is decoded into RAM early', () => {
@@ -22,7 +31,7 @@ describe('AppImage memory use', () => {
   });
 
   it('drops decoded images when the OS reports low memory', () => {
-    listeners.memoryWarning();
+    (AppState as unknown as { testListeners: Record<string, () => void> }).testListeners.memoryWarning();
     expect(mockClearMemoryCache).toHaveBeenCalledTimes(1);
   });
 });
