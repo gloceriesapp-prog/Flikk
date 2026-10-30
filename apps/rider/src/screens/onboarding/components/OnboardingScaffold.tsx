@@ -10,12 +10,13 @@
 // "how far along" at a glance.
 
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { DismissKeyboardView } from '../../../components/DismissKeyboardView';
 import { colors } from '../../../theme/tokens';
+import { KeyboardAvoider } from '../../../components/KeyboardAvoider';
 
 // Pure white onboarding surface — no grey page tint. Fields define
 // themselves with a light border + faint fill instead of sitting on raised
@@ -43,7 +44,7 @@ export function OnboardingScaffold({ step, totalSteps = WIZARD_TOTAL_STEPS, titl
 
   return (
     <DismissKeyboardView>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: PAGE_BG }}>
+      <KeyboardAvoider style={{ backgroundColor: PAGE_BG }}>
         {/* Dark status-bar icons for the white onboarding surface, both
             platforms (expo-status-bar maps to Android too). */}
         <StatusBar style="dark" />
@@ -79,7 +80,7 @@ export function OnboardingScaffold({ step, totalSteps = WIZARD_TOTAL_STEPS, titl
         </ScrollView>
 
         <View className="bg-white px-6 pb-safe-offset-4 pt-3">{footer}</View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoider>
     </DismissKeyboardView>
   );
 }

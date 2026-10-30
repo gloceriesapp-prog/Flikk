@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { Alert, Pressable, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -17,6 +17,7 @@ import { ApiError } from '../../api/client';
 import { useAuthStore } from '../../store/useAuthStore';
 import { roleMismatchMessage } from '../../utils/roleGuard';
 import type { AuthStackParamList } from '../../navigation/types';
+import { KeyboardAvoider } from '../../components/KeyboardAvoider';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
 
@@ -98,10 +99,7 @@ export function OtpVerificationScreen({ navigation, route }: Props) {
 
   return (
     <DismissKeyboardView>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1 bg-white"
-      >
+      <KeyboardAvoider style={{ backgroundColor: '#fff' }}>
         <StatusBar style="dark" />
         <View className="flex-1 px-6 pb-safe-offset-6 pt-safe-offset-4">
           <Pressable
@@ -139,7 +137,7 @@ export function OtpVerificationScreen({ navigation, route }: Props) {
 
           <PrimaryButton label="Verify code" onPress={handleVerify} loading={loading} disabled={code.length !== 6} tone="blue" />
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoider>
     </DismissKeyboardView>
   );
 }
