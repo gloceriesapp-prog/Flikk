@@ -600,6 +600,10 @@
     {
       "file": "20261028090000_home_picks_dairy_newest.sql",
       "sha256": "1055d84143a7eea5490e149226b39d1689fd069fa3db6e30c375fc76ba43f390"
+    },
+    {
+      "file": "20261030100000_login_otps_shared.sql",
+      "sha256": "5475e9476b178ed0a703fbeae7e99b3646fdab64d9ad56dad625fe9810be21e6"
     }
   ]
 }

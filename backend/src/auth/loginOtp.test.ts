@@ -3,10 +3,33 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const db = vi.hoisted(() => {
   const maybeSingle = vi.fn();
   const query = { select: () => query, in: () => query, limit: () => query, maybeSingle };
+  // In-memory stand-in for public.login_otps + check_login_otp (same rules as the SQL).
+  type Row = { phone: string; code_hash: string; expires_at: string; attempts: number };
+  const otps = new Map<string, Row>();
+  const otpTable = {
+    upsert: async (row: Row) => { otps.set(row.phone, { ...row }); return { error: null }; },
+    delete: () => ({
+      eq: async (_col: string, phone: string) => { otps.delete(phone); return { error: null }; },
+      lt: (_col: string, cutoff: string) => {
+        for (const [k, r] of otps) if (r.expires_at < cutoff) otps.delete(k);
+        return Promise.resolve({ error: null });
+      },
+    }),
+  };
+  const rpc = vi.fn(async (_fn: string, a: { p_phone: string; p_code_hash: string; p_now: string; p_max_attempts: number }) => {
+    const r = otps.get(a.p_phone);
+    if (!r) return { data: false, error: null };
+    if (r.expires_at <= a.p_now) { otps.delete(a.p_phone); return { data: false, error: null }; }
+    if (r.code_hash === a.p_code_hash) return { data: true, error: null };
+    if (r.attempts + 1 >= a.p_max_attempts) otps.delete(a.p_phone); else r.attempts += 1;
+    return { data: false, error: null };
+  });
   return {
     maybeSingle,
+    otps,
     supabase: {
-      from: vi.fn(() => query),
+      from: vi.fn((table: string) => (table === 'login_otps' ? otpTable : query)),
+      rpc,
       auth: { admin: { createUser: vi.fn(), listUsers: vi.fn(), updateUserById: vi.fn(), getUserById: vi.fn() } },
     },
     supabaseAuth: { auth: { signInWithPassword: vi.fn() } },
@@ -21,6 +44,7 @@ let sent: string[] = [];
 beforeEach(() => {
   vi.clearAllMocks();
   resetLoginOtpsForTests();
+  db.otps.clear();
   sent = [];
   vi.stubEnv('MSG91_AUTH_KEY', 'test-auth-key');
   vi.stubEnv('MSG91_OTP_TEMPLATE_ID', 'template-1');
@@ -36,39 +60,53 @@ describe('login OTP', () => {
     await requestLoginOtp(phone);
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatch(/^\d{6}$/);
-    expect(checkLoginOtp(phone, sent[0])).toBe(true);
+    expect(await checkLoginOtp(phone, sent[0])).toBe(true);
     // A sign-in failure after a correct code: the same code works again.
-    expect(checkLoginOtp(phone, sent[0])).toBe(true);
-    consumeLoginOtp(phone);
-    expect(checkLoginOtp(phone, sent[0])).toBe(false);
+    expect(await checkLoginOtp(phone, sent[0])).toBe(true);
+    await consumeLoginOtp(phone);
+    expect(await checkLoginOtp(phone, sent[0])).toBe(false);
   });
 
   it('a wrong code does not spoil the right one', async () => {
     await requestLoginOtp(phone);
     const wrong = sent[0] === '000000' ? '111111' : '000000';
-    expect(checkLoginOtp(phone, wrong)).toBe(false);
-    expect(checkLoginOtp(phone, sent[0])).toBe(true);
+    expect(await checkLoginOtp(phone, wrong)).toBe(false);
+    expect(await checkLoginOtp(phone, sent[0])).toBe(true);
   });
 
   it('only the latest code works, valid for 10 minutes', async () => {
     const t = 1_000_000;
     await requestLoginOtp(phone, t);
     await requestLoginOtp(phone, t);
-    if (sent[0] !== sent[1]) expect(checkLoginOtp(phone, sent[0], t)).toBe(false);
-    expect(checkLoginOtp(phone, sent[1], t + 9 * 60_000)).toBe(true);
-    expect(checkLoginOtp(phone, sent[1], t + 10 * 60_000)).toBe(false);
+    if (sent[0] !== sent[1]) expect(await checkLoginOtp(phone, sent[0], t)).toBe(false);
+    expect(await checkLoginOtp(phone, sent[1], t + 9 * 60_000)).toBe(true);
+    expect(await checkLoginOtp(phone, sent[1], t + 10 * 60_000)).toBe(false);
   });
 
   it('locks the code after 5 wrong attempts', async () => {
     await requestLoginOtp(phone);
     const wrong = sent[0] === '000000' ? '111111' : '000000';
-    for (let i = 0; i < 5; i += 1) expect(checkLoginOtp(phone, wrong)).toBe(false);
-    expect(checkLoginOtp(phone, sent[0])).toBe(false);
+    for (let i = 0; i < 5; i += 1) expect(await checkLoginOtp(phone, wrong)).toBe(false);
+    expect(await checkLoginOtp(phone, sent[0])).toBe(false);
   });
 
   it('fails the request (and stores nothing) when MSG91 rejects the SMS', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ type: 'error', message: 'Invalid template' })));
     await expect(requestLoginOtp(phone)).rejects.toMatchObject({ code: 'OTP_SEND_FAILED' });
+    expect(db.otps.size).toBe(0);
+  });
+
+  it('stores only a hash, and a code sent by one replica verifies on another', async () => {
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'shared-secret');
+    await requestLoginOtp(phone);
+    expect(db.otps.get(phone)?.code_hash).not.toContain(sent[0]);
+    resetLoginOtpsForTests(); // a different process: pepper re-derived from the shared secret
+    expect(await checkLoginOtp(phone, sent[0])).toBe(true);
+  });
+
+  it('answers AUTH_UNAVAILABLE when the code store is down', async () => {
+    db.supabase.rpc.mockResolvedValueOnce({ data: null, error: { message: 'connection refused' } } as never);
+    await expect(checkLoginOtp(phone, '123456')).rejects.toMatchObject({ code: 'AUTH_UNAVAILABLE' });
   });
 
   it('logs the code instead of failing in local development without MSG91 keys', async () => {
@@ -88,8 +126,8 @@ describe('login OTP', () => {
     vi.stubEnv('NODE_ENV', 'development');
     await requestLoginOtp('+919100000001');
     expect(fetch).not.toHaveBeenCalled();
-    expect(checkLoginOtp('+919100000001', '123456')).toBe(true);
-    expect(checkLoginOtp('+919100000001', '654321')).toBe(false);
+    expect(await checkLoginOtp('+919100000001', '123456')).toBe(true);
+    expect(await checkLoginOtp('+919100000001', '654321')).toBe(false);
   });
 
   it('has no built-in test numbers in production, only LOGIN_TEST_OTPS', () => {

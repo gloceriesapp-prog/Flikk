@@ -1,24 +1,30 @@
-# Gloceries backend on one Lightsail instance (Mumbai): API + worker + Caddy.
+# Gloceries backend on one Lightsail instance (Mumbai): 2 API replicas + worker + Caddy.
 # Lives at /opt/gloceries on the server, next to `.env` (secrets, chmod 600)
 # and `Caddyfile`. Deploys set TAG to the commit's image tag:
 #   TAG=<sha> docker compose pull && TAG=<sha> docker compose up -d
 services:
-  api:
+  # Two identical API replicas (api-a, api-b) behind Caddy. Login codes live in
+  # Postgres (auth/loginOtp.ts), so either replica can finish any sign-in.
+  # deploy.sh restarts them one at a time, so a release never takes the API
+  # down, and a crash in one replica leaves the other serving.
+  api-a: &api
     image: ghcr.io/gloceriesapp-prog/flikk-backend:${TAG:?set the immutable release commit}
     env_file: .env
     environment:
       NODE_ENV: production
       PORT: "3000"
-      # Caddy is the only proxy in front of the API.
-      TRUST_PROXY_HOPS: "1"
+      # Client -> [Cloudflare] -> Caddy -> API. Caddy only keeps an incoming
+      # X-Forwarded-For from Cloudflare's ranges (Caddyfile), so 2 hops gives
+      # the real client IP whether or not Cloudflare proxying is switched on.
+      TRUST_PROXY_HOPS: "2"
       METRICS_HOST: "127.0.0.1"
       METRICS_PORT: "9464"
+      RELEASE_SHA: ${TAG}
+      # Two replicas share a 2 GB host with the worker and Caddy.
+      NODE_OPTIONS: "--max-old-space-size=448"
     expose: ["3000"]
     restart: unless-stopped
-    # Exactly one API: pending login codes live in this process (auth/loginOtp.ts).
-    deploy:
-      replicas: 1
-    mem_limit: 900m
+    mem_limit: 600m
     init: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
@@ -33,6 +39,8 @@ services:
       driver: json-file
       options: {max-size: "20m", max-file: "5"}
 
+  api-b: *api
+
   worker:
     image: ghcr.io/gloceriesapp-prog/flikk-backend:${TAG:?set the immutable release commit}
     command: ["node", "dist/workers/index.js"]
@@ -41,6 +49,7 @@ services:
       NODE_ENV: production
       METRICS_HOST: "127.0.0.1"
       METRICS_PORT: "9465"
+      RELEASE_SHA: ${TAG}
     restart: unless-stopped
     mem_limit: 512m
     init: true
@@ -65,7 +74,9 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      api:
+      api-a:
+        condition: service_healthy
+      api-b:
         condition: service_healthy
     mem_limit: 192m
     restart: unless-stopped

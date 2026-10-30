@@ -26,6 +26,9 @@ done
 ln -s "$APP_DIR/releases/$old" "$APP_DIR/current"
 bash "$script_dir/deploy.sh" "$new"
 [[ $(readlink "$APP_DIR/current") == "$APP_DIR/releases/$new" ]]
+# Rolling order: api-a, then api-b, then everything else.
+order=$(grep -o -E 'up -d --no-deps --wait --wait-timeout 180 api-[ab]|up -d --wait --wait-timeout 180 --remove-orphans' "$DEPLOY_LOG" | tr '\n' '|')
+[[ "$order" == 'up -d --no-deps --wait --wait-timeout 180 api-a|up -d --no-deps --wait --wait-timeout 180 api-b|up -d --wait --wait-timeout 180 --remove-orphans|' ]] || { echo "Unexpected rollout order: $order"; exit 1; }
 : > "$DEPLOY_LOG"
 if FAIL_TAG="$bad" bash "$script_dir/deploy.sh" "$bad"; then echo 'Expected failed readiness'; exit 1; fi
 [[ $(readlink "$APP_DIR/current") == "$APP_DIR/releases/$new" ]]

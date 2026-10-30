@@ -17,7 +17,14 @@ compose() { docker compose --project-name gloceries --project-directory "$RELEAS
 # run here: schema changes must be backward compatible and approved separately.
 compose config --quiet
 compose pull
-if ! compose up -d --wait --wait-timeout 180; then
+# Rolling: replace one API replica at a time (Caddy retries the other while it
+# restarts), then the worker and Caddy, and drop services no longer defined.
+release_up() {
+  compose up -d --no-deps --wait --wait-timeout 180 api-a &&
+  compose up -d --no-deps --wait --wait-timeout 180 api-b &&
+  compose up -d --wait --wait-timeout 180 --remove-orphans
+}
+if ! release_up; then
   echo 'Release failed readiness checks; restoring the previous release'
   if [[ -n "$previous" && -f "$previous/docker-compose.yml" ]]; then
     export TAG=${previous##*/}

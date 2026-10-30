@@ -5,6 +5,7 @@
 // actually wants to ingest — pretty-printing there would just make every
 // line harder to grep/parse.
 import pino, { type LoggerOptions } from 'pino';
+import { reportError } from '../observability/sentry.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -22,8 +23,11 @@ export function safeError(error: unknown) {
 
 export const loggerOptions: LoggerOptions = {
   hooks: {
-    logMethod(args, method) {
+    logMethod(args, method, level) {
       if (args[0] instanceof Error) args[0] = { err: args[0] };
+      // error (50) and fatal (60) lines with an error also go to Sentry.
+      if (level >= 50 && args[0] && typeof args[0] === 'object' && 'err' in args[0])
+        reportError((args[0] as { err: unknown }).err, typeof args[1] === 'string' ? args[1] : undefined);
       if (args[0] && typeof args[0] === 'object' && 'err' in args[0] && args.length === 1)
         args.push('Operation failed'); // Pino otherwise copies raw err.message into msg.
       method.apply(this, args);

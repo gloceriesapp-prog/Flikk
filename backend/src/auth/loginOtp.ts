@@ -8,10 +8,11 @@
 // project and a laptop) and shared its secret; any of those failing showed
 // up as "We couldn't send a code" with nothing in this backend's logs.
 //
-// Pending codes live in this process (hashed, 10 minutes, 5 wrong tries). The API
-// runs as one replica; a restart or deploy just means "send the code again".
+// Pending codes live in Postgres (public.login_otps: hashed, 10 minutes, 5
+// wrong tries, migration 20261030100000), so any API replica can check a code
+// another one sent, and deploys don't wipe codes people are typing in.
 // Delivery OTPs at the doorstep are separate (lib/deliveryOtp.ts).
-import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, randomInt } from 'node:crypto';
 import { supabase, supabaseAuth } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
@@ -21,13 +22,17 @@ import { phoneVariants } from '../lib/phone.js';
 export const CODE_TTL_MINUTES = 10;
 const CODE_TTL_MS = CODE_TTL_MINUTES * 60_000;
 const MAX_ATTEMPTS = 5;
-const MAX_PENDING = 10_000;
-const pepper = randomBytes(32);
 
-interface Pending { hash: Buffer; expiresAt: number; attempts: number }
-const pending = new Map<string, Pending>();
-
-const hashCode = (phone: string, code: string) => createHmac('sha256', pepper).update(`${phone}:${code}`).digest();
+// Every replica must hash the same code the same way, so the pepper comes from
+// a server-only secret they all share (never stored next to the hashes).
+// LOGIN_OTP_PEPPER overrides it; tests/local without either get a random one.
+let pepper: Buffer | undefined;
+function otpPepper(): Buffer {
+  const secret = process.env.LOGIN_OTP_PEPPER || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  pepper ??= secret ? createHmac('sha256', secret).update('gloceries-login-otp-v1').digest() : randomBytes(32);
+  return pepper;
+}
+const hashCode = (phone: string, code: string) => createHmac('sha256', otpPepper()).update(`${phone}:${code}`).digest('hex');
 const isProduction = () => process.env.NODE_ENV === 'production';
 const maskPhone = (phone: string) => `${phone.slice(0, 5)}*****${phone.slice(-2)}`;
 
@@ -46,15 +51,14 @@ export function testOtps(raw = process.env.LOGIN_TEST_OTPS): Map<string, string>
   return map;
 }
 
-function prune(now: number) {
-  for (const [phone, entry] of pending) if (entry.expiresAt <= now) pending.delete(phone);
-  while (pending.size >= MAX_PENDING) pending.delete(pending.keys().next().value as string);
-}
+const storeUnavailable = (step: string, error: { message?: string } | null) => {
+  logger.error({ step, reason: error?.message?.slice(0, 200) }, 'Login OTP store unavailable');
+  return new AppError(503, 'AUTH_UNAVAILABLE', 'Sign-in is temporarily unavailable. Please try again in a moment.');
+};
 
 /** Sends a fresh login code to `phone` (canonical +91XXXXXXXXXX). */
 export async function requestLoginOtp(phone: string, now = Date.now()): Promise<void> {
   if (testOtps().has(phone)) return;
-  prune(now);
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
   const config = msg91Config();
   if (!config.authKey || !config.templateId) {
@@ -77,7 +81,14 @@ export async function requestLoginOtp(phone: string, now = Date.now()): Promise<
       throw new AppError(502, 'OTP_SEND_FAILED', 'We couldn’t send a code. Please try again shortly.');
     }
   }
-  pending.set(phone, { hash: hashCode(phone, code), expiresAt: now + CODE_TTL_MS, attempts: 0 });
+  // Replaces any earlier code for this phone: only the latest one works.
+  const { error } = await supabase.from('login_otps').upsert({
+    phone, code_hash: hashCode(phone, code), expires_at: new Date(now + CODE_TTL_MS).toISOString(), attempts: 0,
+  });
+  if (error) throw storeUnavailable('save code', error);
+  // Housekeeping: expired codes are useless; best effort, never blocks login.
+  void supabase.from('login_otps').delete().lt('expires_at', new Date(now).toISOString())
+    .then(({ error: pruneError }) => { if (pruneError) logger.warn({ reason: pruneError.message }, 'Login OTP prune failed'); });
 }
 
 /**
@@ -86,19 +97,23 @@ export async function requestLoginOtp(phone: string, now = Date.now()): Promise<
  * only by consumeLoginOtp() once the session exists, so a sign-in failure
  * after a correct code can be retried with the same code.
  */
-export function checkLoginOtp(phone: string, code: string, now = Date.now()): boolean {
+export async function checkLoginOtp(phone: string, code: string, now = Date.now()): Promise<boolean> {
   const testCode = testOtps().get(phone);
   if (testCode !== undefined) return code === testCode;
-  const entry = pending.get(phone);
-  if (!entry || entry.expiresAt <= now) { pending.delete(phone); return false; }
-  if (timingSafeEqual(entry.hash, hashCode(phone, code))) return true;
-  entry.attempts += 1;
-  if (entry.attempts >= MAX_ATTEMPTS) pending.delete(phone);
-  return false;
+  // One atomic row-locked check in the database (attempt counting included).
+  const { data, error } = await supabase.rpc('check_login_otp', {
+    p_phone: phone, p_code_hash: hashCode(phone, code), p_now: new Date(now).toISOString(), p_max_attempts: MAX_ATTEMPTS,
+  });
+  if (error) throw storeUnavailable('check code', error);
+  return data === true;
 }
 
 /** Called after a successful sign-in: the code cannot be used again. */
-export function consumeLoginOtp(phone: string) { pending.delete(phone); }
+export async function consumeLoginOtp(phone: string): Promise<void> {
+  const { error } = await supabase.from('login_otps').delete().eq('phone', phone);
+  // The session already exists; a leftover row just expires in 10 minutes.
+  if (error) logger.warn({ reason: error.message }, 'Login OTP consume failed');
+}
 
 const authDigits = (phone: string) => phone.replace(/\D/g, '');
 
@@ -232,4 +247,4 @@ export async function sessionForVerifiedPhone(phone: string) {
   return result;
 }
 
-export function resetLoginOtpsForTests() { pending.clear(); }
+export function resetLoginOtpsForTests() { pepper = undefined; }
