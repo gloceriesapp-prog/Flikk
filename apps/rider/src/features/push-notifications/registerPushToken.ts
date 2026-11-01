@@ -31,7 +31,9 @@ async function ensureAndroidChannels(): Promise<void> {
     name: 'Delivery offers',
     description: 'New pickups near you and orders assigned to you.',
     importance: Notifications.AndroidImportance.MAX,
-    sound: 'default',
+    // No `sound` key: the channel then plays the system notification sound.
+    // A string here names a bundled sound file, so 'default' made
+    // expo-notifications log "Custom sound 'default' not found".
     vibrationPattern: [0, 500, 250, 500, 250, 500],
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     enableVibrate: true,

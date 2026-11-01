@@ -4,7 +4,7 @@
 // pill. Light palette to match the liquid-glass bar — ink icon+label when
 // active on a black/10 highlight, muted ink when not.
 
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { AppIcon } from '../AppIcon';
 import { IconlyBankCard, IconlyHome, IconlyNotification, IconlyOrders } from '../icons/iconly';
 import type { NavTab } from './data';
@@ -15,12 +15,20 @@ interface Props {
   onPress: () => void;
 }
 
+// Android's flat full-width bar: equal-width tabs, no highlight box — the
+// active tab reads from its filled icon + ink label alone.
+const IS_ANDROID = Platform.OS === 'android';
+
 export function BottomNavBarItem({ tab, isActive, onPress }: Props) {
   const color = isActive ? '#101C10' : '#101C1099';
   return (
-    <Pressable onPress={onPress} className="items-center px-0">
+    <Pressable onPress={onPress} className={IS_ANDROID ? 'flex-1 items-center' : 'items-center px-0'}>
       <View
-        className={`h-[54px] w-[78px] items-center justify-center gap-1 rounded-full ${isActive ? 'bg-black/10' : 'bg-transparent'}`}
+        className={
+          IS_ANDROID
+            ? 'h-[54px] items-center justify-center gap-1'
+            : `h-[54px] w-[78px] items-center justify-center gap-1 rounded-full ${isActive ? 'bg-black/10' : 'bg-transparent'}`
+        }
       >
         {/* Home/Orders/Notifications have real filled/outline glyphs; other tabs stroke-render via AppIcon. */}
         {tab.id === 'Home' ? (
@@ -34,7 +42,7 @@ export function BottomNavBarItem({ tab, isActive, onPress }: Props) {
         ) : (
           <AppIcon icon={tab.icon} size={20} color={color} />
         )}
-        <Text className={`text-[11px] font-medium ${isActive ? 'text-ink' : 'text-ink/60'}`}>{tab.label}</Text>
+        <Text className={`text-[11px] ${isActive ? 'font-semibold text-ink' : 'font-medium text-ink/60'}`}>{tab.label}</Text>
       </View>
     </Pressable>
   );
