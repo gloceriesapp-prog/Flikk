@@ -10,13 +10,13 @@ import { useCallback } from 'react';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClientProvider, onlineManager } from '@tanstack/react-query';
+import { QueryClientProvider, focusManager, onlineManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 import { wireOnlineManager, createNetInfoSubscriber, onlineStore } from './src/network/online';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Platform, View } from 'react-native';
+import { AppState, Platform, View } from 'react-native';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { GILROY_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -66,6 +66,14 @@ wireOnlineManager(onlineManager, (setOnline) =>
     onlineStore.setOnline(online);
   }),
 );
+
+// React Native has no window focus: without this, react-query treats the app
+// as always focused, so refetchInterval polls with refetchIntervalInBackground:
+// false kept running while backgrounded and nothing refreshed on return.
+focusManager.setEventListener(handleFocus => {
+  const subscription = AppState.addEventListener('change', state => handleFocus(state === 'active'));
+  return () => subscription.remove();
+});
 
 function App() {
   useAuthStore(state => state.sessionEpoch);
