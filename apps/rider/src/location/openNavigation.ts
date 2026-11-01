@@ -10,6 +10,7 @@
 
 import { Alert, Linking, Platform } from 'react-native';
 import type { Coordinates } from './riderLocation';
+import { track } from '../analytics/track';
 
 function isRealCoord(c: Coordinates | null | undefined): c is Coordinates {
   return (
@@ -31,6 +32,8 @@ export async function openNavigation(coords: Coordinates | null | undefined, lab
     return;
   }
   const { latitude: lat, longitude: lng } = coords;
+  // No label in props: it can be the customer's name.
+  track('navigation_opened');
 
   if (Platform.OS === 'android') {
     // google.navigation: is Android-only and Maps is effectively always present.

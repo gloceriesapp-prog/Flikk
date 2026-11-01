@@ -61,6 +61,7 @@ import { todayKey } from '../utils/date';
 import { carryOverActiveMs } from '../utils/activeTime';
 import { loopPlan, normalizeAppState } from './presenceLoops';
 import { newOfferIds } from '../features/push-notifications/offerPush';
+import { track } from '../analytics/track';
 
 export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'picked_up', 'arrived_at_customer', 'delivered'];
 
@@ -535,6 +536,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     // ping. goOnline only ever runs foregrounded (a tap, or the boot resume),
     // so this is always the foreground case.
     startForegroundPing();
+    track('went_online');
     return true;
   },
 
@@ -554,6 +556,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
   },
 
   goOffline: () => {
+    if (get().isOnline) track('went_offline');
     set((state) => {
       // Bank this session's elapsed time into today's total, then freeze
       // (onlineSince cleared → useActiveMsToday adds nothing live). Persist

@@ -26,6 +26,7 @@ import { SlideToConfirmButton } from '../../components/SlideToConfirmButton';
 import { colors, shadow } from '../../theme/tokens';
 import { DeliveryMapView } from './components/DeliveryMapView';
 import { openNavigation } from '../../location/openNavigation';
+import { track } from '../../analytics/track';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
 import type { Coordinates } from '../../location/riderLocation';
 import type { AppStackParamList } from '../../navigation/types';
@@ -160,6 +161,7 @@ export function DeliveryNavigationScreen({
       return;
     }
 
+    track('customer_called', { order_id: order.id });
     void Linking.openURL(
       `tel:${order.customerPhone}`
     );

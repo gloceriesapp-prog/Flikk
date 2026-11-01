@@ -32,6 +32,7 @@ import { CancelOrderModal } from './components/CancelOrderModal';
 import { DeliveryFailureModal } from './components/DeliveryFailureModal';
 import { DeliveryMapView } from './components/DeliveryMapView';
 import { openNavigation } from '../../location/openNavigation';
+import { track } from '../../analytics/track';
 import type { AppStackParamList } from '../../navigation/types';
 import type { RiderOrder } from '../../data/mockOrders';
 import { usePackingLabel } from '../../hooks/usePackingLabel';
@@ -291,7 +292,10 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             {/* The server withholds the number once a delivery is finished. */}
             {order.customerPhone ? (
               <Pressable
-                onPress={() => void Linking.openURL(`tel:${order.customerPhone}`)}
+                onPress={() => {
+                  track('customer_called', { order_id: order.id });
+                  void Linking.openURL(`tel:${order.customerPhone}`);
+                }}
                 className="h-[56px] w-[56px] items-center justify-center rounded-2xl border border-gray-200"
               >
                 <AppIcon icon={Call02Icon} size={20} color={colors.ink} />

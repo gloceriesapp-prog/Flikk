@@ -604,6 +604,10 @@
     {
       "file": "20261030100000_login_otps_shared.sql",
       "sha256": "5475e9476b178ed0a703fbeae7e99b3646fdab64d9ad56dad625fe9810be21e6"
+    },
+    {
+      "file": "20261101120000_rider_events.sql",
+      "sha256": "b39bb0d0744b842194534cf75c7cc76235731d541251e8c91399622949245d70"
     }
   ]
 }
