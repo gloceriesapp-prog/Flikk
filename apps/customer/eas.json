@@ -24,7 +24,7 @@
       "env": {
         "APP_ENV": "production",
         "SENTRY_ORG": "gloceries",
-        "SENTRY_PROJECT": "react-native"
+        "SENTRY_PROJECT": "customer-app"
       }
     },
     "production": {
@@ -34,7 +34,7 @@
       "env": {
         "APP_ENV": "production",
         "SENTRY_ORG": "gloceries",
-        "SENTRY_PROJECT": "react-native"
+        "SENTRY_PROJECT": "customer-app"
       }
     }
   },
