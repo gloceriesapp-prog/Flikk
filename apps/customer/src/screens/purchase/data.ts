@@ -1,6 +1,6 @@
 // Real order history for the Purchase tab — mapped from ApiOrder
 // (api/orders.ts, GET /orders) into this screen's own display shape.
-// PurchaseOrder.id is the real order_number ("FLK-100042") for a
+// PurchaseOrder.id is the real order_number ("GLO-6691-1885") for a
 // single-store order, or a trip-derived label for a multi-store one, shown
 // to the customer; orderId is the real UUID PK (or trip_id for a trip),
 // used only for navigation (TrackOrder's own route param).

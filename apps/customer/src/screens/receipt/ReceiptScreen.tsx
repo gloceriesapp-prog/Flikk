@@ -21,7 +21,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Receipt'>;
 
 export function ReceiptScreen({ navigation, route }: Props) {
   const { orderId: realOrderId, orderNumber, amount, items, paymentMethodLabel, placedAt, estimatedDeliveryMinutes, estimatedDeliveryAt, isTrip, deliveryAddress } = route.params;
-  // Real orders.order_number ("FLK-100042"), shown as-is — no "#" prefix,
+  // Real orders.order_number ("GLO-6691-1885"), shown as-is — no "#" prefix,
   // matching exactly what the partner app and TrackOrderScreen display for
   // the same order. This used to be a locally-sliced fragment of the UUID
   // PK ("#0272FCC6") that looked like an order id but wasn't the same

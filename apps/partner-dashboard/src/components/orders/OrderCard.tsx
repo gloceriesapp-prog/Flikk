@@ -44,7 +44,7 @@ export function OrderCard({ order, now, ...h }: { order: PartnerOrder; now: numb
               aria-label={`Open order ${order.order_number}`}
               className="tnum shrink-0 rounded text-[15px] font-semibold text-ink hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              #{order.order_number}
+              {order.order_number}
             </button>
             <span className="truncate text-sm text-slate-500">{customerName(order)}</span>
           </h3>

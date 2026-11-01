@@ -49,14 +49,14 @@ describe('admin cash on delivery routes', () => {
       { id: COLLECTION, rider_id: RIDER, order_id: 'o1', trip_id: null, amount: '200.00', collected_at: '2026-10-07T08:00:00Z', settled_at: null, settlement_ref: null },
     ];
     mocks.tables.riders = [{ user_id: RIDER, name: 'Ravi', phone: '+919000000002' }];
-    mocks.tables.orders = [{ id: 'o1', order_number: 'FLK-1001' }];
+    mocks.tables.orders = [{ id: 'o1', order_number: 'GLO-0000-1001' }];
     const response = await GET(new Request('http://localhost/api/cash-collections'));
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(mocks.rpc).toHaveBeenCalledWith('rider_cash_outstanding');
     expect(body.riders).toEqual([{ riderId: RIDER, riderName: 'Ravi', riderPhone: '+919000000002', outstandingAmount: 250,
       outstandingCount: 2, oldestCollectedAt: '2026-10-07T08:00:00Z', outstandingIds: [COLLECTION] }]);
-    expect(body.collections[0]).toMatchObject({ id: COLLECTION, riderName: 'Ravi', orderLabel: 'FLK-1001', amount: 200, isTrip: false, settledAt: null });
+    expect(body.collections[0]).toMatchObject({ id: COLLECTION, riderName: 'Ravi', orderLabel: 'GLO-0000-1001', amount: 200, isTrip: false, settledAt: null });
   });
 
   it.each([

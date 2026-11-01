@@ -26,7 +26,7 @@ export interface PartnerOrder {
   // action callback (markPacked, rejectOrder, acknowledgeOrder) actually
   // use. Never rendered as text — orderNumber is what's shown.
   id: string;
-  // Real orders.order_number ("FLK-100042") — what OrderCard/
+  // Real orders.order_number ("GLO-6691-1885") — what OrderCard/
   // OrderDetailScreen display instead of the raw UUID above.
   orderNumber: string;
   customerName: string;
@@ -113,7 +113,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
   return [
     {
       id: 'sample-order-1',
-      orderNumber: 'FLK-100042',
+      orderNumber: 'GLO-6691-1885',
       customerName: 'Ramesh Shetty',
       items: [
         { name: 'Toor Dal', quantity: 1, unit: '1 kg', price: 145, imageUrl: null },
@@ -136,7 +136,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
     },
     {
       id: 'sample-order-2',
-      orderNumber: 'FLK-100041',
+      orderNumber: 'GLO-9577-4782',
       customerName: 'Anitha Poojary',
       items: [{ name: 'Basmati Rice', quantity: 1, unit: '5 kg', price: 460, imageUrl: null }],
       total: 490,
@@ -155,7 +155,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
     },
     {
       id: 'sample-order-3',
-      orderNumber: 'FLK-100039',
+      orderNumber: 'GLO-9004-2409',
       customerName: 'Prakash Kamath',
       items: [
         { name: 'Colgate Toothpaste', quantity: 1, unit: '150 g', price: 89, imageUrl: null },
@@ -177,7 +177,7 @@ export function buildSampleOrders(now: number = Date.now()): PartnerOrder[] {
     },
     {
       id: 'sample-order-4',
-      orderNumber: 'FLK-100037',
+      orderNumber: 'GLO-0157-5233',
       customerName: 'Divya Rao',
       items: [{ name: 'Aashirvaad Atta', quantity: 1, unit: '5 kg', price: 285, imageUrl: null }],
       total: 315,
@@ -210,7 +210,7 @@ let simulatedOrderCounter = 0;
 
 export function buildSimulatedIncomingOrder(now: number = Date.now()): PartnerOrder {
   simulatedOrderCounter += 1;
-  const orderNumber = `FLK-${100050 + simulatedOrderCounter}`;
+  const orderNumber = `GLO-0000-${String(simulatedOrderCounter).padStart(4, '0')}`;
   return {
     id: `sample-sim-${now}-${simulatedOrderCounter}`,
     orderNumber,

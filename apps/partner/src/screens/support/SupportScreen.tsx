@@ -130,7 +130,7 @@ export function SupportScreen() {
                 {(orders.data ?? []).map((order) => (
                   <Pressable key={order.id} onPress={() => setOrderId(order.id)} className={`rounded-full px-3.5 py-2 ${orderId === order.id ? 'bg-ink' : 'bg-[#F1F1F4]'}`}>
                     <Text className={`text-[13px] font-semibold ${orderId === order.id ? 'text-white' : 'text-ink'}`}>
-                      #{order.order_number ?? order.id.slice(0, 8).toUpperCase()}{order.stores?.name ? ` · ${order.stores.name}` : ''}
+                      {order.order_number ?? order.id.slice(0, 8).toUpperCase()}{order.stores?.name ? ` · ${order.stores.name}` : ''}
                     </Text>
                   </Pressable>
                 ))}

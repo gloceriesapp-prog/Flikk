@@ -29,7 +29,7 @@ INSERT INTO stores(id,owner_user_id,zone_id,name,category,district,phone,lat,lng
 INSERT INTO addresses(id,user_id,line1,zone_id) VALUES('00000000-0000-4000-8000-00000000cb01','00000000-0000-4000-8000-00000000cc01','1 Controls Road','00000000-0000-4000-8000-00000000ca00');
 INSERT INTO orders(id,customer_id,store_id,address_id,item_total,delivery_fee,commission_amount,total,payment_method,status,order_number)
  VALUES('00000000-0000-4000-8000-00000000c101','00000000-0000-4000-8000-00000000cc01','00000000-0000-4000-8000-00000000cf01',
-  '00000000-0000-4000-8000-00000000cb01',100,20,6,120,'cod','placed','FLK-777');
+  '00000000-0000-4000-8000-00000000cb01',100,20,6,120,'cod','placed','GLO-0000-0777');
 -- Replica-mode COD fixtures bypass the production visibility trigger.
 UPDATE orders SET store_visible_at=now(),acceptance_deadline_at=now()+interval '10 minutes'
  WHERE payment_method='cod' AND store_visible_at IS NULL;
@@ -79,7 +79,7 @@ DO $$ BEGIN
  PERFORM admin_update_notification_template('packed','Packed: {order_number}','Order {order_number} is ready to go.','admin@example.com');
  UPDATE orders SET status='packed' WHERE id='00000000-0000-4000-8000-00000000c101';
  IF (SELECT title||'|'||body FROM customer_notifications WHERE order_id='00000000-0000-4000-8000-00000000c101' AND event='packed')
-   <>'Packed: FLK-777|Order FLK-777 is ready to go.' THEN RAISE EXCEPTION 'Template not used by trigger'; END IF;
+   <>'Packed: GLO-0000-0777|Order GLO-0000-0777 is ready to go.' THEN RAISE EXCEPTION 'Template not used by trigger'; END IF;
  IF (SELECT count(*) FROM admin_control_audit WHERE action='notification_template_update' AND target_id='packed')<>1 THEN RAISE EXCEPTION 'Template edit not audited'; END IF;
  -- A missing template row falls back to the original wording.
  SET LOCAL session_replication_role=replica;

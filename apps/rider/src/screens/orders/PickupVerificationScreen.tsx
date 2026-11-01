@@ -144,7 +144,7 @@ export function PickupVerificationScreen({ route, navigation }: Props) {
         >
           <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
         </Pressable>
-        <Text className="text-[17px] font-semibold text-ink">Order #{order.orderNumber}</Text>
+        <Text className="text-[17px] font-semibold text-ink">Order {order.orderNumber}</Text>
         <View className="h-10 w-10 items-center justify-center rounded-full bg-white">
           <AppIcon icon={CustomerService01Icon} size={22} color={colors.ink} />
         </View>

@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     const body: SearchResult = {
       orders: ((orders.data ?? []) as unknown as OrderListRow[]).map((row) => {
         const order = mapOrderRow(row);
-        return { id: order.id, label: `#${order.orderNumber}`, detail: `${order.storeName} · ${order.status.replace(/_/g, ' ')}` };
+        return { id: order.id, label: order.orderNumber, detail: `${order.storeName} · ${order.status.replace(/_/g, ' ')}` };
       }),
       customers: ((customers.data ?? []) as { id: string; name: string | null; phone: string | null }[]).map((row) => ({
         id: row.id, label: row.name?.trim() || 'Unnamed customer', detail: row.phone ?? '',

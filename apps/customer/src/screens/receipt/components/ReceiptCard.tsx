@@ -7,7 +7,7 @@
 // ReceiptScreen.tsx).
 //
 // The barcode encodes the real order number (orders.order_number, e.g.
-// FLK-100042) via components/BarcodeSvg.tsx — real CODE128, scannable, and
+// GLO-6691-1885) via components/BarcodeSvg.tsx — real CODE128, scannable, and
 // the same id support/partner/admin look orders up by. No hosted
 // receipt page exists, so it deliberately encodes no URL.
 // (Originally tried react-native-barcode-builder — it renders through the

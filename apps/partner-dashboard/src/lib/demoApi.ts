@@ -21,8 +21,8 @@ const store: Store = {
   fssai_number: '12345678901234', pan_number: 'ABCDE1234F', phone: '+910000000000',
 };
 const reviews: PartnerReview[] = [
-  { id: 'demo-review-1', rating: 5, comment: 'Fresh vegetables and neatly packed essentials. Thank you!', created_at: new Date().toISOString(), owner_reply: null, owner_replied_at: null, users: { name: 'Sample customer' }, orders: { order_number: 'FLK-1042' } },
-  { id: 'demo-review-2', rating: 4, comment: 'Good selection and quick preparation.', created_at: new Date(Date.now() - 86400000).toISOString(), owner_reply: 'Thank you for shopping with us!', owner_replied_at: new Date().toISOString(), users: { name: 'Sample customer' }, orders: { order_number: 'FLK-1040' } },
+  { id: 'demo-review-1', rating: 5, comment: 'Fresh vegetables and neatly packed essentials. Thank you!', created_at: new Date().toISOString(), owner_reply: null, owner_replied_at: null, users: { name: 'Sample customer' }, orders: { order_number: 'GLO-0000-1042' } },
+  { id: 'demo-review-2', rating: 4, comment: 'Good selection and quick preparation.', created_at: new Date(Date.now() - 86400000).toISOString(), owner_reply: 'Thank you for shopping with us!', owner_replied_at: new Date().toISOString(), users: { name: 'Sample customer' }, orders: { order_number: 'GLO-0000-1040' } },
 ];
 
 const deletedDemoProducts = new Set<string>();
