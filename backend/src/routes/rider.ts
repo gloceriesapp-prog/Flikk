@@ -17,6 +17,8 @@ import { computeRiderStats } from '../lib/riderStats.js';
 import { DELIVERY_MONEY_COLUMNS, withDeliveryMoney, type DeliveryMoneyOrder } from '../lib/riderDeliveryMoney.js';
 import { readPrivateDocument } from '../media/privateDocuments.js';
 import { cashLimitError, exceedsCashLimit, riderCashLimit, unsettledCash } from '../lib/riderCashLimit.js';
+import { parseRiderEvents } from '../lib/riderEvents.js';
+import { TokenBudget } from '../security/admission.js';
 
 export const riderRouter = Router();
 
@@ -804,6 +806,31 @@ riderRouter.get('/stats', async (req: AuthedRequest, res, next) => {
     const ratings = (reviews ?? []).map((r) => Number(r.rating));
 
     res.json(computeRiderStats({ deliveredCount, failedCount, ratings }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Product analytics batches from apps/rider's src/analytics/track.ts (flushes
+// every 30s / on background). lib/riderEvents.ts allowlists and cleans every
+// event; 202 even when nothing survives so an older app never retries a
+// batch forever. Per-rider budget is in-process (no DB call per request) —
+// analytics loss under abuse is fine, unlike auth or payouts.
+// ponytail: per-replica budget, move to claim_auth_budget if it's ever abused across replicas.
+const eventBudget = new TokenBudget(10000, 6, 10);
+riderRouter.post('/events', async (req: AuthedRequest, res, next) => {
+  try {
+    const retry = eventBudget.claim(req.user!.id);
+    if (retry) {
+      res.set('Retry-After', String(retry));
+      throw new AppError(429, 'EVENTS_RATE_LIMITED', 'Too many analytics batches.');
+    }
+    const rows = parseRiderEvents(req.body, req.user!.id);
+    if (rows.length) {
+      const { error } = await supabase.from('rider_events').insert(rows);
+      if (error) throw error;
+    }
+    res.status(202).json({ accepted: rows.length });
   } catch (err) {
     next(err);
   }

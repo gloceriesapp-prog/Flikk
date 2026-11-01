@@ -131,3 +131,38 @@ replica can finish a sign-in. The host itself is still one machine: a host
 failure takes the API down until it restarts or a snapshot is restored. Snapshots protect the host, not the external Supabase database.
 Test restore separately and keep database backups. No deploy automatically runs
 schema migrations, deletes Railway or prunes rollback images.
+
+### Host failure: restore from snapshot
+
+What is in place (checked 2026-11-01):
+
+- Lightsail automatic snapshots of `gloceries-api`, daily at 05:30 IST, last 7 kept
+  (instance → Snapshots tab).
+- Supabase `gloceries-mumbai` is on Pro: daily physical backups, 7 days
+  (Database → Backups). These do not include Storage objects.
+- Sentry uptime monitor "Uptime check for api.gloceries.com" (project
+  `backend`): GET `https://api.gloceries.com/` every minute, an issue after 3
+  consecutive failures, emailed via the backend project's high-priority alert.
+
+When the alert fires and the instance is unreachable (Lightsail shows a failed
+status check, or browser SSH can't connect):
+
+1. Try a reboot first: instance → Reboot. Docker restarts every service
+   (`restart: unless-stopped`); wait for the uptime monitor to resolve.
+2. Still down: Snapshots tab → newest daily snapshot → ⋮ → Create new instance.
+   Same zone or `ap-south-1b`, same 2 GB plan, name `gloceries-api-restore`.
+3. Networking → static IP `gloceries-api-ip` → detach from the old instance,
+   attach to the new one. DNS and `LIGHTSAIL_HOST` keep pointing at
+   `15.252.56.122`, so nothing else changes.
+4. New instance → Networking: allow only 80 and 443 publicly, as above.
+5. Browser SSH into the new instance. The snapshot carries
+   `/opt/gloceries/.env`, `releases/` and the `current` link, so restart the
+   last good release with the Recovery commands above.
+6. Check `curl -s -o /dev/null -w '%{http_code}' https://api.gloceries.com/` is
+   200, sign in on a rider build, and watch the uptime monitor resolve.
+7. If the host key changed, update the `LIGHTSAIL_KNOWN_HOSTS` secret before the
+   next CI deploy. Rename instances once stable; delete the broken one last.
+
+Data written to Supabase is unaffected by a host loss. Restoring the database
+itself is a separate decision: Database → Backups → Restore replaces the whole
+database with that day's copy.

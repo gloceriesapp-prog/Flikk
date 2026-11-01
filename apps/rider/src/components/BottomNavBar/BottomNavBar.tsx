@@ -47,7 +47,9 @@ export function BottomNavBar({ state, navigation }: BottomTabBarProps) {
   if (activeRouteName === 'Profile') return null;
 
   const items = (
-    <View className="flex-row items-center px-1.5 py-1">
+    // Android: tabs split the full width evenly (each item is flex-1);
+    // iOS: content-width pill.
+    <View className={IS_ANDROID ? 'flex-row items-center px-2 pt-1.5 pb-1' : 'flex-row items-center px-1.5 py-1'}>
       {BOTTOM_NAV_TABS.map((tab) => (
         <BottomNavBarItem
           key={tab.id}

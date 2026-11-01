@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { Alert, Pressable, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
@@ -10,6 +10,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { colors } from '../../theme/tokens';
 import { requestOtp } from '../../api/auth';
 import type { AuthStackParamList } from '../../navigation/types';
+import { KeyboardAvoider } from '../../components/KeyboardAvoider';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -39,19 +40,15 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <DismissKeyboardView>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1 bg-white"
-      >
+      <KeyboardAvoider style={{ backgroundColor: '#fff' }}>
         <StatusBar style="dark" />
         <View className="flex-1 px-6 pb-safe-offset-6 pt-safe-offset-4">
-          <Pressable
-            onPress={() => navigation.goBack()}
-            hitSlop={20}
-            className="self-start"
-          >
-            <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
-          </Pressable>
+          {/* Login is the auth stack's root on a fresh install; a back arrow there would do nothing. */}
+          {navigation.canGoBack() && (
+            <Pressable onPress={() => navigation.goBack()} hitSlop={20} className="self-start">
+              <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+            </Pressable>
+          )}
 
           <View className="mt-6 flex-1 gap-6">
             <View className="gap-2">
@@ -64,7 +61,7 @@ export function LoginScreen({ navigation }: Props) {
 
           <PrimaryButton label="Verify" onPress={handleContinue} loading={loading} disabled={digits.length !== 10} tone="blue" />
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoider>
     </DismissKeyboardView>
   );
 }

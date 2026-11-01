@@ -41,6 +41,17 @@ import { RiderSuspendedScreen } from '../screens/onboarding/RiderSuspendedScreen
 import { flushPendingNotificationTap, registerPushToken, watchNotificationTaps, watchOfferPushes } from '../features/push-notifications/registerPushToken';
 import { loginGate } from './loginGate';
 import { navigationRef } from './navigationRef';
+import { startAnalytics, track } from '../analytics/track';
+
+// screen_viewed only when the focused route actually changes (onStateChange
+// also fires for param updates on the same screen).
+let lastTrackedScreen: string | undefined;
+function trackScreen() {
+  const screen = navigationRef.getCurrentRoute()?.name;
+  if (!screen || screen === lastTrackedScreen) return;
+  lastTrackedScreen = screen;
+  track('screen_viewed', { screen });
+}
 
 const WELCOME_DURATION_MS = 2000;
 
@@ -156,6 +167,12 @@ export function RootNavigator() {
     if (accessToken) void registerPushToken();
   }, [accessToken]);
 
+  // Analytics only for a rider who can use the app (POST /rider/events is
+  // behind requireApproved/requireActiveRider). Idempotent.
+  useEffect(() => {
+    if (accessToken && isUsableRider) startAnalytics();
+  }, [accessToken, isUsableRider]);
+
   // Offer/assignment pushes: refresh immediately when one lands in the
   // foreground, and open the right screen when one is tapped.
   useEffect(() => {
@@ -233,7 +250,14 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} onReady={flushPendingNotificationTap}>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        flushPendingNotificationTap();
+        trackScreen();
+      }}
+      onStateChange={trackScreen}
+    >
       {!accessToken ? (
         // Keyed by "anon" (a fixed, distinct key from the accessToken
         // branch below) — same remount-forcing trick apps/partner's own
