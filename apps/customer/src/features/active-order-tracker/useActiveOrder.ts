@@ -4,7 +4,9 @@
 // the Purchase tab already warms and reads (features/purchases/historyQuery
 // -> api/orders.ts GET /orders/history), so opening the app with the pill
 // mounted costs no extra DB read — just a light 30s poll to keep the pill
-// status/ETA fresh. Grouping + display mapping reuse screens/purchase/data's
+// status/ETA fresh, and only while an order is actually in flight (an idle
+// signed-in customer polls nothing; placing an order refetches this query —
+// features/purchases/invalidateHistory.ts). Grouping + display mapping reuse screens/purchase/data's
 // mapOrderGroup exactly, so the pill can never disagree with the Purchase
 // list about what an order's status/store/ETA is.
 //
@@ -14,8 +16,9 @@
 // for a multi-store trip, order UUID otherwise — mapOrderGroup's own split).
 
 import { useMemo } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/useAuthStore';
+import type { OrderHistoryPage } from '../../api/orders';
 import { purchaseHistoryOptions } from '../purchases/historyQuery';
 import { groupOrdersByTrip } from '../../utils/tripLegs';
 import { mapOrderGroup, type PurchaseOrder } from '../../screens/purchase/data';
@@ -49,21 +52,31 @@ function deadlineMsFor(order: PurchaseOrder): number | null {
   return Number.isFinite(eta) ? eta : null;
 }
 
+type HistoryData = InfiniteData<OrderHistoryPage> | undefined;
+
+function latestActive(data: HistoryData) {
+  // Newest-first first page already holds the most recent order; the pill
+  // never needs older pages, so we don't fetchNextPage.
+  const firstPage = data?.pages[0]?.items ?? [];
+  return groupOrdersByTrip(firstPage)
+    .map(mapOrderGroup)
+    .filter((order): order is PurchaseOrder & { status: ActiveOrderStatus } => isActiveStatus(order.status))
+    .sort((a, b) => new Date(b.placedAtIso).getTime() - new Date(a.placedAtIso).getTime())[0];
+}
+
 export function useActiveOrder(): ActiveOrder | null {
   const customerId = useAuthStore(state => state.customerId);
   // Default (unfiltered) params => the exact query key PurchaseScreen warms,
   // so this shares that cache instead of issuing its own read.
   const options = purchaseHistoryOptions(customerId);
-  const { data } = useInfiniteQuery({ ...options, refetchInterval: PILL_POLL_MS, refetchIntervalInBackground: false });
+  const { data } = useInfiniteQuery({
+    ...options,
+    refetchInterval: query => (latestActive(query.state.data) ? PILL_POLL_MS : false),
+    refetchIntervalInBackground: false,
+  });
 
   return useMemo(() => {
-    // Newest-first first page already holds the most recent order; the pill
-    // never needs older pages, so we don't fetchNextPage.
-    const firstPage = data?.pages[0]?.items ?? [];
-    const active = groupOrdersByTrip(firstPage)
-      .map(mapOrderGroup)
-      .filter((order): order is PurchaseOrder & { status: ActiveOrderStatus } => isActiveStatus(order.status))
-      .sort((a, b) => new Date(b.placedAtIso).getTime() - new Date(a.placedAtIso).getTime())[0];
+    const active = latestActive(data);
     if (!active) return null;
     return {
       orderId: active.orderId,

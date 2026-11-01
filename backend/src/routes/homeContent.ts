@@ -31,7 +31,7 @@ function broadcast(event: HomeEvent) {
   for (const res of broker.recipients(event)) send(res, event);
 }
 function contentChanged(type: 'content' | 'settings' | 'config') {
-  if (type === 'content') { invalidateShortCache('/stores'); invalidateShortCache('/categories'); invalidateShortCache('/category-sections'); }
+  if (type === 'content') { invalidateShortCache('/stores'); invalidateShortCache('/categories'); invalidateShortCache('/category-sections'); invalidateShortCache('/home/content'); }
   if (type === 'config') invalidateShortCache('/app-config');
   invalidateShortCache(type === 'content' ? '/home-tabs' : '/delivery-settings');
   broadcast({ type });
@@ -89,7 +89,7 @@ export function startHomeContentSync() {
       const id = (payload.new as { id?: string }).id ?? (payload.old as { id?: string }).id;
       if (id) invalidateAuthUser(id);
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'zones' }, () => { invalidateShortCache('/stores'); contentChanged('content'); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'zones' }, () => { invalidateShortCache('/stores'); invalidateShortCache('/zones'); contentChanged('content'); })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'inventory_signals' }, payload => inventoryChanged(payload.new))
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inventory_signals' }, payload => inventoryChanged(payload.new))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_settings' }, () => contentChanged('settings'));
@@ -117,6 +117,8 @@ export function startHomeContentSync() {
           invalidateShortCache('/app-config');
           invalidateShortCache('/delivery-settings');
           invalidateShortCache('/home-tabs');
+          invalidateShortCache('/home/content');
+          invalidateShortCache('/zones');
           for (const path of HOME_SECTION_CACHE_PATHS) invalidateShortCache(path);
           broadcast({ type: 'health', healthy, recovery: healthy });
           if (error) logger.warn({ code: error.code }, 'Inventory sync unavailable; apply migration 068. Customers use fallback refresh.');

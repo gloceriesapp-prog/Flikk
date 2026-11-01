@@ -46,7 +46,17 @@ const agent = new Agent({
   connections: 60,
 });
 
-const fetchWithAgent: typeof fetch = measureDatabaseFetch((input, init) => undiciFetch(input as never, { ...init, dispatcher: agent } as never) as never);
+// Every Supabase REST/Auth call gets a deadline: without one undici waits up
+// to 5 minutes, so a slow database piles requests up behind the 60 sockets
+// instead of failing them. supabase-js turns the abort into an { error }.
+// Aborting only drops the response; a write still commits or rolls back on
+// its own, and checkout/payment writes are idempotent on retry.
+const DATABASE_TIMEOUT_MS = 10_000;
+const fetchWithAgent: typeof fetch = measureDatabaseFetch((input, init) => {
+  const deadline = AbortSignal.timeout(DATABASE_TIMEOUT_MS);
+  const signal = init?.signal ? AbortSignal.any([init.signal, deadline]) : deadline;
+  return undiciFetch(input as never, { ...init, signal, dispatcher: agent } as never) as never;
+});
 
 // Service-role client: bypasses RLS. Backend-only, never shipped to any app.
 // Role-scoping is enforced in application code (see middleware/auth.ts) since

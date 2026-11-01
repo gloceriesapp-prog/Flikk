@@ -12,6 +12,7 @@ import { notificationsRouter } from './notifications/router.js';
 import { supportRouter } from './support/router.js';
 import { staffSupportRouter } from './support/staffRouter.js';
 import { customerRefundsRouter } from './support/refundsRouter.js';
+import { randomUUID } from 'node:crypto';
 import compression from 'compression';
 import express from 'express';
 import { pinoHttp } from 'pino-http';
@@ -66,7 +67,17 @@ import { UPLOAD_PATHS, uploadAdmission, ordinaryJson, productUploadRole } from '
 
 initSentry('api');
 const app = express();
+app.disable('x-powered-by');
 let shuttingDown = false;
+// Set on SIGTERM before shutdown starts. Caddy health-checks /healthz every
+// 2s (Caddyfile); failing it first moves new requests to the other replica
+// while this one still serves normally, so a deploy never answers 503.
+let draining = false;
+const DRAIN_DELAY_MS = Number(process.env.DRAIN_DELAY_MS ?? 0);
+if (!Number.isInteger(DRAIN_DELAY_MS) || DRAIN_DELAY_MS < 0 || DRAIN_DELAY_MS > 10_000) throw new Error('Invalid DRAIN_DELAY_MS');
+app.get('/healthz', (_req, res) => {
+  res.status(draining || shuttingDown ? 503 : 200).json({ ok: !(draining || shuttingDown) });
+});
 app.use(measureHttp);
 app.use((_req, res, next) => {
   if (shuttingDown) {
@@ -97,7 +108,30 @@ app.use(compression());
 // scattered console.error calls each route already had for its own
 // failure paths. /health-style noise isn't filtered since there's no
 // dedicated health endpoint yet (the root route below doubles as one).
-app.use(pinoHttp({ logger }));
+// Request ID: the caller's X-Request-Id, else Cloudflare's CF-Ray, else a new
+// UUID. Echoed back so an app/Sentry report can be matched to its log line.
+const REQUEST_ID = /^[\w-]{8,64}$/;
+app.use(pinoHttp({
+  logger,
+  autoLogging: { ignore: req => req.url === '/healthz' },
+  genReqId: (req, res) => {
+    const candidate = [req.headers['x-request-id'], req.headers['cf-ray']].find(
+      (value): value is string => typeof value === 'string' && REQUEST_ID.test(value));
+    const id = candidate ?? randomUUID();
+    res.setHeader('X-Request-Id', id);
+    return id;
+  },
+}));
+
+// Baseline security headers for a JSON API (not helmet: most of its headers
+// target HTML pages this backend doesn't serve).
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+  next();
+});
 
 // Only web clients (apps/partner-dashboard, apps/admin) hit CORS at all —
 // the three RN apps talk to this backend natively, no browser involved.
@@ -151,7 +185,9 @@ app.get('/', (_req, res) => {
 
 app.use('/privacy', privacyRouter);
 app.use('/auth', authRouter);
-app.use('/zones', zonesRouter);
+// Zones change only from admin; the realtime channel invalidates this cache
+// the moment one does (routes/homeContent.ts).
+app.use('/zones', shortCache(60_000), zonesRouter);
 // Rarely-changing, read-heavy, hit on nearly every screen load — cached for
 // 30s so concurrent traffic doesn't re-query Postgres for identical data a
 // few seconds apart. See shortCache.ts's own note on the Redis upgrade path.
@@ -162,7 +198,10 @@ app.use('/home-tabs', shortCache(), homeTabsRouter);
 app.use('/home/festival-section', shortCache(), homeFestivalSectionRouter);
 app.use('/home/festival-greeting', shortCache(), homeFestivalGreetingRouter);
 app.use('/home/sections', shortCache(), homeSectionsRouter);
-app.use('/home/content', homeContentRouter);
+// The full content list (not the /events SSE stream) is cached; any
+// home_content change invalidates it before clients are told to refetch.
+const homeContentCache = shortCache();
+app.use('/home/content', (req, res, next) => (req.path === '/' ? homeContentCache(req, res, next) : next()), homeContentRouter);
 app.use('/home/seasonal-section', shortCache(), homeSeasonalSectionRouter);
 app.use('/stores', shortCache(), collectionRouter, storesRouter);
 app.use('/media/public', publicDeliveryRouter);
@@ -234,9 +273,7 @@ try {
         ? 'Login OTP: MSG91_AUTH_KEY / MSG91_OTP_TEMPLATE_ID missing, real numbers cannot log in'
         : 'Login OTP: no MSG91 keys, so each code is printed in this log instead of sent')
   let stopping = false;
-  const shutdown = (signal: string) => {
-    if (stopping) return;
-    stopping = true;
+  const stop = (signal: string) => {
     shuttingDown = true;
     logger.info({ signal }, 'Backend shutting down');
     const deadline = setTimeout(() => {
@@ -249,10 +286,17 @@ try {
       process.exitCode = 1;
     }).finally(() => clearTimeout(deadline));
   };
+  const shutdown = (signal: string, drainMs = DRAIN_DELAY_MS) => {
+    if (stopping) return;
+    stopping = true;
+    draining = true;
+    if (drainMs > 0) logger.info({ signal, drainMs }, 'Backend draining before shutdown');
+    setTimeout(() => stop(signal), drainMs);
+  };
   runtime.server.on('error', error => {
     logger.error({ err: error }, 'HTTP server error');
     process.exitCode = 1;
-    shutdown('server-error');
+    shutdown('server-error', 0);
   });
   process.once('SIGINT', () => shutdown('SIGINT'));
   process.once('SIGTERM', () => shutdown('SIGTERM'));

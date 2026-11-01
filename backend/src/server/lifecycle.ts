@@ -19,6 +19,11 @@ export async function startServer(
   startBackground: () => Cleanup,
 ): Promise<{ server: Server; stop: Cleanup }> {
   const server = createServer(app);
+  // Caddy reuses idle upstream connections for up to 30s (Caddyfile). Node's
+  // default 5s would close sockets Caddy still considers open, and a POST
+  // sent on one fails with a 502 Caddy cannot safely retry.
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
   await new Promise<void>((resolve, reject) => {
     const failed = (error: Error) => { server.off('listening', ready); reject(error); };
     const ready = () => { server.off('error', failed); resolve(); };
