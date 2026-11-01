@@ -16,8 +16,21 @@ export interface Coordinates {
   heading?: number | null;
 }
 
+// Shows the OS prompt — only from a user action (goOnline's tap).
 export async function requestLocationPermission(): Promise<boolean> {
   const { status } = await Location.requestForegroundPermissionsAsync();
+  return status === 'granted';
+}
+
+// Silent read, never prompts. Everything that runs on its own (the presence
+// ping, the delivery map) must use this: on Android 14 even an
+// already-granted requestForegroundPermissionsAsync() briefly launches the
+// system GrantPermissionsActivity, which flips AppState to background and
+// back. The foreground resume restarts the ping, which requested again — a
+// ~5/s loop that flooded the API into ACCOUNT_RATE_LIMITED (seen on a
+// OnePlus, 2026-11-01).
+export async function hasLocationPermission(): Promise<boolean> {
+  const { status } = await Location.getForegroundPermissionsAsync();
   return status === 'granted';
 }
 
@@ -29,7 +42,7 @@ export async function requestLocationPermission(): Promise<boolean> {
 // one-shot pattern apps/customer's own geocoding.ts uses for "confirm a
 // pin once."
 export async function getCurrentCoordinates(): Promise<Coordinates | null> {
-  const granted = await requestLocationPermission();
+  const granted = await hasLocationPermission();
   if (!granted) return null;
   const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
   return { latitude: position.coords.latitude, longitude: position.coords.longitude };
@@ -39,7 +52,7 @@ export async function getCurrentCoordinates(): Promise<Coordinates | null> {
 // the subscription's own remove() rather than a bespoke wrapper, so a
 // component's cleanup effect is just `return () => sub?.remove()`.
 export async function watchRiderLocation(onUpdate: (coords: Coordinates) => void): Promise<{ remove: () => void } | null> {
-  const granted = await requestLocationPermission();
+  const granted = await hasLocationPermission();
   if (!granted) return null;
 
   return Location.watchPositionAsync(

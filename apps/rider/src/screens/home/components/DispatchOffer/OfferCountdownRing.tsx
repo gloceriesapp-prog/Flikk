@@ -3,10 +3,10 @@
 // offer carries a real server deadline (`expiresAt`, derived from the
 // backend's dispatch_broadcast_at + DISPATCH_OFFER_WINDOW_MS) the countdown
 // tracks THAT, so it survives remounts and reflects the true remaining
-// window. With no expiresAt (the __DEV__ demo sheet) it falls back to
+// window. With no expiresAt it falls back to
 // counting down from mount. It reports onExpire once per deadline at zero;
-// each consumer decides what that means (the __DEV__ sheet auto-dismisses,
-// the poll-authoritative inline list keeps the card and stays acceptable).
+// each consumer decides what that means (the poll-authoritative inline list
+// keeps the card and stays acceptable).
 // ponytail: countdown compares the server-derived expiresAt against the
 // client clock, so client clock skew shifts it — acceptable, the same skew
 // any gig app lives with; the 45s dispatch poll re-syncs anyway.

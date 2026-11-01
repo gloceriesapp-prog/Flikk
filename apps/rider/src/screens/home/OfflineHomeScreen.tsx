@@ -19,10 +19,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ArrowRight01Icon, Target01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
-import { totalPayout } from '../../utils/payout';
-import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
+import { useTodayEarnings } from '../../hooks/useTodayEarnings';
 import { useActiveMsToday } from '../../hooks/useActiveMsToday';
-import { formatDurationShort, isToday, todayLabel } from '../../utils/date';
+import { formatDurationShort, todayLabel } from '../../utils/date';
 import { RiderHomeHeader } from './components/RiderHomeHeader';
 import { OnlineStatusBadge } from './components/OnlineStatusBadge';
 import type { AppStackParamList, AppTabParamList } from '../../navigation/types';
@@ -42,10 +41,8 @@ const DAILY_GOAL = 1000;
 
 export function OfflineHomeScreen() {
   const navigation = useNavigation<Nav>();
-  const completedOrders = useRiderOrdersStore((s) => s.completedOrders);
-
-  const todayOrders = completedOrders.filter((o) => o.deliveredAt && isToday(o.deliveredAt));
-  const todayEarnings = totalPayout(todayOrders.map((o) => ({ ...o, tip: undefined })));
+  // Server rider_earnings totals, same as the online home and Earnings tab.
+  const { total: todayEarnings, deliveries: todayDeliveries } = useTodayEarnings();
   // Frozen daily total — the time banked from earlier shifts today, held
   // steady while offline (0 only if they haven't been online at all today),
   // resets at midnight. Same reading the live dashboard shows, just not
@@ -93,7 +90,7 @@ export function OfflineHomeScreen() {
 
         <View className="flex-row border-t" style={{ borderColor: CARD_BORDER }}>
           <View className="flex-1 border-r px-5 py-4" style={{ borderColor: CARD_BORDER }}>
-            <Text className="text-[22px] font-bold text-ink tabular-nums">{todayOrders.length}</Text>
+            <Text className="text-[22px] font-bold text-ink tabular-nums">{todayDeliveries}</Text>
             <Text className="mt-0.5 text-[15px] font-medium text-ink/50">Delivered</Text>
           </View>
           <View className="flex-1 px-5 py-4">

@@ -41,14 +41,20 @@ export function PerformanceRow({ stats }: Props) {
       <View className="flex-1 gap-1 rounded-2xl border border-gray-100 px-2.5 py-3">
         <Text className="text-[11px] font-medium text-ink/45">Completion</Text>
         <Text className="text-[19px] font-extrabold text-ink" style={{ fontVariant: ['tabular-nums'] }}>
-          {stats.completionRate}%
+          {/* The server's new-rider defaults (100%, 5.00) are for ranking;
+              the rider sees "—" until there's a real order or review. */}
+          {stats.totalAttempted > 0 ? `${stats.completionRate}%` : '—'}
         </Text>
         <Text className="text-[11px] font-medium text-ink/40">{stats.totalAttempted} orders</Text>
       </View>
 
       <View className="flex-1 gap-1 rounded-2xl border border-gray-100 px-2.5 py-3">
         <Text className="text-[11px] font-medium text-ink/45">Rating</Text>
-        <StarValue value={stats.averageRating.toFixed(2)} />
+        {stats.ratingCount > 0 ? (
+          <StarValue value={stats.averageRating.toFixed(2)} />
+        ) : (
+          <Text className="text-[19px] font-extrabold text-ink">—</Text>
+        )}
         <Text className="text-[11px] font-medium text-ink/40">{stats.ratingCount} reviews</Text>
       </View>
     </View>
