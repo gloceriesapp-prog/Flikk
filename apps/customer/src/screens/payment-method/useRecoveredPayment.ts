@@ -7,7 +7,7 @@ import { fetchAvailableWallets, fetchNetbankingBanks, type NetbankingBank, aband
 import { useAuthStore } from '../../store/useAuthStore';
 import { usePaymentReceiptEmail } from '../../payments/usePaymentReceiptEmail';
 import { openRazorpayCheckout } from '../../payments/openRazorpayCheckout';
-import { prepareUpiIntent, usesDirectUpiIntent } from '../../payments/upiIntent';
+import { assertDirectUpiConfigured, prepareUpiIntent, usesDirectUpiIntent } from '../../payments/upiIntent';
 import type { PaymentMethod } from '../../payments/paymentMethod';
 import { beginCheckoutFlow } from '../../features/checkout-recovery/checkoutActivity';
 import type { AppStackParamList } from '../../navigation/types';
@@ -68,8 +68,13 @@ export function useRecoveredPayment(target: PaymentTarget, navigation: NativeSta
       const resumingExistingUpi = usesDirectUpiIntent(action) && latest.state === 'pending' && latest.canResumeUpiIntent === true;
       if (latest.state !== 'unpaid' && !resumingExistingUpi) throw new Error('Your last payment is still being checked. Wait for its result before paying again.');
       if (action.startsWith('upi_app:')) {
-        const email = await receiptEmail.requestEmail();
-        if (!stillOwner() || !email) return;
+        const requiresEmail = !usesDirectUpiIntent(action)
+          || (await assertDirectUpiConfigured(action)).upi_email_optional !== true;
+        if (!stillOwner()) return;
+        if (requiresEmail) {
+          const email = await receiptEmail.requestEmail();
+          if (!stillOwner() || !email) return;
+        }
       }
       if (usesDirectUpiIntent(action)) {
         const session = await prepareUpiIntent(target, action);

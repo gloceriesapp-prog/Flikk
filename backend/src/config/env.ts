@@ -61,6 +61,8 @@ export const env = {
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET?.trim() || undefined,
   razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET?.trim() || undefined,
   razorpayEnv: razorpayEnv as 'test' | 'live',
+  // Enable only after this merchant's S2S intent API accepts email omission.
+  razorpayUpiEmailOptional: process.env.RAZORPAY_UPI_EMAIL_OPTIONAL === 'true',
   codDisabled: process.env.COD_DISABLED === 'true',
   onlinePaymentsDisabled: process.env.ONLINE_PAYMENTS_DISABLED === 'true',
   publicApiUrl: process.env.PUBLIC_API_URL?.replace(/\/+$/, '') || undefined,

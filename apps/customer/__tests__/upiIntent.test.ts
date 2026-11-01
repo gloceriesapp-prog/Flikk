@@ -60,3 +60,18 @@ describe('server-created direct UPI intent', () => {
     expect(createUpiIntentSession).not.toHaveBeenCalled();
   });
 });
+
+it('returns the server email capability without inferring it from app or dashboard state', async () => {
+  const original = Platform.OS; const module = NativeModules.UpiApps;
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' });
+  NativeModules.UpiApps = { launchPaymentIntent: jest.fn() };
+  try {
+    jest.mocked(fetchPaymentAvailability).mockResolvedValue({ online: true, cod: true, min_order_value: 0, upi_intent: true, upi_email_optional: true });
+    expect((await assertDirectUpiConfigured('upi_app:gpay')).upi_email_optional).toBe(true);
+    jest.mocked(fetchPaymentAvailability).mockResolvedValue({ online: true, cod: true, min_order_value: 0, upi_intent: true });
+    expect((await assertDirectUpiConfigured('upi_app:gpay')).upi_email_optional).toBeUndefined();
+  } finally {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: original });
+    NativeModules.UpiApps = module;
+  }
+});

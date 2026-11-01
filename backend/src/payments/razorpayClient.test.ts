@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import crypto from 'node:crypto';
 import { env } from '../config/env.js';
 import { checkoutReceipt, refundRequestKey, toPaise, verifyCheckoutSignature, verifyWebhookSignature, createProviderOrder, createProviderRefund, getPaymentRefunds, findProviderOrder, createProviderUpiIntent } from './razorpayClient.js';
-afterEach(() => { vi.unstubAllGlobals(); env.razorpayEnv = 'test'; });
+afterEach(() => { vi.unstubAllGlobals(); env.razorpayEnv = 'test'; env.razorpayUpiEmailOptional = false; });
 it('uses paise, rejects unsafe amounts and derives stable bounded identifiers', () => {
   expect(toPaise('12.34')).toBe(1234); expect(() => toPaise(-1)).toThrow(); expect(() => toPaise(Infinity)).toThrow();
   expect(checkoutReceipt('00000000-0000-4000-8000-000000000001')).toBe('gl_00000000000040008000000000000001');
@@ -58,4 +58,21 @@ it('fails closed on multiple receipt matches or network uncertainty', async () =
   await expect(findProviderOrder('same')).rejects.toMatchObject({code:'PAYMENT_REVIEW_REQUIRED'});
   vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new Error('timeout')));
   await expect(findProviderOrder('same')).rejects.toMatchObject({providerStatus:0});
+});
+
+it('sends no email field for an explicitly enabled optional-email merchant', async () => {
+  env.razorpayEnv = 'live'; env.razorpayUpiEmailOptional = true;
+  const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ razorpay_payment_id: 'pay_one', link: 'upi://pay' }) });
+  vi.stubGlobal('fetch', fetch);
+  await createProviderUpiIntent({ providerOrderId: 'order_one', amountPaise: 100, contact: '919999999999', notes: {} });
+  const body = JSON.parse(fetch.mock.calls[0][1].body);
+  expect(body).not.toHaveProperty('email');
+  expect(body).toMatchObject({ amount: 100, order_id: 'order_one', contact: '919999999999', upi: { flow: 'intent' } });
+});
+it('blocks email omission before a provider POST unless optional mode was enabled', () => {
+  env.razorpayEnv = 'live'; env.razorpayUpiEmailOptional = false;
+  const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
+  expect(() => createProviderUpiIntent({ providerOrderId: 'order_one', amountPaise: 100, contact: '919999999999', notes: {} }))
+    .toThrow('Add your email address');
+  expect(fetch).not.toHaveBeenCalled();
 });

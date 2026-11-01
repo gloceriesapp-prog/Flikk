@@ -24,9 +24,21 @@ backend `/payments/upi-intent` endpoint derives ownership, amount and contact
 from persisted data, atomically claims the attempt, and creates or reuses one
 provider payment. The app launches the exact provider URI with the selected
 Android package through the native `UpiApps` module. It never rewrites payment
-parameters. A real receipt email is required before creating an order for this
-flow; synthetic phone-login email addresses are rejected. Contacts are stored
-privately through `/payments/contact`.
+parameters. By default a real receipt email is collected before creating an
+order; synthetic phone-login email addresses are rejected. For a merchant whose
+S2S intent API has been verified to accept email omission, the backend can set
+`RAZORPAY_UPI_EMAIL_OPTIONAL=true`. Its additive
+`/payments/availability.upi_email_optional` capability lets Android cart and
+recovered payments skip the email form. The server then does not read a saved
+email and omits the provider email field entirely. The switch defaults off;
+missing capability fields retain legacy behavior. iOS native contact behavior
+is unchanged. Contacts are stored privately through `/payments/contact`.
+
+The Razorpay Checkout Features dashboard's Optional selection is visible in the
+hosted checkout preview, but is not by itself evidence that S2S accepts omission.
+Verify one merchant-approved pending live checkout and selected-app handoff
+before enabling this switch for customers. Do not invent an email or interpret
+an app activity result as captured payment.
 
 Direct UPI requires Razorpay live keys, including on a local backend. Test-mode
 mock payees are not valid bank UPI IDs. `/payments/availability.upi_intent`

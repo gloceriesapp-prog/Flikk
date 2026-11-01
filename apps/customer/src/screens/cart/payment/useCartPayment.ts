@@ -140,11 +140,14 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
         }
       }
       if (usesDirectUpiIntent(paymentMethod) || usesIosUpiCheckout(paymentMethod)) {
+        let requiresEmail = true;
         if (usesIosUpiCheckout(paymentMethod)) await assertIosUpiConfigured(paymentMethod);
-        else await assertDirectUpiConfigured(paymentMethod);
+        else requiresEmail = (await assertDirectUpiConfigured(paymentMethod)).upi_email_optional !== true;
         if (!stillOwner()) return;
-        const email = await receiptEmail.requestEmail();
-        if (!stillOwner() || !email) return;
+        if (requiresEmail) {
+          const email = await receiptEmail.requestEmail();
+          if (!stillOwner() || !email) return;
+        }
       }
       const cartKey = JSON.stringify({ items: checkoutItems(items), promo: promoCode ?? null });
       let saved = await readAttempt();

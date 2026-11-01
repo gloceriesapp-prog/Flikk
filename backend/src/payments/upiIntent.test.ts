@@ -14,6 +14,7 @@ const session = { upi_state: null, upi_payment_id: null, upi_link: null };
 const payment = { id: 'pay_one', order_id: 'order_one', amount: 12345, currency: 'INR', status: 'created', captured: false };
 beforeEach(() => {
   env.razorpayEnv = 'live';
+  env.razorpayUpiEmailOptional = false;
   vi.resetAllMocks();
   m.ensure.mockResolvedValue({ id: 'order_one', amount: 12345 }); m.payments.mockResolvedValue([]); m.email.mockResolvedValue('customer@example.com');
   m.create.mockResolvedValue({ razorpay_payment_id: 'pay_one', link });
@@ -22,7 +23,7 @@ beforeEach(() => {
     maybeSingle: vi.fn(async () => ({ data: { upi_state: 'ready', upi_payment_id: 'pay_one' }, error: null })) };
   m.from.mockReturnValue(q);
 });
-afterEach(() => { env.razorpayEnv = 'test'; });
+afterEach(() => { env.razorpayEnv = 'test'; env.razorpayUpiEmailOptional = false; });
 async function run(body: Record<string, unknown> = { orderId: id }) {
   const res = { json: vi.fn(), setHeader: vi.fn() }; const next = vi.fn();
   await createUpiIntent({ user: { id: 'customer' }, body, ip: '127.0.0.1', get: () => 'Customer/1' } as never, res as never, next);
@@ -99,4 +100,15 @@ it('recognizes canonical valid INR instructions without changing their bytes', (
   expect(isValidUpiIntentUrl(link, 12345)).toBe(true);
   for (const uri of [`${link}#redirect`, link.replace('INR', 'USD'), `upi://evil?${link.split('?')[1]}`, `${link}\n`, link.replace('123.45', '1e2')])
     expect(isValidUpiIntentUrl(uri, 12345)).toBe(false);
+});
+
+it('omits email and never reads saved contact when optional-email intent is explicitly enabled', async () => {
+  env.razorpayUpiEmailOptional = true;
+  m.email.mockResolvedValue(null);
+  const { next, res } = await run();
+  expect(next).not.toHaveBeenCalled();
+  expect(m.email).not.toHaveBeenCalled();
+  expect(m.create.mock.calls[0][0]).not.toHaveProperty('email');
+  expect(m.create).toHaveBeenCalledWith(expect.objectContaining({ contact: '919999999999', amountPaise: 12345 }));
+  expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ providerPaymentId: 'pay_one', intentUrl: link }));
 });
