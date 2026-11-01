@@ -5,12 +5,9 @@
 // this one array by filtering on deliveredAt, rather than keeping
 // separate "today" vs "history" state to drift out of sync).
 //
-// Backed by real data now: api/orders.ts's fetchAssignments polls
+// Backed by real data: api/orders.ts's fetchAssignments polls
 // backend/src/routes/rider.ts's GET /assignments (real orders, real RLS,
-// real rider_id = this account), not data/mockOrders.ts's fake generator.
-// That file still exists and is still used, but only by loadSampleData —
-// an explicitly dev-only preview seeder now (gated behind __DEV__ in
-// HomeScreen.tsx), never this store's real order source.
+// real rider_id = this account). There is no on-device sample data.
 //
 // Real backend limitation this still works around rather than pretends
 // doesn't exist:
@@ -53,7 +50,7 @@ import { acceptDispatchOffer, fetchDispatchOffers, updateRiderStatus, type Accep
 import { fetchAssignmentHistory, fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders';
 import { mergeHistory } from './orderHistory';
 import type { RiderOrder } from '../data/mockOrders';
-import { getCurrentCoordinates, requestLocationPermission } from '../location/riderLocation';
+import { getCurrentCoordinates, hasLocationPermission, requestLocationPermission } from '../location/riderLocation';
 import { startBackgroundLocation, stopBackgroundLocation } from '../location/backgroundLocation';
 import { ApiError } from '../api/client';
 import { useAuthStore } from './useAuthStore';
@@ -65,12 +62,9 @@ import { track } from '../analytics/track';
 
 export const STATUS_STEPS: RiderOrder['status'][] = ['assigned', 'picked_up', 'arrived_at_customer', 'delivered'];
 
-// Sample/preview orders live only on-device (mockOrders' generateMockOrder →
-// 'mock-…', the __DEV__ Test button → 'demo-…'). They have no backend row, so
-// any real PATCH /orders/:id/status 404s ("order not found"). advanceOrderStatus/
-// cancelOrder skip the network write for these and just move local state — the
-// whole sample flow (pickup → arrive → deliver) works without a backend.
-// ponytail: drop this once every order in the app is a real assignment.
+// Ids of the on-device sample/demo orders older dev builds could seed
+// ('mock-…', 'demo-…'). Those seeders are gone; hydrate drops any such
+// rows still saved on a phone so they never show in history or totals.
 const isLocalOrder = (id: string) => /^(mock|demo|sample)[-]/.test(id);
 
 // Render invariant: any RiderOrder array put into state must be unique by id
@@ -84,7 +78,7 @@ const isLocalOrder = (id: string) => /^(mock|demo|sample)[-]/.test(id);
 const dedupById = (orders: RiderOrder[]): RiderOrder[] => {
   const seen = new Set<string>();
   return orders.filter((o) => {
-    if (seen.has(o.id)) return false;
+    if (seen.has(o.id) || isLocalOrder(o.id)) return false;
     seen.add(o.id);
     return true;
   });
@@ -231,7 +225,6 @@ interface RiderOrdersState {
   // without waiting on a real assignment. Not a real data source; gated
   // behind __DEV__ at the call site (HomeScreen.tsx), never shown to a
   // real rider in a production build.
-  loadSampleData: () => void;
 }
 
 // True (and flips useAuthStore to the suspended state) when the backend
@@ -269,7 +262,18 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
   // position (what nearby_online_riders reads) and pull a fresh nearbyOffers
   // list from it (what nearby_dispatch_offers reads) — no reason to sample GPS
   // twice for two purposes that both need the exact same fix.
-  async function pingAndRefresh() {
+  // Single flight: a GPS fix plus two requests can outlast the 10s tick, and
+  // pushes/foreground resumes also call this. Overlapping runs used to queue
+  // up and land as a burst of dispatch-offers requests.
+  let pingInFlight: Promise<void> | null = null;
+  function pingAndRefresh(): Promise<void> {
+    pingInFlight ??= runPing().finally(() => {
+      pingInFlight = null;
+    });
+    return pingInFlight;
+  }
+
+  async function runPing() {
     lastPingAt = Date.now();
     const coords = await getCurrentCoordinates().catch(() => null);
     if (!coords) return; // permission denied / no fix yet — try again next tick
@@ -356,16 +360,6 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       const existing = state.activeOrders.find((o) => o.id === order.id);
       const effectiveStatus = existing?.status === 'arrived_at_customer' && order.status === 'picked_up' ? 'arrived_at_customer' : order.status;
       nextActive.push({ ...order, status: effectiveStatus });
-    }
-
-    // ponytail: __DEV__ demo orders (id 'demo-…', from the Test button's
-    // acceptDemoOffer) have no server row, so this poll would drop them on
-    // the next cycle. Pin them so the accept→active preview survives. Real
-    // assignments never use this prefix. Delete with the Test button.
-    if (__DEV__) {
-      for (const o of state.activeOrders) {
-        if (o.id.startsWith('demo-') && !nextActive.some((n) => n.id === o.id)) nextActive.push(o);
-      }
     }
 
     set({
@@ -496,7 +490,10 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     // state, no offers, no signal why. Gate the whole thing on the foreground
     // grant here (the one place every caller routes through) and return
     // whether we actually went online, so a tap can surface the denial.
-    const granted = await requestLocationPermission();
+    // Silent check first: goOnline also runs automatically (boot resume,
+    // auto-online), and a needless request flashes the system permission
+    // screen on Android (see riderLocation.ts hasLocationPermission).
+    const granted = (await hasLocationPermission()) || (await requestLocationPermission());
     if (!granted) return false;
 
     // An admin-suspended rider (riders.is_active=false) is refused by PATCH
@@ -648,7 +645,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       // Real transition: packed -> out_for_delivery. Backend also stamps
       // picked_up_at here (orderStateMachine.ts's timestampColumnFor).
       // Sample orders have no backend row — skip the PATCH, move local only.
-      if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'out_for_delivery');
+      await updateOrderStatus(orderId, 'out_for_delivery');
       set((state) => ({
         activeOrders: state.activeOrders.map((o) => (o.id === orderId ? { ...o, status: 'picked_up' } : o)),
       }));
@@ -670,7 +667,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       // from the backend (routes/orders.ts) — it throws here so the caller
       // can keep the OTP modal open, and no local state moves to delivered.
       // Sample orders have no backend row / real OTP — skip the PATCH.
-      if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'delivered', undefined, otp);
+      await updateOrderStatus(orderId, 'delivered', undefined, otp);
       // The server verifies one shared proof and commits every active trip leg.
       const completedIds = new Set(get().activeOrders.filter(o =>
         o.id === orderId || (!!order.tripId && o.tripId === order.tripId)
@@ -697,7 +694,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     // from the backend — thrown straight through, not swallowed, so the
     // screen that called this can Alert the real reason instead of
     // silently pretending it worked.
-    if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'cancelled', reason);
+    await updateOrderStatus(orderId, 'cancelled', reason);
 
     set((state) => {
       const order = state.activeOrders.find((o) => o.id === orderId);
@@ -717,7 +714,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     // from the backend, thrown straight through so the caller can Alert it
     // rather than silently pretend the drop was closed out. reason is a code
     // from RIDER_DELIVERY_FAILURE_REASONS (@gloceries/shared), validated server-side.
-    if (!isLocalOrder(orderId)) await updateOrderStatus(orderId, 'failed', reason);
+    await updateOrderStatus(orderId, 'failed', reason);
 
     // Terminal + paid server-side — just leave the active list. No local
     // failed/cancelled bucket to add it to (mirrors how the assignments poll
@@ -725,41 +722,6 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     set((state) => ({ activeOrders: state.activeOrders.filter((o) => o.id !== orderId) }));
   },
 
-  loadSampleData: () => {
-    // Required here, not imported at the top, so release builds (where
-    // __DEV__ is false) drop the mock generator from the bundle entirely.
-    if (__DEV__) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { generateMockOrder, generateMockRating, generateMockTip } = require('../data/mockOrders') as typeof import('../data/mockOrders');
-      const active: RiderOrder = { ...generateMockOrder(), status: 'picked_up' };
-
-      const completedOne: RiderOrder = {
-        ...generateMockOrder(),
-        status: 'delivered',
-        deliveredAt: new Date().toISOString(),
-        customerRating: generateMockRating(),
-        tip: generateMockTip(),
-      };
-      const completedTwo: RiderOrder = {
-        ...generateMockOrder(),
-        status: 'delivered',
-        deliveredAt: new Date().toISOString(),
-        customerRating: generateMockRating(),
-        tip: generateMockTip(),
-      };
-
-      const cancelledBase = generateMockOrder();
-      const cancelled: RiderOrder = { ...cancelledBase, status: 'cancelled', cancelReason: 'Store is closed' };
-
-      set((state) => ({
-        activeOrders: [active, ...state.activeOrders],
-        completedOrders: [completedOne, completedTwo, ...state.completedOrders],
-        cancelledOrders: [cancelled, ...state.cancelledOrders],
-      }));
-
-      void persistHistory(get().completedOrders);
-    }
-  },
   };
 });
 

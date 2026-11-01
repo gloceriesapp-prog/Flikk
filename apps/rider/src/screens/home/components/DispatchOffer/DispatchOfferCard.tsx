@@ -30,8 +30,7 @@ import { usePackingLabel } from '../../../../hooks/usePackingLabel';
 // Decide-window length in seconds — the arc denominator. The offer's own
 // windowSeconds (admin's dispatch_step_seconds) wins; 45s is the fallback, so
 // the ring's full arc lines up with the true server window; the ring counts down to offer.expiresAt
-// (the real per-offer deadline) when present. The __DEV__ Test popup passes a
-// long override so the UI can be inspected without auto-dismissing.
+// (the real per-offer deadline) when present.
 const DECISION_WINDOW_S = 45;
 
 interface Props {
@@ -42,9 +41,7 @@ interface Props {
   // drops the offer on the next poll); a full-screen presenter passes it to
   // close itself.
   onClose?: () => void;
-  // Optional decide-window override (seconds). Defaults to DECISION_WINDOW_S;
-  // the __DEV__ Test popup passes a long one so the UI can be inspected
-  // without the ring auto-dismissing it.
+  // Optional decide-window override (seconds). Defaults to DECISION_WINDOW_S.
   windowSeconds?: number;
 }
 
@@ -68,8 +65,7 @@ export const DispatchOfferCard = memo(function DispatchOfferCard({ offer, onAcce
       {/* Header: countdown ring + "New Delivery Order" + order number.
           Ring expiry is a no-op here: this list is poll-authoritative, so a
           past deadline must NOT decline/hide the card — the ring just stops
-          at 0 and Accept stays live. (The __DEV__ sheet, a modal, passes
-          handleDecline to auto-dismiss instead.) */}
+          at 0 and Accept stays live. */}
       <View className="items-center gap-1.5">
         <OfferCountdownRing windowSeconds={windowSeconds} expiresAt={offer.expiresAt} onExpire={() => {}} />
         <Text className="text-[17px] font-extrabold text-white">New Delivery Order</Text>

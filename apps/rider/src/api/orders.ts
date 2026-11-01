@@ -1,6 +1,5 @@
-// Real GET /rider/assignments + PATCH /orders/:id/status — replaces
-// data/mockOrders.ts's generateMockOrder as this app's actual order
-// source. toRiderOrder below is the one place backend truth gets
+// Real GET /rider/assignments + PATCH /orders/:id/status — this app's only
+// order source. toRiderOrder below is the one place backend truth gets
 // translated into the RiderOrder shape every screen already renders, so
 // screens themselves never needed to change.
 

@@ -20,10 +20,9 @@ import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { useRiderOrdersStore } from '../../store/useRiderOrdersStore';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { ActiveDeliveryCard } from './components/ActiveDeliveryCard';
 import { DeliveryHistoryRow } from './components/DeliveryHistoryRow';
-import { DispatchOfferCard, DispatchOfferSheet } from './components/DispatchOffer';
+import { DispatchOfferCard } from './components/DispatchOffer';
 import { FilterChipRow, type DeliveryFilter } from './components/FilterChipRow';
 import { RiderHomeHeader } from './components/RiderHomeHeader';
 import { SearchingForOrders } from './components/SearchingForOrders';
@@ -32,33 +31,7 @@ import { OfflineHomeScreen } from './OfflineHomeScreen';
 import { useActiveMsToday } from '../../hooks/useActiveMsToday';
 import { formatDurationShort, isToday, todayLabel } from '../../utils/date';
 import type { AppStackParamList, AppTabParamList } from '../../navigation/types';
-import type { AcceptDispatchOfferResult, DispatchOffer } from '../../api/dispatch';
-import type { RiderOrder } from '../../data/mockOrders';
-import { totalPayout } from '../../utils/payout';
-
-// ponytail: __DEV__-only sample offer for the "Test" button below — lets us
-// pop the full-screen new-order UI without a live dispatch. coords null →
-// static map preview skipped, so it renders in Expo Go too. Delete the const,
-// the Test button, and the modal render before shipping.
-const DEMO_OFFER: DispatchOffer = {
-  orderId: 'demo-1',
-  orderNumber: 'FLK-24817',
-  storeName: 'Sri Ganesh Kirana',
-  payout: 35,
-  pickupKm: 1.4,
-  storeToDropKm: 2.7,
-  totalKm: 4.1,
-  packing: false,
-  readyAt: null,
-  dropLabel: 'Near Kaup Beach Rd',
-  itemCount: 6,
-  storeCoords: { latitude: 13.2167, longitude: 74.7469 },
-  dropCoords: { latitude: 13.2231, longitude: 74.7512 },
-  expiresAt: null, // no server deadline for a demo offer → ring uses its windowSeconds fallback
-  paymentMethod: 'cod',
-  cashToCollect: 420,
-  cashLimitBlocked: false,
-};
+import { useTodayEarnings } from '../../hooks/useTodayEarnings';
 
 // Same page + earnings card as OfflineHomeScreen (one visual language across
 // shift states); online adds the things that only make sense on-shift —
@@ -81,86 +54,12 @@ export function HomeScreen() {
   const activeOrders = useRiderOrdersStore((s) => s.activeOrders);
   const completedOrders = useRiderOrdersStore((s) => s.completedOrders);
   const cancelledOrders = useRiderOrdersStore((s) => s.cancelledOrders);
-  const loadSampleData = useRiderOrdersStore((s) => s.loadSampleData);
+  // The list below still shows today's on-device history; the money and the
+  // count come from the server's rider_earnings (useTodayEarnings).
   const todayOrders = completedOrders.filter((order) => order.deliveredAt && isToday(order.deliveredAt));
-  // "Earned" is the fare only. Tips are not part of the product yet (no
-  // backend field), so there is no Tips column; when they arrive they get
-  // their own column rather than being folded into the fare.
-  const todayEarnings = totalPayout(todayOrders.map((order) => ({ ...order, tip: undefined })));
+  const today = useTodayEarnings();
   const activeMs = useActiveMsToday();
   const [filter, setFilter] = useState<DeliveryFilter>('active');
-  // ponytail: __DEV__-only, drives the "Test" button's full-screen offer popup.
-  const [demoOffer, setDemoOffer] = useState<DispatchOffer | null>(null);
-
-  // ponytail: __DEV__-only. demo-1 has no backend row, so the real acceptOffer
-  // always 409s ("someone else got there first"). This fakes a WON accept so
-  // the accept→active premium card can be previewed without a live packed
-  // order. Delete with DEMO_OFFER + the Test button before shipping.
-  const acceptDemoOffer = async (): Promise<AcceptDispatchOfferResult> => {
-    if (!demoOffer) return { ok: false, alreadyTaken: false, message: 'no offer' };
-    const o = demoOffer;
-    const active: RiderOrder = {
-      id: o.orderId,
-      orderNumber: o.orderNumber,
-      status: 'assigned',
-      storeName: o.storeName,
-      storeAddress: 'Kaup Market Rd',
-      storeCoords: o.storeCoords ?? { latitude: 13.2167, longitude: 74.7469 },
-      customerName: 'Deepak Shetty',
-      customerAddress: o.dropLabel,
-      customerCoords: o.dropCoords ?? { latitude: 13.2231, longitude: 74.7512 },
-      customerPhone: '+919000000000',
-      itemCount: o.itemCount,
-      items: [{ name: 'Demo items', quantity: o.itemCount }],
-      distanceKm: o.totalKm,
-      payout: o.payout,
-      baseFare: 15,
-      extraStopFare: Math.max(0, o.payout - 15),
-      surge: 0,
-      placedAt: new Date().toISOString(),
-      paymentMethod: 'cod',
-      cashToCollect: 420,
-    };
-    useRiderOrdersStore.setState((s) => ({ activeOrders: [active, ...s.activeOrders.filter((o) => o.id !== active.id)] }));
-    setFilter('active');
-    setDemoOffer(null);
-    return { ok: true };
-  };
-
-  // ponytail: __DEV__-only. Seeds a picked_up demo order and jumps straight to
-  // DeliveryNavigation so the drop-nav UI can be iterated on without walking
-  // the whole accept→pickup→verify flow every reload. Delete with the button
-  // below before shipping.
-  const openDemoDelivery = () => {
-    const id = 'demo-del-1';
-    const active: RiderOrder = {
-      id,
-      orderNumber: 'FLK-24999',
-      status: 'picked_up',
-      storeName: 'Sri Ganesh Kirana',
-      storeAddress: 'Kaup Market Rd',
-      storeCoords: { latitude: 13.2167, longitude: 74.7469 },
-      customerName: 'Asha Kamath',
-      customerAddress: 'Near City Centre, Manipal',
-      customerCoords: { latitude: 13.3524, longitude: 74.7868 },
-      customerPhone: '+919000000000',
-      itemCount: 6,
-      items: [{ name: 'Demo items', quantity: 6 }],
-      distanceKm: 4.1,
-      payout: 35,
-      baseFare: 15,
-      extraStopFare: 20,
-      surge: 0,
-      placedAt: new Date().toISOString(),
-      paymentMethod: 'cod',
-      cashToCollect: 420,
-    };
-    useRiderOrdersStore.setState((s) => ({
-      activeOrders: [active, ...s.activeOrders.filter((o) => o.id !== id)],
-    }));
-    navigation.navigate('DeliveryNavigation', { orderId: id });
-  };
-
   const showActive = filter === 'all' || filter === 'active';
   const showCompleted = filter === 'all' || filter === 'completed';
   const showCancelled = filter === 'all' || filter === 'cancelled';
@@ -183,34 +82,6 @@ export function HomeScreen() {
           (→ goOffline). */}
       <RiderHomeHeader isOnline={isOnline} />
 
-      {/* ponytail: __DEV__-only test trigger for the full-screen new-order
-          popup. Remove with DEMO_OFFER + the modal render before shipping. */}
-      {__DEV__ ? (
-        <Pressable
-          onPress={() => setDemoOffer(DEMO_OFFER)}
-          className="items-center justify-center rounded-full border border-dashed py-3"
-          style={{ borderColor: colors.lime }}
-        >
-          <Text className="text-[14px] font-bold" style={{ color: colors.limeDeep }}>
-            🧪 Test: New Order Popup
-          </Text>
-        </Pressable>
-      ) : null}
-
-      {/* ponytail: __DEV__-only jump straight to the drop-nav UI with dummy
-          data. Remove with openDemoDelivery before shipping. */}
-      {__DEV__ ? (
-        <Pressable
-          onPress={openDemoDelivery}
-          className="items-center justify-center rounded-full border border-dashed py-3"
-          style={{ borderColor: colors.primary }}
-        >
-          <Text className="text-[14px] font-bold" style={{ color: colors.primary }}>
-            🧪 Test: Delivery Nav UI
-          </Text>
-        </Pressable>
-      ) : null}
-
       {/* Today's earnings hero — identical card to the offline home. Tap →
           Earnings tab. */}
       <View className="overflow-hidden rounded-2xl border bg-white" style={{ borderColor: CARD_BORDER }}>
@@ -221,7 +92,7 @@ export function HomeScreen() {
         >
           <View>
             <Text className="text-[15px] font-semibold text-[#000000]">Today’s Earnings ({todayLabel()})</Text>
-            <Text className="mt-1.5 text-[38px] font-bold tabular-nums">₹{todayEarnings}</Text>
+            <Text className="mt-1.5 text-[38px] font-bold tabular-nums">₹{today.total}</Text>
           </View>
           {/* Right end — live online/offline status on top, tap-through
               chevron below (card still opens the Earnings tab). */}
@@ -233,7 +104,7 @@ export function HomeScreen() {
 
         <View className="flex-row border-t" style={{ borderColor: CARD_BORDER }}>
           <View className="flex-1 border-r px-4 py-4" style={{ borderColor: CARD_BORDER }}>
-            <Text className="text-[22px] font-bold text-ink tabular-nums">{todayOrders.length}</Text>
+            <Text className="text-[22px] font-bold text-ink tabular-nums">{today.deliveries}</Text>
             <Text className="mt-0.5 text-[15px] font-medium text-ink/50">Delivered</Text>
           </View>
           <View className="flex-1 px-4 py-4">
@@ -287,15 +158,6 @@ export function HomeScreen() {
                 </Text>
               </>
             )}
-            {/* Preview aid only — seeds one active/completed/cancelled order
-                so the list layouts can be seen without waiting out the real
-                accept-and-deliver flow. __DEV__-only — a real beta rider
-                should never see a button that fabricates fake deliveries. */}
-            {!hasAnything && __DEV__ ? (
-              <View className="mt-4 w-full">
-                <PrimaryButton label="Load sample data" onPress={loadSampleData} />
-              </View>
-            ) : null}
           </View>
         ) : (
           <View className="gap-4">
@@ -350,9 +212,6 @@ export function HomeScreen() {
         )}
       </View>
 
-      {/* ponytail: __DEV__-only — the Test button's premium white bottom sheet.
-          Remove with DEMO_OFFER + the Test button before shipping. */}
-      <DispatchOfferSheet offer={demoOffer} onAccept={acceptDemoOffer} onClose={() => setDemoOffer(null)} windowSeconds={30 * 60} />
     </ScrollView>
   );
 }
