@@ -36,7 +36,7 @@ export function RecentActivityCard({ orders, now }: { orders: PartnerOrder[]; no
               <li key={order.id} className="flex items-center gap-3.5 py-3.5 last:pb-0">
                 <Thumb src={firstItemImage(order)} name={order.order_items[0]?.products?.name ?? order.order_number} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-medium text-ink">#{order.order_number}</p>
+                  <p className="truncate text-[15px] font-medium text-ink">{order.order_number}</p>
                   <p className="tnum mt-0.5 truncate text-sm text-slate-500">
                     {formatInr(order.total)} · {units} {units === 1 ? 'item' : 'items'} · {timeAgo(lastActivityAt(order), now)}
                   </p>

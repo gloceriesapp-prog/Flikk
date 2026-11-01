@@ -102,7 +102,7 @@ export function OrdersTable({
                       aria-label={`Open order ${o.order_number}`}
                       className="tnum rounded text-[15px] font-semibold text-ink hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
-                      #{o.order_number}
+                      {o.order_number}
                     </button>
                     <p className="tnum mt-0.5 whitespace-nowrap text-xs text-slate-500">{orderWhen(o.placed_at, now)}</p>
                   </td>
@@ -160,7 +160,7 @@ export function OrdersTable({
                       aria-label={`Open order ${o.order_number}`}
                       className="tnum rounded text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
-                      #{o.order_number}
+                      {o.order_number}
                     </button>
                     <p className="truncate text-[13px] text-slate-500">
                       {customerName(o)} · <span className="tnum">{orderWhen(o.placed_at, now)}</span>

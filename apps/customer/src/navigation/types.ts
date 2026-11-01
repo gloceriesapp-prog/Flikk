@@ -98,7 +98,7 @@ export type AppStackParamList = {
   };
   // orderId is the real backend orders.id (UUID, from POST /orders) —
   // used only for navigation (TrackOrder's own real lookup), never shown.
-  // orderNumber is the real, human-facing orders.order_number ("FLK-100042",
+  // orderNumber is the real, human-facing orders.order_number ("GLO-6691-1885",
   // backend/src/routes/orders.ts's own note on why this exists) — what
   // ReceiptScreen actually displays, so it matches exactly what the
   // partner app and TrackOrderScreen show for the same order instead of a

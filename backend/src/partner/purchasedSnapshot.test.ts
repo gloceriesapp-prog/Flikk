@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { mapApiOrder } from '../../../apps/partner/src/screens/orders/data';
 import type { ApiOrder } from '../../../apps/partner/src/api/orders';
 const order = {
- id: 'one', order_number: 'FLK-1', status: 'delivered', total: 29, item_total: 29,
+ id: 'one', order_number: 'GLO-0000-0001', status: 'delivered', total: 29, item_total: 29,
  commission_amount: 1, payment_method: 'cod', provider_payment_id: null,
  placed_at: '2026-10-15T00:00:00Z', packed_at: null, delivered_at: null,
  users: null, addresses: null,

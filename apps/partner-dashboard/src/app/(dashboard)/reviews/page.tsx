@@ -12,10 +12,10 @@ import { DEMO_DATA_ENABLED } from '@/lib/demoMode';
 // DEMO DATA — same isDemo convention as Overview/Orders: shown only while
 // the store has zero real reviews, replaced the instant a real one lands.
 const DEMO_REVIEWS: PartnerReview[] = [
-  { id: 'd1', rating: 5, comment: 'Fresh vegetables and super fast delivery. Will order again!', created_at: new Date(Date.now() - 2 * 86400e3).toISOString(), owner_reply: 'Thank you Anita! See you next order.', owner_replied_at: new Date(Date.now() - 1 * 86400e3).toISOString(), users: { name: 'Anita Rao' }, orders: { order_number: 'FLK-1042' } },
-  { id: 'd2', rating: 4, comment: 'Good quality, packaging could be better.', created_at: new Date(Date.now() - 5 * 86400e3).toISOString(), owner_reply: null, owner_replied_at: null, users: { name: 'Suresh Kamath' }, orders: { order_number: 'FLK-1039' } },
-  { id: 'd3', rating: 5, comment: 'Best kirana in the area. Milk always fresh.', created_at: new Date(Date.now() - 9 * 86400e3).toISOString(), owner_reply: null, owner_replied_at: null, users: { name: 'Priya Shetty' }, orders: { order_number: 'FLK-1031' } },
-  { id: 'd4', rating: 3, comment: 'One item was missing but they refunded quickly.', created_at: new Date(Date.now() - 14 * 86400e3).toISOString(), owner_reply: null, owner_replied_at: null, users: { name: 'Rahul Nayak' }, orders: { order_number: 'FLK-1024' } },
+  { id: 'd1', rating: 5, comment: 'Fresh vegetables and super fast delivery. Will order again!', created_at: new Date(Date.now() - 2 * 86400e3).toISOString(), owner_reply: 'Thank you Anita! See you next order.', owner_replied_at: new Date(Date.now() - 1 * 86400e3).toISOString(), users: { name: 'Anita Rao' }, orders: { order_number: 'GLO-0000-1042' } },
+  { id: 'd2', rating: 4, comment: 'Good quality, packaging could be better.', created_at: new Date(Date.now() - 5 * 86400e3).toISOString(), owner_reply: null, owner_replied_at: null, users: { name: 'Suresh Kamath' }, orders: { order_number: 'GLO-0000-1039' } },
+  { id: 'd3', rating: 5, comment: 'Best kirana in the area. Milk always fresh.', created_at: new Date(Date.now() - 9 * 86400e3).toISOString(), owner_reply: null, owner_replied_at: null, users: { name: 'Priya Shetty' }, orders: { order_number: 'GLO-0000-1031' } },
+  { id: 'd4', rating: 3, comment: 'One item was missing but they refunded quickly.', created_at: new Date(Date.now() - 14 * 86400e3).toISOString(), owner_reply: null, owner_replied_at: null, users: { name: 'Rahul Nayak' }, orders: { order_number: 'GLO-0000-1024' } },
 ];
 
 function StarRow({ rating }: { rating: number }) {

@@ -117,7 +117,7 @@ function AttentionRow({
         <Thumb src={firstItemImage(order)} name={order.order_items[0]?.products?.name ?? order.order_number} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <p className="text-[15px] font-semibold text-ink">#{order.order_number}</p>
+            <p className="text-[15px] font-semibold text-ink">{order.order_number}</p>
             <span
               className={clsx('tnum inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium', URGENCY_CHIP[urgency])}
             >

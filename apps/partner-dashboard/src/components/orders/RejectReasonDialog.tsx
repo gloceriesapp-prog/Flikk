@@ -55,7 +55,7 @@ export function RejectReasonDialog({ onConfirm, onClose, orderNumber, isSubmitti
           </span>
           <div>
             <h2 id="reject-title" className="text-lg font-semibold text-ink">
-              Reject {orderNumber ? `#${orderNumber}` : 'this order'}?
+              Reject {orderNumber ?? 'this order'}?
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               It is cancelled for the customer and any payment is refunded. This cannot be undone.

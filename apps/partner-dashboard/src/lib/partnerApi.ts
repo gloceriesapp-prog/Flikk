@@ -113,7 +113,7 @@ export interface PartnerOrderItem {
 
 export interface PartnerOrder {
   id: string;
-  // Human-readable order id ("FLK-1042") — real column, backend/migrations
+  // Human-readable order id ("GLO-0000-1042") — real column, backend/migrations
   // stamps it via a sequence (order_number_seq) at insert time. Use this
   // for anything customer/store-owner-facing; `id` (uuid) is only for
   // API calls/URLs.

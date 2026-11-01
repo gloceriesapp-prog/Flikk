@@ -56,7 +56,7 @@ export function NewOrderAlert({ onCountChange }: { onCountChange?: (n: number) =
       if (!DEMO_DATA_ENABLED) await acceptPartnerOrder(order.id);
       setAcceptedIds(previous => new Set([...previous, order.id]));
       window.dispatchEvent(new Event('gloceries:orders-updated'));
-      toast.success(`Order #${order.order_number} accepted. Start preparing.`);
+      toast.success(`Order ${order.order_number} accepted. Start preparing.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not accept order. Please try again.');
     } finally {
@@ -75,7 +75,7 @@ export function NewOrderAlert({ onCountChange }: { onCountChange?: (n: number) =
       setAcceptedIds(previous => new Set([...previous, rejectingOrder.id]));
       setRejectingOrder(null);
       window.dispatchEvent(new Event('gloceries:orders-updated'));
-      toast.success(`Order #${rejectingOrder.order_number} rejected.`);
+      toast.success(`Order ${rejectingOrder.order_number} rejected.`);
     } catch (err) {
       setRejectError(err instanceof Error ? err.message : 'Could not reject order. Please try again.');
     } finally {

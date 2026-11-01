@@ -69,7 +69,7 @@ export function OrderDetailsPanel({
             <p className="text-xs font-medium text-slate-500">Order details</p>
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
               <h2 id="order-panel-title" className="tnum text-xl font-semibold text-ink">
-                {order ? `#${order.order_number}` : 'Order not found'}
+                {order ? order.order_number : 'Order not found'}
               </h2>
               {order && <StatusPill status={order.status} />}
             </div>

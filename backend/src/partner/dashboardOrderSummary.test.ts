@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { orderSummaryData, durationLabel } from '../../../apps/partner-dashboard/src/components/orders/orderSummaryData';
 import type { PartnerOrder } from '../../../apps/partner-dashboard/src/lib/partnerApi';
 const now = Date.parse('2026-10-19T06:00:00Z');
-const order = (patch: Partial<PartnerOrder> = {}) => ({ id: 'one', order_number: 'FLK-1', status: 'placed', placed_at: '2026-10-19T05:00:00Z', store_visible_at: '2026-10-19T05:01:00Z', item_total: 100, ...patch }) as PartnerOrder;
+const order = (patch: Partial<PartnerOrder> = {}) => ({ id: 'one', order_number: 'GLO-0000-0001', status: 'placed', placed_at: '2026-10-19T05:00:00Z', store_visible_at: '2026-10-19T05:01:00Z', item_total: 100, ...patch }) as PartnerOrder;
 it('measures acceptance from store visibility and packing from acceptance', () => {
   const result = orderSummaryData([order({ accepted_at: '2026-10-19T05:02:40Z', packed_at: '2026-10-19T05:09:40Z', status: 'packed' })], now);
   expect(result.acceptMs).toBe(100_000); expect(result.packMs).toBe(420_000);

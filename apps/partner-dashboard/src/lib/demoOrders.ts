@@ -23,7 +23,7 @@ const ATTA: PartnerOrder['order_items'][number]['products'] = { name: 'Aashirvaa
 const HAND_PICKED: PartnerOrder[] = [
   {
     id: 'demo-order-1',
-    order_number: 'FLK-1042',
+    order_number: 'GLO-0000-1042',
     status: 'placed',
     item_total: 358,
     delivery_fee: 20,
@@ -45,7 +45,7 @@ const HAND_PICKED: PartnerOrder[] = [
   },
   {
     id: 'demo-order-2',
-    order_number: 'FLK-1043',
+    order_number: 'GLO-0000-1043',
     status: 'placed',
     item_total: 537,
     delivery_fee: 20,
@@ -67,7 +67,7 @@ const HAND_PICKED: PartnerOrder[] = [
   },
   {
     id: 'demo-order-3',
-    order_number: 'FLK-1044',
+    order_number: 'GLO-0000-1044',
     status: 'packed',
     item_total: 720,
     delivery_fee: 20,
@@ -88,7 +88,7 @@ const HAND_PICKED: PartnerOrder[] = [
   },
   {
     id: 'demo-order-4',
-    order_number: 'FLK-1045',
+    order_number: 'GLO-0000-1045',
     status: 'out_for_delivery',
     item_total: 116,
     delivery_fee: 20,
@@ -105,7 +105,7 @@ const HAND_PICKED: PartnerOrder[] = [
   },
   {
     id: 'demo-order-5',
-    order_number: 'FLK-1046',
+    order_number: 'GLO-0000-1046',
     status: 'delivered',
     item_total: 480,
     delivery_fee: 20,
@@ -126,7 +126,7 @@ const HAND_PICKED: PartnerOrder[] = [
   },
   {
     id: 'demo-order-6',
-    order_number: 'FLK-1047',
+    order_number: 'GLO-0000-1047',
     status: 'delivered',
     item_total: 265,
     delivery_fee: 20,
@@ -143,7 +143,7 @@ const HAND_PICKED: PartnerOrder[] = [
   },
   {
     id: 'demo-order-7',
-    order_number: 'FLK-1048',
+    order_number: 'GLO-0000-1048',
     status: 'cancelled',
     item_total: 195,
     delivery_fee: 20,
@@ -185,7 +185,7 @@ function historyOrder(n: number): PartnerOrder {
   const customer = CUSTOMERS[n % CUSTOMERS.length];
   return {
     id: `demo-hist-${n}`,
-    order_number: `FLK-${980 - n}`,
+    order_number: `GLO-0000-${String(980 - n).padStart(4, '0')}`,
     status: cancelled ? 'cancelled' : 'delivered',
     item_total: itemTotal,
     delivery_fee: 20,
