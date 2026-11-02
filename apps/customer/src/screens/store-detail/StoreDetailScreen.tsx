@@ -13,7 +13,7 @@
 // card every other product grid in the app uses.
 
 import { useEffect, useState } from 'react';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { Pressable, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

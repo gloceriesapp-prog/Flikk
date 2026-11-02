@@ -1,0 +1,2 @@
+Source: https://images.gloceries.com/appsui/meat-category.png
+User-provided replacement artwork, bundled unchanged for fast offline rendering.

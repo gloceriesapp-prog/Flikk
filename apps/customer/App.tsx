@@ -6,7 +6,7 @@ import { useAuthStore } from './src/store/useAuthStore';
 import { useCartStore } from './src/store/useCartStore';
 import { useWishlistStore } from './src/store/useWishlistStore';
 import { useLocationStore } from './src/store/useLocationStore';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -18,6 +18,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform, View } from 'react-native';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { StartupAppearanceContext } from './src/components/startupAppearance';
 import { GILROY_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { OfflineBanner } from './src/components/OfflineBanner';
@@ -45,9 +46,9 @@ void SplashScreen.preventAutoHideAsync();
 // a white strip pinned to the bottom inset, below the OS buttons (the OS
 // always draws them on top) and pointerEvents="none" so it never eats a tap.
 // Height 0 (buttonless gesture nav with no inset) renders nothing.
-function AndroidNavBarScrim() {
+function AndroidNavBarScrim({ hidden }: { hidden: boolean }) {
   const insets = useSafeAreaInsets();
-  if (Platform.OS !== 'android' || insets.bottom === 0) return null;
+  if (hidden || Platform.OS !== 'android' || insets.bottom === 0) return null;
   return (
     <View
       pointerEvents="none"
@@ -68,6 +69,7 @@ wireOnlineManager(onlineManager, (setOnline) =>
 );
 
 function App() {
+  const [startupVisible, setStartupVisible] = useState(false);
   useAuthStore(state => state.sessionEpoch);
   useAuthStore(state => state.customerId);
   const queryClient = accountQueryClient();
@@ -116,11 +118,13 @@ function App() {
                 RootNavigator, the global style could override any
                 per-screen style="light" override (e.g. HomeScreen.tsx's own),
                 regardless of which screen was actually focused. */}
-            <StatusBar style="light" />
+            <StatusBar style="dark" hidden={false} />
             <ErrorBoundary>
-              <ReleaseGate>
-                <RootNavigator />
-              </ReleaseGate>
+              <StartupAppearanceContext.Provider value={setStartupVisible}>
+                <ReleaseGate>
+                  <RootNavigator />
+                </ReleaseGate>
+              </StartupAppearanceContext.Provider>
             </ErrorBoundary>
             {/* App-wide, overlays everything; renders null while online. */}
             <OfflineBanner />
@@ -128,7 +132,7 @@ function App() {
         </KeyboardProvider>
         {/* White backing for Android's transparent system nav bar — topmost so
             it covers the inset strip on every screen, non-interactive. */}
-        <AndroidNavBarScrim />
+        <AndroidNavBarScrim hidden={startupVisible} />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

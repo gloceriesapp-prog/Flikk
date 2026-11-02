@@ -30,7 +30,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 // /auth/me's created_at).
 
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
 import { ActivityIndicator, AppState, Pressable, Text, View } from 'react-native';

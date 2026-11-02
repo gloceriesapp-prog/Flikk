@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../components/ScreenStatusBar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp, verifyOtp } from '../api/auth';
 import { ApiError } from '../api/client';

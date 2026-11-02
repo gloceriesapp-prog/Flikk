@@ -11,7 +11,7 @@
 // to the header and stays, same logic every bottom-tab screen uses.
 
 import { Search01Icon } from '@hugeicons/core-free-icons';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

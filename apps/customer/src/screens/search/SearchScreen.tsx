@@ -21,7 +21,7 @@
 
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StoreCard } from '../store-list/components/StoreCard';

@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../../../components/ScreenStatusBar';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../../../navigation/types';

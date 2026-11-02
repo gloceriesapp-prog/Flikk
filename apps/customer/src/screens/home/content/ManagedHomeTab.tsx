@@ -194,6 +194,7 @@ function ManagedSection({
           {items.length ? (
             <ContentTiles
               featuredCategories={tabKey === 'grocery' && section.id === 'shop-by-category'}
+              archedCategories={tabKey === 'meat' && section.kind === 'categories'}
               section={{ ...section, items }}
               products={inventory.visibleProducts}
               onOpen={(item) => openCollection(item.id)}

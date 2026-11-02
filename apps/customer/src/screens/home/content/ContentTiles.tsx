@@ -11,11 +11,13 @@ export function ContentTiles({
   products,
   onOpen,
   featuredCategories = false,
+  archedCategories = false,
 }: {
   section: HomeContentSection;
   products: ApiProduct[];
   onOpen: (item: HomeContentItem) => void;
   featuredCategories?: boolean;
+  archedCategories?: boolean;
 }) {
   const items = section.items.filter((item) => item.enabled).slice(0, section.limit);
   const imageForItem = (item: HomeContentItem) =>
@@ -53,7 +55,7 @@ export function ContentTiles({
           )}
         </Pressable>
       );
-    const arched = section.id === 'shop-fresh';
+    const arched = archedCategories || section.id === 'shop-fresh';
     return (
       <Pressable
         accessibilityRole="button"
@@ -64,7 +66,7 @@ export function ContentTiles({
         <View
           className="w-full items-center justify-center overflow-hidden"
           style={{
-            aspectRatio: arched ? 4 / 4.6 : 1,
+            aspectRatio: archedCategories ? 4 / 5.2 : arched ? 4 / 4.6 : 1,
             backgroundColor: item.backgroundColor || '#EEF4E5',
             borderTopLeftRadius: arched ? 999 : 20,
             borderTopRightRadius: arched ? 999 : 20,
@@ -92,7 +94,7 @@ export function ContentTiles({
       </Pressable>
     );
   };
-  if (section.layout === 'horizontal')
+  if (section.layout === 'horizontal' && !archedCategories)
     return (
       <ScrollView
         horizontal
@@ -107,10 +109,10 @@ export function ContentTiles({
       </ScrollView>
     );
   return (
-    <View className="px-5">
+    <View className="px-5" style={archedCategories ? { width: '100%', maxWidth: 560, alignSelf: 'center' } : undefined}>
       <View className="-mx-1.5 flex-row flex-wrap gap-y-5">
         {items.map((item) => (
-          <View key={item.id} className="px-1.5" style={{ width: `${100 / section.columns}%` }}>
+          <View key={item.id} className="px-1.5" style={{ width: `${100 / (archedCategories ? 4 : section.columns)}%` }}>
             {tile(item)}
           </View>
         ))}

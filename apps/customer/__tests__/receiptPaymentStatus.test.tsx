@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react-native';
 import type { ComponentProps } from 'react';
 import { ReceiptScreen } from '../src/screens/receipt/ReceiptScreen';
 
+jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
+
 jest.mock('../src/components/AppIcon', () => ({ AppIcon: () => null }));
 jest.mock('../src/components/SuccessSeal', () => ({ SuccessSeal: () => null }));
 jest.mock('../src/components/BarcodeSvg', () => ({ BarcodeSvg: () => null }));
@@ -36,4 +38,17 @@ describe('receipt payment claims', () => {
     expect(screen.getByText('Order confirmed')).toBeTruthy();
     expect(screen.getByText('Paid via Online payment')).toBeTruthy();
   });
+});
+
+
+it('shows the same remaining-minute estimate as tracking instead of Today and a clock time', async () => {
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-22T12:10:00Z'));
+  try {
+    await receipt('Online payment');
+    expect(screen.getByText('Arriving in 25 minutes')).toBeTruthy();
+    expect(screen.getByText('Estimated Delivery')).toBeTruthy();
+    expect(screen.queryByText(/^Today,/)).toBeNull();
+  } finally {
+    clock.mockRestore();
+  }
 });

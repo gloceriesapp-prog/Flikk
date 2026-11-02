@@ -6,13 +6,14 @@
 // (QuickCategoriesSection → openCategory → HomeCategory page). Full
 // discovery/browse (store lists, C4/C5) is separate work.
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { Pressable, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import Animated from 'react-native-reanimated';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
+import Animated, { runOnJS, useAnimatedReaction } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeHeader } from './components/HomeHeader';
+import { COLLAPSE_DISTANCE } from './components/CollapsibleHeaderTop';
 import { UnavailableZoneScreen } from './unavailable-zone/UnavailableZoneScreen';
 import { useHomeBrowseScroll } from './category-page/useHomeBrowseScroll';
 import { AllTabSections } from './sections/AllTabSections';
@@ -48,6 +49,18 @@ export function HomeScreen({ navigation }: Props) {
   useWarmHomeBrowse(isServiceable);
 
   const { scrollY, scrollHandler } = useHomeBrowseScroll();
+  const [statusBarStyle, setStatusBarStyle] = useState<'light' | 'dark'>('light');
+  // The sticky header fades from blue to white as its location row collapses.
+  // Follow that visual state, including when returning to a scrolled Home.
+  useAnimatedReaction(
+    () => scrollY.value >= COLLAPSE_DISTANCE / 2,
+    (lightBackground, previous) => {
+      if (lightBackground !== previous) {
+        runOnJS(setStatusBarStyle)(lightBackground ? 'dark' : 'light');
+      }
+    },
+    [],
+  );
 
   // No real store in range at all — the whole browsing UI below (header,
   // every section) assumes one exists. Full-screen swap instead of a
@@ -66,8 +79,8 @@ export function HomeScreen({ navigation }: Props) {
     // BottomNavBar lives in HomeNavigationShell, outside the screen surface,
     // so it stays in place while Home/category pages transition underneath.
     <View className="flex-1 bg-white">
-      {/* White status-bar text/icons on both Android and iOS. */}
-      {isFocused && <StatusBar style="light" />}
+      {/* Keep system icons legible on the blue and collapsed white header. */}
+      {isFocused && <StatusBar style={statusBarStyle} />}
       <Animated.ScrollView
         className="flex-1"
         contentContainerClassName="pb-28"

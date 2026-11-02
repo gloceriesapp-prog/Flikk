@@ -12,7 +12,7 @@
 // store synchronously on mount, so it needs to already be hydrated by then.
 
 import { useDeliverySettingsSync } from '../api/deliverySettings';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { onAccountBlocked } from '../api/accountBlocked';
 import { NavigationContainer } from '@react-navigation/native';
@@ -21,6 +21,7 @@ import { useLocationStore } from '../store/useLocationStore';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { AuthNavigator } from './AuthNavigator';
+import { StartupWelcome } from '../components/StartupWelcome';
 import { AppNavigator } from './AppNavigator';
 import { linking } from './linking';
 import { useNotifications } from '../features/notifications/useNotifications';
@@ -32,6 +33,8 @@ export function RootNavigator() {
   useNotifications();
   const { accessToken, customerId, isGuest, isHydrated: authHydrated, hydrationError: authError, hydrate: hydrateAuth } = useAuthStore();
   const { isHydrated: locationHydrated, hydrationError: locationError, hydrate: hydrateLocation } = useLocationStore();
+  const [welcomeFinished, setWelcomeFinished] = useState(false);
+  const finishWelcome = useCallback(() => setWelcomeFinished(true), []);
   const [cartReady, setCartReady] = useState(false);
   const [cartError, setCartError] = useState(false);
   const [cartRetry, setCartRetry] = useState(0);
@@ -70,9 +73,9 @@ export function RootNavigator() {
     }
   }, [authHydrated, accessToken]);
 
-  // Restore the session and delivery location before choosing a stack,
-  // without an introductory page or an artificial minimum wait.
-  if (!hydrated) return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
+  // Keep the artwork visible for 3.5 seconds after display, while restoring
+  // the session, location and cart in parallel. Later sign-ins do not replay it.
+  if (!hydrated || !welcomeFinished) return <StartupWelcome onFinished={finishWelcome} />;
 
   if (authError || locationError || cartError) {
     return <View className="flex-1 items-center justify-center gap-5 bg-white px-8">

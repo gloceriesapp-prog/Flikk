@@ -145,7 +145,15 @@ module.exports = {
         },
       ],
       'expo-font',
-      ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 200, resizeMode: 'contain', backgroundColor: '#FFFFFF' }],
+      ['expo-splash-screen', {
+        backgroundColor: '#0055FF',
+        image: './assets/customer-welcome.png',
+        resizeMode: 'cover',
+        ios: { enableFullScreenImage_legacy: true },
+        // Android 12+ masks native splash art into an icon. Omit that icon
+        // and show the same full-screen bundled artwork during hydration.
+        android: { drawable: { icon: './assets/splash-empty.xml' } },
+      }],
       'expo-image',
       'expo-notifications',
       './plugins/withUpiAppQueries',

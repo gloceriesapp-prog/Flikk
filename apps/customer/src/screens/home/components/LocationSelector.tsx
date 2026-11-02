@@ -1,3 +1,4 @@
+import { DeliveryHeading } from './DeliveryHeading';
 import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 // Reads the saved delivery address from useLocationStore (see
 // src/screens/location/) and lets the user tap through to change it via the
@@ -50,19 +51,10 @@ export function LocationSelector({ onPress, isClosed = false, light = false }: P
   const iconColor = light ? '#101C10' : '#FFFFFF';
 
   return (
-    <Pressable onPress={onPress} className="max-w-[230px]">
-      <View className="flex-row items-center gap-1">
-        {/* Both icons hidden while closed — the send/navigation arrow
-            implies "this is your live delivery point" and the chevron
-            implies "tap to pick a different one right now", neither of
-            which reads right next to a closed-hours statement. */}
-        {/* {!isClosed && (
-          <AppIcon icon={Navigation03Icon} size={12} color={navColor} fill={navColor} strokeWidth={0} />
-        )} */}
-        <Text className={`${isClosed ? 'text-[18px]' : 'text-2xl'} font-extrabold ${primaryText}`}>
-          {isClosed ? `Opens ${reopen.time} ${reopen.day}` : `In ${estimatedMinutes} minutes`}
-        </Text>
-      </View>
+    <Pressable onPress={onPress} className="w-full max-w-[230px]">
+      {isClosed ? <Text className={`text-[18px] font-extrabold ${primaryText}`}>
+        {`Opens ${reopen.time} ${reopen.day}`}
+      </Text> : <DeliveryHeading minutes={estimatedMinutes} light={light} />}
       <View className="flex-row items-center gap-0.5">
         <Text className={`shrink text-lg font-semibold ${primaryText}`} numberOfLines={1}>
           {isClosed ? 'Closed for now' : label}

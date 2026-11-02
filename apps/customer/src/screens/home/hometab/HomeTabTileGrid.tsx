@@ -28,6 +28,7 @@ interface Props {
   tab: RemoteHomeTab;
   // Festival renders its own product sections above the tiles.
   showProducts?: boolean;
+  categoryStyle?: 'default' | 'meat';
 }
 
 // Exactly 4 columns, guaranteed — each cell is a true 25% width (see
@@ -83,14 +84,16 @@ function TabProducts({ target }: { target?: HomeTabTileLink }) {
 // Admin tiles + every "Ads & posters" banner for a tab. Shared by the
 // generic tab body and the managed Groceries/Fresh/Regional/Bakery tabs, so
 // tiles and banners set in Home Categories show on every tab.
-export function HomeTabExtras({ tab }: { tab: RemoteHomeTab }) {
+export function HomeTabExtras({ tab, categoryStyle = 'default' }: { tab: RemoteHomeTab; categoryStyle?: 'default' | 'meat' }) {
+  const isMeat = categoryStyle === 'meat';
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   if (tab.tiles.length === 0 && tab.banners.length === 0) return null;
 
   return (
     <View>
       {tab.tiles.length > 0 && (
-        <View className="px-5 pt-6">
+        <View className="px-5 pt-6" style={isMeat ? { width: '100%', maxWidth: 560, alignSelf: 'center' } : undefined}>
+          {isMeat && <Text accessibilityRole="header" className="mb-4 text-[20px] font-bold tracking-tight text-ink">Shop by category</Text>}
           <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
             {tab.tiles.map((tile) => (
               <Pressable
@@ -101,12 +104,16 @@ export function HomeTabExtras({ tab }: { tab: RemoteHomeTab }) {
                 style={{ width: '25%', paddingHorizontal: GAP / 2, paddingBottom: 20 }}
               >
                 <View
-                  className="aspect-square items-center justify-center overflow-hidden rounded-2xl border border-gray-100 shadow-md shadow-black/20"
-                  style={{ backgroundColor: '#EDEDF0' }}
+                  className={isMeat ? 'items-center justify-center overflow-hidden' : 'aspect-square items-center justify-center overflow-hidden rounded-2xl border border-gray-100 shadow-md shadow-black/20'}
+                  style={isMeat ? {
+                    aspectRatio: 4 / 5.2, backgroundColor: '#FFF1EB',
+                    borderTopLeftRadius: 999, borderTopRightRadius: 999,
+                    borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
+                  } : { backgroundColor: '#EDEDF0' }}
                 >
-                  <Image source={{ uri: tile.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+                  <Image source={{ uri: tile.imageUrl || PLACEHOLDER_IMAGE_URI }} className={isMeat ? 'h-[84%] w-[94%]' : 'h-full w-full'} resizeMode={isMeat ? 'contain' : 'cover'} />
                 </View>
-                <Text className="text-center text-sm font-medium leading-4 text-ink" numberOfLines={2}>
+                <Text className={isMeat ? 'mt-2 text-center text-[13px] font-bold leading-[17px] text-ink' : 'text-center text-sm font-medium leading-4 text-ink'} numberOfLines={2}>
                   {tile.name}
                 </Text>
               </Pressable>
@@ -120,10 +127,10 @@ export function HomeTabExtras({ tab }: { tab: RemoteHomeTab }) {
   );
 }
 
-export function HomeTabTileGrid({ tab, showProducts = true }: Props) {
+export function HomeTabTileGrid({ tab, showProducts = true, categoryStyle = 'default' }: Props) {
   return (
     <View className="pb-32">
-      <HomeTabExtras tab={tab} />
+      <HomeTabExtras tab={tab} categoryStyle={categoryStyle} />
       {showProducts && <TabProducts target={tabBrowseTarget(tab.tiles)} />}
     </View>
   );

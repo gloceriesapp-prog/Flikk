@@ -121,3 +121,12 @@ it('reanchors a coarse startup preview to a materially better precise fix', () =
   expect(next.latitude).toBe(precise.latitude);
   expect(next.longitude).toBe(precise.longitude);
 });
+
+
+it('corrects a moderately precise stationary anchor to a better GPS reading without retaining its offset', () => {
+  const previous = filterFix(null, fix(0, 20, 1));
+  const precise = { ...fix(9, 8, 2), speed: 0 };
+  const corrected = filterFix(previous, precise);
+  expect(distanceMeters(corrected, precise)).toBe(0);
+  expect(corrected.accuracy).toBe(8);
+});

@@ -1,0 +1,2 @@
+Source: https://images.gloceries.com/appsui/diwali-section.png
+User-provided banner, bundled unchanged for fast offline rendering.

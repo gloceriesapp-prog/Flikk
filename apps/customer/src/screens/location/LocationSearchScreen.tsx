@@ -23,7 +23,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, Vi
 import { BlurView } from 'expo-blur';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import MapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
@@ -43,7 +43,7 @@ import { distanceMeters } from '../../location/locationFilter';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
 import { LocationRequestGate } from '../../location/requestGate';
 import { useLiveLocation } from '../../location/useLiveLocation';
-import { getDeviceLocationFix, getRecentDeviceFix } from '../../location/deviceLocation';
+import { getDeviceLocationFix } from '../../location/deviceLocation';
 import { DeliveryPinArtwork, DELIVERY_PIN_SIZE, DELIVERY_PIN_TIP, LiveLocationPin, LiveLocationHalo } from './components/LiveLocationPin';
 import { withDeadline } from '../../utils/deadline';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -435,7 +435,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
       const granted = hasLocationPermission || (await requestLocationPermission());
       if (!granted) throw new Error('Location permission denied');
       setHasLocationPermission(true);
-      const deviceFix = getRecentDeviceFix() ?? await getDeviceLocationFix();
+      const deviceFix = await getDeviceLocationFix({ fresh: true });
       if (!focused.current || !navigationRequests.current.current(ticket)) return;
       const coords = adoptDeviceFix(deviceFix);
       followDot.current = true;

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppImage } from '../../components/AppImage';
 import { PrimaryButton } from '../../components/PrimaryButton';
