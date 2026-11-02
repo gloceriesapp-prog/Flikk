@@ -1,10 +1,10 @@
 # Android payment and status-bar verification - 2026-11-02
 
-Release source: current main `6b4a2be1fc020fd8c3f10e4602bdf7fae0fd3eee`, plus pending customer UI/location/status-bar work in this checkout.
+Release source: `codex/customer-ui-release-refresh`, integrating main `a4de076dcc019c750fb366fb8a5cbb34f2af2a1f` with the customer UI/location/status-bar updates. This is source verification, not approval of an uploaded release artifact.
 
 ## Verified
 
-- Customer Jest: 53 suites, 331 tests passed after the final Home header contrast adjustment. The three focused status-bar tests also pass after removing test lint warnings.
+- Customer Jest: 54 suites, 335 tests passed after integrating main and updating the welcome boot smoke test. Includes welcome timing, status-bar focus, location and payment regression coverage.
 - Backend Vitest: 218 files, 1,338 tests passed, including payment creation, intent, verification, recovery, webhook and refund logic tests. These are automated checks, not proof of a real provider refund.
 - Customer TypeScript and focused ESLint pass (zero warnings/errors).
 - Live public `/payments/availability`: online, COD and UPI intent enabled; `upi_email_optional` is **true** after the guarded rollout below.
@@ -23,6 +23,13 @@ Release source: current main `6b4a2be1fc020fd8c3f10e4602bdf7fae0fd3eee`, plus pe
 - Android `d2a09beb` reconnected. Updated Metro runs on IPv4 localhost:8084 with USB reverse forwarding, using the live API. Signed in with the approved reviewer account. Verified device-location Google Maps, Home, Profile, installed PhonePe/Google Pay rows and logos, live netbanking picker/SBI search, and empty MobiKwik form with disabled Continue. No wallet account was linked. Verified dark status icons on white payment/collapsed Home screens and light icons on blue expanded Home. Left local app on Home.
 - Current source browsing/payment-method screens verified on device. A fresh selected-app UPI handoff and cancellation/reconciliation check still requires one separately authorized pending checkout; no new checkout was created in this run.
 - Existing Play build 12 cannot gain new JavaScript checkout/status-bar changes from the server switch alone. Build/test a replacement AAB after source/device checks are complete.
-- Provider refund failure remains unresolved unless independently verified; passing unit tests do not clear that release gate.
+- Read-only provider verification on 2026-11-02 confirms the existing INR 1 live UPI payment was fully refunded, with its matching provider refund marked processed and the application record completed. This clears that live example; the older sandbox HTTP 400 investigation is separate.
 
 No new live orders, payments, refunds, uploads or publications were performed. The existing production API/worker received only the non-secret email-optional configuration correction.
+
+## Welcome and category artwork follow-up
+
+- Diwali welcome artwork is bundled locally and visually verified on the connected Android device. Its 3.5-second viewing timer begins after the image displays; local session/location/cart restoration proceeds in parallel. Timer cleanup and decode-error escape have focused regression coverage.
+- The installed development client still has its earlier native splash resource; the committed splash configuration removes that logo in the next native build. Metro initialization delay is not an artwork download.
+- Festival and Regional artwork are bundled locally with distinct decorative bottom edges and square corners; Meat retains its separate scalloped edge.
+- The candidate now includes main’s background-query focus handling and corrected customer-app Sentry project configuration.
