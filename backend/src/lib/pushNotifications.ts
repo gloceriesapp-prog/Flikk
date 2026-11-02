@@ -66,6 +66,8 @@ export async function sendPushNotifications(messages: PushMessage[]): Promise<vo
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(batch),
+        // Rider dispatch awaits this; a hung Expo endpoint must not stall it.
+        signal: AbortSignal.timeout(8_000),
       });
       await clearDeadTokens(batch, await readTickets(response));
     } catch {

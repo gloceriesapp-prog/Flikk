@@ -612,6 +612,10 @@
     {
       "file": "20261101160000_glo_order_numbers.sql",
       "sha256": "1e6d417f239d895014895bb4081ba9fbc1542bd5a9a27a5877ec14afa73e6c87"
+    },
+    {
+      "file": "20261102120000_db_advisor_fixes.sql",
+      "sha256": "4c545d34e9426ac07fee313d4c0bed455d4ec7f45773d050555ceceefb8f1acd"
     }
   ]
 }

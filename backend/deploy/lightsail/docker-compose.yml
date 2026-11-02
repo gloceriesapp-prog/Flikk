@@ -22,6 +22,9 @@ services:
       RELEASE_SHA: ${TAG}
       # Two replicas share a 2 GB host with the worker and Caddy.
       NODE_OPTIONS: "--max-old-space-size=448"
+      # On SIGTERM, fail /healthz for 5s so Caddy moves traffic to the other
+      # replica before this one stops taking requests (src/index.ts).
+      DRAIN_DELAY_MS: "5000"
     expose: ["3000"]
     restart: unless-stopped
     mem_limit: 600m
@@ -34,7 +37,7 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
-    stop_grace_period: 20s
+    stop_grace_period: 25s
     logging: &logging
       driver: json-file
       options: {max-size: "20m", max-file: "5"}
