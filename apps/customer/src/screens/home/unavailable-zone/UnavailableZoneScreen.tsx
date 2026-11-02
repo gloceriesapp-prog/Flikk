@@ -1,31 +1,19 @@
+import { useCopy } from '../../../api/appConfig';
 // Full-screen replacement for Home when the picked delivery location has no
 // real store within the 12km delivery radius (useNearestStore.ts's own
 // isServiceable, backed by GET /stores/nearest's server-side distance
 // cutoff — single-zone-only per CLAUDE.md). Swaps in for the ENTIRE Home
 // body (header, category tabs, all sections) rather than just one section —
 // none of that browsing UI applies when there's nothing nearby to browse.
-//
-// Header row restored (real "Delivering to" address, tap-through to
-// SelectLocation — same useLocationStore this screen already read for the
-// old copy) + a profile button on the right using the exact same icon
-// DeliveryModeSwitcher.tsx's own profile shortcut uses (UserIcon,
-// navigates to Profile) — per an explicit ask to reuse that same icon
-// rather than a different one. Styled dark-on-light (ink, not
-// LocationSelector.tsx's white) since that component assumes HomeHeader's
-// dark gradient; this panel is the light PANEL_BG pink instead.
-//
-// Centered badge/headline/subtext block below that, then a store
-// illustration, then the same real CategorySections grid every other
-// screen uses (GET /category-sections, not a fabricated list) and
-// BrandFooter with its social-links row. The upvote button (shared
-// useAreaUpvote, same one as the old floating UpvoteAreaBar pill) sits
-// pinned at the very bottom.
+// The bundled artwork renders without a network request. The overlay measures
+// its content so larger text stays in the sky above the scenery. Location,
+// categories, waitlist and upvote behavior remain shared with the normal flow.
 
 import { useState } from 'react';
 import { CheckmarkCircle02Icon, ChevronDownIcon, ThumbsUpIcon, UserIcon } from '@hugeicons/core-free-icons';
-import { Alert, ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, ActivityIndicator, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../../components/AppIcon';
 import { AppImage as Image } from '../../../components/AppImage';
@@ -37,23 +25,26 @@ import { useAreaUpvote } from '../../../hooks/useAreaUpvote';
 import { useLocationStore } from '../../../store/useLocationStore';
 import { colors } from '../../../theme/tokens';
 import type { AppStackParamList } from '../../../navigation/types';
-import { storageUrl } from '../../../utils/storageUrl';
-import { useCopy } from '../../../api/appConfig';
+import { ScreenStatusBar as StatusBar } from '../../../components/ScreenStatusBar';
 
-const PANEL_BG = '#F7DEDC';
-const ILLUSTRATION_URL = storageUrl('Images/store-coming-soon.png');
+const SKY_BG = '#025FFA';
+const ILLUSTRATION = require('../../../../assets/illustrations/unavailable-area.png');
+const ILLUSTRATION_RATIO = 1122 / 1402;
 
 export function UnavailableZoneScreen() {
   const insets = useSafeAreaInsets();
-  const title = useCopy('serviceability.unavailable.title');
+  const configuredTitle = useCopy('serviceability.unavailable.title');
+  // Older deployments can still return the previous built-in default.
+  const title = configuredTitle === 'We’re on our way to you.' ? 'Your Area Could Be Next!' : configuredTitle;
+  const { width } = useWindowDimensions();
+  const [overlayHeight, setOverlayHeight] = useState(0);
+  const imageHeight = width / ILLUSTRATION_RATIO;
+  const heroHeight = Math.max(imageHeight, overlayHeight + imageHeight * 0.6);
+  const isFocused = useIsFocused();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const location = useLocationStore((s) => s.location);
-  const addressLabel = location?.addressLabel || location?.city || 'Set your location';
+  const placeName = location?.addressLabel?.trim() || location?.city?.trim() || 'Set your location';
   const { voted, submitting, upvote } = useAreaUpvote();
-  // Real dimensions from the loaded file, not a guessed constant — a wrong
-  // guess either crops the image (contentFit="cover") or letterboxes it
-  // wrong (contentFit="contain" with the wrong ratio). Falls back to a
-  // square box only until onLoad fires once.
   const customerId = useAuthStore(state => state.customerId);
   const sessionEpoch = useAuthStore(state => state.sessionEpoch);
   const waitlistKey = JSON.stringify([customerId, sessionEpoch, location?.latitude, location?.longitude, location?.addressLabel]);
@@ -61,50 +52,49 @@ export function UnavailableZoneScreen() {
   const [joinedKey, setJoinedKey] = useState<string | null>(null);
   const joining = joiningKey === waitlistKey;
   const joined = joinedKey === waitlistKey;
-  const [illustrationRatio, setIllustrationRatio] = useState(1);
 
   return (
     <View className="flex-1 bg-white">
+      {isFocused && <StatusBar style="light" />}
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 96 }} bounces={false}>
-        <View style={{ backgroundColor: PANEL_BG, paddingTop: insets.top }}>
-          <View className="flex-row items-center gap-3 px-5 pb-8">
-            <Pressable onPress={() => navigation.navigate('SelectLocation')} className="flex-1">
-              <Text className="text-[14px] font-medium" style={{ color: colors.danger }}>
-                Not deliverable here
-              </Text>
-              <View className="flex-row items-center gap-1">
-                <Text className="text-[18px] font-medium text-ink" numberOfLines={1}>
-                  {addressLabel}
+        <View style={{ backgroundColor: SKY_BG, height: heroHeight, overflow: 'hidden' }}>
+          <Image source={ILLUSTRATION} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, width: '100%', aspectRatio: ILLUSTRATION_RATIO }} contentFit="contain" priority="high" transition={0} accessible={false} />
+          <View style={{ paddingTop: insets.top }} onLayout={event => setOverlayHeight(event.nativeEvent.layout.height)}>
+          <View className="flex-row items-center justify-between gap-4 px-5 pb-9 pt-2">
+            <Pressable onPress={() => navigation.navigate('SelectLocation')}
+              className="min-h-11 min-w-0 flex-shrink gap-1.5"
+              style={{ maxWidth: 230, flex: 1 }}
+              accessibilityRole="button" accessibilityLabel={`Selected area: ${placeName}. Change location`}
+            >
+              <Text className="text-[11px] font-medium tracking-[1.4px] text-white/75">YOUR AREA</Text>
+              <View className="flex-row items-center gap-2">
+                <Text className="shrink text-[16px] font-semibold leading-6 text-white" numberOfLines={1} ellipsizeMode="tail" >
+                  {placeName}
                 </Text>
-                <AppIcon icon={ChevronDownIcon} size={17} color={colors.ink} strokeWidth={2.2} />
+                <AppIcon icon={ChevronDownIcon} size={15} color="#FFFFFF" strokeWidth={2} />
               </View>
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Open profile"
               onPress={() => navigation.navigate('Profile')}
-              className="h-10 w-10 items-center justify-center rounded-full bg-white"
+              className="h-11 w-11 items-center justify-center rounded-full bg-white"
             >
               <AppIcon icon={UserIcon} size={18} color={colors.ink} strokeWidth={1.8} />
             </Pressable>
           </View>
 
-          <View className="items-center gap-4 px-8 pb-6">
+          <View className="items-center gap-4 self-center px-7 pb-6" style={{ width: '100%', maxWidth: 440 }}>
             <View className="rounded-full bg-white px-3.5 py-1.5">
-              <Text className="text-[12px] font-semibold" style={{ color: colors.danger }}>
-                ✦ Coming Soon
+              <Text className="text-[12px] font-semibold" style={{ color: SKY_BG }}>
+                ✦ A little closer, soon
               </Text>
             </View>
-            <Text className="text-center text-[24px] font-semibold leading-8 text-ink/90">{title}</Text>
-            <Text className="text-center text-[15px] font-medium leading-6 text-ink/60">
-              Gloceries isn&apos;t in your area just yet, but you can help us get there faster.
+            <Text className="text-center text-[27px] font-semibold leading-[34px] tracking-[-0.6px] text-white">{title}</Text>
+            <Text className="text-center text-[14px] font-medium leading-[22px] text-white/90">
+              Good groceries, closer to home. Vote to bring Gloceries to your neighbourhood.
             </Text>
           </View>
 
-          <Image
-            source={{ uri: ILLUSTRATION_URL }}
-            style={{ width: '100%', aspectRatio: illustrationRatio }}
-            contentFit="contain"
-            onLoad={(e) => setIllustrationRatio(e.source.width / e.source.height)}
-          />
+          </View>
         </View>
 
         <View className="px-5 py-4"><Pressable disabled={joining || joined || !location} onPress={async () => {
@@ -121,21 +111,22 @@ export function UnavailableZoneScreen() {
 
       <View
         pointerEvents="box-none"
-        style={{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + 16 }}
+        style={{ position: 'absolute', left: 20, right: 20, bottom: insets.bottom + 12, alignItems: 'center' }}
       >
         <Pressable
           onPress={upvote}
           disabled={voted || submitting}
-          className="flex-row items-center justify-center gap-2.5 rounded-full bg-ink px-7 py-[18px] shadow-xl shadow-black/30"
-          style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}
+          accessibilityRole="button" accessibilityLabel={voted ? 'Your area vote is saved' : 'Vote to bring Gloceries to your area'}
+          className="min-h-14 flex-row items-center justify-center gap-2.5 rounded-full bg-ink px-6 py-4"
+          style={{ width: '100%', maxWidth: 440, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
         >
           {submitting ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <AppIcon icon={voted ? CheckmarkCircle02Icon : ThumbsUpIcon} size={19} color="#FFFFFF" />
           )}
-          <Text className="text-[15px] font-medium tracking-tight text-white">
-            {voted ? "Thanks! We'll get to you soon" : 'Upvote, bring the app to your area'}
+          <Text className="shrink text-center text-[15px] font-semibold text-white">
+            {voted ? 'Your vote is in. Thank you!' : 'Bring Gloceries to my area'}
           </Text>
         </Pressable>
       </View>

@@ -51,7 +51,7 @@ export const COPY_KEYS = {
   'checkout.placeOrder.cta': { default: 'Place order', hint: 'Cart place-order button label' },
   'orders.empty.title': { default: 'No orders yet.', hint: 'Orders screen heading when there are no orders' },
   'support.hours.text': { default: '', hint: 'Support availability line on the Help screen, e.g. "We reply 7 AM – 10 PM". Blank = hidden' },
-  'serviceability.unavailable.title': { default: 'We’re on our way to you.', hint: 'Area not serviceable heading' },
+  'serviceability.unavailable.title': { default: 'Your Area Could Be Next!', hint: 'Area not serviceable heading' },
 };
 
 export function copyDefault(key) {

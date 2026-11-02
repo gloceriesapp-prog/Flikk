@@ -21,12 +21,14 @@
 // whatever width it's given (see that file), so it can never overflow the
 // card again the way it did before.
 
+import { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import { RupeePrice } from '../../../components/RupeePrice';
 import { BarcodeSvg } from '../../../components/BarcodeSvg';
 import { colors } from '../../../theme/tokens';
 import type { CartItem } from '../../../store/useCartStore';
-import { estimateDeliveryTime, formatEta } from '../../../utils/estimateDelivery';
+import { estimateDeliveryTime } from '../../../utils/estimateDelivery';
+import { usePurchaseClock } from '../../purchase/usePurchaseClock';
 
 interface Props {
   orderId: string;
@@ -79,7 +81,13 @@ export function ReceiptCard({
   const orderedAt = new Date(placedAt);
   const dateLabel = orderedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeLabel = orderedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  const eta = estimateDeliveryTime(placedAt, estimatedDeliveryMinutes, estimatedDeliveryAt);
+  const deadline = estimateDeliveryTime(placedAt, estimatedDeliveryMinutes, estimatedDeliveryAt).getTime();
+  const deadlines = useMemo(() => Number.isFinite(deadline) ? [deadline] : [], [deadline]);
+  const now = usePurchaseClock(deadlines);
+  const minutes = Number.isFinite(deadline) ? Math.max(0, Math.ceil((deadline - now) / 60_000)) : null;
+  const arrivalText = minutes === null
+    ? 'Arrival estimate unavailable'
+    : `Arriving in ${minutes} minute${minutes === 1 ? '' : 's'}`;
   const barcodeValue = orderId.replace('#', '');
   const paymentStatusLabel =
     paymentMethodLabel === 'Cash on Delivery' ? 'Cash on Delivery' : `Paid via ${paymentMethodLabel}`;
@@ -91,7 +99,7 @@ export function ReceiptCard({
           receipt is the very first place a customer looks for this. */}
       <View className="mb-4 items-center rounded-2xl bg-lime-soft py-3">
         <Text className="text-sm font-semibold text-lime-deep">Estimated Delivery</Text>
-        <Text className="text-xl font-bold text-ink">{formatEta(eta)}</Text>
+        <Text className="text-xl font-bold text-ink" style={{ fontVariant: ['tabular-nums'] }}>{arrivalText}</Text>
       </View>
 
       <View className="gap-2.5">

@@ -316,3 +316,25 @@ it('does not expose an inaccurate native sample as a current-location preview', 
   service.rememberDeviceFix({ ...position(0, 80).coords, timestamp: Date.now() });
   expect(service.getRecentDeviceFix()).toBeNull();
 });
+
+
+it('forces a new provider reading on explicit recenter, ignoring both memory and last-known cache', async () => {
+  service.rememberDeviceFix({ ...position().coords, timestamp: Date.now() });
+  gps.mockResolvedValue(position(0, 6));
+  const request = service.getDeviceLocationFix({ fresh: true });
+  expect(service.getDeviceLocationFix({ fresh: true })).toBe(request);
+  await expect(request).resolves.toMatchObject({ accuracy: 6 });
+  expect(gps).toHaveBeenCalledTimes(1);
+  expect(cached).not.toHaveBeenCalled();
+});
+
+it('ignores a replayed old provider position during a fresh recenter', async () => {
+  gps.mockResolvedValue(position(1000, 5));
+  const pending = service.getDeviceLocationFix({ fresh: true });
+  let completed = false;
+  void pending.then(() => { completed = true; });
+  await jest.advanceTimersByTimeAsync(1);
+  expect(completed).toBe(false);
+  watch.mock.calls[0][1](position(0, 7));
+  await expect(pending).resolves.toMatchObject({ accuracy: 7 });
+});

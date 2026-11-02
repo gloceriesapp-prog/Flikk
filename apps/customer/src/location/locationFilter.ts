@@ -10,6 +10,8 @@ export interface FilteredFix extends Coordinates {
   // Visible uncertainty never promises better accuracy than the provider.
   accuracy: number;
   variance?: number;
+  // Precision of the reading that established the stationary anchor.
+  anchorAccuracy?: number;
   timestamp: number;
   rejected: number;
   // Consecutive outliers must agree before replacing a settled position.
@@ -47,7 +49,7 @@ export function isUsableLocationFix(fix: RawFix, now = Date.now()): boolean {
 }
 
 function restart(fix: RawFix): FilteredFix {
-  return { latitude: fix.latitude, longitude: fix.longitude, accuracy: accuracyOf(fix), timestamp: fix.timestamp, rejected: 0 };
+  return { latitude: fix.latitude, longitude: fix.longitude, accuracy: accuracyOf(fix), anchorAccuracy: accuracyOf(fix), timestamp: fix.timestamp, rejected: 0 };
 }
 
 export function filterFix(previous: FilteredFix | null, fix: RawFix): FilteredFix {
@@ -70,10 +72,10 @@ export function filterFix(previous: FilteredFix | null, fix: RawFix): FilteredFi
     return { ...previous, rejected, candidate: fix };
   }
 
-  // Replace a coarse startup preview once a materially better precise fix
-  // arrives. Blending would retain the original Wi-Fi position error.
-  if (previous.accuracy > 25 && measuredAccuracy <= 25
-    && measuredAccuracy <= previous.accuracy * 0.75) return restart(fix);
+  // A materially better GPS fix corrects an old anchor directly. Restrict
+  // this to plausible fixes (the outlier gate above still applies), rather
+  // than preserving part of an earlier network-position error by blending.
+  if (measuredAccuracy <= 25 && measuredAccuracy <= (previous.anchorAccuracy ?? previous.accuracy) * 0.75) return restart(fix);
 
   // GPS uncertainty is not movement. Keep the displayed position anchored
   // inside that uncertainty, including when accuracy fluctuates between fixes.
@@ -99,6 +101,7 @@ export function filterFix(previous: FilteredFix | null, fix: RawFix): FilteredFi
     longitude: stationary ? previous.longitude : previous.longitude + gain * (fix.longitude - previous.longitude),
     accuracy: Math.max(measuredAccuracy, Math.sqrt((1 - gain) * variance)),
     variance: Math.max(MIN_ACCURACY_M ** 2, (1 - gain) * variance),
+    anchorAccuracy: stationary ? (previous.anchorAccuracy ?? previous.accuracy) : measuredAccuracy,
     timestamp: fix.timestamp,
     rejected: 0,
     movementCandidate: stationary && distance > holdRadius ? fix : undefined,

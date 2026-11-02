@@ -10,7 +10,7 @@
 // the banner component/its render here were removed).
 
 import { useEffect, useMemo, useState } from 'react';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { View } from 'react-native';
 import { Easing, runOnJS, useAnimatedReaction, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

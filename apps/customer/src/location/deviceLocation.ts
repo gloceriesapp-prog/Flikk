@@ -11,6 +11,7 @@ const ACQUISITION_TIMEOUT_MS = 15_000;
 const LOCATION_ERROR = 'A fresh, accurate location is not available. Move near a window or choose your pin manually.';
 let recentFix: RawFix | null = null;
 let pendingFix: Promise<RawFix> | null = null;
+let pendingFreshFix: Promise<RawFix> | null = null;
 
 export function rememberDeviceFix(fix: RawFix): void {
   if (isUsableLocationFix(fix) && (!recentFix || fix.timestamp >= recentFix.timestamp)) recentFix = fix;
@@ -40,12 +41,13 @@ function nativeFix(position: Location.LocationObject | null): RawFix | null {
 // Race the live watch, single read and strictly fresh cache. Prefer a precise
 // reading immediately; after a short refinement window an honest <=50 m live
 // preview is better than an error. Preserve its reported uncertainty for the UI.
-function acquireDeviceFix(): Promise<RawFix> {
+function acquireDeviceFix(allowCached = true): Promise<RawFix> {
+  const requestedAt = Date.now();
   return new Promise((resolve, reject) => {
     let settled = false;
     let freshFailed = false;
     let watchFailed = false;
-    let cachedFailed = false;
+    let cachedFailed = !allowCached;
     let graceElapsed = false;
     let bestCandidate: RawFix | null = null;
     let latestCandidate: RawFix | null = null;
@@ -84,7 +86,7 @@ function acquireDeviceFix(): Promise<RawFix> {
     function acceptLivePosition(position: Location.LocationObject) {
       if (settled) return;
       const fix = nativeFix(position);
-      if (!fix || !isUsableDeviceFix(fix)) return;
+      if (!fix || !isUsableDeviceFix(fix) || (!allowCached && fix.timestamp < requestedAt)) return;
       if (fix.accuracy <= QUICK_FIX_ACCURACY_M) {
         finish(fix);
         return;
@@ -111,7 +113,7 @@ function acquireDeviceFix(): Promise<RawFix> {
       providerFailed('fresh'); // A single read cannot supply another refinement.
     }, () => providerFailed('fresh'));
 
-    void withDeadline(Location.getLastKnownPositionAsync({
+    if (allowCached) void withDeadline(Location.getLastKnownPositionAsync({
       maxAge: RECENT_FIX_MS, requiredAccuracy: QUICK_FIX_ACCURACY_M,
     }), 500).then(position => {
       if (settled) return;
@@ -124,7 +126,14 @@ function acquireDeviceFix(): Promise<RawFix> {
 
 // Concurrent callers share one acquisition. Only a precise, recent native fix
 // can skip acquisition; displayed/filter coordinates must never enter this cache.
-export function getDeviceLocationFix(): Promise<RawFix> {
+export function getDeviceLocationFix({ fresh = false }: { fresh?: boolean } = {}): Promise<RawFix> {
+  // An explicit recenter must not settle on the cached point the person is
+  // trying to correct. Share fresh acquisitions separately from previews.
+  if (fresh) {
+    if (pendingFreshFix) return pendingFreshFix;
+    pendingFreshFix = acquireDeviceFix(false).finally(() => { pendingFreshFix = null; });
+    return pendingFreshFix;
+  }
   if (recentFix && isRecentPreciseFix(recentFix)) return Promise.resolve(recentFix);
   if (pendingFix) return pendingFix;
   pendingFix = acquireDeviceFix().finally(() => { pendingFix = null; });

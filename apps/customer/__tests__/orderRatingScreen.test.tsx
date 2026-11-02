@@ -5,6 +5,8 @@ import { OrderRatingScreen } from '../src/features/order-rating/screens/OrderRat
 import { createCompletedOrderPreview } from '../src/screens/purchase/preview/completedOrder';
 import { useOrderRatingPreview } from '../src/features/order-rating/preview';
 
+jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
+
 jest.mock('../src/components/AppIcon', () => ({ AppIcon: () => null }));
 jest.mock('../src/components/AppImage', () => ({ AppImage: () => null }));
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));

@@ -29,7 +29,7 @@ import { useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { AppImage as Image } from '../components/AppImage';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../components/ScreenStatusBar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp } from '../api/auth';
 import { ApiError } from '../api/client';

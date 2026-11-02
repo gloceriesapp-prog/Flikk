@@ -191,7 +191,9 @@ it('resolves a current-location action without waiting for a native settle and r
     const target = mockAnimateCamera.mock.calls.at(-1)[0].center;
     expect(target).toEqual({ latitude: mockLiveFix!.latitude, longitude: mockLiveFix!.longitude });
     expect(view.getByTestId('device-location-marker').props.coordinate).toEqual(target);
+  expect(view.getByTestId('device-location-dot-marker').props.coordinate).toEqual(target);
     expect(view.getByTestId('live-location-pin').props.coordinate).toEqual(target);
+  expect(view.getByTestId('live-location-pin').props.zIndex).toBeGreaterThan(view.getByTestId('device-location-dot-marker').props.zIndex);
     expect(view.queryByTestId('manual-location-pin')).toBeNull();
     expect(mockAdoptDeviceFix).toHaveBeenCalledTimes(1);
   } finally {
@@ -300,13 +302,15 @@ it('keeps the native live pin and confirmed coordinates on small GPS refinements
   await view.rerender(screen({ fromGps: true }));
   const target = { latitude: 13.20001, longitude: 74.7 };
   expect(view.getByTestId('live-location-pin').props.coordinate).toEqual(target);
+  expect(view.getByTestId('live-location-pin').props.zIndex).toBeGreaterThan(view.getByTestId('device-location-dot-marker').props.zIndex);
   expect(view.getByTestId('device-location-marker').props.coordinate).toEqual(target);
+  expect(view.getByTestId('device-location-dot-marker').props.coordinate).toEqual(target);
   expect(mockAnimateCamera).toHaveBeenCalledTimes(1);
   await fireEvent.press(view.getByText('Confirm Location'));
   expect(mockSetLocation).toHaveBeenCalledWith(expect.objectContaining(target));
 });
 
-it('recenters immediately using a fresh native watch sample', async () => {
+it('requests a fresh acquisition instead of reusing the previous cached point', async () => {
   const geo = require('../src/location/geocoding');
   const original = geo.requestLocationPermission;
   geo.requestLocationPermission = async () => true;
@@ -314,8 +318,9 @@ it('recenters immediately using a fresh native watch sample', async () => {
   try {
     const view = await render(screen());
     await fireEvent.press(view.getByText('Use my current location'));
-    expect(mockDeviceFix).not.toHaveBeenCalled();
-    expect(mockAdoptDeviceFix).toHaveBeenCalledWith(expect.objectContaining({ accuracy: 10 }));
+    expect(mockDeviceFix).toHaveBeenCalledTimes(1);
+    expect(mockDeviceFix).toHaveBeenCalledWith({ fresh: true });
+    expect(mockAdoptDeviceFix).toHaveBeenCalledWith(expect.objectContaining({ accuracy: 5 }));
   } finally { geo.requestLocationPermission = original; }
 });
 
@@ -403,6 +408,8 @@ it('keeps one live halo without overlapping accuracy circles for precise GPS fix
   expect(view.queryByTestId('device-location-accuracy')).toBeNull();
   expect(view.getByTestId('device-location-marker').props.coordinate).toEqual({ latitude: 13.2, longitude: 74.7 });
   expect(view.getByTestId('device-location-halo')).toBeTruthy();
+  expect(view.getByTestId('device-location-dot')).toBeTruthy();
+  expect(view.getByTestId('device-location-dot-marker').props.zIndex).toBeGreaterThan(2);
   expect(view.getByTestId('device-location-marker').props.tracksViewChanges).toBe(true);
   await fireEvent(view.getByTestId('device-location-halo'), 'layout', {
     nativeEvent: { layout: { width: 64, height: 64, x: 0, y: 0 } },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CategoryDetailHeader } from './components/CategoryDetailHeader';

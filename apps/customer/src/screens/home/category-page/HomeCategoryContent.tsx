@@ -14,7 +14,7 @@ export function homeCategoryKind(tab: RemoteHomeTab) {
   if (tab.contentKey) return tab.contentKey === 'grocery' ? 'groceries' : tab.contentKey;
   if (tab.festival) return 'festival';
   const names: Record<string, string> = {
-    grocery: 'groceries', groceries: 'groceries', fresh: 'fresh',
+    grocery: 'groceries', groceries: 'groceries', fresh: 'fresh', meat: 'meat',
     'fruit & veg': 'fresh', 'meat & fish': 'meat-fish', 'fish & meat': 'meat-fish',
     bakery: 'bakery', bakeries: 'bakery', protein: 'protein', regional: 'regional',
   };
@@ -39,7 +39,8 @@ export function HomeCategoryContent({ tab }: { tab: RemoteHomeTab }) {
     // Festivals & Meat: managed Home-Tab-Content tabs, same pattern as
     // Grocery/Fresh/Regional (admin tiles above the managed section layout).
     case 'festivals': return <FestivalTab tab={tab} />;
-    case 'meat': return <><HomeTabExtras tab={tab} /><ManagedHomeTab tabKey="meat" /></>;
+    case 'meat': return <><HomeTabExtras tab={tab} categoryStyle="meat" /><ManagedHomeTab tabKey="meat" /></>;
+    case 'meat-fish': return <HomeTabTileGrid tab={tab} categoryStyle="meat" />;
     case 'festival': return <FestivalTab tab={tab} />;
     default: return <HomeTabTileGrid tab={tab} />;
   }

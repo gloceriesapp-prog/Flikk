@@ -16,31 +16,34 @@
 // own list of rows (Profile). Same underlying content either way — no
 // screen hand-rolls its own copy of this anymore.
 
-import { HeartIcon, Linkedin01Icon, NewTwitterIcon } from '@hugeicons/core-free-icons';
-import { Text, View } from 'react-native';
+import { HeartIcon } from '@hugeicons/core-free-icons';
+import { Alert, Linking, Pressable, Text, View } from 'react-native';
 import { AppIcon } from './AppIcon';
 import { colors } from '../theme/tokens';
+import { SocialIcon } from './social/SocialIcon';
 import packageJson from '../../package.json';
 
 const APP_VERSION = packageJson.version;
 
 interface Props {
   variant?: 'large' | 'compact';
-  // TODO: no real Gloceries LinkedIn/Twitter page exists yet — icons render as
-  // disabled (no onPress) rather than linking to a fabricated URL. Wire up
-  // + enable once real handles exist.
   showSocialLinks?: boolean;
 }
+
+const SOCIAL_LINKS = [
+  { name: 'instagram', label: 'Open Gloceries on Instagram', url: 'https://www.instagram.com/gloceriesnow?psln=MWNodGRxYzN5OTNqbA==' },
+  { name: 'linkedin', label: 'Open Gloceries on LinkedIn', url: 'https://www.linkedin.com/company/gloceries/' },
+  { name: 'whatsapp', label: 'Contact Gloceries on WhatsApp', url: 'https://wa.me/918296530609' },
+] as const;
 
 function SocialLinksRow() {
   return (
     <View className="mt-4 flex-row items-center gap-3">
-      <View className="h-9 w-9 items-center justify-center rounded-full bg-ink/5">
-        <AppIcon icon={Linkedin01Icon} size={16} color={`${colors.ink}80`} />
-      </View>
-      <View className="h-9 w-9 items-center justify-center rounded-full bg-ink/5">
-        <AppIcon icon={NewTwitterIcon} size={16} color={`${colors.ink}80`} />
-      </View>
+      {SOCIAL_LINKS.map(link => <Pressable key={link.name} accessibilityRole="link" accessibilityLabel={link.label}
+        className="h-11 w-11 items-center justify-center rounded-full bg-ink/5"
+        onPress={() => { void Linking.openURL(link.url).catch(() => Alert.alert('Could not open link', 'Please check your connection and try again.')); }}>
+        <SocialIcon name={link.name} />
+      </Pressable>)}
     </View>
   );
 }

@@ -10,7 +10,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Share, Text, TextInput, View } from 'react-native';
 import { ArrowLeft01Icon, Share08Icon, UserAdd01Icon } from '@hugeicons/core-free-icons';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';

@@ -6,7 +6,7 @@ import {
 
 import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
 
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 
 import {
   Pressable,
