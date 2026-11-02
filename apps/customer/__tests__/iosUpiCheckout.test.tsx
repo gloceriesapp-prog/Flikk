@@ -7,7 +7,7 @@ import { createPaymentOrder, createUpiIntentSession, fetchPaymentAvailability, r
 
 jest.mock('../src/payments/usePaymentReceiptEmail', () => ({ usePaymentReceiptEmail: () => ({ requestEmail: async () => 'test@example.com', emailForm: null }) }));
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-jest.mock('../src/payments/iosUpiCheckout', () => ({ usesIosUpiCheckout: (method: string) => require('react-native').Platform.OS === 'ios' && method.startsWith('upi_app:'), openIosUpiCheckout: jest.fn() }));
+jest.mock('../src/payments/iosUpiCheckout', () => ({ usesIosUpiCheckout: (method: string) => require('react-native').Platform.OS === 'ios' && method.startsWith('upi_app:'), openIosUpiCheckout: jest.fn(), assertIosUpiConfigured: jest.fn(async () => ({ sdkId: 'google_pay', emailOptional: false })) }));
 
 const mockRefetch = jest.fn();
 let mockRecovery: Record<string, unknown>;

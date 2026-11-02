@@ -28,11 +28,13 @@ parameters. By default a real receipt email is collected before creating an
 order; synthetic phone-login email addresses are rejected. For a merchant whose
 S2S intent API has been verified to accept email omission, the backend can set
 `RAZORPAY_UPI_EMAIL_OPTIONAL=true`. Its additive
-`/payments/availability.upi_email_optional` capability lets Android cart and
-recovered payments skip the email form. The server then does not read a saved
-email and omits the provider email field entirely. The switch defaults off;
-missing capability fields retain legacy behavior. iOS native contact behavior
-is unchanged. Contacts are stored privately through `/payments/contact`.
+`/payments/availability.upi_email_optional` capability lets Android and iOS cart
+and recovered payments skip the email form. Android’s server intent and iOS’s
+Custom UI SDK request omit the email field entirely. iOS also skips the saved
+receipt-email lookup and uses only the real account phone. The switch defaults
+off; missing capability fields retain legacy behavior. The selected iOS app
+identifier still comes from Razorpay discovery. Contacts are stored privately
+through `/payments/contact` only when the merchant requires them.
 
 The Razorpay Checkout Features dashboard's Optional selection is visible in the
 hosted checkout preview, but is not by itself evidence that S2S accepts omission.
@@ -162,3 +164,8 @@ email is absent. Card number, expiry, CVV and issuer verification remain in
 the native provider flow. Order amounts stay server-owned; signatures/capture
 are verified on the server before a receipt is shown. Recovery uses the same
 card-only configuration against the existing saved order.
+
+The optional-email capability was verified against the live Android S2S path.
+The iOS implementation now honors the same switch, but its native Custom UI
+SDK acceptance and external-app cancellation/return must still be verified on
+the replacement TestFlight build; Android success does not establish that result.

@@ -17,8 +17,9 @@ import { useAuthStore } from '../../../store/useAuthStore';
 import { fetchAvailableWallets, fetchNetbankingBanks, fetchPendingPayments, recoverPayment, createPaymentOrder, verifyPayment, fetchPaymentPreference, rememberPaymentMethod } from '../../../api/payments';
 import { openRazorpayCheckout } from '../../../payments/openRazorpayCheckout';
 import { usePaymentReceiptEmail } from '../../../payments/usePaymentReceiptEmail';
-import { assertIosUpiConfigured, usesIosUpiCheckout } from '../../../payments/iosUpiCheckout';
-import { assertDirectUpiConfigured, prepareUpiIntent, usesDirectUpiIntent } from '../../../payments/upiIntent';
+import { usesIosUpiCheckout } from '../../../payments/iosUpiCheckout';
+import { requiresUpiReceiptEmail } from '../../../payments/upiReceiptRequirement';
+import { prepareUpiIntent, usesDirectUpiIntent } from '../../../payments/upiIntent';
 import type { UpiApp } from '../../../payments/upiApps';
 import { detectInstalledUpiApps } from '../../../payments/installedUpiApps';
 import { keepsCheckoutAttempt } from './attemptPolicy';
@@ -140,9 +141,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
         }
       }
       if (usesDirectUpiIntent(paymentMethod) || usesIosUpiCheckout(paymentMethod)) {
-        let requiresEmail = true;
-        if (usesIosUpiCheckout(paymentMethod)) await assertIosUpiConfigured(paymentMethod);
-        else requiresEmail = (await assertDirectUpiConfigured(paymentMethod)).upi_email_optional !== true;
+        const requiresEmail = await requiresUpiReceiptEmail(paymentMethod);
         if (!stillOwner()) return;
         if (requiresEmail) {
           const email = await receiptEmail.requestEmail();
