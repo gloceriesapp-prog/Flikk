@@ -384,6 +384,11 @@ export interface Product {
   // Further photos after imageUrl, in display order (products.extra_image_urls,
   // at most MAX_EXTRA_IMAGES). The customer app swipes through cover + these.
   extraImageUrls?: string[];
+  // Chicken only (Meat, Eggs & Fish): customers pick small/medium/large
+  // pieces, and from bulkMinKg kg in one order it is a bulk order the store
+  // confirms (products.cut_options_enabled / bulk_min_kg).
+  cutOptionsEnabled?: boolean;
+  bulkMinKg?: number | null;
   // Pastel card background extracted from imageUrl at upload time
   // (lib/bgColor.ts, app/api/upload), or a category tint / neutral mist
   // when extraction wasn't possible — see lib/productValidation.ts

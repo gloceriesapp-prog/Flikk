@@ -35,6 +35,9 @@ export interface ProductWriteInput {
   // Gallery photos after the cover (products.extra_image_urls). Absent leaves
   // the saved list alone; an array replaces it.
   extraImageUrls?: string[] | null;
+  // Chicken cut sizes + bulk threshold (kg). Absent leaves them unchanged.
+  cutOptionsEnabled?: boolean | null;
+  bulkMinKg?: number | null;
   // Extracted from imageUrl at upload time (app/api/upload -> lib/bgColor.ts),
   // null when extraction failed or no photo was set — toProductRow below
   // is where the category-tint/mist fallback steps of that chain run.
@@ -107,6 +110,27 @@ export function toExtraImageUrls(input: Pick<ProductWriteInput, 'imageUrl' | 'ex
   if (urls.length > MAX_EXTRA_IMAGES) throw new Error(`Up to ${MAX_EXTRA_IMAGES} extra photos per product.`);
   if (urls.length > 0 && !cover) throw new Error('Add a main photo before extra photos.');
   return urls;
+}
+
+// Cut sizes and bulk orders are for chicken, which lives in this category.
+export const CUT_OPTIONS_CATEGORY = 'Meat, Eggs & Fish';
+export const MAX_BULK_MIN_KG = 500;
+
+// Matches products_bulk_min_kg_check (backend migration 20261104130000).
+// Undefined leaves both columns untouched; turning cuts off clears the
+// bulk threshold too, since bulk handling hangs off the same toggle.
+export function toCutOptions(input: Pick<ProductWriteInput, 'category' | 'cutOptionsEnabled' | 'bulkMinKg'>):
+  { cut_options_enabled: boolean; bulk_min_kg: number | null } | undefined {
+  if (input.cutOptionsEnabled == null) return undefined;
+  if (typeof input.cutOptionsEnabled !== 'boolean') throw new Error('cutOptionsEnabled must be true or false.');
+  // Moving a product out of the category switches it off with it (the form
+  // hides the toggle there, so it cannot be switched off by hand).
+  if (!input.cutOptionsEnabled || input.category?.trim() !== CUT_OPTIONS_CATEGORY) return { cut_options_enabled: false, bulk_min_kg: null };
+  const kg = input.bulkMinKg;
+  if (kg != null && (!isFiniteNumber(kg) || kg <= 0 || kg > MAX_BULK_MIN_KG)) {
+    throw new Error(`Bulk order from (kg) must be more than 0 and at most ${MAX_BULK_MIN_KG}.`);
+  }
+  return { cut_options_enabled: true, bulk_min_kg: kg == null ? null : Math.round(kg * 100) / 100 };
 }
 
 export function formatVariantUnit(variant: VariantInput): string {

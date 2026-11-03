@@ -10,9 +10,14 @@ export interface CartProduct {
   is_in_stock: boolean;
 }
 
+export type CutSize = 'small' | 'medium' | 'large';
+export const CUT_SIZES: readonly CutSize[] = ['small', 'medium', 'large'];
+
 export interface CartItem {
   product_id: string;
   variant_id?: string | null;
+  // Chicken piece size (products.cut_options_enabled only). Same price.
+  cut_size?: CutSize | null;
   expected_unit_price?: number;
   quantity: number;
 }

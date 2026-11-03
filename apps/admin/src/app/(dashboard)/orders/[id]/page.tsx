@@ -172,6 +172,7 @@ export default function OrderDetailPage() {
           <h1 className="page-title flex items-center gap-3">
             {order.orderNumber}
             <StatusPill status={order.status} />
+            {order.isBulk && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-ink">Bulk order</span>}
           </h1>
           <p className="text-sm text-muted">
             Placed {formatDateTime(order.placedAt)} · <span className="font-mono text-xs">{order.id}</span>
@@ -248,7 +249,7 @@ export default function OrderDetailPage() {
               <tbody>
                 {order.items.map((item) => (
                   <tr key={item.id} className="border-b border-border last:border-0">
-                    <td className="py-2 pr-3 text-ink">{item.name}{item.unit && <span className="text-xs text-muted"> · {item.unit}</span>}</td>
+                    <td className="py-2 pr-3 text-ink">{item.name}{item.unit && <span className="text-xs text-muted"> · {item.unit}</span>}{item.cutSize && <span className="text-xs text-muted"> · {item.cutSize} pieces</span>}</td>
                     <td className="py-2 pr-3 text-ink-soft">× {item.quantity}</td>
                     <td className="py-2 text-right tabular-nums text-ink">{formatCurrency(item.unitPrice * item.quantity)}</td>
                   </tr>

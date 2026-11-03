@@ -27,7 +27,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { cartIdentity } from './cartIdentity';
+import { cartIdentity, type CutSize } from './cartIdentity';
 import { useAuthStore } from './useAuthStore';
 
 export interface CartItem {
@@ -35,6 +35,8 @@ export interface CartItem {
   isAvailable?: boolean;
   productId?: string;
   variantId?: string;
+  // Chosen piece size for a chicken product (part of the line id).
+  cutSize?: CutSize;
   name: string;
   weight: string;
   price: number;

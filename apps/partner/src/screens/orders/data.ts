@@ -22,6 +22,8 @@ export interface OrderLineItem {
 }
 
 export interface PartnerOrder {
+  // Bulk chicken order (orders.is_bulk) — badge on the card and detail.
+  isBulk?: boolean;
   // Real orders.id (UUID) — what PATCH /orders/:id/status and every
   // action callback (markPacked, rejectOrder, acknowledgeOrder) actually
   // use. Never rendered as text — orderNumber is what's shown.
@@ -266,11 +268,15 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
   return {
     id: order.id,
     orderNumber: order.order_number,
+    isBulk: order.is_bulk === true,
     customerName: order.users?.name?.trim() || order.users?.phone || 'Customer',
     items: order.order_items.map((item) => ({
       name: item.product_name_at_order ?? item.products?.name ?? 'Item',
       quantity: item.quantity,
-      unit: item.unit_at_order ?? item.products?.unit ?? '',
+      // The cut is part of what to prepare, so it rides on the pack label
+      // every item row already shows ("1 kg · Medium pieces").
+      unit: [item.unit_at_order ?? item.products?.unit ?? '', item.cut_size ? `${item.cut_size[0]!.toUpperCase()}${item.cut_size.slice(1)} pieces` : '']
+        .filter(Boolean).join(' · '),
       price: item.unit_price_at_order * item.quantity,
       // A captured null image means the purchased item had no photo. Only
       // legacy rows without a name snapshot may fall back to today's image.

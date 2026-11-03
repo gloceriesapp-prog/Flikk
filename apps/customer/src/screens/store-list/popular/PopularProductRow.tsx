@@ -30,7 +30,7 @@ import { AppIcon } from '../../../components/AppIcon';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { addToCart } from '../../../store/addToCart';
-import { cartLineId } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut } from '../../../store/cartIdentity';
 import { useCartStore } from '../../../store/useCartStore';
 import type { Product } from '../../home/products/types';
 
@@ -41,7 +41,8 @@ interface Props {
 }
 
 function AddControl({ product }: { product: Product }) {
-  const lineId = cartLineId(product.id, product.defaultVariantId);
+  const cutSize = quickAddCut(product);
+  const lineId = cartLineId(product.id, product.defaultVariantId, cutSize);
   const quantity = useCartStore((state) => state.items.find((item) => item.id === lineId)?.quantity ?? 0);
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
@@ -56,6 +57,7 @@ function AddControl({ product }: { product: Product }) {
             id: lineId,
             productId: product.id,
             variantId: product.defaultVariantId,
+            cutSize,
             name: product.name,
             weight: product.weight,
             price: product.price,

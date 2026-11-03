@@ -101,3 +101,25 @@ describe('database-only customer pack mapping', () => {
   });
 
 });
+
+describe('chicken cut sizes and bulk orders', () => {
+  const chicken: CheckoutProduct = { ...product, cut_options_enabled: true, bulk_min_kg: '5.00' };
+  it('keeps each cut size as its own line and sends it to the order', () => {
+    const items = priceCheckoutItems(parseCheckoutItems([
+      { ...line, cut_size: 'small' }, { ...line, cut_size: 'large' }, { ...line, cut_size: 'small' }]), [chicken]);
+    expect(items.map((item) => [item.cut_size, item.quantity])).toEqual([['small', 4], ['large', 2]]);
+  });
+  it('rejects unknown cuts and cuts on products without cut options', () => {
+    expect(() => parseCheckoutItems([{ ...line, cut_size: 'tiny' }])).toThrow('cut');
+    expect(() => priceCheckoutItems(parseCheckoutItems([{ ...line, cut_size: 'small' }]), [product])).toThrow('no cut size');
+  });
+  it('flags bulk from the product weight across packs and cuts', () => {
+    // 2 x 1 kg small + 2 x 1 kg large + 4 x 250 g = 5 kg.
+    const bulk = priceCheckoutItems(parseCheckoutItems([{ ...line, cut_size: 'small' }, { ...line, cut_size: 'large' },
+      { product_id: productId, variant_id: smallId, quantity: 4 }]), [chicken]);
+    expect(bulk.every((item) => item.bulk)).toBe(true);
+    const normal = priceCheckoutItems(parseCheckoutItems([{ ...line, cut_size: 'small' }]), [chicken]);
+    expect(normal[0].bulk).toBe(false);
+    expect(priceCheckoutItems(parseCheckoutItems([{ ...line, quantity: 50 }]), [product])[0].bulk).toBe(false);
+  });
+});

@@ -34,12 +34,19 @@ export async function saveCatalogueProduct(
   return data as string;
 }
 
-// Gallery photos sit outside save_catalogue_product's field list, so they are
-// written just after it. Validated first (toExtraImageUrls), so a failure here
-// is a database error; the product itself is already saved and a retry is safe.
-export async function saveExtraImages(productId: string, urls: string[]): Promise<void> {
-  const { error } = await supabaseAdmin.from('products').update({ extra_image_urls: urls }).eq('id', productId);
-  if (error) throw new CatalogueSaveError(500, 'Product saved, but its extra photos were not. Try saving again.');
+// Gallery photos and chicken cut options sit outside save_catalogue_product's
+// field list, so they are written just after it. Validated first
+// (toExtraImageUrls / toCutOptions), so a failure here is a database error;
+// the product itself is already saved and a retry is safe.
+export interface ProductExtras {
+  extra_image_urls?: string[];
+  cut_options_enabled?: boolean;
+  bulk_min_kg?: number | null;
+}
+export async function saveProductExtras(productId: string, extras: ProductExtras): Promise<void> {
+  if (Object.keys(extras).length === 0) return;
+  const { error } = await supabaseAdmin.from('products').update(extras).eq('id', productId);
+  if (error) throw new CatalogueSaveError(500, 'Product saved, but its extra photos or cut options were not. Try saving again.');
 }
 
 export function catalogueErrorStatus(err: unknown): number {

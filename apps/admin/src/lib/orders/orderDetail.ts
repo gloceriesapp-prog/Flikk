@@ -9,6 +9,8 @@ export interface OrderDetailItem {
   quantity: number;
   unitPrice: number;
   imageUrl: string | null;
+  // Chicken piece size the customer chose (order_items.cut_size).
+  cutSize: 'small' | 'medium' | 'large' | null;
 }
 
 export interface OrderDetailLeg {
@@ -61,6 +63,8 @@ export interface OrderDetail {
   discountAmount: number;
   total: number;
   commissionAmount: number;
+  // Bulk chicken order: the store had the longer bulk response window.
+  isBulk: boolean;
   items: OrderDetailItem[];
   customer: { id: string; name: string | null; phone: string | null };
   address: { text: string; recipientName: string | null; recipientPhone: string | null; instructions: string | null } | null;

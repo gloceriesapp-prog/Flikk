@@ -32,6 +32,7 @@ export interface DeliverySettingsRow {
   // migration 109 — minutes a store has to accept an order before the
   // backend's store_no_response job cancels it.
   store_response_timeout_minutes?: number | null;
+  bulk_response_timeout_minutes?: number | null;
   checkout_hold_minutes?: number;
   checkout_reconciliation_grace_minutes?: number;
 }
@@ -58,6 +59,7 @@ export interface DeliverySettings {
   orderingOpensMinute: number;
   orderingClosesMinute: number;
   storeResponseTimeoutMinutes: number;
+  bulkResponseTimeoutMinutes: number;
   checkoutHoldMinutes: number;
   checkoutReconciliationGraceMinutes: number;
 }
@@ -115,6 +117,7 @@ export function mapRowToDeliverySettings(row: DeliverySettingsRow): DeliverySett
     checkoutHoldMinutes: Number(row.checkout_hold_minutes ?? 20),
     checkoutReconciliationGraceMinutes: Number(row.checkout_reconciliation_grace_minutes ?? 30),
     storeResponseTimeoutMinutes: Number(row.store_response_timeout_minutes ?? 10),
+    bulkResponseTimeoutMinutes: Number(row.bulk_response_timeout_minutes ?? 30),
   };
 }
 
