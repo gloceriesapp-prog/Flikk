@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { supabase } from '../db/supabase.js';
 import { AppError } from './errors.js';
-import { parseCheckoutItems } from './checkoutItems.js';
+import { checkoutLineKey, parseCheckoutItems } from './checkoutItems.js';
 
 export function checkoutAttemptIdentity(body: Record<string, unknown>, kind: 'order' | 'trip') {
   const id = body.attempt_id;
@@ -11,7 +11,7 @@ export function checkoutAttemptIdentity(body: Record<string, unknown>, kind: 'or
   // snapshot even after stock, prices or the signed quote have changed.
   const quantities = new Map<string, number>();
   for (const item of parseCheckoutItems(body.items)) {
-    const key = `${item.product_id}:${item.variant_id ?? ''}`;
+    const key = checkoutLineKey(item.product_id, item.variant_id, item.cut_size);
     quantities.set(key, (quantities.get(key) ?? 0) + item.quantity);
   }
   const fingerprint = createHash('sha256').update(JSON.stringify({ kind,

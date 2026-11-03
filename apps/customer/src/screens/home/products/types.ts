@@ -32,6 +32,11 @@ export interface Product {
   // --mist token when unset (mock products, or real ones from before this
   // column existed).
   bgColor?: string;
+  // Chicken products (products.cut_options_enabled, admin toggle): the
+  // customer picks a cut size, and bulkMinKg (if set) is the cart weight of
+  // this product from which the order becomes a bulk order.
+  cutOptions?: boolean;
+  bulkMinKg?: number;
   // Optional, defaults to true in ProductCard — most of a kirana grocery
   // catalog is veg by default, only fish/meat entries need to set this
   // explicitly false, rather than touching every other data.ts file.

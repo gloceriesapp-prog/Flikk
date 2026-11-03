@@ -32,6 +32,8 @@ export interface ProductRow {
   stock_status: StockStatus;
   image_url: string | null;
   extra_image_urls: string[] | null;
+  cut_options_enabled: boolean | null;
+  bulk_min_kg: number | string | null;
   bg_color: string | null;
   local_name: string | null;
   is_veg: boolean;
@@ -53,7 +55,7 @@ export interface ProductRow {
 }
 
 export const PRODUCT_SELECT =
-  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity)';
+  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity)';
 
 function mapVariants(rows: ProductVariantRow[], product: ProductRow): ProductVariant[] {
   // is_default first, then insertion order for the rest — mirrors how
@@ -133,6 +135,8 @@ export function mapRowToProduct(row: ProductRow): Product {
     stockStatus: row.stock_status,
     imageUrl: row.image_url ?? undefined,
     extraImageUrls: row.extra_image_urls ?? [],
+    cutOptionsEnabled: row.cut_options_enabled === true,
+    bulkMinKg: row.bulk_min_kg == null ? null : Number(row.bulk_min_kg),
     bgColor: row.bg_color ?? undefined,
     localName: row.local_name ?? undefined,
     isVeg: row.is_veg,

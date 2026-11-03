@@ -47,7 +47,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
   try {
     const { data: o, error } = await supabaseAdmin
       .from('orders')
-      .select('id, order_number, customer_id, store_id, rider_id, trip_id, address_id, status, item_total, delivery_fee, handling_fee, discount_amount, total, commission_amount, payment_method, payment_provider, provider_payment_id, refund_status, provider_refund_id, refunded_at, promo_code_id, cancel_reason, cancelled_by, placed_at, packed_at, picked_up_at, delivered_at, delivery_address_at_order')
+      .select('id, order_number, customer_id, store_id, rider_id, trip_id, address_id, status, item_total, delivery_fee, handling_fee, discount_amount, total, commission_amount, payment_method, payment_provider, provider_payment_id, refund_status, provider_refund_id, refunded_at, promo_code_id, cancel_reason, cancelled_by, placed_at, packed_at, picked_up_at, delivered_at, delivery_address_at_order, is_bulk')
       .eq('id', id)
       .maybeSingle();
     if (error) throw error;
@@ -55,7 +55,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
     const scope = (o.trip_id ?? o.id) as string;
 
     const [itemsRes, customerRes, storeRes, riderRes, tripRes, legsRes, promoRes, codeRes, resetsRes, actionsRes, eventsRes, orderJobRes, tripJobRes, addressRes] = await Promise.all([
-      supabaseAdmin.from('order_items').select('id, quantity, unit_price_at_order, unit_at_order, product_name_at_order, product_image_at_order, products(name, unit, image_url)').eq('order_id', id),
+      supabaseAdmin.from('order_items').select('id, quantity, unit_price_at_order, unit_at_order, cut_size, product_name_at_order, product_image_at_order, products(name, unit, image_url)').eq('order_id', id),
       supabaseAdmin.from('users').select('id, name, phone').eq('id', o.customer_id).maybeSingle(),
       supabaseAdmin.from('stores').select('id, name, phone, district').eq('id', o.store_id).maybeSingle(),
       o.rider_id ? supabaseAdmin.from('riders').select('id, name, phone, status, last_location_update').eq('user_id', o.rider_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
@@ -138,7 +138,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
     const store = storeRes.data as { id: string; name: string; phone: string | null; district: string | null } | null;
     const orderJob = orderJobRes.data as { status: string; target_paise: number; attempts: number; last_error: string | null } | null;
     const tripJob = tripJobRes.data as { status: string; target_paise: number; refunded_paise: number; attempts: number; last_error: string | null } | null;
-    type ItemRow = { id: string; quantity: number; unit_price_at_order: number; unit_at_order: string | null; product_name_at_order: string | null; product_image_at_order: string | null; products: { name: string; unit: string | null; image_url: string | null } | null };
+    type ItemRow = { id: string; quantity: number; unit_price_at_order: number; unit_at_order: string | null; cut_size: 'small' | 'medium' | 'large' | null; product_name_at_order: string | null; product_image_at_order: string | null; products: { name: string; unit: string | null; image_url: string | null } | null };
 
     const detail: OrderDetail = {
       id: o.id,
@@ -156,10 +156,12 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
       discountAmount: num(o.discount_amount),
       total: num(o.total),
       commissionAmount: num(o.commission_amount),
+      isBulk: o.is_bulk === true,
       items: ((itemsRes.data ?? []) as unknown as ItemRow[]).map((item) => ({
         id: item.id,
         name: item.product_name_at_order ?? item.products?.name ?? 'Product',
         unit: item.unit_at_order ?? item.products?.unit ?? null,
+        cutSize: item.cut_size ?? null,
         quantity: item.quantity,
         unitPrice: num(item.unit_price_at_order),
         imageUrl: item.product_image_at_order ?? item.products?.image_url ?? null,

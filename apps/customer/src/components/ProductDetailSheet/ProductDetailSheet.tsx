@@ -102,6 +102,7 @@ import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore'
 import { useEverydayEssentials } from '../../screens/home/everyday-essentials/useEverydayEssentials';
 import { ProductDetailInfo } from './ProductDetailInfo';
 import { ProductDetailFooter } from './ProductDetailFooter';
+import type { CutSize } from '../../store/cartIdentity';
 import { useSimilarProducts } from './useSimilarProducts';
 import type { Product } from '../../screens/home/products/types';
 
@@ -605,6 +606,7 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
   // "if there is no options" fallback signal both children already read.
   const [selectedVariantId, setSelectedVariantId] = useState(product.defaultVariantId ?? product.variants?.[0]?.id);
   const selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
+  const [selectedCut, setSelectedCut] = useState<CutSize>('medium');
 
   // Drag-to-dismiss offset — 0 at rest, animates toward screenHeight on a
   // successful drag-down dismissal. Separate shared value from `grow`
@@ -879,6 +881,8 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
             product={product}
             relatedProducts={relatedProducts}
             selectedVariantId={selectedVariantId}
+            selectedCut={product.cutOptions ? selectedCut : undefined}
+            onSelectCut={setSelectedCut}
             onSelectVariant={setSelectedVariantId}
           />
         </Animated.ScrollView>
@@ -897,7 +901,7 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
               ? <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }]} />
               : <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />}
             <View className="absolute inset-0 bg-white/40" />
-            <ProductDetailFooter product={product} selectedVariant={selectedVariant} />
+            <ProductDetailFooter product={product} selectedVariant={selectedVariant} cutSize={product.cutOptions ? selectedCut : undefined} />
           </Animated.View>
         </View>
       </Animated.View>

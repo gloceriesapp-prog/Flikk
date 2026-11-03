@@ -94,6 +94,9 @@ export function OrderDetailScreen({ route, navigation }: Props) {
             <Text className="text-[15px] font-medium text-ink">Order ID: {order.orderNumber}</Text>
             {/* <AppIcon icon={Copy01Icon} size={14} color={colors.ink} /> */}
           </Pressable>
+          {order.isBulk && (
+            <Text className="rounded-full bg-[#FFF4E0] px-3 py-2 text-[12px] font-bold text-[#8A5A00]">BULK ORDER · check stock before accepting</Text>
+          )}
         </View>
       </View>
 

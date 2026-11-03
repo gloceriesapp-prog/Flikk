@@ -16,6 +16,7 @@ import { categoryHasVegToggle, PRODUCT_CATEGORIES } from '@/lib/product-options'
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
+import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { SubCategoryPicker } from './SubCategoryPicker';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
@@ -135,6 +136,13 @@ export function EditProductModal({
               </option>
             ))}
           </select>
+
+          <ChickenOptionsEditor
+            category={draft.category}
+            enabled={draft.cutOptionsEnabled ?? false}
+            bulkMinKg={draft.bulkMinKg ?? null}
+            onChange={(next) => setDraft({ ...draft, ...next })}
+          />
 
           <textarea
             value={draft.description ?? ''}

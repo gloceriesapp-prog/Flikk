@@ -13,7 +13,7 @@ import { AppIcon } from '../AppIcon';
 
 import { useCartStore } from '../../store/useCartStore';
 import { addToCart } from '../../store/addToCart';
-import { cartLineId } from '../../store/cartIdentity';
+import { CUT_SIZE_LABEL, cartLineId, type CutSize } from '../../store/cartIdentity';
 
 import type { Product } from '../../screens/home/products/types';
 
@@ -30,11 +30,14 @@ interface Props {
     price: number;
     originalPrice?: number;
   };
+  // Chosen chicken cut (ProductCutOptions); a separate cart line per cut.
+  cutSize?: CutSize;
 }
 
 export function ProductDetailFooter({
   product,
   selectedVariant,
+  cutSize,
 }: Props) {
   const availability = useProductAvailability(product);
 
@@ -48,7 +51,7 @@ export function ProductDetailFooter({
   const variantId =
     selectedVariant?.id ?? product.defaultVariantId;
 
-  const id = cartLineId(product.id, variantId);
+  const id = cartLineId(product.id, variantId, cutSize);
 
   const weight =
     selectedVariant?.label ?? product.weight;
@@ -115,7 +118,7 @@ export function ProductDetailFooter({
         </View>
 
         <Text className="mt-0.5 text-[11px] font-medium text-ink/50">
-          {weight}
+          {cutSize ? `${weight} · ${CUT_SIZE_LABEL[cutSize]}` : weight}
         </Text>
       </View>
 
@@ -129,6 +132,7 @@ export function ProductDetailFooter({
               id,
               productId: product.id,
               variantId,
+              cutSize,
               name,
               weight,
               price,

@@ -11,9 +11,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
-import { catalogueErrorStatus, saveCatalogueProduct, saveExtraImages } from '@/lib/catalogueSave';
+import { catalogueErrorStatus, saveCatalogueProduct, saveProductExtras } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
-import { toExtraImageUrls, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
+import { toCutOptions, toExtraImageUrls, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
 // Inventory/festival reads. Service role + admin check, not the browser anon
 // client: RLS hides pending products' sizes and inactive stores from anon.
@@ -42,8 +42,9 @@ export async function POST(request: Request) {
     // backend/src/routes/partner.ts's own note on the partner-app side of
     // this same gate). Product row + packs land in one transaction.
     const extraImageUrls = toExtraImageUrls(input);
+    const extras = { ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input) };
     const productId = await saveCatalogueProduct(null, { ...toProductRow(input), approval_status: 'approved' }, toVariantPayload(input.variants));
-    if (extraImageUrls) await saveExtraImages(productId, extraImageUrls);
+    await saveProductExtras(productId, extras);
 
     const { data, error: refetchError } = await supabaseAdmin
       .from('products')

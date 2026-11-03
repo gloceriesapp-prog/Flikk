@@ -624,6 +624,10 @@
     {
       "file": "20261104120000_product_extra_images.sql",
       "sha256": "aac4bc17f6cadcb599f5e20b939688d131ebb75e1c006b8534386d9761bada02"
+    },
+    {
+      "file": "20261104130000_chicken_cut_sizes_bulk.sql",
+      "sha256": "c661ffbcee7029aca8bfddea98d32eea365cf86e9fdc773d77022b02fde51f71"
     }
   ]
 }

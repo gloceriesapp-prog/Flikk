@@ -69,6 +69,7 @@ export default function SettingsPage() {
     roadDistanceFactor: string;
     maxStoreSpreadKm: string;
     storeResponseTimeoutMinutes: string;
+    bulkResponseTimeoutMinutes: string;
     checkoutHoldMinutes: string;
     checkoutReconciliationGraceMinutes: string;
     deliveryFeeTiers: TierDraft[];
@@ -96,6 +97,7 @@ export default function SettingsPage() {
         checkoutHoldMinutes: String(settings.checkoutHoldMinutes),
         checkoutReconciliationGraceMinutes: String(settings.checkoutReconciliationGraceMinutes),
         storeResponseTimeoutMinutes: String(settings.storeResponseTimeoutMinutes),
+        bulkResponseTimeoutMinutes: String(settings.bulkResponseTimeoutMinutes),
         deliveryFeeTiers: settings.deliveryFeeTiers.map((tier) => ({ upToKm: String(tier.upToKm), fee: String(tier.fee) })),
         orderingOpens: minuteToTimeInput(settings.orderingOpensMinute),
         orderingCloses: minuteToTimeInput(settings.orderingClosesMinute),
@@ -121,6 +123,7 @@ export default function SettingsPage() {
       Number(draft.checkoutHoldMinutes) !== saved.checkoutHoldMinutes ||
       Number(draft.checkoutReconciliationGraceMinutes) !== saved.checkoutReconciliationGraceMinutes ||
       Number(draft.storeResponseTimeoutMinutes) !== saved.storeResponseTimeoutMinutes ||
+      Number(draft.bulkResponseTimeoutMinutes) !== saved.bulkResponseTimeoutMinutes ||
       !tiersEqual(draft.deliveryFeeTiers, saved.deliveryFeeTiers) ||
       timeInputToMinute(draft.orderingOpens) !== saved.orderingOpensMinute ||
       timeInputToMinute(draft.orderingCloses, true) !== saved.orderingClosesMinute);
@@ -147,6 +150,11 @@ export default function SettingsPage() {
       setSaveError('Enter a store response time between 3 and 120 whole minutes.');
       return;
     }
+    const bulkMinutes = Number(draft.bulkResponseTimeoutMinutes);
+    if (!Number.isInteger(bulkMinutes) || bulkMinutes < 5 || bulkMinutes > 240) {
+      setSaveError('Enter a bulk order response time between 5 and 240 whole minutes.');
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -168,6 +176,7 @@ export default function SettingsPage() {
           checkoutHoldMinutes: Number(draft.checkoutHoldMinutes),
           checkoutReconciliationGraceMinutes: Number(draft.checkoutReconciliationGraceMinutes),
           storeResponseTimeoutMinutes: Number(draft.storeResponseTimeoutMinutes),
+          bulkResponseTimeoutMinutes: bulkMinutes,
           deliveryFeeTiers: draft.deliveryFeeTiers.map((tier) => ({ upToKm: Number(tier.upToKm), fee: Number(tier.fee) })),
           orderingOpensMinute,
           orderingClosesMinute,
@@ -270,6 +279,22 @@ export default function SettingsPage() {
                 <input id="store-response" type="number" min={3} max={120} step={1}
                   value={draft.storeResponseTimeoutMinutes}
                   onChange={(event) => setDraft({ ...draft, storeResponseTimeoutMinutes: event.target.value })}
+                  className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
+                <span className="text-sm text-muted">min</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+              <div>
+                <label htmlFor="bulk-response" className="text-sm font-medium text-ink">Bulk order response time</label>
+                <p className="text-xs text-muted">
+                  Same rule for bulk chicken orders (products with cut sizes, over their bulk kg): the shop gets this long
+                  to check it can supply the order and accept it, before it is cancelled automatically.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
+                <input id="bulk-response" type="number" min={5} max={240} step={1}
+                  value={draft.bulkResponseTimeoutMinutes}
+                  onChange={(event) => setDraft({ ...draft, bulkResponseTimeoutMinutes: event.target.value })}
                   className="w-16 bg-transparent text-sm font-semibold text-ink outline-none" />
                 <span className="text-sm text-muted">min</span>
               </div>
