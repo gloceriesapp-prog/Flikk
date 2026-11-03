@@ -616,6 +616,10 @@
     {
       "file": "20261102120000_db_advisor_fixes.sql",
       "sha256": "4c545d34e9426ac07fee313d4c0bed455d4ec7f45773d050555ceceefb8f1acd"
+    },
+    {
+      "file": "20261103120000_function_search_paths.sql",
+      "sha256": "6dd20d85176015d8adbbf66baa057a8f109d164c126ef8582fb07774fa951b48"
     }
   ]
 }

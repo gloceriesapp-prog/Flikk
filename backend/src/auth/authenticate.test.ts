@@ -30,6 +30,21 @@ it('writes bypass cached role/session status and detect revocation', async () =>
   expect(mocks.user).toHaveBeenCalledTimes(1); expect(mocks.rpc).toHaveBeenCalledTimes(3);
   expect(mocks.rpc).toHaveBeenLastCalledWith('auth_account_blocked', { p_user_id: user });
 });
+it('writes check Auth alongside the session lookup, and a remote denial still wins', async () => {
+  let release!: () => void;
+  mocks.user.mockReturnValue(new Promise(resolve => { release = () => resolve({ data: { user: { id: user } }, error: null }); }));
+  const pending = authenticate(`token-${token}`, true);
+  await vi.waitFor(() => expect(mocks.rpc).toHaveBeenCalledTimes(1)); // lookup started before Auth answered
+  release(); await expect(pending).resolves.toMatchObject({ id: user, role: 'customer' });
+  mocks.user.mockResolvedValue({ data: { user: null }, error: { status: 401 } });
+  await expect(authenticate(`token-${token}`, true)).rejects.toMatchObject({ status: 401 });
+});
+it('never provisions a user row before the remote check passes', async () => {
+  mocks.rpc.mockResolvedValue({ data: [{ user_id: user, role: null, is_approved: null, session_valid: true, phone: 'test' }], error: null });
+  mocks.user.mockResolvedValue({ data: { user: null }, error: { status: 401 } });
+  await expect(authenticate(`token-${token}`, true)).rejects.toMatchObject({ status: 401 });
+  expect(mocks.from).not.toHaveBeenCalled();
+});
 it('reports an admin-blocked account as ACCOUNT_BLOCKED, not a dead session', async () => {
   mocks.rpc.mockImplementation(async (name: string) => name === 'auth_account_blocked'
     ? { data: true, error: null }
