@@ -8,6 +8,8 @@ const db = vi.hoisted(() => ({
   upserted: null as unknown,
   deleted: null as unknown,
   updated: null as unknown,
+  // The admin's own product categories (Categories page), in sort order.
+  categories: [{ name: 'Vegetables & Fruits' }, { name: 'Dairy, Bread & Eggs' }, { name: 'Chicken' }],
 }));
 vi.mock('@/lib/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/lib/auth/requireAdmin', () => ({ requireAdmin: async () => db.authorized
@@ -20,6 +22,10 @@ vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: { from: (table: string) 
       upsert: async (rows: unknown) => { db.upserted = rows; return { error: null }; },
       delete: () => ({ in: async (_column: string, names: unknown) => { db.deleted = names; return { error: null }; } }),
     };
+  }
+  if (table === 'categories') {
+    const ordered = { order: () => ordered, then: (resolve: (value: unknown) => unknown) => resolve({ data: db.categories, error: null }) };
+    return { select: () => ordered };
   }
   const chain = { select: () => chain, limit: () => chain, eq: async () => ({ error: null }),
     single: async () => ({ data: db.settings, error: null }),
@@ -39,7 +45,8 @@ it('lists every product category, with its rate or none, then other saved catego
   expect(body.defaultRate).toBe(0.04);
   expect(body.capPerOrder).toBe(30);
   expect(body.categories[0]).toEqual({ category: 'Vegetables & Fruits', commissionRate: null });
-  expect(body.categories).toContainEqual({ category: 'Dairy, Bread & Eggs', commissionRate: 0 });
+  expect(body.categories[1]).toEqual({ category: 'Dairy, Bread & Eggs', commissionRate: 0 });
+  expect(body.categories[2]).toEqual({ category: 'Chicken', commissionRate: null });
   expect(body.categories.at(-1)).toEqual({ category: 'Old category', commissionRate: 0.05 });
 });
 
