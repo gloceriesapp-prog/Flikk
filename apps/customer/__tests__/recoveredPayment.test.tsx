@@ -3,9 +3,11 @@ import { AppState, Platform } from 'react-native';
 import { useRecoveredPayment } from '../src/screens/payment-method/useRecoveredPayment';
 import { abandonCheckout, createPaymentOrder, recoverPayment, verifyPayment } from '../src/api/payments';
 import { assertDirectUpiConfigured, prepareUpiIntent } from '../src/payments/upiIntent';
+import { assertIosUpiConfigured } from '../src/payments/iosUpiCheckout';
 import { openRazorpayCheckout } from '../src/payments/openRazorpayCheckout';
 const mockRequestEmail = jest.fn(async () => 'test@example.com');
 jest.mock('../src/payments/usePaymentReceiptEmail', () => ({ usePaymentReceiptEmail: () => ({ requestEmail: mockRequestEmail, emailForm: null }) }));
+jest.mock('../src/payments/iosUpiCheckout', () => ({ ...jest.requireActual('../src/payments/iosUpiCheckout'), assertIosUpiConfigured: jest.fn() }));
 const mockReplace = jest.fn(), mockRefetch = jest.fn();
 let mockEpoch = 1;
 const mockRecovery = { data: { state: 'unpaid', canResumeUpiIntent: false, record: { total: 63 } }, isFetchedAfterMount: true, isFetching: false, isError: false, refetch: mockRefetch };
@@ -148,4 +150,37 @@ it('keeps the contact step for legacy Android servers without the optional-email
   const hook = await renderHook(() => useRecoveredPayment(target, navigation));
   await act(() => hook.result.current.select('upi_app:phonepe'));
   expect(mockRequestEmail).toHaveBeenCalledTimes(1);
+});
+
+it('recovers an unpaid iOS order without an email popup when the merchant permits it', async () => {
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
+  jest.mocked(assertIosUpiConfigured).mockResolvedValue({ sdkId: 'google_pay', emailOptional: true });
+  const order = { providerOrderId: 'provider-order' } as Awaited<ReturnType<typeof createPaymentOrder>>;
+  const callback = { razorpay_payment_id: 'payment' } as Awaited<ReturnType<typeof openRazorpayCheckout>>;
+  jest.mocked(createPaymentOrder).mockResolvedValue(order);
+  jest.mocked(openRazorpayCheckout).mockResolvedValue(callback);
+  const hook = await renderHook(() => useRecoveredPayment(target, navigation));
+  await act(() => hook.result.current.select('upi_app:gpay'));
+  expect(mockRequestEmail).not.toHaveBeenCalled();
+  expect(openRazorpayCheckout).toHaveBeenCalledWith(order, 'upi_app:gpay', undefined, undefined);
+  expect(verifyPayment).toHaveBeenCalledWith(target, callback);
+  expect(mockReplace).toHaveBeenCalledWith('PaymentRecovery', { target });
+});
+it('keeps iOS receipt contact collection when the server does not permit omission', async () => {
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
+  jest.mocked(assertIosUpiConfigured).mockResolvedValue({ sdkId: 'phonepe', emailOptional: false });
+  const hook = await renderHook(() => useRecoveredPayment(target, navigation));
+  await act(() => hook.result.current.select('upi_app:phonepe'));
+  expect(mockRequestEmail).toHaveBeenCalledTimes(1);
+});
+it('routes an email-free iOS cancellation back through server reconciliation', async () => {
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
+  jest.mocked(assertIosUpiConfigured).mockResolvedValue({ sdkId: 'phonepe', emailOptional: true });
+  jest.mocked(openRazorpayCheckout).mockRejectedValue(new Error('Payment was not completed.'));
+  const hook = await renderHook(() => useRecoveredPayment(target, navigation));
+  await act(() => hook.result.current.select('upi_app:phonepe'));
+  expect(mockRequestEmail).not.toHaveBeenCalled();
+  expect(hook.result.current.error).toContain('not completed');
+  expect(mockRefetch).toHaveBeenCalled();
+  expect(verifyPayment).not.toHaveBeenCalled();
 });

@@ -60,7 +60,7 @@ export async function installedIosUpiApps(): Promise<{ app: UpiApp; sdkId: strin
   });
 }
 
-export async function assertIosUpiConfigured(method: PaymentMethod): Promise<string> {
+export async function assertIosUpiConfigured(method: PaymentMethod): Promise<{ sdkId: string; emailOptional: boolean }> {
   if (!usesIosUpiCheckout(method)) throw new Error('Choose a supported UPI app.');
   const availability = await fetchPaymentAvailability();
   if (!availability.online || availability.upi_intent !== true) {
@@ -68,7 +68,7 @@ export async function assertIosUpiConfigured(method: PaymentMethod): Promise<str
   }
   const selected = (await installedIosUpiApps()).find(item => `upi_app:${item.app.id}` === method);
   if (!selected) throw new Error('This UPI app is not available for this payment. Choose another payment method.');
-  return selected.sdkId;
+  return { sdkId: selected.sdkId, emailOptional: availability.upi_email_optional === true };
 }
 
 export async function openIosUpiCheckout(order: RazorpayOrder, method: PaymentMethod): Promise<RazorpayPaymentResult> {
@@ -79,12 +79,13 @@ export async function openIosUpiCheckout(order: RazorpayOrder, method: PaymentMe
   if (order.environment !== 'production' || !order.keyId.startsWith('rzp_live_')) {
     throw new Error('UPI app payments require the live payment service. Choose another payment method.');
   }
-  const sdkId = await assertIosUpiConfigured(method);
+  const { sdkId, emailOptional } = await assertIosUpiConfigured(method);
   razorpayOptions(order, method); // Discovery may have waited past the order expiry.
-  const customer = await fetchPaymentCustomer();
+  const customer = await fetchPaymentCustomer({ includeEmail: !emailOptional });
   if (useAuthStore.getState().sessionEpoch !== epoch) throw new Error('Your account changed. Please check your checkout again.');
   razorpayOptions(order, method);
-  if (!customer.email || !/^(?:\+91)?[6-9]\d{9}$/.test(customer.contact)) throw new Error('Add your payment receipt email before paying with UPI.');
+  if (!/^(?:\+91)?[6-9]\d{9}$/.test(customer.contact)) throw new Error('Your account needs a valid mobile number before paying with UPI.');
+  if (!emailOptional && !customer.email) throw new Error('Add your payment receipt email before paying with UPI.');
   const { native, events } = nativeSdk();
   return new Promise((resolve, reject) => {
     const subscriptions: EmitterSubscription[] = [];
@@ -102,7 +103,9 @@ export async function openIosUpiCheckout(order: RazorpayOrder, method: PaymentMe
       native.open({
         key_id: order.keyId, order_id: order.providerOrderId,
         amount: order.amountPaise, currency: order.currency,
-        email: customer.email, contact: customer.contact,
+        // Match Android: omit the property entirely when the live merchant
+        // explicitly permits it. Never send an empty or invented email.
+        ...(!emailOptional ? { email: customer.email } : {}), contact: customer.contact,
         description: 'Groceries and essentials', method: 'upi',
         '_[flow]': 'intent', upi_app_package_name: sdkId,
         timeout: Math.max(1, Math.floor((Date.parse(order.expiresAt) - Date.now()) / 1000)),

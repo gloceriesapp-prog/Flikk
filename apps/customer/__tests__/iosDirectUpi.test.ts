@@ -1,6 +1,7 @@
 import { NativeModules, Platform } from 'react-native';
 import { openRazorpayCheckout } from '../src/payments/openRazorpayCheckout';
-import { installedIosUpiApps, supportedIosUpiApps } from '../src/payments/iosUpiCheckout';
+import { assertIosUpiConfigured, installedIosUpiApps, supportedIosUpiApps } from '../src/payments/iosUpiCheckout';
+import { requiresUpiReceiptEmail } from '../src/payments/upiReceiptRequirement';
 import StandardCheckout from 'react-native-razorpay';
 import { fetchPaymentAvailability, fetchPaymentCustomer } from '../src/api/payments';
 
@@ -103,4 +104,46 @@ it('uses the server account contact when the provider order contains no customer
   const withoutContact = { ...order(), customer: undefined };
   await expect(openRazorpayCheckout(withoutContact, 'upi_app:gpay')).resolves.toEqual(evidence);
   expect(NativeModules.RazorpayCustomui.open).toHaveBeenCalledWith(expect.objectContaining({ email: 'test@example.com', contact: '+919000000000' }));
+});
+
+it('opens the selected iOS UPI app without an email field when the server allows omission', async () => {
+  jest.mocked(fetchPaymentAvailability).mockResolvedValue({ online: true, upi_intent: true, upi_email_optional: true, cod: true, min_order_value: 0 });
+  jest.mocked(fetchPaymentCustomer).mockResolvedValue({ email: null, contact: '+919000000000' });
+  expect(await requiresUpiReceiptEmail('upi_app:gpay')).toBe(false);
+  await expect(openRazorpayCheckout({ ...order(), customer: undefined }, 'upi_app:gpay')).resolves.toEqual(evidence);
+  expect(fetchPaymentCustomer).toHaveBeenCalledWith({ includeEmail: false });
+  const payload = NativeModules.RazorpayCustomui.open.mock.calls[0][0];
+  expect(payload).not.toHaveProperty('email');
+  expect(payload).toMatchObject({ contact: '+919000000000', upi_app_package_name: 'google_pay', '_[flow]': 'intent' });
+  expect(StandardCheckout.open).not.toHaveBeenCalled();
+});
+it('does not forward a saved email when email omission is enabled', async () => {
+  jest.mocked(fetchPaymentAvailability).mockResolvedValue({ online: true, upi_intent: true, upi_email_optional: true, cod: true, min_order_value: 0 });
+  await openRazorpayCheckout(order(), 'upi_app:phonepe');
+  expect(NativeModules.RazorpayCustomui.open.mock.calls[0][0]).not.toHaveProperty('email');
+});
+it.each([undefined, false])('retains the merchant contact requirement when optional email is %s', async flag => {
+  jest.mocked(fetchPaymentAvailability).mockResolvedValue({ online: true, upi_intent: true, upi_email_optional: flag, cod: true, min_order_value: 0 });
+  jest.mocked(fetchPaymentCustomer).mockResolvedValue({ email: null, contact: '+919000000000' });
+  expect(await requiresUpiReceiptEmail('upi_app:gpay')).toBe(true);
+  await expect(openRazorpayCheckout(order(), 'upi_app:gpay')).rejects.toThrow('receipt email');
+  expect(NativeModules.RazorpayCustomui.open).not.toHaveBeenCalled();
+});
+it('still rejects an invalid phone number when email is optional', async () => {
+  jest.mocked(fetchPaymentAvailability).mockResolvedValue({ online: true, upi_intent: true, upi_email_optional: true, cod: true, min_order_value: 0 });
+  jest.mocked(fetchPaymentCustomer).mockResolvedValue({ email: null, contact: 'invalid' });
+  await expect(openRazorpayCheckout(order(), 'upi_app:gpay')).rejects.toThrow('valid mobile number');
+  expect(NativeModules.RazorpayCustomui.open).not.toHaveBeenCalled();
+});
+it('does not let optional-email capability bypass the selected-app or gateway checks', async () => {
+  jest.mocked(fetchPaymentAvailability).mockResolvedValue({ online: false, upi_intent: true, upi_email_optional: true, cod: true, min_order_value: 0 });
+  await expect(assertIosUpiConfigured('upi_app:gpay')).rejects.toThrow('not available');
+  expect(NativeModules.RazorpayCustomui.open).not.toHaveBeenCalled();
+});
+it('cleans up cancellation listeners for an email-free iOS checkout', async () => {
+  jest.mocked(fetchPaymentAvailability).mockResolvedValue({ online: true, upi_intent: true, upi_email_optional: true, cod: true, min_order_value: 0 });
+  jest.mocked(fetchPaymentCustomer).mockResolvedValue({ email: null, contact: '+919000000000' });
+  NativeModules.RazorpayCustomui.open.mockImplementation(() => emit('Razorpay::PAYMENT_ERROR', {}));
+  await expect(openRazorpayCheckout(order(), 'upi_app:gpay')).rejects.toThrow('not completed');
+  expect([...mockListeners.values()].every(listeners => listeners.size === 0)).toBe(true);
 });

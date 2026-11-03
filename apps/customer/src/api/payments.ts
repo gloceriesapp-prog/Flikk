@@ -82,8 +82,11 @@ export function savePaymentContact(email: string): Promise<PaymentContact> {
   return apiRequest('/payments/contact', { method: 'PATCH', body: { email } });
 }
 
-export async function fetchPaymentCustomer(): Promise<{ email: string | null; contact: string }> {
-  const [receipt, account] = await Promise.all([fetchPaymentContact(), apiRequest<{ phone: string }>('/auth/me')]);
+export async function fetchPaymentCustomer({ includeEmail = true }: { includeEmail?: boolean } = {}): Promise<{ email: string | null; contact: string }> {
+  const [receipt, account] = await Promise.all([
+    includeEmail ? fetchPaymentContact() : Promise.resolve({ email: null }),
+    apiRequest<{ phone: string }>('/auth/me'),
+  ]);
   return { email: receipt.email, contact: account.phone };
 }
 
