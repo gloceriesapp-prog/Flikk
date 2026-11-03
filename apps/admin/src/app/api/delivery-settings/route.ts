@@ -87,13 +87,21 @@ export async function PATCH(request: Request) {
         holds[column] = body[key];
       }
     }
-    const storeResponse: { store_response_timeout_minutes?: number } = {};
+    const storeResponse: { store_response_timeout_minutes?: number; bulk_response_timeout_minutes?: number } = {};
     if (body.storeResponseTimeoutMinutes !== undefined) {
       const minutes = body.storeResponseTimeoutMinutes;
       if (typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes < 3 || minutes > 120) {
         throw new Error('Store response time must be a whole number between 3 and 120 minutes.');
       }
       storeResponse.store_response_timeout_minutes = minutes;
+    }
+    // Bulk chicken orders (migration 20261104130000): the store gets longer.
+    if (body.bulkResponseTimeoutMinutes !== undefined) {
+      const minutes = body.bulkResponseTimeoutMinutes;
+      if (typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes < 5 || minutes > 240) {
+        throw new Error('Bulk order response time must be a whole number between 5 and 240 minutes.');
+      }
+      storeResponse.bulk_response_timeout_minutes = minutes;
     }
     if (body.deliveryFeeTiers !== undefined) {
       if (!Array.isArray(body.deliveryFeeTiers) || body.deliveryFeeTiers.length > 10) {

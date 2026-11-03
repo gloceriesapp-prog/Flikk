@@ -5,7 +5,7 @@ import { ProductImageGallery } from '../../../components/ProductImageGallery';
 import { AppIcon } from '../../../components/AppIcon';
 import { RupeePrice } from '../../../components/RupeePrice';
 import { IconlyBookmark, IconlyBookmarkFilled } from '../../../components/icons/IconlyBookmark';
-import { cartLineId } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut } from '../../../store/cartIdentity';
 import { colors } from '../../../theme/tokens';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
@@ -63,7 +63,8 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
   const isBookmarked = useWishlistStore((state) => state.isWishlisted(id));
   const toggleWishlist = useWishlistStore((state) => state.toggle);
 
-  const lineId = cartLineId(id, product.defaultVariantId);
+  const cutSize = quickAddCut(product);
+  const lineId = cartLineId(id, product.defaultVariantId, cutSize);
   const quantity = useCartStore((state) => state.items.find((item) => item.id === lineId)?.quantity ?? 0);
   const incrementItem = useCartStore((state) => state.incrementItem);
   const decrementItem = useCartStore((state) => state.decrementItem);
@@ -107,7 +108,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
           ) : quantity === 0 ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
               onPress={() =>
-                addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
+                addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
               }
               className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
             >

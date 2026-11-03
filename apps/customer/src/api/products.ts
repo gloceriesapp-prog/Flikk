@@ -41,6 +41,8 @@ export interface ApiProduct {
   // Optional: older cached rows and feeds from before the column existed.
   extra_image_urls?: string[] | null;
   bg_color: string | null;
+  cut_options_enabled?: boolean | null;
+  bulk_min_kg?: number | string | null;
   is_veg: boolean;
   freshness_tag: string | null;
   product_variants: ApiVariant[];
@@ -119,6 +121,8 @@ export function mapApiProduct(row: ApiProduct): Product {
     imageUrl: row.image_url ?? undefined,
     imageUrls: productImages(row),
     bgColor: row.bg_color ?? undefined,
+    cutOptions: row.cut_options_enabled === true || undefined,
+    bulkMinKg: row.cut_options_enabled && row.bulk_min_kg != null && Number(row.bulk_min_kg) > 0 ? Number(row.bulk_min_kg) : undefined,
     isVeg: row.is_veg,
     freshnessTag: row.freshness_tag ?? undefined,
     sizeOptions: variants.length > 0 ? variants.map(formatVariant) : undefined,

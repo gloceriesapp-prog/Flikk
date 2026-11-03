@@ -32,6 +32,8 @@ import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { ProductVariantOptions } from './ProductVariantOptions';
+import { ProductCutOptions } from './ProductCutOptions';
+import type { CutSize } from '../../store/cartIdentity';
 import { SellerDetailsCard } from './SellerDetailsCard';
 import { SimilarProductsRow } from './SimilarProductsRow';
 import type { Product } from '../../screens/home/products/types';
@@ -52,9 +54,12 @@ interface Props {
   // existed.
   selectedVariantId?: string;
   onSelectVariant?: (id: string) => void;
+  // Chicken cut size, lifted to the sheet like the variant (the footer adds it).
+  selectedCut?: CutSize;
+  onSelectCut?: (cut: CutSize) => void;
 }
 
-export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant }: Props) {
+export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut }: Props) {
   const { name, localName, weight, price, originalPrice, storeName, variants, sellerDetails } = product;
   const related = relatedProducts ?? product.relatedProducts;
   const hasRealVariants = variants && variants.length > 1;
@@ -102,6 +107,10 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
             </View>
           </View>
         )}
+
+        {product.cutOptions && selectedCut && onSelectCut ? (
+          <ProductCutOptions selected={selectedCut} onSelect={onSelectCut} bulkMinKg={product.bulkMinKg} />
+        ) : null}
 
         {/* Once a real variant selector is shown, its own cards already
             carry each size's price/discount — repeating one summary price

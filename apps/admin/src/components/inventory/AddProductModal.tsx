@@ -23,6 +23,7 @@ import { categoryHasVegToggle, PRODUCT_CATEGORIES } from '@/lib/product-options'
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
+import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { SubCategoryPicker } from './SubCategoryPicker';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
@@ -48,6 +49,8 @@ function makeEmptyDraft(stores: StoreOption[]) {
     stockStatus: 'in_stock' as StockStatus,
     imageUrl: undefined as string | undefined,
     extraImageUrls: [] as string[],
+    cutOptionsEnabled: false,
+    bulkMinKg: null as number | null,
     bgColor: undefined as string | undefined,
     subCategoryId: undefined as string | undefined,
     isVeg: true,
@@ -114,6 +117,8 @@ export function AddProductModal({
         stockStatus: draft.stockStatus,
         imageUrl: draft.imageUrl,
         extraImageUrls: draft.extraImageUrls,
+        cutOptionsEnabled: draft.cutOptionsEnabled,
+        bulkMinKg: draft.bulkMinKg,
         bgColor: draft.bgColor,
         subCategoryId: draft.subCategoryId,
         isVeg: draft.isVeg,
@@ -200,6 +205,13 @@ export function AddProductModal({
               </option>
             ))}
           </select>
+
+          <ChickenOptionsEditor
+            category={draft.category}
+            enabled={draft.cutOptionsEnabled ?? false}
+            bulkMinKg={draft.bulkMinKg ?? null}
+            onChange={(next) => setDraft({ ...draft, ...next })}
+          />
 
           <textarea
             value={draft.description}

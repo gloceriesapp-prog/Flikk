@@ -1,7 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { AppError } from './errors.js';
 import { calcItemTotal, calcOrderTotal, round2 } from './pricing.js';
-import type { PricedCheckoutItem } from './checkoutItems.js';
+import { checkoutLineKey, type PricedCheckoutItem } from './checkoutItems.js';
 import { additionalShopFee as extraShopFee, distanceDeliveryFee } from './deliveryFees.js';
 import type { DeliverySettings } from './deliverySettings.js';
 
@@ -34,7 +34,7 @@ export interface QuoteSnapshot {
 }
 
 export function quoteVersion(snapshot: QuoteSnapshot): string {
-  const items = [...snapshot.items].sort((a, b) => `${a.product_id}:${a.variant_id}`.localeCompare(`${b.product_id}:${b.variant_id}`));
+  const items = [...snapshot.items].sort((a, b) => checkoutLineKey(a.product_id, a.variant_id, a.cut_size).localeCompare(checkoutLineKey(b.product_id, b.variant_id, b.cut_size)));
   return createHash('sha256').update(JSON.stringify({ ...snapshot, items })).digest('hex');
 }
 

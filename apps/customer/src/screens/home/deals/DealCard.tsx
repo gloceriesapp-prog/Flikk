@@ -1,5 +1,5 @@
 import { useProductAvailability } from '../products/useProductAvailability';
-import { cartLineId } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut } from '../../../store/cartIdentity';
 import { useState } from 'react';
 
 import {
@@ -87,7 +87,8 @@ export function DealCard({
      CART
   ========================================================== */
 
-  const lineId = cartLineId(id, product.defaultVariantId);
+  const cutSize = quickAddCut(product);
+  const lineId = cartLineId(id, product.defaultVariantId, cutSize);
   const availability = useProductAvailability(product);
   const quantity = useCartStore(
     (state) =>
@@ -119,6 +120,7 @@ export function DealCard({
       id: lineId,
       productId: id,
       variantId: product.defaultVariantId,
+      cutSize,
       name,
       weight,
       price,

@@ -14,6 +14,8 @@ export interface ApiOrderItem {
   quantity: number;
   unit_price_at_order: number;
   unit_at_order?: string | null;
+  // Chicken piece size the customer chose (small/medium/large).
+  cut_size?: 'small' | 'medium' | 'large' | null;
   products: { name: string; unit: string; image_url: string | null } | null;
 }
 
@@ -48,6 +50,9 @@ export interface ApiOrder {
   preparation_deadline_at?: string | null;
   // migration 109 — when the order reached the store (accept window start).
   store_visible_at?: string | null;
+  // Bulk chicken order: confirm you can supply it before accepting
+  // (it gets a longer accept window, admin Settings).
+  is_bulk?: boolean;
   packed_at: string | null;
   delivered_at: string | null;
   order_items: ApiOrderItem[];

@@ -15,7 +15,7 @@ import {
 } from '../../../store/useCartStore';
 import { useWishlistStore } from '../../../store/useWishlistStore';
 import type { CartAvailability } from '../../../api/checkout';
-import { cartIdentity } from '../../../store/cartIdentity';
+import { CUT_SIZE_LABEL, cartIdentity } from '../../../store/cartIdentity';
 import type { Product } from '../../home/products/types';
 
 const STEPPER_TINT = '#155DFC';
@@ -143,7 +143,7 @@ export function CartItemRow({ item, availability }: Props) {
             text-ink/50
           "
         >
-          {item.weight}
+          {item.cutSize ? `${item.weight} · ${CUT_SIZE_LABEL[item.cutSize]}` : item.weight}
         </Text>
 
         {/* SAVE FOR LATER */}

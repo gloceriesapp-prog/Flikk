@@ -125,6 +125,9 @@ export const OrderCard = memo(function OrderCard({ order, onAcknowledge, onMarkP
             )}
           </View>
           <Text className="text-[13px] font-medium text-ink/70">{order.orderNumber}</Text>
+          {order.isBulk && (
+            <Text className="mt-1 self-start rounded-full bg-[#FFF4E0] px-2 py-0.5 text-[11px] font-bold text-[#8A5A00]">BULK ORDER</Text>
+          )}
         </View>
       </View>
 

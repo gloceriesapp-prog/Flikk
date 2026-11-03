@@ -323,6 +323,11 @@ export function CartScreen({ navigation, route }: Props) {
                 {`Minimum order is ₹${quote.minimumOrder!.value}. Add items worth ₹${minimumShortfall} more to place your order.`}
               </Text>
             )}
+            {quote && !quoteQuery.isError && quote.items.some((line) => line.bulk) && (
+              <Text className="px-2 text-[13px] font-semibold text-[#155dfc]">
+                This is a bulk order. The shop confirms it before preparing; if it can’t supply that much, the order is cancelled and any payment refunded.
+              </Text>
+            )}
             {availabilityQuery.data?.issues.map((issue) => <Text key={issue.code} className="px-2 text-[13px] font-semibold text-[#B42318]">{issue.message}</Text>)}
             {availabilityQuery.isError && <Text className="px-2 text-[13px] text-[#B42318]">Could not check item availability. <Text onPress={() => { void availabilityQuery.refetch(); }} className="font-semibold">Retry</Text></Text>}
             {quote && quoteHasPriceChanges(items, quote) && (

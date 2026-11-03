@@ -1,5 +1,6 @@
 import { apiRequest } from './client';
 import type { CreateOrderItem } from './orders';
+import type { CutSize } from '../store/cartIdentity';
 
 export interface CheckoutQuote {
   token: string;
@@ -14,6 +15,10 @@ export interface CheckoutQuote {
     unit_price_at_order: number;
     unit_at_order: string;
     variant_mrp_at_order: number;
+    cut_size?: CutSize | null;
+    // Server-side: this product reached its bulk quantity, so the order is a
+    // bulk order the store confirms (with a longer response window).
+    bulk?: boolean;
   }[];
   bill: {
     storeCount: number;
