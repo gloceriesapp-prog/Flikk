@@ -381,6 +381,9 @@ export interface Product {
   // placeholder (see (dashboard)/inventory/page.tsx) whenever a product has
   // none — never a random stock photo.
   imageUrl?: string;
+  // Further photos after imageUrl, in display order (products.extra_image_urls,
+  // at most MAX_EXTRA_IMAGES). The customer app swipes through cover + these.
+  extraImageUrls?: string[];
   // Pastel card background extracted from imageUrl at upload time
   // (lib/bgColor.ts, app/api/upload), or a category tint / neutral mist
   // when extraction wasn't possible — see lib/productValidation.ts

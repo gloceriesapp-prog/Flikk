@@ -21,6 +21,10 @@ export interface Product {
   // see apps/admin/src/lib/supabase/products.ts) — falls back to the
   // shared placeholder image (imageSeed) when a product has none yet.
   imageUrl?: string;
+  // Every real photo in display order, cover (imageUrl) first, then
+  // products.extra_image_urls set in admin. ProductImageGallery swipes
+  // through these when there is more than one.
+  imageUrls?: string[];
   // Pastel color extracted from imageUrl at upload time (admin's
   // lib/bgColor.ts, products.bg_color) — the card's own image tile
   // background, so a no-background product photo sits on a color pulled

@@ -32,6 +32,9 @@ export interface ProductWriteInput {
   category: string;
   stockStatus: StockStatus;
   imageUrl?: string | null;
+  // Gallery photos after the cover (products.extra_image_urls). Absent leaves
+  // the saved list alone; an array replaces it.
+  extraImageUrls?: string[] | null;
   // Extracted from imageUrl at upload time (app/api/upload -> lib/bgColor.ts),
   // null when extraction failed or no photo was set — toProductRow below
   // is where the category-tint/mist fallback steps of that chain run.
@@ -81,6 +84,29 @@ export function validateProductInput(input: Partial<ProductWriteInput>): asserts
   if (new Set(input.variants.map((v) => `${v.unitType}:${v.quantity}`)).size !== input.variants.length) {
     throw new Error('Each size can only be listed once.');
   }
+}
+
+// Matches products_extra_image_urls_check (backend migration 20261104120000).
+export const MAX_EXTRA_IMAGES = 7;
+
+// The gallery list to store, or undefined to leave it untouched. Blank and
+// repeated entries (and a copy of the cover) are dropped rather than refused,
+// since the form can produce them while photos are being swapped around.
+export function toExtraImageUrls(input: Pick<ProductWriteInput, 'imageUrl' | 'extraImageUrls'>): string[] | undefined {
+  if (input.extraImageUrls == null) return undefined;
+  if (!Array.isArray(input.extraImageUrls)) throw new Error('extraImageUrls must be a list.');
+  const cover = input.imageUrl?.trim();
+  const urls: string[] = [];
+  for (const raw of input.extraImageUrls) {
+    if (typeof raw !== 'string') throw new Error('Each extra photo must be a link.');
+    const url = raw.trim();
+    if (!url || url === cover || urls.includes(url)) continue;
+    if (!/^https?:\/\//i.test(url)) throw new Error('Each extra photo must be an uploaded image link.');
+    urls.push(url);
+  }
+  if (urls.length > MAX_EXTRA_IMAGES) throw new Error(`Up to ${MAX_EXTRA_IMAGES} extra photos per product.`);
+  if (urls.length > 0 && !cover) throw new Error('Add a main photo before extra photos.');
+  return urls;
 }
 
 export function formatVariantUnit(variant: VariantInput): string {

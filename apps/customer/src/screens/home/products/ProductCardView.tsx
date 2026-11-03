@@ -1,11 +1,10 @@
 import { memo, useState } from 'react';
 import { Add01Icon, FlashIcon, MinusSignIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
-import { AppImage as Image } from '../../../components/AppImage';
+import { ProductImageGallery } from '../../../components/ProductImageGallery';
 import { AppIcon } from '../../../components/AppIcon';
 import { RupeePrice } from '../../../components/RupeePrice';
 import { IconlyBookmark, IconlyBookmarkFilled } from '../../../components/icons/IconlyBookmark';
-import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { cartLineId } from '../../../store/cartIdentity';
 import { colors } from '../../../theme/tokens';
 import { useCartStore } from '../../../store/useCartStore';
@@ -75,7 +74,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
       {/* Image card with the ADD button pinned to its bottom-right corner. */}
       <View className="relative mb-2">
         <View className="aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
-          <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+          <ProductImageGallery images={product.imageUrls ?? (imageUrl ? [imageUrl] : [])} />
         </View>
 
         {freshnessTag && (

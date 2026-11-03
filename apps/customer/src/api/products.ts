@@ -38,6 +38,8 @@ export interface ApiProduct {
   price: number;
   original_price: number | null;
   image_url: string | null;
+  // Optional: older cached rows and feeds from before the column existed.
+  extra_image_urls?: string[] | null;
   bg_color: string | null;
   is_veg: boolean;
   freshness_tag: string | null;
@@ -82,6 +84,13 @@ function inventoryIssue(row: ApiProduct, variant?: ApiVariant): Product['unavail
   return undefined;
 }
 
+// Cover first, then the gallery; blanks and repeats dropped. No cover means
+// no photos at all (the card shows the placeholder), matching admin's rule.
+function productImages(row: Pick<ApiProduct, 'image_url' | 'extra_image_urls'>): string[] {
+  if (!row.image_url) return [];
+  return [...new Set([row.image_url, ...(row.extra_image_urls ?? [])].filter(Boolean))];
+}
+
 // Only database variants are purchasable; no inferred pack sizes or prices.
 export function mapApiProduct(row: ApiProduct): Product {
   const variants = [...row.product_variants].sort((a, b) => Number(b.is_default) - Number(a.is_default));
@@ -108,6 +117,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     unavailableReason,
     imageSeed: row.id,
     imageUrl: row.image_url ?? undefined,
+    imageUrls: productImages(row),
     bgColor: row.bg_color ?? undefined,
     isVeg: row.is_veg,
     freshnessTag: row.freshness_tag ?? undefined,
