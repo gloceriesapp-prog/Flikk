@@ -3,9 +3,10 @@
 // Chicken-only options (products.cut_options_enabled / bulk_min_kg): the
 // customer app then asks for small/medium/large pieces, and an order with at
 // least bulkMinKg kg of this product becomes a bulk order the store confirms
-// within the bulk response window (Settings). Shown only in the meat category.
+// within the bulk response window (Settings). Shown only for chicken/meat categories.
 
-import { CUT_OPTIONS_CATEGORY, MAX_BULK_MIN_KG } from '@/lib/productValidation';
+import { MAX_BULK_MIN_KG } from '@/lib/productValidation';
+import { categoryAllowsCutOptions } from '@/lib/product-options';
 
 const FIELD_CLASS =
   'w-28 rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10';
@@ -21,7 +22,7 @@ export function ChickenOptionsEditor({
   bulkMinKg: number | null;
   onChange: (next: { cutOptionsEnabled: boolean; bulkMinKg: number | null }) => void;
 }) {
-  if (category !== CUT_OPTIONS_CATEGORY) return null;
+  if (!categoryAllowsCutOptions(category)) return null;
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border px-3 py-3">
       <label className="flex items-center gap-2 text-sm font-medium text-ink">

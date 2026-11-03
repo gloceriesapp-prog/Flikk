@@ -7,12 +7,13 @@
 // see that route's own note) and refetches the live list; this modal just
 // shows a submitting state and surfaces whatever error comes back.
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { X } from '@/components/icons';
 import type { Product, StockStatus } from '@/lib/types';
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
-import { categoryHasVegToggle, PRODUCT_CATEGORIES } from '@/lib/product-options';
+import { categoryHasVegToggle } from '@/lib/product-options';
+import { ProductCategorySelect } from './ProductCategorySelect';
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
@@ -47,6 +48,7 @@ export function EditProductModal({
     ...product,
     variants: product.variants.length > 0 ? product.variants : [emptyVariant()],
   });
+  const setCategory = useCallback((category: string) => setDraft((d) => ({ ...d, category })), []);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const homeChoice = useHomeSectionChoice(product.id);
@@ -121,21 +123,7 @@ export function EditProductModal({
             aria-label="Local name"
           />
 
-          <select
-            value={draft.category}
-            onChange={(e) => setDraft({ ...draft, category: e.target.value })}
-            className={FIELD_CLASS}
-            aria-label="Category"
-          >
-            {!PRODUCT_CATEGORIES.includes(draft.category as (typeof PRODUCT_CATEGORIES)[number]) && (
-              <option value={draft.category}>{draft.category}</option>
-            )}
-            {PRODUCT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <ProductCategorySelect value={draft.category} onChange={setCategory} />
 
           <ChickenOptionsEditor
             category={draft.category}
