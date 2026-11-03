@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Check, Pencil, Plus, Trash2 } from '@/components/icons';
 import type { HomeTab, HomeTabBanner, HomeTabTile, HomeTabTileLinkType } from '@/lib/types';
 import { fetchHomeTabBanners, fetchHomeTabs, fetchHomeTabTiles } from '@/lib/supabase/homeTabs';
+import { fetchCategorySections } from '@/lib/supabase/categorySections';
 import { fetchCategories } from '@/lib/supabase/categories';
 import { fetchAllSubCategoryOptions } from '@/lib/supabase/subcategories';
 import { fetchStores } from '@/lib/supabase/stores';
@@ -94,6 +95,7 @@ export default function HomeCategoriesPage() {
   const [addingBanner, setAddingBanner] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  const [sections, setSections] = useState<{ id: string; name: string }[]>([]);
 
   const loadTabs = useCallback(async () => {
     setLoadError(null);
@@ -134,6 +136,33 @@ export default function HomeCategoriesPage() {
       )
       .catch(() => setError('Could not load categories/stores for tile links.'));
   }, []);
+
+  useEffect(() => {
+    fetchCategorySections()
+      .then((rows) => setSections(rows.map((row) => ({ id: row.id, name: row.name }))))
+      .catch(() => setError('Could not load Categories-page sections.'));
+  }, []);
+
+  // Links a tab to a Categories-page section: the customer app then shows
+  // that section's categories as tiles after this tab's own tiles, and keeps
+  // them current as categories are added there.
+  async function handleTabSectionChange(tab: HomeTab, sectionId: string | null) {
+    setError(null);
+    try {
+      const res = await fetch(`/api/home-tabs/${tab.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tab.name, sortOrder: tab.sortOrder, isActive: tab.isActive, sectionId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Save failed.');
+      }
+      await loadTabs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not link the section — try again.');
+    }
+  }
 
   const loadBanners = useCallback(async (tabId: string) => {
     setBannersLoading(true);
@@ -549,6 +578,23 @@ export default function HomeCategoriesPage() {
                     </button>
                   )}
                 </div>
+              </div>
+
+              <div className="mb-5 flex flex-col gap-1.5 rounded-2xl border border-border p-4">
+                <label htmlFor="tab-section" className="text-sm font-medium text-ink">Show categories from a section</label>
+                <select
+                  id="tab-section"
+                  value={selectedTab.sectionId ?? ''}
+                  onChange={(e) => handleTabSectionChange(selectedTab, e.target.value || null)}
+                  className="w-full max-w-sm rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink"
+                >
+                  <option value="">None — only the tiles below</option>
+                  {sections.map((section) => <option key={section.id} value={section.id}>{section.name}</option>)}
+                </select>
+                <p className="text-xs text-muted">
+                  Every category in that section (Categories page) appears as a tile in this tab, after the tiles below, and
+                  opens its products. New categories added to the section show up automatically.
+                </p>
               </div>
 
               <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted">

@@ -64,3 +64,22 @@ it('home tabs return real tile links; subcategory links resolve their parent cat
   expect(json[0].tiles.map((t: { link: unknown }) => t.link)).toEqual([
     { type: 'subcategory', id: 'sub1', category_id: 'cat1' }, { type: 'category', id: 'cat2', category_id: 'cat2' }, null]);
 });
+
+it('a home tab linked to a section shows its categories after its own tiles, without repeating a linked one', async () => {
+  mocks.tables = {
+    home_tabs: [{ id: 't1', name: 'Meat', image_url: null, section_id: 'sec-meat' }, { id: 't2', name: 'Bakery', image_url: null, section_id: null }],
+    home_tab_tiles: [{ id: 'a', home_tab_id: 't1', name: 'Chicken deals', image_url: 'x', link_type: 'category', link_id: 'chicken' }],
+    home_tab_banners: [],
+    categories: [
+      { id: 'chicken', name: 'Chicken', image_url: null, section_id: 'sec-meat' },
+      { id: 'mutton', name: 'Mutton', image_url: 'm.webp', section_id: 'sec-meat' },
+      { id: 'bread', name: 'Bread', image_url: null, section_id: 'sec-bakery' },
+    ],
+  };
+  const { json } = await get(homeTabsRouter, '/');
+  expect(json[0].tiles).toEqual([
+    { id: 'a', name: 'Chicken deals', image_url: 'x', link: { type: 'category', id: 'chicken', category_id: 'chicken' } },
+    { id: 'category:mutton', name: 'Mutton', image_url: 'm.webp', link: { type: 'category', id: 'mutton', category_id: 'mutton' } },
+  ]);
+  expect(json[1].tiles).toEqual([]);
+});

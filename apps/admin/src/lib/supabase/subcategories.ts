@@ -68,3 +68,29 @@ export async function fetchAllSubCategoryOptions(): Promise<SubCategoryOption[]>
     label: row.categories ? `${row.categories.name} / ${row.name}` : row.name,
   }));
 }
+
+// The catalogue tree for the product form's one picker: every category (in
+// Categories-page order) with its sub-categories. A product is filed under a
+// sub-category and takes its category from it (migration 20261104140000).
+export interface CatalogueTreeCategory {
+  id: string;
+  name: string;
+  subCategories: { id: string; name: string }[];
+}
+
+export async function fetchCatalogueTree(): Promise<CatalogueTreeCategory[]> {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, name, sub_categories(id, name, sort_order)')
+    .order('sort_order')
+    .order('name');
+  if (error) throw error;
+  return (data as unknown as { id: string; name: string; sub_categories: { id: string; name: string; sort_order: number | null }[] | null }[])
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      subCategories: [...(row.sub_categories ?? [])]
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name))
+        .map(({ id, name }) => ({ id, name })),
+    }));
+}

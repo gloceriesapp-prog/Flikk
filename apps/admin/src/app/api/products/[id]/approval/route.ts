@@ -17,6 +17,16 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   try {
     const { approve } = (await request.json()) as { approve: boolean };
 
+    // A live product must be filed in the catalogue tree, or customers can
+    // only find it by search. Partner submissions have no sub-category yet.
+    if (approve) {
+      const { data: product, error: readError } = await supabaseAdmin.from('products').select('sub_category_id').eq('id', id).maybeSingle();
+      if (readError || !product) throw new Error('Could not find that product.');
+      if (!product.sub_category_id) {
+        return NextResponse.json({ error: 'Edit this product and pick its Category › Sub-category before approving it.' }, { status: 409 });
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('products')
       .update({ approval_status: approve ? 'approved' : 'rejected' })

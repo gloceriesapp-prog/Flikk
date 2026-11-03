@@ -11,10 +11,13 @@ export interface HomeTabWriteInput {
   imageUrl?: string | null;
   sortOrder?: number;
   isActive?: boolean;
+  // Categories-page section to show as tiles; null unlinks. Absent = unchanged.
+  sectionId?: string | null;
 }
 
 export function validateHomeTabInput(input: Partial<HomeTabWriteInput>): asserts input is HomeTabWriteInput {
   if (!input.name || !input.name.trim()) throw new Error('Tab name is required.');
+  if (input.sectionId != null && (typeof input.sectionId !== 'string' || !UUID.test(input.sectionId))) throw new Error('Pick a real section.');
 }
 
 export interface HomeTabRow {

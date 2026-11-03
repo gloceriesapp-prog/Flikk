@@ -11,7 +11,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
-import { catalogueErrorStatus, saveCatalogueProduct, saveProductExtras } from '@/lib/catalogueSave';
+import { catalogueErrorStatus, resolveCatalogueCategory, saveCatalogueProduct, saveProductExtras } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
 import { toCutOptions, toExtraImageUrls, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
@@ -35,6 +35,7 @@ export async function POST(request: Request) {
 
   try {
     const input: Partial<ProductWriteInput> = body ?? {};
+    input.category = await resolveCatalogueCategory(input.subCategoryId);
     validateProductInput(input);
 
     // 'approved' explicitly, not left to the column's own default — a

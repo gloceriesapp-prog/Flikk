@@ -155,8 +155,11 @@ export default function InventoryPage() {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      throw new Error(body?.error ?? 'Could not update approval status.');
+      // Shown under the product (e.g. "pick its Category › Sub-category first").
+      setDeleteError({ id, message: body?.error ?? 'Could not update approval status.' });
+      return;
     }
+    setDeleteError(null);
     await loadData();
   }
 
@@ -336,6 +339,11 @@ export default function InventoryPage() {
                   )}
                   {product.approvalStatus === 'rejected' && (
                     <span className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-danger">Rejected</span>
+                  )}
+                  {/* Not filed under a sub-category: customers can only find it
+                      by search. Edit → Category › Sub-category fixes it. */}
+                  {!product.subCategoryId && (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">No category</span>
                   )}
                   {/* Partner name/price edit to this live product, awaiting
                       review on Approvals → Products (migration 115). */}
