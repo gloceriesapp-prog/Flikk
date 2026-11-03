@@ -58,6 +58,23 @@ export interface ApiClient {
   apiRequest: <T>(path: string, options?: RequestOptions) => Promise<T>;
 }
 
+// Capped so a wild Retry-After value can't hang a screen.
+const MAX_429_WAIT_MS = 4000;
+const RETRY_AFTER_JITTER_MS = 500;
+
+// Wait before 429 retry number `attempt` (0-based). A valid Retry-After
+// (seconds) is honored plus up to 500ms of jitter; otherwise full jitter over
+// an exponential 1s, 2s window. Either way every phone that hit the same
+// outage spreads out instead of retrying in lockstep. `random` is injectable
+// so the self-check can pin it.
+export function rateLimitRetryDelayMs(attempt: number, retryAfter: string | null, random: () => number = Math.random): number {
+  const header = Number(retryAfter);
+  if (Number.isFinite(header) && header > 0) {
+    return Math.min(header * 1000, MAX_429_WAIT_MS - RETRY_AFTER_JITTER_MS) + random() * RETRY_AFTER_JITTER_MS;
+  }
+  return random() * Math.min(1000 * 2 ** attempt, MAX_429_WAIT_MS);
+}
+
 export function createApiClient({ baseUrl, getAccessToken, refresh, onSessionExpired }: ApiClientConfig): ApiClient {
   async function send(path: string, method: string, body: unknown, token: string | null, signal?: AbortSignal) {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -134,13 +151,9 @@ export function createApiClient({ baseUrl, getAccessToken, refresh, onSessionExp
         }
       }
 
-      // Rate-limited: honor Retry-After (seconds), falling back to a linear
-      // 1s, 2s backoff when it's missing/garbage, capped at 4s so a wild
-      // header value can't hang a screen. Then re-run the loop.
+      // Rate-limited: wait (see rateLimitRetryDelayMs), then re-run the loop.
       if (res.status === 429 && attempt < MAX_429_RETRIES) {
-        const header = Number(res.headers.get('Retry-After'));
-        const base = Number.isFinite(header) && header > 0 ? header : attempt + 1;
-        const waitMs = Math.min(base, 4) * 1000;
+        const waitMs = rateLimitRetryDelayMs(attempt, res.headers.get('Retry-After'));
         await new Promise((resolve) => setTimeout(resolve, waitMs));
         continue;
       }
