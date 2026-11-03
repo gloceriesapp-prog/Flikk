@@ -8,6 +8,9 @@ import { useFestivalSection } from './useFestivalSection';
 
 const CARD_WIDTH = 'w-32';
 const CARD_SNAP_INTERVAL = 128 + 10;
+// Admin picks are unbounded and this rail has no "See all" screen; cap it like
+// every other Home product row (AllTabSections' CUSTOM_SECTION_LIMIT).
+const RAIL_LIMIT = 12;
 
 interface Props {
   // Home Sections title override; the admin section title otherwise.
@@ -28,7 +31,7 @@ export function FestivalPicksSection({ title }: Props) {
         snapToAlignment="start"
         decelerationRate="fast"
       >
-        {section.products.map((product) => (
+        {section.products.slice(0, RAIL_LIMIT).map((product) => (
           <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} showDiscountBadge />
         ))}
       </ScrollView>

@@ -56,7 +56,15 @@ interface Props extends Omit<ExpoImageProps, 'contentFit'> {
   contentFit?: ImageContentFit;
 }
 
-export function AppImage({ resizeMode, contentFit, transition = 200, cachePolicy = 'memory-disk', recyclingKey, onError, ...props }: Props) {
+// Every upload is one 800px WebP (backend utils/image.ts) — there is no
+// thumbnail variant or resize endpoint to request a smaller file from — so
+// the saving has to happen at decode. Android's Glide already decodes to the
+// view's size; iOS decodes the full 800x800 bitmap (~2.6 MB) and keeps that in
+// its memory cache unless enforceEarlyResizing asks SDWebImage for a
+// view-sized thumbnail (cached under its own size key). On by default because
+// nearly every image is a small tile; pass false for a view that animates its
+// size, where an early-resized bitmap would look soft once it grows.
+export function AppImage({ resizeMode, contentFit, transition = 200, cachePolicy = 'memory-disk', recyclingKey, enforceEarlyResizing = true, onError, ...props }: Props) {
   const source = props.source;
   const uri = typeof source === 'string' ? source : source && typeof source === 'object' && !Array.isArray(source) && 'uri' in source ? source.uri : undefined;
   const [failedUri, setFailedUri] = useState<string>();
@@ -64,12 +72,15 @@ export function AppImage({ resizeMode, contentFit, transition = 200, cachePolicy
   const recovering = Boolean(uri && failedUri === uri && fallback);
   const displayedUri = recovering ? fallback : uri;
   return (
+    // No `key` here: remounting per URI would throw away the native view each
+    // time a FlashList cell is recycled. recyclingKey clears the old pixels
+    // instead, and the fallback swap is a plain source change.
     <ExpoImage
-      key={displayedUri}
       contentFit={contentFit ?? (resizeMode ? RESIZE_MODE_TO_CONTENT_FIT[resizeMode] : 'cover')}
       transition={transition}
       cachePolicy={cachePolicy}
       recyclingKey={recyclingKey ?? displayedUri}
+      enforceEarlyResizing={enforceEarlyResizing}
       {...props}
       source={recovering ? { uri: fallback } : source}
       // R2 uploads are WebP. Use expo-image's libwebp decoder consistently

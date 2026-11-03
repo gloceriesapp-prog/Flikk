@@ -7,7 +7,7 @@
 // over every method/status.
 
 import assert from 'node:assert';
-import { createApiClient, ApiError } from './client';
+import { createApiClient, ApiError, rateLimitRetryDelayMs } from './client';
 
 type FetchImpl = (url: string, init: any) => Promise<any>;
 const realFetch = globalThis.fetch;
@@ -74,6 +74,20 @@ async function run() {
       () => apiRequest('/thing'),
       (e: any) => e instanceof ApiError && e.status === 0 && e.code === 'NETWORK_ERROR',
     );
+  }
+
+  // 5. 429 wait: Retry-After honored + bounded jitter, fallback is full jitter, 4s cap holds.
+  {
+    const lo = () => 0;
+    const hi = () => 0.999;
+    assert.equal(rateLimitRetryDelayMs(0, '1', lo), 1000, 'Retry-After is the floor');
+    assert.ok(rateLimitRetryDelayMs(0, '1', hi) < 1500, 'Retry-After jitter stays under 500ms');
+    assert.ok(rateLimitRetryDelayMs(0, '60', hi) <= 4000, 'huge Retry-After still capped at 4s');
+    assert.ok(rateLimitRetryDelayMs(0, '60', lo) >= 3500, 'capped Retry-After still jittered, not lockstep at 4s');
+    assert.equal(rateLimitRetryDelayMs(0, null, lo), 0, 'missing header: full jitter from 0');
+    assert.ok(rateLimitRetryDelayMs(0, 'garbage', hi) < 1000, 'garbage header: first window is 1s');
+    assert.ok(rateLimitRetryDelayMs(1, null, hi) < 2000 && rateLimitRetryDelayMs(1, null, hi) > 1000, 'second window is 2s');
+    assert.ok(rateLimitRetryDelayMs(10, null, hi) <= 4000, 'fallback capped at 4s');
   }
 
   globalThis.fetch = realFetch;

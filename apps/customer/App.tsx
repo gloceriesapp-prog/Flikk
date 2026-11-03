@@ -1,7 +1,9 @@
 import { withCrashReporting } from './src/observability/crashReporting';
 import { detachNotifications } from './src/features/notifications/native';
 import './global.css';
-import { accountQueryClient, registerAccountReset } from './src/features/account-session/accountCache';
+import { accountQueryClient, configureQueryPersistence, registerAccountReset } from './src/features/account-session/accountCache';
+import { createQueryPersistence } from './src/features/account-session/queryPersistence';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from './src/store/useAuthStore';
 import { useCartStore } from './src/store/useCartStore';
 import { useWishlistStore } from './src/store/useWishlistStore';
@@ -22,7 +24,7 @@ import { StartupAppearanceContext } from './src/components/startupAppearance';
 import { GILROY_FONT_FILES } from './src/theme/fonts';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { OfflineBanner } from './src/components/OfflineBanner';
-import { ReleaseGate } from './src/features/app-release/ReleaseGate';
+import { APP_VERSION, ReleaseGate } from './src/features/app-release/ReleaseGate';
 
 // NativeWind identifies this provider by displayName/name when injecting CSS
 // safe-area variables. Release minification renames the function, so keep an
@@ -35,6 +37,11 @@ registerAccountReset(() => {
   useWishlistStore.getState().reset();
   void useLocationStore.getState().clear().catch(() => {});
 });
+
+// Public catalogue queries survive a relaunch so an offline start shows the
+// last Home under OfflineBanner. Busted per app version (cached shapes can
+// change between releases); wiped on account reset (accountCache).
+configureQueryPersistence(createQueryPersistence(AsyncStorage, APP_VERSION ?? 'unknown'));
 
 void SplashScreen.preventAutoHideAsync();
 

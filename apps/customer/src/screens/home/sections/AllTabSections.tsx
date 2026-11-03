@@ -11,14 +11,16 @@
 // no config row only appears via the fallback (add a seed row in
 // migration 058 when you add a new code section).
 //
-// Only rendered when "all" is selected — see HomeScreen.tsx.
+// Returns one list item per section (welcome banner first) rather than a
+// rendered column: HomeScreen feeds them to its virtualized Animated.FlatList,
+// so only sections near the viewport stay mounted.
 //
 // Store-scoping unchanged: useNearestStore resolves the one nearest store here
 // and the deals feeds (useDealsProducts) query that store's own catalog.
 // Festival content belongs to Navratri. In All, Quick categories continues
 // the header background; catalogue sections follow on their own surfaces.
 
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useMemo, type ReactElement } from 'react';
 import { View } from 'react-native';
 import { CategorySections } from '../../../components/CategorySections/CategorySections';
 import { BrandFooter } from '../../../components/BrandFooter';
@@ -48,10 +50,10 @@ import { SectionSkeleton } from '../loading/SectionSkeleton';
 import { FestivalPicksSection } from '../festival/picks/FestivalPicksSection';
 import { SeasonalSection } from '../seasonal/SeasonalSection';
 
-interface Props {
-  onSelectCategory: (id: string) => void;
+export interface HomeSectionItem {
+  key: string;
+  node: ReactElement;
 }
-
 
 // Everything a section renderer might need, resolved once per render.
 interface SectionCtx {
@@ -143,11 +145,10 @@ const FALLBACK_ORDER = [
 const EMPTY_PRODUCTS: Product[] = [];
 const EMPTY_PICKS: Record<string, Product[]> = {};
 
-// Sections rendered eagerly on first paint; the rest mount one idle frame later
-// (see the deferral note in AllTabSections). 6 above-the-fold entries plus the
-// welcome banner reliably overflow a phone viewport, so the deferred tail is
-// always off-screen when it mounts — no layout jump, no blank flash.
-const ABOVE_FOLD_COUNT = 6;
+// Items rendered on first paint (HomeScreen's initialNumToRender): the welcome
+// banner plus 6 sections reliably overflow a phone viewport, so the rest mount
+// off-screen as the list fills in — no layout jump, no blank flash.
+export const ABOVE_FOLD_ITEM_COUNT = 7;
 
 // One section, memoized: React.memo skips the whole subtree (and never calls
 // its registry renderer) when its props are referentially equal, so a single
@@ -189,7 +190,7 @@ const HomeSection = memo(function HomeSection({
   );
 });
 
-export function AllTabSections({ onSelectCategory }: Props) {
+export function useAllTabSectionItems(onSelectCategory: (id: string) => void): HomeSectionItem[] {
   // Continue the exact final header colour rather than restarting its
   // gradient or maintaining a separate shortcut colour that can drift.
   const shortcutsBackground = useActiveHeaderGradient('all', false).bottomColor;
@@ -286,45 +287,35 @@ export function AllTabSections({ onSelectCategory }: Props) {
   // One memoized node per section, kept in a stable array so a re-render that
   // doesn't change a given section's inputs reuses its element (React skips the
   // subtree and never re-runs that section's registry renderer).
-  const children = useMemo(
-    () => sections.map((cfg) => {
+  return useMemo(() => {
+    const items: HomeSectionItem[] = [{
+      key: 'welcome-banner',
+      // marginBottom pulls the next section up to trim the empty space under
+      // the welcome banner image (same bg, so it just tightens the gap).
+      node: (
+        <View style={{ backgroundColor: shortcutsBackground, marginBottom: -8 }}>
+          <HomeWelcomeBanner backgroundColor={shortcutsBackground} />
+        </View>
+      ),
+    }];
+    for (const cfg of sections) {
       const render = cfg.custom ? renderCustomSection(cfg.key) : SECTION_REGISTRY[cfg.key];
-      if (!render) return null; // config key with no code section yet
-      return (
-        <HomeSection
-          key={cfg.key}
-          renderSection={render}
-          ctx={ctx}
-          copy={copyByKey[cfg.key]}
-          loading={cfg.custom ? picksQuery.isPending : !!loadingByKey[cfg.key]}
-          bgColor={cfg.bgColor}
-          isQuickLeading={cfg.key === 'quick-categories' && quickCategoriesLeading}
-          shortcutsBackground={shortcutsBackground}
-        />
-      );
-    }),
-    [sections, ctx, copyByKey, loadingByKey, picksQuery.isPending, quickCategoriesLeading, shortcutsBackground],
-  );
-  // First paint mounts only the above-the-fold set; the rest (and their own
-  // queries) mount during an idle callback after first paint. The deferred
-  // tail sits below the fold at scroll 0, so this cuts first-paint fan-out
-  // with no layout jump, blank flash, or change to section order/data.
-  const [deferredMounted, setDeferredMounted] = useState(false);
-  useEffect(() => {
-    const handle = requestIdleCallback(() => setDeferredMounted(true), { timeout: 1000 });
-    return () => cancelIdleCallback(handle);
-  }, []);
-  const visibleChildren = deferredMounted ? children : children.slice(0, ABOVE_FOLD_COUNT);
-
-  return (
-    // pb-32 — floating-CartBar clearance, same as every tab body.
-    <View className="pb-32">
-      {/* marginBottom pulls the next section up to trim the empty space under
-          the welcome banner image (same bg, so it just tightens the gap). */}
-      <View style={{ backgroundColor: shortcutsBackground, marginBottom: -8 }}>
-        <HomeWelcomeBanner backgroundColor={shortcutsBackground} />
-      </View>
-      {visibleChildren}
-    </View>
-  );
+      if (!render) continue; // config key with no code section yet
+      items.push({
+        key: cfg.key,
+        node: (
+          <HomeSection
+            renderSection={render}
+            ctx={ctx}
+            copy={copyByKey[cfg.key]}
+            loading={cfg.custom ? picksQuery.isPending : !!loadingByKey[cfg.key]}
+            bgColor={cfg.bgColor}
+            isQuickLeading={cfg.key === 'quick-categories' && quickCategoriesLeading}
+            shortcutsBackground={shortcutsBackground}
+          />
+        ),
+      });
+    }
+    return items;
+  }, [sections, ctx, copyByKey, loadingByKey, picksQuery.isPending, quickCategoriesLeading, shortcutsBackground]);
 }
