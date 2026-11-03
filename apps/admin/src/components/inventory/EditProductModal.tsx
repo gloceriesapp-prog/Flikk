@@ -13,13 +13,12 @@ import type { Product, StockStatus } from '@/lib/types';
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle } from '@/lib/product-options';
-import { ProductCategorySelect } from './ProductCategorySelect';
+import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
-import { SubCategoryPicker } from './SubCategoryPicker';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
 import { createPortal } from 'react-dom';
 
@@ -48,7 +47,7 @@ export function EditProductModal({
     ...product,
     variants: product.variants.length > 0 ? product.variants : [emptyVariant()],
   });
-  const setCategory = useCallback((category: string) => setDraft((d) => ({ ...d, category })), []);
+  const setPlacement = useCallback((placement: CataloguePlacement) => setDraft((d) => ({ ...d, ...placement })), []);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const homeChoice = useHomeSectionChoice(product.id);
@@ -57,6 +56,10 @@ export function EditProductModal({
     const defaultVariant = draft.variants[0];
     if (!defaultVariant) return;
     // Same rule as Add: every size needs a counted stock to be orderable.
+    if (!draft.subCategoryId) {
+      setError('Pick where this product is listed (Category › Sub-category).');
+      return;
+    }
     if (draft.variants.some((v) => v.stockQuantity == null)) {
       setError('Enter packs in stock for every size (0 if none).');
       return;
@@ -123,7 +126,7 @@ export function EditProductModal({
             aria-label="Local name"
           />
 
-          <ProductCategorySelect value={draft.category} onChange={setCategory} />
+          <CataloguePicker subCategoryId={draft.subCategoryId} legacyCategory={draft.subCategoryId ? undefined : draft.category} onChange={setPlacement} />
 
           <ChickenOptionsEditor
             category={draft.category}
@@ -158,8 +161,6 @@ export function EditProductModal({
           </select>
 
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
-
-          <SubCategoryPicker value={draft.subCategoryId} onChange={(subCategoryId) => setDraft({ ...draft, subCategoryId })} />
 
           {/* Same field the customer app's ProductCard reads — see
               Product's own note in lib/types.ts. Only shown for

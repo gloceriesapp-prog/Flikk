@@ -42,3 +42,14 @@ it('refuses unauthenticated changes before touching the database', async () => {
   expect((await PATCH(request({ name: 'X', imageUrl: null }), context)).status).toBe(401);
   expect(supabaseAdmin.from).not.toHaveBeenCalled();
 });
+
+it('links a tab to a Categories-page section, unlinks it, and leaves it alone when not sent', async () => {
+  const section = '00000000-0000-4000-8000-000000000099';
+  await PATCH(request({ name: 'Meat', sortOrder: 1, isActive: true, sectionId: section }), context);
+  expect(fixture.written).toMatchObject({ section_id: section });
+  await PATCH(request({ name: 'Meat', sortOrder: 1, isActive: true, sectionId: null }), context);
+  expect(fixture.written).toMatchObject({ section_id: null });
+  await PATCH(request({ name: 'Meat', sortOrder: 1, isActive: true }), context);
+  expect(fixture.written).not.toHaveProperty('section_id');
+  expect((await PATCH(request({ name: 'Meat', sectionId: 'not-a-section' }), context)).status).toBe(400);
+});

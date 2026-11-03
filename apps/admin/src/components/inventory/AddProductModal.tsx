@@ -9,7 +9,7 @@
 // route's own note) and refetches the live list; this modal just shows a
 // submitting state and surfaces whatever error comes back.
 //
-// Category comes from the admin's own list (ProductCategorySelect) and price/unit are
+// Category comes from the admin's own tree (CataloguePicker) and price/unit are
 // replaced by a real per-size variant list (ProductVariantsEditor) — see
 // that component's own note on the Blinkit/Instamart pricing model this
 // follows.
@@ -20,13 +20,12 @@ import type { NewProductInput, Product, StockStatus } from '@/lib/types';
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle } from '@/lib/product-options';
-import { ProductCategorySelect } from './ProductCategorySelect';
+import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
-import { SubCategoryPicker } from './SubCategoryPicker';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
 import { createPortal } from 'react-dom';
 
@@ -72,7 +71,7 @@ export function AddProductModal({
   onAdd: (product: NewProductInput, homeKeys: string[]) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(() => makeEmptyDraft(stores));
-  const setCategory = useCallback((category: string) => setDraft((d) => ({ ...d, category })), []);
+  const setPlacement = useCallback((placement: CataloguePlacement) => setDraft((d) => ({ ...d, ...placement })), []);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const homeChoice = useHomeSectionChoice();
@@ -94,6 +93,10 @@ export function AddProductModal({
     if (!defaultVariant) return;
     // Checkout only sells counted packs: without a count for every size the
     // product would be approved but unorderable.
+    if (!draft.subCategoryId) {
+      setError('Pick where this product is listed (Category › Sub-category).');
+      return;
+    }
     if (draft.variants.some((v) => v.stockQuantity == null)) {
       setError('Enter packs in stock for every size (0 if none).');
       return;
@@ -195,7 +198,7 @@ export function AddProductModal({
             aria-label="Local name"
           />
 
-          <ProductCategorySelect value={draft.category} onChange={setCategory} />
+          <CataloguePicker subCategoryId={draft.subCategoryId} onChange={setPlacement} />
 
           <ChickenOptionsEditor
             category={draft.category}
@@ -213,8 +216,6 @@ export function AddProductModal({
           />
 
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
-
-          <SubCategoryPicker value={draft.subCategoryId} onChange={(subCategoryId) => setDraft({ ...draft, subCategoryId })} />
 
           {/* Same field the customer app's ProductCard reads — see
               Product's own note in lib/types.ts. Only shown for

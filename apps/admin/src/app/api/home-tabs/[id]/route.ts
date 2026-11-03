@@ -26,7 +26,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/home-tabs/
     const { image_url, ...rest } = toHomeTabRow(input);
     const { data, error } = await supabaseAdmin
       .from('home_tabs')
-      .update('imageUrl' in input ? { ...rest, image_url } : rest)
+      .update({ ...rest, ...('imageUrl' in input ? { image_url } : {}), ...('sectionId' in input ? { section_id: input.sectionId ?? null } : {}) })
       .eq('id', id)
       .select(HOME_TAB_SELECT)
       .single();

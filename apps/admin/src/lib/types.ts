@@ -528,6 +528,9 @@ export interface HomeTab {
   imageUrl?: string;
   sortOrder: number;
   isActive: boolean;
+  // Categories-page section whose categories this tab shows as tiles, after
+  // its own tiles (home_tabs.section_id, backend GET /home-tabs).
+  sectionId: string | null;
 }
 
 export interface HomeTabTile {

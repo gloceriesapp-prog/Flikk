@@ -14,6 +14,7 @@ export interface HomeTabRow {
   image_url: string | null;
   sort_order: number;
   is_active: boolean;
+  section_id?: string | null;
 }
 
 export interface HomeTabTileRow {
@@ -27,11 +28,11 @@ export interface HomeTabTileRow {
   link_id: string | null;
 }
 
-export const HOME_TAB_SELECT = 'id, name, image_url, sort_order, is_active';
+export const HOME_TAB_SELECT = 'id, name, image_url, sort_order, is_active, section_id';
 export const HOME_TAB_TILE_SELECT = 'id, home_tab_id, name, image_url, sort_order, is_active, link_type, link_id';
 
 export function mapRowToHomeTab(row: HomeTabRow): HomeTab {
-  return { id: row.id, name: row.name, imageUrl: row.image_url ?? undefined, sortOrder: row.sort_order, isActive: row.is_active };
+  return { id: row.id, name: row.name, imageUrl: row.image_url ?? undefined, sortOrder: row.sort_order, isActive: row.is_active, sectionId: row.section_id ?? null };
 }
 
 export function mapRowToHomeTabTile(row: HomeTabTileRow): HomeTabTile {

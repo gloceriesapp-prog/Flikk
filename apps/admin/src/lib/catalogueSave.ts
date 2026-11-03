@@ -49,6 +49,18 @@ export async function saveProductExtras(productId: string, extras: ProductExtras
   if (error) throw new CatalogueSaveError(500, 'Product saved, but its extra photos or cut options were not. Try saving again.');
 }
 
+// Every admin-saved product is filed under a sub-category, and its category
+// is that sub-category's parent (the database trigger does the same; doing
+// it here too keeps the chicken/veg rules in toProductRow on the right name).
+export async function resolveCatalogueCategory(subCategoryId: string | null | undefined): Promise<string> {
+  if (!subCategoryId) throw new CatalogueSaveError(400, 'Pick where this product is listed (Category › Sub-category).');
+  const { data, error } = await supabaseAdmin.from('sub_categories').select('categories(name)').eq('id', subCategoryId).maybeSingle();
+  if (error) throw new CatalogueSaveError(500, 'Could not check the category. Try again.');
+  const name = (data as { categories: { name: string } | null } | null)?.categories?.name;
+  if (!name) throw new CatalogueSaveError(400, 'That sub-category no longer exists. Pick another one.');
+  return name;
+}
+
 export function catalogueErrorStatus(err: unknown): number {
   return err instanceof CatalogueSaveError ? err.status : 400;
 }

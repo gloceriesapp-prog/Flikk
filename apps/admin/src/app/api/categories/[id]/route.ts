@@ -38,6 +38,9 @@ export async function DELETE(request: Request, ctx: RouteContext<'/api/categorie
 
   try {
     const { error } = await supabaseAdmin.from('categories').delete().eq('id', id);
+    // Products block the delete (migration 20261104140000) so they never
+    // silently drop out of category browse.
+    if (error?.code === '23503') return NextResponse.json({ error: 'This category still has products in its sub-categories. Move them to another category (Products → Edit) first.' }, { status: 409 });
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (err) {

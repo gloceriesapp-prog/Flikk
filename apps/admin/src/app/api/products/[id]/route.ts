@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
-import { catalogueErrorStatus, saveCatalogueProduct, saveProductExtras } from '@/lib/catalogueSave';
+import { catalogueErrorStatus, resolveCatalogueCategory, saveCatalogueProduct, saveProductExtras } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
 import { toCutOptions, toExtraImageUrls, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
@@ -20,6 +20,10 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[
 
   try {
     const input: Partial<ProductWriteInput> = body ?? {};
+    // Filed products take their category from the sub-category. A save that
+    // sends none (e.g. Approvals' photo Replace on an older, unfiled product)
+    // keeps its label; the edit form and approval still require filing it.
+    if (input.subCategoryId) input.category = await resolveCatalogueCategory(input.subCategoryId);
     validateProductInput(input);
 
     // toProductRow always writes image_url, so the admin's chosen image

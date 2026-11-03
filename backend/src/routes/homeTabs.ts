@@ -17,11 +17,20 @@ homeTabsRouter.get('/', async (req, res, next) => {
   try {
     const { data: tabs, error: tabsError } = await supabase
       .from('home_tabs')
-      .select('id, name, image_url, sort_order')
+      .select('id, name, image_url, sort_order, section_id')
       .eq('is_active', true)
       .order('sort_order')
       .order('name');
     if (tabsError) throw tabsError;
+
+    // A tab linked to a Categories-page section (migration 20261104140000)
+    // also shows that section's categories as tiles, after its own tiles.
+    const sectionIds = [...new Set(tabs.map((tab) => tab.section_id).filter((id): id is string => Boolean(id)))];
+    const { data: sectionCategories, error: sectionError } = sectionIds.length
+      ? await supabase.from('categories').select('id, name, image_url, section_id')
+        .in('section_id', sectionIds).eq('is_active', true).order('sort_order').order('name')
+      : { data: [] as { id: string; name: string; image_url: string | null; section_id: string }[], error: null };
+    if (sectionError) throw sectionError;
 
     const { data: tiles, error: tilesError } = await supabase
       .from('home_tab_tiles')
@@ -54,11 +63,20 @@ homeTabsRouter.get('/', async (req, res, next) => {
       return t.link_type === 'subcategory' && parent ? { type: 'subcategory', id: t.link_id, category_id: parent } : null;
     };
 
+    const tabTiles = (tab: { id: string; section_id: string | null }) => {
+      const own = tiles.filter((t) => t.home_tab_id === tab.id).map((t) => ({ id: t.id, name: t.name, image_url: t.image_url, link: tileLink(t) }));
+      const linked = new Set(own.filter((t) => t.link?.type === 'category').map((t) => t.link!.id));
+      const fromSection = (sectionCategories ?? [])
+        .filter((c) => tab.section_id && c.section_id === tab.section_id && !linked.has(c.id))
+        .map((c) => ({ id: `category:${c.id}`, name: c.name, image_url: c.image_url, link: { type: 'category', id: c.id, category_id: c.id } }));
+      return [...own, ...fromSection];
+    };
+
     const grouped = tabs.map((tab) => ({
       id: tab.id,
       name: tab.name,
       image_url: tab.image_url,
-      tiles: tiles.filter((t) => t.home_tab_id === tab.id).map((t) => ({ id: t.id, name: t.name, image_url: t.image_url, link: tileLink(t) })),
+      tiles: tabTiles(tab),
       banners: banners.filter((b) => b.home_tab_id === tab.id).map((b) => ({ id: b.id, image_url: b.image_url })),
     }));
 
