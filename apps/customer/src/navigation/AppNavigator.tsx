@@ -58,6 +58,7 @@ import { useLocationStore } from '../store/useLocationStore';
 import type { AppStackParamList } from './types';
 import { HomeNavigationShell } from './home/HomeNavigationShell';
 import { OrderRatingScreen } from '../features/order-rating/screens/OrderRatingScreen';
+import { screenBoundary } from '../components/ErrorBoundary';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -73,13 +74,14 @@ export function AppNavigator() {
         const route = state.routes[state.index];
         return <HomeNavigationShell route={route} navigation={descriptors[route.key].navigation}>{children}</HomeNavigationShell>;
       }}
+      // One boundary per screen: a render error swaps only that screen for
+      // ErrorFallback ("Try again" remounts it, Back still works), instead of
+      // App.tsx's top-level boundary taking the whole app down with it.
+      screenLayout={screenBoundary}
       // Real entry logic: no saved location -> LocationPermission flow
       // first; location already set -> straight to Home. Home.tsx's own
       // isServiceable check branches to UnavailableZoneScreen inline from
-      // there (not a separate route to land on), and ErrorBoundary (App.tsx)
-      // wraps this whole navigator, catching an uncaught render error from
-      // ANY screen and swapping in ErrorFallback regardless of which
-      // route was showing — not just this one.
+      // there (not a separate route to land on).
       initialRouteName={hasLocation ? 'Home' : 'LocationPermission'}
     >
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />

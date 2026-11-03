@@ -15,7 +15,7 @@ import { captureRenderError } from '../observability/crashReporting';
 // screen and can back out via the OS instead of a hard white screen either
 // way, which is strictly better than what existed before.
 
-import { Component, type ReactNode } from 'react';
+import { Component, type ReactElement, type ReactNode } from 'react';
 import { ErrorFallback } from './ErrorFallback';
 
 interface Props {
@@ -35,10 +35,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: { componentStack?: string | null }) {
     captureRenderError(error);
-    // Full trace to Metro/device logs — never rendered on screen (the
-    // customer-facing fallback below is text-only), but still the real
-    // record of what happened for whoever's debugging the build.
-    console.error('[ErrorBoundary] caught render error:\n', error, '\ncomponentStack:', errorInfo.componentStack);
+    // Full trace to Metro logs in dev only — Sentry (above) is the release
+    // record; device logs are readable by anything with adb/Console access.
+    if (__DEV__) console.error('[ErrorBoundary] caught render error:\n', error, '\ncomponentStack:', errorInfo.componentStack);
   }
 
   reset = () => {
@@ -51,4 +50,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return <ErrorFallback onReset={this.reset} />;
   }
+}
+
+// Navigator `screenLayout`: wraps every screen in its own boundary so one
+// screen's crash leaves the navigator, its other screens and Back working.
+export function screenBoundary({ children }: { children: ReactElement }): ReactElement {
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 }
