@@ -86,7 +86,7 @@ export function LoginScreen({ navigation }: Props) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        console.error('[LoginScreen] unexpected error requesting OTP:', err);
+        if (__DEV__) console.error('[LoginScreen] unexpected error requesting OTP:', err);
         setError('Could not send OTP. Please try again.');
       }
     } finally {

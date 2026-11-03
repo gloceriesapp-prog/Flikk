@@ -170,7 +170,8 @@ export function CartScreen({ navigation, route }: Props) {
       setAddressSheetVisible(false);
 
     } catch (err) {
-      console.error('[CartScreen] failed to set default address', id, err);
+      // Dev-only and id-free: release device logs must not carry address ids.
+      if (__DEV__) console.error('[CartScreen] failed to set default address', err);
       Alert.alert('Could not select this address', err instanceof ApiError ? err.message : 'Please try again.');
     } finally {
       setSelectingAddressId(null);
@@ -193,8 +194,8 @@ export function CartScreen({ navigation, route }: Props) {
       // "the tap did nothing" from the outside, which is exactly the bug
       // report this was written in response to. Logged too, since
       // ApiError.message alone (e.g. a generic 500) isn't always enough
-      // to tell what actually failed server-side.
-      console.error('[CartScreen] failed to delete address', id, err);
+      // to tell what actually failed server-side. Dev-only and id-free.
+      if (__DEV__) console.error('[CartScreen] failed to delete address', err);
       Alert.alert('Could not remove this address', err instanceof ApiError ? err.message : 'Please try again.');
     } finally {
       setDeletingAddressId(null);
