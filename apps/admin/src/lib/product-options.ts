@@ -5,27 +5,8 @@
 // documented copy of the same shape backend/src/lib/products.ts validates
 // against, not a second, drifting definition invented independently.
 
-// Matches the customer app's own category vocabulary where one exists
-// (apps/customer/src/screens/home/*/data.ts categoryLabel values — Vegetables
-// & Fruits, Dairy Bread & Eggs, Atta Rice & Dal, Oil Ghee & Masala) extended
-// with the rest of a Blinkit/Instamart-style top-level taxonomy scaled down
-// to what a kirana/pharmacy zone actually stocks (CLAUDE.md scope) — no
-// electronics/fashion/toys buckets a store in this zone won't sell.
-export const PRODUCT_CATEGORIES = [
-  'Vegetables & Fruits',
-  'Dairy, Bread & Eggs',
-  'Atta, Rice & Dal',
-  'Oil, Ghee & Masala',
-  'Meat, Eggs & Fish',
-  'Bakery & Biscuits',
-  'Snacks & Munchies',
-  'Beverages',
-  'Protein & Nutrition',
-  'Household & Cleaning',
-  'Personal Care',
-  'Pharmacy',
-  'General Store',
-] as const;
+// Product categories are the admin's own list (Categories page, the
+// `categories` table), fetched by ProductCategorySelect — no built-in list.
 
 // Fallback card background when a product photo has no background left to
 // extract a color from (transparent/no-bg photo, or extraction failed) —
@@ -33,17 +14,16 @@ export const PRODUCT_CATEGORIES = [
 // --mist token every other surface in this dashboard already uses.
 export const MIST_FALLBACK = '#F6FAF0';
 
-// Veg/non-veg only makes sense where a real animal-origin option exists —
-// meat/fish itself, and dairy/eggs/bread (eggs share that category, and a
-// veg-vs-egg distinction is a real thing a customer cares about there).
-// Every other category (Vegetables & Fruits, Personal Care, Household,
-// Pharmacy, etc.) has no real non-veg variant to distinguish from, so the
-// toggle doesn't show there at all — per an explicit ask, not just hidden
-// behind a default.
-const VEG_TOGGLE_CATEGORIES = new Set(['Meat, Eggs & Fish', 'Dairy, Bread & Eggs']);
-
+// Veg/non-veg only makes sense where an animal-origin option exists. The
+// category names are the admin's own, so match on the words, not a list.
 export function categoryHasVegToggle(category: string): boolean {
-  return VEG_TOGGLE_CATEGORIES.has(category);
+  return /meat|chicken|mutton|fish|egg|dairy|non.?veg/i.test(category);
+}
+
+// Cut sizes and bulk orders are for chicken (meat) products only; the per-
+// product toggle is the real switch, this just decides where it is offered.
+export function categoryAllowsCutOptions(category: string | null | undefined): boolean {
+  return /chicken|meat/i.test(category ?? '');
 }
 
 // One pastel tint per category, used when a product's own photo yields no

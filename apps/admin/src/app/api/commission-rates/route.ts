@@ -11,17 +11,20 @@ import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { parseCommissionSettings, withAllCategories, type CommissionSettings } from '@/lib/commissionRates';
 
 async function load(): Promise<CommissionSettings> {
-  const [settings, rates] = await Promise.all([
+  const [settings, rates, categories] = await Promise.all([
     supabaseAdmin.from('platform_settings').select('commission_rate, commission_cap_per_order').limit(1).single(),
     supabaseAdmin.from('category_commission_rates').select('category, commission_rate'),
+    supabaseAdmin.from('categories').select('name').order('sort_order').order('name'),
   ]);
   if (settings.error) throw settings.error;
   if (rates.error) throw rates.error;
+  if (categories.error) throw categories.error;
   const row = settings.data as { commission_rate: unknown; commission_cap_per_order: unknown };
   return {
     defaultRate: Number(row.commission_rate),
     capPerOrder: row.commission_cap_per_order == null ? null : Number(row.commission_cap_per_order),
-    categories: withAllCategories((rates.data ?? []) as { category: string; commission_rate: unknown }[]),
+    categories: withAllCategories((rates.data ?? []) as { category: string; commission_rate: unknown }[],
+      ((categories.data ?? []) as { name: string }[]).map((row) => row.name.trim()).filter(Boolean)),
   };
 }
 

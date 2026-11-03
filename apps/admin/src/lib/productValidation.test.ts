@@ -21,8 +21,8 @@ test('gallery list rejects bad input', () => {
 });
 
 test('cut options are chicken-category only and carry a sane bulk threshold', async () => {
-  const { toCutOptions, CUT_OPTIONS_CATEGORY } = await import('./productValidation');
-  const meat = CUT_OPTIONS_CATEGORY;
+  const { toCutOptions } = await import('./productValidation');
+  const meat = 'Chicken';
   assert.equal(toCutOptions({ category: meat }), undefined);
   assert.deepEqual(toCutOptions({ category: meat, cutOptionsEnabled: true, bulkMinKg: 5 }), { cut_options_enabled: true, bulk_min_kg: 5 });
   assert.deepEqual(toCutOptions({ category: meat, cutOptionsEnabled: true, bulkMinKg: null }), { cut_options_enabled: true, bulk_min_kg: null });

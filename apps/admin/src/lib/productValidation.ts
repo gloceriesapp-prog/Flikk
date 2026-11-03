@@ -9,7 +9,7 @@
 // does, delete this file and call the backend instead — don't let it drift
 // as a second copy of the rules past that point.
 
-import { CATEGORY_TINT_MAP, MIST_FALLBACK, type UnitType } from './product-options';
+import { CATEGORY_TINT_MAP, MIST_FALLBACK, categoryAllowsCutOptions, type UnitType } from './product-options';
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -112,8 +112,6 @@ export function toExtraImageUrls(input: Pick<ProductWriteInput, 'imageUrl' | 'ex
   return urls;
 }
 
-// Cut sizes and bulk orders are for chicken, which lives in this category.
-export const CUT_OPTIONS_CATEGORY = 'Meat, Eggs & Fish';
 export const MAX_BULK_MIN_KG = 500;
 
 // Matches products_bulk_min_kg_check (backend migration 20261104130000).
@@ -125,7 +123,7 @@ export function toCutOptions(input: Pick<ProductWriteInput, 'category' | 'cutOpt
   if (typeof input.cutOptionsEnabled !== 'boolean') throw new Error('cutOptionsEnabled must be true or false.');
   // Moving a product out of the category switches it off with it (the form
   // hides the toggle there, so it cannot be switched off by hand).
-  if (!input.cutOptionsEnabled || input.category?.trim() !== CUT_OPTIONS_CATEGORY) return { cut_options_enabled: false, bulk_min_kg: null };
+  if (!input.cutOptionsEnabled || !categoryAllowsCutOptions(input.category)) return { cut_options_enabled: false, bulk_min_kg: null };
   const kg = input.bulkMinKg;
   if (kg != null && (!isFiniteNumber(kg) || kg <= 0 || kg > MAX_BULK_MIN_KG)) {
     throw new Error(`Bulk order from (kg) must be more than 0 and at most ${MAX_BULK_MIN_KG}.`);

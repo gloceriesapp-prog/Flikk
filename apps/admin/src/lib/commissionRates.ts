@@ -4,7 +4,6 @@
 // (backend/src/lib/commission.ts); a store's own rate (Stores → store)
 // replaces the category rates for that store.
 
-import { PRODUCT_CATEGORIES } from './product-options';
 
 export interface CategoryCommission {
   category: string;
@@ -51,11 +50,11 @@ export function parseCommissionSettings(body: unknown): CommissionSettings {
   return { defaultRate, capPerOrder, categories };
 }
 
-// Every product category in the admin/partner list (in that order), then any
-// other category that has a saved rate.
-export function withAllCategories(rows: { category: string; commission_rate: unknown }[]): CategoryCommission[] {
+// Every product category from the admin's own list (Categories page, in its
+// order), then any other category that has a saved rate.
+export function withAllCategories(rows: { category: string; commission_rate: unknown }[], productCategories: string[]): CategoryCommission[] {
   const saved = new Map(rows.map((row) => [row.category.trim().toLowerCase(), { category: row.category, commissionRate: Number(row.commission_rate) }]));
-  const listed: CategoryCommission[] = PRODUCT_CATEGORIES.map((category) => {
+  const listed: CategoryCommission[] = [...new Set(productCategories)].map((category) => {
     const row = saved.get(category.toLowerCase());
     saved.delete(category.toLowerCase());
     return { category, commissionRate: row ? row.commissionRate : null };
