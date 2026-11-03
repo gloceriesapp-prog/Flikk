@@ -70,17 +70,28 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     if (body.payment_method != null && !['cod', 'online'].includes(body.payment_method)) throw new AppError(400, 'INVALID_PAYMENT_METHOD', 'Choose a valid payment method.');
     rejectUnsupportedTip(req.body);
     const identity = checkoutAttemptIdentity(req.body, 'order');
+    // Independent reads run together; each step only waits on what it needs.
+    // Admin checkout settings (migration 117) with the env as hard kill. A
+    // replayed attempt is answered even if the method has since been closed.
+    const methodOpen = Promise.resolve(assertPaymentMethodAvailable(body.payment_method ?? 'cod'));
+    methodOpen.catch(() => {}); // rethrown below unless this is a replay
     const previous = await findCheckoutAttempt(req.user!.id, identity.id, identity.fingerprint);
     if (previous) { res.status(200).json(previous.result); return; }
-    // Admin checkout settings (migration 117) with the env as hard kill.
-    await assertPaymentMethodAvailable(body.payment_method ?? 'cod');
+    await methodOpen;
     const quote = await confirmCheckoutQuote(body.items, req.user!.id, body.quote_token, body.promo_code, body.store_id, body.address_id);
     const pricedItems = quote.items;
     const { itemTotal, deliveryFee, discountAmount, handlingFee, total } = quote.bill;
     const promoCodeId = quote.promoCodeId;
+    // Address after the quote: its legacy inline path writes a new row, and a
+    // stale quote must leave nothing behind. Commission is read alongside.
+    const [commissions, addressId] = await Promise.all([getStoreCommissions(pricedItems), resolveAddressId(req.user!.id, body)]);
     // Category rates (or the store's own rate), capped per order.
-    const commissionAmount = (await getStoreCommissions(pricedItems)).get(body.store_id) ?? 0;
-    const addressId = await resolveAddressId(req.user!.id, body);
+    const commissionAmount = commissions.get(body.store_id) ?? 0;
+    // Keep preparation metadata for existing API consumers. Delivery ETA
+    // comes from the immutable estimate attached by migration 061, not
+    // preparation time. Best-effort, so it overlaps the commit below.
+    const storeLookup = Promise.resolve(supabase.from('stores').select('avg_prep_minutes').eq('id', body.store_id).single())
+      .then(({ data }) => data, () => null);
 
     // Supabase JS has no multi-statement transaction API; this is executed as a
     // Postgres function (create_order) to keep order + order_items atomic.
@@ -103,14 +114,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     const created = attempt.result;
     if (attempt.replayed) { res.status(200).json(created); return; }
 
-    // Keep preparation metadata for existing API consumers. Delivery ETA
-    // comes from the immutable estimate attached by migration 061, not
-    // preparation time. This lookup remains best-effort.
-    const { data: store } = await supabase
-      .from('stores')
-      .select('avg_prep_minutes')
-      .eq('id', body.store_id)
-      .single();
+    const store = await storeLookup;
 
     // COD is a real order from this moment, so the store hears now. An online
     // order is announced only once paid (settleCheckoutPayment) — never twice,

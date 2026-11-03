@@ -99,7 +99,10 @@ export async function authenticate(token: string, mutation: boolean): Promise<Co
   // Financial/account writes also re-check Auth directly, covering emergency
   // signing-key revocation during the SDK's JWKS cache window.
   if (!identity.sessionId || Date.now() < schemaRetryAt) return legacyContext(token, identity, fresh);
-  if (fresh && (await remoteUser(token)).id !== identity.id) throw denied();
+  // Runs alongside the session lookup instead of before it (one round trip
+  // less per write); nothing is provisioned or returned until it has passed.
+  const confirmed = fresh ? remoteUser(token).then(user => { if (user.id !== identity.id) throw denied(); }) : undefined;
+  confirmed?.catch(() => {}); // rethrown by the awaits below
   try {
     const context = await contexts.get(contextKey, cacheTtl(), async () => {
       const load = async () => {
@@ -117,12 +120,13 @@ export async function authenticate(token: string, mutation: boolean): Promise<Co
       let row = await load();
       if (row && row.user_id === identity.id && !row.session_valid) throw await deniedOrBlocked(identity.id);
       if (!row?.session_valid || row.user_id !== identity.id) throw denied();
-      if (row.role === null) { await provision(identity.id, row.phone); row = await load(); }
+      if (row.role === null) { await confirmed; await provision(identity.id, row.phone); row = await load(); }
       if (!row?.session_valid || row.user_id !== identity.id) throw denied();
       const expires = row.session_expires_at == null ? null : Date.parse(row.session_expires_at);
       if (expires !== null && !Number.isFinite(expires)) throw unavailable();
       return { ...checkedContext(row.user_id, row.role, row.is_approved), sessionExpiresAt: expires };
     }, fresh);
+    await confirmed;
     if (context.sessionExpiresAt != null && context.sessionExpiresAt <= Date.now()) {
       contexts.invalidate(key => key === contextKey);
       throw denied();
@@ -132,6 +136,7 @@ export async function authenticate(token: string, mutation: boolean): Promise<Co
     return context;
   } catch (error) {
     if (error instanceof AppError && error.code === 'AUTH_SCHEMA_PENDING') return legacyContext(token, identity, fresh);
+    await confirmed; // a failed remote check is the more precise answer
     throw error;
   }
 }
