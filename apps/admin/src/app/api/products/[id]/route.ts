@@ -8,9 +8,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
-import { catalogueErrorStatus, saveCatalogueProduct } from '@/lib/catalogueSave';
+import { catalogueErrorStatus, saveCatalogueProduct, saveExtraImages } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
-import { toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
+import { toExtraImageUrls, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[id]'>) {
   const { denied } = await requireAdmin();
@@ -25,7 +25,9 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[
     // toProductRow always writes image_url, so the admin's chosen image
     // supersedes any partner-submitted pending photo — clear it in the same
     // save (see app/api/products/[id]/image-review for the review path).
+    const extraImageUrls = toExtraImageUrls(input);
     await saveCatalogueProduct(id, { ...toProductRow(input), pending_image_url: null }, toVariantPayload(input.variants));
+    if (extraImageUrls) await saveExtraImages(id, extraImageUrls);
 
     const { data, error: refetchError } = await supabaseAdmin.from('products').select(PRODUCT_SELECT).eq('id', id).single();
     if (refetchError) throw refetchError;

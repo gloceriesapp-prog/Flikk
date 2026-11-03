@@ -15,6 +15,7 @@ import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle, PRODUCT_CATEGORIES } from '@/lib/product-options';
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
+import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { SubCategoryPicker } from './SubCategoryPicker';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
@@ -104,6 +105,12 @@ export function EditProductModal({
               aria-label="Product name"
             />
           </div>
+
+          <ProductGalleryEditor
+            urls={draft.extraImageUrls ?? []}
+            hasCover={Boolean(draft.imageUrl)}
+            onChange={(extraImageUrls) => setDraft({ ...draft, extraImageUrls })}
+          />
 
           <input
             value={draft.localName ?? ''}

@@ -620,6 +620,10 @@
     {
       "file": "20261103120000_function_search_paths.sql",
       "sha256": "88f7dd3feca544ac64234f0b8cb12f31a035a12fa17812e4586335c16f7e16c1"
+    },
+    {
+      "file": "20261104120000_product_extra_images.sql",
+      "sha256": "aac4bc17f6cadcb599f5e20b939688d131ebb75e1c006b8534386d9761bada02"
     }
   ]
 }

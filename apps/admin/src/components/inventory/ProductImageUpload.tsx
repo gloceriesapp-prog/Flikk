@@ -10,9 +10,12 @@ export function ProductImageUpload({
   imageUrl,
   onChange,
   bucket = 'product-images',
+  small = false,
 }: {
   imageUrl: string | undefined;
   onChange: (url: string, bgColor: string | null) => void;
+  // Gallery "add photo" tile (ProductGalleryEditor) — same upload, smaller box.
+  small?: boolean;
   bucket?: 'appsui' | 'banners' | 'categories' | 'festivals' | 'illustrations' | 'products' | 'stores' | 'product-images' | 'store-images' | 'category-images' | 'home-tab-images' | 'home-tab-banner-images';
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +57,7 @@ export function ProductImageUpload({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="relative h-28 w-28 overflow-hidden rounded-2xl border border-border bg-accent transition hover:border-ink/20"
+        className={`relative ${small ? 'h-20 w-20' : 'h-28 w-28'} overflow-hidden rounded-2xl border border-border bg-accent transition hover:border-ink/20`}
         disabled={uploading}
         aria-label="Upload image"
       >
@@ -74,7 +77,7 @@ export function ProductImageUpload({
         )}
         <input ref={inputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
       </button>
-      {error && <p className="mt-1 w-28 text-[10px] font-medium text-danger">{error}</p>}
+      {error && <p className={`mt-1 ${small ? 'w-20' : 'w-28'} text-[10px] font-medium text-danger`}>{error}</p>}
     </div>
   );
 }

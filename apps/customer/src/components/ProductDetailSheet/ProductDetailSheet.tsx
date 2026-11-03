@@ -94,6 +94,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../AppIcon';
 import { AppImage as Image } from '../AppImage';
+import { ProductImageGallery } from '../ProductImageGallery';
 import { CartBar } from '../CartBar/CartBar';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { colors } from '../../theme/tokens';
@@ -858,20 +859,7 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
                 'contain'. Real photos may crop slightly at the edges; that's
                 the intended tradeoff for the full-occupy look. Clipped to the
                 card's rounded top corners by the card's own overflow:hidden. */}
-            <Image
-              source={{ uri: product.imageUrl || PLACEHOLDER_IMAGE_URI }}
-              className="h-full w-full"
-              resizeMode="cover"
-            />
-
-            {/* Dots are purely decorative — this product has only one real
-                photo (Product['imageUrl'], types.ts has no gallery array). */}
-            <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-1.5">
-              <View className="h-1.5 w-1.5 rounded-full bg-white" />
-              <View className="h-1.5 w-1.5 rounded-full bg-white/50" />
-              <View className="h-1.5 w-1.5 rounded-full bg-white/50" />
-              <View className="h-1.5 w-1.5 rounded-full bg-white/50" />
-            </View>
+            <ProductImageGallery variant="hero" images={product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : [])} />
 
             {/* Rating badge, bottom-right on the hero (ref #107). Light pill
                 backing so it stays legible on both light and dark photos —

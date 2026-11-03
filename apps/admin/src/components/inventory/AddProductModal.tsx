@@ -22,6 +22,7 @@ import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle, PRODUCT_CATEGORIES } from '@/lib/product-options';
 import { formatVariantUnit } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
+import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { SubCategoryPicker } from './SubCategoryPicker';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
@@ -46,6 +47,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     variants: [emptyVariant()],
     stockStatus: 'in_stock' as StockStatus,
     imageUrl: undefined as string | undefined,
+    extraImageUrls: [] as string[],
     bgColor: undefined as string | undefined,
     subCategoryId: undefined as string | undefined,
     isVeg: true,
@@ -111,6 +113,7 @@ export function AddProductModal({
         variants: draft.variants,
         stockStatus: draft.stockStatus,
         imageUrl: draft.imageUrl,
+        extraImageUrls: draft.extraImageUrls,
         bgColor: draft.bgColor,
         subCategoryId: draft.subCategoryId,
         isVeg: draft.isVeg,
@@ -170,6 +173,12 @@ export function AddProductModal({
               aria-label="Product name"
             />
           </div>
+
+          <ProductGalleryEditor
+            urls={draft.extraImageUrls ?? []}
+            hasCover={Boolean(draft.imageUrl)}
+            onChange={(extraImageUrls) => setDraft({ ...draft, extraImageUrls })}
+          />
 
           <input
             value={draft.localName}
