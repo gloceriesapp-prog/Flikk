@@ -19,6 +19,7 @@ import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
+import { ProductFlavoursEditor } from './ProductFlavoursEditor';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
 import { createPortal } from 'react-dom';
 
@@ -161,6 +162,8 @@ export function EditProductModal({
           </select>
 
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
+
+          <ProductFlavoursEditor options={draft.options ?? []} onChange={(options) => setDraft({ ...draft, options })} />
 
           {(draft.variants.some((v) => (v.platformMarkup ?? 0) > 0) || draft.waiveCommission) && (
             <label className="flex items-center gap-2 text-sm text-ink">

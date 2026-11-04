@@ -384,6 +384,8 @@ export interface Product {
   // Further photos after imageUrl, in display order (products.extra_image_urls,
   // at most MAX_EXTRA_IMAGES). The customer app swipes through cover + these.
   extraImageUrls?: string[];
+  // Flavours customers pick from (product_options); empty = none.
+  options?: ProductOption[];
   // Chicken only (Meat, Eggs & Fish): customers pick small/medium/large
   // pieces, and from bulkMinKg kg in one order it is a bulk order the store
   // confirms (products.cut_options_enabled / bulk_min_kg).
@@ -464,6 +466,14 @@ export interface PendingProductChanges {
   originalPrice?: number | null;
   unit?: string;
   variants?: ProductVariant[];
+}
+
+// One flavour of a product (product_options). Same sizes and prices.
+export interface ProductOption {
+  id?: string;
+  name: string;
+  imageUrl?: string;
+  isAvailable: boolean;
 }
 
 export interface ProductVariant {

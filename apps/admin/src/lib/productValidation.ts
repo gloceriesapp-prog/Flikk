@@ -34,6 +34,8 @@ export interface ProductWriteInput {
   category: string;
   stockStatus: StockStatus;
   imageUrl?: string | null;
+  // Flavours (product_options). Absent leaves them unchanged; a list replaces them.
+  options?: { id?: string | null; name: string; imageUrl?: string | null; isAvailable?: boolean }[] | null;
   // Gallery photos after the cover (products.extra_image_urls). Absent leaves
   // the saved list alone; an array replaces it.
   extraImageUrls?: string[] | null;
@@ -159,6 +161,29 @@ export function toCutOptions(input: Pick<ProductWriteInput, 'category' | 'cutOpt
     throw new Error(`Bulk order from (kg) must be more than 0 and at most ${MAX_BULK_MIN_KG}.`);
   }
   return { cut_options_enabled: true, bulk_min_kg: kg == null ? null : Math.round(kg * 100) / 100 };
+}
+
+export const MAX_PRODUCT_OPTIONS = 20;
+
+// The flavour list to save, or undefined to leave it untouched. Names are
+// trimmed, required, at most 60 characters and unique per product (matches
+// product_options' checks); blank rows from the form are an error, not dropped.
+export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
+  { id: string | null; name: string; image_url: string | null; is_available: boolean; sort_order: number }[] | undefined {
+  if (input.options == null) return undefined;
+  if (!Array.isArray(input.options)) throw new Error('options must be a list.');
+  if (input.options.length > MAX_PRODUCT_OPTIONS) throw new Error(`Up to ${MAX_PRODUCT_OPTIONS} flavours per product.`);
+  const seen = new Set<string>();
+  return input.options.map((option, index) => {
+    const name = typeof option?.name === 'string' ? option.name.trim() : '';
+    if (!name) throw new Error(`Flavour ${index + 1}: enter a name.`);
+    if (name.length > 60) throw new Error(`Flavour ${index + 1}: name is too long (60 characters max).`);
+    if (seen.has(name.toLowerCase())) throw new Error(`Flavour "${name}" is listed twice.`);
+    seen.add(name.toLowerCase());
+    const image = option.imageUrl?.trim() || null;
+    if (image && !/^https?:\/\//i.test(image)) throw new Error(`Flavour "${name}": upload the photo again.`);
+    return { id: option.id ?? null, name, image_url: image, is_available: option.isAvailable !== false, sort_order: index };
+  });
 }
 
 export function toCommissionWaiver(input: Pick<ProductWriteInput, 'waiveCommission'>): { waive_commission: boolean } | undefined {

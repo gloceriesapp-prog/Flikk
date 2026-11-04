@@ -19,6 +19,8 @@ export interface CheckoutProduct extends CartProduct {
   cut_options_enabled?: boolean | null;
   bulk_min_kg?: number | string | null;
   product_variants: CheckoutVariant[];
+  // Flavours; a product with any needs one picked per line.
+  product_options?: { id: string; is_available: boolean }[] | null;
 }
 export interface PricedCheckoutItem extends CartItem {
   store_id: string;
@@ -29,6 +31,7 @@ export interface PricedCheckoutItem extends CartItem {
   unit_at_order: string;
   variant_mrp_at_order: number;
   cut_size: CutSize | null;
+  option_id: string | null;
   // This product reaches its bulk_min_kg in the cart; any bulk line makes
   // the order a bulk order (create_order sets orders.is_bulk).
   bulk: boolean;
@@ -54,6 +57,7 @@ export function parseCheckoutItems(input: unknown): CartItem[] {
     const row = item as Record<string, unknown>;
     if (typeof row.product_id !== 'string' || !UUID.test(row.product_id)
       || (row.variant_id != null && (typeof row.variant_id !== 'string' || !UUID.test(row.variant_id)))
+      || (row.option_id != null && (typeof row.option_id !== 'string' || !UUID.test(row.option_id)))
       || !Number.isInteger(row.quantity) || Number(row.quantity) < 1 || Number(row.quantity) > 999
       || (row.expected_unit_price != null && (typeof row.expected_unit_price !== 'number' || !Number.isFinite(row.expected_unit_price) || row.expected_unit_price < 0))) {
       throw new AppError(400, 'INVALID_CART', 'Choose a real product pack and a whole quantity between 1 and 999.');
@@ -64,7 +68,8 @@ export function parseCheckoutItems(input: unknown): CartItem[] {
     // Ignore all client prices/pack labels. UUID normalization prevents aliases.
     return { product_id: row.product_id.toLowerCase(), variant_id: (row.variant_id as string | null | undefined)?.toLowerCase() ?? null,
       quantity: Number(row.quantity), expected_unit_price: row.expected_unit_price as number | undefined,
-      cut_size: (row.cut_size as CutSize | null | undefined) ?? null };
+      cut_size: (row.cut_size as CutSize | null | undefined) ?? null,
+      option_id: (row.option_id as string | null | undefined)?.toLowerCase() ?? null };
   });
 }
 
@@ -92,8 +97,17 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
     if (cutSize && !product.cut_options_enabled) {
       throw new AppError(400, 'CUT_SIZE_UNAVAILABLE', 'This product has no cut size options. Remove it and add it again.');
     }
+    const options = product.product_options ?? [];
+    const optionId = item.option_id ?? null;
+    if (optionId) {
+      const option = options.find((o) => o.id === optionId);
+      if (!option) throw new AppError(400, 'FLAVOUR_UNAVAILABLE', 'That flavour is no longer offered. Remove it and add it again.');
+      if (!option.is_available) throw new AppError(409, 'FLAVOUR_UNAVAILABLE', 'That flavour is out of stock. Choose another flavour.');
+    } else if (options.length > 0) {
+      throw new AppError(400, 'FLAVOUR_REQUIRED', 'Choose a flavour for this product. Update the app if you cannot see flavours.');
+    }
     const variantId = variant?.id ?? null;
-    const key = checkoutLineKey(product.id, variantId, cutSize);
+    const key = checkoutLineKey(product.id, variantId, cutSize, optionId);
     const existing = lines.get(key);
     const quantity = item.quantity + (existing?.quantity ?? 0);
     if (quantity > 999) throw new AppError(400, 'INVALID_CART', 'The maximum quantity for one pack is 999.');
@@ -102,7 +116,7 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
       store_unit_price: storePrice,
       unit_at_order: variant ? `${Number(variant.quantity)} ${variant.unit_type === 'l' ? 'L' : variant.unit_type}` : product.unit ?? '',
       variant_mrp_at_order: Math.max(price, Number(variant ? variant.original_price ?? price : product.original_price ?? price)),
-      cut_size: cutSize, bulk: false });
+      cut_size: cutSize, option_id: optionId, bulk: false });
   }
   const priced = [...lines.values()];
   // Bulk is per product across its packs and cuts: 3 x 1 kg small + 2 x 1 kg
@@ -126,6 +140,6 @@ function packKg(variant: CheckoutVariant | undefined): number {
   return 0;
 }
 
-export function checkoutLineKey(productId: string, variantId: string | null | undefined, cutSize: CutSize | null | undefined): string {
-  return `${productId}:${variantId ?? ''}${cutSize ? `:${cutSize}` : ''}`;
+export function checkoutLineKey(productId: string, variantId: string | null | undefined, cutSize: CutSize | null | undefined, optionId?: string | null): string {
+  return `${productId}:${variantId ?? ''}${cutSize ? `:${cutSize}` : ''}${optionId ? `:o:${optionId}` : ''}`;
 }

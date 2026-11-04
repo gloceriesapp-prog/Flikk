@@ -16,7 +16,7 @@
 
 import { useCallback, useState } from 'react';
 import { X } from '@/components/icons';
-import type { NewProductInput, Product, StockStatus } from '@/lib/types';
+import type { NewProductInput, Product, ProductOption, StockStatus } from '@/lib/types';
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle } from '@/lib/product-options';
@@ -26,6 +26,7 @@ import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
+import { ProductFlavoursEditor } from './ProductFlavoursEditor';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
 import { createPortal } from 'react-dom';
 
@@ -49,6 +50,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     stockStatus: 'in_stock' as StockStatus,
     imageUrl: undefined as string | undefined,
     extraImageUrls: [] as string[],
+    options: [] as ProductOption[],
     cutOptionsEnabled: false,
     waiveCommission: false,
     showUnitPrice: false,
@@ -124,6 +126,7 @@ export function AddProductModal({
         stockStatus: draft.stockStatus,
         imageUrl: draft.imageUrl,
         extraImageUrls: draft.extraImageUrls,
+        options: draft.options,
         cutOptionsEnabled: draft.cutOptionsEnabled,
         waiveCommission: draft.waiveCommission,
         showUnitPrice: draft.showUnitPrice,
@@ -220,6 +223,8 @@ export function AddProductModal({
           />
 
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
+
+          <ProductFlavoursEditor options={draft.options ?? []} onChange={(options) => setDraft({ ...draft, options })} />
 
           {(draft.variants.some((v) => (v.platformMarkup ?? 0) > 0) || draft.waiveCommission) && (
             <label className="flex items-center gap-2 text-sm text-ink">

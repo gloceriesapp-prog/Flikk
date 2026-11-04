@@ -37,6 +37,9 @@ export interface CartItem {
   variantId?: string;
   // Chosen piece size for a chicken product (part of the line id).
   cutSize?: CutSize;
+  // Chosen flavour (part of the line id) and its name for display.
+  optionId?: string;
+  optionName?: string;
   name: string;
   weight: string;
   price: number;

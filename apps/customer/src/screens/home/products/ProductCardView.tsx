@@ -108,7 +108,10 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
           ) : quantity === 0 ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
               onPress={() =>
-                addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
+                // A product with flavours opens its detail view to pick one.
+                product.options?.length
+                  ? onPress?.()
+                  : addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
               }
               className={`items-center justify-center rounded-[8px] border border-[#155dfc] bg-white py-2 px-3 `}
             >

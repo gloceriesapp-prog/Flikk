@@ -16,6 +16,7 @@ export interface CheckoutQuote {
     unit_at_order: string;
     variant_mrp_at_order: number;
     cut_size?: CutSize | null;
+    option_id?: string | null;
     // Server-side: this product reached its bulk quantity, so the order is a
     // bulk order the store confirms (with a longer response window).
     bulk?: boolean;
