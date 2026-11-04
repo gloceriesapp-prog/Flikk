@@ -632,6 +632,10 @@
     {
       "file": "20261104140000_catalogue_tree.sql",
       "sha256": "b96980acf8f168d300b90b23e72d298324e6d747fc5540c729d1aa7ca2600ce0"
+    },
+    {
+      "file": "20261104150000_product_unit_price.sql",
+      "sha256": "64f2a7889ad2c4015406a8de2e05ef2d94e137198a28d8ff175fcd8dcc5c2ec8"
     }
   ]
 }
