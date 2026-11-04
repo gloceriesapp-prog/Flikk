@@ -115,6 +115,11 @@ export function DealCard({
   ========================================================== */
 
   function handleAdd() {
+    // A product with flavours opens its detail view to pick one.
+    if (product.options?.length) {
+      setIsDetailOpen(true);
+      return;
+    }
     addToCart({
       isAvailable: availability.isAvailable,
       id: lineId,

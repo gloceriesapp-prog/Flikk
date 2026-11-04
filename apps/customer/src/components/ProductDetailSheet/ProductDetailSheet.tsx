@@ -607,6 +607,11 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
   const [selectedVariantId, setSelectedVariantId] = useState(product.defaultVariantId ?? product.variants?.[0]?.id);
   const selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
   const [selectedCut, setSelectedCut] = useState<CutSize>('medium');
+  // First in-stock flavour preselected; its photo leads the hero.
+  const [selectedOptionId, setSelectedOptionId] = useState(product.options?.find((o) => o.isAvailable)?.id);
+  const selectedOption = product.options?.find((o) => o.id === selectedOptionId);
+  const productPhotos = product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : []);
+  const heroPhotos = selectedOption?.imageUrl ? [selectedOption.imageUrl, ...productPhotos.filter((u) => u !== selectedOption.imageUrl)] : productPhotos;
 
   // Drag-to-dismiss offset — 0 at rest, animates toward screenHeight on a
   // successful drag-down dismissal. Separate shared value from `grow`
@@ -859,7 +864,7 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
             {/* Hero photo shown whole ('contain', ProductImageGallery's hero
                 fit): 'cover' zoomed and cropped packshots in this wide frame.
                 Clipped to the card's rounded top corners by its overflow:hidden. */}
-            <ProductImageGallery variant="hero" images={product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : [])} />
+            <ProductImageGallery variant="hero" images={heroPhotos} />
 
             {/* Rating badge, bottom-right on the hero (ref #107). Light pill
                 backing so it stays legible on both light and dark photos —
@@ -881,6 +886,8 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
             selectedVariantId={selectedVariantId}
             selectedCut={product.cutOptions ? selectedCut : undefined}
             onSelectCut={setSelectedCut}
+            selectedOptionId={selectedOptionId}
+            onSelectOption={setSelectedOptionId}
             onSelectVariant={setSelectedVariantId}
           />
         </Animated.ScrollView>
@@ -899,7 +906,7 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
               ? <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }]} />
               : <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />}
             <View className="absolute inset-0 bg-white/40" />
-            <ProductDetailFooter product={product} selectedVariant={selectedVariant} cutSize={product.cutOptions ? selectedCut : undefined} />
+            <ProductDetailFooter product={product} selectedVariant={selectedVariant} cutSize={product.cutOptions ? selectedCut : undefined} option={selectedOption} />
           </Animated.View>
         </View>
       </Animated.View>

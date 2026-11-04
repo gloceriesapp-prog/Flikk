@@ -132,7 +132,9 @@ function PanelBody({ order, now, accepted }: { order: PartnerOrder; now: number;
         <ul className="divide-y divide-slate-200/70">
           {order.order_items.map((item, index) => {
             const name = item.product_name_at_order ?? item.products?.name ?? 'Item';
-            const pack = item.unit_at_order ?? item.products?.unit;
+            // Cut and flavour are part of what to pack.
+            const pack = [item.unit_at_order ?? item.products?.unit, item.cut_size ? `${item.cut_size} pieces` : null, item.option_name_at_order]
+              .filter(Boolean).join(' · ') || undefined;
             return <li key={item.id ?? index} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
               <ItemThumb name={name} imageUrl={item.product_image_at_order ?? item.products?.image_url} index={index} neutral className="h-12 w-12 text-sm" />
               <div className="min-w-0 flex-1">

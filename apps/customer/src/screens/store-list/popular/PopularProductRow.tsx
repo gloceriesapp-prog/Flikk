@@ -40,7 +40,7 @@ interface Props {
   onPress?: () => void;
 }
 
-function AddControl({ product }: { product: Product }) {
+function AddControl({ product, onChooseFlavour }: { product: Product; onChooseFlavour: () => void }) {
   const cutSize = quickAddCut(product);
   const lineId = cartLineId(product.id, product.defaultVariantId, cutSize);
   const quantity = useCartStore((state) => state.items.find((item) => item.id === lineId)?.quantity ?? 0);
@@ -52,7 +52,8 @@ function AddControl({ product }: { product: Product }) {
     return (
       <Pressable
         onPress={() =>
-          addToCart({
+          // A product with flavours opens its detail view to pick one.
+          product.options?.length ? onChooseFlavour() : addToCart({
             isAvailable: product.isAvailable,
             id: lineId,
             productId: product.id,
@@ -120,7 +121,7 @@ export function PopularProductRow({ product, allowAdd = true, onPress }: Props) 
             unit (what to tap, what it costs), not two independent row
             sections that need the same breathing room as image-to-title. */}
         <View className="flex-row items-center gap-1">
-          {allowAdd ? <AddControl product={product} /> : <Text className="text-[11px] font-medium text-ink/45">Closed</Text>}
+          {allowAdd ? <AddControl product={product} onChooseFlavour={onPress ?? (() => setIsDetailOpen(true))} /> : <Text className="text-[11px] font-medium text-ink/45">Closed</Text>}
 
           {/* Right-aligned again — price belongs flush at the row's true
               end, not tucked next to AddControl — but the box is now just

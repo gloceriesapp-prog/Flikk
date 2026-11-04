@@ -11,6 +11,8 @@ export interface OrderDetailItem {
   imageUrl: string | null;
   // Chicken piece size the customer chose (order_items.cut_size).
   cutSize: 'small' | 'medium' | 'large' | null;
+  // Flavour the customer chose (order_items.option_name_at_order).
+  flavour: string | null;
 }
 
 export interface OrderDetailLeg {
