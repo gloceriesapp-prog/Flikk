@@ -5,7 +5,7 @@
 // customer app's category browse; its category is the product's category
 // (commission rate, chicken and veg options), which the database also keeps
 // in step (migration 20261104140000). Picking a category that has no
-// sub-categories yet creates an "All" sub-category under it and files the
+// sub-categories yet creates a "General" sub-category under it and files the
 // product there.
 
 import { useEffect, useMemo, useState } from 'react';
@@ -55,7 +55,7 @@ export function CataloguePicker({
       const res = await fetch('/api/subcategories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categoryId: category.id, name: 'All' }),
+        body: JSON.stringify({ categoryId: category.id, name: 'General' }),
       });
       const body = await res.json().catch(() => null);
       if (!res.ok || !body?.id) throw new Error(body?.error ?? 'Could not add sub-category.');
@@ -102,7 +102,7 @@ export function CataloguePicker({
         )}
       </select>
       <p className="text-[11px] text-muted">
-        {creating ? 'Adding an "All" sub-category… ' : createError ? `${createError} ` : error ? 'Could not load categories. ' : tree && !tree.length ? 'No categories yet. ' : ''}
+        {creating ? 'Adding a "General" sub-category… ' : createError ? `${createError} ` : error ? 'Could not load categories. ' : tree && !tree.length ? 'No categories yet. ' : ''}
         Add or rename categories and sub-categories on the{' '}
         <Link href="/categories" target="_blank" className="font-medium text-ink underline">Categories page</Link>
         , then reopen this form.
