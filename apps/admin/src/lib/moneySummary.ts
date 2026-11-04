@@ -20,6 +20,8 @@ export interface MoneyEarned {
   riderPay: number;
   deliveryMargin: number;
   discounts: number;
+  // Gloceries' extra on top of store prices (platform markup).
+  markup: number;
   storeShare: number;
   net: number;
 }
@@ -78,7 +80,7 @@ export function toMoneySummary(raw: MoneySummaryRow, range: MoneyRange, from: Da
     earned: {
       deliveries: num(earned.deliveries), customerPaid: num(earned.customerPaid), itemSales: num(earned.itemSales),
       commission: num(earned.commission), platformFee: num(earned.platformFee), deliveryFees: num(earned.deliveryFees),
-      riderPay: num(earned.riderPay), deliveryMargin: num(earned.deliveryMargin), discounts: num(earned.discounts),
+      riderPay: num(earned.riderPay), deliveryMargin: num(earned.deliveryMargin), discounts: num(earned.discounts), markup: num(earned.markup),
       storeShare: num(earned.storeShare), net: num(earned.net),
     },
     stores: {

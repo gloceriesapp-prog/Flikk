@@ -4,6 +4,7 @@ import { deliveryStores } from '../customer-experience/browse.js';
 // not the static CATEGORY_SECTIONS mock apps/customer used to render.
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
+import { applyCustomerPrices } from '../lib/customerPrice.js';
 
 export const categoriesRouter = Router();
 
@@ -61,7 +62,7 @@ categoriesRouter.get('/:id/products', async (req, res, next) => {
       .in('store_id', await deliveryStores(req.query))
       .order('name').limit(60);
     if (error) throw error;
-    res.json(data);
+    res.json(applyCustomerPrices(data));
   } catch (err) {
     next(err);
   }
@@ -86,7 +87,7 @@ categoriesRouter.get('/subcategories/:id/products', async (req, res, next) => {
       .in('store_id', await deliveryStores(req.query))
       .order('name').limit(60);
     if (error) throw error;
-    res.json(data);
+    res.json(applyCustomerPrices(data));
   } catch (err) {
     next(err);
   }

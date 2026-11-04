@@ -27,6 +27,9 @@ export interface CommissionLine {
   product_id: string;
   store_id: string;
   unit_price_at_order: number;
+  // The store's price; commission is charged on this, never on Gloceries'
+  // extra. Absent on lines without a markup.
+  store_unit_price?: number;
   quantity: number;
 }
 
@@ -48,12 +51,14 @@ export function lineCommissionRate(rules: CommissionRules, storeId: string, cate
 }
 
 // Commission per store for a priced cart: each line at its own rate, summed
-// per store, rounded to paise, then capped.
-export function storeCommissions(lines: CommissionLine[], categories: Map<string, string>, rules: CommissionRules): Map<string, number> {
+// per store, rounded to paise, then capped. Products the admin marked
+// waive_commission pay none.
+export function storeCommissions(lines: CommissionLine[], categories: Map<string, string>, rules: CommissionRules,
+  waived: ReadonlySet<string> = new Set()): Map<string, number> {
   const raw = new Map<string, number>();
   for (const line of lines) {
-    const rate = lineCommissionRate(rules, line.store_id, categories.get(line.product_id));
-    raw.set(line.store_id, (raw.get(line.store_id) ?? 0) + line.unit_price_at_order * line.quantity * rate);
+    const rate = waived.has(line.product_id) ? 0 : lineCommissionRate(rules, line.store_id, categories.get(line.product_id));
+    raw.set(line.store_id, (raw.get(line.store_id) ?? 0) + (line.store_unit_price ?? line.unit_price_at_order) * line.quantity * rate);
   }
   const result = new Map<string, number>();
   for (const [storeId, amount] of raw) {
@@ -97,21 +102,25 @@ export async function loadCommissionRules(storeIds: string[]): Promise<Commissio
   return { defaultRate, capPerOrder, categoryRates, stores };
 }
 
-async function loadProductCategories(productIds: string[]): Promise<Map<string, string>> {
+async function loadProductCommissionInfo(productIds: string[]): Promise<{ categories: Map<string, string>; waived: Set<string> }> {
   const ids = [...new Set(productIds)];
-  if (ids.length === 0) return new Map();
-  const { data, error } = await supabase.from('products').select('id, category').in('id', ids);
+  if (ids.length === 0) return { categories: new Map(), waived: new Set() };
+  const { data, error } = await supabase.from('products').select('id, category, waive_commission').in('id', ids);
   if (error) throw error;
-  return new Map(((data ?? []) as { id: string; category: string | null }[]).map((row) => [row.id, row.category ?? '']));
+  const rows = (data ?? []) as { id: string; category: string | null; waive_commission?: boolean | null }[];
+  return {
+    categories: new Map(rows.map((row) => [row.id, row.category ?? ''])),
+    waived: new Set(rows.filter((row) => row.waive_commission === true).map((row) => row.id)),
+  };
 }
 
 // What each store in a priced cart pays, keyed by store id.
 export async function getStoreCommissions(lines: CommissionLine[]): Promise<Map<string, number>> {
-  const [rules, categories] = await Promise.all([
+  const [rules, products] = await Promise.all([
     loadCommissionRules(lines.map((line) => line.store_id)),
-    loadProductCategories(lines.map((line) => line.product_id)),
+    loadProductCommissionInfo(lines.map((line) => line.product_id)),
   ]);
-  return storeCommissions(lines, categories, rules);
+  return storeCommissions(lines, products.categories, rules, products.waived);
 }
 
 // The rates a store's new orders are charged, for the partner app.

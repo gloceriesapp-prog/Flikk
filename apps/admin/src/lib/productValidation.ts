@@ -24,6 +24,8 @@ export interface VariantInput {
   // Counted retail packs on hand. Absent keeps an existing pack's count; a
   // number sets it and turns on stock tracking (checkout requires it).
   stockQuantity?: number | null;
+  // Gloceries' extra (rupees) on top of the store price. Absent keeps it.
+  platformMarkup?: number | null;
 }
 
 export interface ProductWriteInput {
@@ -38,6 +40,8 @@ export interface ProductWriteInput {
   // Chicken cut sizes + bulk threshold (kg). Absent leaves them unchanged.
   cutOptionsEnabled?: boolean | null;
   bulkMinKg?: number | null;
+  // No commission on this product. Absent leaves it unchanged.
+  waiveCommission?: boolean | null;
   // Price per kg / L / piece on the card. Absent leaves it unchanged.
   showUnitPrice?: boolean | null;
   // Extracted from imageUrl at upload time (app/api/upload -> lib/bgColor.ts),
@@ -59,6 +63,27 @@ export interface ProductWriteInput {
 
 const UNIT_TYPES: UnitType[] = ['g', 'kg', 'ml', 'l', 'pc'];
 const STOCK_STATUSES: StockStatus[] = ['in_stock', 'low_stock', 'out_of_stock'];
+
+// Matches product_variants_platform_markup_check (backend migration
+// 20261104160000).
+export const MAX_PLATFORM_MARKUP = 100000;
+
+// What the customer pays for a pack: store price + our extra, never above
+// MRP and never below the store price. Copy of backend/src/lib/
+// customerPrice.ts customerUnitPrice (and the database's customer_unit_price).
+export function customerUnitPrice(storePrice: number, markup: number | null | undefined, mrp: number | null | undefined): number {
+  const withMarkup = Math.round((storePrice + Math.max(Number(markup ?? 0), 0)) * 100) / 100;
+  if (mrp == null || !(Number(mrp) > 0)) return withMarkup;
+  return Math.max(storePrice, Math.min(withMarkup, Number(mrp)));
+}
+
+// Each pack's extra, matched by size (unit type + quantity are unique per
+// product, validateProductInput). Packs without a value are left alone.
+export function toVariantMarkups(variants: VariantInput[]): { unit_type: UnitType; quantity: number; platform_markup: number }[] {
+  return variants
+    .filter((v) => v.platformMarkup != null)
+    .map((v) => ({ unit_type: v.unitType, quantity: v.quantity, platform_markup: Math.round(Number(v.platformMarkup) * 100) / 100 }));
+}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -84,6 +109,9 @@ export function validateProductInput(input: Partial<ProductWriteInput>): asserts
     }
     if (variant.stockQuantity != null && (!Number.isSafeInteger(variant.stockQuantity) || variant.stockQuantity < 0)) {
       throw new Error(`${label}: stock must be a whole number, 0 or more.`);
+    }
+    if (variant.platformMarkup != null && (!isFiniteNumber(variant.platformMarkup) || variant.platformMarkup < 0 || variant.platformMarkup > MAX_PLATFORM_MARKUP)) {
+      throw new Error(`${label}: our extra must be ₹0 to ₹${MAX_PLATFORM_MARKUP}.`);
     }
   });
   if (new Set(input.variants.map((v) => `${v.unitType}:${v.quantity}`)).size !== input.variants.length) {
@@ -131,6 +159,12 @@ export function toCutOptions(input: Pick<ProductWriteInput, 'category' | 'cutOpt
     throw new Error(`Bulk order from (kg) must be more than 0 and at most ${MAX_BULK_MIN_KG}.`);
   }
   return { cut_options_enabled: true, bulk_min_kg: kg == null ? null : Math.round(kg * 100) / 100 };
+}
+
+export function toCommissionWaiver(input: Pick<ProductWriteInput, 'waiveCommission'>): { waive_commission: boolean } | undefined {
+  if (input.waiveCommission == null) return undefined;
+  if (typeof input.waiveCommission !== 'boolean') throw new Error('waiveCommission must be true or false.');
+  return { waive_commission: input.waiveCommission };
 }
 
 export function toUnitPriceFlag(input: Pick<ProductWriteInput, 'showUnitPrice'>): { show_unit_price: boolean } | undefined {

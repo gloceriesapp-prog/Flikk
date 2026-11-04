@@ -162,6 +162,16 @@ export function EditProductModal({
 
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
+          {(draft.variants.some((v) => (v.platformMarkup ?? 0) > 0) || draft.waiveCommission) && (
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={draft.waiveCommission ?? false}
+                onChange={(e) => setDraft({ ...draft, waiveCommission: e.target.checked })}
+              />
+              No commission from the store on this product (we earn only our extra)
+            </label>
+          )}
           <label className="flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"

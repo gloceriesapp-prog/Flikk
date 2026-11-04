@@ -31,6 +31,7 @@ import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
 import { reorderByRank } from '../lib/buyItAgain.js';
 import { notifyRiderOrderPacked, triggerDispatch } from '../lib/riderDispatch.js';
 import { assertPaymentMethodAvailable } from '../payments/availability.js';
+import { applyCustomerPrices } from '../lib/customerPrice.js';
 
 export const ordersRouter = Router();
 // Free-text cancel reasons (customer/partner) are shown to other parties.
@@ -197,7 +198,7 @@ ordersRouter.get('/buy-it-again', requireAuth, requireRole('customer'), async (r
       .neq('stock_status', 'out_of_stock');
     if (productsErr) throw productsErr;
 
-    res.json(reorderByRank(rankedProductIds, products ?? []));
+    res.json(applyCustomerPrices(reorderByRank(rankedProductIds, products ?? [])));
   } catch (err) {
     next(err);
   }

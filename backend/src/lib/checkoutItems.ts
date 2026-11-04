@@ -1,4 +1,5 @@
 import { AppError } from './errors.js';
+import { customerUnitPrice } from './customerPrice.js';
 import { CUT_SIZES, type CartItem, type CartProduct, type CutSize } from './orderValidation.js';
 
 export interface CheckoutVariant {
@@ -9,6 +10,8 @@ export interface CheckoutVariant {
   original_price: number | null;
   is_default: boolean;
   stock_quantity?: number | null;
+  // Gloceries' extra on this pack (admin only); 0 when absent.
+  platform_markup?: number | string | null;
 }
 export interface CheckoutProduct extends CartProduct {
   unit?: string | null;
@@ -20,7 +23,9 @@ export interface CheckoutProduct extends CartProduct {
 export interface PricedCheckoutItem extends CartItem {
   store_id: string;
   variant_id: string | null;
+  // What the customer pays per unit; the store is paid store_unit_price.
   unit_price_at_order: number;
+  store_unit_price: number;
   unit_at_order: string;
   variant_mrp_at_order: number;
   cut_size: CutSize | null;
@@ -76,7 +81,9 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
     if ((item.variant_id || variants.length > 0) && !variant) {
       throw new AppError(400, 'VARIANT_UNAVAILABLE', 'The selected pack is no longer available. Choose a pack again.');
     }
-    const price = Number(variant?.price ?? product.price);
+    const storePrice = Number(variant?.price ?? product.price);
+    // Products without packs carry no markup (snapshot_order_item_variant).
+    const price = variant ? customerUnitPrice(storePrice, Number(variant.platform_markup ?? 0), variant.original_price) : storePrice;
     if (!Number.isFinite(price) || price < 0) throw new AppError(409, 'INVALID_PRICE', 'This pack cannot be ordered right now.');
     if (item.expected_unit_price != null && item.expected_unit_price !== price) {
       throw new AppError(409, 'PRICE_CHANGED', 'A pack price has changed. Remove it and add it again to confirm the new price.');
@@ -92,6 +99,7 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
     if (quantity > 999) throw new AppError(400, 'INVALID_CART', 'The maximum quantity for one pack is 999.');
     lines.set(key, { product_id: product.id, variant_id: variantId, quantity, store_id: product.store_id,
       unit_price_at_order: price,
+      store_unit_price: storePrice,
       unit_at_order: variant ? `${Number(variant.quantity)} ${variant.unit_type === 'l' ? 'L' : variant.unit_type}` : product.unit ?? '',
       variant_mrp_at_order: Math.max(price, Number(variant ? variant.original_price ?? price : product.original_price ?? price)),
       cut_size: cutSize, bulk: false });

@@ -42,12 +42,24 @@ export interface ProductExtras {
   extra_image_urls?: string[];
   cut_options_enabled?: boolean;
   bulk_min_kg?: number | null;
+  waive_commission?: boolean;
   show_unit_price?: boolean;
 }
 export async function saveProductExtras(productId: string, extras: ProductExtras): Promise<void> {
   if (Object.keys(extras).length === 0) return;
   const { error } = await supabaseAdmin.from('products').update(extras).eq('id', productId);
   if (error) throw new CatalogueSaveError(500, 'Product saved, but its extra photos or cut options were not. Try saving again.');
+}
+
+// Gloceries' extra per pack sits outside save_catalogue_product too (partner
+// saves never touch it, so it survives their price edits). Written after the
+// save, matched by size.
+export async function saveVariantMarkups(productId: string, markups: { unit_type: string; quantity: number; platform_markup: number }[]): Promise<void> {
+  for (const m of markups) {
+    const { error } = await supabaseAdmin.from('product_variants').update({ platform_markup: m.platform_markup })
+      .eq('product_id', productId).eq('unit_type', m.unit_type).eq('quantity', m.quantity);
+    if (error) throw new CatalogueSaveError(500, 'Product saved, but our extra price was not. Try saving again.');
+  }
 }
 
 // Every admin-saved product is filed under a sub-category, and its category

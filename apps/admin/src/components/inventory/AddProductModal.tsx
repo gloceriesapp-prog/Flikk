@@ -50,6 +50,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     imageUrl: undefined as string | undefined,
     extraImageUrls: [] as string[],
     cutOptionsEnabled: false,
+    waiveCommission: false,
     showUnitPrice: false,
     bulkMinKg: null as number | null,
     bgColor: undefined as string | undefined,
@@ -124,6 +125,7 @@ export function AddProductModal({
         imageUrl: draft.imageUrl,
         extraImageUrls: draft.extraImageUrls,
         cutOptionsEnabled: draft.cutOptionsEnabled,
+        waiveCommission: draft.waiveCommission,
         showUnitPrice: draft.showUnitPrice,
         bulkMinKg: draft.bulkMinKg,
         bgColor: draft.bgColor,
@@ -219,6 +221,16 @@ export function AddProductModal({
 
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
+          {(draft.variants.some((v) => (v.platformMarkup ?? 0) > 0) || draft.waiveCommission) && (
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={draft.waiveCommission ?? false}
+                onChange={(e) => setDraft({ ...draft, waiveCommission: e.target.checked })}
+              />
+              No commission from the store on this product (we earn only our extra)
+            </label>
+          )}
           <label className="flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"
