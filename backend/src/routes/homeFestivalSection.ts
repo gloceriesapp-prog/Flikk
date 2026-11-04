@@ -10,6 +10,7 @@
 // read-only, same public/cached convention as /home-tabs.
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
+import { applyCustomerPrices } from '../lib/customerPrice.js';
 
 export const homeFestivalSectionRouter = Router();
 
@@ -40,7 +41,7 @@ homeFestivalSectionRouter.get('/', async (_req, res, next) => {
 
     res.json({
       title: section.title,
-      products: (links ?? []).map((link) => link.products),
+      products: applyCustomerPrices((links ?? []).map((link) => link.products)),
     });
   } catch (err) {
     next(err);

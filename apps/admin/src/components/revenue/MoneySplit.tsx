@@ -71,6 +71,7 @@ export function MoneySplit({ summary, range, onRangeChange }: {
           <CardHead icon={Wallet} title="Gloceries earned" hint="Ours to keep" />
           <dl className="mt-4 flex flex-col gap-2.5 text-sm">
             <Line label="Commission from stores" value={earned?.commission} />
+            <Line label="Our extra on product prices" value={earned?.markup} />
             <Line label="Platform fee from customers" value={earned?.platformFee} />
             <Line label="Delivery margin" value={earned?.deliveryMargin}
               hint={earned ? `${formatCurrency(earned.deliveryFees)} fees − ${formatCurrency(earned.riderPay)} rider pay` : undefined} />

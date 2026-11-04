@@ -11,6 +11,7 @@ import { AppError } from '../lib/errors.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 import { cursorFilter, encodeCursor, readPage } from '../lib/cursorPagination.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from './stores.js';
+import { applyCustomerPrices } from '../lib/customerPrice.js';
 
 export const wishlistRouter = Router();
 
@@ -36,7 +37,7 @@ wishlistRouter.get('/', requireAuth, requireRole('customer'), async (req: Authed
     if (error) throw error;
     const rows = (data ?? []) as unknown as { id: string; created_at: string }[];
     const items = rows.slice(0, page.limit); const last = items.at(-1);
-    res.json({ items, nextCursor: rows.length > page.limit && last ? encodeCursor(page, { at: last.created_at, id: last.id }) : null });
+    res.json({ items: applyCustomerPrices(items), nextCursor: rows.length > page.limit && last ? encodeCursor(page, { at: last.created_at, id: last.id }) : null });
   } catch (err) {
     next(err);
   }

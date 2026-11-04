@@ -5,6 +5,7 @@ import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { nearbyStores, readCoordinates } from '../discovery/nearbyStores.js';
+import { applyCustomerPrices } from '../lib/customerPrice.js';
 
 export const storesRouter = Router();
 // Cross-store assortment is scoped once; missing pins yield no products.
@@ -147,7 +148,7 @@ storesRouter.get('/products/deals', async (req, res, next) => {
       .order('name')
       .limit(12);
     if (error) throw error;
-    res.json(data);
+    res.json(applyCustomerPrices(data));
   } catch (err) {
     next(err);
   }
@@ -168,7 +169,7 @@ storesRouter.get('/products/catalog', async (req, res, next) => {
       .order('name')
       .limit(20);
     if (error) throw error;
-    res.json(data);
+    res.json(applyCustomerPrices(data));
   } catch (err) {
     next(err);
   }
@@ -212,7 +213,7 @@ storesRouter.get('/products/similar', async (req, res, next) => {
     if (error) throw error;
 
     if (data && data.length > 0) {
-      res.json(data);
+      res.json(applyCustomerPrices(data));
       return;
     }
 
@@ -233,7 +234,7 @@ storesRouter.get('/products/similar', async (req, res, next) => {
 
     const { data: fallbackData, error: fallbackError } = await fallbackQuery;
     if (fallbackError) throw fallbackError;
-    res.json(fallbackData);
+    res.json(applyCustomerPrices(fallbackData));
   } catch (err) {
     next(err);
   }
@@ -271,7 +272,7 @@ storesRouter.get('/:id/products', async (req, res, next) => {
       throw new AppError(400, 'INVALID_PAGE', 'Page size must be between 1 and 60.');
     const { data, error } = await query.order('id').limit(rawLimit === undefined ? 30 : Number(rawLimit));
     if (error) throw error;
-    res.json(data);
+    res.json(applyCustomerPrices(data));
   } catch (err) {
     next(err);
   }

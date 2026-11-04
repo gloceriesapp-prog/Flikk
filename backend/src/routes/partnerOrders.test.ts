@@ -69,7 +69,7 @@ it('history permits cancelled/problem states and escapes wildcard search without
   await request('get', '/orders', { view: 'history', search: 'a,b%', status: 'cancelled', summary: '1' });
   expect(db.filters).toContainEqual(['eq', 'status', 'cancelled']);
   expect(db.filters).toContainEqual(['ilike', 'order_number', '%a,b\\%%']);
-  expect(db.filters).toContainEqual(['select', 'id,order_number,status,total,placed_at']);
+  expect(db.filters).toContainEqual(['select', 'id,order_number,status,total,store_item_total,placed_at']);
 });
 it('rejects unbounded search and invalid status filters', async () => {
   expect((await request('get', '/orders', { search: 'a'.repeat(81) })).error).toMatchObject({ status: 400 });

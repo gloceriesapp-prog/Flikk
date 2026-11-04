@@ -19,6 +19,7 @@ interface ProductVariantRow {
   original_price: number | null;
   is_default: boolean;
   stock_quantity: number | null;
+  platform_markup: number | string | null;
 }
 
 export interface ProductRow {
@@ -55,7 +56,7 @@ export interface ProductRow {
 }
 
 export const PRODUCT_SELECT =
-  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity)';
+  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup)';
 
 function mapVariants(rows: ProductVariantRow[], product: ProductRow): ProductVariant[] {
   // is_default first, then insertion order for the rest — mirrors how
@@ -75,6 +76,7 @@ function mapVariants(rows: ProductVariantRow[], product: ProductRow): ProductVar
         price: Number(row.price),
         originalPrice: row.original_price != null ? Number(row.original_price) : undefined,
         stockQuantity: count ?? undefined,
+        platformMarkup: Number(row.platform_markup ?? 0) || undefined,
       };
     });
 }

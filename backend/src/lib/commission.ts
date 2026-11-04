@@ -27,6 +27,9 @@ export interface CommissionLine {
   product_id: string;
   store_id: string;
   unit_price_at_order: number;
+  // The store's price; commission is charged on this, never on Gloceries'
+  // extra. Absent on lines without a markup.
+  store_unit_price?: number;
   quantity: number;
 }
 
@@ -53,7 +56,7 @@ export function storeCommissions(lines: CommissionLine[], categories: Map<string
   const raw = new Map<string, number>();
   for (const line of lines) {
     const rate = lineCommissionRate(rules, line.store_id, categories.get(line.product_id));
-    raw.set(line.store_id, (raw.get(line.store_id) ?? 0) + line.unit_price_at_order * line.quantity * rate);
+    raw.set(line.store_id, (raw.get(line.store_id) ?? 0) + (line.store_unit_price ?? line.unit_price_at_order) * line.quantity * rate);
   }
   const result = new Map<string, number>();
   for (const [storeId, amount] of raw) {

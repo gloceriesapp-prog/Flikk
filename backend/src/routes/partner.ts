@@ -1,4 +1,5 @@
 import { cataloguePage, readCatalogue } from '../partner/catalogReads.js';
+import { storeItemTotal, toStoreOrder, withoutMarkup } from '../lib/customerPrice.js';
 import { PARTNER_ORDER_SELECT, ACTIVE_PARTNER_FILTER, readPartnerQueueDigest, actionablePartnerOrders, partnerOrderError } from '../partner/orders.js';
 import { validateStoreFields } from '../stores/validation.js';
 import { requireStoreAccess } from '../stores/access.js';
@@ -469,14 +470,14 @@ partnerRouter.get('/stats/today', async (req: AuthedRequest, res, next) => {
 
     const { data: deliveredToday, error: deliveredErr } = await supabase
       .from('orders')
-      .select('item_total, commission_amount')
+      .select('item_total, store_item_total, commission_amount')
       .eq('store_id', storeId)
       .eq('status', 'delivered')
       .gte('delivered_at', start.toISOString())
       .lt('delivered_at', end.toISOString());
     if (deliveredErr) throw deliveredErr;
 
-    const earningToday = round2((deliveredToday ?? []).reduce((sum, o) => sum + (o.item_total - o.commission_amount), 0));
+    const earningToday = round2((deliveredToday ?? []).reduce((sum, o) => sum + (storeItemTotal(o) - o.commission_amount), 0));
 
     res.json({ ordersToday, pendingToday, earningToday });
   } catch (err) {
@@ -506,7 +507,7 @@ partnerRouter.get('/orders/transitions', async (req: AuthedRequest, res, next) =
       .or(actionablePartnerOrders).eq('checkout_payment_rejected', false).limit(100);
     if (error) throw error;
     res.set('Cache-Control', 'private, no-store');
-    res.json(data ?? []);
+    res.json((data ?? []).map(toStoreOrder));
   } catch (error) { next(error); }
 });
 
@@ -521,7 +522,7 @@ partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
     if (search.length > 80 || (req.query.search !== undefined && typeof req.query.search !== 'string')) throw new AppError(400, 'INVALID_SEARCH', 'Search must be at most 80 characters.');
     if (status && !['placed', 'packed', 'out_for_delivery', 'delivered', 'cancelled', 'failed'].includes(status)) throw new AppError(400, 'INVALID_STATUS', 'Invalid order status.');
     const page = readPage(req, `partner-orders:${storeId}:${req.query.view ?? "history"}:${search}:${status}`);
-    const historySelect = 'id,order_number,status,total,placed_at' as const;
+    const historySelect = 'id,order_number,status,total,store_item_total,placed_at' as const;
     const projection: typeof historySelect | typeof PARTNER_ORDER_SELECT = req.query.summary === '1' ? historySelect : PARTNER_ORDER_SELECT;
     let query = supabase.from('orders')
       .select(projection)
@@ -540,7 +541,7 @@ partnerRouter.get('/orders', async (req: AuthedRequest, res, next) => {
     const { data, error } = await query.order('placed_at', { ascending: false }).order('id', { ascending: false }).limit(page.limit + 1)
       .overrideTypes<Array<{ id: string; placed_at: string } & Record<string, unknown>>, { merge: false }>();
     if (error) throw error;
-    sendPage(res, data ?? [], page, 'placed_at');
+    sendPage(res, (data ?? []).map(toStoreOrder), page, 'placed_at');
   } catch (err) {
     next(err);
   }
@@ -555,7 +556,7 @@ partnerRouter.get('/orders/:id', async (req: AuthedRequest, res, next) => {
       .or(actionablePartnerOrders).eq('checkout_payment_rejected', false).maybeSingle();
     if (error) throw error;
     if (!data) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found for this store.');
-    res.json(data);
+    res.json(toStoreOrder(data));
   } catch (error) { next(error); }
 });
 
@@ -569,7 +570,7 @@ partnerRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) =
     const { data, error: readError } = await supabase.from('orders').select(PARTNER_ORDER_SELECT)
       .eq('store_id', storeId).eq('id', req.params.id).single();
     if (readError) throw readError;
-    res.json(data);
+    res.json(toStoreOrder(data));
   } catch (error) { next(error); }
 });
 
@@ -708,7 +709,7 @@ partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
       .single();
     if (refetchError) throw refetchError;
 
-    res.status(201).json(data);
+    res.status(201).json(withoutMarkup(data));
   } catch (err) {
     next(asValidationError(err));
   }
@@ -755,7 +756,7 @@ partnerRouter.patch('/products/:id', async (req: AuthedRequest, res, next) => {
       .single();
     if (refetchError) throw refetchError;
 
-    res.json(data);
+    res.json(withoutMarkup(data));
   } catch (err) {
     next(asValidationError(err));
   }
@@ -858,7 +859,7 @@ partnerRouter.get('/payouts/:id/orders', async (req: AuthedRequest, res, next) =
     const page = readPage(req, `payout-orders:${storeId}:${payout.id}`);
     let query = supabase
       .from('orders')
-      .select('id, order_number, item_total, commission_amount, delivered_at')
+      .select('id, order_number, item_total, store_item_total, commission_amount, delivered_at')
       .eq('store_id', storeId)
       .eq('status', 'delivered')
       .gte('delivered_at', `${payout.week_start}T00:00:00+05:30`)
@@ -872,11 +873,11 @@ partnerRouter.get('/payouts/:id/orders', async (req: AuthedRequest, res, next) =
     if (countError) throw countError;
     sendPage(res, (orders ?? []).map(o => ({
       id: o.id, orderNumber: o.order_number, deliveredAt: o.delivered_at,
-      grossAmount: o.item_total, commissionAmount: o.commission_amount,
-      netAmount: o.item_total - o.commission_amount,
+      grossAmount: storeItemTotal(o), commissionAmount: o.commission_amount,
+      netAmount: storeItemTotal(o) - o.commission_amount,
       // The rate this order was actually charged at (rates can change, so
       // this comes from the order's own amounts, not today's rate).
-      commissionRate: Number(o.item_total) > 0 ? Math.round((Number(o.commission_amount) / Number(o.item_total)) * 10000) / 10000 : 0,
+      commissionRate: storeItemTotal(o) > 0 ? Math.round((Number(o.commission_amount) / storeItemTotal(o)) * 10000) / 10000 : 0,
     })), page, 'deliveredAt', { summary: { netTotal: Number(payout.net_payout), orderCount: Number(counts?.[0]?.order_count ?? 0) } });
 
   } catch (err) {

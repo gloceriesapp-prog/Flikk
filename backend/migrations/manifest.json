@@ -632,6 +632,10 @@
     {
       "file": "20261104140000_catalogue_tree.sql",
       "sha256": "b96980acf8f168d300b90b23e72d298324e6d747fc5540c729d1aa7ca2600ce0"
+    },
+    {
+      "file": "20261104160000_platform_markup.sql",
+      "sha256": "3d52323f5c5ba256d4451a40deca45adc0af24f38b319eb8e36ee11977ef005e"
     }
   ]
 }

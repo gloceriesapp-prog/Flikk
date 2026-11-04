@@ -8,9 +8,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
-import { catalogueErrorStatus, resolveCatalogueCategory, saveCatalogueProduct, saveProductExtras } from '@/lib/catalogueSave';
+import { catalogueErrorStatus, resolveCatalogueCategory, saveCatalogueProduct, saveProductExtras, saveVariantMarkups } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
-import { toCutOptions, toExtraImageUrls, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
+import { toCutOptions, toExtraImageUrls, toVariantMarkups, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[id]'>) {
   const { denied } = await requireAdmin();
@@ -33,6 +33,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[
     const extras = { ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input) };
     await saveCatalogueProduct(id, { ...toProductRow(input), pending_image_url: null }, toVariantPayload(input.variants));
     await saveProductExtras(id, extras);
+    await saveVariantMarkups(id, toVariantMarkups(input.variants));
 
     const { data, error: refetchError } = await supabaseAdmin.from('products').select(PRODUCT_SELECT).eq('id', id).single();
     if (refetchError) throw refetchError;

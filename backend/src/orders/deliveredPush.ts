@@ -3,7 +3,7 @@ import { supabase } from '../db/supabase.js';
 import { round2 } from '../lib/pricing.js';
 import { embeddedPushToken, sendPushNotification } from '../lib/pushNotifications.js';
 
-interface DeliveredLeg { id: string; store_id: string; item_total: unknown; commission_amount: unknown }
+interface DeliveredLeg { id: string; store_id: string; item_total: unknown; store_item_total?: unknown; commission_amount: unknown }
 
 // Real earning-transparency push — the store's revenue is never written to
 // any ledger before delivery (weeklyPayouts.ts's own computeWeeklyPayouts
@@ -18,17 +18,18 @@ export async function notifyStoresOfDelivery(
   delivered: Record<string, unknown>,
 ): Promise<void> {
   try {
-    let legs: DeliveredLeg[] = [{ id: order.id, store_id: order.store_id, item_total: delivered.item_total, commission_amount: delivered.commission_amount }];
+    let legs: DeliveredLeg[] = [{ id: order.id, store_id: order.store_id, item_total: delivered.item_total, store_item_total: delivered.store_item_total, commission_amount: delivered.commission_amount }];
     if (order.trip_id) {
       const { data, error } = await supabase
         .from('orders')
-        .select('id, store_id, item_total, commission_amount')
+        .select('id, store_id, item_total, store_item_total, commission_amount')
         .eq('trip_id', order.trip_id)
         .eq('status', 'delivered');
       if (!error && data?.length) legs = data as DeliveredLeg[];
     }
     await Promise.all(legs.map(async (leg) => {
-      const netEarned = round2(Number(leg.item_total) - Number(leg.commission_amount));
+      // The store's own amount (store prices), not what the customer paid.
+      const netEarned = round2(Number(leg.store_item_total ?? leg.item_total) - Number(leg.commission_amount));
       const { data: storeRow } = await supabase
         .from('stores')
         .select('users!owner_user_id(expo_push_token)')

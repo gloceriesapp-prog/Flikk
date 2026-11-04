@@ -472,6 +472,9 @@ export interface ProductVariant {
   // stock_quantity). Checkout only sells counted packs, so Add/Edit require
   // it; undefined = never counted.
   stockQuantity?: number;
+  // Gloceries' extra in rupees on top of `price` (the store price). Admin
+  // only; customers pay price + this, capped at MRP (customerUnitPrice).
+  platformMarkup?: number;
 }
 
 // What AddProductModal actually collects and POSTs to /api/products —
