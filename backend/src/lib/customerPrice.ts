@@ -39,8 +39,9 @@ function customerProduct<T extends PricedProduct>(product: T): T {
     price: customerUnitPrice(Number(variant.price), Number(platform_markup ?? 0), variant.original_price),
   }));
   const main = variants.find((v) => v.is_default) ?? variants[0];
-  const { waive_commission: _waived, ...rest } = product as T & { waive_commission?: unknown };
-  return { ...rest, product_variants: variants, ...(main ? { price: main.price, original_price: main.original_price } : {}) } as unknown as T;
+  const shown = { ...product, product_variants: variants, ...(main ? { price: main.price, original_price: main.original_price } : {}) } as unknown as Record<string, unknown>;
+  delete shown.waive_commission;
+  return shown as T;
 }
 
 // Product rows, or rows that embed one under `products` (wishlist, festival
