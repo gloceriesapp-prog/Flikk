@@ -7,7 +7,11 @@
 // sheet); only a horizontal drag is taken by the pager.
 
 import { memo, useState } from 'react';
-import { FlatList, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+// Gesture-handler's FlatList: on Android a plain nested horizontal list lost
+// its swipe to the surrounding scroll view (detail sheet, product rows), so
+// photos could not be slid; this one claims the horizontal drag.
+import { FlatList } from 'react-native-gesture-handler';
 import { AppImage as Image } from './AppImage';
 import { PLACEHOLDER_IMAGE_URI } from '../theme/placeholderImage';
 
