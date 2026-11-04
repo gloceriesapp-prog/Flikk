@@ -5,6 +5,7 @@
 // separate from Cancel/Save) rather than a swipe action in the list — this
 // dashboard has no swipe-action convention anywhere else.
 
+import { createPortal } from 'react-dom';
 import { useState } from 'react';
 import { Trash2, X } from '@/components/icons';
 import type { Category, CategorySection } from '@/lib/types';
@@ -54,10 +55,12 @@ export function EditCategoryModal({
     }
   }
 
-  return (
+  // Portalled to <body> so the overlay covers the whole screen, not just the
+  // transformed page area (same as AddProductModal).
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="flex w-full max-w-sm flex-col overflow-hidden card"
+        className="flex max-h-[90vh] w-full max-w-sm flex-col overflow-y-auto card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
@@ -128,6 +131,7 @@ export function EditCategoryModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
