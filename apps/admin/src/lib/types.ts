@@ -391,6 +391,8 @@ export interface Product {
   bulkMinKg?: number | null;
   // Charge the store no commission on this product (products.waive_commission).
   waiveCommission?: boolean;
+  // Card shows the price per kg / L / piece (products.show_unit_price).
+  showUnitPrice?: boolean;
   // Pastel card background extracted from imageUrl at upload time
   // (lib/bgColor.ts, app/api/upload), or a category tint / neutral mist
   // when extraction wasn't possible — see lib/productValidation.ts

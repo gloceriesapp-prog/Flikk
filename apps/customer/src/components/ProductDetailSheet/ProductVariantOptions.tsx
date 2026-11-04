@@ -10,8 +10,8 @@
 // Text-only cards (the reference's other variant, no per-card image) —
 // per an explicit ask.
 //
-// Each card shows its own real price/discount/per-100 line (getPerUnitPriceLabel
-// — same util ProductCardView.tsx uses) — selecting a card is NOT cosmetic
+// Each card shows its own real price/discount/per-kg line (unitPriceLabel,
+// api/products.ts) — selecting a card is NOT cosmetic
 // here, unlike the old sizeOptions chip row: the caller (ProductDetailInfo)
 // threads the selected variant's id/price down to ProductDetailFooter so
 // "250 g" and "1 kg" of the same product genuinely add to the cart as two
@@ -81,11 +81,9 @@ export function ProductVariantOptions({ variants, selectedId, onSelect }: Props)
                 )}
               </View>
 
-              {/* {perUnitLabel && (
-      <Text className="text-[10px] font-medium text-ink/40">
-        {perUnitLabel}
-      </Text>
-    )} */}
+              {variant.unitPriceLabel && (
+                <Text className="text-[10px] font-medium text-ink/40">{variant.unitPriceLabel}</Text>
+              )}
             </Pressable>
           );
         })}

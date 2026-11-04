@@ -36,6 +36,9 @@ export interface Product {
   // customer picks a cut size, and bulkMinKg (if set) is the cart weight of
   // this product from which the order becomes a bulk order.
   cutOptions?: boolean;
+  // "₹63.6/kg" for the default size, set only when the admin turned it on
+  // for this product (products.show_unit_price; api/products.ts).
+  unitPriceLabel?: string;
   bulkMinKg?: number;
   // Optional, defaults to true in ProductCard — most of a kirana grocery
   // catalog is veg by default, only fish/meat entries need to set this
@@ -91,7 +94,7 @@ export interface Product {
   // specific size as its own cart line (so "250 g" and "1 kg" of the same
   // product can both sit in the cart at their own real prices instead of
   // colliding under one product id).
-  variants?: { id: string; isAvailable?: boolean; unavailableReason?: Product['unavailableReason']; label: string; price: number; originalPrice?: number }[];
+  variants?: { id: string; isAvailable?: boolean; unavailableReason?: Product['unavailableReason']; label: string; price: number; originalPrice?: number; unitPriceLabel?: string }[];
   // Regulatory/seller info block on ProductDetailSheet (SellerDetailsCard) —
   // FSSAI license display is a real requirement for Indian grocery/food
   // listings, not decorative. Optional since most placeholder data doesn't

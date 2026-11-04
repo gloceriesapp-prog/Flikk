@@ -51,6 +51,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     extraImageUrls: [] as string[],
     cutOptionsEnabled: false,
     waiveCommission: false,
+    showUnitPrice: false,
     bulkMinKg: null as number | null,
     bgColor: undefined as string | undefined,
     subCategoryId: undefined as string | undefined,
@@ -125,6 +126,7 @@ export function AddProductModal({
         extraImageUrls: draft.extraImageUrls,
         cutOptionsEnabled: draft.cutOptionsEnabled,
         waiveCommission: draft.waiveCommission,
+        showUnitPrice: draft.showUnitPrice,
         bulkMinKg: draft.bulkMinKg,
         bgColor: draft.bgColor,
         subCategoryId: draft.subCategoryId,
@@ -229,6 +231,14 @@ export function AddProductModal({
               No commission from the store on this product (we earn only our extra)
             </label>
           )}
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={draft.showUnitPrice ?? false}
+              onChange={(e) => setDraft({ ...draft, showUnitPrice: e.target.checked })}
+            />
+            Show price per kg / L / piece on the card (e.g. ₹63.6/kg)
+          </label>
 
           {/* Same field the customer app's ProductCard reads — see
               Product's own note in lib/types.ts. Only shown for

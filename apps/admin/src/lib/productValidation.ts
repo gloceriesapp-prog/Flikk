@@ -42,6 +42,8 @@ export interface ProductWriteInput {
   bulkMinKg?: number | null;
   // No commission on this product. Absent leaves it unchanged.
   waiveCommission?: boolean | null;
+  // Price per kg / L / piece on the card. Absent leaves it unchanged.
+  showUnitPrice?: boolean | null;
   // Extracted from imageUrl at upload time (app/api/upload -> lib/bgColor.ts),
   // null when extraction failed or no photo was set — toProductRow below
   // is where the category-tint/mist fallback steps of that chain run.
@@ -163,6 +165,12 @@ export function toCommissionWaiver(input: Pick<ProductWriteInput, 'waiveCommissi
   if (input.waiveCommission == null) return undefined;
   if (typeof input.waiveCommission !== 'boolean') throw new Error('waiveCommission must be true or false.');
   return { waive_commission: input.waiveCommission };
+}
+
+export function toUnitPriceFlag(input: Pick<ProductWriteInput, 'showUnitPrice'>): { show_unit_price: boolean } | undefined {
+  if (input.showUnitPrice == null) return undefined;
+  if (typeof input.showUnitPrice !== 'boolean') throw new Error('showUnitPrice must be true or false.');
+  return { show_unit_price: input.showUnitPrice };
 }
 
 export function formatVariantUnit(variant: VariantInput): string {
