@@ -67,6 +67,8 @@ export function ProductVariantsEditor({
 
   return (
     <div className="flex flex-col gap-3">
+      <datalist id="size-presets-g">{GRAM_PRESETS.map((n) => <option key={n} value={n} />)}</datalist>
+      <datalist id="size-presets-ml">{ML_PRESETS.map((n) => <option key={n} value={n} />)}</datalist>
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">
         Sizes, pricing &amp; stock {variants.length > 1 && <span className="normal-case text-muted/70">— first size shown on the card</span>}
       </p>
@@ -86,29 +88,18 @@ export function ProductVariantsEditor({
             ))}
           </select>
 
-          {hasFixedPresets(variant.unitType) ? (
-            <select
-              value={variant.quantity}
-              onChange={(e) => updateVariant(index, { quantity: Number(e.target.value) })}
-              className="w-24 rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
-              aria-label={`Size ${index + 1} quantity`}
-            >
-              {(variant.unitType === 'g' ? GRAM_PRESETS : ML_PRESETS).map((preset) => (
-                <option key={preset} value={preset}>
-                  {preset} {variant.unitType}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="number"
-              value={variant.quantity || ''}
-              onChange={(e) => updateVariant(index, { quantity: Number(e.target.value) })}
-              placeholder={variant.unitType === 'pc' ? 'Count' : 'Custom qty'}
-              className="w-24 rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
-              aria-label={`Size ${index + 1} quantity`}
-            />
-          )}
+          {/* Any quantity can be typed; g/ml offer the common pack sizes as suggestions. */}
+          <input
+            type="number"
+            min={0}
+            step="any"
+            list={hasFixedPresets(variant.unitType) ? `size-presets-${variant.unitType}` : undefined}
+            value={variant.quantity || ''}
+            onChange={(e) => updateVariant(index, { quantity: Number(e.target.value) })}
+            placeholder={variant.unitType === 'pc' ? 'Count' : `Qty (${variant.unitType})`}
+            className="w-24 rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
+            aria-label={`Size ${index + 1} quantity`}
+          />
 
           <input
             type="number"
