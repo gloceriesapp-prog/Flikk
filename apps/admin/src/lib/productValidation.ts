@@ -38,6 +38,8 @@ export interface ProductWriteInput {
   // Chicken cut sizes + bulk threshold (kg). Absent leaves them unchanged.
   cutOptionsEnabled?: boolean | null;
   bulkMinKg?: number | null;
+  // Price per kg / L / piece on the card. Absent leaves it unchanged.
+  showUnitPrice?: boolean | null;
   // Extracted from imageUrl at upload time (app/api/upload -> lib/bgColor.ts),
   // null when extraction failed or no photo was set — toProductRow below
   // is where the category-tint/mist fallback steps of that chain run.
@@ -129,6 +131,12 @@ export function toCutOptions(input: Pick<ProductWriteInput, 'category' | 'cutOpt
     throw new Error(`Bulk order from (kg) must be more than 0 and at most ${MAX_BULK_MIN_KG}.`);
   }
   return { cut_options_enabled: true, bulk_min_kg: kg == null ? null : Math.round(kg * 100) / 100 };
+}
+
+export function toUnitPriceFlag(input: Pick<ProductWriteInput, 'showUnitPrice'>): { show_unit_price: boolean } | undefined {
+  if (input.showUnitPrice == null) return undefined;
+  if (typeof input.showUnitPrice !== 'boolean') throw new Error('showUnitPrice must be true or false.');
+  return { show_unit_price: input.showUnitPrice };
 }
 
 export function formatVariantUnit(variant: VariantInput): string {

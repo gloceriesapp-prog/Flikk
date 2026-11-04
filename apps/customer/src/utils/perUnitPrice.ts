@@ -1,24 +1,15 @@
-// Computes a real "₹X/100 g" (or "/100 ml") line from a product's own
-// weight string + price — never a hardcoded/fabricated per-unit number.
-// Only weight/volume units (g, kg, ml, l) get a per-100 line; count-based
-// units (pcs, dozen, pack) have no meaningful "per 100" equivalent, so
-// this returns null for those rather than showing a nonsensical
-// "₹X/100 pcs" — that's the "proper category" split this was asked for.
+// "₹63.6/kg" — a pack's price per kg (g/kg), per L (ml/l) or per piece,
+// computed from its real quantity and price. Shown only on products the
+// admin turned it on for (products.show_unit_price); see mapApiProduct.
 
-const WEIGHT_VOLUME_PATTERN = /^([\d.]+)\s*(kg|g|ml|l|litre|liter)s?\.?$/i;
+export type PackUnit = 'g' | 'kg' | 'ml' | 'l' | 'pc';
 
-export function getPerUnitPriceLabel(weight: string, price: number): string | null {
-  const match = weight.trim().match(WEIGHT_VOLUME_PATTERN);
-  if (!match) return null;
-
-  const quantity = parseFloat(match[1]);
-  if (!quantity || quantity <= 0) return null;
-
-  const unit = match[2].toLowerCase();
-  const isWeight = unit === 'g' || unit === 'kg';
-  const baseQuantity = unit === 'kg' ? quantity * 1000 : unit === 'l' || unit === 'litre' || unit === 'liter' ? quantity * 1000 : quantity;
-
-  const perHundred = (price / baseQuantity) * 100;
-  const unitLabel = isWeight ? '100 g' : '100 ml';
-  return `₹${perHundred.toFixed(1)}/${unitLabel}`;
+export function getPerUnitPriceLabel(unit: PackUnit, quantity: number, price: number): string | null {
+  if (!(quantity > 0) || !(price > 0)) return null;
+  // A single piece's price already is the per-piece price.
+  if (unit === 'pc' && quantity === 1) return null;
+  const base = unit === 'g' || unit === 'ml' ? quantity / 1000 : quantity;
+  const per = Math.round((price / base) * 10) / 10;
+  const label = unit === 'g' || unit === 'kg' ? 'kg' : unit === 'pc' ? 'pc' : 'L';
+  return `₹${Number.isInteger(per) ? per : per.toFixed(1)}/${label}`;
 }

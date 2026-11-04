@@ -128,6 +128,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
                 </View>
               </>
             )}
+            {product.unitPriceLabel && <Text className="text-xs font-medium text-ink/40">{product.unitPriceLabel}</Text>}
           </View>
         )}
 

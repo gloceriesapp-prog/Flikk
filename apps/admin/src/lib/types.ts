@@ -389,6 +389,8 @@ export interface Product {
   // confirms (products.cut_options_enabled / bulk_min_kg).
   cutOptionsEnabled?: boolean;
   bulkMinKg?: number | null;
+  // Card shows the price per kg / L / piece (products.show_unit_price).
+  showUnitPrice?: boolean;
   // Pastel card background extracted from imageUrl at upload time
   // (lib/bgColor.ts, app/api/upload), or a category tint / neutral mist
   // when extraction wasn't possible — see lib/productValidation.ts

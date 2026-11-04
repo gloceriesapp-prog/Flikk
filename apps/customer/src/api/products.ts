@@ -11,6 +11,7 @@
 // mapping (no premature sharing).
 
 import type { Product } from '../screens/home/products/types';
+import { getPerUnitPriceLabel } from '../utils/perUnitPrice';
 
 export interface ApiVariant {
   id: string;
@@ -43,6 +44,7 @@ export interface ApiProduct {
   bg_color: string | null;
   cut_options_enabled?: boolean | null;
   bulk_min_kg?: number | string | null;
+  show_unit_price?: boolean | null;
   is_veg: boolean;
   freshness_tag: string | null;
   product_variants: ApiVariant[];
@@ -99,6 +101,7 @@ export function mapApiProduct(row: ApiProduct): Product {
   const defaultVariant = variants.find(v => v.stock_quantity !== 0 && !(variants.length > 1 && v.stock_quantity == null)) ?? variants[0];
   const store = row.stores;
   const unavailableReason = inventoryIssue(row, defaultVariant);
+  const unitPrice = (v: ApiVariant | undefined) => (row.show_unit_price && v ? getPerUnitPriceLabel(v.unit_type, Number(v.quantity), Number(v.price)) ?? undefined : undefined);
 
   return {
     storeOpening: store ? { isActive: store.is_active !== false, openTime: store.open_time, closeTime: store.close_time, availabilityOverride: store.availability_override, availabilityOverrideUntil: store.availability_override_until } : undefined,
@@ -110,6 +113,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     price: defaultVariant?.price ?? row.price,
     originalPrice: (defaultVariant ? defaultVariant.original_price : row.original_price) ?? undefined,
     defaultVariantId: defaultVariant?.id,
+    unitPriceLabel: unitPrice(defaultVariant),
     // Not tracked on real products yet — no rating system exists
     // (CLAUDE.md's own out-of-scope list has no room for one either), so
     // these stay unused placeholders; ProductCardView never renders them.
@@ -132,7 +136,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     // Product object identical to how it looked before this field existed.
     variants:
       variants.length > 1
-        ? variants.map((v) => ({ isAvailable: inventoryIssue(row, v) === undefined, unavailableReason: inventoryIssue(row, v), id: v.id, label: formatVariant(v), price: v.price, originalPrice: v.original_price ?? undefined }))
+        ? variants.map((v) => ({ isAvailable: inventoryIssue(row, v) === undefined, unavailableReason: inventoryIssue(row, v), id: v.id, label: formatVariant(v), price: v.price, originalPrice: v.original_price ?? undefined, unitPriceLabel: unitPrice(v) }))
         : undefined,
     description: row.description ?? undefined,
     categoryLabel: row.category,
