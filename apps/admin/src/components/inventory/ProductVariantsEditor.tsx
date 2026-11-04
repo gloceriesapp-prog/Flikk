@@ -45,8 +45,12 @@ export function ProductVariantsEditor({
   // editable input afterward (see ProductVariantsEditor's own file note).
   function updatePrice(index: number, price: number) {
     const variant = variants[index]!;
-    const suggestion = variant.originalPrice == null ? (suggestedMrp(category, price) ?? undefined) : undefined;
-    updateVariant(index, { price, ...(suggestion !== undefined ? { originalPrice: suggestion } : {}) });
+    // The suggested MRP follows the price as it is typed (3 -> 30 -> 300)
+    // until the MRP is edited by hand; it used to stick at the first digit's
+    // suggestion, which then capped the customer price and our extra.
+    const untouched = variant.originalPrice == null || variant.originalPrice === suggestedMrp(category, variant.price);
+    const suggestion = untouched ? suggestedMrp(category, price) ?? undefined : variant.originalPrice;
+    updateVariant(index, { price, originalPrice: suggestion });
   }
 
   function changeUnitType(index: number, unitType: UnitType) {
