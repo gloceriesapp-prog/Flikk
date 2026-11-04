@@ -92,4 +92,13 @@ describe('checkout with a markup', () => {
     expect(storeTotal - commission).toBe(564);
     expect(leg!.itemTotal - (storeTotal - commission)).toBe(66);
   });
+  it('charges no commission on a product the admin waived; we keep only the extra', () => {
+    const lines = priceCheckoutItems(parseCheckoutItems([{ product_id: productId, variant_id: packId, quantity: 2 }]), [product]);
+    expect(storeCommissions(lines, new Map(), rules, new Set([productId])).get('shop')).toBe(0);
+    expect(storeCommissions(lines, new Map(), rules, new Set(['other'])).get('shop')).toBe(36);
+  });
+  it('hides the commission flag from customers', () => {
+    const [shown] = applyCustomerPrices([{ id: productId, waive_commission: true, product_variants: [{ price: 10, original_price: null, is_default: true, platform_markup: 1 }] }]);
+    expect(shown).not.toHaveProperty('waive_commission');
+  });
 });

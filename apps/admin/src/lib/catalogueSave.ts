@@ -42,6 +42,7 @@ export interface ProductExtras {
   extra_image_urls?: string[];
   cut_options_enabled?: boolean;
   bulk_min_kg?: number | null;
+  waive_commission?: boolean;
 }
 export async function saveProductExtras(productId: string, extras: ProductExtras): Promise<void> {
   if (Object.keys(extras).length === 0) return;

@@ -40,6 +40,8 @@ export interface ProductWriteInput {
   // Chicken cut sizes + bulk threshold (kg). Absent leaves them unchanged.
   cutOptionsEnabled?: boolean | null;
   bulkMinKg?: number | null;
+  // No commission on this product. Absent leaves it unchanged.
+  waiveCommission?: boolean | null;
   // Extracted from imageUrl at upload time (app/api/upload -> lib/bgColor.ts),
   // null when extraction failed or no photo was set — toProductRow below
   // is where the category-tint/mist fallback steps of that chain run.
@@ -155,6 +157,12 @@ export function toCutOptions(input: Pick<ProductWriteInput, 'category' | 'cutOpt
     throw new Error(`Bulk order from (kg) must be more than 0 and at most ${MAX_BULK_MIN_KG}.`);
   }
   return { cut_options_enabled: true, bulk_min_kg: kg == null ? null : Math.round(kg * 100) / 100 };
+}
+
+export function toCommissionWaiver(input: Pick<ProductWriteInput, 'waiveCommission'>): { waive_commission: boolean } | undefined {
+  if (input.waiveCommission == null) return undefined;
+  if (typeof input.waiveCommission !== 'boolean') throw new Error('waiveCommission must be true or false.');
+  return { waive_commission: input.waiveCommission };
 }
 
 export function formatVariantUnit(variant: VariantInput): string {

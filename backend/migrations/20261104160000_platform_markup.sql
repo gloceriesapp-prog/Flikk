@@ -18,6 +18,8 @@
 --    amount to orders.store_item_total.
 -- 4. compute_store_payouts and admin_money_summary pay stores on the store
 --    total; admin_money_summary reports the markup and adds it to net.
+-- 5. products.waive_commission: admin switch to charge the store no
+--    commission at all on a product (usually one carrying our extra).
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='60s';
@@ -27,6 +29,7 @@ ALTER TABLE public.product_variants DROP CONSTRAINT IF EXISTS product_variants_p
 ALTER TABLE public.product_variants ADD CONSTRAINT product_variants_platform_markup_check CHECK (platform_markup >= 0 AND platform_markup <= 100000);
 ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS store_unit_price_at_order numeric(10,2);
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS store_item_total numeric(10,2);
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS waive_commission boolean NOT NULL DEFAULT false;
 
 -- Same rule as backend/src/lib/customerPrice.ts customerUnitPrice().
 CREATE OR REPLACE FUNCTION public.customer_unit_price(p_store_price numeric, p_markup numeric, p_mrp numeric)
