@@ -19,10 +19,14 @@ interface Props {
 }
 
 const DOT = { card: { size: 5, active: 12, gap: 3 }, hero: { size: 6, active: 16, gap: 4 } } as const;
+// The card's frame is near-square, so 'cover' fills it cleanly. The hero is a
+// wide, short strip: 'cover' blew packshots up and cropped them, so it shows
+// the whole photo instead.
+const FIT = { card: 'cover', hero: 'contain' } as const;
 
 function ProductImageGalleryImpl({ images, variant = 'card' }: Props) {
   if (images.length <= 1) {
-    return <Image source={{ uri: images[0] || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />;
+    return <Image source={{ uri: images[0] || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode={FIT[variant]} />;
   }
   // Keyed by the list so a recycled list cell showing another product starts
   // again at its first photo instead of keeping the old scroll offset.
@@ -42,7 +46,7 @@ function Pager({ images, variant }: Required<Props>) {
   return (
     <View className="h-full w-full" onLayout={onLayout}>
       {width === 0 ? (
-        <Image source={{ uri: images[0] }} className="h-full w-full" resizeMode="cover" />
+        <Image source={{ uri: images[0] }} className="h-full w-full" resizeMode={FIT[variant]} />
       ) : (
         <FlatList
           data={images}
@@ -60,7 +64,7 @@ function Pager({ images, variant }: Required<Props>) {
           windowSize={3}
           getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
           renderItem={({ item }) => (
-            <Image source={{ uri: item }} style={{ width, height: '100%' }} resizeMode="cover" />
+            <Image source={{ uri: item }} style={{ width, height: '100%' }} resizeMode={FIT[variant]} />
           )}
         />
       )}
