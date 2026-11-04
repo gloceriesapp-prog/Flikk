@@ -57,13 +57,8 @@ export const UNIT_TYPE_OPTIONS: { value: UnitType; label: string }[] = [
   { value: 'pc', label: 'Pieces' },
 ];
 
-// g/ml are picked from a fixed preset — these are the real pack sizes an
-// Indian kirana store actually stocks (a 250 g dal packet, a 500 ml oil
-// pouch), not an arbitrary free number a store owner might fat-finger.
-// kg/l/pc are deliberately NOT a preset list of every whole number — a
-// store owner needs to enter genuinely custom quantities (2.5 kg of rice,
-// 1.5 L of oil, a dozen eggs), so those three stay free numeric input
-// instead, per an explicit ask not to enumerate "all kg" as fixed options.
+// Common kirana pack sizes, offered as suggestions on the g/ml quantity
+// field. Any positive quantity can still be typed (a 90 ml or 175 g pack).
 export const GRAM_PRESETS = [50, 100, 200, 250, 500, 750];
 export const ML_PRESETS = [100, 200, 250, 500, 750, 1000];
 
