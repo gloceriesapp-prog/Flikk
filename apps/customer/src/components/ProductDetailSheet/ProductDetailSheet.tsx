@@ -856,11 +856,9 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
             paddingBottom: FOOTER_SPACER + (fullScreen ? insets.bottom : 0) }}
         >
           <View className="relative h-80 w-full" style={{ backgroundColor: '#FAFAFA' }}>
-            {/* Full-bleed hero (per an explicit ask, ref #107): image fills
-                the entire frame edge-to-edge — 'cover', not the old
-                'contain'. Real photos may crop slightly at the edges; that's
-                the intended tradeoff for the full-occupy look. Clipped to the
-                card's rounded top corners by the card's own overflow:hidden. */}
+            {/* Hero photo shown whole ('contain', ProductImageGallery's hero
+                fit): 'cover' zoomed and cropped packshots in this wide frame.
+                Clipped to the card's rounded top corners by its overflow:hidden. */}
             <ProductImageGallery variant="hero" images={product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : [])} />
 
             {/* Rating badge, bottom-right on the hero (ref #107). Light pill
