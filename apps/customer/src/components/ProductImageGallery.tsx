@@ -1,5 +1,6 @@
 // A product's photos: one photo renders as a plain image; two or more become
-// a horizontal pager with one dot per photo (the active one widens). Used by
+// a horizontal pager with dots (card: up to 3 round dots; hero: one per
+// photo, the active one widens). Used by
 // the product card and the detail sheet's hero, so both read the same list
 // (Product.imageUrls, cover first — see api/products.ts).
 //
@@ -17,12 +18,15 @@ import { PLACEHOLDER_IMAGE_URI } from '../theme/placeholderImage';
 
 interface Props {
   images: readonly string[];
-  // 'card': small dots bottom-left, clear of the card's ADD button.
+  // 'card': up to 3 round dots bottom-left, clear of the card's ADD button.
   // 'hero': larger dots centered along the bottom.
   variant?: 'card' | 'hero';
 }
 
-const DOT = { card: { size: 5, active: 12, gap: 3 }, hero: { size: 6, active: 16, gap: 4 } } as const;
+const HERO_DOT = { size: 6, active: 16, gap: 4 } as const;
+// Card: round dots, at most 3 shown; the window slides with the photo.
+const CARD_DOTS_MAX = 3;
+const CARD_DOT = 6;
 // The card's frame is near-square, so 'cover' fills it cleanly. The hero is a
 // wide, short strip: 'cover' blew packshots up and cropped them, so it shows
 // the whole photo instead.
@@ -40,7 +44,6 @@ function ProductImageGalleryImpl({ images, variant = 'card' }: Props) {
 function Pager({ images, variant }: Required<Props>) {
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
-  const dot = DOT[variant];
 
   const onLayout = (event: LayoutChangeEvent) => setWidth(Math.round(event.nativeEvent.layout.width));
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -75,26 +78,56 @@ function Pager({ images, variant }: Required<Props>) {
 
       <View
         pointerEvents="none"
-        className={`absolute bottom-2 left-0 right-0 flex-row ${variant === 'card' ? 'justify-start pl-1.5' : 'justify-center'}`}
+        className={`absolute bottom-2 left-0 right-0 flex-row ${variant === 'card' ? 'justify-start pl-2' : 'justify-center'}`}
       >
-        <View
-          accessibilityLabel={`Photo ${index + 1} of ${images.length}`}
-          className="flex-row items-center rounded-full bg-white/80 px-1.5 py-1"
-          style={{ gap: dot.gap }}
-        >
-          {images.map((uri, i) => (
-            <View
-              key={`${i}:${uri}`}
-              style={{
-                height: dot.size,
-                width: i === index ? dot.active : dot.size,
-                borderRadius: dot.size / 2,
-                backgroundColor: i === index ? '#155dfc' : 'rgba(16,28,16,0.25)',
-              }}
-            />
-          ))}
-        </View>
+        {variant === 'card' ? (
+          <CardDots count={images.length} index={index} />
+        ) : (
+          <View
+            accessibilityLabel={`Photo ${index + 1} of ${images.length}`}
+            className="flex-row items-center rounded-full bg-white/80 px-1.5 py-1"
+            style={{ gap: HERO_DOT.gap }}
+          >
+            {images.map((uri, i) => (
+              <View
+                key={`${i}:${uri}`}
+                style={{
+                  height: HERO_DOT.size,
+                  width: i === index ? HERO_DOT.active : HERO_DOT.size,
+                  borderRadius: HERO_DOT.size / 2,
+                  backgroundColor: i === index ? '#155dfc' : 'rgba(16,28,16,0.25)',
+                }}
+              />
+            ))}
+          </View>
+        )}
       </View>
+    </View>
+  );
+}
+
+export function cardDotWindow(count: number, index: number): number[] {
+  const shown = Math.min(count, CARD_DOTS_MAX);
+  const start = Math.min(Math.max(0, index - 1), count - shown);
+  return Array.from({ length: shown }, (_, i) => start + i);
+}
+
+function CardDots({ count, index }: { count: number; index: number }) {
+  return (
+    <View accessibilityLabel={`Photo ${index + 1} of ${count}`} className="flex-row items-center" style={{ gap: 2 }}>
+      {cardDotWindow(count, index).map((i) => (
+        <View
+          key={i}
+          style={{
+            height: CARD_DOT,
+            width: CARD_DOT,
+            borderRadius: CARD_DOT / 2,
+            borderWidth: 1,
+            borderColor: 'rgba(16,28,16,0.35)',
+            backgroundColor: i === index ? 'rgba(16,28,16,0.55)' : '#FFFFFF',
+          }}
+        />
+      ))}
     </View>
   );
 }

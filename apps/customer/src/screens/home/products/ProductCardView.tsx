@@ -4,12 +4,9 @@ import { Pressable, Text, View } from 'react-native';
 import { ProductImageGallery } from '../../../components/ProductImageGallery';
 import { AppIcon } from '../../../components/AppIcon';
 import { RupeePrice } from '../../../components/RupeePrice';
-import { IconlyBookmark, IconlyBookmarkFilled } from '../../../components/icons/IconlyBookmark';
 import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
-import { colors } from '../../../theme/tokens';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
-import { useWishlistStore } from '../../../store/useWishlistStore';
 import { useProductAvailability } from './useProductAvailability';
 import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import type { Product } from './types';
@@ -21,7 +18,7 @@ interface Props {
   product: Product;
   widthClassName?: string;
   showDiscountBadge?: boolean;
-  // Festival-rail variant: no bookmark, ADD button is a bold + icon (not text).
+  // Festival-rail variant: ADD button is a bold + icon (not text).
   // Every other Home row leaves this off and keeps the full card.
   compact?: boolean;
   // Festival panel sits on a dark maroon bg — switch the background-less
@@ -60,8 +57,6 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
 
   const chips = sizeOptions && sizeOptions.length > 0 ? sizeOptions : [weight];
   const [selectedSize] = useState(chips[0]);
-  const isBookmarked = useWishlistStore((state) => state.isWishlisted(id));
-  const toggleWishlist = useWishlistStore((state) => state.toggle);
 
   const cutSize = quickAddCut(product);
   const lineId = cartLineId(id, product.defaultVariantId, cutSize);
@@ -82,20 +77,6 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
           <View className="absolute left-0 top-2 rounded-r-full bg-gold py-0.5 pl-1.5 pr-2">
             <Text className="text-[9px] font-semibold text-ink">{freshnessTag}</Text>
           </View>
-        )}
-
-        {compact ? null : (
-          <Pressable accessibilityRole="button" accessibilityLabel={isBookmarked ? `Remove ${name} from wishlist` : `Save ${name} to wishlist`}
-            onPress={() => toggleWishlist(product)}
-            hitSlop={8}
-            className="absolute right-2 top-2 h-7 w-7 items-center justify-center"
-          >
-            {isBookmarked ? (
-              <IconlyBookmarkFilled size={22} color={colors.danger} />
-            ) : (
-              <IconlyBookmark size={22} color="#1F2937" />
-            )}
-          </Pressable>
         )}
 
         {/* ADD / stepper — flush to the image's bottom-right corner (no inset,
@@ -206,8 +187,8 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
 // NativeWind class processing + icons). Default shallow compare is correct —
 // every prop is a primitive or a referentially-stable value: `product` keeps
 // its identity across browse-clock ticks (the list array isn't rebuilt), and
-// `onPress` is a useCallback in ProductCard. The per-card cart/wishlist store
-// subscriptions still live inside, so quantity/bookmark changes re-render as
+// `onPress` is a useCallback in ProductCard. The per-card cart store
+// subscriptions still live inside, so quantity changes re-render as
 // before; only the shared clock + delivery-settings subscriptions were lifted
 // out to the section.
 export const ProductCardView = memo(ProductCardViewImpl);
