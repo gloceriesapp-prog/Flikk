@@ -13,6 +13,8 @@ export interface OrderDetailItem {
   cutSize: 'small' | 'medium' | 'large' | null;
   // Flavour the customer chose (order_items.option_name_at_order).
   flavour: string | null;
+  // Chilled / room temperature the customer chose (order_items.serving).
+  serving: 'chilled' | 'room_temperature' | null;
 }
 
 export interface OrderDetailLeg {

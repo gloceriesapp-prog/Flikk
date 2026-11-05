@@ -18,6 +18,8 @@ export interface ApiOrderItem {
   cut_size?: 'small' | 'medium' | 'large' | null;
   // Flavour the customer picked (product_options), kept on the line.
   option_name_at_order?: string | null;
+  // Chilled / room temperature the customer chose.
+  serving?: 'chilled' | 'room_temperature' | null;
   products: { name: string; unit: string; image_url: string | null } | null;
 }
 

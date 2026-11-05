@@ -14,7 +14,7 @@ export async function buildCheckoutSnapshot(input: unknown, customerId: string, 
   // Creation rechecks the signed snapshot and the database trigger checks
   // prices/pack labels again inside the order transaction.
   if (promoCode != null && typeof promoCode !== 'string') throw new AppError(400, 'INVALID_PROMO', 'Choose a valid promo code.');
-  const inputItems = parseCheckoutItems(input).map((item) => ({ product_id: item.product_id, variant_id: item.variant_id, quantity: item.quantity, ...(item.cut_size ? { cut_size: item.cut_size } : {}), ...(item.option_id ? { option_id: item.option_id } : {}) }));
+  const inputItems = parseCheckoutItems(input).map((item) => ({ product_id: item.product_id, variant_id: item.variant_id, quantity: item.quantity, ...(item.cut_size ? { cut_size: item.cut_size } : {}), ...(item.option_id ? { option_id: item.option_id } : {}), ...(item.serving ? { serving: item.serving } : {}) }));
   const { address, products, deliveryDistanceKm } = await requireCheckoutEligibilitySnapshot(inputItems, customerId, addressId);
   const items = await loadCheckoutItems(inputItems, storeId, products);
   const itemTotal = calcItemTotal(items.map((item) => ({ unitPrice: item.unit_price_at_order, quantity: item.quantity })));

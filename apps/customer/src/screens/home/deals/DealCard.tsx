@@ -1,5 +1,5 @@
 import { useProductAvailability } from '../products/useProductAvailability';
-import { cartLineId, quickAddCut } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
 import { useState } from 'react';
 
 import {
@@ -115,8 +115,8 @@ export function DealCard({
   ========================================================== */
 
   function handleAdd() {
-    // A product with flavours opens its detail view to pick one.
-    if (product.options?.length) {
+    // Flavours / chilled-or-not: open the detail view to pick.
+    if (mustPickInDetail(product)) {
       setIsDetailOpen(true);
       return;
     }

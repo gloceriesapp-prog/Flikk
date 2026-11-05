@@ -1,4 +1,4 @@
-import type { CutSize } from '../store/cartIdentity';
+import type { CutSize, Serving } from '../store/cartIdentity';
 import { invalidatePurchaseHistory } from '../features/purchases/invalidateHistory';
 // Maps to POST /orders, GET /orders, GET /orders/:id (backend/src/routes/
 // orders.ts) — order creation (called from CheckoutScreen) and the real
@@ -19,6 +19,7 @@ export interface CreateOrderItem {
   quantity: number;
   cut_size?: CutSize;
   option_id?: string;
+  serving?: Serving;
 }
 
 export interface CreateOrderInput {
@@ -53,6 +54,7 @@ export interface ApiOrderItem {
   unit_at_order?: string | null;
   cut_size?: CutSize | null;
   option_name_at_order?: string | null;
+  serving?: Serving | null;
   variant_mrp_at_order?: number | null;
   // Checkout snapshot; absent/null for orders created before migration 060.
   unit_mrp_at_order?: number | null;

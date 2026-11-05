@@ -10,7 +10,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { catalogueErrorStatus, resolveCatalogueCategory, saveCatalogueProduct, saveProductExtras, saveProductOptions, saveVariantMarkups } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
-import { toCommissionWaiver, toCutOptions, toExtraImageUrls, toProductOptions, toUnitPriceFlag, toVariantMarkups, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
+import { toCommissionWaiver, toCutOptions, toExtraImageUrls, toProductOptions, toServingOptions, toUnitPriceFlag, toVariantMarkups, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
 export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[id]'>) {
   const { denied } = await requireAdmin();
@@ -32,7 +32,7 @@ export async function PATCH(request: Request, ctx: RouteContext<'/api/products/[
     const extraImageUrls = toExtraImageUrls(input);
     // Validated before anything is written.
     const options = toProductOptions(input);
-    const extras = { ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input), ...toCommissionWaiver(input), ...toUnitPriceFlag(input) };
+    const extras = { ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input), ...toCommissionWaiver(input), ...toUnitPriceFlag(input), ...toServingOptions(input) };
     await saveCatalogueProduct(id, { ...toProductRow(input), pending_image_url: null }, toVariantPayload(input.variants));
     await saveProductExtras(id, extras);
     await saveVariantMarkups(id, toVariantMarkups(input.variants));

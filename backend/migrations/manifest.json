@@ -644,6 +644,10 @@
     {
       "file": "20261105120000_product_flavours.sql",
       "sha256": "5f7d8e477bd7e8f3d51a680205eedf04ca74415da091ad09f46a24e9be7408e0"
+    },
+    {
+      "file": "20261105150000_serving_temperature.sql",
+      "sha256": "b23bbb3ddd8d53079aadd9c43bc83176e9049de14d0c6e291a8f1ad66066a60f"
     }
   ]
 }

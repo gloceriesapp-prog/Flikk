@@ -46,6 +46,8 @@ export interface ProductWriteInput {
   waiveCommission?: boolean | null;
   // Price per kg / L / piece on the card. Absent leaves it unchanged.
   showUnitPrice?: boolean | null;
+  // Chilled / room temperature offered. Absent leaves it unchanged.
+  servingOptions?: string[] | null;
   // Extracted from imageUrl at upload time (app/api/upload -> lib/bgColor.ts),
   // null when extraction failed or no photo was set — toProductRow below
   // is where the category-tint/mist fallback steps of that chain run.
@@ -196,6 +198,18 @@ export function toUnitPriceFlag(input: Pick<ProductWriteInput, 'showUnitPrice'>)
   if (input.showUnitPrice == null) return undefined;
   if (typeof input.showUnitPrice !== 'boolean') throw new Error('showUnitPrice must be true or false.');
   return { show_unit_price: input.showUnitPrice };
+}
+
+const SERVING_VALUES = ['chilled', 'room_temperature'];
+
+// Kept in a fixed order (chilled first) so the customer app shows them the
+// same way every time; repeats dropped, unknown values rejected.
+export function toServingOptions(input: Pick<ProductWriteInput, 'servingOptions'>): { serving_options: string[] } | undefined {
+  if (input.servingOptions == null) return undefined;
+  if (!Array.isArray(input.servingOptions) || input.servingOptions.some((v) => !SERVING_VALUES.includes(v))) {
+    throw new Error('Serving must be chilled and/or room temperature.');
+  }
+  return { serving_options: SERVING_VALUES.filter((v) => input.servingOptions!.includes(v)) };
 }
 
 export function formatVariantUnit(variant: VariantInput): string {

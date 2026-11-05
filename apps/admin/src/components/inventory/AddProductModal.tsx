@@ -16,7 +16,7 @@
 
 import { useCallback, useState } from 'react';
 import { X } from '@/components/icons';
-import type { NewProductInput, Product, ProductOption, StockStatus } from '@/lib/types';
+import type { NewProductInput, Product, ProductOption, Serving, StockStatus } from '@/lib/types';
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle } from '@/lib/product-options';
@@ -27,6 +27,7 @@ import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { ProductFlavoursEditor } from './ProductFlavoursEditor';
+import { ServingOptionsEditor } from './ServingOptionsEditor';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
 import { createPortal } from 'react-dom';
 
@@ -54,6 +55,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     cutOptionsEnabled: false,
     waiveCommission: false,
     showUnitPrice: false,
+    servingOptions: [] as Serving[],
     bulkMinKg: null as number | null,
     bgColor: undefined as string | undefined,
     subCategoryId: undefined as string | undefined,
@@ -130,6 +132,7 @@ export function AddProductModal({
         cutOptionsEnabled: draft.cutOptionsEnabled,
         waiveCommission: draft.waiveCommission,
         showUnitPrice: draft.showUnitPrice,
+        servingOptions: draft.servingOptions,
         bulkMinKg: draft.bulkMinKg,
         bgColor: draft.bgColor,
         subCategoryId: draft.subCategoryId,
@@ -225,6 +228,8 @@ export function AddProductModal({
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
           <ProductFlavoursEditor options={draft.options ?? []} onChange={(options) => setDraft({ ...draft, options })} />
+
+          <ServingOptionsEditor value={draft.servingOptions ?? []} onChange={(servingOptions) => setDraft({ ...draft, servingOptions })} />
 
           {(draft.variants.some((v) => (v.platformMarkup ?? 0) > 0) || draft.waiveCommission) && (
             <label className="flex items-center gap-2 text-sm text-ink">

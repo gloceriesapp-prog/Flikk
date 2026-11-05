@@ -8,7 +8,7 @@ export const customerHistoryRouter = Router();
 // trips!orders_trip_id_fkey: orders and trips are linked both ways (orders.trip_id
 // and trips.cancel_origin_order_id, migration 109), so an unnamed trips(...)
 // embed is ambiguous (PostgREST PGRST201) and the whole query fails.
-export const HISTORY_SELECT = 'id, order_number, store_id, status, total, placed_at, packed_at, picked_up_at, delivered_at, trip_id, estimated_delivery_minutes, estimated_delivery_at, live_revision, is_bulk, order_items(product_id, quantity, unit_price_at_order, unit_at_order, cut_size, option_name_at_order, product_name_at_order, product_image_at_order, products(name, image_url)), stores(name, avg_prep_minutes), trips!orders_trip_id_fkey(total, delivery_fee)';
+export const HISTORY_SELECT = 'id, order_number, store_id, status, total, placed_at, packed_at, picked_up_at, delivered_at, trip_id, estimated_delivery_minutes, estimated_delivery_at, live_revision, is_bulk, order_items(product_id, quantity, unit_price_at_order, unit_at_order, cut_size, option_name_at_order, serving, product_name_at_order, product_image_at_order, products(name, image_url)), stores(name, avg_prep_minutes), trips!orders_trip_id_fkey(total, delivery_fee)';
 function timestamp(value: unknown) {
   if (value === undefined) return null;
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value)))

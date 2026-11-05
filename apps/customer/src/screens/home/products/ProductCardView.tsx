@@ -5,7 +5,7 @@ import { ProductImageGallery } from '../../../components/ProductImageGallery';
 import { AppIcon } from '../../../components/AppIcon';
 import { RupeePrice } from '../../../components/RupeePrice';
 import { IconlyBookmark, IconlyBookmarkFilled } from '../../../components/icons/IconlyBookmark';
-import { cartLineId, quickAddCut } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
 import { colors } from '../../../theme/tokens';
 import { useCartStore } from '../../../store/useCartStore';
 import { addToCart } from '../../../store/addToCart';
@@ -108,8 +108,8 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
           ) : quantity === 0 ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name} to cart`}
               onPress={() =>
-                // A product with flavours opens its detail view to pick one.
-                product.options?.length
+                // Flavours / chilled-or-not: open the detail view to pick.
+                mustPickInDetail(product)
                   ? onPress?.()
                   : addToCart({ isAvailable, id: lineId, productId: id, variantId: product.defaultVariantId, cutSize, name, weight: selectedSize, price, originalPrice, storeId: storeId ?? '', storeName, imageUrl })
               }

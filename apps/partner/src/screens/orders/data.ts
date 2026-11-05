@@ -6,6 +6,9 @@
 
 import type { ApiOrder } from '../../api/orders';
 
+// Chilled / room temperature the customer chose (order_items.serving).
+const SERVING_LABEL = { chilled: 'Chilled', room_temperature: 'Room temperature' } as const;
+
 export type PartnerOrderStatus = 'placed' | 'packed' | 'out_for_delivery' | 'delivered' | 'failed' | 'cancelled';
 
 export interface OrderLineItem {
@@ -276,7 +279,7 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
       // The cut and the flavour are part of what to prepare, so they ride on
       // the pack label every item row already shows ("1 kg · Medium pieces",
       // "72 g · Achaari Masti").
-      unit: [item.unit_at_order ?? item.products?.unit ?? '', item.cut_size ? `${item.cut_size[0]!.toUpperCase()}${item.cut_size.slice(1)} pieces` : '', item.option_name_at_order ?? '']
+      unit: [item.unit_at_order ?? item.products?.unit ?? '', item.cut_size ? `${item.cut_size[0]!.toUpperCase()}${item.cut_size.slice(1)} pieces` : '', item.option_name_at_order ?? '', item.serving ? SERVING_LABEL[item.serving] : '']
         .filter(Boolean).join(' · '),
       price: item.unit_price_at_order * item.quantity,
       // A captured null image means the purchased item had no photo. Only

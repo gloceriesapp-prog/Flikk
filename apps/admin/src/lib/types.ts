@@ -395,6 +395,9 @@ export interface Product {
   waiveCommission?: boolean;
   // Card shows the price per kg / L / piece (products.show_unit_price).
   showUnitPrice?: boolean;
+  // Drinks: sold chilled, at room temperature, or both (customer picks)
+  // (products.serving_options). Empty = no choice shown.
+  servingOptions?: Serving[];
   // Pastel card background extracted from imageUrl at upload time
   // (lib/bgColor.ts, app/api/upload), or a category tint / neutral mist
   // when extraction wasn't possible — see lib/productValidation.ts
@@ -467,6 +470,10 @@ export interface PendingProductChanges {
   unit?: string;
   variants?: ProductVariant[];
 }
+
+export const SERVINGS = ['chilled', 'room_temperature'] as const;
+export type Serving = typeof SERVINGS[number];
+export const SERVING_LABEL: Record<Serving, string> = { chilled: 'Chilled', room_temperature: 'Room temperature' };
 
 // One flavour of a product (product_options). Same sizes and prices.
 export interface ProductOption {
