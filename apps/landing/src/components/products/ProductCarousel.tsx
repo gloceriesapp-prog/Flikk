@@ -6,12 +6,15 @@ import {
   StarIcon,
 } from "@hugeicons/core-free-icons";
 import type { LandingProduct } from "@/lib/products";
+import { APP_DOWNLOAD_HREF } from "@/lib/links";
 
 interface Props {
   products: LandingProduct[];
+  title?: string;
+  limit?: number;
 }
 
-export default function ProductGrid({ products }: Props) {
+export default function ProductGrid({ products, title = "Trending in Your Area", limit = 16 }: Props) {
   if (products.length === 0) return null;
 
   // Render the real products as-is — distinct DB rows, no client-side
@@ -24,12 +27,12 @@ export default function ProductGrid({ products }: Props) {
         {/* Section Header */}
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-[32px] font-semibold text-[#0F172A] tracking-tight">
-            Trending in Your Area
+            {title}
           </h2>
 
           <div className="flex items-center gap-3 shrink-0">
             <a
-              href="#see-all-products"
+              href={APP_DOWNLOAD_HREF}
               className="text-[15px] font-medium text-[#0052FF] hover:underline flex items-center gap-1"
             >
               <span>Continue in App</span>
@@ -41,7 +44,7 @@ export default function ProductGrid({ products }: Props) {
         {/* Compact cards — 8 per row on xl, image with an overlapping "ADD" pill. */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-3 gap-y-6 sm:gap-x-4">
           {/* Two full rows of 8 on xl — no half-empty last row. */}
-          {products.slice(0, 16).map((prod) => (
+          {products.slice(0, limit).map((prod) => (
             <div
               key={prod.id}
               className="w-full flex flex-col group cursor-pointer"

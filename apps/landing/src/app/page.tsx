@@ -6,41 +6,45 @@ import LocalPicks from "@/components/local/LocalPicks";
 import AppDownloadBanner from "@/components/download/AppDownloadBanner";
 import SubcategoriesGrid from "@/components/subcategories/SubcategoriesGrid";
 import ProductCarousel from "@/components/products/ProductCarousel";
-import AreaStrip from "@/components/location/AreaStrip";
+import { Suspense } from "react";
+import AreaStripFromQuery from "@/components/location/AreaStripFromQuery";
 import Footer from "@/components/footer/Footer";
 import JsonLd from "@/components/seo/JsonLd";
 import { mobileAppSchema } from "@/lib/seo/schema";
-import { fetchCheapestProducts } from "@/lib/products";
-import { getArea } from "@/lib/seo/areas";
+import { fetchLandingCatalogue } from "@/lib/products";
 
-// Fixed grid of the 32 cheapest real products — distinct rows, no repeats.
-// 32 / 8 cols = exactly 4 rows on the largest breakpoint.
-const PRODUCT_GRID_COUNT = 32;
+// Category shelves under the trending grid: the categories with the most
+// live products, one row of up to 8 (one full row on xl) each.
+const SHELF_COUNT = 4;
+const SHELF_MIN_PRODUCTS = 4;
+const SHELF_LIMIT = 8;
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ area?: string }>;
-}) {
-  const products = await fetchCheapestProducts(PRODUCT_GRID_COUNT);
+// Static page, rebuilt in the background at most every 5 minutes: visitors
+// get cached HTML instantly instead of waiting on the catalogue read.
+export const revalidate = 300;
 
-  // Footer live-zone links land here as `/?area=<slug>`. Surface that zone as
-  // a headline strip above the fold. Only live zones get the strip (soon zones
-  // link to their /delivery/<slug> page instead); an unknown/inactive slug
-  // just renders the normal home.
-  const { area: areaSlug } = await searchParams;
-  const area = areaSlug ? getArea(areaSlug) : undefined;
-  const activeArea = area?.active ? area : undefined;
+export default async function Home() {
+  const { categories, products } = await fetchLandingCatalogue();
+  const shelves = categories
+    .filter((c) => c.products.length >= SHELF_MIN_PRODUCTS)
+    .sort((a, b) => b.products.length - a.products.length)
+    .slice(0, SHELF_COUNT);
+
 
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between relative">
       <Navbar />
       <JsonLd data={mobileAppSchema()} />
       <main>
-        {activeArea && <AreaStrip area={activeArea.area} />}
+        <Suspense fallback={null}>
+          <AreaStripFromQuery />
+        </Suspense>
         <GloceriesHero />
-        <SubcategoriesGrid />
+        <SubcategoriesGrid categories={categories} />
         <ProductCarousel products={products} />
+        {shelves.map((c) => (
+          <ProductCarousel key={c.id} title={c.name} products={c.products} limit={SHELF_LIMIT} />
+        ))}
         <BrandShowcase />
         <LocalPicks products={[...products.slice(16), ...products.slice(0, 16)].slice(0, 10)} />
         <NearbyStores />

@@ -9,4 +9,8 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// A slow or unreachable database must never hold the page: give up after
+// 5s and render without products (each section hides itself when empty).
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: { fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(5000) }) },
+});
