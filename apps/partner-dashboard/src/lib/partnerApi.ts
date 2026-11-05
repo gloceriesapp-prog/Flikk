@@ -138,6 +138,9 @@ export interface PartnerOrder {
   // provider_payment_id. Optional: older backends don't send it.
   payment_method?: 'cod' | 'online' | null;
   placed_at: string;
+  // Pre-order: deliver in this window (null = quick delivery).
+  deliver_from?: string | null;
+  deliver_until?: string | null;
   store_visible_at?: string | null;
   acceptance_deadline_at?: string | null;
   accepted_at?: string | null;

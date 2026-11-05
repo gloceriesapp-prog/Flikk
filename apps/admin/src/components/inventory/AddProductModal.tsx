@@ -28,6 +28,7 @@ import { ChickenOptionsEditor } from './ChickenOptionsEditor';
 import { ProductVariantsEditor, emptyVariant } from './ProductVariantsEditor';
 import { ProductFlavoursEditor } from './ProductFlavoursEditor';
 import { ServingOptionsEditor } from './ServingOptionsEditor';
+import { PreorderEditor } from './PreorderEditor';
 import { HomeSectionChecklist, useHomeSectionChoice } from '@/components/home/HomeSectionChecklist';
 import { createPortal } from 'react-dom';
 
@@ -56,6 +57,9 @@ function makeEmptyDraft(stores: StoreOption[]) {
     waiveCommission: false,
     showUnitPrice: false,
     servingOptions: [] as Serving[],
+    preorderEnabled: false,
+    preorderMinQty: 1,
+    preorderLeadDays: 1,
     bulkMinKg: null as number | null,
     bgColor: undefined as string | undefined,
     subCategoryId: undefined as string | undefined,
@@ -133,6 +137,9 @@ export function AddProductModal({
         waiveCommission: draft.waiveCommission,
         showUnitPrice: draft.showUnitPrice,
         servingOptions: draft.servingOptions,
+        preorderEnabled: draft.preorderEnabled,
+        preorderMinQty: draft.preorderMinQty,
+        preorderLeadDays: draft.preorderLeadDays,
         bulkMinKg: draft.bulkMinKg,
         bgColor: draft.bgColor,
         subCategoryId: draft.subCategoryId,
@@ -230,6 +237,7 @@ export function AddProductModal({
           <ProductFlavoursEditor options={draft.options ?? []} onChange={(options) => setDraft({ ...draft, options })} />
 
           <ServingOptionsEditor value={draft.servingOptions ?? []} onChange={(servingOptions) => setDraft({ ...draft, servingOptions })} />
+          <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} />
 
           {(draft.variants.some((v) => (v.platformMarkup ?? 0) > 0) || draft.waiveCommission) && (
             <label className="flex items-center gap-2 text-sm text-ink">

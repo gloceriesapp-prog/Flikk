@@ -28,6 +28,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { cartIdentity, type CutSize, type Serving } from './cartIdentity';
+import { cartConflict, type CartPreorder } from './preorder';
 import { useAuthStore } from './useAuthStore';
 
 export interface CartItem {
@@ -43,6 +44,9 @@ export interface CartItem {
   // Chilled / room temperature, only when the product offers both (part of
   // the line id). A product with one is served that way without asking.
   serving?: Serving;
+  // Pre-order lines only (store/preorder.ts): the bulk minimum. The line
+  // starts at it and never drops below it.
+  preorderMinQty?: number;
   name: string;
   weight: string;
   price: number;
@@ -88,7 +92,12 @@ interface CartState {
   lastAddedItemId: string | null;
   recentItemIds: string[];
   appliedPromo: AppliedPromo | null;
-  addItem: (product: CartProduct) => void;
+  // A pre-order cart's delivery day + slot; null for a quick-delivery cart.
+  preorder: CartPreorder | null;
+  // A pre-order line needs the day + slot; it applies to the whole cart.
+  addItem: (product: CartProduct, preorder?: CartPreorder) => void;
+  // Move a pre-order cart to another day/slot (no-op for other carts).
+  setPreorder: (preorder: CartPreorder) => void;
   incrementItem: (id: string) => void;
   decrementItem: (id: string) => void;
   removeItem: (id: string) => void;
@@ -137,8 +146,9 @@ export const useCartStore = create<CartState>()(
       lastAddedItemId: null,
       recentItemIds: [],
       appliedPromo: null,
+      preorder: null,
 
-      addItem: (product) => {
+      addItem: (product, preorder) => {
         product = { ...product, ...cartIdentity(product) };
         if (product.isAvailable === false || product.variantId?.startsWith('preview-')) return;
         // A product with no real store id (any feed that hasn't been wired
@@ -147,6 +157,9 @@ export const useCartStore = create<CartState>()(
         // same guard this store has always had, unrelated to the
         // multi-store change above.
         if (!product.storeId) return;
+        // addToCart asks before replacing a cart this can't join.
+        if (product.preorderMinQty != null && !preorder) return;
+        if (cartConflict(useCartStore.getState().items, product)) return;
 
         set((state) => {
           const existing = state.items.find((item) => item.id === product.id);
@@ -154,9 +167,9 @@ export const useCartStore = create<CartState>()(
             ? state.items.map((item) =>
                 item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
               )
-            : [...state.items, { ...product, quantity: 1 }];
+            : [...state.items, { ...product, quantity: product.preorderMinQty ?? 1 }];
           return {
-            items, appliedPromo: null, lastAddedItemId: product.id,
+            items, appliedPromo: null, lastAddedItemId: product.id, preorder: preorder ?? state.preorder,
             recentItemIds: getCartPreviewIds(items, state.recentItemIds, product.id),
           };
         });
@@ -174,9 +187,9 @@ export const useCartStore = create<CartState>()(
         set((state) => {
           const items = state.items
             .map((item) => (item.id === id ? { ...item, quantity: item.quantity - 1 } : item))
-            .filter((item) => item.quantity > 0);
+            .filter((item) => item.quantity >= (item.preorderMinQty ?? 1));
           return {
-            items,
+            items, preorder: items.length ? state.preorder : null,
             appliedPromo: null,
             lastAddedItemId: items.some((item) => item.id === state.lastAddedItemId)
               ? state.lastAddedItemId : items[items.length - 1]?.id ?? null,
@@ -188,7 +201,7 @@ export const useCartStore = create<CartState>()(
         set((state) => {
           const items = state.items.filter((item) => item.id !== id);
           return {
-            items,
+            items, preorder: items.length ? state.preorder : null,
             appliedPromo: null,
             lastAddedItemId: items.some((item) => item.id === state.lastAddedItemId)
               ? state.lastAddedItemId : items[items.length - 1]?.id ?? null,
@@ -198,25 +211,30 @@ export const useCartStore = create<CartState>()(
 
       setAppliedPromo: (promo) => set({ appliedPromo: promo }),
 
-      clear: () => set({ items: [], appliedPromo: null, lastAddedItemId: null, recentItemIds: [] }),
+      setPreorder: (preorder) => set((state) => (state.preorder ? { preorder } : {})),
+
+      clear: () => set({ items: [], appliedPromo: null, lastAddedItemId: null, recentItemIds: [], preorder: null }),
     }),
     {
       name: 'gloceries-cart',
       version: 2,
       skipHydration: true,
       // Legacy drafts have no provable owner. Never expose them to a new account.
-      migrate: () => ({ items: [], lastAddedItemId: null, recentItemIds: [], appliedPromo: null, ownerId: null }),
-      partialize: (state) => ({ items: state.items, lastAddedItemId: state.lastAddedItemId,
+      migrate: () => ({ items: [], lastAddedItemId: null, recentItemIds: [], appliedPromo: null, preorder: null, ownerId: null }),
+      partialize: (state) => ({ items: state.items, lastAddedItemId: state.lastAddedItemId, preorder: state.preorder,
         recentItemIds: state.recentItemIds, appliedPromo: null,
         ownerId: useAuthStore.getState().customerId }),
       merge: (saved, current) => {
-        const draft = saved as { ownerId?: string | null; items?: CartItem[]; recentItemIds?: string[] } | undefined;
+        const draft = saved as { ownerId?: string | null; items?: CartItem[]; recentItemIds?: string[]; preorder?: CartPreorder | null } | undefined;
         const owner = useAuthStore.getState().customerId;
         if (!owner || draft?.ownerId !== owner || !Array.isArray(draft.items)) return current;
         const items = draft.items.filter(item => item && typeof item.id === 'string' && typeof item.storeId === 'string'
           && Number.isFinite(item.price) && Number.isSafeInteger(item.quantity) && item.quantity > 0)
           .map(item => ({ ...item, ...cartIdentity(item) })).filter(item => !item.variantId?.startsWith('preview-'));
-        return { ...current, items, appliedPromo: null, recentItemIds: getCartPreviewIds(items, draft.recentItemIds),
+        // A pre-order line without its day + slot can't check out; drop the draft.
+        const preorder = draft.preorder && typeof draft.preorder.date === 'string' && typeof draft.preorder.slotId === 'string' ? draft.preorder : null;
+        if (items.some(item => item.preorderMinQty != null) && !preorder) return current;
+        return { ...current, items, preorder, appliedPromo: null, recentItemIds: getCartPreviewIds(items, draft.recentItemIds),
           lastAddedItemId: items[items.length - 1]?.id ?? null };
       },
       storage: createJSONStorage(() => cartStorage),

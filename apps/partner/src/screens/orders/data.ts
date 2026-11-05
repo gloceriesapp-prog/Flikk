@@ -27,6 +27,8 @@ export interface OrderLineItem {
 export interface PartnerOrder {
   // Bulk chicken order (orders.is_bulk) — badge on the card and detail.
   isBulk?: boolean;
+  // Pre-order delivery window, e.g. "Sat 7 Nov, 7:00 – 9:00 AM".
+  preorderWindow?: string;
   // Real orders.id (UUID) — what PATCH /orders/:id/status and every
   // action callback (markPacked, rejectOrder, acknowledgeOrder) actually
   // use. Never rendered as text — orderNumber is what's shown.
@@ -272,6 +274,7 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     id: order.id,
     orderNumber: order.order_number,
     isBulk: order.is_bulk === true,
+    preorderWindow: order.deliver_from && order.deliver_until ? formatDeliveryWindow(order.deliver_from, order.deliver_until) : undefined,
     customerName: order.users?.name?.trim() || order.users?.phone || 'Customer',
     items: order.order_items.map((item) => ({
       name: item.product_name_at_order ?? item.products?.name ?? 'Item',
@@ -320,4 +323,13 @@ export function mapApiOrder(order: ApiOrder, allOrders: ApiOrder[]): PartnerOrde
     preparationDeadlineTimestamp: order.preparation_deadline_at ? Date.parse(order.preparation_deadline_at) : undefined,
     acceptWindowStartTimestamp: order.store_visible_at ? new Date(order.store_visible_at).getTime() : undefined,
   };
+}
+
+// India time, whatever the phone's zone: "Sat 7 Nov, 7:00 – 9:00 AM".
+export function formatDeliveryWindow(from: string, until: string): string {
+  const ist = (iso: string) => new Date(Date.parse(iso) + 330 * 60_000);
+  const time = (d: Date) => `${d.getUTCHours() % 12 || 12}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+  const start = ist(from); const end = ist(until);
+  const day = `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][start.getUTCDay()]} ${start.getUTCDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][start.getUTCMonth()]}`;
+  return `${day}, ${time(start)} – ${time(end)} ${end.getUTCHours() < 12 ? 'AM' : 'PM'}`;
 }

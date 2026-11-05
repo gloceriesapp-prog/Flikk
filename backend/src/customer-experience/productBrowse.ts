@@ -3,6 +3,7 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
 import { browsePage, deliveryStores, hydrateBrowse, optionalUuid } from './browse.js';
+import { PREORDER_SLOT_SELECT } from '../lib/preorders.js';
 export const productBrowseRouter = Router();
 productBrowseRouter.get('/search', async (req, res, next) => {
   try {
@@ -61,6 +62,21 @@ productBrowseRouter.get('/home-picks', async (req, res, next) => {
       if (product) (picks[pin.section_key] ??= []).push(product);
     }
     res.json(picks);
+  } catch (error) { next(error); }
+});
+// Home Pre-orders section: pre-order products from stores that deliver here,
+// plus the delivery slots a customer picks from (lib/preorders.ts).
+productBrowseRouter.get('/preorders', async (req, res, next) => {
+  try {
+    const stores = await deliveryStores(req.query);
+    const [ids, slots] = await Promise.all([
+      stores.length ? supabase.from('products').select('id').in('store_id', stores).eq('approval_status', 'approved')
+        .eq('preorder_enabled', true).order('name').limit(40) : Promise.resolve({ data: [], error: null }),
+      supabase.from('preorder_slots').select(PREORDER_SLOT_SELECT).eq('is_active', true).order('sort_order'),
+    ]);
+    if (ids.error) throw ids.error;
+    if (slots.error) throw slots.error;
+    res.json({ products: await hydrateBrowse(ids.data ?? [], stores, PRODUCT_WITH_VARIANTS_SELECT, true), slots: slots.data ?? [] });
   } catch (error) { next(error); }
 });
 productBrowseRouter.get('/category', async (req, res, next) => {

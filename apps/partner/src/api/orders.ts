@@ -57,6 +57,9 @@ export interface ApiOrder {
   // Bulk chicken order: confirm you can supply it before accepting
   // (it gets a longer accept window, admin Settings).
   is_bulk?: boolean;
+  // Pre-order: deliver in this window (null = quick delivery).
+  deliver_from?: string | null;
+  deliver_until?: string | null;
   packed_at: string | null;
   delivered_at: string | null;
   order_items: ApiOrderItem[];

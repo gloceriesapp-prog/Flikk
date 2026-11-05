@@ -69,6 +69,9 @@ export interface OrderDetail {
   commissionAmount: number;
   // Bulk chicken order: the store had the longer bulk response window.
   isBulk: boolean;
+  // Pre-orders: the delivery slot the customer chose (null = instant).
+  deliverFrom: string | null;
+  deliverUntil: string | null;
   items: OrderDetailItem[];
   customer: { id: string; name: string | null; phone: string | null };
   address: { text: string; recipientName: string | null; recipientPhone: string | null; instructions: string | null } | null;

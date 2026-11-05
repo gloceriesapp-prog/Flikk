@@ -55,7 +55,8 @@ export const PRODUCT_WITH_VARIANTS_SELECT =
   '*, stores!inner(name, is_active, open_time, close_time, availability_override, availability_override_until, fssai_number, address_line, city, district, photo_url), product_variants(*), product_options(id, name, image_url, sort_order, is_available)';
 
 // Every one of this file's customer-facing feeds also filters
-// .eq('approval_status', 'approved')
+// .eq('approval_status', 'approved') and leaves out pre-order products (Home
+// Pre-orders section only, GET /browse/preorders)
 // Product submissions remain pending until approved by an admin.
 // (routes/partner.ts POST /products) starts 'pending' and only a founder's
 // approval in admin (apps/admin's Inventory) flips it, same gate store
@@ -142,7 +143,7 @@ storesRouter.get('/products/deals', async (req, res, next) => {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
-      .eq('approval_status', 'approved')
+      .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .in('store_id', res.locals.deliveryStores ?? [])
       .not('original_price', 'is', null)
       .order('name')
@@ -163,7 +164,7 @@ storesRouter.get('/products/catalog', async (req, res, next) => {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
-      .eq('approval_status', 'approved')
+      .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .in('store_id', res.locals.deliveryStores ?? [])
       .order('created_at', { ascending: false })
       .order('name')
@@ -202,7 +203,7 @@ storesRouter.get('/products/similar', async (req, res, next) => {
     let query = supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
-      .eq('approval_status', 'approved')
+      .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .in('store_id', res.locals.deliveryStores ?? [])
       .eq('category', category)
       .order('name')
@@ -225,7 +226,7 @@ storesRouter.get('/products/similar', async (req, res, next) => {
     let fallbackQuery = supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
-      .eq('approval_status', 'approved')
+      .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .in('store_id', res.locals.deliveryStores ?? [])
       .eq('store_id', storeId)
       .order('name')
@@ -261,7 +262,7 @@ storesRouter.get('/:id/products', async (req, res, next) => {
     let query = supabase
       .from('products')
       .select(PRODUCT_WITH_VARIANTS_SELECT)
-      .eq('approval_status', 'approved')
+      .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .eq('store_id', req.params.id)
       ;
     if (dealsOnly) query = query.not('original_price', 'is', null);

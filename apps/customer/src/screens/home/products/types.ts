@@ -51,6 +51,9 @@ export interface Product {
   // Drinks: chilled / room temperature offered (products.serving_options).
   // Two = the customer picks one on the detail view; one = served that way.
   servingOptions?: Serving[];
+  // Pre-order only: ordered in bulk (at least minQty) for a day at least
+  // leadDays ahead and a delivery slot, from the Home Pre-orders section.
+  preorder?: { minQty: number; leadDays: number };
   // "₹63.6/kg" for the default size, set only when the admin turned it on
   // for this product (products.show_unit_price; api/products.ts).
   unitPriceLabel?: string;

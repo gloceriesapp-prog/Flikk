@@ -17,6 +17,7 @@
 // leg (backend's own note on why that split exists).
 
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
+import { formatDeliveryWindow } from '../../store/preorder';
 import { joinStoreNames, representativeLeg } from '../../utils/tripLegs';
 import type { ApiOrder } from '../../api/orders';
 
@@ -49,6 +50,8 @@ export interface PurchaseOrder {
   avgPrepMinutes: number | null;
   estimatedDeliveryMinutes?: number | null;
   estimatedDeliveryAt?: string | null;
+  // Pre-orders: "Sat 7 Nov, 7:00 – 9:00 AM" (store/preorder.ts).
+  preorderWindow?: string;
 }
 
 const STATUS_LABEL: Record<PurchaseOrder['status'], string> = {
@@ -117,6 +120,7 @@ export function mapOrderGroup(group: ApiOrder[]): PurchaseOrder {
     deliveredAtIso,
     estimatedDeliveryMinutes: leg.estimated_delivery_minutes,
     estimatedDeliveryAt: leg.estimated_delivery_at,
+    preorderWindow: leg.deliver_from && leg.deliver_until ? formatDeliveryWindow(leg.deliver_from, leg.deliver_until) : undefined,
     avgPrepMinutes: leg.stores?.avg_prep_minutes ?? leg.avg_prep_minutes ?? null,
   };
 }

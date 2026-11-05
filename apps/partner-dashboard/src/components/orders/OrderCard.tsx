@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { Bike, ChevronRight, Clock, Loader2 } from 'lucide-react';
 import type { PartnerOrder } from '@/lib/partnerApi';
 import { formatInr } from '@/lib/format';
-import { customerName, orderWhen, waitInfo } from './orderMeta';
+import { customerName, deliveryWindow, orderWhen, waitInfo } from './orderMeta';
 import { ItemStack, OrderActions, PaymentBadge, StatusPill } from './OrderBits';
 
 export interface OrderRowHandlers {
@@ -49,6 +49,9 @@ export function OrderCard({ order, now, ...h }: { order: PartnerOrder; now: numb
             <span className="truncate text-sm text-slate-500">{customerName(order)}</span>
           </h3>
           <p className="tnum mt-1 text-[13px] text-slate-500">{orderWhen(order.placed_at, now)}</p>
+          {deliveryWindow(order) && (
+            <p className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-[12px] font-semibold text-blue-700">Pre-order · {deliveryWindow(order)}</p>
+          )}
         </div>
         <StatusPill status={order.status} />
       </header>

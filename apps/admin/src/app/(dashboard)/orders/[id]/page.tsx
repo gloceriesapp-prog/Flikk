@@ -16,7 +16,7 @@ import { ArrowLeft } from '@/components/icons';
 import clsx from 'clsx';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { RiderSelect } from '@/components/dispatch/RiderSelect';
-import { formatCurrency, formatDateTime, formatRelativeTime } from '@/lib/format';
+import { formatCurrency, formatDateTime, formatRelativeTime, formatTime } from '@/lib/format';
 import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { CANCELLED_BY_LABELS, orderReasonLabel } from '@/lib/orders/cancelReasons';
 import type { OrderDetail } from '@/lib/orders/orderDetail';
@@ -174,9 +174,12 @@ export default function OrderDetailPage() {
             {order.orderNumber}
             <StatusPill status={order.status} />
             {order.isBulk && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-ink">Bulk order</span>}
+            {order.deliverFrom && <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand">Pre-order</span>}
           </h1>
           <p className="text-sm text-muted">
-            Placed {formatDateTime(order.placedAt)} · <span className="font-mono text-xs">{order.id}</span>
+            Placed {formatDateTime(order.placedAt)}
+            {order.deliverFrom && order.deliverUntil && <> · Deliver {formatDateTime(order.deliverFrom)} – {formatTime(order.deliverUntil)}</>}
+            {' · '}<span className="font-mono text-xs">{order.id}</span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

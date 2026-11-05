@@ -32,6 +32,7 @@ import { reorderByRank } from '../lib/buyItAgain.js';
 import { notifyRiderOrderPacked, triggerDispatch } from '../lib/riderDispatch.js';
 import { assertPaymentMethodAvailable } from '../payments/availability.js';
 import { applyCustomerPrices } from '../lib/customerPrice.js';
+import { resolvePreorder } from '../lib/preorders.js';
 
 export const ordersRouter = Router();
 // Free-text cancel reasons (customer/partner) are shown to other parties.
@@ -56,6 +57,8 @@ interface CreateOrderBody {
   // alone: null either way). Defaults to 'cod' server-side (migration
   // 034's own default) if the client ever omits it.
   payment_method?: 'cod' | 'online';
+  // Pre-order carts only: delivery day + slot (lib/preorders.ts).
+  preorder?: unknown;
 }
 
 // POST /orders — all-or-nothing: validate stock, lock prices, single-store only,
@@ -83,6 +86,8 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
     const pricedItems = quote.items;
     const { itemTotal, deliveryFee, discountAmount, handlingFee, total } = quote.bill;
     const promoCodeId = quote.promoCodeId;
+    // Pre-order slot before the address too, so a refused slot writes nothing.
+    const preorder = await resolvePreorder(body.preorder, pricedItems);
     // Address after the quote: its legacy inline path writes a new row, and a
     // stale quote must leave nothing behind. Commission is read alongside.
     const [commissions, addressId] = await Promise.all([getStoreCommissions(pricedItems), resolveAddressId(req.user!.id, body)]);
@@ -109,6 +114,7 @@ ordersRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedR
       p_discount_amount: discountAmount,
       p_payment_method: body.payment_method ?? 'cod',
       p_handling_fee: handlingFee,
+      ...(preorder ? { p_deliver_from: preorder.deliver_from, p_deliver_until: preorder.deliver_until } : {}),
     });
     if (rpcErr) throw checkoutTransactionError(rpcErr.code);
     if (!attempt) throw new AppError(503, 'CHECKOUT_UNAVAILABLE', 'Please retry this checkout.');
@@ -193,7 +199,7 @@ ordersRouter.get('/buy-it-again', requireAuth, requireRole('customer'), async (r
       .in('id', rankedProductIds)
       .in('store_id', storeIds)
       .eq('is_in_stock', true)
-      .eq('approval_status', 'approved')
+      .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .eq('stores.is_active', true)
       .neq('stock_status', 'out_of_stock');
     if (productsErr) throw productsErr;

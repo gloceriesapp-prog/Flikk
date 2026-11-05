@@ -49,6 +49,7 @@ import type { Product } from '../products/types';
 import { SectionSkeleton } from '../loading/SectionSkeleton';
 import { FestivalPicksSection } from '../festival/picks/FestivalPicksSection';
 import { SeasonalSection } from '../seasonal/SeasonalSection';
+import { PreorderSection } from '../preorders/PreorderSection';
 
 export interface HomeSectionItem {
   key: string;
@@ -103,6 +104,8 @@ const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, copy: SectionCopy) => R
   'festival-picks': (_ctx, c) => <FestivalPicksSection title={c.title} />,
   'seasonal': (_ctx, c) => <SeasonalSection title={c.title} subtitle={c.subtitle} />,
   'nearby-stores': () => <NearbyStoresSection />,
+  // Pre-order only products (admin "Pre-order only"); nowhere else on Home.
+  'preorders': (_ctx, c) => <PreorderSection title={c.title} />,
   'trending': (ctx, c) => <TrendingSection title={c.title} subtitle={c.subtitle} products={ctx.rows.trending} />,
   'most-bought': (ctx, c) => <MostBoughtSection title={c.title} subtitle={c.subtitle} products={ctx.rows['most-bought']} />,
   'category-sections': () => <CategorySections />,
@@ -127,6 +130,7 @@ const FALLBACK_ORDER = [
   'festival-picks',
   'nearby-stores',
   'seasonal',
+  'preorders',
   'trending',
   'most-bought',
   'category-sections',

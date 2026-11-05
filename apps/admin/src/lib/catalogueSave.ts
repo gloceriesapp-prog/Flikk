@@ -45,6 +45,9 @@ export interface ProductExtras {
   waive_commission?: boolean;
   show_unit_price?: boolean;
   serving_options?: string[];
+  preorder_enabled?: boolean;
+  preorder_min_qty?: number;
+  preorder_lead_days?: number;
 }
 export async function saveProductExtras(productId: string, extras: ProductExtras): Promise<void> {
   if (Object.keys(extras).length === 0) return;

@@ -37,6 +37,9 @@ export interface ProductRow {
   waive_commission: boolean | null;
   show_unit_price: boolean | null;
   serving_options?: Serving[] | null;
+  preorder_enabled?: boolean | null;
+  preorder_min_qty?: number | null;
+  preorder_lead_days?: number | null;
   bulk_min_kg: number | string | null;
   bg_color: string | null;
   local_name: string | null;
@@ -60,7 +63,7 @@ export interface ProductRow {
 }
 
 export const PRODUCT_SELECT =
-  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, serving_options, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(id, name, image_url, sort_order, is_available)';
+  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, serving_options, preorder_enabled, preorder_min_qty, preorder_lead_days, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(id, name, image_url, sort_order, is_available)';
 
 function mapVariants(rows: ProductVariantRow[], product: ProductRow): ProductVariant[] {
   // is_default first, then insertion order for the rest — mirrors how
@@ -147,6 +150,9 @@ export function mapRowToProduct(row: ProductRow): Product {
     waiveCommission: row.waive_commission === true,
     showUnitPrice: row.show_unit_price === true,
     servingOptions: row.serving_options ?? [],
+    preorderEnabled: row.preorder_enabled === true,
+    preorderMinQty: row.preorder_min_qty ?? 1,
+    preorderLeadDays: row.preorder_lead_days ?? 1,
     bulkMinKg: row.bulk_min_kg == null ? null : Number(row.bulk_min_kg),
     bgColor: row.bg_color ?? undefined,
     localName: row.local_name ?? undefined,

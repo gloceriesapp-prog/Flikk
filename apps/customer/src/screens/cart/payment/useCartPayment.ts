@@ -213,7 +213,9 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       if (!stillOwner()) return;
       const common = { attempt_id: attemptId, address_id: selectedAddress.id, items: checkoutItems(orderedItems),
         quote_token: freshQuote.token, promo_code: promoCode, payment_method: intendedPaymentMethod };
-      const orderInput = { ...common, store_id: items[0]!.storeId };
+      const cartSlot = useCartStore.getState().preorder;
+      const orderInput = { ...common, store_id: items[0]!.storeId,
+        ...(cartSlot ? { preorder: { date: cartSlot.date, slot_id: cartSlot.slotId } } : {}) };
       // Await durable persistence BEFORE submitting the order request.
       await saveAttempt({ id: attemptId, kind: isMultiStore ? 'trip' : 'order',
         input: isMultiStore ? common : orderInput, cartKey });

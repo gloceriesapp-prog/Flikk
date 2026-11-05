@@ -48,6 +48,10 @@ export interface ProductWriteInput {
   showUnitPrice?: boolean | null;
   // Chilled / room temperature offered. Absent leaves it unchanged.
   servingOptions?: string[] | null;
+  // Pre-order only + its bulk minimum and days of notice. Absent leaves them unchanged.
+  preorderEnabled?: boolean | null;
+  preorderMinQty?: number | null;
+  preorderLeadDays?: number | null;
   // Extracted from imageUrl at upload time (app/api/upload -> lib/bgColor.ts),
   // null when extraction failed or no photo was set — toProductRow below
   // is where the category-tint/mist fallback steps of that chain run.
@@ -198,6 +202,17 @@ export function toUnitPriceFlag(input: Pick<ProductWriteInput, 'showUnitPrice'>)
   if (input.showUnitPrice == null) return undefined;
   if (typeof input.showUnitPrice !== 'boolean') throw new Error('showUnitPrice must be true or false.');
   return { show_unit_price: input.showUnitPrice };
+}
+
+export function toPreorder(input: Pick<ProductWriteInput, 'preorderEnabled' | 'preorderMinQty' | 'preorderLeadDays'>):
+  { preorder_enabled: boolean; preorder_min_qty: number; preorder_lead_days: number } | undefined {
+  if (input.preorderEnabled == null) return undefined;
+  if (typeof input.preorderEnabled !== 'boolean') throw new Error('preorderEnabled must be true or false.');
+  const minQty = input.preorderMinQty ?? 1;
+  const leadDays = input.preorderLeadDays ?? 1;
+  if (!Number.isInteger(minQty) || minQty < 1 || minQty > 999) throw new Error('Pre-order minimum must be a whole number from 1 to 999.');
+  if (!Number.isInteger(leadDays) || leadDays < 1 || leadDays > 14) throw new Error('Pre-order notice must be 1 to 14 days.');
+  return { preorder_enabled: input.preorderEnabled, preorder_min_qty: minQty, preorder_lead_days: leadDays };
 }
 
 const SERVING_VALUES = ['chilled', 'room_temperature'];

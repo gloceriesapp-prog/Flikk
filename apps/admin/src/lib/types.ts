@@ -398,6 +398,11 @@ export interface Product {
   // Drinks: sold chilled, at room temperature, or both (customer picks)
   // (products.serving_options). Empty = no choice shown.
   servingOptions?: Serving[];
+  // Pre-order only (products.preorder_*): shown solely in the customer Home
+  // Pre-orders section, ordered for a later day/slot at least preorderMinQty.
+  preorderEnabled?: boolean;
+  preorderMinQty?: number;
+  preorderLeadDays?: number;
   // Pastel card background extracted from imageUrl at upload time
   // (lib/bgColor.ts, app/api/upload), or a category tint / neutral mist
   // when extraction wasn't possible — see lib/productValidation.ts

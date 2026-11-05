@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Clock, History, X } from 'lucide-react';
 import { orderItemSettlement } from '@/lib/orderRevenue';
 import type { PartnerOrder } from '@/lib/partnerApi';
-import { customerName, orderWhen, trapTab, waitInfo } from './orderMeta';
+import { customerName, deliveryWindow, orderWhen, trapTab, waitInfo } from './orderMeta';
 import { ItemThumb, OrderActions, PaymentBadge, StatusPill } from './OrderBits';
 import { OrderBagIcon, ReceiptBillIcon } from './OrderDetailIcons';
 import { OrderTimeline } from './OrderTimeline';
@@ -150,6 +150,7 @@ function PanelBody({ order, now, accepted }: { order: PartnerOrder; now: number;
       <Section icon={<ReceiptBillIcon className="h-5 w-5" />} title="Order info">
         <dl className="space-y-3 text-[14px]">
           <Row label="Placed"><span className="tnum">{orderWhen(order.placed_at, now)}</span></Row>
+          {deliveryWindow(order) && <Row label="Pre-order"><span className="font-semibold text-blue-700">Deliver {deliveryWindow(order)}</span></Row>}
           <Row label="Waiting">{wait ? <span className="tnum inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[12px] font-medium text-black"><Clock size={12} aria-hidden />{wait.label.replace('Waiting ', '')}</span> : '—'}</Row>
           <Row label="Customer">{customerName(order)}</Row>
           <Row label="Payment"><PaymentBadge order={order} /></Row>

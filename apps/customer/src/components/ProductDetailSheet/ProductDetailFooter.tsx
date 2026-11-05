@@ -14,6 +14,7 @@ import { AppIcon } from '../AppIcon';
 import { useCartStore } from '../../store/useCartStore';
 import { addToCart } from '../../store/addToCart';
 import { CUT_SIZE_LABEL, SERVING_LABEL, cartLineId, type CutSize, type Serving } from '../../store/cartIdentity';
+import type { CartPreorder } from '../../store/preorder';
 
 import type { Product, ProductOption } from '../../screens/home/products/types';
 
@@ -37,6 +38,8 @@ interface Props {
   // Chilled / room temperature (ProductServingOptions); set only when the
   // product offers both, a separate cart line each.
   serving?: Serving;
+  // Pre-order products: the chosen day + slot; none picked = can't add yet.
+  preorder?: CartPreorder;
 }
 
 export function ProductDetailFooter({
@@ -45,6 +48,7 @@ export function ProductDetailFooter({
   cutSize,
   option,
   serving,
+  preorder,
 }: Props) {
   const availability = useProductAvailability(product);
 
@@ -130,12 +134,18 @@ export function ProductDetailFooter({
         </View>
 
         <Text className="mt-0.5 text-[11px] font-medium text-ink/50">
-          {[weight, cutSize ? CUT_SIZE_LABEL[cutSize] : null, option?.name, serving ? SERVING_LABEL[serving] : null].filter(Boolean).join(' · ')}
+          {[weight, cutSize ? CUT_SIZE_LABEL[cutSize] : null, option?.name, serving ? SERVING_LABEL[serving] : null,
+            product.preorder ? `Min ${product.preorder.minQty}` : null].filter(Boolean).join(' · ')}
         </Text>
       </View>
 
       {/* RIGHT */}
-      {quantity === 0 ? (
+      {quantity === 0 && product.preorder && !preorder ? (
+        /* PRE-ORDER: day + slot first */
+        <View className="h-[42px] min-w-[128px] items-center justify-center rounded-xl bg-[#E5E7EB] px-5">
+          <Text className="text-[13px] font-semibold text-ink/50">Pick day & slot</Text>
+        </View>
+      ) : quantity === 0 ? (
         /* ADD TO CART */
         <Pressable
           onPress={() =>
@@ -155,7 +165,8 @@ export function ProductDetailFooter({
               storeId: storeId ?? '',
               storeName,
               imageUrl: option?.imageUrl ?? imageUrl,
-            })
+              preorderMinQty: product.preorder?.minQty,
+            }, product.preorder ? preorder : undefined)
           }
           className="
             h-[42px]
@@ -170,7 +181,7 @@ export function ProductDetailFooter({
           }}
         >
           <Text className="text-[14px] font-semibold text-white">
-            Add to Cart
+            {product.preorder ? `Pre-order ${product.preorder.minQty}` : 'Add to Cart'}
           </Text>
         </Pressable>
       ) : (

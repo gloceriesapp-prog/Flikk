@@ -33,6 +33,7 @@ export function getPurchaseArrivalLabel(order: PurchaseOrder, now: number = Date
     return `Delivered at ${time}`;
   }
 
+  if (order.preorderWindow && order.status !== 'out_for_delivery') return `Pre-order · ${order.preorderWindow}`;
   if (order.status === 'placed' || order.status === 'packed') return 'Packing your order';
 
   const deadline = getPurchaseArrivalDeadline(order);

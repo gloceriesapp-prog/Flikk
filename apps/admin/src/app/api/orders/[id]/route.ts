@@ -47,7 +47,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
   try {
     const { data: o, error } = await supabaseAdmin
       .from('orders')
-      .select('id, order_number, customer_id, store_id, rider_id, trip_id, address_id, status, item_total, delivery_fee, handling_fee, discount_amount, total, commission_amount, payment_method, payment_provider, provider_payment_id, refund_status, provider_refund_id, refunded_at, promo_code_id, cancel_reason, cancelled_by, placed_at, packed_at, picked_up_at, delivered_at, delivery_address_at_order, is_bulk')
+      .select('id, order_number, customer_id, store_id, rider_id, trip_id, address_id, status, item_total, delivery_fee, handling_fee, discount_amount, total, commission_amount, payment_method, payment_provider, provider_payment_id, refund_status, provider_refund_id, refunded_at, promo_code_id, cancel_reason, cancelled_by, placed_at, packed_at, picked_up_at, delivered_at, delivery_address_at_order, is_bulk, deliver_from, deliver_until')
       .eq('id', id)
       .maybeSingle();
     if (error) throw error;
@@ -157,6 +157,8 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/orders/[id]
       total: num(o.total),
       commissionAmount: num(o.commission_amount),
       isBulk: o.is_bulk === true,
+      deliverFrom: o.deliver_from ?? null,
+      deliverUntil: o.deliver_until ?? null,
       items: ((itemsRes.data ?? []) as unknown as ItemRow[]).map((item) => ({
         id: item.id,
         name: item.product_name_at_order ?? item.products?.name ?? 'Product',

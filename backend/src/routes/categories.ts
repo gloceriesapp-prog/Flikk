@@ -58,7 +58,7 @@ categoriesRouter.get('/:id/products', async (req, res, next) => {
         '*, stores!inner(name, is_active, open_time, close_time, availability_override, availability_override_until, fssai_number, address_line, city, district, photo_url), product_variants(*), product_options(id, name, image_url, sort_order, is_available), sub_categories!inner(category_id)',
       )
       .eq('sub_categories.category_id', req.params.id)
-      .eq('approval_status', 'approved')
+      .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .in('store_id', await deliveryStores(req.query))
       .order('name').limit(60);
     if (error) throw error;
@@ -83,7 +83,7 @@ categoriesRouter.get('/subcategories/:id/products', async (req, res, next) => {
       .from('products')
       .select('*, stores!inner(name, is_active, open_time, close_time, availability_override, availability_override_until, fssai_number, address_line, city, district, photo_url), product_variants(*), product_options(id, name, image_url, sort_order, is_available)')
       .eq('sub_category_id', req.params.id)
-      .eq('approval_status', 'approved')
+      .eq('approval_status', 'approved').eq('preorder_enabled', false)
       .in('store_id', await deliveryStores(req.query))
       .order('name').limit(60);
     if (error) throw error;

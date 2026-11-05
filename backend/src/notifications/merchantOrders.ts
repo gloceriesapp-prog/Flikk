@@ -1,5 +1,6 @@
 import { supabase } from '../db/supabase.js';
 import { ORDER_PUSH } from '../lib/pushNotifications.js';
+import { formatDeliveryWindow } from '../lib/preorders.js';
 
 type Job = { id: string; order_id: string; user_id: string; lease_token: string; attempts: number; ticket_id: string | null; token: string | null; amount: number };
 type Receipt = { status?: string; id?: string; details?: { error?: string } };
@@ -17,12 +18,27 @@ async function claim(receipts: boolean): Promise<Job[]> {
   return (data ?? []) as Job[];
 }
 
+// Pre-orders say which day and slot the store is accepting for. A failed
+// lookup only loses that detail; the alert itself still goes out.
+async function preorderWindows(jobs: Job[]): Promise<Map<string, string>> {
+  if (!jobs.length) return new Map();
+  try {
+    const { data, error } = await supabase.from('orders').select('id, deliver_from, deliver_until')
+      .in('id', [...new Set(jobs.map(job => job.order_id))]).not('deliver_from', 'is', null);
+    if (error) throw error;
+    return new Map((data ?? []).map(row => [row.id as string, formatDeliveryWindow(row.deliver_from, row.deliver_until)]));
+  } catch {
+    return new Map();
+  }
+}
+
 // Expo has no idempotency key. Persist accepted tickets immediately; once a
 // ticket exists, retries only inspect its receipt and never blindly resend it.
 // A process crash after Expo accepted but before persistence can still duplicate
 // an OS alert; the stable notification ID lets the app deduplicate that event.
 export async function runMerchantOrderNotifications(shouldStop: () => boolean = () => false) {
   const jobs = await claim(false);
+  const slotFor = await preorderWindows(jobs);
   for (let start = 0; start < jobs.length && !shouldStop(); start += 5) {
     await Promise.all(jobs.slice(start, start + 5).map(async job => {
       if (!job.token) return finish(job, 'retry', null, 'No registered device yet');
@@ -30,8 +46,10 @@ export async function runMerchantOrderNotifications(shouldStop: () => boolean = 
       try {
         const response = await fetch('https://exp.host/--/api/v2/push/send', {
           method: 'POST', headers, signal: AbortSignal.timeout(15000),
-          body: JSON.stringify([{ to: job.token, title: 'New order received',
-            body: `Order ${job.order_id.slice(0, 6).toUpperCase()} · ₹${job.amount} — tap to view.`,
+          body: JSON.stringify([{ to: job.token, title: slotFor.has(job.order_id) ? 'New pre-order' : 'New order received',
+            body: slotFor.has(job.order_id)
+              ? `Deliver ${slotFor.get(job.order_id)} · ₹${job.amount} — tap to accept.`
+              : `Order ${job.order_id.slice(0, 6).toUpperCase()} · ₹${job.amount} — tap to view.`,
             sound: 'default', ...ORDER_PUSH,
             data: { type: 'new_order', orderId: job.order_id, notificationId: job.id } }]),
         });

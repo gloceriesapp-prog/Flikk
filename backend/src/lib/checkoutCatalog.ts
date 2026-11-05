@@ -25,7 +25,7 @@ function requirePackSnapshots(): Promise<void> {
 // Cart availability works before order activation and returns every status.
 export async function readCheckoutCatalog(items: CartItem[]) {
   const { data, error } = await supabase.from('products')
-    .select('id, store_id, price, original_price, unit, is_in_stock, approval_status, stock_status, stock_quantity, stock_tracking_enabled, cut_options_enabled, bulk_min_kg, serving_options, product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(id, is_available)')
+    .select('id, store_id, price, original_price, unit, is_in_stock, approval_status, stock_status, stock_quantity, stock_tracking_enabled, cut_options_enabled, bulk_min_kg, serving_options, preorder_enabled, preorder_min_qty, preorder_lead_days, product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(id, is_available)')
     .in('id', [...new Set(items.map((item) => item.product_id))]);
   if (error) throw error;
   return (data ?? []) as CheckoutProduct[];

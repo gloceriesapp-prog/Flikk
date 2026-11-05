@@ -10,10 +10,11 @@ export const quickAddCut = (product: { cutOptions?: boolean }): CutSize | undefi
 export type Serving = 'chilled' | 'room_temperature';
 export const SERVINGS: readonly Serving[] = ['chilled', 'room_temperature'];
 export const SERVING_LABEL: Record<Serving, string> = { chilled: 'Chilled', room_temperature: 'Room temperature' };
-// Card ADD buttons can't ask questions: a product with flavours, or sold both
-// chilled and at room temperature, opens its detail view instead.
-export const mustPickInDetail = (product: { options?: unknown[]; servingOptions?: Serving[] }): boolean =>
-  (product.options?.length ?? 0) > 0 || (product.servingOptions?.length ?? 0) > 1;
+// Card ADD buttons can't ask questions: a product with flavours, sold both
+// chilled and at room temperature, or a pre-order (day + slot) opens its
+// detail view instead.
+export const mustPickInDetail = (product: { options?: unknown[]; servingOptions?: Serving[]; preorder?: unknown }): boolean =>
+  (product.options?.length ?? 0) > 0 || (product.servingOptions?.length ?? 0) > 1 || product.preorder != null;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
