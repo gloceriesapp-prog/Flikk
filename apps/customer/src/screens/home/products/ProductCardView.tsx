@@ -131,9 +131,9 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
           >
             <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
           </View>
-          {/* Pack size: thin blue outline, no fill; padded top/bottom, tight sides. */}
-          <View className="justify-center rounded-[4px] border border-[#155DFC] px-1 py-[3px]">
-            <Text className="text-[9px] font-semibold leading-[11px] text-[#155DFC]">{weight}</Text>
+          {/* Pack size: soft grey chip, no border, about the veg mark's height. */}
+          <View className="justify-center rounded-[4px] bg-[#F1F1F4] px-1.5 py-[1px]">
+            <Text className="text-[10px] font-semibold leading-[12px] text-black/60">{weight}</Text>
           </View>
 
         </View>
