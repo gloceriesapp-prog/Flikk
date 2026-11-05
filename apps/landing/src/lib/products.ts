@@ -165,10 +165,16 @@ export async function fetchLandingCatalogue(): Promise<LandingCatalogue> {
 
   const error = categoriesRes.error ?? productsRes.error;
   if (error) {
-    // Throw, don't return empty: the home page is cached (revalidate), and a
-    // failed background refresh keeps serving the last good page. A deploy
-    // with a wrong database URL fails its build instead of going live empty.
-    throw new Error(`[fetchLandingCatalogue] ${error.message}`);
+    // Production: throw, don't return empty. The home page is cached
+    // (revalidate), and a failed background refresh keeps serving the last
+    // good page; a deploy with a wrong database URL fails its build instead
+    // of going live with no products. CI/local builds (placeholder database)
+    // render without products.
+    if (process.env.VERCEL_ENV === 'production') {
+      throw new Error(`[fetchLandingCatalogue] ${error.message}`);
+    }
+    console.error('[fetchLandingCatalogue] failed:', error.message);
+    return { categories: [], products: [] };
   }
 
   const rows = (productsRes.data ?? []) as unknown as ProductRow[];
