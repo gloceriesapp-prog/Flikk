@@ -126,14 +126,14 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
               food-label convention. isVeg defaults true (types.ts), only
               fish/meat set it false. */}
           <View
-            className="h-3 w-3 items-center justify-center rounded-[3px] border"
+            className="h-3.5 w-3.5 items-center justify-center rounded-[3px] border"
             style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}
           >
-            <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+            <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
           </View>
-          {/* Pack size: thin outline, no fill, same 12px height as the veg mark. */}
-          <View className="h-3 justify-center rounded-[3px] border border-[#CFCFD4] px-1">
-            <Text className="text-[8.5px] font-semibold leading-[10px] text-black/60">{weight}</Text>
+          {/* Pack size: thin outline, no fill, same 14px height as the veg mark. */}
+          <View className="h-3.5 justify-center rounded-[4px] border border-[#D4D4DA] px-1.5">
+            <Text className="text-[9px] font-semibold leading-[11px] tracking-[0.2px] text-black/60">{weight}</Text>
           </View>
 
         </View>
