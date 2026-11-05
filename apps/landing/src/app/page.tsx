@@ -10,19 +10,25 @@ import AreaStrip from "@/components/location/AreaStrip";
 import Footer from "@/components/footer/Footer";
 import JsonLd from "@/components/seo/JsonLd";
 import { mobileAppSchema } from "@/lib/seo/schema";
-import { fetchCheapestProducts } from "@/lib/products";
+import { fetchLandingCatalogue } from "@/lib/products";
 import { getArea } from "@/lib/seo/areas";
 
-// Fixed grid of the 32 cheapest real products — distinct rows, no repeats.
-// 32 / 8 cols = exactly 4 rows on the largest breakpoint.
-const PRODUCT_GRID_COUNT = 32;
+// Category shelves under the trending grid: the categories with the most
+// live products, one row of up to 8 (one full row on xl) each.
+const SHELF_COUNT = 4;
+const SHELF_MIN_PRODUCTS = 4;
+const SHELF_LIMIT = 8;
 
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{ area?: string }>;
 }) {
-  const products = await fetchCheapestProducts(PRODUCT_GRID_COUNT);
+  const { categories, products } = await fetchLandingCatalogue();
+  const shelves = categories
+    .filter((c) => c.products.length >= SHELF_MIN_PRODUCTS)
+    .sort((a, b) => b.products.length - a.products.length)
+    .slice(0, SHELF_COUNT);
 
   // Footer live-zone links land here as `/?area=<slug>`. Surface that zone as
   // a headline strip above the fold. Only live zones get the strip (soon zones
@@ -39,8 +45,11 @@ export default async function Home({
       <main>
         {activeArea && <AreaStrip area={activeArea.area} />}
         <GloceriesHero />
-        <SubcategoriesGrid />
+        <SubcategoriesGrid categories={categories} />
         <ProductCarousel products={products} />
+        {shelves.map((c) => (
+          <ProductCarousel key={c.id} title={c.name} products={c.products} limit={SHELF_LIMIT} />
+        ))}
         <BrandShowcase />
         <LocalPicks products={[...products.slice(16), ...products.slice(0, 16)].slice(0, 10)} />
         <NearbyStores />

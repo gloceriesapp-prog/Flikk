@@ -1,113 +1,12 @@
-"use client";
-
 import React from "react";
 import Image from "next/image";
 import { APP_DOWNLOAD_HREF } from "@/lib/links";
+import type { LandingCategory } from "@/lib/products";
 
-interface SubcategoryItem {
-  id: string;
-  name: string;
-  image: string;
-}
+// Real categories from admin's catalogue (only ones with live products).
+export default function SubcategoriesGrid({ categories }: { categories: LandingCategory[] }) {
+  if (categories.length === 0) return null;
 
-const DEFAULT_SUBCATEGORY_IMAGE =
-  "https://cdnfpaolzkpqetmmpyzh.supabase.co/storage/v1/object/public/website-images/amul.jpeg";
-
-// 18 items: divides evenly into 3 / 6 / 9 columns, so every row is full at every breakpoint.
-const SUBCATEGORIES: SubcategoryItem[] = [
-  {
-    id: "sub-0",
-    name: "Fruits & Vegetables",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-1",
-    name: "Fresh Milk & Dairy",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-2",
-    name: "Bread, Eggs & Butter",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-3",
-    name: "Cold Drinks & Juices",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-4",
-    name: "Chips & Munchies",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-5",
-    name: "Ice Creams & Sweets",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-6",
-    name: "Tea, Coffee & Drinks",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-7",
-    name: "Biscuits & Cookies",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-8",
-    name: "Atta, Rice & Dals",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-9",
-    name: "Cooking Oils & Ghee",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-10",
-    name: "Instant Noodles & Pasta",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-11",
-    name: "Chocolates & Candies",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-12",
-    name: "Dry Fruits & Seeds",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-13",
-    name: "Sauces & Spreads",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-14",
-    name: "Paan Corner",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-15",
-    name: "Meat & Seafood",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-16",
-    name: "Personal Care",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-  {
-    id: "sub-17",
-    name: "Cleaning Essentials",
-    image: DEFAULT_SUBCATEGORY_IMAGE,
-  },
-];
-
-export default function SubcategoriesGrid() {
   return (
     <section className="relative w-full overflow-hidden bg-white pb-14 pt-10" aria-labelledby="categories-heading">
       <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 flex flex-col gap-10">
@@ -131,7 +30,7 @@ export default function SubcategoriesGrid() {
 
         {/* 3 / 6 / 9 columns; tiles stretch to fill their column. */}
         <div className="grid w-full grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-6 sm:gap-x-4 lg:grid-cols-9 lg:gap-x-5 lg:gap-y-8">
-          {SUBCATEGORIES.map((item) => (
+          {categories.map((item) => (
             <a
               key={item.id}
               href={APP_DOWNLOAD_HREF}
