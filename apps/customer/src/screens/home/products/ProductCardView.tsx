@@ -133,7 +133,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
           </View>
           {/* Pack size: soft grey chip, no border, about the veg mark's height. */}
           <View className="justify-center rounded-[4px] bg-[#F1F1F4] px-1.5 py-[1px]">
-            <Text className="text-[10px] font-semibold leading-[12px] text-black/60">{weight}</Text>
+            <Text className="text-[9.5px] font-semibold leading-[12px] text-black/60">{weight}</Text>
           </View>
 
         </View>
