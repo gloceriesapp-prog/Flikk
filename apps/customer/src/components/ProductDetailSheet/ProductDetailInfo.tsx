@@ -88,6 +88,12 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
   const displayOriginalPrice = selectedVariant?.originalPrice ?? originalPrice;
   const displayPercent = discountPercentOf(displayPrice, displayOriginalPrice);
 
+  // With no option pickers between them, the size line hugs the title with
+  // the same 4px gap it has above the price (card gap-3 minus -mt-2).
+  const hasOptions = hasRealVariants || !!(product.cutOptions && selectedCut && onSelectCut)
+    || !!(product.options?.length && onSelectOption) || !!(product.preorder && onSelectPreorder)
+    || !!(product.servingOptions?.length && onSelectServing);
+
   return (
     <View className="gap-3 bg-[#f6f6f6] px-3 pb-4 pt-3">
       <View className="gap-3 rounded-2xl bg-[#FFFFFF] px-4 py-4">
@@ -132,7 +138,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
         ) : null}
 
         {/* Selected unit summary (reference): size, price, MRP, % OFF, taxes. */}
-        <View className="-mt-1.5 gap-1">
+        <View className={`gap-1 ${hasOptions ? '' : '-mt-2'}`}>
           <Text className="text-[14px] font-semibold text-ink/55">{selectedVariant?.label ?? weight}</Text>
           <View className="flex-row flex-wrap items-center gap-2">
             <RupeePrice amount={displayPrice} size={22} />
