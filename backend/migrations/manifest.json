@@ -640,6 +640,10 @@
     {
       "file": "20261104160000_platform_markup.sql",
       "sha256": "836da186aaf00950b2159fb8b3b3552421f0f8fd25b4a1afe83d2f071ff98226"
+    },
+    {
+      "file": "20261105120000_product_flavours.sql",
+      "sha256": "5f7d8e477bd7e8f3d51a680205eedf04ca74415da091ad09f46a24e9be7408e0"
     }
   ]
 }

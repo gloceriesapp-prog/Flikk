@@ -10,6 +10,7 @@
 // get a separate bucket) — no bg_color extraction runs for it, that logic
 // is product-photo specific.
 
+import { createPortal } from 'react-dom';
 import { useState } from 'react';
 import { X } from '@/components/icons';
 import type { CategorySection, NewCategoryInput } from '@/lib/types';
@@ -49,10 +50,12 @@ export function AddCategoryModal({
     }
   }
 
-  return (
+  // Portalled to <body> so the overlay covers the whole screen, not just the
+  // transformed page area (same as AddProductModal).
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="flex w-full max-w-sm flex-col overflow-hidden card"
+        className="flex max-h-[90vh] w-full max-w-sm flex-col overflow-y-auto card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
@@ -114,6 +117,7 @@ export function AddCategoryModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

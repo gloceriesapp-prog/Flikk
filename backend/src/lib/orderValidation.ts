@@ -18,6 +18,8 @@ export interface CartItem {
   variant_id?: string | null;
   // Chicken piece size (products.cut_options_enabled only). Same price.
   cut_size?: CutSize | null;
+  // Flavour (product_options.id). Required when the product has any.
+  option_id?: string | null;
   expected_unit_price?: number;
   quantity: number;
 }

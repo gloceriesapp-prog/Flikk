@@ -62,6 +62,34 @@ export async function saveVariantMarkups(productId: string, markups: { unit_type
   }
 }
 
+// Flavours replace the product's list: kept ones (by id) are updated, new
+// ones inserted, missing ones deleted. Past order lines keep the flavour
+// name (option_name_at_order), so deleting one is safe.
+export async function saveProductOptions(productId: string,
+  options: { id: string | null; name: string; image_url: string | null; is_available: boolean; sort_order: number }[]): Promise<void> {
+  const fail = () => new CatalogueSaveError(500, 'Product saved, but its flavours were not. Try saving again.');
+  const { data: existing, error } = await supabaseAdmin.from('product_options').select('id').eq('product_id', productId);
+  if (error) throw fail();
+  const keep = new Set(options.map((o) => o.id).filter(Boolean));
+  const gone = (existing ?? []).map((row) => row.id as string).filter((id) => !keep.has(id));
+  if (gone.length) {
+    const { error: delError } = await supabaseAdmin.from('product_options').delete().in('id', gone);
+    if (delError) throw fail();
+  }
+  // Two passes so renaming A->B and B->A in one save cannot hit the unique name.
+  for (const o of options.filter((o) => o.id)) {
+    const { error: tmpError } = await supabaseAdmin.from('product_options').update({ name: `~${o.id}` }).eq('id', o.id!).eq('product_id', productId);
+    if (tmpError) throw fail();
+  }
+  for (const o of options) {
+    const row = { product_id: productId, name: o.name, image_url: o.image_url, is_available: o.is_available, sort_order: o.sort_order };
+    const { error: writeError } = o.id
+      ? await supabaseAdmin.from('product_options').update(row).eq('id', o.id).eq('product_id', productId)
+      : await supabaseAdmin.from('product_options').insert(row);
+    if (writeError) throw fail();
+  }
+}
+
 // Every admin-saved product is filed under a sub-category, and its category
 // is that sub-category's parent (the database trigger does the same; doing
 // it here too keeps the chicken/veg rules in toProductRow on the right name).

@@ -8,7 +8,7 @@
 // save then replaced them) and inactive stores read as "Unknown store".
 // Writes live in app/api/products/* too, see lib/supabase/admin.ts's note.
 
-import type { PendingProductChanges, Product, ProductVariant, StockStatus, Store } from '../types';
+import type { PendingProductChanges, Product, ProductOption, ProductVariant, StockStatus, Store } from '../types';
 import type { UnitType } from '../product-options';
 
 interface ProductVariantRow {
@@ -55,10 +55,11 @@ export interface ProductRow {
   stock_tracking_enabled: boolean;
   stores: { name: string; district: string } | null;
   product_variants: ProductVariantRow[];
+  product_options?: { id: string; name: string; image_url: string | null; sort_order: number; is_available: boolean }[] | null;
 }
 
 export const PRODUCT_SELECT =
-  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup)';
+  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(id, name, image_url, sort_order, is_available)';
 
 function mapVariants(rows: ProductVariantRow[], product: ProductRow): ProductVariant[] {
   // is_default first, then insertion order for the rest — mirrors how
@@ -139,6 +140,8 @@ export function mapRowToProduct(row: ProductRow): Product {
     stockStatus: row.stock_status,
     imageUrl: row.image_url ?? undefined,
     extraImageUrls: row.extra_image_urls ?? [],
+    options: [...(row.product_options ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+      .map((o): ProductOption => ({ id: o.id, name: o.name, imageUrl: o.image_url ?? undefined, isAvailable: o.is_available })),
     cutOptionsEnabled: row.cut_options_enabled === true,
     waiveCommission: row.waive_commission === true,
     showUnitPrice: row.show_unit_price === true,

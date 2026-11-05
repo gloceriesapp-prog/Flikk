@@ -6,33 +6,36 @@ export const CUT_SIZE_LABEL: Record<CutSize, string> = { small: 'Small pieces', 
 export const DEFAULT_CUT: CutSize = 'medium';
 export const quickAddCut = (product: { cutOptions?: boolean }): CutSize | undefined => (product.cutOptions ? DEFAULT_CUT : undefined);
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // A UI line key is never a product ID sent to the API. The same pack in two
-// cut sizes is two lines.
-export function cartLineId(productId: string, variantId?: string, cutSize?: CutSize): string {
+// cut sizes, or in two flavours, is two lines.
+export function cartLineId(productId: string, variantId?: string, cutSize?: CutSize, optionId?: string): string {
   const base = variantId ? `${productId}::${variantId}` : productId;
-  return cutSize ? `${base}#${cutSize}` : base;
+  return `${cutSize ? `${base}#${cutSize}` : base}${optionId ? `@${optionId}` : ''}`;
 }
 
-export function cartIdentity(item: { id: string; productId?: string; variantId?: string; cutSize?: CutSize }) {
-  const [legacyProductId, legacyVariantId] = item.id.split('#')[0]!.split('::');
+export function cartIdentity(item: { id: string; productId?: string; variantId?: string; cutSize?: CutSize; optionId?: string }) {
+  const [legacyProductId, legacyVariantId] = item.id.split('@')[0]!.split('#')[0]!.split('::');
   const productId = item.productId ?? legacyProductId;
   const variantId = item.variantId ?? legacyVariantId;
   // Persisted carts are untrusted: an unknown value is dropped, not sent.
   const cutSize = item.cutSize && CUT_SIZES.includes(item.cutSize) ? item.cutSize : undefined;
-  return { productId, variantId, cutSize, id: cartLineId(productId, variantId, cutSize) };
+  const optionId = item.optionId && UUID.test(item.optionId) ? item.optionId : undefined;
+  return { productId, variantId, cutSize, optionId, id: cartLineId(productId, variantId, cutSize, optionId) };
 }
 
-export function checkoutItems(items: { id: string; productId?: string; variantId?: string; cutSize?: CutSize; quantity: number; price?: number }[]) {
+export function checkoutItems(items: { id: string; productId?: string; variantId?: string; cutSize?: CutSize; optionId?: string; quantity: number; price?: number }[]) {
   return items.map((item) => {
-    const { productId, variantId, cutSize } = cartIdentity(item);
+    const { productId, variantId, cutSize, optionId } = cartIdentity(item);
     if (variantId?.startsWith('preview-')) throw new Error('Remove the unavailable sample pack from your cart and choose a real pack.');
     return { product_id: productId, variant_id: variantId ?? null, quantity: item.quantity, expected_unit_price: item.price,
-      ...(cutSize ? { cut_size: cutSize } : {}) };
+      ...(cutSize ? { cut_size: cutSize } : {}), ...(optionId ? { option_id: optionId } : {}) };
   });
 }
 
 // Prices may legitimately change in a confirmed server quote; identify the
 // purchased draft by real line identities and quantities, independent of price.
-export function cartPurchaseSignature(items: { id: string; productId?: string; variantId?: string; cutSize?: CutSize; quantity: number }[]): string {
+export function cartPurchaseSignature(items: { id: string; productId?: string; variantId?: string; cutSize?: CutSize; optionId?: string; quantity: number }[]): string {
   return JSON.stringify(items.map(item => ({ ...cartIdentity(item), quantity: item.quantity })).sort((a, b) => a.id.localeCompare(b.id)));
 }

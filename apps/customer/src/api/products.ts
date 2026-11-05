@@ -45,6 +45,8 @@ export interface ApiProduct {
   cut_options_enabled?: boolean | null;
   bulk_min_kg?: number | string | null;
   show_unit_price?: boolean | null;
+  // Flavours; absent on feeds from before they existed.
+  product_options?: { id: string; name: string; image_url: string | null; sort_order: number; is_available: boolean }[] | null;
   is_veg: boolean;
   freshness_tag: string | null;
   product_variants: ApiVariant[];
@@ -124,6 +126,10 @@ export function mapApiProduct(row: ApiProduct): Product {
     imageSeed: row.id,
     imageUrl: row.image_url ?? undefined,
     imageUrls: productImages(row),
+    options: row.product_options?.length
+      ? [...row.product_options].sort((a, b) => a.sort_order - b.sort_order)
+        .map((o) => ({ id: o.id, name: o.name, imageUrl: o.image_url ?? undefined, isAvailable: o.is_available }))
+      : undefined,
     bgColor: row.bg_color ?? undefined,
     cutOptions: row.cut_options_enabled === true || undefined,
     bulkMinKg: row.cut_options_enabled && row.bulk_min_kg != null && Number(row.bulk_min_kg) > 0 ? Number(row.bulk_min_kg) : undefined,

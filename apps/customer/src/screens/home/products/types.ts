@@ -2,6 +2,13 @@
 // Deals, Everyday essentials, Coastal Kitchen picks all use this, not their
 // own copy. See ProductCard.tsx.
 
+export interface ProductOption {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  isAvailable: boolean;
+}
+
 export interface Product {
   id: string;
   isAvailable?: boolean;
@@ -36,6 +43,9 @@ export interface Product {
   // customer picks a cut size, and bulkMinKg (if set) is the cart weight of
   // this product from which the order becomes a bulk order.
   cutOptions?: boolean;
+  // Flavours (product_options), sorted; empty/undefined = none. A product
+  // with flavours needs one picked before it can go in the cart.
+  options?: ProductOption[];
   // "₹63.6/kg" for the default size, set only when the admin turned it on
   // for this product (products.show_unit_price; api/products.ts).
   unitPriceLabel?: string;

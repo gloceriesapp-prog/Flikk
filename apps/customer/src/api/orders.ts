@@ -18,6 +18,7 @@ export interface CreateOrderItem {
   expected_unit_price?: number;
   quantity: number;
   cut_size?: CutSize;
+  option_id?: string;
 }
 
 export interface CreateOrderInput {
@@ -51,6 +52,7 @@ export interface ApiOrderItem {
   variant_id?: string | null;
   unit_at_order?: string | null;
   cut_size?: CutSize | null;
+  option_name_at_order?: string | null;
   variant_mrp_at_order?: number | null;
   // Checkout snapshot; absent/null for orders created before migration 060.
   unit_mrp_at_order?: number | null;

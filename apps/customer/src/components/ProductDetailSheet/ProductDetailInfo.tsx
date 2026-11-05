@@ -33,6 +33,7 @@ import { colors } from '../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { ProductVariantOptions, discountPercentOf } from './ProductVariantOptions';
 import { ProductCutOptions } from './ProductCutOptions';
+import { ProductFlavourOptions } from './ProductFlavourOptions';
 import type { CutSize } from '../../store/cartIdentity';
 import { SellerDetailsCard } from './SellerDetailsCard';
 import { SimilarProductsRow } from './SimilarProductsRow';
@@ -57,9 +58,12 @@ interface Props {
   // Chicken cut size, lifted to the sheet like the variant (the footer adds it).
   selectedCut?: CutSize;
   onSelectCut?: (cut: CutSize) => void;
+  // Flavour, lifted to the sheet like the variant (the footer adds it).
+  selectedOptionId?: string;
+  onSelectOption?: (id: string) => void;
 }
 
-export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut }: Props) {
+export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption }: Props) {
   const { name, localName, weight, price, originalPrice, storeName, variants, sellerDetails } = product;
   const related = relatedProducts ?? product.relatedProducts;
   const hasRealVariants = variants && variants.length > 1;
@@ -102,6 +106,10 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
 
         {product.cutOptions && selectedCut && onSelectCut ? (
           <ProductCutOptions selected={selectedCut} onSelect={onSelectCut} bulkMinKg={product.bulkMinKg} />
+        ) : null}
+
+        {product.options?.length && onSelectOption ? (
+          <ProductFlavourOptions options={product.options} selectedId={selectedOptionId} onSelect={onSelectOption} />
         ) : null}
 
         {/* Selected unit summary (reference): size, price, MRP, % OFF, taxes. */}

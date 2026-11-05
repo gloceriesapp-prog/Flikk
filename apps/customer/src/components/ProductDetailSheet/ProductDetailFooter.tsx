@@ -15,7 +15,7 @@ import { useCartStore } from '../../store/useCartStore';
 import { addToCart } from '../../store/addToCart';
 import { CUT_SIZE_LABEL, cartLineId, type CutSize } from '../../store/cartIdentity';
 
-import type { Product } from '../../screens/home/products/types';
+import type { Product, ProductOption } from '../../screens/home/products/types';
 
 const BAR_BLUE = '#1447e6';
 
@@ -32,12 +32,15 @@ interface Props {
   };
   // Chosen chicken cut (ProductCutOptions); a separate cart line per cut.
   cutSize?: CutSize;
+  // Chosen flavour (ProductFlavourOptions); a separate cart line per flavour.
+  option?: ProductOption;
 }
 
 export function ProductDetailFooter({
   product,
   selectedVariant,
   cutSize,
+  option,
 }: Props) {
   const availability = useProductAvailability(product);
 
@@ -51,7 +54,9 @@ export function ProductDetailFooter({
   const variantId =
     selectedVariant?.id ?? product.defaultVariantId;
 
-  const id = cartLineId(product.id, variantId, cutSize);
+  const id = cartLineId(product.id, variantId, cutSize, option?.id);
+  // A product with flavours goes in the cart only with an in-stock one picked.
+  const needsFlavour = (product.options?.length ?? 0) > 0 && !option?.isAvailable;
 
   const weight =
     selectedVariant?.label ?? product.weight;
@@ -78,12 +83,15 @@ export function ProductDetailFooter({
   // OUT OF STOCK / UNAVAILABLE
   if (
     !availability.isAvailable ||
-    selectedVariant?.isAvailable === false
+    selectedVariant?.isAvailable === false ||
+    needsFlavour
   ) {
     return (
       <View className="mx-5 my-4 rounded-2xl bg-[#FFF0EE] px-5 py-4">
         <Text className="text-center font-bold text-[#B42318]">
-          {selectedVariant?.isAvailable === false
+          {needsFlavour && availability.isAvailable && selectedVariant?.isAvailable !== false
+            ? 'Every flavour is out of stock'
+            : selectedVariant?.isAvailable === false
             ? selectedVariant.unavailableReason === 'stock_unconfirmed'
               ? 'Stock updating'
               : 'Out of stock'
@@ -118,7 +126,7 @@ export function ProductDetailFooter({
         </View>
 
         <Text className="mt-0.5 text-[11px] font-medium text-ink/50">
-          {cutSize ? `${weight} · ${CUT_SIZE_LABEL[cutSize]}` : weight}
+          {[weight, cutSize ? CUT_SIZE_LABEL[cutSize] : null, option?.name].filter(Boolean).join(' · ')}
         </Text>
       </View>
 
@@ -133,13 +141,15 @@ export function ProductDetailFooter({
               productId: product.id,
               variantId,
               cutSize,
+              optionId: option?.id,
+              optionName: option?.name,
               name,
               weight,
               price,
               originalPrice,
               storeId: storeId ?? '',
               storeName,
-              imageUrl,
+              imageUrl: option?.imageUrl ?? imageUrl,
             })
           }
           className="

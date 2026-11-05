@@ -143,7 +143,7 @@ export function CartItemRow({ item, availability }: Props) {
             text-ink/50
           "
         >
-          {item.cutSize ? `${item.weight} · ${CUT_SIZE_LABEL[item.cutSize]}` : item.weight}
+          {[item.weight, item.cutSize ? CUT_SIZE_LABEL[item.cutSize] : null, item.optionName].filter(Boolean).join(' · ')}
         </Text>
 
         {/* SAVE FOR LATER */}

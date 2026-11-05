@@ -106,6 +106,9 @@ export interface PartnerOrderItem {
   quantity: number;
   unit_price_at_order: number;
   unit_at_order?: string | null;
+  cut_size?: 'small' | 'medium' | 'large' | null;
+  // Flavour the customer picked (product_options), kept on the line.
+  option_name_at_order?: string | null;
   product_name_at_order?: string | null;
   product_image_at_order?: string | null;
   products: { name: string; unit: string; image_url: string | null } | null;
