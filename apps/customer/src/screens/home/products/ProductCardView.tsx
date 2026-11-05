@@ -132,8 +132,14 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
             <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
           </View>
           <View className="self-start rounded-md  bg-[#F1F1F4] border border-gray-100 px-1.5 py-0.5">
-            <Text className="text-[11.5px] font-semibold text-black/60">{weight}</Text>
+            <Text className="text-[10px] font-semibold text-black/60">{weight}</Text>
           </View>
+          {/* Per-kg/litre price sits with the pack size, before the price. */}
+          {product.unitPriceLabel && (
+            <Text className={`shrink text-[10px] font-medium ${onDark ? 'text-white/60' : 'text-[#6B7280]'}`} numberOfLines={1}>
+              {product.unitPriceLabel}
+            </Text>
+          )}
 
         </View>
 
@@ -146,10 +152,6 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
             <RupeePrice amount={originalPrice} size={12} strike color={onDark ? '#FFFFFF73' : '#B8B8B8'} />
           )}
         </View>
-
-        {product.unitPriceLabel && (
-          <Text className={`text-[11px] font-medium ${onDark ? 'text-white/60' : 'text-[#6B7280]'}`}>{product.unitPriceLabel}</Text>
-        )}
 
         {discountPercent !== null && discountPercent > 0 && (
           <Text className={`text-[12px] font-bold ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discountPercent}% OFF</Text>
