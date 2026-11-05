@@ -154,7 +154,7 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
         )}
 
         {discountPercent !== null && discountPercent > 0 && (
-          <Text className={`text-[12px] font-bold ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discountPercent}% OFF</Text>
+          <Text className={`-mt-1 text-[12px] font-bold leading-[14px] ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discountPercent}% OFF</Text>
         )}
 
         <Text className={`text-[13px] font-semibold leading-[17px] ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
