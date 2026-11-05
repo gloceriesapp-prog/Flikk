@@ -114,7 +114,7 @@ export function cardDotWindow(count: number, index: number): number[] {
 
 function CardDots({ count, index }: { count: number; index: number }) {
   return (
-    <View accessibilityLabel={`Photo ${index + 1} of ${count}`} className="flex-row items-center" style={{ gap: 4 }}>
+    <View accessibilityLabel={`Photo ${index + 1} of ${count}`} className="flex-row items-center" style={{ gap: 2 }}>
       {cardDotWindow(count, index).map((i) => (
         <View
           key={i}
