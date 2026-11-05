@@ -5,8 +5,8 @@
 // rendering ProductCard gets the detail view for free, no per-screen wiring
 // needed.
 //
-// Tapping the card (anywhere outside the bookmark/ADD buttons, which are
-// their own nested Pressables and absorb the touch first) opens
+// Tapping the card (anywhere outside the ADD button, which is
+// its own nested Pressable and absorb the touch first) opens
 // ProductDetailSheet.
 //
 // Also warms the detail sheet's "similar products" data/images — but ONLY

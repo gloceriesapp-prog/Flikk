@@ -99,6 +99,7 @@ import { CartBar } from '../CartBar/CartBar';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { colors } from '../../theme/tokens';
 import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
+import { useWishlistStore } from '../../store/useWishlistStore';
 import { useEverydayEssentials } from '../../screens/home/everyday-essentials/useEverydayEssentials';
 import { ProductDetailInfo } from './ProductDetailInfo';
 import { ProductDetailFooter } from './ProductDetailFooter';
@@ -566,7 +567,8 @@ interface CardProps {
 function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: CardProps) {
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const isBookmarked = useWishlistStore((state) => state.isWishlisted(product.id));
+  const toggleWishlist = useWishlistStore((state) => state.toggle);
   const hasRatings = Number.isFinite(product.rating) && product.rating > 0 && product.rating <= 5
     && Number.parseFloat(product.ratingCount) > 0;
 
@@ -843,9 +845,9 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
               </Pressable>
 
               <View className="flex-row gap-2.5">
-                <Pressable accessibilityRole="button" accessibilityLabel="Toggle wishlist"
+                <Pressable accessibilityRole="button" accessibilityLabel={isBookmarked ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
                   hitSlop={10}
-                  onPress={() => setIsBookmarked((v) => !v)}
+                  onPress={() => toggleWishlist(product)}
                   className={pillClass}
                   style={pillStyle}
                 >
