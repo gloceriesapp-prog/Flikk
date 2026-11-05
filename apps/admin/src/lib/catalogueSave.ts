@@ -44,6 +44,7 @@ export interface ProductExtras {
   bulk_min_kg?: number | null;
   waive_commission?: boolean;
   show_unit_price?: boolean;
+  serving_options?: string[];
 }
 export async function saveProductExtras(productId: string, extras: ProductExtras): Promise<void> {
   if (Object.keys(extras).length === 0) return;

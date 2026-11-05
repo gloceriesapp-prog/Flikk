@@ -30,7 +30,7 @@ import { AppIcon } from '../../../components/AppIcon';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
 import { addToCart } from '../../../store/addToCart';
-import { cartLineId, quickAddCut } from '../../../store/cartIdentity';
+import { cartLineId, quickAddCut, mustPickInDetail } from '../../../store/cartIdentity';
 import { useCartStore } from '../../../store/useCartStore';
 import type { Product } from '../../home/products/types';
 
@@ -52,8 +52,8 @@ function AddControl({ product, onChooseFlavour }: { product: Product; onChooseFl
     return (
       <Pressable
         onPress={() =>
-          // A product with flavours opens its detail view to pick one.
-          product.options?.length ? onChooseFlavour() : addToCart({
+          // Flavours / chilled-or-not: open the detail view to pick.
+          mustPickInDetail(product) ? onChooseFlavour() : addToCart({
             isAvailable: product.isAvailable,
             id: lineId,
             productId: product.id,

@@ -133,7 +133,7 @@ function PanelBody({ order, now, accepted }: { order: PartnerOrder; now: number;
           {order.order_items.map((item, index) => {
             const name = item.product_name_at_order ?? item.products?.name ?? 'Item';
             // Cut and flavour are part of what to pack.
-            const pack = [item.unit_at_order ?? item.products?.unit, item.cut_size ? `${item.cut_size} pieces` : null, item.option_name_at_order]
+            const pack = [item.unit_at_order ?? item.products?.unit, item.cut_size ? `${item.cut_size} pieces` : null, item.option_name_at_order, item.serving === 'chilled' ? 'Chilled' : item.serving === 'room_temperature' ? 'Room temperature' : null]
               .filter(Boolean).join(' · ') || undefined;
             return <li key={item.id ?? index} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
               <ItemThumb name={name} imageUrl={item.product_image_at_order ?? item.products?.image_url} index={index} neutral className="h-12 w-12 text-sm" />

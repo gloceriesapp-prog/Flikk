@@ -102,7 +102,7 @@ import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore'
 import { useEverydayEssentials } from '../../screens/home/everyday-essentials/useEverydayEssentials';
 import { ProductDetailInfo } from './ProductDetailInfo';
 import { ProductDetailFooter } from './ProductDetailFooter';
-import type { CutSize } from '../../store/cartIdentity';
+import type { CutSize, Serving } from '../../store/cartIdentity';
 import { useSimilarProducts } from './useSimilarProducts';
 import type { Product } from '../../screens/home/products/types';
 
@@ -610,6 +610,9 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
   // First in-stock flavour preselected; its photo leads the hero.
   const [selectedOptionId, setSelectedOptionId] = useState(product.options?.find((o) => o.isAvailable)?.id);
   const selectedOption = product.options?.find((o) => o.id === selectedOptionId);
+  // Chilled preselected when both are offered; one offered needs no choice.
+  const [selectedServing, setSelectedServing] = useState<Serving | undefined>(product.servingOptions?.[0]);
+  const lineServing = (product.servingOptions?.length ?? 0) > 1 ? selectedServing : undefined;
   const productPhotos = product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : []);
   const heroPhotos = selectedOption?.imageUrl ? [selectedOption.imageUrl, ...productPhotos.filter((u) => u !== selectedOption.imageUrl)] : productPhotos;
 
@@ -888,6 +891,8 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
             onSelectCut={setSelectedCut}
             selectedOptionId={selectedOptionId}
             onSelectOption={setSelectedOptionId}
+            selectedServing={selectedServing}
+            onSelectServing={setSelectedServing}
             onSelectVariant={setSelectedVariantId}
           />
         </Animated.ScrollView>
@@ -906,7 +911,7 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
               ? <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }]} />
               : <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />}
             <View className="absolute inset-0 bg-white/40" />
-            <ProductDetailFooter product={product} selectedVariant={selectedVariant} cutSize={product.cutOptions ? selectedCut : undefined} option={selectedOption} />
+            <ProductDetailFooter product={product} selectedVariant={selectedVariant} cutSize={product.cutOptions ? selectedCut : undefined} option={selectedOption} serving={lineServing} />
           </Animated.View>
         </View>
       </Animated.View>

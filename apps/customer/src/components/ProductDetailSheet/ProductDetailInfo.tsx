@@ -34,7 +34,8 @@ import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { ProductVariantOptions, discountPercentOf } from './ProductVariantOptions';
 import { ProductCutOptions } from './ProductCutOptions';
 import { ProductFlavourOptions } from './ProductFlavourOptions';
-import type { CutSize } from '../../store/cartIdentity';
+import { ProductServingOptions } from './ProductServingOptions';
+import type { CutSize, Serving } from '../../store/cartIdentity';
 import { SellerDetailsCard } from './SellerDetailsCard';
 import { SimilarProductsRow } from './SimilarProductsRow';
 import type { Product } from '../../screens/home/products/types';
@@ -61,9 +62,12 @@ interface Props {
   // Flavour, lifted to the sheet like the variant (the footer adds it).
   selectedOptionId?: string;
   onSelectOption?: (id: string) => void;
+  // Chilled / room temperature, lifted to the sheet (the footer adds it).
+  selectedServing?: Serving;
+  onSelectServing?: (serving: Serving) => void;
 }
 
-export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption }: Props) {
+export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing }: Props) {
   const { name, localName, weight, price, originalPrice, storeName, variants, sellerDetails } = product;
   const related = relatedProducts ?? product.relatedProducts;
   const hasRealVariants = variants && variants.length > 1;
@@ -110,6 +114,10 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
 
         {product.options?.length && onSelectOption ? (
           <ProductFlavourOptions options={product.options} selectedId={selectedOptionId} onSelect={onSelectOption} />
+        ) : null}
+
+        {product.servingOptions?.length && onSelectServing ? (
+          <ProductServingOptions options={product.servingOptions} selected={selectedServing} onSelect={onSelectServing} />
         ) : null}
 
         {/* Selected unit summary (reference): size, price, MRP, % OFF, taxes. */}

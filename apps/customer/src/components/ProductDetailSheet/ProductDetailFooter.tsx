@@ -13,7 +13,7 @@ import { AppIcon } from '../AppIcon';
 
 import { useCartStore } from '../../store/useCartStore';
 import { addToCart } from '../../store/addToCart';
-import { CUT_SIZE_LABEL, cartLineId, type CutSize } from '../../store/cartIdentity';
+import { CUT_SIZE_LABEL, SERVING_LABEL, cartLineId, type CutSize, type Serving } from '../../store/cartIdentity';
 
 import type { Product, ProductOption } from '../../screens/home/products/types';
 
@@ -34,6 +34,9 @@ interface Props {
   cutSize?: CutSize;
   // Chosen flavour (ProductFlavourOptions); a separate cart line per flavour.
   option?: ProductOption;
+  // Chilled / room temperature (ProductServingOptions); set only when the
+  // product offers both, a separate cart line each.
+  serving?: Serving;
 }
 
 export function ProductDetailFooter({
@@ -41,6 +44,7 @@ export function ProductDetailFooter({
   selectedVariant,
   cutSize,
   option,
+  serving,
 }: Props) {
   const availability = useProductAvailability(product);
 
@@ -54,7 +58,7 @@ export function ProductDetailFooter({
   const variantId =
     selectedVariant?.id ?? product.defaultVariantId;
 
-  const id = cartLineId(product.id, variantId, cutSize, option?.id);
+  const id = cartLineId(product.id, variantId, cutSize, option?.id, serving);
   // A product with flavours goes in the cart only with an in-stock one picked.
   const needsFlavour = (product.options?.length ?? 0) > 0 && !option?.isAvailable;
 
@@ -126,7 +130,7 @@ export function ProductDetailFooter({
         </View>
 
         <Text className="mt-0.5 text-[11px] font-medium text-ink/50">
-          {[weight, cutSize ? CUT_SIZE_LABEL[cutSize] : null, option?.name].filter(Boolean).join(' · ')}
+          {[weight, cutSize ? CUT_SIZE_LABEL[cutSize] : null, option?.name, serving ? SERVING_LABEL[serving] : null].filter(Boolean).join(' · ')}
         </Text>
       </View>
 
@@ -143,6 +147,7 @@ export function ProductDetailFooter({
               cutSize,
               optionId: option?.id,
               optionName: option?.name,
+              serving,
               name,
               weight,
               price,

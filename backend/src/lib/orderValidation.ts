@@ -13,6 +13,9 @@ export interface CartProduct {
 export type CutSize = 'small' | 'medium' | 'large';
 export const CUT_SIZES: readonly CutSize[] = ['small', 'medium', 'large'];
 
+export const SERVINGS = ['chilled', 'room_temperature'] as const;
+export type Serving = typeof SERVINGS[number];
+
 export interface CartItem {
   product_id: string;
   variant_id?: string | null;
@@ -20,6 +23,8 @@ export interface CartItem {
   cut_size?: CutSize | null;
   // Flavour (product_options.id). Required when the product has any.
   option_id?: string | null;
+  // Chilled or room temperature (products.serving_options). Same price.
+  serving?: Serving | null;
   expected_unit_price?: number;
   quantity: number;
 }

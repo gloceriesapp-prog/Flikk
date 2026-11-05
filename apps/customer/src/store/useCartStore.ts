@@ -27,7 +27,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { cartIdentity, type CutSize } from './cartIdentity';
+import { cartIdentity, type CutSize, type Serving } from './cartIdentity';
 import { useAuthStore } from './useAuthStore';
 
 export interface CartItem {
@@ -40,6 +40,9 @@ export interface CartItem {
   // Chosen flavour (part of the line id) and its name for display.
   optionId?: string;
   optionName?: string;
+  // Chilled / room temperature, only when the product offers both (part of
+  // the line id). A product with one is served that way without asking.
+  serving?: Serving;
   name: string;
   weight: string;
   price: number;

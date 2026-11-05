@@ -21,6 +21,7 @@ import { useAdminRealtime } from '@/lib/realtime/useAdminRealtime';
 import { CANCELLED_BY_LABELS, orderReasonLabel } from '@/lib/orders/cancelReasons';
 import type { OrderDetail } from '@/lib/orders/orderDetail';
 import type { ActiveRider } from '@/lib/types';
+import { SERVING_LABEL } from '@/lib/types';
 import { toast } from '@/components/ui/Toast';
 
 type ActionKind = 'cancel' | 'packed' | 'out_for_delivery' | 'unassign' | 'reassign' | 'reissue';
@@ -249,7 +250,7 @@ export default function OrderDetailPage() {
               <tbody>
                 {order.items.map((item) => (
                   <tr key={item.id} className="border-b border-border last:border-0">
-                    <td className="py-2 pr-3 text-ink">{item.name}{item.unit && <span className="text-xs text-muted"> · {item.unit}</span>}{item.cutSize && <span className="text-xs text-muted"> · {item.cutSize} pieces</span>}{item.flavour && <span className="text-xs text-muted"> · {item.flavour}</span>}</td>
+                    <td className="py-2 pr-3 text-ink">{item.name}{item.unit && <span className="text-xs text-muted"> · {item.unit}</span>}{item.cutSize && <span className="text-xs text-muted"> · {item.cutSize} pieces</span>}{item.flavour && <span className="text-xs text-muted"> · {item.flavour}</span>}{item.serving && <span className="text-xs text-muted"> · {SERVING_LABEL[item.serving]}</span>}</td>
                     <td className="py-2 pr-3 text-ink-soft">× {item.quantity}</td>
                     <td className="py-2 text-right tabular-nums text-ink">{formatCurrency(item.unitPrice * item.quantity)}</td>
                   </tr>

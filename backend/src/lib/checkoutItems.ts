@@ -1,6 +1,6 @@
 import { AppError } from './errors.js';
 import { customerUnitPrice } from './customerPrice.js';
-import { CUT_SIZES, type CartItem, type CartProduct, type CutSize } from './orderValidation.js';
+import { CUT_SIZES, SERVINGS, type CartItem, type CartProduct, type CutSize, type Serving } from './orderValidation.js';
 
 export interface CheckoutVariant {
   id: string;
@@ -21,6 +21,8 @@ export interface CheckoutProduct extends CartProduct {
   product_variants: CheckoutVariant[];
   // Flavours; a product with any needs one picked per line.
   product_options?: { id: string; is_available: boolean }[] | null;
+  // Chilled / room temperature offered; two = the customer picks one.
+  serving_options?: Serving[] | null;
 }
 export interface PricedCheckoutItem extends CartItem {
   store_id: string;
@@ -32,6 +34,7 @@ export interface PricedCheckoutItem extends CartItem {
   variant_mrp_at_order: number;
   cut_size: CutSize | null;
   option_id: string | null;
+  serving: Serving | null;
   // This product reaches its bulk_min_kg in the cart; any bulk line makes
   // the order a bulk order (create_order sets orders.is_bulk).
   bulk: boolean;
@@ -58,6 +61,7 @@ export function parseCheckoutItems(input: unknown): CartItem[] {
     if (typeof row.product_id !== 'string' || !UUID.test(row.product_id)
       || (row.variant_id != null && (typeof row.variant_id !== 'string' || !UUID.test(row.variant_id)))
       || (row.option_id != null && (typeof row.option_id !== 'string' || !UUID.test(row.option_id)))
+      || (row.serving != null && !SERVINGS.includes(row.serving as Serving))
       || !Number.isInteger(row.quantity) || Number(row.quantity) < 1 || Number(row.quantity) > 999
       || (row.expected_unit_price != null && (typeof row.expected_unit_price !== 'number' || !Number.isFinite(row.expected_unit_price) || row.expected_unit_price < 0))) {
       throw new AppError(400, 'INVALID_CART', 'Choose a real product pack and a whole quantity between 1 and 999.');
@@ -69,7 +73,8 @@ export function parseCheckoutItems(input: unknown): CartItem[] {
     return { product_id: row.product_id.toLowerCase(), variant_id: (row.variant_id as string | null | undefined)?.toLowerCase() ?? null,
       quantity: Number(row.quantity), expected_unit_price: row.expected_unit_price as number | undefined,
       cut_size: (row.cut_size as CutSize | null | undefined) ?? null,
-      option_id: (row.option_id as string | null | undefined)?.toLowerCase() ?? null };
+      option_id: (row.option_id as string | null | undefined)?.toLowerCase() ?? null,
+      serving: (row.serving as Serving | null | undefined) ?? null };
   });
 }
 
@@ -106,8 +111,9 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
     } else if (options.length > 0) {
       throw new AppError(400, 'FLAVOUR_REQUIRED', 'Choose a flavour for this product. Update the app if you cannot see flavours.');
     }
+    const serving = resolveServing(product.serving_options ?? [], item.serving ?? null);
     const variantId = variant?.id ?? null;
-    const key = checkoutLineKey(product.id, variantId, cutSize, optionId);
+    const key = checkoutLineKey(product.id, variantId, cutSize, optionId, serving);
     const existing = lines.get(key);
     const quantity = item.quantity + (existing?.quantity ?? 0);
     if (quantity > 999) throw new AppError(400, 'INVALID_CART', 'The maximum quantity for one pack is 999.');
@@ -116,7 +122,7 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
       store_unit_price: storePrice,
       unit_at_order: variant ? `${Number(variant.quantity)} ${variant.unit_type === 'l' ? 'L' : variant.unit_type}` : product.unit ?? '',
       variant_mrp_at_order: Math.max(price, Number(variant ? variant.original_price ?? price : product.original_price ?? price)),
-      cut_size: cutSize, option_id: optionId, bulk: false });
+      cut_size: cutSize, option_id: optionId, serving, bulk: false });
   }
   const priced = [...lines.values()];
   // Bulk is per product across its packs and cuts: 3 x 1 kg small + 2 x 1 kg
@@ -140,6 +146,21 @@ function packKg(variant: CheckoutVariant | undefined): number {
   return 0;
 }
 
-export function checkoutLineKey(productId: string, variantId: string | null | undefined, cutSize: CutSize | null | undefined, optionId?: string | null): string {
-  return `${productId}:${variantId ?? ''}${cutSize ? `:${cutSize}` : ''}${optionId ? `:o:${optionId}` : ''}`;
+// One offered = applied; two = the customer must pick one of them. Same rule
+// as snapshot_order_item_variant (migration 20261105150000).
+export function resolveServing(offered: Serving[], picked: Serving | null): Serving | null {
+  if (offered.length === 0) {
+    if (picked) throw new AppError(400, 'SERVING_UNAVAILABLE', 'This product has no chilled option. Remove it and add it again.');
+    return null;
+  }
+  if (!picked) {
+    if (offered.length === 1) return offered[0]!;
+    throw new AppError(400, 'SERVING_REQUIRED', 'Choose chilled or room temperature. Update the app if you cannot see the option.');
+  }
+  if (!offered.includes(picked)) throw new AppError(409, 'SERVING_UNAVAILABLE', 'That option is no longer offered. Remove it and add it again.');
+  return picked;
+}
+
+export function checkoutLineKey(productId: string, variantId: string | null | undefined, cutSize: CutSize | null | undefined, optionId?: string | null, serving?: Serving | null): string {
+  return `${productId}:${variantId ?? ''}${cutSize ? `:${cutSize}` : ''}${optionId ? `:o:${optionId}` : ''}${serving ? `:s:${serving}` : ''}`;
 }

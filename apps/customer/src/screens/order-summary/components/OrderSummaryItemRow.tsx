@@ -1,4 +1,4 @@
-import { CUT_SIZE_LABEL } from '../../../store/cartIdentity';
+import { CUT_SIZE_LABEL, SERVING_LABEL } from '../../../store/cartIdentity';
 import { Text, View } from 'react-native';
 import { AppImage } from '../../../components/AppImage';
 import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
@@ -13,7 +13,7 @@ export function OrderSummaryItemRow({ item }: { item: SummaryItem }) {
       </View>
       <View className="min-w-0 flex-1">
         <Text className="text-[14px] font-semibold leading-5 text-ink" numberOfLines={3}>{item.products?.name ?? 'Item'}</Text>
-        <Text className="mt-1 text-[12px] text-ink/50" numberOfLines={1}>{[item.unit_at_order ?? item.products?.unit, item.cut_size ? CUT_SIZE_LABEL[item.cut_size] : null, item.option_name_at_order, `Qty ${item.quantity}`].filter(Boolean).join(' · ')}</Text>
+        <Text className="mt-1 text-[12px] text-ink/50" numberOfLines={1}>{[item.unit_at_order ?? item.products?.unit, item.cut_size ? CUT_SIZE_LABEL[item.cut_size] : null, item.option_name_at_order, item.serving ? SERVING_LABEL[item.serving] : null, `Qty ${item.quantity}`].filter(Boolean).join(' · ')}</Text>
         <Text className="mt-1 text-[11px] text-ink/40" numberOfLines={1}>{item.storeName}</Text>
         <Text className="mt-2 text-[14px] font-bold text-ink">{formatOrderPrice(item.unit_price_at_order * item.quantity)}</Text>
       </View>

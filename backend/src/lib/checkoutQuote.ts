@@ -34,7 +34,7 @@ export interface QuoteSnapshot {
 }
 
 export function quoteVersion(snapshot: QuoteSnapshot): string {
-  const items = [...snapshot.items].sort((a, b) => checkoutLineKey(a.product_id, a.variant_id, a.cut_size, a.option_id).localeCompare(checkoutLineKey(b.product_id, b.variant_id, b.cut_size, b.option_id)));
+  const items = [...snapshot.items].sort((a, b) => checkoutLineKey(a.product_id, a.variant_id, a.cut_size, a.option_id, a.serving).localeCompare(checkoutLineKey(b.product_id, b.variant_id, b.cut_size, b.option_id, b.serving)));
   return createHash('sha256').update(JSON.stringify({ ...snapshot, items })).digest('hex');
 }
 

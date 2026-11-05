@@ -2,6 +2,8 @@
 // Deals, Everyday essentials, Coastal Kitchen picks all use this, not their
 // own copy. See ProductCard.tsx.
 
+import type { Serving } from '../../../store/cartIdentity';
+
 export interface ProductOption {
   id: string;
   name: string;
@@ -46,6 +48,9 @@ export interface Product {
   // Flavours (product_options), sorted; empty/undefined = none. A product
   // with flavours needs one picked before it can go in the cart.
   options?: ProductOption[];
+  // Drinks: chilled / room temperature offered (products.serving_options).
+  // Two = the customer picks one on the detail view; one = served that way.
+  servingOptions?: Serving[];
   // "₹63.6/kg" for the default size, set only when the admin turned it on
   // for this product (products.show_unit_price; api/products.ts).
   unitPriceLabel?: string;
