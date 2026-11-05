@@ -40,11 +40,12 @@ export function dayOpen(date: string, leadDays: number, slots: PreorderSlot[], n
   return daysAhead(date, now) >= leadDays && slots.some((slot) => slotOpen(date, slot, now));
 }
 
-// Cinema-style date card parts: "TODAY" / "TUE", "7", "Nov".
+// Cinema-style date card parts, lowercase: "today" / "tue", 7, "nov".
 export function dayCard(date: string, now = new Date()): { top: string; day: number; month: string } {
   const d = new Date(`${date}T00:00:00Z`);
   const ahead = daysAhead(date, now);
-  return { top: ahead === 0 ? 'Today' : ahead === 1 ? 'Tmrw' : WEEKDAYS[d.getUTCDay()]!, day: d.getUTCDate(), month: MONTHS[d.getUTCMonth()]! };
+  const top = ahead === 0 ? 'today' : ahead === 1 ? 'tmrw' : WEEKDAYS[d.getUTCDay()]!.toLowerCase();
+  return { top, day: d.getUTCDate(), month: MONTHS[d.getUTCMonth()]!.toLowerCase() };
 }
 
 export function dayLabel(date: string, now = new Date()): string {

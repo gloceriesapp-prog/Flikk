@@ -13,7 +13,8 @@ describe('pre-order day and slot', () => {
     expect(dayLabel('2026-11-06', now)).toBe('Today');
     expect(dayLabel('2026-11-07', now)).toBe('Tomorrow');
     expect(dayLabel('2026-11-08', now)).toBe('Sun 8 Nov');
-    expect(dayCard('2026-11-08', now)).toEqual({ top: 'Sun', day: 8, month: 'Nov' });
+    expect(dayCard('2026-11-08', now)).toEqual({ top: 'sun', day: 8, month: 'nov' });
+    expect(dayCard('2026-11-06', now).top).toBe('today');
   });
   it('greys out days without notice or open slots', () => {
     const evening = { ...slot, startsMinute: 1080, endsMinute: 1200 };

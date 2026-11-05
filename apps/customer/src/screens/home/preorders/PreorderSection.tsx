@@ -10,7 +10,6 @@ import { usePreorders } from './usePreorders';
 const CARD_WIDTH = 'w-32';
 const CARD_SNAP_INTERVAL = 128 + 10;
 const PLUM = '#4A2C5A';
-const GOLD = '#E8C27A';
 
 export function PreorderSection({ title, subtitle }: { title: string; subtitle: string | null }) {
   const { data } = usePreorders();
@@ -22,22 +21,21 @@ export function PreorderSection({ title, subtitle }: { title: string; subtitle: 
         <Text className="text-[24px] font-bold leading-[30px] tracking-tight text-white">{title}</Text>
         {subtitle ? <Text className="mt-1 text-[14px] text-white/70">{subtitle}</Text> : null}
 
-        {/* The bookable days, like a cinema date strip. */}
-        <View className="mt-5 flex-row" style={{ gap: 8 }}>
+        {/* The bookable days, like a cinema date strip: plain lowercase
+            columns, today lifted into a white capsule. */}
+        <View className="mt-5 flex-row">
           {bookingDates().map((date, i) => {
             const card = dayCard(date);
+            const today = i === 0;
             return (
-              <View
-                key={date}
-                className="flex-1 items-center rounded-[14px] py-2"
-                style={{
-                  backgroundColor: i === 0 ? '#FFFFFF' : 'rgba(255,255,255,0.08)',
-                  borderWidth: 1,
-                  borderColor: i === 0 ? GOLD : 'rgba(255,255,255,0.18)',
-                }}
-              >
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.5px]" style={{ color: i === 0 ? PLUM : GOLD }}>{card.top}</Text>
-                <Text className="text-[18px] font-bold" style={{ color: i === 0 ? PLUM : '#FFFFFF' }}>{card.day}</Text>
+              <View key={date} className="flex-1 items-center">
+                <View
+                  className="items-center py-3"
+                  style={{ width: 46, borderRadius: 23, backgroundColor: today ? '#FFFFFF' : 'transparent' }}
+                >
+                  <Text className="text-[12px] font-medium tracking-[0.3px]" style={{ color: today ? PLUM : 'rgba(255,255,255,0.6)' }}>{card.top}</Text>
+                  <Text className="mt-0.5 text-[20px] font-semibold" style={{ color: today ? PLUM : '#FFFFFF' }}>{card.day}</Text>
+                </View>
               </View>
             );
           })}

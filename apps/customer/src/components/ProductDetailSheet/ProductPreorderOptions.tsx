@@ -61,7 +61,7 @@ export function ProductPreorderOptions({ minQty, leadDays, value, onChange }: Pr
                 opacity: enabled ? 1 : 0.45,
               }}
             >
-              <Text className="text-[11px] font-semibold uppercase" style={{ color: selected ? '#FFFFFFCC' : '#6B7280' }}>{card.top}</Text>
+              <Text className="text-[12px] font-medium" style={{ color: selected ? '#FFFFFFCC' : '#6B7280' }}>{card.top}</Text>
               <Text className="mt-0.5 text-[20px] font-bold" style={{ color: selected ? '#FFFFFF' : '#101C10' }}>{card.day}</Text>
               <Text className="text-[11px]" style={{ color: selected ? '#FFFFFFCC' : '#6B7280' }}>{card.month}</Text>
             </Pressable>
