@@ -115,6 +115,7 @@ export function validateProductInput(input: Partial<ProductWriteInput>): asserts
     if (variant.originalPrice != null && (!isFiniteNumber(variant.originalPrice) || variant.originalPrice < 0)) {
       throw new Error(`${label}: MRP must be non-negative when set.`);
     }
+    if (!(sellingPrice(variant.price, variant.originalPrice) > 0)) throw new Error(`${label}: enter a store price or an MRP.`);
     if (variant.stockQuantity != null && (!Number.isSafeInteger(variant.stockQuantity) || variant.stockQuantity < 0)) {
       throw new Error(`${label}: stock must be a whole number, 0 or more.`);
     }
@@ -233,8 +234,16 @@ export function formatVariantUnit(variant: VariantInput): string {
   return `${qty} ${unitLabel[variant.unitType]}`;
 }
 
+// The price a pack sells at: the store price, or the MRP when no store price
+// was entered (0/blank). Then the MRP is kept (shown struck through) only when
+// it is above that price; selling at MRP shows one price.
+export function sellingPrice(price: number, originalPrice: number | null | undefined): number {
+  return price > 0 ? price : Math.max(Number(originalPrice ?? 0), 0);
+}
+
 function resolveOriginalPrice(price: number, originalPrice: number | null | undefined): number | null {
-  return originalPrice != null && originalPrice > price ? originalPrice : null;
+  const selling = sellingPrice(price, originalPrice);
+  return originalPrice != null && originalPrice > selling ? originalPrice : null;
 }
 
 export interface ProductRow {
@@ -272,7 +281,7 @@ export function toProductRow(input: ProductWriteInput): ProductRow {
     store_id: input.storeId,
     name: input.name.trim(),
     unit: formatVariantUnit(defaultVariant),
-    price: defaultVariant.price,
+    price: sellingPrice(defaultVariant.price, defaultVariant.originalPrice),
     original_price: resolveOriginalPrice(defaultVariant.price, defaultVariant.originalPrice),
     category: input.category.trim(),
     stock_status: input.stockStatus,
@@ -303,7 +312,7 @@ export function toVariantPayload(variants: VariantInput[]): VariantPayload[] {
     const payload: VariantPayload = {
       unit_type: variant.unitType,
       quantity: variant.quantity,
-      price: variant.price,
+      price: sellingPrice(variant.price, variant.originalPrice),
       original_price: resolveOriginalPrice(variant.price, variant.originalPrice),
     };
     if (variant.id) payload.id = variant.id;

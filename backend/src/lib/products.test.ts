@@ -3,6 +3,7 @@ import {
   deriveStockStatus,
   formatVariantUnit,
   resolveEditImage,
+  sellingPrice,
   toProductPatchRow,
   toProductRow,
   toVariantPayload,
@@ -266,5 +267,16 @@ describe('partial product updates', () => {
     expect(() => validateProductPatch({ isVeg: 'yes' })).toThrow(/isVeg/);
     expect(() => validateProductPatch({ description: 5 })).toThrow(/description/);
     expect(() => validateProductPatch(null)).toThrow();
+  });
+});
+
+describe('selling price falls back to MRP', () => {
+  const pack = { unitType: 'ml' as const, quantity: 180 };
+  it('keeps a store price below MRP, MRP struck through', () => {
+    expect(toVariantPayload([{ ...pack, price: 8, originalPrice: 10 }])[0]).toMatchObject({ price: 8, original_price: 10 });
+  });
+  it('sells at MRP when no store price is entered', () => {
+    expect(toVariantPayload([{ ...pack, price: 0, originalPrice: 10 }])[0]).toMatchObject({ price: 10, original_price: null });
+    expect(sellingPrice(0, 10)).toBe(10);
   });
 });

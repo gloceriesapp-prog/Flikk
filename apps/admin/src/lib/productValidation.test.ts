@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_EXTRA_IMAGES, toExtraImageUrls } from './productValidation';
+import { MAX_EXTRA_IMAGES, sellingPrice, toExtraImageUrls, toVariantPayload, validateProductInput } from './productValidation';
 
 const cover = 'https://cdn.example/a.webp';
 
@@ -30,4 +30,24 @@ test('cut options are chicken-category only and carry a sane bulk threshold', as
   assert.deepEqual(toCutOptions({ category: 'Vegetables', cutOptionsEnabled: true, bulkMinKg: 5 }), { cut_options_enabled: false, bulk_min_kg: null });
   assert.throws(() => toCutOptions({ category: meat, cutOptionsEnabled: true, bulkMinKg: 0 }));
   assert.throws(() => toCutOptions({ category: meat, cutOptionsEnabled: true, bulkMinKg: 501 }));
+});
+
+const pack = { unitType: 'ml' as const, quantity: 180 };
+
+test('sells at the store price and keeps a higher MRP for the strike-through', () => {
+  const [row] = toVariantPayload([{ ...pack, price: 8, originalPrice: 10 }]);
+  assert.equal(row!.price, 8);
+  assert.equal(row!.original_price, 10);
+});
+
+test('sells at the MRP when no store price is entered, with no strike-through', () => {
+  const [row] = toVariantPayload([{ ...pack, price: 0, originalPrice: 10 }]);
+  assert.equal(row!.price, 10);
+  assert.equal(row!.original_price, null);
+  assert.equal(sellingPrice(0, 10), 10);
+});
+
+test('refuses a pack with neither a store price nor an MRP', () => {
+  assert.throws(() => validateProductInput({ storeId: 's', name: 'Milk', category: 'Dairy', stockStatus: 'in_stock',
+    variants: [{ ...pack, price: 0, originalPrice: null }] }), /store price or an MRP/);
 });
