@@ -660,6 +660,10 @@
     {
       "file": "20261106130000_price_falls_back_to_mrp.sql",
       "sha256": "41c9e9547cc5dc8974010cc65a979629ef3832056322cad28acb91bc2b7bdad8"
+    },
+    {
+      "file": "20261106140000_price_mrp_fallback_trigger.sql",
+      "sha256": "5da70792ba5c580ede8816105579daa48621646a33b92573053361e54dab9bb1"
     }
   ]
 }
