@@ -40,7 +40,7 @@ const SECTION_META: Record<string, { label: string; defaultTitle: string }> = {
   'festival-picks': { label: 'Festival Section products', defaultTitle: '(the Festival Section title)' },
   seasonal: { label: 'Seasonal Section', defaultTitle: '(no heading)' },
   'nearby-stores': { label: 'Nearby Stores', defaultTitle: 'Nearby Stores' },
-  preorders: { label: 'Pre-orders (products marked Pre-order only)', defaultTitle: 'Pre-order Specials' },
+  preorders: { label: 'Pre-orders (products marked Pre-order only)', defaultTitle: 'Pre-order now' },
   trending: { label: 'Trending', defaultTitle: 'Popular This Week' },
   'most-bought': { label: 'Most Bought', defaultTitle: 'Most Bought Near You' },
   'category-sections': { label: 'Category Sections', defaultTitle: '(per-category titles)' },

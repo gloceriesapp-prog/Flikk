@@ -15,8 +15,8 @@ export const COPY_KEYS = {
   // Home "All" tab section headings (a Home Sections title override wins).
   'home.quickCategories.title': { default: 'Quick categories', hint: 'Home quick-categories heading' },
   'home.everydayDairy.title': { default: 'Everyday Dairy', hint: 'Home dairy row heading' },
-  'home.preorders.title': { default: 'Pre-order Specials', hint: 'Home pre-order section heading' },
-  'home.preorders.subtitle': { default: 'Fresh idli, dosa & more in bulk. Book today or up to 4 days ahead.', hint: 'Home pre-order section sub-text' },
+  'home.preorders.title': { default: 'Pre-order now', hint: 'Home pre-order section heading' },
+  'home.preorders.subtitle': { default: 'Book your basket', hint: 'Home pre-order section sub-text' },
   'home.trending.title': { default: 'Popular This Week', hint: 'Home 7-day popular row heading' },
   'home.trending.subtitle': { default: '', hint: 'Home 7-day popular row sub-text' },
   'home.mostBought.title': { default: 'Most Bought Near You', hint: 'Home 30-day most-bought row heading' },
