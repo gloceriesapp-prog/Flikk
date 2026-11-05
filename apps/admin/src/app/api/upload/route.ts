@@ -6,6 +6,7 @@ import sharp from 'sharp';
 import { storePublicImage } from '@/features/media/publicImages';
 import { publicFolder, MediaError, r2Config } from '../../../../../../packages/server-media/policy.cjs';
 import { generateProductBgColor } from '@/lib/bgColor';
+import { fitProductImage } from '@/lib/productImage';
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB — generous for a product/store photo, small enough to stay fast
 
@@ -32,7 +33,9 @@ export async function POST(request: Request) {
     r2Config(process.env);
     // Content artwork retains more detail than thumbnail photographs.
     const maxDimension = ['appsui', 'banners', 'festivals', 'illustrations'].includes(folder) ? 2048 : 800;
-    const webpBuffer = await sharp(Buffer.from(await file.arrayBuffer()), { limitInputPixels: 20_000_000, animated: false, failOn: 'warning' })
+    const input = Buffer.from(await file.arrayBuffer());
+    // Product photos are framed to the card's 720×810; other folders keep their shape.
+    const webpBuffer = folder === 'products' ? await fitProductImage(input) : await sharp(input, { limitInputPixels: 20_000_000, animated: false, failOn: 'warning' })
       .timeout({seconds:8})
       .rotate()
       .resize(maxDimension, maxDimension, { fit: 'inside', withoutEnlargement: true })
