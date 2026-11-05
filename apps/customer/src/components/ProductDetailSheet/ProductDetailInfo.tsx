@@ -31,7 +31,7 @@ import { AppImage as Image } from '../AppImage';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
-import { ProductVariantOptions } from './ProductVariantOptions';
+import { ProductVariantOptions, discountPercentOf } from './ProductVariantOptions';
 import { ProductCutOptions } from './ProductCutOptions';
 import { ProductFlavourOptions } from './ProductFlavourOptions';
 import type { CutSize } from '../../store/cartIdentity';
@@ -75,6 +75,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
 
   const displayPrice = selectedVariant?.price ?? price;
   const displayOriginalPrice = selectedVariant?.originalPrice ?? originalPrice;
+  const displayPercent = discountPercentOf(displayPrice, displayOriginalPrice);
 
   return (
     <View className="gap-3 bg-[#f6f6f6] px-3 pb-4 pt-3">
@@ -94,23 +95,14 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
           </Pressable>
         </View>
 
-        {/* Real per-size card grid when there's genuinely more than one
-            variant to choose between; a single-size product just shows its
-            one weight pill + price below, unchanged from before this
-            component existed ("if there is no options" case). */}
+        {/* "Select Unit" cards only when there is more than one size. */}
         {hasRealVariants ? (
           <ProductVariantOptions
             variants={variants!}
             selectedId={selectedVariantId ?? variants![0]!.id}
             onSelect={(id) => onSelectVariant?.(id)}
           />
-        ) : (
-          <View className="flex-row flex-wrap gap-1">
-            <View className="rounded-xl">
-              <Text className="text-[14px] font-bold text-ink">{weight}</Text>
-            </View>
-          </View>
-        )}
+        ) : null}
 
         {product.cutOptions && selectedCut && onSelectCut ? (
           <ProductCutOptions selected={selectedCut} onSelect={onSelectCut} bulkMinKg={product.bulkMinKg} />
@@ -120,25 +112,30 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
           <ProductFlavourOptions options={product.options} selectedId={selectedOptionId} onSelect={onSelectOption} />
         ) : null}
 
-        {/* Once a real variant selector is shown, its own cards already
-            carry each size's price/discount — repeating one summary price
-            below would just be the previous selection's price shown twice. */}
-        {!hasRealVariants && (
-          <View className="flex-row items-center gap-2">
-            <RupeePrice amount={displayPrice} size={20} />
-            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+        {/* Selected unit summary (reference): size, price, MRP, % OFF, taxes. */}
+        <View className="gap-1.5">
+          <Text className="text-[16px] font-semibold text-ink/55">{selectedVariant?.label ?? weight}</Text>
+          <View className="flex-row flex-wrap items-center gap-2">
+            <RupeePrice amount={displayPrice} size={22} />
+            {displayPercent ? (
               <>
-                <RupeePrice amount={displayOriginalPrice} size={14} strike color="#101C1066" />
-                <View className="rounded-full bg-lime-soft px-2 py-0.5">
-                  <Text className="text-xs font-semibold text-lime-deep">
-                    {Math.round((1 - displayPrice / displayOriginalPrice) * 100)}%
-                  </Text>
+                <View className="flex-row items-center gap-1">
+                  <Text className="text-[16px] font-medium text-ink/55">MRP</Text>
+                  <RupeePrice amount={displayOriginalPrice!} size={16} strike color="#6B6B6B" />
+                </View>
+                <View className="rounded-[6px] px-2 py-[3px]" style={{ backgroundColor: '#5B83EA' }}>
+                  <Text className="text-[12px] font-bold text-white">{displayPercent}% OFF</Text>
                 </View>
               </>
-            )}
-            {product.unitPriceLabel && <Text className="text-xs font-medium text-ink/40">{product.unitPriceLabel}</Text>}
+            ) : null}
           </View>
-        )}
+          <View className="flex-row flex-wrap items-center gap-x-2">
+            <Text className="text-[12.5px] text-ink/70">(Inclusive of all taxes)</Text>
+            {(selectedVariant?.unitPriceLabel ?? product.unitPriceLabel) ? (
+              <Text className="text-[12.5px] font-medium text-ink/45">{selectedVariant?.unitPriceLabel ?? product.unitPriceLabel}</Text>
+            ) : null}
+          </View>
+        </View>
 
         {storeName && (
           <>
