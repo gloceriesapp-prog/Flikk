@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { bookingDates, cartPreorder, dayCard, dayOpen, slotOpen, type CartPreorder } from '../../store/preorder';
 import { usePreorders } from '../../screens/home/preorders/usePreorders';
+import { usePreorderDayStore } from '../../store/usePreorderDayStore';
 
 interface Props {
   minQty: number;
@@ -22,11 +23,16 @@ export function ProductPreorderOptions({ minQty, leadDays, value, onChange }: Pr
   const slots = usePreorders().data?.slots ?? [];
   const dates = bookingDates();
   const open = dates.filter((d) => dayOpen(d, leadDays, slots));
-  // The cart's day is kept only if this product can make it.
-  const [day, setDay] = useState(value && open.includes(value.date) ? value.date : open[0]);
+  const homeDay = usePreorderDayStore((s) => s.day);
+  const setHomeDay = usePreorderDayStore((s) => s.setDay);
+  // The cart's day, else the day tapped on Home, if this product can make it.
+  const [day, setDay] = useState(
+    value && open.includes(value.date) ? value.date : homeDay && open.includes(homeDay) ? homeDay : open[0],
+  );
   const slotId = day && value?.date === day ? value.slotId : undefined;
   const choose = (nextDay: string, nextSlotId: string | undefined) => {
     setDay(nextDay);
+    setHomeDay(nextDay);
     const slot = slots.find((s) => s.id === nextSlotId && slotOpen(nextDay, s));
     onChange(slot ? cartPreorder(nextDay, slot) : undefined);
   };
@@ -61,7 +67,7 @@ export function ProductPreorderOptions({ minQty, leadDays, value, onChange }: Pr
                 opacity: enabled ? 1 : 0.45,
               }}
             >
-              <Text className="text-[12px] font-medium" style={{ color: selected ? '#FFFFFFCC' : '#6B7280' }}>{card.top}</Text>
+              <Text className="text-[11px] font-semibold uppercase tracking-[0.5px]" style={{ color: selected ? '#FFFFFFCC' : '#6B7280' }}>{card.top}</Text>
               <Text className="mt-0.5 text-[20px] font-bold" style={{ color: selected ? '#FFFFFF' : '#101C10' }}>{card.day}</Text>
               <Text className="text-[11px]" style={{ color: selected ? '#FFFFFFCC' : '#6B7280' }}>{card.month}</Text>
             </Pressable>
