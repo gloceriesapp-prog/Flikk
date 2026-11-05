@@ -1,8 +1,18 @@
 name: CI
 
+# Private repo: every minute here is billed past the free 2,000/month, and a
+# full run is ~22 job-minutes. A branch push and its pull request used to run
+# CI twice per commit, so push runs only for main (Backend → Lightsail waits on
+# main's push run). A newer commit cancels the older run of the same PR;
+# main's runs are never cancelled.
 on:
   push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
