@@ -648,6 +648,10 @@
     {
       "file": "20261105150000_serving_temperature.sql",
       "sha256": "b23bbb3ddd8d53079aadd9c43bc83176e9049de14d0c6e291a8f1ad66066a60f"
+    },
+    {
+      "file": "20261106090000_preorders.sql",
+      "sha256": "8adaa2855d06afe27af4699f34fabdb0066289dd4cf6ef064657251b81fd837a"
     }
   ]
 }

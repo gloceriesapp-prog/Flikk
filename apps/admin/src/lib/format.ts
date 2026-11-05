@@ -10,6 +10,10 @@ export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
 }
 
+export function formatTime(iso: string): string {
+  return new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+}
+
 export function formatRelativeTime(iso: string, nowMs: number = Date.now()): string {
   const seconds = Math.max(0, Math.round((nowMs - new Date(iso).getTime()) / 1000));
   if (seconds < 60) return 'just now';

@@ -35,6 +35,8 @@ import { ProductVariantOptions, discountPercentOf } from './ProductVariantOption
 import { ProductCutOptions } from './ProductCutOptions';
 import { ProductFlavourOptions } from './ProductFlavourOptions';
 import { ProductServingOptions } from './ProductServingOptions';
+import { ProductPreorderOptions } from './ProductPreorderOptions';
+import type { CartPreorder } from '../../store/preorder';
 import type { CutSize, Serving } from '../../store/cartIdentity';
 import { SellerDetailsCard } from './SellerDetailsCard';
 import { SimilarProductsRow } from './SimilarProductsRow';
@@ -65,9 +67,12 @@ interface Props {
   // Chilled / room temperature, lifted to the sheet (the footer adds it).
   selectedServing?: Serving;
   onSelectServing?: (serving: Serving) => void;
+  // Pre-order day + slot, lifted to the sheet (the footer adds it).
+  preorder?: CartPreorder;
+  onSelectPreorder?: (preorder: CartPreorder | undefined) => void;
 }
 
-export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing }: Props) {
+export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder }: Props) {
   const { name, localName, weight, price, originalPrice, storeName, variants, sellerDetails } = product;
   const related = relatedProducts ?? product.relatedProducts;
   const hasRealVariants = variants && variants.length > 1;
@@ -114,6 +119,10 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
 
         {product.options?.length && onSelectOption ? (
           <ProductFlavourOptions options={product.options} selectedId={selectedOptionId} onSelect={onSelectOption} />
+        ) : null}
+
+        {product.preorder && onSelectPreorder ? (
+          <ProductPreorderOptions minQty={product.preorder.minQty} leadDays={product.preorder.leadDays} value={preorder} onChange={onSelectPreorder} />
         ) : null}
 
         {product.servingOptions?.length && onSelectServing ? (

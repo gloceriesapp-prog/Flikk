@@ -47,6 +47,7 @@ interface CreateTripBody {
   // orders row (migrations/034_order_payment_method.sql's own
   // create_trip_orders update).
   payment_method?: 'cod' | 'online';
+  preorder?: unknown;
 }
 
 tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRequest, res, next) => {
@@ -67,6 +68,9 @@ tripsRouter.post('/', requireAuth, requireRole('customer'), async (req: AuthedRe
     const pricedItems = quote.items;
     const addressId = await resolveAddressId(req.user!.id, body);
     // Each store's commission: category rates (or its own rate), capped per order.
+    // checkoutItems.ts already refuses a pre-order cart spanning shops; a
+    // pre-order body here is a hand-crafted request.
+    if (body.preorder != null) throw new AppError(400, 'PREORDER_MULTI_STORE', 'Pre-order from one shop at a time.');
     const legs = groupPricedCartByStore(pricedItems, await getStoreCommissions(pricedItems));
     if (legs.length <= 1) {
       // Not an error a real customer can hit through the app (the cart

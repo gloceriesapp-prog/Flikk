@@ -23,6 +23,10 @@ export interface CheckoutProduct extends CartProduct {
   product_options?: { id: string; is_available: boolean }[] | null;
   // Chilled / room temperature offered; two = the customer picks one.
   serving_options?: Serving[] | null;
+  // Pre-order only (Home Pre-orders section): bulk minimum and notice.
+  preorder_enabled?: boolean | null;
+  preorder_min_qty?: number | null;
+  preorder_lead_days?: number | null;
 }
 export interface PricedCheckoutItem extends CartItem {
   store_id: string;
@@ -38,6 +42,8 @@ export interface PricedCheckoutItem extends CartItem {
   // This product reaches its bulk_min_kg in the cart; any bulk line makes
   // the order a bulk order (create_order sets orders.is_bulk).
   bulk: boolean;
+  // Days of notice for a pre-order product; null = instant delivery.
+  preorder_lead_days: number | null;
 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -122,9 +128,11 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
       store_unit_price: storePrice,
       unit_at_order: variant ? `${Number(variant.quantity)} ${variant.unit_type === 'l' ? 'L' : variant.unit_type}` : product.unit ?? '',
       variant_mrp_at_order: Math.max(price, Number(variant ? variant.original_price ?? price : product.original_price ?? price)),
-      cut_size: cutSize, option_id: optionId, serving, bulk: false });
+      cut_size: cutSize, option_id: optionId, serving, bulk: false,
+      preorder_lead_days: product.preorder_enabled ? Number(product.preorder_lead_days ?? 1) : null });
   }
   const priced = [...lines.values()];
+  assertPreorderCart(priced, catalogue);
   // Bulk is per product across its packs and cuts: 3 x 1 kg small + 2 x 1 kg
   // large is 5 kg of that chicken.
   const kgByProduct = new Map<string, number>();
@@ -137,6 +145,25 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
     line.bulk = Number.isFinite(threshold) && threshold > 0 && (kgByProduct.get(line.product_id) ?? 0) >= threshold - 1e-9;
   }
   return priced;
+}
+
+// A cart is all pre-order (one shop, each product at its bulk minimum) or
+// all instant; create_checkout_attempt enforces the same split.
+function assertPreorderCart(priced: PricedCheckoutItem[], catalogue: Map<string, CheckoutProduct>) {
+  const preorder = priced.filter((line) => line.preorder_lead_days != null);
+  if (preorder.length === 0) return;
+  if (preorder.length !== priced.length) {
+    throw new AppError(409, 'PREORDER_MIXED', 'Pre-order items are checked out on their own. Order them separately from other items.');
+  }
+  if (new Set(priced.map((line) => line.store_id)).size > 1) {
+    throw new AppError(409, 'PREORDER_MULTI_STORE', 'Pre-order from one shop at a time.');
+  }
+  const qty = new Map<string, number>();
+  for (const line of priced) qty.set(line.product_id, (qty.get(line.product_id) ?? 0) + line.quantity);
+  for (const [productId, count] of qty) {
+    const min = Number(catalogue.get(productId)!.preorder_min_qty ?? 1);
+    if (count < min) throw new AppError(409, 'PREORDER_BELOW_MINIMUM', `Pre-order at least ${min} of each item. Increase the quantity and try again.`);
+  }
 }
 
 // Weight of one pack; packs sold by piece or volume never count toward bulk.

@@ -18,6 +18,8 @@ export function checkoutAttemptIdentity(body: Record<string, unknown>, kind: 'or
     address: body.address_id, store: kind === 'order' ? body.store_id : null,
     method: body.payment_method ?? 'cod', promo: body.promo_code ?? null,
     items: [...quantities.entries()].sort(([a], [b]) => a.localeCompare(b)),
+    // Only present for pre-orders, so older fingerprints are unchanged.
+    ...(body.preorder != null ? { preorder: body.preorder } : {}),
   })).digest('hex');
   return { id, fingerprint };
 }

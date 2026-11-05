@@ -24,10 +24,11 @@ export function browsePage(query: Request['query'], scope: unknown) {
   }
   return { limit, after, cursor: (row: { id: string; score: number }) => Buffer.from(JSON.stringify({ ...row, scope: fingerprint })).toString('base64url') };
 }
-export async function hydrateBrowse(ids: { id: string }[], stores: string[], fields: string) {
+// Pre-order products show only in the Home Pre-orders section (preorder = true).
+export async function hydrateBrowse(ids: { id: string }[], stores: string[], fields: string, preorder = false) {
   if (!ids.length || !stores.length) return [];
   const { data, error } = await supabase.from('products').select(fields).in('id', ids.map(r => r.id)).in('store_id', stores)
-    .eq('approval_status', 'approved');
+    .eq('approval_status', 'approved').eq('preorder_enabled', preorder);
   if (error) throw error;
   return ids.flatMap(id => (data ?? []).filter(row => (row as unknown as { id: string }).id === id.id));
 }

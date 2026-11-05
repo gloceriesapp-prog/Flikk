@@ -101,3 +101,12 @@ export function trapTab(e: { key: string; shiftKey: boolean; preventDefault: () 
     first.focus();
   }
 }
+
+// Pre-order delivery window in India time: "Sat, 7 Nov, 7:00 am – 9:00 am".
+export function deliveryWindow(order: { deliver_from?: string | null; deliver_until?: string | null }): string | null {
+  if (!order.deliver_from || !order.deliver_until) return null;
+  const zone = { timeZone: 'Asia/Kolkata' } as const;
+  const day = new Intl.DateTimeFormat('en-IN', { ...zone, weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(order.deliver_from));
+  const time = new Intl.DateTimeFormat('en-IN', { ...zone, hour: 'numeric', minute: '2-digit' });
+  return `${day}, ${time.format(new Date(order.deliver_from))} – ${time.format(new Date(order.deliver_until))}`;
+}

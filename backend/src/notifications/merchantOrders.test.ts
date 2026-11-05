@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const rpc = vi.hoisted(() => vi.fn());
-vi.mock('../db/supabase.js', () => ({ supabase: { rpc } }));
+const preorders = vi.hoisted(() => vi.fn());
+vi.mock('../db/supabase.js', () => ({ supabase: { rpc, from: () => ({ select: () => ({ in: () => ({ not: preorders }) }) }) } }));
 import { runMerchantOrderNotifications, runMerchantOrderReceipts } from './merchantOrders.js';
 const job = { id: 'event-1', order_id: 'order-1', user_id: 'owner-1', lease_token: 'lease-1', attempts: 1, ticket_id: null, token: 'ExpoPushToken[owner]', amount: 14.5 };
 function result(data: unknown) { return { data, error: null }; }
-beforeEach(() => { vi.restoreAllMocks(); rpc.mockReset(); });
+beforeEach(() => { vi.restoreAllMocks(); rpc.mockReset(); preorders.mockReset().mockResolvedValue({ data: [], error: null }); });
 function outcome() { return rpc.mock.calls.find(call => call[0] === 'finish_merchant_order_push')?.[1]; }
 describe('merchant alert outbox', () => {
   it('persists accepted Expo tickets and stable navigation IDs', async () => {
@@ -13,6 +14,17 @@ describe('merchant alert outbox', () => {
     await runMerchantOrderNotifications();
     expect(outcome()).toMatchObject({ p_outcome: 'ticket', p_ticket: 'ticket-1', p_lease: 'lease-1' });
     expect(JSON.parse(fetch.mock.calls[0]![1]!.body as string)[0]).toMatchObject({ channelId: 'orders', priority: 'high', data: { orderId: 'order-1', notificationId: 'event-1' } });
+  });
+  it('tells the store a pre-order\'s day and slot, and still alerts if that lookup fails', async () => {
+    rpc.mockResolvedValueOnce(result([job])).mockResolvedValue(result(true));
+    preorders.mockResolvedValue(result([{ id: 'order-1', deliver_from: '2026-11-07T01:30:00Z', deliver_until: '2026-11-07T03:30:00Z' }]));
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] })));
+    await runMerchantOrderNotifications();
+    expect(JSON.parse(fetch.mock.calls[0]![1]!.body as string)[0]).toMatchObject({ title: 'New pre-order', body: expect.stringMatching(/Sat.*7:00.*₹14.5/) });
+    rpc.mockReset().mockResolvedValueOnce(result([job])).mockResolvedValue(result(true));
+    preorders.mockRejectedValue(new Error('db down'));
+    await runMerchantOrderNotifications();
+    expect(JSON.parse(fetch.mock.calls[1]![1]!.body as string)[0]).toMatchObject({ title: 'New order received' });
   });
   it('retains failures for bounded database retries', async () => {
     rpc.mockResolvedValueOnce(result([job])).mockResolvedValue(result(true));

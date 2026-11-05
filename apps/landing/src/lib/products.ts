@@ -158,6 +158,7 @@ export async function fetchLandingCatalogue(): Promise<LandingCatalogue> {
         'id, name, price, original_price, image_url, product_variants(unit_type, quantity, is_default, price, original_price, platform_markup), sub_categories(category_id), stores!inner(is_active)',
       )
       .eq('approval_status', 'approved')
+      .eq('preorder_enabled', false)
       .eq('stores.is_active', true)
       .neq('stock_status', 'out_of_stock')
       .limit(PRODUCT_POOL),

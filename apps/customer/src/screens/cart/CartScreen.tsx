@@ -63,6 +63,8 @@ export function CartScreen({ navigation, route }: Props) {
   const items = useCartStore((state) => state.items);
   const totalQuantity = useCartStore(selectCartTotalQuantity);
   const itemTotal = useCartStore(selectCartTotalPrice);
+  // Pre-order cart: its delivery day + slot replaces the minutes estimate.
+  const preorder = useCartStore((s) => s.preorder);
   // One group per store — the cart no longer forces every item into one
   // store (useCartStore's own header note); a cart spanning more than one
   // store renders as multiple "From {store}" mini-sections below instead
@@ -273,7 +275,7 @@ export function CartScreen({ navigation, route }: Props) {
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2.5">
                   <View>
-                    <Text className="text-[17px] font-semibold text-ink">{storeClosed ? 'Your cart' : `Delivery in ${estimatedMinutes} minutes`}</Text>
+                    <Text className="text-[17px] font-semibold text-ink">{preorder ? `Pre-order · ${preorder.label}` : storeClosed ? 'Your cart' : `Delivery in ${estimatedMinutes} minutes`}</Text>
                     <Text className="text-[12.5px] text-ink/45 font-medium mt-1">
                       {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}
                       {storeGroups.length > 1 ? ` from ${storeGroups.length} stores` : ' in this order'}

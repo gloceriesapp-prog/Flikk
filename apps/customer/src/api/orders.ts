@@ -36,6 +36,8 @@ export interface CreateOrderInput {
   // Cart-level coupon (api/promos.ts) — re-validated server-side, never
   // trusted from the client's own earlier POST /promos/validate call.
   promo_code?: string;
+  // Pre-order carts only: delivery day (India date) + slot (store/preorder.ts).
+  preorder?: { date: string; slot_id: string };
   // 'cod' | 'online' — CheckoutScreen.tsx already knows which by the time
   // it calls this (a payment method must be selected before Pay is
   // reachable at all). Lets backend/src/jobs/expireUnpaidOrders.ts tell a
@@ -75,6 +77,9 @@ export interface ApiOrder {
   rider_id?: string | null;
   estimated_delivery_minutes?: number | null;
   estimated_delivery_at?: string | null;
+  // Pre-orders: the chosen delivery window (null for quick delivery).
+  deliver_from?: string | null;
+  deliver_until?: string | null;
   id: string;
   order_number: string;
   // Detail endpoints return the address linked to this order, rather

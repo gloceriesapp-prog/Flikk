@@ -1,5 +1,6 @@
 
 import { useMemo, useState } from 'react';
+import { formatDeliveryWindow } from '../../../store/preorder';
 import {
   Cancel01Icon,
   CheckmarkCircle02Icon,
@@ -74,7 +75,9 @@ export function OrderInfoCard({
       : Math.max(0, Math.ceil((deadline - now) / 60_000));
 
   const arrivalText =
-    minutes === null
+    order.deliver_from && order.deliver_until && order.status !== 'out_for_delivery'
+      ? `Pre-order · ${formatDeliveryWindow(order.deliver_from, order.deliver_until)}`
+      : minutes === null
       ? 'Arrival estimate unavailable'
       : `Arriving in ${minutes} minute${minutes === 1 ? '' : 's'}`;
 

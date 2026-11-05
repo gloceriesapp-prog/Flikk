@@ -33,7 +33,7 @@ async function products(storeId: string, rules: BrowseRule[], after: string | nu
   for (let offset = 0; offset < selected.length; offset += 100) {
     const { data, error: hydrateError } = await supabase.from('products').select(PRODUCT_WITH_VARIANTS_SELECT)
       .in('id', selected.slice(offset, offset + 100).map(row => row.id)).eq('store_id', storeId)
-      .eq('approval_status', 'approved').order('id');
+      .eq('approval_status', 'approved').eq('preorder_enabled', false).order('id');
     if (hydrateError) throw hydrateError;
     hydrated.push(...(data ?? []));
   }

@@ -50,6 +50,10 @@ export interface ApiProduct {
   product_options?: { id: string; name: string; image_url: string | null; sort_order: number; is_available: boolean }[] | null;
   // 'chilled' / 'room_temperature'; absent on feeds from before it existed.
   serving_options?: string[] | null;
+  // Pre-order only (Home Pre-orders section); absent on older feeds.
+  preorder_enabled?: boolean | null;
+  preorder_min_qty?: number | null;
+  preorder_lead_days?: number | null;
   is_veg: boolean;
   freshness_tag: string | null;
   product_variants: ApiVariant[];
@@ -134,6 +138,7 @@ export function mapApiProduct(row: ApiProduct): Product {
         .map((o) => ({ id: o.id, name: o.name, imageUrl: o.image_url ?? undefined, isAvailable: o.is_available }))
       : undefined,
     servingOptions: SERVINGS.filter((s) => row.serving_options?.includes(s)),
+    preorder: row.preorder_enabled ? { minQty: Math.max(1, Number(row.preorder_min_qty ?? 1)), leadDays: Math.max(1, Number(row.preorder_lead_days ?? 1)) } : undefined,
     bgColor: row.bg_color ?? undefined,
     cutOptions: row.cut_options_enabled === true || undefined,
     bulkMinKg: row.cut_options_enabled && row.bulk_min_kg != null && Number(row.bulk_min_kg) > 0 ? Number(row.bulk_min_kg) : undefined,
