@@ -1,18 +1,20 @@
 // Home "Pre-orders" panel (admin Home Sections key 'preorders'): the only place
-// pre-order products appear. A full-width plum band with the heading, the
+// pre-order products appear. A full-width lavender band with the heading, the
 // five bookable days, and the products deliverable on the chosen day as a
 // rail. Tapping a day filters the rail by each product's notice and opens the
 // product sheet on that day (usePreorderDayStore). ADD opens the sheet, where
 // the customer confirms the day and picks a slot (mustPickInDetail).
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ProductCard } from '../products/ProductCard';
+import { SectionTitle } from '../components/SectionTitle';
 import { bookingDates, dayCard, dayOpen, daysAhead } from '../../../store/preorder';
 import { usePreorderDayStore } from '../../../store/usePreorderDayStore';
 import { usePreorders } from './usePreorders';
 
 const CARD_WIDTH = 'w-32';
 const CARD_SNAP_INTERVAL = 128 + 10;
-const PLUM = '#4A2C5A';
+const LAVENDER = '#F3EEFF';
+const INK = '#101C10';
 
 export function PreorderSection({ title, subtitle }: { title: string; subtitle: string | null }) {
   const { data } = usePreorders();
@@ -32,12 +34,11 @@ export function PreorderSection({ title, subtitle }: { title: string; subtitle: 
   const forDay = products.filter((p) => ahead >= (p.preorder?.leadDays ?? 0));
 
   return (
-    <View className="mt-8 py-7" style={{ backgroundColor: PLUM }}>
+    <View className="mt-8 pb-7 pt-6" style={{ backgroundColor: LAVENDER }}>
+      {/* Same heading as every other Home section. */}
+      <SectionTitle subtitle={subtitle ?? undefined}>{title}</SectionTitle>
       <View className="px-5">
-        <Text className="text-[26px] font-bold tracking-tight text-white">{title}</Text>
-        {subtitle ? <Text className="mt-0.5 text-[15px] text-white/70">{subtitle}</Text> : null}
-
-        <View className="mt-5 flex-row" style={{ gap: 8 }}>
+        <View className="flex-row" style={{ gap: 8 }}>
           {dates.map((date) => {
             const card = dayCard(date);
             const enabled = open.includes(date);
@@ -50,13 +51,16 @@ export function PreorderSection({ title, subtitle }: { title: string; subtitle: 
                 accessibilityLabel={`${card.top} ${card.day} ${card.month}`}
                 disabled={!enabled}
                 onPress={() => setDay(date)}
-                className="flex-1 items-center rounded-[12px] bg-white py-2.5"
-                style={{ opacity: enabled ? 1 : 0.4 }}
+                className="flex-1 items-center rounded-[14px] border py-2.5"
+                style={{
+                  backgroundColor: selected ? INK : '#FFFFFF',
+                  borderColor: selected ? INK : '#E4DCF5',
+                  opacity: enabled ? 1 : 0.4,
+                }}
               >
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.8px]" style={{ color: selected ? PLUM : '#8A8494' }}>{card.top}</Text>
-                <Text className="mt-0.5 text-[19px] font-bold" style={{ color: selected ? PLUM : '#2B2433' }}>{card.day}</Text>
-                {/* The chosen day. */}
-                <View className="mt-1 h-[3px] w-4 rounded-full" style={{ backgroundColor: selected ? PLUM : 'transparent' }} />
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.8px]" style={{ color: selected ? '#FFFFFFB3' : '#6B7280' }}>{card.top}</Text>
+                <Text className="mt-0.5 text-[18px] font-bold" style={{ color: selected ? '#FFFFFF' : INK }}>{card.day}</Text>
+                <Text className="text-[10px] font-medium uppercase" style={{ color: selected ? '#FFFFFFB3' : '#9CA3AF' }}>{card.month}</Text>
               </Pressable>
             );
           })}
@@ -73,11 +77,11 @@ export function PreorderSection({ title, subtitle }: { title: string; subtitle: 
           decelerationRate="fast"
         >
           {forDay.map((product) => (
-            <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} onDark />
+            <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} />
           ))}
         </ScrollView>
       ) : (
-        <Text className="px-5 pt-5 text-[14px] text-white/70">These items need more notice. Pick a later day.</Text>
+        <Text className="px-5 pt-5 text-[14px] text-ink/60">These items need more notice. Pick a later day.</Text>
       )}
     </View>
   );
