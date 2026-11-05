@@ -16,7 +16,7 @@ export function PreorderEditor({ value, onChange }: { value: Preorder; onChange:
         Pre-order only
       </label>
       <p className="mt-0.5 text-xs text-muted">
-        Shown only in Home → Pre-orders. Customers choose a delivery day and slot; you accept it like a normal order.
+        Shown only in Home → Pre-orders. Customers book a day (today to 4 days ahead) and a slot at least 2 hours away; you accept it like a normal order.
       </p>
       {value.preorderEnabled && (
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -28,9 +28,9 @@ export function PreorderEditor({ value, onChange }: { value: Preorder; onChange:
           </label>
           <label className="text-xs font-medium text-muted">
             Notice needed
-            <select value={value.preorderLeadDays ?? 1} onChange={(e) => onChange({ ...value, preorderLeadDays: Number(e.target.value) })}
+            <select value={value.preorderLeadDays ?? 0} onChange={(e) => onChange({ ...value, preorderLeadDays: Number(e.target.value) })}
               className="mt-1.5 h-9 w-full rounded-lg border border-border bg-card px-3 text-sm text-ink">
-              {[1, 2, 3, 4, 5, 6, 7].map((days) => <option key={days} value={days}>{days === 1 ? '1 day (from tomorrow)' : `${days} days`}</option>)}
+              {[0, 1, 2, 3, 4].map((days) => <option key={days} value={days}>{days === 0 ? 'Same day' : days === 1 ? '1 day (from tomorrow)' : `${days} days`}</option>)}
             </select>
           </label>
         </div>

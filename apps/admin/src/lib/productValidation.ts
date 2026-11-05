@@ -209,9 +209,9 @@ export function toPreorder(input: Pick<ProductWriteInput, 'preorderEnabled' | 'p
   if (input.preorderEnabled == null) return undefined;
   if (typeof input.preorderEnabled !== 'boolean') throw new Error('preorderEnabled must be true or false.');
   const minQty = input.preorderMinQty ?? 1;
-  const leadDays = input.preorderLeadDays ?? 1;
+  const leadDays = input.preorderLeadDays ?? 0;
   if (!Number.isInteger(minQty) || minQty < 1 || minQty > 999) throw new Error('Pre-order minimum must be a whole number from 1 to 999.');
-  if (!Number.isInteger(leadDays) || leadDays < 1 || leadDays > 14) throw new Error('Pre-order notice must be 1 to 14 days.');
+  if (!Number.isInteger(leadDays) || leadDays < 0 || leadDays > 4) throw new Error('Pre-order notice must be same day to 4 days.');
   return { preorder_enabled: input.preorderEnabled, preorder_min_qty: minQty, preorder_lead_days: leadDays };
 }
 

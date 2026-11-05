@@ -59,7 +59,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     servingOptions: [] as Serving[],
     preorderEnabled: false,
     preorderMinQty: 1,
-    preorderLeadDays: 1,
+    preorderLeadDays: 0,
     bulkMinKg: null as number | null,
     bgColor: undefined as string | undefined,
     subCategoryId: undefined as string | undefined,

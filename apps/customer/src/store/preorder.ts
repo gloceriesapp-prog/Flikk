@@ -7,22 +7,52 @@ export interface PreorderSlot { id: string; label: string; startsMinute: number;
 // The cart's chosen delivery: India date (YYYY-MM-DD) + slot, and its label.
 export interface CartPreorder { date: string; slotId: string; label: string }
 
-// Bookable days from the earliest one; same window the server allows.
-export const PREORDER_BOOKING_DAYS = 7;
+// Bookable days: today and the next 4 (backend PREORDER_BOOKING_DAYS). A
+// product's notice (lead days) greys out the first ones; a slot closes 2 hours
+// before it starts (PREORDER_CUTOFF_MS).
+export const PREORDER_BOOKING_DAYS = 5;
+const PREORDER_CUTOFF_MS = 2 * 3_600_000;
 const IST_MS = 330 * 60_000;
 const DAY_MS = 86_400_000;
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-export function bookingDates(leadDays: number, now = new Date()): string[] {
-  const today = Date.parse(new Date(now.getTime() + IST_MS).toISOString().slice(0, 10));
-  return Array.from({ length: PREORDER_BOOKING_DAYS }, (_, i) => new Date(today + (leadDays + i) * DAY_MS).toISOString().slice(0, 10));
+function todayMs(now: Date): number {
+  return Date.parse(new Date(now.getTime() + IST_MS).toISOString().slice(0, 10));
+}
+
+export function bookingDates(now = new Date()): string[] {
+  const today = todayMs(now);
+  return Array.from({ length: PREORDER_BOOKING_DAYS }, (_, i) => new Date(today + i * DAY_MS).toISOString().slice(0, 10));
+}
+
+export function daysAhead(date: string, now = new Date()): number {
+  return Math.round((Date.parse(date) - todayMs(now)) / DAY_MS);
+}
+
+// The slot starts at least 2 hours from now on that day.
+export function slotOpen(date: string, slot: PreorderSlot, now = new Date()): boolean {
+  return Date.parse(`${date}T00:00:00+05:30`) + slot.startsMinute * 60_000 >= now.getTime() + PREORDER_CUTOFF_MS;
+}
+
+// A day can be booked: enough notice and at least one slot still open.
+export function dayOpen(date: string, leadDays: number, slots: PreorderSlot[], now = new Date()): boolean {
+  return daysAhead(date, now) >= leadDays && slots.some((slot) => slotOpen(date, slot, now));
+}
+
+// Cinema-style date card parts: "TODAY" / "TUE", "7", "Nov".
+export function dayCard(date: string, now = new Date()): { top: string; day: number; month: string } {
+  const d = new Date(`${date}T00:00:00Z`);
+  const ahead = daysAhead(date, now);
+  return { top: ahead === 0 ? 'Today' : ahead === 1 ? 'Tmrw' : WEEKDAYS[d.getUTCDay()]!, day: d.getUTCDate(), month: MONTHS[d.getUTCMonth()]! };
 }
 
 export function dayLabel(date: string, now = new Date()): string {
-  if (date === bookingDates(1, now)[0]) return 'Tomorrow';
+  const ahead = daysAhead(date, now);
+  if (ahead === 0) return 'Today';
+  if (ahead === 1) return 'Tomorrow';
   const d = new Date(`${date}T00:00:00Z`);
-  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()];
-  const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()];
-  return `${weekday} ${d.getUTCDate()} ${month}`;
+  return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
 }
 
 export function cartPreorder(date: string, slot: PreorderSlot, now = new Date()): CartPreorder {

@@ -177,19 +177,26 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
         <Text className={`text-[13px] font-semibold leading-[17px] ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
           {name}
         </Text>
-        <View className="self-start flex-row items-center gap-0.5 rounded-md bg-[#F3F4F6] border border-gray-100 px-1.5 py-0.5">
-          <AppIcon
-            icon={FlashIcon}
-            size={10}
-            color="#155dfc"
-            fill="#155dfc"
-            strokeWidth={1.5}
-          />
+        {/* A pre-order arrives in its booked slot, not in minutes. */}
+        {product.preorder ? (
+          <View className="self-start rounded-md bg-[#D9A441] px-1.5 py-0.5">
+            <Text className="text-[10px] font-bold uppercase text-ink">Pre-order · Min {product.preorder.minQty}</Text>
+          </View>
+        ) : (
+          <View className="self-start flex-row items-center gap-0.5 rounded-md bg-[#F3F4F6] border border-gray-100 px-1.5 py-0.5">
+            <AppIcon
+              icon={FlashIcon}
+              size={10}
+              color="#155dfc"
+              fill="#155dfc"
+              strokeWidth={1.5}
+            />
 
-          <Text className="text-[10px] font-semibold text-[#1F2937] uppercase">
-            {estimatedMinutes} mins
-          </Text>
-        </View>
+            <Text className="text-[10px] font-semibold text-[#1F2937] uppercase">
+              {estimatedMinutes} mins
+            </Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );

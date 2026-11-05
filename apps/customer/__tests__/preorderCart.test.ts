@@ -1,4 +1,4 @@
-import { bookingDates, cartConflict, cartPreorder, dayLabel, formatDeliveryWindow } from '../src/store/preorder';
+import { bookingDates, cartConflict, cartPreorder, dayCard, dayLabel, dayOpen, formatDeliveryWindow, slotOpen } from '../src/store/preorder';
 import { useCartStore } from '../src/store/useCartStore';
 import { mustPickInDetail } from '../src/store/cartIdentity';
 
@@ -8,11 +8,25 @@ const slot = { id: '00000000-0000-4000-8000-0000000000b1', label: '7 – 9 AM', 
 const idli = { id: 'idli', productId: 'idli', name: 'Idli', weight: '4 pcs', price: 40, storeId: 's1', preorderMinQty: 10 };
 
 describe('pre-order day and slot', () => {
-  it('offers a week of days from the notice, in India time', () => {
-    expect(bookingDates(1, now)).toEqual(['2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13']);
-    expect(bookingDates(2, now)[0]).toBe('2026-11-08');
+  it('offers today and the next 4 days, in India time', () => {
+    expect(bookingDates(now)).toEqual(['2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10']);
+    expect(dayLabel('2026-11-06', now)).toBe('Today');
     expect(dayLabel('2026-11-07', now)).toBe('Tomorrow');
     expect(dayLabel('2026-11-08', now)).toBe('Sun 8 Nov');
+    expect(dayCard('2026-11-08', now)).toEqual({ top: 'Sun', day: 8, month: 'Nov' });
+  });
+  it('greys out days without notice or open slots', () => {
+    const evening = { ...slot, startsMinute: 1080, endsMinute: 1200 };
+    // 22:00 IST: nothing left today.
+    expect(dayOpen('2026-11-06', 0, [slot, evening], now)).toBe(false);
+    expect(dayOpen('2026-11-07', 0, [slot], now)).toBe(true);
+    expect(dayOpen('2026-11-07', 2, [slot], now)).toBe(false);
+    // 14:00 IST: 6 PM is open (4 h away), 7 AM is gone; 17:00: 6 PM too close.
+    expect(slotOpen('2026-11-06', evening, new Date('2026-11-06T08:30:00Z'))).toBe(true);
+    expect(slotOpen('2026-11-06', slot, new Date('2026-11-06T08:30:00Z'))).toBe(false);
+    expect(slotOpen('2026-11-06', evening, new Date('2026-11-06T11:30:00Z'))).toBe(false);
+  });
+  it('labels the cart delivery', () => {
     expect(cartPreorder('2026-11-08', slot, now)).toEqual({ date: '2026-11-08', slotId: slot.id, label: 'Sun 8 Nov · 7 – 9 AM' });
     expect(formatDeliveryWindow('2026-11-08T01:30:00Z', '2026-11-08T03:30:00Z')).toMatch(/8 Nov, 7:00 AM – 9:00 AM$/);
   });

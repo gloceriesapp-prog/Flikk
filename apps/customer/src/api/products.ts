@@ -138,7 +138,7 @@ export function mapApiProduct(row: ApiProduct): Product {
         .map((o) => ({ id: o.id, name: o.name, imageUrl: o.image_url ?? undefined, isAvailable: o.is_available }))
       : undefined,
     servingOptions: SERVINGS.filter((s) => row.serving_options?.includes(s)),
-    preorder: row.preorder_enabled ? { minQty: Math.max(1, Number(row.preorder_min_qty ?? 1)), leadDays: Math.max(1, Number(row.preorder_lead_days ?? 1)) } : undefined,
+    preorder: row.preorder_enabled ? { minQty: Math.max(1, Number(row.preorder_min_qty ?? 1)), leadDays: Math.max(0, Number(row.preorder_lead_days ?? 0)) } : undefined,
     bgColor: row.bg_color ?? undefined,
     cutOptions: row.cut_options_enabled === true || undefined,
     bulkMinKg: row.cut_options_enabled && row.bulk_min_kg != null && Number(row.bulk_min_kg) > 0 ? Number(row.bulk_min_kg) : undefined,
