@@ -163,11 +163,12 @@ export async function fetchLandingCatalogue(): Promise<LandingCatalogue> {
       .limit(PRODUCT_POOL),
   ]);
 
-  if (categoriesRes.error || productsRes.error) {
-    // A public marketing page shouldn't hard-fail its whole layout over
-    // this — empty sections (each one hides itself) beat a 500 page.
-    console.error('[fetchLandingCatalogue] failed:', categoriesRes.error ?? productsRes.error);
-    return { categories: [], products: [] };
+  const error = categoriesRes.error ?? productsRes.error;
+  if (error) {
+    // Throw, don't return empty: the home page is cached (revalidate), and a
+    // failed background refresh keeps serving the last good page. A deploy
+    // with a wrong database URL fails its build instead of going live empty.
+    throw new Error(`[fetchLandingCatalogue] ${error.message}`);
   }
 
   const rows = (productsRes.data ?? []) as unknown as ProductRow[];
