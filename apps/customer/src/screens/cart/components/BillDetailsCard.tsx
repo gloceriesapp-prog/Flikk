@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { RupeePrice } from '../../../components/RupeePrice';
+import { IconlyClose } from '../../../components/icons/IconlyClose';
 import { IconlyReceipt } from '../../../components/icons/IconlyReceipt';
 import type { CheckoutQuote } from '../../../api/checkout';
 import { GILROY } from '../../../theme/fonts';
@@ -64,11 +65,12 @@ function FeeInfoDialog({ fee, onClose }: { fee: FeeKey | null; onClose: () => vo
     <Modal visible={info != null} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <Pressable accessibilityLabel="Close" onPress={onClose} className="flex-1 items-center justify-center bg-black/40 px-8">
         {/* Taps inside the card don't close it. */}
-        <Pressable onPress={() => {}} className="w-full rounded-3xl bg-white px-6 pb-5 pt-6">
-          <Text className="text-[17px] font-semibold text-ink">{info?.title}</Text>
+        <Pressable onPress={() => {}} className="w-full rounded-3xl bg-white px-6 pb-6 pt-6">
+          <Text className="pr-8 text-[17px] font-semibold text-ink">{info?.title}</Text>
           <Text className="mt-2 text-[14px] leading-[21px] text-ink/70">{info?.message}</Text>
-          <Pressable accessibilityRole="button" onPress={onClose} className="mt-5 items-center rounded-2xl bg-[#155DFC] py-3">
-            <Text className="text-[15px] font-semibold text-white">Got it</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10}
+            className="absolute right-4 top-4 h-8 w-8 items-center justify-center">
+            <IconlyClose size={22} color="#101C10" />
           </Pressable>
         </Pressable>
       </Pressable>
