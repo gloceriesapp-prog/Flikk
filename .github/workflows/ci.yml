@@ -15,7 +15,56 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Which apps a pull request touches, so an admin-only change doesn't build
+  # the mobile apps. Pushes to main (merges) always run everything:
+  # Backend → Lightsail waits on main's run.
+  changes:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions: {pull-requests: read}
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      sql: ${{ steps.filter.outputs.sql }}
+      customer: ${{ steps.filter.outputs.customer }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - '.github/workflows/ci.yml'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'patches/**'
+            backend:
+              - *shared
+              - 'backend/**'
+              - 'apps/customer/**'
+              - 'apps/admin/**'
+            sql:
+              - '.github/workflows/ci.yml'
+              - 'backend/migrations/**'
+              - 'backend/tests/**'
+              - 'backend/scripts/**'
+            customer:
+              - *shared
+              - 'apps/customer/**'
+            mobile:
+              - *shared
+              - 'apps/partner/**'
+              - 'apps/rider/**'
+            web:
+              - *shared
+              - 'apps/admin/**'
+              - 'apps/partner-dashboard/**'
+              - 'apps/landing/**'
+
   backend:
+    needs: changes
+    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -62,6 +111,8 @@ jobs:
         run: node --test ../packages/shared/config/google-maps.test.cjs
 
   commerce-security:
+    needs: changes
+    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.sql == 'true') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -116,6 +167,8 @@ jobs:
           PGDATABASE=flikk_migrations_tests psql -X -v ON_ERROR_STOP=1 -c BEGIN -f backend/tests/store-availability.sql -c ROLLBACK
 
   customer:
+    needs: changes
+    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.customer == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -141,6 +194,8 @@ jobs:
 
   # Partner and rider apps share the root npm workspace (with packages/*).
   mobile-apps:
+    needs: changes
+    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.mobile == 'true') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -196,6 +251,8 @@ jobs:
   # Next.js apps. `next typegen` generates the PageProps/LayoutProps/
   # RouteContext globals that the typecheck relies on.
   web-apps:
+    needs: changes
+    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.web == 'true') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
