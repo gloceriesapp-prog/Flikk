@@ -20,7 +20,7 @@
 // screen stays a single virtualized list under the fixed SearchHeader.
 
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -33,6 +33,9 @@ import { productAvailability } from '../../utils/productAvailability';
 import { useProductSearch } from './useProductSearch';
 import { SearchHeader } from './components/SearchHeader';
 import { SearchSuggestions } from './components/SearchSuggestions';
+import { SearchTypeahead } from './components/SearchTypeahead';
+import { buildSuggestions, type TypeaheadSuggestion } from './searchTypeahead';
+import { useCategorySections } from '../../components/CategorySections/useCategorySections';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Search'>;
@@ -40,9 +43,15 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Search'>;
 const MIN_QUERY_LENGTH = 2;
 
 export function SearchScreen({ navigation }: Props) {
-  const [query, setQuery] = useState('');
+  const [query, setQueryValue] = useState('');
+  // Typing shows text suggestions (SearchTypeahead); the keyboard search key
+  // or a picked suggestion submits and shows the full results. Editing the
+  // text again goes back to suggestions.
+  const [submitted, setSubmitted] = useState(false);
+  const setQuery = (text: string) => { setQueryValue(text); setSubmitted(false); };
   const trimmedQuery = query.trim();
   const isSearching = trimmedQuery.length >= MIN_QUERY_LENGTH;
+  const submit = () => { if (isSearching) { setSubmitted(true); Keyboard.dismiss(); } };
 
   const { data: allStores = [] } = useAllStores();
   const matchingStores = useMemo(() => {
@@ -54,6 +63,23 @@ export function SearchScreen({ navigation }: Props) {
   const search = useProductSearch(query);
   const { data: matchingProducts = [], isLoading: isLoadingProducts } = search;
 
+  const { data: categoryGroups } = useCategorySections();
+  const suggestions = useMemo(
+    () => (isSearching && !submitted
+      ? buildSuggestions(trimmedQuery, (categoryGroups ?? []).flatMap((g) => g.categories), matchingProducts.map((p) => p.name))
+      : []),
+    [isSearching, submitted, trimmedQuery, categoryGroups, matchingProducts],
+  );
+  const pickSuggestion = (s: TypeaheadSuggestion) => {
+    Keyboard.dismiss();
+    if (s.kind === 'category') {
+      navigation.navigate('CategoryDetail', { categoryId: s.id, label: s.label });
+      return;
+    }
+    setQueryValue(s.label);
+    setSubmitted(true);
+  };
+
   // Delivery estimate + browse clock lifted ONCE for the whole grid (issue #22,
   // same as ProductSection used to do) instead of each card self-subscribing —
   // the 30s tick re-renders this screen node, renderItem recomputes each
@@ -64,7 +90,7 @@ export function SearchScreen({ navigation }: Props) {
   // Final results view: searching, settled (not loading/debouncing/errored).
   // Only then do we surface stores + the product grid; while a query is still
   // resolving we show the spinner alone, as before.
-  const showResults = isSearching && !search.isError && !isLoadingProducts && !search.isDebouncing;
+  const showResults = isSearching && submitted && !search.isError && !isLoadingProducts && !search.isDebouncing;
   const hasNoResults = showResults && matchingStores.length === 0 && matchingProducts.length === 0;
 
   return (
@@ -75,7 +101,7 @@ export function SearchScreen({ navigation }: Props) {
           call, not scoped per screen, so without this override Search's
           own white bg was left with white-on-white icons. */}
       <StatusBar style="dark" />
-      <SearchHeader value={query} onChangeText={setQuery} onBack={() => navigation.goBack()} />
+      <SearchHeader value={query} onChangeText={setQuery} onBack={() => navigation.goBack()} onSubmit={submit} />
 
       <View className="flex-1">
         <FlashList
@@ -115,6 +141,10 @@ export function SearchScreen({ navigation }: Props) {
               // 20px gutter and their rows bleed to the screen edge.
               <View style={{ marginHorizontal: -15 }}>
                 <SearchSuggestions />
+              </View>
+            ) : !submitted ? (
+              <View style={{ marginHorizontal: -15 }}>
+                <SearchTypeahead query={query} suggestions={suggestions} onPick={pickSuggestion} onSearch={submit} />
               </View>
             ) : search.isError ? (
               <View className="items-center gap-3 px-6 py-12">

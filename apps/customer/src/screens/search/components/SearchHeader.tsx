@@ -15,9 +15,11 @@ interface Props {
   value: string;
   onChangeText: (text: string) => void;
   onBack: () => void;
+  // Keyboard search key: show the full results.
+  onSubmit?: () => void;
 }
 
-export function SearchHeader({ value, onChangeText, onBack }: Props) {
+export function SearchHeader({ value, onChangeText, onBack, onSubmit }: Props) {
   const placeholder = useCopy('home.search.placeholder');
   return (
     <View className="px-4 pb-3 pt-safe">
@@ -42,6 +44,7 @@ export function SearchHeader({ value, onChangeText, onBack }: Props) {
             multiline={false}
             numberOfLines={1}
             returnKeyType="search"
+            onSubmitEditing={onSubmit}
             className="py-2 text-base text-ink"
           />
         </View>

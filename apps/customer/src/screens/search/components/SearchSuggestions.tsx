@@ -3,9 +3,8 @@
 // used to be a single centered placeholder line with real content to
 // browse instead of a dead screen. Three rows, each reusing an existing
 // component as-is rather than inventing new ones:
-//   1. "Recommended for you" — PromoListCard (home/products/), same
-//      title+horizontal-scroll shell MostBoughtSection/TrendingSection
-//      already use.
+//   1. "Available near you" — NearYouBox: banner on top, product rail
+//      inside one outlined box.
 //   2. "Shop by Category" — StoreTypesSection (home/store-types/), the
 //      exact same real chip row Home's "All" tab and CategoriesScreen
 //      already render (useStoreTypes.ts -> GET /stores, grouped by real
@@ -29,7 +28,7 @@
 import { Text, View } from 'react-native';
 import { StoreTypesSection } from '../../home/store-types/StoreTypesSection';
 import { ProductCard } from '../../home/products/ProductCard';
-import { PromoListCard } from '../../home/products/PromoListCard';
+import { NearYouBox } from './NearYouBox';
 import { useEverydayEssentials } from '../../home/everyday-essentials/useEverydayEssentials';
 
 const RECOMMENDED_LIMIT = 6;
@@ -46,7 +45,7 @@ export function SearchSuggestions() {
     <View className="pb-10 pt-2">
       {recommended.length > 0 && (
         <View className="pt-4">
-          <PromoListCard title="Available near you" products={recommended} />
+          <NearYouBox products={recommended} />
         </View>
       )}
 
