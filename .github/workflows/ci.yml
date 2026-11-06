@@ -10,6 +10,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -19,9 +22,10 @@ jobs:
   # the mobile apps. Pushes to main (merges) always run everything:
   # Backend → Lightsail waits on main's run.
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     permissions: {pull-requests: read}
+    timeout-minutes: 5
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       sql: ${{ steps.filter.outputs.sql }}
@@ -34,7 +38,9 @@ jobs:
         with:
           filters: |
             shared: &shared
-              - '.github/workflows/ci.yml'
+              - '.github/**'
+              - 'scripts/**'
+              - 'config/**'
               - 'packages/**'
               - 'package.json'
               - 'package-lock.json'
@@ -44,11 +50,12 @@ jobs:
               - 'backend/**'
               - 'apps/customer/**'
               - 'apps/admin/**'
+              - 'apps/partner/**'
+              - 'apps/rider/**'
+              - 'apps/partner-dashboard/**'
             sql:
-              - '.github/workflows/ci.yml'
-              - 'backend/migrations/**'
-              - 'backend/tests/**'
-              - 'backend/scripts/**'
+              - *shared
+              - 'backend/**'
             customer:
               - *shared
               - 'apps/customer/**'
@@ -58,14 +65,16 @@ jobs:
               - 'apps/rider/**'
             web:
               - *shared
+              - 'backend/**'
               - 'apps/admin/**'
               - 'apps/partner-dashboard/**'
               - 'apps/landing/**'
 
   backend:
     needs: changes
-    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.backend == 'true') }}
-    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.backend == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -112,8 +121,9 @@ jobs:
 
   commerce-security:
     needs: changes
-    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.sql == 'true') }}
-    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.sql == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       matrix:
         missing_delivery_otp: [false, true]
@@ -168,8 +178,9 @@ jobs:
 
   customer:
     needs: changes
-    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.customer == 'true') }}
-    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.customer == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: apps/customer
@@ -195,8 +206,9 @@ jobs:
   # Partner and rider apps share the root npm workspace (with packages/*).
   mobile-apps:
     needs: changes
-    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.mobile == 'true') }}
-    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.mobile == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       matrix:
         app: [partner, rider]
@@ -252,8 +264,9 @@ jobs:
   # RouteContext globals that the typecheck relies on.
   web-apps:
     needs: changes
-    if: ${{ always() && (github.event_name == 'push' || needs.changes.outputs.web == 'true') }}
-    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.web == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       matrix:
         app: [admin, partner-dashboard, landing]
@@ -293,3 +306,19 @@ jobs:
       # rejects ("packages field missing or empty").
       - run: pnpm --ignore-workspace build
 
+
+  # One stable check: filtering failures or unexpected skips cannot look green.
+  ci-gate:
+    if: always()
+    needs: [changes, backend, commerce-security, customer, mobile-apps, web-apps]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify CI result aggregation and regression scenarios
+        run: node --test scripts/ci-gate.test.mjs
+      - name: Require all selected checks to pass
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/ci-gate.mjs
