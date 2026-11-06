@@ -74,7 +74,7 @@
 // with; the jank this file actually had was animation/gesture-thread work,
 // which is what the Reanimated/gesture-handler rewrite above addresses.
 
-import { ArrowDown01Icon, StarIcon } from '@hugeicons/core-free-icons';
+import { StarIcon } from '@hugeicons/core-free-icons';
 import { useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -99,7 +99,8 @@ import { CartBar } from '../CartBar/CartBar';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { colors } from '../../theme/tokens';
 import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
-import { IconlyShare } from '../icons/IconlyShare';
+import { IconlyChevronDown } from '../icons/IconlyChevronDown';
+import { IconlySend } from '../icons/IconlySend';
 import { shareProduct } from '../../utils/shareProduct';
 import { useEverydayEssentials } from '../../screens/home/everyday-essentials/useEverydayEssentials';
 import { ProductDetailInfo } from './ProductDetailInfo';
@@ -774,7 +775,8 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
   // Android: thin white top header just a hair taller than the status bar so it
   // reads as a clean status-bar backing; the controls float just below it.
   const headerHeight = insets.top + (isAndroid ? 6 : 64);
-  const pillClass = 'h-10 w-10 items-center justify-center rounded-full bg-white';
+  // Thin light-black ring so the white pill reads on any photo.
+  const pillClass = 'h-10 w-10 items-center justify-center rounded-full border border-black/15 bg-white';
   const pillIconColor = '#101C10';
 
   return (
@@ -833,7 +835,7 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
                 if a truly adaptive frost is wanted. */}
             <View className="w-full flex-row items-center justify-between">
               <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10} className={pillClass}>
-                <AppIcon icon={ArrowDown01Icon} size={20} color={pillIconColor} strokeWidth={2} />
+                <IconlyChevronDown size={22} color={pillIconColor} />
               </Pressable>
 
               <View className="flex-row gap-2.5">
@@ -842,7 +844,7 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
                   onPress={() => shareProduct(product)}
                   className={pillClass}
                 >
-                  <IconlyShare size={19} color={pillIconColor} />
+                  <IconlySend size={20} color={pillIconColor} />
                 </Pressable>
               </View>
             </View>
