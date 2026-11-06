@@ -111,7 +111,11 @@ export function SearchScreen({ navigation }: Props) {
           }
           ListEmptyComponent={
             !isSearching ? (
-              <SearchSuggestions />
+              // Cancel the grid's 15px side padding: suggestions own their
+              // 20px gutter and their rows bleed to the screen edge.
+              <View style={{ marginHorizontal: -15 }}>
+                <SearchSuggestions />
+              </View>
             ) : search.isError ? (
               <View className="items-center gap-3 px-6 py-12">
                 <Text className="text-center text-base text-ink/60">We couldn’t load results. Check your connection and retry.</Text>
