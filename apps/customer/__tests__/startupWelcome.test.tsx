@@ -6,13 +6,13 @@ jest.mock('expo-image', () => ({ Image: 'WelcomeImage' }));
 beforeEach(() => jest.useFakeTimers());
 afterEach(() => jest.useRealTimers());
 
-it('shows the artwork for 3.5 seconds after it displays, excluding decode time', async () => {
+it('shows the artwork for 0.9 seconds after it displays, excluding decode time', async () => {
   const onFinished = jest.fn();
   await render(<StartupWelcome onFinished={onFinished} />);
   await act(async () => { jest.advanceTimersByTime(5000); });
   expect(onFinished).not.toHaveBeenCalled();
   await fireEvent(screen.getByTestId('startup-welcome-artwork'), 'display');
-  await act(async () => { jest.advanceTimersByTime(3499); });
+  await act(async () => { jest.advanceTimersByTime(899); });
   expect(onFinished).not.toHaveBeenCalled();
   await act(async () => { jest.advanceTimersByTime(1); });
   expect(onFinished).toHaveBeenCalledTimes(1);

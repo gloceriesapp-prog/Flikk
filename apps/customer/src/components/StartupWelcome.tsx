@@ -5,12 +5,16 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 
 // Start the viewing interval only after the bundled image is actually displayed.
-// Local state restores in parallel, without a CDN request or fade-in.
+// Local state restores in parallel, without a CDN request or fade-in. A short
+// brand moment only: RootNavigator keeps this up until session, location and
+// cart are restored anyway, and Home's data loads only after it, so every
+// extra second here is a second added to every app open.
+const WELCOME_MS = 900;
 export function StartupWelcome({ onFinished }: { onFinished: () => void }) {
   const [displayed, setDisplayed] = useState(false);
   useEffect(() => {
     if (!displayed) return;
-    const timer = setTimeout(onFinished, 3500);
+    const timer = setTimeout(onFinished, WELCOME_MS);
     return () => clearTimeout(timer);
   }, [displayed, onFinished]);
   const setStartupVisible = useContext(StartupAppearanceContext);
