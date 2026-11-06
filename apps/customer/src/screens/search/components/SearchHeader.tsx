@@ -22,7 +22,7 @@ interface Props {
 export function SearchHeader({ value, onChangeText, onBack, onSubmit }: Props) {
   const placeholder = useCopy('home.search.placeholder');
   return (
-    <View className="px-4 pb-3 pt-safe">
+    <View className="px-4 pb-2 pt-safe">
       <View className="mt-2 flex-row items-center pl-1.5 pr-2" style={{ height: 52, borderRadius: 16, backgroundColor: '#EEF0F4' }}>
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} hitSlop={8} className="h-10 w-10 items-center justify-center">
           <IconlyChevronLeft size={22} color="#101C10" />

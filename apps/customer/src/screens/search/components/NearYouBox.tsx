@@ -1,4 +1,5 @@
-// Search screen "Available near you": one outlined box with a banner on top
+// Search screen "Available near you": one outlined box, as wide as the search
+// bar (16px gutter, SearchHeader px-4), with a banner on top
 // and the products as a rail inside it (the Instamart collection layout).
 // Banner art comes from admin App content (search.nearYou.imageUrl); until one
 // is set, the same space shows a plain panel with the title.
@@ -16,7 +17,7 @@ export function NearYouBox({ products }: { products: Product[] }) {
   const title = useCopy('search.nearYou.title');
   const banner = useCopyImage('search.nearYou.imageUrl', '');
   return (
-    <View className="overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white" style={{ marginHorizontal: 20 }}>
+    <View className="overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white" style={{ marginHorizontal: 16 }}>
       <View style={{ height: BANNER_HEIGHT, backgroundColor: '#EDF7FF' }}>
         {banner ? (
           <Image source={{ uri: banner }} accessibilityLabel={title} className="h-full w-full" resizeMode="cover" />

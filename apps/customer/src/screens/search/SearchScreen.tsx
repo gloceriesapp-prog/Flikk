@@ -20,7 +20,7 @@
 // screen stays a single virtualized list under the fixed SearchHeader.
 
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Keyboard, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, ScrollView, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -41,6 +41,8 @@ import type { AppStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'Search'>;
 
 const MIN_QUERY_LENGTH = 2;
+// About five suggestion rows; the rest scroll inside the panel.
+const TYPEAHEAD_MAX_HEIGHT = 280;
 
 export function SearchScreen({ navigation }: Props) {
   const [query, setQueryValue] = useState('');
@@ -136,15 +138,12 @@ export function SearchScreen({ navigation }: Props) {
             ) : null
           }
           ListEmptyComponent={
-            !isSearching ? (
+            // Browse content stays under the typing suggestions panel.
+            !isSearching || !submitted ? (
               // Cancel the grid's 15px side padding: suggestions own their
-              // 20px gutter and their rows bleed to the screen edge.
+              // gutter and their rows bleed to the screen edge.
               <View style={{ marginHorizontal: -15 }}>
                 <SearchSuggestions />
-              </View>
-            ) : !submitted ? (
-              <View style={{ marginHorizontal: -15 }}>
-                <SearchTypeahead query={query} suggestions={suggestions} onPick={pickSuggestion} onSearch={submit} />
               </View>
             ) : search.isError ? (
               <View className="items-center gap-3 px-6 py-12">
@@ -175,6 +174,16 @@ export function SearchScreen({ navigation }: Props) {
             );
           }}
         />
+        {/* Typing suggestions: a capped-height panel floating under the
+            search bar, so the page stays visible below it. */}
+        {isSearching && !submitted ? (
+          <View className="absolute left-4 right-4 top-0 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white"
+            style={{ maxHeight: TYPEAHEAD_MAX_HEIGHT, elevation: 6, shadowColor: '#101C10', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
+            <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
+              <SearchTypeahead query={query} suggestions={suggestions} onPick={pickSuggestion} onSearch={submit} />
+            </ScrollView>
+          </View>
+        ) : null}
       </View>
     </View>
   );

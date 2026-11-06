@@ -42,9 +42,9 @@ export function SearchSuggestions() {
   const gridProducts = products.slice(RECOMMENDED_LIMIT, RECOMMENDED_LIMIT + GRID_LIMIT);
 
   return (
-    <View className="pb-10 pt-2">
+    <View className="pb-10 pt-1">
       {recommended.length > 0 && (
-        <View className="pt-4">
+        <View>
           <NearYouBox products={recommended} />
         </View>
       )}
