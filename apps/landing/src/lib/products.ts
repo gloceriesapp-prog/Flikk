@@ -171,7 +171,7 @@ export async function fetchLandingCatalogue(): Promise<LandingCatalogue> {
     // good page; a deploy with a wrong database URL fails its build instead
     // of going live with no products. CI/local builds (placeholder database)
     // render without products.
-    if (process.env.VERCEL_ENV === 'production') {
+    if (process.env.VERCEL_ENV === 'production' || process.env.APP_ENV === 'production') {
       throw new Error(`[fetchLandingCatalogue] ${error.message}`);
     }
     console.error('[fetchLandingCatalogue] failed:', error.message);
