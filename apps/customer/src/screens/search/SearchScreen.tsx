@@ -178,7 +178,7 @@ export function SearchScreen({ navigation }: Props) {
             search bar, so the page stays visible below it. */}
         {isSearching && !submitted ? (
           <View className="absolute left-4 right-4 top-0 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white"
-            style={{ maxHeight: TYPEAHEAD_MAX_HEIGHT, elevation: 6, shadowColor: '#101C10', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
+            style={{ maxHeight: TYPEAHEAD_MAX_HEIGHT }}>
             <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
               <SearchTypeahead query={query} suggestions={suggestions} onPick={pickSuggestion} onSearch={submit} />
             </ScrollView>
