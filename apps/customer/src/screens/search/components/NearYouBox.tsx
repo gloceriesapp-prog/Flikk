@@ -17,7 +17,7 @@ export function NearYouBox({ products }: { products: Product[] }) {
   const title = useCopy('search.nearYou.title');
   const banner = useCopyImage('search.nearYou.imageUrl', '');
   return (
-    <View className="overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white" style={{ marginHorizontal: 16 }}>
+    <View className="overflow-hidden rounded-3xl border border-[#E5E7EB] bg-white" style={{ marginHorizontal: 13 }}>
       <View style={{ height: BANNER_HEIGHT, backgroundColor: '#EDF7FF' }}>
         {banner ? (
           <Image source={{ uri: banner }} accessibilityLabel={title} className="h-full w-full" resizeMode="cover" />
