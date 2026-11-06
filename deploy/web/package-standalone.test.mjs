@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, cp, rm, access } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readlink, symlink, writeFile, cp, rm, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -25,6 +25,8 @@ test('standalone packaging includes assets, excludes env files and rejects overw
       await mkdir(path.dirname(file), { recursive: true });
       await writeFile(file, value);
     }
+    await mkdir(path.join(app, '.next/standalone/apps/admin/node_modules'), { recursive: true });
+    await symlink('../../../node_modules/runtime.js', path.join(app, '.next/standalone/apps/admin/node_modules/runtime.js'));
     const output = path.join(scratch, 'image');
     const run = (...args) => spawnSync(process.execPath, [script, ...args], { encoding: 'utf8' });
     const result = run('admin', output);
@@ -33,6 +35,8 @@ test('standalone packaging includes assets, excludes env files and rejects overw
     assert.equal(await readFile(path.join(output, 'apps/admin/.next/static/chunk.js'), 'utf8'), 'chunk');
     assert.equal(await readFile(path.join(output, 'apps/admin/public/logo.svg'), 'utf8'), 'asset');
     assert.equal(await readFile(path.join(output, 'node_modules/runtime.js'), 'utf8'), 'dependency');
+    assert.equal(await readlink(path.join(output, 'apps/admin/node_modules/runtime.js')), '../../../node_modules/runtime.js');
+    assert.equal(await readFile(path.join(output, 'apps/admin/node_modules/runtime.js'), 'utf8'), 'dependency');
     await assert.rejects(access(path.join(output, 'apps/admin/.env.production')));
     assert.notEqual(run('admin', output).status, 0);
     assert.notEqual(run('admin', path.join(root, 'output')).status, 0);

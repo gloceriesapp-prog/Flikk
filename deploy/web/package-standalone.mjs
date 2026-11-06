@@ -26,6 +26,9 @@ await stat(path.join(source, '.next/standalone/apps', app, 'server.js'));
 await mkdir(output, { recursive: true });
 await cp(path.join(source, '.next/standalone'), output, {
   recursive: true,
+  // fs.cp otherwise rewrites relative pnpm links into absolute paths pointing
+  // back to the GitHub checkout, which does not exist inside the runtime image.
+  verbatimSymlinks: true,
   filter: (entry) => !/^\.env(?:\.|$)/.test(path.basename(entry)),
 });
 const target = path.join(output, 'apps', app);

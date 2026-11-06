@@ -37,10 +37,11 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - run: node --test deploy/web/package-standalone.test.mjs
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288 # v5 - Node.js 24
         with:
           version: 10.33.0
-      - uses: actions/setup-node@v4
+          package_json_file: apps/${{ matrix.app }}/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0 - Node.js 24
         with:
           node-version: 22
           cache: pnpm
