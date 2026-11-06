@@ -1,15 +1,8 @@
 name: Partner Android Release
 
+# Manual only (Actions -> Run workflow). It used to also validate on every
+# pull request touching the app, which billed Actions minutes on a private repo.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/partner-android-release.yml'
-      - 'apps/partner/**'
-      - 'packages/shared/**'
-      - 'patches/**'
-      - 'scripts/configure-partner-release.cjs'
-      - 'package.json'
-      - 'package-lock.json'
   workflow_dispatch:
     inputs:
       version_code:

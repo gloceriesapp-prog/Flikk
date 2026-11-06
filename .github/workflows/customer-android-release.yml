@@ -1,13 +1,8 @@
 name: Customer Android Release
 
+# Manual only (Actions -> Run workflow). It used to also validate on every
+# pull request touching the app, which billed Actions minutes on a private repo.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/customer-android-release.yml'
-      - 'apps/customer/**'
-      - 'packages/shared/**'
-      - 'packages/home-content/**'
-      - 'config/firebase/**'
   workflow_dispatch:
     inputs:
       version_code:
