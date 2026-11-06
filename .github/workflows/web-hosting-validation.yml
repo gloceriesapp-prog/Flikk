@@ -49,6 +49,10 @@ jobs:
         working-directory: apps/${{ matrix.app }}
       - run: pnpm --ignore-workspace build
         working-directory: apps/${{ matrix.app }}
+        env:
+          # Admin eagerly constructs its server client while collecting routes.
+          # This fixture is deliberately not a real key or runtime configuration.
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
       - name: Assemble the standalone runtime
         run: node deploy/web/package-standalone.mjs '${{ matrix.app }}' "$RUNNER_TEMP/web-image"
       - name: Build runtime image
@@ -66,7 +70,10 @@ jobs:
           docker run -d --name web-smoke -p 127.0.0.1:3000:3000 web-smoke
           route=/privacy
           if [ "$APP" = admin ]; then route=/login; fi
-          curl --fail --retry 15 --retry-connrefused --retry-delay 2 "http://127.0.0.1:3000$route" >/dev/null
+          if ! curl --fail --silent --show-error --retry 15 --retry-all-errors --retry-delay 2 --retry-max-time 60 --max-time 10 "http://127.0.0.1:3000$route" >/dev/null; then
+            docker logs web-smoke
+            exit 1
+          fi
           if [ "$APP" = admin ]; then
             status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/stores)
             test "$status" = 401
