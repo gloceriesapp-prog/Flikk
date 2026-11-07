@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { CATEGORY_SECTION_SELECT, mapRowToCategorySection, type CategorySectionRow } from '@/lib/supabase/categorySections';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { cleanSectionName } from '@/lib/categorySectionName';
 
 export async function POST(request: Request) {
   const { denied } = await requireAdmin();
@@ -12,8 +13,9 @@ export async function POST(request: Request) {
   const body: { name?: string; sortOrder?: number } = await request.json();
 
   try {
-    const name = body.name?.trim();
-    if (!name) throw new Error('Title is required.');
+    const { data: existing, error: listError } = await supabaseAdmin.from('category_sections').select('id, name');
+    if (listError) throw listError;
+    const name = cleanSectionName(body.name, existing ?? []);
 
     const { data, error } = await supabaseAdmin
       .from('category_sections')

@@ -47,27 +47,23 @@ export default function CategoriesPage() {
     Promise.resolve().then(loadData);
   }, [loadData]);
 
-  async function handleAddSection(name: string) {
-    const res = await fetch('/api/category-sections', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, sortOrder: sections.length }),
-    });
+  // Title actions: one request shape, the server's error message on failure,
+  // then a reload so titles and the grouped grid stay in step.
+  async function sectionRequest(url: string, init: RequestInit, fallback: string) {
+    const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json' } });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      throw new Error(body?.error ?? 'Add failed.');
+      throw new Error(body?.error ?? fallback);
     }
     await loadData();
   }
 
-  async function handleDeleteSection(id: string) {
-    const res = await fetch(`/api/category-sections/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      throw new Error(body?.error ?? 'Delete failed.');
-    }
-    await loadData();
-  }
+  const handleAddSection = (name: string) =>
+    sectionRequest('/api/category-sections', { method: 'POST', body: JSON.stringify({ name, sortOrder: sections.length }) }, 'Add failed.');
+  const handleRenameSection = (id: string, name: string) =>
+    sectionRequest(`/api/category-sections/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }, 'Rename failed.');
+  const handleDeleteSection = (id: string) =>
+    sectionRequest(`/api/category-sections/${id}`, { method: 'DELETE' }, 'Delete failed.');
 
   async function handleAdd(newCategory: NewCategoryInput) {
     const res = await fetch('/api/categories', {
@@ -113,6 +109,8 @@ export default function CategoriesPage() {
   // deleted) get their own trailing "No title" group so they're still
   // visible and editable here rather than silently vanishing from the list.
   const untitled = categories.filter((c) => !sections.some((s) => s.id === c.sectionId));
+  const categoryCounts: Record<string, number> = {};
+  for (const c of categories) if (c.sectionId) categoryCounts[c.sectionId] = (categoryCounts[c.sectionId] ?? 0) + 1;
   const groups = [
     ...sections.map((section) => ({ section, items: categories.filter((c) => c.sectionId === section.id) })),
     ...(untitled.length > 0 ? [{ section: null, items: untitled }] : []),
@@ -147,7 +145,13 @@ export default function CategoriesPage() {
         </p>
       )}
 
-      <SectionTitlesBar sections={sections} onAdd={handleAddSection} onDelete={handleDeleteSection} />
+      <SectionTitlesBar
+        sections={sections}
+        categoryCounts={categoryCounts}
+        onAdd={handleAddSection}
+        onRename={handleRenameSection}
+        onDelete={handleDeleteSection}
+      />
 
       {groups.map((group) => (
         <div key={group.section?.id ?? 'untitled'} className="flex flex-col gap-3">
