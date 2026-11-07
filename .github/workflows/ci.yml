@@ -1,12 +1,80 @@
 name: CI
 
+# Private repo: every minute here is billed past the free 2,000/month, and a
+# full run is ~22 job-minutes. A branch push and its pull request used to run
+# CI twice per commit, so push runs only for main (Backend → Lightsail waits on
+# main's push run). A newer commit cancels the older run of the same PR;
+# main's runs are never cancelled.
 on:
   push:
+    branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Which apps a pull request touches, so an admin-only change doesn't build
+  # the mobile apps. Pushes to main (merges) always run everything:
+  # Backend → Lightsail waits on main's run.
+  changes:
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'pull_request'
+    permissions: {pull-requests: read}
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      sql: ${{ steps.filter.outputs.sql }}
+      customer: ${{ steps.filter.outputs.customer }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - '.github/**'
+              - 'scripts/**'
+              - 'config/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'patches/**'
+            backend:
+              - *shared
+              - 'backend/**'
+              - 'apps/customer/**'
+              - 'apps/admin/**'
+              - 'apps/partner/**'
+              - 'apps/rider/**'
+              - 'apps/partner-dashboard/**'
+            sql:
+              - *shared
+              - 'backend/**'
+            customer:
+              - *shared
+              - 'apps/customer/**'
+            mobile:
+              - *shared
+              - 'apps/partner/**'
+              - 'apps/rider/**'
+            web:
+              - *shared
+              - 'backend/**'
+              - 'apps/admin/**'
+              - 'apps/partner-dashboard/**'
+              - 'apps/landing/**'
+
   backend:
-    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.backend == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -52,7 +120,10 @@ jobs:
         run: node --test ../packages/shared/config/google-maps.test.cjs
 
   commerce-security:
-    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.sql == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       matrix:
         missing_delivery_otp: [false, true]
@@ -106,7 +177,10 @@ jobs:
           PGDATABASE=flikk_migrations_tests psql -X -v ON_ERROR_STOP=1 -c BEGIN -f backend/tests/store-availability.sql -c ROLLBACK
 
   customer:
-    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.customer == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: apps/customer
@@ -131,7 +205,10 @@ jobs:
 
   # Partner and rider apps share the root npm workspace (with packages/*).
   mobile-apps:
-    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.mobile == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       matrix:
         app: [partner, rider]
@@ -186,7 +263,10 @@ jobs:
   # Next.js apps. `next typegen` generates the PageProps/LayoutProps/
   # RouteContext globals that the typecheck relies on.
   web-apps:
-    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name == 'push' || (needs.changes.result == 'success' && needs.changes.outputs.web == 'true')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       matrix:
         app: [admin, partner-dashboard, landing]
@@ -226,3 +306,19 @@ jobs:
       # rejects ("packages field missing or empty").
       - run: pnpm --ignore-workspace build
 
+
+  # One stable check: filtering failures or unexpected skips cannot look green.
+  ci-gate:
+    if: always()
+    needs: [changes, backend, commerce-security, customer, mobile-apps, web-apps]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify CI result aggregation and regression scenarios
+        run: node --test scripts/ci-gate.test.mjs
+      - name: Require all selected checks to pass
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/ci-gate.mjs
