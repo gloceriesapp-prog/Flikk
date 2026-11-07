@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_EXTRA_IMAGES, sellingPrice, toExtraImageUrls, toVariantPayload, validateProductInput } from './productValidation';
+import { MAX_EXTRA_IMAGES, toExtraImageUrls, validateProductInput } from './productValidation';
 
 const cover = 'https://cdn.example/a.webp';
 
@@ -32,22 +32,46 @@ test('cut options are chicken-category only and carry a sane bulk threshold', as
   assert.throws(() => toCutOptions({ category: meat, cutOptionsEnabled: true, bulkMinKg: 501 }));
 });
 
-const pack = { unitType: 'ml' as const, quantity: 180 };
-
-test('sells at the store price and keeps a higher MRP for the strike-through', () => {
-  const [row] = toVariantPayload([{ ...pack, price: 8, originalPrice: 10 }]);
-  assert.equal(row!.price, 8);
-  assert.equal(row!.original_price, 10);
+// The Add/PATCH APIs use these same mappers for the product row and packs.
+test('MRP-only product sends a positive default and pack price and preserves the MRP cap', async () => {
+  const { toProductRow, toVariantPayload, customerUnitPrice, toVariantMarkups } = await import('./productValidation');
+  const input = { storeId: 'store', name: 'Eno', category: 'Grocery', stockStatus: 'in_stock' as const,
+    variants: [{ unitType: 'g' as const, quantity: 5, price: 0, originalPrice: 10, stockQuantity: 20, platformMarkup: 2 }] };
+  validateProductInput(input);
+  assert.equal(input.variants[0].price, 0, 'validation must not overwrite a form draft');
+  const row = toProductRow(input);
+  const [pack] = toVariantPayload(input.variants);
+  assert.equal(row.price, 10);
+  assert.equal(pack.price, 10);
+  assert.equal(pack.original_price, 10);
+  assert.equal(row.original_price, 10);
+  assert.equal(pack.stock_quantity, 20);
+  assert.equal(customerUnitPrice(pack.price, toVariantMarkups(input.variants)[0].platform_markup, pack.original_price), 10);
 });
 
-test('sells at the MRP when no store price is entered, with no strike-through', () => {
-  const [row] = toVariantPayload([{ ...pack, price: 0, originalPrice: 10 }]);
-  assert.equal(row!.price, 10);
-  assert.equal(row!.original_price, null);
-  assert.equal(sellingPrice(0, 10), 10);
+test('each additional pack resolves its own price and keeps edit identity and stock', async () => {
+  const { toVariantPayload } = await import('./productValidation');
+  assert.deepEqual(toVariantPayload([
+    { id: 'existing', unitType: 'g', quantity: 5, price: 8, originalPrice: 10, stockQuantity: 3 },
+    { unitType: 'g', quantity: 10, price: 0, originalPrice: 20 },
+    { unitType: 'pc', quantity: 1, price: 5 },
+  ]), [
+    { id: 'existing', unit_type: 'g', quantity: 5, price: 8, original_price: 10, stock_quantity: 3 },
+    { unit_type: 'g', quantity: 10, price: 20, original_price: 20 },
+    { unit_type: 'pc', quantity: 1, price: 5, original_price: null },
+  ]);
 });
 
-test('refuses a pack with neither a store price nor an MRP', () => {
-  assert.throws(() => validateProductInput({ storeId: 's', name: 'Milk', category: 'Dairy', stockStatus: 'in_stock',
-    variants: [{ ...pack, price: 0, originalPrice: null }] }), /store price or an MRP/);
+test('missing, negative, non-finite and sub-paise prices are rejected before database write', async () => {
+  const input = { storeId: 'store', name: 'Eno', category: 'Grocery', stockStatus: 'in_stock' as const };
+  for (const amounts of [
+    { price: 0 }, { price: 0, originalPrice: 0 }, { price: -1, originalPrice: 10 },
+    { price: NaN, originalPrice: 10 }, { price: 0, originalPrice: Infinity },
+    { price: 0.001 }, { price: 0, originalPrice: 0.001 },
+  ]) {
+    assert.throws(() => validateProductInput({ ...input, variants: [{ unitType: 'g', quantity: 5, ...amounts }] }));
+  }
+  assert.throws(() => validateProductInput({ ...input, variants: [
+    { unitType: 'g', quantity: 5, price: 10 }, { unitType: 'g', quantity: 10, price: 0 },
+  ] }), /Size 2: enter a store price or MRP/);
 });

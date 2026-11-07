@@ -8,6 +8,8 @@
 // validation has to live in both places until that gap closes. When it
 // does, delete this file and call the backend instead — don't let it drift
 // as a second copy of the rules past that point.
+// Admin additionally resolves a blank store price from MRP before saving;
+// the backend still validates its partner inputs independently.
 
 import { CATEGORY_TINT_MAP, MIST_FALLBACK, categoryAllowsCutOptions, type UnitType } from './product-options';
 
@@ -115,7 +117,9 @@ export function validateProductInput(input: Partial<ProductWriteInput>): asserts
     if (variant.originalPrice != null && (!isFiniteNumber(variant.originalPrice) || variant.originalPrice < 0)) {
       throw new Error(`${label}: MRP must be non-negative when set.`);
     }
-    if (!(sellingPrice(variant.price, variant.originalPrice) > 0)) throw new Error(`${label}: enter a store price or an MRP.`);
+    if (!(sellingPrice(variant.price, variant.originalPrice) > 0)) {
+      throw new Error(`${label}: enter a store price or MRP of at least ₹0.01.`);
+    }
     if (variant.stockQuantity != null && (!Number.isSafeInteger(variant.stockQuantity) || variant.stockQuantity < 0)) {
       throw new Error(`${label}: stock must be a whole number, 0 or more.`);
     }
@@ -210,9 +214,9 @@ export function toPreorder(input: Pick<ProductWriteInput, 'preorderEnabled' | 'p
   if (input.preorderEnabled == null) return undefined;
   if (typeof input.preorderEnabled !== 'boolean') throw new Error('preorderEnabled must be true or false.');
   const minQty = input.preorderMinQty ?? 1;
-  const leadDays = input.preorderLeadDays ?? 0;
+  const leadDays = input.preorderLeadDays ?? 1;
   if (!Number.isInteger(minQty) || minQty < 1 || minQty > 999) throw new Error('Pre-order minimum must be a whole number from 1 to 999.');
-  if (!Number.isInteger(leadDays) || leadDays < 0 || leadDays > 4) throw new Error('Pre-order notice must be same day to 4 days.');
+  if (!Number.isInteger(leadDays) || leadDays < 1 || leadDays > 14) throw new Error('Pre-order notice must be 1 to 14 days.');
   return { preorder_enabled: input.preorderEnabled, preorder_min_qty: minQty, preorder_lead_days: leadDays };
 }
 
@@ -234,16 +238,17 @@ export function formatVariantUnit(variant: VariantInput): string {
   return `${qty} ${unitLabel[variant.unitType]}`;
 }
 
-// The price a pack sells at: the store price, or the MRP when no store price
-// was entered (0/blank). Then the MRP is kept (shown struck through) only when
-// it is above that price; selling at MRP shows one price.
+// A blank numeric store-price input is represented by 0. Resolve it before
+// the product and every pack reach the database's positive-price constraint.
 export function sellingPrice(price: number, originalPrice: number | null | undefined): number {
-  return price > 0 ? price : Math.max(Number(originalPrice ?? 0), 0);
+  const resolved = price > 0 ? price : (originalPrice ?? 0);
+  return Math.round(resolved * 100) / 100;
 }
 
 function resolveOriginalPrice(price: number, originalPrice: number | null | undefined): number | null {
   const selling = sellingPrice(price, originalPrice);
-  return originalPrice != null && originalPrice > selling ? originalPrice : null;
+  // Keep equal MRP too: it caps platform markup even without a discount.
+  return originalPrice != null && originalPrice > 0 && originalPrice >= selling ? originalPrice : null;
 }
 
 export interface ProductRow {

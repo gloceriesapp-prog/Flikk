@@ -17,7 +17,7 @@
 import { Plus, X } from '@/components/icons';
 import { GRAM_PRESETS, ML_PRESETS, UNIT_TYPE_OPTIONS, hasFixedPresets, presetsForUnit, type UnitType } from '@/lib/product-options';
 import { suggestedMrp } from '@/lib/pricing';
-import { customerUnitPrice } from '@/lib/productValidation';
+import { customerUnitPrice, sellingPrice } from '@/lib/productValidation';
 import type { ProductVariant } from '@/lib/types';
 
 function emptyVariant(unitType: UnitType = 'g'): ProductVariant {
@@ -110,7 +110,9 @@ export function ProductVariantsEditor({
             type="number"
             value={variant.price || ''}
             onChange={(e) => updatePrice(index, Number(e.target.value))}
-            placeholder="Store price"
+            min={0}
+            step="0.01"
+            placeholder="Store price (or MRP)"
             className="w-24 flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             aria-label={`Size ${index + 1} price`}
           />
@@ -119,6 +121,8 @@ export function ProductVariantsEditor({
             type="number"
             value={variant.originalPrice ?? ''}
             onChange={(e) => updateVariant(index, { originalPrice: e.target.value ? Number(e.target.value) : undefined })}
+            min={0}
+            step="0.01"
             placeholder="MRP"
             className="w-24 flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             aria-label={`Size ${index + 1} MRP`}
@@ -153,12 +157,18 @@ export function ProductVariantsEditor({
             aria-label={`Size ${index + 1} packs in stock`}
           />
 
-          {(variant.platformMarkup ?? 0) > 0 && variant.price > 0 && (
+          {(variant.platformMarkup ?? 0) > 0 && sellingPrice(variant.price, variant.originalPrice) > 0 && (
             <CustomerPriceNote variant={variant} />
           )}
           {/* No store price: the pack sells at its MRP (productValidation sellingPrice). */}
           {!(variant.price > 0) && (variant.originalPrice ?? 0) > 0 && (
             <p className="w-full text-[11px] text-muted">Sells at MRP ₹{variant.originalPrice}, shown as one price (no strike-through).</p>
+          )}
+
+          {variant.price === 0 && (variant.originalPrice ?? 0) > 0 && (
+            <p className="w-full text-[11px] text-muted">
+              Store price left blank: sells at MRP ₹{sellingPrice(variant.price, variant.originalPrice)}.
+            </p>
           )}
 
           <button
@@ -188,12 +198,13 @@ export function ProductVariantsEditor({
 // What the customer will pay for this size, and a warning when MRP cuts our
 // extra short (selling above MRP is not allowed).
 function CustomerPriceNote({ variant }: { variant: ProductVariant }) {
-  const customer = customerUnitPrice(variant.price, variant.platformMarkup, variant.originalPrice);
-  const kept = Math.round((customer - variant.price) * 100) / 100;
+  const storePrice = sellingPrice(variant.price, variant.originalPrice);
+  const customer = customerUnitPrice(storePrice, variant.platformMarkup, variant.originalPrice);
+  const kept = Math.round((customer - storePrice) * 100) / 100;
   const capped = kept < (variant.platformMarkup ?? 0);
   return (
     <p className={`w-full text-[11px] ${capped ? 'text-danger' : 'text-muted'}`}>
-      Store gets ₹{variant.price} · customer pays ₹{customer} · we keep ₹{kept}
+      Store gets ₹{storePrice} · customer pays ₹{customer} · we keep ₹{kept}
       {capped ? ' (capped at MRP)' : ''}
     </p>
   );

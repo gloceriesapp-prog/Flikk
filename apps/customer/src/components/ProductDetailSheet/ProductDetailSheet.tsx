@@ -860,10 +860,10 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
           contentContainerStyle={{ paddingTop: fullScreen ? headerHeight : 0,
             paddingBottom: FOOTER_SPACER + (fullScreen ? insets.bottom : 0) }}
         >
-          <View className="relative h-80 w-full" style={{ backgroundColor: '#FAFAFA' }}>
-            {/* Hero photo shown whole ('contain', ProductImageGallery's hero
-                fit): 'cover' zoomed and cropped packshots in this wide frame.
-                Clipped to the card's rounded top corners by its overflow:hidden. */}
+          <View className="relative w-full" style={{ aspectRatio: 720 / 810, backgroundColor: '#FAFAFA' }}>
+            {/* Same 720:810 frame as uploaded product artwork and Home cards.
+                Contain keeps the entire photo; matching the frame removes the
+                side gaps without stretching the pack or cropping its label. */}
             <ProductImageGallery variant="hero" images={heroPhotos} />
 
             {/* Rating badge, bottom-right on the hero (ref #107). Light pill
