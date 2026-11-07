@@ -8,6 +8,8 @@
 // validation has to live in both places until that gap closes. When it
 // does, delete this file and call the backend instead — don't let it drift
 // as a second copy of the rules past that point.
+// Admin additionally resolves a blank store price from MRP before saving;
+// the backend still validates its partner inputs independently.
 
 import { CATEGORY_TINT_MAP, MIST_FALLBACK, categoryAllowsCutOptions, type UnitType } from './product-options';
 
@@ -114,6 +116,9 @@ export function validateProductInput(input: Partial<ProductWriteInput>): asserts
     if (!isFiniteNumber(variant.price) || variant.price < 0) throw new Error(`${label}: price must be non-negative.`);
     if (variant.originalPrice != null && (!isFiniteNumber(variant.originalPrice) || variant.originalPrice < 0)) {
       throw new Error(`${label}: MRP must be non-negative when set.`);
+    }
+    if (!(sellingPrice(variant.price, variant.originalPrice) > 0)) {
+      throw new Error(`${label}: enter a store price or MRP of at least ₹0.01.`);
     }
     if (variant.stockQuantity != null && (!Number.isSafeInteger(variant.stockQuantity) || variant.stockQuantity < 0)) {
       throw new Error(`${label}: stock must be a whole number, 0 or more.`);
@@ -233,8 +238,17 @@ export function formatVariantUnit(variant: VariantInput): string {
   return `${qty} ${unitLabel[variant.unitType]}`;
 }
 
+// A blank numeric store-price input is represented by 0. Resolve it before
+// the product and every pack reach the database's positive-price constraint.
+export function sellingPrice(price: number, originalPrice: number | null | undefined): number {
+  const resolved = price > 0 ? price : (originalPrice ?? 0);
+  return Math.round(resolved * 100) / 100;
+}
+
 function resolveOriginalPrice(price: number, originalPrice: number | null | undefined): number | null {
-  return originalPrice != null && originalPrice > price ? originalPrice : null;
+  const selling = sellingPrice(price, originalPrice);
+  // Keep equal MRP too: it caps platform markup even without a discount.
+  return originalPrice != null && originalPrice > 0 && originalPrice >= selling ? originalPrice : null;
 }
 
 export interface ProductRow {
@@ -272,7 +286,7 @@ export function toProductRow(input: ProductWriteInput): ProductRow {
     store_id: input.storeId,
     name: input.name.trim(),
     unit: formatVariantUnit(defaultVariant),
-    price: defaultVariant.price,
+    price: sellingPrice(defaultVariant.price, defaultVariant.originalPrice),
     original_price: resolveOriginalPrice(defaultVariant.price, defaultVariant.originalPrice),
     category: input.category.trim(),
     stock_status: input.stockStatus,
@@ -303,7 +317,7 @@ export function toVariantPayload(variants: VariantInput[]): VariantPayload[] {
     const payload: VariantPayload = {
       unit_type: variant.unitType,
       quantity: variant.quantity,
-      price: variant.price,
+      price: sellingPrice(variant.price, variant.originalPrice),
       original_price: resolveOriginalPrice(variant.price, variant.originalPrice),
     };
     if (variant.id) payload.id = variant.id;

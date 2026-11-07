@@ -14,7 +14,7 @@ import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle } from '@/lib/product-options';
 import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
-import { formatVariantUnit } from '@/lib/productValidation';
+import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
 import { ProductGalleryEditor } from './ProductGalleryEditor';
 import { ChickenOptionsEditor } from './ChickenOptionsEditor';
@@ -68,6 +68,13 @@ export function EditProductModal({
       return;
     }
 
+    try {
+      validateProductInput(draft);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Check the product details.');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -75,7 +82,7 @@ export function EditProductModal({
         ...draft,
         // Kept in sync with variants[0] — see lib/productValidation.ts
         // toProductRow, which the API route recomputes server-side anyway.
-        price: defaultVariant.price,
+        price: sellingPrice(defaultVariant.price, defaultVariant.originalPrice),
         originalPrice: defaultVariant.originalPrice,
         unit: formatVariantUnit(defaultVariant),
       }, homeChoice.changedKeys);
