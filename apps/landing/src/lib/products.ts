@@ -147,6 +147,10 @@ const PRODUCT_POOL = 500;
 // active store. Fetched with the public anon key (products/categories have
 // public read policies), so a public page needs no session.
 export async function fetchLandingCatalogue(): Promise<LandingCatalogue> {
+  if (!supabase) {
+    console.warn('[fetchLandingCatalogue] Catalogue is not configured in this non-production environment.');
+    return { categories: [], products: [] };
+  }
   const [categoriesRes, productsRes] = await Promise.all([
     supabase
       .from('categories')
@@ -171,7 +175,7 @@ export async function fetchLandingCatalogue(): Promise<LandingCatalogue> {
     // good page; a deploy with a wrong database URL fails its build instead
     // of going live with no products. CI/local builds (placeholder database)
     // render without products.
-    if (process.env.VERCEL_ENV === 'production') {
+    if (process.env.VERCEL_ENV === 'production' || process.env.APP_ENV === 'production') {
       throw new Error(`[fetchLandingCatalogue] ${error.message}`);
     }
     console.error('[fetchLandingCatalogue] failed:', error.message);

@@ -873,7 +873,7 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
           contentContainerStyle={{ paddingTop: fullScreen ? headerHeight : 0,
             paddingBottom: FOOTER_SPACER + (fullScreen ? insets.bottom : 0) }}
         >
-          <View className="relative w-full" style={{ aspectRatio: 720 / 810, backgroundColor: '#FAFAFA' }}>
+          <View className="relative w-full" style={{ aspectRatio: 720 / 810 }}>
             {/* Same 720:810 frame as uploaded product artwork and Home cards.
                 Contain keeps the entire photo; matching the frame removes the
                 side gaps without stretching the pack or cropping its label. */}

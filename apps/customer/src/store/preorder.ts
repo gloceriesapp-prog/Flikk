@@ -41,12 +41,12 @@ export function cartConflict(items: { storeId: string; preorderMinQty?: number }
 }
 
 // "Fri 7 Nov, 7:00 – 9:00 AM" for an order's delivery window.
-export function formatDeliveryWindow(from: string, until: string): string {
+export function formatDeliveryWindow(from: string, until: string, now = new Date()): string {
   const time = (iso: string) => {
     const d = new Date(Date.parse(iso) + IST_MS);
     const h = d.getUTCHours();
     return `${h % 12 || 12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
   };
   const date = new Date(Date.parse(from) + IST_MS).toISOString().slice(0, 10);
-  return `${dayLabel(date)}, ${time(from)} – ${time(until)}`;
+  return `${dayLabel(date, now)}, ${time(from)} – ${time(until)}`;
 }
