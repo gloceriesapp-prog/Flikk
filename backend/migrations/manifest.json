@@ -652,6 +652,18 @@
     {
       "file": "20261106090000_preorders.sql",
       "sha256": "8adaa2855d06afe27af4699f34fabdb0066289dd4cf6ef064657251b81fd837a"
+    },
+    {
+      "file": "20261106120000_preorder_same_day.sql",
+      "sha256": "1d09d66bc106ebc0569b7c05cd16e44e6e9d3609c980fa1a931209a3f16eac88"
+    },
+    {
+      "file": "20261106130000_price_falls_back_to_mrp.sql",
+      "sha256": "41c9e9547cc5dc8974010cc65a979629ef3832056322cad28acb91bc2b7bdad8"
+    },
+    {
+      "file": "20261106140000_price_mrp_fallback_trigger.sql",
+      "sha256": "5da70792ba5c580ede8816105579daa48621646a33b92573053361e54dab9bb1"
     }
   ]
 }

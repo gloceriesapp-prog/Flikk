@@ -15,15 +15,16 @@ interface Props {
 // exactly 100%. Also fixes the older justify-between issue this replaced —
 // a partial row (1-3 items) still packs left instead of stretching to the
 // row's two edges.
-const GAP = 12;
+// Tight gap and a narrower gutter so 4 tiles get as much width as possible.
+const GAP = 8;
 
 export function CategorySectionGroup({ section }: Props) {
   return (
-    <View className="px-5 pt-8">
+    <View className="px-4 pt-8">
       {/* Same visual spec as home/components/SectionTitle, kept inline (no
-          px-5) because this wrapper already owns the px-5 gutter the grid's
+          px-5) because this wrapper already owns the px-4 gutter the grid's
           negative-margin math bleeds into. */}
-      <Text className="mb-4 text-xl font-bold tracking-tight text-ink/90">{section.name}</Text>
+      <Text className="mb-4 px-1 text-xl font-bold tracking-tight text-ink/90">{section.name}</Text>
       <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
         {section.categories.map((item) => (
           <View key={item.id} style={{ width: '25%', paddingHorizontal: GAP / 2, paddingBottom: 20 }}>

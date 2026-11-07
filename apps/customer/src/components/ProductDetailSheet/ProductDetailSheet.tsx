@@ -74,7 +74,7 @@
 // with; the jank this file actually had was animation/gesture-thread work,
 // which is what the Reanimated/gesture-handler rewrite above addresses.
 
-import { ArrowDown01Icon, Bookmark01Icon, StarIcon } from '@hugeicons/core-free-icons';
+import { StarIcon } from '@hugeicons/core-free-icons';
 import { useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -99,7 +99,9 @@ import { CartBar } from '../CartBar/CartBar';
 import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { colors } from '../../theme/tokens';
 import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
-import { useWishlistStore } from '../../store/useWishlistStore';
+import { IconlyChevronDown } from '../icons/IconlyChevronDown';
+import { IconlySend } from '../icons/IconlySend';
+import { shareProduct } from '../../utils/shareProduct';
 import { useEverydayEssentials } from '../../screens/home/everyday-essentials/useEverydayEssentials';
 import { ProductDetailInfo } from './ProductDetailInfo';
 import { ProductDetailFooter } from './ProductDetailFooter';
@@ -567,8 +569,6 @@ interface CardProps {
 function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: CardProps) {
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
-  const isBookmarked = useWishlistStore((state) => state.isWishlisted(product.id));
-  const toggleWishlist = useWishlistStore((state) => state.toggle);
   const hasRatings = Number.isFinite(product.rating) && product.rating > 0 && product.rating <= 5
     && Number.parseFloat(product.ratingCount) > 0;
 
@@ -768,22 +768,16 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
     paddingBottom: interpolate(grow.value, [0, 1], [FOOTER_REST_PADDING, insets.bottom]),
   }));
 
-  // Android: the hero controls (close/bookmark/share) read as solid WHITE pills
-  // with ink icons + a soft elevation, and the grown-state white top header is
-  // a thin status-bar backing (controls sit just below it) — per an explicit
-  // ask. iOS keeps the translucent dark/25 pills + white icons (legible on any
-  // hero photo without a shadow).
+  // The hero controls (close, share) are flat white pills with ink icons, no
+  // shadow, on both platforms. On Android the grown-state white top header is
+  // a thin status-bar backing (controls sit just below it).
   const isAndroid = Platform.OS === 'android';
   // Android: thin white top header just a hair taller than the status bar so it
   // reads as a clean status-bar backing; the controls float just below it.
   const headerHeight = insets.top + (isAndroid ? 6 : 64);
-  const pillClass = isAndroid
-    ? 'h-10 w-10 items-center justify-center rounded-full bg-white'
-    : 'h-10 w-10 items-center justify-center rounded-full bg-black/25';
-  const pillStyle = isAndroid
-    ? { elevation: 3, shadowColor: '#101C10', shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }
-    : undefined;
-  const pillIconColor = isAndroid ? '#101C10' : '#FFFFFF';
+  // Thin light-black ring so the white pill reads on any photo.
+  const pillClass = 'h-10 w-10 items-center justify-center rounded-full border border-black/15 bg-white';
+  const pillIconColor = '#101C10';
 
   return (
     <View style={{ flex: 1 }} pointerEvents="box-none">
@@ -840,24 +834,17 @@ function Card({ product, onClose, grow, onGrowChange, fullScreen = false }: Card
                 ponytail: fixed tint; swap to a per-button BlurView glass pill
                 if a truly adaptive frost is wanted. */}
             <View className="w-full flex-row items-center justify-between">
-              <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10} className={pillClass} style={pillStyle}>
-                <AppIcon icon={ArrowDown01Icon} size={20} color={pillIconColor} strokeWidth={2} />
+              <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10} className={pillClass}>
+                <IconlyChevronDown size={22} color={pillIconColor} />
               </Pressable>
 
               <View className="flex-row gap-2.5">
-                <Pressable accessibilityRole="button" accessibilityLabel={isBookmarked ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
+                <Pressable accessibilityRole="button" accessibilityLabel={`Share ${product.name}`}
                   hitSlop={10}
-                  onPress={() => toggleWishlist(product)}
+                  onPress={() => shareProduct(product)}
                   className={pillClass}
-                  style={pillStyle}
                 >
-                  <AppIcon
-                    icon={Bookmark01Icon}
-                    size={18}
-                    color={pillIconColor}
-                    fill={isBookmarked ? pillIconColor : undefined}
-                    strokeWidth={2}
-                  />
+                  <IconlySend size={20} color={pillIconColor} />
                 </Pressable>
               </View>
             </View>

@@ -23,7 +23,7 @@
 // Product but no longer renders anywhere in this sheet. The breadcrumb row
 // was removed per an earlier explicit ask.
 
-import { useState } from 'react';
+import { useWishlistStore } from '../../store/useWishlistStore';
 import { ChevronRightIcon, HeartIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { RupeePrice } from '../RupeePrice';
@@ -80,11 +80,19 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
   // Local-only wishlist toggle on the title row itself — separate from the
   // header's own bookmark button (ProductDetailSheet.tsx), nothing persists
   // either yet.
-  const [isLiked, setIsLiked] = useState(false);
+  // The heart is the product's wishlist toggle (Profile → Wishlist).
+  const isLiked = useWishlistStore((state) => state.isWishlisted(product.id));
+  const toggleWishlist = useWishlistStore((state) => state.toggle);
 
   const displayPrice = selectedVariant?.price ?? price;
   const displayOriginalPrice = selectedVariant?.originalPrice ?? originalPrice;
   const displayPercent = discountPercentOf(displayPrice, displayOriginalPrice);
+
+  // With no option pickers between them, the size line hugs the title with
+  // the same 4px gap it has above the price (card gap-3 minus -mt-2).
+  const hasOptions = hasRealVariants || !!(product.cutOptions && selectedCut && onSelectCut)
+    || !!(product.options?.length && onSelectOption) || !!(product.preorder && onSelectPreorder)
+    || !!(product.servingOptions?.length && onSelectServing);
 
   return (
     <View className="gap-3 bg-[#f6f6f6] px-3 pb-4 pt-3">
@@ -94,7 +102,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
             {name}
             {localName ? ` (${localName})` : ''}
           </Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Toggle wishlist" onPress={() => setIsLiked((prev) => !prev)} hitSlop={8} className="pt-0">
+          <Pressable accessibilityRole="button" accessibilityLabel={isLiked ? `Remove ${name} from wishlist` : `Save ${name} to wishlist`} onPress={() => toggleWishlist(product)} hitSlop={8} className="pt-0">
             <AppIcon
               icon={HeartIcon}
               size={22}
@@ -130,8 +138,8 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
         ) : null}
 
         {/* Selected unit summary (reference): size, price, MRP, % OFF, taxes. */}
-        <View className="gap-1.5">
-          <Text className="text-[16px] font-semibold text-ink/55">{selectedVariant?.label ?? weight}</Text>
+        <View className={`gap-1 ${hasOptions ? '' : '-mt-2'}`}>
+          <Text className="text-[14px] font-semibold text-ink/55">{selectedVariant?.label ?? weight}</Text>
           <View className="flex-row flex-wrap items-center gap-2">
             <RupeePrice amount={displayPrice} size={22} />
             {displayPercent ? (

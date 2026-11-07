@@ -128,6 +128,9 @@ function validateVariant(variant: Partial<VariantInput>, index: number): asserts
   ) {
     throw new Error(`${label}.originalPrice must be a non-negative number when set.`);
   }
+  if (!(sellingPrice(variant.price, variant.originalPrice) > 0)) {
+    throw new Error(`${label}: enter a store price or an MRP.`);
+  }
   if (variant.stockQuantity != null && (!Number.isSafeInteger(variant.stockQuantity) || variant.stockQuantity < 0)) {
     throw new Error(`${label}.stockQuantity must be a non-negative whole number when set.`);
   }
@@ -202,8 +205,16 @@ export function formatVariantUnit(variant: VariantInput): string {
 // silently drop it rather than storing a "discount" that's actually a
 // markup or a no-op, the same guard every UI that reads this field already
 // applies on the way out.
+//
+// No store price (0/blank) means the pack sells at its MRP: one price, no
+// strike-through. Same rule as admin's productValidation.ts.
+export function sellingPrice(price: number, originalPrice: number | null | undefined): number {
+  return price > 0 ? price : Math.max(Number(originalPrice ?? 0), 0);
+}
+
 function resolveOriginalPrice(price: number, originalPrice: number | null | undefined): number | null {
-  return originalPrice != null && originalPrice > price ? originalPrice : null;
+  const selling = sellingPrice(price, originalPrice);
+  return originalPrice != null && originalPrice > selling ? originalPrice : null;
 }
 
 export function toProductRow(input: ProductInput): ProductRow {
@@ -219,7 +230,7 @@ export function toProductRow(input: ProductInput): ProductRow {
     store_id: input.storeId,
     name: input.name.trim(),
     unit: formatVariantUnit(defaultVariant),
-    price: defaultVariant.price,
+    price: sellingPrice(defaultVariant.price, defaultVariant.originalPrice),
     original_price: resolveOriginalPrice(defaultVariant.price, defaultVariant.originalPrice),
     category: input.category.trim(),
     stock_status: input.stockStatus,
@@ -257,7 +268,7 @@ export function toProductPatchRow(input: ProductPatchInput): Partial<ProductRow>
   const defaultVariant = input.variants?.[0];
   if (defaultVariant) {
     row.unit = formatVariantUnit(defaultVariant);
-    row.price = defaultVariant.price;
+    row.price = sellingPrice(defaultVariant.price, defaultVariant.originalPrice);
     row.original_price = resolveOriginalPrice(defaultVariant.price, defaultVariant.originalPrice);
   }
   if (input.stockQuantity != null && !(input.variants?.length === 1)) {
@@ -288,7 +299,7 @@ export function toVariantPayload(variants: VariantInput[], productStockQuantity?
     const payload: VariantPayload = {
       unit_type: variant.unitType,
       quantity: variant.quantity,
-      price: variant.price,
+      price: sellingPrice(variant.price, variant.originalPrice),
       original_price: resolveOriginalPrice(variant.price, variant.originalPrice),
     };
     if (variant.id) payload.id = variant.id;

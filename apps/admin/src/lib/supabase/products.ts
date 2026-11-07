@@ -152,7 +152,7 @@ export function mapRowToProduct(row: ProductRow): Product {
     servingOptions: row.serving_options ?? [],
     preorderEnabled: row.preorder_enabled === true,
     preorderMinQty: row.preorder_min_qty ?? 1,
-    preorderLeadDays: row.preorder_lead_days ?? 1,
+    preorderLeadDays: row.preorder_lead_days ?? 0,
     bulkMinKg: row.bulk_min_kg == null ? null : Number(row.bulk_min_kg),
     bgColor: row.bg_color ?? undefined,
     localName: row.local_name ?? undefined,

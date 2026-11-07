@@ -25,25 +25,21 @@ export function CategoryTile({ category }: Props) {
       }
       className="w-full"
     >
-      <View
-        className="aspect-square overflow-hidden rounded-[16px]"
-        style={{
-          backgroundColor: '#F2F2F2',
-        }}
-      >
-        <View className="h-full w-full items-center justify-center px-1 pt-1 pb-1.5">
-          <Image
-            source={{
-              uri: category.imageUrl || PLACEHOLDER_IMAGE_URI,
-            }}
-            className="h-full w-full"
-            resizeMode="contain"
-          />
-        </View>
+      {/* Taller than wide, one soft blue surface, and the artwork scaled up
+          to fill it: still 4 in a row, but the picture is the hero. */}
+      <View style={{ aspectRatio: 0.85, borderRadius: 18, overflow: 'hidden', backgroundColor: '#EDF7FF' }}>
+        <Image
+          source={{
+            uri: category.imageUrl || PLACEHOLDER_IMAGE_URI,
+          }}
+          className="h-full w-full"
+          style={{ transform: [{ scale: 1.12 }] }}
+          resizeMode="contain"
+        />
       </View>
 
       <Text
-        className="mt-2 px-0.5 text-center text-[13px] font-bold leading-[16px] text-black/80"
+        className="mt-1.5 px-0.5 text-center text-[13px] font-bold leading-[16px] text-black/80"
         numberOfLines={2}
       >
         {category.name}

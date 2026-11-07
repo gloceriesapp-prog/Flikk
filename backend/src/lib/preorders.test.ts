@@ -36,12 +36,22 @@ describe('pre-order delivery window', () => {
       .toEqual({ deliver_from: '2026-11-07T01:30:00.000Z', deliver_until: '2026-11-07T03:30:00.000Z' });
     expect(formatDeliveryWindow('2026-11-07T01:30:00.000Z', '2026-11-07T03:30:00.000Z')).toMatch(/Sat.*7.*Nov.*7:00.*9:00/i);
   });
-  it('enforces notice, the booking week and a live slot', () => {
+  it('enforces notice, the 5-day window and a live slot', () => {
     expect(() => preorderWindow({ date: '2026-11-06', slot_id: slot.id }, slot, 1, now)).toThrow(/from tomorrow/);
     expect(() => preorderWindow({ date: '2026-11-07', slot_id: slot.id }, slot, 2, now)).toThrow(/2 days' notice/);
-    expect(() => preorderWindow({ date: '2026-11-14', slot_id: slot.id }, slot, 1, now)).toThrow(/next week/);
-    expect(preorderWindow({ date: '2026-11-13', slot_id: slot.id }, slot, 1, now).deliver_from).toBe('2026-11-13T01:30:00.000Z');
+    // Today through 4 days ahead.
+    expect(() => preorderWindow({ date: '2026-11-11', slot_id: slot.id }, slot, 0, now)).toThrow(/next 5 days/);
+    expect(preorderWindow({ date: '2026-11-10', slot_id: slot.id }, slot, 0, now).deliver_from).toBe('2026-11-10T01:30:00.000Z');
     expect(() => preorderWindow({ date: '2026-11-07', slot_id: slot.id }, null, 1, now)).toThrow(/no longer offered/);
+  });
+  it('books today only for a slot at least 2 hours away', () => {
+    const evening = { ...slot, label: '6 – 8 PM', starts_minute: 1080, ends_minute: 1200 };
+    // 2026-11-06 14:00 IST: 6 PM is 4 hours away, 7 AM has passed.
+    const afternoon = new Date('2026-11-06T08:30:00Z');
+    expect(preorderWindow({ date: '2026-11-06', slot_id: slot.id }, evening, 0, afternoon).deliver_from).toBe('2026-11-06T12:30:00.000Z');
+    expect(() => preorderWindow({ date: '2026-11-06', slot_id: slot.id }, slot, 0, afternoon)).toThrow(/too soon/);
+    // 17:00 IST: 6 PM is only 1 hour away.
+    expect(() => preorderWindow({ date: '2026-11-06', slot_id: slot.id }, evening, 0, new Date('2026-11-06T11:30:00Z'))).toThrow(/too soon/);
   });
   it('validates the request shape', () => {
     expect(parsePreorder(undefined)).toBeNull();

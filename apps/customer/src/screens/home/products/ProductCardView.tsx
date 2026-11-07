@@ -126,13 +126,14 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
               food-label convention. isVeg defaults true (types.ts), only
               fish/meat set it false. */}
           <View
-            className="h-3 w-3 items-center justify-center rounded-[3px] border"
+            className="h-3.5 w-3.5 items-center justify-center rounded-[3px] border"
             style={{ borderColor: isVeg ? '#00A650' : '#E23744' }}
           >
-            <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
+            <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: isVeg ? '#00A650' : '#E23744' }} />
           </View>
-          <View className="self-start rounded-md  bg-[#F1F1F4] border border-gray-100 px-1.5 py-0.5">
-            <Text className="text-[11.5px] font-semibold text-black/60">{weight}</Text>
+          {/* Pack size: soft grey chip, no border, about the veg mark's height. */}
+          <View className="justify-center rounded-[4px] bg-[#F1F1F4] px-1.5 py-[1px]">
+            <Text className="text-[9.5px] font-semibold leading-[12px] text-black/60">{weight}</Text>
           </View>
 
         </View>
@@ -147,30 +148,38 @@ function ProductCardViewImpl({ product, widthClassName = 'w-[32%]', showDiscount
           )}
         </View>
 
+        {/* Per-kg/litre price, right under the amount. */}
         {product.unitPriceLabel && (
           <Text className={`text-[11px] font-medium ${onDark ? 'text-white/60' : 'text-[#6B7280]'}`}>{product.unitPriceLabel}</Text>
         )}
 
         {discountPercent !== null && discountPercent > 0 && (
-          <Text className={`text-[12px] font-bold ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discountPercent}% OFF</Text>
+          <Text className={`-mt-1 text-[12px] font-bold leading-[14px] ${onDark ? 'text-[#8FE3B0]' : 'text-[#00A650]'}`}>{discountPercent}% OFF</Text>
         )}
 
         <Text className={`text-[13px] font-semibold leading-[17px] ${onDark ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={3}>
           {name}
         </Text>
-        <View className="self-start flex-row items-center gap-0.5 rounded-md bg-[#F3F4F6] border border-gray-100 px-1.5 py-0.5">
-          <AppIcon
-            icon={FlashIcon}
-            size={10}
-            color="#155dfc"
-            fill="#155dfc"
-            strokeWidth={1.5}
-          />
+        {/* A pre-order arrives in its booked slot, not in minutes. */}
+        {product.preorder ? (
+          <View className={`self-start rounded-md px-1.5 py-0.5 ${onDark ? 'bg-white/15' : 'bg-[#F1EAF4]'}`}>
+            <Text className={`text-[10px] font-semibold ${onDark ? 'text-white' : 'text-[#4A2C5A]'}`}>pre-order · min {product.preorder.minQty}</Text>
+          </View>
+        ) : (
+          <View className="self-start flex-row items-center gap-0.5 rounded-md bg-[#F3F4F6] border border-gray-100 px-1.5 py-0.5">
+            <AppIcon
+              icon={FlashIcon}
+              size={10}
+              color="#155dfc"
+              fill="#155dfc"
+              strokeWidth={1.5}
+            />
 
-          <Text className="text-[10px] font-semibold text-[#1F2937] uppercase">
-            {estimatedMinutes} mins
-          </Text>
-        </View>
+            <Text className="text-[10px] font-semibold text-[#1F2937] uppercase">
+              {estimatedMinutes} mins
+            </Text>
+          </View>
+        )}
       </View>
     </Pressable>
   );

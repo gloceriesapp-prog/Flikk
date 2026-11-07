@@ -61,4 +61,13 @@ BEGIN
  UPDATE orders SET deliver_from=slot, deliver_until=slot+interval '2 hours', dispatch_broadcast_at=NULL WHERE accepted_at IS NOT NULL;
  IF (admin_attention_counts(now()+interval '1 hour')->>'stuckOrders')::int<>1 THEN RAISE EXCEPTION 'Stuck count should hold only the unaccepted pre-order'; END IF;
 END $$;
+-- Migration 20261106120000: notice is same day (0) to 4 days.
+DO $$ BEGIN
+ IF (SELECT column_default FROM information_schema.columns WHERE table_name='products' AND column_name='preorder_lead_days')<>'0' THEN
+  RAISE EXCEPTION 'New pre-order products should default to same day'; END IF;
+ BEGIN
+  UPDATE products SET preorder_lead_days=5 WHERE id='00000000-0000-4000-8000-000000019011';
+  RAISE EXCEPTION 'Notice beyond the 5-day booking window accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+END $$;
 ROLLBACK;

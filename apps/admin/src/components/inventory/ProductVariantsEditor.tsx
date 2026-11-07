@@ -160,6 +160,10 @@ export function ProductVariantsEditor({
           {(variant.platformMarkup ?? 0) > 0 && sellingPrice(variant.price, variant.originalPrice) > 0 && (
             <CustomerPriceNote variant={variant} />
           )}
+          {/* No store price: the pack sells at its MRP (productValidation sellingPrice). */}
+          {!(variant.price > 0) && (variant.originalPrice ?? 0) > 0 && (
+            <p className="w-full text-[11px] text-muted">Sells at MRP ₹{variant.originalPrice}, shown as one price (no strike-through).</p>
+          )}
 
           {variant.price === 0 && (variant.originalPrice ?? 0) > 0 && (
             <p className="w-full text-[11px] text-muted">

@@ -73,8 +73,9 @@ export function RootNavigator() {
     }
   }, [authHydrated, accessToken]);
 
-  // Keep the artwork visible for 3.5 seconds after display, while restoring
-  // the session, location and cart in parallel. Later sign-ins do not replay it.
+  // Keep the artwork visible briefly (StartupWelcome WELCOME_MS) after display,
+  // while restoring the session, location and cart in parallel. Later sign-ins
+  // do not replay it.
   if (!hydrated || !welcomeFinished) return <StartupWelcome onFinished={finishWelcome} />;
 
   if (authError || locationError || cartError) {

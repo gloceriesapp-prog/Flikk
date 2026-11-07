@@ -1,5 +1,5 @@
 // Pre-orders (migration 20261106090000): a cart of pre-order products is
-// delivered on a later day in one of preorder_slots' windows. The customer
+// delivered today or on a later day in one of preorder_slots' windows. The customer
 // sends { date: 'YYYY-MM-DD' (India), slot_id }; this turns it into the
 // order's deliver_from/deliver_until. Mixing pre-order and instant products
 // and the bulk minimum are checked when the cart is priced (checkoutItems.ts).
@@ -8,8 +8,11 @@ import { AppError } from './errors.js';
 import type { PricedCheckoutItem } from './checkoutItems.js';
 
 export const PREORDER_SLOT_SELECT = 'id, label, starts_minute, ends_minute';
-// Bookable days from the earliest allowed one (the product's lead days).
-export const PREORDER_BOOKING_DAYS = 7;
+// Bookable days: today and the next 4. A product's lead days (0-4) grey out
+// the first ones.
+export const PREORDER_BOOKING_DAYS = 5;
+// A slot can be booked until this long before it starts (the shop needs time).
+export const PREORDER_CUTOFF_MS = 2 * 3_600_000;
 const IST_MS = 330 * 60_000;
 const DAY_MS = 86_400_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,11 +40,14 @@ export function preorderWindow(request: PreorderRequest, slot: PreorderSlot | nu
   if (!slot) throw new AppError(409, 'PREORDER_SLOT_UNAVAILABLE', 'That delivery slot is no longer offered. Choose another slot.');
   const days = daysAhead(request.date, now);
   if (days < leadDays) {
-    throw new AppError(409, 'PREORDER_TOO_SOON', leadDays === 1 ? 'Pre-orders are delivered from tomorrow. Choose a later day.'
+    throw new AppError(409, 'PREORDER_TOO_SOON', leadDays === 1 ? 'These items are delivered from tomorrow. Choose a later day.'
       : `These items need ${leadDays} days' notice. Choose a later day.`);
   }
-  if (days >= leadDays + PREORDER_BOOKING_DAYS) throw new AppError(409, 'PREORDER_TOO_FAR', 'Choose a delivery day within the next week.');
+  if (days >= PREORDER_BOOKING_DAYS) throw new AppError(409, 'PREORDER_TOO_FAR', `Choose a delivery day within the next ${PREORDER_BOOKING_DAYS} days.`);
   const midnight = Date.parse(`${request.date}T00:00:00+05:30`);
+  if (midnight + slot.starts_minute * 60_000 < now.getTime() + PREORDER_CUTOFF_MS) {
+    throw new AppError(409, 'PREORDER_SLOT_CLOSED', 'That slot is too soon to book. Choose a later slot.');
+  }
   return {
     deliver_from: new Date(midnight + slot.starts_minute * 60_000).toISOString(),
     deliver_until: new Date(midnight + slot.ends_minute * 60_000).toISOString(),

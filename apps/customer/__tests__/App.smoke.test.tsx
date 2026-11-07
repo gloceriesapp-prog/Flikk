@@ -10,7 +10,7 @@ it('boots to the login screen with no saved session', async () => {
   await act(async () => { jest.advanceTimersByTime(6000); });
   expect(screen.getByLabelText('Welcome to Gloceries')).toBeTruthy();
   await fireEvent(screen.getByTestId('startup-welcome-artwork'), 'display');
-  await act(async () => { jest.advanceTimersByTime(3499); });
+  await act(async () => { jest.advanceTimersByTime(899); });
   expect(screen.queryByText('Log in or sign up')).toBeNull();
   await act(async () => { jest.advanceTimersByTime(1); });
   expect(await screen.findByText('Log in or sign up')).toBeTruthy();
