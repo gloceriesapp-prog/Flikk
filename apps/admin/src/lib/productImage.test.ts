@@ -13,11 +13,11 @@ test('product photo becomes a 720×810 card with the product centred and whole',
   const meta = await sharp(out).metadata();
   assert.equal(meta.format, 'webp');
   assert.deepEqual([meta.width, meta.height], [PRODUCT_IMAGE_WIDTH, PRODUCT_IMAGE_HEIGHT]);
-  const { data, info } = await sharp(out).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-  const px = (x: number, y: number) => [...data.subarray((y * info.width + x) * 3, (y * info.width + x) * 3 + 3)];
-  assert.ok(px(5, 5).every((c) => c > 245), 'corner keeps the photo background');
+  const { data, info } = await sharp(out).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const px = (x: number, y: number) => [...data.subarray((y * info.width + x) * 4, (y * info.width + x) * 4 + 4)];
+  assert.equal(px(5, 5)[3], 0, 'aspect-ratio gaps stay transparent instead of getting a custom colour');
   assert.ok(px(360, 405)[0] > 200 && px(360, 405)[1] < 60, 'product sits in the centre');
-  // Trimmed then fitted: the 2:1 product fills the width, minus the margin.
+  // Trimmed then fitted: the 2:1 product fills the width with no added margin.
   assert.ok(px(60, 405)[0] > 200 && px(60, 405)[1] < 60);
 });
 
