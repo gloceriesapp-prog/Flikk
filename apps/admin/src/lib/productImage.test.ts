@@ -30,3 +30,31 @@ test('transparent and plain images still come out 720×810', async () => {
     assert.deepEqual([meta.width, meta.height], [PRODUCT_IMAGE_WIDTH, PRODUCT_IMAGE_HEIGHT]);
   }
 });
+
+test('prepared 720x810 Canva artwork keeps its edge-to-edge composition', async () => {
+  for (const scale of [1, 2]) {
+    const width = 720 * scale;
+    const height = 810 * scale;
+    // A deliberately white frame and a red panel touching the left edge.
+    // The old trim/fit/composite path moved that panel in by a 5% margin.
+    const input = await sharp({ create: { width, height, channels: 3, background: '#ffffff' } })
+      .composite([{ input: { create: { width: 360 * scale, height: 300 * scale, channels: 3, background: '#ff0000' } }, left: 0, top: 200 * scale }])
+      .png().toBuffer();
+    const output = await fitProductImage(input);
+    const { data, info } = await sharp(output).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    assert.deepEqual([info.width, info.height], [720, 810]);
+    const panel = (300 * info.width + 5) * 3;
+    assert.ok(data[panel] > 220 && data[panel + 1] < 35, 'artwork still touches the left edge');
+    const margin = (100 * info.width + 360) * 3;
+    assert.ok(data[margin] > 240 && data[margin + 1] > 240, 'designed whitespace is preserved');
+  }
+});
+
+test('EXIF-rotated prepared artwork retains the displayed portrait ratio', async () => {
+  const input = await sharp({ create: { width: 810, height: 720, channels: 3, background: '#ff0000' } })
+    .withMetadata({ orientation: 6 }).jpeg().toBuffer();
+  const output = await fitProductImage(input);
+  const { data, info } = await sharp(output).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  assert.deepEqual([info.width, info.height], [720, 810]);
+  assert.ok(data[0] > 220 && data[1] < 35);
+});
