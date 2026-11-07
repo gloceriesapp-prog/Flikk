@@ -62,25 +62,25 @@ export function PaymentProcessingScreen({ route, navigation }: Props) {
 
       // Real order confirmed paid — safe to clear the cart now, same
       // moment every other payment path in CheckoutScreen.tsx's own
-      // goToReceipt already does it. Held off until now (not when this
+      // goToOrderPlaced already does it. Held off until now (not when this
       // screen first opened) so a failure leaves the cart exactly as the
       // customer left it, ready to retry.
       await clearCommittedAttempt(target);
       if (cancelled || useAuthStore.getState().sessionEpoch !== epoch) return;
+      // Read before the cart is cleared: the booked day and slot, if any.
+      const preorderLabel = useCartStore.getState().preorder?.label ?? null;
       if (cartPurchaseSignature(useCartStore.getState().items) === cartPurchaseSignature(items)) clearCart();
       void rememberPaymentMethod(paymentMethod, target).catch(() => {});
-      navigation.replace('Receipt', {
+      navigation.replace('OrderPlaced', {
         orderId: order.orderId,
         orderNumber: order.orderNumber,
         amount,
-        items,
         paymentMethodLabel: 'Online payment',
-        placedAt: order.placedAt,
-        avgPrepMinutes: order.avgPrepMinutes,
+        paid: true,
+        isTrip,
         estimatedDeliveryMinutes: order.estimatedDeliveryMinutes,
         estimatedDeliveryAt: order.estimatedDeliveryAt,
-        isTrip,
-        deliveryAddress,
+        preorderLabel,
       });
     }).catch(() => { if (!cancelled && useAuthStore.getState().sessionEpoch === epoch) navigation.replace('PaymentRecovery', { target }); });
 

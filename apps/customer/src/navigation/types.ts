@@ -96,41 +96,21 @@ export type AppStackParamList = {
     upiIntent?: import('../api/payments').RazorpayUpiIntent;
     recovered?: boolean;
   };
-  // orderId is the real backend orders.id (UUID, from POST /orders) —
-  // used only for navigation (TrackOrder's own real lookup), never shown.
-  // orderNumber is the real, human-facing orders.order_number ("GLO-6691-1885",
-  // backend/src/routes/orders.ts's own note on why this exists) — what
-  // ReceiptScreen actually displays, so it matches exactly what the
-  // partner app and TrackOrderScreen show for the same order instead of a
-  // locally-sliced fragment of the UUID that looked similar but wasn't the
-  // same identifier at all.
-  // Receipts use the delivery snapshot returned at placement, shared
-  // with tracking. avgPrepMinutes remains legacy metadata only.
-  Receipt: {
+  // Shown once checkout succeeds (OrderPlacedScreen), then replaced by
+  // TrackOrder. orderId is the real orders.id, or trips.id when isTrip;
+  // orderNumber is the human-facing "GLO-…" the partner app shows too.
+  // paid: an online payment is confirmed (cash on delivery is false).
+  // preorderLabel: the booked day and slot for a pre-order.
+  OrderPlaced: {
     orderId: string;
     orderNumber: string;
     amount: number;
-    items: CartItem[];
     paymentMethodLabel: string;
-    placedAt: string;
-    avgPrepMinutes: number | null;
+    paid: boolean;
+    isTrip?: boolean;
     estimatedDeliveryMinutes?: number | null;
     estimatedDeliveryAt?: string | null;
-    // Set when orderId is actually a real trips.id (a multi-store
-    // checkout, CheckoutScreen's own isMultiStore branch) rather than a
-    // real orders.id — TrackOrderScreen reads this to know whether to
-    // call api/trips.ts's fetchTrip or api/orders.ts's fetchOrder.
-    // Undefined (not false) for every single-store order, same as before
-    // this field existed.
-    isTrip?: boolean;
-    // The real addresses row this order was actually placed against
-    // (CheckoutScreen's own selectedAddress at the moment Pay was tapped)
-    // — not the ambient useLocationStore label ReceiptScreen used to fall
-    // back to, which could disagree with the order's real address if the
-    // customer changed their default address after paying but before this
-    // screen rendered, or simply never matched a multi-address account's
-    // current GPS-derived location at all.
-    deliveryAddress: string;
+    preorderLabel?: string | null;
   };
   TrackOrder: { orderId: string; paymentMethodLabel: string; isTrip?: boolean };
   OrderSummary: { orderId: string; isTrip?: boolean };
