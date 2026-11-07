@@ -29,7 +29,13 @@ describe('pre-order day and slot', () => {
   });
   it('labels the cart delivery', () => {
     expect(cartPreorder('2026-11-08', slot, now)).toEqual({ date: '2026-11-08', slotId: slot.id, label: 'Sun 8 Nov · 7 – 9 AM' });
-    expect(formatDeliveryWindow('2026-11-08T01:30:00Z', '2026-11-08T03:30:00Z', now)).toMatch(/8 Nov, 7:00 AM – 9:00 AM$/);
+    expect(formatDeliveryWindow('2026-11-08T01:30:00Z', '2026-11-08T03:30:00Z', now)).toBe('Sun 8 Nov, 7:00 AM – 9:00 AM');
+  });
+  it('labels tomorrow using the India calendar day rather than the machine clock', () => {
+    const from = '2026-11-08T01:30:00Z';
+    const until = '2026-11-08T03:30:00Z';
+    expect(formatDeliveryWindow(from, until, new Date('2026-11-06T18:29:59Z'))).toBe('Sun 8 Nov, 7:00 AM – 9:00 AM');
+    expect(formatDeliveryWindow(from, until, new Date('2026-11-06T18:30:00Z'))).toBe('Tomorrow, 7:00 AM – 9:00 AM');
   });
   it('never mixes a pre-order with quick delivery or another shop', () => {
     expect(cartConflict([], idli)).toBeNull();
