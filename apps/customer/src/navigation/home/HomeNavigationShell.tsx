@@ -5,6 +5,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { ActiveOrderBar } from '../../features/active-order-tracker';
 import { useNearestStore } from '../../screens/home/useNearestStore';
+import { useHomeLocationRefresh } from '../../location/useHomeLocationRefresh';
 import type { AppStackParamList } from '../types';
 
 import { HomeNavigationProgressContext } from './HomeNavigationProgressContext';
@@ -18,6 +19,7 @@ interface Props {
 // The bar lives outside native-stack's moving screen surface. Its instance,
 // cart and scroll progress survive pushes/pops between Home and categories.
 export function HomeNavigationShell({ children, route, navigation }: Props) {
+  useHomeLocationRefresh(route.name === 'Home' || route.name === 'HomeCategory');
   const hidden = useSharedValue(0);
   const [activeOrderHeight, setActiveOrderHeight] = useState(0);
   const [navigationBarHeight, setNavigationBarHeight] = useState(Platform.OS === 'android' ? 74 : 66);

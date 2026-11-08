@@ -1,11 +1,12 @@
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
-import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/AppIcon';
 import type { AppStackParamList } from '../../navigation/types';
 import { useAppConfig } from '../../api/appConfig';
 import { openLink } from '../../utils/openLink';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 // Shown until admin fills app_content.about.body (GET /app-config).
 const DEFAULT_BODY = [
@@ -46,7 +47,7 @@ export function AboutGloceriesScreen({ navigation }: NativeStackScreenProps<AppS
       <StatusBar style="dark" />
       <View className="flex-row items-center px-5 py-4">
         <Pressable onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} className="h-11 w-11 items-center justify-center">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color="#101C10" />
+          <IconlyArrowLeft size={22} color="#101C10" />
         </Pressable>
         <Text accessibilityRole="header" className="flex-1 text-center text-lg font-semibold text-ink">{about.title}</Text>
         <View className="w-11" />

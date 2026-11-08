@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import {
-  ArrowLeft01Icon,
   Add01Icon,
   CheckmarkCircle02Icon,
   Location04Icon,
@@ -23,6 +22,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { fetchAddresses, setDefaultAddress, type ApiAddress } from '../../api/addresses';
 import { ApiError } from '../../api/client';
 import type { AppStackParamList } from '../../navigation/types';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AddressList'>;
 
@@ -88,12 +88,7 @@ export function AddressListScreen({ navigation }: Props) {
           hitSlop={12}
           className="z-10 h-10 w-10 items-center justify-center rounded-full bg-white"
         >
-          <HugeiconsIcon
-            icon={ArrowLeft01Icon}
-            size={20}
-            color="#1D1D23"
-            strokeWidth={2}
-          />
+          <IconlyArrowLeft size={20} color="#1D1D23" />
         </Pressable>
 
         <Text className="absolute left-0 right-0 text-center text-[19px] font-semibold text-ink">

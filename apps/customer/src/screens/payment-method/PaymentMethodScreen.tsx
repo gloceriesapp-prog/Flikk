@@ -7,8 +7,6 @@ import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { usesDirectUpiIntent } from '../../payments/upiIntent';
 import { detectInstalledUpiApps } from '../../payments/installedUpiApps';
@@ -18,6 +16,7 @@ import { PaymentMethodList } from './components/PaymentMethodList';
 import type { PaymentMethod } from '../../payments/paymentMethod';
 import { usePaymentAvailability } from '../../payments/usePaymentAvailability';
 import { useAuthStore } from '../../store/useAuthStore';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'PaymentMethod'>;
 
@@ -65,7 +64,7 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
         <View className="relative flex-row items-center justify-between">
           <Pressable onPress={() => navigation.goBack()} accessibilityLabel={fromProfile ? "Back to profile" : "Back to cart"} accessibilityRole="button"
             className="h-11 w-11 items-center justify-center rounded-full bg-white">
-            <AppIcon icon={ArrowLeft01Icon} size={22} color="#111111" />
+            <IconlyArrowLeft size={22} color="#111111" />
           </Pressable>
           <View className="h-11 w-11" />
           <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
@@ -98,7 +97,7 @@ export function PaymentMethodScreen(props: Props) {
     <View className="flex-row items-center gap-3 px-5 pb-3 pt-safe-offset-2">
       <Pressable accessibilityRole="button" accessibilityLabel="Back to home" onPress={() => props.navigation.navigate('Home')}
         className="h-11 w-11 items-center justify-center rounded-full bg-white">
-        <AppIcon icon={ArrowLeft01Icon} size={22} color="#111111" />
+        <IconlyArrowLeft size={22} color="#111111" />
       </Pressable>
       <Text className="text-[18px] font-semibold text-ink">Choose how to pay</Text>
     </View>

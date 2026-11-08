@@ -19,6 +19,8 @@ const LOCATION_KEY = 'gloceries_customer_delivery_location';
 const RECIPIENT_NAME_KEY = 'gloceries_customer_recipient_name';
 
 export interface DeliveryLocation {
+  // Missing on legacy pins. New explicit selections always record their mode.
+  source?: 'device' | 'manual';
   latitude: number;
   longitude: number;
   addressLabel: string; // human-readable line, e.g. reverse-geocoded or typed
@@ -74,6 +76,7 @@ export const useLocationStore = create<LocationState>((set) => ({
   },
 
   setLocation: async (location) => {
+    location = { ...location, source: location.source ?? 'manual' };
     set({ location });
     // Reset public assortment queries on address change; in-flight responses
     // are also fenced by apiRequest's captured delivery pin.

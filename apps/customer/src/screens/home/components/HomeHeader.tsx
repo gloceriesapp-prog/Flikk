@@ -58,8 +58,6 @@
 // renders the visual header itself.
 
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { AppIcon } from '../../../components/AppIcon';
 import { BlurView } from 'expo-blur';
 import { GlassView } from 'expo-glass-effect';
 import Animated, {
@@ -73,6 +71,7 @@ import { HeaderBackgroundGradient } from './HeaderBackgroundGradient';
 import { HomeSearchBar } from './HomeSearchBar';
 import { useActiveHeaderGradient } from '../data/useActiveHeaderGradient';
 import { RegionalHeaderArtwork } from '../regional/header/RegionalHeaderArtwork';
+import { IconlyArrowLeft } from '../../../components/icons/iconly';
 
 interface Props {
   onBack?: () => void;
@@ -180,7 +179,7 @@ export function HomeHeader({
         {onBack && (
           <View className="px-5">
             <Pressable accessibilityRole="button" accessibilityLabel="Back to Home" onPress={onBack} className="h-11 w-11 items-center justify-center" hitSlop={8}>
-              <AppIcon icon={ArrowLeft01Icon} size={24} color="#101C10" strokeWidth={2} />
+              <IconlyArrowLeft size={24} color="#101C10" />
             </Pressable>
           </View>
         )}

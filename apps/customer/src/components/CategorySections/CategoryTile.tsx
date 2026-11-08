@@ -25,15 +25,14 @@ export function CategoryTile({ category }: Props) {
       }
       className="w-full"
     >
-      {/* Taller than wide, one soft blue surface, and the artwork scaled up
-          to fill it: still 4 in a row, but the picture is the hero. */}
-      <View style={{ aspectRatio: 0.85, borderRadius: 18, overflow: 'hidden', backgroundColor: '#EDF7FF' }}>
+      {/* Keep a little breathing room around the complete artwork without
+          changing the card dimensions or cropping the illustration. */}
+      <View style={{ aspectRatio: 0.85, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EDF7FF' }}>
         <Image
           source={{
             uri: category.imageUrl || PLACEHOLDER_IMAGE_URI,
           }}
-          className="h-full w-full"
-          style={{ transform: [{ scale: 1.12 }] }}
+          style={{ width: '90%', height: '90%' }}
           resizeMode="contain"
         />
       </View>

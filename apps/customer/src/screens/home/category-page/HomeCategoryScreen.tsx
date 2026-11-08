@@ -6,8 +6,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AppStackParamList } from '../../../navigation/types';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { AppIcon } from '../../../components/AppIcon';
 import { useHomeTabs } from '../data/useHomeTabs';
 import { HomeCategoryContent, homeCategoryKind } from './HomeCategoryContent';
 import { useHomeBrowseScroll } from './useHomeBrowseScroll';
@@ -15,6 +13,7 @@ import { HomeCategoryBanner } from './components/HomeCategoryBanner';
 import { MeatCategoryBanner } from './components/MeatCategoryBanner';
 import { storageUrl } from '../../../utils/storageUrl';
 import { useCopyImage } from '../../../api/appConfig';
+import { IconlyArrowLeft } from '../../../components/icons/iconly';
 
 const GROCERY_HEADER_IMAGE_URI =
   storageUrl('Images/Royal%20Blue%20Tote%20of%20Indian%20Groceries.png');
@@ -64,7 +63,7 @@ export function HomeCategoryScreen({ route, navigation }: NativeStackScreenProps
           inset below the status bar. Keep Back available while scrolling. */}
       <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 8, left: 20, zIndex: 10 }}>
         <Pressable accessibilityRole="button" accessibilityLabel="Back to Home" onPress={() => navigation.goBack()} className="h-11 w-11 items-center justify-center rounded-full border border-[#E8EBEF] bg-white active:bg-[#F3F4F6]" hitSlop={8}>
-          <AppIcon icon={ArrowLeft01Icon} size={24} color="#101C10" strokeWidth={2} />
+          <IconlyArrowLeft size={24} color="#101C10" />
         </Pressable>
       </View>
     </View>

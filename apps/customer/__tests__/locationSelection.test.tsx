@@ -132,7 +132,16 @@ it('blocks unresolved addresses and allows retry for the same selected pin', asy
   await settleTimers();
   expect(view.getByText('Real street, Kaup')).toBeTruthy();
   await fireEvent.press(view.getByText('Confirm Location'));
-  expect(mockSetLocation).toHaveBeenCalledWith({ latitude: 13.2, longitude: 74.7, addressLabel: 'Real street, Kaup', city: 'Kaup' });
+  expect(mockSetLocation).toHaveBeenCalledWith({ latitude: 13.2, longitude: 74.7, addressLabel: 'Real street, Kaup', city: 'Kaup', source: 'manual' });
+});
+
+it('keeps current-location mode when confirming a GPS-selected pin', async () => {
+  const view = await render(screen({ latitude: 13.2, longitude: 74.7, fromGps: true }));
+  await fireEvent(view.getByTestId('map'), 'onMapReady');
+  await settleTimers();
+  await fireEvent.press(view.getByText('Confirm Location'));
+  expect(mockSetLocation).toHaveBeenCalledWith({ latitude: 13.2, longitude: 74.7,
+    addressLabel: 'Real street, Kaup', city: 'Kaup', source: 'device' });
 });
 
 it('ignores an older camera read that completes after a newer gesture', async () => {
@@ -157,7 +166,7 @@ it('retains a verified pin after an unsuccessful search without blocking confirm
   await fireEvent.changeText(input, 'Unknown address');
   await fireEvent(input, 'onSubmitEditing');
   await fireEvent.press(view.getByText('Confirm Location'));
-  expect(mockSetLocation).toHaveBeenCalledWith({ latitude: 13.2, longitude: 74.7, addressLabel: 'Real street, Kaup', city: 'Kaup' });
+  expect(mockSetLocation).toHaveBeenCalledWith({ latitude: 13.2, longitude: 74.7, addressLabel: 'Real street, Kaup', city: 'Kaup', source: 'manual' });
 });
 
 it('does not starve an address request when the map reports minor GPS settling', async () => {
@@ -246,7 +255,7 @@ it('keeps the manually selected delivery pin when a later GPS update arrives', a
   await settleTimers();
   expect(mockAnimateCamera).toHaveBeenCalledTimes(1);
   await fireEvent.press(view.getByText('Confirm Location'));
-  expect(mockSetLocation).toHaveBeenCalledWith({ latitude: 13.3, longitude: 74.8, addressLabel: 'Real street, Kaup', city: 'Kaup' });
+  expect(mockSetLocation).toHaveBeenCalledWith({ latitude: 13.3, longitude: 74.8, addressLabel: 'Real street, Kaup', city: 'Kaup', source: 'manual' });
   expect(view.queryByTestId('live-location-pin')).toBeNull();
 });
 

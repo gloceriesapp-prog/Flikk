@@ -9,7 +9,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Share, Text, TextInput, View } from 'react-native';
-import { ArrowLeft01Icon, Share08Icon, UserAdd01Icon } from '@hugeicons/core-free-icons';
+import { Share08Icon, UserAdd01Icon } from '@hugeicons/core-free-icons';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -18,6 +18,7 @@ import { colors } from '../../theme/tokens';
 import { fetchMyInvites, fetchMyReferralCode, redeemReferralCode } from '../../api/referrals';
 import { ApiError } from '../../api/client';
 import type { AppStackParamList } from '../../navigation/types';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Referral'>;
 
@@ -64,7 +65,7 @@ export function ReferralScreen({ navigation }: Props) {
 
       <View className="flex-row items-center px-5 pb-2 pt-2">
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
         <Text className="flex-1 text-center text-lg font-semibold text-ink">Invite Friends</Text>
         <View className="h-11 w-11" />

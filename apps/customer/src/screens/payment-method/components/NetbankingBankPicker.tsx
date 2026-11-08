@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { PopularBanksGrid } from './PopularBanksGrid';
 import { BankLogo } from './BankLogo';
 import { AppIcon } from '../../../components/AppIcon';
 import { fetchNetbankingBanks, type NetbankingBank } from '../../../api/payments';
+import { IconlyArrowLeft } from '../../../components/icons/iconly';
 
 const POPULAR_BANK_CODES = ['HDFC', 'SBIN', 'ICIC', 'UTIB', 'KKBK', 'IDFB'];
 
@@ -33,7 +34,7 @@ export function NetbankingBankPicker({ visible, selectedCode, onClose, onSelect 
           <View className="flex-row items-center gap-3 py-3">
             <Pressable accessibilityRole="button" accessibilityLabel="Back to payment methods" onPress={onClose}
               className="h-11 w-11 items-center justify-center rounded-full bg-white">
-              <AppIcon icon={ArrowLeft01Icon} size={22} color="#171717" />
+              <IconlyArrowLeft size={22} color="#171717" />
             </Pressable>
             <Text className="text-[19px] font-semibold text-[#171717]">Choose your bank</Text>
           </View>
