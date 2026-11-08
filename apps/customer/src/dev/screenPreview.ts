@@ -8,12 +8,12 @@ export const PREVIEW_SCREEN = __DEV__ ? process.env.EXPO_PUBLIC_PREVIEW_SCREEN :
 
 export const isPreviewing = (screen: keyof AppStackParamList) => PREVIEW_SCREEN === screen;
 
-// A paid online order arriving in 15 minutes: the screen's main case.
+// A paid online order: the screen's main case. No estimate of its own, so
+// the screen shows the app's live delivery estimate, as Home does.
 export const ORDER_PLACED_PREVIEW: AppStackParamList['OrderPlaced'] = {
   orderId: 'preview-order',
   orderNumber: 'GL-24817',
   amount: 245,
   paymentMethodLabel: 'UPI',
   paid: true,
-  estimatedDeliveryMinutes: 15,
 };

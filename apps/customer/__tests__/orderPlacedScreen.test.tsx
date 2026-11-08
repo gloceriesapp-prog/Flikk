@@ -6,7 +6,8 @@ const mockChime = { play: jest.fn(), release: jest.fn() };
 jest.mock('../src/payments/paymentChime', () => ({ loadPaymentChime: () => mockChime }));
 jest.mock('react-native-reanimated', () => ({ ...require('react-native-reanimated/mock'), useReducedMotion: () => false }));
 jest.mock('expo-haptics', () => ({ notificationAsync: jest.fn(async () => {}), NotificationFeedbackType: { Success: 'success' } }));
-jest.mock('expo-linear-gradient', () => ({ LinearGradient: ({ children }: { children: React.ReactNode }) => children }));
+// The app-wide estimate Home shows ("In 12 minutes").
+jest.mock('../src/api/deliverySettings', () => ({ useDeliveryEstimateMinutes: () => 12 }));
 jest.mock('../src/components/ScreenStatusBar', () => ({ ScreenStatusBar: () => null }));
 
 type Props = ComponentProps<typeof OrderPlacedScreen>;
@@ -52,4 +53,9 @@ it('cash on delivery and pre-orders: no chime, the right words', async () => {
   expect(screen.getByText('Waiting for the shop to confirm')).toBeTruthy();
   await act(async () => { jest.advanceTimersByTime(ORDER_PLACED_MS); });
   expect(mockChime.play).not.toHaveBeenCalled();
+});
+
+it('without its own estimate the order shows the app-wide one, same as Home', async () => {
+  await show({ estimatedDeliveryMinutes: null });
+  expect(screen.getByText('Arriving in 12 mins')).toBeTruthy();
 });
