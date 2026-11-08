@@ -145,7 +145,7 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
         <View className="items-center px-12 pb-safe-offset-8">
           <Text className="mb-3 text-[12px] font-medium text-white/60">Order {orderNumber} · Opening tracking…</Text>
           <View className="h-1 w-full overflow-hidden rounded-full bg-white/20">
-            <Animated.View className="h-1 rounded-full bg-white" style={barStyle} />
+            <Animated.View style={[{ height: 4, borderRadius: 2, backgroundColor: '#FFFFFF' }, barStyle]} />
           </View>
         </View>
       </LinearGradient>
