@@ -29,7 +29,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'OrderPlaced'>;
 
 export const ORDER_PLACED_MS = 2600;
 const TICK_AT_MS = 320;
-const SEAL = 112;
+const SEAL = 132;
 const TICK_PATH = 'M30 57 L48 74 L82 39';
 const TICK_LENGTH = 74; // the two strokes of TICK_PATH, rounded up
 const GREEN = '#34C759';
@@ -48,7 +48,7 @@ function scallopPath(size: number, bumps = 12, depth = 0.055): string {
   }
   return `${d}Z`;
 }
-const BADGE_PATH = scallopPath(SEAL);
+const BADGE_PATH = scallopPath(112); // in the 112x112 viewBox, scaled to SEAL
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 function Rise({ delay, reduceMotion, children }: { delay: number; reduceMotion: boolean; children: React.ReactNode }) {
@@ -128,12 +128,12 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
           <View className="mt-9 items-center">
             <Rise delay={520} reduceMotion={reduceMotion}>
               <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}
-                className="text-center text-[24px] font-bold leading-[31px] tracking-tight text-ink">
+                className="text-center text-[30px] font-bold leading-[38px] tracking-tight text-ink">
                 {'Yay! Your Order Placed\nSuccessfully!'}
               </Text>
             </Rise>
             <Rise delay={640} reduceMotion={reduceMotion}>
-              <Text className="mt-3 text-center text-[16px] font-medium text-ink/60">Your groceries are getting ready!</Text>
+              <Text className="mt-4 text-center text-[19px] font-medium text-ink/60">Your groceries are getting ready!</Text>
             </Rise>
           </View>
         </View>
