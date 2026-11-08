@@ -25,6 +25,7 @@ import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { loadPaymentChime } from '../../payments/paymentChime';
 import type { AppStackParamList } from '../../navigation/types';
 import { arrivalLine, paymentLine } from './orderPlacedText';
+import { isPreviewing } from '../../dev/screenPreview';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OrderPlaced'>;
 
@@ -66,14 +67,22 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
   const tick = useSharedValue(reduceMotion ? 0 : TICK_LENGTH);
   const bar = useSharedValue(0);
 
+  // Dev preview: stay on this screen; a tap replays the animation instead of
+  // leaving (see dev/screenPreview.ts).
+  const preview = isPreviewing('OrderPlaced');
+
   const goToTracking = useCallback(() => {
+    if (preview) {
+      navigation.replace('OrderPlaced', route.params);
+      return;
+    }
     if (left.current) return;
     left.current = true;
     navigation.reset({
       index: 1,
       routes: [{ name: 'Home' }, { name: 'TrackOrder', params: { orderId, paymentMethodLabel, isTrip } }],
     });
-  }, [isTrip, navigation, orderId, paymentMethodLabel]);
+  }, [isTrip, navigation, orderId, paymentMethodLabel, preview, route.params]);
 
   useEffect(() => {
     // Only a confirmed online payment gets the chime (cash is paid later).
@@ -87,7 +96,7 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       chime?.play();
     }, TICK_AT_MS);
-    const leaveTimer = setTimeout(goToTracking, ORDER_PLACED_MS);
+    const leaveTimer = preview ? undefined : setTimeout(goToTracking, ORDER_PLACED_MS);
     const back = BackHandler.addEventListener('hardwareBackPress', () => { goToTracking(); return true; });
     return () => {
       clearTimeout(tickTimer);
@@ -96,7 +105,7 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
       // Let the chime finish if it is still playing as tracking opens.
       setTimeout(() => chime?.release(), 1500);
     };
-  }, [bar, goToTracking, paid, reduceMotion, seal, tick]);
+  }, [bar, goToTracking, paid, preview, reduceMotion, seal, tick]);
 
   const sealStyle = useAnimatedStyle(() => ({ transform: [{ scale: seal.value }] }));
   const tickProps = useAnimatedProps(() => ({ strokeDashoffset: tick.value }));
