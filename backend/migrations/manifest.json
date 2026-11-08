@@ -668,6 +668,10 @@
     {
       "file": "20261108100000_brands.sql",
       "sha256": "b29ba1735766b2e8c78f74ee8790c0331815348b4f8c98b2c5873cbf36db4969"
+    },
+    {
+      "file": "20261108120000_category_show_on_home.sql",
+      "sha256": "dfa3b0f9a91c6f5716bdb97034b3b595586ba30a8350b6fc81e8f4ec2c3c4d9c"
     }
   ]
 }

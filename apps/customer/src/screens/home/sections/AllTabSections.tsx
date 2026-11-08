@@ -108,7 +108,7 @@ const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, copy: SectionCopy) => R
   'preorders': (_ctx, c) => <PreorderSection title={c.title} subtitle={c.subtitle} />,
   'trending': (ctx, c) => <TrendingSection title={c.title} subtitle={c.subtitle} products={ctx.rows.trending} />,
   'most-bought': (ctx, c) => <MostBoughtSection title={c.title} subtitle={c.subtitle} products={ctx.rows['most-bought']} />,
-  'category-sections': () => <CategorySections />,
+  'category-sections': () => <CategorySections homeOnly />,
   'deals-for-you': (ctx, c) => <DealsForYouSection products={ctx.rows['deals-for-you']} title={c.title} subtitle={c.subtitle} />,
   'top-rated-stores': (_ctx, c) => <TopRatedStoresSection title={c.title} subtitle={c.subtitle} />,
   'deals-section': () => <DealsSection />,

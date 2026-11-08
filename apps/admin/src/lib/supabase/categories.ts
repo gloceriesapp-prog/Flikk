@@ -15,9 +15,10 @@ export interface CategoryRow {
   sort_order: number;
   is_active: boolean;
   section_id: string | null;
+  show_on_home: boolean;
 }
 
-export const CATEGORY_SELECT = 'id, name, image_url, sort_order, is_active, section_id';
+export const CATEGORY_SELECT = 'id, name, image_url, sort_order, is_active, section_id, show_on_home';
 
 export function mapRowToCategory(row: CategoryRow): Category {
   return {
@@ -27,6 +28,7 @@ export function mapRowToCategory(row: CategoryRow): Category {
     sortOrder: row.sort_order,
     isActive: row.is_active,
     sectionId: row.section_id ?? undefined,
+    showOnHome: row.show_on_home,
   };
 }
 

@@ -535,6 +535,9 @@ export interface Category {
   imageUrl?: string;
   sortOrder: number;
   isActive: boolean;
+  // Shown in the Home screen's category section (the Categories screen
+  // lists every active category regardless).
+  showOnHome: boolean;
   // Which title/group this category shows under on the customer app's
   // Categories screen (e.g. "Groceries & Staples") — see CategorySection
   // below. Optional at the type level since a category can technically
