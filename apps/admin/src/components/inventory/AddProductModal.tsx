@@ -20,6 +20,7 @@ import type { NewProductInput, Product, ProductOption, Serving, StockStatus } fr
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle } from '@/lib/product-options';
+import { BrandPicker } from './BrandPicker';
 import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
@@ -63,6 +64,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     bulkMinKg: null as number | null,
     bgColor: undefined as string | undefined,
     subCategoryId: undefined as string | undefined,
+    brandId: undefined as string | undefined,
     isVeg: true,
     freshnessTag: '',
   };
@@ -150,6 +152,7 @@ export function AddProductModal({
         bulkMinKg: draft.bulkMinKg,
         bgColor: draft.bgColor,
         subCategoryId: draft.subCategoryId,
+        brandId: draft.brandId,
         isVeg: draft.isVeg,
         freshnessTag: draft.freshnessTag || undefined,
       }, homeChoice.keys);
@@ -223,6 +226,8 @@ export function AddProductModal({
           />
 
           <CataloguePicker subCategoryId={draft.subCategoryId} onChange={setPlacement} />
+
+          <BrandPicker brandId={draft.brandId} onChange={(brandId) => setDraft((d) => ({ ...d, brandId }))} />
 
           <ChickenOptionsEditor
             category={draft.category}

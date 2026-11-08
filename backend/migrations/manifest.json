@@ -664,6 +664,10 @@
     {
       "file": "20261106140000_price_mrp_fallback_trigger.sql",
       "sha256": "5da70792ba5c580ede8816105579daa48621646a33b92573053361e54dab9bb1"
+    },
+    {
+      "file": "20261108100000_brands.sql",
+      "sha256": "b29ba1735766b2e8c78f74ee8790c0331815348b4f8c98b2c5873cbf36db4969"
     }
   ]
 }
