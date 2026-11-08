@@ -175,6 +175,9 @@ export default function CategoriesPage() {
                 <p className="text-sm font-medium text-ink" title={category.name}>
                   {category.name}
                 </p>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${category.showOnHome ? 'bg-brand-soft text-brand' : 'bg-accent text-muted'}`}>
+                  {category.showOnHome ? 'On Home' : 'Not on Home'}
+                </span>
                 <span className="flex items-center gap-1 text-xs font-medium text-muted opacity-0 group-hover:opacity-100">
                   <Pencil size={11} />
                   Edit

@@ -96,6 +96,12 @@ export function EditCategoryModal({
             />
           </div>
 
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked={draft.showOnHome} onChange={(e) => setDraft({ ...draft, showOnHome: e.target.checked })} />
+            Show on Home
+            <span className="text-xs text-muted">(always listed in Categories)</span>
+          </label>
+
           <SubCategoryManager categoryId={category.id} />
 
           {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-danger">{error}</p>}

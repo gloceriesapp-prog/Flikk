@@ -33,6 +33,7 @@ export function AddCategoryModal({
   const [name, setName] = useState('');
   const [sectionId, setSectionId] = useState(sections[0]?.id ?? '');
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [showOnHome, setShowOnHome] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,7 +44,7 @@ export function AddCategoryModal({
     setSubmitting(true);
     setError(null);
     try {
-      await onAdd({ name: trimmed, imageUrl, sortOrder: nextSortOrder, isActive: true, sectionId });
+      await onAdd({ name: trimmed, imageUrl, sortOrder: nextSortOrder, isActive: true, showOnHome, sectionId });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add category — try again.');
       setSubmitting(false);
@@ -95,6 +96,12 @@ export function AddCategoryModal({
               aria-label="Category name"
             />
           </div>
+
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked={showOnHome} onChange={(e) => setShowOnHome(e.target.checked)} />
+            Show on Home
+            <span className="text-xs text-muted">(always listed in Categories)</span>
+          </label>
 
           {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-danger">{error}</p>}
         </div>

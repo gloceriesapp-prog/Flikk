@@ -8,6 +8,7 @@ export interface CategoryWriteInput {
   imageUrl?: string | null;
   sortOrder?: number;
   isActive?: boolean;
+  showOnHome?: boolean;
   // Which title/group this shows under on the customer app's grouped
   // Categories grid — required, not optional: a category with no section
   // has nowhere to render there (categorySectionsRouter only groups
@@ -26,6 +27,7 @@ export interface CategoryRow {
   sort_order: number;
   is_active: boolean;
   section_id: string;
+  show_on_home: boolean;
 }
 
 export function toCategoryRow(input: CategoryWriteInput): CategoryRow {
@@ -35,6 +37,7 @@ export function toCategoryRow(input: CategoryWriteInput): CategoryRow {
     sort_order: input.sortOrder ?? 0,
     is_active: input.isActive ?? true,
     section_id: input.sectionId,
+    show_on_home: input.showOnHome ?? true,
   };
 }
 
