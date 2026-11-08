@@ -442,6 +442,10 @@ export interface Product {
   // unified yet. Optional — a product with none just doesn't appear in any
   // category browse grid, only in the general catalog feeds.
   subCategoryId?: string;
+  // Brand (brands table); none for loose produce and local items.
+  // null on save clears it.
+  brandId?: string | null;
+  brandName?: string;
   // 'pending' when a store owner added/edited it from the partner app
   // (backend's POST/PATCH /partner/products) — invisible on every
   // customer-facing feed until this flips to 'approved' (see this
@@ -508,7 +512,16 @@ export interface ProductVariant {
 // `storeName` (the API derives it server-side via the stores join, same
 // mapRowToProduct used for reads — the modal only knows storeId, picked
 // from a real StoreOption).
-export type NewProductInput = Omit<Product, 'id' | 'storeName'>;
+export type NewProductInput = Omit<Product, 'id' | 'storeName' | 'brandName'>;
+
+// A brand a product can belong to (Amul, Cadbury, ...), picked or created
+// from the product form. The logo shows next to the brand in the apps.
+export interface Brand {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  isActive: boolean;
+}
 
 // Categories screen — the real name+photo pair the customer app's own
 // Categories browse grid reads (backend/src/routes/categories.ts ->

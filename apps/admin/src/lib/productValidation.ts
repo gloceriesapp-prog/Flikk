@@ -68,6 +68,8 @@ export interface ProductWriteInput {
   // PRODUCT_CATEGORIES field this form already had) — the two taxonomies
   // aren't unified yet, see backend/src/routes/categories.ts's own note.
   subCategoryId?: string | null;
+  // Absent leaves the brand unchanged; null clears it.
+  brandId?: string | null;
   variants: VariantInput[];
 }
 
@@ -207,6 +209,15 @@ export function toUnitPriceFlag(input: Pick<ProductWriteInput, 'showUnitPrice'>)
   if (input.showUnitPrice == null) return undefined;
   if (typeof input.showUnitPrice !== 'boolean') throw new Error('showUnitPrice must be true or false.');
   return { show_unit_price: input.showUnitPrice };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function toBrand(input: Pick<ProductWriteInput, 'brandId'>): { brand_id: string | null } | undefined {
+  if (input.brandId === undefined) return undefined;
+  if (input.brandId === null || input.brandId === '') return { brand_id: null };
+  if (typeof input.brandId !== 'string' || !UUID_RE.test(input.brandId)) throw new Error('Pick a brand from the list.');
+  return { brand_id: input.brandId };
 }
 
 export function toPreorder(input: Pick<ProductWriteInput, 'preorderEnabled' | 'preorderMinQty' | 'preorderLeadDays'>):

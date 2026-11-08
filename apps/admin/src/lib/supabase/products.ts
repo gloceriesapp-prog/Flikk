@@ -58,12 +58,14 @@ export interface ProductRow {
   stock_quantity: number | null;
   stock_tracking_enabled: boolean;
   stores: { name: string; district: string } | null;
+  brand_id?: string | null;
+  brands?: { name: string } | null;
   product_variants: ProductVariantRow[];
   product_options?: { id: string; name: string; image_url: string | null; sort_order: number; is_available: boolean }[] | null;
 }
 
 export const PRODUCT_SELECT =
-  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, serving_options, preorder_enabled, preorder_min_qty, preorder_lead_days, bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(id, name, image_url, sort_order, is_available)';
+  'id, store_id, name, unit, price, original_price, category, stock_status, image_url, extra_image_urls, cut_options_enabled, bulk_min_kg, waive_commission, show_unit_price, serving_options, preorder_enabled, preorder_min_qty, preorder_lead_days, brand_id, brands(name), bg_color, local_name, is_veg, freshness_tag, description, sub_category_id, approval_status, pending_image_url, pending_changes, pending_changes_at, stock_quantity, stock_tracking_enabled, stores(name, district), product_variants(id, unit_type, quantity, price, original_price, is_default, stock_quantity, platform_markup), product_options(id, name, image_url, sort_order, is_available)';
 
 function mapVariants(rows: ProductVariantRow[], product: ProductRow): ProductVariant[] {
   // is_default first, then insertion order for the rest — mirrors how
@@ -160,6 +162,8 @@ export function mapRowToProduct(row: ProductRow): Product {
     freshnessTag: row.freshness_tag ?? undefined,
     description: row.description ?? undefined,
     subCategoryId: row.sub_category_id ?? undefined,
+    brandId: row.brand_id ?? undefined,
+    brandName: row.brands?.name ?? undefined,
     approvalStatus: row.approval_status,
     pendingImageUrl: row.pending_image_url,
     pendingChanges: mapPendingChanges(row.pending_changes),

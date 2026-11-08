@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_EXTRA_IMAGES, toExtraImageUrls, validateProductInput } from './productValidation';
+import { MAX_EXTRA_IMAGES, toBrand, toExtraImageUrls, validateProductInput } from './productValidation';
 
 const cover = 'https://cdn.example/a.webp';
 
@@ -74,4 +74,13 @@ test('missing, negative, non-finite and sub-paise prices are rejected before dat
   assert.throws(() => validateProductInput({ ...input, variants: [
     { unitType: 'g', quantity: 5, price: 10 }, { unitType: 'g', quantity: 10, price: 0 },
   ] }), /Size 2: enter a store price or MRP/);
+});
+
+test('brand: absent leaves it alone, empty or null clears it, only real ids are kept', () => {
+  assert.equal(toBrand({}), undefined);
+  assert.deepEqual(toBrand({ brandId: null }), { brand_id: null });
+  assert.deepEqual(toBrand({ brandId: '' }), { brand_id: null });
+  const id = '3f2b8a1c-5d4e-4f6a-9b7c-1d2e3f4a5b6c';
+  assert.deepEqual(toBrand({ brandId: id }), { brand_id: id });
+  assert.throws(() => toBrand({ brandId: 'amul' }), /brand/i);
 });

@@ -13,6 +13,7 @@ import type { Product, StockStatus } from '@/lib/types';
 import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle } from '@/lib/product-options';
+import { BrandPicker } from './BrandPicker';
 import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
@@ -85,6 +86,8 @@ export function EditProductModal({
         price: sellingPrice(defaultVariant.price, defaultVariant.originalPrice),
         originalPrice: defaultVariant.originalPrice,
         unit: formatVariantUnit(defaultVariant),
+        // Sent as null when cleared, so the API removes the brand.
+        brandId: draft.brandId ?? null,
       }, homeChoice.changedKeys);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save changes — try again.');
@@ -137,6 +140,8 @@ export function EditProductModal({
           />
 
           <CataloguePicker subCategoryId={draft.subCategoryId} legacyCategory={draft.subCategoryId ? undefined : draft.category} onChange={setPlacement} />
+
+          <BrandPicker brandId={draft.brandId} onChange={(brandId) => setDraft((d) => ({ ...d, brandId }))} />
 
           <ChickenOptionsEditor
             category={draft.category}
