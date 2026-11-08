@@ -13,6 +13,8 @@
     "@shopify/flash-list": "2.0.2",
     "@tanstack/react-query": "^5.101.4",
     "expo": "~57.0.31",
+    "expo-asset": "~57.0.20",
+    "expo-audio": "~57.0.5",
     "expo-blur": "~57.0.3",
     "expo-build-properties": "~57.0.22",
     "expo-constants": "~57.0.22",
@@ -32,7 +34,6 @@
     "expo-status-bar": "~57.0.1",
     "expo-store-review": "~57.0.3",
     "expo-updates": "~57.0.26",
-    "jsbarcode": "^3.12.3",
     "nativewind": "^4.2.6",
     "react": "19.2.3",
     "react-native": "0.86.3",
@@ -97,7 +98,7 @@
       "\\.css$": "<rootDir>/__tests__/styleStub.js"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|jsbarcode))"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg))"
     ]
   }
 }

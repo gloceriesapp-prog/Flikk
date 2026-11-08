@@ -56,7 +56,7 @@ function CartOrProfilePaymentMethodScreen({ route, navigation }: Props) {
       setError('UPI app payments are unavailable in this test environment. Choose another payment method.');
       return;
     }
-    navigation.popTo('Cart', { selectedPaymentMethod: method, selectedNetbankingBank: bank, selectedWallet: (method === 'wallet:mobikwik' || method === 'wallet:olamoney') && contact ? { method, contact } : undefined, startSelectedPayment: method === 'card' || method.startsWith('upi_app:') });
+    navigation.popTo('Cart', { selectedPaymentMethod: method, selectedNetbankingBank: bank, selectedWallet: (method === 'wallet:mobikwik' || method === 'wallet:olamoney') && contact ? { method, contact } : undefined });
   }
   return (
     <View className="flex-1 bg-[#F2F2F7]">

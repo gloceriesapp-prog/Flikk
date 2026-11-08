@@ -9,10 +9,13 @@
 
 import { memo, useState } from 'react';
 import { View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-// Gesture-handler's FlatList: on Android a plain nested horizontal list lost
-// its swipe to the surrounding scroll view (detail sheet, product rows), so
-// photos could not be slid; this one claims the horizontal drag.
-import { FlatList } from 'react-native-gesture-handler';
+// Gesture-handler's ScrollView: on Android a plain nested horizontal scroller
+// lost its swipe to the surrounding scroll view (detail sheet, product rows),
+// so photos could not be slid; this one claims the horizontal drag. A paging
+// ScrollView, not a FlatList: a FlatList inside the horizontal product rows is
+// a nested VirtualizedList (React Native error, and list machinery per card).
+// Only the first photo is mounted until the shopper starts a swipe.
+import { ScrollView } from 'react-native-gesture-handler';
 import { AppImage as Image } from './AppImage';
 import { PLACEHOLDER_IMAGE_URI } from '../theme/placeholderImage';
 
@@ -44,6 +47,7 @@ function ProductImageGalleryImpl({ images, variant = 'card' }: Props) {
 function Pager({ images, variant }: Required<Props>) {
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
+  const [swiped, setSwiped] = useState(false);
 
   const onLayout = (event: LayoutChangeEvent) => setWidth(Math.round(event.nativeEvent.layout.width));
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -55,25 +59,21 @@ function Pager({ images, variant }: Required<Props>) {
       {width === 0 ? (
         <Image source={{ uri: images[0] }} className="h-full w-full" resizeMode={FIT[variant]} />
       ) : (
-        <FlatList
-          data={images}
-          keyExtractor={(uri, i) => `${i}:${uri}`}
+        <ScrollView
           horizontal
           pagingEnabled
           nestedScrollEnabled
           bounces={false}
           showsHorizontalScrollIndicator={false}
-          onScroll={onScroll}
-          scrollEventThrottle={32}
-          // Only the visible photo and its neighbours are decoded.
-          initialNumToRender={1}
-          maxToRenderPerBatch={1}
-          windowSize={3}
-          getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-          renderItem={({ item }) => (
-            <Image source={{ uri: item }} style={{ width, height: '100%' }} resizeMode={FIT[variant]} />
-          )}
-        />
+          onScrollBeginDrag={() => setSwiped(true)}
+          onMomentumScrollEnd={onScroll}
+        >
+          {images.map((uri, i) => (
+            i === 0 || swiped
+              ? <Image key={`${i}:${uri}`} source={{ uri }} style={{ width, height: '100%' }} resizeMode={FIT[variant]} />
+              : <View key={`${i}:${uri}`} style={{ width }} />
+          ))}
+        </ScrollView>
       )}
 
       <View

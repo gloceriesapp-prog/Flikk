@@ -79,27 +79,26 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
   }, [selectedAddress?.id, paymentMethod, selectedNetbankingBank?.code, selectedWallet?.contact]);
   const choosePayment = () => navigation.navigate('PaymentMethod', { selectedMethod: paymentMethod, selectedNetbankingBank: paymentMethod === 'netbanking' ? selectedNetbankingBank : undefined, selectedAddressId: selectedAddress?.id });
 
-  async function goToReceipt(order: { orderId: string; orderNumber: string; placedAt: string; avgPrepMinutes: number | null; estimatedDeliveryMinutes?: number | null; estimatedDeliveryAt?: string | null; amount: number; items: CartItem[] }, methodLabel: string, successfulMethod: PaymentMethod) {
+  async function goToOrderPlaced(order: { orderId: string; orderNumber: string; placedAt: string; avgPrepMinutes: number | null; estimatedDeliveryMinutes?: number | null; estimatedDeliveryAt?: string | null; amount: number; items: CartItem[] }, methodLabel: string, successfulMethod: PaymentMethod) {
     if (!stillOwner()) return;
     const orderedItems = order.items;
-    const orderedAmount = order.amount;
-    const orderedAddress = selectedAddress ? `${selectedAddress.label} · ${selectedAddress.line1}` : 'your saved address';
+    // Read before the cart is cleared: the booked day and slot, if any.
+    const preorderLabel = useCartStore.getState().preorder?.label ?? null;
     void rememberPaymentMethod(successfulMethod, isMultiStore ? { tripId: order.orderId } : { orderId: order.orderId }).catch(() => {});
     await clearCommittedAttempt(isMultiStore ? { tripId: order.orderId } : { orderId: order.orderId });
     if (!stillOwner()) return;
     if (cartPurchaseSignature(useCartStore.getState().items) === cartPurchaseSignature(orderedItems)) clear();
-    navigation.navigate('Receipt', {
+    navigation.navigate('OrderPlaced', {
       orderId: order.orderId,
       orderNumber: order.orderNumber,
-      amount: orderedAmount,
-      items: orderedItems,
+      amount: order.amount,
       paymentMethodLabel: methodLabel,
-      placedAt: order.placedAt,
-      avgPrepMinutes: order.avgPrepMinutes,
+      // Reached for cash on delivery or once an online payment is verified.
+      paid: successfulMethod !== 'cod',
+      isTrip: isMultiStore,
       estimatedDeliveryMinutes: order.estimatedDeliveryMinutes,
       estimatedDeliveryAt: order.estimatedDeliveryAt,
-      isTrip: isMultiStore,
-      deliveryAddress: orderedAddress,
+      preorderLabel,
     });
   }
 
@@ -252,7 +251,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
           };
 
       if (paymentMethod === 'cod') {
-        await goToReceipt(orderSummary, 'Cash on Delivery', 'cod');
+        await goToOrderPlaced(orderSummary, 'Cash on Delivery', 'cod');
         return;
       }
 
@@ -280,7 +279,7 @@ export function useCartPayment({ navigation, selectedAddress, selectedPaymentMet
       if (!stillOwner()) return;
       const verified = await verifyPayment(payTarget, result).catch(() => ({ ok: false }));
       if (!stillOwner()) return;
-      if (verified.ok) await goToReceipt(orderSummary, label, paymentMethod);
+      if (verified.ok) await goToOrderPlaced(orderSummary, label, paymentMethod);
       else navigation.navigate('PaymentProcessing', {
         target: payTarget, appName: 'your payment provider', paymentMethod,
         amount: confirmedAmount, order: orderSummary, items: orderedItems,

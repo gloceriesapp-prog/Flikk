@@ -17,7 +17,6 @@ import { useCopy } from '../../api/appConfig';
 // Rider tips stay hidden until collection and payout are supported.
 
 import { useMemo, useState } from 'react';
-import { useIsFocused } from '@react-navigation/native';
 import { Delete02Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { RupeePrice } from '../../components/RupeePrice';
@@ -38,7 +37,6 @@ import { CartItemRow } from './components/CartItemRow';
 import { StoreClosedNotice } from './components/StoreClosedNotice';
 import { CartPaymentBar } from './components/CartPaymentBar';
 import { useCartPayment } from './payment/useCartPayment';
-import { usePaymentSelectionStart } from './payment/usePaymentSelectionStart';
 import { CartCheckoutFooter } from './components/CartCheckoutFooter';
 import { useCartAvailability } from './quote/useCartAvailability';
 import { useCheckoutQuote } from './quote/useCheckoutQuote';
@@ -140,14 +138,6 @@ export function CartScreen({ navigation, route }: Props) {
   }, [items, quote]);
   const payment = useCartPayment({ navigation, selectedAddress, selectedPaymentMethod: route.params?.selectedPaymentMethod, selectedWallet: route.params?.selectedWallet, selectedNetbankingBank: route.params?.selectedNetbankingBank,
     quote, onQuoteChanged: () => { void quoteQuery.refetch(); void availabilityQuery.refetch(); } });
-  const focused = useIsFocused();
-  usePaymentSelectionStart({ requested: route.params?.startSelectedPayment === true, active: focused,
-    ready: payment.methodsReady && !addressesLoading && !quoteQuery.isFetching && !availabilityQuery.isFetching
-      && payment.paymentMethod === route.params?.selectedPaymentMethod,
-    eligible: !!selectedAddress && !!quote && !quoteQuery.isError && availabilityQuery.data?.eligible === true && minimumShortfall <= 0,
-    consume: () => navigation.setParams({ startSelectedPayment: false }), start: payment.placeOrder,
-    invalid: () => Alert.alert('Review your cart', 'Check your address, available items and final bill before paying.'),
-  });
   function choosePayment() {
     if (!accessToken) { useAuthStore.getState().exitGuestMode(); return; }
     payment.choosePayment();
@@ -320,7 +310,13 @@ export function CartScreen({ navigation, route }: Props) {
             <FreeDeliveryProgressCard itemTotal={quote?.bill.itemTotal ?? itemTotal} />
             <ForgotToAddSection cartItemIds={cartItemIds} />
             <PromoCodeCard itemTotal={quote?.bill.itemTotal ?? itemTotal} appliedPromo={appliedPromo} quotedDiscount={quote?.bill.discountAmount} />
-            {quote && !quoteQuery.isError && availabilityQuery.data?.eligible && <BillDetailsCard quote={quote} itemCount={totalQuantity} />}
+            {/* The last bill stays on screen (faded) while a changed cart is
+                re-priced; Place order is disabled until the fresh quote lands. */}
+            {quote && !quoteQuery.isError && availabilityQuery.data?.eligible && (
+              <View style={{ opacity: quoteQuery.isPlaceholderData ? 0.55 : 1 }}>
+                <BillDetailsCard quote={quote} itemCount={totalQuantity} />
+              </View>
+            )}
             {quote && !quoteQuery.isError && minimumShortfall > 0 && (
               <Text className="px-2 text-[13px] font-semibold text-[#B42318]">
                 {`Minimum order is ₹${quote.minimumOrder!.value}. Add items worth ₹${minimumShortfall} more to place your order.`}
@@ -336,7 +332,7 @@ export function CartScreen({ navigation, route }: Props) {
             {quote && quoteHasPriceChanges(items, quote) && (
               <Text className="px-2 text-[13px] text-[#996A16]">Some pack prices or sizes have changed. You’ll be asked to confirm before ordering.</Text>
             )}
-            {!storeClosed && (quoteQuery.isFetching || quoteQuery.isError || !quote) && (
+            {!storeClosed && (quoteQuery.isError || !quote) && (
               <View className="gap-2 rounded-2xl bg-white p-4">
                 <Text className="text-[13px] text-ink/65">{!accessToken ? 'Sign in to get your final bill.'
                   : !selectedAddress ? 'Choose a delivery address to get your final bill.'
@@ -354,7 +350,7 @@ export function CartScreen({ navigation, route }: Props) {
             onChangeAddress={() => setAddressSheetVisible(true)}
             paymentBar={<CartPaymentBar method={payment.paymentMethod} apps={payment.upiApps} total={payment.grandTotal}
               bankName={payment.paymentMethod === 'netbanking' ? route.params?.selectedNetbankingBank?.name : undefined}
-              busy={payment.isPlacingOrder} storeClosed={storeClosed} disabled={addressesLoading || !payment.methodsReady || !quote || minimumShortfall > 0 || quoteQuery.isFetching || quoteQuery.isError || !availabilityQuery.data?.eligible || availabilityQuery.isError}
+              busy={payment.isPlacingOrder} storeClosed={storeClosed} disabled={addressesLoading || !payment.methodsReady || !quote || minimumShortfall > 0 || quoteQuery.isFetching || quoteQuery.isError || availabilityQuery.isPlaceholderData || !availabilityQuery.data?.eligible || availabilityQuery.isError}
               onChoose={choosePayment} onPlaceOrder={payment.placeOrder} />}
           />
 

@@ -31,7 +31,7 @@ export function useCheckoutRecovery() {
         if (saved && !resolved && !stopped) {
           const state = navigation.getState();
           const active = state?.routes[state.index]?.name;
-          if (!seen.has(saved.id) && active !== 'CheckoutAttemptRecovery' && active !== 'PaymentRecovery' && active !== 'PaymentMethod' && active !== 'PaymentProcessing' && active !== 'Receipt') {
+          if (!seen.has(saved.id) && active !== 'CheckoutAttemptRecovery' && active !== 'PaymentRecovery' && active !== 'PaymentMethod' && active !== 'PaymentProcessing' && active !== 'OrderPlaced') {
             seen.add(saved.id); navigation.navigate('CheckoutAttemptRecovery');
           }
           return;
@@ -42,7 +42,7 @@ export function useCheckoutRecovery() {
         if (seen.has(key)) return;
         const state = navigation.getState();
         const active = state?.routes[state.index]?.name;
-        if (active === 'PaymentMethod' || active === 'PaymentRecovery' || active === 'PaymentProcessing' || active === 'Receipt') return;
+        if (active === 'PaymentMethod' || active === 'PaymentRecovery' || active === 'PaymentProcessing' || active === 'OrderPlaced') return;
         seen.add(key);
         navigation.navigate('PaymentRecovery', { target });
       } catch { /* Offline discovery is retried on foreground; checkout remains guarded. */ }
