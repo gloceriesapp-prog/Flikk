@@ -23,9 +23,7 @@ import Svg, { Path } from 'react-native-svg';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { loadPaymentChime } from '../../payments/paymentChime';
 import type { AppStackParamList } from '../../navigation/types';
-import { arrivalLine, headline, paymentLine } from './orderPlacedText';
 import { isPreviewing } from '../../dev/screenPreview';
-import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OrderPlaced'>;
 
@@ -35,8 +33,6 @@ const SEAL = 112;
 const TICK_PATH = 'M30 57 L48 74 L82 39';
 const TICK_LENGTH = 74; // the two strokes of TICK_PATH, rounded up
 const GREEN = '#34C759';
-const GREEN_DARK = '#1F8A3B';
-const GREEN_SOFT = '#EAF8EE';
 
 // The verified badge: a circle with 12 soft scallops (petal edge), drawn as
 // one closed path on the 112x112 seal.
@@ -65,11 +61,8 @@ function Rise({ delay, reduceMotion, children }: { delay: number; reduceMotion: 
 }
 
 export function OrderPlacedScreen({ navigation, route }: Props) {
-  const { orderId, amount, paymentMethodLabel, paid, isTrip, estimatedDeliveryMinutes, estimatedDeliveryAt, preorderLabel } = route.params;
+  const { orderId, paymentMethodLabel, paid, isTrip } = route.params;
   const reduceMotion = useReducedMotion();
-  // The order's own estimate; without one, the same app-wide estimate Home
-  // and the product cards show ("In 12 minutes"), so the numbers agree.
-  const appEstimateMinutes = useDeliveryEstimateMinutes();
   const left = useRef(false);
 
   const seal = useSharedValue(reduceMotion ? 1 : 0);
@@ -134,28 +127,16 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
 
           <View className="mt-9 items-center">
             <Rise delay={520} reduceMotion={reduceMotion}>
-              <Text className="text-center text-[26px] font-bold leading-[32px] tracking-tight text-ink">
-                {headline(paid, Boolean(preorderLabel))}
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}
+                className="text-center text-[23px] font-bold tracking-tight text-ink">
+                Order Placed Successfully! 🎉
               </Text>
             </Rise>
-            <Rise delay={620} reduceMotion={reduceMotion}>
-              <Text className="mt-2 text-center text-[16px] font-medium text-ink/60">{paymentLine(amount, paid, paymentMethodLabel)}</Text>
+            <Rise delay={640} reduceMotion={reduceMotion}>
+              <Text className="mt-3 text-center text-[16px] font-medium text-ink/60">Your groceries are getting ready!</Text>
             </Rise>
-            <Rise delay={720} reduceMotion={reduceMotion}>
-              <View className="mt-6 rounded-full px-5 py-2.5" style={{ backgroundColor: GREEN_SOFT }}>
-                <Text className="text-center text-[15px] font-semibold" style={{ color: GREEN_DARK }}>
-                  {arrivalLine({ preorderLabel, estimatedDeliveryMinutes: estimatedDeliveryMinutes ?? appEstimateMinutes, estimatedDeliveryAt })}
-                </Text>
-              </View>
-            </Rise>
-            {preorderLabel ? (
-              <Rise delay={800} reduceMotion={reduceMotion}>
-                <Text className="mt-3 text-center text-[13px] text-ink/50">Waiting for the shop to confirm</Text>
-              </Rise>
-            ) : null}
           </View>
         </View>
-
       </View>
     </Pressable>
   );

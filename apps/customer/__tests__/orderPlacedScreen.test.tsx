@@ -6,8 +6,6 @@ const mockChime = { play: jest.fn(), release: jest.fn() };
 jest.mock('../src/payments/paymentChime', () => ({ loadPaymentChime: () => mockChime }));
 jest.mock('react-native-reanimated', () => ({ ...require('react-native-reanimated/mock'), useReducedMotion: () => false }));
 jest.mock('expo-haptics', () => ({ notificationAsync: jest.fn(async () => {}), NotificationFeedbackType: { Success: 'success' } }));
-// The app-wide estimate Home shows ("In 12 minutes").
-jest.mock('../src/api/deliverySettings', () => ({ useDeliveryEstimateMinutes: () => 12 }));
 jest.mock('../src/components/ScreenStatusBar', () => ({ ScreenStatusBar: () => null }));
 
 type Props = ComponentProps<typeof OrderPlacedScreen>;
@@ -28,9 +26,8 @@ afterEach(() => jest.useRealTimers());
 
 it('celebrates a paid order with the chime, then opens tracking on its own', async () => {
   const reset = await show();
-  expect(screen.getByText('Order placed successfully!')).toBeTruthy();
-  expect(screen.getByText('₹245 paid via UPI')).toBeTruthy();
-  expect(screen.getByText('Arriving in 29 mins')).toBeTruthy();
+  expect(screen.getByText('Order Placed Successfully! 🎉')).toBeTruthy();
+  expect(screen.getByText('Your groceries are getting ready!')).toBeTruthy();
   await act(async () => { jest.advanceTimersByTime(ORDER_PLACED_MS - 1); });
   expect(mockChime.play).toHaveBeenCalledTimes(1);
   expect(reset).not.toHaveBeenCalled();
@@ -45,17 +42,9 @@ it('skips straight to tracking on tap, once', async () => {
   expect(reset).toHaveBeenCalledTimes(1);
 });
 
-it('cash on delivery and pre-orders: no chime, the right words', async () => {
-  await show({ paid: false, paymentMethodLabel: 'Cash on delivery', preorderLabel: 'Tomorrow · 7 – 9 AM' });
-  expect(screen.getByText('Pre-order placed!')).toBeTruthy();
-  expect(screen.getByText('Pay ₹245 on delivery')).toBeTruthy();
-  expect(screen.getByText('Delivers Tomorrow · 7 – 9 AM')).toBeTruthy();
-  expect(screen.getByText('Waiting for the shop to confirm')).toBeTruthy();
+it('cash on delivery: same message, no payment chime', async () => {
+  await show({ paid: false, paymentMethodLabel: 'Cash on delivery' });
+  expect(screen.getByText('Order Placed Successfully! 🎉')).toBeTruthy();
   await act(async () => { jest.advanceTimersByTime(ORDER_PLACED_MS); });
   expect(mockChime.play).not.toHaveBeenCalled();
-});
-
-it('without its own estimate the order shows the app-wide one, same as Home', async () => {
-  await show({ estimatedDeliveryMinutes: null });
-  expect(screen.getByText('Arriving in 12 mins')).toBeTruthy();
 });
