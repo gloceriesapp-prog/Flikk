@@ -27,7 +27,6 @@ afterEach(() => jest.useRealTimers());
 it('celebrates a paid order with the chime, then opens tracking on its own', async () => {
   const reset = await show();
   expect(screen.getByText('Yay! Your Order Placed\nSuccessfully!')).toBeTruthy();
-  expect(screen.getByText('Your groceries are getting ready!')).toBeTruthy();
   await act(async () => { jest.advanceTimersByTime(ORDER_PLACED_MS - 1); });
   expect(mockChime.play).toHaveBeenCalledTimes(1);
   expect(reset).not.toHaveBeenCalled();

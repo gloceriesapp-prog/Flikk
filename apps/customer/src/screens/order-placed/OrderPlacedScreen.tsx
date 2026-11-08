@@ -132,9 +132,6 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
                 {'Yay! Your Order Placed\nSuccessfully!'}
               </Text>
             </Rise>
-            <Rise delay={640} reduceMotion={reduceMotion}>
-              <Text className="mt-4 text-center text-[19px] font-medium text-ink/60">Your groceries are getting ready!</Text>
-            </Rise>
           </View>
         </View>
       </View>
