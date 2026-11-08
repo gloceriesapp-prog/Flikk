@@ -220,15 +220,24 @@ export function toBrand(input: Pick<ProductWriteInput, 'brandId'>): { brand_id: 
   return { brand_id: input.brandId };
 }
 
+// Pre-order is opt-in. Off: only the flag is saved and the minimum / notice
+// fields are ignored, so a normal product is never blocked by them. On: the
+// limits match the database (products_preorder_limits): minimum 1–999 packs,
+// notice 0 (same day) to 4 days.
+export const PREORDER_MAX_LEAD_DAYS = 4;
+
 export function toPreorder(input: Pick<ProductWriteInput, 'preorderEnabled' | 'preorderMinQty' | 'preorderLeadDays'>):
-  { preorder_enabled: boolean; preorder_min_qty: number; preorder_lead_days: number } | undefined {
+  { preorder_enabled: boolean; preorder_min_qty?: number; preorder_lead_days?: number } | undefined {
   if (input.preorderEnabled == null) return undefined;
   if (typeof input.preorderEnabled !== 'boolean') throw new Error('preorderEnabled must be true or false.');
+  if (!input.preorderEnabled) return { preorder_enabled: false };
   const minQty = input.preorderMinQty ?? 1;
-  const leadDays = input.preorderLeadDays ?? 1;
+  const leadDays = input.preorderLeadDays ?? 0;
   if (!Number.isInteger(minQty) || minQty < 1 || minQty > 999) throw new Error('Pre-order minimum must be a whole number from 1 to 999.');
-  if (!Number.isInteger(leadDays) || leadDays < 1 || leadDays > 14) throw new Error('Pre-order notice must be 1 to 14 days.');
-  return { preorder_enabled: input.preorderEnabled, preorder_min_qty: minQty, preorder_lead_days: leadDays };
+  if (!Number.isInteger(leadDays) || leadDays < 0 || leadDays > PREORDER_MAX_LEAD_DAYS) {
+    throw new Error(`Pre-order notice must be same day to ${PREORDER_MAX_LEAD_DAYS} days.`);
+  }
+  return { preorder_enabled: true, preorder_min_qty: minQty, preorder_lead_days: leadDays };
 }
 
 const SERVING_VALUES = ['chilled', 'room_temperature'];

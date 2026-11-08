@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_EXTRA_IMAGES, toBrand, toExtraImageUrls, validateProductInput } from './productValidation';
+import { MAX_EXTRA_IMAGES, toBrand, toPreorder, toExtraImageUrls, validateProductInput } from './productValidation';
 
 const cover = 'https://cdn.example/a.webp';
 
@@ -83,4 +83,19 @@ test('brand: absent leaves it alone, empty or null clears it, only real ids are 
   const id = '3f2b8a1c-5d4e-4f6a-9b7c-1d2e3f4a5b6c';
   assert.deepEqual(toBrand({ brandId: id }), { brand_id: id });
   assert.throws(() => toBrand({ brandId: 'amul' }), /brand/i);
+});
+
+test('pre-order: off saves only the flag and never checks the pre-order fields', () => {
+  assert.equal(toPreorder({}), undefined);
+  assert.deepEqual(toPreorder({ preorderEnabled: false, preorderMinQty: 1, preorderLeadDays: 0 }), { preorder_enabled: false });
+  assert.deepEqual(toPreorder({ preorderEnabled: false, preorderLeadDays: 99 }), { preorder_enabled: false });
+});
+
+test('pre-order: on allows same day to 4 days and 1-999 packs', () => {
+  assert.deepEqual(toPreorder({ preorderEnabled: true, preorderMinQty: 5, preorderLeadDays: 0 }),
+    { preorder_enabled: true, preorder_min_qty: 5, preorder_lead_days: 0 });
+  assert.deepEqual(toPreorder({ preorderEnabled: true, preorderMinQty: 1, preorderLeadDays: 4 }),
+    { preorder_enabled: true, preorder_min_qty: 1, preorder_lead_days: 4 });
+  assert.throws(() => toPreorder({ preorderEnabled: true, preorderMinQty: 1, preorderLeadDays: 5 }), /notice/);
+  assert.throws(() => toPreorder({ preorderEnabled: true, preorderMinQty: 0, preorderLeadDays: 1 }), /minimum/);
 });
