@@ -69,7 +69,7 @@ export type AppStackParamList = {
   RegionalCategory: { categoryId: string };
   CoconutOilCollection: undefined;
   StoreDetail: { storeId: string; storeName: string };
-  Cart: { selectedWallet?: import('../payments/paymentMethod').WalletSelection; selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedPaymentMethod?: PaymentMethod; startSelectedPayment?: boolean } | undefined;
+  Cart: { selectedWallet?: import('../payments/paymentMethod').WalletSelection; selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedPaymentMethod?: PaymentMethod } | undefined;
   PaymentMethod: { selectedNetbankingBank?: import('../api/payments').NetbankingBank; selectedMethod: PaymentMethod | null; selectedAddressId?: string; source?: 'profile'; recoveryTarget?: import('../api/payments').PaymentTarget };
   CheckoutAttemptRecovery: undefined;
   PaymentRecovery: { target: import('../api/payments').PaymentTarget };
