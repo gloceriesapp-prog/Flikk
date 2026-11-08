@@ -1,25 +1,18 @@
-// Real per-size pricing selector — per an explicit reference image
-// (Blinkit's own "128 g" / "3 x 128 g" card grid). Only renders when a
-// product actually has more than one real variant (Product['variants'],
-// backend's product_variants table) — a single-size product has nothing
-// to choose between, so it keeps the plain weight/price row
-// ProductDetailInfo already rendered before this component existed
-// (that's the "if there is no options" case: this file renders nothing,
-// the caller's own fallback UI is what shows).
+// Pack-size picker on the product page, shown only when a product has more
+// than one real size (product_variants). Each card: the product photo (same
+// grey frame as the product cards), size, "% OFF", price over MRP and the
+// per-unit price. Selected: solid brand-blue border. Others: soft dashed
+// border. Sold out: faded with a "SOLD OUT" stamp and not selectable.
+// Low stock (1-5 packs, when the store tracks it): "N left" sits in the
+// card's bottom border.
 //
-// Text-only cards (the reference's other variant, no per-card image) —
-// per an explicit ask.
-//
-// Each card shows its own real price/discount/per-kg line (unitPriceLabel,
-// api/products.ts) — selecting a card is NOT cosmetic
-// here, unlike the old sizeOptions chip row: the caller (ProductDetailInfo)
-// threads the selected variant's id/price down to ProductDetailFooter so
-// "250 g" and "1 kg" of the same product genuinely add to the cart as two
-// different-priced lines, not the same line at whichever price was
-// selected last.
+// Selecting a card is not cosmetic: the caller threads the chosen size's id
+// and price down to ProductDetailFooter, so each size is its own cart line.
 
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { AppImage as Image } from '../AppImage';
 import { RupeePrice } from '../RupeePrice';
+import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import type { Product } from '../../screens/home/products/types';
 
 type ProductVariant = NonNullable<Product['variants']>[number];
@@ -28,76 +21,107 @@ interface Props {
   variants: ProductVariant[];
   selectedId: string;
   onSelect: (id: string) => void;
+  imageUrl?: string;
 }
 
-// Unit cards per the reference: a "X% OFF" ribbon tab on the top edge,
-// green outline + tint on the selected card, size then price over MRP.
-const SELECTED_BORDER = '#4CAF50';
-const SELECTED_FILL = '#F4FBF4';
-const RIBBON = '#5B83EA';
-const RIBBON_FOLD = '#3C62C9';
+const BLUE = '#155DFC';
+const GREEN = '#2E9E77';
+const SOLD_OUT_RED = '#E23744';
+const LOW_STOCK_MAX = 5;
+const CARD_WIDTH = 150;
 
 export function discountPercentOf(price: number, originalPrice?: number): number | null {
   return originalPrice && originalPrice > price ? Math.round((1 - price / originalPrice) * 100) : null;
 }
 
-function OffRibbon({ percent }: { percent: number }) {
+// "3 left" when the store tracks this size and only a few packs remain.
+export function lowStockLabel(variant: Pick<ProductVariant, 'isAvailable' | 'stockLeft'>): string | null {
+  const left = variant.stockLeft;
+  return variant.isAvailable !== false && left != null && left > 0 && left <= LOW_STOCK_MAX ? `${left} left` : null;
+}
+
+function SoldOutStamp({ updating }: { updating: boolean }) {
   return (
-    <View pointerEvents="none" className="absolute -top-[11px] left-0 right-0 items-center">
-      <View className="flex-row items-end">
-        {/* Folded corners either side of the tab. */}
-        <View style={{ width: 0, height: 0, borderTopWidth: 5, borderLeftWidth: 5, borderTopColor: 'transparent', borderLeftColor: RIBBON_FOLD, marginBottom: -5 }} />
-        <View className="rounded-t-[4px] px-2.5 py-[3px]" style={{ backgroundColor: RIBBON }}>
-          <Text className="text-[11px] font-bold text-white">{percent}% OFF</Text>
-        </View>
-        <View style={{ width: 0, height: 0, borderTopWidth: 5, borderRightWidth: 5, borderTopColor: 'transparent', borderRightColor: RIBBON_FOLD, marginBottom: -5 }} />
+    <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+      <View className="rounded-[6px] bg-white px-2 py-0.5"
+        style={{ borderWidth: 2, borderColor: SOLD_OUT_RED, transform: [{ rotate: '-12deg' }] }}>
+        <Text className="text-[13px] font-extrabold tracking-wider" style={{ color: SOLD_OUT_RED }}>
+          {updating ? 'UPDATING' : 'SOLD OUT'}
+        </Text>
       </View>
     </View>
   );
 }
 
-export function ProductVariantOptions({ variants, selectedId, onSelect }: Props) {
+function VariantCard({ variant, selected, imageUrl, onSelect }: {
+  variant: ProductVariant; selected: boolean; imageUrl?: string; onSelect: () => void;
+}) {
+  const soldOut = variant.isAvailable === false;
+  const percent = discountPercentOf(variant.price, variant.originalPrice);
+  const left = lowStockLabel(variant);
+
+  return (
+    <Pressable
+      disabled={soldOut}
+      onPress={onSelect}
+      accessibilityRole="radio"
+      accessibilityState={{ selected, disabled: soldOut }}
+      accessibilityLabel={`${variant.label}, ₹${variant.price}${soldOut ? ', sold out' : ''}${left ? `, ${left}` : ''}`}
+      className="rounded-[18px] p-2.5"
+      style={{
+        width: CARD_WIDTH,
+        borderWidth: selected ? 2 : 1.5,
+        borderStyle: selected ? 'solid' : 'dashed',
+        borderColor: selected ? BLUE : '#D9DDE3',
+        backgroundColor: '#FFFFFF',
+      }}
+    >
+      <View style={{ opacity: soldOut ? 0.4 : 1 }}>
+        <View className="aspect-[4/3.4] w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
+          <Image source={{ uri: imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+        </View>
+        <Text className="mt-2 text-[16px] font-bold text-ink" numberOfLines={1}>{variant.label}</Text>
+        {percent ? (
+          <View className="mt-0.5 flex-row items-center gap-2">
+            <Text className="text-[13px] font-bold" style={{ color: GREEN }}>{percent}% OFF</Text>
+            <View className="h-px flex-1 bg-[#E5E7EB]" />
+          </View>
+        ) : null}
+        <View className="mt-1 flex-row flex-wrap items-baseline gap-1.5">
+          <RupeePrice amount={variant.price} size={17} />
+          {percent ? <RupeePrice amount={variant.originalPrice ?? 0} size={13} strike color="#8A8F98" /> : null}
+        </View>
+        {variant.unitPriceLabel ? (
+          <Text className="mt-0.5 text-[11.5px] font-medium text-ink/45">{variant.unitPriceLabel}</Text>
+        ) : null}
+      </View>
+
+      {soldOut ? <SoldOutStamp updating={variant.unavailableReason === 'stock_unconfirmed'} /> : null}
+
+      {left ? (
+        <View pointerEvents="none" className="absolute -bottom-[9px] left-0 right-0 items-center">
+          <Text className="bg-white px-1.5 text-[11.5px] font-semibold" style={{ color: selected ? BLUE : '#6B7280' }}>{left}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
+export function ProductVariantOptions({ variants, selectedId, onSelect, imageUrl }: Props) {
   if (variants.length <= 1) return null;
+  const selected = variants.find((v) => v.id === selectedId) ?? variants[0];
 
   return (
     <View className="gap-3">
-      <Text className="text-[16px] font-semibold text-ink">Select Unit</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingTop: 12, paddingBottom: 2, paddingRight: 4 }}>
-        {variants.map((variant) => {
-          const isSelected = variant.id === selectedId;
-          const unavailable = variant.isAvailable === false;
-          const percent = discountPercentOf(variant.price, variant.originalPrice);
-          return (
-            <Pressable
-              key={variant.id}
-              disabled={unavailable}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: isSelected, disabled: unavailable }}
-              onPress={() => onSelect(variant.id)}
-              className="min-h-[96px] w-[148px] justify-center gap-1 rounded-[16px] px-3.5 pb-3 pt-5"
-              style={{
-                opacity: unavailable ? 0.45 : 1,
-                borderWidth: 1.5,
-                borderColor: isSelected ? SELECTED_BORDER : '#C9C9C9',
-                backgroundColor: isSelected ? SELECTED_FILL : '#FFFFFF',
-              }}
-            >
-              {percent ? <OffRibbon percent={percent} /> : null}
-              <Text className="text-[15px] text-ink" numberOfLines={1}>{variant.label}</Text>
-              <View className="flex-row items-center gap-1.5">
-                <RupeePrice amount={variant.price} size={16} />
-                {percent ? <RupeePrice amount={variant.originalPrice ?? 0} size={15} strike color="#6B6B6B" /> : null}
-              </View>
-              {unavailable ? (
-                <Text className="text-[10.5px] font-medium text-[#B42318]">
-                  {variant.unavailableReason === 'stock_unconfirmed' ? 'Stock updating' : 'Out of stock'}
-                </Text>
-              ) : variant.unitPriceLabel ? (
-                <Text className="text-[10.5px] font-medium text-ink/45">{variant.unitPriceLabel}</Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
+      <Text className="text-[15px] text-ink/55">
+        Quantity: <Text className="font-semibold text-ink">{selected?.label}</Text>
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 12, paddingBottom: 12, paddingRight: 4 }}>
+        {variants.map((variant) => (
+          <VariantCard key={variant.id} variant={variant} selected={variant.id === selectedId}
+            imageUrl={imageUrl} onSelect={() => onSelect(variant.id)} />
+        ))}
       </ScrollView>
     </View>
   );

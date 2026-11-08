@@ -105,6 +105,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
             variants={variants!}
             selectedId={selectedVariantId ?? variants![0]!.id}
             onSelect={(id) => onSelectVariant?.(id)}
+            imageUrl={product.imageUrls?.[0] ?? product.imageUrl}
           />
         ) : null}
 
