@@ -26,7 +26,7 @@ afterEach(() => jest.useRealTimers());
 
 it('celebrates a paid order with the chime, then opens tracking on its own', async () => {
   const reset = await show();
-  expect(screen.getByText('Order Placed Successfully! 🎉')).toBeTruthy();
+  expect(screen.getByText('Yay! Your Order Placed\nSuccessfully!')).toBeTruthy();
   expect(screen.getByText('Your groceries are getting ready!')).toBeTruthy();
   await act(async () => { jest.advanceTimersByTime(ORDER_PLACED_MS - 1); });
   expect(mockChime.play).toHaveBeenCalledTimes(1);
@@ -44,7 +44,7 @@ it('skips straight to tracking on tap, once', async () => {
 
 it('cash on delivery: same message, no payment chime', async () => {
   await show({ paid: false, paymentMethodLabel: 'Cash on delivery' });
-  expect(screen.getByText('Order Placed Successfully! 🎉')).toBeTruthy();
+  expect(screen.getByText('Yay! Your Order Placed\nSuccessfully!')).toBeTruthy();
   await act(async () => { jest.advanceTimersByTime(ORDER_PLACED_MS); });
   expect(mockChime.play).not.toHaveBeenCalled();
 });

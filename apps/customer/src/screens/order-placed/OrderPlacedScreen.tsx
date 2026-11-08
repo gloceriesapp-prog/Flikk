@@ -127,9 +127,9 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
 
           <View className="mt-9 items-center">
             <Rise delay={520} reduceMotion={reduceMotion}>
-              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}
-                className="text-center text-[23px] font-bold tracking-tight text-ink">
-                Order Placed Successfully! 🎉
+              <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}
+                className="text-center text-[24px] font-bold leading-[31px] tracking-tight text-ink">
+                {'Yay! Your Order Placed\nSuccessfully!'}
               </Text>
             </Rise>
             <Rise delay={640} reduceMotion={reduceMotion}>
