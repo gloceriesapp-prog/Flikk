@@ -50,6 +50,7 @@ export default function InventoryPage() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [showingOnHome, setShowingOnHome] = useState<Product | null>(null);
   const [adding, setAdding] = useState(false);
+  const [fixingPhotos, setFixingPhotos] = useState(false);
   // Two-step inline delete: first click arms, second click (while armed)
   // commits — no window.confirm. deleteError surfaces the 409 per row.
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
@@ -212,6 +213,27 @@ export default function InventoryPage() {
     }
   }
 
+
+  // Re-saves product photos that have a solid colour band baked in, so they
+  // fill the card. Only photos the clean-up actually improves are replaced.
+  async function fixPhotoBorders() {
+    if (!window.confirm('Remove the solid colour borders from older product photos so they fill the card? Only photos that have a border are changed.')) return;
+    setFixingPhotos(true);
+    try {
+      const res = await fetch('/api/products/fix-photo-borders', { method: 'POST' });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? 'Could not fix photos.');
+      const { checked, fixed, failed } = body as { checked: number; fixed: string[]; failed: string[] };
+      if (fixed.length) toast.success(`Fixed photos on ${fixed.length} product${fixed.length === 1 ? '' : 's'}`, fixed.join(', '));
+      else toast.info('Nothing to fix', `Checked ${checked} photos.`);
+      if (failed.length) toast.error('Some photos could not be fixed', failed.join(', '));
+      if (fixed.length) await loadData();
+    } catch (err) {
+      toast.error('Could not fix photos', err instanceof Error ? err.message : undefined);
+    } finally {
+      setFixingPhotos(false);
+    }
+  }
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
@@ -221,7 +243,17 @@ export default function InventoryPage() {
             {loading ? 'Loading…' : `${products.length} products listed across every store in the zone.`}
           </p>
         </div>
-        <Link href="/inventory-pack-stock" className="ml-auto rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-ink">Set available packs</Link>
+        <button
+          type="button"
+          onClick={() => void fixPhotoBorders()}
+          disabled={loading || fixingPhotos}
+          title="Remove solid colour bands from older product photos so they fill the card"
+          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-40"
+        >
+          <ImageIcon size={15} />
+          {fixingPhotos ? 'Fixing photos…' : 'Fix photo borders'}
+        </button>
+        <Link href="/inventory-pack-stock" className=" rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-ink">Set available packs</Link>
         <button
           type="button"
           onClick={() => setAdding(true)}
