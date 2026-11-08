@@ -6,8 +6,9 @@
 // both managed from admin's own Categories screen — not the old
 // CATEGORY_SECTIONS mock. A section with zero categories (a founder just
 // created the title, hasn't added any yet) is skipped rather than shown as
-// an empty heading. On Home (homeOnly) only the categories admin marked
-// "Show on Home" appear; the Categories screen shows them all.
+// an empty heading. On Home (homeOnly) only titles admin switched "On Home"
+// appear, each with its tiles still marked "Show on Home"; the Categories
+// screen shows everything.
 
 import { View } from 'react-native';
 import { CategorySectionGroup } from './CategorySectionGroup';
@@ -16,6 +17,7 @@ import { useCategorySections } from './useCategorySections';
 export function CategorySections({ homeOnly = false }: { homeOnly?: boolean }) {
   const { data: sections = [] } = useCategorySections();
   const nonEmptySections = sections
+    .filter((section) => !homeOnly || section.showOnHome)
     .map((section) => (homeOnly ? { ...section, categories: section.categories.filter((c) => c.showOnHome) } : section))
     .filter((section) => section.categories.length > 0);
 

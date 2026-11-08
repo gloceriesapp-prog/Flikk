@@ -10,7 +10,8 @@
 // skips rendering an empty one rather than this route hiding it, same
 // convention CategorySectionGroup.tsx already used before real data
 // existed. Every active category is returned with show_on_home; the Home
-// screen's section filters on it, the Categories screen shows them all.
+// screen's section shows a title only when its own show_on_home is on, and
+// inside it only categories with show_on_home; Categories shows all.
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 
@@ -20,7 +21,7 @@ categorySectionsRouter.get('/', async (req, res, next) => {
   try {
     const { data: sections, error: sectionsError } = await supabase
       .from('category_sections')
-      .select('id, name, sort_order')
+      .select('id, name, sort_order, show_on_home')
       .order('sort_order')
       .order('name');
     if (sectionsError) throw sectionsError;
@@ -36,6 +37,7 @@ categorySectionsRouter.get('/', async (req, res, next) => {
     const grouped = sections.map((section) => ({
       id: section.id,
       name: section.name,
+      show_on_home: section.show_on_home,
       categories: categories
         .filter((c) => c.section_id === section.id)
         .map((c) => ({ id: c.id, name: c.name, image_url: c.image_url, show_on_home: c.show_on_home })),

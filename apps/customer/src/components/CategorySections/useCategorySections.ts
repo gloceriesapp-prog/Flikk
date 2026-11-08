@@ -21,12 +21,15 @@ export interface RemoteCategory {
 export interface RemoteCategorySection {
   id: string;
   name: string;
+  // Admin's per-title "Show on Home"; true when an older backend omits it.
+  showOnHome: boolean;
   categories: RemoteCategory[];
 }
 
 interface ApiCategorySection {
   id: string;
   name: string;
+  show_on_home?: boolean;
   categories: { id: string; name: string; image_url: string | null; show_on_home?: boolean }[];
 }
 
@@ -39,6 +42,7 @@ export function useCategorySections() {
         (row): RemoteCategorySection => ({
           id: row.id,
           name: row.name,
+          showOnHome: row.show_on_home ?? true,
           categories: row.categories.map((c) => ({
             id: c.id, name: c.name, imageUrl: c.image_url ?? undefined, showOnHome: c.show_on_home ?? true,
           })),

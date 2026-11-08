@@ -62,6 +62,8 @@ export default function CategoriesPage() {
     sectionRequest('/api/category-sections', { method: 'POST', body: JSON.stringify({ name, sortOrder: sections.length }) }, 'Add failed.');
   const handleRenameSection = (id: string, name: string) =>
     sectionRequest(`/api/category-sections/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }, 'Rename failed.');
+  const handleToggleSectionHome = (id: string, showOnHome: boolean) =>
+    sectionRequest(`/api/category-sections/${id}`, { method: 'PATCH', body: JSON.stringify({ showOnHome }) }, 'Could not update the title.');
   const handleDeleteSection = (id: string) =>
     sectionRequest(`/api/category-sections/${id}`, { method: 'DELETE' }, 'Delete failed.');
 
@@ -150,6 +152,7 @@ export default function CategoriesPage() {
         categoryCounts={categoryCounts}
         onAdd={handleAddSection}
         onRename={handleRenameSection}
+        onToggleHome={handleToggleSectionHome}
         onDelete={handleDeleteSection}
       />
 

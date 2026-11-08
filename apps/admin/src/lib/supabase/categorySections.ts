@@ -12,12 +12,13 @@ export interface CategorySectionRow {
   id: string;
   name: string;
   sort_order: number;
+  show_on_home: boolean;
 }
 
-export const CATEGORY_SECTION_SELECT = 'id, name, sort_order';
+export const CATEGORY_SECTION_SELECT = 'id, name, sort_order, show_on_home';
 
 export function mapRowToCategorySection(row: CategorySectionRow): CategorySection {
-  return { id: row.id, name: row.name, sortOrder: row.sort_order };
+  return { id: row.id, name: row.name, sortOrder: row.sort_order, showOnHome: row.show_on_home };
 }
 
 export async function fetchCategorySections(): Promise<CategorySection[]> {

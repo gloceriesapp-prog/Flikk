@@ -25,7 +25,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json(mapRowToSubCategory(data as unknown as SubCategoryRow));
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Could not add sub-category.';
+    // Postgres errors are plain objects, not Error instances; 23505 = a
+    // sub-category with that name already exists under this category.
+    const duplicate = err && typeof err === 'object' && 'code' in err && (err as { code: unknown }).code === '23505';
+    const message = duplicate ? 'That sub-category already exists under this category.'
+      : err instanceof Error ? err.message : 'Could not add sub-category.';
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
