@@ -556,6 +556,8 @@ export interface CategorySection {
   id: string;
   name: string;
   sortOrder: number;
+  // Home's category section shows this whole title (its tiles) when on.
+  showOnHome: boolean;
 }
 
 export type NewCategoryInput = Omit<Category, 'id'>;

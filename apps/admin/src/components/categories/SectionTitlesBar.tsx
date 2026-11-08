@@ -8,6 +8,8 @@
 // in place (pencil; Enter saves, Esc cancels) or deleted after a confirm that
 // says how many categories move to Untitled. Names are checked on the server
 // (lib/categorySectionName.ts): required, 40 characters, no duplicates.
+// The On Home / Off Home pill picks which whole titles show on the app's Home
+// category section; the Categories screen always shows every title.
 
 import { useState } from 'react';
 import { Check, Pencil, Plus, X } from '@/components/icons';
@@ -22,6 +24,7 @@ export function SectionTitlesBar({
   categoryCounts,
   onAdd,
   onRename,
+  onToggleHome,
   onDelete,
 }: {
   sections: CategorySection[];
@@ -29,6 +32,7 @@ export function SectionTitlesBar({
   categoryCounts: Record<string, number>;
   onAdd: (name: string) => Promise<void>;
   onRename: (id: string, name: string) => Promise<void>;
+  onToggleHome: (id: string, showOnHome: boolean) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
   const [newName, setNewName] = useState('');
@@ -65,6 +69,12 @@ export function SectionTitlesBar({
     }
     setBusyId(editing.id);
     if (await run(() => onRename(editing.id, editing.name), 'Could not rename title — try again.')) setEditing(null);
+    setBusyId(null);
+  }
+
+  async function handleToggleHome(section: CategorySection) {
+    setBusyId(section.id);
+    await run(() => onToggleHome(section.id, !section.showOnHome), 'Could not update the title — try again.');
     setBusyId(null);
   }
 
@@ -121,6 +131,12 @@ export function SectionTitlesBar({
           return (
             <span key={section.id} className={CHIP}>
               {section.name}
+              <button type="button" onClick={() => handleToggleHome(section)} disabled={busy}
+                aria-pressed={section.showOnHome}
+                title={section.showOnHome ? 'Shown on Home. Click to hide it there.' : 'Hidden on Home. Click to show it there.'}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold disabled:opacity-40 ${section.showOnHome ? 'bg-brand-soft text-brand' : 'bg-card text-muted'}`}>
+                {section.showOnHome ? 'On Home' : 'Off Home'}
+              </button>
               <button type="button" onClick={() => setEditing({ id: section.id, name: section.name })} disabled={busy}
                 aria-label={`Rename ${section.name}`} className={`${ICON_BUTTON} hover:text-ink`}>
                 <Pencil size={12} />
