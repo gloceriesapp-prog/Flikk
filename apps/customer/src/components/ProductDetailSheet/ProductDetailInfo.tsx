@@ -26,6 +26,7 @@
 import { ChevronRightIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { RupeePrice } from '../RupeePrice';
+import { GILROY } from '../../theme/fonts';
 import { AppImage as Image } from '../AppImage';
 import { AppIcon } from '../AppIcon';
 import { colors } from '../../theme/tokens';
@@ -93,7 +94,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
     <View className="gap-3 bg-[#f6f6f6] px-3 pb-4 pt-3">
       <View className="gap-3 rounded-2xl bg-[#FFFFFF] px-4 py-4">
         <View className="flex-row items-start justify-between gap-3">
-          <Text className="flex-1 text-[20px] font-bold leading-[26px] text-ink">
+          <Text className="flex-1 text-[18px] leading-[24px] text-ink" style={{ fontFamily: GILROY.bold }}>
             {name}
             {localName ? ` (${localName})` : ''}
           </Text>
@@ -105,7 +106,6 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
             variants={variants!}
             selectedId={selectedVariantId ?? variants![0]!.id}
             onSelect={(id) => onSelectVariant?.(id)}
-            imageUrl={product.imageUrls?.[0] ?? product.imageUrl}
           />
         ) : null}
 
@@ -125,8 +125,9 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
           <ProductServingOptions options={product.servingOptions} selected={selectedServing} onSelect={onSelectServing} />
         ) : null}
 
-        {/* Selected unit summary: size, price + MRP, "% OFF on MRP", unit price. */}
-        <View className={hasOptions ? '' : '-mt-2'}>
+        {/* Single-price product: size, price + MRP, "% OFF on MRP", unit price.
+            With several sizes the Select Unit cards above already show all of it. */}
+        {hasRealVariants ? null : <View className={hasOptions ? '' : '-mt-2'}>
           <Text className="text-[14px] font-bold text-ink">{selectedVariant?.label ?? weight}</Text>
           <View className="mt-2 flex-row flex-wrap items-center gap-2">
             <RupeePrice amount={displayPrice} size={22} />
@@ -143,7 +144,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
           {(selectedVariant?.unitPriceLabel ?? product.unitPriceLabel) ? (
             <Text className="mt-1 text-[13px] text-ink/70">{selectedVariant?.unitPriceLabel ?? product.unitPriceLabel}</Text>
           ) : null}
-        </View>
+        </View>}
 
         {storeName && (
           <>

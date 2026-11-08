@@ -151,9 +151,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     // Product object identical to how it looked before this field existed.
     variants:
       variants.length > 1
-        ? variants.map((v) => ({ isAvailable: inventoryIssue(row, v) === undefined, unavailableReason: inventoryIssue(row, v), id: v.id, label: formatVariant(v), price: v.price, originalPrice: v.original_price ?? undefined, unitPriceLabel: unitPrice(v),
-          // Packs left, only when the store tracks this size's stock.
-          ...(typeof v.stock_quantity === 'number' ? { stockLeft: v.stock_quantity } : {}) }))
+        ? variants.map((v) => ({ isAvailable: inventoryIssue(row, v) === undefined, unavailableReason: inventoryIssue(row, v), id: v.id, label: formatVariant(v), price: v.price, originalPrice: v.original_price ?? undefined, unitPriceLabel: unitPrice(v) }))
         : undefined,
     description: row.description ?? undefined,
     categoryLabel: row.category,
