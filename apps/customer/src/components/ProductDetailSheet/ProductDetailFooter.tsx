@@ -17,6 +17,7 @@ import { CUT_SIZE_LABEL, SERVING_LABEL, cartLineId, type CutSize, type Serving }
 import type { CartPreorder } from '../../store/preorder';
 
 import type { Product, ProductOption } from '../../screens/home/products/types';
+import { discountPercentOf } from './ProductVariantOptions';
 
 const BAR_BLUE = '#1447e6';
 
@@ -74,6 +75,10 @@ export function ProductDetailFooter({
 
   const originalPrice =
     selectedVariant?.originalPrice ?? product.originalPrice;
+  const discount = discountPercentOf(price, originalPrice);
+  const selectionLabel = [weight, cutSize ? CUT_SIZE_LABEL[cutSize] : null, option?.name,
+    serving ? SERVING_LABEL[serving] : null, product.preorder ? `Min ${product.preorder.minQty}` : null]
+    .filter(Boolean).join(' · ');
 
   const quantity = useCartStore(
     (state) =>
@@ -110,10 +115,11 @@ export function ProductDetailFooter({
   }
 
   return (
-    <View className="flex-row items-center justify-between px-5 py-4">
+    <View className="flex-row items-center justify-between px-5 pb-1 pt-3">
       {/* LEFT — PRICE */}
-      <View className="flex-shrink">
-        <View className="flex-row items-end gap-2">
+      <View className="flex-shrink" style={{ flex: 1, paddingRight: 12 }}>
+        <Text numberOfLines={2} className="mb-1 text-[12px] font-medium text-ink/60">{selectionLabel}</Text>
+        <View className="flex-row items-end gap-2" style={{ flexWrap: 'wrap' }}>
           <RupeePrice
             amount={price}
             size={22}
@@ -131,11 +137,13 @@ export function ProductDetailFooter({
                 }}
               />
             )}
+          {discount != null && discount > 0 && (
+            <Text className="pb-0.5 text-[12px] font-bold text-[#16A34A]">{discount}% off</Text>
+          )}
         </View>
 
         <Text className="mt-0.5 text-[11px] font-medium text-ink/50">
-          {[weight, cutSize ? CUT_SIZE_LABEL[cutSize] : null, option?.name, serving ? SERVING_LABEL[serving] : null,
-            product.preorder ? `Min ${product.preorder.minQty}` : null].filter(Boolean).join(' · ')}
+          Inclusive of all taxes
         </Text>
       </View>
 

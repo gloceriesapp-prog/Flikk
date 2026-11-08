@@ -9,20 +9,19 @@
 // (OtpBoxInput.tsx's active box border is black, not lime).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { ScreenStatusBar as StatusBar } from '../components/ScreenStatusBar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { requestOtp, verifyOtp } from '../api/auth';
 import { ApiError } from '../api/client';
-import { AppIcon } from '../components/AppIcon';
 import { OtpBoxInput } from '../components/OtpBoxInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useAuthStore } from '../store/useAuthStore';
 import { colors } from '../theme/tokens';
 import { roleMismatchMessage } from '../utils/roleGuard';
 import type { AuthStackParamList } from '../navigation/types';
+import { IconlyArrowLeft } from '../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'OtpVerification'>;
 
@@ -105,7 +104,7 @@ export function OtpVerificationScreen({ route, navigation }: Props) {
             hitSlop={12}
             className="h-11 w-11 items-center justify-center rounded-full bg-gray-100"
           >
-            <AppIcon icon={ArrowLeft01Icon} size={20} color={colors.ink} />
+            <IconlyArrowLeft size={20} color={colors.ink} />
           </Pressable>
 
           <View className="gap-1.5">

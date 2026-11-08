@@ -10,7 +10,7 @@
 // soft bottom hairline instead of a hard content cut, and tighter spacing,
 // per an explicit "make this look premium and wow" ask.
 
-import { ArrowLeft01Icon, ChevronDownIcon, Search01Icon } from '@hugeicons/core-free-icons';
+import { ChevronDownIcon, Search01Icon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,6 +18,7 @@ import { AppIcon } from '../../../components/AppIcon';
 import { colors } from '../../../theme/tokens';
 import { useLocationStore } from '../../../store/useLocationStore';
 import type { AppStackParamList } from '../../../navigation/types';
+import { IconlyArrowLeft } from '../../../components/icons/iconly';
 
 interface Props {
   title: string;
@@ -36,7 +37,7 @@ export function StoreDetailHeader({ title, onBack, onSearch }: Props) {
     <View className="border-b border-black/[0.05] bg-white px-5 pb-4 pt-2">
       <View className="flex-row items-center gap-3">
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} hitSlop={12} className="h-11 w-11 items-center justify-center">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
 
         <View className="flex-1">

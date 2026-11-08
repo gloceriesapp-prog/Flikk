@@ -1,6 +1,6 @@
 import { useAuthStore } from '../../store/useAuthStore';
 import { useState } from 'react';
-import { ArrowLeft01Icon, Cancel01Icon, CustomerService01Icon, EllipsisVerticalIcon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon, CustomerService01Icon, EllipsisVerticalIcon } from '@hugeicons/core-free-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
@@ -24,6 +24,7 @@ import { DeliveryDetailsSection } from './sections/delivery-details/DeliveryDeta
 import { OrderSummarySection } from './sections/order-summary/OrderSummarySection';
 import { TrackingTimeline } from './components/TrackingTimeline';
 import type { AppStackParamList } from '../../navigation/types';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'TrackOrder'>;
 
@@ -98,7 +99,7 @@ function TrackingDetails({ navigation, route }: Props) {
       {isFocused && <StatusBar style="dark" />}
       <View className="flex-row items-center bg-[#F1F2F4] px-4 pb-2 pt-safe-offset-2">
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
         <Text className="flex-1 text-center text-[17px] font-semibold text-ink">Track Order</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Order options" onPress={() => setMenuOpen(true)} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">

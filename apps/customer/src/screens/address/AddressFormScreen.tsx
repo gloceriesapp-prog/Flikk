@@ -25,10 +25,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { createAddress, updateAddress } from '../../api/addresses';
 import { fetchAccountInfo } from '../../api/auth';
@@ -46,6 +44,7 @@ import { ConfirmAddressSheet } from './components/ConfirmAddressSheet';
 import { LocationDetailsCard } from './components/LocationDetailsCard';
 import { OrderingForToggle, type OrderingFor } from './components/OrderingForToggle';
 import { ReceiverDetailsCard } from './components/ReceiverDetailsCard';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AddressForm'>;
 
@@ -215,7 +214,7 @@ export function AddressFormScreen({ route, navigation }: Props) {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center"
         >
-          <AppIcon icon={ArrowLeft01Icon} size={18} color={colors.ink} />
+          <IconlyArrowLeft size={18} color={colors.ink} />
         </Pressable>
         <View className="flex-1">
           <Text className="text-[17px] font-medium text-ink" numberOfLines={1}>

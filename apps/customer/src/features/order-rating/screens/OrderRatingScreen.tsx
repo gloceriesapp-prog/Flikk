@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../../components/ScreenStatusBar';
-import { ArrowLeft02Icon } from '@hugeicons/core-free-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppIcon } from '../../../components/AppIcon';
 import type { AppStackParamList } from '../../../navigation/types';
 import { createCompletedOrderPreview } from '../../../screens/purchase/preview/completedOrder';
 import { DeliveryRatingSection } from '../components/DeliveryRatingSection';
 import { OrderItemRatingRow } from '../components/OrderItemRatingRow';
 import { useOrderRatingPreview } from '../preview';
 import { ORDER_RATING_CONTENT_STYLE } from '../layout';
+import { IconlyArrowLeft } from '../../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OrderRating'>;
 
@@ -37,7 +36,7 @@ export function OrderRatingScreen({ navigation }: Props) {
       <View className="min-h-[52px] flex-row items-center gap-1" style={ORDER_RATING_CONTENT_STYLE}>
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()}
           className="-ml-3 h-11 w-11 items-center justify-center rounded-full active:bg-[#F5F5F5]">
-          <AppIcon icon={ArrowLeft02Icon} size={23} color="#171717" />
+          <IconlyArrowLeft size={23} color="#171717" />
         </Pressable>
         <Text numberOfLines={1} className="text-[14px] font-medium leading-5 text-[#525252]">Order feedback</Text>
       </View>

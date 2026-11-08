@@ -12,7 +12,6 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useEffect, useState } from 'react';
 import {
   Add01Icon,
-  ArrowLeft01Icon,
   Clock01Icon,
   GpsSignal01Icon,
   Location01Icon,
@@ -35,6 +34,7 @@ import {
 import { useRecentSearchesStore } from '../../store/useRecentSearchesStore';
 import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'SelectLocation'>;
 
@@ -178,7 +178,7 @@ export function SelectLocationScreen({ navigation }: Props) {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full bg-white"
         >
-          <AppIcon icon={ArrowLeft01Icon} size={20} color={colors.ink} />
+          <IconlyArrowLeft size={20} color={colors.ink} />
         </Pressable>
         <Text className="text-[18.5px] font-semibold text-ink">Select your location</Text>
       </View>

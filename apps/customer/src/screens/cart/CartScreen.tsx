@@ -18,7 +18,7 @@ import { useCopy } from '../../api/appConfig';
 
 import { useMemo, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
-import { ArrowLeft01Icon, Delete02Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
+import { Delete02Icon, MoreVerticalIcon, ShoppingBasket03Icon } from '@hugeicons/core-free-icons';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { RupeePrice } from '../../components/RupeePrice';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
@@ -50,6 +50,7 @@ import { PromoCodeCard } from './components/PromoCodeCard';
 import { BillDetailsCard } from './components/BillDetailsCard';
 import { CancellationNoteCard } from './components/CancellationNoteCard';
 import type { AppStackParamList } from '../../navigation/types';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Cart'>;
 
@@ -217,7 +218,7 @@ export function CartScreen({ navigation, route }: Props) {
       <View className="bg-[#F2F2F7] pt-safe">
         <View className="flex-row items-center px-4 pb-2 pt-2">
           <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} hitSlop={12} className="h-11 w-11 items-center justify-center rounded-full bg-white">
-            <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+            <IconlyArrowLeft size={22} color={colors.ink} />
           </Pressable>
           <Text className="flex-1 text-center text-[18px] font-bold text-ink">Checkout</Text>
           {items.length > 0 ? (

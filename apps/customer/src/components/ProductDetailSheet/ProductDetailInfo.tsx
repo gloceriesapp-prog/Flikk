@@ -23,8 +23,7 @@
 // Product but no longer renders anywhere in this sheet. The breadcrumb row
 // was removed per an earlier explicit ask.
 
-import { useWishlistStore } from '../../store/useWishlistStore';
-import { ChevronRightIcon, HeartIcon } from '@hugeicons/core-free-icons';
+import { ChevronRightIcon } from '@hugeicons/core-free-icons';
 import { Pressable, Text, View } from 'react-native';
 import { RupeePrice } from '../RupeePrice';
 import { AppImage as Image } from '../AppImage';
@@ -40,6 +39,7 @@ import type { CartPreorder } from '../../store/preorder';
 import type { CutSize, Serving } from '../../store/cartIdentity';
 import { SellerDetailsCard } from './SellerDetailsCard';
 import { SimilarProductsRow } from './SimilarProductsRow';
+import { ReplacementCard } from './ReplacementCard';
 import type { Product } from '../../screens/home/products/types';
 
 interface Props {
@@ -58,6 +58,8 @@ interface Props {
   // existed.
   selectedVariantId?: string;
   onSelectVariant?: (id: string) => void;
+  // Opens a tapped similar product (in the same detail page).
+  onSelectProduct?: (product: Product) => void;
   // Chicken cut size, lifted to the sheet like the variant (the footer adds it).
   selectedCut?: CutSize;
   onSelectCut?: (cut: CutSize) => void;
@@ -72,18 +74,11 @@ interface Props {
   onSelectPreorder?: (preorder: CartPreorder | undefined) => void;
 }
 
-export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder }: Props) {
+export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder, onSelectProduct }: Props) {
   const { name, localName, weight, price, originalPrice, storeName, variants, sellerDetails } = product;
   const related = relatedProducts ?? product.relatedProducts;
   const hasRealVariants = variants && variants.length > 1;
   const selectedVariant = hasRealVariants ? variants!.find((v) => v.id === selectedVariantId) : undefined;
-  // Local-only wishlist toggle on the title row itself — separate from the
-  // header's own bookmark button (ProductDetailSheet.tsx), nothing persists
-  // either yet.
-  // The heart is the product's wishlist toggle (Profile → Wishlist).
-  const isLiked = useWishlistStore((state) => state.isWishlisted(product.id));
-  const toggleWishlist = useWishlistStore((state) => state.toggle);
-
   const displayPrice = selectedVariant?.price ?? price;
   const displayOriginalPrice = selectedVariant?.originalPrice ?? originalPrice;
   const displayPercent = discountPercentOf(displayPrice, displayOriginalPrice);
@@ -98,18 +93,10 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
     <View className="gap-3 bg-[#f6f6f6] px-3 pb-4 pt-3">
       <View className="gap-3 rounded-2xl bg-[#FFFFFF] px-4 py-4">
         <View className="flex-row items-start justify-between gap-3">
-          <Text className="flex-1 text-xl font-semibold leading-7 text-ink">
+          <Text className="flex-1 text-[20px] font-bold leading-[26px] text-ink">
             {name}
             {localName ? ` (${localName})` : ''}
           </Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={isLiked ? `Remove ${name} from wishlist` : `Save ${name} to wishlist`} onPress={() => toggleWishlist(product)} hitSlop={8} className="pt-0">
-            <AppIcon
-              icon={HeartIcon}
-              size={22}
-              color={isLiked ? colors.danger : colors.ink}
-              fill={isLiked ? colors.danger : 'none'}
-            />
-          </Pressable>
         </View>
 
         {/* "Select Unit" cards only when there is more than one size. */}
@@ -137,29 +124,24 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
           <ProductServingOptions options={product.servingOptions} selected={selectedServing} onSelect={onSelectServing} />
         ) : null}
 
-        {/* Selected unit summary (reference): size, price, MRP, % OFF, taxes. */}
-        <View className={`gap-1 ${hasOptions ? '' : '-mt-2'}`}>
-          <Text className="text-[14px] font-semibold text-ink/55">{selectedVariant?.label ?? weight}</Text>
-          <View className="flex-row flex-wrap items-center gap-2">
+        {/* Selected unit summary: size, price + MRP, "% OFF on MRP", unit price. */}
+        <View className={hasOptions ? '' : '-mt-2'}>
+          <Text className="text-[14px] font-bold text-ink">{selectedVariant?.label ?? weight}</Text>
+          <View className="mt-2 flex-row flex-wrap items-center gap-2">
             <RupeePrice amount={displayPrice} size={22} />
             {displayPercent ? (
-              <>
-                <View className="flex-row items-center gap-1">
-                  <Text className="text-[16px] font-medium text-ink/55">MRP</Text>
-                  <RupeePrice amount={displayOriginalPrice!} size={16} strike color="#6B6B6B" />
-                </View>
-                <View className="rounded-[6px] px-2 py-[3px]" style={{ backgroundColor: '#5B83EA' }}>
-                  <Text className="text-[12px] font-bold text-white">{displayPercent}% OFF</Text>
-                </View>
-              </>
+              <View className="flex-row items-center gap-1">
+                <Text className="text-[13px] text-ink/50">MRP</Text>
+                <RupeePrice amount={displayOriginalPrice!} size={13} strike color="#6B6B6B" />
+              </View>
             ) : null}
           </View>
-          <View className="flex-row flex-wrap items-center gap-x-2">
-            <Text className="text-[12.5px] text-ink/70">(Inclusive of all taxes)</Text>
-            {(selectedVariant?.unitPriceLabel ?? product.unitPriceLabel) ? (
-              <Text className="text-[12.5px] font-medium text-ink/45">{selectedVariant?.unitPriceLabel ?? product.unitPriceLabel}</Text>
-            ) : null}
-          </View>
+          {displayPercent ? (
+            <Text className="mt-1 text-[13px] font-bold text-[#16A34A]">{displayPercent}% OFF on MRP</Text>
+          ) : null}
+          {(selectedVariant?.unitPriceLabel ?? product.unitPriceLabel) ? (
+            <Text className="mt-1 text-[13px] text-ink/70">{selectedVariant?.unitPriceLabel ?? product.unitPriceLabel}</Text>
+          ) : null}
         </View>
 
         {storeName && (
@@ -177,6 +159,8 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
         )}
       </View>
 
+      <ReplacementCard />
+
       {sellerDetails && (
         <View className="overflow-hidden rounded-2xl bg-white">
           <SellerDetailsCard sellerDetails={sellerDetails} />
@@ -185,7 +169,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
 
       {related && related.length > 0 && (
         <View className="overflow-hidden rounded-2xl bg-white">
-          <SimilarProductsRow products={related} />
+          <SimilarProductsRow products={related} onSelect={onSelectProduct} />
         </View>
       )}
     </View>

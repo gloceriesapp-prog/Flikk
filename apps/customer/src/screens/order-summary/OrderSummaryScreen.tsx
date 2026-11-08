@@ -3,15 +3,14 @@ import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import type { AppStackParamList } from '../../navigation/types';
-import { AppIcon } from '../../components/AppIcon';
 import { colors } from '../../theme/tokens';
 import { DeliveryDetailsSection } from '../track-order/sections/delivery-details/DeliveryDetailsSection';
 import { useOrderSummary } from './useOrderSummary';
 import { OrderSummaryItemRow } from './components/OrderSummaryItemRow';
 import { OrderSummaryBillCard } from './components/OrderSummaryBillCard';
 import { OrderSummaryDetailsCard } from './components/OrderSummaryDetailsCard';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OrderSummary'>;
 
@@ -25,7 +24,7 @@ export function OrderSummaryScreen({ navigation, route }: Props) {
       {focused && <StatusBar style="dark" />}
       <View className="flex-row items-center px-5 pb-3 pt-2">
         <Pressable onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} className="h-11 w-11 items-center justify-center rounded-full border border-ink/5 bg-white">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color={colors.ink} />
+          <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
         <Text accessibilityRole="header" className="flex-1 text-center text-[17px] font-semibold text-ink">Order summary</Text>
         <View className="w-11" />

@@ -5,14 +5,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import { AppIcon } from '../../components/AppIcon';
 import type { AppStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ApiError } from '../../api/client';
 import { fetchNotifications, markNotificationRead, type CustomerNotification } from './api';
 import { notificationPermission, registerNotifications, openNotificationSettings } from './native';
 import { queueOrderNotification } from './navigation';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 function NotificationRow({ item, onPress }: { item: CustomerNotification; onPress: () => void }) {
   return (
@@ -76,7 +75,7 @@ export function NotificationsScreen({ navigation }: NativeStackScreenProps<AppSt
       <StatusBar style="dark" />
       <View className="flex-row items-center px-5 py-4">
         <Pressable accessibilityLabel="Go back" onPress={() => navigation.goBack()} className="p-2">
-          <AppIcon icon={ArrowLeft01Icon} size={22} color="#111111" />
+          <IconlyArrowLeft size={22} color="#111111" />
         </Pressable>
         <Text className="flex-1 text-center text-lg font-bold">Notifications</Text>
         <View className="w-8" />

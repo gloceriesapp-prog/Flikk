@@ -14,7 +14,7 @@
 // of SDK 52+, this screen requires a development build (`npx expo run:ios` /
 // EAS dev client) to actually render. See src/screens/location/README.md.
 
-import { ArrowLeft01Icon, GpsSignal01Icon, Search01Icon } from '@hugeicons/core-free-icons';
+import { GpsSignal01Icon, Search01Icon } from '@hugeicons/core-free-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import { matchSavedAddress } from '../../features/delivery-address/matchSavedAddress';
@@ -53,6 +53,7 @@ import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
 import { MapLoadingState } from './components/MapLoadingState';
 import { LocationCardIcon } from './components/LocationCardIcon';
+import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'LocationSearch'>;
 
@@ -466,7 +467,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
         if (existing) {
           await setDefaultAddress(existing.id);
           if (!currentConfirmation()) return;
-          await setLocation({ ...center, addressLabel, city });
+          await setLocation({ ...center, addressLabel, city, source: 'manual' });
           await queryClient.invalidateQueries({ queryKey: ['addresses', useAuthStore.getState().customerId] });
           navigation.goBack();
           return;
@@ -479,7 +480,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
         navigation.navigate('AddressForm', { ...center, addressLabel, city });
         return;
       }
-      await setLocation({ ...center, addressLabel, city });
+      await setLocation({ ...center, addressLabel, city, source: followingDevice ? 'device' : 'manual' });
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } catch {
       if (!currentConfirmation()) return;
@@ -691,7 +692,7 @@ export function LocationSearchScreen({ navigation, route }: Props) {
             hitSlop={12}
             className="h-11 w-11 items-center justify-center rounded-full border border-gray-300 bg-white"
           >
-            <AppIcon icon={ArrowLeft01Icon} size={20} color={colors.ink} />
+            <IconlyArrowLeft size={20} color={colors.ink} />
           </Pressable>
 
           <View className="h-11 flex-1 flex-row items-center rounded-full border border-gray-300 bg-white px-4">
