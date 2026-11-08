@@ -60,8 +60,6 @@ import { HomeNavigationShell } from './home/HomeNavigationShell';
 import { OrderRatingScreen } from '../features/order-rating/screens/OrderRatingScreen';
 import { screenBoundary } from '../components/ErrorBoundary';
 
-import { isPreviewing, ORDER_PLACED_PREVIEW } from '../dev/screenPreview';
-
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export function AppNavigator() {
@@ -84,7 +82,7 @@ export function AppNavigator() {
       // first; location already set -> straight to Home. Home.tsx's own
       // isServiceable check branches to UnavailableZoneScreen inline from
       // there (not a separate route to land on).
-      initialRouteName={isPreviewing('OrderPlaced') ? 'OrderPlaced' : hasLocation ? 'Home' : 'LocationPermission'}
+      initialRouteName={hasLocation ? 'Home' : 'LocationPermission'}
     >
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
       <Stack.Screen name="HomeContentCollection" component={HomeContentCollectionScreen} />
@@ -129,8 +127,7 @@ export function AppNavigator() {
       <Stack.Screen name="PaymentRecovery" component={PaymentRecoveryScreen} />
       <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="PaymentProcessing" component={PaymentProcessingScreen} options={{ gestureEnabled: false }} />
-      <Stack.Screen name="OrderPlaced" component={OrderPlacedScreen} options={{ animation: 'fade', gestureEnabled: false }}
-        initialParams={isPreviewing('OrderPlaced') ? ORDER_PLACED_PREVIEW : undefined} />
+      <Stack.Screen name="OrderPlaced" component={OrderPlacedScreen} options={{ animation: 'fade', gestureEnabled: false }} />
       <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
       <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
