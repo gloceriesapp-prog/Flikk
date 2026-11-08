@@ -10,7 +10,9 @@ import { useCallback, useRef, useState, type ReactElement } from 'react';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { Pressable, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
-import Animated, { runOnJS, useAnimatedReaction, type ScrollHandlerProcessed } from 'react-native-reanimated';
+import Animated, { FadeIn, runOnJS, useAnimatedReaction, type ScrollHandlerProcessed } from 'react-native-reanimated';
+import { HomeLoader } from './loading/HomeLoader';
+import { useHomeReady } from './loading/useHomeReady';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeHeader } from './components/HomeHeader';
 import { COLLAPSE_DISTANCE } from './components/CollapsibleHeaderTop';
@@ -93,6 +95,7 @@ export function HomeScreen({ navigation }: Props) {
   const { isServiceable, serviceability, storeId, refetch: retryCoverage } = useNearestStore();
 
   useWarmHomeBrowse(isServiceable);
+  const homeReady = useHomeReady(isServiceable && !!storeId);
 
   const { scrollY, scrollHandler } = useHomeBrowseScroll();
   const [statusBarStyle, setStatusBarStyle] = useState<'light' | 'dark'>('light');
@@ -111,20 +114,23 @@ export function HomeScreen({ navigation }: Props) {
   // No real store in range at all — the whole browsing UI below (header,
   // every section) assumes one exists. Full-screen swap instead of a
   // section-level swap (see UnavailableZoneScreen.tsx's own note).
-  if ((serviceability === 'checking' || serviceability === 'error') && !storeId) {
+  if (serviceability === 'error' && !storeId) {
     return <View className="flex-1 items-center justify-center gap-4 bg-white px-6">
-      <Text className="text-center text-lg font-bold text-ink">{serviceability === 'error' ? 'Couldn’t check nearby shops' : 'Finding shops for your address…'}</Text>
-      {serviceability === 'error' && <Pressable accessibilityRole="button" onPress={() => void retryCoverage()} className="rounded-xl bg-primary px-6 py-3"><Text className="font-bold text-white">Retry</Text></Pressable>}
+      <Text className="text-center text-lg font-bold text-ink">Couldn’t check nearby shops</Text>
+      <Pressable accessibilityRole="button" onPress={() => void retryCoverage()} className="rounded-xl bg-primary px-6 py-3"><Text className="font-bold text-white">Retry</Text></Pressable>
     </View>;
   }
+  if (serviceability === 'checking' && !storeId) return <HomeLoader />;
   if (!isServiceable) {
     return <UnavailableZoneScreen />;
   }
+  // First open: the loader stays until the first screen is ready (useHomeReady).
+  if (!homeReady) return <HomeLoader />;
 
   return (
     // BottomNavBar lives in HomeNavigationShell, outside the screen surface,
     // so it stays in place while Home/category pages transition underneath.
-    <View className="flex-1 bg-white">
+    <Animated.View entering={FadeIn.duration(220)} style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       {/* Keep system icons legible on the blue and collapsed white header. */}
       {isFocused && <StatusBar style={statusBarStyle} />}
       <HomeSectionList
@@ -144,6 +150,6 @@ export function HomeScreen({ navigation }: Props) {
         }
       />
 
-    </View>
+    </Animated.View>
   );
 }

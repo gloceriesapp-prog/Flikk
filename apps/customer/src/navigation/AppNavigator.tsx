@@ -46,7 +46,7 @@ import { PaymentProcessingScreen } from '../screens/payment-processing/PaymentPr
 import { PaymentStatusScreen } from '../screens/payment-status/PaymentStatusScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { PurchaseScreen } from '../screens/purchase/PurchaseScreen';
-import { ReceiptScreen } from '../screens/receipt/ReceiptScreen';
+import { OrderPlacedScreen } from '../screens/order-placed/OrderPlacedScreen';
 import { ReferralScreen } from '../screens/referral/ReferralScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
 import { StoreDetailScreen } from '../screens/store-detail/StoreDetailScreen';
@@ -127,7 +127,7 @@ export function AppNavigator() {
       <Stack.Screen name="PaymentRecovery" component={PaymentRecoveryScreen} />
       <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="PaymentProcessing" component={PaymentProcessingScreen} options={{ gestureEnabled: false }} />
-      <Stack.Screen name="Receipt" component={ReceiptScreen} />
+      <Stack.Screen name="OrderPlaced" component={OrderPlacedScreen} options={{ animation: 'fade', gestureEnabled: false }} />
       <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
       <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />

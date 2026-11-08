@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useCheckoutActivity } from './useCheckoutActivity';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { fetchCartAvailability } from '../../../api/checkout';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { checkoutItems } from '../../../store/cartIdentity';
@@ -14,6 +14,9 @@ export function useCartAvailability(addressId?: string) {
   const enabled = active && !!customerId && items.length > 0;
   const query = useQuery({ queryKey: ['cart-availability', customerId, input, addressId ?? null],
     queryFn: () => fetchCartAvailability(input, addressId), enabled, retry: false,
+    // Show the last result while a changed cart is re-checked (no blank
+    // bill); callers treat isFetching as not ready to pay.
+    placeholderData: keepPreviousData,
     staleTime: 0, gcTime: 0, refetchInterval: enabled ? 15_000 : false, refetchIntervalInBackground: false });
   return query;
 }

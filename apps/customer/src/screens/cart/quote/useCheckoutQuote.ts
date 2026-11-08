@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useCheckoutActivity } from './useCheckoutActivity';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { fetchCheckoutQuote } from '../../../api/checkout';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { checkoutItems } from '../../../store/cartIdentity';
@@ -16,7 +16,10 @@ export function useCheckoutQuote(addressId?: string) {
   const query = useQuery({
     queryKey: ['checkout-quote', customerId, input, promo?.code ?? null, addressId ?? null],
     queryFn: () => fetchCheckoutQuote(input, promo?.code, addressId),
-    enabled, retry: false, staleTime: 0, gcTime: 0,
+    enabled, retry: false,
+    // Show the last result while a changed cart is re-checked (no blank
+    // bill); callers treat isFetching as not ready to pay.
+    placeholderData: keepPreviousData, staleTime: 0, gcTime: 0,
     refetchInterval: enabled ? 60_000 : false,
     refetchIntervalInBackground: false,
   });
