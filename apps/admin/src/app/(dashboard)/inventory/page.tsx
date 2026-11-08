@@ -326,29 +326,20 @@ export default function InventoryPage() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         {filtered.map((product) => (
           <div key={product.id} className="flex items-center gap-4 card p-3 pr-4">
-            {/* Real photo (product.imageUrl, set via Add/EditProductModal's
-                ProductImageUpload -> Supabase Storage) when one's been
-                uploaded — no random stock-photo fallback; a product with no
-                photo shows an icon placeholder, same convention as Stores'
-                own list, rather than a picsum image that isn't the actual
-                product. bgColor (lib/bgColor.ts) is a pastel tint extracted
-                from the photo itself, so a no-background product shot sits
-                on a color pulled from its own image instead of a flat
-                white or mismatched tile — object-contain, not cover, so a
-                transparent-bg photo isn't cropped to fill the square. */}
-            {product.imageUrl ? (
-              <div
-                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: product.bgColor ?? '#F6FAF0' }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={product.imageUrl} alt={product.name} className="h-full w-full rounded-2xl object-contain p-1.5" />
-              </div>
-            ) : (
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent">
-                <ImageIcon size={22} className="text-muted" />
-              </div>
-            )}
+            {/* The photo exactly as the customer app's product card shows it:
+                same 4:4.5 frame, #F9FAFB background, thin border and rounded
+                corners, photo filling the frame (the app's 'cover'), so what
+                you see here is what shoppers see. No photo: icon placeholder. */}
+            <div className="aspect-[4/4.5] w-[76px] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
+              {product.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <ImageIcon size={22} className="text-muted" />
+                </div>
+              )}
+            </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">

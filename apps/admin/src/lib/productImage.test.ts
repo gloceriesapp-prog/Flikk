@@ -124,3 +124,19 @@ test('clean-up: a banded scene is fixed; a photo without a band, or a coloured s
   for (let i = 0; i < px.length; i++) px[i] = (i * 7) % 251;
   assert.equal(await cleanBandedPhoto(await sharp(px, { raw: { width: size, height: 810, channels: 3 } }).png().toBuffer()), null, 'no band, no change');
 });
+
+test('clean-up: a frame close to the photo colour (Dabur-style) is still removed', async () => {
+  // Light-yellow scene inside an orange frame of 36px / 40px.
+  const scene = await sharp({ create: { width: 648, height: 730, channels: 3, background: '#fac864' } })
+    .composite([{ input: { create: { width: 260, height: 420, channels: 3, background: '#c0501a' } }, left: 194, top: 150 }]).png().toBuffer();
+  const framed = await sharp({ create: { width: 720, height: 810, channels: 3, background: '#fbba4e' } })
+    .composite([{ input: scene, left: 36, top: 40 }]).png().toBuffer();
+  const out = await cleanBandedPhoto(framed);
+  assert.ok(out, 'framed photo is cleaned');
+  const { data, info } = await sharp(out!).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const px = (x: number, y: number) => [...data.subarray((y * info.width + x) * 3, (y * info.width + x) * 3 + 3)];
+  for (const [x, y] of [[3, 3], [716, 806], [3, 405]]) {
+    const p = px(x, y);
+    assert.ok(Math.abs(p[1] - 0xc8) < 20, `scene colour, not the frame, at ${x},${y}: ${p}`);
+  }
+});
