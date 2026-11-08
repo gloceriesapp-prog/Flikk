@@ -1,13 +1,13 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { HOME_LOADER_MAX_MS, useHomeReady } from '../src/screens/home/loading/useHomeReady';
 
-const mockState = { sections: true, tabs: true, picks: true, prefetch: jest.fn(async () => true) };
+const mockState = { sections: true, tabs: true, picks: true, prefetch: jest.fn(async (_urls: string[], _policy: string) => true) };
 jest.mock('../src/screens/home/useHomeSections', () => ({ useHomeSections: () => ({ isPending: mockState.sections }) }));
 jest.mock('../src/screens/home/data/useHomeTabs', () => ({ useHomeTabs: () => ({ isResolvingTabs: mockState.tabs }) }));
 jest.mock('../src/screens/home/sections/useHomePicks', () => ({
   useHomePicks: () => ({ isPending: mockState.picks, data: { 'everyday-dairy': [{ imageUrl: 'https://img/1.webp' }] } }),
 }));
-jest.mock('expo-image', () => ({ Image: { prefetch: (...args: unknown[]) => mockState.prefetch(...args) } }));
+jest.mock('expo-image', () => ({ Image: { prefetch: (urls: string[], policy: string) => mockState.prefetch(urls, policy) } }));
 
 beforeEach(() => { jest.useFakeTimers(); Object.assign(mockState, { sections: true, tabs: true, picks: true }); mockState.prefetch.mockClear(); });
 afterEach(() => jest.useRealTimers());
