@@ -9,7 +9,6 @@ import { useCallback, useEffect, useRef } from 'react';
 import { BackHandler, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -24,7 +23,7 @@ import Svg, { Path } from 'react-native-svg';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { loadPaymentChime } from '../../payments/paymentChime';
 import type { AppStackParamList } from '../../navigation/types';
-import { arrivalLine, paymentLine } from './orderPlacedText';
+import { arrivalLine, headline, paymentLine } from './orderPlacedText';
 import { isPreviewing } from '../../dev/screenPreview';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OrderPlaced'>;
@@ -34,6 +33,25 @@ const TICK_AT_MS = 320;
 const SEAL = 112;
 const TICK_PATH = 'M30 57 L48 74 L82 39';
 const TICK_LENGTH = 74; // the two strokes of TICK_PATH, rounded up
+const GREEN = '#34C759';
+const GREEN_DARK = '#1F8A3B';
+const GREEN_SOFT = '#EAF8EE';
+
+// The verified badge: a circle with 12 soft scallops (petal edge), drawn as
+// one closed path on the 112x112 seal.
+function scallopPath(size: number, bumps = 12, depth = 0.055): string {
+  const c = size / 2;
+  const radius = c * 0.94;
+  const steps = 240;
+  let d = '';
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    const r = radius * (1 - depth + depth * Math.cos(bumps * t));
+    d += `${i === 0 ? 'M' : 'L'}${(c + r * Math.cos(t)).toFixed(2)} ${(c + r * Math.sin(t)).toFixed(2)}`;
+  }
+  return `${d}Z`;
+}
+const BADGE_PATH = scallopPath(SEAL);
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 function Ripple({ delay, reduceMotion }: { delay: number; reduceMotion: boolean }) {
@@ -45,7 +63,7 @@ function Ripple({ delay, reduceMotion }: { delay: number; reduceMotion: boolean 
     opacity: 0.35 * (1 - progress.value),
     transform: [{ scale: 1 + progress.value * 1.6 }],
   }));
-  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: SEAL, height: SEAL, borderRadius: SEAL / 2, borderWidth: 2, borderColor: '#FFFFFF' }, style]} />;
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: SEAL, height: SEAL, borderRadius: SEAL / 2, borderWidth: 2, borderColor: GREEN }, style]} />;
 }
 
 function Rise({ delay, reduceMotion, children }: { delay: number; reduceMotion: boolean; children: React.ReactNode }) {
@@ -113,15 +131,16 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
 
   return (
     <Pressable accessibilityRole="button" accessibilityLabel="Order placed. Open order tracking" onPress={goToTracking} style={{ flex: 1 }}>
-      <StatusBar style="light" />
-      <LinearGradient colors={['#0A2E9E', '#1248E0', '#155DFC']} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={{ flex: 1 }}>
+      <StatusBar style="dark" />
+      <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
         <View className="flex-1 items-center justify-center px-8">
           <View style={{ width: SEAL, height: SEAL }} className="items-center justify-center">
             <Ripple delay={TICK_AT_MS} reduceMotion={reduceMotion} />
             <Ripple delay={TICK_AT_MS + 260} reduceMotion={reduceMotion} />
-            <Animated.View style={[{ width: SEAL, height: SEAL, borderRadius: SEAL / 2, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }, sealStyle]}>
+            <Animated.View style={[{ width: SEAL, height: SEAL, alignItems: 'center', justifyContent: 'center' }, sealStyle]}>
               <Svg width={SEAL} height={SEAL} viewBox="0 0 112 112">
-                <AnimatedPath d={TICK_PATH} stroke="#155DFC" strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" fill="none"
+                <Path d={BADGE_PATH} fill={GREEN} />
+                <AnimatedPath d={TICK_PATH} stroke="#FFFFFF" strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" fill="none"
                   strokeDasharray={TICK_LENGTH} animatedProps={tickProps} />
               </Svg>
             </Animated.View>
@@ -129,35 +148,35 @@ export function OrderPlacedScreen({ navigation, route }: Props) {
 
           <View className="mt-9 items-center">
             <Rise delay={520} reduceMotion={reduceMotion}>
-              <Text className="text-center text-[30px] font-bold tracking-tight text-white">
-                {preorderLabel ? 'Pre-order placed!' : 'Order placed!'}
+              <Text className="text-center text-[26px] font-bold leading-[32px] tracking-tight text-ink">
+                {headline(paid, Boolean(preorderLabel))}
               </Text>
             </Rise>
             <Rise delay={620} reduceMotion={reduceMotion}>
-              <Text className="mt-2 text-center text-[16px] font-medium text-white/80">{paymentLine(amount, paid, paymentMethodLabel)}</Text>
+              <Text className="mt-2 text-center text-[16px] font-medium text-ink/60">{paymentLine(amount, paid, paymentMethodLabel)}</Text>
             </Rise>
             <Rise delay={720} reduceMotion={reduceMotion}>
-              <View className="mt-6 rounded-full bg-white/15 px-5 py-2.5">
-                <Text className="text-center text-[15px] font-semibold text-white">
+              <View className="mt-6 rounded-full px-5 py-2.5" style={{ backgroundColor: GREEN_SOFT }}>
+                <Text className="text-center text-[15px] font-semibold" style={{ color: GREEN_DARK }}>
                   {arrivalLine({ preorderLabel, estimatedDeliveryMinutes, estimatedDeliveryAt })}
                 </Text>
               </View>
             </Rise>
             {preorderLabel ? (
               <Rise delay={800} reduceMotion={reduceMotion}>
-                <Text className="mt-3 text-center text-[13px] text-white/70">Waiting for the shop to confirm</Text>
+                <Text className="mt-3 text-center text-[13px] text-ink/50">Waiting for the shop to confirm</Text>
               </Rise>
             ) : null}
           </View>
         </View>
 
         <View className="items-center px-12 pb-safe-offset-8">
-          <Text className="mb-3 text-[12px] font-medium text-white/60">Order {orderNumber} · Opening tracking…</Text>
-          <View className="h-1 w-full overflow-hidden rounded-full bg-white/20">
-            <Animated.View style={[{ height: 4, borderRadius: 2, backgroundColor: '#FFFFFF' }, barStyle]} />
+          <Text className="mb-3 text-[12px] font-medium text-ink/45">Order {orderNumber} · Opening tracking…</Text>
+          <View className="h-1 w-full overflow-hidden rounded-full" style={{ backgroundColor: GREEN_SOFT }}>
+            <Animated.View style={[{ height: 4, borderRadius: 2, backgroundColor: GREEN }, barStyle]} />
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }

@@ -1,4 +1,4 @@
-import { arrivalLine, paymentLine } from '../src/screens/order-placed/orderPlacedText';
+import { arrivalLine, headline, paymentLine } from '../src/screens/order-placed/orderPlacedText';
 
 describe('order placed copy', () => {
   it('says how the order was paid', () => {
@@ -13,4 +13,10 @@ describe('order placed copy', () => {
     expect(arrivalLine({ estimatedDeliveryMinutes: 1 }, now)).toBe('Arriving in 1 min');
     expect(arrivalLine({}, now)).toBe('Arriving soon');
   });
+});
+
+test('headline: paid online, cash on delivery, pre-order', () => {
+  expect(headline(true, false)).toBe('Order placed successfully!');
+  expect(headline(false, false)).toBe('Order placed!');
+  expect(headline(true, true)).toBe('Pre-order placed!');
 });

@@ -27,7 +27,7 @@ afterEach(() => jest.useRealTimers());
 
 it('celebrates a paid order with the chime, then opens tracking on its own', async () => {
   const reset = await show();
-  expect(screen.getByText('Order placed!')).toBeTruthy();
+  expect(screen.getByText('Order placed successfully!')).toBeTruthy();
   expect(screen.getByText('₹245 paid via UPI')).toBeTruthy();
   expect(screen.getByText('Arriving in 29 mins')).toBeTruthy();
   await act(async () => { jest.advanceTimersByTime(ORDER_PLACED_MS - 1); });

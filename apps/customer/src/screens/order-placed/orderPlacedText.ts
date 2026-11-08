@@ -2,6 +2,12 @@
 
 const rupees = (amount: number) => `₹${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
 
+// The headline: paid online, cash on delivery, or a pre-order.
+export function headline(paid: boolean, preorder: boolean): string {
+  if (preorder) return 'Pre-order placed!';
+  return paid ? 'Order placed successfully!' : 'Order placed!';
+}
+
 // "₹245 paid via UPI" / "Pay ₹245 on delivery".
 export function paymentLine(amount: number, paid: boolean, methodLabel: string): string {
   if (!paid) return `Pay ${rupees(amount)} on delivery`;
