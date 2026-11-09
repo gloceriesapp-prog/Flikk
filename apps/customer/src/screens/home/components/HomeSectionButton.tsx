@@ -21,7 +21,7 @@ export function HomeSectionButton({ label, items = [], onPress }: Props) {
         accessibilityRole="button"
         accessibilityLabel={label}
         onPress={onPress}
-        className="h-[50px] flex-row items-center justify-center rounded-2xl border border-[#D9E2F5] bg-white px-4 active:opacity-85"
+        className="h-[50px] flex-row items-center justify-center rounded-2xl border border-[#D9E2F5] bg-[#F3F4F6] px-4 active:opacity-85"
       >
         {items.length > 0 && (
           <View className="mr-2.5 flex-row items-center">

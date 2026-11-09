@@ -1,5 +1,5 @@
 // Home "Pre-orders" panel (admin Home Sections key 'preorders'): the only place
-// pre-order products appear. A full-width lavender band with the heading, the
+// pre-order products appear. A full-width warm beige band with the heading, the
 // five bookable days, and the products deliverable on the chosen day as a
 // rail. Tapping a day filters the rail by each product's notice and opens the
 // product sheet on that day (usePreorderDayStore). ADD opens the sheet, where
@@ -7,15 +7,16 @@
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { HomeProductCollectionButton } from '../components/HomeSectionButton';
 import { ProductCard } from '../products/ProductCard';
-import { SectionTitle } from '../components/SectionTitle';
+import { HomeScallopedPanel } from '../components/HomeScallopedPanel';
 import { bookingDates, dayCard, dayOpen, daysAhead } from '../../../store/preorder';
 import { usePreorderDayStore } from '../../../store/usePreorderDayStore';
 import { usePreorders } from './usePreorders';
 
 const CARD_WIDTH = 'w-32';
-const CARD_SNAP_INTERVAL = 128 + 10;
-const LAVENDER = '#F3EEFF';
-const INK = '#101C10';
+const CARD_SNAP_INTERVAL = 128 + 12;
+const WARM_BEIGE = '#F1E3D8';
+const PREORDER_HEADER_IMAGE = 'https://images.gloceries.com/appsui/Kerala%20Feast%20in%20Warm%20Light.png';
+const SELECTED_DAY = '#DEC4AE';
 
 export function PreorderSection({ title, subtitle }: { title: string; subtitle: string | null }) {
   const { data } = usePreorders();
@@ -35,9 +36,13 @@ export function PreorderSection({ title, subtitle }: { title: string; subtitle: 
   const forDay = products.filter((p) => ahead >= (p.preorder?.leadDays ?? 0));
 
   return (
-    <View className="mt-8 pb-7 pt-6" style={{ backgroundColor: LAVENDER }}>
-      {/* Same heading as every other Home section. */}
-      <SectionTitle subtitle={subtitle ?? undefined}>{title}</SectionTitle>
+    <HomeScallopedPanel
+      title={title}
+      subtitle={subtitle}
+      backgroundColor={WARM_BEIGE}
+      headerTextColor="#000000"
+      headerImageUrl={PREORDER_HEADER_IMAGE}
+    >
       <View className="px-5">
         <View className="flex-row" style={{ gap: 8 }}>
           {dates.map((date) => {
@@ -52,16 +57,16 @@ export function PreorderSection({ title, subtitle }: { title: string; subtitle: 
                 accessibilityLabel={`${card.top} ${card.day} ${card.month}`}
                 disabled={!enabled}
                 onPress={() => setDay(date)}
-                className="flex-1 items-center rounded-[14px] border py-2.5"
+                className="flex-1 items-center rounded-2xl border py-2.5"
                 style={{
-                  backgroundColor: selected ? INK : '#FFFFFF',
-                  borderColor: selected ? INK : '#E4DCF5',
+                  backgroundColor: selected ? SELECTED_DAY : '#FFFFFF',
+                  borderColor: selected ? '#8A634B' : '#DCC8B8',
                   opacity: enabled ? 1 : 0.4,
                 }}
               >
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.8px]" style={{ color: selected ? '#FFFFFFB3' : '#6B7280' }}>{card.top}</Text>
-                <Text className="mt-0.5 text-[18px] font-bold" style={{ color: selected ? '#FFFFFF' : INK }}>{card.day}</Text>
-                <Text className="text-[10px] font-medium uppercase" style={{ color: selected ? '#FFFFFFB3' : '#9CA3AF' }}>{card.month}</Text>
+                <Text className="text-[10px] font-bold uppercase tracking-[0.5px] text-black">{card.top}</Text>
+                <Text className="mt-0.5 text-[18px] font-extrabold text-black">{card.day}</Text>
+                <Text className="text-[10px] font-medium uppercase text-black">{card.month}</Text>
               </Pressable>
             );
           })}
@@ -73,7 +78,7 @@ export function PreorderSection({ title, subtitle }: { title: string; subtitle: 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerClassName="items-start gap-2.5 px-5 pt-5"
+            contentContainerClassName="items-start gap-3 px-5 pt-5"
             snapToInterval={CARD_SNAP_INTERVAL}
             snapToAlignment="start"
             decelerationRate="fast"
@@ -85,8 +90,8 @@ export function PreorderSection({ title, subtitle }: { title: string; subtitle: 
           <HomeProductCollectionButton label="See all pre-orders" title={title} products={forDay} />
         </>
       ) : (
-        <Text className="px-5 pt-5 text-[14px] text-ink/60">These items need more notice. Pick a later day.</Text>
+        <Text className="px-5 pt-5 text-[13px] font-semibold text-black">These items need more notice. Pick a later day.</Text>
       )}
-    </View>
+    </HomeScallopedPanel>
   );
 }
