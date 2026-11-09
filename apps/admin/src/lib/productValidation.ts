@@ -70,6 +70,8 @@ export interface ProductWriteInput {
   subCategoryId?: string | null;
   // Absent leaves the brand unchanged; null clears it.
   brandId?: string | null;
+  // The master item this product was added from (catalogue_items).
+  catalogueItemId?: string | null;
   variants: VariantInput[];
 }
 
@@ -225,6 +227,13 @@ export function toBrand(input: Pick<ProductWriteInput, 'brandId'>): { brand_id: 
 // limits match the database (products_preorder_limits): minimum 1–999 packs,
 // notice 0 (same day) to 4 days.
 export const PREORDER_MAX_LEAD_DAYS = 4;
+
+export function toCatalogueItemLink(input: Pick<ProductWriteInput, 'catalogueItemId'>): { catalogue_item_id: string | null } | undefined {
+  if (input.catalogueItemId === undefined) return undefined;
+  if (input.catalogueItemId === null || input.catalogueItemId === '') return { catalogue_item_id: null };
+  if (typeof input.catalogueItemId !== 'string' || !UUID_RE.test(input.catalogueItemId)) throw new Error('Pick the item from the suggestions.');
+  return { catalogue_item_id: input.catalogueItemId };
+}
 
 export function toPreorder(input: Pick<ProductWriteInput, 'preorderEnabled' | 'preorderMinQty' | 'preorderLeadDays'>):
   { preorder_enabled: boolean; preorder_min_qty?: number; preorder_lead_days?: number } | undefined {

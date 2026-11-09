@@ -29,17 +29,24 @@ categoriesRouter.get('/', async (req, res, next) => {
 // edit-category modal, not a separate page). image_url is optional — a
 // sub-category with none falls back to the shared placeholder image on the
 // client, same convention as every other optional photo in this app.
+// Only sub-categories with at least one live product (approved, with a
+// photo) are listed, so the catalogue's full sub-category list never shows
+// empty sidebar entries. products!inner + a one-row limit on the join keeps
+// it a single query that returns no product rows.
 categoriesRouter.get('/:id/subcategories', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('sub_categories')
-      .select('id, name, image_url, sort_order')
+      .select('id, name, image_url, sort_order, products!inner(id)')
       .eq('category_id', req.params.id)
       .eq('is_active', true)
+      .eq('products.approval_status', 'approved')
+      .not('products.image_url', 'is', null)
+      .limit(1, { referencedTable: 'products' })
       .order('sort_order')
       .order('name').limit(60);
     if (error) throw error;
-    res.json(data);
+    res.json((data ?? []).map(({ products: _products, ...sub }) => sub));
   } catch (err) {
     next(err);
   }

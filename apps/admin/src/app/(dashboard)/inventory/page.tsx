@@ -253,6 +253,7 @@ export default function InventoryPage() {
           <ImageIcon size={15} />
           {fixingPhotos ? 'Fixing photos…' : 'Fix photo borders'}
         </button>
+        <Link href="/catalogue-items" className="rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-ink">Pending items</Link>
         <Link href="/inventory-pack-stock" className=" rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-ink">Set available packs</Link>
         <button
           type="button"

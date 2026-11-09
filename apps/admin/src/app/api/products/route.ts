@@ -13,7 +13,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { catalogueErrorStatus, resolveCatalogueCategory, saveCatalogueProduct, saveProductExtras, saveProductOptions, saveVariantMarkups } from '@/lib/catalogueSave';
 import { PRODUCT_SELECT, mapRowToProduct, type ProductRow } from '@/lib/supabase/products';
-import { toCommissionWaiver, toCutOptions, toExtraImageUrls, toProductOptions, toBrand, toPreorder, toServingOptions, toUnitPriceFlag, toVariantMarkups, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
+import { toCommissionWaiver, toCutOptions, toExtraImageUrls, toProductOptions, toBrand, toCatalogueItemLink, toPreorder, toServingOptions, toUnitPriceFlag, toVariantMarkups, toProductRow, toVariantPayload, validateProductInput, type ProductWriteInput } from '@/lib/productValidation';
 
 // Inventory/festival reads. Service role + admin check, not the browser anon
 // client: RLS hides pending products' sizes and inactive stores from anon.
@@ -37,6 +37,9 @@ export async function POST(request: Request) {
     const input: Partial<ProductWriteInput> = body ?? {};
     input.category = await resolveCatalogueCategory(input.subCategoryId);
     validateProductInput(input);
+    // Products without a photo are never shown in the apps; admin-added
+    // products go live straight away, so the photo is required here.
+    if (!input.imageUrl?.trim()) throw new Error('Add a photo for this product.');
 
     // 'approved' explicitly, not left to the column's own default — a
     // founder adding a product here already is the approval (see
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
     const extraImageUrls = toExtraImageUrls(input);
     // Validated before anything is written.
     const options = toProductOptions(input);
-    const extras = { ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input), ...toCommissionWaiver(input), ...toUnitPriceFlag(input), ...toServingOptions(input), ...toPreorder(input), ...toBrand(input) };
+    const extras = { ...(extraImageUrls ? { extra_image_urls: extraImageUrls } : {}), ...toCutOptions(input), ...toCommissionWaiver(input), ...toUnitPriceFlag(input), ...toServingOptions(input), ...toPreorder(input), ...toBrand(input), ...toCatalogueItemLink(input) };
     const productId = await saveCatalogueProduct(null, { ...toProductRow(input), approval_status: 'approved' }, toVariantPayload(input.variants));
     await saveProductExtras(productId, extras);
     await saveVariantMarkups(productId, toVariantMarkups(input.variants));
