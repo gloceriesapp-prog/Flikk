@@ -27,7 +27,7 @@ export function StartupWelcome({ onFinished }: { onFinished: () => void }) {
       <StatusBar style="light" hidden={false} />
       <Image
         testID="startup-welcome-artwork"
-        source={require('../../assets/customer-welcome.png')}
+        source={require('../../assets/customer-welcome-launch.png')}
         style={StyleSheet.absoluteFill}
         contentFit="cover"
         priority="high"

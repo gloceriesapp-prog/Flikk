@@ -9,6 +9,7 @@ import { useNearbyGroceryInventory } from '../useNearbyGroceryInventory';
 import { selectBalancedProducts } from '../selectBalancedProducts';
 import type { Product } from '../../products/types';
 import { GroceryProductTile } from './GroceryProductTile';
+import { HomeProductCollectionButton } from '../../components/HomeSectionButton';
 import { SeeAllProductsButton } from './SeeAllProductsButton';
 
 interface Props {
@@ -17,16 +18,18 @@ interface Props {
   maxProducts?: number;
   previewCount?: number;
   onViewMore?: () => void;
+  collectionLabel?: string;
   previewProducts?: Product[];
   // Founder's hand-picked products (admin Home Sections), shown first.
   pinnedProducts?: Product[];
 }
 
-export function GroceryCollectionSection({ title, groups, maxProducts = 8, previewCount, onViewMore, previewProducts = [], pinnedProducts = [] }: Props) {
+export function GroceryCollectionSection({ title, groups, maxProducts = 8, previewCount, onViewMore, collectionLabel, previewProducts = [], pinnedProducts = [] }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { visibleProducts, hasLocation, isLoading, isError, retry } = useNearbyGroceryInventory();
   const limit = previewCount ?? maxProducts;
-  const pinned = pinnedProducts.filter((p) => p.isAvailable !== false).slice(0, limit);
+  const availablePicks = pinnedProducts.filter((p) => p.isAvailable !== false);
+  const pinned = availablePicks.slice(0, limit);
   const pinnedIds = new Set(pinned.map((p) => p.id));
   const matched = selectBalancedProducts(visibleProducts, groups, limit).map(mapApiProduct).filter((p) => !pinnedIds.has(p.id));
   const realProducts = [...pinned, ...matched].slice(0, limit);
@@ -62,6 +65,14 @@ export function GroceryCollectionSection({ title, groups, maxProducts = 8, previ
                 </View>
               ))}
             </ScrollView>
+            {collectionLabel && !previewOnly && (
+              <HomeProductCollectionButton
+                label={collectionLabel}
+                title={title}
+                preview={products}
+                products={[...availablePicks, ...selectBalancedProducts(visibleProducts, groups, visibleProducts.length).map(mapApiProduct)]}
+              />
+            )}
           </View>
         )
       ) : (

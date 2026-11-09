@@ -13,6 +13,7 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScrollView, View } from 'react-native';
+import { HomeSectionButton } from '../components/HomeSectionButton';
 import { StoreTileCard } from '../components/StoreTileCard';
 import { SectionTitle } from '../components/SectionTitle';
 import { useTopRatedStores } from './useTopRatedStores';
@@ -28,27 +29,33 @@ export function TopRatedStoresSection({ title = 'Top Rated Stores Near You', sub
   const { data: stores = [] } = useTopRatedStores();
 
   if (stores.length === 0) return null;
+  const collection = stores.map((store) => ({
+    id: store.id,
+    name: store.name,
+    photoUrl: store.photoUrl,
+    isOpen: store.isOpen,
+    openTime: store.openTime,
+    metaLabel: store.rating != null ? `★ ${store.rating.toFixed(1)}` : undefined,
+  }));
 
   return (
     <View className="pt-8">
       <SectionTitle subtitle={subtitle}>{title}</SectionTitle>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 px-5">
-        {stores.map((store) => (
+        {collection.slice(0, 6).map((store) => (
           <StoreTileCard
             key={store.id}
-            store={{
-              id: store.id,
-              name: store.name,
-              photoUrl: store.photoUrl,
-              isOpen: store.isOpen,
-              openTime: store.openTime,
-              metaLabel: store.rating != null ? `★ ${store.rating.toFixed(1)}` : undefined,
-            }}
+            store={store}
             onPress={() => navigation.navigate('StoreDetail', { storeId: store.id, storeName: store.name })}
           />
         ))}
       </ScrollView>
+      <HomeSectionButton
+        label="See all top-rated stores"
+        items={collection.slice(0, 3).map((store) => ({ id: store.id, imageUrl: store.photoUrl }))}
+        onPress={() => navigation.navigate('HomeSectionCollection', { title, stores: collection })}
+      />
     </View>
   );
 }

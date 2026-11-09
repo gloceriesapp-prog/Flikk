@@ -39,6 +39,7 @@ import { PaymentMethodScreen } from '../screens/payment-method/PaymentMethodScre
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { HomeCategoryScreen } from '../screens/home/category-page/HomeCategoryScreen';
 import { HomeContentCollectionScreen } from '../screens/home/content/HomeContentCollectionScreen';
+import { HomeSectionCollectionScreen } from '../screens/home/sections/HomeSectionCollectionScreen';
 import { LocationPermissionScreen } from '../screens/location/LocationPermissionScreen';
 import { LocationSearchScreen } from '../screens/location/LocationSearchScreen';
 import { SelectLocationScreen } from '../screens/location/SelectLocationScreen';
@@ -86,6 +87,7 @@ export function AppNavigator() {
     >
       <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
       <Stack.Screen name="HomeContentCollection" component={HomeContentCollectionScreen} />
+      <Stack.Screen name="HomeSectionCollection" component={HomeSectionCollectionScreen} />
       <Stack.Screen name="SelectLocation" component={SelectLocationScreen} />
       <Stack.Screen name="LocationSearch" component={LocationSearchScreen} options={{ animation: 'none', contentStyle: { backgroundColor: '#F4F5F7' } }} />
       {/* animation: 'none' on these four — they're the bottom nav's own tabs

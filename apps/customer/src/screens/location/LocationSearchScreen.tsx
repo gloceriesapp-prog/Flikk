@@ -19,9 +19,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import { matchSavedAddress } from '../../features/delivery-address/matchSavedAddress';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BlurView } from 'expo-blur';
-import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import MapView, { PROVIDER_GOOGLE, type Region } from 'react-native-maps';
@@ -41,6 +40,7 @@ import {
 } from '../../location/geocoding';
 import { distanceMeters } from '../../location/locationFilter';
 import { GRAYSCALE_MAP_STYLE } from '../../location/mapStyle';
+import { usesGoogleMaps } from '../../location/mapProvider';
 import { LocationRequestGate } from '../../location/requestGate';
 import { useLiveLocation } from '../../location/useLiveLocation';
 import { getDeviceLocationFix } from '../../location/deviceLocation';
@@ -117,8 +117,7 @@ const VAGUE_ACCURACY_M = 25;
 const PIN_SIZE = DELIVERY_PIN_SIZE;
 const PIN_TIP_RATIO = DELIVERY_PIN_TIP;
 
-const HAS_IOS_GOOGLE_MAPS = Constants.expoConfig?.extra?.hasIosGoogleMaps === true;
-const USES_GOOGLE_MAPS = Platform.OS === 'android' || HAS_IOS_GOOGLE_MAPS;
+const USES_GOOGLE_MAPS = usesGoogleMaps();
 
 export function LocationSearchScreen({ navigation, route }: Props) {
   const { intent, ...startingPoint } = route.params ?? {};

@@ -147,7 +147,7 @@ module.exports = {
       'expo-font',
       ['expo-splash-screen', {
         backgroundColor: '#0055FF',
-        image: './assets/customer-welcome.png',
+        image: './assets/customer-welcome-launch.png',
         resizeMode: 'cover',
         ios: { enableFullScreenImage_legacy: true },
         // Android 12+ masks native splash art into an icon. Omit that icon

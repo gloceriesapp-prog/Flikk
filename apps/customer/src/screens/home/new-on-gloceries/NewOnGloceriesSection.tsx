@@ -12,6 +12,7 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScrollView, View } from 'react-native';
+import { HomeSectionButton } from '../components/HomeSectionButton';
 import { StoreTileCard } from '../components/StoreTileCard';
 import { SectionTitle } from '../components/SectionTitle';
 import { useNewOnGloceries } from './useNewOnGloceries';
@@ -27,27 +28,33 @@ export function NewOnGloceriesSection({ title = 'New on Gloceries', subtitle }: 
   const { data: stores = [] } = useNewOnGloceries();
 
   if (stores.length === 0) return null;
+  const collection = stores.map((store, index) => ({
+    id: store.id,
+    name: store.name,
+    photoUrl: store.photoUrl,
+    isOpen: store.isOpen,
+    openTime: store.openTime,
+    metaLabel: index < 6 ? 'New' : undefined,
+  }));
 
   return (
     <View className="pt-8">
       <SectionTitle subtitle={subtitle}>{title}</SectionTitle>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 px-5">
-        {stores.map((store) => (
+        {collection.slice(0, 6).map((store) => (
           <StoreTileCard
             key={store.id}
-            store={{
-              id: store.id,
-              name: store.name,
-              photoUrl: store.photoUrl,
-              isOpen: store.isOpen,
-              openTime: store.openTime,
-              metaLabel: 'New',
-            }}
+            store={store}
             onPress={() => navigation.navigate('StoreDetail', { storeId: store.id, storeName: store.name })}
           />
         ))}
       </ScrollView>
+      <HomeSectionButton
+        label="See all new stores"
+        items={collection.slice(0, 3).map((store) => ({ id: store.id, imageUrl: store.photoUrl }))}
+        onPress={() => navigation.navigate('HomeSectionCollection', { title, stores: collection })}
+      />
     </View>
   );
 }

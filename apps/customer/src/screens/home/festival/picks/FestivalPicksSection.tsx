@@ -3,13 +3,13 @@
 // or empty admin section leaves no gap in the Home layout.
 import { ScrollView, View } from 'react-native';
 import { ProductCard } from '../../products/ProductCard';
+import { HomeProductCollectionButton } from '../../components/HomeSectionButton';
 import { SectionTitle } from '../../components/SectionTitle';
 import { useFestivalSection } from './useFestivalSection';
 
 const CARD_WIDTH = 'w-32';
 const CARD_SNAP_INTERVAL = 128 + 10;
-// Admin picks are unbounded and this rail has no "See all" screen; cap it like
-// every other Home product row (AllTabSections' CUSTOM_SECTION_LIMIT).
+// Limit the rail while keeping all picks accessible from the collection.
 const RAIL_LIMIT = 12;
 
 interface Props {
@@ -20,9 +20,11 @@ interface Props {
 export function FestivalPicksSection({ title }: Props) {
   const { data: section } = useFestivalSection();
   if (!section || section.products.length === 0) return null;
+  const sectionTitle = title?.trim() || section.title;
+  const preview = section.products.slice(0, RAIL_LIMIT);
   return (
     <View className="pt-8">
-      <SectionTitle>{title?.trim() || section.title}</SectionTitle>
+      <SectionTitle>{sectionTitle}</SectionTitle>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -31,10 +33,17 @@ export function FestivalPicksSection({ title }: Props) {
         snapToAlignment="start"
         decelerationRate="fast"
       >
-        {section.products.slice(0, RAIL_LIMIT).map((product) => (
+        {preview.map((product) => (
           <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} showDiscountBadge />
         ))}
       </ScrollView>
+      <HomeProductCollectionButton
+        label="See all festival picks"
+        title={sectionTitle}
+        products={section.products}
+        preview={preview}
+        showDiscountBadge
+      />
     </View>
   );
 }

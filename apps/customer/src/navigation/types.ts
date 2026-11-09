@@ -1,6 +1,8 @@
 import type { ApiAddress } from '../api/addresses';
 // Central param-list definitions — one place to see every screen and what it needs.
 
+import type { Product } from '../screens/home/products/types';
+import type { StoreTile } from '../screens/home/components/StoreTileCard';
 import type { CartItem } from '../store/useCartStore';
 import type { PaymentMethod } from '../payments/paymentMethod';
 import type { FestivalCollectionKey } from '../screens/home/festival/collections/useFestivalCollection';
@@ -51,6 +53,10 @@ export type AppStackParamList = {
   Home: undefined;
   HomeCategory: { tabId: string };
   HomeContentCollection: { tabKey: 'grocery' | 'fresh' | 'regional' | 'festivals' | 'meat'; sectionId: string; itemId?: string };
+  HomeSectionCollection: { title: string } & (
+    | { products: Product[]; showDiscountBadge?: boolean }
+    | { stores: StoreTile[] }
+  );
   Categories: undefined;
   Search: undefined;
   Store: undefined;
