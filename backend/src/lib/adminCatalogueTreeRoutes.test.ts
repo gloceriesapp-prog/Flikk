@@ -2,9 +2,10 @@ import { beforeEach, expect, it, vi } from 'vitest';
 
 // Admin product saves and approvals require a sub-category (migration
 // 20261104140000): the product's category is its sub-category's parent.
+// They also need a photo: products without one are never shown in the apps.
 const db = vi.hoisted(() => ({
   parent: 'Chicken' as string | null,
-  product: { sub_category_id: null as string | null },
+  product: { sub_category_id: null as string | null, image_url: 'https://cdn.test/p.webp' as string | null },
   approved: null as unknown,
   rpc: vi.fn(async () => ({ data: 'p1', error: null })),
 }));
@@ -25,13 +26,13 @@ vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: { rpc: db.rpc, from: (ta
 import { POST } from '../../../apps/admin/src/app/api/products/route';
 import { PATCH as approve } from '../../../apps/admin/src/app/api/products/[id]/approval/route';
 
-const body = { storeId: 's1', name: 'Chicken curry cut', category: 'Anything', stockStatus: 'in_stock',
+const body = { storeId: 's1', name: 'Chicken curry cut', category: 'Anything', stockStatus: 'in_stock', imageUrl: 'https://cdn.test/p.webp',
   variants: [{ unitType: 'kg', quantity: 1, price: 240, stockQuantity: 5 }] };
 const post = (input: unknown) => POST(new Request('https://admin.test/api/products', { method: 'POST', body: JSON.stringify(input) }));
 const ctx = { params: Promise.resolve({ id: 'p1' }) } as never;
 const approval = (value: boolean) => approve(new Request('https://admin.test/api/products/p1/approval', { method: 'PATCH', body: JSON.stringify({ approve: value }) }), ctx);
 
-beforeEach(() => { db.parent = 'Chicken'; db.product = { sub_category_id: null }; db.approved = null; db.rpc.mockClear(); });
+beforeEach(() => { db.parent = 'Chicken'; db.product = { sub_category_id: null, image_url: 'https://cdn.test/p.webp' }; db.approved = null; db.rpc.mockClear(); });
 
 it('refuses a product with no sub-category, or one that no longer exists', async () => {
   expect((await post(body)).status).toBe(400);
@@ -50,7 +51,15 @@ it('only approves products filed under a sub-category; rejecting needs none', as
   expect((await approval(true)).status).toBe(409);
   expect(db.approved).toBeNull();
   expect((await approval(false)).status).toBe(200);
-  db.product = { sub_category_id: 'sub-curry' };
+  db.product = { sub_category_id: 'sub-curry', image_url: 'https://cdn.test/p.webp' };
   expect((await approval(true)).status).toBe(200);
   expect(db.approved).toEqual({ approval_status: 'approved' });
+});
+
+it('adding or approving a product needs a photo', async () => {
+  expect((await post({ ...body, imageUrl: '', subCategoryId: 'sub-curry' })).status).toBe(400);
+  expect(db.rpc).not.toHaveBeenCalled();
+  db.product = { sub_category_id: 'sub-curry', image_url: null };
+  expect((await approval(true)).status).toBe(409);
+  expect(db.approved).toBeNull();
 });
