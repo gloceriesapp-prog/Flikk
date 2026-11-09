@@ -1,3 +1,7 @@
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AppStackParamList } from '../../../navigation/types';
+import { HomeSectionButton } from '../components/HomeSectionButton';
 import { View } from 'react-native';
 import { SectionTitle } from '../components/SectionTitle';
 import { ALL_TAB, buildHomeCategories } from '../data/categoryTabs';
@@ -14,6 +18,7 @@ interface Props {
 }
 
 export function QuickCategoriesSection({ onSelectCategory, title = 'Quick categories', showTitle = true }: Props) {
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { data: tabs = [] } = useHomeTabs();
   // Admin App content: home.quickCategories.hiddenTabs (comma-separated tab
   // names, matched on the tab's name or label) hides only these shortcuts,
@@ -65,6 +70,11 @@ export function QuickCategoriesSection({ onSelectCategory, title = 'Quick catego
           </View>
         ))}
       </View>
+      <HomeSectionButton
+        label="Browse all categories"
+        items={categories.slice(0, 3).map((category) => ({ id: category.id, imageUrl: tabImages.get(category.id) }))}
+        onPress={() => navigation.navigate('Categories')}
+      />
     </View>
   );
 }

@@ -5,6 +5,7 @@
 // product sheet on that day (usePreorderDayStore). ADD opens the sheet, where
 // the customer confirms the day and picks a slot (mustPickInDetail).
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { HomeProductCollectionButton } from '../components/HomeSectionButton';
 import { ProductCard } from '../products/ProductCard';
 import { SectionTitle } from '../components/SectionTitle';
 import { bookingDates, dayCard, dayOpen, daysAhead } from '../../../store/preorder';
@@ -68,18 +69,21 @@ export function PreorderSection({ title, subtitle }: { title: string; subtitle: 
       </View>
 
       {forDay.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerClassName="items-start gap-2.5 px-5 pt-5"
-          snapToInterval={CARD_SNAP_INTERVAL}
-          snapToAlignment="start"
-          decelerationRate="fast"
-        >
-          {forDay.map((product) => (
-            <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} />
-          ))}
-        </ScrollView>
+        <>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerClassName="items-start gap-2.5 px-5 pt-5"
+            snapToInterval={CARD_SNAP_INTERVAL}
+            snapToAlignment="start"
+            decelerationRate="fast"
+          >
+            {forDay.map((product) => (
+              <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} />
+            ))}
+          </ScrollView>
+          <HomeProductCollectionButton label="See all pre-orders" title={title} products={forDay} />
+        </>
       ) : (
         <Text className="px-5 pt-5 text-[14px] text-ink/60">These items need more notice. Pick a later day.</Text>
       )}

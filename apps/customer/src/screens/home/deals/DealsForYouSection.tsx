@@ -1,10 +1,4 @@
-import { ArrowRight02Icon } from '@hugeicons/core-free-icons';
-
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
 import {
-  Pressable,
   ScrollView,
   Text,
   View,
@@ -12,12 +6,7 @@ import {
 
 import { ProductCard } from '../products/ProductCard';
 
-import { AppIcon } from '../../../components/AppIcon';
-import { AppImage as Image } from '../../../components/AppImage';
-
-import { PLACEHOLDER_IMAGE_URI } from '../../../theme/placeholderImage';
-
-import type { AppStackParamList } from '../../../navigation/types';
+import { HomeProductCollectionButton } from '../components/HomeSectionButton';
 import type { Product } from '../products/types';
 import { useCopy } from '../../../api/appConfig';
 
@@ -34,21 +23,18 @@ const SUBTITLE_COLOR = '#453765';
 
 interface Props {
   products: Product[];
+  collectionProducts: Product[];
   title: string;
   subtitle?: string | null;
 }
 
 export function DealsForYouSection({
   products,
+  collectionProducts,
   title,
   subtitle,
 }: Props) {
   const ctaLabel = useCopy('home.dealsForYou.cta');
-  const navigation =
-    useNavigation<
-      NativeStackNavigationProp<AppStackParamList>
-    >();
-
   const offers = products.slice(0, MAX_OFFERS);
 
   if (offers.length === 0) {
@@ -191,122 +177,13 @@ export function DealsForYouSection({
           )}
         </ScrollView>
 
-        {/* ====================================================
-            SEE ALL DEALS
-        ===================================================== */}
-
-        {/* ====================================================
-    SEE ALL DEALS
-===================================================== */}
-
-        <View
-          className="
-    px-5
-    pb-3
-    pt-5
-  "
-        >
-          <Pressable
-            onPress={() =>
-              navigation.navigate(
-                'Store',
-              )
-            }
-            className="
-      h-[50px]
-      flex-row
-      items-center
-      justify-center
-      rounded-2xl
-      border
-      border-[#D9E2F5]
-      bg-white
-      px-4
-      active:opacity-85
-    "
-          >
-            {/* PRODUCT PREVIEW */}
-
-            <View
-              className="
-        mr-2.5
-        flex-row
-        items-center
-      "
-            >
-              {offers
-                .slice(0, 3)
-                .map(
-                  (
-                    product,
-                    index,
-                  ) => (
-                    <View
-                      key={
-                        product.id
-                      }
-                      className={`
-                h-[30px]
-                w-[30px]
-                items-center
-                justify-center
-                overflow-hidden
-                rounded-full
-                border
-                border-white
-                bg-[#F8FAFD]
-                ${index === 0
-                          ? ''
-                          : '-ml-2'
-                        }
-              `}
-                    >
-                      <Image
-                        source={{
-                          uri:
-                            product.imageUrl ||
-                            PLACEHOLDER_IMAGE_URI,
-                        }}
-                        style={{
-                          width:
-                            '100%',
-                          height:
-                            '100%',
-                        }}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  ),
-                )}
-            </View>
-
-            {/* CTA TEXT */}
-
-            <Text
-              className="
-        text-[14px]
-        font-bold
-        tracking-[-0.15px]
-        text-[#2F3F83]
-      "
-            >
-              {ctaLabel}
-            </Text>
-
-            {/* ARROW */}
-
-            <View className="ml-1">
-              <AppIcon
-                icon={
-                  ArrowRight02Icon
-                }
-                size={15}
-                color="#2F3F83"
-                strokeWidth={2.4}
-              />
-            </View>
-          </Pressable>
-        </View>
+        <HomeProductCollectionButton
+          label={ctaLabel}
+          title={title}
+          products={collectionProducts}
+          preview={offers}
+          showDiscountBadge
+        />
 
         {/* ====================================================
             BOTTOM SCALLOP EFFECT

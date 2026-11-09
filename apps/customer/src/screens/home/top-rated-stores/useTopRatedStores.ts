@@ -2,9 +2,8 @@
 // proof row, sits right before DealsSection on Home's "All" tab.
 //
 // Reuses useAllStores (GET /stores, already fetches every active store in
-// the zone) rather than a second store-list fetch — this just re-sorts
-// that same real list by stores.rating (real column, only meaningful now
-// that reviews.ts's own POST /reviews recomputes it) and takes the top 6.
+// the zone) rather than a second store-list fetch — this just ranks
+// that same real list by rating. Home shows the first six.
 // A store with no rating yet (no delivered order has been reviewed) is
 // filtered out entirely rather than sorting to the bottom with a fake 0 —
 // this row is specifically "proven good," not "every store, worst last."
@@ -17,8 +16,6 @@
 
 import { useMemo } from 'react';
 import { useAllStores } from '../../store-list/all-stores/useAllStores';
-
-const TOP_RATED_LIMIT = 6;
 
 export function useTopRatedStores() {
   const query = useAllStores();
@@ -37,8 +34,7 @@ export function useTopRatedStores() {
           if (a.rating != null) return -1;
           if (b.rating != null) return 1;
           return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
-        })
-        .slice(0, TOP_RATED_LIMIT),
+        }),
     [query.data],
   );
 

@@ -49,6 +49,7 @@ import type { Product } from '../products/types';
 import { SectionSkeleton } from '../loading/SectionSkeleton';
 import { FestivalPicksSection } from '../festival/picks/FestivalPicksSection';
 import { SeasonalSection } from '../seasonal/SeasonalSection';
+import { HomeProductCollectionButton } from '../components/HomeSectionButton';
 import { PreorderSection } from '../preorders/PreorderSection';
 
 export interface HomeSectionItem {
@@ -59,6 +60,7 @@ export interface HomeSectionItem {
 // Everything a section renderer might need, resolved once per render.
 interface SectionCtx {
   rows: Record<ProductRowKey, Product[]>;
+  collections: Record<ProductRowKey, Product[]>;
   // Hand-picked products for founder-made sections (custom-xxxxxx keys).
   picks: Record<string, Product[]>;
   onSelectCategory: (id: string) => void;
@@ -71,6 +73,14 @@ interface SectionCtx {
 // that would only duplicate another is hidden — see distinctRows.ts.
 type ProductRowKey = 'price-drops' | 'todays-best-deals' | 'deals-for-you' | 'trending' | 'most-bought' | 'everyday-essentials';
 const ROW_PRIORITY: ProductRowKey[] = ['price-drops', 'todays-best-deals', 'deals-for-you', 'trending', 'most-bought', 'everyday-essentials'];
+const COLLECTION_LABELS: Partial<Record<string, string>> = {
+  'price-drops': 'See all price drops',
+  'todays-best-deals': 'See today’s best deals',
+  trending: 'See all popular products',
+  'most-bought': 'See all bestsellers',
+  'everyday-essentials': 'See all essentials',
+};
+
 
 // Section copy: Home Sections title/subtitle override (admin) wins, then the
 // app_content copy key home.<camelKey>.title|subtitle (registry default in
@@ -87,8 +97,15 @@ function renderCustomSection(key: string) {
   let render = customRenderers.get(key);
   if (!render) {
     render = (ctx, c) => {
-      const products = (ctx.picks[key] ?? []).filter((p) => p.isAvailable !== false).slice(0, CUSTOM_SECTION_LIMIT);
-      return products.length > 0 ? <ProductSection title={c.title} products={products} /> : null;
+      const products = (ctx.picks[key] ?? []).filter((p) => p.isAvailable !== false);
+      if (!products.length) return null;
+      const preview = products.slice(0, CUSTOM_SECTION_LIMIT);
+      return (
+        <>
+          <ProductSection title={c.title} products={preview} />
+          <HomeProductCollectionButton label={`See all ${c.title}`} title={c.title} products={products} preview={preview} />
+        </>
+      );
     };
     customRenderers.set(key, render);
   }
@@ -109,7 +126,9 @@ const SECTION_REGISTRY: Record<string, (ctx: SectionCtx, copy: SectionCopy) => R
   'trending': (ctx, c) => <TrendingSection title={c.title} subtitle={c.subtitle} products={ctx.rows.trending} />,
   'most-bought': (ctx, c) => <MostBoughtSection title={c.title} subtitle={c.subtitle} products={ctx.rows['most-bought']} />,
   'category-sections': () => <CategorySections homeOnly />,
-  'deals-for-you': (ctx, c) => <DealsForYouSection products={ctx.rows['deals-for-you']} title={c.title} subtitle={c.subtitle} />,
+  'deals-for-you': (ctx, c) => (
+    <DealsForYouSection products={ctx.rows['deals-for-you']} collectionProducts={ctx.collections['deals-for-you']} title={c.title} subtitle={c.subtitle} />
+  ),
   'top-rated-stores': (_ctx, c) => <TopRatedStoresSection title={c.title} subtitle={c.subtitle} />,
   'deals-section': () => <DealsSection />,
   'todays-best-deals': (ctx, c) =>
@@ -159,6 +178,7 @@ export const ABOVE_FOLD_ITEM_COUNT = 7;
 // landing query no longer re-renders sections whose inputs didn't change.
 const HomeSection = memo(function HomeSection({
   renderSection,
+  sectionKey,
   ctx,
   copy,
   loading,
@@ -167,6 +187,7 @@ const HomeSection = memo(function HomeSection({
   shortcutsBackground,
 }: {
   renderSection: (ctx: SectionCtx, copy: SectionCopy) => React.ReactNode;
+  sectionKey: string;
   ctx: SectionCtx;
   copy: SectionCopy;
   loading: boolean;
@@ -175,6 +196,7 @@ const HomeSection = memo(function HomeSection({
   shortcutsBackground: string;
 }) {
   const node = renderSection(ctx, copy);
+  const collectionLabel = COLLECTION_LABELS[sectionKey];
   if (!node) {
     // Section rendered nothing. If its own feed is still loading, hold a
     // fixed-height skeleton so the layout doesn't jump when data lands; if it's
@@ -190,6 +212,15 @@ const HomeSection = memo(function HomeSection({
       paddingBottom: 24,
     } : bgColor ? { backgroundColor: bgColor } : undefined}>
       {node}
+      {collectionLabel && (
+        <HomeProductCollectionButton
+          label={collectionLabel}
+          title={copy.title}
+          products={ctx.collections[sectionKey as ProductRowKey]}
+          preview={ctx.rows[sectionKey as ProductRowKey]}
+          showDiscountBadge
+        />
+      )}
     </View>
   );
 });
@@ -216,17 +247,22 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   // Product rows, rebuilt only when a feed actually changes — not on every
   // re-render — so ctx.rows keeps a stable identity between query resolutions.
   // Hand-picked products take the first slots (distinctRows.ts).
-  const rows = useMemo(
-    () => assignHomeRows(ROW_PRIORITY, {
+  const { rows, collections } = useMemo(() => {
+    const inputs = {
       'price-drops': { feed: dealsQuery.data ?? EMPTY_PRODUCTS, cap: 4 },
       'todays-best-deals': { feed: dealsQuery.data ?? EMPTY_PRODUCTS, cap: 6 },
       'deals-for-you': { feed: dealsQuery.data ?? EMPTY_PRODUCTS, cap: 8 },
       trending: { feed: trendingQuery.data ?? EMPTY_PRODUCTS, cap: 6 },
       'most-bought': { feed: mostBoughtQuery.data ?? EMPTY_PRODUCTS, cap: 6 },
       'everyday-essentials': { feed: essentialsQuery.data ?? EMPTY_PRODUCTS, cap: ESSENTIALS_GRID_LIMIT },
-    }, picks, pinnedOnly),
-    [dealsQuery.data, trendingQuery.data, mostBoughtQuery.data, essentialsQuery.data, picks, pinnedOnly],
-  );
+    };
+    const collections = {} as Record<ProductRowKey, Product[]>;
+    for (const key of ROW_PRIORITY) {
+      const availablePicks = (picks[key] ?? []).filter((product) => product.isAvailable !== false);
+      collections[key] = pinnedOnly.has(key) ? availablePicks : [...availablePicks, ...inputs[key].feed];
+    }
+    return { rows: assignHomeRows(ROW_PRIORITY, inputs, picks, pinnedOnly), collections };
+  }, [dealsQuery.data, trendingQuery.data, mostBoughtQuery.data, essentialsQuery.data, picks, pinnedOnly]);
 
   // Admin config when present (enabled only, ordered by sortIndex); otherwise
   // the fallback order, everything on, no overrides. Memoized so an unrelated
@@ -259,8 +295,8 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
   // Everything a section renderer needs, with a stable identity so React.memo
   // on HomeSection can bail out when a section's inputs are unchanged.
   const ctx = useMemo<SectionCtx>(
-    () => ({ rows, picks, onSelectCategory, quickCategoriesLeading }),
-    [rows, picks, onSelectCategory, quickCategoriesLeading],
+    () => ({ rows, collections, picks, onSelectCategory, quickCategoriesLeading }),
+    [rows, collections, picks, onSelectCategory, quickCategoriesLeading],
   );
 
   // Section copy, resolved once per section and memoized so copy strings keep a
@@ -310,6 +346,7 @@ export function useAllTabSectionItems(onSelectCategory: (id: string) => void): H
         node: (
           <HomeSection
             renderSection={render}
+            sectionKey={cfg.key}
             ctx={ctx}
             copy={copyByKey[cfg.key]}
             loading={cfg.custom ? picksQuery.isPending : !!loadingByKey[cfg.key]}

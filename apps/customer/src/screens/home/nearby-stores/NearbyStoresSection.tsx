@@ -4,7 +4,7 @@ import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
 
 import { useNearbyStores } from './useNearbyStores';
 import { StoreTileCard } from '../components/StoreTileCard';
-import { ViewAllStoresTile } from './components/ViewAllStoresTile';
+import { HomeSectionButton } from '../components/HomeSectionButton';
 
 import type { AppStackParamList } from '../../../navigation/types';
 
@@ -116,14 +116,12 @@ export function NearbyStoresSection() {
           />
         ))}
 
-        <ViewAllStoresTile
-          width={cardWidth}
-          aspectRatio={STORE_CARD_ASPECT_RATIO}
-          onPress={() =>
-            navigation.navigate('Store')
-          }
-        />
       </ScrollView>
+      <HomeSectionButton
+        label="See all nearby stores"
+        items={rowStores.slice(0, 3).map((store) => ({ id: store.id, imageUrl: store.photoUrl }))}
+        onPress={() => navigation.navigate('Store')}
+      />
     </View>
   );
 }
