@@ -483,3 +483,27 @@ export const IconlySearch = memo(function IconlySearch({ size = 24, color = DEFA
     </Svg>
   );
 });
+
+// Delivery bike ("Motor"), stroke icon.
+export const IconlyMotor = memo(function IconlyMotor({ size = 24, color = DEFAULT_COLOR }: IconlyIconProps) {
+  const stroke = { stroke: color, strokeWidth: 1.5, strokeMiterlimit: 10, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M5.49379 18.055C6.87107 18.055 7.98757 16.9384 7.98757 15.5612C7.98757 14.1839 6.87107 13.0674 5.49379 13.0674C4.11651 13.0674 3 14.1839 3 15.5612C3 16.9384 4.11651 18.055 5.49379 18.055Z" {...stroke} />
+      <Path d="M18.5065 18.055C19.8838 18.055 21.0003 16.9384 21.0003 15.5612C21.0003 14.1839 19.8838 13.0674 18.5065 13.0674C17.1292 13.0674 16.0127 14.1839 16.0127 15.5612C16.0127 16.9384 17.1292 18.055 18.5065 18.055Z" {...stroke} />
+      <Path d="M18.5065 15.5611L13.7029 5.94482H11.7061" {...stroke} />
+      <Path d="M5.49512 15.5612L10.8048 14.0889" {...stroke} />
+      <Path d="M7.00293 11.2822L8.47528 12.1748H10.2697L11.2267 15.5612L12.9567 14.8251L13.5301 13.4982" {...stroke} />
+      <Path d="M14.6211 11.2011L16.1866 7.896" {...stroke} />
+      <Path d="M4.0498 7.896C4.0498 7.896 9.40546 11.2732 13.1231 8.88983L14.6231 11.2732C14.6231 11.2732 18.0095 7.896 21.0002 11.0799" {...stroke} />
+    </Svg>
+  );
+});
+
+export const IconlyChevronRight = memo(function IconlyChevronRight({ size = 24, color = DEFAULT_COLOR }: IconlyIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path fillRule="evenodd" clipRule="evenodd" d="M8.46967 4.46967C8.76256 4.17678 9.23744 4.17678 9.53033 4.46967L16.5303 11.4697C16.8232 11.7626 16.8232 12.2374 16.5303 12.5303L9.53033 19.5303C9.23744 19.8232 8.76256 19.8232 8.46967 19.5303C8.17678 19.2374 8.17678 18.7626 8.46967 18.4697L14.9393 12L8.46967 5.53033C8.17678 5.23744 8.17678 4.76256 8.46967 4.46967Z" fill={color} />
+    </Svg>
+  );
+});

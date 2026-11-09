@@ -1,4 +1,5 @@
-// The floating "active order" tracker pill — a white rounded card that sits
+// The floating "active order" tracker pill — a white card with a thin black
+// border (bike icon, green "Arriving in N minutes", "Gloceries", chevron) that sits
 // just above the bottom nav whenever the customer has an in-flight order and
 // taps through to TrackOrder. All data/logic lives in useActiveOrder (one
 // shared purchase-history query, no fetch of its own); this file is purely
@@ -11,10 +12,7 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue } from 'react-n
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { AppIcon } from '../../components/AppIcon';
-import { colors } from '../../theme/tokens';
+import { IconlyChevronRight, IconlyMotor } from '../../components/icons/iconly';
 import { HomeNavigationProgressContext } from '../../navigation/home/HomeNavigationProgressContext';
 import type { AppStackParamList } from '../../navigation/types';
 import { activeOrderLabel } from './activeOrderLabel';
@@ -33,6 +31,7 @@ import { useOrderRatingPreview } from '../order-rating/preview';
 const PILL_HEIGHT = 73;
 const NAV_BOTTOM_OFFSET = Platform.OS === 'android' ? 0 : -10;
 const GAP = 4;
+const ARRIVING_GREEN = '#1F8A3B';
 
 export function ActiveOrderBar({ onHeightChange, navigationBarHeight = PILL_HEIGHT }: { onHeightChange?: (height: number) => void; navigationBarHeight?: number }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -61,6 +60,7 @@ export function ActiveOrderBar({ onHeightChange, navigationBarHeight = PILL_HEIG
   const { orderId, isTrip, statusKey, deadlineMs, baseMinutes } = active;
   const title = activeOrderLabel(statusKey);
   const mins = computeDisplayEta({ deadlineMs, baseMinutes, nowMs: now });
+  const arrival = `Arriving in ${mins} ${mins === 1 ? 'minute' : 'minutes'}`;
 
   return (
     // box-none: the empty margins around the pill pass taps through to the
@@ -73,40 +73,28 @@ export function ActiveOrderBar({ onHeightChange, navigationBarHeight = PILL_HEIG
       <Pressable
         onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)}
         accessibilityRole="button"
-        accessibilityLabel={`Track order, ${title}`}
+        accessibilityLabel={`Track order, ${title}, ${arrival}`}
         // paymentMethodLabel is required by the route but unused for this
         // entry point (TrackOrder re-fetches the order) — same empty-string
         // the deep-link path (navigation/linking.ts) already passes.
         onPress={() => navigation.navigate('TrackOrder', { orderId, isTrip, paymentMethodLabel: '' })}
-        className={`w-full flex-row items-center gap-3 self-center rounded-[22px] border bg-white px-2.5 py-2.5 active:opacity-90 ${Platform.OS === 'android' ? 'border-gray-200' : 'border-ink/5'}`}
-        // Android: no elevation shadow — a flat gray-100 border is the only
-        // edge treatment. iOS keeps its own soft drop shadow + ink border.
-        style={{ maxWidth: 330, shadowColor: '#101C10', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: Platform.OS === 'android' ? 0 : 8 }}
+        className="w-full flex-row items-center gap-3 self-center rounded-[20px] bg-white px-2.5 py-2.5 active:opacity-90"
+        // White card, thin black border (no drop shadow).
+        style={{ maxWidth: 340, borderWidth: 1, borderColor: '#101C10' }}
       >
-        {/* ETA badge — lime→deep diagonal gradient with ink text (white on
-            lime fails AA, per the design system). Live countdown via
-            computeDisplayEta: never shows 0 — once the recorded deadline
-            passes it restarts from the order's reset window (15 min, 10 for a
-            short order). */}
-        <LinearGradient
-          colors={[colors.lime, colors.limeDeep]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ height: 46, width: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Text className="text-[19px] font-extrabold leading-[21px] text-ink">{mins}</Text>
-          <Text className="text-[9px] font-semibold uppercase leading-[11px] tracking-wide text-ink/80">mins</Text>
-        </LinearGradient>
+        <View className="h-[46px] w-[46px] items-center justify-center rounded-[14px] bg-[#F2F2F2]">
+          <IconlyMotor size={26} color="#101C10" />
+        </View>
 
         <View className="min-w-0 flex-1">
-          <Text numberOfLines={1} className="text-[15px] font-bold leading-[19px] text-ink">{title}</Text>
-          <Text numberOfLines={1} className="text-[12.5px] font-semibold leading-[16px] text-ink/80">Gloceries</Text>
+          {/* Live countdown via computeDisplayEta: never shows 0 — once the
+              recorded deadline passes it restarts from the order's reset
+              window (15 min, 10 for a short order). */}
+          <Text numberOfLines={1} className="text-[15px] font-bold leading-[19px]" style={{ color: ARRIVING_GREEN }}>{arrival}</Text>
+          <Text numberOfLines={1} className="text-[13px] font-semibold leading-[17px] text-ink">Gloceries</Text>
         </View>
 
-        {/* Subtle circle + chevron affordance */}
-        <View className="h-8 w-8 items-center justify-center rounded-full bg-lime-soft">
-          <AppIcon icon={ArrowRight01Icon} size={18} color="#101C10" strokeWidth={2.5} />
-        </View>
+        <IconlyChevronRight size={20} color="#101C10" />
       </Pressable>
     </Animated.View>
   );
