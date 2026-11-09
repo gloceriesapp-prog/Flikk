@@ -19,7 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { fetchAddresses, setDefaultAddress } from '../../api/addresses';
 import { matchSavedAddress } from '../../features/delivery-address/matchSavedAddress';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';

@@ -1,6 +1,6 @@
 import { HOME_LOADER_LINES, pickLoaderLine } from '../src/screens/home/loading/HomeLoader';
 
-jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+jest.mock('react-native-reanimated', () => jest.requireActual('react-native-reanimated/mock'));
 
 test('picks one of the three loader lines, covering each', () => {
   expect(pickLoaderLine(() => 0)).toBe('Something Wonderful Awaits, Tulunadu...');
