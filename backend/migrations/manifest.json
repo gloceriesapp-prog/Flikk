@@ -680,6 +680,10 @@
     {
       "file": "20261109100000_catalogue_items.sql",
       "sha256": "78d7d26764312676e68e1cf459477cecd2e22e43e0b129b057e950497cc72d31"
+    },
+    {
+      "file": "20261109110000_partner_catalogue_submission.sql",
+      "sha256": "cc3b07932cb27aab8afebfb62302e8a2a5e2f10aad04f3024d19548aa994f5e5"
     }
   ]
 }

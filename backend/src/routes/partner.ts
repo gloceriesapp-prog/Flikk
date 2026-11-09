@@ -681,13 +681,55 @@ partnerRouter.get('/products', async (req: AuthedRequest, res, next) => {
   }
 });
 
+partnerRouter.get('/catalogue/categories', async (_req, res, next) => {
+  try {
+    const { data, error } = await supabase.from('categories')
+      .select('id, name, sub_categories!inner(id, name)')
+      .eq('is_active', true)
+      .eq('sub_categories.is_active', true)
+      .order('sort_order').order('name')
+      .order('sort_order', { referencedTable: 'sub_categories' })
+      .order('name', { referencedTable: 'sub_categories' });
+    if (error) throw error;
+    res.json((data ?? []).map(({ id, name, sub_categories }) => ({ id, name, subCategories: sub_categories })));
+  } catch (err) { next(err); }
+});
+
+partnerRouter.get('/catalogue/suggestions', async (req, res, next) => {
+  try {
+    const query = typeof req.query.q === 'string' ? req.query.q.trim().replace(/\s+/g, ' ').slice(0, 80) : '';
+    if (query.length < 2) { res.json([]); return; }
+    const { data, error } = await supabase.from('catalogue_items')
+      .select('id, name, sub_category_id, sub_categories!inner(category_id, categories!inner(id))')
+      .eq('sub_categories.is_active', true)
+      .eq('sub_categories.categories.is_active', true)
+      .ilike('name', `%${query.replace(/[\\%_]/g, '\\$&')}%`)
+      .order('name').order('id').limit(8)
+      .overrideTypes<Array<{
+        id: string;
+        name: string;
+        sub_category_id: string;
+        sub_categories: { category_id: string };
+      }>, { merge: false }>();
+    if (error) throw error;
+    res.json((data ?? []).map((item) => ({
+      id: item.id, name: item.name, subCategoryId: item.sub_category_id,
+      categoryId: item.sub_categories.category_id,
+    })));
+  } catch (err) { next(err); }
+});
+
 partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
   try {
     const storeId = await ownStoreId(req.user!.id);
     // storeId always comes from the caller's own store, never req.body —
     // a store owner can only ever create a product for themselves, even if
     // the request body carries a different storeId.
-    const input: Partial<ProductInput> = { ...req.body, storeId };
+    const { photoAssetIds, subCategoryId, catalogueItemId } = req.body;
+    const hasSubmission = photoAssetIds !== undefined || subCategoryId !== undefined || catalogueItemId !== undefined;
+    const input: Partial<ProductInput> = hasSubmission
+      ? { storeId, name: req.body.name, category: 'Catalogue', stockStatus: req.body.stockStatus, variants: req.body.variants }
+      : { ...req.body, storeId };
     validateProductInput(input);
 
     // A store owner's own product never goes live on its own — see this
@@ -696,12 +738,39 @@ partnerRouter.post('/products', async (req: AuthedRequest, res, next) => {
     // only. Admin's own POST /api/products (apps/admin) sets 'approved'
     // instead, since a founder adding a product for a store is already the
     // approval.
-    const productId = await saveCatalogueProduct({
-      productId: null,
-      storeScope: storeId,
-      fields: { ...toProductRow(input), approval_status: 'pending' },
-      variants: toVariantPayload(input.variants, input.stockQuantity),
-    });
+    const fields = { ...toProductRow(input), approval_status: 'pending' };
+    const variants = toVariantPayload(input.variants, input.stockQuantity);
+    let productId: string;
+    if (hasSubmission) {
+      const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+      const isUuid = (value: unknown): value is string => typeof value === 'string' && uuid.test(value);
+      if (!isUuid(subCategoryId) || (catalogueItemId != null && !isUuid(catalogueItemId))) {
+        throw new AppError(400, 'INVALID_CATEGORY', 'Select a category and subcategory.');
+      }
+      if (!Array.isArray(photoAssetIds) || photoAssetIds.length < 1 || photoAssetIds.length > 5 || !photoAssetIds.every(isUuid)) {
+        throw new AppError(400, 'INVALID_PHOTOS', 'Take between one and five product photos.');
+      }
+      if (input.name.trim().length > 200) {
+        throw new AppError(400, 'INVALID_PRODUCT', 'Use a name of 200 characters or less.');
+      }
+      if (input.variants.some((variant) => variant.stockQuantity == null)) {
+        throw new AppError(400, 'INVALID_PRODUCT', 'Enter stock for every size.');
+      }
+      const { data, error } = await supabase.rpc('save_partner_catalogue_submission', {
+        p_store: storeId,
+        p_fields: fields,
+        p_variants: variants,
+        p_sub_category: subCategoryId,
+        p_catalogue_item: catalogueItemId ?? null,
+        p_photos: photoAssetIds,
+      });
+      if (error?.code === 'P0400') throw new AppError(400, 'INVALID_PRODUCT', error.message);
+      if (error?.code === 'P0409') throw new AppError(409, 'DUPLICATE_PRODUCT', error.message);
+      if (error) throw error;
+      productId = data as string;
+    } else {
+      productId = await saveCatalogueProduct({ productId: null, storeScope: storeId, fields, variants });
+    }
     const { data, error: refetchError } = await supabase
       .from('products')
       .select('*, product_variants(*)')

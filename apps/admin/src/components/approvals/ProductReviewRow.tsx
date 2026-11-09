@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { Check, Package, Pencil, X } from '@/components/icons';
 import clsx from 'clsx';
 import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
+import { ProductReviewPhotos } from './ProductReviewPhotos';
 import { EditProductModal } from '@/components/inventory/EditProductModal';
 import type { StoreOption } from '@/lib/supabase/products';
 import type { Product, ProductVariant } from '@/lib/types';
@@ -102,7 +103,7 @@ export function ProductReviewRow({
   }
 
   async function call(url: string, body: unknown) {
-    if (busy) return;
+    if (busy) return false;
     setError(null);
     setBusy(true);
     try {
@@ -113,6 +114,7 @@ export function ProductReviewRow({
       });
       if (res.ok) {
         onDone();
+        return true;
       } else {
         const b = (await res.json().catch(() => null)) as { error?: string } | null;
         setError(b?.error ?? 'Could not update this product.');
@@ -122,6 +124,7 @@ export function ProductReviewRow({
     } finally {
       setBusy(false);
     }
+    return false;
   }
 
   // Replace — the founder uploads their own photo instead of the pending one.
@@ -155,14 +158,15 @@ export function ProductReviewRow({
             <span className="text-[10px] font-medium text-muted">Pending</span>
           </div>
         </div>
-      ) : (
+      ) : mode === 'changes' ? (
         <Img src={product.imageUrl} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
-      )}
+      ) : null}
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-ink">{product.name}</p>
         <p className="truncate text-xs text-muted">{product.storeName}</p>
         {mode === 'changes' && <ChangeSummary product={product} />}
+        {mode === 'new' && <div className="mt-2"><ProductReviewPhotos product={product} busy={busy} onReplace={call} /></div>}
       </div>
 
       {!!error && <p role="alert" className="text-sm text-danger">{error}</p>}
