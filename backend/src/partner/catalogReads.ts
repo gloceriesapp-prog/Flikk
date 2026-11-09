@@ -27,7 +27,10 @@ export function catalogueSearchFilter(search: string) {
 const running = new Map<string, ReturnType<typeof queryCatalogue>>();
 async function queryCatalogue(storeId: string, selection: ReturnType<typeof cataloguePage>) {
   const { page, search, stock } = selection;
-  let query = supabase.from('products').select(PARTNER_PRODUCT_SELECT).eq('store_id', storeId);
+  // Products without a photo are not shown in the partner app (they can't be
+  // live either: products_live_needs_photo).
+  let query = supabase.from('products').select(PARTNER_PRODUCT_SELECT).eq('store_id', storeId)
+    .not('image_url', 'is', null).neq('image_url', '');
   if (search) query = query.or(catalogueSearchFilter(search));
   if (stock === 'low_stock') query = query.eq('stock_tracking_enabled', true).neq('stock_status', 'out_of_stock').gt('stock_quantity', 0).lt('stock_quantity', 5);
   if (stock === 'pending') query = query.eq('approval_status', 'pending');

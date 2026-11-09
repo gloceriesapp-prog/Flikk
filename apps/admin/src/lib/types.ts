@@ -445,6 +445,8 @@ export interface Product {
   // Brand (brands table); none for loose produce and local items.
   // null on save clears it.
   brandId?: string | null;
+  // Master item (catalogue_items) this product was added from.
+  catalogueItemId?: string | null;
   brandName?: string;
   // 'pending' when a store owner added/edited it from the partner app
   // (backend's POST/PATCH /partner/products) — invisible on every

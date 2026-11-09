@@ -676,6 +676,10 @@
     {
       "file": "20261108140000_category_section_show_on_home.sql",
       "sha256": "d70477277cd6118e222a63bbb71953a7f585bedf2b49970d42457b4a475dfdb3"
+    },
+    {
+      "file": "20261109100000_catalogue_items.sql",
+      "sha256": "51fc0da9b5852aa63ad9f307d62a4f6732de8aed073a4dfa288c8588875876ed"
     }
   ]
 }

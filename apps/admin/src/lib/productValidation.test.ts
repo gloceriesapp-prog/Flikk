@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_EXTRA_IMAGES, toBrand, toPreorder, toExtraImageUrls, validateProductInput } from './productValidation';
+import { MAX_EXTRA_IMAGES, toBrand, toCatalogueItemLink, toPreorder, toExtraImageUrls, validateProductInput } from './productValidation';
 
 const cover = 'https://cdn.example/a.webp';
 
@@ -98,4 +98,12 @@ test('pre-order: on allows same day to 4 days and 1-999 packs', () => {
     { preorder_enabled: true, preorder_min_qty: 1, preorder_lead_days: 4 });
   assert.throws(() => toPreorder({ preorderEnabled: true, preorderMinQty: 1, preorderLeadDays: 5 }), /notice/);
   assert.throws(() => toPreorder({ preorderEnabled: true, preorderMinQty: 0, preorderLeadDays: 1 }), /minimum/);
+});
+
+test('catalogue item link: absent leaves it, empty clears it, only real ids are kept', () => {
+  assert.equal(toCatalogueItemLink({}), undefined);
+  assert.deepEqual(toCatalogueItemLink({ catalogueItemId: null }), { catalogue_item_id: null });
+  const id = '3f2b8a1c-5d4e-4f6a-9b7c-1d2e3f4a5b6c';
+  assert.deepEqual(toCatalogueItemLink({ catalogueItemId: id }), { catalogue_item_id: id });
+  assert.throws(() => toCatalogueItemLink({ catalogueItemId: 'Maggi' }), /suggestions/);
 });

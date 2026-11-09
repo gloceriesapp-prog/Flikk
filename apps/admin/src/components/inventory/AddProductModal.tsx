@@ -21,6 +21,7 @@ import { FRESHNESS_TAG_PRESETS } from '@/lib/mock-data';
 import type { StoreOption } from '@/lib/supabase/products';
 import { categoryHasVegToggle } from '@/lib/product-options';
 import { BrandPicker } from './BrandPicker';
+import { CatalogueNameInput } from './CatalogueNameInput';
 import { CataloguePicker, type CataloguePlacement } from './CataloguePicker';
 import { formatVariantUnit, sellingPrice, validateProductInput } from '@/lib/productValidation';
 import { ProductImageUpload } from './ProductImageUpload';
@@ -65,6 +66,7 @@ function makeEmptyDraft(stores: StoreOption[]) {
     bgColor: undefined as string | undefined,
     subCategoryId: undefined as string | undefined,
     brandId: undefined as string | undefined,
+    catalogueItemId: undefined as string | undefined,
     isVeg: true,
     freshnessTag: '',
   };
@@ -153,6 +155,7 @@ export function AddProductModal({
         bgColor: draft.bgColor,
         subCategoryId: draft.subCategoryId,
         brandId: draft.brandId,
+        catalogueItemId: draft.catalogueItemId,
         isVeg: draft.isVeg,
         freshnessTag: draft.freshnessTag || undefined,
       }, homeChoice.keys);
@@ -199,15 +202,17 @@ export function AddProductModal({
               imageUrl={draft.imageUrl}
               onChange={(imageUrl, bgColor) => setDraft({ ...draft, imageUrl, bgColor: bgColor ?? undefined })}
             />
-            <input
+            <CatalogueNameInput
               value={draft.name}
-              onChange={(e) => {
+              onChange={(name) => {
                 setError(null);
-                setDraft({ ...draft, name: e.target.value });
+                setDraft((d) => ({ ...d, name }));
               }}
-              className={FIELD_CLASS}
-              placeholder="Product name"
-              aria-label="Product name"
+              onPick={(item) => {
+                setError(null);
+                setDraft((d) => ({ ...d, name: item.name, catalogueItemId: item.id }));
+                if (item.subCategoryId && item.categoryName) setPlacement({ subCategoryId: item.subCategoryId, category: item.categoryName });
+              }}
             />
           </div>
 

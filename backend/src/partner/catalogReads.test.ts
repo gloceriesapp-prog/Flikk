@@ -15,14 +15,14 @@ describe('partner catalogue read contract', () => {
  it('coalesces in-flight reads within one store and fetches only one bounded page', async () => {
   let finish!: (value: {data: {id: string}[]; error: null}) => void;
   const pending = new Promise<{data: {id: string}[]; error: null}>((resolve) => { finish = resolve; });
-  const chain = { select: vi.fn(), eq: vi.fn(), ilike: vi.fn(), or: vi.fn(), neq: vi.fn(), lt: vi.fn(), order: vi.fn(), limit: vi.fn() };
-  for (const method of [chain.select,chain.eq,chain.ilike,chain.or,chain.neq,chain.lt,chain.order]) method.mockReturnValue(chain); chain.limit.mockReturnValue(pending); mocked.from.mockReturnValue(chain);
+  const chain = { select: vi.fn(), eq: vi.fn(), not: vi.fn(), ilike: vi.fn(), or: vi.fn(), neq: vi.fn(), lt: vi.fn(), order: vi.fn(), limit: vi.fn() };
+  for (const method of [chain.select,chain.eq,chain.not,chain.ilike,chain.or,chain.neq,chain.lt,chain.order]) method.mockReturnValue(chain); chain.limit.mockReturnValue(pending); mocked.from.mockReturnValue(chain);
   const selection = cataloguePage({ query: { page: '1', limit: '30', q: 'milk' } }, storeId);
-  const first = readCatalogue(storeId,selection); const second = readCatalogue(storeId,selection); expect(mocked.from).toHaveBeenCalledTimes(1); expect(chain.limit).toHaveBeenCalledWith(31); expect(chain.eq).toHaveBeenCalledWith('store_id',storeId); finish({data:[{id:'a'}],error:null}); expect(await first).toEqual(await second);
+  const first = readCatalogue(storeId,selection); const second = readCatalogue(storeId,selection); expect(mocked.from).toHaveBeenCalledTimes(1); expect(chain.limit).toHaveBeenCalledWith(31); expect(chain.eq).toHaveBeenCalledWith('store_id',storeId); expect(chain.not).toHaveBeenCalledWith('image_url','is',null); expect(chain.neq).toHaveBeenCalledWith('image_url',''); finish({data:[{id:'a'}],error:null}); expect(await first).toEqual(await second);
  });
  it('filters running low to tracked positive quantities below five within the owner store', async () => {
-  const chain = { select: vi.fn(), eq: vi.fn(), neq: vi.fn(), gt: vi.fn(), lt: vi.fn(), order: vi.fn(), limit: vi.fn() };
-  for (const method of [chain.select, chain.eq, chain.neq, chain.gt, chain.lt, chain.order]) method.mockReturnValue(chain);
+  const chain = { select: vi.fn(), eq: vi.fn(), not: vi.fn(), neq: vi.fn(), gt: vi.fn(), lt: vi.fn(), order: vi.fn(), limit: vi.fn() };
+  for (const method of [chain.select, chain.eq, chain.not, chain.neq, chain.gt, chain.lt, chain.order]) method.mockReturnValue(chain);
   chain.limit.mockResolvedValue({ data: [], error: null }); mocked.from.mockReturnValue(chain);
   await readCatalogue('low-stock-store', cataloguePage({ query: { stock: 'low_stock', page: '1' } }, 'low-stock-store'));
   expect(chain.eq).toHaveBeenCalledWith('store_id', 'low-stock-store');
