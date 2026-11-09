@@ -4,22 +4,22 @@
 // missing or stale; the delivery pin stays so the card never looks broken.
 //
 // Map conventions follow LocationSearchScreen: Google provider + grayscale
-// style on Android (and iOS once a Google key ships), Apple Maps muted
+// style on Android (and iOS builds with the native Google SDK), Apple Maps muted
 // otherwise. react-native-maps isn't in Expo Go and a native map failure
 // shouldn't take down the tracker, so both fall back to the caption alone.
 import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Home01Icon, Motorbike01Icon } from '@hugeicons/core-free-icons';
 import { AppIcon } from '../../../components/AppIcon';
 import { GRAYSCALE_MAP_STYLE } from '../../../location/mapStyle';
+import { usesGoogleMaps } from '../../../location/mapProvider';
 import { colors } from '../../../theme/tokens';
 import type { MapCoordinates, RiderLocationResponse } from '../../../api/tracking';
 import { riderMapView } from '../state/riderLocationView';
 
-const HAS_IOS_GOOGLE_MAPS = Constants.expoConfig?.extra?.hasIosGoogleMaps === true;
-const USES_GOOGLE_MAPS = Platform.OS === 'android' || HAS_IOS_GOOGLE_MAPS;
+const USES_GOOGLE_MAPS = usesGoogleMaps();
 const MAPS_AVAILABLE = Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 const MAP_HEIGHT = 200;
 const EDGE_PADDING = { top: 56, right: 56, bottom: 56, left: 56 };
