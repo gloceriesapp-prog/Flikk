@@ -10,16 +10,11 @@
 // appear, each with its tiles still marked "Show on Home"; the Categories
 // screen shows everything.
 
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from 'react-native';
-import type { AppStackParamList } from '../../navigation/types';
-import { HomeSectionButton } from '../../screens/home/components/HomeSectionButton';
 import { CategorySectionGroup } from './CategorySectionGroup';
 import { useCategorySections } from './useCategorySections';
 
 export function CategorySections({ homeOnly = false }: { homeOnly?: boolean }) {
-  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { data: sections = [] } = useCategorySections();
   const nonEmptySections = sections
     .filter((section) => !homeOnly || section.showOnHome)
@@ -31,13 +26,6 @@ export function CategorySections({ homeOnly = false }: { homeOnly?: boolean }) {
       {nonEmptySections.map((section) => (
         <CategorySectionGroup key={section.id} section={section} />
       ))}
-      {homeOnly && nonEmptySections.length > 0 && (
-        <HomeSectionButton
-          label="See all categories"
-          items={nonEmptySections.flatMap((section) => section.categories).slice(0, 3)}
-          onPress={() => navigation.navigate('Categories')}
-        />
-      )}
     </View>
   );
 }
