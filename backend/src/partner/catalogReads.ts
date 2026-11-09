@@ -27,8 +27,8 @@ export function catalogueSearchFilter(search: string) {
 const running = new Map<string, ReturnType<typeof queryCatalogue>>();
 async function queryCatalogue(storeId: string, selection: ReturnType<typeof cataloguePage>) {
   const { page, search, stock } = selection;
-  // Products without a photo are not shown in the partner app (they can't be
-  // live either: products_live_needs_photo).
+  // Products without a photo are not shown in the partner app (admin also
+  // requires a photo to add or approve a product, so none go live).
   let query = supabase.from('products').select(PARTNER_PRODUCT_SELECT).eq('store_id', storeId)
     .not('image_url', 'is', null).neq('image_url', '');
   if (search) query = query.or(catalogueSearchFilter(search));

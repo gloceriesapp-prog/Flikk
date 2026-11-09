@@ -37,6 +37,9 @@ export async function POST(request: Request) {
     const input: Partial<ProductWriteInput> = body ?? {};
     input.category = await resolveCatalogueCategory(input.subCategoryId);
     validateProductInput(input);
+    // Products without a photo are never shown in the apps; admin-added
+    // products go live straight away, so the photo is required here.
+    if (!input.imageUrl?.trim()) throw new Error('Add a photo for this product.');
 
     // 'approved' explicitly, not left to the column's own default — a
     // founder adding a product here already is the approval (see

@@ -5,8 +5,8 @@
 -- is linked to it. Never read by the customer or partner apps.
 --
 -- Items with no sub-category yet ("needs category") have sub_category_id NULL.
--- A live (approved) product must have a photo, so photo-less items can never
--- reach the customer or partner apps.
+-- Photo-less items never reach the apps: items are not products, and admin
+-- requires a photo to add or approve a product.
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='120s';
@@ -32,11 +32,6 @@ REVOKE ALL ON public.catalogue_items FROM anon, authenticated;
 -- Which master item a product was added from.
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS catalogue_item_id uuid REFERENCES public.catalogue_items(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS products_catalogue_item_idx ON public.products (catalogue_item_id) WHERE catalogue_item_id IS NOT NULL;
-
--- A live product always has a photo.
-ALTER TABLE public.products DROP CONSTRAINT IF EXISTS products_live_needs_photo;
-ALTER TABLE public.products ADD CONSTRAINT products_live_needs_photo
-  CHECK (approval_status IS DISTINCT FROM 'approved' OR nullif(btrim(image_url), '') IS NOT NULL);
 
 -- Admin's "Pending items" view: each item with where it is filed and whether
 -- a product has been added from it yet.
