@@ -1,27 +1,7 @@
 import { BackIcon } from '../../components/PartnerIcons';
 import { parseMoneyInput, validVariantPrices } from '../../utils/moneyInput';
 import { AppImage as Image } from '../../components/AppImage';
-// New-product form — reached from Inventory's own "Add product" button
-// (InventorySummaryCard, was "Manage stocks" with nothing wired to it).
-// Field set mirrors admin's own AddProductModal (apps/admin/src/components/
-// inventory/AddProductModal.tsx) on purpose, per an explicit ask: name,
-// category (same fixed PRODUCT_CATEGORIES list), photo, and per-size
-// price/stock — the same real input surface a founder gets, not a smaller
-// stand-in. localName/description/isVeg/freshnessTag/subCategory are
-// admin-only for now — a real gap, not an oversight, see this screen's own
-// PR notes.
-//
-// Reuses ProductDetailScreen's own AddSizeButton/ProductVariantCard
-// (product-detail/components) — same size-picker + price/stock card, this
-// screen just starts from an empty draft instead of an existing product's.
-//
-// Submitting always lands as approval_status: 'pending' — see
-// useCatalogStore.ts's own addProduct note and backend/src/routes/
-// partner.ts's router-level note. This screen doesn't say so as a warning,
-// just states it plainly on the submit button and success path, since it's
-// expected behavior, not an error condition.
-
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -40,66 +20,146 @@ import { AppIcon } from '../../components/AppIcon';
 import { DismissKeyboardView } from '../../components/DismissKeyboardView';
 import { colors } from '../../theme/tokens';
 import { compressImageToTarget } from '../../media/compressImage';
-import { uploadProductPhoto } from '../../api/catalog';
+import {
+  getCatalogueCategories,
+  searchCatalogueSuggestions,
+  uploadProductPhoto,
+  type CatalogueCategory,
+  type CatalogueSuggestion,
+} from '../../api/catalog';
 import { ApiError } from '../../api/client';
+import { getSessionEpoch, isCurrentSession } from '../../store/sessionScope';
 import { useCatalogStore } from '../../store/useCatalogStore';
 import {
   hasUncountedVariant,
   standardSizeOptions,
   withStockCount,
   withStockToggle,
-  PRODUCT_CATEGORIES,
   type ProductVariant,
 } from './data';
 import { suggestedMrp } from './pricing';
 import { AddSizeButton } from '../product-detail/components/AddSizeButton';
 import { ProductVariantCard } from '../product-detail/components/ProductVariantCard';
-import { ProductCategoryPicker } from './components/ProductCategoryPicker';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'AddProduct'>;
+
+const MAX_PHOTOS = 5;
+type Photo = Pick<ImagePicker.ImagePickerAsset, 'uri' | 'width'>;
+
+function CatalogueChoice({ label, options, selected, open, onToggle, onSelect }: {
+  label: string;
+  options: { id: string; name: string }[];
+  selected: string;
+  open: boolean;
+  onToggle: () => void;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <View className="gap-2">
+      <Text className="text-base font-medium text-ink">{label}</Text>
+      <Pressable
+        onPress={onToggle}
+        disabled={!options.length}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open, disabled: !options.length }}
+        className="rounded-2xl border border-black/10 px-4 py-3"
+      >
+        <Text className="text-base text-ink">{options.find((option) => option.id === selected)?.name ?? `Select ${label.toLowerCase()}`}</Text>
+      </Pressable>
+      {open && options.map((option) => (
+        <Pressable key={option.id} onPress={() => onSelect(option.id)} accessibilityRole="button"
+          accessibilityState={{ selected: option.id === selected }} className="rounded-xl bg-gray-100 px-4 py-3">
+          <Text className="text-sm text-ink">{option.name}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
 
 export function AddProductScreen({ navigation }: Props) {
   const addProduct = useCatalogStore((state) => state.addProduct);
 
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<string>(PRODUCT_CATEGORIES[0]);
-  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [categories, setCategories] = useState<CatalogueCategory[] | null>(null);
+  const [categoryError, setCategoryError] = useState(false);
+  const [categoryAttempt, setCategoryAttempt] = useState(0);
+  const [categoryId, setCategoryId] = useState('');
+  const [subCategoryId, setSubCategoryId] = useState('');
+  const [openPicker, setOpenPicker] = useState<'category' | 'subcategory' | null>(null);
+  const [catalogueItemId, setCatalogueItemId] = useState<string>();
+  const [suggestions, setSuggestions] = useState<CatalogueSuggestion[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const uploadedPhotos = useRef(new Map<string, string>());
+  const captureInProgress = useRef(false);
+  const submitInProgress = useRef(false);
+  const [takingPhoto, setTakingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [sizePickerOpen, setSizePickerOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const selectedCategory = categories?.find((item) => item.id === categoryId);
+  const category = selectedCategory?.name ?? '';
   const addedLabels = new Set(variants.map((v) => v.label));
   const availableSizes = standardSizeOptions(category, variants).filter((label) => !addedLabels.has(label));
-  const canSubmit = name.trim().length > 0 && variants.length > 0 && !submitting && !uploadingPhoto;
+  const canSubmit = !!(name.trim() && subCategoryId && variants.length && photos.length && !submitting && !takingPhoto);
 
-  async function handlePickPhoto() {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
+  useEffect(() => {
+    const controller = new AbortController();
+    getCatalogueCategories(controller.signal)
+      .then((items) => { if (!controller.signal.aborted) setCategories(items); })
+      .catch(() => { if (!controller.signal.aborted) setCategoryError(true); });
+    return () => controller.abort();
+  }, [categoryAttempt]);
 
-    // No base64 at pick time (#23) — a 12MP photo's base64 is multiple MB and
-    // building it on the JS thread froze the UI. We pass the file URI straight
-    // to the resizer, which produces base64 only from the small output.
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
-    if (result.canceled) return;
+  useEffect(() => {
+    const query = name.trim();
+    if (catalogueItemId || query.length < 2) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      searchCatalogueSuggestions(query, controller.signal)
+        .then((items) => { if (!controller.signal.aborted) setSuggestions(items); })
+        .catch(() => { /* A manually entered name is still valid. */ });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [name, catalogueItemId]);
 
-    const asset = result.assets[0];
-    if (!asset.uri) return;
+  function selectSuggestion(item: CatalogueSuggestion) {
+    setName(item.name);
+    setCategoryId(item.categoryId);
+    setSubCategoryId(item.subCategoryId);
+    setCatalogueItemId(item.id);
+    setSuggestions([]);
+    setOpenPicker(null);
+  }
 
-    setUploadingPhoto(true);
+  async function handleTakePhoto() {
+    if (captureInProgress.current || submitInProgress.current || photos.length >= MAX_PHOTOS) return;
+    const epoch = getSessionEpoch();
+    captureInProgress.current = true;
+    setTakingPhoto(true);
     setPhotoError(null);
     try {
-      const compressed = await compressImageToTarget(asset.uri, asset.width);
-      // Always re-encoded to JPEG by the resizer, so the content type is fixed.
-      const { url } = await uploadProductPhoto(compressed.base64, 'image/jpeg');
-      setImageUrl(url);
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        setPhotoError('Allow camera access in Settings to take product photos.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
+      if (result.canceled || !isCurrentSession(epoch)) return;
+      const asset = result.assets[0];
+      if (!asset?.uri) return;
+      setPhotos((previous) => [...previous, { uri: asset.uri, width: asset.width }]);
     } catch (err) {
-      setPhotoError(err instanceof ApiError ? err.message : 'Could not upload photo. Please try again.');
+      setPhotoError(err instanceof ApiError ? err.message : 'Could not take the photo. Please try again.');
     } finally {
-      setUploadingPhoto(false);
+      captureInProgress.current = false;
+      setTakingPhoto(false);
     }
   }
 
@@ -144,7 +204,7 @@ export function AddProductScreen({ navigation }: Props) {
   }
 
   async function handleSubmit() {
-    if (!canSubmit) return;
+    if (!canSubmit || submitInProgress.current || captureInProgress.current) return;
     if (!validVariantPrices(variants)) { setFormError("Enter a positive price for every size. MRP must be at least the selling price."); return; }
     // Checkout only sells counted packs — without a count this product
     // could be approved yet never orderable.
@@ -153,9 +213,25 @@ export function AddProductScreen({ navigation }: Props) {
       return;
     }
     setFormError(null);
+    const epoch = getSessionEpoch();
+    submitInProgress.current = true;
     setSubmitting(true);
     try {
-      const added = await addProduct({ name, category, imageUrl, variants });
+      const photoAssetIds: string[] = [];
+      // Only upload photos kept in the submission. A retry reuses any images
+      // already uploaded successfully, in the same order.
+      for (const photo of photos) {
+        let assetId = uploadedPhotos.current.get(photo.uri);
+        if (!assetId) {
+          const compressed = await compressImageToTarget(photo.uri, photo.width);
+          if (!isCurrentSession(epoch)) return;
+          ({ assetId } = await uploadProductPhoto(compressed.base64, 'image/jpeg'));
+          uploadedPhotos.current.set(photo.uri, assetId);
+        }
+        if (!isCurrentSession(epoch)) return;
+        photoAssetIds.push(assetId);
+      }
+      const added = await addProduct({ name, subCategoryId, catalogueItemId, photoAssetIds, variants });
       if (!added) {
         setFormError(`${name.trim()} is already listed in your store.`);
         return;
@@ -165,6 +241,7 @@ export function AddProductScreen({ navigation }: Props) {
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Could not add product. Please try again.');
     } finally {
+      submitInProgress.current = false;
       setSubmitting(false);
     }
   }
@@ -187,42 +264,70 @@ export function AddProductScreen({ navigation }: Props) {
           </View>
 
           <ScrollView className="flex-1" contentContainerClassName="gap-5 px-5 pb-6" keyboardShouldPersistTaps="handled">
-            <View className="flex-row items-center gap-3">
-              <Pressable
-                onPress={handlePickPhoto}
-                disabled={uploadingPhoto}
-                className="h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gray-100"
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-              >
-                {uploadingPhoto ? (
-                  <ActivityIndicator color={colors.ink} />
-                ) : imageUrl ? (
-                  <Image source={{ uri: imageUrl }} className="h-full w-full" resizeMode="cover" />
-                ) : (
-                  <AppIcon icon={Camera01Icon} size={20} color={`${colors.ink}80`} />
-                )}
-              </Pressable>
-
+            <View className="gap-2">
+              <Text className="text-base font-medium text-ink">Product name</Text>
               <TextInput
                 value={name}
-                onChangeText={setName}
-                placeholder="Product name"
+                onChangeText={(text) => { setName(text); setCatalogueItemId(undefined); setSuggestions([]); }}
+                maxLength={200}
+                placeholder="Type a name to see suggestions"
                 placeholderTextColor={`${colors.ink}50`}
-                className="flex-1 text-lg font-medium text-black tracking-tight"
+                className="rounded-2xl border border-black/10 px-4 py-3 text-base text-ink"
               />
+              {suggestions.map((item) => {
+                const match = categories?.find((entry) => entry.id === item.categoryId);
+                const sub = match?.subCategories.find((entry) => entry.id === item.subCategoryId);
+                if (!match || !sub) return null;
+                return (
+                  <Pressable key={item.id} onPress={() => selectSuggestion(item)} accessibilityRole="button"
+                    className="rounded-xl bg-gray-100 px-4 py-2.5">
+                    <Text className="text-base font-medium text-ink">{item.name}</Text>
+                    <Text className="text-xs text-ink/70">{match.name} · {sub.name}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-            {photoError && <Text className="text-[13px] font-medium text-danger">{photoError}</Text>}
-
-            <View className="gap-2.5">
-              <Text className="text-lg font-medium tracking-tight text-ink/70">Category</Text>
-              <ProductCategoryPicker selected={category} onSelect={setCategory} />
-            </View>
+            {categoryError ? (
+              <Pressable accessibilityRole="button" onPress={() => {
+                setCategoryError(false);
+                setCategoryAttempt((attempt) => attempt + 1);
+              }}>
+                <Text className="text-danger">Could not load categories. Tap to retry.</Text>
+              </Pressable>
+            ) : categories === null ? (
+              <ActivityIndicator accessibilityLabel="Loading categories" color={colors.ink} />
+            ) : categories.length === 0 ? (
+              <Text className="text-sm text-danger">No categories are available. Contact support.</Text>
+            ) : (
+              <>
+                <CatalogueChoice label="Category" options={categories} selected={categoryId} open={openPicker === 'category'}
+                  onToggle={() => setOpenPicker(openPicker === 'category' ? null : 'category')}
+                  onSelect={(id) => {
+                    if (id !== categoryId) {
+                      setCategoryId(id);
+                      setSubCategoryId('');
+                      setCatalogueItemId(undefined);
+                    }
+                    setOpenPicker(null);
+                  }} />
+                <CatalogueChoice label="Subcategory" options={selectedCategory?.subCategories ?? []}
+                  selected={subCategoryId} open={openPicker === 'subcategory'}
+                  onToggle={() => setOpenPicker(openPicker === 'subcategory' ? null : 'subcategory')}
+                  onSelect={(id) => {
+                    if (id !== subCategoryId) {
+                      setSubCategoryId(id);
+                      setCatalogueItemId(undefined);
+                    }
+                    setOpenPicker(null);
+                  }} />
+              </>
+            )}
 
             <View className="gap-3">
               <View className="flex-row items-center">
                 <AppIcon icon={ShoppingBasketAdd01Icon} size={16} color={`${colors.ink}80`} />
                 <View className="ml-2 flex-row items-center">
-                  <Text className="text-lg font-medium tracking-tight text-ink/70">Sizes, stock & price</Text>
+                  <Text className="text-lg font-medium tracking-tight text-ink/70">Sizes</Text>
                   <Text className="ml-0.5 text-base font-bold text-red-500">*</Text>
                 </View>
               </View>
@@ -246,6 +351,33 @@ export function AddProductScreen({ navigation }: Props) {
                 onToggleOpen={() => setSizePickerOpen((open) => !open)}
                 onPickSize={addVariant}
               />
+            </View>
+
+            <View className="gap-2">
+              <Text className="text-base font-medium text-ink">Product photos ({photos.length}/{MAX_PHOTOS})</Text>
+              <Text className="text-sm text-ink/70">Take at least one photo. The first photo is the cover.</Text>
+              <View className="flex-row flex-wrap gap-2.5">
+                {photos.map((photo, index) => (
+                  <View key={photo.uri} className="items-center gap-1">
+                    <Image source={{ uri: photo.uri }} className="h-16 w-16 rounded-xl bg-gray-100" resizeMode="contain" cachePolicy="memory" />
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Remove photo ${index + 1}`}
+                      disabled={submitting || takingPhoto}
+                      onPress={() => setPhotos((previous) => previous.filter((item) => item.uri !== photo.uri))}>
+                      <Text className="text-xs text-danger">Remove</Text>
+                    </Pressable>
+                  </View>
+                ))}
+                {photos.length < MAX_PHOTOS && (
+                  <Pressable onPress={handleTakePhoto} disabled={takingPhoto || submitting}
+                    accessibilityRole="button" accessibilityLabel="Take product photo"
+                    className="h-16 w-16 items-center justify-center rounded-xl bg-gray-100">
+                    {takingPhoto
+                      ? <ActivityIndicator color={colors.ink} />
+                      : <AppIcon icon={Camera01Icon} size={22} color={colors.ink} />}
+                  </Pressable>
+                )}
+              </View>
+              {photoError && <Text className="text-[13px] font-medium text-danger">{photoError}</Text>}
             </View>
 
             {formError && <Text className="text-[13px] font-medium text-danger">{formError}</Text>}

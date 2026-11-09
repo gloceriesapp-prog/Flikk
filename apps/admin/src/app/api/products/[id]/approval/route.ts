@@ -18,7 +18,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     const { approve } = (await request.json()) as { approve: boolean };
 
     // A live product must be filed in the catalogue tree, or customers can
-    // only find it by search. Partner submissions have no sub-category yet.
+    // only find it by search. Older partner submissions may lack a subcategory.
     // It must also have a photo: products without one are never shown.
     if (approve) {
       const { data: product, error: readError } = await supabaseAdmin.from('products').select('sub_category_id, image_url').eq('id', id).maybeSingle();

@@ -86,8 +86,9 @@ function fromRow(row: ProductRow): PartnerProduct {
 
 export interface AddProductInput {
   name: string;
-  category: string;
-  imageUrl?: string;
+  subCategoryId: string;
+  catalogueItemId?: string;
+  photoAssetIds: string[];
   variants: ProductVariant[];
 }
 
@@ -186,14 +187,15 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
     set((state) => ({ products: state.products.filter((p) => p.id !== productId) }));
   },
 
-  addProduct: async ({ name, category, imageUrl, variants }) => {
+  addProduct: async ({ name, subCategoryId, catalogueItemId, photoAssetIds, variants }) => {
     const epoch = getSessionEpoch();
     if (isDuplicateProductName(get().products, name)) return false;
 
     const body = {
       name: name.trim(),
-      category,
-      imageUrl,
+      subCategoryId,
+      catalogueItemId,
+      photoAssetIds,
       stockStatus: summarizeVariants(variants).isInStock ? ('in_stock' as const) : ('out_of_stock' as const),
       variants: variants.map(toBackendVariant),
     };

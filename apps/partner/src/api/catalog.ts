@@ -5,7 +5,7 @@
 import { apiRequest } from './client';
 import type { BackendVariantInput } from '../screens/catalog/data';
 
-export async function uploadProductPhoto(base64: string, contentType: string): Promise<{ url: string }> {
+export async function uploadProductPhoto(base64: string, contentType: string): Promise<{ url: string; assetId: string }> {
   return apiRequest('/partner/product-photo', { method: 'POST', body: { base64, contentType } });
 }
 
@@ -26,4 +26,25 @@ export async function updateProductApi(productId: string, body: UpdateProductBod
 
 export async function deleteProductApi(productId: string): Promise<void> {
   await apiRequest(`/partner/products/${productId}`, { method: 'DELETE' });
+}
+
+export interface CatalogueCategory {
+  id: string;
+  name: string;
+  subCategories: { id: string; name: string }[];
+}
+
+export interface CatalogueSuggestion {
+  id: string;
+  name: string;
+  categoryId: string;
+  subCategoryId: string;
+}
+
+export function getCatalogueCategories(signal: AbortSignal) {
+  return apiRequest<CatalogueCategory[]>('/partner/catalogue/categories', { signal });
+}
+
+export function searchCatalogueSuggestions(query: string, signal: AbortSignal) {
+  return apiRequest<CatalogueSuggestion[]>(`/partner/catalogue/suggestions?q=${encodeURIComponent(query)}`, { signal });
 }

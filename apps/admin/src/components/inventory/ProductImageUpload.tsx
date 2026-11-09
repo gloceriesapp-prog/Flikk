@@ -13,7 +13,7 @@ export function ProductImageUpload({
   small = false,
 }: {
   imageUrl: string | undefined;
-  onChange: (url: string, bgColor: string | null) => void;
+  onChange: (url: string, bgColor: string | null) => void | Promise<void>;
   // Gallery "add photo" tile (ProductGalleryEditor) — same upload, smaller box.
   small?: boolean;
   bucket?: 'appsui' | 'banners' | 'categories' | 'festivals' | 'illustrations' | 'products' | 'stores' | 'product-images' | 'store-images' | 'category-images' | 'home-tab-images' | 'home-tab-banner-images';
@@ -41,7 +41,7 @@ export function ProductImageUpload({
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error ?? 'Upload failed.');
-      onChange(body.url as string, (body.bgColor as string | null) ?? null);
+      await onChange(body.url as string, (body.bgColor as string | null) ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed — try again.');
       setPreview(null);
