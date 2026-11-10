@@ -8,7 +8,6 @@ const mockProducts = Array.from({ length: 5 }, (_, index) => ({
 let mockCount = 4;
 
 jest.mock('@react-navigation/native', () => ({ useNavigation: () => ({ navigate: mockNavigate }) }));
-jest.mock('expo-linear-gradient', () => ({ LinearGradient: require('react-native').View }));
 jest.mock('../src/components/AppImage', () => ({ AppImage: require('react-native').Image }));
 jest.mock('../src/components/AppIcon', () => ({ AppIcon: () => null }));
 jest.mock('../src/screens/home/products/ProductCard', () => ({

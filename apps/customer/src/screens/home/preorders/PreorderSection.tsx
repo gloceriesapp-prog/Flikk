@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ScrollView, View } from 'react-native';
 import { DEFAULT_PREORDER_BANNER } from '../../../../../../packages/home-content/sectionLayout.js';
 import { AppImage } from '../../../components/AppImage';
@@ -30,20 +29,13 @@ export function PreorderSection({ title, bannerImageUrl }: { title: string; bann
 
   return (
     <View className="mx-4 mt-7 overflow-hidden rounded-[22px] pb-3" style={{ backgroundColor: WARM_BEIGE }}>
-      <View className="relative">
-        <AppImage
-          source={{ uri: banner }}
-          style={{ width: '100%', aspectRatio: 4 }}
-          resizeMode="cover"
-          accessibilityLabel={title || 'Pre-order now'}
-          onError={() => { if (banner !== DEFAULT_PREORDER_BANNER) setFailedBanner(banner); }}
-        />
-        <LinearGradient
-          pointerEvents="none"
-          colors={[WARM_BEIGE + '00', WARM_BEIGE]}
-          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 16 }}
-        />
-      </View>
+      <AppImage
+        source={{ uri: banner }}
+        style={{ width: '100%', aspectRatio: 4 }}
+        resizeMode="cover"
+        accessibilityLabel={title || 'Pre-order now'}
+        onError={() => { if (banner !== DEFAULT_PREORDER_BANNER) setFailedBanner(banner); }}
+      />
 
       <ScrollView
         horizontal
