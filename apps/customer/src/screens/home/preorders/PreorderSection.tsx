@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ScrollView, View, useWindowDimensions } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { DEFAULT_PREORDER_BANNER } from '../../../../../../packages/home-content/sectionLayout.js';
 import { AppImage } from '../../../components/AppImage';
 import { bookingDates, dayOpen } from '../../../store/preorder';
@@ -9,12 +9,12 @@ import { ProductCard } from '../products/ProductCard';
 import { usePreorders } from './usePreorders';
 
 const PREVIEW_LIMIT = 4;
-const CARD_GAP = 10;
+const CARD_WIDTH = 'w-32';
+const CARD_SNAP_INTERVAL = 128 + 12;
 const WARM_BEIGE = '#F1E3D8';
 
 export function PreorderSection({ title, bannerImageUrl }: { title: string; bannerImageUrl?: string | null }) {
   const { data } = usePreorders();
-  const { width } = useWindowDimensions();
   const [failedBanner, setFailedBanner] = useState<string>();
   const banner = bannerImageUrl && bannerImageUrl !== failedBanner ? bannerImageUrl : DEFAULT_PREORDER_BANNER;
   const now = new Date();
@@ -27,8 +27,6 @@ export function PreorderSection({ title, bannerImageUrl }: { title: string; bann
   if (!products.length) return null;
 
   const preview = products.slice(0, PREVIEW_LIMIT);
-  // The panel has 16pt outer margins and the rail has 12pt insets.
-  const cardWidth = Math.max(92, Math.min(128, Math.floor((width - 56 - CARD_GAP * 2) / 3)));
 
   return (
     <View className="mx-4 mt-7 overflow-hidden rounded-[22px] pb-3" style={{ backgroundColor: WARM_BEIGE }}>
@@ -50,15 +48,13 @@ export function PreorderSection({ title, bannerImageUrl }: { title: string; bann
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ alignItems: 'stretch', gap: CARD_GAP, paddingHorizontal: 12, paddingTop: 10 }}
-        snapToInterval={cardWidth + CARD_GAP}
+        contentContainerClassName="items-start gap-3 px-5 pt-3"
+        snapToInterval={CARD_SNAP_INTERVAL}
         snapToAlignment="start"
         decelerationRate="fast"
       >
         {preview.map((product) => (
-          <View key={product.id} className="overflow-hidden rounded-2xl bg-white p-2" style={{ width: cardWidth }}>
-            <ProductCard product={product} widthClassName="w-full" showDiscountBadge />
-          </View>
+          <ProductCard key={product.id} product={product} widthClassName={CARD_WIDTH} />
         ))}
       </ScrollView>
 
@@ -68,7 +64,6 @@ export function PreorderSection({ title, bannerImageUrl }: { title: string; bann
           title={title || 'Pre-orders'}
           products={products}
           preview={preview}
-          showDiscountBadge
           plain
         />
       )}
