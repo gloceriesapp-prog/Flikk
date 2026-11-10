@@ -22,7 +22,6 @@ import { useRiderLocation } from './state/useRiderLocation';
 import { OrderInfoCard } from './components/OrderInfoCard';
 import { DeliveryDetailsSection } from './sections/delivery-details/DeliveryDetailsSection';
 import { OrderSummarySection } from './sections/order-summary/OrderSummarySection';
-import { TrackingTimeline } from './components/TrackingTimeline';
 import type { AppStackParamList } from '../../navigation/types';
 import { IconlyArrowLeft } from '../../components/icons/iconly';
 
@@ -41,11 +40,20 @@ function TrackingDetails({ navigation, route }: Props) {
   const tracking = useTracking(orderId, !!isTrip);
   const { order, trip } = tracking;
   const legs = trip?.orders ?? [];
-  // Any leg out for delivery means a rider is carrying something to this
-  // customer; the endpoint itself re-checks status and ownership.
-  const outForDelivery = isTrip ? legs.some(l => l.status === 'out_for_delivery') : order?.status === 'out_for_delivery';
-  const riderLocation = useRiderLocation(orderId, !!isTrip, outForDelivery);
-  const liveMap = outForDelivery ? <RiderLiveMap response={riderLocation.data} fetchedAt={riderLocation.fetchedAt} /> : null;
+  const beforePickup = isTrip ? legs.some(l => isCancellable(l.status)) : !!order && isCancellable(order.status);
+  const outForDelivery = isTrip
+    ? !beforePickup && legs.some(l => l.status === 'out_for_delivery')
+    : order?.status === 'out_for_delivery';
+  const showMap = beforePickup || outForDelivery;
+  const riderLocation = useRiderLocation(orderId, !!isTrip, showMap, outForDelivery);
+  const liveMap = showMap ? (
+    <RiderLiveMap
+      outForDelivery={outForDelivery}
+      response={riderLocation.data}
+      route={riderLocation.route}
+      fetchedAt={riderLocation.fetchedAt}
+    />
+  ) : null;
   const [cancellationResult, setCancellationResult] = useState<TripCancellation>();
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -127,10 +135,6 @@ function TrackingDetails({ navigation, route }: Props) {
               <DeliveryDetailsSection address={trip!.addresses} />
               <OrderSummarySection key={trip!.id} items={combinedOrder.order_items} onViewSummary={() => navigation.navigate('OrderSummary', { orderId, isTrip: true })} />
 
-              <View className="w-full rounded-3xl bg-white p-5">
-                <TrackingTimeline order={leg} />
-              </View>
-
               <Text className="mt-4 text-center text-sm font-medium text-gray-500">
                 {legs.every((l) => l.status === 'delivered')
                   ? "Thanks for shopping, we'll be here when you need us again."
@@ -150,10 +154,6 @@ function TrackingDetails({ navigation, route }: Props) {
 
           <DeliveryDetailsSection address={order!.addresses} />
           <OrderSummarySection key={order!.id} items={order!.order_items} onViewSummary={() => navigation.navigate('OrderSummary', { orderId })} />
-
-          <View className="w-full rounded-3xl bg-white p-5">
-            <TrackingTimeline order={order!} />
-          </View>
 
           <Text className="mt-4 text-center text-[13.5px] font-medium text-gray-500">
             {order!.status === 'delivered'

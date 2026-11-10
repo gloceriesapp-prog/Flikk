@@ -5,7 +5,8 @@
 // rules are deliberately narrow:
 //   * the caller must be the order's / trip's own customer (404 otherwise,
 //     same as GET /orders/:id/live — existence is never confirmed);
-//   * a position is only returned while the order (or, for a trip, a leg) is
+//   * before pickup, return only the store and delivery pins;
+//   * a rider position is only returned while the order (or, for a trip, a leg) is
 //     out_for_delivery — never while placed/packed (the rider may still be
 //     at home or on another job) and never after delivered/failed/cancelled;
 //   * a ping older than the leg's picked_up_at is withheld too, so the first
@@ -16,6 +17,8 @@
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
+import type { LatLng } from '../lib/routeDirections.js';
+import { deliveryRoute } from './deliveryRoute.js';
 import { requireAuth, requireRole, type AuthedRequest } from '../middleware/auth.js';
 
 // Same window every dispatch RPC treats as "fresh" (rider_dispatch_offers /
@@ -36,14 +39,18 @@ export interface RiderLocationResponse {
   // The order's own delivery-address pin (the customer's own data), so the
   // map can frame rider + destination without another detail fetch.
   destination: Coordinates | null;
+  pickup?: Coordinates | null;
+  route?: LatLng[] | null;
   stale_after_seconds: number;
 }
 interface RiderRow { current_lat: unknown; current_lng: unknown; last_location_update: string | null }
+interface StoreCoordinates { lat: unknown; lng: unknown }
 interface AddressSource { delivery_address_at_order?: unknown; addresses?: unknown }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const unavailable = () => new AppError(503, 'TRACKING_UNAVAILABLE', 'Tracking is temporarily unavailable. Please retry.');
 const inactive = (): RiderLocationResponse => ({ active: false, rider_location: null, destination: null, stale_after_seconds: RIDER_LOCATION_STALE_SECONDS });
+const isBeforePickup = (status: string) => status === 'placed' || status === 'packed';
 
 // numeric columns can arrive as strings; (0,0) is a never-set GPS default.
 export function toCoordinates(lat: unknown, lng: unknown): Coordinates | null {
@@ -64,6 +71,15 @@ export function destinationOf(row: AddressSource): Coordinates | null {
     }
   }
   return null;
+}
+
+function pickupOf(stores: StoreCoordinates | StoreCoordinates[] | null): Coordinates | null {
+  const store = Array.isArray(stores) ? stores[0] : stores;
+  return toCoordinates(store?.lat, store?.lng);
+}
+
+function beforePickup(address: AddressSource, stores: StoreCoordinates | StoreCoordinates[] | null): RiderLocationResponse {
+  return { ...inactive(), pickup: pickupOf(stores), destination: destinationOf(address) };
 }
 
 export function riderLocationView(rider: RiderRow | null, pickedUpAt: string | null, now = Date.now()): RiderLocation | null {
@@ -91,6 +107,17 @@ function send(res: import('express').Response, body: RiderLocationResponse) {
   res.json(body);
 }
 
+// Route geometry is opt-in so the ten-second GPS poll stays lightweight.
+async function withRoute(requested: boolean, legId: string, body: RiderLocationResponse): Promise<RiderLocationResponse> {
+  const { pickup, destination } = body;
+  if (!requested || !pickup || !destination) return body;
+  const route = await deliveryRoute(legId,
+    { latitude: pickup.lat, longitude: pickup.lng },
+    { latitude: destination.lat, longitude: destination.lng },
+  );
+  return { ...body, route };
+}
+
 export const riderLocationOrdersRouter = Router();
 export const riderLocationTripsRouter = Router();
 
@@ -99,14 +126,20 @@ riderLocationOrdersRouter.get('/:id/rider-location', requireAuth, requireRole('c
     const id = String(req.params.id);
     if (!UUID.test(id)) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
     const { data: order, error } = await supabase.from('orders')
-      .select('id,status,rider_id,picked_up_at,delivery_address_at_order,addresses(latitude,longitude)')
+      .select('id,status,rider_id,picked_up_at,delivery_address_at_order,addresses(latitude,longitude),stores(lat,lng)')
       .eq('id', id).eq('customer_id', req.user!.id).maybeSingle();
     if (error) throw unavailable();
     if (!order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found.');
-    if (order.status !== 'out_for_delivery' || !order.rider_id) return send(res, inactive());
-    const rider = await readRider(order.rider_id);
-    send(res, { active: true, rider_location: riderLocationView(rider, order.picked_up_at),
-      destination: destinationOf(order), stale_after_seconds: RIDER_LOCATION_STALE_SECONDS });
+    if (isBeforePickup(order.status)) return send(res, beforePickup(order, order.stores));
+    if (order.status !== 'out_for_delivery') return send(res, inactive());
+    const rider = order.rider_id ? await readRider(order.rider_id) : null;
+    send(res, await withRoute(req.query.route === '1', order.id, {
+      active: true,
+      rider_location: riderLocationView(rider, order.picked_up_at),
+      destination: destinationOf(order),
+      pickup: pickupOf(order.stores),
+      stale_after_seconds: RIDER_LOCATION_STALE_SECONDS,
+    }));
   } catch (err) { next(err); }
 });
 
@@ -120,16 +153,29 @@ riderLocationTripsRouter.get('/:id/rider-location', requireAuth, requireRole('cu
     if (error) throw unavailable();
     if (!trip) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found.');
     const { data: legs, error: legsError } = await supabase.from('orders')
-      .select('id,status,rider_id,picked_up_at')
-      .eq('trip_id', trip.id).eq('customer_id', req.user!.id).eq('status', 'out_for_delivery')
+      .select('id,status,rider_id,picked_up_at,stores(lat,lng)')
+      .eq('trip_id', trip.id).eq('customer_id', req.user!.id)
       .order('picked_up_at', { ascending: false, nullsFirst: false });
     if (legsError) throw unavailable();
-    // One rider normally carries every leg; if legs were split, follow the
-    // most recent pickup (the leg actually heading to the customer now).
-    const leg = (legs ?? []).find(l => l.status === 'out_for_delivery' && l.rider_id);
+    const pendingLegs = (legs ?? []).filter(l => isBeforePickup(l.status));
+    const firstPending = pendingLegs[0];
+    if (firstPending) {
+      const pending = pendingLegs.find(l => l.status === 'packed' && pickupOf(l.stores))
+        ?? pendingLegs.find(l => pickupOf(l.stores))
+        ?? firstPending;
+      return send(res, beforePickup(trip, pending.stores));
+    }
+    // After all pickups, use the most recent pickup that has a rider.
+    const activeLegs = (legs ?? []).filter(l => l.status === 'out_for_delivery');
+    const leg = activeLegs.find(l => l.rider_id) ?? activeLegs[0];
     if (!leg) return send(res, inactive());
-    const rider = await readRider(leg.rider_id as string);
-    send(res, { active: true, rider_location: riderLocationView(rider, leg.picked_up_at),
-      destination: destinationOf(trip), stale_after_seconds: RIDER_LOCATION_STALE_SECONDS });
+    const rider = leg.rider_id ? await readRider(leg.rider_id) : null;
+    send(res, await withRoute(req.query.route === '1', leg.id, {
+      active: true,
+      rider_location: riderLocationView(rider, leg.picked_up_at),
+      destination: destinationOf(trip),
+      pickup: pickupOf(leg.stores),
+      stale_after_seconds: RIDER_LOCATION_STALE_SECONDS,
+    }));
   } catch (err) { next(err); }
 });

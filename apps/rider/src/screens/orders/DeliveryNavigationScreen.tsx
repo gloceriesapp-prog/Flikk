@@ -136,18 +136,6 @@ export function DeliveryNavigationScreen({
 
   /*
    * ---------------------------------------------------------
-   * TRIP LEGS
-   * ---------------------------------------------------------
-   */
-
-  const tripLegs = order.tripId
-    ? activeOrders.filter(
-        (item) => item.tripId === order.tripId
-      )
-    : [order];
-
-  /*
-   * ---------------------------------------------------------
    * CALL CUSTOMER
    * ---------------------------------------------------------
    */
@@ -179,11 +167,7 @@ export function DeliveryNavigationScreen({
     setArriving(true);
 
     try {
-      await Promise.all(
-        tripLegs.map((leg) =>
-          advanceOrderStatus(leg.id)
-        )
-      );
+      await advanceOrderStatus(orderId);
 
       navigation.replace(
         'DeliveryProof',

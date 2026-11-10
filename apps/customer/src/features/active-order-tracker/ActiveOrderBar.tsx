@@ -1,4 +1,4 @@
-// The floating "active order" tracker pill — a white card with a thin black
+// The floating "active order" tracker pill — a white card with a soft charcoal
 // border (bike icon, green "Arriving in N minutes", "Gloceries", chevron) that sits
 // just above the bottom nav whenever the customer has an in-flight order and
 // taps through to TrackOrder. All data/logic lives in useActiveOrder (one
@@ -19,8 +19,6 @@ import { activeOrderLabel } from './activeOrderLabel';
 import { computeDisplayEta } from './activeOrderEta';
 import { useActiveOrder } from './useActiveOrder';
 import { useBrowseClock } from '../../utils/useBrowseClock';
-import { DeliveredOrderRatingBar } from '../order-rating/DeliveredOrderRatingBar';
-import { useOrderRatingPreview } from '../order-rating/preview';
 
 // Mirrors BottomNavBar's own layout math (kept local rather than importing
 // that file's private internals): PILL_HEIGHT 73, and the pill's own bottom
@@ -50,12 +48,11 @@ export function ActiveOrderBar({ onHeightChange, navigationBarHeight = PILL_HEIG
     transform: [{ translateY: interpolate(navProgress.value, [0, 1], [0, navigationBarHeight]) }],
   }));
   const active = useActiveOrder();
-  const previewRating = useOrderRatingPreview(s => s.visible);
   const hasActiveOrder = !!active;
   useEffect(() => {
     if (!hasActiveOrder) onHeightChange?.(0);
   }, [hasActiveOrder, onHeightChange]);
-  if (!active || (__DEV__ && previewRating)) return <DeliveredOrderRatingBar navigationBarHeight={navigationBarHeight} onHeightChange={onHeightChange} />;
+  if (!active) return null;
 
   const { orderId, isTrip, statusKey, deadlineMs, baseMinutes } = active;
   const title = activeOrderLabel(statusKey);
@@ -78,23 +75,22 @@ export function ActiveOrderBar({ onHeightChange, navigationBarHeight = PILL_HEIG
         // entry point (TrackOrder re-fetches the order) — same empty-string
         // the deep-link path (navigation/linking.ts) already passes.
         onPress={() => navigation.navigate('TrackOrder', { orderId, isTrip, paymentMethodLabel: '' })}
-        className="w-full flex-row items-center gap-3 self-center rounded-[20px] bg-white px-2.5 py-2.5 active:opacity-90"
-        // White card, thin black border (no drop shadow).
-        style={{ maxWidth: 340, borderWidth: 1, borderColor: '#101C10' }}
+        className="w-full flex-row items-center gap-2.5 self-center rounded-[17px] bg-white px-2.5 py-[7px] active:opacity-90"
+        style={{ maxWidth: 340, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.24)' }}
       >
-        <View className="h-[46px] w-[46px] items-center justify-center rounded-[14px] bg-[#F2F2F2]">
-          <IconlyMotor size={26} color="#101C10" />
+        <View className="h-[38px] w-[38px] items-center justify-center rounded-xl bg-[#F0F5F0]">
+          <IconlyMotor size={22} color="#101C10" />
         </View>
 
         <View className="min-w-0 flex-1">
           {/* Live countdown via computeDisplayEta: never shows 0 — once the
               recorded deadline passes it restarts from the order's reset
               window (15 min, 10 for a short order). */}
-          <Text numberOfLines={1} className="text-[15px] font-bold leading-[19px]" style={{ color: ARRIVING_GREEN }}>{arrival}</Text>
-          <Text numberOfLines={1} className="text-[13px] font-semibold leading-[17px] text-ink">Gloceries</Text>
+          <Text numberOfLines={1} className="text-[15px] font-bold leading-[18px]" style={{ color: ARRIVING_GREEN }}>{arrival}</Text>
+          <Text numberOfLines={1} className="text-[13px] font-medium leading-[16px] text-ink/75">Gloceries</Text>
         </View>
 
-        <IconlyChevronRight size={20} color="#101C10" />
+        <IconlyChevronRight size={18} color="#454C45" />
       </Pressable>
     </Animated.View>
   );

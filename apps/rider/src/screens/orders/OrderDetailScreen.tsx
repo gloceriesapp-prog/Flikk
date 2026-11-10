@@ -95,30 +95,14 @@ export function OrderDetailScreen({ route, navigation }: Props) {
   // one customer, one address, one arrival, regardless of how many stores
   // fed into this trip.
   const unpickedSiblings = siblingLegs.filter((leg) => leg.status === 'assigned');
-  // Once every leg has actually been collected, "arriving at the
-  // customer"/"confirm delivery" is one shared event for the whole trip,
-  // not N separate ones — advanceOrderStatus is called for this order AND
-  // every sibling leg together so they move through arrived_at_customer
-  // and delivered in lockstep.
-  const tripLegIds = [order.id, ...siblingLegs.map((leg) => leg.id)];
-
-  // advanceOrderStatus/cancelOrder now hit the real backend (assigned ->
-  // picked_up and arrived_at_customer -> delivered are real PATCH /orders/
-  // :id/status calls) — a network failure or an unexpected 403/409 needs
-  // to actually stop the rider from thinking the step went through, not
-  // just silently proceed to close the screen either way.
+  // Drop-off is one shared event for the entire trip.
   async function handlePrimaryAction() {
     if (order!.status === 'arrived_at_customer') {
       setOtpVisible(true);
       return;
     }
     try {
-      // Reaching this branch (not the pickup slide-button below) only
-      // happens once every trip leg is already picked_up or beyond — see
-      // this screen's own allLegsPickedUp guard on the map branch — so
-      // advancing every leg together here is always the whole trip
-      // actually arriving, never a leg that's still mid-pickup elsewhere.
-      await Promise.all(tripLegIds.map((id) => advanceOrderStatus(id)));
+      await advanceOrderStatus(order!.id);
     } catch (err) {
       Alert.alert('Could not update this order', err instanceof Error ? err.message : 'Please try again.');
     }

@@ -121,6 +121,7 @@ export interface ApiOrder {
   placed_at: string;
   packed_at: string | null;
   picked_up_at: string | null;
+  rider_arrived_at?: string | null;
   delivered_at: string | null;
   // Real orders.delivery_otp (backend/migrations/049_delivery_otp.sql) — a
   // 4-digit code the customer reads out to the rider at the door. Only set
