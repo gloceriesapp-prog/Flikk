@@ -688,6 +688,10 @@
     {
       "file": "20261110120000_home_section_display_layout.sql",
       "sha256": "968262897473baad6be405cdaa82522e1ce659d644a9f6a59a03ee5ab18afa8a"
+    },
+    {
+      "file": "20261110130000_preorder_home_banner.sql",
+      "sha256": "edc083aeaed850aad9b95ec7f10fb55cbe4f375cbdc5b51b610ba9c99927a477"
     }
   ]
 }

@@ -130,3 +130,20 @@ it('Inventory "Show on home" ticks sections for one product', async () => {
   db.authorized = false;
   expect((await byProduct.GET(new Request(`http://admin/api?productId=${A}`))).status).toBe(401);
 });
+
+it('saves a valid pre-order banner URL and rejects unsafe URLs', async () => {
+  const banner = 'https://images.gloceries.com/appsui/pre-ordr-now.png';
+  const save = (banner_image_url: string | null) => sections.PUT(json({ sections: [
+    { key: 'preorders', enabled: true, banner_image_url },
+    { key: 'trending', enabled: true },
+  ] }));
+  expect((await save(banner)).status).toBe(200);
+  expect(db.upserted).toEqual([
+    expect.objectContaining({ key: 'preorders', banner_image_url: banner }),
+    expect.objectContaining({ key: 'trending', banner_image_url: null }),
+  ]);
+  expect((await save(null)).status).toBe(200);
+  db.upserted = null;
+  expect((await save('http://example.com/banner.png')).status).toBe(400);
+  expect(db.upserted).toBeNull();
+});

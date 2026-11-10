@@ -101,7 +101,7 @@ const SECTION_REGISTRY: Record<string, RenderSection> = {
   'seasonal': (_ctx, c) => <SeasonalSection title={c.title} subtitle={c.subtitle} />,
   'nearby-stores': () => <NearbyStoresSection />,
   // Pre-order only products (admin "Pre-order only"); nowhere else on Home.
-  'preorders': (_ctx, c) => <PreorderSection title={c.title} subtitle={c.subtitle} />,
+  'preorders': (_ctx, c, cfg) => <PreorderSection title={c.title} bannerImageUrl={cfg.bannerImageUrl} />,
   'trending': (ctx, c, cfg) => <TrendingSection title={c.title} subtitle={c.subtitle} products={ctx.rows.trending} layout={layoutFor(cfg)} />,
   'most-bought': (ctx, c, cfg) => <MostBoughtSection title={c.title} subtitle={c.subtitle} products={ctx.rows['most-bought']} layout={layoutFor(cfg)} />,
   'category-sections': () => <CategorySections homeOnly />,

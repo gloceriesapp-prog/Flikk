@@ -12,18 +12,19 @@ interface Props {
   label: string;
   items?: { id: string; imageUrl?: string }[];
   onPress: () => void;
+  plain?: boolean;
 }
 
-export function HomeSectionButton({ label, items = [], onPress }: Props) {
+export function HomeSectionButton({ label, items = [], onPress, plain = false }: Props) {
   return (
-    <View className="px-5 pb-3 pt-5">
+    <View className={plain ? "px-3 pt-3" : "px-5 pb-3 pt-5"}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
         onPress={onPress}
         className="h-[50px] flex-row items-center justify-center rounded-2xl border border-[#D9E2F5] bg-[#F3F4F6] px-4 active:opacity-85"
       >
-        {items.length > 0 && (
+        {!plain && items.length > 0 && (
           <View className="mr-2.5 flex-row items-center">
             {items.slice(0, 3).map((item, index) => (
               <View
@@ -39,9 +40,9 @@ export function HomeSectionButton({ label, items = [], onPress }: Props) {
             ))}
           </View>
         )}
-        <Text numberOfLines={1} className="shrink text-[14px] font-bold tracking-[-0.15px] text-[#2F3F83]">{label}</Text>
+        <Text numberOfLines={1} className={plain ? "shrink text-[16px] font-bold text-ink" : "shrink text-[14px] font-bold tracking-[-0.15px] text-[#2F3F83]"}>{label}</Text>
         <View className="ml-1">
-          <AppIcon icon={ArrowRight02Icon} size={15} color="#2F3F83" strokeWidth={2.4} />
+          <AppIcon icon={ArrowRight02Icon} size={15} color={plain ? '#111827' : '#2F3F83'} strokeWidth={2.4} />
         </View>
       </Pressable>
     </View>
@@ -49,13 +50,14 @@ export function HomeSectionButton({ label, items = [], onPress }: Props) {
 }
 
 export function HomeProductCollectionButton({
-  label, title, products, preview = products, showDiscountBadge,
+  label, title, products, preview = products, showDiscountBadge, plain,
 }: {
   label: string;
   title: string;
   products: Product[];
   preview?: Product[];
   showDiscountBadge?: boolean;
+  plain?: boolean;
 }) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   if (!products.length) return null;
@@ -71,5 +73,5 @@ export function HomeProductCollectionButton({
     });
   }
 
-  return <HomeSectionButton label={label} items={preview} onPress={openCollection} />;
+  return <HomeSectionButton label={label} items={preview} onPress={openCollection} plain={plain} />;
 }

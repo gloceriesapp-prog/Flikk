@@ -22,6 +22,7 @@ interface HomeSectionRow {
   enabled: boolean;
   sort_index: number;
   bg_color: string | null;
+  banner_image_url?: string | null;
   display_layout?: HomeProductLayout | null;
   is_custom?: boolean;
   pinned_only: boolean;
@@ -29,7 +30,7 @@ interface HomeSectionRow {
   ends_at: string | null;
 }
 
-const SELECT = 'key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, starts_at, ends_at, display_layout';
+const SELECT = 'key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, starts_at, ends_at, display_layout, banner_image_url';
 
 function clean(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -43,6 +44,19 @@ function parseLayout(key: string, value: unknown): HomeProductLayout | null {
     throw new Error('Choose a supported product layout for this section.');
   }
   return value;
+}
+
+function parsePreorderBanner(value: unknown): string | null {
+  if (value === null || (typeof value === 'string' && !value.trim())) return null;
+  if (typeof value !== 'string' || value.length > 2048) {
+    throw new Error('Enter a valid HTTPS URL for the pre-order banner.');
+  }
+
+  const url = URL.parse(value.trim());
+  if (!url || url.protocol !== 'https:' || url.username || url.password) {
+    throw new Error('Enter a valid HTTPS URL for the pre-order banner.');
+  }
+  return url.href;
 }
 
 async function listSections() {
@@ -91,6 +105,8 @@ export async function PUT(request: Request) {
           enabled: Boolean(r.enabled),
           sort_index: i * 10,
           bg_color: clean(r.bg_color),
+          ...(key === 'preorders' && r.banner_image_url !== undefined
+            ? { banner_image_url: parsePreorderBanner(r.banner_image_url) } : {}),
           ...(r.display_layout === undefined ? {} : { display_layout: parseLayout(key, r.display_layout) }),
           // Sent so the upsert's insert half satisfies home_sections_custom_key_check.
           is_custom: isCustomSection(key),
@@ -103,6 +119,10 @@ export async function PUT(request: Request) {
     if (rows.length === 0) return NextResponse.json({ error: 'No sections to save.' }, { status: 400 });
     for (const row of rows) {
       if (row.starts_at && row.ends_at && row.ends_at <= row.starts_at) throw new Error('A section must end after it starts.');
+    }
+
+    if (rows.some((row) => row.banner_image_url !== undefined)) {
+      for (const row of rows) row.banner_image_url ??= null;
     }
 
     // Older editor sessions omit the field. Preserve their saved layouts,

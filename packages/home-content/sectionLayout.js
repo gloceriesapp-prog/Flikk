@@ -23,3 +23,5 @@ export function homeProductLayout(key, override) {
 export function homePreviewLimit(layout) {
   return layout === 'horizontal' ? 7 : 6;
 }
+
+export const DEFAULT_PREORDER_BANNER = 'https://images.gloceries.com/appsui/pre-ordr-now.png';
