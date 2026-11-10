@@ -1,25 +1,14 @@
-// Hand-picked products on the customer Home "All" tab (migration
-// 20261027150000). Which sections take products, and how many cards each
-// shows on the phone (pins fill the first slots; the rest is automatic unless
-// the section is "pinned only"). Keep in step with ROW_PRIORITY caps in
-// apps/customer/src/screens/home/sections/AllTabSections.tsx (and
-// EverydayDairySection's maxProducts).
+import { homePreviewLimit, homeProductLayout, isCustomHomeSection } from '../../../../packages/home-content/sectionLayout.js';
 
-export const PIN_CAPACITY: Record<string, number> = {
-  trending: 6,
-  'most-bought': 6,
-  'deals-for-you': 8,
-  'todays-best-deals': 6,
-  'price-drops': 4,
-  'everyday-essentials': 9,
-  'everyday-dairy': 8,
-};
-export const CUSTOM_SECTION_CAPACITY = 12;
+const FIXED_PIN_CAPACITY = new Map([['price-drops', 4]]);
 export const MAX_PINS = 30;
 
-export const isCustomSection = (key: string) => /^custom-[a-z0-9]{6,32}$/.test(key);
-export const acceptsPins = (key: string) => key in PIN_CAPACITY || isCustomSection(key);
-export const pinCapacity = (key: string) => PIN_CAPACITY[key] ?? (isCustomSection(key) ? CUSTOM_SECTION_CAPACITY : 0);
+export const isCustomSection = isCustomHomeSection;
+export const acceptsPins = (key: string) => FIXED_PIN_CAPACITY.has(key) || homeProductLayout(key) !== null;
+export function pinCapacity(key: string, displayLayout?: unknown) {
+  const layout = homeProductLayout(key, displayLayout);
+  return layout ? homePreviewLimit(layout) : (FIXED_PIN_CAPACITY.get(key) ?? 0);
+}
 
 export function newCustomSectionKey(random: () => number = Math.random) {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';

@@ -24,7 +24,7 @@ homeSectionsRouter.get('/', async (_req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('home_sections')
-      .select('key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, starts_at, ends_at')
+      .select('key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, starts_at, ends_at, display_layout, banner_image_url')
       .order('sort_index', { ascending: true });
     if (error) throw error;
 
@@ -36,8 +36,10 @@ homeSectionsRouter.get('/', async (_req, res, next) => {
         enabled: sectionLive(row),
         sortIndex: row.sort_index,
         bgColor: row.bg_color ?? null,
+        bannerImageUrl: row.banner_image_url ?? null,
         custom: row.is_custom === true,
         pinnedOnly: row.pinned_only === true,
+        displayLayout: row.display_layout ?? null,
       })),
     );
   } catch (err) {

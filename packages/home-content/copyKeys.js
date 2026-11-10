@@ -16,7 +16,7 @@ export const COPY_KEYS = {
   'stores.promo.imageUrl': { default: '', hint: 'Store list promo banner artwork (wide, 160px tall). Blank = built-in artwork', kind: 'image' },
   // Home "All" tab section headings (a Home Sections title override wins).
   'home.quickCategories.title': { default: 'Quick categories', hint: 'Home quick-categories heading' },
-  'home.everydayDairy.title': { default: 'Everyday Dairy', hint: 'Home dairy row heading' },
+  'home.everydayDairy.title': { default: 'Our Local Favourites', hint: 'Home dairy row heading' },
   'home.preorders.title': { default: 'Pre-order now', hint: 'Home pre-order section heading' },
   'home.preorders.subtitle': { default: 'Book your basket', hint: 'Home pre-order section sub-text' },
   'home.trending.title': { default: 'Popular This Week', hint: 'Home 7-day popular row heading' },
@@ -31,7 +31,7 @@ export const COPY_KEYS = {
   'home.todaysBestDeals.title': { default: 'Today’s Best Deals', hint: 'Home best-deals row heading' },
   'home.priceDrops.title': { default: 'Biggest Price Drops', hint: 'Home price-drop row heading' },
   'home.priceDrops.subtitle': { default: '', hint: 'Home price-drop row sub-text' },
-  'home.everydayEssentials.title': { default: 'Everyday Essentials', hint: 'Home catalogue grid heading' },
+  'home.everydayEssentials.title': { default: 'Daily Essentials', hint: 'Home catalogue grid heading' },
   'home.everydayEssentials.subtitle': { default: '', hint: 'Home catalogue grid sub-text' },
   'home.newOnGloceries.title': { default: 'New on Gloceries', hint: 'Home newly-onboarded stores heading' },
   'home.newOnGloceries.subtitle': { default: '', hint: 'Home new stores sub-text' },

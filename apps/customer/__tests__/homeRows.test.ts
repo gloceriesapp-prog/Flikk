@@ -1,3 +1,4 @@
+import { resolveAllTabSections } from '../src/screens/home/sections/allTabLayout';
 import { assignDistinctRows, assignHomeRows } from '../src/screens/home/sections/distinctRows';
 import { COPY_KEYS, copyDefault } from '../../../packages/home-content/copyKeys.js';
 
@@ -57,4 +58,27 @@ describe('assignHomeRows', () => {
     const rows = { deals: { feed, cap: 2 } };
     expect(assignHomeRows(['deals'], rows, { deals: [one('x'), one('y'), one('w')] }, new Set()).deals.map((r) => r.id)).toEqual(['x', 'y']);
   });
+});
+
+it('uses the requested Home order with the old API and respects the order from the updated API', () => {
+  const row = (key: string, sortIndex: number, title: string | null = null) => ({
+    key, sortIndex, title, enabled: true, subtitle: null, bgColor: null,
+  });
+  const old = [
+    row('nearby-stores', 0),
+    row('trending', 1),
+    { ...row('custom-udupipicks', 2, 'Taste of Udupi'), custom: true },
+    row('everyday-essentials', 3, 'Everyday Essentials'),
+    { ...row('preorders', 4), enabled: false },
+  ];
+
+  const legacy = resolveAllTabSections(old);
+  expect(legacy.map((section) => section.key)).toEqual([
+    'quick-categories', 'everyday-dairy', 'custom-udupipicks', 'category-sections',
+    'everyday-essentials', 'nearby-stores', 'deals-for-you', 'price-drops', 'brand-footer',
+  ]);
+  expect(legacy.find((section) => section.key === 'custom-udupipicks')?.displayLayout).toBe('horizontal');
+  expect(legacy.find((section) => section.key === 'everyday-essentials')?.title).toBe('Daily Essentials');
+  const updated = old.map((section) => ({ ...section, displayLayout: null }));
+  expect(resolveAllTabSections(updated)).toEqual(updated.filter((section) => section.enabled));
 });

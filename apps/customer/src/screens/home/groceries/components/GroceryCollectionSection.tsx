@@ -8,12 +8,14 @@ import { SectionTitle } from '../../components/SectionTitle';
 import { useNearbyGroceryInventory } from '../useNearbyGroceryInventory';
 import { selectBalancedProducts } from '../selectBalancedProducts';
 import type { Product } from '../../products/types';
+import type { HomeProductLayout } from '../../../../../../../packages/home-content/sectionLayout.js';
 import { GroceryProductTile } from './GroceryProductTile';
 import { HomeProductCollectionButton } from '../../components/HomeSectionButton';
 import { SeeAllProductsButton } from './SeeAllProductsButton';
 
 interface Props {
   title: string;
+  subtitle?: string | null;
   groups: RegExp[];
   maxProducts?: number;
   previewCount?: number;
@@ -22,59 +24,64 @@ interface Props {
   previewProducts?: Product[];
   // Founder's hand-picked products (admin Home Sections), shown first.
   pinnedProducts?: Product[];
+  homeLayout?: HomeProductLayout;
+  pinnedOnly?: boolean;
 }
 
-export function GroceryCollectionSection({ title, groups, maxProducts = 8, previewCount, onViewMore, collectionLabel, previewProducts = [], pinnedProducts = [] }: Props) {
+export function GroceryCollectionSection({ title, subtitle, groups, maxProducts = 8, previewCount, onViewMore, collectionLabel, previewProducts = [], pinnedProducts = [], homeLayout, pinnedOnly = false }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { visibleProducts, hasLocation, isLoading, isError, retry } = useNearbyGroceryInventory();
   const limit = previewCount ?? maxProducts;
   const availablePicks = pinnedProducts.filter((p) => p.isAvailable !== false);
-  const pinned = availablePicks.slice(0, limit);
-  const pinnedIds = new Set(pinned.map((p) => p.id));
-  const matched = selectBalancedProducts(visibleProducts, groups, limit).map(mapApiProduct).filter((p) => !pinnedIds.has(p.id));
-  const realProducts = [...pinned, ...matched].slice(0, limit);
+  const pinnedIds = new Set(availablePicks.map((p) => p.id));
+  const matched = pinnedOnly ? [] : selectBalancedProducts(visibleProducts, groups, visibleProducts.length)
+    .filter((product) => !pinnedIds.has(product.id));
+  const realProducts = [...availablePicks, ...matched.slice(0, limit).map(mapApiProduct)].slice(0, limit);
+  const grid = homeLayout === 'grid' || (!homeLayout && !!previewCount);
   const previewOnly = __DEV__ && process.env.EXPO_PUBLIC_ENABLE_DESIGN_PREVIEWS === 'true' && realProducts.length === 0 && previewProducts.length > 0;
   const products = previewOnly ? previewProducts.slice(0, previewCount ?? maxProducts) : realProducts;
 
   return (
     <View className="pt-8">
-      <SectionTitle>{title}</SectionTitle>
+      <SectionTitle subtitle={subtitle}>{title}</SectionTitle>
 
       {products.length > 0 ? (
-        previewCount ? (
-          <View className="px-5">
-            {previewOnly && <Text className="mb-3 text-[11px] text-ink/50">Design preview · Sample products and prices</Text>}
-            <View className="-mx-1 flex-row flex-wrap items-start gap-y-5">
-              {products.map((product) => (
-                <View key={product.id} className="px-1" style={{ width: '33.333333%' }}>
-                  <GroceryProductTile product={product} previewOnly={previewOnly} />
-                </View>
-              ))}
+        <>
+          {grid ? (
+            <View className="px-5">
+              {previewOnly && <Text className="mb-3 text-[11px] text-ink/50">Design preview · Sample products and prices</Text>}
+              <View className="-mx-1 flex-row flex-wrap items-start gap-y-5">
+                {products.map((product) => (
+                  <View key={product.id} className="px-1" style={{ width: '33.333333%' }}>
+                    <GroceryProductTile product={product} previewOnly={previewOnly} />
+                  </View>
+                ))}
+              </View>
+              {onViewMore && (
+                <SeeAllProductsButton products={products} sectionTitle={title} onPress={onViewMore} />
+              )}
             </View>
-            {onViewMore && (
-              <SeeAllProductsButton products={products} sectionTitle={title} onPress={onViewMore} />
-            )}
-          </View>
-        ) : (
-          <View>
-            {previewOnly && <Text className="mb-3 px-5 text-[11px] text-ink/50">Design preview · Sample products and prices</Text>}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="items-start gap-3 px-5" snapToInterval={140} snapToAlignment="start" decelerationRate="fast">
-              {products.map((product) => (
-                <View key={product.id} className="w-32">
-                  <GroceryProductTile product={product} previewOnly={previewOnly} />
-                </View>
-              ))}
-            </ScrollView>
-            {collectionLabel && !previewOnly && (
-              <HomeProductCollectionButton
-                label={collectionLabel}
-                title={title}
-                preview={products}
-                products={[...availablePicks, ...selectBalancedProducts(visibleProducts, groups, visibleProducts.length).map(mapApiProduct)]}
-              />
-            )}
-          </View>
-        )
+          ) : (
+            <View>
+              {previewOnly && <Text className="mb-3 px-5 text-[11px] text-ink/50">Design preview · Sample products and prices</Text>}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="items-start gap-3 px-5" snapToInterval={140} snapToAlignment="start" decelerationRate="fast">
+                {products.map((product) => (
+                  <View key={product.id} className="w-32">
+                    <GroceryProductTile product={product} previewOnly={previewOnly} />
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+          {collectionLabel && !previewOnly && (
+            <HomeProductCollectionButton
+              label={collectionLabel}
+              title={title}
+              preview={products}
+              products={[...availablePicks, ...matched.map(mapApiProduct)]}
+            />
+          )}
+        </>
       ) : (
         <View className="mx-5 items-center gap-3 rounded-2xl bg-mist/50 px-5 py-6">
           {!hasLocation ? (

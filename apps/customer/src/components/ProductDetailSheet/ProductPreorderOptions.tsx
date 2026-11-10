@@ -23,16 +23,16 @@ export function ProductPreorderOptions({ minQty, leadDays, value, onChange }: Pr
   const slots = usePreorders().data?.slots ?? [];
   const dates = bookingDates();
   const open = dates.filter((d) => dayOpen(d, leadDays, slots));
-  const homeDay = usePreorderDayStore((s) => s.day);
-  const setHomeDay = usePreorderDayStore((s) => s.setDay);
-  // The cart's day, else the day tapped on Home, if this product can make it.
+  const recentDay = usePreorderDayStore((s) => s.day);
+  const setRecentDay = usePreorderDayStore((s) => s.setDay);
+  // Prefer the cart day or the most recent selection if this product can make it.
   const [day, setDay] = useState(
-    value && open.includes(value.date) ? value.date : homeDay && open.includes(homeDay) ? homeDay : open[0],
+    value && open.includes(value.date) ? value.date : recentDay && open.includes(recentDay) ? recentDay : open[0],
   );
   const slotId = day && value?.date === day ? value.slotId : undefined;
   const choose = (nextDay: string, nextSlotId: string | undefined) => {
     setDay(nextDay);
-    setHomeDay(nextDay);
+    setRecentDay(nextDay);
     const slot = slots.find((s) => s.id === nextSlotId && slotOpen(nextDay, s));
     onChange(slot ? cartPreorder(nextDay, slot) : undefined);
   };

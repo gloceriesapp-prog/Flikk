@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { isCustomSection, newCustomSectionKey, scheduleToIso } from '@/lib/homeSectionPins';
+import { defaultHomeProductLayout, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 interface HomeSectionRow {
   key: string;
@@ -21,18 +22,41 @@ interface HomeSectionRow {
   enabled: boolean;
   sort_index: number;
   bg_color: string | null;
+  banner_image_url?: string | null;
+  display_layout?: HomeProductLayout | null;
   is_custom?: boolean;
   pinned_only: boolean;
   starts_at: string | null;
   ends_at: string | null;
 }
 
-const SELECT = 'key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, starts_at, ends_at';
+const SELECT = 'key, title, subtitle, enabled, sort_index, bg_color, is_custom, pinned_only, starts_at, ends_at, display_layout, banner_image_url';
 
 function clean(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseLayout(key: string, value: unknown): HomeProductLayout | null {
+  if (value === null) return null;
+  if (!isHomeProductLayout(value) || !defaultHomeProductLayout(key)) {
+    throw new Error('Choose a supported product layout for this section.');
+  }
+  return value;
+}
+
+function parsePreorderBanner(value: unknown): string | null {
+  if (value === null || (typeof value === 'string' && !value.trim())) return null;
+  if (typeof value !== 'string' || value.length > 2048) {
+    throw new Error('Enter a valid HTTPS URL for the pre-order banner.');
+  }
+
+  const url = URL.parse(value.trim());
+  if (!url || url.protocol !== 'https:' || url.username || url.password) {
+    throw new Error('Enter a valid HTTPS URL for the pre-order banner.');
+  }
+  return url.href;
 }
 
 async function listSections() {
@@ -81,6 +105,9 @@ export async function PUT(request: Request) {
           enabled: Boolean(r.enabled),
           sort_index: i * 10,
           bg_color: clean(r.bg_color),
+          ...(key === 'preorders' && r.banner_image_url !== undefined
+            ? { banner_image_url: parsePreorderBanner(r.banner_image_url) } : {}),
+          ...(r.display_layout === undefined ? {} : { display_layout: parseLayout(key, r.display_layout) }),
           // Sent so the upsert's insert half satisfies home_sections_custom_key_check.
           is_custom: isCustomSection(key),
           pinned_only: Boolean(r.pinned_only),
@@ -92,6 +119,21 @@ export async function PUT(request: Request) {
     if (rows.length === 0) return NextResponse.json({ error: 'No sections to save.' }, { status: 400 });
     for (const row of rows) {
       if (row.starts_at && row.ends_at && row.ends_at <= row.starts_at) throw new Error('A section must end after it starts.');
+    }
+
+    if (rows.some((row) => row.banner_image_url !== undefined)) {
+      for (const row of rows) row.banner_image_url ??= null;
+    }
+
+    // Older editor sessions omit the field. Preserve their saved layouts,
+    // including when a payload mixes older and newer rows.
+    const omitted = rows.filter((row) => row.display_layout === undefined);
+    if (omitted.length > 0 && omitted.length < rows.length) {
+      const { data, error } = await supabaseAdmin.from('home_sections')
+        .select('key, display_layout').in('key', omitted.map((row) => row.key));
+      if (error) throw error;
+      const savedLayouts = new Map((data ?? []).map((row) => [row.key, row.display_layout]));
+      for (const row of omitted) row.display_layout = savedLayouts.get(row.key) ?? null;
     }
 
     const { error } = await supabaseAdmin.from('home_sections').upsert(rows, { onConflict: 'key' });
@@ -111,12 +153,14 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const title = clean(body?.title);
   if (!title || title.length > 60) return NextResponse.json({ error: 'Give the section a title (up to 60 characters).' }, { status: 400 });
+  const layout = body?.display_layout === undefined ? 'grid' : body.display_layout;
+  if (!isHomeProductLayout(layout)) return NextResponse.json({ error: 'Choose a product layout.' }, { status: 400 });
   try {
     const { data: last, error: lastError } = await supabaseAdmin.from('home_sections').select('sort_index')
       .order('sort_index', { ascending: false }).limit(1).maybeSingle();
     if (lastError) throw lastError;
     const { error } = await supabaseAdmin.from('home_sections').insert({
-      key: newCustomSectionKey(), title, enabled: false, is_custom: true, sort_index: (last?.sort_index ?? 0) + 10,
+      key: newCustomSectionKey(), title, enabled: false, is_custom: true, display_layout: layout, sort_index: (last?.sort_index ?? 0) + 10,
     });
     if (error) throw error;
     return NextResponse.json(await listSections(), { status: 201 });

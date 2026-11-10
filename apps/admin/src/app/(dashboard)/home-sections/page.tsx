@@ -13,9 +13,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from '@/components/icons';
 import { ProductPinPicker } from '@/components/home/ProductPinPicker';
+import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 import { confirmAction, toast } from '@/components/ui/Toast';
 import { acceptsPins, isoToScheduleInput, pinCapacity } from '@/lib/homeSectionPins';
 import type { Product } from '@/lib/types';
+import { DEFAULT_PREORDER_BANNER, homeProductLayout, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 interface HomeSection {
   key: string;
@@ -24,6 +26,8 @@ interface HomeSection {
   enabled: boolean;
   sort_index: number;
   bg_color: string | null;
+  banner_image_url?: string | null;
+  display_layout: HomeProductLayout | null;
   is_custom: boolean;
   pinned_only: boolean;
   starts_at: string | null;
@@ -35,7 +39,7 @@ interface HomeSection {
 // placeholder so the founder sees what "leave blank" falls back to).
 const SECTION_META: Record<string, { label: string; defaultTitle: string }> = {
   'quick-categories': { label: 'Quick categories', defaultTitle: 'Quick categories (heading hidden when first)' },
-  'everyday-dairy': { label: 'Everyday Dairy', defaultTitle: 'Everyday Dairy' },
+  'everyday-dairy': { label: 'Our Local Favourites', defaultTitle: 'Our Local Favourites' },
   'festival-greeting': { label: 'Festival Greeting', defaultTitle: '(managed in Festival Greeting)' },
   'festival-picks': { label: 'Festival Section products', defaultTitle: '(the Festival Section title)' },
   seasonal: { label: 'Seasonal Section', defaultTitle: '(no heading)' },
@@ -49,7 +53,7 @@ const SECTION_META: Record<string, { label: string; defaultTitle: string }> = {
   'deals-section': { label: 'Deals Section', defaultTitle: '(own layout)' },
   'todays-best-deals': { label: "Today's Best Deals", defaultTitle: 'Today’s Best Deals' },
   'price-drops': { label: 'Price Drops', defaultTitle: 'Biggest Price Drops' },
-  'everyday-essentials': { label: 'Everyday Essentials', defaultTitle: 'Everyday Essentials' },
+  'everyday-essentials': { label: 'Daily Essentials', defaultTitle: 'Daily Essentials' },
   'new-on-gloceries': { label: 'New on Gloceries', defaultTitle: 'New on Gloceries' },
   'brand-footer': { label: 'Brand Footer', defaultTitle: '(no heading)' },
 };
@@ -63,6 +67,11 @@ const fromServer = (rows: HomeSection[]) => rows.map((row) => ({
   ...row, starts_at: isoToScheduleInput(row.starts_at), ends_at: isoToScheduleInput(row.ends_at),
 }));
 
+const LAYOUT_OPTIONS = [
+  { value: 'horizontal', label: 'Horizontal scroll · 7 cards' },
+  { value: 'grid', label: '3 per row · 6 cards' },
+] as const;
+
 const inputClass = 'w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-ink';
 
 export default function HomeSectionsPage() {
@@ -74,6 +83,8 @@ export default function HomeSectionsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [openPicker, setOpenPicker] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
+  const [newLayout, setNewLayout] = useState<HomeProductLayout>('grid');
+  const [creating, setCreating] = useState(false);
 
   const applyServer = useCallback((rows: HomeSection[]) => {
     setSections(fromServer(rows));
@@ -146,21 +157,29 @@ export default function HomeSectionsPage() {
 
   async function handleCreate() {
     const title = newTitle.trim();
-    if (!title) return;
-    const res = await fetch('/api/home-sections', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }),
-    });
-    const body = await res.json();
-    if (!res.ok) { toast.error('Could not add the section', body.error); return; }
-    // Keep unsaved edits; just append the new row the server made.
-    const created = (body as HomeSection[]).find((row) => !sections.some((s) => s.key === row.key));
-    if (created) {
-      setSections((prev) => [...prev, ...fromServer([created])]);
-      setSavedPins((prev) => ({ ...prev, [created.key]: [] }));
-      setOpenPicker(created.key);
+    if (!title || creating || saving) return;
+    setCreating(true);
+    try {
+      const res = await fetch('/api/home-sections', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, display_layout: newLayout }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? 'Could not add the section.');
+      // Keep unsaved edits while appending the new section.
+      const created = (body as HomeSection[]).find((row) => row.is_custom && row.title === title && !sections.some((s) => s.key === row.key));
+      if (created) {
+        setSections((prev) => [...prev, ...fromServer([created])]);
+        setSavedPins((prev) => ({ ...prev, [created.key]: [] }));
+        setOpenPicker(created.key);
+      }
+      setNewTitle('');
+      toast.success('Section added', 'Pick its products, switch it on, then save.');
+    } catch (err) {
+      toast.error('Could not add the section', err instanceof Error ? err.message : undefined);
+    } finally {
+      setCreating(false);
     }
-    setNewTitle('');
-    toast.success('Section added', 'Pick its products, switch it on, then save.');
   }
 
   async function handleDelete(section: HomeSection) {
@@ -184,13 +203,19 @@ export default function HomeSectionsPage() {
         <div>
           <h1 className="page-title">Home Sections</h1>
           <p className="page-subtitle">
-            Order, rename, schedule or hide the sections on the customer Home screen, and pick the products that matter most.
+            Set the order and layout of sections on the Customer Home All tab, and choose which products to feature.
           </p>
         </div>
-        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void handleCreate(); }}>
+        <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); void handleCreate(); }}>
           <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} maxLength={60}
-            placeholder="New section title, e.g. Monsoon must-haves" className={clsx(inputClass, 'w-72')} />
-          <button type="submit" className="btn btn-secondary" disabled={!newTitle.trim()}><Plus size={14} /> New section</button>
+            aria-label="New section title" placeholder="New section title" className={clsx(inputClass, 'sm:w-52')} />
+          <select aria-label="New section layout" value={newLayout} className={clsx(inputClass, 'sm:w-auto')}
+            onChange={(e) => { if (isHomeProductLayout(e.target.value)) setNewLayout(e.target.value); }}>
+            {LAYOUT_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+          </select>
+          <button type="submit" className="btn btn-secondary" disabled={!newTitle.trim() || creating || saving}>
+            <Plus size={14} /> {creating ? 'Adding…' : 'Add section'}
+          </button>
         </form>
       </div>
 
@@ -199,7 +224,8 @@ export default function HomeSectionsPage() {
       <div className="flex flex-col gap-3">
         {sections.map((s, i) => {
           const pinnable = acceptsPins(s.key);
-          const capacity = pinCapacity(s.key);
+          const layout = homeProductLayout(s.key, s.display_layout);
+          const capacity = pinCapacity(s.key, layout);
           return (
             <div key={s.key} className={clsx('card p-5', !s.enabled && 'opacity-70')}>
               <div className="flex items-start justify-between gap-3">
@@ -261,6 +287,43 @@ export default function HomeSectionsPage() {
                 </div>
               </div>
 
+              {s.key === 'preorders' && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <label htmlFor="preorder-banner-url" className="mb-1.5 block text-xs font-medium text-muted">
+                    Pre-order banner image
+                  </label>
+                  <div className="flex flex-wrap items-start gap-3">
+                    <ProductImageUpload
+                      key={s.banner_image_url || DEFAULT_PREORDER_BANNER}
+                      imageUrl={s.banner_image_url || DEFAULT_PREORDER_BANNER}
+                      onChange={(url) => patch(s.key, { banner_image_url: url })}
+                      bucket="appsui"
+                      small
+                    />
+                    <div className="min-w-56 flex-1">
+                      <input id="preorder-banner-url" value={s.banner_image_url ?? ''} maxLength={2048}
+                        onChange={(e) => patch(s.key, { banner_image_url: e.target.value || null })}
+                        placeholder={DEFAULT_PREORDER_BANNER} className={inputClass} />
+                      <p className="mt-1 text-xs text-muted">Upload a wide image or paste an HTTPS URL. A 4:1 image fits the banner.</p>
+                      {s.banner_image_url && (
+                        <button type="button" className="btn btn-ghost mt-2"
+                          onClick={() => patch(s.key, { banner_image_url: null })}>Use default image</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {layout && (
+                <label className="mt-4 block max-w-xs text-xs font-medium text-muted">
+                  Card layout
+                  <select className={clsx(inputClass, 'mt-1.5')} value={layout}
+                    onChange={(e) => { if (isHomeProductLayout(e.target.value)) patch(s.key, { display_layout: e.target.value }); }}>
+                    {LAYOUT_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </label>
+              )}
+
               {pinnable && (
                 <div className="mt-4 border-t border-border pt-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -268,7 +331,7 @@ export default function HomeSectionsPage() {
                       <p className="text-sm font-medium text-ink">Picked products</p>
                       <p className="text-xs text-muted">
                         {s.is_custom
-                          ? `Shows your first ${capacity} in-stock picks, in this order.`
+                          ? `Shows up to ${capacity} in-stock picks here. See all opens the full collection.`
                           : s.pinned_only
                             ? `Shows only your picks — the first ${capacity} in stock, in this order.`
                             : `Your picks fill the first of ${capacity} cards; the rest stay automatic.`}
@@ -301,7 +364,7 @@ export default function HomeSectionsPage() {
       </div>
 
       <div className="sticky bottom-4 flex items-center gap-3">
-        <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary">
+        <button type="button" onClick={handleSave} disabled={saving || creating} className="btn btn-primary">
           {saving ? 'Saving…' : 'Save'}
         </button>
         {dirtyPins.length > 0 && <p className="text-xs text-muted">Unsaved product picks in {dirtyPins.map(labelFor).join(', ')}.</p>}

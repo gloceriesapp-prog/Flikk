@@ -19,7 +19,7 @@ const RAIL_LABELS: Record<string, string> = {
   'everyday-dairy': 'Everyday Dairy',
 };
 
-export interface SectionOption { key: string; label: string; enabled: boolean; count: number }
+export interface SectionOption { key: string; label: string; enabled: boolean; count: number; capacity: number }
 
 export function useHomeSectionChoice(productId?: string) {
   const [options, setOptions] = useState<SectionOption[] | null>(null);
@@ -36,7 +36,7 @@ export function useHomeSectionChoice(productId?: string) {
           productId ? fetch(`/api/home-sections/by-product?productId=${encodeURIComponent(productId)}`) : null,
         ]);
         if (!sectionsRes.ok || (mineRes && !mineRes.ok)) throw new Error('Could not load the home sections.');
-        const sections = (await sectionsRes.json()) as { key: string; title: string | null; enabled: boolean; is_custom: boolean; product_ids: string[] }[];
+        const sections = (await sectionsRes.json()) as { key: string; title: string | null; enabled: boolean; is_custom: boolean; display_layout?: string | null; product_ids: string[] }[];
         const mine = mineRes ? ((await mineRes.json()) as { keys: string[] }).keys : [];
         if (cancelled) return;
         setOptions(sections.filter((s) => acceptsPins(s.key)).map((s) => ({
@@ -44,6 +44,7 @@ export function useHomeSectionChoice(productId?: string) {
           label: s.is_custom ? (s.title || 'Untitled section') : (s.title || RAIL_LABELS[s.key] || s.key),
           enabled: s.enabled,
           count: s.product_ids.length,
+          capacity: pinCapacity(s.key, s.display_layout),
         })));
         setSelected(new Set(mine));
         setInitial([...mine].sort().join());
@@ -98,7 +99,7 @@ export function HomeSectionChecklist({ choice, compact = false }: {
             <span className="block truncate text-sm text-ink">{option.label}</span>
             {!compact && (
               <span className="block text-xs text-muted">
-                {option.count} picked · shows {pinCapacity(option.key)}{option.enabled ? '' : ' · hidden on Home'}
+                {option.count} picked · shows {option.capacity}{option.enabled ? '' : ' · hidden on Home'}
               </span>
             )}
           </span>

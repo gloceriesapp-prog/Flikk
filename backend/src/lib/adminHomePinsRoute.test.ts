@@ -8,7 +8,7 @@ const db = vi.hoisted(() => ({
   upserted: null as unknown,
   inserted: null as unknown,
   deleted: null as unknown,
-  sections: [{ key: 'trending', title: null, enabled: true, sort_index: 0, is_custom: false }] as Record<string, unknown>[],
+  sections: [{ key: 'trending', title: null, enabled: true, sort_index: 0, is_custom: false, display_layout: 'horizontal' }] as Record<string, unknown>[],
   pins: [{ section_key: 'trending', product_id: 'b0000000-0000-4000-8000-000000000002', position: 0 }] as Record<string, unknown>[],
 }));
 vi.mock('@/lib/supabase/client', () => ({ supabase: {} }));
@@ -20,7 +20,7 @@ vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: {
   from: (table: string) => {
     const rows = table === 'home_sections' ? db.sections : db.pins;
     const chain: Record<string, unknown> = {
-      select: () => chain, order: () => chain, limit: () => chain, eq: () => chain,
+      select: () => chain, order: () => chain, limit: () => chain, eq: () => chain, in: () => chain,
       maybeSingle: async () => ({ data: { sort_index: 120 }, error: null }),
       upsert: async (value: unknown) => { db.upserted = value; return { error: null }; },
       insert: async (value: unknown) => { db.inserted = value; return { error: null }; },
@@ -33,7 +33,7 @@ vi.mock('@/lib/supabase/admin', () => ({ supabaseAdmin: {
 import * as sections from '../../../apps/admin/src/app/api/home-sections/route';
 import * as picks from '../../../apps/admin/src/app/api/home-sections/products/route';
 import * as byProduct from '../../../apps/admin/src/app/api/home-sections/by-product/route';
-import { acceptsPins, isoToScheduleInput, newCustomSectionKey, parseProductIds, scheduleToIso } from '../../../apps/admin/src/lib/homeSectionPins';
+import { acceptsPins, isoToScheduleInput, newCustomSectionKey, parseProductIds, pinCapacity, scheduleToIso } from '../../../apps/admin/src/lib/homeSectionPins';
 
 const A = 'a0000000-0000-4000-8000-000000000001';
 const B = 'b0000000-0000-4000-8000-000000000002';
@@ -56,7 +56,7 @@ it('helpers: only product rails and custom sections take picks; ids and schedule
 
 it('GET lists sections with their picked product ids in order', async () => {
   const body = await (await sections.GET()).json();
-  expect(body[0]).toMatchObject({ key: 'trending', product_ids: [B] });
+  expect(body[0]).toMatchObject({ key: 'trending', display_layout: 'horizontal', product_ids: [B] });
 });
 
 it('PUT saves layout, schedule and the custom flag; a custom section needs a title', async () => {
@@ -85,6 +85,29 @@ it('POST adds a hidden custom section at the end; DELETE only removes custom one
   expect((await sections.DELETE(new Request('http://admin/api?key=custom-abc12345', { method: 'DELETE' }))).status).toBe(200);
 });
 
+it('keeps layout limits aligned with Home, and preserves omitted layouts during edits', async () => {
+  const saved = await sections.PUT(json({ sections: [
+    { key: 'trending', enabled: true },
+    { key: 'deals-for-you', enabled: true, display_layout: 'grid' },
+  ] }));
+  expect(saved.status).toBe(200);
+  expect(db.upserted).toEqual([
+    expect.objectContaining({ key: 'trending', display_layout: 'horizontal' }),
+    expect.objectContaining({ key: 'deals-for-you', display_layout: 'grid' }),
+  ]);
+  expect(pinCapacity('everyday-dairy')).toBe(7);
+  expect(pinCapacity('deals-for-you')).toBe(6);
+  expect(pinCapacity('custom-tasteofudupi', 'grid')).toBe(6);
+
+  db.upserted = null;
+  for (const [key, display_layout] of [['preorders', 'grid'], ['deals-for-you', 'carousel']]) {
+    expect((await sections.PUT(json({ sections: [{ key, display_layout }] }))).status).toBe(400);
+  }
+  expect(db.upserted).toBeNull();
+  expect((await sections.POST(json({ title: 'New local picks', display_layout: 'horizontal' }, 'POST'))).status).toBe(201);
+  expect(db.inserted).toMatchObject({ display_layout: 'horizontal' });
+});
+
 it('section picks save through one RPC in the given order', async () => {
   expect((await picks.PUT(json({ key: 'trending', productIds: [B, A] }))).status).toBe(200);
   expect(db.rpc).toEqual({ name: 'admin_set_home_section_products', args: { p_key: 'trending', p_product_ids: [B, A] } });
@@ -106,4 +129,21 @@ it('Inventory "Show on home" ticks sections for one product', async () => {
   expect((await byProduct.GET(new Request('http://admin/api?productId=bad'))).status).toBe(400);
   db.authorized = false;
   expect((await byProduct.GET(new Request(`http://admin/api?productId=${A}`))).status).toBe(401);
+});
+
+it('saves a valid pre-order banner URL and rejects unsafe URLs', async () => {
+  const banner = 'https://images.gloceries.com/appsui/pre-ordr-now.png';
+  const save = (banner_image_url: string | null) => sections.PUT(json({ sections: [
+    { key: 'preorders', enabled: true, banner_image_url },
+    { key: 'trending', enabled: true },
+  ] }));
+  expect((await save(banner)).status).toBe(200);
+  expect(db.upserted).toEqual([
+    expect.objectContaining({ key: 'preorders', banner_image_url: banner }),
+    expect.objectContaining({ key: 'trending', banner_image_url: null }),
+  ]);
+  expect((await save(null)).status).toBe(200);
+  db.upserted = null;
+  expect((await save('http://example.com/banner.png')).status).toBe(400);
+  expect(db.upserted).toBeNull();
 });
