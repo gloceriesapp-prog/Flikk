@@ -10,7 +10,7 @@ import { usePreorders } from './usePreorders';
 const PREVIEW_LIMIT = 4;
 const CARD_WIDTH = 'w-32';
 const CARD_SNAP_INTERVAL = 128 + 12;
-const WARM_BEIGE = '#F1E3D8';
+const PREORDER_BACKGROUND = '#E7F2FC';
 
 export function PreorderSection({ title, bannerImageUrl }: { title: string; bannerImageUrl?: string | null }) {
   const { data } = usePreorders();
@@ -28,7 +28,7 @@ export function PreorderSection({ title, bannerImageUrl }: { title: string; bann
   const preview = products.slice(0, PREVIEW_LIMIT);
 
   return (
-    <View className="mx-4 mt-7 overflow-hidden rounded-[22px] pb-3" style={{ backgroundColor: WARM_BEIGE }}>
+    <View className="mx-4 mt-7 overflow-hidden rounded-[22px] pb-3" style={{ backgroundColor: PREORDER_BACKGROUND }}>
       <AppImage
         source={{ uri: banner }}
         style={{ width: '100%', aspectRatio: 4 }}
