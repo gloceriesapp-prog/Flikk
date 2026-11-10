@@ -1,53 +1,54 @@
-// Plain flex-wrap grid, not a FlatList — these lists are short (a dozen items,
-// not hundreds) and this already lives inside HomeScreen's outer ScrollView.
-// Nesting a FlatList inside a ScrollView triggers RN's "VirtualizedLists
-// should never be nested" warning for no real benefit at this size.
-//
-// 3 columns, packed left with a fixed gap — NOT justify-between. With
-// justify-between, a partial row (e.g. 2 products) gets stretched to the
-// container's full width, opening one huge gap between the 1st and 2nd
-// card instead of them sitting next to each other. A fixed gap keeps
-// cards adjacent regardless of how many happen to be in the last row.
-
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { ProductCard } from './ProductCard';
 import { SectionTitle } from '../components/SectionTitle';
 import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import { productAvailability } from '../../../utils/productAvailability';
+import type { HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 import type { Product } from './types';
 
-// Three per row, the same 3-column width EverydayEssentialsSection,
-// SearchSuggestions and HomeTabTileGrid use.
-const CARD_WIDTH = 'w-[31%]';
-
 interface Props {
-  title: string;
+  title?: string;
+  subtitle?: string | null;
   products: Product[];
+  layout?: HomeProductLayout;
   showDiscountBadge?: boolean;
 }
 
-export function ProductSection({ title, products, showDiscountBadge = false }: Props) {
-  // Share delivery settings across cards; cart availability depends on stock.
+export function ProductSection({ title, subtitle, products, layout = 'grid', showDiscountBadge = false }: Props) {
   const estimatedMinutes = useDeliveryEstimateMinutes();
+  if (!products.length) return null;
+  const horizontal = layout === 'horizontal';
+  const cards = products.map((product) => {
+    const availability = productAvailability(product);
+    const card = (
+      <ProductCard
+        product={product}
+        showDiscountBadge={showDiscountBadge}
+        widthClassName={horizontal ? 'w-32' : 'w-full'}
+        estimatedMinutes={estimatedMinutes}
+        isAvailable={availability.isAvailable}
+        availabilityLabel={availability.label}
+      />
+    );
+    return horizontal ? (
+      <View key={product.id}>{card}</View>
+    ) : (
+      <View key={product.id} className="px-1" style={{ width: '33.333333%' }}>{card}</View>
+    );
+  });
+
   return (
-    <View className="pt-8">
-      <SectionTitle>{title}</SectionTitle>
-      <View className="flex-row flex-wrap gap-x-2.5 gap-y-5 px-5">
-        {products.map((product) => {
-          const availability = productAvailability(product);
-          return (
-            <ProductCard
-              key={product.id}
-              product={product}
-              showDiscountBadge={showDiscountBadge}
-              widthClassName={CARD_WIDTH}
-              estimatedMinutes={estimatedMinutes}
-              isAvailable={availability.isAvailable}
-              availabilityLabel={availability.label}
-            />
-          );
-        })}
-      </View>
+    <View className={title ? 'pt-8' : undefined}>
+      {title && <SectionTitle subtitle={subtitle}>{title}</SectionTitle>}
+      {horizontal ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="items-start gap-3 px-5">
+          {cards}
+        </ScrollView>
+      ) : (
+        <View className="px-5">
+          <View className="-mx-1 flex-row flex-wrap items-start gap-y-5">{cards}</View>
+        </View>
+      )}
     </View>
   );
 }

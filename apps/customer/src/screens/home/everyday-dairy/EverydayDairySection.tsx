@@ -1,10 +1,27 @@
 import { GroceryCollectionSection } from '../groceries/components/GroceryCollectionSection';
-import { useHomePicks } from '../sections/useHomePicks';
+import { homePreviewLimit, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
+import type { Product } from '../products/types';
 import { EVERYDAY_DAIRY_GROUPS } from './data';
 
-// Hand-picked dairy (admin Home Sections / Inventory) first, then
-// name-matched dairy from nearby shops.
-export function EverydayDairySection({ title = 'Everyday Dairy' }: { title?: string }) {
-  const { data: picks } = useHomePicks();
-  return <GroceryCollectionSection title={title} groups={EVERYDAY_DAIRY_GROUPS} maxProducts={8} collectionLabel="See all dairy products" pinnedProducts={picks?.['everyday-dairy']} />;
+interface Props {
+  title: string;
+  subtitle: string | null;
+  products: Product[];
+  layout: HomeProductLayout;
+  pinnedOnly: boolean;
+}
+
+export function EverydayDairySection({ title, subtitle, products, layout, pinnedOnly }: Props) {
+  return (
+    <GroceryCollectionSection
+      title={title}
+      subtitle={subtitle}
+      groups={EVERYDAY_DAIRY_GROUPS}
+      maxProducts={homePreviewLimit(layout)}
+      collectionLabel={`See all ${title}`}
+      pinnedProducts={products}
+      homeLayout={layout}
+      pinnedOnly={pinnedOnly}
+    />
+  );
 }
