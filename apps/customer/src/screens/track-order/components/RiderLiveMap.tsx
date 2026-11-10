@@ -5,7 +5,7 @@
 // style on Android (and iOS builds with the native Google SDK), Apple Maps muted
 // otherwise. react-native-maps isn't in Expo Go and a native map failure
 // shouldn't take down the tracker, so both fall back to the caption alone.
-import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -103,11 +103,17 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route }: Pro
   const userMoved = pannedPhase === outForDelivery;
   const mapRef = useRef<MapView>(null);
   const lastFrame = useRef<{
-    points: DeliveryRoutePoint[];
+    route: DeliveryRoutePoint[] | null;
+    endpointsKey: string;
     outForDelivery: boolean;
     focus: DeliveryRoutePoint | null;
   } | null>(null);
-  const [confirmed, setConfirmed] = useState<{ route: DeliveryRoutePoint[]; progress: RouteProgress } | null>(null);
+  const [confirmed, setConfirmed] = useState<{
+    route: DeliveryRoutePoint[];
+    latitude: number;
+    longitude: number;
+    progress: RouteProgress | null;
+  } | null>(null);
   const reduceMotion = useReducedMotion();
 
   // Keeps "updated Xs ago" honest between polls.
@@ -126,42 +132,21 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route }: Pro
   const pickupLat = pickup?.lat; const pickupLng = pickup?.lng;
   const roadRoute = outForDelivery && USES_GOOGLE_MAPS && route && route.length >= 2 ? route : null;
 
+  const previousMatch = confirmed?.route === roadRoute ? confirmed : null;
+  let progress = previousMatch?.progress ?? null;
+  // Record each new fix once, retaining the previous progress if the rider
+  // strays from the route or GPS jitters backwards.
+  if (roadRoute && riderLat !== undefined && riderLng !== undefined
+    && (previousMatch?.latitude !== riderLat || previousMatch.longitude !== riderLng)) {
+    progress = matchRoute(roadRoute, { latitude: riderLat, longitude: riderLng }, progress ?? undefined) ?? progress;
+    setConfirmed({ route: roadRoute, latitude: riderLat, longitude: riderLng, progress });
+  }
 
-  const savedProgress = confirmed?.route === roadRoute ? confirmed.progress : undefined;
-  const progress = useMemo(() => {
-    if (!roadRoute || riderLat === undefined || riderLng === undefined) return savedProgress ?? null;
-    const match = matchRoute(roadRoute, { latitude: riderLat, longitude: riderLng }, savedProgress);
-    if (!match || (savedProgress?.segment === match.segment && savedProgress.fraction === match.fraction)) {
-      return savedProgress ?? null;
-    }
-    return match;
-  }, [roadRoute, riderLat, riderLng, savedProgress]);
-
-  useEffect(() => {
-    if (roadRoute && progress && progress !== savedProgress) {
-      setConfirmed({ route: roadRoute, progress });
-    }
-  }, [roadRoute, progress, savedProgress]);
-  const roadAhead = useMemo(() => roadRoute ? remainingRoad(roadRoute, progress) : null, [roadRoute, progress]);
-  const { facesRight, rotation } = useMemo(() => scooterPose(progress ? roadAhead : null), [roadAhead, progress]);
-  const dashes = useMemo(() => {
-    if (outForDelivery || pickupLat === undefined || pickupLng === undefined
-      || destLat === undefined || destLng === undefined) return [];
-    return pickupConnector(
-      { latitude: pickupLat, longitude: pickupLng },
-      { latitude: destLat, longitude: destLng },
-    );
-  }, [outForDelivery, pickupLat, pickupLng, destLat, destLng]);
-  const deliveryFrame = useMemo(() => {
-    const points: DeliveryRoutePoint[] = [];
-    if (pickupLat !== undefined && pickupLng !== undefined) {
-      points.push({ latitude: pickupLat, longitude: pickupLng });
-    }
-    if (destLat !== undefined && destLng !== undefined) {
-      points.push({ latitude: destLat, longitude: destLng });
-    }
-    return points;
-  }, [pickupLat, pickupLng, destLat, destLng]);
+  const roadAhead = roadRoute ? remainingRoad(roadRoute, progress) : null;
+  const { facesRight, rotation } = scooterPose(progress ? roadAhead : null);
+  const dashes = !outForDelivery && pickup && destination
+    ? pickupConnector(toLatLng(pickup), toLatLng(destination))
+    : [];
 
   // With a road route and a fresh rider fix, keep a close view of the
   // scooter. Small GPS shifts and manual map gestures leave the camera alone.
@@ -169,16 +154,17 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route }: Pro
     const map = mapRef.current;
     if (!map || !mapReady || userMoved) return;
 
-    const basis = roadRoute ?? deliveryFrame;
+    const endpointsKey = roadRoute ? '' : [pickupLat, pickupLng, destLat, destLng].join(',');
     const previous = lastFrame.current;
-    const sameFrame = previous?.points === basis && previous.outForDelivery === outForDelivery;
+    const sameFrame = previous?.route === roadRoute && previous.endpointsKey === endpointsKey
+      && previous.outForDelivery === outForDelivery;
     const riderPoint = riderLat !== undefined && riderLng !== undefined
       ? { latitude: riderLat, longitude: riderLng }
       : null;
 
     if (roadRoute && riderPoint) {
       if (sameFrame && previous.focus && mapDistanceMeters(previous.focus, riderPoint) < CAMERA_ADVANCE_METERS) return;
-      lastFrame.current = { points: basis, outForDelivery, focus: riderPoint };
+      lastFrame.current = { route: roadRoute, endpointsKey, outForDelivery, focus: riderPoint };
       const camera = { center: riderPoint, zoom: RIDER_FOLLOW_ZOOM };
       if (reduceMotion) map.setCamera(camera);
       else map.animateCamera(camera, { duration: 450 });
@@ -188,12 +174,20 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route }: Pro
     // Before pickup, or while waiting for a rider fix, frame the available pins
     // and road. A stale fix keeps the last camera position until GPS returns.
     if (sameFrame) return;
-    const points = [...(roadAhead ?? deliveryFrame)];
+    const points = roadRoute ? [...remainingRoad(roadRoute, progress)] : [];
+    if (!roadRoute) {
+      if (pickupLat !== undefined && pickupLng !== undefined) {
+        points.push({ latitude: pickupLat, longitude: pickupLng });
+      }
+      if (destLat !== undefined && destLng !== undefined) {
+        points.push({ latitude: destLat, longitude: destLng });
+      }
+    }
     if (riderPoint) points.push(riderPoint);
     const first = points[0];
     if (!first) return;
 
-    lastFrame.current = { points: basis, outForDelivery, focus: null };
+    lastFrame.current = { route: roadRoute, endpointsKey, outForDelivery, focus: null };
     const hasExtent = points.some(point => point.latitude !== first.latitude || point.longitude !== first.longitude);
     if (hasExtent) {
       map.fitToCoordinates(points, {
@@ -205,7 +199,7 @@ export function RiderLiveMap({ outForDelivery, response, fetchedAt, route }: Pro
       if (reduceMotion) map.setCamera(camera);
       else map.animateCamera(camera, { duration: 400 });
     }
-  }, [deliveryFrame, mapReady, outForDelivery, reduceMotion, riderLat, riderLng, roadAhead, roadRoute, userMoved]);
+  }, [destLat, destLng, mapReady, outForDelivery, pickupLat, pickupLng, progress, reduceMotion, riderLat, riderLng, roadRoute, userMoved]);
 
   function recenter() {
     lastFrame.current = null;

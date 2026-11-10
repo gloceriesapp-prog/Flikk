@@ -43,6 +43,8 @@ DO $$ DECLARE near uuid[]:=ARRAY['00000000-0000-4000-8000-0000000135f1']::uuid[]
  BEGIN PERFORM admin_set_home_section_products('trending',(SELECT array_agg(gen_random_uuid()) FROM generate_series(1,31))); RAISE EXCEPTION '31 pins accepted';
  EXCEPTION WHEN sqlstate 'P0400' THEN NULL; END;
 
+ -- An admin must enable Trending before its pinned products can appear.
+ UPDATE home_sections SET enabled=true WHERE key='trending';
  -- Order is the order given; saving again replaces it.
  PERFORM admin_set_home_section_products('trending',ARRAY['00000000-0000-4000-8000-000000013502','00000000-0000-4000-8000-000000013501','00000000-0000-4000-8000-000000013503','00000000-0000-4000-8000-000000013504']::uuid[]);
  SELECT string_agg(right(id::text,2),',' ORDER BY ord) INTO picks FROM (SELECT id, row_number() OVER () ord FROM home_pick_product_ids(near) WHERE section_key='trending') x;
