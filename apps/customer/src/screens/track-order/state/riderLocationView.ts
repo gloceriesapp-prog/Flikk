@@ -2,7 +2,7 @@
 // __tests__/riderLocationView.test.ts).
 import type { MapCoordinates, RiderLocationResponse } from '../../../api/tracking';
 
-export const RIDER_LOCATION_POLL_MS = 10_000;
+export const RIDER_LOCATION_POLL_MS = 5_000;
 
 export interface RiderMapView {
   // null hides the rider marker (no position, pre-pickup ping, or stale).

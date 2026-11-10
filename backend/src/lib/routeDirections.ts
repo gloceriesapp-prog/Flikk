@@ -54,7 +54,11 @@ interface RoutesResponse {
   routes?: { polyline?: { encodedPolyline?: unknown }; duration?: unknown; distanceMeters?: unknown }[];
 }
 
-export async function fetchRoute(origin: LatLng, dest: LatLng): Promise<RouteResult | null> {
+export async function fetchRoute(
+  origin: LatLng,
+  dest: LatLng,
+  polylineQuality: 'OVERVIEW' | 'HIGH_QUALITY' = 'OVERVIEW',
+): Promise<RouteResult | null> {
   if (!env.googleRoutesApiKey || !validPoint(origin) || !validPoint(dest)) return null;
   try {
     const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
@@ -70,7 +74,7 @@ export async function fetchRoute(origin: LatLng, dest: LatLng): Promise<RouteRes
         travelMode: 'DRIVE',
         routingPreference: 'TRAFFIC_UNAWARE',
         computeAlternativeRoutes: false,
-        polylineQuality: 'OVERVIEW',
+        polylineQuality,
         polylineEncoding: 'ENCODED_POLYLINE',
       }),
       signal: AbortSignal.timeout(8000),

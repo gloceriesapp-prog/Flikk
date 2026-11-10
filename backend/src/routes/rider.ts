@@ -350,6 +350,25 @@ riderRouter.post('/orders/:id/accept', async (req: AuthedRequest, res, next) => 
   }
 });
 
+riderRouter.post('/orders/:id/arrival', async (req: AuthedRequest, res, next) => {
+  try {
+    const { data, error } = await supabase.rpc('mark_rider_arrived', {
+      p_order: req.params.id,
+      p_rider: req.user!.id,
+    });
+    if (error?.code === 'P0404' || error?.code === '22P02') {
+      throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found');
+    }
+    if (error?.code === 'P0409') {
+      throw new AppError(409, 'ARRIVAL_NOT_AVAILABLE', error.message);
+    }
+    if (error) throw error;
+    res.json({ arrivedAt: data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Same join shape as partner.ts's own GET /orders (store's side of this
 // same order) — order_items -> products for real item names, users via the
 // customer_id FK (orders also has a rider_id FK to the same users table,
@@ -379,7 +398,7 @@ riderRouter.get('/assignments', async (req: AuthedRequest, res, next) => {
         // DELIVERY_MONEY_COLUMNS feed withDeliveryMoney below: the rider's
         // payout (the recorded earning once delivered, else the admin pay
         // rule) and, for cash on delivery, the amount to collect.
-        `id, order_number, status, preparation_deadline_at, placed_at, delivered_at, cancel_reason, trip_id, ${DELIVERY_MONEY_COLUMNS}, order_items(quantity, unit_at_order, products(name, unit)), stores(name, phone, lat, lng, manual_address, address_line, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude, delivery_instructions)`,
+        `id, order_number, status, rider_arrived_at, preparation_deadline_at, placed_at, delivered_at, cancel_reason, trip_id, ${DELIVERY_MONEY_COLUMNS}, order_items(quantity, unit_at_order, products(name, unit)), stores(name, phone, lat, lng, manual_address, address_line, zones(name)), users!customer_id(name, phone), addresses(line1, landmark, latitude, longitude, delivery_instructions)`,
       )
       .eq('rider_id', req.user!.id)
 ;

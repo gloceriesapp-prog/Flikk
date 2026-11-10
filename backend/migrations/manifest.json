@@ -692,6 +692,10 @@
     {
       "file": "20261110130000_preorder_home_banner.sql",
       "sha256": "edc083aeaed850aad9b95ec7f10fb55cbe4f375cbdc5b51b610ba9c99927a477"
+    },
+    {
+      "file": "20261110140000_rider_arrival.sql",
+      "sha256": "f5f5c245530f2b5ada4ba260f2aeb31e862eb8ce96ff45243b780991b9263671"
     }
   ]
 }

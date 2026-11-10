@@ -2,7 +2,7 @@ import { apiRequest } from './client';
 import type { ApiOrder } from './orders';
 import type { ApiTrip } from './trips';
 export type OrderLive = Pick<ApiOrder, 'id' | 'live_revision' | 'status' | 'estimated_delivery_minutes' | 'estimated_delivery_at' |
-  'packed_at' | 'picked_up_at' | 'delivered_at' | 'delivery_otp' | 'cancel_reason' | 'refund_status' |
+  'packed_at' | 'picked_up_at' | 'rider_arrived_at' | 'delivered_at' | 'delivery_otp' | 'cancel_reason' | 'refund_status' |
   'provider_refund_id' | 'refunded_at' | 'provider_payment_id'> & { rider_id: string | null };
 export type TripLive = Pick<ApiTrip, 'id' | 'live_revision' | 'status' | 'estimated_delivery_minutes' | 'estimated_delivery_at' | 'provider_payment_id' | 'cancellation_refund'> & { orders: OrderLive[] };
 export const fetchOrderLive = (id: string) => apiRequest<OrderLive>(`/orders/${id}/live`);
@@ -19,11 +19,16 @@ export interface RiderLocation extends MapCoordinates {
   age_seconds: number;
   stale: boolean;
 }
+export interface DeliveryRoutePoint { latitude: number; longitude: number }
 export interface RiderLocationResponse {
   active: boolean;
   rider_location: RiderLocation | null;
   destination: MapCoordinates | null;
+  pickup?: MapCoordinates | null;
+  route?: DeliveryRoutePoint[] | null;
   stale_after_seconds: number;
 }
 export const fetchOrderRiderLocation = (id: string) => apiRequest<RiderLocationResponse>(`/orders/${id}/rider-location`);
 export const fetchTripRiderLocation = (id: string) => apiRequest<RiderLocationResponse>(`/trips/${id}/rider-location`);
+export const fetchDeliveryRoute = (id: string, isTrip: boolean, signal: AbortSignal) =>
+  apiRequest<RiderLocationResponse>(`/${isTrip ? 'trips' : 'orders'}/${id}/rider-location?route=1`, { signal });

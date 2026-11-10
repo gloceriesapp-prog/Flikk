@@ -37,8 +37,8 @@
 // stages (placed -> packed -> out_for_delivery -> delivered) but split
 // finer for what a rider specifically does: 'assigned' (backend's
 // 'packed') -> 'picked_up' (backend's 'out_for_delivery'; the real PATCH
-// fires on this transition) -> 'arrived_at_customer' (local-only — no
-// backend column for this sub-stage) -> 'delivered' (another real PATCH,
+// fires on this transition) -> 'arrived_at_customer' (confirmed by the rider
+// and stored for the customer) -> 'delivered' (another real PATCH,
 // which is also what makes backend/src/routes/orders.ts write the real
 // rider_earnings row).
 
@@ -47,7 +47,7 @@ import * as Haptics from 'expo-haptics';
 import { AppState, Vibration } from 'react-native';
 import { create } from 'zustand';
 import { acceptDispatchOffer, fetchDispatchOffers, updateRiderStatus, type AcceptDispatchOfferResult, type DispatchOffer } from '../api/dispatch';
-import { fetchAssignmentHistory, fetchAssignments, toRiderOrder, updateOrderStatus } from '../api/orders';
+import { fetchAssignmentHistory, fetchAssignments, markOrderArrived, toRiderOrder, updateOrderStatus } from '../api/orders';
 import { mergeHistory } from './orderHistory';
 import type { RiderOrder } from '../data/mockOrders';
 import { getCurrentCoordinates, hasLocationPermission, requestLocationPermission } from '../location/riderLocation';
@@ -139,8 +139,9 @@ const ACTIVE_MS_KEY = 'gloceries_rider_active_ms_today';
 // first-come, so a rider who only hears about one 45s late usually loses it;
 // pushes trigger an immediate refresh on top of this (refreshOffers).
 const LOCATION_PING_INTERVAL_MS = 20_000;
-const DELIVERY_PING_INTERVAL_MS = 10_000;
-// Timers drift; without slack a 20s cadence on a 10s tick slips to 30s.
+const DELIVERY_PING_INTERVAL_MS = 5_000;
+const DELIVERY_OFFERS_INTERVAL_MS = 10_000;
+// Allow for timer drift when checking whether a ping is due.
 const PING_TICK_SLACK_MS = 1_000;
 
 // Played in-app when an offer the rider hasn't seen appears while the app is
@@ -262,11 +263,16 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
   // position (what nearby_online_riders reads) and pull a fresh nearbyOffers
   // list from it (what nearby_dispatch_offers reads) — no reason to sample GPS
   // twice for two purposes that both need the exact same fix.
-  // Single flight: a GPS fix plus two requests can outlast the 10s tick, and
-  // pushes/foreground resumes also call this. Overlapping runs used to queue
-  // up and land as a burst of dispatch-offers requests.
+  // Single flight keeps slow GPS or network calls from overlapping.
   let pingInFlight: Promise<void> | null = null;
-  function pingAndRefresh(): Promise<void> {
+  let offersRequested = false;
+  let lastOffersAt = 0;
+  const isOnDelivery = () => get().activeOrders.some(order =>
+    order.status === 'picked_up' || order.status === 'arrived_at_customer',
+  );
+
+  function pingAndRefresh(forceOffers = true): Promise<void> {
+    offersRequested ||= forceOffers;
     pingInFlight ??= runPing().finally(() => {
       pingInFlight = null;
     });
@@ -285,6 +291,10 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       get().goOffline();
       return;
     }
+    const offersInterval = isOnDelivery() ? DELIVERY_OFFERS_INTERVAL_MS : LOCATION_PING_INTERVAL_MS;
+    if (!offersRequested && Date.now() - lastOffersAt < offersInterval - PING_TICK_SLACK_MS) return;
+    offersRequested = false;
+    lastOffersAt = Date.now();
     const offers = await fetchDispatchOffers(coords.latitude, coords.longitude).catch(() => null);
     // #22: keep the previous nearbyOffers ref when the refreshed list is
     // identical, so Home's "Pickups near you" subscribers don't re-render on a
@@ -300,7 +310,10 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
 
   // One assignments refresh (GET /rider/assignments → active / incoming /
   // history). Run by the 12s poll and on demand when a push lands (syncNow).
+  let arrivalVersion = 0;
+
   async function syncAssignments() {
+    const versionAtStart = arrivalVersion;
     let rows;
     try {
       rows = await fetchAssignments();
@@ -311,6 +324,8 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       return;
     }
 
+    // Ignore a response that began before the arrival write completed.
+    if (versionAtStart !== arrivalVersion) return;
     const state = get();
     const mapped = rows.map(toRiderOrder).filter((o): o is RiderOrder => o !== null);
 
@@ -354,12 +369,7 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
         continue;
       }
 
-      // Preserve the local-only 'arrived_at_customer' sub-stage — the
-      // server only ever reports 'picked_up' for this order (mapped
-      // from out_for_delivery) until the real 'delivered' PATCH fires.
-      const existing = state.activeOrders.find((o) => o.id === order.id);
-      const effectiveStatus = existing?.status === 'arrived_at_customer' && order.status === 'picked_up' ? 'arrived_at_customer' : order.status;
-      nextActive.push({ ...order, status: effectiveStatus });
+      nextActive.push(order);
     }
 
     set({
@@ -403,16 +413,14 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
     void persistHistory(merged);
   }
 
-  // With an order in hand the customer is watching the rider on a live map
-  // (backend tracking/riderLocation.ts), so report every 10s instead of 20s.
-  // One 10s tick drives both cadences; an idle rider still pings every 20s.
+  // Share a fix every five seconds on active deliveries. Idle riders keep
+  // the lower-frequency presence ping used for dispatch.
   function startForegroundPing() {
     stopLocationPing();
     void pingAndRefresh();
     locationPingTimer = setInterval(() => {
-      const onDelivery = get().activeOrders.some((o) => o.status === 'picked_up' || o.status === 'arrived_at_customer');
-      const due = onDelivery ? DELIVERY_PING_INTERVAL_MS : LOCATION_PING_INTERVAL_MS;
-      if (Date.now() - lastPingAt >= due - PING_TICK_SLACK_MS) void pingAndRefresh();
+      const due = isOnDelivery() ? DELIVERY_PING_INTERVAL_MS : LOCATION_PING_INTERVAL_MS;
+      if (Date.now() - lastPingAt >= due - PING_TICK_SLACK_MS) void pingAndRefresh(false);
     }, DELIVERY_PING_INTERVAL_MS);
   }
 
@@ -649,14 +657,19 @@ export const useRiderOrdersStore = create<RiderOrdersState>((set, get) => {
       set((state) => ({
         activeOrders: state.activeOrders.map((o) => (o.id === orderId ? { ...o, status: 'picked_up' } : o)),
       }));
+      if (get().isOnline && AppState.currentState === 'active') void pingAndRefresh(false);
       return;
     }
 
     if (order.status === 'picked_up') {
-      // Local-only sub-stage — no backend call (this file's own header
-      // note on why).
+      await markOrderArrived(orderId);
+      arrivalVersion += 1;
       set((state) => ({
-        activeOrders: state.activeOrders.map((o) => (o.id === orderId ? { ...o, status: 'arrived_at_customer' } : o)),
+        activeOrders: state.activeOrders.map((o) =>
+          o.status === 'picked_up' && (o.id === orderId || (order.tripId && o.tripId === order.tripId))
+            ? { ...o, status: 'arrived_at_customer' }
+            : o
+        ),
       }));
       return;
     }

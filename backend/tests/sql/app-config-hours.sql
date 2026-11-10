@@ -53,10 +53,10 @@ BEGIN
   BEGIN UPDATE delivery_settings SET ordering_opens_minute = -1;
     RAISE EXCEPTION 'Negative opening accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
 END $$;
--- Festival Section and Seasonal Section are orderable Home sections.
+-- These sections remain configurable, but the default Home layout hides them.
 DO $$ BEGIN
-  IF (SELECT count(*) FROM home_sections WHERE key IN ('festival-picks','seasonal') AND enabled) <> 2 THEN
-    RAISE EXCEPTION 'festival-picks / seasonal home sections missing'; END IF;
+  IF (SELECT count(*) FROM home_sections WHERE key IN ('festival-picks','seasonal') AND NOT enabled) <> 2 THEN
+    RAISE EXCEPTION 'festival-picks / seasonal home sections should exist and be disabled by default'; END IF;
   -- The festival tab is off until an admin turns it on; the seeded row keeps
   -- the Navratri artwork, and malformed colours are refused.
   IF EXISTS (SELECT 1 FROM festival_greeting WHERE tab_enabled OR tab_title <> 'Navratri'

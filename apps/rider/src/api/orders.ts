@@ -25,6 +25,7 @@ interface RawAssignment {
   id: string;
   order_number: string;
   status: BackendOrderStatus;
+  rider_arrived_at?: string | null;
   // When the store expects to finish packing (absent on an older backend).
   preparation_deadline_at?: string | null;
   placed_at: string;
@@ -66,21 +67,23 @@ export async function updateOrderStatus(orderId: string, status: BackendOrderSta
   return apiRequest(`/orders/${orderId}/status`, { method: 'PATCH', body: { status, reason, otp } });
 }
 
+export async function markOrderArrived(orderId: string): Promise<void> {
+  const { apiRequest } = await import('./client');
+  await apiRequest(`/rider/orders/${orderId}/arrival`, { method: 'POST' });
+}
+
 // 'placed' reaches this app when the rider took the order while the store
 // was still packing (riders are offered it once the store accepts, backend
 // migration 20261026090000): it is 'assigned' like a packed order, flagged
-// packing so pickup waits for the store. out_for_delivery always maps to
-// 'picked_up' here: whether a specific order is further along, at its own
-// local-only 'arrived_at_customer' milestone (no backend column for
-// this — it's a client-side sub-stage, see useRiderOrdersStore.ts's own
-// note), is merged in by the store, not decided here.
-function toLocalStatus(status: BackendOrderStatus): RiderOrder['status'] | null {
+// packing so pickup waits for the store. The arrival timestamp splits
+// out_for_delivery into driving and waiting for delivery proof.
+function toLocalStatus(status: BackendOrderStatus, arrivedAt?: string | null): RiderOrder['status'] | null {
   switch (status) {
     case 'placed':
     case 'packed':
       return 'assigned';
     case 'out_for_delivery':
-      return 'picked_up';
+      return arrivedAt ? 'arrived_at_customer' : 'picked_up';
     case 'delivered':
       return 'delivered';
     case 'cancelled':
@@ -97,7 +100,7 @@ function toLocalStatus(status: BackendOrderStatus): RiderOrder['status'] | null 
 }
 
 export function toRiderOrder(row: RawAssignment): RiderOrder | null {
-  const status = toLocalStatus(row.status);
+  const status = toLocalStatus(row.status, row.rider_arrived_at);
   if (!status) return null;
 
   const items: OrderItemLine[] = row.order_items.map((oi) => ({

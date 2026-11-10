@@ -47,7 +47,6 @@ import { OrderRow } from './components/OrderRow';
 import { OrderFilterSheet, type OrderStatusFilter, type OrderTimeFilter } from './components/OrderFilterSheet';
 import { PurchaseRecommendations } from './components/PurchaseRecommendations';
 import { PurchaseSearchBar } from './components/PurchaseSearchBar';
-import { COMPLETED_ORDER_PREVIEW_ID, createCompletedOrderPreview } from './preview/completedOrder';
 import { usePurchaseClock } from './usePurchaseClock';
 import { getPurchaseArrivalDeadline } from './orderArrival';
 import type { AppStackParamList } from '../../navigation/types';
@@ -129,11 +128,8 @@ export function PurchaseScreen({ navigation }: Props) {
   const accountCreatedYear = accountInfo ? new Date(accountInfo.created_at).getFullYear() : new Date().getFullYear();
 
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
-  const [previewOrder] = useState(() => __DEV__ ? createCompletedOrderPreview() : null);
   const waitingForFirstOrders = !history.isError && (history.isPending || (history.isFetching && rawOrders.length === 0));
-  const displayOrders = useMemo(() => previewOrder && history.data && !waitingForFirstOrders
-    ? [...(fetchedOrders ?? []), previewOrder]
-    : fetchedOrders ?? [], [fetchedOrders, previewOrder, history.data, waitingForFirstOrders]);
+  const displayOrders = fetchedOrders ?? [];
 
   // Refresh on entry; active orders also refresh while this screen is
   // visible so packing changes to arriving after the rider marks pickup.
@@ -312,15 +308,12 @@ export function PurchaseScreen({ navigation }: Props) {
             <OrderRow
               order={order}
               now={now}
-              previewOnly={order.orderId === COMPLETED_ORDER_PREVIEW_ID}
               // Every order opens Track Order now, live or finished —
               // the card itself no longer shows an items list inline
               // (an explicit ask), so this is the only place left to
               // see what was actually in a past order too, not just a
-              // live one. TrackOrderScreen's own timeline already reads
-              // fine for a terminal (delivered/cancelled) status.
+              // live one.
               onPress={() => {
-                if (order.orderId === COMPLETED_ORDER_PREVIEW_ID) return;
                 navigation.navigate('TrackOrder', { orderId: order.orderId, paymentMethodLabel: 'UPI', isTrip: order.isTrip });
               }}
             />

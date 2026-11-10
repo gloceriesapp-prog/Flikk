@@ -3,10 +3,12 @@ import type { RequestHandler, Response, Router } from 'express';
 import type { AuthedRequest } from '../middleware/auth.js';
 
 const mocks = vi.hoisted(() => ({
+  deliveryRoute: vi.fn(),
   rows: new Map<string, Record<string, unknown>[]>(),
   selects: [] as { table: string; select: string }[],
   errors: new Map<string, { message: string }>(),
 }));
+vi.mock('./deliveryRoute.js', () => ({ deliveryRoute: mocks.deliveryRoute }));
 vi.mock('../middleware/auth.js', () => ({ requireAuth: vi.fn(), requireRole: () => vi.fn() }));
 vi.mock('../db/supabase.js', () => ({ supabase: { from: (table: string) => {
   const filters: [string, unknown][] = [];
@@ -33,8 +35,8 @@ function handler(router: Router) {
   const layer = router.stack.find(l => l.route?.path === '/:id/rider-location');
   return layer!.route!.stack.at(-1)!.handle as RequestHandler;
 }
-async function call(router: Router, id: string, user = 'owner') {
-  const req = { params: { id }, user: { id: user, role: 'customer', isApproved: true } } as unknown as AuthedRequest;
+async function call(router: Router, id: string, user = 'owner', query: Record<string, string> = {}) {
+  const req = { params: { id }, query, user: { id: user, role: 'customer', isApproved: true } } as unknown as AuthedRequest;
   const res = { set: vi.fn(), json: vi.fn() } as unknown as Response & { set: ReturnType<typeof vi.fn>; json: ReturnType<typeof vi.fn> };
   const next = vi.fn();
   await handler(router)(req, res, next);
@@ -50,13 +52,14 @@ function rider(secondsAgo: number | null, extra: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(NOW);
+  mocks.deliveryRoute.mockReset();
   mocks.rows.clear(); mocks.selects.length = 0; mocks.errors.clear();
 });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('GET /orders/:id/rider-location', () => {
   it('returns the live position to the owning customer while out for delivery, uncached', async () => {
-    order('out_for_delivery'); rider(20);
+    order('out_for_delivery', { stores: { lat: '12.95', lng: '77.58' } }); rider(20);
     const { res, body, next } = await call(riderLocationOrdersRouter, ORDER);
     expect(next).not.toHaveBeenCalled();
     expect(res.set).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
@@ -64,8 +67,30 @@ describe('GET /orders/:id/rider-location', () => {
       active: true,
       rider_location: { lat: 12.98, lng: 77.6, updated_at: ago(20), age_seconds: 20, stale: false },
       destination: { lat: 12.97, lng: 77.59 },
+      pickup: { lat: 12.95, lng: 77.58 },
       stale_after_seconds: RIDER_LOCATION_STALE_SECONDS,
     });
+  });
+
+  it('only calculates a route for the owner after pickup and outside GPS polling', async () => {
+    const pickup = { latitude: 12.95, longitude: 77.58 };
+    const destination = { latitude: 12.97, longitude: 77.59 };
+    const points = [pickup, destination];
+    mocks.deliveryRoute.mockResolvedValue(points);
+    const stores = { lat: pickup.latitude, lng: pickup.longitude };
+    const requestRoute = { route: '1' };
+
+    order('packed', { stores });
+    await call(riderLocationOrdersRouter, ORDER, 'owner', requestRoute);
+    order('out_for_delivery', { stores });
+    await call(riderLocationOrdersRouter, ORDER, 'another-customer', requestRoute);
+    await call(riderLocationOrdersRouter, ORDER);
+    expect(mocks.deliveryRoute).not.toHaveBeenCalled();
+
+    const { body } = await call(riderLocationOrdersRouter, ORDER, 'owner', requestRoute);
+    expect(mocks.deliveryRoute).toHaveBeenCalledOnce();
+    expect(mocks.deliveryRoute).toHaveBeenCalledWith(ORDER, pickup, destination);
+    expect(body.route).toEqual(points);
   });
 
   it('never exposes rider identity or contact details', async () => {
@@ -92,11 +117,16 @@ describe('GET /orders/:id/rider-location', () => {
     expect(mocks.selects).toHaveLength(0);
   });
 
-  it.each(['placed', 'packed'])('returns null before pickup (%s) even when a rider is assigned', async status => {
-    order(status, { picked_up_at: null }); rider(5);
-    const { body } = await call(riderLocationOrdersRouter, ORDER);
-    expect(body).toEqual({ active: false, rider_location: null, destination: null, stale_after_seconds: RIDER_LOCATION_STALE_SECONDS });
+  it.each(['placed', 'packed'])('returns only the pins before pickup (%s)', async status => {
+    order(status, { picked_up_at: null, stores: { lat: 12.95, lng: 77.58 } }); rider(5);
+    const { body } = await call(riderLocationOrdersRouter, ORDER, 'owner', { route: '1' });
+    expect(body).toEqual({
+      active: false, rider_location: null,
+      pickup: { lat: 12.95, lng: 77.58 }, destination: { lat: 12.97, lng: 77.59 },
+      stale_after_seconds: RIDER_LOCATION_STALE_SECONDS,
+    });
     expect(mocks.selects.some(s => s.table === 'riders')).toBe(false);
+    expect(mocks.deliveryRoute).not.toHaveBeenCalled();
   });
 
   it.each(['delivered', 'failed', 'cancelled'])('returns null once the order is %s', async status => {
@@ -134,6 +164,7 @@ describe('GET /orders/:id/rider-location', () => {
     order('out_for_delivery', { delivery_address_at_order: { line1: 'old' }, addresses: { latitude: '12.5', longitude: '77.5' } }); rider(5);
     const { body } = await call(riderLocationOrdersRouter, ORDER);
     expect(body.destination).toEqual({ lat: 12.5, lng: 77.5 });
+    expect(body.pickup).toBeNull();
   });
 
   it('surfaces a database failure as 503 rather than "not found"', async () => {
@@ -149,11 +180,20 @@ describe('GET /trips/:id/rider-location', () => {
   });
   const legs = (...rows: Record<string, unknown>[]) => mocks.rows.set('orders', rows.map((r, i) => ({ id: `leg-${i}`, trip_id: TRIP, customer_id: 'owner', rider_id: 'rider-1', picked_up_at: ago(300), ...r })));
 
-  it('returns the rider position while a leg is out for delivery', async () => {
-    legs({ status: 'out_for_delivery' }, { status: 'packed', picked_up_at: null }); rider(10);
+  it('returns the rider position when the last pickup is complete', async () => {
+    legs(
+      { status: 'out_for_delivery', stores: { lat: 12.95, lng: 77.58 } },
+      { status: 'out_for_delivery', picked_up_at: ago(400), stores: { lat: 12.93, lng: 77.57 } },
+    );
+    rider(10);
     const { body, res } = await call(riderLocationTripsRouter, TRIP);
     expect(res.set).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
-    expect(body).toMatchObject({ active: true, rider_location: { lat: 12.98, lng: 77.6, stale: false }, destination: { lat: 12.97, lng: 77.59 } });
+    expect(body).toMatchObject({
+      active: true,
+      rider_location: { lat: 12.98, lng: 77.6, stale: false },
+      destination: { lat: 12.97, lng: 77.59 },
+      pickup: { lat: 12.95, lng: 77.58 },
+    });
   });
 
   it('404s another customer before reading legs or riders', async () => {
@@ -163,9 +203,18 @@ describe('GET /trips/:id/rider-location', () => {
     expect(mocks.selects.map(s => s.table)).toEqual(['trips']);
   });
 
-  it('returns null before any leg is picked up and after every leg is delivered', async () => {
-    legs({ status: 'packed', picked_up_at: null }); rider(10);
-    expect((await call(riderLocationTripsRouter, TRIP)).body).toMatchObject({ active: false, rider_location: null, destination: null });
+  it('shows the remaining store pins during pickup and clears them after delivery', async () => {
+    legs(
+      { status: 'out_for_delivery' },
+      { status: 'packed', picked_up_at: null, stores: { lat: 12.93, lng: 77.57 } },
+    );
+    rider(10);
+    const { body } = await call(riderLocationTripsRouter, TRIP, 'owner', { route: '1' });
+    expect(body).toMatchObject({
+      active: false, rider_location: null,
+      pickup: { lat: 12.93, lng: 77.57 }, destination: { lat: 12.97, lng: 77.59 },
+    });
+    expect(mocks.deliveryRoute).not.toHaveBeenCalled();
     legs({ status: 'delivered' }, { status: 'delivered' });
     expect((await call(riderLocationTripsRouter, TRIP)).body).toMatchObject({ active: false, rider_location: null });
     expect(mocks.selects.some(s => s.table === 'riders')).toBe(false);

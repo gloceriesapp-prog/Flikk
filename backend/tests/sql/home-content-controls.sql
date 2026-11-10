@@ -1,18 +1,11 @@
--- Migration 116: quick-categories and everyday-dairy are admin-controlled
--- home_sections rows, ordered first and immediately before nearby-stores.
+-- The default Home layout starts with Quick Categories and Local Favourites.
 DO $$
-DECLARE quick integer; dairy integer; nearby integer; first_key text;
+DECLARE first_keys text[];
 BEGIN
-  SELECT sort_index INTO quick FROM public.home_sections WHERE key = 'quick-categories';
-  SELECT sort_index INTO dairy FROM public.home_sections WHERE key = 'everyday-dairy';
-  SELECT sort_index INTO nearby FROM public.home_sections WHERE key = 'nearby-stores';
-  IF quick IS NULL THEN RAISE EXCEPTION 'quick-categories row missing'; END IF;
-  IF dairy IS NULL THEN RAISE EXCEPTION 'everyday-dairy row missing'; END IF;
-  SELECT key INTO first_key FROM public.home_sections ORDER BY sort_index, key LIMIT 1;
-  IF first_key <> 'quick-categories' THEN RAISE EXCEPTION 'quick-categories is not first (%)', first_key; END IF;
-  IF NOT (dairy < nearby AND NOT EXISTS (
-    SELECT 1 FROM public.home_sections WHERE sort_index > dairy AND sort_index < nearby)) THEN
-    RAISE EXCEPTION 'everyday-dairy is not immediately before nearby-stores (% / %)', dairy, nearby;
+  SELECT array_agg(key ORDER BY sort_index, key) INTO first_keys
+  FROM (SELECT key, sort_index FROM public.home_sections ORDER BY sort_index, key LIMIT 2) AS first_sections;
+  IF first_keys IS DISTINCT FROM ARRAY['quick-categories', 'everyday-dairy'] THEN
+    RAISE EXCEPTION 'Unexpected first two Home sections (%)', first_keys;
   END IF;
   IF NOT (SELECT enabled FROM public.home_sections WHERE key = 'quick-categories')
     OR NOT (SELECT enabled FROM public.home_sections WHERE key = 'everyday-dairy') THEN

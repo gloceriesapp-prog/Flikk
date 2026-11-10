@@ -30,14 +30,6 @@ function clockTime(date: Date): string {
 }
 
 function arrivalDeadline(order: ApiOrder): number | null {
-  if (['delivered', 'cancelled', 'failed'].includes(order.status)) {
-    return null;
-  }
-
-  if (!Number.isFinite(new Date(order.placed_at).getTime())) {
-    return null;
-  }
-
   const deadline = estimateDeliveryTime(
     order.placed_at,
     order.estimated_delivery_minutes,
@@ -55,12 +47,14 @@ export function OrderInfoCard({
   const isFailed = order.status === 'failed';
   const isDelivered = order.status === 'delivered';
   const isActive = !isCancelled && !isFailed && !isDelivered;
+  const isOutForDelivery = order.status === 'out_for_delivery';
+  const hasArrived = isOutForDelivery && !!order.rider_arrived_at;
 
   const [isReasonOpen, setIsReasonOpen] = useState(
     isCancelled || isFailed
   );
 
-  const deadline = arrivalDeadline(order);
+  const deadline = isOutForDelivery && !hasArrived ? arrivalDeadline(order) : null;
 
   const deadlines = useMemo(
     () => (deadline === null ? [] : [deadline]),
@@ -69,17 +63,20 @@ export function OrderInfoCard({
 
   const now = usePurchaseClock(deadlines);
 
-  const minutes =
-    deadline === null
-      ? null
-      : Math.max(0, Math.ceil((deadline - now) / 60_000));
+  const minutes = deadline === null ? 0 : Math.ceil((deadline - now) / 60_000);
+  const scheduledWindow = order.deliver_from && order.deliver_until
+    ? formatDeliveryWindow(order.deliver_from, order.deliver_until)
+    : null;
 
-  const arrivalText =
-    order.deliver_from && order.deliver_until && order.status !== 'out_for_delivery'
-      ? `Pre-order · ${formatDeliveryWindow(order.deliver_from, order.deliver_until)}`
-      : minutes === null
-      ? 'Arrival estimate unavailable'
-      : `Arriving in ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  let heading = 'Order getting packed';
+  let subtitle = scheduledWindow ? `Scheduled delivery · ${scheduledWindow}` : 'The store is preparing your order.';
+  if (hasArrived) {
+    heading = 'Arrived at location';
+    subtitle = `${order.riders?.name?.trim() || 'Your rider'} has reached your location`;
+  } else if (isOutForDelivery) {
+    heading = minutes > 0 ? `Arriving in ${minutes} minute${minutes === 1 ? '' : 's'}` : 'Out for delivery';
+    subtitle = 'Your order is on its way.';
+  }
 
   const label = isCancelled
     ? 'Order Cancelled'
@@ -135,9 +132,8 @@ export function OrderInfoCard({
 
   return (
     <>
-      {/* Keep arrival countdown card unchanged */}
       {isActive ? (
-        <View className="w-full rounded-3xl border border-[#E0EFE5] bg-[#F3FAF5] p-5">
+        <View className="w-full rounded-3xl bg-[#F3FAF5] p-5" accessibilityLiveRegion="polite">
           <Text
             className="mt-2 text-[26px] font-bold leading-[33px] tracking-[-0.5px]"
             style={{
@@ -145,13 +141,11 @@ export function OrderInfoCard({
               fontVariant: ['tabular-nums'],
             }}
           >
-            {arrivalText}
+            {heading}
           </Text>
 
           <Text className="mt-1 text-[14px] font-medium text-[#64766B]">
-            {order.status === 'out_for_delivery'
-              ? 'Your order is on its way'
-              : 'Your order is being prepared'}
+            {subtitle}
           </Text>
         </View>
       ) : (
