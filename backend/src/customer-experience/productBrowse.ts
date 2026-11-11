@@ -3,6 +3,7 @@ import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
 import { browsePage, deliveryStores, hydrateBrowse, optionalUuid } from './browse.js';
+import { applyCustomerPrices } from '../lib/customerPrice.js';
 import { PREORDER_SLOT_SELECT } from '../lib/preorders.js';
 export const productBrowseRouter = Router();
 productBrowseRouter.get('/search', async (req, res, next) => {
@@ -10,14 +11,17 @@ productBrowseRouter.get('/search', async (req, res, next) => {
     const q = req.query.q;
     if (typeof q !== 'string' || q.trim().length < 2 || q.length > 100) throw new AppError(400, 'INVALID_SEARCH', 'Search must have 2–100 characters.');
     const stores = await deliveryStores(req.query);
-    const page = browsePage(req.query, ['search', q.trim(), stores]);
-    const { data, error } = stores.length ? await supabase.rpc('search_customer_product_ids', {
+    const page = browsePage(req.query, ['search-flavours-v2', q.trim(), stores]);
+    const { data, error } = stores.length ? await supabase.rpc('search_customer_product_matches', {
       p_stores: stores, p_query: q.trim(), p_after_score: page.after?.score ?? null, p_after_id: page.after?.id ?? null, p_limit: page.limit + 1,
     }) : { data: [], error: null };
     if (error) throw error;
-    const rows = (data ?? []) as { id: string; score: number }[];
+    const rows = (data ?? []) as { id: string; score: number; matched_option_id?: string | null }[];
     const selected = rows.slice(0, page.limit);
-    res.json({ products: await hydrateBrowse(selected, stores, PRODUCT_WITH_VARIANTS_SELECT), nextCursor: rows.length > page.limit ? page.cursor(selected.at(-1)!) : null });
+    const products = await hydrateBrowse(selected, stores, PRODUCT_WITH_VARIANTS_SELECT) as unknown as Record<string, unknown>[];
+    const matches = new Map(selected.map((row) => [row.id, row.matched_option_id ?? null]));
+    res.json({ products: applyCustomerPrices(products.map((product) => ({ ...product, matched_option_id: matches.get(String(product.id)) ?? null }))),
+      nextCursor: rows.length > page.limit ? page.cursor(selected.at(-1)!) : null });
   } catch (error) { next(error); }
 });
 // Trending = 7-day units sold, Most Bought = 30-day (product_popularity_daily).

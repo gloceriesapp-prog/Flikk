@@ -25,6 +25,7 @@ export interface ApiVariant {
 }
 
 export interface ApiProduct {
+  matched_option_id?: string | null;
   is_in_stock?: boolean;
   stock_status?: string;
   approval_status?: string;
@@ -131,6 +132,7 @@ export function mapApiProduct(row: ApiProduct): Product {
     isAvailable: unavailableReason === undefined,
     unavailableReason,
     imageSeed: row.id,
+    initialOptionId: row.matched_option_id ?? undefined,
     imageUrl: row.image_url ?? undefined,
     imageUrls: productImages(row),
     options: row.product_options?.length

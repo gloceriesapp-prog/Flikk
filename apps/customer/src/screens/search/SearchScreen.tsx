@@ -30,6 +30,7 @@ import { ProductCard } from '../home/products/ProductCard';
 import type { Product } from '../home/products/types';
 import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
 import { productAvailability } from '../../utils/productAvailability';
+import { searchProductDisplay } from '../../components/ProductDetailSheet/flavourSelection';
 import { useProductSearch } from './useProductSearch';
 import { SearchHeader } from './components/SearchHeader';
 import { SearchSuggestions } from './components/SearchSuggestions';
@@ -68,7 +69,7 @@ export function SearchScreen({ navigation }: Props) {
   const { data: categoryGroups } = useCategorySections();
   const suggestions = useMemo(
     () => (isSearching && !submitted
-      ? buildSuggestions(trimmedQuery, (categoryGroups ?? []).flatMap((g) => g.categories), matchingProducts.map((p) => p.name))
+      ? buildSuggestions(trimmedQuery, (categoryGroups ?? []).flatMap((g) => g.categories), matchingProducts.map((p) => searchProductDisplay(p).name))
       : []),
     [isSearching, submitted, trimmedQuery, categoryGroups, matchingProducts],
   );
@@ -111,7 +112,7 @@ export function SearchScreen({ navigation }: Props) {
           numColumns={2}
           keyExtractor={(product) => product.id}
           onEndReached={() => {
-            if (search.hasNextPage && !search.isFetchingNextPage) void search.fetchNextPage();
+            if (showResults && search.hasNextPage && !search.isFetchingNextPage && !search.isFetchNextPageError) void search.fetchNextPage();
           }}
           onEndReachedThreshold={0.4}
           showsVerticalScrollIndicator={false}

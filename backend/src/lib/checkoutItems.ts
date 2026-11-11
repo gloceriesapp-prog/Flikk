@@ -114,8 +114,6 @@ export function priceCheckoutItems(items: CartItem[], products: CheckoutProduct[
       const option = options.find((o) => o.id === optionId);
       if (!option) throw new AppError(400, 'FLAVOUR_UNAVAILABLE', 'That flavour is no longer offered. Remove it and add it again.');
       if (!option.is_available) throw new AppError(409, 'FLAVOUR_UNAVAILABLE', 'That flavour is out of stock. Choose another flavour.');
-    } else if (options.length > 0) {
-      throw new AppError(400, 'FLAVOUR_REQUIRED', 'Choose a flavour for this product. Update the app if you cannot see flavours.');
     }
     const serving = resolveServing(product.serving_options ?? [], item.serving ?? null);
     const variantId = variant?.id ?? null;

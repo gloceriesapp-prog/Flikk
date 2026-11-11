@@ -26,6 +26,7 @@ import { ProductCardView } from './ProductCardView';
 import { useProductAvailability } from './useProductAvailability';
 import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
 import type { Product } from './types';
+import { searchProductDisplay } from '../../../components/ProductDetailSheet/flavourSelection';
 
 interface Props {
   product: Product;
@@ -67,6 +68,7 @@ const ProductCardShell = memo(function ProductCardShell({
   isAvailable: boolean;
   availabilityLabel?: string;
 }) {
+  const matchedOption = product.options?.find((option) => option.id === product.initialOptionId);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Gated on isDetailOpen: this fires ONLY once the card is tapped open, not on
@@ -77,7 +79,7 @@ const ProductCardShell = memo(function ProductCardShell({
   const needsSimilar = !product.relatedProducts;
   const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId, isDetailOpen);
   useEffect(() => {
-    if (similar.data) prefetchImages(similar.data.map((p) => p.imageUrl));
+    if (similar.data) prefetchImages(similar.data.pages[0]?.products.slice(0, 6).map((p) => p.imageUrl) ?? []);
   }, [similar.data]);
 
   // Stable so the memoized ProductCardView doesn't re-render just because the
@@ -87,15 +89,15 @@ const ProductCardShell = memo(function ProductCardShell({
   return (
     <>
       <ProductCardView
-        product={product}
+        product={searchProductDisplay(product)}
         widthClassName={widthClassName}
         showDiscountBadge={showDiscountBadge}
         compact={compact}
         onDark={onDark}
         onPress={onPress}
         estimatedMinutes={estimatedMinutes}
-        isAvailable={isAvailable}
-        availabilityLabel={availabilityLabel}
+        isAvailable={isAvailable && matchedOption?.isAvailable !== false}
+        availabilityLabel={matchedOption?.isAvailable === false ? 'Out of stock' : availabilityLabel}
       />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>

@@ -3,7 +3,7 @@
 // Only the backing differs: frosted blur on iOS, near-solid white on Android,
 // where expo-blur has no live blur and the content would show through.
 import { StarIcon } from '@hugeicons/core-free-icons';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Platform, Pressable, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -21,21 +21,13 @@ import { CartBar } from '../CartBar/CartBar';
 import { colors } from '../../theme/tokens';
 import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { shareProduct } from '../../utils/shareProduct';
-import { useEverydayEssentials } from '../../screens/home/everyday-essentials/useEverydayEssentials';
 import { ProductDetailInfo } from './ProductDetailInfo';
+import { initialFlavourChoice, flavourPhotos } from './flavourSelection';
 import { ProductDetailFooter } from './ProductDetailFooter';
 import type { CutSize, Serving } from '../../store/cartIdentity';
 import type { CartPreorder } from '../../store/preorder';
-import { useSimilarProducts } from './useSimilarProducts';
 import type { Product } from '../../screens/home/products/types';
 
-const EMPTY_PRODUCTS: Product[] = [];
-const SIMILAR_PRODUCTS_TARGET = 9;
-function hashString(value: string): number {
-  let hash = 5381;
-  for (let i = 0; i < value.length; i++) hash = (hash * 33 + value.charCodeAt(i)) >>> 0;
-  return hash;
-}
 interface Props { product: Product; visible: boolean; onClose: () => void }
 
 export function ProductDetailSheet(props: Props) {
@@ -92,31 +84,6 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
   const hasRatings = Number.isFinite(product.rating) && product.rating > 0 && product.rating <= 5
     && Number.parseFloat(product.ratingCount) > 0;
 
-  const needsSimilar = !product.relatedProducts;
-  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId);
-  // /stores/products/similar (useSimilarProducts) often comes back short of
-  // SimilarProductsRow's own 9-card cap — a category/store just doesn't
-  // always have 9 real matches. Padded here with real products from the
-  // full zone-wide catalog (useEverydayEssentials — same cross-store feed
-  // Home's own rows already trust) rather than leaving the grid half-empty,
-  // per an explicit ask ("add total 9 cards ... randomly"). Picked via
-  // hashString (already used above for the peek-pager siblings), not
-  // Math.random — same reasoning: this repo's react-compiler lint rule
-  // forbids an impure function during render/useMemo, and a hash of
-  // (product.id + candidate.id) is "random-looking" per product without
-  // being impure or reshuffling on every unrelated re-render.
-  const { data: catalog = [] } = useEverydayEssentials();
-  const relatedProducts = useMemo(() => {
-    const base = product.relatedProducts ?? similar.data ?? EMPTY_PRODUCTS;
-    const need = SIMILAR_PRODUCTS_TARGET - base.length;
-    if (need <= 0) return base;
-    const usedIds = new Set([product.id, ...base.map((p) => p.id)]);
-    const filler = catalog
-      .filter((p) => !usedIds.has(p.id))
-      .sort((a, b) => hashString(product.id + a.id) - hashString(product.id + b.id))
-      .slice(0, need);
-    return [...base, ...filler];
-  }, [product.id, product.relatedProducts, similar.data, catalog]);
   const cartTotalQuantity = useCartStore(selectCartTotalQuantity);
   // Header bookmark = the wishlist (Profile → Wishlist); red-filled when saved.
   const isSaved = useWishlistStore((state) => state.isWishlisted(product.id));
@@ -136,8 +103,8 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
   const [selectedVariantId, setSelectedVariantId] = useState(product.defaultVariantId ?? product.variants?.[0]?.id);
   const selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
   const [selectedCut, setSelectedCut] = useState<CutSize>('medium');
-  // First in-stock flavour preselected; its photo leads the hero.
-  const [selectedOptionId, setSelectedOptionId] = useState(product.options?.find((o) => o.isAvailable)?.id);
+  // Start with the original product, or the exact flavour matched by search.
+  const [selectedOptionId, setSelectedOptionId] = useState(() => initialFlavourChoice(product));
   const selectedOption = product.options?.find((o) => o.id === selectedOptionId);
   // Chilled preselected when both are offered; one offered needs no choice.
   const [selectedServing, setSelectedServing] = useState<Serving | undefined>(product.servingOptions?.[0]);
@@ -149,10 +116,7 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
     setPreorder(next);
     if (next) useCartStore.getState().setPreorder(next);
   };
-  const productPhotos = product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : []);
-  const heroPhotos = selectedOption?.imageUrls?.length
-    ? selectedOption.imageUrls
-    : selectedOption?.imageUrl ? [selectedOption.imageUrl] : productPhotos;
+  const heroPhotos = flavourPhotos(product, selectedOptionId);
 
 
   return (
@@ -167,7 +131,7 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
           paddingBottom: footerHeight }}
       >
         <View style={{ width: '100%', aspectRatio: 720 / 810, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
-          <ProductImageGallery key={selectedOption?.id ?? product.id} variant="hero" images={heroPhotos} />
+          <ProductImageGallery key={selectedOptionId} variant="hero" images={heroPhotos} />
           {hasRatings && (
             <View className="absolute bottom-2.5 right-3 flex-row items-center gap-1 rounded-full bg-white/85 px-2 py-1">
               <AppIcon icon={StarIcon} size={12} color={colors.success} fill={colors.success} strokeWidth={0} />
@@ -180,7 +144,6 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
         <View>
           <ProductDetailInfo
             product={product}
-            relatedProducts={relatedProducts}
             selectedVariantId={selectedVariantId}
             selectedCut={product.cutOptions ? selectedCut : undefined}
             onSelectCut={setSelectedCut}

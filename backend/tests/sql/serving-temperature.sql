@@ -15,8 +15,8 @@ INSERT INTO products(id,store_id,name,unit,price,category,approval_status,is_in_
  ('00000000-0000-4000-8000-000000018011','00000000-0000-4000-8000-0000000180f1','Cola','750 ml',40,'Soft Drinks','approved',true,'in_stock',true,50,'{chilled,room_temperature}'),
  ('00000000-0000-4000-8000-000000018012','00000000-0000-4000-8000-0000000180f1','Soda','300 ml',10,'Soft Drinks','approved',true,'in_stock',true,50,'{chilled}'),
  ('00000000-0000-4000-8000-000000018013','00000000-0000-4000-8000-0000000180f1','Atta','1 kg',50,'Atta','approved',true,'in_stock',true,50,'{}');
-INSERT INTO orders(id,customer_id,store_id,address_id,item_total,delivery_fee,commission_amount,handling_fee,discount_amount,total,payment_method,status,placed_at) VALUES
- ('00000000-0000-4000-8000-000000018041','00000000-0000-4000-8000-0000000180c1','00000000-0000-4000-8000-0000000180f1','00000000-0000-4000-8000-0000000180b1',100,30,0,0,0,130,'cod','placed','2001-04-01 10:00+05:30');
+INSERT INTO orders(id,customer_id,store_id,address_id,item_total,delivery_fee,commission_amount,handling_fee,discount_amount,total,payment_method,status,placed_at,reservation_expires_at,reservation_release_after) VALUES
+ ('00000000-0000-4000-8000-000000018041','00000000-0000-4000-8000-0000000180c1','00000000-0000-4000-8000-0000000180f1','00000000-0000-4000-8000-0000000180b1',100,30,0,0,0,130,'cod','placed','2001-04-01 10:00+05:30','2001-04-01 10:20+05:30','2001-04-01 10:50+05:30');
 SET LOCAL session_replication_role=origin;
 
 DO $$ BEGIN

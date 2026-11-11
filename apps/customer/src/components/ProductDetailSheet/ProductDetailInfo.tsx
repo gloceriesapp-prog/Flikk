@@ -34,6 +34,7 @@ import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { ProductVariantOptions, discountPercentOf } from './ProductVariantOptions';
 import { ProductCutOptions } from './ProductCutOptions';
 import { ProductFlavourOptions } from './ProductFlavourOptions';
+import { flavourChoices } from './flavourSelection';
 import { ProductServingOptions } from './ProductServingOptions';
 import { ProductPreorderOptions } from './ProductPreorderOptions';
 import type { CartPreorder } from '../../store/preorder';
@@ -45,12 +46,6 @@ import type { Product } from '../../screens/home/products/types';
 
 interface Props {
   product: Product;
-  // ProductDetailSheet's own resolved list — product.relatedProducts when
-  // a mock product set one inline, otherwise whatever useSimilarProducts
-  // fetched for a real one. Falling back to product.relatedProducts here
-  // too so any other caller that renders this directly (none currently do)
-  // still works without passing the prop.
-  relatedProducts?: Product[];
   // Real variant selection, lifted to ProductDetailSheet.tsx's own Card so
   // ProductDetailFooter (a sibling, not a child of this component) can
   // read the same pick — see that file's own note. Both undefined when the
@@ -75,9 +70,8 @@ interface Props {
   onSelectPreorder?: (preorder: CartPreorder | undefined) => void;
 }
 
-export function ProductDetailInfo({ product, relatedProducts, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder, onSelectProduct }: Props) {
+export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant, selectedCut, onSelectCut, selectedOptionId, onSelectOption, selectedServing, onSelectServing, preorder, onSelectPreorder, onSelectProduct }: Props) {
   const { name, localName, weight, price, originalPrice, storeName, variants, sellerDetails } = product;
-  const related = relatedProducts ?? product.relatedProducts;
   const hasRealVariants = variants && variants.length > 1;
   const selectedVariant = hasRealVariants ? variants!.find((v) => v.id === selectedVariantId) : undefined;
   const displayPrice = selectedVariant?.price ?? price;
@@ -114,7 +108,7 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
         ) : null}
 
         {product.options?.length && onSelectOption ? (
-          <ProductFlavourOptions options={product.options} selectedId={selectedOptionId} onSelect={onSelectOption} />
+          <ProductFlavourOptions options={flavourChoices(product)} selectedId={selectedOptionId} onSelect={onSelectOption} />
         ) : null}
 
         {product.preorder && onSelectPreorder ? (
@@ -169,11 +163,9 @@ export function ProductDetailInfo({ product, relatedProducts, selectedVariantId,
         </View>
       )}
 
-      {related && related.length > 0 && (
-        <View className="overflow-hidden rounded-2xl bg-white">
-          <SimilarProductsRow products={related} onSelect={onSelectProduct} />
-        </View>
-      )}
+      <View className="overflow-hidden rounded-2xl bg-white">
+        <SimilarProductsRow product={product} onSelect={onSelectProduct} />
+      </View>
     </View>
   );
 }

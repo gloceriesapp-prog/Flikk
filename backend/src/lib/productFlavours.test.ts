@@ -14,8 +14,8 @@ describe('product flavours at checkout', () => {
   it('prices a flavour at the pack price and keeps it on the line', () => {
     expect(priceCheckoutItems(parseCheckoutItems([line(masala, 2)]), [bingo])[0]).toMatchObject({ option_id: masala, unit_price_at_order: 20, quantity: 2 });
   });
-  it('needs a flavour when the product has flavours', () => {
-    expect(() => priceCheckoutItems(parseCheckoutItems([line()]), [bingo])).toThrow('Choose a flavour');
+  it('allows the original product without treating an added flavour as required', () => {
+    expect(priceCheckoutItems(parseCheckoutItems([line()]), [bingo])[0]).toMatchObject({ option_id: null, unit_price_at_order: 20 });
   });
   it('rejects an out-of-stock or foreign flavour', () => {
     expect(() => priceCheckoutItems(parseCheckoutItems([line(tomato)]), [bingo])).toThrow('out of stock');
@@ -34,4 +34,9 @@ describe('product flavours at checkout', () => {
     const plain = { ...bingo, product_options: [] };
     expect(priceCheckoutItems(parseCheckoutItems([line()]), [plain])[0]!.option_id).toBeNull();
   });
+});
+
+it('keeps the original product separate from its added flavours', () => {
+  const lines = priceCheckoutItems(parseCheckoutItems([line(), line(masala), line()]), [bingo]);
+  expect(lines.map((item) => [item.option_id, item.quantity])).toEqual([[null, 2], [masala, 1]]);
 });

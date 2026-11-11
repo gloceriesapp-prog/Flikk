@@ -25,3 +25,12 @@ test('flavours expose their own ordered galleries with backward-compatible cover
   expect(product.options?.[1]?.imageUrls).toEqual(['rose-cover']);
   expect(product.imageUrls).toEqual(['generic', 'generic-extra']);
 });
+
+test('search match keeps the real parent product and selected flavour identity', () => {
+  const product = mapApiProduct({ ...row('main-cover'), matched_option_id: 'mango', product_options: [
+    { id: 'mango', name: 'Mango milk', image_url: 'mango-cover', sort_order: 0, is_available: true },
+  ] });
+  expect(product.name).toBe('Tomato');
+  expect(product.initialOptionId).toBe('mango');
+  expect(product.id).toBe('p1');
+});

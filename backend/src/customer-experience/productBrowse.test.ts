@@ -45,3 +45,11 @@ it('home picks group pinned products by section in pin order, only from delivery
   const empty = await request('/home-picks', {});
   expect(mocks.rpc).not.toHaveBeenCalled(); expect(empty.res.json).toHaveBeenCalledWith({});
 });
+
+it('search uses flavour-aware ranking and attaches the matched option without losing parent identity', async () => {
+  mocks.rpc.mockResolvedValueOnce({ data: [{ id: 'p1', score: 5, matched_option_id: 'mango' }, { id: 'p2', score: 1, matched_option_id: null }], error: null });
+  const { res, next } = await request('/search', { ...pin, q: 'mango' });
+  expect(next).not.toHaveBeenCalled();
+  expect(mocks.rpc).toHaveBeenCalledWith('search_customer_product_matches', expect.objectContaining({ p_stores: ['s1'], p_query: 'mango' }));
+  expect(res.json).toHaveBeenCalledWith({ products: [{ id: 'p1', matched_option_id: 'mango' }, { id: 'p2', matched_option_id: null }], nextCursor: null });
+});

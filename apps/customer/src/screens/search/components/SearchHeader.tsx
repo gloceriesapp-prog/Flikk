@@ -6,6 +6,7 @@
 // expo-speech-recognition isn't linked in the native builds.
 
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { GILROY } from '../../../theme/fonts';
 import { useCopy } from '../../../api/appConfig';
 import { IconlyChevronLeft } from '../../../components/icons/IconlyChevronLeft';
 import { IconlyClose } from '../../../components/icons/IconlyClose';
@@ -27,7 +28,7 @@ export function SearchHeader({ value, onChangeText, onBack, onSubmit }: Props) {
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} hitSlop={8} className="h-10 w-10 items-center justify-center">
           <IconlyChevronLeft size={22} color="#101C10" />
         </Pressable>
-        <View className="flex-1 justify-center pl-1">
+        <View className="flex-1 justify-center pl-1" style={{ height: 44 }}>
           {/* The hint sits under the input and never takes a touch. */}
           {value.length === 0 ? (
             <View pointerEvents="none" style={{ position: 'absolute', left: 4, right: 0 }}>
@@ -45,7 +46,9 @@ export function SearchHeader({ value, onChangeText, onBack, onSubmit }: Props) {
             numberOfLines={1}
             returnKeyType="search"
             onSubmitEditing={onSubmit}
-            className="py-2 text-base text-ink"
+            className="text-ink"
+            style={{ height: 44, paddingTop: 0, paddingBottom: 0, paddingHorizontal: 0,
+              fontFamily: GILROY.medium, fontSize: 16, includeFontPadding: false, textAlignVertical: 'center' }}
           />
         </View>
         {value.length > 0 ? (
