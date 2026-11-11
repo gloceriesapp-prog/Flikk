@@ -36,6 +36,7 @@ function preflight(env = process.env) {
   const missing = [...REQUIRED_SECRETS, ...REQUIRED_VARS].filter(name => !env[name]?.trim());
   assert.equal(missing.length, 0, `Configure the customer-android-production environment: ${missing.join(', ')}`);
   productionVersionCode(env);
+  if (env.GITHUB_SHA) assert.equal(env.EXPO_PUBLIC_SOURCE_COMMIT, env.GITHUB_SHA, 'Native build source metadata must match its GitHub commit.');
   fingerprint(env.ANDROID_UPLOAD_CERT_SHA256);
   require('../../../packages/shared/config/api-url.cjs').validateApiUrl(env.EXPO_PUBLIC_API_URL, false);
   assert.equal(new URL(env.EXPO_PUBLIC_API_URL).origin, 'https://api.gloceries.com', 'Use the live Lightsail API for the customer production release.');
@@ -119,6 +120,8 @@ print(json.dumps({'package':r.get('package'),'versionCode':r.get(a+'versionCode'
 'permissions':[n.get(a+'name') for n in r.findall('uses-permission')],
 'debuggable':app.get(a+'debuggable','false'),'hasMapKey':bool(key and key.startswith('AIza') and len(key)==39),
 'headers':json.loads(meta.get('expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY','{}')),
+'updatesCheckOnLaunch':meta.get('expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH'),
+'updatesLaunchWait':meta.get('expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS'),
 'updatesUrl':meta.get('expo.modules.updates.EXPO_UPDATE_URL')}))`;
   return JSON.parse(run('python3', ['-c', script], { input: xml }));
 }
@@ -135,6 +138,8 @@ function validateManifest(facts, env, version) {
   for (const permission of ['android.permission.ACCESS_BACKGROUND_LOCATION', 'android.permission.READ_CONTACTS', 'android.permission.READ_SMS', 'android.permission.SYSTEM_ALERT_WINDOW', 'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE', 'com.google.android.gms.permission.AD_ID']) {
     assert.ok(!facts.permissions?.includes(permission), `Unexpected customer permission: ${permission}`);
   }
+  assert.equal(facts.updatesCheckOnLaunch, 'ERROR_RECOVERY_ONLY', 'Packaged OTA checks must preserve the running session.');
+  assert.equal(facts.updatesLaunchWait, '0', 'Packaged OTA downloads must not delay startup.');
   assert.equal(facts.hasMapKey, true, 'Packaged native Maps API key is missing.');
   assert.equal(facts.headers['expo-channel-name'], env.CUSTOMER_UPDATE_CHANNEL || 'production', 'Release OTA channel header does not match the requested channel.');
   assert.equal(facts.updatesUrl, 'https://u.expo.dev/a98e9f05-620b-4efb-8624-99d724667e7c', 'Unexpected Expo Updates project.');

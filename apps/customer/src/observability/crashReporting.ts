@@ -1,6 +1,9 @@
+import { runningUpdateIdentity as identity } from '../features/app-updates/nativeUpdateIdentity';
+import { updateTags } from '../features/app-updates/updateIdentity';
 import * as Sentry from '@sentry/react-native';
 import { isRunningInExpoGo } from 'expo';
 import { sanitizeTelemetryEvent } from './sanitize';
+
 
 const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
 
@@ -13,6 +16,7 @@ export const navigationIntegration = Sentry.reactNavigationIntegration();
 
 Sentry.init({
   dsn,
+  initialScope: { tags: updateTags(identity) },
   enabled: !!dsn && !__DEV__,
   enableNative: !isRunningInExpoGo(),
   sendDefaultPii: false,
@@ -31,6 +35,9 @@ Sentry.init({
   beforeSend: sanitizeTelemetryEvent,
   beforeSendTransaction: sanitizeTelemetryEvent,
 });
+
+// Preview-only evidence contains no account, location, payment or device identifiers.
+if (identity.channel === 'preview') console.info('GLOCERIES_OTA_QA', JSON.stringify(identity));
 
 export function captureRenderError(error: Error): void {
   Sentry.captureException(error);

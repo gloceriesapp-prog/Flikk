@@ -6,6 +6,7 @@ import { AppIcon } from '../../components/AppIcon';
 import type { AppStackParamList } from '../../navigation/types';
 import { useAppConfig } from '../../api/appConfig';
 import { openLink } from '../../utils/openLink';
+import { PreviewUpdateInfo } from '../../features/app-updates/PreviewUpdateInfo';
 import { IconlyArrowLeft } from '../../components/icons/iconly';
 
 // Shown until admin fills app_content.about.body (GET /app-config).
@@ -69,6 +70,7 @@ export function AboutGloceriesScreen({ navigation }: NativeStackScreenProps<AppS
             {legalLinks.map((l) => <LinkRow key={l.label} {...l} />)}
           </View>
         )}
+        <PreviewUpdateInfo />
       </ScrollView>
     </View>
   );

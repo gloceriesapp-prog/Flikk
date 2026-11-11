@@ -19,6 +19,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppState, Platform, View } from 'react-native';
+import { useBackgroundUpdates } from './src/features/app-updates/useBackgroundUpdates';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { StartupAppearanceContext } from './src/components/startupAppearance';
 import { GILROY_FONT_FILES } from './src/theme/fonts';
@@ -84,6 +85,7 @@ focusManager.setEventListener(handleFocus => {
 });
 
 function App() {
+  useBackgroundUpdates();
   const [startupVisible, setStartupVisible] = useState(false);
   useAuthStore(state => state.sessionEpoch);
   useAuthStore(state => state.customerId);

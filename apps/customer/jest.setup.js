@@ -57,3 +57,11 @@ global.fetch = jest.fn(async () => ({ ok: false, status: 503, json: async () => 
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
+
+// OTA lifecycle is exercised through a download-only adapter in dedicated tests.
+jest.mock('expo-updates', () => ({
+  isEnabled: false, updateId: null, runtimeVersion: null, channel: null,
+  isEmbeddedLaunch: true, isEmergencyLaunch: false,
+  checkForUpdateAsync: jest.fn(async () => ({ isAvailable: false })),
+  fetchUpdateAsync: jest.fn(async () => ({ isNew: false })),
+}));

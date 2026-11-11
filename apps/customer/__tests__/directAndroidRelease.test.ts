@@ -25,11 +25,11 @@ describe('direct customer Android release safeguards', () => {
       const assert = require('node:assert/strict');
       const {validateManifest,fingerprint} = require('./scripts/direct-android-release.cjs');
       const env = {CUSTOMER_ANDROID_VERSION_CODE:'12',CUSTOMER_HIGHEST_PLAY_VERSION_CODE:'11'};
-      const facts = {package:'com.gloceries.customer',versionCode:'12',versionName:'1.0.4',debuggable:'false',targetSdk:'36',cleartext:'false',permissions:[],hasMapKey:true,headers:{'expo-channel-name':'production'},updatesUrl:'https://u.expo.dev/a98e9f05-620b-4efb-8624-99d724667e7c'};
+      const facts = {package:'com.gloceries.customer',versionCode:'12',versionName:'1.0.4',debuggable:'false',targetSdk:'36',cleartext:'false',permissions:[],hasMapKey:true,updatesCheckOnLaunch:'ERROR_RECOVERY_ONLY',updatesLaunchWait:'0',headers:{'expo-channel-name':'production'},updatesUrl:'https://u.expo.dev/a98e9f05-620b-4efb-8624-99d724667e7c'};
       facts.mainActivityOrientation = null;
       facts.mainActivityResizable = 'true';
       validateManifest(facts,env,'1.0.4');
-      for (const bad of [{mainActivityOrientation:'portrait'}, {mainActivityOrientation:'missing'}, {mainActivityResizable:'false'}]) {
+      for (const bad of [{updatesCheckOnLaunch:'ALWAYS'}, {updatesLaunchWait:'30000'}, {mainActivityOrientation:'portrait'}, {mainActivityOrientation:'missing'}, {mainActivityResizable:'false'}]) {
         assert.throws(()=>validateManifest({...facts,...bad},env,'1.0.4'));
       }
       for (const bad of [{package:'com.gloceries.partner'},{debuggable:'true'},{targetSdk:'34'},{cleartext:'true'},{permissions:['android.permission.READ_CONTACTS']},{permissions:['android.permission.SYSTEM_ALERT_WINDOW']},{permissions:['android.permission.READ_EXTERNAL_STORAGE']},{permissions:['android.permission.WRITE_EXTERNAL_STORAGE']},{versionCode:'11'},{hasMapKey:false},{headers:{'expo-channel-name':'preview'}},{updatesUrl:'https://u.expo.dev/wrong'}]) {

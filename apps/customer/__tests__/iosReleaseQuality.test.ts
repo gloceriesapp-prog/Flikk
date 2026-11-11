@@ -48,5 +48,5 @@ it('isolates the new iOS native UPI runtime from older app-version OTA updates',
   const config = require('../app.config.js').expo;
   expect(typeof config.ios.runtimeVersion).toBe('string');
   expect(config.ios.runtimeVersion).not.toBe(config.version);
-  expect(config.runtimeVersion).toBe('1.0.4-android-native-1');
+  expect(config.runtimeVersion).toBe('1.0.4-android-native-2');
 });

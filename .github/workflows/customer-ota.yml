@@ -22,6 +22,9 @@ on:
       tested_preview_run_id:
         type: string
         description: 'Production only: successful preview run ID, after physical-device testing'
+      device_qa_run_id:
+        type: string
+        description: 'Production only: successful Customer OTA Device QA run for this exact preview'
       confirm_device_tests:
         type: boolean
         default: false
@@ -46,9 +49,11 @@ jobs:
       OTA_PLATFORM: ${{ inputs.platform }}
       OTA_NATIVE_BUILD_COMMIT: ${{ inputs.native_build_commit }}
       OTA_PREVIEW_ID: ${{ inputs.tested_preview_run_id }}
+      OTA_QA_ID: ${{ inputs.device_qa_run_id }}
       OTA_DEVICE_TESTS: ${{ inputs.confirm_device_tests }}
       APP_ENV: production
       EXPO_PUBLIC_API_URL: https://api.gloceries.com
+      EXPO_PUBLIC_SOURCE_COMMIT: ${{ github.sha }}
       EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false'
       EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
       CUSTOMER_OTA_PLATFORM: ${{ inputs.platform }}
@@ -71,6 +76,8 @@ jobs:
           echo "OTA_RESULT=$RUNNER_TEMP/ota-result.json" >> "$GITHUB_ENV"
           echo "OTA_REPORT=$RUNNER_TEMP/ota-report.json" >> "$GITHUB_ENV"
           echo "OTA_PREVIEW_REPORT=$RUNNER_TEMP/preview/ota-report.json" >> "$GITHUB_ENV"
+          echo "OTA_QA_REPORT=$RUNNER_TEMP/device-qa/device-qa.json" >> "$GITHUB_ENV"
+          echo "OTA_QA_RUN=$RUNNER_TEMP/qa-run.json" >> "$GITHUB_ENV"
           echo "OTA_PREVIEW_RUN=$RUNNER_TEMP/preview-run.json" >> "$GITHUB_ENV"
       - name: Block native changes before installing or publishing
         run: node apps/customer/scripts/ota/native-compatibility.cjs
@@ -82,6 +89,10 @@ jobs:
           set -euo pipefail
           test "$OTA_DEVICE_TESTS" = true || { echo 'Confirm exact-preview device testing first.'; exit 1; }
           [[ "$OTA_PREVIEW_ID" =~ ^[1-9][0-9]*$ ]] || { echo 'Provide a successful preview run ID.'; exit 1; }
+          [[ "$OTA_QA_ID" =~ ^[1-9][0-9]*$ ]] || { echo 'Provide successful matching device QA evidence.'; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$OTA_QA_ID" > "$OTA_QA_RUN"
+          gh run download "$OTA_QA_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "customer-ota-qa-$OTA_PLATFORM-$OTA_PREVIEW_ID" --dir "$RUNNER_TEMP/device-qa"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$OTA_PREVIEW_ID" > "$OTA_PREVIEW_RUN"
           gh run download "$OTA_PREVIEW_ID" --repo "$GITHUB_REPOSITORY" \
             --name "customer-ota-preview-$OTA_PLATFORM-$GITHUB_SHA" --dir "$RUNNER_TEMP/preview"
@@ -139,4 +150,4 @@ jobs:
           name: customer-ota-${{ inputs.channel }}-${{ inputs.platform }}-${{ github.sha }}
           path: ${{ runner.temp }}/ota-report.json
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90

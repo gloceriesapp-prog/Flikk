@@ -8,6 +8,7 @@ it('accepts only the shipped iPhone device family for the initial release', () =
 });
 
 const valid: NodeJS.ProcessEnv = {
+  EXPO_PUBLIC_SOURCE_COMMIT: 'a'.repeat(40),
   CUSTOMER_DIRECT_IOS_RELEASE: 'true', NODE_ENV: 'production',
   CUSTOMER_IOS_BUILD_NUMBER: '2', CUSTOMER_HIGHEST_IOS_BUILD_NUMBER: '1',
   EXPO_PUBLIC_API_URL: 'https://api.gloceries.com', EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false',

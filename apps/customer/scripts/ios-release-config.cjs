@@ -15,6 +15,7 @@ function iosBuildNumber(env = process.env) {
 
 function verifyIosRelease(env = process.env) {
   assert.equal(env.CUSTOMER_DIRECT_IOS_RELEASE, 'true', 'Enable direct iOS release mode.');
+  assert.match(env.EXPO_PUBLIC_SOURCE_COMMIT || '', /^[a-f0-9]{40}$/, 'Set EXPO_PUBLIC_SOURCE_COMMIT to the committed iOS archive source SHA.');
   assert.equal(env.NODE_ENV, 'production', 'The iOS archive must bundle production JavaScript.');
   const api = new URL(env.EXPO_PUBLIC_API_URL);
   assert.equal(api.origin, 'https://api.gloceries.com', 'Use the live Gloceries HTTPS API for this App Store release.');
@@ -36,6 +37,7 @@ function verifyIosRelease(env = process.env) {
 if (require.main === module) {
   try {
     const release = verifyIosRelease();
+    require('./ota/native-compatibility.cjs').verifySourceCommit(process.env.EXPO_PUBLIC_SOURCE_COMMIT);
     require('./ota/native-compatibility.cjs').checkNativeRelease(process.env.OTA_NATIVE_BUILD_COMMIT, 'ios');
     console.log(JSON.stringify(release, null, 2));
   }
