@@ -35,7 +35,9 @@ export function ProductFlavourOptions({ options, selectedId, onSelect }: Props) 
               >
                 <Image source={{ uri: option.imageUrl || PLACEHOLDER_IMAGE_URI }} style={{ width: '100%', aspectRatio: 1 }} resizeMode="contain" />
                 <Text className="min-h-[30px] text-center text-[12px] font-semibold leading-[15px] text-ink" numberOfLines={2}>{option.name}</Text>
-                {!option.isAvailable && <Text className="text-[10px] font-medium text-[#B42318]">Out of stock</Text>}
+                <Text className="min-h-[14px] text-[10px] font-semibold" style={{ color: !option.isAvailable ? '#B42318' : '#2457F5' }}>
+                  {!option.isAvailable ? 'Out of stock' : isSelected ? 'Selected' : ' '}
+                </Text>
               </Pressable>
             </View>
           );

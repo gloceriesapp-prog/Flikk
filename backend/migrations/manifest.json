@@ -704,6 +704,10 @@
     {
       "file": "20261111160000_flavour_extra_images.sql",
       "sha256": "61c41df46566b57b15342e5c2a137b17606c3d104f2b502b25233c3df5d6cebd"
+    },
+    {
+      "file": "20261111230000_product_main_flavour.sql",
+      "sha256": "5c6a6efa42feba1a145617eed7d0f0f7188fa8d709620d518ce2d2a54f0fce71"
     }
   ]
 }

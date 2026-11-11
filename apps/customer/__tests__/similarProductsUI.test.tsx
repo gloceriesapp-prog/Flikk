@@ -44,3 +44,21 @@ it('preserves flavour selection and disables unavailable choices in the new plac
   await fireEvent.press(view.getByRole('radio', { name: 'Mango' }));
   expect(onSelect).toHaveBeenCalledWith('mango');
 });
+
+it('moves the active indicator from the main item to an added flavour and back', async () => {
+  const React = jest.requireActual('react');
+  function Picker() {
+    const [selected, setSelected] = React.useState('main-product');
+    return <ProductFlavourOptions options={[
+      { id: 'main-product', name: 'Badam Milk', isAvailable: true },
+      { id: 'mango', name: 'Mango Milk', isAvailable: true },
+    ]} selectedId={selected} onSelect={setSelected} />;
+  }
+  const view = await render(<Picker />);
+  expect(view.getByRole('radio', { name: 'Badam Milk' }).props.accessibilityState.selected).toBe(true);
+  await fireEvent.press(view.getByRole('radio', { name: 'Mango Milk' }));
+  expect(view.getByRole('radio', { name: 'Mango Milk' }).props.accessibilityState.selected).toBe(true);
+  expect(view.getByRole('radio', { name: 'Badam Milk' }).props.accessibilityState.selected).toBe(false);
+  await fireEvent.press(view.getByRole('radio', { name: 'Badam Milk' }));
+  expect(view.getByRole('radio', { name: 'Badam Milk' }).props.accessibilityState.selected).toBe(true);
+});

@@ -34,6 +34,7 @@ import { PLACEHOLDER_IMAGE_URI } from '../../theme/placeholderImage';
 import { ProductVariantOptions, discountPercentOf } from './ProductVariantOptions';
 import { ProductCutOptions } from './ProductCutOptions';
 import { ProductFlavourOptions } from './ProductFlavourOptions';
+import { flavourChoices } from './flavourSelection';
 import { ProductServingOptions } from './ProductServingOptions';
 import { ProductPreorderOptions } from './ProductPreorderOptions';
 import type { CartPreorder } from '../../store/preorder';
@@ -107,7 +108,7 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
         ) : null}
 
         {product.options?.length && onSelectOption ? (
-          <ProductFlavourOptions options={product.options} selectedId={selectedOptionId} onSelect={onSelectOption} />
+          <ProductFlavourOptions options={flavourChoices(product)} selectedId={selectedOptionId} onSelect={onSelectOption} />
         ) : null}
 
         {product.preorder && onSelectPreorder ? (

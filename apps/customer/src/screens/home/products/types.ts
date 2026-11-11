@@ -47,7 +47,7 @@ export interface Product {
   // this product from which the order becomes a bulk order.
   cutOptions?: boolean;
   // Flavours (product_options), sorted; empty/undefined = none. A product
-  // with flavours needs one picked before it can go in the cart.
+  // can also be purchased as the original item, without an added option.
   options?: ProductOption[];
   // Drinks: chilled / room temperature offered (products.serving_options).
   // Two = the customer picks one on the detail view; one = served that way.

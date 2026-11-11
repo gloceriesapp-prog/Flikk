@@ -64,8 +64,8 @@ export function ProductDetailFooter({
     selectedVariant?.id ?? product.defaultVariantId;
 
   const id = cartLineId(product.id, variantId, cutSize, option?.id, serving);
-  // A product with flavours goes in the cart only with an in-stock one picked.
-  const needsFlavour = (product.options?.length ?? 0) > 0 && !option?.isAvailable;
+  // No added option means the original product. Real flavours must be in stock.
+  const needsFlavour = option?.isAvailable === false;
 
   const weight =
     selectedVariant?.label ?? product.weight;
@@ -103,7 +103,7 @@ export function ProductDetailFooter({
       <View className="mx-5 my-4 rounded-2xl bg-[#FFF0EE] px-5 py-4">
         <Text className="text-center font-bold text-[#B42318]">
           {needsFlavour && availability.isAvailable && selectedVariant?.isAvailable !== false
-            ? 'Every flavour is out of stock'
+            ? 'This flavour is out of stock'
             : selectedVariant?.isAvailable === false
             ? selectedVariant.unavailableReason === 'stock_unconfirmed'
               ? 'Stock updating'

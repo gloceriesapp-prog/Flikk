@@ -22,6 +22,7 @@ import { colors } from '../../theme/tokens';
 import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { shareProduct } from '../../utils/shareProduct';
 import { ProductDetailInfo } from './ProductDetailInfo';
+import { MAIN_PRODUCT_CHOICE, flavourPhotos } from './flavourSelection';
 import { ProductDetailFooter } from './ProductDetailFooter';
 import type { CutSize, Serving } from '../../store/cartIdentity';
 import type { CartPreorder } from '../../store/preorder';
@@ -102,8 +103,8 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
   const [selectedVariantId, setSelectedVariantId] = useState(product.defaultVariantId ?? product.variants?.[0]?.id);
   const selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
   const [selectedCut, setSelectedCut] = useState<CutSize>('medium');
-  // First in-stock flavour preselected; its photo leads the hero.
-  const [selectedOptionId, setSelectedOptionId] = useState(product.options?.find((o) => o.isAvailable)?.id);
+  // Start with the original product; added flavours are separate choices.
+  const [selectedOptionId, setSelectedOptionId] = useState(MAIN_PRODUCT_CHOICE);
   const selectedOption = product.options?.find((o) => o.id === selectedOptionId);
   // Chilled preselected when both are offered; one offered needs no choice.
   const [selectedServing, setSelectedServing] = useState<Serving | undefined>(product.servingOptions?.[0]);
@@ -115,10 +116,7 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
     setPreorder(next);
     if (next) useCartStore.getState().setPreorder(next);
   };
-  const productPhotos = product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : []);
-  const heroPhotos = selectedOption?.imageUrls?.length
-    ? selectedOption.imageUrls
-    : selectedOption?.imageUrl ? [selectedOption.imageUrl] : productPhotos;
+  const heroPhotos = flavourPhotos(product, selectedOptionId);
 
 
   return (
@@ -133,7 +131,7 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
           paddingBottom: footerHeight }}
       >
         <View style={{ width: '100%', aspectRatio: 720 / 810, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
-          <ProductImageGallery key={selectedOption?.id ?? product.id} variant="hero" images={heroPhotos} />
+          <ProductImageGallery key={selectedOptionId} variant="hero" images={heroPhotos} />
           {hasRatings && (
             <View className="absolute bottom-2.5 right-3 flex-row items-center gap-1 rounded-full bg-white/85 px-2 py-1">
               <AppIcon icon={StarIcon} size={12} color={colors.success} fill={colors.success} strokeWidth={0} />

@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
--- Migration 20261105120000: a product with flavours needs one per order line;
--- it must be the product's own and in stock, and its name is kept on the line.
+-- Original items and added flavours remain distinct at checkout;
+-- added flavours must be its own and in stock; the original remains purchasable.
 DO $$ BEGIN IF current_database()<>'flikk_migrations_tests' THEN RAISE EXCEPTION 'Use isolated fixture'; END IF; END $$;
 BEGIN;
 DO $$ BEGIN
@@ -56,20 +56,20 @@ DO $$ BEGIN
  BEGIN
   INSERT INTO order_items(order_id,product_id,variant_id,quantity,unit_price_at_order)
   VALUES('00000000-0000-4000-8000-000000017041','00000000-0000-4000-8000-000000017011','00000000-0000-4000-8000-000000017021',1,20);
-  RAISE EXCEPTION 'Line without a flavour accepted';
- EXCEPTION WHEN serialization_failure THEN NULL; END;
+  IF (SELECT option_name_at_order FROM order_items WHERE order_id='00000000-0000-4000-8000-000000017041' AND option_id IS NULL) IS NOT NULL THEN RAISE EXCEPTION 'Original product incorrectly saved as an added flavour'; END IF;
+ END;
  BEGIN
   INSERT INTO order_items(order_id,product_id,variant_id,quantity,unit_price_at_order,option_id)
   VALUES('00000000-0000-4000-8000-000000017041','00000000-0000-4000-8000-000000017011','00000000-0000-4000-8000-000000017021',1,20,'00000000-0000-4000-8000-000000017032');
   RAISE EXCEPTION 'Out-of-stock flavour accepted';
  EXCEPTION WHEN serialization_failure THEN NULL; END;
 END $$;
-INSERT INTO order_items(order_id,product_id,variant_id,quantity,unit_price_at_order,option_id)
-VALUES('00000000-0000-4000-8000-000000017041','00000000-0000-4000-8000-000000017011','00000000-0000-4000-8000-000000017021',2,20,'00000000-0000-4000-8000-000000017031');
+INSERT INTO order_items(id,order_id,product_id,variant_id,quantity,unit_price_at_order,option_id)
+VALUES('00000000-0000-4000-8000-000000017051','00000000-0000-4000-8000-000000017041','00000000-0000-4000-8000-000000017011','00000000-0000-4000-8000-000000017021',2,20,'00000000-0000-4000-8000-000000017031');
 DO $$ BEGIN
- IF (SELECT option_name_at_order FROM order_items WHERE order_id='00000000-0000-4000-8000-000000017041')<>'Achaari Masti' THEN RAISE EXCEPTION 'Flavour name not kept'; END IF;
+ IF (SELECT option_name_at_order FROM order_items WHERE id='00000000-0000-4000-8000-000000017051')<>'Achaari Masti' THEN RAISE EXCEPTION 'Flavour name not kept'; END IF;
  DELETE FROM product_options WHERE id='00000000-0000-4000-8000-000000017031';
- IF (SELECT option_name_at_order FROM order_items WHERE order_id='00000000-0000-4000-8000-000000017041')<>'Achaari Masti'
- OR (SELECT option_id FROM order_items WHERE order_id='00000000-0000-4000-8000-000000017041') IS NOT NULL THEN RAISE EXCEPTION 'Deleting a flavour broke the order line'; END IF;
+ IF (SELECT option_name_at_order FROM order_items WHERE id='00000000-0000-4000-8000-000000017051')<>'Achaari Masti'
+ OR (SELECT option_id FROM order_items WHERE id='00000000-0000-4000-8000-000000017051') IS NOT NULL THEN RAISE EXCEPTION 'Deleting a flavour broke the order line'; END IF;
 END $$;
 ROLLBACK;
