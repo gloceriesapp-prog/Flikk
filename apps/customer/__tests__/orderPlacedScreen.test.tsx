@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Hoisted Jest mocks resolve React and native components at runtime. */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ComponentProps } from 'react';
 import { ORDER_PLACED_MS, OrderPlacedScreen } from '../src/screens/order-placed/OrderPlacedScreen';
