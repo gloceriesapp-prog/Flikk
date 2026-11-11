@@ -47,11 +47,6 @@ jobs:
       OTA_NATIVE_BUILD_COMMIT: ${{ inputs.native_build_commit }}
       OTA_PREVIEW_ID: ${{ inputs.tested_preview_run_id }}
       OTA_DEVICE_TESTS: ${{ inputs.confirm_device_tests }}
-      OTA_EXPORT_DIR: ${{ runner.temp }}/customer-ota-export
-      OTA_RESULT: ${{ runner.temp }}/ota-result.json
-      OTA_REPORT: ${{ runner.temp }}/ota-report.json
-      OTA_PREVIEW_REPORT: ${{ runner.temp }}/preview/ota-report.json
-      OTA_PREVIEW_RUN: ${{ runner.temp }}/preview-run.json
       APP_ENV: production
       EXPO_PUBLIC_API_URL: https://api.gloceries.com
       EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false'
@@ -70,6 +65,13 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: apps/customer/package-lock.json
+      - name: Set temporary deployment paths
+        run: |
+          echo "OTA_EXPORT_DIR=$RUNNER_TEMP/customer-ota-export" >> "$GITHUB_ENV"
+          echo "OTA_RESULT=$RUNNER_TEMP/ota-result.json" >> "$GITHUB_ENV"
+          echo "OTA_REPORT=$RUNNER_TEMP/ota-report.json" >> "$GITHUB_ENV"
+          echo "OTA_PREVIEW_REPORT=$RUNNER_TEMP/preview/ota-report.json" >> "$GITHUB_ENV"
+          echo "OTA_PREVIEW_RUN=$RUNNER_TEMP/preview-run.json" >> "$GITHUB_ENV"
       - name: Block native changes before installing or publishing
         run: node apps/customer/scripts/ota/native-compatibility.cjs
       - name: Validate production promotion request
