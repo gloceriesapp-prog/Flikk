@@ -15,3 +15,13 @@ test('one photo, no gallery, or no cover', () => {
   expect(mapApiProduct(row('a', null)).imageUrls).toEqual(['a']);
   expect(mapApiProduct(row(null, ['b'])).imageUrls).toEqual([]);
 });
+
+test('flavours expose their own ordered galleries with backward-compatible covers', () => {
+  const product = mapApiProduct({ ...row('generic', ['generic-extra']), product_options: [
+    { id: 'mango', name: 'Mango', image_url: 'mango-cover', extra_image_urls: ['mango-back', 'mango-cover'], sort_order: 0, is_available: true },
+    { id: 'rose', name: 'Rose', image_url: 'rose-cover', sort_order: 1, is_available: true },
+  ] });
+  expect(product.options?.[0]?.imageUrls).toEqual(['mango-cover', 'mango-back']);
+  expect(product.options?.[1]?.imageUrls).toEqual(['rose-cover']);
+  expect(product.imageUrls).toEqual(['generic', 'generic-extra']);
+});

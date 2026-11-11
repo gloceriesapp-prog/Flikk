@@ -54,9 +54,11 @@ export function EditProductModal({
   const setPlacement = useCallback((placement: CataloguePlacement) => setDraft((d) => ({ ...d, ...placement })), []);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [flavourUploading, setFlavourUploading] = useState(false);
   const homeChoice = useHomeSectionChoice(product.id);
 
   async function handleSave() {
+    if (flavourUploading || submitting) return;
     const defaultVariant = draft.variants[0];
     if (!defaultVariant) return;
     // Same rule as Add: every size needs a counted stock to be orderable.
@@ -177,7 +179,7 @@ export function EditProductModal({
 
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
-          <ProductFlavoursEditor options={draft.options ?? []} onChange={(options) => setDraft({ ...draft, options })} />
+          <ProductFlavoursEditor options={draft.options ?? []} onChange={(options) => setDraft((current) => ({ ...current, options }))} onBusyChange={setFlavourUploading} />
 
           <ServingOptionsEditor value={draft.servingOptions ?? []} onChange={(servingOptions) => setDraft({ ...draft, servingOptions })} />
           <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} />
@@ -272,10 +274,10 @@ export function EditProductModal({
           <button
             type="button"
             onClick={handleSave}
-            disabled={submitting}
+            disabled={submitting || flavourUploading}
             className="rounded-[10px] bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong"
           >
-            {submitting ? 'Saving…' : 'Save'}
+            {flavourUploading ? 'Uploading photos…' : submitting ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>

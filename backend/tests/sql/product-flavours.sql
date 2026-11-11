@@ -21,9 +21,36 @@ INSERT INTO product_variants(id,product_id,unit_type,quantity,price,is_default) 
 INSERT INTO product_options(id,product_id,name,is_available) VALUES
  ('00000000-0000-4000-8000-000000017031','00000000-0000-4000-8000-000000017011','Achaari Masti',true),
  ('00000000-0000-4000-8000-000000017032','00000000-0000-4000-8000-000000017011','Tomato Madness',false);
-INSERT INTO orders(id,customer_id,store_id,address_id,item_total,delivery_fee,commission_amount,handling_fee,discount_amount,total,payment_method,status,placed_at) VALUES
- ('00000000-0000-4000-8000-000000017041','00000000-0000-4000-8000-0000000170c1','00000000-0000-4000-8000-0000000170f1','00000000-0000-4000-8000-0000000170b1',40,30,0,0,0,70,'cod','placed','2001-04-01 10:00+05:30');
+INSERT INTO orders(id,customer_id,store_id,address_id,item_total,delivery_fee,commission_amount,handling_fee,discount_amount,total,payment_method,status,placed_at,reservation_expires_at,reservation_release_after) VALUES
+ ('00000000-0000-4000-8000-000000017041','00000000-0000-4000-8000-0000000170c1','00000000-0000-4000-8000-0000000170f1','00000000-0000-4000-8000-0000000170b1',40,30,0,0,0,70,'cod','placed','2001-04-01 10:00+05:30','2001-04-01 10:20+05:30','2001-04-01 10:50+05:30');
 SET LOCAL session_replication_role=origin;
+
+-- Round-trip and reject malformed flavour galleries without touching orders.
+DO $$
+DECLARE saved text[];
+BEGIN
+ UPDATE product_options SET image_url='https://cdn.example/cover.webp', extra_image_urls=ARRAY['https://cdn.example/back.webp','https://cdn.example/side.webp']
+ WHERE id='00000000-0000-4000-8000-000000017031';
+ SELECT extra_image_urls INTO saved FROM product_options WHERE id='00000000-0000-4000-8000-000000017031';
+ IF saved <> ARRAY['https://cdn.example/back.webp','https://cdn.example/side.webp'] THEN RAISE EXCEPTION 'Gallery not retained'; END IF;
+ BEGIN
+  UPDATE product_options SET extra_image_urls=array_fill('https://cdn.example/a.webp'::text, ARRAY[8]);
+  RAISE EXCEPTION 'Oversize gallery accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  UPDATE product_options SET extra_image_urls=ARRAY['javascript:alert(1)'];
+  RAISE EXCEPTION 'Unsafe gallery accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  UPDATE product_options SET extra_image_urls=ARRAY[NULL::text];
+  RAISE EXCEPTION 'Null photo accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  UPDATE product_options SET image_url=NULL, extra_image_urls=ARRAY['https://cdn.example/back.webp'];
+  RAISE EXCEPTION 'Gallery without cover accepted';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ UPDATE product_options SET extra_image_urls='{}' WHERE id='00000000-0000-4000-8000-000000017031';
+END $$;
 
 DO $$ BEGIN
  BEGIN

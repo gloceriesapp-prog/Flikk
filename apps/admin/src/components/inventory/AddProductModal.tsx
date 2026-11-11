@@ -88,9 +88,11 @@ export function AddProductModal({
   const setPlacement = useCallback((placement: CataloguePlacement) => setDraft((d) => ({ ...d, ...placement })), []);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [flavourUploading, setFlavourUploading] = useState(false);
   const homeChoice = useHomeSectionChoice();
 
   async function handleAdd() {
+    if (flavourUploading || submitting) return;
     const name = draft.name.trim();
     const store = stores.find((s) => s.id === draft.storeId);
     if (!name || !store) return;
@@ -251,7 +253,7 @@ export function AddProductModal({
 
           <ProductVariantsEditor category={draft.category} variants={draft.variants} onChange={(variants) => setDraft({ ...draft, variants })} />
 
-          <ProductFlavoursEditor options={draft.options ?? []} onChange={(options) => setDraft({ ...draft, options })} />
+          <ProductFlavoursEditor options={draft.options ?? []} onChange={(options) => setDraft((current) => ({ ...current, options }))} onBusyChange={setFlavourUploading} />
 
           <ServingOptionsEditor value={draft.servingOptions ?? []} onChange={(servingOptions) => setDraft({ ...draft, servingOptions })} />
           <PreorderEditor value={draft} onChange={(preorder) => setDraft({ ...draft, ...preorder })} />
@@ -348,10 +350,10 @@ export function AddProductModal({
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!draft.name.trim() || submitting}
+            disabled={!draft.name.trim() || submitting || flavourUploading}
             className="rounded-[10px] bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-40 hover:bg-brand-strong"
           >
-            {submitting ? 'Adding…' : 'Add'}
+            {flavourUploading ? 'Uploading photos…' : submitting ? 'Adding…' : 'Add'}
           </button>
         </div>
       </div>

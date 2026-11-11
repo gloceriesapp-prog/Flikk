@@ -700,6 +700,10 @@
     {
       "file": "20261111120000_home_product_banners.sql",
       "sha256": "53efd36220b4ff9f210b6d00aff38d25d194f38f91a00627b45c3221b1602ef6"
+    },
+    {
+      "file": "20261111160000_flavour_extra_images.sql",
+      "sha256": "61c41df46566b57b15342e5c2a137b17606c3d104f2b502b25233c3df5d6cebd"
     }
   ]
 }

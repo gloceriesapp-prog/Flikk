@@ -150,7 +150,9 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
     if (next) useCartStore.getState().setPreorder(next);
   };
   const productPhotos = product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : []);
-  const heroPhotos = selectedOption?.imageUrl ? [selectedOption.imageUrl, ...productPhotos.filter((u) => u !== selectedOption.imageUrl)] : productPhotos;
+  const heroPhotos = selectedOption?.imageUrls?.length
+    ? selectedOption.imageUrls
+    : selectedOption?.imageUrl ? [selectedOption.imageUrl] : productPhotos;
 
 
   return (
@@ -165,7 +167,7 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
           paddingBottom: footerHeight }}
       >
         <View style={{ width: '100%', aspectRatio: 720 / 810, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}>
-          <ProductImageGallery variant="hero" images={heroPhotos} />
+          <ProductImageGallery key={selectedOption?.id ?? product.id} variant="hero" images={heroPhotos} />
           {hasRatings && (
             <View className="absolute bottom-2.5 right-3 flex-row items-center gap-1 rounded-full bg-white/85 px-2 py-1">
               <AppIcon icon={StarIcon} size={12} color={colors.success} fill={colors.success} strokeWidth={0} />
