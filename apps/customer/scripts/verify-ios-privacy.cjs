@@ -1,5 +1,7 @@
 // Validate both generated native plists and the authored Expo configuration.
 const assert = require('node:assert/strict');
+const path = require('node:path');
+const { verifyIosUpdatePolicy } = require('./ota/native-policy.cjs');
 const { execFileSync } = require('node:child_process');
 
 function verifyIosPrivacyPurposeStrings(infoPlist) {
@@ -18,6 +20,9 @@ if (require.main === module) {
     const plist = JSON.parse(execFileSync('/usr/bin/plutil',
       ['-convert', 'json', '-o', '-', process.argv[2]], { encoding: 'utf8' }));
     verifyIosPrivacyPurposeStrings(plist);
+    const updatePlist = JSON.parse(execFileSync('/usr/bin/plutil',
+      ['-convert', 'json', '-o', '-', path.join(path.dirname(process.argv[2]), 'Expo.plist')], { encoding: 'utf8' }));
+    verifyIosUpdatePolicy(updatePlist, require('../native-runtime.json').ios, process.env.CUSTOMER_UPDATE_CHANNEL || 'production');
     console.log('iOS native privacy purpose strings verified.');
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

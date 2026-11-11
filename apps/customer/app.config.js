@@ -43,6 +43,8 @@ module.exports = {
     runtimeVersion: nativeRuntime.android,
     updates: {
       url: `https://u.expo.dev/${easProjectId}`, fallbackToCacheTimeout: 0,
+      // JS downloads while idle; native applies cached updates only on a new launch.
+      checkAutomatically: 'ON_ERROR_RECOVERY',
       ...(process.env.CUSTOMER_DIRECT_ANDROID_RELEASE === 'true' || process.env.CUSTOMER_DIRECT_IOS_RELEASE === 'true'
         ? { requestHeaders: { 'expo-channel-name': updateChannel } } : {}),
     },
@@ -160,6 +162,7 @@ module.exports = {
       './plugins/withUpiAppsModule',
     ],
     extra: {
+      release: { sourceCommit: process.env.EXPO_PUBLIC_SOURCE_COMMIT || process.env.GITHUB_SHA || process.env.EAS_BUILD_GIT_COMMIT_HASH || null },
       eas: {
         projectId: easProjectId,
       },

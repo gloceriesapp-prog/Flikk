@@ -1,0 +1,125 @@
+name: Customer OTA Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        type: choice
+        options: [preview, production]
+        default: preview
+        required: true
+        description: 'Rehearse on preview before a production rollback'
+      platform:
+        type: choice
+        options: [android, ios]
+        required: true
+        description: 'Installed native platform'
+      native_build_commit:
+        type: string
+        required: true
+        description: 'Exact source SHA of the installed native build'
+      target_release_run_id:
+        type: string
+        required: true
+        description: 'Successful Customer OTA Update run containing the known-good target'
+      preview_rollback_run_id:
+        type: string
+        description: 'Production only: successful preview rollback rehearsal for the same target'
+      device_qa_run_id:
+        type: string
+        description: 'Production only: successful Device QA run on that rollback preview'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: customer-ota-${{ inputs.platform }}-${{ inputs.channel }}
+  cancel-in-progress: false
+jobs:
+  rollback:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: customer-ota-${{ inputs.channel }}
+    env:
+      OTA_CHANNEL: ${{ inputs.channel }}
+      OTA_PLATFORM: ${{ inputs.platform }}
+      OTA_NATIVE_BUILD_COMMIT: ${{ inputs.native_build_commit }}
+      OTA_TARGET_ID: ${{ inputs.target_release_run_id }}
+      OTA_PREVIEW_ID: ${{ inputs.preview_rollback_run_id }}
+      OTA_QA_ID: ${{ inputs.device_qa_run_id }}
+      APP_ENV: production
+      NODE_ENV: production
+      EXPO_NO_DOTENV: '1'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_PUBLIC_API_URL: https://api.gloceries.com
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/customer/package-lock.json
+      - name: Load known-good target and rehearsal evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$OTA_TARGET_ID" =~ ^[1-9][0-9]*$ ]] || exit 1
+          echo "OTA_TARGET_REPORT=$RUNNER_TEMP/target/ota-report.json" >> "$GITHUB_ENV"
+          echo "OTA_TARGET_RUN=$RUNNER_TEMP/target-run.json" >> "$GITHUB_ENV"
+          echo "OTA_PREVIEW_REPORT=$RUNNER_TEMP/preview/ota-report.json" >> "$GITHUB_ENV"
+          echo "OTA_PREVIEW_RUN=$RUNNER_TEMP/preview-run.json" >> "$GITHUB_ENV"
+          echo "OTA_QA_REPORT=$RUNNER_TEMP/device-qa/device-qa.json" >> "$GITHUB_ENV"
+          echo "OTA_QA_RUN=$RUNNER_TEMP/qa-run.json" >> "$GITHUB_ENV"
+          echo "OTA_RESULT=$RUNNER_TEMP/rollback-result.json" >> "$GITHUB_ENV"
+          echo "OTA_REPORT=$RUNNER_TEMP/ota-report.json" >> "$GITHUB_ENV"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$OTA_TARGET_ID" > "$RUNNER_TEMP/target-run.json"
+          gh run download "$OTA_TARGET_ID" --repo "$GITHUB_REPOSITORY" \
+            --pattern "customer-ota-*-$OTA_PLATFORM-*" --dir "$RUNNER_TEMP/target-download"
+          find "$RUNNER_TEMP/target-download" -name ota-report.json -type f > "$RUNNER_TEMP/target-paths"
+          test "$(wc -l < "$RUNNER_TEMP/target-paths" | tr -d ' ')" = 1 || exit 1
+          mkdir -p "$RUNNER_TEMP/target"
+          cp "$(cat "$RUNNER_TEMP/target-paths")" "$RUNNER_TEMP/target/ota-report.json"
+          if test "$OTA_CHANNEL" = production; then
+            [[ "$OTA_PREVIEW_ID" =~ ^[1-9][0-9]*$ && "$OTA_QA_ID" =~ ^[1-9][0-9]*$ ]] || exit 1
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$OTA_PREVIEW_ID" > "$RUNNER_TEMP/preview-run.json"
+            gh run download "$OTA_PREVIEW_ID" --repo "$GITHUB_REPOSITORY" \
+              --pattern "customer-ota-rollback-preview-$OTA_PLATFORM-*" --dir "$RUNNER_TEMP/preview-download"
+            find "$RUNNER_TEMP/preview-download" -name ota-report.json -type f > "$RUNNER_TEMP/preview-paths"
+            test "$(wc -l < "$RUNNER_TEMP/preview-paths" | tr -d ' ')" = 1 || exit 1
+            mkdir -p "$RUNNER_TEMP/preview"
+            cp "$(cat "$RUNNER_TEMP/preview-paths")" "$RUNNER_TEMP/preview/ota-report.json"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$OTA_QA_ID" > "$RUNNER_TEMP/qa-run.json"
+            gh run download "$OTA_QA_ID" --repo "$GITHUB_REPOSITORY" \
+              --name "customer-ota-qa-$OTA_PLATFORM-$OTA_PREVIEW_ID" --dir "$RUNNER_TEMP/device-qa"
+          fi
+      - name: Verify target runtime, provenance and tested rehearsal
+        id: target
+        run: node apps/customer/scripts/ota/rollback.cjs prepare
+      - name: Install locked customer tools
+        working-directory: apps/customer
+        run: npm ci --no-audit --no-fund
+      - name: Install pinned Expo deployment CLI
+        run: npm install --global eas-cli@27.7.2 --no-audit --no-fund
+      - name: Republish verified target without rebuilding
+        working-directory: apps/customer
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          OTA_TARGET_GROUP: ${{ steps.target.outputs.group }}
+        run: |
+          set -euo pipefail
+          test -n "$EXPO_TOKEN" || exit 1
+          eas update:republish --group "$OTA_TARGET_GROUP" --destination-channel "$OTA_CHANNEL" \
+            --platform "$OTA_PLATFORM" --message "Rollback to verified customer run $OTA_TARGET_ID" \
+            --non-interactive --json > "$OTA_RESULT"
+      - name: Verify and record rollback identity
+        run: node apps/customer/scripts/ota/rollback.cjs record
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: customer-ota-rollback-${{ inputs.channel }}-${{ inputs.platform }}-${{ github.sha }}
+          path: ${{ runner.temp }}/ota-report.json
+          if-no-files-found: error
+          retention-days: 90

@@ -23,6 +23,7 @@ function sourceIdentity(ref = 'HEAD') {
   return createHash('sha256').update(files.join('\n')).digest('hex');
 }
 function checkCompatibility(base, head = 'HEAD') {
+  verifySourceCommit(git('rev-parse', head));
   assert.match(base, /^[a-f0-9]{40}$/, 'Choose the exact source commit of the installed native build.');
   git('merge-base', '--is-ancestor', base, head);
   assert.equal(sourceIdentity(head), sourceIdentity(base), 'Native inputs changed. Create and test a new store/preview build before publishing OTA.');
@@ -46,6 +47,7 @@ function runtimeAt(ref, platform) {
   return value;
 }
 function checkNativeRelease(base, platform, head = 'HEAD') {
+  verifySourceCommit(git('rev-parse', head));
   assert.match(base || '', /^[a-f0-9]{40}$/, 'Select the previous installed native build commit.');
   git('merge-base', '--is-ancestor', base, head);
   const runtime = runtimeAt(head, platform);
@@ -57,3 +59,11 @@ function checkNativeRelease(base, platform, head = 'HEAD') {
 }
 module.exports.runtimeAt = runtimeAt;
 module.exports.checkNativeRelease = checkNativeRelease;
+
+function verifySourceCommit(expected) {
+  assert.equal(expected, git('rev-parse', 'HEAD'), 'Release source metadata must match the committed build source.');
+  const dirty = git('status', '--porcelain', '--untracked-files=all', '--',
+    'apps/customer', 'packages/shared', 'packages/home-content', 'config', 'patches', 'package.json', 'package-lock.json', '.npmrc');
+  assert.equal(dirty, '', 'Commit app-source changes before building or exporting an update.');
+}
+module.exports.verifySourceCommit = verifySourceCommit;

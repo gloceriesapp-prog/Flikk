@@ -35,6 +35,7 @@ jobs:
   validate:
     env:
       EXPO_PUBLIC_API_URL: https://api.example.com
+      EXPO_PUBLIC_SOURCE_COMMIT: ${{ github.sha }}
       EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false'
       CI: 'true'
     runs-on: ubuntu-24.04
@@ -101,6 +102,7 @@ jobs:
       ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
       EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+      EXPO_PUBLIC_SOURCE_COMMIT: ${{ github.sha }}
       EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false'
       EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
       SENTRY_ORG: ${{ vars.SENTRY_ORG }}

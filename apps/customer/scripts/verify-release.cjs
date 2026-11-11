@@ -4,6 +4,7 @@ const failures = [];
 if (process.env.CUSTOMER_DIRECT_IOS_RELEASE === 'true') {
   try {
     require('./ios-release-config.cjs').verifyIosRelease(process.env);
+    require('./ota/native-compatibility.cjs').verifySourceCommit(process.env.EXPO_PUBLIC_SOURCE_COMMIT);
     require('./ota/native-compatibility.cjs').checkNativeRelease(process.env.OTA_NATIVE_BUILD_COMMIT, 'ios');
   }
   catch (error) { failures.push(error.message); }
@@ -23,6 +24,7 @@ try {
   const { expo } = require('../app.config.js');
   const manifest = require('../package.json');
   if (!expo.ios?.infoPlist?.NSPhotoLibraryUsageDescription?.trim()) failures.push('Missing NSPhotoLibraryUsageDescription (Apple ITMS-90683).');
+  if (expo.updates?.checkAutomatically !== 'ON_ERROR_RECOVERY' || expo.updates?.fallbackToCacheTimeout !== 0) failures.push('Updates must download without a startup wait or forced reload.');
   if (manifest.version !== expo.version) failures.push('package.json and app.config.js versions must match.');
   if (expo.runtimeVersion !== require('../native-runtime.json').android || expo.ios?.runtimeVersion !== require('../native-runtime.json').ios) failures.push('Native release runtimes must match native-runtime.json.');
   if (!expo.plugins?.includes('./plugins/withAndroidReleaseQuality.cjs')) failures.push('Android release optimization plugin is missing.');
