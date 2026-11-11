@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Hoisted Jest mocks resolve React and native components at runtime. */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { PreorderSection } from '../src/screens/home/preorders/PreorderSection';
 

@@ -13,7 +13,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { isCustomSection, newCustomSectionKey, scheduleToIso } from '@/lib/homeSectionPins';
-import { defaultHomeProductLayout, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
+import { defaultHomeProductLayout, supportsHomeBanner, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 interface HomeSectionRow {
   key: string;
@@ -46,15 +46,15 @@ function parseLayout(key: string, value: unknown): HomeProductLayout | null {
   return value;
 }
 
-function parsePreorderBanner(value: unknown): string | null {
+function parseSectionBanner(value: unknown): string | null {
   if (value === null || (typeof value === 'string' && !value.trim())) return null;
   if (typeof value !== 'string' || value.length > 2048) {
-    throw new Error('Enter a valid HTTPS URL for the pre-order banner.');
+    throw new Error('Enter a valid HTTPS URL for the section banner.');
   }
 
   const url = URL.parse(value.trim());
   if (!url || url.protocol !== 'https:' || url.username || url.password) {
-    throw new Error('Enter a valid HTTPS URL for the pre-order banner.');
+    throw new Error('Enter a valid HTTPS URL for the section banner.');
   }
   return url.href;
 }
@@ -105,8 +105,8 @@ export async function PUT(request: Request) {
           enabled: Boolean(r.enabled),
           sort_index: i * 10,
           bg_color: clean(r.bg_color),
-          ...(key === 'preorders' && r.banner_image_url !== undefined
-            ? { banner_image_url: parsePreorderBanner(r.banner_image_url) } : {}),
+          ...(supportsHomeBanner(key) && r.banner_image_url !== undefined
+            ? { banner_image_url: parseSectionBanner(r.banner_image_url) } : {}),
           ...(r.display_layout === undefined ? {} : { display_layout: parseLayout(key, r.display_layout) }),
           // Sent so the upsert's insert half satisfies home_sections_custom_key_check.
           is_custom: isCustomSection(key),
@@ -122,7 +122,14 @@ export async function PUT(request: Request) {
     }
 
     if (rows.some((row) => row.banner_image_url !== undefined)) {
-      for (const row of rows) row.banner_image_url ??= null;
+      const omittedBanners = rows.filter((row) => row.banner_image_url === undefined);
+      if (omittedBanners.length) {
+        const { data, error } = await supabaseAdmin.from('home_sections')
+          .select('key, banner_image_url').in('key', omittedBanners.map((row) => row.key));
+        if (error) throw error;
+        const saved = new Map((data ?? []).map((row) => [row.key, row.banner_image_url]));
+        for (const row of omittedBanners) row.banner_image_url = saved.get(row.key) ?? null;
+      }
     }
 
     // Older editor sessions omit the field. Preserve their saved layouts,

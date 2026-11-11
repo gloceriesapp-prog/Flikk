@@ -73,7 +73,7 @@ describe('customer release safeguards', () => {
     `);
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual({
-      version: '1.0.4', packageVersion: '1.0.4', runtime: { policy: 'appVersion' },
+      version: '1.0.4', packageVersion: '1.0.4', runtime: '1.0.4-android-native-1',
     });
   });
 

@@ -35,6 +35,7 @@ export function useHomeContent() {
       const seen = new Set<string>();
       const result: HomeContentRecord[] = [];
       for (const row of rows) {
+        if (!row || typeof row !== 'object') continue;
         if (!TAB_KEYS.includes(row.tabKey) || seen.has(row.tabKey)) continue;
         if (!Number.isSafeInteger(row.revision) || row.revision < 1) continue;
         try {
@@ -44,6 +45,7 @@ export function useHomeContent() {
           // Malformed tab content — drop just this tab, keep the rest.
         }
       }
+      if (rows.length > 0 && result.length === 0) throw new Error('Home content response has no supported valid tabs.');
       return result;
     },
     staleTime: 300_000,

@@ -35,3 +35,25 @@ BEGIN
   END IF;
 END $$;
 ROLLBACK;
+
+-- Optional Home product banners share Admin/mobile's supported shelf contract.
+BEGIN;
+UPDATE public.home_sections SET banner_image_url = 'https://images.gloceries.com/appsui/test.png'
+WHERE key IN ('trending', 'deals-for-you', 'everyday-dairy', 'price-drops', 'preorders');
+DO $$
+BEGIN
+  IF (SELECT count(*) FROM public.home_sections WHERE key = 'trending' AND banner_image_url IS NOT NULL) <> 1 THEN
+    RAISE EXCEPTION 'product shelf banner was not saved';
+  END IF;
+  BEGIN
+    UPDATE public.home_sections SET banner_image_url = 'https://images.gloceries.com/test.png' WHERE key = 'quick-categories';
+    RAISE EXCEPTION 'structural section accepted product artwork';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    UPDATE public.home_sections SET banner_image_url = 'http://unsafe.test/test.png' WHERE key = 'trending';
+    RAISE EXCEPTION 'insecure artwork was accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+END $$;
+ROLLBACK;

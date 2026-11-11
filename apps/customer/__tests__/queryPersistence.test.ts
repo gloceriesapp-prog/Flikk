@@ -53,6 +53,25 @@ describe('query cache persistence', () => {
     expect(expired.getQueryData(['home-tabs'])).toBeUndefined();
   });
 
+  it('rejects future snapshots and strips private injected queries and mutations on restore', async () => {
+    const storage = memoryStorage();
+    await saveFrom(storage, (client) => client.setQueryData(['home-tabs'], ['all']));
+    const [key, raw] = [...storage.data.entries()][0];
+    const saved = JSON.parse(raw);
+    const query = saved.state.queries[0];
+    saved.state.queries.push({ ...query, queryKey: ['orders'], queryHash: '["orders"]' });
+    saved.state.mutations = [{ state: { status: 'pending' } }];
+    storage.data.set(key, JSON.stringify(saved));
+    const client = new QueryClient();
+    await createQueryPersistence(storage, '1.0.4', () => 2000).attach(client);
+    expect(client.getQueryData(['home-tabs'])).toEqual(['all']);
+    expect(client.getQueryData(['orders'])).toBeUndefined();
+    expect(client.getMutationCache().getAll()).toHaveLength(0);
+    const future = new QueryClient();
+    await createQueryPersistence(storage, '1.0.4', () => 999).attach(future);
+    expect(future.getQueryData(['home-tabs'])).toBeUndefined();
+  });
+
   it('discard wipes the snapshot before the next account restores', async () => {
     const storage = memoryStorage();
     const persistence = await saveFrom(storage, (client) => client.setQueryData(['home-tabs'], ['all']));

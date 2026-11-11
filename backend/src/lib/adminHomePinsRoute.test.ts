@@ -147,3 +147,20 @@ it('saves a valid pre-order banner URL and rejects unsafe URLs', async () => {
   expect((await save('http://example.com/banner.png')).status).toBe(400);
   expect(db.upserted).toBeNull();
 });
+
+
+it('saves HTTPS product-shelf banners and preserves artwork omitted by older editors', async () => {
+  db.sections = [{ key: 'trending', banner_image_url: 'https://images.gloceries.com/old.png' }];
+  const result = await sections.PUT(json({ sections: [
+    { key: 'deals-for-you', enabled: true, banner_image_url: 'https://images.gloceries.com/new.png' },
+    { key: 'trending', enabled: true },
+  ] }));
+  expect(result.status).toBe(200);
+  expect(db.upserted).toEqual([
+    expect.objectContaining({ key: 'deals-for-you', banner_image_url: 'https://images.gloceries.com/new.png' }),
+    expect.objectContaining({ key: 'trending', banner_image_url: 'https://images.gloceries.com/old.png' }),
+  ]);
+  for (const banner_image_url of ['http://unsafe.test/image.png', 'https://user:password@example.com/img', 42]) {
+    expect((await sections.PUT(json({ sections: [{ key: 'trending', banner_image_url }] }))).status).toBe(400);
+  }
+});

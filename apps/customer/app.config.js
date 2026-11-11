@@ -3,6 +3,9 @@ const { validateApiUrl } = require('../../packages/shared/config/api-url.cjs');
 const { googleServicesFile: resolveGoogleServicesFile } = require('../../packages/shared/config/google-services.cjs');
 const { resolveNativeMapKeys } = require('../../packages/shared/config/google-maps.cjs');
 const buildProfile = process.env.EAS_BUILD_PROFILE;
+const nativeRuntime = require('./native-runtime.json');
+const updateChannel = process.env.CUSTOMER_UPDATE_CHANNEL || 'production';
+if (!['preview', 'production'].includes(updateChannel)) throw new Error('Unsupported customer update channel.');
 const developmentApi = buildProfile ? buildProfile.startsWith('development') : process.env.NODE_ENV !== 'production' && process.env.APP_ENV !== 'production';
 // eas-cli evaluates this file on the developer's machine *before* it pulls the
 // EAS environment variables (it needs extra.eas.projectId first), so a release
@@ -35,24 +38,21 @@ module.exports = {
     slug: 'customer',
     scheme: 'gloceries',
     version: '1.0.4',
-    // OTA updates only reach builds with the same runtime version, so a JS
-    // update can never land on a binary missing the native code it needs.
-    // Bump `version` whenever native modules change (mirrors apps/partner).
-    runtimeVersion: { policy: 'appVersion' },
+    // Native changes require a new runtime ID and a store build. The release
+    // and OTA guards compare native inputs against the installed build commit.
+    runtimeVersion: nativeRuntime.android,
     updates: {
       url: `https://u.expo.dev/${easProjectId}`, fallbackToCacheTimeout: 0,
       ...(process.env.CUSTOMER_DIRECT_ANDROID_RELEASE === 'true' || process.env.CUSTOMER_DIRECT_IOS_RELEASE === 'true'
-        ? { requestHeaders: { 'expo-channel-name': 'production' } } : {}),
+        ? { requestHeaders: { 'expo-channel-name': updateChannel } } : {}),
     },
     orientation: 'portrait',
     // Brand placeholders (lime + Gilroy "g", generated) — replace with designer assets before store listing.
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     ios: {
-      // Custom UPI adds native code while marketing version stays 1.0.4.
-      // Isolate it from older iOS/Android OTA bundles using that app version.
-      // Increment this compatibility ID whenever the iOS native runtime changes.
-      runtimeVersion: '1.0.4-ios-upi-1',
+      // iOS has a separate native runtime, including its Custom UPI module.
+      runtimeVersion: nativeRuntime.ios,
       // Initial App Store launch is iPhone-only. Enable iPad after tablet QA.
       supportsTablet: false,
       bundleIdentifier: 'com.gloceries.customer',
@@ -164,7 +164,9 @@ module.exports = {
         projectId: easProjectId,
       },
       // Native Google SDK availability, never the key itself.
-      hasIosGoogleMaps: Boolean(iosGoogleMapsApiKey),
+      // OTA may not read native SDK keys. New iOS baselines require Google Maps
+      // in verifyIosRelease; the platform-scoped export preserves that capability.
+      hasIosGoogleMaps: Boolean(iosGoogleMapsApiKey) || process.env.CUSTOMER_OTA_PLATFORM === 'ios',
     },
     owner: 'nishal777',
   },

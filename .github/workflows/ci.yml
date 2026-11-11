@@ -199,6 +199,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --runInBand --watchman=false
+      - run: node --test scripts/ota/*.test.cjs
       - name: Bundle both native platforms
         run: npx expo export --platform ios --max-workers 2 --output-dir /tmp/customer-ios
       - run: npx expo export --platform android --max-workers 2 --output-dir /tmp/customer-android
@@ -224,7 +225,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci --no-audit --no-fund
       - name: Verify Expo native dependency alignment
-        run: npx --yes expo-doctor
+        # 1.21.7 crashes at startup; keep the last verified tool release pinned.
+        run: npx --yes expo-doctor@1.21.6
         working-directory: apps/${{ matrix.app }}
         env:
           EXPO_NO_DOTENV: '1'

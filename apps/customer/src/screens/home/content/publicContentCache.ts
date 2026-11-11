@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { subscribeHomeContent } from './realtime';
 import { invalidateInventory } from './inventoryCache';
 const PUBLIC_CONTENT_KEYS = new Set(['home-content', 'home-tabs', 'category-sections', 'category-detail']);
-const HOME_SECTIONS = new Set(['sections', 'festival-greeting', 'festival-section', 'seasonal-section']);
+const HOME_SECTIONS = new Set(['sections', 'picks', 'festival-greeting', 'festival-section', 'seasonal-section']);
 export function invalidatePublicContent(client: QueryClient) {
   return client.invalidateQueries({ predicate: query => PUBLIC_CONTENT_KEYS.has(String(query.queryKey[0])) ||
     (query.queryKey[0] === 'home' && HOME_SECTIONS.has(String(query.queryKey[1]))) });

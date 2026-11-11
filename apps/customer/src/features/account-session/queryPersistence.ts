@@ -53,7 +53,15 @@ export function createQueryPersistence(storage: PersistStorage, buster: string, 
                     const saved = raw ? JSON.parse(raw) as Saved : null;
                     // hydrate keeps whichever copy is newer, so a fetch that
                     // already landed is never overwritten by the saved one.
-                    if (attached && saved?.buster === buster && now() - saved.savedAt < MAX_AGE_MS) hydrate(client, saved.state);
+                    if (attached && saved?.buster === buster && Number.isFinite(saved.savedAt)
+                        && now() >= saved.savedAt && now() - saved.savedAt < MAX_AGE_MS
+                        && Array.isArray(saved.state?.queries)) {
+                        // Recheck the allowlist on restore too. Ignore unknown/private cache entries
+                        // from older app/OTA schemas and never restore pending mutations.
+                        hydrate(client, { mutations: [], queries: saved.state.queries.filter((query) =>
+                            Array.isArray(query.queryKey) && PERSISTED_ROOTS.has(String(query.queryKey[0]))
+                            && query.state?.status === 'success') });
+                    }
                 } catch { /* Unreadable snapshot: start cold; the next save replaces it. */ }
                 if (!attached) return;
                 // Subscribe only after restoring: an early save while offline

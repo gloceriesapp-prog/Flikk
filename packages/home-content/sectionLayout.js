@@ -25,3 +25,6 @@ export function homePreviewLimit(layout) {
 }
 
 export const DEFAULT_PREORDER_BANNER = 'https://images.gloceries.com/appsui/pre-ordr-now.png';
+
+// Banners belong to product shelves; structural/navigation sections keep their own design.
+export const supportsHomeBanner = (key) => key === 'preorders' || key === 'price-drops' || defaultHomeProductLayout(key) !== null;

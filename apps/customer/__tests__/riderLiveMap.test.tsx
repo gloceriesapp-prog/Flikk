@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Hoisted Jest mocks resolve React and native components at runtime. */
 import { render } from '@testing-library/react-native';
 import { RiderLiveMap } from '../src/screens/track-order/components/RiderLiveMap';
 import type { RiderLocationResponse } from '../src/api/tracking';

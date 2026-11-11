@@ -31,8 +31,9 @@ import { SectionSkeleton } from '../loading/SectionSkeleton';
 import { FestivalPicksSection } from '../festival/picks/FestivalPicksSection';
 import { SeasonalSection } from '../seasonal/SeasonalSection';
 import { HomeProductCollectionButton } from '../components/HomeSectionButton';
+import { HomeSectionBanner } from '../components/HomeSectionBanner';
 import { PreorderSection } from '../preorders/PreorderSection';
-import { homePreviewLimit, homeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
+import { homePreviewLimit, homeProductLayout, supportsHomeBanner, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 export interface HomeSectionItem {
   key: string;
@@ -169,6 +170,9 @@ const HomeSection = memo(function HomeSection({
       overflow: 'hidden',
       paddingBottom: 24,
     } : bgColor ? { backgroundColor: bgColor } : undefined}>
+      {sectionKey !== 'preorders' && supportsHomeBanner(sectionKey) && (
+        <HomeSectionBanner imageUrl={config.bannerImageUrl} title={copy.title} />
+      )}
       {node}
       {collectionLabel && (
         <HomeProductCollectionButton
