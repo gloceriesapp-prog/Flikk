@@ -5,6 +5,7 @@
 import type { Serving } from '../../../store/cartIdentity';
 
 export interface ProductOption {
+  imageUrls?: string[];
   id: string;
   name: string;
   imageUrl?: string;

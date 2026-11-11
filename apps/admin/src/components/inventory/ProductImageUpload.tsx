@@ -11,11 +11,13 @@ export function ProductImageUpload({
   onChange,
   bucket = 'product-images',
   small = false,
+  onUploadingChange,
 }: {
   imageUrl: string | undefined;
   onChange: (url: string, bgColor: string | null) => void | Promise<void>;
   // Gallery "add photo" tile (ProductGalleryEditor) — same upload, smaller box.
   small?: boolean;
+  onUploadingChange?: (uploading: boolean) => void;
   bucket?: 'appsui' | 'banners' | 'categories' | 'festivals' | 'illustrations' | 'products' | 'stores' | 'product-images' | 'store-images' | 'category-images' | 'home-tab-images' | 'home-tab-banner-images';
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +35,7 @@ export function ProductImageUpload({
     setError(null);
     setPreview(URL.createObjectURL(file));
     setUploading(true);
+    onUploadingChange?.(true);
 
     try {
       const formData = new FormData();
@@ -47,6 +50,7 @@ export function ProductImageUpload({
       setPreview(null);
     } finally {
       setUploading(false);
+      onUploadingChange?.(false);
     }
   }
 

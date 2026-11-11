@@ -70,7 +70,7 @@ export async function saveVariantMarkups(productId: string, markups: { unit_type
 // ones inserted, missing ones deleted. Past order lines keep the flavour
 // name (option_name_at_order), so deleting one is safe.
 export async function saveProductOptions(productId: string,
-  options: { id: string | null; name: string; image_url: string | null; is_available: boolean; sort_order: number }[]): Promise<void> {
+  options: { id: string | null; name: string; image_url: string | null; extra_image_urls?: string[]; is_available: boolean; sort_order: number }[]): Promise<void> {
   const fail = () => new CatalogueSaveError(500, 'Product saved, but its flavours were not. Try saving again.');
   const { data: existing, error } = await supabaseAdmin.from('product_options').select('id').eq('product_id', productId);
   if (error) throw fail();
@@ -86,7 +86,7 @@ export async function saveProductOptions(productId: string,
     if (tmpError) throw fail();
   }
   for (const o of options) {
-    const row = { product_id: productId, name: o.name, image_url: o.image_url, is_available: o.is_available, sort_order: o.sort_order };
+    const row = { product_id: productId, name: o.name, image_url: o.image_url, ...(o.extra_image_urls === undefined ? {} : { extra_image_urls: o.extra_image_urls }), is_available: o.is_available, sort_order: o.sort_order };
     const { error: writeError } = o.id
       ? await supabaseAdmin.from('product_options').update(row).eq('id', o.id).eq('product_id', productId)
       : await supabaseAdmin.from('product_options').insert(row);

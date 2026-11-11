@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_EXTRA_IMAGES, toBrand, toCatalogueItemLink, toPreorder, toExtraImageUrls, validateProductInput } from './productValidation';
+import { MAX_EXTRA_IMAGES, toProductOptions, toBrand, toCatalogueItemLink, toPreorder, toExtraImageUrls, validateProductInput } from './productValidation';
 
 const cover = 'https://cdn.example/a.webp';
 
@@ -106,4 +106,15 @@ test('catalogue item link: absent leaves it, empty clears it, only real ids are 
   const id = '3f2b8a1c-5d4e-4f6a-9b7c-1d2e3f4a5b6c';
   assert.deepEqual(toCatalogueItemLink({ catalogueItemId: id }), { catalogue_item_id: id });
   assert.throws(() => toCatalogueItemLink({ catalogueItemId: 'Maggi' }), /suggestions/);
+});
+
+
+test('flavour galleries retain order, normalize duplicates and support explicit clearing', () => {
+  const base = { name: 'Mango', imageUrl: cover };
+  assert.deepEqual(toProductOptions({ options: [{ ...base, extraImageUrls: [' https://cdn.example/b.webp ', cover, 'https://cdn.example/b.webp'] }] })?.[0]?.extra_image_urls, ['https://cdn.example/b.webp']);
+  assert.equal(toProductOptions({ options: [base] })?.[0]?.extra_image_urls, undefined);
+  assert.deepEqual(toProductOptions({ options: [{ ...base, extraImageUrls: [] }] })?.[0]?.extra_image_urls, []);
+  assert.throws(() => toProductOptions({ options: [{ name: 'Mango', extraImageUrls: ['https://cdn.example/b.webp'] }] }));
+  assert.throws(() => toProductOptions({ options: [{ ...base, extraImageUrls: ['javascript:alert(1)'] }] }));
+  assert.throws(() => toProductOptions({ options: [{ ...base, extraImageUrls: Array.from({ length: 8 }, (_, i) => `https://cdn.example/${i}.webp`) }] }));
 });

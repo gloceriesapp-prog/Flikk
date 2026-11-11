@@ -12,10 +12,14 @@ export function ProductGalleryEditor({
   urls,
   hasCover,
   onChange,
+  onUpload,
+  onUploadingChange,
 }: {
   urls: string[];
   hasCover: boolean;
   onChange: (urls: string[]) => void;
+  onUpload?: (url: string) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   function move(from: number, to: number) {
     const next = [...urls];
@@ -71,7 +75,8 @@ export function ProductGalleryEditor({
               key={urls.length}
               small
               imageUrl={undefined}
-              onChange={(url) => { if (!urls.includes(url)) onChange([...urls, url]); }}
+              onUploadingChange={onUploadingChange}
+              onChange={(url) => { if (onUpload) onUpload(url); else if (!urls.includes(url)) onChange([...urls, url]); }}
             />
           ) : (
             <p className="self-center text-[11px] text-muted">Add the main photo first.</p>

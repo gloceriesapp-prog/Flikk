@@ -37,7 +37,7 @@ export interface ProductWriteInput {
   stockStatus: StockStatus;
   imageUrl?: string | null;
   // Flavours (product_options). Absent leaves them unchanged; a list replaces them.
-  options?: { id?: string | null; name: string; imageUrl?: string | null; isAvailable?: boolean }[] | null;
+  options?: { id?: string | null; name: string; imageUrl?: string | null; extraImageUrls?: string[] | null; isAvailable?: boolean }[] | null;
   // Gallery photos after the cover (products.extra_image_urls). Absent leaves
   // the saved list alone; an array replaces it.
   extraImageUrls?: string[] | null;
@@ -151,7 +151,7 @@ export function toExtraImageUrls(input: Pick<ProductWriteInput, 'imageUrl' | 'ex
     if (typeof raw !== 'string') throw new Error('Each extra photo must be a link.');
     const url = raw.trim();
     if (!url || url === cover || urls.includes(url)) continue;
-    if (!/^https?:\/\//i.test(url)) throw new Error('Each extra photo must be an uploaded image link.');
+    if (url.length > 2048 || !/^https?:\/\//i.test(url)) throw new Error('Each extra photo must be an uploaded image link.');
     urls.push(url);
   }
   if (urls.length > MAX_EXTRA_IMAGES) throw new Error(`Up to ${MAX_EXTRA_IMAGES} extra photos per product.`);
@@ -184,7 +184,7 @@ export const MAX_PRODUCT_OPTIONS = 20;
 // trimmed, required, at most 60 characters and unique per product (matches
 // product_options' checks); blank rows from the form are an error, not dropped.
 export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
-  { id: string | null; name: string; image_url: string | null; is_available: boolean; sort_order: number }[] | undefined {
+  { id: string | null; name: string; image_url: string | null; extra_image_urls?: string[]; is_available: boolean; sort_order: number }[] | undefined {
   if (input.options == null) return undefined;
   if (!Array.isArray(input.options)) throw new Error('options must be a list.');
   if (input.options.length > MAX_PRODUCT_OPTIONS) throw new Error(`Up to ${MAX_PRODUCT_OPTIONS} flavours per product.`);
@@ -197,7 +197,8 @@ export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
     seen.add(name.toLowerCase());
     const image = option.imageUrl?.trim() || null;
     if (image && !/^https?:\/\//i.test(image)) throw new Error(`Flavour "${name}": upload the photo again.`);
-    return { id: option.id ?? null, name, image_url: image, is_available: option.isAvailable !== false, sort_order: index };
+    const extras = toExtraImageUrls(option);
+    return { id: option.id ?? null, name, image_url: image, ...(extras === undefined ? {} : { extra_image_urls: extras }), is_available: option.isAvailable !== false, sort_order: index };
   });
 }
 

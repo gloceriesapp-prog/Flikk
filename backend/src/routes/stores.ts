@@ -52,7 +52,7 @@ const MAX_ALLOWED_DISTANCE_KM = 50;
 // product and a fresh-catalog product map through the identical
 // mapApiProduct() on the client, not two subtly different row shapes.
 export const PRODUCT_WITH_VARIANTS_SELECT =
-  '*, stores!inner(name, is_active, open_time, close_time, availability_override, availability_override_until, fssai_number, address_line, city, district, photo_url), product_variants(*), product_options(id, name, image_url, sort_order, is_available)';
+  '*, stores!inner(name, is_active, open_time, close_time, availability_override, availability_override_until, fssai_number, address_line, city, district, photo_url), product_variants(*), product_options(id, name, image_url, extra_image_urls, sort_order, is_available)';
 
 // Every one of this file's customer-facing feeds also filters
 // .eq('approval_status', 'approved') and leaves out pre-order products (Home

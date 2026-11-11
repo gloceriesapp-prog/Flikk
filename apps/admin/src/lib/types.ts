@@ -488,6 +488,9 @@ export const SERVING_LABEL: Record<Serving, string> = { chilled: 'Chilled', room
 
 // One flavour of a product (product_options). Same sizes and prices.
 export interface ProductOption {
+  /** Stable identity for an unsaved editor row; never persisted. */
+  editorId?: string;
+  extraImageUrls?: string[];
   id?: string;
   name: string;
   imageUrl?: string;
