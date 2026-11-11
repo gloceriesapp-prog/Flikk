@@ -17,7 +17,7 @@ import { ProductImageUpload } from '@/components/inventory/ProductImageUpload';
 import { confirmAction, toast } from '@/components/ui/Toast';
 import { acceptsPins, isoToScheduleInput, pinCapacity } from '@/lib/homeSectionPins';
 import type { Product } from '@/lib/types';
-import { DEFAULT_PREORDER_BANNER, homeProductLayout, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
+import { DEFAULT_PREORDER_BANNER, supportsHomeBanner, homeProductLayout, isHomeProductLayout, type HomeProductLayout } from '../../../../../../packages/home-content/sectionLayout.js';
 
 interface HomeSection {
   key: string;
@@ -287,27 +287,27 @@ export default function HomeSectionsPage() {
                 </div>
               </div>
 
-              {s.key === 'preorders' && (
+              {supportsHomeBanner(s.key) && (
                 <div className="mt-4 border-t border-border pt-4">
-                  <label htmlFor="preorder-banner-url" className="mb-1.5 block text-xs font-medium text-muted">
-                    Pre-order banner image
+                  <label htmlFor={`banner-${s.key}`} className="mb-1.5 block text-xs font-medium text-muted">
+                    Section banner image
                   </label>
                   <div className="flex flex-wrap items-start gap-3">
                     <ProductImageUpload
-                      key={s.banner_image_url || DEFAULT_PREORDER_BANNER}
-                      imageUrl={s.banner_image_url || DEFAULT_PREORDER_BANNER}
+                      key={s.banner_image_url || (s.key === 'preorders' ? DEFAULT_PREORDER_BANNER : '')}
+                      imageUrl={s.banner_image_url || (s.key === 'preorders' ? DEFAULT_PREORDER_BANNER : '')}
                       onChange={(url) => patch(s.key, { banner_image_url: url })}
                       bucket="appsui"
                       small
                     />
                     <div className="min-w-56 flex-1">
-                      <input id="preorder-banner-url" value={s.banner_image_url ?? ''} maxLength={2048}
+                      <input id={`banner-${s.key}`} value={s.banner_image_url ?? ''} maxLength={2048}
                         onChange={(e) => patch(s.key, { banner_image_url: e.target.value || null })}
-                        placeholder={DEFAULT_PREORDER_BANNER} className={inputClass} />
+                        placeholder={s.key === 'preorders' ? DEFAULT_PREORDER_BANNER : 'https://images.gloceries.com/…'} className={inputClass} />
                       <p className="mt-1 text-xs text-muted">Upload a wide image or paste an HTTPS URL. A 4:1 image fits the banner.</p>
                       {s.banner_image_url && (
                         <button type="button" className="btn btn-ghost mt-2"
-                          onClick={() => patch(s.key, { banner_image_url: null })}>Use default image</button>
+                          onClick={() => patch(s.key, { banner_image_url: null })}>{s.key === 'preorders' ? 'Use default image' : 'Remove banner'}</button>
                       )}
                     </div>
                   </div>

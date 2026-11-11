@@ -9,6 +9,7 @@
 import type { HomeProductLayout } from '../../../../../packages/home-content/sectionLayout.js';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../api/client';
+import { parseHomeSections } from './content/sectionConfig';
 
 export interface HomeSectionConfig {
   key: string;
@@ -30,6 +31,8 @@ export function useHomeSections() {
     staleTime: 300_000,
     gcTime: 30 * 60_000,
     queryKey: ['home', 'sections'],
-    queryFn: () => apiRequest<HomeSectionConfig[]>('/home/sections', { auth: false }),
+    queryFn: async () => parseHomeSections(await apiRequest<unknown>('/home/sections', { auth: false })),
+    select: parseHomeSections, // Validate restored snapshots as well as network responses.
+    refetchOnReconnect: 'always',
   });
 }

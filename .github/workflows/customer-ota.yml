@@ -1,0 +1,140 @@
+name: Customer OTA Update
+
+# No per-push OTA deployments. Production republishes the exact preview group.
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        type: choice
+        options: [preview, production]
+        default: preview
+        required: true
+        description: 'Publish for QA, or promote an already tested preview'
+      platform:
+        type: choice
+        options: [android, ios]
+        required: true
+        description: 'One platform per tested deployment'
+      native_build_commit:
+        type: string
+        required: true
+        description: 'Exact 40-character source SHA of the installed matching native build'
+      tested_preview_run_id:
+        type: string
+        description: 'Production only: successful preview run ID, after physical-device testing'
+      confirm_device_tests:
+        type: boolean
+        default: false
+        description: 'Production only: exact preview passed launch, Maps, login and payment-return tests'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: customer-ota-${{ inputs.platform }}-${{ inputs.channel }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: customer-ota-${{ inputs.channel }}
+    env:
+      OTA_CHANNEL: ${{ inputs.channel }}
+      OTA_PLATFORM: ${{ inputs.platform }}
+      OTA_NATIVE_BUILD_COMMIT: ${{ inputs.native_build_commit }}
+      OTA_PREVIEW_ID: ${{ inputs.tested_preview_run_id }}
+      OTA_DEVICE_TESTS: ${{ inputs.confirm_device_tests }}
+      OTA_EXPORT_DIR: ${{ runner.temp }}/customer-ota-export
+      OTA_RESULT: ${{ runner.temp }}/ota-result.json
+      OTA_REPORT: ${{ runner.temp }}/ota-report.json
+      OTA_PREVIEW_REPORT: ${{ runner.temp }}/preview/ota-report.json
+      OTA_PREVIEW_RUN: ${{ runner.temp }}/preview-run.json
+      APP_ENV: production
+      EXPO_PUBLIC_API_URL: https://api.gloceries.com
+      EXPO_PUBLIC_API_FOLLOW_METRO_HOST: 'false'
+      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+      CUSTOMER_OTA_PLATFORM: ${{ inputs.platform }}
+      EXPO_NO_DOTENV: '1'
+      EXPO_NO_TELEMETRY: '1'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/customer/package-lock.json
+      - name: Block native changes before installing or publishing
+        run: node apps/customer/scripts/ota/native-compatibility.cjs
+      - name: Validate production promotion request
+        if: inputs.channel == 'production'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$OTA_DEVICE_TESTS" = true || { echo 'Confirm exact-preview device testing first.'; exit 1; }
+          [[ "$OTA_PREVIEW_ID" =~ ^[1-9][0-9]*$ ]] || { echo 'Provide a successful preview run ID.'; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$OTA_PREVIEW_ID" > "$OTA_PREVIEW_RUN"
+          gh run download "$OTA_PREVIEW_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "customer-ota-preview-$OTA_PLATFORM-$GITHUB_SHA" --dir "$RUNNER_TEMP/preview"
+      - name: Verify preview provenance and native compatibility
+        id: preview
+        if: inputs.channel == 'production'
+        run: node apps/customer/scripts/ota/update-report.cjs validate-preview
+      - name: Install locked customer dependencies
+        working-directory: apps/customer
+        run: npm ci --no-audit --no-fund
+      - name: Validate customer app
+        working-directory: apps/customer
+        run: |
+          npx tsc --noEmit
+          npm run lint -- --max-warnings=0
+          npm test -- --runInBand
+          node --test scripts/ota/*.test.cjs
+      - name: Install pinned Expo deployment CLI
+        run: npm install --global eas-cli@27.7.2 --no-audit --no-fund
+      - name: Export and inspect the preview bundle before publication
+        if: inputs.channel == 'preview'
+        env:
+          NODE_ENV: production
+        run: node apps/customer/scripts/ota/export-update.cjs
+      - name: Publish preview update
+        if: inputs.channel == 'preview'
+        working-directory: apps/customer
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          NODE_ENV: production
+        run: |
+          set -euo pipefail
+          test -n "$EXPO_TOKEN" || { echo 'Configure Expo access in the selected OTA environment.'; exit 1; }
+          test -n "$EXPO_PUBLIC_SENTRY_DSN" || { echo 'Configure the customer Sentry DSN.'; exit 1; }
+          eas update --channel preview --platform "$OTA_PLATFORM" --environment production \
+            --skip-bundler --input-dir "$OTA_EXPORT_DIR" \
+            --message "Customer $GITHUB_SHA" --non-interactive --json > "$OTA_RESULT"
+      - name: Promote the exact tested preview without rebuilding
+        if: inputs.channel == 'production'
+        working-directory: apps/customer
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          OTA_PREVIEW_GROUP: ${{ steps.preview.outputs.group }}
+          NODE_ENV: production
+        run: |
+          set -euo pipefail
+          test -n "$EXPO_TOKEN" || { echo 'Configure Expo access in the selected OTA environment.'; exit 1; }
+          eas update:republish --group "$OTA_PREVIEW_GROUP" --destination-channel production \
+            --platform "$OTA_PLATFORM" --message "Promote tested customer $GITHUB_SHA" \
+            --non-interactive --json > "$OTA_RESULT"
+      - name: Verify and record published platform and runtime
+        run: node apps/customer/scripts/ota/update-report.cjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: customer-ota-${{ inputs.channel }}-${{ inputs.platform }}-${{ github.sha }}
+          path: ${{ runner.temp }}/ota-report.json
+          if-no-files-found: error
+          retention-days: 30

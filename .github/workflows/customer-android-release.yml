@@ -5,6 +5,16 @@ name: Customer Android Release
 on:
   workflow_dispatch:
     inputs:
+      update_channel:
+        description: 'Build channel (preview for QA, production for Play)'
+        required: true
+        default: production
+        type: choice
+        options: [preview, production]
+      previous_native_build_commit:
+        description: 'Exact 40-character source commit of the previous installed customer Android build'
+        required: true
+        type: string
       version_code:
         description: 'New Android version code (higher than every code uploaded to Play)'
         required: true
@@ -33,6 +43,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -51,6 +62,12 @@ jobs:
           npx tsc --noEmit
           npm run lint -- --max-warnings=0
           npm test -- --runInBand
+          node --test scripts/ota/*.test.cjs
+      - name: Require a new runtime when native inputs change
+        env:
+          OTA_NATIVE_BUILD_COMMIT: ${{ inputs.previous_native_build_commit }}
+          OTA_PLATFORM: android
+        run: node apps/customer/scripts/ota/native-release.cjs
       - name: Validate requested version codes and release branch
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -73,6 +90,7 @@ jobs:
     env:
       APP_ENV: production
       NODE_ENV: production
+      CUSTOMER_UPDATE_CHANNEL: ${{ inputs.update_channel }}
       CUSTOMER_DIRECT_ANDROID_RELEASE: 'true'
       CUSTOMER_ANDROID_VERSION_CODE: ${{ inputs.version_code }}
       CUSTOMER_HIGHEST_PLAY_VERSION_CODE: ${{ inputs.highest_play_version_code }}
@@ -96,6 +114,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'

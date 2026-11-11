@@ -136,7 +136,7 @@ function validateManifest(facts, env, version) {
     assert.ok(!facts.permissions?.includes(permission), `Unexpected customer permission: ${permission}`);
   }
   assert.equal(facts.hasMapKey, true, 'Packaged native Maps API key is missing.');
-  assert.equal(facts.headers['expo-channel-name'], 'production', 'Production OTA channel header is missing.');
+  assert.equal(facts.headers['expo-channel-name'], env.CUSTOMER_UPDATE_CHANNEL || 'production', 'Release OTA channel header does not match the requested channel.');
   assert.equal(facts.updatesUrl, 'https://u.expo.dev/a98e9f05-620b-4efb-8624-99d724667e7c', 'Unexpected Expo Updates project.');
 }
 
@@ -191,6 +191,8 @@ function verifyRelease(bundle, env = process.env) {
     targetSdk: Number(facts.targetSdk), cleartextTrafficAllowed: false, native16KbAlignment: 'passed', native64LibraryCount: native64.length,
     productionApiVerifiedInBundle: true, mapsKeyPresent: facts.hasMapKey,
     otaChannel: facts.headers['expo-channel-name'], optimizerChecks: 'passed',
+    runtimeVersion: require('../native-runtime.json').android,
+    nativeHash: require('./ota/native-compatibility.cjs').sourceIdentity(),
     submittedToPlay: false, deviceTestingRequired: true,
   };
   fs.writeFileSync(path.join(artifactDir, 'release-verification.json'), JSON.stringify(report, null, 2) + '\n');

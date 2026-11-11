@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, type Query, type QueryClient } from '@tanstac
 import { apiRequest } from '../../../api/client';
 import { subscribeHomeContent, type InventoryEvent } from './realtime';
 
-const homeInventory = new Set(['nearby-stores', 'nearest-store', 'deals-products', 'buy-it-again',
+const homeInventory = new Set(['picks', 'preorders', 'nearby-stores', 'nearest-store', 'deals-products', 'buy-it-again',
   'popular', 'everyday-essentials', 'groceries', 'festival-picks']);
 export function isInventoryQuery(key: readonly unknown[]) {
   return (key[0] === 'home' && homeInventory.has(String(key[1]))) ||

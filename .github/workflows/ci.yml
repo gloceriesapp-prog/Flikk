@@ -199,6 +199,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --runInBand --watchman=false
+      - run: node --test scripts/ota/*.test.cjs
       - name: Bundle both native platforms
         run: npx expo export --platform ios --max-workers 2 --output-dir /tmp/customer-ios
       - run: npx expo export --platform android --max-workers 2 --output-dir /tmp/customer-android

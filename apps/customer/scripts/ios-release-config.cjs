@@ -34,7 +34,11 @@ function verifyIosRelease(env = process.env) {
 }
 
 if (require.main === module) {
-  try { console.log(JSON.stringify(verifyIosRelease(), null, 2)); }
+  try {
+    const release = verifyIosRelease();
+    require('./ota/native-compatibility.cjs').checkNativeRelease(process.env.OTA_NATIVE_BUILD_COMMIT, 'ios');
+    console.log(JSON.stringify(release, null, 2));
+  }
   catch (error) { console.error(error.message); process.exitCode = 1; }
 }
 

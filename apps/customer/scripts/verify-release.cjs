@@ -2,7 +2,10 @@
 const { validateApiUrl } = require('../../../packages/shared/config/api-url.cjs');
 const failures = [];
 if (process.env.CUSTOMER_DIRECT_IOS_RELEASE === 'true') {
-  try { require('./ios-release-config.cjs').verifyIosRelease(process.env); }
+  try {
+    require('./ios-release-config.cjs').verifyIosRelease(process.env);
+    require('./ota/native-compatibility.cjs').checkNativeRelease(process.env.OTA_NATIVE_BUILD_COMMIT, 'ios');
+  }
   catch (error) { failures.push(error.message); }
 }
 try { validateApiUrl(process.env.EXPO_PUBLIC_API_URL, false); } catch { failures.push('Configure an HTTPS release API URL.'); }
@@ -21,7 +24,7 @@ try {
   const manifest = require('../package.json');
   if (!expo.ios?.infoPlist?.NSPhotoLibraryUsageDescription?.trim()) failures.push('Missing NSPhotoLibraryUsageDescription (Apple ITMS-90683).');
   if (manifest.version !== expo.version) failures.push('package.json and app.config.js versions must match.');
-  if (expo.runtimeVersion?.policy !== 'appVersion') failures.push('Native releases require the appVersion update-runtime policy.');
+  if (expo.runtimeVersion !== require('../native-runtime.json').android || expo.ios?.runtimeVersion !== require('../native-runtime.json').ios) failures.push('Native release runtimes must match native-runtime.json.');
   if (!expo.plugins?.includes('./plugins/withAndroidReleaseQuality.cjs')) failures.push('Android release optimization plugin is missing.');
   // Both shipped platforms use Google Maps. Refuse an iOS release that would
   // silently fall back to Apple Maps because its native SDK key was omitted.
