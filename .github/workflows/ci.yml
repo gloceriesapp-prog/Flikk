@@ -225,7 +225,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci --no-audit --no-fund
       - name: Verify Expo native dependency alignment
-        run: npx --yes expo-doctor
+        # 1.21.7 crashes at startup; keep the last verified tool release pinned.
+        run: npx --yes expo-doctor@1.21.6
         working-directory: apps/${{ matrix.app }}
         env:
           EXPO_NO_DOTENV: '1'
