@@ -1,5 +1,4 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { Text } from 'react-native';
 import { SimilarProductsRow } from '../src/components/ProductDetailSheet/SimilarProductsRow';
 import { ProductFlavourOptions } from '../src/components/ProductDetailSheet/ProductFlavourOptions';
 import { useSimilarProducts } from '../src/components/ProductDetailSheet/useSimilarProducts';
@@ -19,8 +18,7 @@ const query = { data: { pages: [{ products: Array.from({ length: 9 }, (_, i) => 
 beforeEach(() => { jest.clearAllMocks(); (useSimilarProducts as jest.Mock).mockReturnValue(query); });
 it('shows six preview cards and opens the full list only through See all', async () => {
   const onSelect = jest.fn();
-  const view = await render(<SimilarProductsRow product={product(0)} onSelect={onSelect}><Text>Choose a flavour</Text></SimilarProductsRow>);
-  expect(view.getByText('Choose a flavour')).toBeTruthy();
+  const view = await render(<SimilarProductsRow product={product(0)} onSelect={onSelect} />);
   expect(view.queryByText('Drink 7')).toBeNull();
   await fireEvent.press(view.getByText('See all similar products'));
   expect(view.getByText('Drink 7')).toBeTruthy();

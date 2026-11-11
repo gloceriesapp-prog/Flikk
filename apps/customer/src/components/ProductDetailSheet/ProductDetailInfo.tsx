@@ -80,7 +80,7 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
   // With no option pickers between them, the size line hugs the title with
   // the same 4px gap it has above the price (card gap-3 minus -mt-2).
   const hasOptions = hasRealVariants || !!(product.cutOptions && selectedCut && onSelectCut)
-    || !!(product.preorder && onSelectPreorder)
+    || !!(product.options?.length && onSelectOption) || !!(product.preorder && onSelectPreorder)
     || !!(product.servingOptions?.length && onSelectServing);
 
   return (
@@ -104,6 +104,10 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
 
         {product.cutOptions && selectedCut && onSelectCut ? (
           <ProductCutOptions selected={selectedCut} onSelect={onSelectCut} bulkMinKg={product.bulkMinKg} />
+        ) : null}
+
+        {product.options?.length && onSelectOption ? (
+          <ProductFlavourOptions options={product.options} selectedId={selectedOptionId} onSelect={onSelectOption} />
         ) : null}
 
         {product.preorder && onSelectPreorder ? (
@@ -159,11 +163,7 @@ export function ProductDetailInfo({ product, selectedVariantId, onSelectVariant,
       )}
 
       <View className="overflow-hidden rounded-2xl bg-white">
-        <SimilarProductsRow product={product} onSelect={onSelectProduct}>
-          {product.options?.length && onSelectOption ? (
-            <ProductFlavourOptions options={product.options} selectedId={selectedOptionId} onSelect={onSelectOption} />
-          ) : null}
-        </SimilarProductsRow>
+        <SimilarProductsRow product={product} onSelect={onSelectProduct} />
       </View>
     </View>
   );

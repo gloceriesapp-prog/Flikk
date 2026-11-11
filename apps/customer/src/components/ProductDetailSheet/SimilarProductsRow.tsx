@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,22 +11,20 @@ import { useSimilarProducts } from './useSimilarProducts';
 interface Props {
   product: Product;
   onSelect?: (product: Product) => void;
-  children?: ReactNode;
 }
 
 // One recommendation source for the six-card preview and the full paged list.
-export function SimilarProductsRow({ product, onSelect, children }: Props) {
+export function SimilarProductsRow({ product, onSelect }: Props) {
   const query = useSimilarProducts(product.categoryLabel, product.id, product.storeId, !product.relatedProducts);
   const candidates = product.relatedProducts ?? query.data?.pages.flatMap((page) => page.products) ?? [];
   const products = [...new Map(candidates.filter((item) => item.id !== product.id).map((item) => [item.id, item])).values()];
   const [showAll, setShowAll] = useState(false);
   const insets = useSafeAreaInsets();
   const open = (item: Product) => { setShowAll(false); onSelect?.(item); };
-  if (!children && !products.length && !query.isFetching && !query.isError) return null;
+  if (!products.length && !query.isFetching && !query.isError) return null;
   return (
     <View className="bg-white px-4 pb-4 pt-5">
       <Text className="mb-4 text-[18px] leading-[24px] text-ink" style={{ fontFamily: GILROY.bold }}>Similar products</Text>
-      {children ? <View className="mb-4">{children}</View> : null}
       <View className="-mx-1 flex-row flex-wrap">
         {products.slice(0, 6).map((item) => (
           <View key={item.id} style={{ width: '33.333333%', paddingHorizontal: 4, marginBottom: 16 }}>
