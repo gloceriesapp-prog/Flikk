@@ -13,6 +13,8 @@ export interface ProductOption {
 }
 
 export interface Product {
+  /** Search match only: opens this real flavour while preserving the main product. */
+  initialOptionId?: string;
   id: string;
   isAvailable?: boolean;
   unavailableReason?: 'out_of_stock' | 'stock_unconfirmed' | 'product_unavailable';

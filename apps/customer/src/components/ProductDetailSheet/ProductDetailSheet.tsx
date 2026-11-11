@@ -22,7 +22,7 @@ import { colors } from '../../theme/tokens';
 import { selectCartTotalQuantity, useCartStore } from '../../store/useCartStore';
 import { shareProduct } from '../../utils/shareProduct';
 import { ProductDetailInfo } from './ProductDetailInfo';
-import { MAIN_PRODUCT_CHOICE, flavourPhotos } from './flavourSelection';
+import { initialFlavourChoice, flavourPhotos } from './flavourSelection';
 import { ProductDetailFooter } from './ProductDetailFooter';
 import type { CutSize, Serving } from '../../store/cartIdentity';
 import type { CartPreorder } from '../../store/preorder';
@@ -103,8 +103,8 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
   const [selectedVariantId, setSelectedVariantId] = useState(product.defaultVariantId ?? product.variants?.[0]?.id);
   const selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
   const [selectedCut, setSelectedCut] = useState<CutSize>('medium');
-  // Start with the original product; added flavours are separate choices.
-  const [selectedOptionId, setSelectedOptionId] = useState(MAIN_PRODUCT_CHOICE);
+  // Start with the original product, or the exact flavour matched by search.
+  const [selectedOptionId, setSelectedOptionId] = useState(() => initialFlavourChoice(product));
   const selectedOption = product.options?.find((o) => o.id === selectedOptionId);
   // Chilled preselected when both are offered; one offered needs no choice.
   const [selectedServing, setSelectedServing] = useState<Serving | undefined>(product.servingOptions?.[0]);

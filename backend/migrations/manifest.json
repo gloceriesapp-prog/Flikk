@@ -708,6 +708,10 @@
     {
       "file": "20261111230000_product_main_flavour.sql",
       "sha256": "5c6a6efa42feba1a145617eed7d0f0f7188fa8d709620d518ce2d2a54f0fce71"
+    },
+    {
+      "file": "20261111233000_flavour_search.sql",
+      "sha256": "3e64cf8bc21b1fd855ba6c0552a72251c931e5df5ced71359096865a8b1415fe"
     }
   ]
 }

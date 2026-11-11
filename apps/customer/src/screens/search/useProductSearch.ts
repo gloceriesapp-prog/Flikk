@@ -8,7 +8,7 @@ export function useProductSearch(query: string) {
   const location = useLocationStore(s => s.location);
   useEffect(() => { const timer = setTimeout(() => setDebounced(query.trim()), 300); return () => clearTimeout(timer); }, [query]);
   const result = useInfiniteQuery({
-    queryKey: ['search', 'products', debouncedQuery, location?.latitude, location?.longitude],
+    queryKey: ['search', 'products-flavours-v2', debouncedQuery, location?.latitude, location?.longitude],
     enabled: !!location && debouncedQuery.length >= 2,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {

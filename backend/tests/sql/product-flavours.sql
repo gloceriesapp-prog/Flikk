@@ -25,6 +25,31 @@ INSERT INTO orders(id,customer_id,store_id,address_id,item_total,delivery_fee,co
  ('00000000-0000-4000-8000-000000017041','00000000-0000-4000-8000-0000000170c1','00000000-0000-4000-8000-0000000170f1','00000000-0000-4000-8000-0000000170b1',40,30,0,0,0,70,'cod','placed','2001-04-01 10:00+05:30','2001-04-01 10:20+05:30','2001-04-01 10:50+05:30');
 SET LOCAL session_replication_role=origin;
 
+-- Flavour search returns the parent once, with the exact matching option.
+DO $$
+DECLARE matched uuid; parent uuid; total integer; first_score double precision; first_id uuid;
+BEGIN
+ SELECT id,matched_option_id INTO parent,matched FROM search_customer_product_matches(
+  ARRAY['00000000-0000-4000-8000-0000000170f1'::uuid], 'Achaari Masti', NULL, NULL, 10);
+ IF parent IS DISTINCT FROM '00000000-0000-4000-8000-000000017011'::uuid OR matched IS DISTINCT FROM '00000000-0000-4000-8000-000000017031'::uuid THEN RAISE EXCEPTION 'Flavour search did not select the matching option'; END IF;
+ SELECT matched_option_id INTO matched FROM search_customer_product_matches(
+  ARRAY['00000000-0000-4000-8000-0000000170f1'::uuid], 'Bingo Mad Angles', NULL, NULL, 10);
+ IF matched IS NOT NULL THEN RAISE EXCEPTION 'Main product search selected a different flavour'; END IF;
+ SELECT count(*) INTO total FROM search_customer_product_matches(
+  ARRAY['00000000-0000-4000-8000-0000000170f1'::uuid], 'Mad', NULL, NULL, 10);
+ IF total<>1 THEN RAISE EXCEPTION 'Search duplicated the parent product'; END IF;
+ IF EXISTS(SELECT 1 FROM search_customer_product_matches(ARRAY['00000000-0000-4000-8000-000000017099'::uuid], 'Achaari Masti', NULL, NULL, 10)) THEN RAISE EXCEPTION 'Flavour search crossed delivery scope'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM search_customer_product_ids(ARRAY['00000000-0000-4000-8000-0000000170f1'::uuid], 'Achaari Masti', NULL, NULL, 10)) THEN RAISE EXCEPTION 'Legacy search lost flavour matches'; END IF;
+ UPDATE products SET approval_status='pending' WHERE id='00000000-0000-4000-8000-000000017011';
+ IF EXISTS(SELECT 1 FROM search_customer_product_matches(ARRAY['00000000-0000-4000-8000-0000000170f1'::uuid], 'Achaari Masti', NULL, NULL, 10)) THEN RAISE EXCEPTION 'Unapproved flavour search leaked'; END IF;
+ UPDATE products SET approval_status='approved' WHERE id='00000000-0000-4000-8000-000000017011';
+ INSERT INTO products(id,store_id,name,unit,price,category,approval_status,is_in_stock,stock_status,stock_tracking_enabled,stock_quantity)
+ VALUES('00000000-0000-4000-8000-000000017012','00000000-0000-4000-8000-0000000170f1','Achaari Masti','1 pack',20,'Snacks','approved',true,'in_stock',true,50);
+ SELECT id,score INTO first_id,first_score FROM search_customer_product_matches(ARRAY['00000000-0000-4000-8000-0000000170f1'::uuid], 'Achaari Masti', NULL, NULL, 1);
+ SELECT count(*) INTO total FROM search_customer_product_matches(ARRAY['00000000-0000-4000-8000-0000000170f1'::uuid], 'Achaari Masti', first_score, first_id, 10);
+ IF total<>1 THEN RAISE EXCEPTION 'Flavour search cursor skipped or repeated results'; END IF;
+END $$;
+
 -- Round-trip and reject malformed flavour galleries without touching orders.
 DO $$
 DECLARE saved text[];

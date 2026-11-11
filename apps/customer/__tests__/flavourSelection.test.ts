@@ -1,4 +1,4 @@
-import { flavourChoices, flavourPhotos, MAIN_PRODUCT_CHOICE } from '../src/components/ProductDetailSheet/flavourSelection';
+import { flavourChoices, flavourPhotos, MAIN_PRODUCT_CHOICE, initialFlavourChoice, searchProductDisplay } from '../src/components/ProductDetailSheet/flavourSelection';
 import { cartLineId, checkoutItems } from '../src/store/cartIdentity';
 import type { Product } from '../src/screens/home/products/types';
 const product = { id: '00000000-0000-4000-8000-000000000001', name: 'Badam Milk', imageUrl: 'main', imageUrls: ['main', 'main-back'],
@@ -20,4 +20,13 @@ it('never sends the UI-only main choice as a flavour ID or merges it with an add
   const main = cartLineId(product.id), mango = cartLineId(product.id, undefined, undefined, product.options![0]!.id);
   expect(main).not.toBe(mango);
   expect(checkoutItems([{ id: main, productId: product.id, quantity: 1 }])[0]).not.toHaveProperty('option_id');
+});
+
+it('keeps the parent intact while a search match displays and opens its exact flavour', () => {
+  const match = { ...product, initialOptionId: product.options![0]!.id };
+  expect(initialFlavourChoice(match)).toBe(product.options![0]!.id);
+  expect(searchProductDisplay(match)).toMatchObject({ id: product.id, name: 'Mango Milk', imageUrl: 'mango', imageUrls: ['mango', 'mango-back'] });
+  expect(match.name).toBe('Badam Milk');
+  expect(flavourChoices(match)[0]!.name).toBe('Badam Milk');
+  expect(initialFlavourChoice({ ...product, initialOptionId: 'missing' })).toBe(MAIN_PRODUCT_CHOICE);
 });

@@ -14,3 +14,14 @@ export function flavourPhotos(product: Product, selectedId: string): string[] {
   if (option?.imageUrl) return [option.imageUrl];
   return product.imageUrls?.length ? product.imageUrls : product.imageUrl ? [product.imageUrl] : [];
 }
+
+export function initialFlavourChoice(product: Product): string {
+  return product.options?.some((option) => option.id === product.initialOptionId) ? product.initialOptionId! : MAIN_PRODUCT_CHOICE;
+}
+// Search cards show the matched flavour, but the detail page retains the
+// original product and its full choice list. Cart IDs always use the original.
+export function searchProductDisplay(product: Product): Product {
+  const option = product.options?.find((item) => item.id === product.initialOptionId);
+  return option ? { ...product, name: option.name, imageUrl: option.imageUrl ?? product.imageUrl,
+    imageUrls: flavourPhotos(product, option.id) } : product;
+}
