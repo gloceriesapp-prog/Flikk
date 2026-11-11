@@ -1,3 +1,4 @@
+import { similarProductPage } from '../customer-experience/similarProducts.js';
 import { deliveryStores } from '../customer-experience/browse.js';
 import { publicStore } from '../stores/publicStore.js';
 // Customer-facing browse/catalog. Source: specs/01-customer-app/api.md
@@ -193,52 +194,18 @@ storesRouter.get('/products/catalog', async (req, res, next) => {
 // customer is already shopping) and, since a store selling a single
 // product is essentially never the case, means the peek-pager has
 // something to show for virtually every real product.
+// The paged contract supports See all; keep the legacy array for older apps.
+storesRouter.get('/products/similar/page', async (req, res, next) => {
+  try {
+    const page = await similarProductPage(req.query, res.locals.deliveryStores ?? [], PRODUCT_WITH_VARIANTS_SELECT);
+    res.json({ ...page, products: applyCustomerPrices(page.products) });
+  } catch (error) { next(error); }
+});
 storesRouter.get('/products/similar', async (req, res, next) => {
   try {
-    const category = req.query.category as string | undefined;
-    const excludeId = req.query.exclude as string | undefined;
-    const storeId = req.query.storeId as string | undefined;
-    if (!category) throw new AppError(400, 'MISSING_CATEGORY', 'category query param is required.');
-
-    let query = supabase
-      .from('products')
-      .select(PRODUCT_WITH_VARIANTS_SELECT)
-      .eq('approval_status', 'approved').eq('preorder_enabled', false)
-      .in('store_id', res.locals.deliveryStores ?? [])
-      .eq('category', category)
-      .order('name')
-      .limit(4);
-    if (excludeId) query = query.neq('id', excludeId);
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    if (data && data.length > 0) {
-      res.json(applyCustomerPrices(data));
-      return;
-    }
-
-    if (!storeId) {
-      res.json([]);
-      return;
-    }
-
-    let fallbackQuery = supabase
-      .from('products')
-      .select(PRODUCT_WITH_VARIANTS_SELECT)
-      .eq('approval_status', 'approved').eq('preorder_enabled', false)
-      .in('store_id', res.locals.deliveryStores ?? [])
-      .eq('store_id', storeId)
-      .order('name')
-      .limit(4);
-    if (excludeId) fallbackQuery = fallbackQuery.neq('id', excludeId);
-
-    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-    if (fallbackError) throw fallbackError;
-    res.json(applyCustomerPrices(fallbackData));
-  } catch (err) {
-    next(err);
-  }
+    const page = await similarProductPage({ ...req.query, limit: req.query.limit ?? '6' }, res.locals.deliveryStores ?? [], PRODUCT_WITH_VARIANTS_SELECT);
+    res.json(applyCustomerPrices(page.products));
+  } catch (error) { next(error); }
 });
 
 // One store's own catalog — StoreDetailScreen.tsx (apps/customer). A

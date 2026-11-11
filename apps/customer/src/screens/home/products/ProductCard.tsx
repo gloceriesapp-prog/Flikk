@@ -77,7 +77,7 @@ const ProductCardShell = memo(function ProductCardShell({
   const needsSimilar = !product.relatedProducts;
   const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId, isDetailOpen);
   useEffect(() => {
-    if (similar.data) prefetchImages(similar.data.map((p) => p.imageUrl));
+    if (similar.data) prefetchImages(similar.data.pages[0]?.products.slice(0, 6).map((p) => p.imageUrl) ?? []);
   }, [similar.data]);
 
   // Stable so the memoized ProductCardView doesn't re-render just because the
