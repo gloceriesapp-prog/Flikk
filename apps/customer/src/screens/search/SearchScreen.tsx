@@ -1,31 +1,10 @@
-// Reached by tapping the Home search bar (HomeSearchBar.tsx navigates here
-// instead of allowing inline typing — see SearchHeader.tsx's own comment).
-// Real search now: matching stores come from useAllStores' already-real
-// GET /stores list (filtered client-side — the whole zone's store list is
-// small enough at this scale, same "no premature complexity" judgment
-// call StoreListScreen's own category filter already makes), matching
-// products come from a real cross-store backend search
-// (useProductSearch.ts -> GET /stores/products/search). Stores reuse the
-// same StoreCard the rest of the app uses, and product results render as
-// the same ProductCard every Home grid uses — now inside ONE windowed
-// FlashList (not a flex-wrap .map in a ScrollView) so mounted nodes stay
-// bounded as pagination appends pages. Tapping a result behaves identically
-// to tapping the same store/product anywhere else (StoreCard self-navigates
-// to StoreDetail; ProductCard self-opens ProductDetailSheet).
-//
-// Pre-search state (empty/too-short query) is SearchSuggestions.tsx now —
-// recommended row + Shop by Category + a 9-card grid — replacing what used
-// to be a single centered placeholder line. It, the loading / error /
-// no-results states all render via the list's ListEmptyComponent so the
-// screen stays a single virtualized list under the fixed SearchHeader.
-
+// Item-only search: live products and their admin-added flavours, with
+// product suggestions while typing and a paged results grid on submission.
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, ScrollView, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
 import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StoreCard } from '../store-list/components/StoreCard';
-import { useAllStores } from '../store-list/all-stores/useAllStores';
 import { ProductCard } from '../home/products/ProductCard';
 import type { Product } from '../home/products/types';
 import { useDeliveryEstimateMinutes } from '../../api/deliverySettings';
@@ -36,7 +15,6 @@ import { SearchHeader } from './components/SearchHeader';
 import { SearchSuggestions } from './components/SearchSuggestions';
 import { SearchTypeahead } from './components/SearchTypeahead';
 import { buildSuggestions, type TypeaheadSuggestion } from './searchTypeahead';
-import { useCategorySections } from '../../components/CategorySections/useCategorySections';
 import type { AppStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Search'>;
@@ -56,29 +34,17 @@ export function SearchScreen({ navigation }: Props) {
   const isSearching = trimmedQuery.length >= MIN_QUERY_LENGTH;
   const submit = () => { if (isSearching) { setSubmitted(true); Keyboard.dismiss(); } };
 
-  const { data: allStores = [] } = useAllStores();
-  const matchingStores = useMemo(() => {
-    if (!isSearching) return [];
-    const needle = trimmedQuery.toLowerCase();
-    return allStores.filter((store) => store.name.toLowerCase().includes(needle));
-  }, [allStores, isSearching, trimmedQuery]);
-
   const search = useProductSearch(query);
   const { data: matchingProducts = [], isLoading: isLoadingProducts } = search;
 
-  const { data: categoryGroups } = useCategorySections();
   const suggestions = useMemo(
     () => (isSearching && !submitted
-      ? buildSuggestions(trimmedQuery, (categoryGroups ?? []).flatMap((g) => g.categories), matchingProducts.map((p) => searchProductDisplay(p).name))
+      ? buildSuggestions(trimmedQuery, matchingProducts.map((p) => searchProductDisplay(p).name))
       : []),
-    [isSearching, submitted, trimmedQuery, categoryGroups, matchingProducts],
+    [isSearching, submitted, trimmedQuery, matchingProducts],
   );
   const pickSuggestion = (s: TypeaheadSuggestion) => {
     Keyboard.dismiss();
-    if (s.kind === 'category') {
-      navigation.navigate('CategoryDetail', { categoryId: s.id, label: s.label });
-      return;
-    }
     setQueryValue(s.label);
     setSubmitted(true);
   };
@@ -91,10 +57,10 @@ export function SearchScreen({ navigation }: Props) {
   const estimatedMinutes = useDeliveryEstimateMinutes();
 
   // Final results view: searching, settled (not loading/debouncing/errored).
-  // Only then do we surface stores + the product grid; while a query is still
+  // Only then do we surface the product grid; while a query is still
   // resolving we show the spinner alone, as before.
   const showResults = isSearching && submitted && !search.isError && !isLoadingProducts && !search.isDebouncing;
-  const hasNoResults = showResults && matchingStores.length === 0 && matchingProducts.length === 0;
+  const hasNoResults = showResults && matchingProducts.length === 0;
 
   return (
     <View className="flex-1 bg-white">
@@ -122,16 +88,6 @@ export function SearchScreen({ navigation }: Props) {
           ListHeaderComponent={
             showResults ? (
               <View style={{ paddingHorizontal: 5 }}>
-                {matchingStores.length > 0 ? (
-                  <View className="pt-6">
-                    <Text className="mb-4 text-lg font-extrabold text-ink">Stores</Text>
-                    {matchingStores.map((store) => (
-                      <View key={store.id} className="mb-5">
-                        <StoreCard store={store} />
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
                 {matchingProducts.length > 0 ? (
                   <Text className="mb-4 pt-8 text-[18px] font-bold tracking-tight text-ink/90">Products</Text>
                 ) : null}
