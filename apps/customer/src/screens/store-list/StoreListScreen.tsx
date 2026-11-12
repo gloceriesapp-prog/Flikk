@@ -15,6 +15,7 @@ import { View } from 'react-native';
 import { Easing, runOnJS, useAnimatedReaction, useAnimatedScrollHandler, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
+import { PopularBrands } from '../../components/PopularBrands/PopularBrands';
 import { prefetchImages } from '../../components/AppImage';
 import { AllStoresSection } from './all-stores/AllStoresSection';
 import { useAllStores } from './all-stores/useAllStores';
@@ -160,6 +161,9 @@ export function StoreListScreen({ navigation }: Props) {
               onToggleOpenNow={() => setOpenNowOnly((prev) => !prev)}
               onToggleLikedOnly={() => setLikedOnly((prev) => !prev)}
             />
+            <PopularBrands previewLimit={5} alwaysShowSeeAll
+              onSelect={brand => navigation.navigate('BrandProducts', { brand })}
+              onSeeAll={() => navigation.navigate('AllBrands')} />
             <NearestToYouSection />
             <PopularThisWeekSection />
           </>
