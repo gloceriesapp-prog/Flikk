@@ -23,8 +23,8 @@ export function SimilarProductsRow({ product, onSelect }: Props) {
   const open = (item: Product) => { setShowAll(false); onSelect?.(item); };
   if (!products.length && !query.isFetching && !query.isError) return null;
   return (
-    <View className="bg-white px-4 pb-4 pt-5">
-      <Text className="mb-4 text-[18px] leading-[24px] text-ink" style={{ fontFamily: GILROY.bold }}>Similar products</Text>
+    <View className="bg-white px-4 pb-5 pt-6">
+      <Text accessibilityRole="header" className="mb-4 text-[18px] leading-[25px] text-ink" style={{ fontFamily: GILROY.bold }}>You may also like</Text>
       <View className="-mx-1 flex-row flex-wrap">
         {products.slice(0, 6).map((item) => (
           <View key={item.id} style={{ width: '33.333333%', paddingHorizontal: 4, marginBottom: 16 }}>
@@ -40,7 +40,7 @@ export function SimilarProductsRow({ product, onSelect }: Props) {
       ) : null}
       {products.length > 6 || query.hasNextPage ? (
         <Pressable accessibilityRole="button" onPress={() => setShowAll(true)} className="items-center rounded-xl bg-[#F3F4F5] px-4 py-3">
-          <Text className="text-[14px] text-ink" style={{ fontFamily: GILROY.bold }}>See all similar products</Text>
+          <Text className="text-[14px] text-ink" style={{ fontFamily: GILROY.bold }}>See all recommendations</Text>
         </Pressable>
       ) : null}
       <Modal visible={showAll} animationType="slide" onRequestClose={() => setShowAll(false)}>
@@ -49,7 +49,7 @@ export function SimilarProductsRow({ product, onSelect }: Props) {
             <Pressable accessibilityRole="button" accessibilityLabel="Back to product" onPress={() => setShowAll(false)} className="h-10 w-10 items-center justify-center rounded-full bg-white">
               <IconlyArrowLeft size={24} />
             </Pressable>
-            <Text className="ml-2 flex-1 text-[18px] text-ink" style={{ fontFamily: GILROY.bold }}>Similar products</Text>
+            <Text className="ml-2 flex-1 text-[18px] text-ink" style={{ fontFamily: GILROY.bold }}>You may also like</Text>
           </View>
           <FlatList
             data={products}
