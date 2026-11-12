@@ -698,6 +698,10 @@
       "sha256": "f5f5c245530f2b5ada4ba260f2aeb31e862eb8ce96ff45243b780991b9263671"
     },
     {
+      "file": "20261111090000_popular_brands.sql",
+      "sha256": "8af38f00b350a4690aff8e2b3d7b26231985a22908e38c1f651fab9f736f5935"
+    },
+    {
       "file": "20261111120000_home_product_banners.sql",
       "sha256": "53efd36220b4ff9f210b6d00aff38d25d194f38f91a00627b45c3221b1602ef6"
     },
@@ -712,6 +716,10 @@
     {
       "file": "20261111233000_flavour_search.sql",
       "sha256": "3e64cf8bc21b1fd855ba6c0552a72251c931e5df5ced71359096865a8b1415fe"
+    },
+    {
+      "file": "20261112120000_popular_brand_directory.sql",
+      "sha256": "b7c1c50cee3e14690d110619340a4aace2bebd25c48d0db6d2a3c238e174f537"
     }
   ]
 }

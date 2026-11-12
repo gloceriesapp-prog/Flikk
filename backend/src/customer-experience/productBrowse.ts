@@ -1,9 +1,9 @@
+import { applyCustomerPrices } from '../lib/customerPrice.js';
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
 import { browsePage, deliveryStores, hydrateBrowse, optionalUuid } from './browse.js';
-import { applyCustomerPrices } from '../lib/customerPrice.js';
 import { PREORDER_SLOT_SELECT } from '../lib/preorders.js';
 export const productBrowseRouter = Router();
 productBrowseRouter.get('/search', async (req, res, next) => {
@@ -102,5 +102,40 @@ productBrowseRouter.get('/category', async (req, res, next) => {
     const rows = (data ?? []) as { id: string; score: number }[]; const selected = rows.slice(0, page.limit);
     res.json({ products: await hydrateBrowse(selected, stores, PRODUCT_WITH_VARIANTS_SELECT), facets: facets.data,
       nextCursor: rows.length > page.limit ? page.cursor(selected.at(-1)!) : null });
+  } catch (error) { next(error); }
+});
+
+productBrowseRouter.get('/brand/:id', async (req, res, next) => {
+  try {
+    const brandId = optionalUuid(req.params.id);
+    const { data: brand, error: brandError } = await supabase.from('brands')
+      .select('id, name, logo_url, popular_image_url')
+      .eq('id', brandId).eq('is_active', true).maybeSingle();
+    if (brandError) throw brandError;
+    if (!brand) throw new AppError(404, 'BRAND_NOT_FOUND', 'This brand is unavailable.');
+    const stores = await deliveryStores(req.query);
+    const page = browsePage(req.query, ['brand', brand.id, stores]);
+    let products: unknown[] = [];
+    let nextCursor: string | null = null;
+    if (stores.length) {
+      let query = supabase.from('products').select(PRODUCT_WITH_VARIANTS_SELECT)
+        .eq('brand_id', brand.id).in('store_id', stores)
+        .eq('approval_status', 'approved').eq('preorder_enabled', false)
+        .order('id').limit(page.limit + 1);
+      if (page.after) query = query.gt('id', page.after.id);
+      const { data, error } = await query;
+      if (error) throw error;
+      const rows = data ?? [];
+      products = applyCustomerPrices(rows.slice(0, page.limit));
+      const last = rows[page.limit - 1];
+      if (rows.length > page.limit && last) {
+        nextCursor = page.cursor({ id: last.id, score: 0 });
+      }
+    }
+    res.json({
+      brand: { id: brand.id, name: brand.name, imageUrl: brand.popular_image_url ?? brand.logo_url },
+      products,
+      nextCursor,
+    });
   } catch (error) { next(error); }
 });
