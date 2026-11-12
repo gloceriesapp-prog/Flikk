@@ -1,16 +1,5 @@
-// Reached from a StoreCard's "Shop now" button. Same "sidebar + product
-// grid" UI as screens/category-detail/CategoryDetailScreen.tsx — this
-// screen reuses that screen's header/sidebar components directly rather
-// than a copy, so a layout fix in one place fixes both.
-//
-// Real catalog (useStoreProducts.ts -> GET /stores/:id/products-page) — a
-// product only ever belongs to the one store it was added under in admin's
-// Inventory screen, so this screen only ever shows that store's own items,
-// never another store's or Home's own tab data. Sidebar categories are
-// whatever categories this store's own products actually use, "All" first.
-//
-// Product cards are the real, shared ProductCard (home/products/) — same
-// card every other product grid in the app uses.
+// Store-only browsing: category names in the sidebar, matching subcategory
+// tiles above a paged product grid. Search and recommendations keep store scope.
 
 import { useEffect, useState } from 'react';
 import { ScreenStatusBar as StatusBar } from '../../components/ScreenStatusBar';
@@ -19,7 +8,8 @@ import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ProductCard } from '../home/products/ProductCard';
 import type { Product } from '../home/products/types';
-import { SubCategorySidebar } from '../category-detail/components/SubCategorySidebar';
+import { StoreCategorySidebar } from './components/StoreCategorySidebar';
+import { SearchHeader } from '../search/components/SearchHeader';
 import { StoreCategoryGrid } from './components/StoreCategoryGrid';
 import { StoreDetailHeader } from './components/StoreDetailHeader';
 import { StorePriceRangeSheet, type StorePriceRange } from './components/StorePriceRangeSheet';
@@ -32,12 +22,22 @@ import type { AppStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'StoreDetail'>;
 
 export function StoreDetailScreen({ navigation, route }: Props) {
+  return <StoreDetailContent key={route.params.storeId} navigation={navigation} route={route} />;
+}
+
+function StoreDetailContent({ navigation, route }: Props) {
   const { storeId, storeName } = route.params;
   const emptyText = useCopy('store.empty.title');
   const [selectedId, setSelectedId] = useState('all');
+  const [subcategory, setSubcategory] = useState('all');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [query, setQuery] = useState('');
   useEffect(() => {
-    Promise.resolve().then(() => setSelectedId('all'));
-  }, [storeId]);
+    const timer = setTimeout(() => setQuery(searchText.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+  const selectCategory = (id: string) => { setSelectedId(id); setSubcategory('all'); };
 
   const [vegOnly, setVegOnly] = useState(false);
   const [dealsOnly, setDealsOnly] = useState(false);
@@ -47,8 +47,11 @@ export function StoreDetailScreen({ navigation, route }: Props) {
   const [isPriceSheetOpen, setIsPriceSheetOpen] = useState(false);
 
   // Every filter/sort is a server query param over the whole catalogue.
-  const catalog = useStoreProducts(storeId, { category: selectedId, veg: vegOnly, deals: dealsOnly, price: priceRange, sort });
-  const { categories, products: visibleProducts } = catalog;
+  const catalog = useStoreProducts(storeId, { category: selectedId, subcategory, query, veg: vegOnly, deals: dealsOnly, price: priceRange, sort });
+  const { categories, subcategories, products: visibleProducts } = catalog;
+  const selectedCategory = categories.find(c => c.id === selectedId);
+  const selectedSubcategory = subcategories.find(c => c.id === subcategory);
+  const listIdentity = [selectedId, subcategory, query, vegOnly, dealsOnly, sort, priceRange].join('|');
 
   return (
     <View className="flex-1 bg-white pt-safe">
@@ -61,7 +64,7 @@ export function StoreDetailScreen({ navigation, route }: Props) {
       <StoreDetailHeader
         title={storeName}
         onBack={() => navigation.goBack()}
-        onSearch={() => navigation.navigate('Search')}
+        onSearch={() => setSearchOpen(true)}
       />
 
       <View className="flex-1 flex-row">
@@ -69,9 +72,15 @@ export function StoreDetailScreen({ navigation, route }: Props) {
             filter bar belongs to the right-hand content column only, per
             an explicit ask, not spanning over the sidebar as a full-width
             bar above it. */}
-        <SubCategorySidebar items={categories} selectedId={selectedId} onSelect={setSelectedId} />
+        <StoreCategorySidebar items={categories} selectedId={selectedId} onSelect={selectCategory} />
 
         <View className="flex-1">
+          {searchOpen && <SearchHeader embedded placeholderText="Search this store" value={searchText} onChangeText={setSearchText}
+            onBack={() => { setSearchOpen(false); setSearchText(''); setQuery(''); }}
+            onSubmit={() => setQuery(searchText.trim())} />}
+          {catalog.categoriesQuery.isError && <Pressable accessibilityRole="button" onPress={() => void catalog.categoriesQuery.refetch()} className="px-3 py-2">
+            <Text className="text-sm text-[#155DFC]">Couldn’t load store categories. Tap to retry.</Text>
+          </Pressable>}
           {/* Fixed within this column — a sibling of the ScrollView below,
               not inside it, so it stays put while the product grid scrolls
               underneath instead of scrolling away with it. */}
@@ -100,6 +109,9 @@ export function StoreDetailScreen({ navigation, route }: Props) {
               FlatList/FlashList both have for exactly this. */}
           <View className="flex-1 bg-white">
             <FlashList
+              key={listIdentity}
+              onEndReached={() => { if (catalog.hasNextPage && !catalog.isFetching && !catalog.isFetchNextPageError) void catalog.fetchNextPage(); }}
+              onEndReachedThreshold={0.4}
               data={visibleProducts}
               numColumns={2}
               ListFooterComponent={catalog.hasNextPage || catalog.isError ? (
@@ -111,11 +123,26 @@ export function StoreDetailScreen({ navigation, route }: Props) {
               contentContainerStyle={{ paddingVertical: 12, paddingLeft: 2, paddingRight: 12, paddingBottom: 64 }}
               showsVerticalScrollIndicator={false}
               ListHeaderComponent={
-                // Quick-jump grid — only on 'All', above the flat product
-                // list. Once a specific category is picked there's nothing
-                // left for it to jump to, so it steps aside for the
-                // product grid itself.
-                selectedId === 'all' ? <StoreCategoryGrid categories={categories} onSelect={setSelectedId} /> : null
+                // All shows parent categories; a selected category shows its own subcategories.
+                <View>
+                  {selectedId === 'all' ? <StoreCategoryGrid categories={categories} onSelect={selectCategory} /> : (
+                    <>
+                      <StoreCategoryGrid categories={subcategories} title={selectedCategory?.label ?? 'Subcategories'}
+                        selectedId={subcategory} onSelect={setSubcategory} />
+                      {catalog.subcategoriesQuery.isPending && <Text className="px-1 py-3 text-sm text-ink/50">Loading subcategories…</Text>}
+                      {catalog.subcategoriesQuery.isError && <Pressable accessibilityRole="button" onPress={() => void catalog.subcategoriesQuery.refetch()} className="px-1 py-3">
+                        <Text className="text-sm text-[#155DFC]">Couldn’t load subcategories. Tap to retry.</Text>
+                      </Pressable>}
+                      <Pressable accessibilityRole="button" accessibilityState={{ selected: subcategory === 'all' }}
+                        onPress={() => setSubcategory('all')} className="mb-4 self-start rounded-xl bg-[#F3F4F6] px-3 py-2">
+                        <Text className="text-[12px] font-semibold text-ink">All {selectedCategory?.label ?? 'products'}</Text>
+                      </Pressable>
+                    </>
+                  )}
+                  <Text accessibilityRole="header" className="mb-4 px-1 text-[18px] font-bold tracking-tight text-ink/90">
+                    {selectedSubcategory?.label ?? (selectedId === 'all' ? 'All products' : selectedCategory?.label ?? 'Products')}
+                  </Text>
+                </View>
               }
               ListEmptyComponent={
                 <View className="w-full items-center py-16">

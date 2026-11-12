@@ -6,6 +6,8 @@ import { browsePage, optionalUuid } from './browse.js';
 // Disjoint tiers keep pagination stable without random padding or guessing a
 // brand from the product name. All identity comes from the saved source item.
 export async function similarProductPage(query: Request['query'], stores: string[], fields: string) {
+  const requestedStore = optionalUuid(query.storeId);
+  if (requestedStore) stores = stores.filter(id => id === requestedStore);
   const sourceId = optionalUuid(query.exclude);
   if (!sourceId) throw new AppError(400, 'MISSING_PRODUCT', 'Choose a product first.');
   if (!stores.length) return { products: [], nextCursor: null };

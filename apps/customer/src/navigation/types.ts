@@ -58,7 +58,7 @@ export type AppStackParamList = {
     | { stores: StoreTile[] }
   );
   Categories: undefined;
-  Search: undefined;
+  Search: { storeId: string; storeName?: string } | undefined;
   Store: undefined;
   Purchase: undefined;
   Profile: undefined;

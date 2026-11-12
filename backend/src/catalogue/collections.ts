@@ -3,7 +3,7 @@ import { validateContent, type ContentSelection, type HomeContentKey } from '../
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
-import { browsePage, hydrateBrowse } from '../customer-experience/browse.js';
+import { browsePage, hydrateBrowse, optionalUuid } from '../customer-experience/browse.js';
 
 export const collectionRouter = Router();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -108,5 +108,64 @@ collectionRouter.get('/:id/category-facets', async (req, res, next) => {
     if (error) throw error;
     res.json(((data ?? []) as { category: string; product_count: number; image_url: string | null }[])
       .map(row => ({ category: row.category, productCount: Number(row.product_count), imageUrl: row.image_url })));
+  } catch (error) { next(error); }
+});
+
+// Store taxonomy is derived from approved products in this store, never the
+// global category directory or whichever product pages the client has loaded.
+collectionRouter.get('/:id/catalogue-categories', async (req, res, next) => {
+  try {
+    if (!UUID.test(req.params.id!)) throw new AppError(400, 'INVALID_STORE', 'Invalid store.');
+    const { data, error } = await supabase.from('categories')
+      .select('id, name, image_url, sub_categories!inner(products!inner(id, stores!inner(is_active)))')
+      .eq('is_active', true).eq('sub_categories.is_active', true)
+      .eq('sub_categories.products.store_id', req.params.id!).eq('sub_categories.products.stores.is_active', true)
+      .eq('sub_categories.products.approval_status', 'approved')
+      .eq('sub_categories.products.preorder_enabled', false)
+      .limit(1, { referencedTable: 'sub_categories.products' })
+      .limit(1, { referencedTable: 'sub_categories' })
+      .order('sort_order').order('name').limit(60);
+    if (error) throw error;
+    res.json((data ?? []).map(({ id, name, image_url }) => ({ id, label: name, imageUrl: image_url })));
+  } catch (error) { next(error); }
+});
+collectionRouter.get('/:id/catalogue-subcategories', async (req, res, next) => {
+  try {
+    if (!UUID.test(req.params.id!)) throw new AppError(400, 'INVALID_STORE', 'Invalid store.');
+    const categoryId = optionalUuid(req.query.categoryId);
+    if (!categoryId) throw new AppError(400, 'INVALID_CATEGORY', 'Select a category.');
+    const { data, error } = await supabase.from('sub_categories')
+      .select('id, name, image_url, categories!inner(is_active), products!inner(id, stores!inner(is_active))')
+      .eq('category_id', categoryId).eq('is_active', true).eq('categories.is_active', true)
+      .eq('products.store_id', req.params.id!).eq('products.stores.is_active', true).eq('products.approval_status', 'approved')
+      .eq('products.preorder_enabled', false).limit(1, { referencedTable: 'products' })
+      .order('sort_order').order('name').limit(60);
+    if (error) throw error;
+    res.json((data ?? []).map(({ id, name, image_url }) => ({ id, label: name, imageUrl: image_url })));
+  } catch (error) { next(error); }
+});
+collectionRouter.get('/:id/catalogue-products', async (req, res, next) => {
+  try {
+    const storeId = req.params.id!;
+    if (!UUID.test(storeId)) throw new AppError(400, 'INVALID_STORE', 'Invalid store.');
+    const filters = storePageFilters(req.query);
+    const categoryId = optionalUuid(req.query.categoryId);
+    const subcategoryId = optionalUuid(req.query.subcategoryId);
+    if (subcategoryId && !categoryId) throw new AppError(400, 'INVALID_CATEGORY', 'Select the parent category.');
+    const search = req.query.q ?? '';
+    if (typeof search !== 'string' || search.length > 100) throw new AppError(400, 'INVALID_SEARCH', 'Search must be at most 100 characters.');
+    // Treat punctuation as separators instead of interpolating PostgREST syntax.
+    const q = search.trim().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+    const page = browsePage(req.query, ['store-catalogue', storeId, filters, categoryId, subcategoryId, q]);
+    const { data, error } = await supabase.rpc('store_catalogue_page_ids', {
+      p_store: storeId, p_category: categoryId, p_subcategory: subcategoryId, p_query: q,
+      p_veg: filters.veg, p_deals: filters.deals, p_price_band: filters.price, p_sort: filters.sort,
+      p_after_score: page.after?.score ?? null, p_after_id: page.after?.id ?? null, p_limit: page.limit + 1,
+    });
+    if (error) throw error;
+    const rows = (data ?? []) as { id: string; score: number }[];
+    const selected = rows.slice(0, page.limit);
+    res.json({ products: await hydrateBrowse(selected, [storeId], PRODUCT_WITH_VARIANTS_SELECT),
+      nextCursor: rows.length > page.limit ? page.cursor(selected.at(-1)!) : null });
   } catch (error) { next(error); }
 });

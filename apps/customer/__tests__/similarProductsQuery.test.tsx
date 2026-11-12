@@ -29,3 +29,11 @@ it('does not request recommendations for unopened product cards', async () => {
   await renderHook(() => useSimilarProducts('Drinks', 'product-id', 'store-id', false), { wrapper: Wrapper });
   expect(apiRequest).not.toHaveBeenCalled();
 });
+
+it('keeps Store-detail recommendation requests and responses inside the selected shop', async () => {
+  jest.mocked(apiRequest).mockResolvedValue({ products: [{ id: 'own', store_id: 'shop' }, { id: 'foreign', store_id: 'other' }], nextCursor: null });
+  const { result } = await renderHook(() => useSimilarProducts('Drinks', 'product-id', 'shop', true, 'shop'), { wrapper: Wrapper });
+  await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  expect(apiRequest).toHaveBeenCalledWith('/stores/products/similar/page?exclude=product-id&limit=12&storeId=shop', { auth: false });
+  expect(result.current.data?.pages[0].products).toEqual([{ id: 'own', store_id: 'shop', browseStoreId: 'shop' }]);
+});

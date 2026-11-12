@@ -3,18 +3,20 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../api/client';
 import { mapApiProduct, type ApiProduct } from '../../api/products';
 import { useLocationStore } from '../../store/useLocationStore';
-export function useProductSearch(query: string) {
+export function useProductSearch(query: string, storeId?: string) {
   const [debouncedQuery, setDebounced] = useState(query.trim());
   const location = useLocationStore(s => s.location);
   useEffect(() => { const timer = setTimeout(() => setDebounced(query.trim()), 300); return () => clearTimeout(timer); }, [query]);
   const result = useInfiniteQuery({
-    queryKey: ['search', 'products-flavours-v2', debouncedQuery, location?.latitude, location?.longitude],
-    enabled: !!location && debouncedQuery.length >= 2,
+    queryKey: ['search', 'products-flavours-v2', debouncedQuery, storeId, location?.latitude, location?.longitude],
+    enabled: (!!location || !!storeId) && debouncedQuery.length >= 2,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const page = await apiRequest<{ products: ApiProduct[]; nextCursor: string | null }>(
-        `/browse/search?q=${encodeURIComponent(debouncedQuery)}${pageParam ? `&after=${encodeURIComponent(pageParam)}` : ''}`, { auth: false });
-      return { ...page, products: page.products.map(mapApiProduct) };
+        storeId
+          ? `/stores/${encodeURIComponent(storeId)}/catalogue-products?q=${encodeURIComponent(debouncedQuery)}&sort=relevance&price=all${pageParam ? `&after=${encodeURIComponent(pageParam)}` : ''}`
+          : `/browse/search?q=${encodeURIComponent(debouncedQuery)}${pageParam ? `&after=${encodeURIComponent(pageParam)}` : ''}`, { auth: false });
+      return { ...page, products: page.products.filter(row => !storeId || row.store_id === storeId).map(row => ({ ...mapApiProduct(row), browseStoreId: storeId })) };
     },
     getNextPageParam: page => page.nextCursor ?? undefined,
   });

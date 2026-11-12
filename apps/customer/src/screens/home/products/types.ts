@@ -13,6 +13,8 @@ export interface ProductOption {
 }
 
 export interface Product {
+  /** Keep detail recommendations inside a store-specific browsing session. */
+  browseStoreId?: string;
   /** Search match only: opens this real flavour while preserving the main product. */
   initialOptionId?: string;
   id: string;

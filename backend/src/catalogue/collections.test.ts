@@ -93,3 +93,37 @@ it('hydrates sold-out previews without losing approval or store scope', async ()
   expect(mocks.calls).toContainEqual(['approval_status', 'approved']);
   expect(mocks.calls).toContainEqual(['store_id', store]);
 });
+
+it('scopes category and subcategory facets to the selected store only', async () => {
+  for (const path of ['/:id/catalogue-categories', '/:id/catalogue-subcategories']) {
+    mocks.calls.length = 0;
+    const result = await request(path, { categoryId: store });
+    expect(result.next).not.toHaveBeenCalled();
+    expect(mocks.calls).toContainEqual([path.endsWith('subcategories') ? 'products.store_id' : 'sub_categories.products.store_id', store]);
+    expect(mocks.calls).toContainEqual([path.endsWith('subcategories') ? 'products.approval_status' : 'sub_categories.products.approval_status', 'approved']);
+  }
+});
+it('rejects invalid taxonomy and search filters before the catalogue selector runs', async () => {
+  for (const query of [{ categoryId: 'bad' }, { subcategoryId: store }, { q: 'x'.repeat(101) }]) {
+    const result = await request('/:id/catalogue-products', query);
+    expect(result.next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+  }
+  expect(mocks.rpc).not.toHaveBeenCalled();
+});
+it('keeps category, subcategory, search, filters and hydration bound to one store', async () => {
+  mocks.rpc.mockResolvedValue({ data: [{ id: store, score: 0 }, { id: '72000000-0000-0000-0000-000000000998', score: 0 }], error: null });
+  const first = await request('/:id/catalogue-products', { categoryId: store, subcategoryId: store, q: 'Milk,or(1)', limit: '1', deals: '1' });
+  expect(first.next).not.toHaveBeenCalled();
+  expect(mocks.rpc).toHaveBeenCalledWith('store_catalogue_page_ids', expect.objectContaining({ p_store: store,
+    p_category: store, p_subcategory: store, p_query: 'Milk or 1', p_deals: true, p_limit: 2 }));
+  expect(mocks.calls).toContainEqual(['hydrate', [store]]);
+  // hydrateBrowse issues a second in() for the mandatory store constraint.
+  expect(mocks.calls.filter(([key]) => key === 'hydrate')).toEqual([['hydrate', [store]], ['hydrate', [store]]]);
+  const after = (first.res.json as ReturnType<typeof vi.fn>).mock.calls[0]![0].nextCursor;
+  for (const query of [{ q: 'Different', after }, { categoryId: store, after }]) {
+    const replay = await request('/:id/catalogue-products', query);
+    expect(replay.next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+  }
+  const replayStore = await request('/:id/catalogue-products', { categoryId: store, subcategoryId: store, q: 'Milk,or(1)', after, deals: '1' }, '72000000-0000-0000-0000-000000000997');
+  expect(replayStore.next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+});
