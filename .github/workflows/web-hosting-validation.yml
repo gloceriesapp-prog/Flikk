@@ -1,0 +1,88 @@
+name: Web hosting validation
+
+# Preparation only: no registry push, AWS access, deployment or DNS mutations.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - deploy/web/**
+      - .github/workflows/web-hosting-validation.yml
+      - apps/admin/next.config.ts
+      - apps/landing/next.config.ts
+      - apps/landing/src/lib/products.ts
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-hosting-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [admin, landing]
+    env:
+      WEB_STANDALONE: '1'
+      WEB_RELEASE_SHA: ${{ github.sha }}
+      NEXT_TELEMETRY_DISABLED: '1'
+      # Safe placeholders validate packaging, not production connectivity.
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+      NEXT_PUBLIC_API_URL: https://api.example.com
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - run: node --test deploy/web/package-standalone.test.mjs
+      - uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288 # v5 - Node.js 24
+        with:
+          version: 10.33.0
+          package_json_file: apps/${{ matrix.app }}/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0 - Node.js 24
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+        working-directory: apps/${{ matrix.app }}
+      - run: pnpm --ignore-workspace build
+        working-directory: apps/${{ matrix.app }}
+        env:
+          # Admin eagerly constructs its server client while collecting routes.
+          # This fixture is deliberately not a real key or runtime configuration.
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
+      - name: Assemble the standalone runtime
+        run: node deploy/web/package-standalone.mjs '${{ matrix.app }}' "$RUNNER_TEMP/web-image"
+      - name: Build runtime image
+        run: >-
+          docker build -f deploy/web/Dockerfile
+          --build-arg WEB_APP=${{ matrix.app }}
+          --build-arg RELEASE_SHA=${{ github.sha }}
+          -t web-smoke "$RUNNER_TEMP/web-image"
+      - name: Verify runtime and admin authentication boundary
+        env:
+          APP: ${{ matrix.app }}
+        run: |
+          set -euo pipefail
+          trap 'docker rm -f web-smoke >/dev/null 2>&1 || true' EXIT
+          docker run -d --name web-smoke -p 127.0.0.1:3000:3000 web-smoke
+          route=/privacy
+          if [ "$APP" = admin ]; then route=/login; fi
+          if ! curl --fail --silent --show-error --retry 15 --retry-all-errors --retry-delay 2 --retry-max-time 60 --max-time 10 "http://127.0.0.1:3000$route" >/dev/null; then
+            docker logs web-smoke
+            exit 1
+          fi
+          if [ "$APP" = admin ]; then
+            status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/stores)
+            test "$status" = 401
+          fi
+      - name: Validate reverse-proxy syntax
+        if: matrix.app == 'landing'
+        run: >-
+          docker run --rm
+          -e WEB_DOMAIN=gloceries.com -e WWW_DOMAIN=www.gloceries.com -e ADMIN_DOMAIN=admin.gloceries.com
+          -v "$PWD/deploy/web/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2.11.7 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
