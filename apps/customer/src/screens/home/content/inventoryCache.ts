@@ -7,9 +7,9 @@ const homeInventory = new Set(['picks', 'preorders', 'nearby-stores', 'nearest-s
   'popular', 'everyday-essentials', 'groceries', 'festival-picks']);
 export function isInventoryQuery(key: readonly unknown[]) {
   return (key[0] === 'home' && homeInventory.has(String(key[1]))) ||
-    (key[0] === 'store-detail' && key[2] === 'products') || key[0] === 'store-list' ||
-    (key[0] === 'search' && key[1] === 'products') ||
-    (key[0] === 'product-detail' && key[1] === 'similar') ||
+    (key[0] === 'store-detail' && ['products', 'catalogue-products', 'catalogue-categories', 'catalogue-subcategories'].includes(String(key[2]))) || key[0] === 'store-list' ||
+    (key[0] === 'search' && ['products', 'products-flavours-v2'].includes(String(key[1]))) ||
+    (key[0] === 'product-detail' && ['similar', 'similar-v2'].includes(String(key[1]))) ||
     (key[0] === 'category-detail' && (key[1] === 'products' || key[1] === 'subcategory-products'));
 }
 export function queryScope(key: readonly unknown[], data: unknown) {
@@ -17,7 +17,8 @@ export function queryScope(key: readonly unknown[], data: unknown) {
   const add = (set: Set<string>, id: unknown) => { if (typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) set.add(id); };
   if (key[0] === 'home' && key[2] === 'collection-pages' && Array.isArray(key[3])) key[3].forEach(id => add(stores, id));
   if (key[0] === 'store-detail') add(stores, key[1]);
-  if (key[0] === 'product-detail' && key[1] === 'similar') add(stores, key[4]);
+  if (key[0] === 'search' && key[1] === 'products-flavours-v2') add(stores, key[3]);
+  if (key[0] === 'product-detail' && ['similar', 'similar-v2'].includes(String(key[1]))) add(stores, key[4]);
   if ((key[0] === 'store-list' && key[1] === 'popular-products') ||
       (key[0] === 'home' && key[1] === 'deals-products')) add(stores, key[2]);
   if (key[0] === 'home' && key[1] === 'groceries' && key[2] === 'store-inventory') add(stores, key[3]);
@@ -58,7 +59,7 @@ export function invalidateInventory(client: QueryClient, event: InventoryEvent) 
     const discovery = (key[0] === 'home' && (key[1] === 'nearby-stores' || key[1] === 'nearest-store')) ||
       (key[0] === 'store-list' && key[1] !== 'popular-products');
     if (discovery && !event.storeChanged) return false;
-    const perStore = key[0] === 'store-detail' || (key[0] === 'product-detail' && key[4] != null) || (key[0] === 'store-list' && key[1] === 'popular-products') ||
+    const perStore = key[0] === 'store-detail' || (key[0] === 'search' && key[1] === 'products-flavours-v2' && key[3] != null) || (key[0] === 'product-detail' && key[4] != null) || (key[0] === 'store-list' && key[1] === 'popular-products') ||
       (key[0] === 'home' && (key[1] === 'deals-products' || (key[1] === 'groceries' && key[2] === 'store-inventory')));
     if (event.storeChanged && !perStore && event.zoneIds.some(id => activeZones.includes(id))) return true;
     const interests = queryScope(key, query.state.data);
