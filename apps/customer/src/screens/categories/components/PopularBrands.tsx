@@ -20,7 +20,7 @@ export function PopularBrands({ onSelect, onSeeAll }: { onSelect: (brand: Popula
   if (!brands.length && !query.isPending && !query.isError) return null;
 
   return (
-    <View className="pb-4 pt-3">
+    <View className="pt-3">
       <View className="mb-2 flex-row items-center justify-between px-5">
         <Text accessibilityRole="header" className="text-[17px] font-bold text-ink/90">Popular Brands</Text>
         {brands.length > 10 && <Pressable accessibilityRole="button" accessibilityLabel="See all brands"
