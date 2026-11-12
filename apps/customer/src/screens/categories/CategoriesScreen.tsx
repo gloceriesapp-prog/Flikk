@@ -19,7 +19,7 @@ import { AppIcon } from '../../components/AppIcon';
 import { BottomNavBar } from '../../components/BottomNavBar/BottomNavBar';
 import { CategorySections } from '../../components/CategorySections/CategorySections';
 import { BrandFooter } from '../../components/BrandFooter';
-import { StoreTypesSection } from '../home/store-types/StoreTypesSection';
+import { PopularBrands } from './components/PopularBrands';
 import { colors } from '../../theme/tokens';
 import type { AppStackParamList } from '../../navigation/types';
 
@@ -58,10 +58,7 @@ export function CategoriesScreen({ navigation }: Props) {
       </View>
 
       <Animated.ScrollView className="flex-1" contentContainerClassName="pb-28" onScroll={scrollHandler} scrollEventThrottle={16}>
-        {/* "Shop by Store Type" — same real section Home's "All" tab
-            already shows (useStoreTypes -> GET /stores), reused here per
-            an explicit ask rather than a second copy of the same query. */}
-        <StoreTypesSection />
+        <PopularBrands onSelect={brand => navigation.navigate('BrandProducts', { brand })} onSeeAll={() => navigation.navigate('AllBrands')} />
         <CategorySections />
         <BrandFooter />
       </Animated.ScrollView>

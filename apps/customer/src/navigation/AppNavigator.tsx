@@ -22,6 +22,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AddressFormScreen } from '../screens/address/AddressFormScreen';
 import { AddressListScreen } from '../screens/address/AddressListScreen';
 import { CartScreen } from '../screens/cart/CartScreen';
+import { AllBrandsScreen } from '../screens/categories/AllBrandsScreen';
+import { BrandProductsScreen } from '../screens/categories/BrandProductsScreen';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen';
 import { CategoryDetailScreen } from '../screens/category-detail/CategoryDetailScreen';
 import { BreakfastEssentialsScreen } from '../screens/home/groceries/breakfast-essentials/BreakfastEssentialsScreen';
@@ -108,6 +110,8 @@ export function AppNavigator() {
       <Stack.Screen name="Purchase" component={PurchaseScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       {__DEV__ && <Stack.Screen name="OrderRating" component={OrderRatingScreen} />}
+      <Stack.Screen name="AllBrands" component={AllBrandsScreen} />
+      <Stack.Screen name="BrandProducts" component={BrandProductsScreen} />
       <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
       <Stack.Screen name="BreakfastEssentials" component={BreakfastEssentialsScreen} />
       <Stack.Screen name="KitchenEssentials" component={KitchenEssentialsScreen} />

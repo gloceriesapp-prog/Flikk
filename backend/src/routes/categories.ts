@@ -5,8 +5,51 @@ import { deliveryStores } from '../customer-experience/browse.js';
 import { Router } from 'express';
 import { supabase } from '../db/supabase.js';
 import { applyCustomerPrices } from '../lib/customerPrice.js';
+import { AppError } from '../lib/errors.js';
 
 export const categoriesRouter = Router();
+
+// Fetch one extra tile to determine whether the ten-brand preview needs See all.
+categoriesRouter.get('/popular-brands', async (_req, res, next) => {
+  try {
+    const { data, error } = await supabase.from('brands')
+      .select('id, name, logo_url, popular_image_url')
+      .eq('is_active', true)
+      .not('popular_position', 'is', null)
+      .order('popular_position')
+      .limit(11);
+    if (error) throw error;
+    res.json((data ?? []).map(row => ({
+      id: row.id,
+      name: row.name,
+      imageUrl: row.popular_image_url ?? row.logo_url,
+    })));
+  } catch (error) { next(error); }
+});
+
+// Keyset pagination keeps the directory bounded and preserves administrator order.
+categoriesRouter.get('/popular-brands/all', async (req, res, next) => {
+  try {
+    const rawAfter = req.query.after;
+    if (rawAfter !== undefined && (typeof rawAfter !== 'string' || !/^[1-9]\d{0,3}$/.test(rawAfter) || Number(rawAfter) > 1000)) {
+      throw new AppError(400, 'INVALID_CURSOR', 'Invalid brand position.');
+    }
+    let query = supabase.from('brands')
+      .select('id, name, logo_url, popular_image_url, popular_position')
+      .eq('is_active', true).not('popular_position', 'is', null)
+      .order('popular_position').limit(51);
+    if (rawAfter !== undefined) query = query.gt('popular_position', Number(rawAfter));
+    const { data, error } = await query;
+    if (error) throw error;
+    const rows = data ?? [];
+    const selected = rows.slice(0, 50);
+    const last = selected.at(-1);
+    res.json({
+      brands: selected.map(row => ({ id: row.id, name: row.name, imageUrl: row.popular_image_url ?? row.logo_url })),
+      nextCursor: rows.length > 50 && last ? String(last.popular_position) : null,
+    });
+  } catch (error) { next(error); }
+});
 
 categoriesRouter.get('/', async (req, res, next) => {
   try {

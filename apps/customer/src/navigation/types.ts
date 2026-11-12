@@ -62,6 +62,8 @@ export type AppStackParamList = {
   Store: undefined;
   Purchase: undefined;
   Profile: undefined;
+  AllBrands: undefined;
+  BrandProducts: { brand: import('../api/brands').PopularBrand };
   CategoryDetail: { categoryId: string; label: string };
   BreakfastEssentials: undefined;
   KitchenEssentials: undefined;

@@ -10,6 +10,7 @@
 // and this page refetches both lists afterward rather than optimistically
 // patching local state.
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Image as ImageIcon, Pencil, Plus } from '@/components/icons';
 import type { Category, CategorySection, NewCategoryInput } from '@/lib/types';
@@ -123,6 +124,7 @@ export default function CategoriesPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="page-title">Categories</h1>
+          <Link href="/popular-brands" className="mt-2 inline-flex text-sm font-semibold text-brand underline">Manage popular brands</Link>
           <p className="text-sm text-muted">
             {loading ? 'Loading…' : `${categories.length} categories across ${sections.length} titles.`}
           </p>
