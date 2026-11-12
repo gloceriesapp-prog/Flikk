@@ -21,10 +21,12 @@ import { useCopy } from '../../../api/appConfig';
 interface Props {
   categories: StoreCategory[];
   onSelect: (id: string) => void;
+  title?: string;
+  selectedId?: string;
 }
 
-export function StoreCategoryGrid({ categories, onSelect }: Props) {
-  const title = useCopy('store.categories.title');
+export function StoreCategoryGrid({ categories, onSelect, title, selectedId }: Props) {
+  const defaultTitle = useCopy('store.categories.title');
   // 'All' itself doesn't need its own card in a grid whose whole purpose
   // is jumping INTO a specific category. No dummy fallback (
   // dummyStoreCategories.ts removed per an explicit ask) — renders
@@ -36,15 +38,15 @@ export function StoreCategoryGrid({ categories, onSelect }: Props) {
 
   return (
     <View className="mb-5 w-full">
-      <Text className="mb-3 px-1 text-lg font-semibold text-ink">{title}</Text>
+      <Text className="mb-3 px-1 text-[18px] font-bold tracking-tight text-ink/90">{title ?? defaultTitle}</Text>
       <View className="flex-row flex-wrap justify-between gap-y-3">
         {cards.map((card) => (
-          <Pressable key={card.id} onPress={() => onSelect(card.id)} className="w-[31%] items-center">
+          <Pressable key={card.id} accessibilityRole="button" accessibilityLabel={card.label} accessibilityState={{ selected: card.id === selectedId }} onPress={() => onSelect(card.id)} className="w-[31%] items-center">
             <View
-              className="w-full overflow-hidden rounded-2xl bg-[#F4F4F2] shadow-sm shadow-black/10"
-              style={{ height: 96 }}
+              className="w-full overflow-hidden rounded-2xl bg-[#F4F4F2]"
+              style={{ height: 96, borderWidth: card.id === selectedId ? 2 : 0, borderColor: '#155DFC' }}
             >
-              <Image source={{ uri: card.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="cover" />
+              <Image source={{ uri: card.imageUrl || PLACEHOLDER_IMAGE_URI }} className="h-full w-full" resizeMode="contain" />
             </View>
             <Text className="mt-2 text-center text-[12.5px] font-medium leading-4 text-ink" numberOfLines={2}>
               {card.label}

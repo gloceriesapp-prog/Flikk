@@ -724,6 +724,10 @@
     {
       "file": "20261112150000_popular_brand_banner.sql",
       "sha256": "75612c9dcc6cb0fcaf8b1cdac81286bc9ca01d8feedddd2f7e30d68eb55d9781"
+    },
+    {
+      "file": "20261112200000_store_catalogue_taxonomy.sql",
+      "sha256": "9ffc338ffafce2d683402e7b6bf5fb633d5627f48425f69847126a04ed19e110"
     }
   ]
 }

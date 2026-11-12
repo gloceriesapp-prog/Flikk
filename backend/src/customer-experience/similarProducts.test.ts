@@ -58,3 +58,11 @@ it('binds page cursors to their source and validates requested identifiers', asy
   await expect(similarProductPage({ exclude: uuid(2), after: page.nextCursor! }, ['nearby'], '*')).rejects.toMatchObject({ code: 'INVALID_CURSOR' });
   await expect(similarProductPage({ exclude: 'not-an-id' }, ['nearby'], '*')).rejects.toThrow();
 });
+
+it('restricts Store-detail recommendations to the requested accessible store', async () => {
+  const shop = uuid(80), other = uuid(81);
+  fixture.rows = [row(1, { store_id: shop }), row(2, { store_id: shop }), row(3, { store_id: other })];
+  const result = await similarProductPage({ exclude: source, storeId: shop }, [shop, other], '*');
+  expect(result.products.map(r => r.id)).toEqual([uuid(2)]);
+  expect(await similarProductPage({ exclude: source, storeId: shop }, [other], '*')).toEqual({ products: [], nextCursor: null });
+});

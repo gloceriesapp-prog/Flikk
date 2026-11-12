@@ -41,7 +41,7 @@ function ProductDetailContent({ product, visible, onClose }: Props) {
   const [stack, setStack] = useState([product]);
   const current = stack[stack.length - 1]!;
   const back = () => (stack.length > 1 ? setStack((s) => s.slice(0, -1)) : onClose());
-  const openProduct = (next: Product) => setStack((s) => [...s, next]);
+  const openProduct = (next: Product) => setStack((s) => [...s, { ...next, browseStoreId: current.browseStoreId }]);
   return (
     <Modal visible={visible} animationType="none" transparent={false}
       statusBarTranslucent navigationBarTranslucent onRequestClose={back}>
@@ -90,7 +90,7 @@ function ProductDetailCard({ product, onClose, onBack, onOpenProduct }: CardProp
   const toggleWishlist = useWishlistStore((state) => state.toggle);
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   // Close the sheet first so Search opens on top, not behind the modal.
-  const openSearch = () => { onClose(); navigation.navigate('Search'); };
+  const openSearch = () => { onClose(); navigation.navigate('Search', product.browseStoreId ? { storeId: product.browseStoreId, storeName: product.storeName } : undefined); };
 
   // Lifted here (not local to ProductDetailInfo) — ProductDetailFooter is
   // this component's own sibling, not a child of ProductDetailInfo, and

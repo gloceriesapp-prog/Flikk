@@ -23,7 +23,8 @@ const MIN_QUERY_LENGTH = 2;
 // About five suggestion rows; the rest scroll inside the panel.
 const TYPEAHEAD_MAX_HEIGHT = 280;
 
-export function SearchScreen({ navigation }: Props) {
+export function SearchScreen({ navigation, route }: Props) {
+  const storeId = route.params?.storeId;
   const [query, setQueryValue] = useState('');
   // Typing shows text suggestions (SearchTypeahead); the keyboard search key
   // or a picked suggestion submits and shows the full results. Editing the
@@ -34,7 +35,7 @@ export function SearchScreen({ navigation }: Props) {
   const isSearching = trimmedQuery.length >= MIN_QUERY_LENGTH;
   const submit = () => { if (isSearching) { setSubmitted(true); Keyboard.dismiss(); } };
 
-  const search = useProductSearch(query);
+  const search = useProductSearch(query, storeId);
   const { data: matchingProducts = [], isLoading: isLoadingProducts } = search;
 
   const suggestions = useMemo(
@@ -70,7 +71,7 @@ export function SearchScreen({ navigation }: Props) {
           call, not scoped per screen, so without this override Search's
           own white bg was left with white-on-white icons. */}
       <StatusBar style="dark" />
-      <SearchHeader value={query} onChangeText={setQuery} onBack={() => navigation.goBack()} onSubmit={submit} />
+      <SearchHeader placeholderText={storeId ? `Search ${route.params?.storeName ?? "this store"}` : undefined} value={query} onChangeText={setQuery} onBack={() => navigation.goBack()} onSubmit={submit} />
 
       <View className="flex-1">
         <FlashList
@@ -100,7 +101,7 @@ export function SearchScreen({ navigation }: Props) {
               // Cancel the grid's 15px side padding: suggestions own their
               // gutter and their rows bleed to the screen edge.
               <View style={{ marginHorizontal: -15 }}>
-                <SearchSuggestions />
+                <>{storeId ? <Text className="px-5 py-8 text-sm text-ink/60">Search products in this store.</Text> : <SearchSuggestions />}</>
               </View>
             ) : search.isError ? (
               <View className="items-center gap-3 px-6 py-12">

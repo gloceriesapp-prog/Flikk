@@ -15,9 +15,9 @@ interface Props {
 
 // One recommendation source for the six-card preview and the full paged list.
 export function SimilarProductsRow({ product, onSelect }: Props) {
-  const query = useSimilarProducts(product.categoryLabel, product.id, product.storeId, !product.relatedProducts);
+  const query = useSimilarProducts(product.categoryLabel, product.id, product.storeId, !product.relatedProducts, product.browseStoreId);
   const candidates = product.relatedProducts ?? query.data?.pages.flatMap((page) => page.products) ?? [];
-  const products = [...new Map(candidates.filter((item) => item.id !== product.id).map((item) => [item.id, item])).values()];
+  const products = [...new Map(candidates.filter((item) => item.id !== product.id && (!product.browseStoreId || item.storeId === product.browseStoreId)).map((item) => [item.id, item])).values()];
   const [showAll, setShowAll] = useState(false);
   const insets = useSafeAreaInsets();
   const open = (item: Product) => { setShowAll(false); onSelect?.(item); };
