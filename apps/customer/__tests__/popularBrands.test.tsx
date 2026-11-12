@@ -57,5 +57,5 @@ it('does not fetch while Categories is hidden and hides a genuinely empty select
   await rerender(<PopularBrands onSelect={jest.fn()} onSeeAll={jest.fn()} />);
   await waitFor(() => expect(screen.queryByLabelText('Loading popular brands')).toBeNull());
   expect(fetchPopularBrands).toHaveBeenCalled();
-  expect(screen.queryByText('Popular brands')).toBeNull();
+  expect(screen.queryByText('Popular Brands')).toBeNull();
 });

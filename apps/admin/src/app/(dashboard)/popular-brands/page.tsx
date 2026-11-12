@@ -10,6 +10,7 @@ type Brand = {
   is_active: boolean;
   popular_position: number | null;
   popular_image_url: string | null;
+  popular_banner_url: string | null;
 };
 
 const ENDPOINT = '/api/brands/popular';
@@ -25,6 +26,7 @@ function BrandPlacement({ brand, brands, onSaved }: {
   const [shown, setShown] = useState(brand.popular_position !== null);
   const [position, setPosition] = useState<number>(brand.popular_position ?? firstFree);
   const [imageUrl, setImageUrl] = useState(brand.popular_image_url ?? '');
+  const [bannerUrl, setBannerUrl] = useState(brand.popular_banner_url ?? '');
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ message: string; error: boolean } | null>(null);
 
@@ -41,7 +43,7 @@ function BrandPlacement({ brand, brands, onSaved }: {
       const response = await fetch(ENDPOINT, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: brand.id, position: shown ? position : null, imageUrl: imageUrl.trim() || null }),
+        body: JSON.stringify({ id: brand.id, position: shown ? position : null, imageUrl: imageUrl.trim() || null, bannerUrl: bannerUrl.trim() || null }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Could not save the brand.');
@@ -72,11 +74,20 @@ function BrandPlacement({ brand, brands, onSaved }: {
           <span className="block text-xs text-muted">Turn off Show in Categories to hide this brand. Positions 1–1000 control the order; only the first ten appear in Categories.</span>
         </label>
         <div className="space-y-2">
-          <p className="text-sm font-medium">Tile image</p>
+          <p className="text-sm font-medium">Brand logo</p>
           <ProductImageUpload key={imageUrl} imageUrl={imageUrl || brand.logo_url || undefined} onChange={setImageUrl} bucket="appsui" small />
           <label className="block space-y-1 text-sm">
-            <span>Image URL (optional)</span>
+            <span>Logo URL (optional)</span>
             <input type="url" className={fieldClass} value={imageUrl} onChange={event => setImageUrl(event.target.value)} placeholder="Use the existing logo" />
+          </label>
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Brand banner</p>
+          <p className="text-xs text-muted">Shown above this brand’s products. Recommended size: 1200 × 480 px. Leave blank to keep the logo header.</p>
+          <ProductImageUpload key={'banner-' + bannerUrl} imageUrl={bannerUrl || undefined} onChange={setBannerUrl} bucket="appsui" />
+          <label className="block space-y-1 text-sm">
+            <span>Banner URL (optional)</span>
+            <input type="url" className={fieldClass} value={bannerUrl} onChange={event => setBannerUrl(event.target.value)} placeholder="https://images.gloceries.com/…" />
           </label>
         </div>
       </fieldset>
@@ -111,7 +122,7 @@ export default function PopularBrandsPage() {
   return (
     <div className="space-y-5 p-6">
       <header>
-        <h1 className="text-2xl font-bold text-ink">Popular brands</h1>
+        <h1 className="text-2xl font-bold text-ink">Popular Brands</h1>
         <p className="mt-1 text-sm text-muted">Choose the brand icons and their order. Categories shows five per row, up to ten; additional selected brands appear under See all.</p>
       </header>
       {loadError ? (

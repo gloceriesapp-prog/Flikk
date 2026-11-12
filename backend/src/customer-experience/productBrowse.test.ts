@@ -51,7 +51,7 @@ it('home picks group pinned products by section in pin order, only from delivery
 
 it('pages only the chosen brand at delivery stores and applies customer prices', async () => {
   const brandId = '00000000-0000-4000-8000-000000000101';
-  const brand = { id: brandId, name: 'Brand', popular_image_url: null, logo_url: 'https://example.test/logo.png' };
+  const brand = { id: brandId, name: 'Brand', popular_banner_url: 'https://example.test/banner.png', popular_image_url: null, logo_url: 'https://example.test/logo.png' };
   const brandQuery = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: brand, error: null }) };
   mocks.fromBrand.mockReturnValue(brandQuery);
   const first = {
@@ -72,6 +72,8 @@ it('pages only the chosen brand at delivery stores and applies customer prices',
   expect(productQuery.in).toHaveBeenCalledWith('store_id', ['s1']);
   expect(productQuery.eq).toHaveBeenCalledWith('approval_status', 'approved');
   const result = vi.mocked(initial.res.json).mock.calls[0]![0];
+  expect(result.brand.bannerUrl).toBe('https://example.test/banner.png');
+  expect(result.brand.imageUrl).toBe('https://example.test/logo.png');
   expect(result.products).toEqual([{ ...first, price: 25, original_price: 30, product_variants: [{ price: 25, original_price: 30, is_default: true }] }]);
 
   await request('/brand/:id', { ...pin, limit: '1', after: result.nextCursor }, { id: brandId });
