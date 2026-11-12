@@ -31,7 +31,7 @@ export function AllBrandsScreen({ navigation }: Props) {
           className="h-11 w-11 items-center justify-center">
           <IconlyArrowLeft size={22} color={colors.ink} />
         </Pressable>
-        <Text accessibilityRole="header" className="text-xl font-bold text-ink">Popular brands</Text>
+        <Text accessibilityRole="header" className="text-xl font-bold text-ink">Popular Brands</Text>
       </View>
       <FlatList data={brands} numColumns={5} keyExtractor={brand => brand.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}

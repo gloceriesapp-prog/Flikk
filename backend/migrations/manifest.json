@@ -720,6 +720,10 @@
     {
       "file": "20261112120000_popular_brand_directory.sql",
       "sha256": "b7c1c50cee3e14690d110619340a4aace2bebd25c48d0db6d2a3c238e174f537"
+    },
+    {
+      "file": "20261112150000_popular_brand_banner.sql",
+      "sha256": "75612c9dcc6cb0fcaf8b1cdac81286bc9ca01d8feedddd2f7e30d68eb55d9781"
     }
   ]
 }

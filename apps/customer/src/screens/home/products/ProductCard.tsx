@@ -77,7 +77,7 @@ const ProductCardShell = memo(function ProductCardShell({
   // shares this exact query key, so the two dedupe into one request and the
   // similar list still populates. prefetchImages then warms the sibling photos.
   const needsSimilar = !product.relatedProducts;
-  const similar = useSimilarProducts(needsSimilar ? product.categoryLabel : undefined, product.id, product.storeId, isDetailOpen);
+  const similar = useSimilarProducts(product.categoryLabel, product.id, product.storeId, isDetailOpen && needsSimilar);
   useEffect(() => {
     if (similar.data) prefetchImages(similar.data.pages[0]?.products.slice(0, 6).map((p) => p.imageUrl) ?? []);
   }, [similar.data]);

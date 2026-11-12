@@ -5,10 +5,11 @@ export interface PopularBrand {
   id: string;
   name: string;
   imageUrl: string;
+  bannerUrl?: string | null;
 }
 
 interface BrandProductsPage {
-  brand: { id: string; name: string; imageUrl: string | null };
+  brand: { id: string; name: string; imageUrl: string | null; bannerUrl?: string | null };
   products: ApiProduct[];
   nextCursor: string | null;
 }

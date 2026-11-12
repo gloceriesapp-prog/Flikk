@@ -1,27 +1,38 @@
 import { useQuery } from '@tanstack/react-query';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fetchPopularBrands, type PopularBrand } from '../../../api/brands';
 import { AppImage } from '../../../components/AppImage';
 
 export function PopularBrands({ onSelect, onSeeAll }: { onSelect: (brand: PopularBrand) => void; onSeeAll: () => void }) {
-  const { data: brands } = useQuery({
-    queryKey: ['popular-brands'],
+  const isFocused = useIsFocused();
+  const query = useQuery({
+    queryKey: ['popular-brands', 'preview'],
     queryFn: ({ signal }) => fetchPopularBrands(signal),
-    staleTime: 60_000,
-    retry: false,
+    enabled: isFocused,
+    // Re-entering Categories refreshes saved admin selections; cached tiles stay visible.
+    staleTime: 0,
+    refetchInterval: isFocused ? 60_000 : false,
+    retry: 1,
   });
+  const brands = query.data ?? [];
 
-  if (!brands?.length) return null;
+  if (!brands.length && !query.isPending && !query.isError) return null;
 
   return (
-    <View className="pb-5 pt-3">
+    <View className="pb-4 pt-3">
       <View className="mb-2 flex-row items-center justify-between px-5">
-        <Text accessibilityRole="header" className="text-[17px] font-bold text-ink/90">Popular brands</Text>
+        <Text accessibilityRole="header" className="text-[17px] font-bold text-ink/90">Popular Brands</Text>
         {brands.length > 10 && <Pressable accessibilityRole="button" accessibilityLabel="See all brands"
           onPress={onSeeAll} className="min-h-11 justify-center pl-4">
           <Text className="text-sm font-semibold text-ink/70">See all</Text>
         </Pressable>}
       </View>
+      {query.isPending && <ActivityIndicator accessibilityLabel="Loading popular brands" className="py-3" />}
+      {query.isError && <Pressable accessibilityRole="button" accessibilityLabel="Retry popular brands"
+        onPress={() => void query.refetch()} className="mx-5 mb-3 min-h-11 justify-center rounded-xl bg-gray-100 px-3 py-2">
+        <Text className="text-sm text-ink/70">Couldn’t refresh brands. Tap to retry.</Text>
+      </Pressable>}
       <View className="flex-row flex-wrap gap-y-2 px-4">
         {brands.slice(0, 10).map(brand => (
           <View key={brand.id} style={styles.tile}>

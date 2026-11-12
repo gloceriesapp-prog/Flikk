@@ -109,7 +109,7 @@ productBrowseRouter.get('/brand/:id', async (req, res, next) => {
   try {
     const brandId = optionalUuid(req.params.id);
     const { data: brand, error: brandError } = await supabase.from('brands')
-      .select('id, name, logo_url, popular_image_url')
+      .select('id, name, logo_url, popular_image_url, popular_banner_url')
       .eq('id', brandId).eq('is_active', true).maybeSingle();
     if (brandError) throw brandError;
     if (!brand) throw new AppError(404, 'BRAND_NOT_FOUND', 'This brand is unavailable.');
@@ -133,7 +133,7 @@ productBrowseRouter.get('/brand/:id', async (req, res, next) => {
       }
     }
     res.json({
-      brand: { id: brand.id, name: brand.name, imageUrl: brand.popular_image_url ?? brand.logo_url },
+      brand: { id: brand.id, name: brand.name, imageUrl: brand.popular_image_url ?? brand.logo_url, bannerUrl: brand.popular_banner_url ?? null },
       products,
       nextCursor,
     });

@@ -10,7 +10,7 @@ export function useSimilarProducts(category: string | undefined, excludeId: stri
   const pin = useLocationStore((state) => state.location);
   return useInfiniteQuery({
     queryKey: ['product-detail', 'similar-v2', category, excludeId, storeId, pin?.latitude, pin?.longitude],
-    enabled: similarProductsEnabled(shouldFetch, category) && !!pin,
+    enabled: similarProductsEnabled(shouldFetch, excludeId) && !!pin,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams({ exclude: excludeId, limit: '12' });

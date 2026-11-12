@@ -3,7 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { FlashList } from '@shopify/flash-list';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { fetchBrandProducts } from '../../api/brands';
-import { AppImage } from '../../components/AppImage';
+import { BrandHeader } from './components/BrandHeader';
 import { IconlyArrowLeft } from '../../components/icons/iconly';
 import { ScreenStatusBar } from '../../components/ScreenStatusBar';
 import type { AppStackParamList } from '../../navigation/types';
@@ -50,11 +50,7 @@ export function BrandProductsScreen({ navigation, route }: Props) {
         onRefresh={location ? () => void query.refetch() : undefined}
         refreshing={query.isRefetching}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
-        ListHeaderComponent={currentBrand.imageUrl ? (
-          <View className="mb-4 items-center rounded-2xl bg-gray-100 py-4">
-            <AppImage source={{ uri: currentBrand.imageUrl }} style={{ width: 96, height: 96 }} contentFit="contain" />
-          </View>
-        ) : null}
+        ListHeaderComponent={<BrandHeader brand={currentBrand} />}
         ListEmptyComponent={
           <View className="items-center gap-3 px-5 py-10">
             {!location ? (

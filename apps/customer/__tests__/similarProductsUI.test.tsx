@@ -19,8 +19,9 @@ beforeEach(() => { jest.clearAllMocks(); (useSimilarProducts as jest.Mock).mockR
 it('shows six preview cards and opens the full list only through See all', async () => {
   const onSelect = jest.fn();
   const view = await render(<SimilarProductsRow product={product(0)} onSelect={onSelect} />);
+  expect(view.getByRole('header', { name: 'You may also like' })).toBeTruthy();
   expect(view.queryByText('Drink 7')).toBeNull();
-  await fireEvent.press(view.getByText('See all similar products'));
+  await fireEvent.press(view.getByText('See all recommendations'));
   expect(view.getByText('Drink 7')).toBeTruthy();
   await fireEvent.press(view.getByText('Drink 7'));
   expect(onSelect).toHaveBeenCalledWith(product(7));
@@ -28,7 +29,7 @@ it('shows six preview cards and opens the full list only through See all', async
 it('hides See all for six or fewer recommendations and retries a failed request', async () => {
   (useSimilarProducts as jest.Mock).mockReturnValue({ ...query, data: { pages: [{ products: [product(1)] }] } });
   const view = await render(<SimilarProductsRow product={product(0)} />);
-  expect(view.queryByText('See all similar products')).toBeNull();
+  expect(view.queryByText('See all recommendations')).toBeNull();
   (useSimilarProducts as jest.Mock).mockReturnValue({ ...query, data: undefined, isError: true });
   await view.rerender(<SimilarProductsRow product={product(0)} />);
   await fireEvent.press(view.getByText('Couldn’t load recommendations. Tap to retry.'));

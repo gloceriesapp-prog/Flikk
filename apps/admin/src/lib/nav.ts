@@ -72,7 +72,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/catalogue-items', label: 'Pending items', icon: FileText },
       { href: '/inventory-pack-stock', label: 'Pack stock', icon: Package },
       { href: '/categories', label: 'Categories', icon: Tag },
-      { href: '/popular-brands', label: 'Popular brands', icon: Tag },
+      { href: '/popular-brands', label: 'Popular Brands', icon: Tag },
     ],
   },
   {

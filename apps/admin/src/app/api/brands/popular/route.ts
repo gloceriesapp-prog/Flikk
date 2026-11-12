@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { isUuid } from '@/lib/orders/adminActor';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
-const fields = 'id, name, logo_url, is_active, popular_position, popular_image_url';
+const fields = 'id, name, logo_url, is_active, popular_position, popular_image_url, popular_banner_url';
 type Row = {
   id: string;
   name: string;
@@ -11,6 +11,7 @@ type Row = {
   is_active: boolean;
   popular_position: number | null;
   popular_image_url: string | null;
+  popular_banner_url: string | null;
 };
 
 export async function GET() {
@@ -49,10 +50,11 @@ export async function PATCH(request: Request) {
     id?: unknown;
     position?: unknown;
     imageUrl?: unknown;
+    bannerUrl?: unknown;
   } | null;
   if (!body || !isUuid(body.id)) return NextResponse.json({ error: 'Choose a brand.' }, { status: 400 });
 
-  const { id, position, imageUrl } = body;
+  const { id, position, imageUrl, bannerUrl } = body;
   if (position !== null && (typeof position !== 'number' || !Number.isInteger(position) || position < 1 || position > 1000)) {
     return NextResponse.json({ error: 'Choose a position from 1 to 1000, or leave the brand hidden.' }, { status: 400 });
   }
@@ -60,8 +62,13 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Upload an image or enter a valid HTTPS image URL.' }, { status: 400 });
   }
 
+  if (bannerUrl !== undefined && bannerUrl !== null && !validImageUrl(bannerUrl)) {
+    return NextResponse.json({ error: 'Enter a valid HTTPS banner URL or leave it empty.' }, { status: 400 });
+  }
+  // Older admin clients omit this field; preserve the existing banner in that case.
+  const bannerUpdate = bannerUrl === undefined ? {} : { popular_banner_url: bannerUrl };
   let query = supabaseAdmin.from('brands')
-    .update({ popular_position: position, popular_image_url: imageUrl }).eq('id', id);
+    .update({ popular_position: position, popular_image_url: imageUrl, ...bannerUpdate }).eq('id', id);
   if (position !== null) query = query.eq('is_active', true);
   const { data, error } = await query.select(fields).maybeSingle();
   if (error?.code === '23505') {
