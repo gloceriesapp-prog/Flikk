@@ -10,6 +10,7 @@
 // customer product feed) and stores only ever see store prices
 // (toStorePrices / partner order mapping), so neither side learns the markup.
 
+import { flavourPriceOverride, type FlavourPrices } from './flavourPricing.js';
 import { round2 } from './pricing.js';
 
 export function customerUnitPrice(storePrice: number, markup: number | null | undefined, mrp: number | null | undefined): number {
@@ -19,12 +20,14 @@ export function customerUnitPrice(storePrice: number, markup: number | null | un
 }
 
 interface PricedVariant {
+  id?: string; unit_type?: string; quantity?: number;
   price: number;
   original_price: number | null;
   is_default?: boolean;
   platform_markup?: number | string | null;
 }
 interface PricedProduct {
+  product_options?: { price_overrides?: FlavourPrices; [key: string]: unknown }[];
   price?: number;
   original_price?: number | null;
   product_variants?: PricedVariant[];
@@ -33,13 +36,24 @@ interface PricedProduct {
 // A product row as a customer sees it: every pack at its customer price, the
 // product's own price/MRP taken from its default pack, markup removed.
 function customerProduct<T extends PricedProduct>(product: T): T {
-  if (!Array.isArray(product.product_variants)) return product;
-  const variants = product.product_variants.map(({ platform_markup, ...variant }) => ({
+  if (!Array.isArray(product.product_variants) && !Array.isArray(product.product_options)) return product;
+  const originals = product.product_variants ?? [];
+  const variants = originals.map(({ platform_markup, ...variant }) => ({
     ...variant,
     price: customerUnitPrice(Number(variant.price), Number(platform_markup ?? 0), variant.original_price),
   }));
   const main = variants.find((v) => v.is_default) ?? variants[0];
   const shown = { ...product, product_variants: variants, ...(main ? { price: main.price, original_price: main.original_price } : {}) } as unknown as Record<string, unknown>;
+  if (product.product_options) shown.product_options = product.product_options.map(({ price_overrides, ...option }) => {
+    const packs: (PricedVariant | null)[] = originals.length ? originals : [null];
+    const customer_prices = Object.fromEntries(packs.map(variant => {
+      const override = flavourPriceOverride(price_overrides, variant);
+      const storePrice = Number(override?.price ?? variant?.price ?? product.price);
+      const mrp = override?.original_price ?? variant?.original_price ?? product.original_price;
+      return [variant?.id ?? 'base', { price: variant ? customerUnitPrice(storePrice, Number(variant.platform_markup ?? 0), mrp) : storePrice, original_price: mrp ?? null }];
+    }));
+    return { ...option, customer_prices };
+  });
   delete shown.waive_commission;
   return shown as T;
 }

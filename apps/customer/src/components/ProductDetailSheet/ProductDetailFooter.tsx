@@ -17,6 +17,7 @@ import { CUT_SIZE_LABEL, SERVING_LABEL, cartLineId, type CutSize, type Serving }
 import type { CartPreorder } from '../../store/preorder';
 
 import type { Product, ProductOption } from '../../screens/home/products/types';
+import { flavourPrice } from '../FlavourPicker/flavourPricing';
 import { discountPercentOf } from './ProductVariantOptions';
 
 const BAR_BLUE = '#1447e6';
@@ -70,11 +71,7 @@ export function ProductDetailFooter({
   const weight =
     selectedVariant?.label ?? product.weight;
 
-  const price =
-    selectedVariant?.price ?? product.price;
-
-  const originalPrice =
-    selectedVariant?.originalPrice ?? product.originalPrice;
+  const { price, originalPrice } = flavourPrice(product, option, selectedVariant);
   const discount = discountPercentOf(price, originalPrice);
   const selectionLabel = [weight, cutSize ? CUT_SIZE_LABEL[cutSize] : null, option?.name,
     serving ? SERVING_LABEL[serving] : null, product.preorder ? `Min ${product.preorder.minQty}` : null]

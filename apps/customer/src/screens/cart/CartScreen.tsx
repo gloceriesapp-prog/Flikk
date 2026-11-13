@@ -130,7 +130,8 @@ export function CartScreen({ navigation, route }: Props) {
     return groupCartItemsByStore(items.map((item) => {
       const identity = cartIdentity(item);
       const priced = pricedItems.find((entry) => entry.productId === identity.productId
-        && (!identity.variantId || entry.variantId === identity.variantId));
+        && (!identity.variantId || entry.variantId === identity.variantId)
+        && entry.optionId === identity.optionId && entry.cutSize === identity.cutSize && entry.serving === identity.serving);
       // Keep persisted line IDs so existing quantity controls also work for
       // legacy carts that resolve to a default variant on the server.
       return priced ? { ...item, price: priced.price, originalPrice: priced.originalPrice, weight: priced.weight } : item;

@@ -22,6 +22,7 @@ import { memo, useCallback, useEffect, useState } from 'react';
 import { prefetchImages } from '../../../components/AppImage';
 import { ProductDetailSheet } from '../../../components/ProductDetailSheet/ProductDetailSheet';
 import { useSimilarProducts } from '../../../components/ProductDetailSheet/useSimilarProducts';
+import { FlavourPickerSheet } from '../../../components/FlavourPicker/FlavourPickerSheet';
 import { ProductCardView } from './ProductCardView';
 import { useProductAvailability } from './useProductAvailability';
 import { useDeliveryEstimateMinutes } from '../../../api/deliverySettings';
@@ -70,6 +71,7 @@ const ProductCardShell = memo(function ProductCardShell({
 }) {
   const matchedOption = product.options?.find((option) => option.id === product.initialOptionId);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isFlavourOpen, setIsFlavourOpen] = useState(false);
 
   // Gated on isDetailOpen: this fires ONLY once the card is tapped open, not on
   // mount — a whole Home grid of cards used to each fire this on mount (~36
@@ -85,6 +87,7 @@ const ProductCardShell = memo(function ProductCardShell({
   // Stable so the memoized ProductCardView doesn't re-render just because the
   // shell did.
   const onPress = useCallback(() => setIsDetailOpen(true), []);
+  const onAdd = useCallback(() => setIsFlavourOpen(true), []);
 
   return (
     <>
@@ -95,10 +98,12 @@ const ProductCardShell = memo(function ProductCardShell({
         compact={compact}
         onDark={onDark}
         onPress={onPress}
+        onAdd={onAdd}
         estimatedMinutes={estimatedMinutes}
         isAvailable={isAvailable && matchedOption?.isAvailable !== false}
         availabilityLabel={matchedOption?.isAvailable === false ? 'Out of stock' : availabilityLabel}
       />
+      <FlavourPickerSheet product={product} visible={isFlavourOpen} onClose={() => setIsFlavourOpen(false)} isAvailable={isAvailable} availabilityLabel={availabilityLabel} />
       <ProductDetailSheet product={product} visible={isDetailOpen} onClose={() => setIsDetailOpen(false)} />
     </>
   );

@@ -5,6 +5,7 @@
 import type { Serving } from '../../../store/cartIdentity';
 
 export interface ProductOption {
+  prices?: Record<string, { price: number; originalPrice?: number; unitPriceLabel?: string }>;
   imageUrls?: string[];
   id: string;
   name: string;

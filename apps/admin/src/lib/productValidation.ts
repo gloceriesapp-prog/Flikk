@@ -37,7 +37,7 @@ export interface ProductWriteInput {
   stockStatus: StockStatus;
   imageUrl?: string | null;
   // Flavours (product_options). Absent leaves them unchanged; a list replaces them.
-  options?: { id?: string | null; name: string; imageUrl?: string | null; extraImageUrls?: string[] | null; isAvailable?: boolean }[] | null;
+  options?: { id?: string | null; name: string; imageUrl?: string | null; extraImageUrls?: string[] | null; priceOverrides?: Record<string, { price: number; originalPrice?: number }>; isAvailable?: boolean }[] | null;
   // Gallery photos after the cover (products.extra_image_urls). Absent leaves
   // the saved list alone; an array replaces it.
   extraImageUrls?: string[] | null;
@@ -184,7 +184,7 @@ export const MAX_PRODUCT_OPTIONS = 20;
 // trimmed, required, at most 60 characters and unique per product (matches
 // product_options' checks); blank rows from the form are an error, not dropped.
 export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
-  { id: string | null; name: string; image_url: string | null; extra_image_urls?: string[]; is_available: boolean; sort_order: number }[] | undefined {
+  { id: string | null; name: string; image_url: string | null; extra_image_urls?: string[]; price_overrides?: Record<string, { price: number; original_price?: number }>; is_available: boolean; sort_order: number }[] | undefined {
   if (input.options == null) return undefined;
   if (!Array.isArray(input.options)) throw new Error('options must be a list.');
   if (input.options.length > MAX_PRODUCT_OPTIONS) throw new Error(`Up to ${MAX_PRODUCT_OPTIONS} flavours per product.`);
@@ -198,7 +198,18 @@ export function toProductOptions(input: Pick<ProductWriteInput, 'options'>):
     const image = option.imageUrl?.trim() || null;
     if (image && !/^https?:\/\//i.test(image)) throw new Error(`Flavour "${name}": upload the photo again.`);
     const extras = toExtraImageUrls(option);
-    return { id: option.id ?? null, name, image_url: image, ...(extras === undefined ? {} : { extra_image_urls: extras }), is_available: option.isAvailable !== false, sort_order: index };
+    let prices: Record<string, { price: number; original_price?: number }> | undefined;
+    if (option.priceOverrides !== undefined) {
+      if (!option.priceOverrides || typeof option.priceOverrides !== 'object' || Array.isArray(option.priceOverrides) || Object.keys(option.priceOverrides).length > 32) throw new Error(`Flavour "${name}": invalid pack prices.`);
+      prices = {};
+      for (const [pack, value] of Object.entries(option.priceOverrides)) {
+        if (!/^(base|(g|kg|ml|l|pc):[0-9]+(\.[0-9]+)?)$/.test(pack) || (pack !== 'base' && !(Number(pack.split(':')[1]) > 0))) throw new Error(`Flavour "${name}": invalid pack.`);
+        if (!value || !Number.isFinite(value.price) || value.price <= 0 || value.price > 1000000 || Math.abs(value.price * 100 - Math.round(value.price * 100)) > 0.000001) throw new Error(`Flavour "${name}": enter a positive price with up to 2 decimal places.`);
+        if (value.originalPrice !== undefined && (!Number.isFinite(value.originalPrice) || value.originalPrice < value.price || value.originalPrice > 1000000 || Math.abs(value.originalPrice * 100 - Math.round(value.originalPrice * 100)) > 0.000001)) throw new Error(`Flavour "${name}": MRP must be at least the store price.`);
+        prices[pack] = { price: value.price, ...(value.originalPrice === undefined ? {} : { original_price: value.originalPrice }) };
+      }
+    }
+    return { id: option.id ?? null, name, image_url: image, ...(extras === undefined ? {} : { extra_image_urls: extras }), ...(prices === undefined ? {} : { price_overrides: prices }), is_available: option.isAvailable !== false, sort_order: index };
   });
 }
 

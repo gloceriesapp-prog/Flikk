@@ -15,7 +15,7 @@ import { applyCustomerPrices } from '../lib/customerPrice.js';
 export const homeFestivalSectionRouter = Router();
 
 const PRODUCT_WITH_VARIANTS_SELECT =
-  '*, stores!inner(name, is_active, open_time, close_time, availability_override, availability_override_until, fssai_number, address_line, city, district, photo_url), product_variants(*), product_options(id, name, image_url, extra_image_urls, sort_order, is_available)';
+  '*, stores!inner(name, is_active, open_time, close_time, availability_override, availability_override_until, fssai_number, address_line, city, district, photo_url), product_variants(*), product_options(id, name, image_url, extra_image_urls, sort_order, is_available, price_overrides)';
 
 homeFestivalSectionRouter.get('/', async (_req, res, next) => {
   try {
