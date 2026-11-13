@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import { HighDemandBadge } from './HighDemandBadge';
 import { GILROY } from '../../../theme/fonts';
 
 // Shared across Home/category header mounts; a new app launch resets it.
@@ -9,7 +10,14 @@ let introPlayed = false;
 const HOLD_MS = 1500;
 const COLLAPSE_MS = 420;
 
-export function DeliveryHeading({ minutes, light }: { minutes: number; light: boolean }) {
+export function DeliveryHeading({ minutes, light, highDemand = false }: { minutes: number; light: boolean; highDemand?: boolean }) {
+  return <View style={styles.heading}>
+    <View style={styles.estimate}><DeliveryEstimate minutes={minutes} light={light} compact={highDemand} /></View>
+    {highDemand && <HighDemandBadge />}
+  </View>;
+}
+
+function DeliveryEstimate({ minutes, light, compact }: { minutes: number; light: boolean; compact: boolean }) {
   const focused = useIsFocused();
   const reducedMotion = useReducedMotion();
   const progress = useSharedValue(introPlayed || reducedMotion ? 1 : 0);
@@ -21,7 +29,7 @@ export function DeliveryHeading({ minutes, light }: { minutes: number; light: bo
   const fits = sizes.brand + sizes.short <= sizes.available;
   const color = light ? '#000000' : '#FFFFFF';
   const shortLabel = `in ${minutes} min`;
-  const fullLabel = `In ${minutes} minutes`;
+  const fullLabel = compact ? `In ${minutes} min` : `In ${minutes} minutes`;
 
 
   useEffect(() => {
@@ -77,12 +85,14 @@ export function DeliveryHeading({ minutes, light }: { minutes: number; light: bo
           <Animated.Text numberOfLines={1} style={[styles.text, { color, width: sizes.short }, shortOpacity]}>{shortLabel}</Animated.Text>
           <Animated.Text numberOfLines={1} style={[styles.text, styles.overlap, { color, width: sizes.full }, fullOpacity]}>{fullLabel}</Animated.Text>
         </Animated.View>
-      </View> : <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.text, { color }]}>{introPlayed || reducedMotion ? fullLabel : `Gloceries ${shortLabel}`}</Text>}
+      </View> : <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.text, { color }]}>{introPlayed || reducedMotion || compact || (ready && !fits) ? fullLabel : `Gloceries ${shortLabel}`}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  heading: { flexDirection: 'row', alignItems: 'center', gap: 7, width: '100%' },
+  estimate: { flex: 1, minWidth: 0 },
   container: { width: '100%', minHeight: 28 },
   text: { fontFamily: GILROY.extrabold, fontSize: 22, lineHeight: 28, includeFontPadding: false },
   measurements: { position: 'absolute', opacity: 0, alignItems: 'flex-start' },

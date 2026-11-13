@@ -5,6 +5,7 @@
 // kind: 'image' keys hold an https artwork URL (admin shows an uploader);
 // blank keeps the app's built-in artwork.
 export const COPY_KEYS = {
+  'home.highDemand.enabled': { default: 'false', hint: 'High demand indicator beside delivery time. Does not change delivery estimates or fees.', kind: 'toggle' },
   // Home artwork and tiles (blank = built-in artwork / behaviour).
   'home.welcome.imageUrl': { default: '', hint: 'Home welcome banner artwork (wide, about 3:1). Blank = built-in artwork', kind: 'image' },
   'home.welcome.label': { default: 'Welcome. Shop the stores you already love.', hint: 'Home welcome banner text read by screen readers' },
