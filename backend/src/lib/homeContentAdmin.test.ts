@@ -190,3 +190,29 @@ it('checks every lookup batch and can publish the repaired draft without losing 
   expect((await PUT(publish({ revision: 3, content: repaired }), context)).status).toBe(200);
   expect(mocks.update).toHaveBeenLastCalledWith({ content: repaired, updated_by: mocks.user!.id });
 });
+
+
+it('automatically repairs only missing references from the exact saved revision while preserving newly added valid products', async () => {
+  const old = '00000000-0000-4000-8000-000000000041';
+  const added = '00000000-0000-4000-8000-000000000042';
+  const saved = structuredClone(DEFAULT_CONTENT.grocery);
+  saved.sections[0]!.selection.productIds = [old];
+  mocks.row = { ...(mocks.row as object), content: saved };
+  mocks.missingIds = [old];
+  const draft = structuredClone(saved);
+  draft.sections[0]!.selection.productIds.push(added);
+  const response = await PUT(publish({ revision: 3, content: draft }), context);
+  expect(response.status).toBe(200);
+  expect(mocks.update.mock.calls[0]![0].content.sections[0].selection.productIds).toEqual([added]);
+  expect((await response.json()).repairedReferences.productIds).toEqual([old]);
+  expect(saved.sections[0]!.selection.productIds).toEqual([old]);
+});
+it('refuses automatic cleanup against a newer saved revision', async () => {
+  const old = '00000000-0000-4000-8000-000000000041';
+  const saved = structuredClone(DEFAULT_CONTENT.grocery);
+  saved.sections[0]!.selection.productIds = [old];
+  mocks.row = { ...(mocks.row as object), content: saved };
+  mocks.missingIds = [old];
+  expect((await PUT(publish({ revision: 2, content: saved }), context)).status).toBe(409);
+  expect(mocks.update).not.toHaveBeenCalled();
+});
