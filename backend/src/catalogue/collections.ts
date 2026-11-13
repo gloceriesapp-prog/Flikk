@@ -111,15 +111,24 @@ collectionRouter.get('/:id/category-facets', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Opening hours affect checkout, not browsing. Suspension and approval
+// remain independent visibility gates for every store catalogue endpoint.
+async function canBrowseStore(storeId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('store_catalogue_is_browsable', { p_store: storeId });
+  if (error) throw error;
+  return data === true;
+}
+
 // Store taxonomy is derived from approved products in this store, never the
 // global category directory or whichever product pages the client has loaded.
 collectionRouter.get('/:id/catalogue-categories', async (req, res, next) => {
   try {
     if (!UUID.test(req.params.id!)) throw new AppError(400, 'INVALID_STORE', 'Invalid store.');
+    if (!await canBrowseStore(req.params.id!)) { res.json([]); return; }
     const { data, error } = await supabase.from('categories')
-      .select('id, name, image_url, sub_categories!inner(products!inner(id, stores!inner(is_active)))')
+      .select('id, name, image_url, sub_categories!inner(products!inner(id))')
       .eq('is_active', true).eq('sub_categories.is_active', true)
-      .eq('sub_categories.products.store_id', req.params.id!).eq('sub_categories.products.stores.is_active', true)
+      .eq('sub_categories.products.store_id', req.params.id!)
       .eq('sub_categories.products.approval_status', 'approved')
       .eq('sub_categories.products.preorder_enabled', false)
       .limit(1, { referencedTable: 'sub_categories.products' })
@@ -134,10 +143,11 @@ collectionRouter.get('/:id/catalogue-subcategories', async (req, res, next) => {
     if (!UUID.test(req.params.id!)) throw new AppError(400, 'INVALID_STORE', 'Invalid store.');
     const categoryId = optionalUuid(req.query.categoryId);
     if (!categoryId) throw new AppError(400, 'INVALID_CATEGORY', 'Select a category.');
+    if (!await canBrowseStore(req.params.id!)) { res.json([]); return; }
     const { data, error } = await supabase.from('sub_categories')
-      .select('id, name, image_url, categories!inner(is_active), products!inner(id, stores!inner(is_active))')
+      .select('id, name, image_url, categories!inner(is_active), products!inner(id)')
       .eq('category_id', categoryId).eq('is_active', true).eq('categories.is_active', true)
-      .eq('products.store_id', req.params.id!).eq('products.stores.is_active', true).eq('products.approval_status', 'approved')
+      .eq('products.store_id', req.params.id!).eq('products.approval_status', 'approved')
       .eq('products.preorder_enabled', false).limit(1, { referencedTable: 'products' })
       .order('sort_order').order('name').limit(60);
     if (error) throw error;
