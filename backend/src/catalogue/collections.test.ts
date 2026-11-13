@@ -169,3 +169,13 @@ it('returns an empty collection for an unconfigured category tile instead of rea
   expect(mocks.rpc).not.toHaveBeenCalled();
   expect(result.res.json).toHaveBeenCalledWith({ products: [], nextCursor: null });
 });
+
+it('supports bounded browsing for new custom categories and all built-in tabs', async () => {
+  for (const tab of ['custom-00000000-0000-4000-8000-000000000001', 'meat', 'festivals']) {
+    const result = await request('/:id/home-preview', { tab });
+    expect(result.next).not.toHaveBeenCalled();
+    expect(result.res.json).toHaveBeenCalled();
+  }
+  const invalid = await request('/:id/home-preview', { tab: 'custom-not-a-uuid' });
+  expect(invalid.next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+});

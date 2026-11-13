@@ -52,7 +52,7 @@ export type AppStackParamList = {
   AddressList: undefined;
   Home: undefined;
   HomeCategory: { tabId: string };
-  HomeContentCollection: { tabKey: 'grocery' | 'fresh' | 'regional' | 'festivals' | 'meat'; sectionId: string; itemId?: string };
+  HomeContentCollection: { tabKey: import('../screens/home/content/contracts').HomeContentKey; sectionId: string; itemId?: string };
   HomeSectionCollection: { title: string } & (
     | { products: Product[]; showDiscountBadge?: boolean }
     | { stores: StoreTile[] }

@@ -740,6 +740,10 @@
     {
       "file": "20261113210000_customer_refund_lifecycle.sql",
       "sha256": "0d4ac7917dafe72a65192044de172235291bc1dab9123416dc083772de15e327"
+    },
+    {
+      "file": "20261114010000_custom_home_content.sql",
+      "sha256": "a7d8fb2656c50505a47ca657ef57d2820df93de602a891d6fd6594579a5ea200"
     }
   ]
 }

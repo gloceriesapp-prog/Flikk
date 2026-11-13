@@ -55,3 +55,16 @@ export function createItem(id, title = '') {
     selection: createSelection(),
   };
 }
+
+// Custom identities survive renames and cannot collide with built-in tabs.
+export function isHomeContentKey(value) {
+  return typeof value === 'string' && (TAB_KEYS.includes(value) || /^custom-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value));
+}
+export function customContentKey(homeTabId) {
+  const key = `custom-${homeTabId}`;
+  if (!isHomeContentKey(key)) throw new Error('Invalid Home tab ID.');
+  return key;
+}
+export function createCustomContent(title, enabled = true) {
+  return { schemaVersion: 1, tabTitle: title.trim().slice(0, 32), enabled, sections: [] };
+}

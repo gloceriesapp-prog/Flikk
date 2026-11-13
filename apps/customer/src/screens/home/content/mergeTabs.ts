@@ -22,7 +22,7 @@ export function mergeManagedTabs(
       result.push({ ...tab, contentKey: config.tabKey, label: config.content.tabTitle });
   }
   for (const config of content) {
-    if (!seen.has(config.tabKey) && config.content.enabled)
+    if (!config.tabKey.startsWith('custom-') && !seen.has(config.tabKey) && config.content.enabled)
       result.push({
         id: config.homeTabId ?? `home-content-${config.tabKey}`,
         name: SYNTHETIC_TAB_NAME[config.tabKey] ?? config.content.tabTitle,

@@ -20,7 +20,8 @@ export function useWarmHomeBrowse(enabled: boolean) {
     return () => subscription.remove();
   }, []);
   const storesKey = JSON.stringify(nearby.data.slice(0, 5).map((store) => store.id));
-  const tabsKey = JSON.stringify(content.data?.filter((row) => row.content.enabled).map((row) => row.tabKey) ?? []);
+  // Custom layouts load on demand; adding categories must not multiply startup requests.
+  const tabsKey = JSON.stringify(content.data?.filter((row) => row.content.enabled && !row.tabKey.startsWith('custom-')).map((row) => row.tabKey) ?? []);
   const hasContent = Boolean(content.data);
   useEffect(() => {
     if (!enabled || !foreground || !location || !hasContent) return;

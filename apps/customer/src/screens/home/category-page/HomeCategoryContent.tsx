@@ -30,6 +30,7 @@ export function homeCategoryHeaderName(tab: RemoteHomeTab): string {
 // Managed tabs (Home Tab Content) still show the tiles and banners admin sets
 // for the same tab in Home Categories, above the managed layout.
 export function HomeCategoryContent({ tab }: { tab: RemoteHomeTab }) {
+  if (tab.contentKey?.startsWith('custom-')) return <ManagedHomeTab tabKey={tab.contentKey} />;
   switch (homeCategoryKind(tab)) {
     case 'groceries': return <><HomeTabExtras tab={tab} /><GroceriesTab /></>;
     case 'fresh': return <><HomeTabExtras tab={tab} /><FreshTab /></>;

@@ -2,7 +2,8 @@ import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../../api/client';
 import type { ApiProduct } from '../../../api/products';
 
-export type PreviewTab = 'grocery' | 'fresh' | 'regional' | 'festivals' | 'meat';
+import type { HomeContentKey } from '../content/contracts';
+export type PreviewTab = HomeContentKey;
 
 // Prefetch and visible shelves must use precisely the same key and policy.
 // Never prefetch full catalogues: these endpoints return bounded previews.

@@ -55,7 +55,7 @@ export function QuickCategorySettings({ tab, categories, subcategories, onSaved 
       </label>
       <label className="flex flex-col gap-1 text-xs font-medium text-ink sm:col-span-2">When the customer taps this card
         <select value={destination} onChange={event => setDestination(event.target.value)} className={INPUT}>
-          <option value="tab">Open this Home category — configure its section and tiles below</option>
+          <option value="tab">Open this Home category — use its sections and ads</option>
           <optgroup label="Existing catalogue categories">{categories.map(option => <option key={option.id} value={`category:${option.id}`}>{option.label}</option>)}</optgroup>
           <optgroup label="Existing subcategories">{subcategories.map(option => <option key={option.id} value={`subcategory:${option.id}`}>{option.label}</option>)}</optgroup>
         </select>
