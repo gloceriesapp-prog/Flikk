@@ -35,7 +35,7 @@ interface ContentProps {
   onSearch: () => void;
 }
 
-function CategoryDetailContent({ categoryId, label, initialSubcategoryId, onBack, onSearch }: ContentProps) {
+export function CategoryDetailContent({ categoryId, label, initialSubcategoryId, onBack, onSearch }: ContentProps) {
   const [selectedSubId, setSelectedSubId] = useState(initialSubcategoryId ?? 'all');
   const isReal = isRealCategoryId(categoryId);
   const [filters, setFilters] = useState<ProductFilters>({ ...DEFAULT_FILTERS });

@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { useCollectionCategories } from './useCollectionCategories';
+import { CategoryDetailContent } from '../../category-detail/CategoryDetailScreen';
+import { catalogueParent, filterCollectionCategory } from './collectionSidebar';
 import { categoryTileProducts } from './categoryTileProducts';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { ScreenStatusBar as StatusBar } from '../../../components/ScreenStatusBar';
@@ -24,10 +27,15 @@ import { mapContentProduct } from './productMapping';
 import { ContentState } from './ContentState';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'HomeContentCollection'>;
-export function HomeContentCollectionScreen({ route, navigation }: Props) {
+export function HomeContentCollectionScreen(props: Props) {
+  const { tabKey, sectionId, itemId } = props.route.params;
+  return <CollectionContent key={`${tabKey}:${sectionId}:${itemId ?? 'all'}`} {...props} />;
+}
+function CollectionContent({ route, navigation }: Props) {
   const { tabKey, sectionId, itemId } = route.params;
   const query = useHomeContent();
   const [selectedId, setSelectedId] = useState(itemId);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('all');
   const [filters, setFilters] = useState<ProductFilters>({ ...DEFAULT_FILTERS });
   const [panel, setPanel] = useState<FilterPanel | null>(null);
   const content = query.data?.find((row) => row.tabKey === tabKey)?.content;
@@ -52,7 +60,13 @@ export function HomeContentCollectionScreen({ route, navigation }: Props) {
     section && accessible
       ? section.kind === 'categories' ? categoryTileProducts(collectionProducts, selected ? [selected] : items) : selectContentProducts(collectionProducts, selected?.selection ?? section.selection)
       : [];
-  const baseProducts = raw.map(mapContentProduct);
+  const isCategoryTile = section?.kind === 'categories' && Boolean(itemId);
+  const isCatalogueTile = isCategoryTile && selected?.selection.mode === 'automatic';
+  const isProductCollection = isCategoryTile && selected?.selection.mode === 'manual';
+  const categoryQuery = useCollectionCategories(isCatalogueTile ? raw : [], selected?.selection.categoryIds ?? []);
+  const scopedCategories = categoryQuery.data ?? [];
+  const categoryProducts = isCatalogueTile ? filterCollectionCategory(raw, selectedCategoryId) : raw;
+  const baseProducts = categoryProducts.map(mapContentProduct);
   const brands =
     content?.sections
       .filter((s) => s.enabled && s.kind === 'brands')
@@ -79,6 +93,19 @@ export function HomeContentCollectionScreen({ route, navigation }: Props) {
       )?.image_url ||
       undefined,
   }));
+  const sidebarItems = isCatalogueTile
+    ? [{ id: 'all', title: selected?.title ?? 'All', imageUrl: selected?.imageUrl }, ...scopedCategories.map(category => ({ id: category.id, title: category.label, imageUrl: category.imageUrl }))]
+    : displayItems;
+  const parentCategoryId = isCatalogueTile ? catalogueParent(scopedCategories) : undefined;
+  if (parentCategoryId) {
+    return <CategoryDetailContent
+      key={parentCategoryId}
+      categoryId={parentCategoryId}
+      label={title}
+      onBack={() => navigation.goBack()}
+      onSearch={() => navigation.navigate('Search')}
+    />;
+  }
   return (
     <View className="flex-1 bg-white pt-safe">
       <StatusBar style="dark" />
@@ -88,18 +115,19 @@ export function HomeContentCollectionScreen({ route, navigation }: Props) {
         onSearch={() => navigation.navigate('Search')}
       />
       <View className="min-h-0 flex-1 flex-row">
-        {accessible && items.length > 0 && (
+        {accessible && !isProductCollection && items.length > 0 && (
           <View className="w-[86px] border-r border-ink/5">
             <FlatList
-              data={displayItems}
+              data={sidebarItems}
               keyExtractor={(item) => item.id}
               contentContainerStyle={{ paddingTop: 12, paddingBottom: 32, gap: 24 }}
               renderItem={({ item }) => (
                 <SubCategorySidebarItem
                   subCategory={{ id: item.id, label: item.title, imageUrl: item.imageUrl }}
-                  isSelected={item.id === selectedId}
+                  isSelected={item.id === (isCatalogueTile ? selectedCategoryId : selectedId)}
                   onPress={() => {
-                    setSelectedId(item.id);
+                    if (isCatalogueTile) setSelectedCategoryId(item.id);
+                    else setSelectedId(item.id);
                     setFilters({ ...DEFAULT_FILTERS });
                   }}
                 />
@@ -109,10 +137,13 @@ export function HomeContentCollectionScreen({ route, navigation }: Props) {
         )}
         <View className="min-w-0 flex-1 overflow-hidden">
           {accessible && <CategoryFilterBar filters={filters} onOpen={setPanel} />}
-          {products.length ? (
+          {isCatalogueTile && categoryQuery.isPending && raw.length > 0 ? (
+            <ContentState hasLocation={inventory.hasLocation} isLoading isError={false} retry={inventory.retry} emptyMessage="" />
+          ) : products.length ? (
             <FlashList
+              key={isProductCollection ? 'custom-products' : 'catalogue-products'}
               data={products}
-              numColumns={2}
+              numColumns={isProductCollection ? 3 : 2}
               ListFooterComponent={inventory.hasNextPage ? (
                 <Pressable accessibilityRole="button" disabled={inventory.isFetchingNextPage} onPress={() => { void inventory.fetchNextPage(); }} className="items-center py-4">
                   <Text className="font-semibold text-[#155DFC]">{inventory.isFetchingNextPage ? 'Loading…' : inventory.isFetchNextPageError ? 'Retry loading more' : 'Load more products'}</Text>
@@ -121,7 +152,7 @@ export function HomeContentCollectionScreen({ route, navigation }: Props) {
               keyExtractor={(product) => product.id}
               contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom: 48 }}
               renderItem={({ item }) => (
-                <View className="flex-1 px-1 pb-6">
+                <View className="px-1 pb-6" style={isProductCollection ? { width: '33.333333%' } : { flex: 1 }}>
                   <GroceryProductTile product={item} previewOnly={false} />
                 </View>
               )}

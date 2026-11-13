@@ -29,8 +29,8 @@ export function SelectionEditor({
           }}
           className={inputClass}
         >
-          <option value="automatic">{categoryTile ? 'Catalogue categories · show their current products' : 'Automatic · match catalogue rules'}</option>
-          <option value="manual">{categoryTile ? 'Hand-picked products · choose exact items' : 'Curated · choose and order products'}</option>
+          <option value="automatic">{categoryTile ? 'Catalogue category · standard sidebar' : 'Automatic · match catalogue rules'}</option>
+          <option value="manual">{categoryTile ? 'Custom collection · 3-column product grid' : 'Curated · choose and order products'}</option>
         </select>
       </Field>
       {value.mode === 'manual' && (
@@ -41,10 +41,10 @@ export function SelectionEditor({
         />
       )}
       {categoryTile && value.mode === 'automatic' && <div className="space-y-2">
-        <p className="text-xs text-slate-600">Choose the catalogue subcategories to include, for example Rice and Atta. Your custom tile title is shown in the app; it does not decide which products match.</p>
-        <CataloguePicker kind="categories" value={value.categoryIds} onChange={categoryIds => onChange(categoryTileSelection(value, { categories: categoryIds }))} />
+        <p className="text-xs text-slate-600">Select a catalogue subcategory to link this tile to its parent category. Customers see the normal category sidebar and can browse all of its subcategories. Use Custom collection to show only hand-picked products without a sidebar.</p>
+        <CataloguePicker kind="categories" value={value.categoryIds} onChange={categoryIds => onChange(categoryTileSelection(value, { categories: categoryIds.slice(-1) }))} />
       </div>}
-      {categoryTile && <p className="text-xs leading-5 text-slate-500">Choosing categories or products replaces old template filters. Optional matching filters below can refine your selection. An unconfigured tile opens an empty collection.</p>}
+      {categoryTile && <p className="text-xs leading-5 text-slate-500">Catalogue tiles use the normal category browser. Custom collections show the exact selected products in three columns, without a sidebar. Switching modes clears stale template filters.</p>}
       <details className="rounded-xl border border-slate-200 p-3">
         <summary className="cursor-pointer text-sm font-semibold text-slate-600">
           Category, shop and matching rules

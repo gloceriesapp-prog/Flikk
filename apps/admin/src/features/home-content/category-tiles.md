@@ -13,3 +13,11 @@ The customer app uses the same artwork aspect ratio (0.85), 18px corners, 90% co
 An unfinished category tile does not fall back to unrelated stock. Category-tile collections use the tile’s own rules, not the hidden parent section selection. Product sections retain their existing parent filtering.
 
 No database migration or native dependency change is required. Deploy Admin/backend together and release the compatible customer JavaScript through the normal tested update/store workflow. Existing live content is not rewritten by this change.
+
+## Category browsing modes
+
+- Catalogue category: link one catalogue subcategory. The customer opens its real parent category using the normal Categories browser, including its full sidebar and live products. The custom title remains a label; it never selects inventory by words. A newly chosen link replaces the previous link.
+- Custom collection: choose exact products. The destination has no sidebar and displays three equal-width cards per row, including incomplete final rows. Pagination and product filters remain available.
+- Legacy category documents spanning multiple parents retain a collection-scoped sidebar rather than guessing a parent. Select one catalogue link in Admin to use the standard browser.
+
+Managed category pages no longer prepend the separate legacy Home tabs tile grid. Promotional banners remain.

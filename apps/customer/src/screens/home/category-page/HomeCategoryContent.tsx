@@ -27,19 +27,19 @@ export function homeCategoryHeaderName(tab: RemoteHomeTab): string {
 
 // The dedicated page mounts the original components rather than copies.
 // Changes to their sections, product logic or admin data apply everywhere.
-// Managed tabs (Home Tab Content) still show the tiles and banners admin sets
-// for the same tab in Home Categories, above the managed layout.
+// Managed tabs use custom category tiles from Category-tab content only.
+// Keep promotional banners without duplicating the legacy Home tabs tile grid.
 export function HomeCategoryContent({ tab }: { tab: RemoteHomeTab }) {
   switch (homeCategoryKind(tab)) {
-    case 'groceries': return <><HomeTabExtras tab={tab} /><GroceriesTab /></>;
-    case 'fresh': return <><HomeTabExtras tab={tab} /><FreshTab /></>;
+    case 'groceries': return <><HomeTabExtras tab={tab} showCategoryTiles={false} /><GroceriesTab /></>;
+    case 'fresh': return <><HomeTabExtras tab={tab} showCategoryTiles={false} /><FreshTab /></>;
     // Bakery/Protein/Meat & Fish: admin tiles + real category browse.
     case 'bakery': return <><BakeryFreshnessBanner /><HomeTabTileGrid tab={tab} /></>;
-    case 'regional': return <><HomeTabExtras tab={tab} /><RegionalTab /></>;
+    case 'regional': return <><HomeTabExtras tab={tab} showCategoryTiles={false} /><RegionalTab /></>;
     // Festivals & Meat: managed Home-Tab-Content tabs, same pattern as
-    // Grocery/Fresh/Regional (admin tiles above the managed section layout).
+    // Grocery/Fresh/Regional (custom tiles belong to the managed layout).
     case 'festivals': return <FestivalTab tab={tab} />;
-    case 'meat': return <><HomeTabExtras tab={tab} categoryStyle="meat" /><ManagedHomeTab tabKey="meat" /></>;
+    case 'meat': return <><HomeTabExtras tab={tab} categoryStyle="meat" showCategoryTiles={false} /><ManagedHomeTab tabKey="meat" /></>;
     case 'meat-fish': return <HomeTabTileGrid tab={tab} categoryStyle="meat" />;
     case 'festival': return <FestivalTab tab={tab} />;
     default: return <HomeTabTileGrid tab={tab} />;

@@ -1,3 +1,4 @@
+import { ScreenSkeleton } from '../../../components/loading/ScreenSkeleton';
 // Generic body for any admin-managed Home tab (Bakery, Protein, Meat & Fish
 // and every tab without a dedicated template). Everything is admin data from
 // GET /home-tabs — no hardcoded category ids:
@@ -52,7 +53,7 @@ function TabProducts({ target }: { target?: HomeTabTileLink }) {
   const products = query.data?.pages.flatMap((p) => p.products) ?? [];
 
   if (target && query.isPending && query.fetchStatus !== 'idle') {
-    return <Text className="px-5 py-10 text-center text-sm text-ink/50">Loading products…</Text>;
+    return <ScreenSkeleton label="Loading products" />;
   }
   if (products.length === 0) {
     return (
@@ -84,14 +85,14 @@ function TabProducts({ target }: { target?: HomeTabTileLink }) {
 // Admin tiles + every "Ads & posters" banner for a tab. Shared by the
 // generic tab body and the managed Groceries/Fresh/Regional/Bakery tabs, so
 // tiles and banners set in Home Categories show on every tab.
-export function HomeTabExtras({ tab, categoryStyle = 'default' }: { tab: RemoteHomeTab; categoryStyle?: 'default' | 'meat' }) {
+export function HomeTabExtras({ tab, categoryStyle = 'default', showCategoryTiles = true }: { tab: RemoteHomeTab; categoryStyle?: 'default' | 'meat'; showCategoryTiles?: boolean }) {
   const isMeat = categoryStyle === 'meat';
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  if (tab.tiles.length === 0 && tab.banners.length === 0) return null;
+  if ((!showCategoryTiles || tab.tiles.length === 0) && tab.banners.length === 0) return null;
 
   return (
     <View>
-      {tab.tiles.length > 0 && (
+      {showCategoryTiles && tab.tiles.length > 0 && (
         <View className="px-5 pt-6" style={isMeat ? { width: '100%', maxWidth: 560, alignSelf: 'center' } : undefined}>
           {isMeat && <Text accessibilityRole="header" className="mb-4 text-[20px] font-bold tracking-tight text-ink">Shop by category</Text>}
           <View className="flex-row flex-wrap" style={{ marginHorizontal: -GAP / 2 }}>
