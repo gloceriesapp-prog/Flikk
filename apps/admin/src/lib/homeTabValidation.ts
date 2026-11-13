@@ -7,6 +7,11 @@
 import type { HomeTabTileLinkType } from './types';
 
 export interface HomeTabWriteInput {
+  showInQuickCategories?: boolean | null;
+  quickSortOrder?: number | null;
+  quickCategoryId?: string | null;
+  quickSubcategoryId?: string | null;
+
   name: string;
   imageUrl?: string | null;
   sortOrder?: number;
@@ -17,6 +22,12 @@ export interface HomeTabWriteInput {
 
 export function validateHomeTabInput(input: Partial<HomeTabWriteInput>): asserts input is HomeTabWriteInput {
   if (!input.name || !input.name.trim()) throw new Error('Tab name is required.');
+  if (input.showInQuickCategories != null && typeof input.showInQuickCategories !== 'boolean') throw new Error('Quick category visibility must be on or off.');
+  if (input.quickSortOrder != null && (!Number.isInteger(input.quickSortOrder) || input.quickSortOrder < 0 || input.quickSortOrder > 9999)) throw new Error('Quick category order must be a whole number from 0 to 9999.');
+  for (const id of [input.quickCategoryId, input.quickSubcategoryId]) {
+    if (id != null && (typeof id !== 'string' || !UUID.test(id))) throw new Error('Choose an existing category or subcategory.');
+  }
+  if (input.quickCategoryId && input.quickSubcategoryId) throw new Error('Choose one quick category destination.');
   if (input.sectionId != null && (typeof input.sectionId !== 'string' || !UUID.test(input.sectionId))) throw new Error('Pick a real section.');
 }
 
@@ -118,4 +129,14 @@ export function toHomeTabErrorMessage(err: unknown, fallback: string): string {
   }
   if (err instanceof Error) return err.message;
   return fallback;
+}
+
+export function toQuickCategoryPatch(input: Partial<HomeTabWriteInput>) {
+  return {
+    ...(('quickCategoryId' in input || 'quickSubcategoryId' in input) ? { quick_destination_type: input.quickCategoryId ? 'category' : input.quickSubcategoryId ? 'subcategory' : null } : {}),
+    ...('showInQuickCategories' in input ? { show_in_quick_categories: input.showInQuickCategories ?? null } : {}),
+    ...('quickSortOrder' in input ? { quick_sort_order: input.quickSortOrder ?? null } : {}),
+    ...('quickCategoryId' in input ? { quick_category_id: input.quickCategoryId ?? null } : {}),
+    ...('quickSubcategoryId' in input ? { quick_subcategory_id: input.quickSubcategoryId ?? null } : {}),
+  };
 }

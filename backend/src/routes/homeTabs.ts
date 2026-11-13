@@ -9,6 +9,7 @@
 // no badge/heading/subheading text — those columns exist but are unused
 // dead columns now, per an explicit ask to drop the text entirely.
 import { Router } from 'express';
+import { resolveQuickDestination } from '../lib/quickCategoryDestination.js';
 import { supabase } from '../db/supabase.js';
 
 export const homeTabsRouter = Router();
@@ -17,7 +18,7 @@ homeTabsRouter.get('/', async (req, res, next) => {
   try {
     const { data: tabs, error: tabsError } = await supabase
       .from('home_tabs')
-      .select('id, name, image_url, sort_order, section_id')
+      .select('id, name, image_url, sort_order, section_id, quick_destination_type, show_in_quick_categories, quick_sort_order, quick_category_id, quick_subcategory_id')
       .eq('is_active', true)
       .order('sort_order')
       .order('name');
@@ -72,10 +73,31 @@ homeTabsRouter.get('/', async (req, res, next) => {
       return [...own, ...fromSection];
     };
 
+    // Resolve shortcut targets against active taxonomy only, in bounded batches.
+    const quickSubIds = [...new Set(tabs.flatMap(tab => tab.quick_subcategory_id ? [tab.quick_subcategory_id] : []))];
+    const quickParents = new Map<string, string>();
+    if (quickSubIds.length) {
+      const { data, error } = await supabase.from('sub_categories').select('id, category_id').in('id', quickSubIds).eq('is_active', true);
+      if (error) throw error;
+      for (const sub of data ?? []) quickParents.set(sub.id, sub.category_id);
+    }
+    const quickCategoryIds = [...new Set([...tabs.flatMap(tab => tab.quick_category_id ? [tab.quick_category_id] : []), ...quickParents.values()])];
+    const activeQuickCategories = new Set<string>();
+    if (quickCategoryIds.length) {
+      const { data, error } = await supabase.from('categories').select('id').in('id', quickCategoryIds).eq('is_active', true);
+      if (error) throw error;
+      for (const category of data ?? []) activeQuickCategories.add(category.id);
+    }
+
     const grouped = tabs.map((tab) => ({
       id: tab.id,
       name: tab.name,
       image_url: tab.image_url,
+      quick_category: {
+        visible: tab.show_in_quick_categories ?? null,
+        order: tab.quick_sort_order ?? null,
+        ...resolveQuickDestination(tab, activeQuickCategories, quickParents),
+      },
       tiles: tabTiles(tab),
       banners: banners.filter((b) => b.home_tab_id === tab.id).map((b) => ({ id: b.id, image_url: b.image_url })),
     }));

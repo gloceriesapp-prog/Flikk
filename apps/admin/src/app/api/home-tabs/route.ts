@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { HOME_TAB_SELECT, mapRowToHomeTab, type HomeTabRow } from '@/lib/supabase/homeTabs';
-import { toHomeTabErrorMessage, toHomeTabRow, validateHomeTabInput, type HomeTabWriteInput } from '@/lib/homeTabValidation';
+import { toHomeTabErrorMessage, toQuickCategoryPatch, toHomeTabRow, validateHomeTabInput, type HomeTabWriteInput } from '@/lib/homeTabValidation';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(request: Request) {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const input: Partial<HomeTabWriteInput> = body;
     validateHomeTabInput(input);
 
-    const { data, error } = await supabaseAdmin.from('home_tabs').insert(toHomeTabRow(input)).select(HOME_TAB_SELECT).single();
+    const { data, error } = await supabaseAdmin.from('home_tabs').insert({ ...toHomeTabRow(input), ...toQuickCategoryPatch(input), ...('sectionId' in input ? { section_id: input.sectionId ?? null } : {}) }).select(HOME_TAB_SELECT).single();
     if (error) throw error;
 
     return NextResponse.json(mapRowToHomeTab(data as unknown as HomeTabRow));

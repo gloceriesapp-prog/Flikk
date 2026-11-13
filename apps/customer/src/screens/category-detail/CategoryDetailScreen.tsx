@@ -17,9 +17,10 @@ type Props = NativeStackScreenProps<AppStackParamList, 'CategoryDetail'>;
 export function CategoryDetailScreen({ navigation, route }: Props) {
   return (
     <CategoryDetailContent
-      key={route.params.categoryId}
+      key={`${route.params.categoryId}:${route.params.subcategoryId ?? 'all'}`}
       categoryId={route.params.categoryId}
       label={route.params.label}
+      initialSubcategoryId={route.params.subcategoryId}
       onBack={() => navigation.goBack()}
       onSearch={() => navigation.navigate('Search')}
     />
@@ -27,14 +28,15 @@ export function CategoryDetailScreen({ navigation, route }: Props) {
 }
 
 interface ContentProps {
+  initialSubcategoryId?: string;
   categoryId: string;
   label: string;
   onBack: () => void;
   onSearch: () => void;
 }
 
-function CategoryDetailContent({ categoryId, label, onBack, onSearch }: ContentProps) {
-  const [selectedSubId, setSelectedSubId] = useState('all');
+function CategoryDetailContent({ categoryId, label, initialSubcategoryId, onBack, onSearch }: ContentProps) {
+  const [selectedSubId, setSelectedSubId] = useState(initialSubcategoryId ?? 'all');
   const isReal = isRealCategoryId(categoryId);
   const [filters, setFilters] = useState<ProductFilters>({ ...DEFAULT_FILTERS });
   const subCategories = useRealSubCategories(categoryId);
@@ -42,7 +44,7 @@ function CategoryDetailContent({ categoryId, label, onBack, onSearch }: ContentP
 
   const sidebarItems = [ALL_TAB, ...realSubCategories];
   // If an admin removes a selected subcategory, fall back to All immediately.
-  const activeSubId = sidebarItems.some((item) => item.id === selectedSubId)
+  const activeSubId = (subCategories.isPending && selectedSubId !== 'all') || sidebarItems.some((item) => item.id === selectedSubId)
     ? selectedSubId
     : sidebarItems[0]?.id ?? 'all';
   const categoryProducts = useCategoryProducts(isReal && activeSubId === 'all' ? categoryId : '', filters);

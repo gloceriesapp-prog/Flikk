@@ -37,6 +37,7 @@ export interface RemoteHomeTabBanner {
 }
 
 export interface RemoteHomeTab {
+  quickCategory?: { visible: boolean | null; order: number | null; configured: boolean; link?: HomeTabTileLink };
   id: string;
   name: string;
   // The tab's own card artwork on Home's Quick categories grid
@@ -51,6 +52,7 @@ export interface RemoteHomeTab {
 }
 
 interface ApiHomeTab {
+  quick_category?: { visible: boolean | null; order: number | null; configured: boolean; link?: { type: 'category' | 'subcategory'; id: string; category_id: string } | null };
   id: string;
   name: string;
   image_url: string | null;
@@ -72,6 +74,8 @@ export function useHomeTabs() {
           id: row.id,
           name: row.name,
           imageUrl: row.image_url ?? undefined,
+          quickCategory: row.quick_category ? { ...row.quick_category,
+            link: row.quick_category.link ? { type: row.quick_category.link.type, id: row.quick_category.link.id, categoryId: row.quick_category.link.category_id } : undefined } : undefined,
           tiles: row.tiles.map((t) => ({ id: t.id, name: t.name, imageUrl: t.image_url ?? undefined,
             link: t.link ? { type: t.link.type, id: t.link.id, categoryId: t.link.category_id } : undefined })),
           banners: row.banners.map((b) => ({ id: b.id, imageUrl: b.image_url })),

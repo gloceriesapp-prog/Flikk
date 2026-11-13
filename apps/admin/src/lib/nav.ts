@@ -95,7 +95,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Customer home',
     items: [
-      { href: '/home-categories', label: 'Home tabs & tiles', icon: Home },
+      { href: '/home-categories', label: 'Quick categories & tabs', icon: Home },
       { href: '/home-sections', label: '“All” tab layout', icon: LayoutGrid },
       { href: '/home-content', label: 'Category-tab content', icon: LayoutGrid },
       { href: '/festival-layout', label: 'Festival sections & layout', icon: LayoutGrid },

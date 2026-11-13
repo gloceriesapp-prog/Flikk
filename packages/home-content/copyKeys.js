@@ -10,7 +10,7 @@ export const COPY_KEYS = {
   'home.welcome.imageUrl': { default: '', hint: 'Home welcome banner artwork (wide, about 3:1). Blank = built-in artwork', kind: 'image' },
   'home.welcome.label': { default: 'Welcome. Shop the stores you already love.', hint: 'Home welcome banner text read by screen readers' },
   'home.quickCategories.groceryImageUrl': { default: '', hint: 'Groceries quick-category tile artwork. Blank = built-in artwork', kind: 'image' },
-  'home.quickCategories.hiddenTabs': { default: 'Bakery, Bakeries', hint: 'Comma-separated tab names left out of the Home quick-category tiles (the tabs still exist). Type - to show every tab' },
+  'home.quickCategories.hiddenTabs': { default: 'Bakery, Bakeries', hint: 'Legacy comma-separated Home shortcut hiding. Per-card Show/Hide in Quick categories & tabs overrides this. Type - to hide none' },
   'home.groceries.headerImageUrl': { default: '', hint: 'Groceries category page header artwork. Blank = built-in artwork', kind: 'image' },
   'search.nearYou.imageUrl': { default: '', hint: 'Search screen "Available near you" banner on top of its product box (wide, about 2.4:1, e.g. 1200x500). Blank = the coastal Udupi sunrise artwork', kind: 'image' },
   'search.nearYou.title': { default: 'Available near you', hint: 'Search screen product box title (shown on the banner, top-left)' },

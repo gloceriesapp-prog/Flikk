@@ -12,6 +12,7 @@
 // for, not a single flat list mixing tabs and tiles together.
 
 import { useCallback, useEffect, useState } from 'react';
+import { QuickCategorySettings } from '@/components/home/QuickCategorySettings';
 import { Check, Pencil, Plus, Trash2 } from '@/components/icons';
 import type { HomeTab, HomeTabBanner, HomeTabTile, HomeTabTileLinkType } from '@/lib/types';
 import { fetchHomeTabBanners, fetchHomeTabs, fetchHomeTabTiles } from '@/lib/supabase/homeTabs';
@@ -419,8 +420,7 @@ export default function HomeCategoriesPage() {
       <div>
         <h1 className="page-title">Home Categories</h1>
         <p className="text-sm text-muted">
-          Home screen&apos;s own top tab row and each tab&apos;s tile grid — separate from the main Categories screen, editing here never
-          affects it.
+          Manage Home Quick categories, custom collections and the categories each card opens. Reuse catalogue sections below without duplicating products.
         </p>
       </div>
 
@@ -534,7 +534,7 @@ export default function HomeCategoriesPage() {
                   handleAddTab();
                 }
               }}
-              placeholder="New tab (e.g. Pharmacy)"
+              placeholder="Custom Home category name"
               className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/10"
             />
             <button
@@ -544,7 +544,7 @@ export default function HomeCategoriesPage() {
               className="flex items-center justify-center gap-1.5 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-strong"
             >
               <Plus size={14} />
-              Add tab
+              Add Home category
             </button>
           </div>
         </div>
@@ -579,6 +579,9 @@ export default function HomeCategoriesPage() {
                   )}
                 </div>
               </div>
+
+              <QuickCategorySettings key={selectedTab.id} tab={selectedTab} categories={linkOptions.category} subcategories={linkOptions.subcategory}
+                onSaved={updated => setTabs(current => current.map(tab => tab.id === updated.id ? updated : tab))} />
 
               <div className="mb-5 flex flex-col gap-1.5 rounded-2xl border border-border p-4">
                 <label htmlFor="tab-section" className="text-sm font-medium text-ink">Show categories from a section</label>
