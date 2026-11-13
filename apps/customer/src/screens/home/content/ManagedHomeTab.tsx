@@ -193,7 +193,7 @@ function ManagedSection({
         <>
           {items.length ? (
             <ContentTiles
-              featuredCategories={tabKey === 'grocery' && section.id === 'shop-by-category'}
+              featuredCategories={tabKey === 'grocery' && section.kind === 'categories'}
               archedCategories={tabKey === 'meat' && section.kind === 'categories'}
               section={{ ...section, items }}
               products={inventory.visibleProducts}

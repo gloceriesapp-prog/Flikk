@@ -148,3 +148,24 @@ it('hides suspended/unapproved stores and fails closed on visibility-check error
   expect(failure.next).toHaveBeenCalledWith(expect.any(Error));
   expect(mocks.calls).toEqual([]);
 });
+
+it('uses only the custom category tile selection, not hidden parent section filters', async () => {
+  const section = mocks.content.sections.find(s => s.kind === 'categories')!;
+  section.selection = { ...section.selection, mode: 'manual', productIds: ['72000000-0000-0000-0000-000000000001'] };
+  const tile = section.items[0]!;
+  tile.title = 'Rice & Atta';
+  tile.selection = { ...tile.selection, mode: 'automatic', productIds: [], categoryIds: ['72000000-0000-0000-0000-000000000002'], includeTerms: [], excludeTerms: [], storeIds: [], discountedOnly: false };
+  await request('/:id/collection-products', { tab: 'grocery', section: section.id, item: tile.id });
+  const rules = mocks.rpc.mock.calls[0]![1].p_rules;
+  expect(rules).toHaveLength(1);
+  expect(rules[0].selection).toEqual(tile.selection);
+  expect(rules[0]).not.toHaveProperty('base');
+});
+it('returns an empty collection for an unconfigured category tile instead of reading all stock', async () => {
+  const section = mocks.content.sections.find(s => s.kind === 'categories')!;
+  const tile = section.items[0]!;
+  tile.selection = { mode: 'automatic', productIds: [], categoryIds: [], storeIds: [], includeTerms: [], excludeTerms: [], discountedOnly: false };
+  const result = await request('/:id/collection-products', { tab: 'grocery', section: section.id, item: tile.id });
+  expect(mocks.rpc).not.toHaveBeenCalled();
+  expect(result.res.json).toHaveBeenCalledWith({ products: [], nextCursor: null });
+});

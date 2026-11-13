@@ -78,3 +78,5 @@ export function selectContentProducts<
 
 export function createFestivalSections(): HomeContentSection[];
 export function addMissingFestivalSections(content: HomeContentDocument): HomeContentDocument;
+
+export function hasContentSelection(rule: ContentSelection): boolean;
