@@ -13,12 +13,13 @@ export function SectionComposer({ sections, selectedId, onAdd }: {
   const [title, setTitle] = useState('');
   const [placement, setPlacement] = useState<SectionPlacement>('after');
   const selected = sections.find(section => section.id === selectedId);
+  const effectivePlacement = selected ? placement : 'end';
   const full = sections.length >= 40;
   function add(nextKind: SectionKind) {
     if (full) return;
     const heading = nextKind === 'banner' ? (nextKind === kind ? title.trim() : '') : title.trim() || 'New section';
     const section = createSection(nextKind, `section-${crypto.randomUUID()}`, heading);
-    onAdd(section, placement);
+    onAdd(section, effectivePlacement);
     setTitle('');
   }
   return <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -32,7 +33,7 @@ export function SectionComposer({ sections, selectedId, onAdd }: {
       <input value={title} maxLength={120} onChange={event => setTitle(event.target.value)} placeholder={kind === 'banner' ? 'Leave blank for image only' : 'e.g. Udupi favourites'} className={inputClass} />
     </Field>
     <Field label="Show this content">
-      <select value={placement} onChange={event => setPlacement(event.target.value as SectionPlacement)} className={inputClass}>
+      <select value={effectivePlacement} onChange={event => setPlacement(event.target.value as SectionPlacement)} className={inputClass}>
         <option value="before" disabled={!selected}>Before selected section</option>
         <option value="after" disabled={!selected}>After selected section</option>
         <option value="end">At the end of this tab</option>
