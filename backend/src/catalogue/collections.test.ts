@@ -95,6 +95,7 @@ it('hydrates sold-out previews without losing approval or store scope', async ()
 });
 
 it('scopes category and subcategory facets to the selected store only', async () => {
+  mocks.rpc.mockResolvedValue({ data: true, error: null });
   for (const path of ['/:id/catalogue-categories', '/:id/catalogue-subcategories']) {
     mocks.calls.length = 0;
     const result = await request(path, { categoryId: store });
@@ -126,4 +127,24 @@ it('keeps category, subcategory, search, filters and hydration bound to one stor
   }
   const replayStore = await request('/:id/catalogue-products', { categoryId: store, subcategoryId: store, q: 'Milk,or(1)', after, deals: '1' }, '72000000-0000-0000-0000-000000000997');
   expect(replayStore.next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+});
+
+it('does not use the open/closed flag to filter store category facets', async () => {
+  mocks.rpc.mockResolvedValue({ data: true, error: null });
+  for (const path of ['/:id/catalogue-categories', '/:id/catalogue-subcategories']) {
+    mocks.calls.length = 0;
+    await request(path, { categoryId: store });
+    expect(mocks.rpc).toHaveBeenCalledWith('store_catalogue_is_browsable', { p_store: store });
+    expect(mocks.calls.some(([key]) => key.includes('stores.is_active'))).toBe(false);
+  }
+});
+it('hides suspended/unapproved stores and fails closed on visibility-check errors', async () => {
+  mocks.rpc.mockResolvedValue({ data: false, error: null });
+  const hidden = await request('/:id/catalogue-categories');
+  expect(hidden.res.json).toHaveBeenCalledWith([]);
+  expect(mocks.calls).toEqual([]);
+  mocks.rpc.mockResolvedValue({ data: null, error: new Error('database unavailable') });
+  const failure = await request('/:id/catalogue-categories');
+  expect(failure.next).toHaveBeenCalledWith(expect.any(Error));
+  expect(mocks.calls).toEqual([]);
 });

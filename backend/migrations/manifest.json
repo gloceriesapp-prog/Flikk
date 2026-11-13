@@ -728,6 +728,10 @@
     {
       "file": "20261112200000_store_catalogue_taxonomy.sql",
       "sha256": "9ffc338ffafce2d683402e7b6bf5fb633d5627f48425f69847126a04ed19e110"
+    },
+    {
+      "file": "20261113010000_closed_store_catalogue.sql",
+      "sha256": "687decf02d3f1beedf5e7f424e77bb7923c7d36b4d9591f46c46259b9f690bd5"
     }
   ]
 }

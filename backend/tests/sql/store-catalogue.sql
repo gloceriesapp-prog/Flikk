@@ -27,6 +27,21 @@ DO $$
 DECLARE shop uuid := '00000000-0000-4000-8000-0000000180f1'; cat uuid := '00000000-0000-4000-8000-0000000180c1';
  sub uuid := '00000000-0000-4000-8000-0000000180b1'; n integer; first_id uuid; first_score double precision; last_id uuid;
 BEGIN
+ -- Closed shops retain their approved catalogue; suspension never does.
+ UPDATE stores SET is_active=false WHERE id=shop;
+ IF NOT store_catalogue_is_browsable(shop) THEN RAISE EXCEPTION 'Closed shop hidden'; END IF;
+ SELECT count(*) INTO n FROM store_catalogue_page_ids(shop,NULL,NULL,'',false,false,'all','relevance',NULL,NULL,30);
+ IF n<>3 THEN RAISE EXCEPTION 'Closed shop catalogue disappeared'; END IF;
+ UPDATE stores SET admin_suspended=true WHERE id=shop;
+ IF store_catalogue_is_browsable(shop) THEN RAISE EXCEPTION 'Suspended shop browsable'; END IF;
+ SELECT count(*) INTO n FROM store_catalogue_page_ids(shop,NULL,NULL,'',false,false,'all','relevance',NULL,NULL,30);
+ IF n<>0 THEN RAISE EXCEPTION 'Suspended shop catalogue leaked'; END IF;
+ UPDATE stores SET admin_suspended=false WHERE id=shop;
+ UPDATE users SET partner_suspended=true WHERE id='00000000-0000-4000-8000-0000000180d1';
+ IF store_catalogue_is_browsable(shop) THEN RAISE EXCEPTION 'Suspended partner browsable'; END IF;
+ UPDATE users SET partner_suspended=false,is_approved=false WHERE id='00000000-0000-4000-8000-0000000180d1';
+ IF store_catalogue_is_browsable(shop) THEN RAISE EXCEPTION 'Unapproved partner browsable'; END IF;
+ UPDATE users SET is_approved=true WHERE id='00000000-0000-4000-8000-0000000180d1';
  SELECT count(*) INTO n FROM store_catalogue_page_ids(shop,NULL,NULL,'',false,false,'all','relevance',NULL,NULL,30);
  IF n<>3 THEN RAISE EXCEPTION 'Store scope leaked unapproved, preorder or another store'; END IF;
  SELECT count(*) INTO n FROM store_catalogue_page_ids(shop,cat,NULL,'',false,false,'all','relevance',NULL,NULL,30);
