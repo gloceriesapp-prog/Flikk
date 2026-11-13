@@ -1,4 +1,8 @@
-export type HomeContentKey = 'grocery' | 'fresh' | 'regional' | 'festivals' | 'meat';
+export type BuiltinHomeContentKey = 'grocery' | 'fresh' | 'regional' | 'festivals' | 'meat';
+export type HomeContentKey = BuiltinHomeContentKey | `custom-${string}`;
+export function isHomeContentKey(value: unknown): value is HomeContentKey;
+export function customContentKey(homeTabId: string): HomeContentKey;
+export function createCustomContent(title: string, enabled?: boolean): HomeContentDocument;
 export type SectionKind =
   'products' | 'categories' | 'brands' | 'stores' | 'banner' | 'hero' | 'festival' | 'footer';
 export interface ContentSelection {
@@ -52,9 +56,9 @@ export interface HomeContentRecord {
   updatedAt: string;
   content: HomeContentDocument;
 }
-export const TAB_KEYS: readonly HomeContentKey[];
+export const TAB_KEYS: readonly BuiltinHomeContentKey[];
 export const SECTION_KINDS: readonly SectionKind[];
-export const DEFAULT_CONTENT: Record<HomeContentKey, HomeContentDocument>;
+export const DEFAULT_CONTENT: Record<BuiltinHomeContentKey, HomeContentDocument>;
 export function createSection(kind: SectionKind, id: string, title?: string): HomeContentSection;
 export function createItem(id: string, title?: string): HomeContentItem;
 export function validateContent(value: unknown): HomeContentDocument;

@@ -23,6 +23,18 @@ const kindLabel = (kind: keyof typeof SECTION_KIND_LABELS) => SECTION_KIND_LABEL
 type HistoryEntry = { revision: number; changed_at: string; content: HomeContentDocument };
 export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: HomeContentKey }) {
   const [tab, setTab] = useState<HomeContentKey>(initialTab);
+  const [customTabs, setCustomTabs] = useState<{ key: HomeContentKey; title: string }[]>([]);
+  const [tabListError, setTabListError] = useState('');
+  useEffect(() => {
+    let active = true;
+    fetch('/api/home-content', { cache: 'no-store' }).then(async response => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      if (active) setCustomTabs(data.filter((item: { key: string }) => item.key.startsWith('custom-')));
+    }).catch(() => { if (active) setTabListError('Could not load newly added categories. Refresh to try again.'); });
+    return () => { active = false; };
+  }, []);
+  const tabOptions = [...TAB_KEYS.map(key => ({ key, title: LABELS[key] })), ...customTabs];
   const [record, setRecord] = useState<HomeContentRecord | null>(null);
   const [draft, setDraft] = useState<HomeContentDocument | null>(null);
   const [selectedId, setSelectedId] = useState('');
@@ -165,7 +177,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
           <h1 className="page-title">Home tab content</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
             Manage the customer app’s Grocery, Fruit & Veg, Regional, Festivals and Meat tabs. Arrange sections,
-            choose real catalogue products, and edit the text and images customers see.
+            choose real catalogue products, and edit the text and images customers see. Newly added Quick categories appear here too.
           </p>
         </div>
         <span
@@ -175,7 +187,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
-        {TAB_KEYS.map((key) => (
+        {tabOptions.map(({ key, title }) => (
           <button
             type="button"
             key={key}
@@ -193,10 +205,11 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
             }}
             className={`rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-40 ${tab === key ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}
           >
-            {LABELS[key]}
+            {title}
           </button>
         ))}
       </div>
+      {tabListError && <p role="alert" className="text-sm text-red-700">{tabListError}</p>}
       {error && (
         <div
           role="alert"
@@ -239,7 +252,7 @@ export function HomeContentEditor({ initialTab = 'grocery' }: { initialTab?: Hom
       )}
       {loading && !draft && (
         <p role="status" className="py-12 text-center text-sm text-slate-500">
-          Loading {LABELS[tab]} content…
+          Loading {tabOptions.find(option => option.key === tab)?.title ?? 'category'} content…
         </p>
       )}
       {!draft && !loading && (

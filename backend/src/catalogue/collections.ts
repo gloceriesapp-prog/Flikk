@@ -1,5 +1,5 @@
 import { Router, type Request } from 'express';
-import { hasContentSelection, validateContent, type ContentSelection, type HomeContentKey } from '../../../packages/home-content/index.js';
+import { hasContentSelection, isHomeContentKey, validateContent, type ContentSelection, type HomeContentKey } from '../../../packages/home-content/index.js';
 import { supabase } from '../db/supabase.js';
 import { AppError } from '../lib/errors.js';
 import { PRODUCT_WITH_VARIANTS_SELECT } from '../routes/stores.js';
@@ -15,7 +15,7 @@ export function pageSize(value: unknown, fallback = 30): number {
   return Number(value);
 }
 async function contentFor(tab: unknown) {
-  if (!['grocery', 'fresh', 'regional'].includes(String(tab))) throw new AppError(400, 'INVALID_TAB', 'Invalid collection tab.');
+  if (!isHomeContentKey(tab)) throw new AppError(400, 'INVALID_TAB', 'Invalid collection tab.');
   const { data, error } = await supabase.from('home_content').select('content').eq('tab_key', tab as HomeContentKey).single();
   if (error) throw error;
   const content = validateContent(data.content);

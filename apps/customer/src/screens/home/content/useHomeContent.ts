@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../../api/client';
-import { TAB_KEYS, validateContent, type HomeContentRecord } from './contracts';
+import { isHomeContentKey, validateContent, type HomeContentRecord } from './contracts';
 import { subscribePublicContentCache } from './publicContentCache';
 
 export const HOME_SECTION_QUERY_KEYS = [
@@ -26,18 +26,16 @@ export function useHomeContent() {
     queryFn: async () => {
       const rows = await apiRequest<HomeContentRecord[]>('/home/content', { auth: false });
       if (!Array.isArray(rows)) throw new Error('Home content is not configured.');
-      // Tolerant by design: keep every valid row whose tabKey this app build
-      // knows about, and skip the rest. A tab added on one side (DB vs the
-      // bundled TAB_KEYS) or a single malformed doc must NOT blank the whole
-      // home — unknown tabs are ignored, missing ones just don't render their
-      // managed layout. (Previously this hard-threw on any count mismatch,
-      // which is what made every tab + quick-categories vanish on drift.)
+      // Validate each supported built-in or UUID-bound custom document separately.
+      // A malformed page must not blank the rest of Home; keep cached content
+      // on a wholly unusable response instead of replacing it with an empty UI.
       const seen = new Set<string>();
       const result: HomeContentRecord[] = [];
       for (const row of rows) {
         if (!row || typeof row !== 'object') continue;
-        if (!TAB_KEYS.includes(row.tabKey) || seen.has(row.tabKey)) continue;
+        if (!isHomeContentKey(row.tabKey) || seen.has(row.tabKey)) continue;
         if (!Number.isSafeInteger(row.revision) || row.revision < 1) continue;
+        if (row.tabKey.startsWith('custom-') && row.homeTabId !== row.tabKey.slice(7)) continue;
         try {
           result.push({ ...row, content: validateContent(row.content) });
           seen.add(row.tabKey);

@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 // Home Categories — Home screen's own top tab row (All/Groceries/Fresh/
 // Bakery/..., apps/customer/src/screens/home/components/CategoryTabs.tsx)
 // and each tab's tile grid. Deliberately its own page, own tables
@@ -580,6 +582,11 @@ export default function HomeCategoriesPage() {
                 </div>
               </div>
 
+              <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+                <p className="text-sm font-semibold text-ink">Sections and image ads</p>
+                <p className="mt-1 text-xs text-muted">Add sections, multiple ads, choose their order and control visibility for this category. Choose “Open this Home category” as the destination below, then publish in the editor when ready.</p>
+                <Link href={`/home-content?homeTab=${selectedTab.id}`} className="mt-3 inline-block rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white">Edit sections and ad placement</Link>
+              </div>
               <QuickCategorySettings key={selectedTab.id} tab={selectedTab} categories={linkOptions.category} subcategories={linkOptions.subcategory}
                 onSaved={updated => setTabs(current => current.map(tab => tab.id === updated.id ? updated : tab))} />
 

@@ -255,7 +255,7 @@ function PublishedTab({
   // Reveal one complete first-load layout. Cached shelves remain on screen
   // during refetches; a slow shop must not create a spinner in every section.
   if (inventory.isLoading)
-    return <View className="pt-8"><ContentState {...inventory} loadingMessage={BROWSE_LOADING_COPY[tabKey]} /></View>;
+    return <View className="pt-8"><ContentState {...inventory} loadingMessage={BROWSE_LOADING_COPY[tabKey as keyof typeof BROWSE_LOADING_COPY] ?? BROWSE_LOADING_COPY.all} /></View>;
   return (
     <View>
       {content.sections
@@ -285,7 +285,7 @@ export function ManagedHomeTab({ tabKey }: { tabKey: HomeContentKey }) {
           isError={query.isError}
           retry={() => void query.refetch()}
           emptyMessage="This tab is not available right now."
-          loadingMessage={BROWSE_LOADING_COPY[tabKey]}
+          loadingMessage={BROWSE_LOADING_COPY[tabKey as keyof typeof BROWSE_LOADING_COPY] ?? BROWSE_LOADING_COPY.all}
         />
       </View>
     );
